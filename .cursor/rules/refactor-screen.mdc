@@ -1,0 +1,40 @@
+---
+alwaysApply: true
+---
+
+Review this screen/feature as a senior UI engineer.
+Context Files - Read before auditing:
+- /docs/PRD.md - product requirements
+- /styles/tokens.css - design tokens
+- /src/components/ui/ - available UI components
+Architecture:
+- Is Server vs Client component split appropriate?
+- Is data fetching at the right level?
+- Could logic be extracted into custom hooks?
+Component Usage:
+- Using design system components instead of raw HTML?
+- Consistent with existing codebase patterns?
+- Not duplicating existing component library functionality?
+Accessibility:
+- Focus management on navigation and modal open/close
+- Keyboard navigation complete for all interactive elements
+- Screen reader announcements for dynamic content
+- Proper heading hierarchy (h1 -> h2 -> h3)
+Edge Cases:
+- Loading states handled with skeletons or spinners
+- Error states with user-friendly messages
+- Empty states with helpful guidance
+- Graceful fallbacks for missing/undefined data
+Performance:
+- Unnecessary re-renders avoided?
+- Heavy computations memoized with useMemo?
+- Images optimized with Next.js Image component?
+Security (if rendering user content):
+- User input sanitized before display
+- No dangerouslySetInnerHTML without sanitization
+- No sensitive data exposed in client-side code
+Propose specific refactors with:
+- File paths and line numbers
+- Code examples showing the fix
+- Priority (critical / recommended / nice-to-have)
+- Explanation of why the change matters

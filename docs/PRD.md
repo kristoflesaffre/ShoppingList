@@ -109,7 +109,396 @@ Users should see updates from other users without needing to manually refresh th
 
 ## Screen Specs
 
-- [Home Screen](screens/home.md)
+- [Home Screen](# Shopping List -- Product Requirements Document
+
+## Overview
+
+Shopping List is a collaborative grocery planning app that allows users
+to create shopping lists, organize items per day, and coordinate grocery
+shopping with others in real time.
+
+Users can manually add items or quickly populate lists using saved
+recipes. The app helps households plan meals and shopping more
+efficiently by combining list management, meal planning, and shared
+collaboration in one place.
+
+The system synchronizes changes in real time so all users viewing the
+same list see updates immediately.
+
+------------------------------------------------------------------------
+
+# Problem Statement
+
+Households often coordinate grocery shopping using fragmented tools such
+as messaging apps, notes, or paper lists.
+
+This leads to several problems:
+
+-   Items being forgotten
+-   Duplicate purchases
+-   Poor coordination between household members
+-   Difficulty planning meals across the week
+-   Repetitive typing of the same ingredients
+
+Users need a simple shared system that allows them to:
+
+-   quickly add items
+-   assign items to days
+-   reuse recipes
+-   coordinate who is buying what
+-   see changes instantly across devices
+
+------------------------------------------------------------------------
+
+# Target User
+
+Primary users:
+
+-   households
+-   couples
+-   families
+-   roommates
+
+Typical scenarios:
+
+-   planning weekly groceries
+-   dividing shopping tasks between people
+-   converting recipes into shopping lists
+-   quickly capturing items when something runs out
+
+Users value:
+
+-   speed
+-   clarity
+-   collaboration
+-   minimal friction
+
+------------------------------------------------------------------------
+
+# Core Features
+
+## Shared Shopping Lists
+
+Users can create multiple lists such as:
+
+-   Weekly groceries
+-   Party shopping
+-   Holiday preparation
+
+Each list contains items organized in sections.
+
+------------------------------------------------------------------------
+
+## Sections per Day
+
+Items can be grouped into sections:
+
+-   Algemeen
+-   Maandag
+-   Dinsdag
+-   Woensdag
+-   Donderdag
+-   Vrijdag
+-   Zaterdag
+-   Zondag
+
+If a user adds an item to a day that does not yet exist, the section is
+automatically created.
+
+------------------------------------------------------------------------
+
+## Item Management
+
+Users can add items manually.
+
+Each item contains:
+
+-   name
+-   quantity
+-   quantity description
+-   optional assigned shopper
+-   completion state
+
+Items support the following interactions:
+
+-   mark as completed
+-   claim item ("jij haalt dit")
+-   reorder items
+-   edit items
+-   delete items
+
+------------------------------------------------------------------------
+
+## Real-Time Collaboration
+
+All lists update in real time.
+
+When one user:
+
+-   adds an item
+-   claims an item
+-   marks an item complete
+-   edits an item
+-   deletes an item
+
+Other users viewing the list immediately see the update.
+
+------------------------------------------------------------------------
+
+## Item Claiming
+
+Users can indicate that they will purchase a specific item.
+
+When an item is claimed:
+
+-   the item state changes
+-   the claiming user's avatar appears
+-   other users cannot mark the item as completed
+
+------------------------------------------------------------------------
+
+## Recipe Library
+
+Users can create reusable recipes.
+
+A recipe contains:
+
+-   recipe name
+-   optional link to source
+-   number of persons
+-   ingredients
+
+Recipes can be reused to quickly add multiple items to a shopping list.
+
+------------------------------------------------------------------------
+
+## Recipe Ingredients
+
+Ingredients are stored as structured items.
+
+Each ingredient contains:
+
+-   name
+-   quantity
+-   quantity description
+
+Ingredients are displayed using the same Item Card component as shopping
+list items but always in editable state.
+
+------------------------------------------------------------------------
+
+## Adding Recipes to Lists
+
+When a recipe is selected:
+
+-   all ingredients of the recipe are added to the shopping list
+-   the items are placed in the selected day section
+-   or in Algemeen if no day was selected
+
+------------------------------------------------------------------------
+
+## Recipe Search
+
+Users can search through saved recipes using a search bar.
+
+Results filter in real time.
+
+------------------------------------------------------------------------
+
+## Recipe Editing
+
+Users can:
+
+-   edit recipes
+-   reorder ingredients
+-   update quantities
+-   delete ingredients
+
+------------------------------------------------------------------------
+
+## Undo Delete
+
+When a list is deleted, a Snackbar component appears.
+
+The Snackbar shows:
+
+-   confirmation message
+-   Undo ("Zet terug") button
+
+This restores the deleted item.
+
+------------------------------------------------------------------------
+
+# Out of Scope (v1)
+
+-   automatic ingredient merging between recipes
+-   barcode scanning
+-   grocery store integrations
+-   price comparison
+-   nutritional analysis
+-   AI recipe suggestions
+-   multi-language support
+
+------------------------------------------------------------------------
+
+# Tech Stack
+
+Frontend
+
+-   Next.js 14 (App Router)
+-   React
+-   Tailwind CSS
+-   Radix UI (headless components)
+-   TypeScript
+-   Storybook (component documentation)
+
+Backend / Data
+
+-   InstantDB (real-time database)
+
+Key reasons:
+
+-   built-in realtime synchronization
+-   simplified data model
+-   minimal backend infrastructure
+-   fast prototyping
+
+State / Sync
+
+-   InstantDB realtime subscriptions
+-   optimistic UI updates
+
+------------------------------------------------------------------------
+
+# Design System
+
+Key reusable components:
+
+-   Item Card
+-   Recipe Tile
+-   Toggle Button
+-   Pill Tab
+-   Mini Button
+-   Floating Action Button
+-   Stepper
+-   Search Bar
+-   Snackbar
+-   Modal Page
+
+------------------------------------------------------------------------
+
+# Screen Specs
+
+## Home
+
+Displays the user's lists.
+
+Features:
+
+-   list overview
+-   create new list
+-   reorder lists
+-   delete lists
+-   undo delete via snackbar
+
+See: screens/home.md
+
+------------------------------------------------------------------------
+
+## List Detail
+
+Displays the items of a specific list.
+
+Features:
+
+-   sections per day
+-   item cards
+-   claim items
+-   mark items completed
+-   edit mode
+-   reorder items
+-   floating action button to add item
+
+See: screens/list-item.md
+
+------------------------------------------------------------------------
+
+## New Item Modal
+
+Allows users to add items or recipes to a list.
+
+Features:
+
+-   day selector
+-   item form
+-   recipe tab
+-   recipe library
+-   search recipes
+
+See: screens/new-item.md
+
+------------------------------------------------------------------------
+
+## New Recipe Modal
+
+Allows users to create a new recipe.
+
+Features:
+
+-   recipe name
+-   recipe link
+-   number of persons
+-   ingredient management
+-   ingredient reordering
+-   ingredient editing
+
+See: screens/new-recipe.md
+
+------------------------------------------------------------------------
+
+# Real-Time Behaviour
+
+The following actions synchronize instantly:
+
+-   adding items
+-   editing items
+-   deleting items
+-   claiming items
+-   marking items completed
+-   adding recipes
+-   editing recipes
+
+------------------------------------------------------------------------
+
+# Component State Model
+
+The Item Card component supports multiple states:
+
+-   default
+-   claimed
+-   completed
+-   editable
+
+This allows the same component to be reused for:
+
+-   shopping list items
+-   recipe ingredients
+
+------------------------------------------------------------------------
+
+# Future Opportunities
+
+Potential improvements:
+
+-   automatic ingredient merging across recipes
+-   shared household accounts
+-   meal planning calendar
+-   smart ingredient suggestions
+-   grocery category grouping
+-   offline support
+-   store aisle sorting
+)
+- [Home Screen](screens/list-detail.md)
 
 ---
 

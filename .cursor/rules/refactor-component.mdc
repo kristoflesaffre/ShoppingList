@@ -1,0 +1,37 @@
+---
+alwaysApply: true
+---
+
+Review this component as a senior UI engineer.
+Context Files - Read before auditing:
+- /styles/tokens.css - design tokens
+- /src/lib/utils.ts - shared utilities
+Quick Checks:
+1. Next.js: Has 'use client' directive if interactive
+(uses onClick, useState, useEffect, Radix primitives)
+2. Patterns:
+- Uses React.forwardRef for DOM element refs
+- Has displayName property set
+- Uses named exports (not default exports)
+3. Types:
+- Props interface exported and well-typed
+- JSDoc comments on non-obvious props
+- No 'any' types where avoidable
+4. Tokens:
+- No hardcoded colors (e.g., text-gray-600)
+- No hardcoded spacing (e.g., p-4, gap-2)
+- Uses design tokens (text-text-primary, bg-action-primary)
+5. Utilities:
+- Uses cn() from @/lib/utils for conditional classes
+6. Accessibility:
+- ARIA attributes where Radix doesn't handle them
+- Icons have aria-hidden='true' when decorative
+- Proper focus states, keyboard nav works
+7. Stories:
+- All variants have Storybook stories
+- All sizes documented
+- Edge cases covered (empty, long text, etc.)
+Flag issues with:
+- Specific line numbers
+- Code examples showing the fix
+- Priority (critical / recommended / nice-to-have)
