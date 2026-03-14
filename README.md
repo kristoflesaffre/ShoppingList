@@ -31,9 +31,11 @@ npm run dev          # Next.js development server (poort 3000)
 npm run build        # Next.js productie-build
 npm run start        # Next.js productie-server
 npm run lint         # ESLint
-npm run storybook    # Storybook dev (poort 6006)
+npm run storybook    # Storybook dev (poort 6006) – gebruikt scripts/run-storybook.sh
 npm run build-storybook  # Storybook statische build
 ```
+
+**Storybook en EMFILE (macOS):** Het script `scripts/run-storybook.sh` verhoogt het file limit en zet polling aan. Als je toch **EMFILE: too many open files** ziet, voer in dezelfde terminal eerst uit: `ulimit -n 10240`, daarna opnieuw `npm run storybook`.
 
 ## Ontwikkeling
 

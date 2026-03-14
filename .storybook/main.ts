@@ -12,6 +12,19 @@ const config: StorybookConfig = {
     options: {},
   },
   staticDirs: ["../public"],
+  webpackFinal: async (config) => {
+    // Beperk file watchers om EMFILE te voorkomen (macOS)
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: [
+        "**/node_modules/**",
+        "**/.next/**",
+        "**/storybook-static/**",
+      ],
+      aggregateTimeout: 300,
+    };
+    return config;
+  },
 };
 
 export default config;
