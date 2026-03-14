@@ -7,11 +7,16 @@ import { cn } from "@/lib/utils";
 export type ButtonVariant = "primary" | "secondary" | "tertiary";
 export type ButtonSize = "default";
 
+/**
+ * Button props. Extends native button attributes.
+ * @param asChild - When true, merges props onto the single child (Radix Slot); use e.g. <Button asChild><a href="...">Link</a></Button>
+ */
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   disabled?: boolean;
+  /** Render as child element (Radix Slot); child receives merged props and styles */
   asChild?: boolean;
 }
 
@@ -30,7 +35,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button";
 
     const base =
-      "inline-flex items-center justify-center font-medium text-base leading-6 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
+      "inline-flex items-center justify-center font-medium text-base leading-24 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
 
     const sizeStyles = {
       default: "py-2 px-4 rounded-[var(--radius-pill)]",
@@ -61,14 +66,21 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const state = disabled ? "disabled" : "default";
     const variantStyle = variantStyles[variant][state];
 
+    const isSlot = asChild;
+    const slotProps = isSlot && disabled
+      ? { "aria-disabled": true as const, style: { pointerEvents: "none" as const } }
+      : {};
+
     return (
       <Comp
         ref={ref}
+        type={isSlot ? undefined : (props.type ?? "button")}
         className={cn(base, sizeStyles[size], variantStyle, className)}
-        disabled={disabled}
+        disabled={isSlot ? undefined : disabled}
         data-variant={variant}
         data-size={size}
         data-disabled={disabled || undefined}
+        {...slotProps}
         {...props}
       />
     );

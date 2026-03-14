@@ -123,3 +123,18 @@ export const AsChild: Story = {
     ),
   },
 };
+
+export const EmptyLabel: Story = {
+  args: {
+    variant: "primary",
+    children: "",
+  },
+};
+
+export const LongText: Story = {
+  args: {
+    variant: "secondary",
+    children:
+      "Button with a very long label that might wrap or truncate depending on container width",
+  },
+};
