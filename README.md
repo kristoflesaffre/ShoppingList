@@ -20,6 +20,10 @@ Volgens het PRD zijn de volgende dependencies geïnstalleerd:
 - **InstantDB** – `@instantdb/react` voor real-time sync
 - **Storybook** – Componentdocumentatie (`.storybook/`, stories in `src/**/*.stories.*`)
 
+### Design tokens
+
+Design tokens (Figma-naamgeving: Gray 100, Blue 600, enz.) staan in [styles/tokens.css](styles/tokens.css) als CSS custom properties, gegroepeerd in: backgrounds, borders, text, actions, status, typography, spacing, radii. Tailwind is gekoppeld aan deze variabelen via [tailwind.config.ts](tailwind.config.ts); gebruik bijvoorbeeld `bg-background`, `text-text-primary`, `rounded-md`. Geschikt voor Radix UI-componenten.
+
 ## Scripts
 
 ```bash

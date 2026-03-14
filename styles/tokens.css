@@ -1,0 +1,141 @@
+/**
+ * Design tokens – uit Figma design system (Shopping-list-app).
+ * Figma naming: Gray = Neutrals, Blue = Primary, + Secondary, Error.
+ * Gegroepeerd voor Radix UI.
+ */
+
+:root {
+  /* ========== BACKGROUNDS ========== */
+  /* Gray (Figma: Neutral 25 … 900, Black, White) */
+  --gray-25: #f8f8f9;
+  --gray-50: #f1f1f3;
+  --gray-100: #e2e4e6;
+  --gray-200: #c6c8ce;
+  --gray-300: #a9adb5;
+  --gray-400: #8c929d;
+  --gray-500: #707784;
+  --gray-600: #595f6a;
+  --gray-700: #43474f;
+  --gray-800: #2d2f35;
+  --gray-900: #16181a;
+  --gray-black: #000000;
+  --white: #ffffff;
+  /* Blue (Figma: Primary 25 … 900) */
+  --blue-25: #f6f6fe;
+  --blue-50: #edeefe;
+  --blue-100: #dcddfc;
+  --blue-200: #b9bbf9;
+  --blue-300: #9599f7;
+  --blue-400: #7277f4;
+  --blue-500: #4f55f1;
+  --blue-600: #3f44c1;
+  --blue-700: #2f3391;
+  --blue-800: #202260;
+  --blue-900: #101130;
+  /* Semantic backgrounds */
+  --bg-default: var(--gray-50);
+  --bg-subtle: var(--gray-100);
+  --bg-overlay: var(--white);
+  --bg-muted: var(--gray-100);
+  --bg-elevated: var(--white);
+
+  /* ========== BORDERS ========== */
+  --border-default: var(--gray-200);
+  --border-strong: var(--gray-300);
+  --border-subtle: var(--gray-100);
+  --border-focus: var(--blue-500);
+  /* Border width (Figma: sizes/border) */
+  --border-width-1: 1px;
+  --border-width-2: 2px;
+
+  /* ========== TEXT ========== */
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-600);
+  --text-tertiary: var(--gray-500);
+  --text-inverse: var(--white);
+  --text-placeholder: var(--gray-300);
+  --text-link: var(--blue-500);
+  --text-disabled: var(--gray-500);
+
+  /* ========== ACTIONS ========== */
+  --action-primary: var(--blue-500);
+  --action-primary-hover: var(--blue-600);
+  --action-primary-foreground: var(--white);
+  --action-secondary-bg: var(--white);
+  --action-secondary-border: var(--blue-500);
+  --action-secondary-foreground: var(--blue-500);
+  --action-ghost-hover: var(--blue-25);
+  --action-danger: var(--error-600);
+  --action-danger-foreground: var(--white);
+
+  /* ========== STATUS ========== */
+  /* Secondary (Figma: bruin/amber) */
+  --secondary-100: #fcedde;
+  --secondary-200: #fadbbd;
+  --secondary-400: #f5b87b;
+  --secondary-500: #f2a65a;
+  --secondary-600: #c28548;
+  --secondary-700: #916436;
+  --secondary-800: #614224;
+  --secondary-900: #302112;
+  /* Error (Figma) */
+  --error-25: #fff6f5;
+  --error-300: #eb5552;
+  --error-400: #d64040;
+  --error-600: #b92028;
+  /* Semantic status */
+  --status-success: var(--secondary-600);
+  --status-success-bg: var(--secondary-100);
+  --status-warning: var(--secondary-500);
+  --status-warning-bg: var(--secondary-100);
+  --status-error: var(--error-600);
+  --status-error-bg: var(--error-25);
+  --status-info: var(--blue-600);
+  --status-info-bg: var(--blue-50);
+
+  /* ========== TYPOGRAPHY ========== */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* Font sizes – Figma: font-page-title, font-section-title, font-normal, font-small, font-extra-small */
+  --text-page-title: 1.5rem;      /* 24px */
+  --text-section-title: 1.125rem; /* 18px */
+  --text-base: 1rem;              /* 16px font-normal */
+  --text-sm: 0.875rem;            /* 14px font-small */
+  --text-xs: 0.75rem;             /* 12px font-extra-small */
+  /* Font weights – Figma: font-light, font-regular, font-medium, font-semibold, font-bold */
+  --font-light: 300;
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  /* Line heights – Figma: scale/32, lineheight/24, lineheight/20, lineheight/16 */
+  --leading-32: 2rem;    /* 32px – page title */
+  --leading-24: 1.5rem;  /* 24px */
+  --leading-20: 1.25rem; /* 20px */
+  --leading-16: 1rem;    /* 16px */
+  /* Letter spacing – Figma: letter-spacing/normal */
+  --tracking-normal: 0;
+
+  /* ========== SPACING ========== */
+  /* Figma: sizes/spacing/sp-4, sp-8, sp-12, sp-16 + scale/12, scale/32 */
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px sp-4 */
+  --space-2: 0.5rem;   /* 8px sp-8, s8 */
+  --space-3: 0.75rem;  /* 12px sp-12 */
+  --space-4: 1rem;     /* 16px sp-16, s16 */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-12: 3rem;    /* 48px */
+
+  /* ========== RADII ========== */
+  /* Figma: sizes/radius/rd-4, rd-8, rd-128, rd-256, r9999 */
+  --radius-none: 0;
+  --radius-sm: 4px;    /* rd-4 */
+  --radius-md: 8px;    /* rd-8 */
+  --radius-pill: 256px; /* rd-256 – buttons, pill tabs */
+  --radius-full: 9999px;
+
+  /* ========== SHADOWS ========== */
+  /* Figma: $kdl-func-shadow */
+  --shadow-drop: 0 2px 8px rgba(0, 0, 0, 0.16);
+}
