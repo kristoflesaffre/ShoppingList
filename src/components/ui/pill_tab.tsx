@@ -19,7 +19,7 @@ export interface PillTabProps {
   defaultValue?: PillTabVariant;
   /** Called when the active tab changes (e.g. user click) */
   onValueChange?: (value: PillTabVariant) => void;
-  /** Bar size; only "default" is defined (px-4 py-2 per Figma padding) */
+  /** Size of each tab (padding); only "default" is defined */
   size?: PillTabSize;
   /** Label for the first (left) tab */
   labelFirst?: React.ReactNode;
@@ -34,10 +34,10 @@ export interface PillTabProps {
 
 /** Figma: container bg neutrals/25, border neutrals/100, rounded rd-256, gap 0. Tabs: px-16 py-10, font semibold, 16px, leading-24. Active: white bg, primary/500 text. Inactive: no bg, neutrals/300 text. */
 const containerBase =
-  "flex w-full gap-0 rounded-pill border border-[var(--gray-100)] bg-[var(--gray-25)]";
+  "relative flex w-full gap-0 overflow-hidden rounded-pill border border-[var(--gray-100)] bg-[var(--gray-25)]";
 
 const tabBase =
-  "flex flex-1 min-w-0 items-center justify-center font-semibold text-base leading-24 tracking-normal whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
+  "flex flex-1 min-w-0 items-center justify-center text-base leading-24 tracking-normal whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
 
 const sizeStyles: Record<PillTabSize, string> = {
   default: "px-4 py-2",
@@ -51,8 +51,8 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
       defaultValue = "first",
       onValueChange,
       size = "default",
-      labelFirst = "Active tab",
-      labelSecond = "Inactive tab",
+      labelFirst = "Tab 1",
+      labelSecond = "Tab 2",
       asChild = false,
       children,
       ...props
@@ -77,6 +77,16 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
       onValueChange?.("second");
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, tab: "first" | "second") => {
+      if (e.key === "ArrowLeft" && tab === "second") {
+        e.preventDefault();
+        handleSelectFirst();
+      } else if (e.key === "ArrowRight" && tab === "first") {
+        e.preventDefault();
+        handleSelectSecond();
+      }
+    };
+
     const containerClassName = cn(containerBase, className);
     const containerProps = {
       ref,
@@ -90,19 +100,27 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
 
     const defaultContent = (
       <>
+        <div
+          aria-hidden="true"
+          className={cn(
+            "absolute inset-y-0 left-0 w-1/2 rounded-pill bg-[var(--white)] transition-transform duration-200 ease-out",
+            firstActive ? "translate-x-0" : "translate-x-full"
+          )}
+        />
         <button
           type="button"
           role="tab"
           aria-selected={firstActive}
           tabIndex={firstActive ? 0 : -1}
           onClick={handleSelectFirst}
+          onKeyDown={(e) => handleKeyDown(e, "first")}
           className={cn(
             tabBase,
             sizeStyles[size],
-            "rounded-pill",
+            "relative z-10 rounded-pill bg-transparent",
             firstActive
-              ? "bg-[var(--white)] text-[var(--blue-500)]"
-              : "bg-transparent text-[var(--gray-300)] hover:text-[var(--gray-400)]"
+              ? "font-semibold text-[var(--blue-500)]"
+              : "font-normal text-[var(--gray-300)] hover:text-[var(--gray-400)]"
           )}
         >
           {labelFirst}
@@ -113,13 +131,14 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
           aria-selected={!firstActive}
           tabIndex={!firstActive ? 0 : -1}
           onClick={handleSelectSecond}
+          onKeyDown={(e) => handleKeyDown(e, "second")}
           className={cn(
             tabBase,
             sizeStyles[size],
-            "rounded-pill",
+            "relative z-10 rounded-pill bg-transparent",
             !firstActive
-              ? "bg-[var(--white)] text-[var(--blue-500)]"
-              : "bg-transparent text-[var(--gray-300)] hover:text-[var(--gray-400)]"
+              ? "font-semibold text-[var(--blue-500)]"
+              : "font-normal text-[var(--gray-300)] hover:text-[var(--gray-400)]"
           )}
         >
           {labelSecond}

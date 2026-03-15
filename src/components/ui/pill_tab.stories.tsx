@@ -64,8 +64,8 @@ type Story = StoryObj<typeof PillTab>;
 export const FirstTabActive: Story = {
   args: {
     defaultValue: "first",
-    labelFirst: "Active tab",
-    labelSecond: "Inactive tab",
+    labelFirst: "Tab 1",
+    labelSecond: "Tab 2",
   },
 };
 
@@ -73,18 +73,26 @@ export const FirstTabActive: Story = {
 export const SecondTabActive: Story = {
   args: {
     defaultValue: "second",
-    labelFirst: "Inactive tab",
-    labelSecond: "Active tab",
+    labelFirst: "Tab 1",
+    labelSecond: "Tab 2",
   },
 };
 
 export const AllVariants: Story = {
   render: () => (
     <div className="flex flex-col gap-4 w-full max-w-[358px]">
-      <PillTab defaultValue="first" labelFirst="Active tab" labelSecond="Inactive tab" />
-      <PillTab defaultValue="second" labelFirst="Inactive tab" labelSecond="Active tab" />
+      <PillTab defaultValue="first" labelFirst="Tab 1" labelSecond="Tab 2" />
+      <PillTab defaultValue="second" labelFirst="Tab 1" labelSecond="Tab 2" />
     </div>
   ),
+};
+
+export const LongLabels: Story = {
+  args: {
+    defaultValue: "first",
+    labelFirst: "Eerste tab met lange tekst",
+    labelSecond: "Tweede tab met lange tekst",
+  },
 };
 
 export const AsChild: Story = {
