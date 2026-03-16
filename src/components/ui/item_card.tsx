@@ -1,0 +1,418 @@
+"use client";
+
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cn } from "@/lib/utils";
+import { Checkbox } from "./checkbox";
+
+export type ItemCardVariant = "default" | "gotten-by-you" | "gotten-by-other";
+export type ItemCardState = "default" | "editable";
+export type ItemCardSize = "default";
+
+/**
+ * Item card: single list item with checkbox, name, quantity, and variant-specific actions.
+ * Variants: default, gotten-by-you, gotten-by-other. Checked state via checked/defaultChecked + onCheckedChange.
+ * States: default, editable.
+ * @param asChild - When true, merges container props onto the single child (Radix Slot)
+ */
+export interface ItemCardProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "children"
+> {
+  /** Item name (e.g. "Melk") */
+  itemName?: React.ReactNode;
+  /** Quantity or description (e.g. "2 stuks") */
+  quantity?: React.ReactNode;
+  /** For gotten-by-you: e.g. "jij haalt dit". For gotten-by-other: e.g. "Anne haalt dit". */
+  claimedByLabel?: React.ReactNode;
+  /** Avatar for gotten-by-other (e.g. <img> or Next Image), 32×32 */
+  avatar?: React.ReactNode;
+  /** Controlled checked (obtained). Use with onCheckedChange. */
+  checked?: boolean;
+  /** Default checked when uncontrolled */
+  defaultChecked?: boolean;
+  /** Called when checkbox checked state changes */
+  onCheckedChange?: (checked: boolean) => void;
+  variant?: ItemCardVariant;
+  state?: ItemCardState;
+  size?: ItemCardSize;
+  asChild?: boolean;
+  children?: React.ReactNode;
+  onClaim?: () => void;
+  onReorder?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  className?: string;
+}
+
+/** Claim icon – public/icons/hand.svg, 24×24, uses currentColor for default (blue-300) and gotten-by-you (white). */
+function HandIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn("size-6 shrink-0", className)}
+      width={24}
+      height={24}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M17 11.1667V7C17 6.55798 16.8244 6.13405 16.5119 5.82149C16.1993 5.50893 15.7754 5.33334 15.3334 5.33334C14.8913 5.33334 14.4674 5.50893 14.1548 5.82149C13.8423 6.13405 13.6667 6.55798 13.6667 7"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.6666 10.3333V5.33333C13.6666 4.8913 13.4911 4.46738 13.1785 4.15482C12.8659 3.84226 12.442 3.66666 12 3.66666C11.558 3.66666 11.134 3.84226 10.8215 4.15482C10.5089 4.46738 10.3333 4.8913 10.3333 5.33333V7"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.3333 10.75V7C10.3333 6.55798 10.1577 6.13405 9.84518 5.82149C9.53262 5.50893 9.10869 5.33334 8.66667 5.33334C8.22464 5.33334 7.80072 5.50893 7.48816 5.82149C7.17559 6.13405 7 6.55798 7 7V13.6667"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M17 8.66667C17 8.22464 17.1756 7.80072 17.4881 7.48816C17.8007 7.17559 18.2246 7 18.6667 7C19.1087 7 19.5326 7.17559 19.8452 7.48816C20.1577 7.80072 20.3333 8.22464 20.3333 8.66667V13.6667C20.3333 15.4348 19.6309 17.1305 18.3807 18.3807C17.1305 19.631 15.4348 20.3333 13.6667 20.3333H12C9.66665 20.3333 8.24998 19.6167 7.00832 18.3833L4.00832 15.3833C3.7216 15.0658 3.56797 14.6501 3.57925 14.2225C3.59054 13.7948 3.76586 13.3878 4.06892 13.0858C4.37198 12.7838 4.77957 12.6099 5.20729 12.6002C5.63502 12.5904 6.05012 12.7455 6.36665 13.0333L7.83332 14.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Reorder – public/icons/move_item.svg, 24×24. */
+function ReorderIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn("size-6 shrink-0", className)}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M18.062 8.19952C18.062 7.90252 18.303 7.66152 18.6 7.66152H25.5C25.797 7.66152 26.038 7.90252 26.038 8.19952C26.038 8.49652 25.797 8.73752 25.5 8.73752H18.6C18.303 8.73752 18.062 8.49652 18.062 8.19952ZM25.5 13.7615H18.6C18.303 13.7615 18.062 14.0025 18.062 14.2995C18.062 14.5965 18.303 14.8375 18.6 14.8375H25.5C25.797 14.8375 26.038 14.5965 26.038 14.2995C26.038 14.0025 25.797 13.7615 25.5 13.7615ZM25.5 19.7615H18.6C18.303 19.7615 18.062 20.0025 18.062 20.2995C18.062 20.5965 18.303 20.8375 18.6 20.8375H25.5C25.797 20.8375 26.038 20.5965 26.038 20.2995C26.038 20.0025 25.797 19.7615 25.5 19.7615ZM12.075 16.5145C11.862 16.3075 11.522 16.3115 11.315 16.5255C11.108 16.7385 11.113 17.0785 11.326 17.2855L13.874 19.7615H12.6C9.53304 19.7615 7.03804 17.2665 7.03804 14.1995C7.03804 11.0805 9.48104 8.63752 12.6 8.63752H15.2C15.497 8.63752 15.738 8.39652 15.738 8.09952C15.738 7.80252 15.497 7.56152 15.2 7.56152H12.6C8.87804 7.56152 5.96204 10.4775 5.96204 14.1995C5.96204 17.8595 8.94004 20.8375 12.6 20.8375H13.928L11.414 23.4255C11.207 23.6385 11.212 23.9795 11.425 24.1865C11.529 24.2885 11.664 24.3385 11.8 24.3385C11.94 24.3385 12.08 24.2835 12.186 24.1755L15.586 20.6755C15.793 20.4625 15.788 20.1215 15.575 19.9145L12.075 16.5145Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Edit icon – public/icons/pencil.svg, 24×24, currentColor for blue in editable state. */
+function PencilIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn("size-6 shrink-0", className)}
+      width={24}
+      height={24}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M7.17663 23.8235C7.03379 23.6807 6.97224 23.4751 7.01172 23.2777L7.94074 18.633C7.96397 18.5157 8.02087 18.4089 8.10564 18.323L19.2539 7.17679C19.4896 6.94107 19.8728 6.94107 20.1086 7.17679L23.8246 10.8926C23.9361 11.0064 24 11.1596 24 11.3199C24 11.4801 23.9361 11.6334 23.8246 11.7472L21.0376 14.534L12.6764 22.8934C12.5905 22.9782 12.4836 23.0362 12.3664 23.0594L7.72126 23.9884C7.68178 23.9965 7.6423 24 7.60281 24C7.44488 23.9988 7.29043 23.9361 7.17663 23.8235ZM17.7465 10.3909L20.6091 13.2533L22.5426 11.3199L19.6801 8.45757L17.7465 10.3909ZM8.37274 22.6263L11.9506 21.911L19.7544 14.1079L16.893 11.2456L9.08808 19.0499L8.37274 22.6263Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn("size-6 shrink-0", className)}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M22.938 13.5933V23.2223C22.938 23.7893 22.717 24.3243 22.317 24.7253C21.916 25.1253 21.381 25.3463 20.814 25.3463H11.186C10.618 25.3463 10.084 25.1253 9.68395 24.7253C9.28295 24.3233 9.06095 23.7893 9.06095 23.2223V13.5933C9.06095 13.3063 9.29395 13.0733 9.58095 13.0733C9.86795 13.0733 10.101 13.3063 10.101 13.5933V23.2223C10.101 23.5073 10.217 23.7873 10.419 23.9893C10.624 24.1943 10.896 24.3073 11.186 24.3073H20.815C21.105 24.3073 21.377 24.1943 21.582 23.9893C21.787 23.7853 21.9 23.5123 21.9 23.2223V13.5933C21.9 13.3063 22.132 13.0733 22.42 13.0733C22.708 13.0733 22.938 13.3063 22.938 13.5933ZM25.346 10.3843C25.346 10.6713 25.114 10.9043 24.826 10.9043H7.17295C6.88595 10.9043 6.65295 10.6713 6.65295 10.3843C6.65295 10.0973 6.88595 9.8643 7.17295 9.8643H12.27V7.1743C12.27 6.8873 12.503 6.6543 12.79 6.6543H19.209C19.496 6.6543 19.729 6.8873 19.729 7.1743V9.8643H24.826C25.113 9.8643 25.346 10.0973 25.346 10.3843ZM13.311 9.8643H18.691V7.6943H13.311V9.8643ZM18.659 20.8143V16.0003C18.659 15.7133 18.427 15.4803 18.139 15.4803C17.851 15.4803 17.619 15.7133 17.619 16.0003V20.8143C17.619 21.1013 17.851 21.3343 18.139 21.3343C18.427 21.3343 18.659 21.1023 18.659 20.8143ZM14.38 20.8143V16.0003C14.38 15.7133 14.147 15.4803 13.86 15.4803C13.573 15.4803 13.34 15.7133 13.34 16.0003V20.8143C13.34 21.1013 13.573 21.3343 13.86 21.3343C14.147 21.3343 14.38 21.1023 14.38 20.8143Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Figma 508:1729: gap-12, pl-16 pr-12 py-12, rounded rd-8. Min-height keeps card height stable when checked (divider + claim hidden). */
+const containerBase =
+  "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-md py-3 pl-4 pr-3";
+
+function ItemDivider() {
+  return (
+    <span
+      className="relative flex h-[44px] w-0 min-w-0 shrink-0 items-center justify-center"
+      aria-hidden="true"
+    >
+      <span
+        className="absolute left-1/2 top-0 h-[44px] w-px -translate-x-1/2 bg-[var(--gray-200)]"
+        aria-hidden="true"
+      />
+    </span>
+  );
+}
+
+const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
+  (
+    {
+      className,
+      itemName = "Item name",
+      quantity,
+      claimedByLabel,
+      avatar,
+      checked,
+      defaultChecked,
+      onCheckedChange,
+      variant = "default",
+      state = "default",
+      size = "default",
+      asChild = false,
+      children,
+      onClaim,
+      onReorder,
+      onEdit,
+      onDelete,
+      ...props
+    },
+    ref,
+  ) => {
+    const [internalChecked, setInternalChecked] = React.useState(
+      checked ?? defaultChecked ?? false,
+    );
+    const [claimedByMe, setClaimedByMe] = React.useState(
+      variant === "gotten-by-you",
+    );
+
+    // Sync when parent updates the controlled `checked` prop.
+    React.useEffect(() => {
+      if (checked !== undefined) setInternalChecked(checked);
+    }, [checked]);
+
+    const isChecked = internalChecked;
+
+    const handleCheckedChange = React.useCallback(
+      (value: boolean) => {
+        setInternalChecked(value);
+        onCheckedChange?.(value);
+      },
+      [onCheckedChange],
+    );
+
+    const isEditable = state === "editable";
+    // effectiveVariant merges prop + internal claim state.
+    // Checking the item always resets to default (you're no longer getting it).
+    const effectiveVariant: ItemCardVariant = isChecked
+      ? "default"
+      : claimedByMe && variant === "default"
+        ? "gotten-by-you"
+        : variant;
+    const isGottenByYou = effectiveVariant === "gotten-by-you";
+    const isGottenByOther = effectiveVariant === "gotten-by-other";
+    // fallback label when claimed internally without a claimedByLabel prop
+    const effectiveClaimedByLabel =
+      claimedByLabel ?? (claimedByMe ? "jij haalt dit" : null);
+    const showCheckbox =
+      !isEditable &&
+      (effectiveVariant === "default" ||
+        effectiveVariant === "gotten-by-you" ||
+        effectiveVariant === "gotten-by-other");
+    const showClaimButton =
+      !isEditable && (effectiveVariant === "default" || isGottenByYou);
+    const showContentBlock =
+      effectiveVariant === "default" ||
+      isGottenByYou ||
+      isEditable ||
+      (isGottenByOther && !isEditable);
+
+    const containerClassName = cn(
+      containerBase,
+      isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
+      !isGottenByOther && "bg-[var(--white)] border border-[var(--gray-100)]",
+      isGottenByYou && "border-2 border-[var(--blue-500)] shadow-[var(--shadow-drop)]",
+      className,
+    );
+
+    const containerProps = {
+      ref,
+      "data-variant": variant,
+      "data-state": state,
+      "data-size": size,
+      className: containerClassName,
+      ...props,
+    };
+
+    const textContent = (
+      <>
+        <span
+          className={cn(
+            "truncate font-medium text-base leading-24 tracking-normal w-full",
+            isChecked && "line-through text-[var(--gray-400)]",
+            !isChecked && "text-[var(--text-primary)]",
+          )}
+        >
+          {itemName}
+        </span>
+        {quantity != null && (
+          <span
+            className={cn(
+              "font-normal text-sm leading-20 tracking-normal text-[var(--gray-400)] w-full",
+              isChecked && "line-through",
+            )}
+          >
+            {quantity}
+          </span>
+        )}
+      </>
+    );
+
+    const defaultContent = (
+      <>
+        {showCheckbox && (
+          <Checkbox
+            size="default"
+            checked={isChecked}
+            onCheckedChange={handleCheckedChange}
+            disabled={isGottenByOther}
+            className="shrink-0"
+            aria-label={
+              typeof itemName === "string"
+                ? `Markeer "${itemName}" als gehaald`
+                : "Markeer als gehaald"
+            }
+          />
+        )}
+
+        {isEditable && (
+          <button
+            type="button"
+            aria-label="Reorder item"
+            onClick={onReorder}
+            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+          >
+            <ReorderIcon />
+          </button>
+        )}
+
+        {isEditable && <ItemDivider />}
+
+        {showContentBlock && (
+          <>
+            <div className="min-w-0 flex flex-1 flex-col gap-0">
+              {effectiveVariant === "default" &&
+                !isEditable &&
+                textContent}
+              {isGottenByYou && (
+                <>
+                  <span className="truncate font-medium text-base leading-24 tracking-normal text-[var(--text-primary)] w-full">
+                    {itemName}
+                  </span>
+                  <span className="flex items-center gap-1 font-normal text-sm leading-20 text-[var(--gray-400)]">
+                    {quantity != null && <>{quantity}</>}
+                    {quantity != null && effectiveClaimedByLabel != null && " - "}
+                    {effectiveClaimedByLabel != null && (
+                      <span className="font-medium text-xs leading-16 text-[var(--blue-500)]">
+                        {effectiveClaimedByLabel}
+                      </span>
+                    )}
+                  </span>
+                </>
+              )}
+              {isEditable && textContent}
+              {isGottenByOther && !isEditable && (
+                <>
+                  <span className="truncate font-medium text-base leading-24 text-[var(--gray-400)] w-full">
+                    {itemName}
+                  </span>
+                  {claimedByLabel != null && (
+                    <span className="flex items-center gap-1 font-normal text-sm leading-20 text-[var(--gray-400)]">
+                      {quantity != null && <>{quantity}</>}
+                      {quantity != null && " - "}
+                      <span className="font-medium text-xs leading-16 text-[var(--blue-500)]">
+                        {claimedByLabel}
+                      </span>
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+            {!isEditable && !isChecked && <ItemDivider />}
+          </>
+        )}
+
+        {showClaimButton && effectiveVariant === "default" && !isChecked && (
+          <button
+            type="button"
+            aria-label="Claim item"
+            onClick={() => {
+              setClaimedByMe(true);
+              onClaim?.();
+            }}
+            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+          >
+            <HandIcon />
+          </button>
+        )}
+
+        {showClaimButton && isGottenByYou && (
+          <button
+            type="button"
+            aria-label="Unclaim item"
+            onClick={() => {
+              setClaimedByMe(false);
+              onClaim?.();
+            }}
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] p-1 text-[var(--white)]"
+          >
+            <HandIcon />
+          </button>
+        )}
+
+        {isGottenByOther && (
+          <span
+            className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full"
+            aria-hidden="true"
+          >
+            {avatar}
+          </span>
+        )}
+
+        {isEditable && (
+          <>
+            <button
+              type="button"
+              aria-label="Edit item"
+              onClick={onEdit}
+              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+            >
+              <PencilIcon />
+            </button>
+            <ItemDivider />
+            <button
+              type="button"
+              aria-label="Delete item"
+              onClick={onDelete}
+              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+            >
+              <TrashIcon />
+            </button>
+          </>
+        )}
+      </>
+    );
+
+    if (asChild) {
+      return <Slot {...containerProps}>{children}</Slot>;
+    }
+    return <div {...containerProps}>{defaultContent}</div>;
+  },
+);
+
+ItemCard.displayName = "ItemCard";
+
+export { ItemCard };
