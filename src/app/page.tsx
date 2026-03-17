@@ -291,16 +291,18 @@ export default function Home() {
     <div className="relative flex min-h-screen w-full flex-col px-[16px]">
       {/* Content area – 16px from viewport (parent px), responsive width */}
       <div className="flex flex-1 flex-col pb-[120px] pt-[86px]">
-          {/* Header: title + edit button */}
-          <div className="mb-6 flex items-center gap-4">
-            <h1 className="flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
-              Mijn lijstjes
-            </h1>
-            <EditButton
-              variant={isEditMode ? "active" : "inactive"}
-              onClick={handleToggleEdit}
-            />
-          </div>
+          {/* Header: title + edit button – alleen tonen als er lijstjes zijn (Figma 119-512) */}
+          {hasLists && (
+            <div className="mb-6 flex items-center gap-4">
+              <h1 className="flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
+                Mijn lijstjes
+              </h1>
+              <EditButton
+                variant={isEditMode ? "active" : "inactive"}
+                onClick={handleToggleEdit}
+              />
+            </div>
+          )}
 
           {/* Empty state */}
           {!hasLists ? (
