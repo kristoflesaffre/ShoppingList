@@ -25,6 +25,9 @@ import { ListCard } from "@/components/ui/list_card";
 import { EditButton } from "@/components/ui/edit_button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Snackbar } from "@/components/ui/snackbar";
+import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { InputField } from "@/components/ui/input_field";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type HomeList = {
@@ -205,6 +208,8 @@ export default function Home() {
   ]);
 
   const [isEditMode, setIsEditMode] = React.useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
+  const [newListName, setNewListName] = React.useState("");
   const [lastDeleted, setLastDeleted] = React.useState<{
     list: HomeList;
     index: number;
@@ -252,19 +257,31 @@ export default function Home() {
     setSnackbarMessage(null);
   };
 
-  const handleCreateList = () => {
+  const handleOpenCreateModal = () => {
+    setNewListName("");
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
+    setNewListName("");
+  };
+
+  const handleSaveNewList = () => {
+    const name = newListName.trim() || "Nieuw lijstje";
     const now = new Date();
     const id = `lijst-${now.getTime()}`;
     setLists((current) => [
       ...current,
       {
         id,
-        name: "Nieuw lijstje",
+        name,
         date: now.toLocaleDateString("nl-NL"),
         itemCount: "0 items",
         icon: getIconForNewList(current),
       },
     ]);
+    handleCloseCreateModal();
   };
 
   const handleOpenList = (id: string) => {
@@ -326,7 +343,7 @@ export default function Home() {
               <p className="text-center text-base font-medium leading-24 tracking-normal text-gray-500">
                 Je hebt nog geen lijstjes
               </p>
-              <MiniButton variant="primary" onClick={handleCreateList}>
+              <MiniButton variant="primary" onClick={handleOpenCreateModal}>
                 Voeg lijstje toe
               </MiniButton>
             </div>
@@ -357,6 +374,34 @@ export default function Home() {
             </DndContext>
           )}
       </div>
+
+      {/* Slide-in modal – Nieuw lijstje (Figma 472:2235) */}
+      <SlideInModal
+        open={isCreateModalOpen}
+        onClose={handleCloseCreateModal}
+        title="Nieuw lijstje"
+      >
+        <div className="flex flex-col gap-8">
+          <InputField
+            label="Naam lijstje"
+            placeholder="Naam lijstje"
+            value={newListName}
+            autoComplete="off"
+            onChange={(e) => setNewListName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newListName.trim()) handleSaveNewList();
+            }}
+          />
+          <Button
+            variant="primary"
+            onClick={handleSaveNewList}
+            disabled={!newListName.trim()}
+            className="w-full"
+          >
+            Bewaren
+          </Button>
+        </div>
+      </SlideInModal>
 
       {/* Snackbar – positioned above bottom nav */}
       {snackbarMessage && (
@@ -397,7 +442,7 @@ export default function Home() {
             {/* FAB – Figma: 84×84, top -28px, border-6 blue-200, bg blue-500. Active: border compresses for press effect. */}
             <button
               type="button"
-              onClick={handleCreateList}
+              onClick={handleOpenCreateModal}
               aria-label="Nieuw lijstje"
               className="absolute left-1/2 top-[-28px] -translate-x-1/2 flex size-[84px] items-center justify-center rounded-full border-[6px] border-[var(--blue-200)] bg-[var(--blue-500)] text-white shadow-[var(--shadow-drop)] transition-[border-width,color] duration-150 ease-out hover:bg-[var(--blue-600)] active:border-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
             >

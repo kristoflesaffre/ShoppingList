@@ -115,7 +115,7 @@ function EditableSection({
     <div
       className={cn(
         "flex shrink-0 items-center gap-3 overflow-hidden",
-        "transition-[width,opacity] ease-out",
+        "transition-[width,opacity] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
         isEditable
           ? "w-11 opacity-100"
           : "w-0 opacity-0 pointer-events-none",
