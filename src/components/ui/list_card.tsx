@@ -98,6 +98,44 @@ function EditableDivider() {
   );
 }
 
+/** Duration for ListCard state transition (content slide + fade). */
+const ANIM_DURATION_MS = 120;
+
+/** Wrapper for editable left/right sections: animates width then opacity (enter) or opacity then width (exit). */
+function EditableSection({
+  isEditable,
+  children,
+  className,
+}: {
+  isEditable: boolean;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 items-center gap-3 overflow-hidden",
+        "transition-[width,opacity] ease-out",
+        isEditable
+          ? "w-11 opacity-100"
+          : "w-0 opacity-0 pointer-events-none",
+        isEditable
+          ? "duration-[var(--list-card-duration)] [transition-delay:0ms,var(--list-card-duration)]"
+          : "duration-[var(--list-card-duration)] [transition-delay:var(--list-card-duration),0ms]",
+        className
+      )}
+      style={
+        {
+          "--list-card-duration": `${ANIM_DURATION_MS}ms`,
+        } as React.CSSProperties
+      }
+      aria-hidden={!isEditable}
+    >
+      {children}
+    </div>
+  );
+}
+
 const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
   (
     {
@@ -137,19 +175,17 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
 
     const defaultContent = (
       <>
-        {isEditable && (
-          <>
-            <button
-              type="button"
-              aria-label="Reorder list"
-              className="flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:cursor-grabbing"
-              {...handleButtonProps}
-            >
-              <ReorderIcon />
-            </button>
-            <EditableDivider />
-          </>
-        )}
+        <EditableSection isEditable={isEditable}>
+          <button
+            type="button"
+            aria-label="Reorder list"
+            className="flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:cursor-grabbing"
+            {...handleButtonProps}
+          >
+            <ReorderIcon />
+          </button>
+          <EditableDivider />
+        </EditableSection>
         {icon != null && (
           <span
             className="flex size-12 shrink-0 items-center justify-center overflow-hidden text-[2rem] leading-none"
@@ -173,20 +209,18 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
             </span>
           )}
         </div>
-        {isEditable && (
-          <>
-            <EditableDivider />
-            <button
-              type="button"
-              aria-label="Delete list"
-              onClick={onDelete}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-            >
-              <TrashIcon />
-            </button>
-          </>
-        )}
+        <EditableSection isEditable={isEditable}>
+          <EditableDivider />
+          <button
+            type="button"
+            aria-label="Delete list"
+            onClick={onDelete}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+          >
+            <TrashIcon />
+          </button>
+        </EditableSection>
       </>
     );
 
