@@ -2,10 +2,30 @@
 
 import * as React from "react";
 import Image from "next/image";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { CSS } from "@dnd-kit/utilities";
 import { ListCard } from "@/components/ui/list_card";
 import { EditButton } from "@/components/ui/edit_button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Snackbar } from "@/components/ui/snackbar";
+import { cn } from "@/lib/utils";
 
 type HomeList = {
   id: string;
@@ -91,6 +111,64 @@ function PlusIcon({ className }: { className?: string }) {
         fill="currentColor"
       />
     </svg>
+  );
+}
+
+function SortableListCard({
+  list,
+  isEditMode,
+  onDelete,
+  onOpenList,
+}: {
+  list: HomeList;
+  isEditMode: boolean;
+  onDelete: () => void;
+  onOpenList: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: list.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        isDragging &&
+          "z-10 cursor-grabbing opacity-90 shadow-[var(--shadow-drop)]"
+      )}
+    >
+      <ListCard
+        listName={list.name}
+        date={list.date}
+        itemCount={list.itemCount}
+        icon={
+          <Image
+            src={list.icon}
+            alt=""
+            width={48}
+            height={48}
+            className="object-contain"
+          />
+        }
+        state={isEditMode ? "editable" : "default"}
+        onDelete={isEditMode ? onDelete : undefined}
+        onReorder={undefined}
+        dragHandleProps={isEditMode ? { ...attributes, ...listeners } : undefined}
+        onClick={!isEditMode ? onOpenList : undefined}
+        className={cn(!isEditMode && "cursor-pointer")}
+      />
+    </div>
   );
 }
 
@@ -186,6 +264,29 @@ export default function Home() {
     void id;
   };
 
+  const handleReorderLists = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over == null || active.id === over.id) return;
+    setLists((current) => {
+      const oldIndex = current.findIndex((l) => l.id === active.id);
+      const newIndex = current.findIndex((l) => l.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return current;
+      return arrayMove(current, oldIndex, newIndex);
+    });
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 3 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 100, tolerance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   return (
     <div className="relative flex min-h-screen w-full flex-col px-[16px]">
       {/* Content area – 16px from viewport (parent px), responsive width */}
@@ -221,35 +322,30 @@ export default function Home() {
               </MiniButton>
             </div>
           ) : (
-            /* List cards */
-            <div className="flex flex-col gap-3">
-              {lists.map((list) => (
-                <ListCard
-                  key={list.id}
-                  listName={list.name}
-                  date={list.date}
-                  itemCount={list.itemCount}
-                  icon={
-                    <Image
-                      src={list.icon}
-                      alt=""
-                      width={48}
-                      height={48}
-                      className="object-contain"
+            /* List cards – sortable in edit mode */
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleReorderLists}
+              modifiers={[restrictToVerticalAxis]}
+            >
+              <SortableContext
+                items={lists.map((l) => l.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="flex flex-col gap-3">
+                  {lists.map((list) => (
+                    <SortableListCard
+                      key={list.id}
+                      list={list}
+                      isEditMode={isEditMode}
+                      onDelete={() => handleDeleteList(list.id)}
+                      onOpenList={() => handleOpenList(list.id)}
                     />
-                  }
-                  state={isEditMode ? "editable" : "default"}
-                  onDelete={
-                    isEditMode ? () => handleDeleteList(list.id) : undefined
-                  }
-                  onReorder={isEditMode ? () => undefined : undefined}
-                  onClick={
-                    !isEditMode ? () => handleOpenList(list.id) : undefined
-                  }
-                  className={!isEditMode ? "cursor-pointer" : undefined}
-                />
-              ))}
-            </div>
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
       </div>
 

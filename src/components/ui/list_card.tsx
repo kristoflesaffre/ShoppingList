@@ -34,6 +34,8 @@ export interface ListCardProps
   onReorder?: () => void;
   /** Called when the delete button is clicked (editable state) */
   onDelete?: () => void;
+  /** Props for drag handle (listeners + attributes from useSortable). When set, reorder uses drag instead of onClick. */
+  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   className?: string;
 }
 
@@ -110,6 +112,7 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
       children,
       onReorder,
       onDelete,
+      dragHandleProps,
       ...props
     },
     ref
@@ -130,6 +133,8 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
       ...props,
     };
 
+    const handleButtonProps = dragHandleProps ?? (onReorder ? { onClick: onReorder } : {});
+
     const defaultContent = (
       <>
         {isEditable && (
@@ -137,8 +142,8 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
             <button
               type="button"
               aria-label="Reorder list"
-              onClick={onReorder}
-              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              className="flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:cursor-grabbing"
+              {...handleButtonProps}
             >
               <ReorderIcon />
             </button>
@@ -175,6 +180,7 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
               type="button"
               aria-label="Delete list"
               onClick={onDelete}
+              onPointerDown={(e) => e.stopPropagation()}
               className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
             >
               <TrashIcon />
