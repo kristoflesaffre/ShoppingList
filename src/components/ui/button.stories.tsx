@@ -97,7 +97,7 @@ export const TertiaryDisabled: Story = {
 
 export const AllVariants: Story = {
   render: () => (
-    <div className="flex flex-col gap-3 max-w-[320px]">
+    <div className="flex flex-col gap-3">
       <Button variant="primary">Primary</Button>
       <Button variant="primary" disabled>
         Primary disabled
@@ -135,6 +135,13 @@ export const LongText: Story = {
   args: {
     variant: "secondary",
     children:
-      "Button with a very long label that might wrap or truncate depending on container width",
+      "Button with a very long label that truncates at max-width 280px",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "Button has max-width 280px; long text truncates.",
+      },
+    },
   },
 };

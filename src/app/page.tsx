@@ -381,7 +381,7 @@ export default function Home() {
         onClose={handleCloseCreateModal}
         title="Nieuw lijstje"
       >
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col items-center gap-8">
           <InputField
             label="Naam lijstje"
             placeholder="Naam lijstje"
@@ -396,7 +396,7 @@ export default function Home() {
             variant="primary"
             onClick={handleSaveNewList}
             disabled={!newListName.trim()}
-            className="w-full"
+            className="w-full max-w-[280px] self-center"
           >
             Bewaren
           </Button>

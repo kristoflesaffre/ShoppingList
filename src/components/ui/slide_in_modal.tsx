@@ -138,7 +138,7 @@ export function SlideInModalHeader({
     <div className="relative flex h-16 items-center justify-end px-4">
       <h2
         id={titleId}
-        className="absolute left-0 right-0 text-center font-medium text-base leading-24 tracking-normal text-[var(--secondary-900)]"
+        className="pointer-events-none absolute left-0 right-0 text-center font-medium text-base leading-24 tracking-normal text-[var(--secondary-900)]"
       >
         {title}
       </h2>
