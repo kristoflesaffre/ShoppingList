@@ -49,8 +49,15 @@ const FOOD_ICONS = [
   "/images/ui/food/icon_tangerine.png",
 ] as const;
 
-function getRandomFoodIcon() {
-  return FOOD_ICONS[Math.floor(Math.random() * FOOD_ICONS.length)];
+/**
+ * Returns an icon for a new list. Prefers icons not yet used by existing lists.
+ * Only when all icons are used may an icon be reused.
+ */
+function getIconForNewList(existingLists: HomeList[]): string {
+  const usedIcons = new Set(existingLists.map((l) => l.icon));
+  const unusedIcons = FOOD_ICONS.filter((icon) => !usedIcons.has(icon));
+  const pool = unusedIcons.length > 0 ? unusedIcons : [...FOOD_ICONS];
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 /** List icon – public/icons/list.svg */
@@ -255,7 +262,7 @@ export default function Home() {
         name: "Nieuw lijstje",
         date: now.toLocaleDateString("nl-NL"),
         itemCount: "0 items",
-        icon: getRandomFoodIcon(),
+        icon: getIconForNewList(current),
       },
     ]);
   };
@@ -387,12 +394,12 @@ export default function Home() {
               </span>
             </button>
 
-            {/* FAB – Figma: 84×84, top -28px, border-6 blue-200, bg blue-500 */}
+            {/* FAB – Figma: 84×84, top -28px, border-6 blue-200, bg blue-500. Active: border compresses for press effect. */}
             <button
               type="button"
               onClick={handleCreateList}
               aria-label="Nieuw lijstje"
-              className="absolute left-1/2 top-[-28px] -translate-x-1/2 flex size-[84px] items-center justify-center rounded-full border-[6px] border-[var(--blue-200)] bg-[var(--blue-500)] text-white shadow-[var(--shadow-drop)] transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              className="absolute left-1/2 top-[-28px] -translate-x-1/2 flex size-[84px] items-center justify-center rounded-full border-[6px] border-[var(--blue-200)] bg-[var(--blue-500)] text-white shadow-[var(--shadow-drop)] transition-[border-width,color] duration-150 ease-out hover:bg-[var(--blue-600)] active:border-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
             >
               <PlusIcon className="size-6" />
             </button>
