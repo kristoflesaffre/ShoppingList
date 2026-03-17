@@ -218,7 +218,7 @@ export default function Home() {
 
         {/* Snackbar – positioned above bottom nav */}
         {snackbarMessage && (
-          <div className="absolute inset-x-0 bottom-[120px] z-10 flex justify-center px-2">
+          <div className="fixed inset-x-0 bottom-[120px] z-10 flex justify-center px-2">
             <Snackbar
               message={snackbarMessage}
               actionLabel="Zet terug"
@@ -227,8 +227,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Bottom navigation – fixed to bottom of the phone frame */}
-        <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-start rounded-t-[32px] bg-white shadow-[0px_-1px_4px_0px_rgba(12,12,13,0.1),0px_-1px_4px_0px_rgba(12,12,13,0.05)]">
+        {/* Bottom navigation – fixed to viewport bottom */}
+        <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col items-start rounded-t-[32px] bg-white shadow-[0px_-1px_4px_0px_rgba(12,12,13,0.1),0px_-1px_4px_0px_rgba(12,12,13,0.05)]">
           <nav className="relative flex h-[75px] w-full items-start justify-between rounded-t-[32px] bg-white px-[25px]">
             {/* Left tab – Lijstjes (active) */}
             <div className="flex w-[148px] items-start">
