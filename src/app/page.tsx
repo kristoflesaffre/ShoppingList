@@ -5,7 +5,6 @@ import Image from "next/image";
 import { ListCard } from "@/components/ui/list_card";
 import { EditButton } from "@/components/ui/edit_button";
 import { MiniButton } from "@/components/ui/mini_button";
-import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { Snackbar } from "@/components/ui/snackbar";
 
 type HomeList = {
@@ -16,6 +15,25 @@ type HomeList = {
   icon: string;
 };
 
+const FOOD_ICONS = [
+  "/images/ui/food/icon_apple.png",
+  "/images/ui/food/icon_aubergine.png",
+  "/images/ui/food/icon_banana.png",
+  "/images/ui/food/icon_blueberries.png",
+  "/images/ui/food/icon_bread.png",
+  "/images/ui/food/icon_carrot.png",
+  "/images/ui/food/icon_cheese.png",
+  "/images/ui/food/icon_milk.png",
+  "/images/ui/food/icon_nutella.png",
+  "/images/ui/food/icon_strawberry.png",
+  "/images/ui/food/icon_tangerine.png",
+] as const;
+
+function getRandomFoodIcon() {
+  return FOOD_ICONS[Math.floor(Math.random() * FOOD_ICONS.length)];
+}
+
+/** List icon – public/icons/list.svg */
 function ListIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -26,17 +44,16 @@ function ListIcon({ className }: { className?: string }) {
       fill="none"
       aria-hidden="true"
     >
-      <rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor" />
-      <line x1="3" y1="15" x2="10" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <line x1="3" y1="19" x2="10" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <line x1="14" y1="15" x2="21" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <line x1="14" y1="19" x2="21" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M9.19998 2.1H2.59998C2.32398 2.1 2.09998 2.324 2.09998 2.6V9.16C2.09998 9.436 2.32398 9.66 2.59998 9.66H9.19998C9.47598 9.66 9.69998 9.436 9.69998 9.16V2.6C9.69998 2.323 9.47698 2.1 9.19998 2.1ZM8.69998 8.66H3.09998V3.1H8.69998V8.66ZM9.19998 14.3H2.59998C2.32398 14.3 2.09998 14.524 2.09998 14.8V21.36C2.09998 21.636 2.32398 21.86 2.59998 21.86H9.19998C9.47598 21.86 9.69998 21.636 9.69998 21.36V14.8C9.69998 14.523 9.47698 14.3 9.19998 14.3ZM8.69998 20.859H3.09998V15.3H8.69998V20.859ZM13.4 3.6C13.4 3.324 13.624 3.1 13.9 3.1H21.4C21.676 3.1 21.9 3.324 21.9 3.6C21.9 3.876 21.676 4.1 21.4 4.1H13.9C13.624 4.1 13.4 3.876 13.4 3.6ZM21.9 8.3C21.9 8.576 21.676 8.8 21.4 8.8H13.9C13.624 8.8 13.4 8.576 13.4 8.3C13.4 8.024 13.624 7.8 13.9 7.8H21.4C21.677 7.8 21.9 8.023 21.9 8.3ZM21.9 15.7C21.9 15.976 21.676 16.2 21.4 16.2H13.9C13.624 16.2 13.4 15.976 13.4 15.7C13.4 15.424 13.624 15.2 13.9 15.2H21.4C21.677 16.2 21.9 15.424 21.9 15.7ZM21.9 20.399C21.9 20.675 21.676 20.899 21.4 20.899H13.9C13.624 20.899 13.4 20.675 13.4 20.399C13.4 20.123 13.624 19.899 13.9 19.899H21.4C21.677 19.899 21.9 20.123 21.9 20.399Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
 
-function UserIcon({ className }: { className?: string }) {
+/** Avatar icon – public/icons/avatar.svg */
+function AvatarIcon({ className }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -45,13 +62,34 @@ function UserIcon({ className }: { className?: string }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="1.2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" />
-      <path d="M20.59 22c0-3.87-3.85-7-8.59-7s-8.59 3.13-8.59 7" />
+      <path d="M12.41 11.6263C14.7921 11.6263 16.7231 9.69525 16.7231 7.31316C16.7231 4.93107 14.7921 3 12.41 3C10.0279 3 8.0968 4.93107 8.0968 7.31316C8.0968 9.69525 10.0279 11.6263 12.41 11.6263Z" />
+      <path d="M19.82 20.2526C19.82 16.9143 16.4989 14.2142 12.41 14.2142C8.32113 14.2142 5 16.9143 5 20.2526" />
+    </svg>
+  );
+}
+
+/** Plus icon – public/icons/plus.svg */
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M12 1C12.5523 1 13 1.44772 13 2V11H22C22.5523 11 23 11.4477 23 12C23 12.5523 22.5523 13 22 13H13V22C13 22.5523 12.5523 23 12 23C11.4477 23 11 22.5523 11 22V13H2C1.44772 13 1 12.5523 1 12C1 11.4477 1.44772 11 2 11H11V2C11 1.44772 11.4477 1 12 1Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -139,7 +177,7 @@ export default function Home() {
         name: "Nieuw lijstje",
         date: now.toLocaleDateString("nl-NL"),
         itemCount: "0 items",
-        icon: "/images/ui/food/icon_apple.png",
+        icon: getRandomFoodIcon(),
       },
     ]);
   };
@@ -149,10 +187,9 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col px-[16px]">
-      <div className="relative flex w-full flex-col overflow-hidden">
-        {/* Content area – 16px from viewport (parent px), responsive width */}
-        <div className="flex flex-1 flex-col pb-[120px] pt-[86px]">
+    <div className="relative flex min-h-screen w-full flex-col px-[16px]">
+      {/* Content area – 16px from viewport (parent px), responsive width */}
+      <div className="flex flex-1 flex-col pb-[120px] pt-[86px]">
           {/* Header: title + edit button */}
           <div className="mb-6 flex items-center gap-4">
             <h1 className="flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
@@ -214,59 +251,54 @@ export default function Home() {
               ))}
             </div>
           )}
+      </div>
+
+      {/* Snackbar – positioned above bottom nav */}
+      {snackbarMessage && (
+        <div className="fixed inset-x-0 bottom-[120px] z-10 flex justify-center px-2">
+          <Snackbar
+            message={snackbarMessage}
+            actionLabel="Zet terug"
+            onAction={handleUndoDelete}
+          />
         </div>
+      )}
 
-        {/* Snackbar – positioned above bottom nav */}
-        {snackbarMessage && (
-          <div className="fixed inset-x-0 bottom-[120px] z-10 flex justify-center px-2">
-            <Snackbar
-              message={snackbarMessage}
-              actionLabel="Zet terug"
-              onAction={handleUndoDelete}
-            />
-          </div>
-        )}
-
-        {/* Bottom navigation – fixed to viewport bottom */}
-        <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col items-start rounded-t-[32px] bg-white shadow-[0px_-1px_4px_0px_rgba(12,12,13,0.1),0px_-1px_4px_0px_rgba(12,12,13,0.05)]">
-          <nav className="relative flex h-[75px] w-full items-start justify-between rounded-t-[32px] bg-white px-[25px]">
+      {/* Bottom navigation – Figma 672:2703, fixed to viewport bottom */}
+      <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[30px] bg-white pt-3 pb-[33px] shadow-[0px_1px_4px_0px_rgba(0,0,0,0.13)]">
+          <nav className="relative mx-auto flex h-12 w-full max-w-[390px] items-center justify-between px-6">
             {/* Left tab – Lijstjes (active) */}
-            <div className="flex w-[148px] items-start">
-              <button
-                type="button"
-                className="flex flex-1 flex-col items-center gap-3 px-[15px] py-[12.5px] text-[#386bf6]"
-              >
-                <ListIcon className="size-6" />
-                <span className="text-xs leading-none">Lijstjes</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              className="flex flex-col items-center gap-3 shrink-0 w-[41px] text-[var(--blue-500)]"
+            >
+              <ListIcon className="size-6" />
+              <span className="text-xs leading-4 font-normal tracking-normal">
+                Lijstjes
+              </span>
+            </button>
 
             {/* Right tab – Profiel (inactive) */}
-            <div className="flex w-[130px] items-start">
-              <button
-                type="button"
-                className="flex flex-1 flex-col items-center gap-3 px-[15px] py-[12.5px] text-[#9db2ce]"
-              >
-                <UserIcon className="size-6" />
-                <span className="text-xs leading-none">Profiel</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              className="flex flex-col items-center gap-3 shrink-0 w-[41px] text-[var(--blue-300)]"
+            >
+              <AvatarIcon className="size-6" />
+              <span className="text-xs leading-4 font-normal tracking-normal">
+                Profiel
+              </span>
+            </button>
 
-            {/* FAB – centered, overlapping the top of the nav */}
-            <div className="absolute left-1/2 top-[-24px] -translate-x-1/2 rounded-full border-[6px] border-white bg-white p-[6px]">
-              <FloatingActionButton
-                aria-label="Nieuw lijstje"
-                onClick={handleCreateList}
-                className="border-[6px] border-blue-200 p-[30px]"
-              />
-            </div>
+            {/* FAB – Figma: 84×84, top -28px, border-6 blue-200, bg blue-500 */}
+            <button
+              type="button"
+              onClick={handleCreateList}
+              aria-label="Nieuw lijstje"
+              className="absolute left-1/2 top-[-28px] -translate-x-1/2 flex size-[84px] items-center justify-center rounded-full border-[6px] border-[var(--blue-200)] bg-[var(--blue-500)] text-white shadow-[var(--shadow-drop)] transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+            >
+              <PlusIcon className="size-6" />
+            </button>
           </nav>
-
-          {/* Home indicator bar */}
-          <div className="flex w-full items-center justify-center pb-2 pt-1">
-            <div className="h-[5px] w-[139px] rounded-full bg-gray-black" />
-          </div>
-        </div>
       </div>
     </div>
   );
