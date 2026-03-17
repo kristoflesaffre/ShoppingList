@@ -364,7 +364,7 @@ export default function Home() {
 
       {/* Bottom navigation – Figma 672:2703, fixed to viewport bottom */}
       <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[30px] bg-white pt-3 pb-[33px] shadow-[0px_1px_4px_0px_rgba(0,0,0,0.13)]">
-          <nav className="relative mx-auto flex h-12 w-full max-w-[390px] items-center justify-between px-6">
+          <nav className="relative mx-auto flex h-12 w-full max-w-[390px] items-center justify-center gap-[149px] px-6">
             {/* Left tab – Lijstjes (active) */}
             <button
               type="button"
