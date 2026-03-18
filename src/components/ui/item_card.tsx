@@ -42,6 +42,8 @@ export interface ItemCardProps extends Omit<
   onReorder?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  /** Props for drag handle (listeners + attributes from useSortable). When set, reorder uses drag instead of onClick. */
+  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   className?: string;
 }
 
@@ -268,6 +270,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       onReorder,
       onEdit,
       onDelete,
+      dragHandleProps,
       ...props
     },
     ref,
@@ -385,8 +388,8 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               <button
                 type="button"
                 aria-label="Reorder item"
-                onClick={onReorder}
-                className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                {...(dragHandleProps ?? (onReorder ? { onClick: onReorder } : {}))}
+                className="flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:cursor-grabbing"
               >
                 <ReorderIcon />
               </button>
@@ -531,6 +534,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               type="button"
               aria-label="Edit item"
               onClick={onEdit}
+              onPointerDown={(e) => e.stopPropagation()}
               className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
             >
               <PencilIcon />
@@ -540,6 +544,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               type="button"
               aria-label="Delete item"
               onClick={onDelete}
+              onPointerDown={(e) => e.stopPropagation()}
               className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
             >
               <TrashIcon />

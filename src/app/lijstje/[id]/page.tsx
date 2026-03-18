@@ -2,6 +2,26 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  useDndContext,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { CSS } from "@dnd-kit/utilities";
 import { ItemCard } from "@/components/ui/item_card";
 import { EditButton } from "@/components/ui/edit_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
@@ -132,6 +152,118 @@ function PlusCircleIcon({ className }: { className?: string }) {
   );
 }
 
+/** Renders sortable item cards; must be inside DndContext for drag state. */
+function SortableItemItems({
+  sections,
+  isEditMode,
+  removingId,
+  onCheckedChange,
+  onDelete,
+}: {
+  sections: { title: string; items: ListItem[] }[];
+  isEditMode: boolean;
+  removingId: string | null;
+  onCheckedChange: (id: string, checked: boolean) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { active } = useDndContext();
+  const isDndActive = active != null;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {sections.map((section) => (
+        <section key={section.title} aria-label={section.title}>
+          <div className="mb-4 flex items-center gap-3 pr-4">
+            <h3 className="flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
+              {section.title}
+            </h3>
+            <button
+              type="button"
+              aria-label={`Item toevoegen aan ${section.title}`}
+              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              <PlusCircleIcon />
+            </button>
+          </div>
+          <div className="flex flex-col gap-3">
+            {section.items.map((item) => {
+              const isRemoving = removingId === item.id;
+              const wrapperClass = isDndActive
+                ? ""
+                : cn(
+                    "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+                    isRemoving ? "max-h-0 opacity-0" : "max-h-[200px] opacity-100"
+                  );
+
+              return (
+                <div key={item.id} className={wrapperClass}>
+                  <SortableItemCard
+                    item={item}
+                    isEditMode={isEditMode}
+                    onCheckedChange={(checked) =>
+                      onCheckedChange(item.id, checked)
+                    }
+                    onDelete={() => onDelete(item.id)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function SortableItemCard({
+  item,
+  isEditMode,
+  onCheckedChange,
+  onDelete,
+}: {
+  item: ListItem;
+  isEditMode: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        isDragging &&
+          "z-10 cursor-grabbing opacity-90 shadow-[var(--shadow-drop)]"
+      )}
+    >
+      <ItemCard
+        itemName={item.name}
+        quantity={item.quantity}
+        checked={item.checked}
+        onCheckedChange={onCheckedChange}
+        state={isEditMode ? "editable" : "default"}
+        onDelete={isEditMode ? onDelete : undefined}
+        dragHandleProps={
+          isEditMode ? { ...attributes, ...listeners } : undefined
+        }
+      />
+    </div>
+  );
+}
+
 export default function ListDetailPage({
   params,
 }: {
@@ -143,11 +275,23 @@ export default function ListDetailPage({
 
   const [items, setItems] = React.useState<ListItem[]>(DEMO_ITEMS);
   const [isEditMode, setIsEditMode] = React.useState(false);
-  const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(null);
+  const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
+    null
+  );
   const [lastDeleted, setLastDeleted] = React.useState<{
     item: ListItem;
     index: number;
   } | null>(null);
+  const [removingId, setRemovingId] = React.useState<string | null>(null);
+  const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
+
+  const DELETE_ANIMATION_MS = 300;
+
+  React.useEffect(() => {
+    return () => {
+      if (removeTimeoutRef.current) clearTimeout(removeTimeoutRef.current);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!snackbarMessage) return;
@@ -169,8 +313,14 @@ export default function ListDetailPage({
     []
   );
 
-  const handleDeleteItem = React.useCallback(
-    (id: string) => {
+  const handleDeleteItem = React.useCallback((id: string) => {
+    if (removeTimeoutRef.current) {
+      clearTimeout(removeTimeoutRef.current);
+      removeTimeoutRef.current = null;
+    }
+    setRemovingId(id);
+    removeTimeoutRef.current = window.setTimeout(() => {
+      removeTimeoutRef.current = null;
       setItems((current) => {
         const index = current.findIndex((i) => i.id === id);
         if (index === -1) return current;
@@ -179,11 +329,11 @@ export default function ListDetailPage({
         next.splice(index, 1);
         setLastDeleted({ item, index });
         setSnackbarMessage(`'${item.name}' verwijderd`);
+        setRemovingId(null);
         return next;
       });
-    },
-    []
-  );
+    }, DELETE_ANIMATION_MS);
+  }, []);
 
   const handleUndoDelete = React.useCallback(() => {
     if (!lastDeleted) return;
@@ -210,6 +360,29 @@ export default function ListDetailPage({
   }, [items]);
 
   const hasItems = items.length > 0;
+
+  const handleReorderItems = React.useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over == null || active.id === over.id) return;
+    setItems((current) => {
+      const oldIndex = current.findIndex((i) => i.id === active.id);
+      const newIndex = current.findIndex((i) => i.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return current;
+      return arrayMove(current, oldIndex, newIndex);
+    });
+  }, []);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 3 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 100, tolerance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   return (
     <div className="relative flex min-h-screen w-full flex-col">
@@ -271,43 +444,25 @@ export default function ListDetailPage({
               </MiniButton>
             </section>
           ) : (
-            <div className="flex flex-col gap-6">
-              {sections.map((section) => (
-                <section key={section.title} aria-label={section.title}>
-                  <div className="mb-4 flex items-center gap-3 pr-4">
-                    <h3 className="flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
-                      {section.title}
-                    </h3>
-                    <button
-                      type="button"
-                      aria-label={`Item toevoegen aan ${section.title}`}
-                      className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      <PlusCircleIcon />
-                    </button>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    {section.items.map((item) => (
-                      <ItemCard
-                        key={item.id}
-                        itemName={item.name}
-                        quantity={item.quantity}
-                        checked={item.checked}
-                        onCheckedChange={(checked) =>
-                          handleCheckedChange(item.id, checked)
-                        }
-                        state={isEditMode ? "editable" : "default"}
-                        onDelete={
-                          isEditMode
-                            ? () => handleDeleteItem(item.id)
-                            : undefined
-                        }
-                      />
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleReorderItems}
+              modifiers={[restrictToVerticalAxis]}
+            >
+              <SortableContext
+                items={items.map((i) => i.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <SortableItemItems
+                  sections={sections}
+                  isEditMode={isEditMode}
+                  removingId={removingId}
+                  onCheckedChange={handleCheckedChange}
+                  onDelete={handleDeleteItem}
+                />
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </div>
