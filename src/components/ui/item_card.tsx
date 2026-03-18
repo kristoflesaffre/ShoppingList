@@ -47,11 +47,11 @@ export interface ItemCardProps extends Omit<
   className?: string;
 }
 
-/** Claim icon – public/icons/hand.svg, 32×32, uses currentColor for default (blue-300) and gotten-by-you (white). */
+/** Claim icon – public/icons/hand.svg, 24×24, uses currentColor for default (blue-300) and gotten-by-you (white). */
 function HandIcon({ className }: { className?: string }) {
   return (
     <svg
-      className={cn("size-8 shrink-0", className)}
+      className={cn("size-6 shrink-0", className)}
       width={24}
       height={24}
       viewBox="0 0 24 24"
@@ -327,7 +327,8 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       containerBase,
       isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
       !isGottenByOther && "bg-[var(--white)] border border-[var(--gray-100)]",
-      isGottenByYou && "border-2 border-[var(--blue-500)] shadow-[var(--shadow-drop)]",
+      isGottenByYou &&
+        "border-[var(--blue-500)] shadow-[var(--shadow-drop)]",
       className,
     );
 
@@ -501,7 +502,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
                   setClaimedByMe(false);
                   onClaim?.();
                 }}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] p-1 text-[var(--white)]"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)]"
               >
                 <HandIcon />
               </button>
