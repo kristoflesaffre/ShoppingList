@@ -156,6 +156,16 @@ const config: Config = {
       boxShadow: {
         drop: "var(--shadow-drop)",
       },
+      keyframes: {
+        "edit-button-scale": {
+          "0%": { transform: "scale(0.95)" },
+          "60%": { transform: "scale(1.05)" },
+          "100%": { transform: "scale(1)" },
+        },
+      },
+      animation: {
+        "edit-button-scale": "edit-button-scale 0.25s ease-out forwards",
+      },
     },
   },
   plugins: [],

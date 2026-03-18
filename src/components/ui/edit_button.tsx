@@ -87,7 +87,7 @@ const EditButton = React.forwardRef<HTMLButtonElement, EditButtonProps>(
     const Comp = asChild ? Slot : "button";
 
     const base =
-      "inline-flex items-center justify-center gap-1 font-normal text-sm leading-20 tracking-normal whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none [&_svg]:shrink-0";
+      "inline-flex items-center justify-center gap-1 font-normal text-sm leading-20 tracking-normal whitespace-nowrap transition-[color,background-color,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none [&_svg]:shrink-0 active:scale-95";
 
     const sizeStyles: Record<EditButtonSize, string> = {
       default: "py-1 px-2 rounded-pill",
@@ -105,7 +105,7 @@ const EditButton = React.forwardRef<HTMLButtonElement, EditButtonProps>(
       },
       active: {
         default:
-          "bg-[var(--action-primary)] text-[var(--action-primary-foreground)] hover:bg-[var(--action-primary-hover)]",
+          "bg-[var(--blue-500)] text-[var(--white)] hover:bg-[var(--blue-600)]",
         disabled: "bg-[var(--blue-25)] text-[var(--blue-300)]",
       },
     };
@@ -133,7 +133,7 @@ const EditButton = React.forwardRef<HTMLButtonElement, EditButtonProps>(
       </>
     );
 
-    return (
+    const buttonElement = (
       <Comp
         ref={ref}
         type={isSlot ? undefined : (props.type ?? "button")}
@@ -147,6 +147,16 @@ const EditButton = React.forwardRef<HTMLButtonElement, EditButtonProps>(
       >
         {isSlot ? props.children : content}
       </Comp>
+    );
+
+    /* Wrapper met key={variant} triggert schaalanimatie bij variant switch */
+    return (
+      <span
+        key={variant}
+        className="inline-flex animate-edit-button-scale"
+      >
+        {buttonElement}
+      </span>
     );
   }
 );
