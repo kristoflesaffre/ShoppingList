@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   closestCenter,
@@ -236,6 +237,7 @@ function SortableListCard({
 }
 
 export default function Home() {
+  const router = useRouter();
   const [lists, setLists] = React.useState<HomeList[]>([
     {
       id: "weeklijstje",
@@ -375,7 +377,7 @@ export default function Home() {
   };
 
   const handleOpenList = (id: string) => {
-    void id;
+    router.push(`/lijstje/${id}`);
   };
 
   const handleReorderLists = (event: DragEndEvent) => {

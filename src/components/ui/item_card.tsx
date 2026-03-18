@@ -45,11 +45,11 @@ export interface ItemCardProps extends Omit<
   className?: string;
 }
 
-/** Claim icon – public/icons/hand.svg, 24×24, uses currentColor for default (blue-300) and gotten-by-you (white). */
+/** Claim icon – public/icons/hand.svg, 32×32, uses currentColor for default (blue-300) and gotten-by-you (white). */
 function HandIcon({ className }: { className?: string }) {
   return (
     <svg
-      className={cn("size-6 shrink-0", className)}
+      className={cn("size-8 shrink-0", className)}
       width={24}
       height={24}
       viewBox="0 0 24 24"
@@ -85,11 +85,11 @@ function HandIcon({ className }: { className?: string }) {
   );
 }
 
-/** Reorder – public/icons/move_item.svg, 24×24. */
+/** Reorder – public/icons/move_item.svg, 32×32. */
 function ReorderIcon({ className }: { className?: string }) {
   return (
     <svg
-      className={cn("size-6 shrink-0", className)}
+      className={cn("size-8 shrink-0", className)}
       viewBox="0 0 32 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
@@ -103,11 +103,11 @@ function ReorderIcon({ className }: { className?: string }) {
   );
 }
 
-/** Edit icon – public/icons/pencil.svg, 24×24, currentColor for blue in editable state. */
+/** Edit icon – public/icons/pencil.svg, 32×32, currentColor for blue in editable state. */
 function PencilIcon({ className }: { className?: string }) {
   return (
     <svg
-      className={cn("size-6 shrink-0", className)}
+      className={cn("size-8 shrink-0", className)}
       width={24}
       height={24}
       viewBox="0 0 32 32"
@@ -126,7 +126,7 @@ function PencilIcon({ className }: { className?: string }) {
 function TrashIcon({ className }: { className?: string }) {
   return (
     <svg
-      className={cn("size-6 shrink-0", className)}
+      className={cn("size-8 shrink-0", className)}
       viewBox="0 0 32 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
