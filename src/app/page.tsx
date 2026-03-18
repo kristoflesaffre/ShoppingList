@@ -10,6 +10,7 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  useDndContext,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -124,6 +125,58 @@ function PlusIcon({ className }: { className?: string }) {
   );
 }
 
+/** Renders the sortable list; must be inside DndContext to use useDndContext for drag state */
+function SortableListItems({
+  lists,
+  isEditMode,
+  removingId,
+  addingId,
+  addingIdExpanded,
+  onDelete,
+  onOpenList,
+}: {
+  lists: HomeList[];
+  isEditMode: boolean;
+  removingId: string | null;
+  addingId: string | null;
+  addingIdExpanded: boolean;
+  onDelete: (id: string) => void;
+  onOpenList: (id: string) => void;
+}) {
+  const { active } = useDndContext();
+  const isDndActive = active != null;
+
+  return (
+    <div className="flex flex-col">
+      {lists.map((list, index) => {
+        const isRemoving = removingId === list.id;
+        const isAdding = addingId === list.id;
+        const isAddingCollapsed = isAdding && !addingIdExpanded;
+        const isAnimating = isRemoving || isAddingCollapsed;
+
+        const wrapperClass = isDndActive
+          ? cn(index < lists.length - 1 ? "mb-3" : "mb-0")
+          : cn(
+              "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+              isAnimating ? "max-h-0 opacity-0 mb-0" : "max-h-[200px] opacity-100",
+              !isAnimating && (index < lists.length - 1 ? "mb-3" : "mb-0")
+            );
+
+        return (
+          <div key={list.id} className={wrapperClass}>
+            <SortableListCard
+              list={list}
+              isEditMode={isEditMode}
+              onDelete={() => onDelete(list.id)}
+              onOpenList={() => onOpenList(list.id)}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SortableListCard({
   list,
   isEditMode,
@@ -218,17 +271,36 @@ export default function Home() {
     null,
   );
   const [removingId, setRemovingId] = React.useState<string | null>(null);
+  const [addingId, setAddingId] = React.useState<string | null>(null);
+  const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
   const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
 
   const hasLists = lists.length > 0;
 
-  const DELETE_ANIMATION_MS = 200;
+  const DELETE_ANIMATION_MS = 300;
+  const ADD_ANIMATION_MS = 300;
 
   React.useEffect(() => {
     return () => {
       if (removeTimeoutRef.current) clearTimeout(removeTimeoutRef.current);
     };
   }, []);
+
+  React.useEffect(() => {
+    if (!addingId) return;
+    setAddingIdExpanded(false);
+    const rafId = requestAnimationFrame(() => {
+      setAddingIdExpanded(true);
+    });
+    const timeoutId = window.setTimeout(() => {
+      setAddingId(null);
+      setAddingIdExpanded(false);
+    }, ADD_ANIMATION_MS);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(timeoutId);
+    };
+  }, [addingId]);
 
   React.useEffect(() => {
     if (!snackbarMessage) return;
@@ -290,16 +362,15 @@ export default function Home() {
     const name = newListName.trim() || "Nieuw lijstje";
     const now = new Date();
     const id = `lijst-${now.getTime()}`;
-    setLists((current) => [
-      ...current,
-      {
-        id,
-        name,
-        date: now.toLocaleDateString("nl-NL"),
-        itemCount: "0 items",
-        icon: getIconForNewList(current),
-      },
-    ]);
+    const newList: HomeList = {
+      id,
+      name,
+      date: now.toLocaleDateString("nl-NL"),
+      itemCount: "0 items",
+      icon: getIconForNewList(lists),
+    };
+    setLists((current) => [newList, ...current]);
+    setAddingId(id);
     handleCloseCreateModal();
   };
 
@@ -379,28 +450,15 @@ export default function Home() {
                 items={lists.map((l) => l.id)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="flex flex-col">
-                  {lists.map((list, index) => (
-                    <div
-                      key={list.id}
-                      className={cn(
-                        "overflow-hidden transition-[max-height,opacity,margin] duration-200 ease-out",
-                        removingId === list.id
-                          ? "max-h-0 opacity-0"
-                          : "max-h-[120px] opacity-100",
-                        index < lists.length - 1 ? "mb-3" : "mb-0",
-                        removingId === list.id && "mb-0"
-                      )}
-                    >
-                      <SortableListCard
-                        list={list}
-                        isEditMode={isEditMode}
-                        onDelete={() => handleDeleteList(list.id)}
-                        onOpenList={() => handleOpenList(list.id)}
-                      />
-                    </div>
-                  ))}
-                </div>
+                <SortableListItems
+                  lists={lists}
+                  isEditMode={isEditMode}
+                  removingId={removingId}
+                  addingId={addingId}
+                  addingIdExpanded={addingIdExpanded}
+                  onDelete={handleDeleteList}
+                  onOpenList={handleOpenList}
+                />
               </SortableContext>
             </DndContext>
           )}
