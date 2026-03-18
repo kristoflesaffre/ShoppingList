@@ -143,6 +143,26 @@ function ListIcon({ className }: { className?: string }) {
   );
 }
 
+/** public/icons/recycle_bin.svg */
+function RecycleBinIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M18.938 9.5933V19.2223C18.938 19.7893 18.717 20.3243 18.317 20.7253C17.916 21.1253 17.381 21.3463 16.814 21.3463H7.18595C6.61795 21.3463 6.08395 21.1253 5.68395 20.7253C5.28295 20.3233 5.06095 19.7893 5.06095 19.2223V9.5933C5.06095 9.3063 5.29395 9.0733 5.58095 9.0733C5.86795 9.0733 6.10095 9.3063 6.10095 9.5933V19.2223C6.10095 19.5073 6.21695 19.7873 6.41895 19.9893C6.62395 20.1943 6.89595 20.3073 7.18595 20.3073H16.815C17.105 20.3073 17.377 20.1943 17.582 19.9893C17.787 19.7853 17.9 19.5123 17.9 19.2223V9.5933C17.9 9.3063 18.132 9.0733 18.42 9.0733C18.708 9.0733 18.938 9.3063 18.938 9.5933ZM21.346 6.3843C21.346 6.6713 21.114 6.9043 20.826 6.9043H3.17295C2.88595 6.9043 2.65295 6.6713 2.65295 6.3843C2.65295 6.0973 2.88595 5.8643 3.17295 5.8643H8.26995V3.1743C8.26995 2.8873 8.50295 2.6543 8.78995 2.6543H15.209C15.496 2.6543 15.729 2.8873 15.729 3.1743V5.8643H20.826C21.113 5.8643 21.346 6.0973 21.346 6.3843ZM9.31095 5.8643H14.691V3.6943H9.31095V5.8643ZM14.659 16.8143V12.0003C14.659 11.7133 14.427 11.4803 14.139 11.4803C13.851 11.4803 13.619 11.7133 13.619 12.0003V16.8143C13.619 17.1013 14.427 17.3343 14.139 17.3343C14.427 17.3343 14.659 17.1023 14.659 16.8143ZM10.38 16.8143V12.0003C10.38 11.7133 10.147 11.4803 9.85995 11.4803C9.57295 11.4803 9.33995 11.7133 9.33995 12.0003V16.8143C9.33995 17.1013 9.57295 17.3343 9.85995 17.3343C10.147 17.3343 10.38 17.1023 10.38 16.8143Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 /** public/icons/plus-circle.svg */
 function PlusCircleIcon({ className }: { className?: string }) {
   return (
@@ -168,37 +188,62 @@ function SortableItemItems({
   sections,
   isEditMode,
   removingId,
+  removingSectionTitle,
   addingId,
   addingIdExpanded,
   onCheckedChange,
   onDelete,
+  onDeleteSection,
 }: {
   sections: { title: string; items: ListItem[] }[];
   isEditMode: boolean;
   removingId: string | null;
+  removingSectionTitle: string | null;
   addingId: string | null;
   addingIdExpanded: boolean;
   onCheckedChange: (id: string, checked: boolean) => void;
   onDelete: (id: string) => void;
+  onDeleteSection: (sectionTitle: string) => void;
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
 
   return (
     <div className="flex flex-col gap-6">
-      {sections.map((section) => (
-        <section key={section.title} aria-label={section.title}>
+      {sections.map((section) => {
+        const isSectionRemoving = removingSectionTitle === section.title;
+        return (
+        <section
+          key={section.title}
+          aria-label={section.title}
+          className={cn(
+            "overflow-hidden transition-[max-height,opacity] duration-200",
+            "[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
+            isSectionRemoving ? "max-h-0 opacity-0" : "max-h-[3000px] opacity-100"
+          )}
+        >
           <div className="mb-4 flex items-center gap-3 pr-4">
             <h3 className="flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
               {section.title}
             </h3>
-            <button
-              type="button"
-              aria-label={`Item toevoegen aan ${section.title}`}
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <PlusCircleIcon />
-            </button>
+            {isEditMode ? (
+              <button
+                type="button"
+                aria-label={`Sectie ${section.title} verwijderen`}
+                onClick={() => onDeleteSection(section.title)}
+                className="flex size-6 shrink-0 items-center justify-center text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                <RecycleBinIcon />
+              </button>
+            ) : (
+              <button
+                type="button"
+                aria-label={`Item toevoegen aan ${section.title}`}
+                className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                <PlusCircleIcon />
+              </button>
+            )}
           </div>
           <div className="flex flex-col gap-3">
             {section.items.map((item) => {
@@ -230,7 +275,8 @@ function SortableItemItems({
             })}
           </div>
         </section>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -303,6 +349,9 @@ export default function ListDetailPage({
     index: number;
   } | null>(null);
   const [removingId, setRemovingId] = React.useState<string | null>(null);
+  const [removingSectionTitle, setRemovingSectionTitle] = React.useState<
+    string | null
+  >(null);
   const [addingId, setAddingId] = React.useState<string | null>(null);
   const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
   const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
@@ -372,6 +421,18 @@ export default function ListDetailPage({
         return next;
       });
     }, DELETE_ANIMATION_MS);
+  }, []);
+
+  const SECTION_DELETE_ANIMATION_MS = 200;
+
+  const handleDeleteSection = React.useCallback((sectionTitle: string) => {
+    setRemovingSectionTitle(sectionTitle);
+    window.setTimeout(() => {
+      setItems((current) =>
+        current.filter((item) => item.section !== sectionTitle)
+      );
+      setRemovingSectionTitle(null);
+    }, SECTION_DELETE_ANIMATION_MS);
   }, []);
 
   const handleUndoDelete = React.useCallback(() => {
@@ -497,10 +558,12 @@ export default function ListDetailPage({
                   sections={sections}
                   isEditMode={isEditMode}
                   removingId={removingId}
+                  removingSectionTitle={removingSectionTitle}
                   addingId={addingId}
                   addingIdExpanded={addingIdExpanded}
                   onCheckedChange={handleCheckedChange}
                   onDelete={handleDeleteItem}
+                  onDeleteSection={handleDeleteSection}
                 />
               </SortableContext>
             </DndContext>
