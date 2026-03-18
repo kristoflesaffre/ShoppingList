@@ -217,8 +217,18 @@ export default function Home() {
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
     null,
   );
+  const [removingId, setRemovingId] = React.useState<string | null>(null);
+  const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
 
   const hasLists = lists.length > 0;
+
+  const DELETE_ANIMATION_MS = 200;
+
+  React.useEffect(() => {
+    return () => {
+      if (removeTimeoutRef.current) clearTimeout(removeTimeoutRef.current);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!snackbarMessage) return;
@@ -234,16 +244,25 @@ export default function Home() {
   };
 
   const handleDeleteList = (id: string) => {
-    setLists((current) => {
-      const index = current.findIndex((list) => list.id === id);
-      if (index === -1) return current;
-      const list = current[index];
-      const next = [...current];
-      next.splice(index, 1);
-      setLastDeleted({ list, index });
-      setSnackbarMessage(`'${list.name}' verwijderd`);
-      return next;
-    });
+    if (removeTimeoutRef.current) {
+      clearTimeout(removeTimeoutRef.current);
+      removeTimeoutRef.current = null;
+    }
+    setRemovingId(id);
+    removeTimeoutRef.current = window.setTimeout(() => {
+      removeTimeoutRef.current = null;
+      setLists((current) => {
+        const index = current.findIndex((list) => list.id === id);
+        if (index === -1) return current;
+        const list = current[index];
+        const next = [...current];
+        next.splice(index, 1);
+        setLastDeleted({ list, index });
+        setSnackbarMessage(`'${list.name}' verwijderd`);
+        setRemovingId(null);
+        return next;
+      });
+    }, DELETE_ANIMATION_MS);
   };
 
   const handleUndoDelete = () => {
@@ -360,15 +379,26 @@ export default function Home() {
                 items={lists.map((l) => l.id)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="flex flex-col gap-3">
-                  {lists.map((list) => (
-                    <SortableListCard
+                <div className="flex flex-col">
+                  {lists.map((list, index) => (
+                    <div
                       key={list.id}
-                      list={list}
-                      isEditMode={isEditMode}
-                      onDelete={() => handleDeleteList(list.id)}
-                      onOpenList={() => handleOpenList(list.id)}
-                    />
+                      className={cn(
+                        "overflow-hidden transition-[max-height,opacity,margin] duration-200 ease-out",
+                        removingId === list.id
+                          ? "max-h-0 opacity-0"
+                          : "max-h-[120px] opacity-100",
+                        index < lists.length - 1 ? "mb-3" : "mb-0",
+                        removingId === list.id && "mb-0"
+                      )}
+                    >
+                      <SortableListCard
+                        list={list}
+                        isEditMode={isEditMode}
+                        onDelete={() => handleDeleteList(list.id)}
+                        onOpenList={() => handleOpenList(list.id)}
+                      />
+                    </div>
                   ))}
                 </div>
               </SortableContext>
