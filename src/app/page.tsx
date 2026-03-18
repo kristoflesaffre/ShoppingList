@@ -313,8 +313,9 @@ export default function Home() {
 
   return (
     <div className="relative flex min-h-screen w-full flex-col px-[16px]">
-      {/* Content area – 16px from viewport (parent px), responsive width */}
+      {/* Content area – 16px from viewport (parent px), max 956px op brede schermen */}
       <div className="flex flex-1 flex-col pb-[120px] pt-[86px]">
+        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
           {/* Header: title + edit button – alleen tonen als er lijstjes zijn (Figma 119-512) */}
           {hasLists && (
             <div className="mb-6 flex items-center gap-4">
@@ -373,6 +374,7 @@ export default function Home() {
               </SortableContext>
             </DndContext>
           )}
+        </div>
       </div>
 
       {/* Slide-in modal – Nieuw lijstje (Figma 472:2235) */}
