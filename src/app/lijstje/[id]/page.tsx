@@ -157,12 +157,16 @@ function SortableItemItems({
   sections,
   isEditMode,
   removingId,
+  addingId,
+  addingIdExpanded,
   onCheckedChange,
   onDelete,
 }: {
   sections: { title: string; items: ListItem[] }[];
   isEditMode: boolean;
   removingId: string | null;
+  addingId: string | null;
+  addingIdExpanded: boolean;
   onCheckedChange: (id: string, checked: boolean) => void;
   onDelete: (id: string) => void;
 }) {
@@ -188,11 +192,16 @@ function SortableItemItems({
           <div className="flex flex-col gap-3">
             {section.items.map((item) => {
               const isRemoving = removingId === item.id;
+              const isAdding = addingId === item.id;
+              const isAddingCollapsed = isAdding && !addingIdExpanded;
+              const isAnimating = isRemoving || isAddingCollapsed;
               const wrapperClass = isDndActive
                 ? ""
                 : cn(
                     "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-                    isRemoving ? "max-h-0 opacity-0" : "max-h-[200px] opacity-100"
+                    isAnimating
+                      ? "max-h-0 opacity-0"
+                      : "max-h-[200px] opacity-100"
                   );
 
               return (
@@ -283,9 +292,28 @@ export default function ListDetailPage({
     index: number;
   } | null>(null);
   const [removingId, setRemovingId] = React.useState<string | null>(null);
+  const [addingId, setAddingId] = React.useState<string | null>(null);
+  const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
   const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
 
   const DELETE_ANIMATION_MS = 300;
+  const ADD_ANIMATION_MS = 300;
+
+  React.useEffect(() => {
+    if (!addingId) return;
+    setAddingIdExpanded(false);
+    const rafId = requestAnimationFrame(() => {
+      setAddingIdExpanded(true);
+    });
+    const timeoutId = window.setTimeout(() => {
+      setAddingId(null);
+      setAddingIdExpanded(false);
+    }, ADD_ANIMATION_MS);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(timeoutId);
+    };
+  }, [addingId]);
 
   React.useEffect(() => {
     return () => {
@@ -458,6 +486,8 @@ export default function ListDetailPage({
                   sections={sections}
                   isEditMode={isEditMode}
                   removingId={removingId}
+                  addingId={addingId}
+                  addingIdExpanded={addingIdExpanded}
                   onCheckedChange={handleCheckedChange}
                   onDelete={handleDeleteItem}
                 />

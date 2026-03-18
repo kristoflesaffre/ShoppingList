@@ -341,6 +341,7 @@ export default function Home() {
 
   const handleUndoDelete = () => {
     if (!lastDeleted) return;
+    const restoredId = lastDeleted.list.id;
     setLists((current) => {
       const next = [...current];
       next.splice(lastDeleted.index, 0, lastDeleted.list);
@@ -348,6 +349,7 @@ export default function Home() {
     });
     setLastDeleted(null);
     setSnackbarMessage(null);
+    setAddingId(restoredId);
   };
 
   const handleOpenCreateModal = () => {
