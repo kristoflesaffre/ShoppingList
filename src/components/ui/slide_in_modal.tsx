@@ -17,7 +17,7 @@ export interface SlideInModalProps {
   className?: string;
 }
 
-const SLIDE_DURATION_MS = 300;
+const SLIDE_DURATION_MS = 500;
 
 /** Close icon – public/icons/cross.svg, 24×24, currentColor. */
 function CloseIcon({ className }: { className?: string }) {
@@ -97,25 +97,26 @@ export function SlideInModal({
         type="button"
         onClick={handleClose}
         className={cn(
-          "absolute inset-0 bg-black/50 transition-opacity duration-300",
+          "absolute inset-0 bg-black/50 transition-opacity duration-500",
           isAnimatingIn && !isClosing ? "opacity-100" : "opacity-0"
         )}
         aria-label="Sluiten"
       />
 
-      {/* Panel – Figma 472:2349: full width, rd-8 top corners, shadow */}
+      {/* Panel – fullscreen minus 48px from top, slides up from bottom */}
       <div
         className={cn(
-          "relative z-10 w-full rounded-t-[var(--radius-md)] bg-[var(--white)] shadow-[0px_1px_4px_0px_rgba(0,0,0,0.13)] transition-transform duration-300 ease-out",
+          "relative z-10 flex w-full flex-col rounded-t-[var(--radius-md)] bg-[var(--white)] shadow-[0px_1px_4px_0px_rgba(0,0,0,0.13)] transition-transform duration-500 ease-out",
           isAnimatingIn && !isClosing ? "translate-y-0" : "translate-y-full",
           className
         )}
         style={{
+          height: "calc(100dvh - 48px)",
           transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
         <SlideInModalHeader title={title} onClose={handleClose} />
-        <div className="px-4 pb-[45px] pt-6">{children}</div>
+        <div className="flex-1 overflow-y-auto px-4 pb-[45px] pt-6">{children}</div>
       </div>
     </div>
   );

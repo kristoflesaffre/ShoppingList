@@ -27,6 +27,14 @@ import { EditButton } from "@/components/ui/edit_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Snackbar } from "@/components/ui/snackbar";
+import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { ToggleButton } from "@/components/ui/toggle_button";
+import { PillTab } from "@/components/ui/pill_tab";
+import { InputField } from "@/components/ui/input_field";
+import { Stepper } from "@/components/ui/stepper";
+import { Button } from "@/components/ui/button";
+import { SearchBar } from "@/components/ui/search_bar";
+import { RecipeTile } from "@/components/ui/recipe_tile";
 import { cn } from "@/lib/utils";
 
 type ListItem = {
@@ -46,6 +54,17 @@ const SECTION_ORDER = [
   "Vrijdag",
   "Zaterdag",
   "Zondag",
+] as const;
+
+const DAY_OPTIONS = [
+  { label: "Geen", value: "Geen" },
+  { label: "Ma", value: "Maandag" },
+  { label: "Di", value: "Dinsdag" },
+  { label: "Wo", value: "Woensdag" },
+  { label: "Do", value: "Donderdag" },
+  { label: "Vr", value: "Vrijdag" },
+  { label: "Za", value: "Zaterdag" },
+  { label: "Zo", value: "Zondag" },
 ] as const;
 
 const DEMO_ITEMS: ListItem[] = [
@@ -180,6 +199,151 @@ function PlusCircleIcon({ className }: { className?: string }) {
         fill="currentColor"
       />
     </svg>
+  );
+}
+
+/** New Item Modal – slide-in from FAB */
+function NewItemModal({
+  open,
+  onClose,
+  onAdd,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onAdd: (item: { name: string; quantity: string; section: string }) => void;
+}) {
+  const [selectedDay, setSelectedDay] = React.useState("Geen");
+  const [activeTab, setActiveTab] = React.useState<"first" | "second">("first");
+  const [itemName, setItemName] = React.useState("");
+  const [stepperValue, setStepperValue] = React.useState(1);
+  const [quantityDesc, setQuantityDesc] = React.useState("stuk");
+  const [recipeSearch, setRecipeSearch] = React.useState("");
+
+  const isWeekday = selectedDay !== "Geen";
+  const canAdd = itemName.trim().length > 0;
+
+  React.useEffect(() => {
+    if (!open) {
+      setSelectedDay("Geen");
+      setActiveTab("first");
+      setItemName("");
+      setStepperValue(1);
+      setQuantityDesc("stuk");
+      setRecipeSearch("");
+    }
+  }, [open]);
+
+  const handleAdd = () => {
+    if (!canAdd) return;
+    const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
+    const qty = `${stepperValue} ${quantityDesc}`;
+    onAdd({ name: itemName.trim(), quantity: qty, section });
+  };
+
+  return (
+    <SlideInModal open={open} onClose={onClose} title="Item(s) toevoegen">
+      <div className="flex flex-col gap-6">
+        {/* Day selector */}
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+            Dag
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {DAY_OPTIONS.map((day) => (
+              <ToggleButton
+                key={day.value}
+                variant={selectedDay === day.value ? "active" : "inactive"}
+                onClick={() => {
+                  setSelectedDay(day.value);
+                  if (day.value === "Geen") setActiveTab("first");
+                }}
+              >
+                {day.label}
+              </ToggleButton>
+            ))}
+          </div>
+        </div>
+
+        {/* Pill tab (only when weekday selected) */}
+        {isWeekday && (
+          <PillTab
+            value={activeTab}
+            onValueChange={setActiveTab}
+            labelFirst="item"
+            labelSecond="recept"
+          />
+        )}
+
+        {/* Item form (default tab or "Geen" selected) */}
+        {(!isWeekday || activeTab === "first") && (
+          <div className="flex flex-col gap-6">
+            <InputField
+              label="Naam item"
+              placeholder="Naam item"
+              value={itemName}
+              onChange={(e) => setItemName(e.target.value)}
+            />
+            <Stepper
+              label="Hoeveelheid"
+              value={stepperValue}
+              onValueChange={setStepperValue}
+              min={1}
+            />
+            <InputField
+              value={`${stepperValue} ${quantityDesc}`}
+              className="text-center"
+              onChange={(e) => {
+                const raw = e.target.value;
+                const match = raw.match(/^(\d+)\s*(.*)/);
+                if (match) {
+                  const num = parseInt(match[1], 10);
+                  if (!Number.isNaN(num)) setStepperValue(num);
+                  if (match[2]) setQuantityDesc(match[2]);
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {/* Recipe tab */}
+        {isWeekday && activeTab === "second" && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <h3 className="flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--text-primary)]">
+                Jouw recepten
+              </h3>
+              <MiniButton variant="primary">+</MiniButton>
+            </div>
+            <SearchBar
+              placeholder="Zoek recept"
+              value={recipeSearch}
+              onValueChange={setRecipeSearch}
+            />
+            {/* Empty state */}
+            <div className="flex flex-col items-center gap-4 py-8">
+              <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
+                Je hebt nog geen recepten toegevoegd
+              </p>
+              <MiniButton variant="primary">Voeg recept toe</MiniButton>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Toevoegen button – pinned at bottom */}
+      {(!isWeekday || activeTab === "first") && (
+        <div className="mt-8">
+          <Button
+            variant="primary"
+            disabled={!canAdd}
+            onClick={handleAdd}
+            className="w-full max-w-none"
+          >
+            Toevoegen
+          </Button>
+        </div>
+      )}
+    </SlideInModal>
   );
 }
 
@@ -341,6 +505,7 @@ export default function ListDetailPage({
 
   const [items, setItems] = React.useState<ListItem[]>(DEMO_ITEMS);
   const [isEditMode, setIsEditMode] = React.useState(false);
+  const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
     null
   );
@@ -445,6 +610,25 @@ export default function ListDetailPage({
     setLastDeleted(null);
     setSnackbarMessage(null);
   }, [lastDeleted]);
+
+  const handleAddNewItem = React.useCallback(
+    (newItem: { name: string; quantity: string; section: string }) => {
+      const id = `new-${Date.now()}`;
+      setItems((current) => [
+        ...current,
+        {
+          id,
+          name: newItem.name,
+          quantity: newItem.quantity,
+          checked: false,
+          section: newItem.section,
+        },
+      ]);
+      setAddingId(id);
+      setIsNewItemOpen(false);
+    },
+    [],
+  );
 
   const sections = React.useMemo(() => {
     const grouped = new Map<string, ListItem[]>();
@@ -588,6 +772,13 @@ export default function ListDetailPage({
       <FloatingActionButton
         aria-label="Item toevoegen"
         className="fixed bottom-[45px] right-6 z-20"
+        onClick={() => setIsNewItemOpen(true)}
+      />
+
+      <NewItemModal
+        open={isNewItemOpen}
+        onClose={() => setIsNewItemOpen(false)}
+        onAdd={handleAddNewItem}
       />
     </div>
   );
