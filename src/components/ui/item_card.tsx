@@ -144,6 +144,96 @@ function TrashIcon({ className }: { className?: string }) {
 const containerBase =
   "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-md py-3 pl-4 pr-3";
 
+/** Duration for ItemCard state transition. Identical to ListCard. */
+const ANIM_DURATION_MS = 120;
+
+/**
+ * Right-side section: width animates (text moves), content fades only.
+ * Icons/dividers fade; only the text block moves during transition.
+ */
+function AnimatedRightSection({
+  isVisible,
+  children,
+  className,
+  widthClass = "w-11",
+}: {
+  isVisible: boolean;
+  children: React.ReactNode;
+  className?: string;
+  widthClass?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative flex h-[44px] shrink-0 items-center gap-3 overflow-hidden",
+        "transition-[width] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
+        isVisible ? widthClass : "w-0 pointer-events-none",
+        "duration-[var(--item-card-duration)]",
+        className
+      )}
+      style={
+        {
+          "--item-card-duration": `${ANIM_DURATION_MS}ms`,
+        } as React.CSSProperties
+      }
+      aria-hidden={!isVisible}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Left icon area: fixed width (44px) so text starts at same position in both states.
+ * Content fades only – no width animation. Figma: pl-16 (16px) to first content.
+ */
+function LeftIconArea({
+  isCheckboxVisible,
+  isReorderVisible,
+  checkbox,
+  reorderContent,
+}: {
+  isCheckboxVisible: boolean;
+  isReorderVisible: boolean;
+  checkbox: React.ReactNode;
+  reorderContent: React.ReactNode;
+}) {
+  return (
+    <div
+      className="relative flex w-11 shrink-0 items-center gap-3"
+      style={
+        {
+          "--item-card-duration": `${ANIM_DURATION_MS}ms`,
+        } as React.CSSProperties
+      }
+    >
+      <div
+        className={cn(
+          "absolute inset-0 flex items-center gap-3",
+          "transition-opacity [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] duration-[var(--item-card-duration)]",
+          isCheckboxVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        aria-hidden={!isCheckboxVisible}
+      >
+        {checkbox}
+      </div>
+      <div
+        className={cn(
+          "absolute inset-0 flex items-center gap-3",
+          "transition-opacity [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] duration-[var(--item-card-duration)]",
+          isReorderVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        aria-hidden={!isReorderVisible}
+      >
+        {reorderContent}
+      </div>
+      {/* Spacer for fixed width */}
+      <div className="w-11 shrink-0" aria-hidden="true" />
+    </div>
+  );
+}
+
+/** Figma neutrals/200 (--border-default): vertical divider, same color in all states. */
 function ItemDivider() {
   return (
     <span
@@ -151,7 +241,7 @@ function ItemDivider() {
       aria-hidden="true"
     >
       <span
-        className="absolute left-1/2 top-0 h-[44px] w-px -translate-x-1/2 bg-[var(--gray-200)]"
+        className="absolute left-1/2 top-0 h-[44px] w-px -translate-x-1/2 bg-[var(--border-default)]"
         aria-hidden="true"
       />
     </span>
@@ -273,33 +363,37 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
 
     const defaultContent = (
       <>
-        {showCheckbox && (
-          <Checkbox
-            size="default"
-            checked={isChecked}
-            onCheckedChange={handleCheckedChange}
-            disabled={isGottenByOther}
-            className="shrink-0"
-            aria-label={
-              typeof itemName === "string"
-                ? `Markeer "${itemName}" als gehaald`
-                : "Markeer als gehaald"
-            }
-          />
-        )}
-
-        {isEditable && (
-          <button
-            type="button"
-            aria-label="Reorder item"
-            onClick={onReorder}
-            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-          >
-            <ReorderIcon />
-          </button>
-        )}
-
-        {isEditable && <ItemDivider />}
+        <LeftIconArea
+          isCheckboxVisible={!isEditable && showCheckbox}
+          isReorderVisible={isEditable}
+          checkbox={
+            <Checkbox
+              size="default"
+              checked={isChecked}
+              onCheckedChange={handleCheckedChange}
+              disabled={isGottenByOther}
+              className="shrink-0"
+              aria-label={
+                typeof itemName === "string"
+                  ? `Markeer "${itemName}" als gehaald`
+                  : "Markeer als gehaald"
+              }
+            />
+          }
+          reorderContent={
+            <>
+              <button
+                type="button"
+                aria-label="Reorder item"
+                onClick={onReorder}
+                className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              >
+                <ReorderIcon />
+              </button>
+              <ItemDivider />
+            </>
+          }
+        />
 
         {showContentBlock && (
           <>
@@ -341,49 +435,98 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
                 </>
               )}
             </div>
-            {!isEditable && !isChecked && <ItemDivider />}
           </>
         )}
 
-        {showClaimButton && effectiveVariant === "default" && !isChecked && (
-          <button
-            type="button"
-            aria-label="Claim item"
-            onClick={() => {
-              setClaimedByMe(true);
-              onClaim?.();
-            }}
-            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+        <AnimatedRightSection
+          isVisible={
+            isEditable ||
+            (effectiveVariant === "default" && !isChecked) ||
+            isGottenByYou ||
+            isGottenByOther
+          }
+          widthClass={
+            isEditable
+              ? "w-24"
+              : (effectiveVariant === "default" && !isChecked) ||
+                  isGottenByYou ||
+                  isGottenByOther
+                ? "w-11"
+                : "w-0"
+          }
+        >
+          <div
+            className={cn(
+              "absolute inset-0 flex items-center gap-3",
+              "transition-opacity [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] duration-[var(--item-card-duration)]",
+              !isEditable &&
+              ((effectiveVariant === "default" && !isChecked) ||
+                isGottenByYou ||
+                isGottenByOther)
+                ? "opacity-100"
+                : "opacity-0 pointer-events-none",
+              "min-w-0"
+            )}
+            style={
+              {
+                "--item-card-duration": `${ANIM_DURATION_MS}ms`,
+              } as React.CSSProperties
+            }
+            aria-hidden={isEditable}
           >
-            <HandIcon />
-          </button>
-        )}
-
-        {showClaimButton && isGottenByYou && (
-          <button
-            type="button"
-            aria-label="Unclaim item"
-            onClick={() => {
-              setClaimedByMe(false);
-              onClaim?.();
-            }}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] p-1 text-[var(--white)]"
+            {!isEditable && !isChecked && <ItemDivider />}
+            {showClaimButton &&
+              effectiveVariant === "default" &&
+              !isChecked && (
+                <button
+                  type="button"
+                  aria-label="Claim item"
+                  onClick={() => {
+                    setClaimedByMe(true);
+                    onClaim?.();
+                  }}
+                  className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                >
+                  <HandIcon />
+                </button>
+              )}
+            {showClaimButton && isGottenByYou && (
+              <button
+                type="button"
+                aria-label="Unclaim item"
+                onClick={() => {
+                  setClaimedByMe(false);
+                  onClaim?.();
+                }}
+                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] p-1 text-[var(--white)]"
+              >
+                <HandIcon />
+              </button>
+            )}
+            {isGottenByOther && (
+              <span
+                className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full"
+                aria-hidden="true"
+              >
+                {avatar}
+              </span>
+            )}
+          </div>
+          <div
+            className={cn(
+              "absolute inset-0 flex items-center gap-3",
+              "transition-opacity [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] duration-[var(--item-card-duration)]",
+              isEditable ? "opacity-100" : "opacity-0 pointer-events-none",
+              "min-w-0"
+            )}
+            style={
+              {
+                "--item-card-duration": `${ANIM_DURATION_MS}ms`,
+              } as React.CSSProperties
+            }
+            aria-hidden={!isEditable}
           >
-            <HandIcon />
-          </button>
-        )}
-
-        {isGottenByOther && (
-          <span
-            className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full"
-            aria-hidden="true"
-          >
-            {avatar}
-          </span>
-        )}
-
-        {isEditable && (
-          <>
+            <ItemDivider />
             <button
               type="button"
               aria-label="Edit item"
@@ -401,8 +544,8 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             >
               <TrashIcon />
             </button>
-          </>
-        )}
+          </div>
+        </AnimatedRightSection>
       </>
     );
 
