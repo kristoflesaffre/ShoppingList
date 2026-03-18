@@ -186,8 +186,8 @@ function AnimatedRightSection({
 }
 
 /**
- * Left icon area: fixed width (44px) so text starts at same position in both states.
- * Content fades only – no width animation. Figma: pl-16 (16px) to first content.
+ * Left icon area: checkbox = 24px (size-6), reorder = 44px (w-11).
+ * Checkbox mode: 24px + 12px gap = 12px tussen checkbox en text.
  */
 function LeftIconArea({
   isCheckboxVisible,
@@ -200,9 +200,10 @@ function LeftIconArea({
   checkbox: React.ReactNode;
   reorderContent: React.ReactNode;
 }) {
+  const widthClass = isCheckboxVisible ? "w-6" : "w-11";
   return (
     <div
-      className="relative flex w-11 shrink-0 items-center gap-3"
+      className={cn("relative flex shrink-0 items-center", widthClass)}
       style={
         {
           "--item-card-duration": `${ANIM_DURATION_MS}ms`,
@@ -211,7 +212,7 @@ function LeftIconArea({
     >
       <div
         className={cn(
-          "absolute inset-0 flex items-center gap-3",
+          "absolute inset-0 flex items-center",
           "transition-opacity [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] duration-[var(--item-card-duration)]",
           isCheckboxVisible ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
@@ -230,7 +231,7 @@ function LeftIconArea({
         {reorderContent}
       </div>
       {/* Spacer for fixed width */}
-      <div className="w-11 shrink-0" aria-hidden="true" />
+      <div className={cn("shrink-0", isCheckboxVisible ? "w-6" : "w-11")} aria-hidden="true" />
     </div>
   );
 }
@@ -380,7 +381,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       <>
         <div
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-3",
+            "flex min-w-0 flex-1 items-center gap-[12px]",
             isLeftClickable && "cursor-pointer",
           )}
           onClick={isLeftClickable ? handleLeftClick : undefined}
