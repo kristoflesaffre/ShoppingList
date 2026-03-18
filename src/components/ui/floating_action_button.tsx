@@ -68,7 +68,7 @@ const FloatingActionButton = React.forwardRef<
     };
 
     const defaultStyles =
-      "bg-[var(--action-primary)] text-[var(--action-primary-foreground)] hover:bg-[var(--action-primary-hover)] shadow-[var(--shadow-drop)]";
+      "bg-[var(--blue-500)] text-[var(--white)] hover:bg-[var(--blue-600)] shadow-drop";
     const disabledStyles =
       "bg-[var(--blue-25)] text-[var(--blue-300)] shadow-none";
 

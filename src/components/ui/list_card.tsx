@@ -83,7 +83,7 @@ const sizeStyles: Record<ListCardSize, string> = {
   default: "gap-3 px-3 py-3",
 };
 
-/** Figma: divider wrapper h-60 w-0 shrink-0; line 1px × 60px, neutrals/200. */
+/** Figma: divider wrapper h-60 w-0 shrink-0; line 1px × 60px, neutrals/100. */
 function EditableDivider() {
   return (
     <span
@@ -91,7 +91,7 @@ function EditableDivider() {
       aria-hidden="true"
     >
       <span
-        className="absolute left-1/2 top-0 h-[60px] w-px -translate-x-1/2 bg-[var(--gray-200)]"
+        className="absolute left-1/2 top-0 h-[60px] w-px -translate-x-1/2 bg-[var(--gray-100)]"
         aria-hidden="true"
       />
     </span>

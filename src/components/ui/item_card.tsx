@@ -236,7 +236,7 @@ function LeftIconArea({
   );
 }
 
-/** Figma neutrals/200 (--border-default): vertical divider, same color in all states. */
+/** Figma neutrals/100: vertical divider, same color in all states. */
 function ItemDivider() {
   return (
     <span
@@ -244,7 +244,7 @@ function ItemDivider() {
       aria-hidden="true"
     >
       <span
-        className="absolute left-1/2 top-0 h-[44px] w-px -translate-x-1/2 bg-[var(--border-default)]"
+        className="absolute left-1/2 top-0 h-[44px] w-px -translate-x-1/2 bg-[var(--gray-100)]"
         aria-hidden="true"
       />
     </span>
@@ -569,7 +569,6 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             }
             aria-hidden={!isEditable}
           >
-            <ItemDivider />
             <button
               type="button"
               aria-label="Edit item"
