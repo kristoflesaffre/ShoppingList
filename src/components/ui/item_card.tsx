@@ -365,42 +365,80 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       </>
     );
 
+    const handleLeftClick = React.useCallback(
+      () => {
+        if (isGottenByOther) return;
+        handleCheckedChange(!isChecked);
+      },
+      [isChecked, handleCheckedChange, isGottenByOther],
+    );
+
+    const isLeftClickable =
+      !isEditable && showCheckbox && !isGottenByOther;
+
     const defaultContent = (
       <>
-        <LeftIconArea
-          isCheckboxVisible={!isEditable && showCheckbox}
-          isReorderVisible={isEditable}
-          checkbox={
-            <Checkbox
-              size="default"
-              checked={isChecked}
-              onCheckedChange={handleCheckedChange}
-              disabled={isGottenByOther}
-              className="shrink-0"
-              aria-label={
-                typeof itemName === "string"
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-3",
+            isLeftClickable && "cursor-pointer",
+          )}
+          onClick={isLeftClickable ? handleLeftClick : undefined}
+          role={isLeftClickable ? "button" : undefined}
+          tabIndex={isLeftClickable ? 0 : undefined}
+          onKeyDown={
+            isLeftClickable
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleLeftClick();
+                  }
+                }
+              : undefined
+          }
+          aria-label={
+            isLeftClickable
+              ? (typeof itemName === "string"
                   ? `Markeer "${itemName}" als gehaald`
-                  : "Markeer als gehaald"
-              }
-            />
+                  : "Markeer als gehaald")
+              : undefined
           }
-          reorderContent={
-            <>
-              <button
-                type="button"
-                aria-label="Reorder item"
-                {...(dragHandleProps ?? (onReorder ? { onClick: onReorder } : {}))}
-                className="flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:cursor-grabbing"
-              >
-                <ReorderIcon />
-              </button>
-              <ItemDivider />
-            </>
-          }
-        />
+        >
+          <LeftIconArea
+            isCheckboxVisible={!isEditable && showCheckbox}
+            isReorderVisible={isEditable}
+            checkbox={
+              <span onClick={(e) => e.stopPropagation()} className="contents">
+                <Checkbox
+                  size="default"
+                  checked={isChecked}
+                  onCheckedChange={handleCheckedChange}
+                  disabled={isGottenByOther}
+                  className="shrink-0"
+                  aria-label={
+                    typeof itemName === "string"
+                      ? `Markeer "${itemName}" als gehaald`
+                      : "Markeer als gehaald"
+                  }
+                />
+              </span>
+            }
+            reorderContent={
+              <>
+                <button
+                  type="button"
+                  aria-label="Reorder item"
+                  {...(dragHandleProps ?? (onReorder ? { onClick: onReorder } : {}))}
+                  className="flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:cursor-grabbing"
+                >
+                  <ReorderIcon />
+                </button>
+                <ItemDivider />
+              </>
+            }
+          />
 
-        {showContentBlock && (
-          <>
+          {showContentBlock && (
             <div className="min-w-0 flex flex-1 flex-col gap-0">
               {effectiveVariant === "default" &&
                 !isEditable &&
@@ -439,8 +477,8 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
                 </>
               )}
             </div>
-          </>
-        )}
+          )}
+        </div>
 
         <AnimatedRightSection
           isVisible={
