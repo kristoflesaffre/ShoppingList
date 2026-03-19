@@ -279,6 +279,122 @@ function parseQuantity(qty: string): { stepperValue: number; quantityDesc: strin
 
 const SLIDE_TRANSITION = "transform 350ms cubic-bezier(0.16, 1, 0.3, 1)";
 
+/** Sorteerbare ingrediëntregel in receptformulier (zelfde patroon als SortableItemCard). */
+function SortableIngredientCard({
+  ingredient,
+  onDelete,
+}: {
+  ingredient: Ingredient;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: ingredient.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        isDragging &&
+          "z-10 cursor-grabbing opacity-90 shadow-[var(--shadow-drop)]"
+      )}
+    >
+      <ItemCard
+        itemName={ingredient.name}
+        quantity={ingredient.quantity}
+        state="editable"
+        onDelete={onDelete}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+    </div>
+  );
+}
+
+/** Moet binnen DndContext staan (voor useDndContext). */
+function RecipeIngredientsSortableBody({
+  ingredients,
+  onDelete,
+}: {
+  ingredients: Ingredient[];
+  onDelete: (id: string) => void;
+}) {
+  const { active } = useDndContext();
+  const isDndActive = active != null;
+
+  return (
+    <SortableContext
+      items={ingredients.map((i) => i.id)}
+      strategy={verticalListSortingStrategy}
+    >
+      <div className="flex flex-col gap-3">
+        {ingredients.map((ing) => {
+          const wrapperClass = isDndActive
+            ? ""
+            : cn(
+                "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+                "max-h-[200px] opacity-100"
+              );
+          return (
+            <div key={ing.id} className={wrapperClass}>
+              <SortableIngredientCard
+                ingredient={ing}
+                onDelete={() => onDelete(ing.id)}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </SortableContext>
+  );
+}
+
+function RecipeIngredientsDnd({
+  ingredients,
+  onDragEnd,
+  onDelete,
+}: {
+  ingredients: Ingredient[];
+  onDragEnd: (event: DragEndEvent) => void;
+  onDelete: (id: string) => void;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 3 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 100, tolerance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={onDragEnd}
+      modifiers={[restrictToVerticalAxis]}
+    >
+      <RecipeIngredientsSortableBody
+        ingredients={ingredients}
+        onDelete={onDelete}
+      />
+    </DndContext>
+  );
+}
+
 /** New Item Modal – slide-in from FAB, section plus, or edit from pencil */
 function NewItemModal({
   open,
@@ -376,6 +492,17 @@ function NewItemModal({
   const handleAddIngredient = React.useCallback(() => {
     const id = `ing-${Date.now()}`;
     setIngredients((prev) => [...prev, { id, name: "Nieuw ingrediënt", quantity: "1 stuk" }]);
+  }, []);
+
+  const handleReorderIngredients = React.useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over == null || active.id === over.id) return;
+    setIngredients((current) => {
+      const oldIndex = current.findIndex((i) => i.id === active.id);
+      const newIndex = current.findIndex((i) => i.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return current;
+      return arrayMove(current, oldIndex, newIndex);
+    });
   }, []);
 
   const modalTitle = showRecipeForm
@@ -585,17 +712,11 @@ function NewItemModal({
                     </MiniButton>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3">
-                    {ingredients.map((ing) => (
-                      <ItemCard
-                        key={ing.id}
-                        itemName={ing.name}
-                        quantity={ing.quantity}
-                        state="editable"
-                        onDelete={() => handleDeleteIngredient(ing.id)}
-                      />
-                    ))}
-                  </div>
+                  <RecipeIngredientsDnd
+                    ingredients={ingredients}
+                    onDragEnd={handleReorderIngredients}
+                    onDelete={handleDeleteIngredient}
+                  />
                 )}
               </div>
             </div>
