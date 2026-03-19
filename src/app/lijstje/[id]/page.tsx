@@ -750,7 +750,7 @@ export default function ListDetailPage({
 
   return (
     <div className="relative flex min-h-screen w-full flex-col">
-      <div className="sticky top-0 z-10 w-full bg-[var(--white)]">
+      <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)]">
         <header className="mx-auto flex h-16 max-w-[956px] items-center gap-4 px-4">
           <button
             type="button"
@@ -780,7 +780,7 @@ export default function ListDetailPage({
         </header>
       </div>
 
-      <div className="flex flex-1 flex-col px-4 pb-24 pt-8">
+      <div className="flex flex-1 flex-col px-4 pb-24 pt-8 mt-16">
         <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6">
           {hasItems && (
             <div className="flex items-center gap-4">
@@ -859,15 +859,19 @@ export default function ListDetailPage({
         </div>
       )}
 
-      <FloatingActionButton
-        aria-label="Item toevoegen"
-        className="fixed bottom-[45px] right-6 z-20"
-        onClick={() => {
-          setEditingItem(null);
-          setInitialSection(null);
-          setIsNewItemOpen(true);
-        }}
-      />
+      <div className="pointer-events-none fixed bottom-[45px] left-0 right-0 z-20 px-4">
+        <div className="mx-auto flex w-full max-w-[956px] justify-end">
+          <FloatingActionButton
+            aria-label="Item toevoegen"
+            className="pointer-events-auto"
+            onClick={() => {
+              setEditingItem(null);
+              setInitialSection(null);
+              setIsNewItemOpen(true);
+            }}
+          />
+        </div>
+      </div>
 
       <NewItemModal
         open={isNewItemOpen || editingItem != null}
