@@ -238,6 +238,32 @@ function ChefHatIcon({ className }: { className?: string }) {
   );
 }
 
+/** public/icons/fish.svg – ingrediënt-sectie icoon */
+function FishIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M20.9625 3.3075C20.923 3.1795 20.8225 3.0795 20.6935 3.0415C20.4895 2.9805 15.7 1.5995 11.938 3.486C10.215 2.839 7.7255 2.899 6.327 4.297C6.231 4.393 6.1905 4.531 6.219 4.6635C6.2475 4.7965 6.341 4.9055 6.468 4.954C7.3465 5.2875 8.0995 5.897 8.6095 6.6825C6.3705 10.3575 6.9235 14.579 7.189 15.9565L2.831 16.4375C2.678 16.454 2.5485 16.557 2.4975 16.7025C2.4465 16.8475 2.4835 17.0085 2.592 17.1175L6.857 21.3825C6.9335 21.4595 7.0355 21.5 7.14 21.5C7.1845 21.5 7.229 21.4925 7.2725 21.4775C7.4175 21.4265 7.5205 21.2975 7.5375 21.1445L8.023 16.7955C8.582 16.9045 9.6135 17.0625 10.8855 17.0625C13.301 17.0625 16.584 16.491 19.1485 13.927C22.989 10.0815 21.047 3.5825 20.9625 3.3075ZM6.8345 20.229L3.7465 17.141L7.222 16.7575L6.8345 20.229ZM18.5825 13.3625C14.837 17.107 9.223 16.2205 8.0105 15.975C7.7955 14.918 7.095 10.511 9.4165 6.902C9.4975 6.7765 9.5015 6.616 9.427 6.486C8.9395 5.639 8.221 4.946 7.366 4.4865C8.536 3.7425 10.3095 3.7475 11.618 4.229C12.0615 6.586 12.8895 8.281 14.2865 9.6775C15.654 11.1005 17.3715 12.071 19.2785 12.518C19.072 12.8105 18.848 13.0965 18.5825 13.3625ZM19.7225 11.795C17.861 11.4135 16.1845 10.4975 14.858 9.117C13.59 7.8495 12.8335 6.303 12.418 4.1505C15.4565 2.699 19.318 3.518 20.2555 3.753C20.502 4.705 21.371 8.69 19.7225 11.795ZM17.415 5.615C17.415 6.1555 16.9755 6.595 16.435 6.595C15.8945 6.595 15.455 6.1555 15.455 5.615C15.455 5.0745 15.8945 4.635 16.435 4.635C16.9755 4.635 17.415 5.0745 17.415 5.615Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+type Ingredient = {
+  id: string;
+  name: string;
+  quantity: string;
+};
+
 /** Parse quantity "2 stuks" or "5 kg" into { stepperValue, quantityDesc } */
 function parseQuantity(qty: string): { stepperValue: number; quantityDesc: string } {
   const match = qty.match(/^(\d+)\s*(.*)$/);
@@ -250,6 +276,8 @@ function parseQuantity(qty: string): { stepperValue: number; quantityDesc: strin
   }
   return { stepperValue: 1, quantityDesc: qty.trim() || "stuk" };
 }
+
+const SLIDE_TRANSITION = "transform 350ms cubic-bezier(0.16, 1, 0.3, 1)";
 
 /** New Item Modal – slide-in from FAB, section plus, or edit from pencil */
 function NewItemModal({
@@ -265,7 +293,6 @@ function NewItemModal({
   onAdd: (item: { name: string; quantity: string; section: string }) => void;
   editingItem?: ListItem | null;
   onSave?: (item: ListItem) => void;
-  /** When opening for add, pre-select this section (e.g. from section plus button) */
   initialSection?: string | null;
 }) {
   const isEditMode = editingItem != null;
@@ -275,10 +302,17 @@ function NewItemModal({
   const [stepperValue, setStepperValue] = React.useState(1);
   const [quantityDesc, setQuantityDesc] = React.useState("stuk");
   const [recipeSearch, setRecipeSearch] = React.useState("");
+  const [showRecipeForm, setShowRecipeForm] = React.useState(false);
   const recipes: { id: string; name: string }[] = []; // TODO: connect to real data
+
+  const [recipeName, setRecipeName] = React.useState("");
+  const [recipeLink, setRecipeLink] = React.useState("");
+  const [recipePersons, setRecipePersons] = React.useState(2);
+  const [ingredients, setIngredients] = React.useState<Ingredient[]>([]);
 
   const isWeekday = selectedDay !== "Geen";
   const canAdd = itemName.trim().length > 0;
+  const canSaveRecipe = recipeName.trim().length > 0;
 
   React.useEffect(() => {
     if (!open) {
@@ -288,6 +322,11 @@ function NewItemModal({
       setStepperValue(1);
       setQuantityDesc("stuk");
       setRecipeSearch("");
+      setShowRecipeForm(false);
+      setRecipeName("");
+      setRecipeLink("");
+      setRecipePersons(2);
+      setIngredients([]);
     } else if (editingItem) {
       setItemName(editingItem.name);
       const { stepperValue: sv, quantityDesc: qd } = parseQuantity(
@@ -324,117 +363,240 @@ function NewItemModal({
     onClose();
   };
 
+  const handleSaveRecipe = () => {
+    if (!canSaveRecipe) return;
+    // TODO: persist recipe to library
+    setShowRecipeForm(false);
+  };
+
+  const handleDeleteIngredient = React.useCallback((id: string) => {
+    setIngredients((prev) => prev.filter((i) => i.id !== id));
+  }, []);
+
+  const handleAddIngredient = React.useCallback(() => {
+    const id = `ing-${Date.now()}`;
+    setIngredients((prev) => [...prev, { id, name: "Nieuw ingrediënt", quantity: "1 stuk" }]);
+  }, []);
+
+  const modalTitle = showRecipeForm
+    ? "Recept toevoegen"
+    : isEditMode
+      ? "Wijzig item(s)"
+      : "Item(s) toevoegen";
+
+  const itemFooter =
+    !isWeekday || activeTab === "first" ? (
+      <Button
+        variant="primary"
+        disabled={!isEditMode && !canAdd}
+        onClick={handleAdd}
+      >
+        {isEditMode ? "Bewaren" : "Toevoegen"}
+      </Button>
+    ) : undefined;
+
+  const recipeFooter = (
+    <Button
+      variant="primary"
+      disabled={!canSaveRecipe}
+      onClick={handleSaveRecipe}
+    >
+      Bewaren
+    </Button>
+  );
+
   return (
     <SlideInModal
       open={open}
       onClose={onClose}
-      title={isEditMode ? "Wijzig item(s)" : "Item(s) toevoegen"}
-      footer={
-        !isWeekday || activeTab === "first" ? (
-          <Button
-            variant="primary"
-            disabled={!isEditMode && !canAdd}
-            onClick={handleAdd}
-          >
-            {isEditMode ? "Bewaren" : "Toevoegen"}
-          </Button>
-        ) : undefined
-      }
+      title={modalTitle}
+      onBack={showRecipeForm ? () => setShowRecipeForm(false) : undefined}
+      footer={showRecipeForm ? recipeFooter : itemFooter}
     >
-      <div className="flex flex-col gap-6">
-        {/* Day selector */}
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-            Dag
-          </span>
-          <div className="grid grid-cols-4 gap-2">
-            {DAY_OPTIONS.map((day) => (
-              <ToggleButton
-                key={day.value}
-                variant={selectedDay === day.value ? "active" : "inactive"}
-                className="w-full"
-                onClick={() => {
-                  setSelectedDay(day.value);
-                  if (day.value === "Geen") setActiveTab("first");
-                }}
-              >
-                {day.label}
-              </ToggleButton>
-            ))}
-          </div>
-        </div>
-
-        {/* Pill tab (only when weekday selected) */}
-        {isWeekday && (
-          <PillTab
-            value={activeTab}
-            onValueChange={setActiveTab}
-            labelFirst="item"
-            labelSecond="recept"
-          />
-        )}
-
-        {/* Item form (default tab or "Geen" selected) */}
-        {(!isWeekday || activeTab === "first") && (
-          <div className="flex flex-col gap-6">
-            <InputField
-              label="Naam item"
-              placeholder="Naam item"
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-            />
-            <div className="flex flex-col gap-2">
-              <Stepper
-                label="Hoeveelheid"
-                value={stepperValue}
-                onValueChange={setStepperValue}
-                min={1}
-              />
-              <InputField
-                value={quantityDesc}
-                className="text-center"
-                onFocus={(e) => {
-                  const input = e.target;
-                  requestAnimationFrame(() => input.select());
-                }}
-                onChange={(e) => setQuantityDesc(e.target.value)}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Recipe tab */}
-        {isWeekday && activeTab === "second" && (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex min-w-0 flex-1 items-center gap-[12px]">
-                <ChefHatIcon className="size-6 shrink-0 text-[var(--text-primary)]" />
-                <h3 className="min-w-0 text-section-title font-bold leading-24 tracking-normal text-[var(--text-primary)]">
-                  Jouw recepten
-                </h3>
+      <div className="overflow-hidden">
+        <div
+          className="flex"
+          style={{
+            transform: showRecipeForm ? "translateX(-100%)" : "translateX(0)",
+            transition: SLIDE_TRANSITION,
+          }}
+        >
+          {/* Panel 1: Item form */}
+          <div className="w-full shrink-0">
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+                  Dag
+                </span>
+                <div className="grid grid-cols-4 gap-2">
+                  {DAY_OPTIONS.map((day) => (
+                    <ToggleButton
+                      key={day.value}
+                      variant={selectedDay === day.value ? "active" : "inactive"}
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedDay(day.value);
+                        if (day.value === "Geen") setActiveTab("first");
+                      }}
+                    >
+                      {day.label}
+                    </ToggleButton>
+                  ))}
+                </div>
               </div>
-              {recipes.length > 0 && (
-                <MiniButton variant="primary">+</MiniButton>
+
+              {isWeekday && (
+                <PillTab
+                  value={activeTab}
+                  onValueChange={setActiveTab}
+                  labelFirst="item"
+                  labelSecond="recept"
+                />
+              )}
+
+              {(!isWeekday || activeTab === "first") && (
+                <div className="flex flex-col gap-6">
+                  <InputField
+                    label="Naam item"
+                    placeholder="Naam item"
+                    value={itemName}
+                    onChange={(e) => setItemName(e.target.value)}
+                  />
+                  <div className="flex flex-col gap-2">
+                    <Stepper
+                      label="Hoeveelheid"
+                      value={stepperValue}
+                      onValueChange={setStepperValue}
+                      min={1}
+                    />
+                    <InputField
+                      value={quantityDesc}
+                      className="text-center"
+                      onFocus={(e) => {
+                        const input = e.target;
+                        requestAnimationFrame(() => input.select());
+                      }}
+                      onChange={(e) => setQuantityDesc(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {isWeekday && activeTab === "second" && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-[12px]">
+                      <ChefHatIcon className="size-6 shrink-0 text-[var(--text-primary)]" />
+                      <h3 className="min-w-0 text-section-title font-bold leading-24 tracking-normal text-[var(--text-primary)]">
+                        Jouw recepten
+                      </h3>
+                    </div>
+                    {recipes.length > 0 && (
+                      <MiniButton
+                        variant="primary"
+                        onClick={() => setShowRecipeForm(true)}
+                      >
+                        +
+                      </MiniButton>
+                    )}
+                  </div>
+                  {recipes.length > 0 ? (
+                    <SearchBar
+                      placeholder="Zoek recept"
+                      value={recipeSearch}
+                      onValueChange={setRecipeSearch}
+                    />
+                  ) : null}
+                  {recipes.length === 0 ? (
+                    <div className="flex flex-col items-center gap-4 py-8">
+                      <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
+                        Je hebt nog geen recepten toegevoegd
+                      </p>
+                      <MiniButton
+                        variant="primary"
+                        onClick={() => setShowRecipeForm(true)}
+                      >
+                        Voeg recept toe
+                      </MiniButton>
+                    </div>
+                  ) : null}
+                </div>
               )}
             </div>
-            {recipes.length > 0 ? (
-              <SearchBar
-                placeholder="Zoek recept"
-                value={recipeSearch}
-                onValueChange={setRecipeSearch}
-              />
-            ) : null}
-            {/* Empty state */}
-            {recipes.length === 0 ? (
-              <div className="flex flex-col items-center gap-4 py-8">
-                <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
-                  Je hebt nog geen recepten toegevoegd
-                </p>
-                <MiniButton variant="primary">Voeg recept toe</MiniButton>
-              </div>
-            ) : null}
           </div>
-        )}
+
+          {/* Panel 2: Recipe form */}
+          <div className="w-full shrink-0">
+            <div className="flex flex-col">
+              <div className="flex flex-col gap-6">
+                <InputField
+                  label="Naam recept"
+                  placeholder="Naam recept"
+                  value={recipeName}
+                  onChange={(e) => setRecipeName(e.target.value)}
+                />
+                <InputField
+                  label="Link recept"
+                  placeholder="http://www.recept.com"
+                  value={recipeLink}
+                  onChange={(e) => setRecipeLink(e.target.value)}
+                />
+                <Stepper
+                  label="Aantal personen"
+                  value={recipePersons}
+                  onValueChange={setRecipePersons}
+                  min={1}
+                />
+              </div>
+
+              {/* Ingrediënten sectie – 48px boven de titel t.o.v. stepper */}
+              <div className="mt-[48px] flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-[12px]">
+                    <FishIcon className="size-6 shrink-0 text-[var(--text-primary)]" />
+                    <h3 className="min-w-0 text-section-title font-bold leading-24 tracking-normal text-[var(--text-primary)]">
+                      Ingrediënten
+                    </h3>
+                  </div>
+                  {ingredients.length > 0 && (
+                    <MiniButton
+                      variant="primary"
+                      onClick={handleAddIngredient}
+                    >
+                      +
+                    </MiniButton>
+                  )}
+                </div>
+
+                {ingredients.length === 0 ? (
+                  <div className="flex flex-col items-center gap-4 py-8">
+                    <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
+                      Je hebt nog geen ingrediënten toegevoegd
+                    </p>
+                    <MiniButton
+                      variant="primary"
+                      onClick={handleAddIngredient}
+                    >
+                      Voeg ingrediënt toe
+                    </MiniButton>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {ingredients.map((ing) => (
+                      <ItemCard
+                        key={ing.id}
+                        itemName={ing.name}
+                        quantity={ing.quantity}
+                        state="editable"
+                        onDelete={() => handleDeleteIngredient(ing.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </SlideInModal>
   );

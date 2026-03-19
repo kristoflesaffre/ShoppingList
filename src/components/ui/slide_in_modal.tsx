@@ -17,6 +17,8 @@ export interface SlideInModalProps {
   footer?: React.ReactNode;
   /** When true, panel height fits content instead of full screen */
   compact?: boolean;
+  /** When provided, shows a back arrow on the left of the header */
+  onBack?: () => void;
   /** Optional class for the panel */
   className?: string;
 }
@@ -43,6 +45,26 @@ function CloseIcon({ className }: { className?: string }) {
   );
 }
 
+/** Back arrow icon – public/icons/arrow.svg, 24×24, currentColor. */
+function BackArrowIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M3.59377 12.31C3.60777 12.329 3.61477 12.351 3.63177 12.368L9.23178 17.968C9.33378 18.069 9.46678 18.119 9.59978 18.119C9.73278 18.119 9.86678 18.068 9.96778 17.968C10.1698 17.765 10.1698 17.435 9.96778 17.232L5.25578 12.521L19.9998 12.521C20.2868 12.521 20.5198 12.288 20.5198 12.001C20.5198 11.714 20.2868 11.48 19.9998 11.48L5.25477 11.48L9.96678 6.768C10.1688 6.565 10.1688 6.236 9.96577 6.033C9.76477 5.83 9.43378 5.83 9.23078 6.033L3.63078 11.633C3.61378 11.65 3.60577 11.673 3.59177 11.692C3.56477 11.727 3.53678 11.76 3.51978 11.801C3.46678 11.929 3.46678 12.072 3.51978 12.2C3.53778 12.241 3.56677 12.275 3.59377 12.31Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 /**
  * Slide-in modal from bottom with overlay. Figma 472:2235.
  * Animates in from bottom; overlay dims the background.
@@ -54,6 +76,7 @@ export function SlideInModal({
   children,
   footer,
   compact = false,
+  onBack,
   className,
 }: SlideInModalProps) {
   const [isAnimatingIn, setIsAnimatingIn] = React.useState(false);
@@ -122,7 +145,7 @@ export function SlideInModal({
           transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        <SlideInModalHeader title={title} onClose={handleClose} />
+        <SlideInModalHeader title={title} onClose={handleClose} onBack={onBack} />
         <div
           className={cn(
             "flex flex-col",
@@ -159,16 +182,33 @@ export function SlideInModal({
 export function SlideInModalHeader({
   title,
   onClose,
+  onBack,
   titleId = "slide-in-modal-title",
 }: {
   title: string;
   onClose: () => void;
+  onBack?: () => void;
   titleId?: string;
 }) {
+  const iconBtnClass =
+    "relative z-[1] !min-w-0 size-10 shrink-0 no-underline p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] [&_svg]:size-6";
+
   return (
     <div className="flex h-16 shrink-0 items-center justify-center px-4">
-      {/* Zelfde max-w als body-inhoud zodat sluit-icoon rechts gelijk loopt met inputvelden */}
-      <div className="relative flex h-full w-full max-w-[768px] items-center justify-end">
+      <div className="relative flex h-full w-full max-w-[768px] items-center justify-between">
+        <div className="flex w-10 shrink-0 items-center justify-start">
+          {onBack && (
+            <Button
+              type="button"
+              variant="tertiary"
+              onClick={onBack}
+              aria-label="Terug"
+              className={iconBtnClass}
+            >
+              <BackArrowIcon className="size-6 shrink-0" />
+            </Button>
+          )}
+        </div>
         <h2
           id={titleId}
           className="pointer-events-none absolute inset-0 flex items-center justify-center px-12 text-center font-medium text-base leading-24 tracking-normal text-[var(--secondary-900)]"
@@ -180,7 +220,7 @@ export function SlideInModalHeader({
           variant="tertiary"
           onClick={onClose}
           aria-label="Sluiten"
-          className="relative z-[1] !min-w-0 size-10 shrink-0 no-underline p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] [&_svg]:size-6"
+          className={iconBtnClass}
         >
           <CloseIcon className="size-6 shrink-0" />
         </Button>
