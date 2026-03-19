@@ -215,19 +215,22 @@ function parseQuantity(qty: string): { stepperValue: number; quantityDesc: strin
   return { stepperValue: 1, quantityDesc: qty.trim() || "stuk" };
 }
 
-/** New Item Modal – slide-in from FAB or edit from pencil */
+/** New Item Modal – slide-in from FAB, section plus, or edit from pencil */
 function NewItemModal({
   open,
   onClose,
   onAdd,
   editingItem,
   onSave,
+  initialSection,
 }: {
   open: boolean;
   onClose: () => void;
   onAdd: (item: { name: string; quantity: string; section: string }) => void;
   editingItem?: ListItem | null;
   onSave?: (item: ListItem) => void;
+  /** When opening for add, pre-select this section (e.g. from section plus button) */
+  initialSection?: string | null;
 }) {
   const isEditMode = editingItem != null;
   const [selectedDay, setSelectedDay] = React.useState("Geen");
@@ -260,8 +263,13 @@ function NewItemModal({
         editingItem.section === "Algemeen" ? "Geen" : editingItem.section
       );
       setActiveTab("first");
+    } else if (initialSection) {
+      setSelectedDay(
+        initialSection === "Algemeen" ? "Geen" : initialSection
+      );
+      setActiveTab("first");
     }
-  }, [open, editingItem]);
+  }, [open, editingItem, initialSection]);
 
   const handleAdd = () => {
     if (!canAdd && !isEditMode) return;
@@ -403,6 +411,7 @@ function SortableItemItems({
   onDelete,
   onDeleteSection,
   onEdit,
+  onAddToSection,
 }: {
   sections: { title: string; items: ListItem[] }[];
   isEditMode: boolean;
@@ -414,6 +423,7 @@ function SortableItemItems({
   onDelete: (id: string) => void;
   onDeleteSection: (sectionTitle: string) => void;
   onEdit: (item: ListItem) => void;
+  onAddToSection: (sectionTitle: string) => void;
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
@@ -449,6 +459,7 @@ function SortableItemItems({
               <button
                 type="button"
                 aria-label={`Item toevoegen aan ${section.title}`}
+                onClick={() => onAddToSection(section.title)}
                 className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
               >
                 <PlusCircleIcon />
@@ -557,6 +568,7 @@ export default function ListDetailPage({
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<ListItem | null>(null);
+  const [initialSection, setInitialSection] = React.useState<string | null>(null);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
     null
   );
@@ -809,6 +821,11 @@ export default function ListDetailPage({
                   onEdit={(item) => {
                     setEditingItem(item);
                   }}
+                  onAddToSection={(sectionTitle) => {
+                    setInitialSection(sectionTitle);
+                    setEditingItem(null);
+                    setIsNewItemOpen(true);
+                  }}
                 />
               </SortableContext>
             </DndContext>
@@ -835,6 +852,7 @@ export default function ListDetailPage({
         className="fixed bottom-[45px] right-6 z-20"
         onClick={() => {
           setEditingItem(null);
+          setInitialSection(null);
           setIsNewItemOpen(true);
         }}
       />
@@ -844,10 +862,12 @@ export default function ListDetailPage({
         onClose={() => {
           setIsNewItemOpen(false);
           setEditingItem(null);
+          setInitialSection(null);
         }}
         onAdd={handleAddNewItem}
         editingItem={editingItem}
         onSave={handleSaveEditedItem}
+        initialSection={initialSection}
       />
     </div>
   );
