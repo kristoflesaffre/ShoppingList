@@ -283,9 +283,11 @@ const SLIDE_TRANSITION = "transform 350ms cubic-bezier(0.16, 1, 0.3, 1)";
 function SortableIngredientCard({
   ingredient,
   onDelete,
+  onEdit,
 }: {
   ingredient: Ingredient;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   const {
     attributes,
@@ -315,6 +317,7 @@ function SortableIngredientCard({
         quantity={ingredient.quantity}
         state="editable"
         onDelete={onDelete}
+        onEdit={onEdit}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>
@@ -325,9 +328,11 @@ function SortableIngredientCard({
 function RecipeIngredientsSortableBody({
   ingredients,
   onDelete,
+  onEdit,
 }: {
   ingredients: Ingredient[];
   onDelete: (id: string) => void;
+  onEdit: (id: string) => void;
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
@@ -350,6 +355,7 @@ function RecipeIngredientsSortableBody({
               <SortableIngredientCard
                 ingredient={ing}
                 onDelete={() => onDelete(ing.id)}
+                onEdit={() => onEdit(ing.id)}
               />
             </div>
           );
@@ -363,10 +369,12 @@ function RecipeIngredientsDnd({
   ingredients,
   onDragEnd,
   onDelete,
+  onEdit,
 }: {
   ingredients: Ingredient[];
   onDragEnd: (event: DragEndEvent) => void;
   onDelete: (id: string) => void;
+  onEdit: (id: string) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -390,6 +398,7 @@ function RecipeIngredientsDnd({
       <RecipeIngredientsSortableBody
         ingredients={ingredients}
         onDelete={onDelete}
+        onEdit={onEdit}
       />
     </DndContext>
   );
@@ -426,6 +435,15 @@ function NewItemModal({
   const [recipePersons, setRecipePersons] = React.useState(2);
   const [ingredients, setIngredients] = React.useState<Ingredient[]>([]);
 
+  /** Slide-in om ingrediënt toe te voegen of te bewerken (genest in receptflow). */
+  const [ingredientSlideOpen, setIngredientSlideOpen] = React.useState(false);
+  const [editingIngredientId, setEditingIngredientId] = React.useState<
+    string | null
+  >(null);
+  const [ingName, setIngName] = React.useState("");
+  const [ingStepper, setIngStepper] = React.useState(1);
+  const [ingQtyDesc, setIngQtyDesc] = React.useState("stuk");
+
   const isWeekday = selectedDay !== "Geen";
   const canAdd = itemName.trim().length > 0;
   const canSaveRecipe = recipeName.trim().length > 0;
@@ -443,6 +461,11 @@ function NewItemModal({
       setRecipeLink("");
       setRecipePersons(2);
       setIngredients([]);
+      setIngredientSlideOpen(false);
+      setEditingIngredientId(null);
+      setIngName("");
+      setIngStepper(1);
+      setIngQtyDesc("stuk");
     } else if (editingItem) {
       setItemName(editingItem.name);
       const { stepperValue: sv, quantityDesc: qd } = parseQuantity(
@@ -489,10 +512,61 @@ function NewItemModal({
     setIngredients((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
-  const handleAddIngredient = React.useCallback(() => {
-    const id = `ing-${Date.now()}`;
-    setIngredients((prev) => [...prev, { id, name: "Nieuw ingrediënt", quantity: "1 stuk" }]);
+  const closeIngredientForm = React.useCallback(() => {
+    setIngredientSlideOpen(false);
+    setEditingIngredientId(null);
+    setIngName("");
+    setIngStepper(1);
+    setIngQtyDesc("stuk");
   }, []);
+
+  const openIngredientFormAdd = React.useCallback(() => {
+    setEditingIngredientId(null);
+    setIngName("");
+    setIngStepper(1);
+    setIngQtyDesc("stuk");
+    setIngredientSlideOpen(true);
+  }, []);
+
+  const openIngredientFormEdit = React.useCallback(
+    (id: string) => {
+      const ing = ingredients.find((i) => i.id === id);
+      if (!ing) return;
+      setEditingIngredientId(id);
+      setIngName(ing.name);
+      const { stepperValue: sv, quantityDesc: qd } = parseQuantity(ing.quantity);
+      setIngStepper(sv);
+      setIngQtyDesc(qd);
+      setIngredientSlideOpen(true);
+    },
+    [ingredients],
+  );
+
+  const handleSaveIngredient = React.useCallback(() => {
+    if (!ingName.trim()) return;
+    const qty = `${ingStepper} ${ingQtyDesc}`;
+    if (editingIngredientId) {
+      setIngredients((prev) =>
+        prev.map((i) =>
+          i.id === editingIngredientId
+            ? { ...i, name: ingName.trim(), quantity: qty }
+            : i,
+        ),
+      );
+    } else {
+      setIngredients((prev) => [
+        ...prev,
+        { id: `ing-${Date.now()}`, name: ingName.trim(), quantity: qty },
+      ]);
+    }
+    closeIngredientForm();
+  }, [
+    ingName,
+    ingStepper,
+    ingQtyDesc,
+    editingIngredientId,
+    closeIngredientForm,
+  ]);
 
   const handleReorderIngredients = React.useCallback((event: DragEndEvent) => {
     const { active, over } = event;
@@ -533,12 +607,14 @@ function NewItemModal({
   );
 
   return (
+    <>
     <SlideInModal
       open={open}
       onClose={onClose}
       title={modalTitle}
       onBack={showRecipeForm ? () => setShowRecipeForm(false) : undefined}
       footer={showRecipeForm ? recipeFooter : itemFooter}
+      disableEscapeClose={ingredientSlideOpen}
     >
       <div className="overflow-hidden">
         <div
@@ -691,7 +767,7 @@ function NewItemModal({
                     <button
                       type="button"
                       aria-label="Ingrediënt toevoegen"
-                      onClick={handleAddIngredient}
+                      onClick={openIngredientFormAdd}
                       className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                     >
                       <PlusCircleIcon />
@@ -706,7 +782,7 @@ function NewItemModal({
                     </p>
                     <MiniButton
                       variant="primary"
-                      onClick={handleAddIngredient}
+                      onClick={openIngredientFormAdd}
                     >
                       Voeg ingrediënt toe
                     </MiniButton>
@@ -716,6 +792,7 @@ function NewItemModal({
                     ingredients={ingredients}
                     onDragEnd={handleReorderIngredients}
                     onDelete={handleDeleteIngredient}
+                    onEdit={openIngredientFormEdit}
                   />
                 )}
               </div>
@@ -724,6 +801,53 @@ function NewItemModal({
         </div>
       </div>
     </SlideInModal>
+
+    <SlideInModal
+      open={ingredientSlideOpen}
+      onClose={closeIngredientForm}
+      compact
+      title={
+        editingIngredientId ? "Ingrediënt wijzigen" : "Ingrediënt toevoegen"
+      }
+      titleId="ingredient-form-slide-title"
+      containerClassName="z-[60]"
+      footer={
+        <Button
+          variant="primary"
+          disabled={!ingName.trim()}
+          onClick={handleSaveIngredient}
+        >
+          {editingIngredientId ? "Bewaren" : "Toevoegen"}
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-6">
+        <InputField
+          label="Naam ingrediënt"
+          placeholder="Naam ingrediënt"
+          value={ingName}
+          onChange={(e) => setIngName(e.target.value)}
+        />
+        <div className="flex flex-col gap-2">
+          <Stepper
+            label="Hoeveelheid"
+            value={ingStepper}
+            onValueChange={setIngStepper}
+            min={1}
+          />
+          <InputField
+            value={ingQtyDesc}
+            className="text-center"
+            onFocus={(e) => {
+              const input = e.target;
+              requestAnimationFrame(() => input.select());
+            }}
+            onChange={(e) => setIngQtyDesc(e.target.value)}
+          />
+        </div>
+      </div>
+    </SlideInModal>
+    </>
   );
 }
 

@@ -21,6 +21,12 @@ export interface SlideInModalProps {
   onBack?: () => void;
   /** Optional class for the panel */
   className?: string;
+  /** Merged onto the fixed full-screen wrapper (e.g. z-[60] for nested modals) */
+  containerClassName?: string;
+  /** id for the title heading and aria-labelledby */
+  titleId?: string;
+  /** When true, Escape does not close this modal (e.g. when a child modal is open) */
+  disableEscapeClose?: boolean;
 }
 
 const SLIDE_DURATION_MS = 500;
@@ -78,6 +84,9 @@ export function SlideInModal({
   compact = false,
   onBack,
   className,
+  containerClassName,
+  titleId = "slide-in-modal-title",
+  disableEscapeClose = false,
 }: SlideInModalProps) {
   const [isAnimatingIn, setIsAnimatingIn] = React.useState(false);
   const [isClosing, setIsClosing] = React.useState(false);
@@ -104,22 +113,22 @@ export function SlideInModal({
   }, [onClose, isClosing]);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open || disableEscapeClose) return;
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [open, handleClose]);
+  }, [open, handleClose, disableEscapeClose]);
 
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end"
+      className={cn("fixed inset-0 z-50 flex items-end", containerClassName)}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="slide-in-modal-title"
+      aria-labelledby={titleId}
     >
       {/* Overlay – Figma: rgba(100,100,100,0.5) */}
       <button
@@ -145,7 +154,12 @@ export function SlideInModal({
           transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        <SlideInModalHeader title={title} onClose={handleClose} onBack={onBack} />
+        <SlideInModalHeader
+          title={title}
+          onClose={handleClose}
+          onBack={onBack}
+          titleId={titleId}
+        />
         <div
           className={cn(
             "flex flex-col",
