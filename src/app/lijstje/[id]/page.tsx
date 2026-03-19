@@ -336,12 +336,11 @@ function NewItemModal({
 
       {/* Toevoegen button – pinned at bottom */}
       {(!isWeekday || activeTab === "first") && (
-        <div className="mt-8">
+        <div className="mt-8 flex justify-center">
           <Button
             variant="primary"
             disabled={!canAdd}
             onClick={handleAdd}
-            className="w-full max-w-none"
           >
             Toevoegen
           </Button>

@@ -116,7 +116,11 @@ export function SlideInModal({
         }}
       >
         <SlideInModalHeader title={title} onClose={handleClose} />
-        <div className="flex-1 overflow-y-auto px-4 pb-[45px] pt-6">{children}</div>
+        <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 pb-[45px] pt-6">
+          <div className="mx-auto w-full max-w-[768px] [&>*]:w-full">
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );

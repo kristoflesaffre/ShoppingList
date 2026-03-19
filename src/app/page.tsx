@@ -490,7 +490,6 @@ export default function Home() {
             variant="primary"
             onClick={handleSaveNewList}
             disabled={!newListName.trim()}
-            className="w-full max-w-[280px] self-center"
           >
             Bewaren
           </Button>
