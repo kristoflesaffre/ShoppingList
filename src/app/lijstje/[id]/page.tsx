@@ -750,33 +750,35 @@ export default function ListDetailPage({
 
   return (
     <div className="relative flex min-h-screen w-full flex-col">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 bg-[var(--white)] px-4">
-        <button
-          type="button"
-          onClick={() => router.push("/")}
-          aria-label="Terug naar lijstjes"
-          className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-        >
-          <BackArrowIcon />
-        </button>
-        <h1 className="flex-1 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
-          {listName}
-        </h1>
-        <button
-          type="button"
-          aria-label="Uitnodigen"
-          className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-        >
-          <PersonAddIcon />
-        </button>
-        <button
-          type="button"
-          aria-label="Meer opties"
-          className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-        >
-          <MoreDotsIcon />
-        </button>
-      </header>
+      <div className="sticky top-0 z-10 w-full bg-[var(--white)]">
+        <header className="mx-auto flex h-16 max-w-[956px] items-center gap-4 px-4">
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            aria-label="Terug naar lijstjes"
+            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <BackArrowIcon />
+          </button>
+          <h1 className="flex-1 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+            {listName}
+          </h1>
+          <button
+            type="button"
+            aria-label="Uitnodigen"
+            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <PersonAddIcon />
+          </button>
+          <button
+            type="button"
+            aria-label="Meer opties"
+            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <MoreDotsIcon />
+          </button>
+        </header>
+      </div>
 
       <div className="flex flex-1 flex-col px-4 pb-24 pt-8">
         <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6">
