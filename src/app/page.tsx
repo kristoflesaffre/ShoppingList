@@ -474,6 +474,15 @@ export default function Home() {
         open={isCreateModalOpen}
         onClose={handleCloseCreateModal}
         title="Nieuw lijstje"
+        footer={
+          <Button
+            variant="primary"
+            onClick={handleSaveNewList}
+            disabled={!newListName.trim()}
+          >
+            Bewaren
+          </Button>
+        }
       >
         <div className="flex flex-col items-center gap-8">
           <InputField
@@ -486,13 +495,6 @@ export default function Home() {
               if (e.key === "Enter" && newListName.trim()) handleSaveNewList();
             }}
           />
-          <Button
-            variant="primary"
-            onClick={handleSaveNewList}
-            disabled={!newListName.trim()}
-          >
-            Bewaren
-          </Button>
         </div>
       </SlideInModal>
 

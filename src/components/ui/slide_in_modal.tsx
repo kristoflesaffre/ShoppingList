@@ -13,6 +13,8 @@ export interface SlideInModalProps {
   title: string;
   /** Modal content (body) */
   children: React.ReactNode;
+  /** Optional sticky footer, 24px from bottom */
+  footer?: React.ReactNode;
   /** Optional class for the panel */
   className?: string;
 }
@@ -48,6 +50,7 @@ export function SlideInModal({
   onClose,
   title,
   children,
+  footer,
   className,
 }: SlideInModalProps) {
   const [isAnimatingIn, setIsAnimatingIn] = React.useState(false);
@@ -116,10 +119,19 @@ export function SlideInModal({
         }}
       >
         <SlideInModalHeader title={title} onClose={handleClose} />
-        <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 pb-[45px] pt-6">
-          <div className="mx-auto w-full max-w-[768px] [&>*]:w-full">
-            {children}
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 pb-4 pt-6">
+            <div className="mx-auto w-full max-w-[768px] [&>*]:w-full">
+              {children}
+            </div>
           </div>
+          {footer && (
+            <div className="shrink-0 px-4 pb-6 pt-4">
+              <div className="mx-auto flex w-full max-w-[768px] justify-center">
+                {footer}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -242,7 +242,22 @@ function NewItemModal({
   };
 
   return (
-    <SlideInModal open={open} onClose={onClose} title="Item(s) toevoegen">
+    <SlideInModal
+      open={open}
+      onClose={onClose}
+      title="Item(s) toevoegen"
+      footer={
+        !isWeekday || activeTab === "first" ? (
+          <Button
+            variant="primary"
+            disabled={!canAdd}
+            onClick={handleAdd}
+          >
+            Toevoegen
+          </Button>
+        ) : undefined
+      }
+    >
       <div className="flex flex-col gap-6">
         {/* Day selector */}
         <div className="flex flex-col gap-2">
@@ -333,19 +348,6 @@ function NewItemModal({
           </div>
         )}
       </div>
-
-      {/* Toevoegen button – pinned at bottom */}
-      {(!isWeekday || activeTab === "first") && (
-        <div className="mt-8 flex justify-center">
-          <Button
-            variant="primary"
-            disabled={!canAdd}
-            onClick={handleAdd}
-          >
-            Toevoegen
-          </Button>
-        </div>
-      )}
     </SlideInModal>
   );
 }
