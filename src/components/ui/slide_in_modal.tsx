@@ -15,6 +15,8 @@ export interface SlideInModalProps {
   children: React.ReactNode;
   /** Optional sticky footer, 24px from bottom */
   footer?: React.ReactNode;
+  /** When true, panel height fits content instead of full screen */
+  compact?: boolean;
   /** Optional class for the panel */
   className?: string;
 }
@@ -51,6 +53,7 @@ export function SlideInModal({
   title,
   children,
   footer,
+  compact = false,
   className,
 }: SlideInModalProps) {
   const [isAnimatingIn, setIsAnimatingIn] = React.useState(false);
@@ -106,21 +109,32 @@ export function SlideInModal({
         aria-label="Sluiten"
       />
 
-      {/* Panel – fullscreen minus 48px from top, slides up from bottom */}
+      {/* Panel – fullscreen or compact (content height) */}
       <div
         className={cn(
           "relative z-10 flex w-full flex-col rounded-t-[var(--radius-md)] bg-[var(--white)] shadow-[0px_1px_4px_0px_rgba(0,0,0,0.13)] transition-transform duration-500 ease-out",
           isAnimatingIn && !isClosing ? "translate-y-0" : "translate-y-full",
+          compact && "max-h-[calc(100dvh-48px)]",
           className
         )}
         style={{
-          height: "calc(100dvh - 48px)",
+          ...(compact ? {} : { height: "calc(100dvh - 48px)" }),
           transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
         <SlideInModalHeader title={title} onClose={handleClose} />
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 pb-4 pt-6">
+        <div
+          className={cn(
+            "flex flex-col",
+            compact ? "min-h-0 shrink-0" : "min-h-0 flex-1"
+          )}
+        >
+          <div
+            className={cn(
+              "flex flex-col items-center px-4 pb-4 pt-6",
+              compact ? "shrink-0" : "flex-1 overflow-y-auto"
+            )}
+          >
             <div className="mx-auto w-full max-w-[768px] [&>*]:w-full">
               {children}
             </div>
