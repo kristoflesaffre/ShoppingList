@@ -36,6 +36,12 @@ import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search_bar";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { cn } from "@/lib/utils";
+import {
+  loadRecipeLibrary,
+  saveRecipeLibrary,
+  type RecipeIngredient,
+  type SavedRecipe,
+} from "@/lib/recipe_library";
 
 type ListItem = {
   id: string;
@@ -258,11 +264,7 @@ function FishIcon({ className }: { className?: string }) {
   );
 }
 
-type Ingredient = {
-  id: string;
-  name: string;
-  quantity: string;
-};
+type Ingredient = RecipeIngredient;
 
 /** Parse quantity "2 stuks" or "5 kg" into { stepperValue, quantityDesc } */
 function parseQuantity(qty: string): { stepperValue: number; quantityDesc: string } {
@@ -412,6 +414,9 @@ function NewItemModal({
   editingItem,
   onSave,
   initialSection,
+  storedRecipes,
+  onSaveRecipeToLibrary,
+  onApplyRecipeToList,
 }: {
   open: boolean;
   onClose: () => void;
@@ -419,6 +424,9 @@ function NewItemModal({
   editingItem?: ListItem | null;
   onSave?: (item: ListItem) => void;
   initialSection?: string | null;
+  storedRecipes: SavedRecipe[];
+  onSaveRecipeToLibrary: (recipe: SavedRecipe) => void;
+  onApplyRecipeToList: (items: ListItem[]) => void;
 }) {
   const isEditMode = editingItem != null;
   const [selectedDay, setSelectedDay] = React.useState("Geen");
@@ -428,7 +436,10 @@ function NewItemModal({
   const [quantityDesc, setQuantityDesc] = React.useState("stuk");
   const [recipeSearch, setRecipeSearch] = React.useState("");
   const [showRecipeForm, setShowRecipeForm] = React.useState(false);
-  const recipes: { id: string; name: string }[] = []; // TODO: connect to real data
+  /** Bewerken van bestaand recept uit bibliotheek (vs. nieuw). */
+  const [editingLibraryRecipeId, setEditingLibraryRecipeId] = React.useState<
+    string | null
+  >(null);
 
   const [recipeName, setRecipeName] = React.useState("");
   const [recipeLink, setRecipeLink] = React.useState("");
@@ -444,9 +455,16 @@ function NewItemModal({
   const [ingStepper, setIngStepper] = React.useState(1);
   const [ingQtyDesc, setIngQtyDesc] = React.useState("stuk");
 
-  const isWeekday = selectedDay !== "Geen";
   const canAdd = itemName.trim().length > 0;
   const canSaveRecipe = recipeName.trim().length > 0;
+
+  const filteredRecipes = React.useMemo(() => {
+    const q = recipeSearch.trim().toLowerCase();
+    if (!q) return storedRecipes;
+    return storedRecipes.filter((r) =>
+      r.name.toLowerCase().includes(q),
+    );
+  }, [storedRecipes, recipeSearch]);
 
   React.useEffect(() => {
     if (!open) {
@@ -457,6 +475,7 @@ function NewItemModal({
       setQuantityDesc("stuk");
       setRecipeSearch("");
       setShowRecipeForm(false);
+      setEditingLibraryRecipeId(null);
       setRecipeName("");
       setRecipeLink("");
       setRecipePersons(2);
@@ -502,11 +521,65 @@ function NewItemModal({
     onClose();
   };
 
+  const closeRecipeFormPanel = React.useCallback(() => {
+    setShowRecipeForm(false);
+    setEditingLibraryRecipeId(null);
+    setRecipeName("");
+    setRecipeLink("");
+    setRecipePersons(2);
+    setIngredients([]);
+    setIngredientSlideOpen(false);
+    setEditingIngredientId(null);
+    setIngName("");
+    setIngStepper(1);
+    setIngQtyDesc("stuk");
+  }, []);
+
+  const openNewRecipeForm = React.useCallback(() => {
+    setEditingLibraryRecipeId(null);
+    setRecipeName("");
+    setRecipeLink("");
+    setRecipePersons(2);
+    setIngredients([]);
+    setShowRecipeForm(true);
+  }, []);
+
+  const openRecipeForEdit = React.useCallback((recipe: SavedRecipe) => {
+    setEditingLibraryRecipeId(recipe.id);
+    setRecipeName(recipe.name);
+    setRecipeLink(recipe.link);
+    setRecipePersons(recipe.persons);
+    setIngredients(recipe.ingredients.map((i) => ({ ...i })));
+    setShowRecipeForm(true);
+  }, []);
+
   const handleSaveRecipe = () => {
     if (!canSaveRecipe) return;
-    // TODO: persist recipe to library
-    setShowRecipeForm(false);
+    onSaveRecipeToLibrary({
+      id: editingLibraryRecipeId ?? `recipe-${Date.now()}`,
+      name: recipeName.trim(),
+      link: recipeLink.trim(),
+      persons: recipePersons,
+      ingredients: ingredients.map((i) => ({ ...i })),
+    });
+    closeRecipeFormPanel();
   };
+
+  const handleSelectRecipe = React.useCallback(
+    (recipe: SavedRecipe) => {
+      const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
+      const ts = Date.now();
+      const newItems: ListItem[] = recipe.ingredients.map((ing, i) => ({
+        id: `from-recipe-${recipe.id}-${ts}-${i}`,
+        name: ing.name,
+        quantity: ing.quantity,
+        checked: false,
+        section,
+      }));
+      onApplyRecipeToList(newItems);
+    },
+    [selectedDay, onApplyRecipeToList],
+  );
 
   const handleDeleteIngredient = React.useCallback((id: string) => {
     setIngredients((prev) => prev.filter((i) => i.id !== id));
@@ -580,13 +653,15 @@ function NewItemModal({
   }, []);
 
   const modalTitle = showRecipeForm
-    ? "Recept toevoegen"
+    ? editingLibraryRecipeId
+      ? "Recept wijzigen"
+      : "Recept toevoegen"
     : isEditMode
       ? "Wijzig item(s)"
       : "Item(s) toevoegen";
 
   const itemFooter =
-    !isWeekday || activeTab === "first" ? (
+    isEditMode || activeTab === "first" ? (
       <Button
         variant="primary"
         disabled={!isEditMode && !canAdd}
@@ -612,7 +687,7 @@ function NewItemModal({
       open={open}
       onClose={onClose}
       title={modalTitle}
-      onBack={showRecipeForm ? () => setShowRecipeForm(false) : undefined}
+      onBack={showRecipeForm ? closeRecipeFormPanel : undefined}
       footer={showRecipeForm ? recipeFooter : itemFooter}
       disableEscapeClose={ingredientSlideOpen}
     >
@@ -648,7 +723,7 @@ function NewItemModal({
                 </div>
               </div>
 
-              {isWeekday && (
+              {!isEditMode && (
                 <PillTab
                   value={activeTab}
                   onValueChange={setActiveTab}
@@ -657,7 +732,7 @@ function NewItemModal({
                 />
               )}
 
-              {(!isWeekday || activeTab === "first") && (
+              {(isEditMode || activeTab === "first") && (
                 <div className="flex flex-col gap-6">
                   <InputField
                     label="Naam item"
@@ -685,7 +760,7 @@ function NewItemModal({
                 </div>
               )}
 
-              {isWeekday && activeTab === "second" && (
+              {!isEditMode && activeTab === "second" && (
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-3">
                     <div className="flex min-w-0 flex-1 items-center gap-[12px]">
@@ -694,37 +769,69 @@ function NewItemModal({
                         Jouw recepten
                       </h3>
                     </div>
-                    {recipes.length > 0 && (
+                    {storedRecipes.length > 0 && (
                       <button
                         type="button"
                         aria-label="Recept toevoegen"
-                        onClick={() => setShowRecipeForm(true)}
+                        onClick={openNewRecipeForm}
                         className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                       >
                         <PlusCircleIcon />
                       </button>
                     )}
                   </div>
-                  {recipes.length > 0 ? (
+                  {storedRecipes.length > 0 ? (
                     <SearchBar
                       placeholder="Zoek recept"
                       value={recipeSearch}
                       onValueChange={setRecipeSearch}
                     />
                   ) : null}
-                  {recipes.length === 0 ? (
+                  {storedRecipes.length === 0 ? (
                     <div className="flex flex-col items-center gap-4 py-8">
                       <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
                         Je hebt nog geen recepten toegevoegd
                       </p>
                       <MiniButton
                         variant="primary"
-                        onClick={() => setShowRecipeForm(true)}
+                        onClick={openNewRecipeForm}
                       >
                         Voeg recept toe
                       </MiniButton>
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {filteredRecipes.length === 0 ? (
+                        <p className="py-4 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
+                          Geen recepten gevonden
+                        </p>
+                      ) : (
+                        filteredRecipes.map((r) => {
+                          const n = r.ingredients.length;
+                          const itemCount =
+                            n === 1 ? "1 item" : `${n} items`;
+                          return (
+                            <RecipeTile
+                              key={r.id}
+                              recipeName={r.name}
+                              itemCount={itemCount}
+                              onEdit={() => openRecipeForEdit(r)}
+                              className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => handleSelectRecipe(r)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  handleSelectRecipe(r);
+                                }
+                              }}
+                            />
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1034,6 +1141,7 @@ export default function ListDetailPage({
   >(null);
   const [addingId, setAddingId] = React.useState<string | null>(null);
   const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
+  const [savedRecipes, setSavedRecipes] = React.useState<SavedRecipe[]>([]);
   const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
 
   const DELETE_ANIMATION_MS = 300;
@@ -1059,6 +1167,43 @@ export default function ListDetailPage({
     return () => {
       if (removeTimeoutRef.current) clearTimeout(removeTimeoutRef.current);
     };
+  }, []);
+
+  React.useEffect(() => {
+    setSavedRecipes(loadRecipeLibrary());
+  }, []);
+
+  const handleSaveRecipeToLibrary = React.useCallback((recipe: SavedRecipe) => {
+    setSavedRecipes((prev) => {
+      const idx = prev.findIndex((r) => r.id === recipe.id);
+      const next =
+        idx === -1
+          ? [recipe, ...prev]
+          : [...prev.slice(0, idx), recipe, ...prev.slice(idx + 1)];
+      saveRecipeLibrary(next);
+      return next;
+    });
+  }, []);
+
+  const handleAddItemsFromRecipe = React.useCallback((newItems: ListItem[]) => {
+    if (newItems.length > 0) {
+      const section = newItems[0].section;
+      setItems((current) => {
+        const firstIndex = current.findIndex((i) => i.section === section);
+        if (firstIndex === -1) {
+          return [...current, ...newItems];
+        }
+        return [
+          ...current.slice(0, firstIndex),
+          ...newItems,
+          ...current.slice(firstIndex),
+        ];
+      });
+      setAddingId(newItems[newItems.length - 1].id);
+    }
+    setIsNewItemOpen(false);
+    setEditingItem(null);
+    setInitialSection(null);
   }, []);
 
   React.useEffect(() => {
@@ -1336,6 +1481,9 @@ export default function ListDetailPage({
         editingItem={editingItem}
         onSave={handleSaveEditedItem}
         initialSection={initialSection}
+        storedRecipes={savedRecipes}
+        onSaveRecipeToLibrary={handleSaveRecipeToLibrary}
+        onApplyRecipeToList={handleAddItemsFromRecipe}
       />
     </div>
   );

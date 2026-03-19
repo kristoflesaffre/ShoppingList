@@ -102,11 +102,14 @@ const RecipeTile = React.forwardRef<HTMLDivElement, RecipeTileProps>(
           )}
         </div>
 
-        {!isDisabled && (
+        {!isDisabled && onEdit != null && (
           <button
             type="button"
-            aria-label="Edit recipe"
-            onClick={onEdit}
+            aria-label="Recept bewerken"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
             className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-action-primary transition-colors hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
           >
             <PencilIcon />

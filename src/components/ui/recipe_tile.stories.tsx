@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "@storybook/test";
 import { RecipeTile } from "./recipe_tile";
 
 const meta: Meta<typeof RecipeTile> = {
@@ -45,6 +46,7 @@ export const Default: Story = {
     recipeName: "Pasta bolognese",
     itemCount: "5 items",
     state: "default",
+    onEdit: fn(),
   },
 };
 
@@ -61,6 +63,7 @@ export const WithoutItemCount: Story = {
   args: {
     recipeName: "Pasta bolognese",
     state: "default",
+    onEdit: fn(),
   },
 };
 
@@ -77,7 +80,7 @@ export const AllStates: Story = {
   name: "All states",
   render: () => (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", width: "358px" }}>
-      <RecipeTile recipeName="Pasta bolognese" itemCount="5 items" state="default" />
+      <RecipeTile recipeName="Pasta bolognese" itemCount="5 items" state="default" onEdit={fn()} />
       <RecipeTile recipeName="Pasta bolognese" itemCount="5 items" state="disabled" />
     </div>
   ),
