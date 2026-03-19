@@ -492,12 +492,14 @@ function NewItemModal({
                       </h3>
                     </div>
                     {recipes.length > 0 && (
-                      <MiniButton
-                        variant="primary"
+                      <button
+                        type="button"
+                        aria-label="Recept toevoegen"
                         onClick={() => setShowRecipeForm(true)}
+                        className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                       >
-                        +
-                      </MiniButton>
+                        <PlusCircleIcon />
+                      </button>
                     )}
                   </div>
                   {recipes.length > 0 ? (
@@ -559,12 +561,14 @@ function NewItemModal({
                     </h3>
                   </div>
                   {ingredients.length > 0 && (
-                    <MiniButton
-                      variant="primary"
+                    <button
+                      type="button"
+                      aria-label="Ingrediënt toevoegen"
                       onClick={handleAddIngredient}
+                      className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                     >
-                      +
-                    </MiniButton>
+                      <PlusCircleIcon />
+                    </button>
                   )}
                 </div>
 
