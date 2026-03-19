@@ -32,10 +32,7 @@ export interface SearchBarProps
   className?: string;
 }
 
-/**
- * Figma 474:2734/474:2735 information-func-search:
- * 24×24, icon-fill inset ~10.38% → outline magnifying glass (circle + short handle from bottom-right), rounded line ends.
- */
+/** public/icons/search.svg – 24×24 magnifying glass, uses currentColor for theme support */
 function SearchIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -45,21 +42,9 @@ function SearchIcon({ className }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <circle
-        cx="10.5"
-        cy="10.5"
-        r="6"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
       <path
-        d="M14.5 14.5l5.5 5.5"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        d="M21.363 20.656L15.986 15.279C17.18 13.921 17.91 12.146 17.91 10.2C17.91 5.949 14.451 2.49 10.2 2.49C5.94899 2.49 2.48999 5.948 2.48999 10.2C2.48999 14.451 5.94899 17.91 10.2 17.91C12.146 17.91 13.921 17.18 15.279 15.986L20.656 21.363C20.754 21.461 20.882 21.509 21.01 21.509C21.138 21.509 21.266 21.46 21.364 21.363C21.559 21.168 21.559 20.852 21.363 20.656ZM3.48999 10.2C3.48999 6.5 6.49999 3.49 10.2 3.49C13.9 3.49 16.91 6.5 16.91 10.2C16.91 13.9 13.9 16.91 10.2 16.91C6.49999 16.91 3.48999 13.9 3.48999 10.2Z"
+        fill="currentColor"
       />
     </svg>
   );

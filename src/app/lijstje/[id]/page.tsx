@@ -218,6 +218,7 @@ function NewItemModal({
   const [stepperValue, setStepperValue] = React.useState(1);
   const [quantityDesc, setQuantityDesc] = React.useState("stuk");
   const [recipeSearch, setRecipeSearch] = React.useState("");
+  const recipes: { id: string; name: string }[] = []; // TODO: connect to real data
 
   const isWeekday = selectedDay !== "Geen";
   const canAdd = itemName.trim().length > 0;
@@ -248,11 +249,12 @@ function NewItemModal({
           <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
             Dag
           </span>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {DAY_OPTIONS.map((day) => (
               <ToggleButton
                 key={day.value}
                 variant={selectedDay === day.value ? "active" : "inactive"}
+                className="w-full"
                 onClick={() => {
                   setSelectedDay(day.value);
                   if (day.value === "Geen") setActiveTab("first");
@@ -283,25 +285,23 @@ function NewItemModal({
               value={itemName}
               onChange={(e) => setItemName(e.target.value)}
             />
-            <Stepper
-              label="Hoeveelheid"
-              value={stepperValue}
-              onValueChange={setStepperValue}
-              min={1}
-            />
-            <InputField
-              value={`${stepperValue} ${quantityDesc}`}
-              className="text-center"
-              onChange={(e) => {
-                const raw = e.target.value;
-                const match = raw.match(/^(\d+)\s*(.*)/);
-                if (match) {
-                  const num = parseInt(match[1], 10);
-                  if (!Number.isNaN(num)) setStepperValue(num);
-                  if (match[2]) setQuantityDesc(match[2]);
-                }
-              }}
-            />
+            <div className="flex flex-col gap-2">
+              <Stepper
+                label="Hoeveelheid"
+                value={stepperValue}
+                onValueChange={setStepperValue}
+                min={1}
+              />
+              <InputField
+                value={quantityDesc}
+                className="text-center"
+                onFocus={(e) => {
+                  const input = e.target;
+                  requestAnimationFrame(() => input.select());
+                }}
+                onChange={(e) => setQuantityDesc(e.target.value)}
+              />
+            </div>
           </div>
         )}
 
@@ -312,7 +312,9 @@ function NewItemModal({
               <h3 className="flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--text-primary)]">
                 Jouw recepten
               </h3>
-              <MiniButton variant="primary">+</MiniButton>
+              {recipes.length > 0 && (
+                <MiniButton variant="primary">+</MiniButton>
+              )}
             </div>
             <SearchBar
               placeholder="Zoek recept"
@@ -320,12 +322,14 @@ function NewItemModal({
               onValueChange={setRecipeSearch}
             />
             {/* Empty state */}
-            <div className="flex flex-col items-center gap-4 py-8">
-              <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
-                Je hebt nog geen recepten toegevoegd
-              </p>
-              <MiniButton variant="primary">Voeg recept toe</MiniButton>
-            </div>
+            {recipes.length === 0 ? (
+              <div className="flex flex-col items-center gap-4 py-8">
+                <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
+                  Je hebt nog geen recepten toegevoegd
+                </p>
+                <MiniButton variant="primary">Voeg recept toe</MiniButton>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

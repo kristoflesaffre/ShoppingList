@@ -40,7 +40,7 @@ const ToggleButton = React.forwardRef<HTMLButtonElement, ToggleButtonProps>(
     const Comp = asChild ? Slot : "button";
 
     const base =
-      "inline-flex items-center justify-center text-sm leading-20 tracking-normal whitespace-nowrap rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 [&_svg]:shrink-0";
+      "inline-flex items-center justify-center text-sm leading-20 tracking-normal whitespace-nowrap rounded-md transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 [&_svg]:shrink-0";
 
     const sizeStyles: Record<ToggleButtonSize, string> = {
       default: "py-2 px-3",
@@ -48,9 +48,9 @@ const ToggleButton = React.forwardRef<HTMLButtonElement, ToggleButtonProps>(
 
     const variantStyles: Record<ToggleButtonVariant, string> = {
       inactive:
-        "bg-[var(--blue-25)] text-[var(--text-link)] font-normal hover:bg-[var(--blue-50)]",
+        "bg-[var(--blue-25)] text-[var(--text-link)] font-normal shadow-[inset_0_0_0_2px_transparent] hover:bg-[var(--blue-50)]",
       active:
-        "bg-[var(--blue-100)] border border-[var(--action-primary)] text-[var(--action-primary)] font-semibold",
+        "bg-[var(--blue-100)] shadow-[inset_0_0_0_2px_var(--action-primary)] text-[var(--action-primary)] font-semibold",
     };
 
     const isSlot = asChild;

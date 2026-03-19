@@ -142,7 +142,8 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
 
     React.useEffect(() => {
       if (isEditing && inputRef.current) {
-        inputRef.current.select();
+        const input = inputRef.current;
+        requestAnimationFrame(() => input.select());
       }
     }, [isEditing]);
 
