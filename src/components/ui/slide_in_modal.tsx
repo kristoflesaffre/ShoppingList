@@ -166,22 +166,25 @@ export function SlideInModalHeader({
   titleId?: string;
 }) {
   return (
-    <div className="relative flex h-16 items-center justify-end px-4">
-      <h2
-        id={titleId}
-        className="pointer-events-none absolute left-0 right-0 text-center font-medium text-base leading-24 tracking-normal text-[var(--secondary-900)]"
-      >
-        {title}
-      </h2>
-      <Button
-        type="button"
-        variant="tertiary"
-        onClick={onClose}
-        aria-label="Sluiten"
-        className="size-10 shrink-0 no-underline p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] [&_svg]:size-6"
-      >
-        <CloseIcon className="size-6 shrink-0" />
-      </Button>
+    <div className="flex h-16 shrink-0 items-center justify-center px-4">
+      {/* Zelfde max-w als body-inhoud zodat sluit-icoon rechts gelijk loopt met inputvelden */}
+      <div className="relative flex h-full w-full max-w-[768px] items-center justify-end">
+        <h2
+          id={titleId}
+          className="pointer-events-none absolute inset-0 flex items-center justify-center px-12 text-center font-medium text-base leading-24 tracking-normal text-[var(--secondary-900)]"
+        >
+          {title}
+        </h2>
+        <Button
+          type="button"
+          variant="tertiary"
+          onClick={onClose}
+          aria-label="Sluiten"
+          className="relative z-[1] size-10 shrink-0 no-underline p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] [&_svg]:size-6"
+        >
+          <CloseIcon className="size-6 shrink-0" />
+        </Button>
+      </div>
     </div>
   );
 }
