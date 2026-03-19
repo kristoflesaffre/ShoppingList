@@ -574,7 +574,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               aria-label="Edit item"
               onClick={onEdit}
               onPointerDown={(e) => e.stopPropagation()}
-              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              className="flex size-10 shrink-0 items-center justify-center rounded-pill text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
             >
               <PencilIcon />
             </button>

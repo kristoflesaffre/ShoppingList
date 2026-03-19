@@ -202,16 +202,34 @@ function PlusCircleIcon({ className }: { className?: string }) {
   );
 }
 
-/** New Item Modal – slide-in from FAB */
+/** Parse quantity "2 stuks" or "5 kg" into { stepperValue, quantityDesc } */
+function parseQuantity(qty: string): { stepperValue: number; quantityDesc: string } {
+  const match = qty.match(/^(\d+)\s*(.*)$/);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    return {
+      stepperValue: Number.isNaN(num) ? 1 : num,
+      quantityDesc: match[2].trim() || "stuk",
+    };
+  }
+  return { stepperValue: 1, quantityDesc: qty.trim() || "stuk" };
+}
+
+/** New Item Modal – slide-in from FAB or edit from pencil */
 function NewItemModal({
   open,
   onClose,
   onAdd,
+  editingItem,
+  onSave,
 }: {
   open: boolean;
   onClose: () => void;
   onAdd: (item: { name: string; quantity: string; section: string }) => void;
+  editingItem?: ListItem | null;
+  onSave?: (item: ListItem) => void;
 }) {
+  const isEditMode = editingItem != null;
   const [selectedDay, setSelectedDay] = React.useState("Geen");
   const [activeTab, setActiveTab] = React.useState<"first" | "second">("first");
   const [itemName, setItemName] = React.useState("");
@@ -231,29 +249,50 @@ function NewItemModal({
       setStepperValue(1);
       setQuantityDesc("stuk");
       setRecipeSearch("");
+    } else if (editingItem) {
+      setItemName(editingItem.name);
+      const { stepperValue: sv, quantityDesc: qd } = parseQuantity(
+        editingItem.quantity
+      );
+      setStepperValue(sv);
+      setQuantityDesc(qd);
+      setSelectedDay(
+        editingItem.section === "Algemeen" ? "Geen" : editingItem.section
+      );
+      setActiveTab("first");
     }
-  }, [open]);
+  }, [open, editingItem]);
 
   const handleAdd = () => {
-    if (!canAdd) return;
+    if (!canAdd && !isEditMode) return;
     const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
     const qty = `${stepperValue} ${quantityDesc}`;
-    onAdd({ name: itemName.trim(), quantity: qty, section });
+    if (isEditMode && editingItem && onSave) {
+      onSave({
+        ...editingItem,
+        name: itemName.trim(),
+        quantity: qty,
+        section,
+      });
+    } else {
+      onAdd({ name: itemName.trim(), quantity: qty, section });
+    }
+    onClose();
   };
 
   return (
     <SlideInModal
       open={open}
       onClose={onClose}
-      title="Item(s) toevoegen"
+      title={isEditMode ? "Wijzig item(s)" : "Item(s) toevoegen"}
       footer={
         !isWeekday || activeTab === "first" ? (
           <Button
             variant="primary"
-            disabled={!canAdd}
+            disabled={!isEditMode && !canAdd}
             onClick={handleAdd}
           >
-            Toevoegen
+            {isEditMode ? "Bewaren" : "Toevoegen"}
           </Button>
         ) : undefined
       }
@@ -363,6 +402,7 @@ function SortableItemItems({
   onCheckedChange,
   onDelete,
   onDeleteSection,
+  onEdit,
 }: {
   sections: { title: string; items: ListItem[] }[];
   isEditMode: boolean;
@@ -373,6 +413,7 @@ function SortableItemItems({
   onCheckedChange: (id: string, checked: boolean) => void;
   onDelete: (id: string) => void;
   onDeleteSection: (sectionTitle: string) => void;
+  onEdit: (item: ListItem) => void;
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
@@ -438,6 +479,7 @@ function SortableItemItems({
                       onCheckedChange(item.id, checked)
                     }
                     onDelete={() => onDelete(item.id)}
+                    onEdit={() => onEdit(item)}
                   />
                 </div>
               );
@@ -455,11 +497,13 @@ function SortableItemCard({
   isEditMode,
   onCheckedChange,
   onDelete,
+  onEdit,
 }: {
   item: ListItem;
   isEditMode: boolean;
   onCheckedChange: (checked: boolean) => void;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   const {
     attributes,
@@ -491,6 +535,7 @@ function SortableItemCard({
         onCheckedChange={onCheckedChange}
         state={isEditMode ? "editable" : "default"}
         onDelete={isEditMode ? onDelete : undefined}
+        onEdit={isEditMode ? onEdit : undefined}
         dragHandleProps={
           isEditMode ? { ...attributes, ...listeners } : undefined
         }
@@ -511,6 +556,7 @@ export default function ListDetailPage({
   const [items, setItems] = React.useState<ListItem[]>(DEMO_ITEMS);
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
+  const [editingItem, setEditingItem] = React.useState<ListItem | null>(null);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
     null
   );
@@ -635,6 +681,13 @@ export default function ListDetailPage({
     [],
   );
 
+  const handleSaveEditedItem = React.useCallback((updatedItem: ListItem) => {
+    setItems((current) =>
+      current.map((item) => (item.id === updatedItem.id ? updatedItem : item))
+    );
+    setEditingItem(null);
+  }, []);
+
   const sections = React.useMemo(() => {
     const grouped = new Map<string, ListItem[]>();
     for (const item of items) {
@@ -753,6 +806,9 @@ export default function ListDetailPage({
                   onCheckedChange={handleCheckedChange}
                   onDelete={handleDeleteItem}
                   onDeleteSection={handleDeleteSection}
+                  onEdit={(item) => {
+                    setEditingItem(item);
+                  }}
                 />
               </SortableContext>
             </DndContext>
@@ -777,13 +833,21 @@ export default function ListDetailPage({
       <FloatingActionButton
         aria-label="Item toevoegen"
         className="fixed bottom-[45px] right-6 z-20"
-        onClick={() => setIsNewItemOpen(true)}
+        onClick={() => {
+          setEditingItem(null);
+          setIsNewItemOpen(true);
+        }}
       />
 
       <NewItemModal
-        open={isNewItemOpen}
-        onClose={() => setIsNewItemOpen(false)}
+        open={isNewItemOpen || editingItem != null}
+        onClose={() => {
+          setIsNewItemOpen(false);
+          setEditingItem(null);
+        }}
         onAdd={handleAddNewItem}
+        editingItem={editingItem}
+        onSave={handleSaveEditedItem}
       />
     </div>
   );
