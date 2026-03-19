@@ -202,6 +202,42 @@ function PlusCircleIcon({ className }: { className?: string }) {
   );
 }
 
+/** public/icons/chef_hat.svg */
+function ChefHatIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M5.34143 11.5837L5.70893 11.7136V19.4895C5.70893 20.2672 6.33937 20.8976 7.11706 20.8976H16.8829C17.6606 20.8976 18.2911 20.2672 18.2911 19.4895V11.7136L18.6586 11.5837C19.9895 11.1133 20.8976 9.85088 20.8976 8.41597C20.8976 6.56102 19.3939 5.05729 17.539 5.05729C17.0447 5.05729 16.5665 5.16379 16.1286 5.36671L15.6218 5.60161L15.3937 5.09162C14.857 3.89141 13.6635 3.10236 12.3258 3.10236C10.8882 3.10236 9.6239 4.01399 9.15561 5.34857L8.91989 6.02031L8.32859 5.62389C7.78034 5.25634 7.13623 5.05729 6.46104 5.05729C4.60609 5.05729 3.10236 6.56102 3.10236 8.41597C3.10236 9.85088 4.01051 11.1133 5.34143 11.5837ZM4.60657 12.4745C3.04098 11.7591 2 10.1865 2 8.41597C2 5.9522 3.99727 3.95493 6.46104 3.95493C7.13357 3.95493 7.78465 4.10438 8.37573 4.38565C9.13338 2.94401 10.6397 2 12.3258 2C13.9218 2 15.3634 2.84594 16.1566 4.17339C16.5985 4.02947 17.0638 3.95493 17.539 3.95493C20.0027 3.95493 22 5.9522 22 8.41597C22 10.1865 20.959 11.7591 19.3934 12.4745V19.4895C19.3934 20.876 18.2694 22 16.8829 22H7.11706C5.73055 22 4.60657 20.876 4.60657 19.4895V12.4745Z"
+        fill="currentColor"
+      />
+      <path
+        d="M4.93225 19.0676V17.9653H19.0675V19.0676H4.93225Z"
+        fill="currentColor"
+      />
+      <path
+        d="M8.19061 13.3034C8.19061 12.999 8.43738 12.7522 8.74179 12.7522C9.0462 12.7522 9.29297 12.999 9.29297 13.3034V15.2583C9.29297 15.5627 9.0462 15.8095 8.74179 15.8095C8.43738 15.8095 8.19061 15.5627 8.19061 15.2583V13.3034Z"
+        fill="currentColor"
+      />
+      <path
+        d="M11.449 13.9549C11.449 13.6505 11.6958 13.4037 12.0002 13.4037C12.3046 13.4037 12.5514 13.6505 12.5514 13.9549V15.9098C12.5514 16.2142 12.3046 16.461 12.0002 16.461C11.6958 16.461 11.449 16.2142 11.449 15.9098V13.9549Z"
+        fill="currentColor"
+      />
+      <path
+        d="M14.7072 13.3034C14.7072 12.999 14.9539 12.7522 15.2583 12.7522C15.5627 12.7522 15.8095 12.999 15.8095 13.3034V15.2583C15.8095 15.5627 15.5627 15.8095 15.2583 15.8095C14.9539 15.8095 14.7072 15.5627 14.7072 15.2583V13.3034Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 /** Parse quantity "2 stuks" or "5 kg" into { stepperValue, quantityDesc } */
 function parseQuantity(qty: string): { stepperValue: number; quantityDesc: string } {
   const match = qty.match(/^(\d+)\s*(.*)$/);
@@ -371,18 +407,23 @@ function NewItemModal({
         {isWeekday && activeTab === "second" && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
-              <h3 className="flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--text-primary)]">
-                Jouw recepten
-              </h3>
+              <div className="flex min-w-0 flex-1 items-center gap-[12px]">
+                <ChefHatIcon className="size-6 shrink-0 text-[var(--text-primary)]" />
+                <h3 className="min-w-0 text-section-title font-bold leading-24 tracking-normal text-[var(--text-primary)]">
+                  Jouw recepten
+                </h3>
+              </div>
               {recipes.length > 0 && (
                 <MiniButton variant="primary">+</MiniButton>
               )}
             </div>
-            <SearchBar
-              placeholder="Zoek recept"
-              value={recipeSearch}
-              onValueChange={setRecipeSearch}
-            />
+            {recipes.length > 0 ? (
+              <SearchBar
+                placeholder="Zoek recept"
+                value={recipeSearch}
+                onValueChange={setRecipeSearch}
+              />
+            ) : null}
             {/* Empty state */}
             {recipes.length === 0 ? (
               <div className="flex flex-col items-center gap-4 py-8">

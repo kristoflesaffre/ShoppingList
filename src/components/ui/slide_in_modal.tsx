@@ -180,7 +180,7 @@ export function SlideInModalHeader({
           variant="tertiary"
           onClick={onClose}
           aria-label="Sluiten"
-          className="relative z-[1] size-10 shrink-0 no-underline p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] [&_svg]:size-6"
+          className="relative z-[1] !min-w-0 size-10 shrink-0 no-underline p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] [&_svg]:size-6"
         >
           <CloseIcon className="size-6 shrink-0" />
         </Button>
