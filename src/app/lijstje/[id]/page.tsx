@@ -677,20 +677,30 @@ export default function ListDetailPage({
   const handleAddNewItem = React.useCallback(
     (newItem: { name: string; quantity: string; section: string }) => {
       const id = `new-${Date.now()}`;
-      setItems((current) => [
-        ...current,
-        {
-          id,
-          name: newItem.name,
-          quantity: newItem.quantity,
-          checked: false,
-          section: newItem.section,
-        },
-      ]);
+      const item: ListItem = {
+        id,
+        name: newItem.name,
+        quantity: newItem.quantity,
+        checked: false,
+        section: newItem.section,
+      };
+      setItems((current) => {
+        if (initialSection) {
+          const section = newItem.section;
+          const firstIndex = current.findIndex((i) => i.section === section);
+          if (firstIndex === -1) return [...current, item];
+          return [
+            ...current.slice(0, firstIndex),
+            item,
+            ...current.slice(firstIndex),
+          ];
+        }
+        return [...current, item];
+      });
       setAddingId(id);
       setIsNewItemOpen(false);
     },
-    [],
+    [initialSection],
   );
 
   const handleSaveEditedItem = React.useCallback((updatedItem: ListItem) => {
