@@ -35,10 +35,10 @@ import { Stepper } from "@/components/ui/stepper";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search_bar";
 import { RecipeTile } from "@/components/ui/recipe_tile";
+import { id as iid } from "@instantdb/react";
 import { cn } from "@/lib/utils";
+import { db } from "@/lib/db";
 import {
-  loadRecipeLibrary,
-  saveRecipeLibrary,
   type RecipeIngredient,
   type SavedRecipe,
 } from "@/lib/recipe_library";
@@ -118,20 +118,6 @@ const DAY_OPTIONS = [
   { label: "Zo", value: "Zondag" },
 ] as const;
 
-const DEMO_ITEMS: ListItem[] = [
-  { id: "1", name: "Brood", quantity: "1 stuk", checked: false, section: "Algemeen" },
-  { id: "2", name: "Item met een zeer lange naam waardoor het afkapt", quantity: "1 stuk", checked: false, section: "Algemeen" },
-  { id: "3", name: "Nutella", quantity: "2 stuks", checked: false, section: "Algemeen" },
-  { id: "4", name: "Aardappelen", quantity: "5 kg", checked: false, section: "Maandag" },
-  { id: "5", name: "Bloemkool", quantity: "1 stuk", checked: false, section: "Maandag" },
-  { id: "6", name: "Worst", quantity: "600 gram", checked: false, section: "Maandag" },
-];
-
-const LIST_NAMES: Record<string, string> = {
-  weeklijstje: "Weeklijstje",
-  feestje: "Feestje",
-  derde: "Weeklijstje",
-};
 
 /** public/icons/arrow.svg – terugpijl */
 function BackArrowIcon({ className }: { className?: string }) {
@@ -1332,9 +1318,30 @@ export default function ListDetailPage({
 }) {
   const router = useRouter();
   const listId = params.id;
-  const listName = LIST_NAMES[listId] ?? "Lijstje";
 
-  const [items, setItems] = React.useState<ListItem[]>(DEMO_ITEMS);
+  const { isLoading, error, data } = db.useQuery({
+    lists: { items: {}, $: { where: { id: listId } } },
+  });
+
+  const listData = data?.lists?.[0];
+  const listName = listData?.name ?? "Lijstje";
+
+  const items: ListItem[] = React.useMemo(() => {
+    if (!listData?.items) return [];
+    return [...listData.items]
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((it) => ({
+        id: it.id,
+        name: it.name,
+        quantity: it.quantity,
+        checked: it.checked,
+        section: it.section,
+        recipeGroupId: it.recipeGroupId || undefined,
+        recipeName: it.recipeName || undefined,
+        recipeLink: it.recipeLink || undefined,
+      }));
+  }, [listData]);
+
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<ListItem | null>(null);
@@ -1352,7 +1359,29 @@ export default function ListDetailPage({
   >(null);
   const [addingId, setAddingId] = React.useState<string | null>(null);
   const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
-  const [savedRecipes, setSavedRecipes] = React.useState<SavedRecipe[]>([]);
+  const { data: recipeData } = db.useQuery({
+    recipes: { ingredients: {} },
+  });
+
+  const savedRecipes: SavedRecipe[] = React.useMemo(() => {
+    if (!recipeData?.recipes) return [];
+    return [...recipeData.recipes]
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((r) => ({
+        id: r.id,
+        name: r.name,
+        link: r.link,
+        persons: r.persons,
+        ingredients: [...(r.ingredients ?? [])]
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .map((ing) => ({
+            id: ing.id,
+            name: ing.name,
+            quantity: ing.quantity,
+          })),
+      }));
+  }, [recipeData]);
+
   const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
 
   const DELETE_ANIMATION_MS = 300;
@@ -1380,42 +1409,108 @@ export default function ListDetailPage({
     };
   }, []);
 
-  React.useEffect(() => {
-    setSavedRecipes(loadRecipeLibrary());
-  }, []);
+  const handleSaveRecipeToLibrary = React.useCallback(
+    (recipe: SavedRecipe) => {
+      const isNew = !savedRecipes.some((r) => r.id === recipe.id);
+      const recipeId = isNew ? iid() : recipe.id;
 
-  const handleSaveRecipeToLibrary = React.useCallback((recipe: SavedRecipe) => {
-    setSavedRecipes((prev) => {
-      const idx = prev.findIndex((r) => r.id === recipe.id);
-      const next =
-        idx === -1
-          ? [recipe, ...prev]
-          : [...prev.slice(0, idx), recipe, ...prev.slice(idx + 1)];
-      saveRecipeLibrary(next);
-      return next;
-    });
-  }, []);
+      const existingIngredientIds = isNew
+        ? []
+        : (recipeData?.recipes
+            ?.find((r) => r.id === recipe.id)
+            ?.ingredients?.map((i) => i.id) ?? []);
 
-  const handleAddItemsFromRecipe = React.useCallback((newItems: ListItem[]) => {
-    if (newItems.length > 0) {
-      const section = newItems[0].section;
-      setItems((current) => {
-        const firstIndex = current.findIndex((i) => i.section === section);
-        if (firstIndex === -1) {
-          return [...current, ...newItems];
+      const newIngIds = new Set(recipe.ingredients.map((i) => i.id));
+      const toDeleteIngIds = existingIngredientIds.filter(
+        (eid) => !newIngIds.has(eid),
+      );
+
+      const allRecipes = recipeData?.recipes ?? [];
+      const existingOrder = allRecipes.find((r) => r.id === recipe.id)?.order ?? 0;
+      const newOrder =
+        allRecipes.length > 0
+          ? Math.min(...allRecipes.map((r) => r.order ?? 0)) - 1
+          : 0;
+
+      const txns = [
+        db.tx.recipes[recipeId].update({
+          name: recipe.name,
+          link: recipe.link,
+          persons: recipe.persons,
+          order: isNew ? newOrder : existingOrder,
+        }),
+        ...recipe.ingredients.map((ing, i) => {
+          const ingId = isNew || !existingIngredientIds.includes(ing.id)
+            ? iid()
+            : ing.id;
+          return db.tx.recipeIngredients[ingId]
+            .update({
+              name: ing.name,
+              quantity: ing.quantity,
+              order: i,
+            })
+            .link({ recipe: recipeId });
+        }),
+        ...toDeleteIngIds.map((ingId) =>
+          db.tx.recipeIngredients[ingId].delete(),
+        ),
+      ];
+      db.transact(txns as Parameters<typeof db.transact>[0]);
+    },
+    [savedRecipes, recipeData],
+  );
+
+  const handleAddItemsFromRecipe = React.useCallback(
+    (templateItems: ListItem[]) => {
+      if (templateItems.length > 0) {
+        const section = templateItems[0].section;
+        const sectionStart = items.findIndex((i) => i.section === section);
+
+        const newItems = templateItems.map((t) => ({ ...t, id: iid() }));
+        let newArray: ListItem[];
+        if (sectionStart === -1) {
+          newArray = [...items, ...newItems];
+        } else {
+          newArray = [
+            ...items.slice(0, sectionStart),
+            ...newItems,
+            ...items.slice(sectionStart),
+          ];
         }
-        return [
-          ...current.slice(0, firstIndex),
-          ...newItems,
-          ...current.slice(firstIndex),
+
+        const newIds = new Set(newItems.map((n) => n.id));
+        const txns = [
+          ...newItems.map((item, _i) =>
+            db.tx.items[item.id]
+              .update({
+                name: item.name,
+                quantity: item.quantity,
+                checked: false,
+                section: item.section,
+                order: newArray.findIndex((a) => a.id === item.id),
+                recipeGroupId: item.recipeGroupId ?? "",
+                recipeName: item.recipeName ?? "",
+                recipeLink: item.recipeLink ?? "",
+              })
+              .link({ list: listId }),
+          ),
+          ...newArray
+            .filter((a) => !newIds.has(a.id))
+            .map((a) =>
+              db.tx.items[a.id].update({
+                order: newArray.findIndex((x) => x.id === a.id),
+              }),
+            ),
         ];
-      });
-      setAddingId(newItems[newItems.length - 1].id);
-    }
-    setIsNewItemOpen(false);
-    setEditingItem(null);
-    setInitialSection(null);
-  }, []);
+        db.transact(txns as Parameters<typeof db.transact>[0]);
+        setAddingId(newItems[newItems.length - 1].id);
+      }
+      setIsNewItemOpen(false);
+      setEditingItem(null);
+      setInitialSection(null);
+    },
+    [items, listId],
+  );
 
   React.useEffect(() => {
     if (!snackbarMessage) return;
@@ -1427,100 +1522,157 @@ export default function ListDetailPage({
   }, [snackbarMessage]);
 
   const handleCheckedChange = React.useCallback(
-    (id: string, checked: boolean) => {
-      setItems((current) =>
-        current.map((item) =>
-          item.id === id ? { ...item, checked } : item
-        )
-      );
+    (itemId: string, checked: boolean) => {
+      db.transact(db.tx.items[itemId].update({ checked }));
     },
-    []
+    [],
   );
 
-  const handleDeleteItem = React.useCallback((id: string) => {
-    if (removeTimeoutRef.current) {
-      clearTimeout(removeTimeoutRef.current);
-      removeTimeoutRef.current = null;
-    }
-    setRemovingId(id);
-    removeTimeoutRef.current = window.setTimeout(() => {
-      removeTimeoutRef.current = null;
-      setItems((current) => {
-        const index = current.findIndex((i) => i.id === id);
-        if (index === -1) return current;
-        const item = current[index];
-        const next = [...current];
-        next.splice(index, 1);
+  const handleDeleteItem = React.useCallback(
+    (itemId: string) => {
+      if (removeTimeoutRef.current) {
+        clearTimeout(removeTimeoutRef.current);
+        removeTimeoutRef.current = null;
+      }
+      setRemovingId(itemId);
+      removeTimeoutRef.current = window.setTimeout(() => {
+        removeTimeoutRef.current = null;
+        const index = items.findIndex((i) => i.id === itemId);
+        const item = items[index];
+        if (!item) {
+          setRemovingId(null);
+          return;
+        }
+        db.transact(db.tx.items[itemId].delete());
         setLastDeleted({ item, index });
         setSnackbarMessage(`'${item.name}' verwijderd`);
         setRemovingId(null);
-        return next;
-      });
-    }, DELETE_ANIMATION_MS);
-  }, []);
+      }, DELETE_ANIMATION_MS);
+    },
+    [items],
+  );
 
   const SECTION_DELETE_ANIMATION_MS = 200;
 
-  const handleDeleteSection = React.useCallback((sectionTitle: string) => {
-    setRemovingSectionTitle(sectionTitle);
-    window.setTimeout(() => {
-      setItems((current) =>
-        current.filter((item) => item.section !== sectionTitle)
-      );
-      setRemovingSectionTitle(null);
-    }, SECTION_DELETE_ANIMATION_MS);
-  }, []);
+  const handleDeleteSection = React.useCallback(
+    (sectionTitle: string) => {
+      setRemovingSectionTitle(sectionTitle);
+      window.setTimeout(() => {
+        const toDelete = items.filter((i) => i.section === sectionTitle);
+        if (toDelete.length > 0) {
+          db.transact(
+            toDelete.map((i) => db.tx.items[i.id].delete()) as Parameters<
+              typeof db.transact
+            >[0],
+          );
+        }
+        setRemovingSectionTitle(null);
+      }, SECTION_DELETE_ANIMATION_MS);
+    },
+    [items],
+  );
 
-  /** Verwijdert receptkop + alle regels met dezelfde recipeGroupId in één actie. Lege secties verdwijnen automatisch. */
-  const handleDeleteRecipeGroup = React.useCallback((groupId: string) => {
-    setItems((current) =>
-      current.filter((item) => item.recipeGroupId !== groupId),
-    );
-  }, []);
+  const handleDeleteRecipeGroup = React.useCallback(
+    (groupId: string) => {
+      const toDelete = items.filter((i) => i.recipeGroupId === groupId);
+      if (toDelete.length > 0) {
+        db.transact(
+          toDelete.map((i) => db.tx.items[i.id].delete()) as Parameters<
+            typeof db.transact
+          >[0],
+        );
+      }
+    },
+    [items],
+  );
 
   const handleUndoDelete = React.useCallback(() => {
     if (!lastDeleted) return;
-    setItems((current) => {
-      const next = [...current];
-      next.splice(lastDeleted.index, 0, lastDeleted.item);
-      return next;
-    });
+    const { item, index } = lastDeleted;
+    const newArray = [...items];
+    newArray.splice(index, 0, item);
+    const txns = [
+      db.tx.items[item.id]
+        .update({
+          name: item.name,
+          quantity: item.quantity,
+          checked: item.checked,
+          section: item.section,
+          order: index,
+          recipeGroupId: item.recipeGroupId ?? "",
+          recipeName: item.recipeName ?? "",
+          recipeLink: item.recipeLink ?? "",
+        })
+        .link({ list: listId }),
+      ...newArray.map((a, i) => db.tx.items[a.id].update({ order: i })),
+    ];
+    db.transact(txns as Parameters<typeof db.transact>[0]);
     setLastDeleted(null);
     setSnackbarMessage(null);
-  }, [lastDeleted]);
+  }, [lastDeleted, items, listId]);
 
   const handleAddNewItem = React.useCallback(
     (newItem: { name: string; quantity: string; section: string }) => {
-      const id = `new-${Date.now()}`;
+      const newId = iid();
       const item: ListItem = {
-        id,
+        id: newId,
         name: newItem.name,
         quantity: newItem.quantity,
         checked: false,
         section: newItem.section,
       };
-      setItems((current) => {
-        if (initialSection) {
-          const section = newItem.section;
-          const firstIndex = current.findIndex((i) => i.section === section);
-          if (firstIndex === -1) return [...current, item];
-          return [
-            ...current.slice(0, firstIndex),
+
+      let newArray: ListItem[];
+      if (initialSection) {
+        const firstIndex = items.findIndex(
+          (i) => i.section === newItem.section,
+        );
+        if (firstIndex === -1) {
+          newArray = [...items, item];
+        } else {
+          newArray = [
+            ...items.slice(0, firstIndex),
             item,
-            ...current.slice(firstIndex),
+            ...items.slice(firstIndex),
           ];
         }
-        return [...current, item];
-      });
-      setAddingId(id);
+      } else {
+        newArray = [...items, item];
+      }
+
+      const idx = newArray.findIndex((a) => a.id === newId);
+      const txns = [
+        db.tx.items[newId]
+          .update({
+            name: newItem.name,
+            quantity: newItem.quantity,
+            checked: false,
+            section: newItem.section,
+            order: idx,
+          })
+          .link({ list: listId }),
+        ...newArray
+          .filter((a) => a.id !== newId)
+          .map((a) =>
+            db.tx.items[a.id].update({
+              order: newArray.findIndex((x) => x.id === a.id),
+            }),
+          ),
+      ];
+      db.transact(txns as Parameters<typeof db.transact>[0]);
+      setAddingId(newId);
       setIsNewItemOpen(false);
     },
-    [initialSection],
+    [initialSection, items, listId],
   );
 
   const handleSaveEditedItem = React.useCallback((updatedItem: ListItem) => {
-    setItems((current) =>
-      current.map((item) => (item.id === updatedItem.id ? updatedItem : item))
+    db.transact(
+      db.tx.items[updatedItem.id].update({
+        name: updatedItem.name,
+        quantity: updatedItem.quantity,
+        section: updatedItem.section,
+      }),
     );
     setEditingItem(null);
   }, []);
@@ -1540,27 +1692,29 @@ export default function ListDetailPage({
 
   const hasItems = items.length > 0;
 
-  const handleReorderItems = React.useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over == null || active.id === over.id) return;
-    const movedId = String(active.id);
-    setItems((current) => {
-      const oldIndex = current.findIndex((i) => i.id === movedId);
-      const newIndex = current.findIndex((i) => i.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return current;
-      const reordered = arrayMove(current, oldIndex, newIndex);
-      return reordered.map((item) =>
+  const handleReorderItems = React.useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (over == null || active.id === over.id) return;
+      const movedId = String(active.id);
+      const oldIndex = items.findIndex((i) => i.id === movedId);
+      const newIndex = items.findIndex((i) => i.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const reordered = arrayMove(items, oldIndex, newIndex);
+      const txns = reordered.map((item, i) =>
         item.id === movedId
-          ? {
-              ...item,
-              recipeGroupId: undefined,
-              recipeName: undefined,
-              recipeLink: undefined,
-            }
-          : item,
+          ? db.tx.items[item.id].update({
+              order: i,
+              recipeGroupId: "",
+              recipeName: "",
+              recipeLink: "",
+            })
+          : db.tx.items[item.id].update({ order: i }),
       );
-    });
-  }, []);
+      db.transact(txns as Parameters<typeof db.transact>[0]);
+    },
+    [items],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1573,6 +1727,24 @@ export default function ListDetailPage({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-base text-text-secondary">Laden…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <p className="text-base text-[var(--error-600)]">
+          Er ging iets mis: {error.message}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex min-h-screen w-full flex-col">

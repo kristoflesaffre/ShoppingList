@@ -23,6 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
+import { id as iid } from "@instantdb/react";
 import { ListCard } from "@/components/ui/list_card";
 import { EditButton } from "@/components/ui/edit_button";
 import { MiniButton } from "@/components/ui/mini_button";
@@ -31,13 +32,15 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { db } from "@/lib/db";
 
 type HomeList = {
   id: string;
   name: string;
   date: string;
-  itemCount: string;
   icon: string;
+  order: number;
+  items?: { id: string }[];
 };
 
 const FOOD_ICONS = [
@@ -124,6 +127,10 @@ function PlusIcon({ className }: { className?: string }) {
       />
     </svg>
   );
+}
+
+function itemCountLabel(count: number): string {
+  return count === 1 ? "1 item" : `${count} items`;
 }
 
 /** Renders the sortable list; must be inside DndContext to use useDndContext for drag state */
@@ -215,7 +222,7 @@ function SortableListCard({
       <ListCard
         listName={list.name}
         date={list.date}
-        itemCount={list.itemCount}
+        itemCount={itemCountLabel(list.items?.length ?? 0)}
         icon={
           <Image
             src={list.icon}
@@ -238,36 +245,26 @@ function SortableListCard({
 
 export default function Home() {
   const router = useRouter();
-  const [lists, setLists] = React.useState<HomeList[]>([
-    {
-      id: "weeklijstje",
-      name: "Weeklijstje",
-      date: "25-04-2026",
-      itemCount: "6 items",
-      icon: "/images/ui/food/icon_apple.png",
-    },
-    {
-      id: "feestje",
-      name: "Weeklijstje",
-      date: "18-04-2026",
-      itemCount: "17 items",
-      icon: "/images/ui/food/icon_banana.png",
-    },
-    {
-      id: "derde",
-      name: "Weeklijstje",
-      date: "11-04-2026",
-      itemCount: "21 items",
-      icon: "/images/ui/food/icon_carrot.png",
-    },
-  ]);
+
+  const { isLoading, error, data } = db.useQuery({ lists: { items: {} } });
+
+  const lists: HomeList[] = React.useMemo(() => {
+    if (!data?.lists) return [];
+    return [...data.lists]
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((l) => ({
+        ...l,
+        items: l.items ?? [],
+      }));
+  }, [data]);
 
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newListName, setNewListName] = React.useState("");
   const [lastDeleted, setLastDeleted] = React.useState<{
-    list: HomeList;
-    index: number;
+    listId: string;
+    listName: string;
+    order: number;
   } | null>(null);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
     null,
@@ -317,40 +314,48 @@ export default function Home() {
     setIsEditMode((prev) => !prev);
   };
 
-  const handleDeleteList = (id: string) => {
-    if (removeTimeoutRef.current) {
-      clearTimeout(removeTimeoutRef.current);
-      removeTimeoutRef.current = null;
-    }
-    setRemovingId(id);
-    removeTimeoutRef.current = window.setTimeout(() => {
-      removeTimeoutRef.current = null;
-      setLists((current) => {
-        const index = current.findIndex((list) => list.id === id);
-        if (index === -1) return current;
-        const list = current[index];
-        const next = [...current];
-        next.splice(index, 1);
-        setLastDeleted({ list, index });
+  const handleDeleteList = React.useCallback(
+    (listId: string) => {
+      if (removeTimeoutRef.current) {
+        clearTimeout(removeTimeoutRef.current);
+        removeTimeoutRef.current = null;
+      }
+      setRemovingId(listId);
+      removeTimeoutRef.current = window.setTimeout(() => {
+        removeTimeoutRef.current = null;
+        const list = lists.find((l) => l.id === listId);
+        if (!list) return;
+        const itemIds = (list.items ?? []).map((i) => i.id);
+        db.transact([
+          ...itemIds.map((itemId) => db.tx.items[itemId].delete()),
+          db.tx.lists[listId].delete(),
+        ] as Parameters<typeof db.transact>[0]);
+        setLastDeleted({
+          listId,
+          listName: list.name,
+          order: list.order,
+        });
         setSnackbarMessage(`'${list.name}' verwijderd`);
         setRemovingId(null);
-        return next;
-      });
-    }, DELETE_ANIMATION_MS);
-  };
+      }, DELETE_ANIMATION_MS);
+    },
+    [lists],
+  );
 
-  const handleUndoDelete = () => {
+  const handleUndoDelete = React.useCallback(() => {
     if (!lastDeleted) return;
-    const restoredId = lastDeleted.list.id;
-    setLists((current) => {
-      const next = [...current];
-      next.splice(lastDeleted.index, 0, lastDeleted.list);
-      return next;
-    });
+    db.transact(
+      db.tx.lists[lastDeleted.listId].update({
+        name: lastDeleted.listName,
+        date: new Date().toLocaleDateString("nl-NL"),
+        icon: getIconForNewList(lists),
+        order: lastDeleted.order,
+      }),
+    );
     setLastDeleted(null);
     setSnackbarMessage(null);
-    setAddingId(restoredId);
-  };
+    setAddingId(lastDeleted.listId);
+  }, [lastDeleted, lists]);
 
   const handleOpenCreateModal = () => {
     setNewListName("");
@@ -362,36 +367,41 @@ export default function Home() {
     setNewListName("");
   };
 
-  const handleSaveNewList = () => {
+  const handleSaveNewList = React.useCallback(() => {
     const name = newListName.trim() || "Nieuw lijstje";
     const now = new Date();
-    const id = `lijst-${now.getTime()}`;
-    const newList: HomeList = {
-      id,
-      name,
-      date: now.toLocaleDateString("nl-NL"),
-      itemCount: "0 items",
-      icon: getIconForNewList(lists),
-    };
-    setLists((current) => [newList, ...current]);
-    setAddingId(id);
+    const newId = iid();
+    db.transact(
+      db.tx.lists[newId].update({
+        name,
+        date: now.toLocaleDateString("nl-NL"),
+        icon: getIconForNewList(lists),
+        order: lists.length > 0 ? Math.min(...lists.map((l) => l.order)) - 1 : 0,
+      }),
+    );
+    setAddingId(newId);
     handleCloseCreateModal();
+  }, [newListName, lists]);
+
+  const handleOpenList = (listId: string) => {
+    router.push(`/lijstje/${listId}`);
   };
 
-  const handleOpenList = (id: string) => {
-    router.push(`/lijstje/${id}`);
-  };
-
-  const handleReorderLists = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over == null || active.id === over.id) return;
-    setLists((current) => {
-      const oldIndex = current.findIndex((l) => l.id === active.id);
-      const newIndex = current.findIndex((l) => l.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return current;
-      return arrayMove(current, oldIndex, newIndex);
-    });
-  };
+  const handleReorderLists = React.useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (over == null || active.id === over.id) return;
+      const oldIndex = lists.findIndex((l) => l.id === active.id);
+      const newIndex = lists.findIndex((l) => l.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const reordered = arrayMove(lists, oldIndex, newIndex);
+      const txns = reordered.map((l, i) =>
+        db.tx.lists[l.id].update({ order: i }),
+      );
+      db.transact(txns);
+    },
+    [lists],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -405,12 +415,29 @@ export default function Home() {
     })
   );
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-base text-text-secondary">Laden…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <p className="text-base text-[var(--error-600)]">
+          Er ging iets mis: {error.message}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex min-h-screen w-full flex-col px-[16px]">
-      {/* Content area – 16px from viewport (parent px), max 956px op brede schermen */}
+      {/* Content area */}
       <div className="flex flex-1 flex-col pb-[120px] pt-[86px]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
-          {/* Header: title + edit button – alleen tonen als er lijstjes zijn (Figma 119-512) */}
           {hasLists && (
             <div className="mb-6 flex items-center gap-4">
               <h1 className="flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
