@@ -1024,17 +1024,21 @@ function hrefFromRecipeLink(raw: string): string {
 }
 
 /**
- * Receptkop op de lijst – Figma "Weeklijstje - met recept" (node 134:767):
- * border primary/200, gradient blue-25 → white, koksmuts, titel, link "Recept".
+ * Receptkop op de lijst – Figma "Weeklijstje - met recept" (134:767);
+ * in wijzig-modus: prullenbak i.p.v. link (Figma 390:2210).
  */
 function RecipeGroupHeader({
   id,
   recipeName,
   recipeLink,
+  isEditMode,
+  onDeleteRecipeGroup,
 }: {
   id: string;
   recipeName: string;
   recipeLink?: string;
+  isEditMode: boolean;
+  onDeleteRecipeGroup?: () => void;
 }) {
   const linkTrimmed = recipeLink?.trim() ?? "";
   const hasLink = linkTrimmed.length > 0;
@@ -1056,7 +1060,16 @@ function RecipeGroupHeader({
       >
         {recipeName}
       </h4>
-      {hasLink ? (
+      {isEditMode && onDeleteRecipeGroup ? (
+        <button
+          type="button"
+          aria-label={`Recept ${recipeName} en alle bijbehorende items verwijderen`}
+          onClick={onDeleteRecipeGroup}
+          className="flex size-6 shrink-0 items-center justify-center text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          <RecycleBinIcon className="size-6 shrink-0" />
+        </button>
+      ) : hasLink ? (
         <a
           href={hrefFromRecipeLink(linkTrimmed)}
           target="_blank"
@@ -1085,6 +1098,7 @@ function SortableItemItems({
   onCheckedChange,
   onDelete,
   onDeleteSection,
+  onDeleteRecipeGroup,
   onEdit,
   onAddToSection,
 }: {
@@ -1097,6 +1111,7 @@ function SortableItemItems({
   onCheckedChange: (id: string, checked: boolean) => void;
   onDelete: (id: string) => void;
   onDeleteSection: (sectionTitle: string) => void;
+  onDeleteRecipeGroup: (groupId: string) => void;
   onEdit: (item: ListItem) => void;
   onAddToSection: (sectionTitle: string) => void;
 }) {
@@ -1179,6 +1194,12 @@ function SortableItemItems({
                     id={headingId}
                     recipeName={chunk.recipeName}
                     recipeLink={chunk.recipeLink}
+                    isEditMode={isEditMode}
+                    onDeleteRecipeGroup={
+                      isEditMode
+                        ? () => onDeleteRecipeGroup(chunk.groupId)
+                        : undefined
+                    }
                   />
                   <div className="flex flex-col gap-2 pl-2">
                     {chunk.items.map((item) => (
@@ -1450,6 +1471,13 @@ export default function ListDetailPage({
     }, SECTION_DELETE_ANIMATION_MS);
   }, []);
 
+  /** Verwijdert receptkop + alle regels met dezelfde recipeGroupId in één actie. Lege secties verdwijnen automatisch. */
+  const handleDeleteRecipeGroup = React.useCallback((groupId: string) => {
+    setItems((current) =>
+      current.filter((item) => item.recipeGroupId !== groupId),
+    );
+  }, []);
+
   const handleUndoDelete = React.useCallback(() => {
     if (!lastDeleted) return;
     setItems((current) => {
@@ -1628,6 +1656,7 @@ export default function ListDetailPage({
                   onCheckedChange={handleCheckedChange}
                   onDelete={handleDeleteItem}
                   onDeleteSection={handleDeleteSection}
+                  onDeleteRecipeGroup={handleDeleteRecipeGroup}
                   onEdit={(item) => {
                     setEditingItem(item);
                   }}
