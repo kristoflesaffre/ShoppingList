@@ -49,7 +49,52 @@ type ListItem = {
   quantity: string;
   checked: boolean;
   section: string;
+  /** Zelfde id voor alle regels uit één toegepast recept (Figma 134:767). */
+  recipeGroupId?: string;
+  recipeName?: string;
+  recipeLink?: string;
 };
+
+type SectionItemsChunk =
+  | { type: "plain"; items: ListItem[] }
+  | {
+      type: "recipe";
+      groupId: string;
+      recipeName: string;
+      recipeLink?: string;
+      items: ListItem[];
+    };
+
+/** Groepeert opeenvolgende receptregels met dezelfde recipeGroupId. */
+function chunkSectionItems(sectionItems: ListItem[]): SectionItemsChunk[] {
+  const chunks: SectionItemsChunk[] = [];
+  for (const item of sectionItems) {
+    const gid = item.recipeGroupId;
+    const title = item.recipeName;
+    if (gid && title) {
+      const last = chunks[chunks.length - 1];
+      if (last?.type === "recipe" && last.groupId === gid) {
+        last.items.push(item);
+      } else {
+        chunks.push({
+          type: "recipe",
+          groupId: gid,
+          recipeName: title,
+          recipeLink: item.recipeLink,
+          items: [item],
+        });
+      }
+    } else {
+      const last = chunks[chunks.length - 1];
+      if (last?.type === "plain") {
+        last.items.push(item);
+      } else {
+        chunks.push({ type: "plain", items: [item] });
+      }
+    }
+  }
+  return chunks;
+}
 
 const SECTION_ORDER = [
   "Algemeen",
@@ -569,12 +614,17 @@ function NewItemModal({
     (recipe: SavedRecipe) => {
       const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
       const ts = Date.now();
+      const recipeGroupId = `recipe-${recipe.id}-${ts}`;
+      const link = recipe.link.trim();
       const newItems: ListItem[] = recipe.ingredients.map((ing, i) => ({
         id: `from-recipe-${recipe.id}-${ts}-${i}`,
         name: ing.name,
         quantity: ing.quantity,
         checked: false,
         section,
+        recipeGroupId,
+        recipeName: recipe.name.trim(),
+        recipeLink: link.length > 0 ? link : undefined,
       }));
       onApplyRecipeToList(newItems);
     },
@@ -963,6 +1013,67 @@ function NewItemModal({
   );
 }
 
+/** Maakt ingevoerde recept-URL bruikbaar als href (o.a. zonder https://). */
+function hrefFromRecipeLink(raw: string): string {
+  const t = raw.trim();
+  if (!t) return "#";
+  if (/^https?:\/\//i.test(t)) return t;
+  if (/^mailto:/i.test(t) || /^tel:/i.test(t)) return t;
+  if (t.startsWith("//")) return `https:${t}`;
+  return `https://${t}`;
+}
+
+/**
+ * Receptkop op de lijst – Figma "Weeklijstje - met recept" (node 134:767):
+ * border primary/200, gradient blue-25 → white, koksmuts, titel, link "Recept".
+ */
+function RecipeGroupHeader({
+  id,
+  recipeName,
+  recipeLink,
+}: {
+  id: string;
+  recipeName: string;
+  recipeLink?: string;
+}) {
+  const linkTrimmed = recipeLink?.trim() ?? "";
+  const hasLink = linkTrimmed.length > 0;
+
+  return (
+    <div
+      className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--blue-200)] px-4 py-3"
+      style={{
+        background:
+          "linear-gradient(90deg, var(--blue-25) 0%, var(--white) 35%, var(--white) 65%, var(--blue-25) 100%)",
+      }}
+    >
+      <div className="flex size-6 shrink-0 items-center justify-center">
+        <ChefHatIcon className="size-5 shrink-0 text-[var(--blue-500)]" />
+      </div>
+      <h4
+        id={id}
+        className="min-w-0 flex-1 text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]"
+      >
+        {recipeName}
+      </h4>
+      {hasLink ? (
+        <a
+          href={hrefFromRecipeLink(linkTrimmed)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-sm font-normal leading-20 tracking-normal text-action-primary underline decoration-action-primary underline-offset-2 transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+        >
+          Recept
+        </a>
+      ) : (
+        <span className="shrink-0 text-sm font-normal leading-20 tracking-normal text-[var(--text-tertiary)]">
+          Recept
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** Renders sortable item cards; must be inside DndContext for drag state. */
 function SortableItemItems({
   sections,
@@ -1031,31 +1142,60 @@ function SortableItemItems({
             )}
           </div>
           <div className="flex flex-col gap-3">
-            {section.items.map((item) => {
-              const isRemoving = removingId === item.id;
-              const isAdding = addingId === item.id;
-              const isAddingCollapsed = isAdding && !addingIdExpanded;
-              const isAnimating = isRemoving || isAddingCollapsed;
-              const wrapperClass = isDndActive
-                ? ""
-                : cn(
-                    "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-                    isAnimating
-                      ? "max-h-0 opacity-0"
-                      : "max-h-[200px] opacity-100"
-                  );
+            {chunkSectionItems(section.items).map((chunk, chunkIndex) => {
+              if (chunk.type === "plain") {
+                return (
+                  <div
+                    key={`plain-${section.title}-${chunkIndex}-${chunk.items[0]?.id ?? "e"}`}
+                    className="flex flex-col gap-3"
+                  >
+                    {chunk.items.map((item) => (
+                      <SortableItemRow
+                        key={item.id}
+                        item={item}
+                        isEditMode={isEditMode}
+                        isDndActive={isDndActive}
+                        removingId={removingId}
+                        addingId={addingId}
+                        addingIdExpanded={addingIdExpanded}
+                        onCheckedChange={onCheckedChange}
+                        onDelete={onDelete}
+                        onEdit={onEdit}
+                      />
+                    ))}
+                  </div>
+                );
+              }
 
+              const headingId = `recipe-heading-${chunk.groupId}`;
               return (
-                <div key={item.id} className={wrapperClass}>
-                  <SortableItemCard
-                    item={item}
-                    isEditMode={isEditMode}
-                    onCheckedChange={(checked) =>
-                      onCheckedChange(item.id, checked)
-                    }
-                    onDelete={() => onDelete(item.id)}
-                    onEdit={() => onEdit(item)}
+                <div
+                  key={chunk.groupId}
+                  role="group"
+                  aria-labelledby={headingId}
+                  className="flex flex-col gap-2"
+                >
+                  <RecipeGroupHeader
+                    id={headingId}
+                    recipeName={chunk.recipeName}
+                    recipeLink={chunk.recipeLink}
                   />
+                  <div className="flex flex-col gap-2 pl-2">
+                    {chunk.items.map((item) => (
+                      <SortableItemRow
+                        key={item.id}
+                        item={item}
+                        isEditMode={isEditMode}
+                        isDndActive={isDndActive}
+                        removingId={removingId}
+                        addingId={addingId}
+                        addingIdExpanded={addingIdExpanded}
+                        onCheckedChange={onCheckedChange}
+                        onDelete={onDelete}
+                        onEdit={onEdit}
+                      />
+                    ))}
+                  </div>
                 </div>
               );
             })}
@@ -1063,6 +1203,51 @@ function SortableItemItems({
         </section>
         );
       })}
+    </div>
+  );
+}
+
+function SortableItemRow({
+  item,
+  isEditMode,
+  isDndActive,
+  removingId,
+  addingId,
+  addingIdExpanded,
+  onCheckedChange,
+  onDelete,
+  onEdit,
+}: {
+  item: ListItem;
+  isEditMode: boolean;
+  isDndActive: boolean;
+  removingId: string | null;
+  addingId: string | null;
+  addingIdExpanded: boolean;
+  onCheckedChange: (id: string, checked: boolean) => void;
+  onDelete: (id: string) => void;
+  onEdit: (item: ListItem) => void;
+}) {
+  const isRemoving = removingId === item.id;
+  const isAdding = addingId === item.id;
+  const isAddingCollapsed = isAdding && !addingIdExpanded;
+  const isAnimating = isRemoving || isAddingCollapsed;
+  const wrapperClass = isDndActive
+    ? ""
+    : cn(
+        "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+        isAnimating ? "max-h-0 opacity-0" : "max-h-[200px] opacity-100",
+      );
+
+  return (
+    <div className={wrapperClass}>
+      <SortableItemCard
+        item={item}
+        isEditMode={isEditMode}
+        onCheckedChange={(checked) => onCheckedChange(item.id, checked)}
+        onDelete={() => onDelete(item.id)}
+        onEdit={() => onEdit(item)}
+      />
     </div>
   );
 }
@@ -1330,11 +1515,22 @@ export default function ListDetailPage({
   const handleReorderItems = React.useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (over == null || active.id === over.id) return;
+    const movedId = String(active.id);
     setItems((current) => {
-      const oldIndex = current.findIndex((i) => i.id === active.id);
+      const oldIndex = current.findIndex((i) => i.id === movedId);
       const newIndex = current.findIndex((i) => i.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return current;
-      return arrayMove(current, oldIndex, newIndex);
+      const reordered = arrayMove(current, oldIndex, newIndex);
+      return reordered.map((item) =>
+        item.id === movedId
+          ? {
+              ...item,
+              recipeGroupId: undefined,
+              recipeName: undefined,
+              recipeLink: undefined,
+            }
+          : item,
+      );
     });
   }, []);
 
