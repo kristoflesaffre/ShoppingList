@@ -272,7 +272,8 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       onEdit,
       onDelete,
       dragHandleProps,
-      ...props
+      style: incomingStyle,
+      ...restProps
     },
     ref,
   ) => {
@@ -324,14 +325,27 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       isEditable ||
       (isGottenByOther && !isEditable);
 
+    /**
+     * gotten-by-you: 1px border primary 500 op de buitenrand (zelfde box als default gray border —
+     * geen inset + transparante border: dat gaf een witte ring tussen rand en blauwe lijn).
+     * Drop shadow alleen via inline style (Tailwind shadow-[] is onbetrouwbaar met var).
+     */
+    const showGottenByYouChrome = isGottenByYou && !isGottenByOther;
     const containerClassName = cn(
       containerBase,
       isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
-      !isGottenByOther && "bg-[var(--white)] border border-[var(--gray-100)]",
-      isGottenByYou &&
-        "border-[var(--blue-500)] shadow-[var(--shadow-drop)]",
+      !isGottenByOther && "bg-[var(--white)]",
+      !isGottenByOther &&
+        !isGottenByYou &&
+        "border border-[var(--gray-100)]",
+      showGottenByYouChrome && "border border-[var(--blue-500)]",
       className,
     );
+
+    const containerStyle: React.CSSProperties = {
+      ...(incomingStyle && typeof incomingStyle === "object" ? incomingStyle : {}),
+      ...(showGottenByYouChrome ? { boxShadow: "var(--shadow-drop)" } : {}),
+    };
 
     const containerProps = {
       ref,
@@ -339,7 +353,8 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       "data-state": state,
       "data-size": size,
       className: containerClassName,
-      ...props,
+      style: containerStyle,
+      ...restProps,
     };
 
     const textContent = (
