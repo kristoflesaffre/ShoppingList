@@ -27,6 +27,11 @@ export interface SlideInModalProps {
   titleId?: string;
   /** When true, Escape does not close this modal (e.g. when a child modal is open) */
   disableEscapeClose?: boolean;
+  /**
+   * When true, body children span the full width of the panel (no horizontal padding / max-width wrapper).
+   * Use for full-bleed layouts (e.g. horizontal slides); add `px-4` + `max-w-[768px] mx-auto` inside your content.
+   */
+  bodyFullWidth?: boolean;
 }
 
 const SLIDE_DURATION_MS = 500;
@@ -87,6 +92,7 @@ export function SlideInModal({
   containerClassName,
   titleId = "slide-in-modal-title",
   disableEscapeClose = false,
+  bodyFullWidth = false,
 }: SlideInModalProps) {
   const [isAnimatingIn, setIsAnimatingIn] = React.useState(false);
   const [isClosing, setIsClosing] = React.useState(false);
@@ -168,13 +174,20 @@ export function SlideInModal({
         >
           <div
             className={cn(
-              "flex flex-col items-center px-4 pb-4 pt-6",
+              "flex flex-col pb-4 pt-6",
+              bodyFullWidth
+                ? "w-full min-w-0 items-stretch px-0"
+                : "items-center px-4",
               compact ? "shrink-0" : "flex-1 overflow-y-auto"
             )}
           >
-            <div className="mx-auto w-full max-w-[768px] [&>*]:w-full">
-              {children}
-            </div>
+            {bodyFullWidth ? (
+              <div className="w-full min-w-0 [&>*]:w-full">{children}</div>
+            ) : (
+              <div className="mx-auto w-full max-w-[768px] [&>*]:w-full">
+                {children}
+              </div>
+            )}
           </div>
           {footer && (
             <div className="shrink-0 px-4 pb-6 pt-4">

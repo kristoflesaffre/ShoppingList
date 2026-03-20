@@ -690,10 +690,11 @@ function NewItemModal({
       onBack={showRecipeForm ? closeRecipeFormPanel : undefined}
       footer={showRecipeForm ? recipeFooter : itemFooter}
       disableEscapeClose={ingredientSlideOpen}
+      bodyFullWidth
     >
       <div className="overflow-hidden">
         <div
-          className="flex"
+          className="flex w-full"
           style={{
             transform: showRecipeForm ? "translateX(-100%)" : "translateX(0)",
             transition: SLIDE_TRANSITION,
@@ -701,7 +702,8 @@ function NewItemModal({
         >
           {/* Panel 1: Item form */}
           <div className="w-full shrink-0">
-            <div className="flex flex-col gap-6">
+            <div className="mx-auto w-full max-w-[768px] px-4">
+              <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
                   Dag
@@ -834,12 +836,14 @@ function NewItemModal({
                   )}
                 </div>
               )}
+              </div>
             </div>
           </div>
 
           {/* Panel 2: Recipe form */}
           <div className="w-full shrink-0">
-            <div className="flex flex-col">
+            <div className="mx-auto w-full max-w-[768px] px-4">
+              <div className="flex flex-col">
               <div className="flex flex-col gap-6">
                 <InputField
                   label="Naam recept"
@@ -902,6 +906,7 @@ function NewItemModal({
                     onEdit={openIngredientFormEdit}
                   />
                 )}
+              </div>
               </div>
             </div>
           </div>
