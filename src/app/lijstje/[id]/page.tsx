@@ -1429,6 +1429,12 @@ export default function ListDetailPage({
     };
   }, []);
 
+  const handleOpenNewItemModal = React.useCallback(() => {
+    setEditingItem(null);
+    setInitialSection(null);
+    setIsNewItemOpen(true);
+  }, []);
+
   const handleSaveRecipeToLibrary = React.useCallback(
     (recipe: SavedRecipe) => {
       const isNew = !savedRecipes.some((r) => r.id === recipe.id);
@@ -1824,7 +1830,12 @@ export default function ListDetailPage({
               <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
                 Geen items in je lijstje
               </p>
-              <MiniButton variant="primary">
+              <MiniButton
+                type="button"
+                variant="primary"
+                aria-label="Item toevoegen"
+                onClick={handleOpenNewItemModal}
+              >
                 Voeg item toe
               </MiniButton>
             </section>
@@ -1884,11 +1895,7 @@ export default function ListDetailPage({
           <FloatingActionButton
             aria-label="Item toevoegen"
             className="pointer-events-auto"
-            onClick={() => {
-              setEditingItem(null);
-              setInitialSection(null);
-              setIsNewItemOpen(true);
-            }}
+            onClick={handleOpenNewItemModal}
           />
         </div>
       </div>
