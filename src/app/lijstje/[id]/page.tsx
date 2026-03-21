@@ -23,6 +23,7 @@ import {
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { ItemCard } from "@/components/ui/item_card";
+import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { EditButton } from "@/components/ui/edit_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { MiniButton } from "@/components/ui/mini_button";
@@ -1295,18 +1296,23 @@ function SortableItemCard({
           "z-10 cursor-grabbing opacity-90 shadow-[var(--shadow-drop)]"
       )}
     >
-      <ItemCard
-        itemName={item.name}
-        quantity={item.quantity}
-        checked={item.checked}
-        onCheckedChange={onCheckedChange}
-        state={isEditMode ? "editable" : "default"}
-        onDelete={isEditMode ? onDelete : undefined}
-        onEdit={isEditMode ? onEdit : undefined}
-        dragHandleProps={
-          isEditMode ? { ...attributes, ...listeners } : undefined
-        }
-      />
+      <SwipeToDelete
+        onDelete={!isEditMode ? onDelete : undefined}
+        deleteActionLabel="Item verwijderen"
+      >
+        <ItemCard
+          itemName={item.name}
+          quantity={item.quantity}
+          checked={item.checked}
+          onCheckedChange={onCheckedChange}
+          state={isEditMode ? "editable" : "default"}
+          onDelete={isEditMode ? onDelete : undefined}
+          onEdit={isEditMode ? onEdit : undefined}
+          dragHandleProps={
+            isEditMode ? { ...attributes, ...listeners } : undefined
+          }
+        />
+      </SwipeToDelete>
     </div>
   );
 }

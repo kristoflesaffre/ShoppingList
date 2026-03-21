@@ -25,6 +25,7 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { id as iid } from "@instantdb/react";
 import { ListCard } from "@/components/ui/list_card";
+import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { EditButton } from "@/components/ui/edit_button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Snackbar } from "@/components/ui/snackbar";
@@ -219,26 +220,31 @@ function SortableListCard({
           "z-10 cursor-grabbing opacity-90 shadow-[var(--shadow-drop)]"
       )}
     >
-      <ListCard
-        listName={list.name}
-        date={list.date}
-        itemCount={itemCountLabel(list.items?.length ?? 0)}
-        icon={
-          <Image
-            src={list.icon}
-            alt=""
-            width={48}
-            height={48}
-            className="object-contain"
-          />
-        }
-        state={isEditMode ? "editable" : "default"}
-        onDelete={isEditMode ? onDelete : undefined}
-        onReorder={undefined}
-        dragHandleProps={isEditMode ? { ...attributes, ...listeners } : undefined}
-        onClick={!isEditMode ? onOpenList : undefined}
-        className={cn(!isEditMode && "cursor-pointer")}
-      />
+      <SwipeToDelete
+        onDelete={!isEditMode ? onDelete : undefined}
+        deleteActionLabel="Lijstje verwijderen"
+      >
+        <ListCard
+          listName={list.name}
+          date={list.date}
+          itemCount={itemCountLabel(list.items?.length ?? 0)}
+          icon={
+            <Image
+              src={list.icon}
+              alt=""
+              width={48}
+              height={48}
+              className="object-contain"
+            />
+          }
+          state={isEditMode ? "editable" : "default"}
+          onDelete={isEditMode ? onDelete : undefined}
+          onReorder={undefined}
+          dragHandleProps={isEditMode ? { ...attributes, ...listeners } : undefined}
+          onClick={!isEditMode ? onOpenList : undefined}
+          className={cn(!isEditMode && "cursor-pointer")}
+        />
+      </SwipeToDelete>
     </div>
   );
 }
