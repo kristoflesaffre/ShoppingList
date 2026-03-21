@@ -1325,16 +1325,25 @@ export default function ListDetailPage({
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
   const listId = params.id;
+  const ownerId = user?.id ?? "__no_user__";
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
 
   const { isLoading, error, data } = db.useQuery({
-    lists: { items: {}, $: { where: { id: listId } } },
+    lists: {
+      items: {},
+      $: { where: { id: listId, ownerId } },
+    },
   });
 
   const listData = data?.lists?.[0];
+
+  React.useEffect(() => {
+    if (authLoading || !user || isLoading) return;
+    if (!listData) router.replace("/");
+  }, [authLoading, user, isLoading, listData, router]);
   const listName = listData?.name ?? "Lijstje";
 
   const items: ListItem[] = React.useMemo(() => {

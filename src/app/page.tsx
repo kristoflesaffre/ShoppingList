@@ -257,10 +257,15 @@ export default function Home() {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
 
+  const ownerId = user?.id ?? "__no_user__";
+
   const { isLoading, error, data } = db.useQuery({
-    lists: { items: {} },
+    lists: {
+      items: {},
+      $: { where: { ownerId } },
+    },
     profiles: {
-      $: { where: { instantUserId: user?.id ?? "__no_user__" } },
+      $: { where: { instantUserId: ownerId } },
     },
   });
 
@@ -363,19 +368,20 @@ export default function Home() {
   );
 
   const handleUndoDelete = React.useCallback(() => {
-    if (!lastDeleted) return;
+    if (!lastDeleted || !user) return;
     db.transact(
       db.tx.lists[lastDeleted.listId].update({
         name: lastDeleted.listName,
         date: new Date().toLocaleDateString("nl-NL"),
         icon: lastDeleted.icon,
         order: lastDeleted.order,
+        ownerId: user.id,
       }),
     );
     setLastDeleted(null);
     setSnackbarMessage(null);
     setAddingId(lastDeleted.listId);
-  }, [lastDeleted]);
+  }, [lastDeleted, user]);
 
   const handleOpenCreateModal = () => {
     setNewListName("");
@@ -388,6 +394,7 @@ export default function Home() {
   };
 
   const handleSaveNewList = React.useCallback(() => {
+    if (!user) return;
     const name = newListName.trim() || "Nieuw lijstje";
     const now = new Date();
     const newId = iid();
@@ -397,11 +404,12 @@ export default function Home() {
         date: now.toLocaleDateString("nl-NL"),
         icon: getIconForNewList(lists),
         order: lists.length > 0 ? Math.min(...lists.map((l) => l.order)) - 1 : 0,
+        ownerId: user.id,
       }),
     );
     setAddingId(newId);
     handleCloseCreateModal();
-  }, [newListName, lists]);
+  }, [newListName, lists, user]);
 
   const handleOpenList = (listId: string) => {
     router.push(`/lijstje/${listId}`);

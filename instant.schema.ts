@@ -7,6 +7,8 @@ const schema = i.schema({
       date: i.string(),
       icon: i.string(),
       order: i.number(),
+      /** Instant auth user id; alleen lijsten van deze gebruiker tonen. */
+      ownerId: i.string().optional().indexed(),
     }),
     items: i.entity({
       name: i.string(),
