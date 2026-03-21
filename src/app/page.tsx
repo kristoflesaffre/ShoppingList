@@ -251,8 +251,20 @@ function SortableListCard({
 
 export default function Home() {
   const router = useRouter();
+  const { isLoading: authLoading, user } = db.useAuth();
 
-  const { isLoading, error, data } = db.useQuery({ lists: { items: {} } });
+  React.useEffect(() => {
+    if (!authLoading && !user) router.replace("/auth");
+  }, [authLoading, user, router]);
+
+  const { isLoading, error, data } = db.useQuery({
+    lists: { items: {} },
+    profiles: {
+      $: { where: { instantUserId: user?.id ?? "__no_user__" } },
+    },
+  });
+
+  const profileAvatarUrl = data?.profiles?.[0]?.avatarUrl ?? null;
 
   const lists: HomeList[] = React.useMemo(() => {
     if (!data?.lists) return [];
@@ -423,7 +435,7 @@ export default function Home() {
     })
   );
 
-  if (isLoading) {
+  if (authLoading || !user || isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="text-base text-text-secondary">Laden…</p>
@@ -559,12 +571,26 @@ export default function Home() {
               </span>
             </button>
 
-            {/* Right tab – Profiel (inactive) */}
+            {/* Right tab – Profiel (inactive); Figma 740:4262: ronde profielfoto indien opgeladen */}
             <button
               type="button"
+              aria-label="Profiel"
               className="flex flex-col items-center gap-3 shrink-0 w-[41px] text-[var(--blue-300)]"
             >
-              <AvatarIcon className="size-6" />
+              <span className="relative size-6 shrink-0 overflow-hidden rounded-full bg-[var(--gray-100)] ring-1 ring-[var(--gray-100)]">
+                {profileAvatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB-profiel
+                  <img
+                    src={profileAvatarUrl}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <AvatarIcon className="size-6 text-[var(--blue-300)]" />
+                )}
+              </span>
               <span className="text-xs leading-4 font-normal tracking-normal">
                 Profiel
               </span>

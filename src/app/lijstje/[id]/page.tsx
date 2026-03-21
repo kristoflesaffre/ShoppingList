@@ -1323,7 +1323,12 @@ export default function ListDetailPage({
   params: { id: string };
 }) {
   const router = useRouter();
+  const { isLoading: authLoading, user } = db.useAuth();
   const listId = params.id;
+
+  React.useEffect(() => {
+    if (!authLoading && !user) router.replace("/auth");
+  }, [authLoading, user, router]);
 
   const { isLoading, error, data } = db.useQuery({
     lists: { items: {}, $: { where: { id: listId } } },
@@ -1734,12 +1739,13 @@ export default function ListDetailPage({
     })
   );
 
-  if (isLoading) {
+  if (authLoading || !user || isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="text-base text-text-secondary">Laden…</p>
       </div>
     );
+
   }
 
   if (error) {

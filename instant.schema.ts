@@ -29,6 +29,13 @@ const schema = i.schema({
       quantity: i.string(),
       order: i.number(),
     }),
+    /** Eén profiel per Instant-auth user: optioneel wachtwoord-hash + avatar (data-URL). */
+    profiles: i.entity({
+      instantUserId: i.string().unique().indexed(),
+      passwordHash: i.string().optional(),
+      passwordSalt: i.string().optional(),
+      avatarUrl: i.string().optional(),
+    }),
   },
   links: {
     listItems: {
