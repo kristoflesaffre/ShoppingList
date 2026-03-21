@@ -271,6 +271,7 @@ export default function Home() {
     listId: string;
     listName: string;
     order: number;
+    icon: string;
   } | null>(null);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
     null,
@@ -340,6 +341,7 @@ export default function Home() {
           listId,
           listName: list.name,
           order: list.order,
+          icon: list.icon,
         });
         setSnackbarMessage(`'${list.name}' verwijderd`);
         setRemovingId(null);
@@ -354,14 +356,14 @@ export default function Home() {
       db.tx.lists[lastDeleted.listId].update({
         name: lastDeleted.listName,
         date: new Date().toLocaleDateString("nl-NL"),
-        icon: getIconForNewList(lists),
+        icon: lastDeleted.icon,
         order: lastDeleted.order,
       }),
     );
     setLastDeleted(null);
     setSnackbarMessage(null);
     setAddingId(lastDeleted.listId);
-  }, [lastDeleted, lists]);
+  }, [lastDeleted]);
 
   const handleOpenCreateModal = () => {
     setNewListName("");
