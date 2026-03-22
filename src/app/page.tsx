@@ -532,7 +532,7 @@ export default function Home() {
   return (
     <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
       {/* Content area */}
-      <div className="flex flex-1 flex-col pb-[120px] pt-[calc(86px+env(safe-area-inset-top,0px))]">
+      <div className="flex flex-1 flex-col pb-[96px] pt-[calc(52px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
           {hasLists && (
             <div className="mb-6 flex items-center gap-4">
@@ -624,7 +624,7 @@ export default function Home() {
 
       {/* Snackbar – positioned above bottom nav */}
       {snackbarMessage && (
-        <div className="fixed inset-x-0 bottom-[120px] z-10 flex justify-center px-2">
+        <div className="fixed inset-x-0 bottom-[96px] z-10 flex justify-center px-2">
           <Snackbar
             message={snackbarMessage}
             actionLabel="Zet terug"

@@ -2110,8 +2110,8 @@ export default function ListDetailPage({
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col">
-      <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)]">
-        <header className="mx-auto flex h-16 max-w-[956px] items-center gap-4 px-4">
+      <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
+        <header className="mx-auto flex h-14 max-w-[956px] items-center gap-4 px-4">
           <button
             type="button"
             onClick={() => router.push("/")}
@@ -2145,7 +2145,7 @@ export default function ListDetailPage({
         </header>
       </div>
 
-      <div className="flex flex-1 flex-col px-4 pb-24 pt-8 mt-16">
+      <div className="flex flex-1 flex-col px-4 pb-24 pt-4 mt-[calc(56px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6">
           {hasItems && (
             <div className="flex items-center gap-4">
