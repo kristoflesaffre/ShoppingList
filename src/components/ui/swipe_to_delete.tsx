@@ -19,7 +19,7 @@ const SWIPE_OUT_EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
 function isInteractiveTarget(target: EventTarget | null) {
   if (!(target instanceof Element)) return true;
   return !!target.closest(
-    'button, a, input, textarea, select, [role="checkbox"], [data-swipe-ignore]',
+    'button, a, input, textarea, select, [role="checkbox"], [data-swipe-ignore], [data-item-hand]',
   );
 }
 

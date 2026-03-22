@@ -42,6 +42,10 @@ type HomeList = {
   icon: string;
   order: number;
   items?: { id: string }[];
+  /** Alleen eigenaar mag lijst verwijderen; gedeelde lijsten zijn read-open + bewerken op detail. */
+  isOwner: boolean;
+  /** Lidmaatschappen om mee te verwijderen bij delete (alleen bij eigenaar). */
+  membershipIds?: string[];
 };
 
 const FOOD_ICONS = [
@@ -221,7 +225,7 @@ function SortableListCard({
       )}
     >
       <SwipeToDelete
-        onDelete={!isEditMode ? onDelete : undefined}
+        onDelete={!isEditMode && list.isOwner ? onDelete : undefined}
         deleteActionLabel="Lijstje verwijderen"
       >
         <ListCard
@@ -238,7 +242,7 @@ function SortableListCard({
             />
           }
           state={isEditMode ? "editable" : "default"}
-          onDelete={isEditMode ? onDelete : undefined}
+          onDelete={isEditMode && list.isOwner ? onDelete : undefined}
           onReorder={undefined}
           dragHandleProps={isEditMode ? { ...attributes, ...listeners } : undefined}
           onClick={!isEditMode ? onOpenList : undefined}
@@ -262,7 +266,12 @@ export default function Home() {
   const { isLoading, error, data } = db.useQuery({
     lists: {
       items: {},
+      memberships: {},
       $: { where: { ownerId } },
+    },
+    listMembers: {
+      list: { items: {} },
+      $: { where: { instantUserId: ownerId } },
     },
     profiles: {
       $: { where: { instantUserId: ownerId } },
@@ -272,13 +281,45 @@ export default function Home() {
   const profileAvatarUrl = data?.profiles?.[0]?.avatarUrl ?? null;
 
   const lists: HomeList[] = React.useMemo(() => {
-    if (!data?.lists) return [];
-    return [...data.lists]
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    const owned: HomeList[] = (data?.lists ?? []).map((l) => ({
+      id: l.id,
+      name: l.name,
+      date: l.date,
+      icon: l.icon,
+      order: l.order,
+      items: l.items ?? [],
+      isOwner: true,
+      membershipIds: (l.memberships ?? []).map((m) => m.id),
+    }));
+
+    const shared: HomeList[] = (data?.listMembers ?? [])
+      .map((row) => row.list)
+      .filter(
+        (l): l is NonNullable<typeof l> =>
+          l != null && typeof l === "object" && "id" in l,
+      )
       .map((l) => ({
-        ...l,
+        id: l.id,
+        name: l.name,
+        date: l.date,
+        icon: l.icon,
+        order: l.order,
         items: l.items ?? [],
+        isOwner: false,
       }));
+
+    const byId = new Map<string, HomeList>();
+    for (const l of owned) {
+      byId.set(l.id, l);
+    }
+    for (const l of shared) {
+      if (!byId.has(l.id)) {
+        byId.set(l.id, l);
+      }
+    }
+    return Array.from(byId.values()).sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0),
+    );
   }, [data]);
 
   const [isEditMode, setIsEditMode] = React.useState(false);
@@ -348,10 +389,12 @@ export default function Home() {
       removeTimeoutRef.current = window.setTimeout(() => {
         removeTimeoutRef.current = null;
         const list = lists.find((l) => l.id === listId);
-        if (!list) return;
+        if (!list || !list.isOwner) return;
         const itemIds = (list.items ?? []).map((i) => i.id);
+        const membershipIds = list.membershipIds ?? [];
         db.transact([
           ...itemIds.map((itemId) => db.tx.items[itemId].delete()),
+          ...membershipIds.map((mid) => db.tx.listMembers[mid].delete()),
           db.tx.lists[listId].delete(),
         ] as Parameters<typeof db.transact>[0]);
         setLastDeleted({

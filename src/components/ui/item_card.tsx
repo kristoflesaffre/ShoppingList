@@ -9,6 +9,18 @@ export type ItemCardVariant = "default" | "gotten-by-you" | "gotten-by-other";
 export type ItemCardState = "default" | "editable";
 export type ItemCardSize = "default";
 
+/** Realtime “ik haal dit” / “ander haalt dit” voor gedeelde lijsten (InstantDB). */
+export type ItemCardSyncListClaim = {
+  /** Wie het item claimt; `null` = niet geclaimd. */
+  claimedByUserId: string | null;
+  currentUserId: string;
+  onClaimChange: (userId: string | null) => void;
+  /** Avatar voor gotten-by-other (bijv. <img> met profielfoto). */
+  otherClaimerAvatar?: React.ReactNode;
+  /** Tekst naast hoeveelheid bij gotten-by-other. */
+  otherClaimerLabel?: string;
+};
+
 /**
  * Item card: single list item with checkbox, name, quantity, and variant-specific actions.
  * Variants: default, gotten-by-you, gotten-by-other. Checked state via checked/defaultChecked + onCheckedChange.
@@ -44,6 +56,8 @@ export interface ItemCardProps extends Omit<
   onDelete?: () => void;
   /** Props for drag handle (listeners + attributes from useSortable). When set, reorder uses drag instead of onClick. */
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  /** Gezet op lijst-detail: claim wordt gesynchroniseerd via InstantDB. */
+  syncListClaim?: ItemCardSyncListClaim;
   className?: string;
 }
 
@@ -272,6 +286,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       onEdit,
       onDelete,
       dragHandleProps,
+      syncListClaim,
       style: incomingStyle,
       ...restProps
     },
@@ -300,18 +315,35 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
     );
 
     const isEditable = state === "editable";
-    // effectiveVariant merges prop + internal claim state.
-    // Checking the item always resets to default (you're no longer getting it).
+    const useSyncClaim = syncListClaim != null;
+    const remoteClaimedBy = syncListClaim?.claimedByUserId ?? null;
+
+    // effectiveVariant: met syncListClaim vanaf InstantDB; anders interne claim (Storybook / recepten).
+    // Afgevinkt = altijd default (doorstreept).
     const effectiveVariant: ItemCardVariant = isChecked
       ? "default"
-      : claimedByMe && variant === "default"
-        ? "gotten-by-you"
-        : variant;
+      : useSyncClaim
+        ? !remoteClaimedBy
+          ? "default"
+          : remoteClaimedBy === syncListClaim!.currentUserId
+            ? "gotten-by-you"
+            : "gotten-by-other"
+        : claimedByMe && variant === "default"
+          ? "gotten-by-you"
+          : variant;
     const isGottenByYou = effectiveVariant === "gotten-by-you";
     const isGottenByOther = effectiveVariant === "gotten-by-other";
-    // fallback label when claimed internally without a claimedByLabel prop
     const effectiveClaimedByLabel =
-      claimedByLabel ?? (claimedByMe ? "jij haalt dit" : null);
+      claimedByLabel ??
+      (useSyncClaim
+        ? isGottenByYou
+          ? "jij haalt dit"
+          : isGottenByOther
+            ? (syncListClaim!.otherClaimerLabel ?? "Deelnemer haalt dit")
+            : null
+        : claimedByMe
+          ? "jij haalt dit"
+          : null);
     const showCheckbox =
       !isEditable &&
       (effectiveVariant === "default" ||
@@ -481,12 +513,12 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
                   <span className="truncate font-medium text-base leading-24 text-[var(--gray-400)] w-full">
                     {itemName}
                   </span>
-                  {claimedByLabel != null && (
+                  {effectiveClaimedByLabel != null && (
                     <span className="flex items-center gap-1 font-normal text-sm leading-20 text-[var(--gray-400)]">
                       {quantity != null && <>{quantity}</>}
                       {quantity != null && " - "}
                       <span className="font-medium text-xs leading-16 text-[var(--blue-500)]">
-                        {claimedByLabel}
+                        {effectiveClaimedByLabel}
                       </span>
                     </span>
                   )}
@@ -539,9 +571,15 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
                 <button
                   type="button"
                   aria-label="Claim item"
+                  data-item-hand
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => {
-                    setClaimedByMe(true);
-                    onClaim?.();
+                    if (useSyncClaim) {
+                      syncListClaim!.onClaimChange(syncListClaim!.currentUserId);
+                    } else {
+                      setClaimedByMe(true);
+                      onClaim?.();
+                    }
                   }}
                   className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
                 >
@@ -552,9 +590,15 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               <button
                 type="button"
                 aria-label="Unclaim item"
+                data-item-hand
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={() => {
-                  setClaimedByMe(false);
-                  onClaim?.();
+                  if (useSyncClaim) {
+                    syncListClaim!.onClaimChange(null);
+                  } else {
+                    setClaimedByMe(false);
+                    onClaim?.();
+                  }
                 }}
                 className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)]"
               >
@@ -566,7 +610,9 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
                 className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full"
                 aria-hidden="true"
               >
-                {avatar}
+                {useSyncClaim
+                  ? syncListClaim!.otherClaimerAvatar
+                  : avatar}
               </span>
             )}
           </div>

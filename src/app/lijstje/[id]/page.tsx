@@ -39,6 +39,7 @@ import { RecipeTile } from "@/components/ui/recipe_tile";
 import { id as iid } from "@instantdb/react";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { ShareListModal } from "@/components/share_list_modal";
 import {
   type RecipeIngredient,
   type SavedRecipe,
@@ -50,6 +51,8 @@ type ListItem = {
   quantity: string;
   checked: boolean;
   section: string;
+  /** Wie dit item claimt in een gedeeld lijstje (Instant user id). */
+  claimedByInstantUserId?: string;
   /** Zelfde id voor alle regels uit één toegepast recept (Figma 134:767). */
   recipeGroupId?: string;
   recipeName?: string;
@@ -1083,11 +1086,14 @@ function SortableItemItems({
   addingId,
   addingIdExpanded,
   onCheckedChange,
+  onRemoteClaimChange,
   onDelete,
   onDeleteSection,
   onDeleteRecipeGroup,
   onEdit,
   onAddToSection,
+  currentUserId,
+  claimProfileByUserId,
 }: {
   sections: { title: string; items: ListItem[] }[];
   isEditMode: boolean;
@@ -1096,11 +1102,14 @@ function SortableItemItems({
   addingId: string | null;
   addingIdExpanded: boolean;
   onCheckedChange: (id: string, checked: boolean) => void;
+  onRemoteClaimChange: (itemId: string, claimUserId: string | null) => void;
   onDelete: (id: string) => void;
   onDeleteSection: (sectionTitle: string) => void;
   onDeleteRecipeGroup: (groupId: string) => void;
   onEdit: (item: ListItem) => void;
   onAddToSection: (sectionTitle: string) => void;
+  currentUserId: string;
+  claimProfileByUserId: Map<string, { avatarUrl?: string }>;
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
@@ -1161,8 +1170,11 @@ function SortableItemItems({
                         addingId={addingId}
                         addingIdExpanded={addingIdExpanded}
                         onCheckedChange={onCheckedChange}
+                        onRemoteClaimChange={onRemoteClaimChange}
                         onDelete={onDelete}
                         onEdit={onEdit}
+                        currentUserId={currentUserId}
+                        claimProfileByUserId={claimProfileByUserId}
                       />
                     ))}
                   </div>
@@ -1199,8 +1211,11 @@ function SortableItemItems({
                         addingId={addingId}
                         addingIdExpanded={addingIdExpanded}
                         onCheckedChange={onCheckedChange}
+                        onRemoteClaimChange={onRemoteClaimChange}
                         onDelete={onDelete}
                         onEdit={onEdit}
+                        currentUserId={currentUserId}
+                        claimProfileByUserId={claimProfileByUserId}
                       />
                     ))}
                   </div>
@@ -1223,8 +1238,11 @@ function SortableItemRow({
   addingId,
   addingIdExpanded,
   onCheckedChange,
+  onRemoteClaimChange,
   onDelete,
   onEdit,
+  currentUserId,
+  claimProfileByUserId,
 }: {
   item: ListItem;
   isEditMode: boolean;
@@ -1233,8 +1251,11 @@ function SortableItemRow({
   addingId: string | null;
   addingIdExpanded: boolean;
   onCheckedChange: (id: string, checked: boolean) => void;
+  onRemoteClaimChange: (itemId: string, claimUserId: string | null) => void;
   onDelete: (id: string) => void;
   onEdit: (item: ListItem) => void;
+  currentUserId: string;
+  claimProfileByUserId: Map<string, { avatarUrl?: string }>;
 }) {
   const isRemoving = removingId === item.id;
   const isAdding = addingId === item.id;
@@ -1253,8 +1274,13 @@ function SortableItemRow({
         item={item}
         isEditMode={isEditMode}
         onCheckedChange={(checked) => onCheckedChange(item.id, checked)}
+        onRemoteClaimChange={(claimUserId) =>
+          onRemoteClaimChange(item.id, claimUserId)
+        }
         onDelete={() => onDelete(item.id)}
         onEdit={() => onEdit(item)}
+        currentUserId={currentUserId}
+        claimProfileByUserId={claimProfileByUserId}
       />
     </div>
   );
@@ -1264,14 +1290,20 @@ function SortableItemCard({
   item,
   isEditMode,
   onCheckedChange,
+  onRemoteClaimChange,
   onDelete,
   onEdit,
+  currentUserId,
+  claimProfileByUserId,
 }: {
   item: ListItem;
   isEditMode: boolean;
   onCheckedChange: (checked: boolean) => void;
+  onRemoteClaimChange: (claimUserId: string | null) => void;
   onDelete: () => void;
   onEdit: () => void;
+  currentUserId: string;
+  claimProfileByUserId: Map<string, { avatarUrl?: string }>;
 }) {
   const {
     attributes,
@@ -1311,6 +1343,28 @@ function SortableItemCard({
           dragHandleProps={
             isEditMode ? { ...attributes, ...listeners } : undefined
           }
+          syncListClaim={{
+            claimedByUserId: item.claimedByInstantUserId ?? null,
+            currentUserId,
+            onClaimChange: onRemoteClaimChange,
+            otherClaimerLabel: "Deelnemer haalt dit",
+            otherClaimerAvatar: (() => {
+              const oid = item.claimedByInstantUserId;
+              if (!oid || oid === currentUserId) return undefined;
+              const url = claimProfileByUserId.get(oid)?.avatarUrl;
+              if (!url) return undefined;
+              return (
+                // eslint-disable-next-line @next/next/no-img-element -- data-URL profiel
+                <img
+                  src={url}
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="size-full object-cover"
+                />
+              );
+            })(),
+          }}
         />
       </SwipeToDelete>
     </div>
@@ -1325,7 +1379,6 @@ export default function ListDetailPage({
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
   const listId = params.id;
-  const ownerId = user?.id ?? "__no_user__";
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
@@ -1334,16 +1387,30 @@ export default function ListDetailPage({
   const { isLoading, error, data } = db.useQuery({
     lists: {
       items: {},
-      $: { where: { id: listId, ownerId } },
+      memberships: {},
+      $: { where: { id: listId } },
     },
   });
 
   const listData = data?.lists?.[0];
 
+  const canAccess = React.useMemo(() => {
+    if (!listData || !user) return false;
+    if (listData.ownerId === user.id) return true;
+    return (listData.memberships ?? []).some(
+      (m) => m.instantUserId === user.id,
+    );
+  }, [listData, user]);
+
+  const isListOwner = React.useMemo(
+    () => !!(listData && user && listData.ownerId === user.id),
+    [listData, user],
+  );
+
   React.useEffect(() => {
     if (authLoading || !user || isLoading) return;
-    if (!listData) router.replace("/");
-  }, [authLoading, user, isLoading, listData, router]);
+    if (!listData || !canAccess) router.replace("/");
+  }, [authLoading, user, isLoading, listData, canAccess, router]);
   const listName = listData?.name ?? "Lijstje";
 
   const items: ListItem[] = React.useMemo(() => {
@@ -1356,11 +1423,54 @@ export default function ListDetailPage({
         quantity: it.quantity,
         checked: it.checked,
         section: it.section,
+        claimedByInstantUserId: it.claimedByInstantUserId || undefined,
         recipeGroupId: it.recipeGroupId || undefined,
         recipeName: it.recipeName || undefined,
         recipeLink: it.recipeLink || undefined,
       }));
   }, [listData]);
+
+  const claimerIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    for (const it of items) {
+      const c = it.claimedByInstantUserId;
+      if (c && user?.id && c !== user.id) ids.add(c);
+    }
+    return Array.from(ids);
+  }, [items, user?.id]);
+
+  const claimersProfileQuery = React.useMemo(() => {
+    if (claimerIds.length === 0) {
+      return {
+        profiles: {
+          $: { where: { instantUserId: "__claimers_none__" } },
+        },
+      };
+    }
+    return {
+      profiles: {
+        $: {
+          where: {
+            or: claimerIds.map((id) => ({ instantUserId: id })),
+          },
+        },
+      },
+    };
+  }, [claimerIds]);
+
+  const { data: claimerProfileData } = db.useQuery(
+    claimersProfileQuery as unknown as Parameters<typeof db.useQuery>[0],
+  );
+
+  const claimProfileByUserId = React.useMemo(() => {
+    const m = new Map<string, { avatarUrl?: string }>();
+    for (const p of claimerProfileData?.profiles ?? []) {
+      if (p.instantUserId) {
+        m.set(p.instantUserId, { avatarUrl: p.avatarUrl ?? undefined });
+      }
+    }
+    return m;
+  }, [claimerProfileData?.profiles]);
 
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
@@ -1379,6 +1489,7 @@ export default function ListDetailPage({
   >(null);
   const [addingId, setAddingId] = React.useState<string | null>(null);
   const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
+  const [shareModalOpen, setShareModalOpen] = React.useState(false);
   const { data: recipeData } = db.useQuery({
     recipes: { ingredients: {} },
   });
@@ -1434,6 +1545,20 @@ export default function ListDetailPage({
     setInitialSection(null);
     setIsNewItemOpen(true);
   }, []);
+
+  /** Eerste keer delen: genereer unieke shareToken op de lijst. */
+  React.useEffect(() => {
+    if (!shareModalOpen || !isListOwner || !listId || !user) return;
+    if (listData?.shareToken) return;
+    const t = crypto.randomUUID();
+    void db.transact(db.tx.lists[listId].update({ shareToken: t }));
+  }, [shareModalOpen, isListOwner, listId, user, listData?.shareToken]);
+
+  const shareUrl = React.useMemo(() => {
+    const tok = listData?.shareToken;
+    if (!tok || typeof window === "undefined") return "";
+    return `${window.location.origin}/deel/${encodeURIComponent(tok)}`;
+  }, [listData?.shareToken]);
 
   const handleSaveRecipeToLibrary = React.useCallback(
     (recipe: SavedRecipe) => {
@@ -1549,9 +1674,53 @@ export default function ListDetailPage({
 
   const handleCheckedChange = React.useCallback(
     (itemId: string, checked: boolean) => {
-      db.transact(db.tx.items[itemId].update({ checked }));
+      if (checked) {
+        const row = items.find((i) => i.id === itemId);
+        /** Geen `null` in één `update()` met checked — kan in InstantDB verkeerd op gelinkte items landen. */
+        if (row?.claimedByInstantUserId) {
+          db.transact([
+            db.tx.items[itemId].update({ checked: true }),
+            db.tx.items[itemId].merge({
+              claimedByInstantUserId: null,
+            } as never),
+          ]);
+        } else {
+          db.transact(db.tx.items[itemId].update({ checked: true }));
+        }
+      } else {
+        db.transact(db.tx.items[itemId].update({ checked: false }));
+      }
     },
-    [],
+    [items],
+  );
+
+  const handleRemoteClaimChange = React.useCallback(
+    (itemId: string, nextClaimUserId: string | null) => {
+      if (!user) return;
+      const item = items.find((i) => i.id === itemId);
+      if (!item) return;
+      if (nextClaimUserId !== null && nextClaimUserId !== user.id) return;
+      if (
+        nextClaimUserId === null &&
+        item.claimedByInstantUserId !== user.id
+      ) {
+        return;
+      }
+      if (nextClaimUserId === null) {
+        db.transact(
+          db.tx.items[itemId].merge({
+            claimedByInstantUserId: null,
+          } as never),
+        );
+      } else {
+        db.transact(
+          db.tx.items[itemId].update({
+            claimedByInstantUserId: nextClaimUserId,
+          }),
+        );
+      }
+    },
+    [items, user],
   );
 
   const handleDeleteItem = React.useCallback(
@@ -1628,6 +1797,9 @@ export default function ListDetailPage({
           recipeGroupId: item.recipeGroupId ?? "",
           recipeName: item.recipeName ?? "",
           recipeLink: item.recipeLink ?? "",
+          ...(item.claimedByInstantUserId
+            ? { claimedByInstantUserId: item.claimedByInstantUserId }
+            : {}),
         })
         .link({ list: listId }),
       ...newArray.map((a, i) => db.tx.items[a.id].update({ order: i })),
@@ -1788,13 +1960,18 @@ export default function ListDetailPage({
           <h1 className="flex-1 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
             {listName}
           </h1>
-          <button
-            type="button"
-            aria-label="Uitnodigen"
-            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-          >
-            <PersonAddIcon />
-          </button>
+          {isListOwner ? (
+            <button
+              type="button"
+              aria-label="Lijstje delen"
+              onClick={() => setShareModalOpen(true)}
+              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              <PersonAddIcon />
+            </button>
+          ) : (
+            <span className="size-6 shrink-0" aria-hidden />
+          )}
           <button
             type="button"
             aria-label="Meer opties"
@@ -1858,6 +2035,7 @@ export default function ListDetailPage({
                   addingId={addingId}
                   addingIdExpanded={addingIdExpanded}
                   onCheckedChange={handleCheckedChange}
+                  onRemoteClaimChange={handleRemoteClaimChange}
                   onDelete={handleDeleteItem}
                   onDeleteSection={handleDeleteSection}
                   onDeleteRecipeGroup={handleDeleteRecipeGroup}
@@ -1869,6 +2047,8 @@ export default function ListDetailPage({
                     setEditingItem(null);
                     setIsNewItemOpen(true);
                   }}
+                  currentUserId={user.id}
+                  claimProfileByUserId={claimProfileByUserId}
                 />
               </SortableContext>
             </DndContext>
@@ -1914,6 +2094,13 @@ export default function ListDetailPage({
         storedRecipes={savedRecipes}
         onSaveRecipeToLibrary={handleSaveRecipeToLibrary}
         onApplyRecipeToList={handleAddItemsFromRecipe}
+      />
+
+      <ShareListModal
+        open={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        shareUrl={shareUrl}
+        urlReady={Boolean(listData?.shareToken && shareUrl)}
       />
     </div>
   );

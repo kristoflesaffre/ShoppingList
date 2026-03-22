@@ -9,6 +9,12 @@ const schema = i.schema({
       order: i.number(),
       /** Instant auth user id; alleen lijsten van deze gebruiker tonen. */
       ownerId: i.string().optional().indexed(),
+      /** Unieke token voor uitnodigingslink (/deel/[token]); alleen gezet door eigenaar. */
+      shareToken: i.string().optional().unique().indexed(),
+    }),
+    /** Koppeling: gebruiker is deelnemer aan een gedeeld lijstje (realtime samenwerking). */
+    listMembers: i.entity({
+      instantUserId: i.string().indexed(),
     }),
     items: i.entity({
       name: i.string(),
@@ -16,6 +22,8 @@ const schema = i.schema({
       checked: i.boolean(),
       section: i.string(),
       order: i.number(),
+      /** Wie dit item “op zich neemt” in een gedeeld lijstje (Instant user id). */
+      claimedByInstantUserId: i.string().optional().indexed(),
       recipeGroupId: i.string().optional(),
       recipeName: i.string().optional(),
       recipeLink: i.string().optional(),
@@ -47,6 +55,10 @@ const schema = i.schema({
     recipeIngredientLink: {
       forward: { on: "recipes", has: "many", label: "ingredients" },
       reverse: { on: "recipeIngredients", has: "one", label: "recipe" },
+    },
+    listMemberships: {
+      forward: { on: "lists", has: "many", label: "memberships" },
+      reverse: { on: "listMembers", has: "one", label: "list" },
     },
   },
 });

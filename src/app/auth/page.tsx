@@ -8,7 +8,15 @@ import { Button } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input_field";
 import { MiniButton } from "@/components/ui/mini_button";
 import { OtpInput } from "@/components/ui/otp_input";
-import { cn } from "@/lib/utils";
+import { cn, getSafeInternalPath } from "@/lib/utils";
+
+function getPostAuthDestination(): string {
+  if (typeof window === "undefined") return "/";
+  return (
+    getSafeInternalPath(new URLSearchParams(window.location.search).get("next")) ??
+    "/"
+  );
+}
 import { db } from "@/lib/db";
 import { fileToAvatarDataUrl, hashPasswordForProfile } from "@/lib/profile_crypto";
 
@@ -116,7 +124,7 @@ export default function AuthPage() {
     if (PROFILE_SETUP_STEPS.includes(step)) return;
     if (registerCodeCompletingRef.current) return;
     if (step === "landing" || step === "email" || step === "code") {
-      router.replace("/");
+      router.replace(getPostAuthDestination());
     }
   }, [user, step, router]);
 
@@ -310,7 +318,7 @@ export default function AuthPage() {
           ...(avatarPreview ? { avatarUrl: avatarPreview } : {}),
         }),
       );
-      router.replace("/");
+      router.replace(getPostAuthDestination());
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Profielfoto opslaan mislukt.",
@@ -321,7 +329,7 @@ export default function AuthPage() {
   };
 
   const handleSkipPhoto = () => {
-    router.replace("/");
+    router.replace(getPostAuthDestination());
   };
 
   /* ── Landing ── */
