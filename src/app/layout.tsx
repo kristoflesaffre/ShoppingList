@@ -1,10 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+/** Bovenste gradientkleur (blue-100) — sluit aan bij globals.css voor statusbalk/splash. */
+const APP_THEME_TOP = "#dcddfc";
+
 export const viewport: Viewport = {
-  themeColor: "#f5f3fb",
+  themeColor: APP_THEME_TOP,
   width: "device-width",
   initialScale: 1,
+  /** iOS: pagina mag onder notch/statusbalk tekenen → gradient zichtbaar i.p.v. witte balk. */
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -14,7 +19,11 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Shopping List",
-    statusBarStyle: "default",
+    /**
+     * "default" = op iPhone vaak een **ondoorzichtige witte** statusbalk (standalone/PWA).
+     * "black-translucent" = inhoud loopt door onder de balk; zie body-gradient + safe-area padding.
+     */
+    statusBarStyle: "black-translucent",
   },
 };
 

@@ -4,11 +4,18 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  /* iOS safe areas + volledige hoogte zodat gradient achter statusbalk loopt (viewport-fit=cover) */
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: linear-gradient(180deg, #dcddfc 0%, #ffffff 100%) !important;
   background-attachment: fixed;
 }

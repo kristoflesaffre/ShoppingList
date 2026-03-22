@@ -532,7 +532,7 @@ export default function Home() {
   return (
     <div className="relative flex min-h-screen w-full flex-col px-[16px]">
       {/* Content area */}
-      <div className="flex flex-1 flex-col pb-[120px] pt-[86px]">
+      <div className="flex flex-1 flex-col pb-[120px] pt-[calc(86px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
           {hasLists && (
             <div className="mb-6 flex items-center gap-4">

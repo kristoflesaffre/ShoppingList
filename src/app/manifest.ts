@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Samen boodschappenlijsten beheren",
     start_url: "/",
     display: "standalone",
-    background_color: "#f5f3fb",
-    theme_color: "#f5f3fb",
+    background_color: "#dcddfc",
+    theme_color: "#dcddfc",
     icons: [
       {
         src: "/apple-icon.png",
