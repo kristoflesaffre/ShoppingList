@@ -105,6 +105,8 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [avatarPreview, setAvatarPreview] = React.useState<string | null>(null);
+  /** Registratie stap “Naam en profielfoto”; verplicht voor Volgende (Figma 760:3202 / 760:3250). */
+  const [firstName, setFirstName] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
   const [isVerifying, setIsVerifying] = React.useState(false);
   const [isSavingPassword, setIsSavingPassword] = React.useState(false);
@@ -184,6 +186,7 @@ export default function AuthPage() {
     setPassword("");
     setConfirmPassword("");
     setAvatarPreview(null);
+    setFirstName("");
     setError(null);
   };
 
@@ -376,8 +379,10 @@ export default function AuthPage() {
     }
   };
 
-  const upsertAvatarAndGoHome = async () => {
+  const upsertProfileNameAndAvatarAndGoHome = async () => {
     if (!user?.id) return;
+    const name = firstName.trim();
+    if (!name) return;
     setIsSavingAvatar(true);
     setError(null);
     try {
@@ -386,21 +391,18 @@ export default function AuthPage() {
       await db.transact(
         db.tx.profiles[pid].update({
           instantUserId: user.id,
+          firstName: name,
           ...(avatarPreview ? { avatarUrl: avatarPreview } : {}),
         }),
       );
       router.replace(getPostAuthDestination());
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Profielfoto opslaan mislukt.",
+        e instanceof Error ? e.message : "Profiel opslaan mislukt.",
       );
     } finally {
       setIsSavingAvatar(false);
     }
-  };
-
-  const handleSkipPhoto = () => {
-    router.replace(getPostAuthDestination());
   };
 
   /* ── Landing ── */
@@ -746,8 +748,10 @@ export default function AuthPage() {
     );
   }
 
-  /* ── Profile photo step (register only) ── */
+  /* ── Naam + profielfoto (register only; Figma 760:3202 / 760:3250 / 760:3370) ── */
   if (step === "photo" && user) {
+    const nameOk = firstName.trim().length > 0;
+
     return (
       <div
         className={cn(authShell, "pt-[env(safe-area-inset-top,0px)]")}
@@ -760,7 +764,19 @@ export default function AuthPage() {
           onChange={handleFileChange}
         />
         <div className={cn(authContentWrap, "gap-6 pt-12")}>
-          <StepHeader title="Profielfoto" onBack={handleGoBack} />
+          <StepHeader title="Naam en profielfoto" onBack={handleGoBack} />
+
+          <InputField
+            label="Je voornaam"
+            autoComplete="given-name"
+            autoFocus
+            placeholder="Voornaam"
+            value={firstName}
+            onChange={(e) => {
+              setFirstName(e.target.value);
+              setError(null);
+            }}
+          />
 
           <div className="flex flex-1 flex-col items-center justify-center gap-6">
             <div className="flex size-[160px] items-center justify-center overflow-hidden rounded-full bg-[var(--white)] ring-1 ring-[var(--gray-100)]">
@@ -797,22 +813,14 @@ export default function AuthPage() {
 
         <div
           className={cn(
-            "mx-auto flex w-full max-w-[768px] flex-col items-center gap-3 px-4",
+            "mx-auto flex w-full max-w-[768px] flex-col items-center px-4",
             authFooterPad,
           )}
         >
           <Button
-            variant="tertiary"
-            onClick={handleSkipPhoto}
-            disabled={isSavingAvatar}
-            className="w-full max-w-[320px]"
-          >
-            Overslaan
-          </Button>
-          <Button
             variant="primary"
-            disabled={!avatarPreview || isSavingAvatar}
-            onClick={upsertAvatarAndGoHome}
+            disabled={!nameOk || isSavingAvatar}
+            onClick={() => void upsertProfileNameAndAvatarAndGoHome()}
             className="w-full max-w-[320px]"
           >
             {isSavingAvatar ? "Opslaan…" : "Volgende"}

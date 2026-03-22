@@ -67,6 +67,11 @@ export interface AppBottomNavProps {
   active: "lijstjes" | "profiel";
   /** Data-URL of URL voor profieltab; null = placeholder icoon */
   profileAvatarUrl: string | null;
+  /**
+   * Voornaam onder de avatar in de profieltab (Figma 760:3415).
+   * Leeg/ontbrekend → label "Profiel" (legacy accounts).
+   */
+  profileFirstName?: string | null;
   onLijstjes: () => void;
   onProfiel: () => void;
   /** Alleen startscherm: FAB “nieuw lijstje” */
@@ -80,11 +85,14 @@ export interface AppBottomNavProps {
 export function AppBottomNav({
   active,
   profileAvatarUrl,
+  profileFirstName,
   onLijstjes,
   onProfiel,
   onFabClick,
 }: AppBottomNavProps) {
   const showFab = typeof onFabClick === "function";
+  const trimmedName = profileFirstName?.trim() ?? "";
+  const profileTabLabel = trimmedName.length > 0 ? trimmedName : "Profiel";
   /** Zelfde lay-out als met FAB: plus staat absolute en telt niet mee in flex; justify-around zou tabs naar het midden trekken. */
   const navItemLayout =
     "mx-auto flex h-12 w-full max-w-[390px] items-center justify-center gap-[149px] px-6";
@@ -127,10 +135,12 @@ export function AppBottomNav({
         <button
           type="button"
           onClick={onProfiel}
-          aria-label="Profiel"
+          aria-label={
+            trimmedName.length > 0 ? `Profiel, ${trimmedName}` : "Profiel"
+          }
           aria-current={active === "profiel" ? "page" : undefined}
           className={cn(
-            "flex w-[41px] shrink-0 flex-col items-center gap-3",
+            "flex min-w-[41px] max-w-[104px] shrink-0 flex-col items-center gap-3",
             active === "profiel"
               ? "text-[var(--blue-500)]"
               : "text-[var(--blue-300)]",
@@ -150,8 +160,11 @@ export function AppBottomNav({
               <AvatarIcon className="size-6 text-[var(--blue-300)]" />
             )}
           </span>
-          <span className="text-xs font-normal leading-4 tracking-normal">
-            Profiel
+          <span
+            className="w-full truncate text-center text-xs font-normal leading-4 tracking-normal"
+            title={trimmedName.length > 0 ? trimmedName : undefined}
+          >
+            {profileTabLabel}
           </span>
         </button>
       </nav>

@@ -43,6 +43,8 @@ const schema = i.schema({
     /** Eén profiel per Instant-auth user: optioneel wachtwoord-hash + avatar (data-URL). */
     profiles: i.entity({
       instantUserId: i.string().unique().indexed(),
+      /** Voornaam (verplicht na registratie-stap “Naam en profielfoto”). */
+      firstName: i.string().optional(),
       passwordHash: i.string().optional(),
       passwordSalt: i.string().optional(),
       avatarUrl: i.string().optional(),

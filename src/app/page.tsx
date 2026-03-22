@@ -218,7 +218,9 @@ export default function Home() {
     },
   });
 
-  const profileAvatarUrl = data?.profiles?.[0]?.avatarUrl ?? null;
+  const profileRow = data?.profiles?.[0];
+  const profileAvatarUrl = profileRow?.avatarUrl ?? null;
+  const profileFirstName = (profileRow?.firstName ?? "").trim() || null;
 
   const lists: HomeList[] = React.useMemo(() => {
     const owned: HomeList[] = (data?.lists ?? []).map((l) => ({
@@ -551,6 +553,7 @@ export default function Home() {
       <AppBottomNav
         active="lijstjes"
         profileAvatarUrl={profileAvatarUrl}
+        profileFirstName={profileFirstName}
         onLijstjes={() => router.push("/")}
         onProfiel={() => router.push("/profiel")}
         onFabClick={handleOpenCreateModal}

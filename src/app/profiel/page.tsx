@@ -26,6 +26,8 @@ export default function ProfielPage() {
 
   const existingProfile = data?.profiles?.[0];
   const profileAvatarUrl = existingProfile?.avatarUrl ?? null;
+  const profileFirstName =
+    (existingProfile?.firstName ?? "").trim() || null;
   const profileIdRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (existingProfile?.id) profileIdRef.current = existingProfile.id;
@@ -115,30 +117,38 @@ export default function ProfielPage() {
           </div>
 
           <main className="mx-auto flex w-full max-w-[390px] flex-1 flex-col items-center pb-[env(safe-area-inset-bottom,0px)]">
-            <div
-              className="mt-8 flex size-[200px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--white)] ring-1 ring-[var(--gray-100)]"
-              aria-label="Profielfoto"
-            >
-              {displayUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- data-URL
-                <img
-                  src={displayUrl}
-                  alt=""
-                  className="size-full object-cover"
-                />
-              ) : (
-                <svg
-                  className="size-[120px] text-[var(--blue-300)]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1}
-                  aria-hidden
-                >
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 20c0-4 4-7 8-7s8 3 8 7" />
-                </svg>
-              )}
+            {/* Figma 760:3415: foto + voornaam (12px gap), daarna acties */}
+            <div className="mt-8 flex flex-col items-center gap-3">
+              <div
+                className="flex size-[200px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--white)] ring-1 ring-[var(--gray-100)]"
+                aria-label="Profielfoto"
+              >
+                {displayUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- data-URL
+                  <img
+                    src={displayUrl}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <svg
+                    className="size-[120px] text-[var(--blue-300)]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1}
+                    aria-hidden
+                  >
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M4 20c0-4 4-7 8-7s8 3 8 7" />
+                  </svg>
+                )}
+              </div>
+              {profileFirstName ? (
+                <p className="text-center text-base font-bold leading-32 tracking-normal text-text-primary">
+                  {profileFirstName}
+                </p>
+              ) : null}
             </div>
 
             <div className="mt-8 flex w-full max-w-[320px] flex-col items-center gap-6">
@@ -169,7 +179,8 @@ export default function ProfielPage() {
                 onClick={() => void handleLogout()}
                 className={cn(
                   "w-full max-w-none min-w-0",
-                  "text-[var(--error-400)] hover:text-[var(--error-600)]",
+                  /* Tertiary zet text-link; cn() merged niet → zonder ! wint stylesheet-volgorde */
+                  "!text-[var(--error-400)] hover:!text-[var(--error-600)]",
                 )}
               >
                 Uitloggen
@@ -190,6 +201,7 @@ export default function ProfielPage() {
       <AppBottomNav
         active="profiel"
         profileAvatarUrl={profileAvatarUrl}
+        profileFirstName={profileFirstName}
         onLijstjes={() => router.push("/")}
         onProfiel={() => router.push("/profiel")}
       />
