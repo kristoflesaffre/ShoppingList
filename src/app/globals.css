@@ -4,20 +4,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * App-achtergrond (gradient).
+ * - Geen `background-attachment: fixed` op body: iOS Safari tekent die vaak pas na scroll
+ *   → witte strook onder statusbalk tot je scrollt.
+ * - `body::before` fixed + z-index -1: gradient altijd over volledige viewport, ook bij safe-area.
+ */
 html {
-  /* iOS safe areas + volledige hoogte zodat gradient achter statusbalk loopt (viewport-fit=cover) */
   min-height: 100%;
   min-height: 100dvh;
+  /* Directe fill bovenaan (geen “witte” flash vóór gradient) */
+  background-color: #dcddfc;
 }
 
-html,
 body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
   min-height: 100dvh;
-  background: linear-gradient(180deg, #dcddfc 0%, #ffffff 100%) !important;
-  background-attachment: fixed;
+  min-height: -webkit-fill-available;
+  background: transparent !important;
+  position: relative;
+  /* Zodat body::before met z-index:-1 betrouwbaar achter app-inhoud zit */
+  isolation: isolate;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  background: linear-gradient(180deg, #dcddfc 0%, #ffffff 100%);
+  pointer-events: none;
 }
 
 /* Override any element that might cover the gradient (e.g. cached main with bg-background-subtle) */

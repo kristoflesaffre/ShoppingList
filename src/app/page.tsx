@@ -513,7 +513,7 @@ export default function Home() {
 
   if (authLoading || !user || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-dvh items-center justify-center">
         <p className="text-base text-text-secondary">Laden…</p>
       </div>
     );
@@ -521,7 +521,7 @@ export default function Home() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="flex min-h-dvh items-center justify-center px-4">
         <p className="text-base text-[var(--error-600)]">
           Er ging iets mis: {error.message}
         </p>
@@ -530,7 +530,7 @@ export default function Home() {
   }
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col px-[16px]">
+    <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
       {/* Content area */}
       <div className="flex flex-1 flex-col pb-[120px] pt-[calc(86px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">

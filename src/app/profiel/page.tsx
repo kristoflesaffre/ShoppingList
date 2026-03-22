@@ -106,7 +106,7 @@ export default function ProfielPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col px-[16px]">
+    <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
       {/* Zelfde content-padding als Mijn lijstjes (home); geen vaste witte header zoals lijstje-detail */}
       <div className="flex flex-1 flex-col pb-[120px] pt-[calc(86px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">

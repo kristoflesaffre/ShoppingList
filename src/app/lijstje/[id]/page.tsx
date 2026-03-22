@@ -2091,7 +2091,7 @@ export default function ListDetailPage({
 
   if (authLoading || !user || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-dvh items-center justify-center">
         <p className="text-base text-text-secondary">Laden…</p>
       </div>
     );
@@ -2100,7 +2100,7 @@ export default function ListDetailPage({
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="flex min-h-dvh items-center justify-center px-4">
         <p className="text-base text-[var(--error-600)]">
           Er ging iets mis: {error.message}
         </p>
@@ -2109,7 +2109,7 @@ export default function ListDetailPage({
   }
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col">
+    <div className="relative flex min-h-dvh w-full flex-col">
       <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)]">
         <header className="mx-auto flex h-16 max-w-[956px] items-center gap-4 px-4">
           <button
