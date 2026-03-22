@@ -10,12 +10,13 @@ export interface ShareListModalProps {
   onClose: () => void;
   /** Volledige uitnodigings-URL; leeg zolang token nog wordt aangemaakt */
   shareUrl: string;
-  /** True zodra shareUrl klaar is om te tonen/kopiëren */
+  /** True zodra shareUrl klaar is om te kopiëren / mailen */
   urlReady: boolean;
 }
 
 /**
- * Deel een lijstje: kopiëren, systeemdeel-sheet, WhatsApp, e-mail.
+ * Slide-in “Lijstje delen” (niet-iPhone). Figma 759:2537 — intro + e-mail + kopiëren.
+ * Op iPhone opent de parent enkel de native share-sheet.
  */
 export function ShareListModal({
   open,
@@ -49,33 +50,11 @@ export function ShareListModal({
     }
   };
 
-  const handleNativeShare = async () => {
-    if (!shareUrl || !urlReady) return;
-    if (!navigator.share) {
-      await handleCopy();
-      return;
-    }
-    try {
-      await navigator.share({
-        title: "Lijstje delen",
-        text: "Schrijf mee op dit lijstje:",
-        url: shareUrl,
-      });
-    } catch (e) {
-      if ((e as Error).name === "AbortError") return;
-      await handleCopy();
-    }
-  };
-
-  const openWhatsApp = () => {
-    if (!shareUrl || !urlReady) return;
-    const u = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-    window.open(u, "_blank", "noopener,noreferrer");
-  };
-
   const openEmail = () => {
     if (!shareUrl || !urlReady) return;
-    const subject = encodeURIComponent("Uitnodiging: meeschrijven op een lijstje");
+    const subject = encodeURIComponent(
+      "Uitnodiging: meeschrijven op een lijstje",
+    );
     const body = encodeURIComponent(shareText);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
@@ -86,72 +65,50 @@ export function ShareListModal({
       onClose={onClose}
       title="Lijstje delen"
       compact
-      className="max-h-[min(520px,90dvh)]"
+      bodyFullWidth
+      className="rounded-t-[var(--radius-md)]"
     >
-      <div className="mx-auto flex w-full max-w-[956px] flex-col gap-4 px-4">
-        <p className="text-sm leading-20 text-[var(--text-secondary)]">
-          Iedereen met deze link kan meeschrijven zodra ze inloggen. Wijzigingen
-          verschijnen realtime voor iedereen.
+      <div
+        className={cn(
+          "mx-auto flex w-full max-w-[390px] flex-col items-center",
+          "gap-8 px-4 pb-[calc(45px+env(safe-area-inset-bottom,0px))]",
+        )}
+      >
+        <p
+          className="w-full max-w-[358px] text-left font-light text-base leading-24 tracking-normal text-[var(--text-primary)]"
+        >
+          Iedereen met deze link kan items toevoegen en afvinken in dit lijstje.
+          Wijzigingen verschijnen realtime voor iedereen.
         </p>
 
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-[var(--text-tertiary)]">
-            Uitnodigingslink
-          </span>
-          <div
+        <div className="flex w-full max-w-[320px] flex-col gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!urlReady}
+            onClick={openEmail}
             className={cn(
-              "rounded-md border border-[var(--gray-100)] bg-[var(--gray-50)] px-3 py-2 text-xs break-all text-[var(--text-primary)]",
-              !urlReady && "text-[var(--text-tertiary)]",
+              "max-w-none min-w-0 w-full py-2.5",
+              "border border-[var(--action-primary)] bg-[var(--white)]",
+              "text-[var(--action-primary)] hover:bg-[var(--blue-25)]",
             )}
           >
-            {urlReady ? shareUrl : "Link wordt aangemaakt…"}
-          </div>
-          {copyHint ? (
-            <p className="text-xs text-[var(--blue-500)]" role="status">
-              {copyHint}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="flex flex-col gap-3 pt-2">
+            Link delen via e-mail
+          </Button>
           <Button
             type="button"
             variant="primary"
-            className="w-full"
             disabled={!urlReady}
             onClick={handleCopy}
+            className="max-w-none min-w-0 w-full py-2.5"
           >
             Link kopiëren
           </Button>
-          {"share" in navigator && typeof navigator.share === "function" ? (
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full"
-              disabled={!urlReady}
-              onClick={handleNativeShare}
-            >
-              Delen…
-            </Button>
+          {copyHint ? (
+            <p className="text-center text-xs text-[var(--blue-500)]" role="status">
+              {copyHint}
+            </p>
           ) : null}
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full"
-            disabled={!urlReady}
-            onClick={openWhatsApp}
-          >
-            Delen via WhatsApp
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full"
-            disabled={!urlReady}
-            onClick={openEmail}
-          >
-            Delen via e-mail
-          </Button>
         </div>
       </div>
     </SlideInModal>

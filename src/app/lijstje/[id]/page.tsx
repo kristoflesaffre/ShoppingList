@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   DndContext,
   closestCenter,
@@ -37,7 +37,7 @@ import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search_bar";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { id as iid } from "@instantdb/react";
-import { cn } from "@/lib/utils";
+import { cn, isIPhoneDevice } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { ShareListModal } from "@/components/share_list_modal";
 import {
@@ -1371,26 +1371,55 @@ function SortableItemCard({
   );
 }
 
+/** Zelfde idee als /deel/[token]: nooit `id: undefined` in InstaQL — dat kan eindeloos laden geven. */
+const LIJSTJE_QUERY_PLACEHOLDER_ID = "__lijst_detail_missing_route_id__";
+
+function resolvedRouteListId(
+  propsId: string | undefined,
+  paramFromHook: string | string[] | undefined,
+): string | null {
+  if (typeof paramFromHook === "string" && paramFromHook.length > 0) {
+    return paramFromHook;
+  }
+  if (
+    Array.isArray(paramFromHook) &&
+    typeof paramFromHook[0] === "string" &&
+    paramFromHook[0].length > 0
+  ) {
+    return paramFromHook[0];
+  }
+  if (typeof propsId === "string" && propsId.length > 0) return propsId;
+  return null;
+}
+
 export default function ListDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
   const router = useRouter();
+  const routeParams = useParams();
   const { isLoading: authLoading, user } = db.useAuth();
-  const listId = params.id;
+  const routeListId = resolvedRouteListId(params.id, routeParams?.id);
+  const listQueryId = routeListId ?? LIJSTJE_QUERY_PLACEHOLDER_ID;
+  const listId = routeListId ?? "";
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
 
-  const { isLoading, error, data } = db.useQuery({
-    lists: {
-      items: {},
-      memberships: {},
-      $: { where: { id: listId } },
-    },
-  });
+  const listDetailQuery = React.useMemo(
+    () => ({
+      lists: {
+        items: {},
+        memberships: {},
+        $: { where: { id: listQueryId } },
+      },
+    }),
+    [listQueryId],
+  );
+
+  const { isLoading, error, data } = db.useQuery(listDetailQuery);
 
   const listData = data?.lists?.[0];
 
@@ -1546,13 +1575,49 @@ export default function ListDetailPage({
     setIsNewItemOpen(true);
   }, []);
 
-  /** Eerste keer delen: genereer unieke shareToken op de lijst. */
+  /** Eerste keer delen (slide-in): genereer unieke shareToken op de lijst. */
   React.useEffect(() => {
     if (!shareModalOpen || !isListOwner || !listId || !user) return;
     if (listData?.shareToken) return;
     const t = crypto.randomUUID();
     void db.transact(db.tx.lists[listId].update({ shareToken: t }));
   }, [shareModalOpen, isListOwner, listId, user, listData?.shareToken]);
+
+  const handleShareInvitePress = React.useCallback(async () => {
+    if (!isListOwner || !listId || !user) return;
+
+    const canNativeShare =
+      isIPhoneDevice() &&
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function";
+
+    const ensureShareToken = async (): Promise<string | null> => {
+      if (listData?.shareToken) return listData.shareToken;
+      const t = crypto.randomUUID();
+      await db.transact(db.tx.lists[listId].update({ shareToken: t }));
+      return t;
+    };
+
+    if (canNativeShare) {
+      try {
+        const token = await ensureShareToken();
+        if (!token || typeof window === "undefined") return;
+        const url = `${window.location.origin}/deel/${encodeURIComponent(token)}`;
+        await navigator.share({
+          title: "Lijstje delen",
+          text: "Schrijf mee op dit lijstje:",
+          url,
+        });
+      } catch (e) {
+        const err = e as { name?: string };
+        if (err?.name === "AbortError") return;
+        setShareModalOpen(true);
+      }
+      return;
+    }
+
+    setShareModalOpen(true);
+  }, [isListOwner, listId, user, listData?.shareToken]);
 
   const shareUrl = React.useMemo(() => {
     const tok = listData?.shareToken;
@@ -1964,7 +2029,7 @@ export default function ListDetailPage({
             <button
               type="button"
               aria-label="Lijstje delen"
-              onClick={() => setShareModalOpen(true)}
+              onClick={() => void handleShareInvitePress()}
               className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
             >
               <PersonAddIcon />

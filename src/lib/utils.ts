@@ -18,3 +18,9 @@ export function getSafeInternalPath(
   if (trimmed.includes("://")) return null;
   return trimmed;
 }
+
+/** iPhone/iPod: native share-sheet i.p.v. slide-in (iPad valt hier buiten). */
+export function isIPhoneDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPod/i.test(navigator.userAgent);
+}
