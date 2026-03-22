@@ -36,6 +36,8 @@ import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { AppBottomNav } from "@/components/app_bottom_nav";
 
+type ListMembershipRow = { id?: string; instantUserId?: string };
+
 type HomeList = {
   id: string;
   name: string;
@@ -47,6 +49,10 @@ type HomeList = {
   isOwner: boolean;
   /** Lidmaatschappen om mee te verwijderen bij delete (alleen bij eigenaar). */
   membershipIds?: string[];
+  /** Figma 762:3452: toon “gedeeld met …” op de kaart. */
+  displayVariant: "default" | "shared";
+  /** Voornaam van de andere partij (deelnemer of eigenaar); null = ListCard toont “deelnemer”. */
+  sharedWithFirstName: string | null;
 };
 
 const FOOD_ICONS = [
@@ -172,6 +178,10 @@ function SortableListCard({
           listName={list.name}
           date={list.date}
           itemCount={itemCountLabel(list.items?.length ?? 0)}
+          displayVariant={list.displayVariant}
+          sharedWithFirstName={
+            list.sharedWithFirstName ?? undefined
+          }
           icon={
             <Image
               src={list.icon}
@@ -222,17 +232,78 @@ export default function Home() {
   const profileAvatarUrl = profileRow?.avatarUrl ?? null;
   const profileFirstName = (profileRow?.firstName ?? "").trim() || null;
 
+  const shareRelatedUserIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    if (!data || !user?.id) return [] as string[];
+    for (const l of data.lists ?? []) {
+      for (const m of (l.memberships ?? []) as ListMembershipRow[]) {
+        const uid = m.instantUserId;
+        if (uid && uid !== user.id) ids.add(uid);
+      }
+    }
+    for (const row of data.listMembers ?? []) {
+      const list = row.list as { ownerId?: string } | null | undefined;
+      if (list?.ownerId) ids.add(list.ownerId);
+    }
+    return Array.from(ids);
+  }, [data, user?.id]);
+
+  const shareProfilesQuery = React.useMemo(
+    () => ({
+      profiles: {
+        $: {
+          where:
+            shareRelatedUserIds.length > 0
+              ? {
+                  or: shareRelatedUserIds.map((id) => ({
+                    instantUserId: id,
+                  })),
+                }
+              : { instantUserId: "__share_profiles_none__" },
+        },
+      },
+    }),
+    [shareRelatedUserIds],
+  );
+
+  const { data: shareProfilesData } = db.useQuery(
+    shareProfilesQuery as unknown as Parameters<typeof db.useQuery>[0],
+  );
+
+  const shareFirstNameByUserId = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of shareProfilesData?.profiles ?? []) {
+      const uid = p.instantUserId;
+      const fn = (p.firstName ?? "").trim();
+      if (uid && fn) m.set(uid, fn);
+    }
+    return m;
+  }, [shareProfilesData?.profiles]);
+
   const lists: HomeList[] = React.useMemo(() => {
-    const owned: HomeList[] = (data?.lists ?? []).map((l) => ({
-      id: l.id,
-      name: l.name,
-      date: l.date,
-      icon: l.icon,
-      order: l.order,
-      items: l.items ?? [],
-      isOwner: true,
-      membershipIds: (l.memberships ?? []).map((m) => m.id),
-    }));
+    const owned: HomeList[] = (data?.lists ?? []).map((l) => {
+      const memberIds = ((l.memberships ?? []) as ListMembershipRow[])
+        .map((m) => m.instantUserId)
+        .filter((id): id is string => !!id && id !== user?.id);
+      const hasOtherMembers = memberIds.length > 0;
+      const primaryOtherId = memberIds[0];
+      const sharedName =
+        primaryOtherId != null
+          ? shareFirstNameByUserId.get(primaryOtherId) ?? null
+          : null;
+      return {
+        id: l.id,
+        name: l.name,
+        date: l.date,
+        icon: l.icon,
+        order: l.order,
+        items: l.items ?? [],
+        isOwner: true,
+        membershipIds: (l.memberships ?? []).map((m) => m.id),
+        displayVariant: hasOtherMembers ? "shared" : "default",
+        sharedWithFirstName: hasOtherMembers ? sharedName : null,
+      };
+    });
 
     const shared: HomeList[] = (data?.listMembers ?? [])
       .map((row) => row.list)
@@ -240,15 +311,27 @@ export default function Home() {
         (l): l is NonNullable<typeof l> =>
           l != null && typeof l === "object" && "id" in l,
       )
-      .map((l) => ({
-        id: l.id,
-        name: l.name,
-        date: l.date,
-        icon: l.icon,
-        order: l.order,
-        items: l.items ?? [],
-        isOwner: false,
-      }));
+      .map((l) => {
+        const ownerId =
+          "ownerId" in l && typeof l.ownerId === "string"
+            ? l.ownerId
+            : undefined;
+        const ownerFirst =
+          ownerId != null
+            ? shareFirstNameByUserId.get(ownerId) ?? null
+            : null;
+        return {
+          id: l.id,
+          name: l.name,
+          date: l.date,
+          icon: l.icon,
+          order: l.order,
+          items: l.items ?? [],
+          isOwner: false,
+          displayVariant: "shared" as const,
+          sharedWithFirstName: ownerFirst,
+        };
+      });
 
     const byId = new Map<string, HomeList>();
     for (const l of owned) {
@@ -262,7 +345,7 @@ export default function Home() {
     return Array.from(byId.values()).sort(
       (a, b) => (a.order ?? 0) - (b.order ?? 0),
     );
-  }, [data]);
+  }, [data, user?.id, shareFirstNameByUserId]);
 
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);

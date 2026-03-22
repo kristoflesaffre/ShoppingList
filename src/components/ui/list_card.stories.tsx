@@ -73,6 +73,15 @@ const meta: Meta<typeof ListCard> = {
       options: ["default", "editable"],
       description: "default = display only; editable = reorder + delete",
     },
+    displayVariant: {
+      control: "select",
+      options: ["default", "shared"],
+      description: "shared = itemtelling + (gedeeld met …) — Figma 762:3452",
+    },
+    sharedWithFirstName: {
+      control: "text",
+      description: "Voornaam bij displayVariant shared",
+    },
     size: {
       control: "select",
       options: ["default"],
@@ -111,6 +120,19 @@ export const Editable: Story = {
   },
 };
 
+/** Gedeelde lijst – Figma 762:3452 */
+export const Shared: Story = {
+  args: {
+    listName: "List name",
+    date: "25-04-2026",
+    itemCount: "6 items",
+    icon: defaultIcon,
+    state: "default",
+    displayVariant: "shared",
+    sharedWithFirstName: "Chloé",
+  },
+};
+
 /** All variants: default and editable */
 export const AllVariants: Story = {
   render: () => (
@@ -128,6 +150,15 @@ export const AllVariants: Story = {
         itemCount="6 items"
         icon={defaultIcon}
         state="editable"
+      />
+      <ListCard
+        listName="List name"
+        date="25-04-2026"
+        itemCount="6 items"
+        icon={defaultIcon}
+        state="default"
+        displayVariant="shared"
+        sharedWithFirstName="Chloé"
       />
     </div>
   ),

@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 
 export type ListCardSize = "default";
 export type ListCardState = "default" | "editable";
+/** Figma 762:3452 State=shared: itemtelling + “(gedeeld met …)”. */
+export type ListCardDisplayVariant = "default" | "shared";
 
 /**
  * List card: displays a list summary (icon, name, date, item count). Used on Home for list overview.
@@ -24,6 +26,12 @@ export interface ListCardProps
   icon?: React.ReactNode;
   /** "default" = display only; "editable" = show reorder and delete actions */
   state?: ListCardState;
+  /**
+   * “shared” toont itemtelling in primary-kleur + grijs “(gedeeld met …)” (Figma 762:3452).
+   */
+  displayVariant?: ListCardDisplayVariant;
+  /** Voornaam voor het gedeeld-met-label; bij ontbreken: “deelnemer”. */
+  sharedWithFirstName?: string;
   /** Only "default" is defined (gap-3, px-3, py-3). */
   size?: ListCardSize;
   /** When true, the single child replaces the default card content and receives merged container props */
@@ -145,6 +153,8 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
       itemCount,
       icon,
       state = "default",
+      displayVariant = "default",
+      sharedWithFirstName,
       size = "default",
       asChild = false,
       children,
@@ -167,6 +177,7 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
       ref,
       "data-size": size,
       "data-state": state,
+      "data-display-variant": displayVariant,
       className: containerClassName,
       ...props,
     };
@@ -203,11 +214,21 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
               {date}
             </span>
           )}
-          {itemCount != null && (
-            <span className="font-normal text-xs leading-16 tracking-normal text-[var(--blue-500)]">
-              {itemCount}
-            </span>
-          )}
+          {itemCount != null &&
+            (displayVariant === "shared" ? (
+              <span className="block min-w-0 font-normal text-xs leading-16 tracking-normal">
+                <span className="text-[var(--blue-500)]">{itemCount}</span>
+                <span className="text-[var(--gray-400)]">
+                  {" "}
+                  (gedeeld met{" "}
+                  {sharedWithFirstName?.trim() || "deelnemer"})
+                </span>
+              </span>
+            ) : (
+              <span className="font-normal text-xs leading-16 tracking-normal text-[var(--blue-500)]">
+                {itemCount}
+              </span>
+            ))}
         </div>
         <EditableSection isEditable={isEditable}>
           <EditableDivider />
