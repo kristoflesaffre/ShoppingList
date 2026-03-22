@@ -216,22 +216,23 @@ function MoreDotsIcon({ className }: { className?: string }) {
   );
 }
 
-/** public/icons/list.svg */
-function ListIcon({ className }: { className?: string }) {
+/** Placeholder in 16px-avatar (Figma 762:3479 – gedeeld-detail). */
+function SharePartyAvatarPlaceholder({ className }: { className?: string }) {
   return (
     <svg
       className={className}
-      width="24"
-      height="24"
+      width={12}
+      height={12}
       viewBox="0 0 24 24"
       fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
+      stroke="currentColor"
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
     >
-      <path
-        d="M9.19998 2.1H2.59998C2.32398 2.1 2.09998 2.324 2.09998 2.6V9.16C2.09998 9.436 2.32398 9.66 2.59998 9.66H9.19998C9.47598 9.66 9.69998 9.436 9.69998 9.16V2.6C9.69998 2.323 9.47698 2.1 9.19998 2.1ZM8.69998 8.66H3.09998V3.1H8.69998V8.66ZM9.19998 14.3H2.59998C2.32398 14.3 2.09998 14.524 2.09998 14.8V21.36C2.09998 21.636 2.32398 21.86 2.59998 21.86H9.19998C9.47598 21.86 9.69998 21.636 9.69998 21.36V14.8C9.69998 14.523 9.47698 14.3 9.19998 14.3ZM8.69998 20.859H3.09998V15.3H8.69998V20.859ZM13.4 3.6C13.4 3.324 13.624 3.1 13.9 3.1H21.4C21.676 3.1 21.9 3.324 21.9 3.6C21.9 3.876 21.676 4.1 21.4 4.1H13.9C13.624 4.1 13.4 3.876 13.4 3.6ZM21.9 8.3C21.9 8.576 21.676 8.8 21.4 8.8H13.9C13.624 8.8 13.4 8.576 13.4 8.3C13.4 8.024 13.624 7.8 13.9 7.8H21.4C21.677 7.8 21.9 8.023 21.9 8.3ZM21.9 15.7C21.9 15.976 21.676 16.2 21.4 16.2H13.9C13.624 16.2 13.4 15.976 13.4 15.7C13.4 15.424 13.624 15.2 13.9 15.2H21.4C21.677 15.2 21.9 15.424 21.9 15.7ZM21.9 20.399C21.9 20.675 21.676 20.899 21.4 20.899H13.9C13.624 20.899 13.4 20.675 13.4 20.399C13.4 20.123 13.624 19.899 13.9 19.899H21.4C21.677 19.899 21.9 20.123 21.9 20.399Z"
-        fill="currentColor"
-      />
+      <path d="M12.41 11.6263C14.7921 11.6263 16.7231 9.69525 16.7231 7.31316C16.7231 4.93107 14.7921 3 12.41 3C10.0279 3 8.0968 4.93107 8.0968 7.31316C8.0968 9.69525 10.0279 11.6263 12.41 11.6263Z" />
+      <path d="M19.82 20.2526C19.82 16.9143 16.4989 14.2142 12.41 14.2142C8.32113 14.2142 5 16.9143 5 20.2526" />
     </svg>
   );
 }
@@ -1489,6 +1490,52 @@ export default function ListDetailPage({
     [listData, user],
   );
 
+  /** Andere partij op dit lijstje: eigenaar (als jij deelnemer bent) of eerste deelnemer (als jij eigenaar bent). Figma 762:3479. */
+  const shareDetailOtherUserId = React.useMemo(() => {
+    if (!listData || !user?.id) return null;
+    const ownerId = listData.ownerId;
+    if (!ownerId) return null;
+    if (ownerId === user.id) {
+      const memberIds = (listData.memberships ?? [])
+        .map((m) => m.instantUserId)
+        .filter((id): id is string => !!id && id !== user.id);
+      return memberIds[0] ?? null;
+    }
+    return ownerId;
+  }, [listData, user?.id]);
+
+  /** `with` = jij bent eigenaar → “Gedeeld met …”; `by` = jij bent deelnemer → “Gedeeld door …”. */
+  const shareDetailLabelKind = React.useMemo((): "with" | "by" | null => {
+    if (!listData || !user?.id || !shareDetailOtherUserId) return null;
+    return listData.ownerId === user.id ? "with" : "by";
+  }, [listData, user?.id, shareDetailOtherUserId]);
+
+  const sharePartyProfileQuery = React.useMemo(
+    () => ({
+      profiles: {
+        $: {
+          where: shareDetailOtherUserId
+            ? { instantUserId: shareDetailOtherUserId }
+            : { instantUserId: "__list_detail_no_share_profile__" },
+        },
+      },
+    }),
+    [shareDetailOtherUserId],
+  );
+
+  const { data: sharePartyProfileData } = db.useQuery(
+    sharePartyProfileQuery as unknown as Parameters<typeof db.useQuery>[0],
+  );
+
+  const sharePartyProfile = sharePartyProfileData?.profiles?.[0];
+  const sharePartyFirstName = React.useMemo(() => {
+    const raw = sharePartyProfile?.firstName;
+    return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : "";
+  }, [sharePartyProfile?.firstName]);
+  const sharePartyAvatarUrl = sharePartyProfile?.avatarUrl ?? null;
+
+  const showSharedDetailRow = shareDetailLabelKind != null;
+
   React.useEffect(() => {
     if (authLoading || !user || isLoading) return;
     if (!listData || !canAccess) router.replace("/");
@@ -2053,6 +2100,8 @@ export default function ListDetailPage({
 
   const hasItems = items.length > 0;
 
+  const showListDetailHeader = hasItems || showSharedDetailRow;
+
   const handleReorderItems = React.useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
@@ -2147,24 +2196,51 @@ export default function ListDetailPage({
 
       <div className="flex flex-1 flex-col px-4 pb-24 pt-4 mt-[calc(56px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6">
-          {hasItems && (
-            <div className="flex items-center gap-4">
-              <div className="flex flex-1 items-center gap-2">
-                <ListIcon className="size-6 shrink-0 text-[var(--text-primary)]" />
+          {showListDetailHeader ? (
+            <div className="flex items-start gap-4">
+              <div className="min-w-0 flex-1 flex flex-col gap-0">
                 <h2 className="text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
                   {listName}
                 </h2>
+                {showSharedDetailRow ? (
+                  <div className="mt-1 flex min-w-0 items-center gap-1">
+                    <span className="relative size-4 shrink-0 overflow-hidden rounded-full bg-[var(--gray-100)] ring-1 ring-[var(--gray-100)]">
+                      {sharePartyAvatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- data-URL uit profiel
+                        <img
+                          src={sharePartyAvatarUrl}
+                          alt=""
+                          width={16}
+                          height={16}
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex size-full items-center justify-center">
+                          <SharePartyAvatarPlaceholder className="text-[var(--blue-300)]" />
+                        </span>
+                      )}
+                    </span>
+                    <p className="min-w-0 flex-1 truncate text-xs font-normal leading-4 tracking-normal text-[var(--gray-400)]">
+                      {shareDetailLabelKind === "with"
+                        ? `Gedeeld met ${sharePartyFirstName || "deelnemer"}`
+                        : `Gedeeld door ${sharePartyFirstName || "eigenaar"}`}
+                    </p>
+                  </div>
+                ) : null}
               </div>
               <EditButton
                 variant={isEditMode ? "active" : "inactive"}
                 onClick={() => setIsEditMode((p) => !p)}
               />
             </div>
-          )}
+          ) : null}
 
           {!hasItems ? (
             <section
-              className="flex flex-1 flex-col items-center justify-center gap-6 pt-32"
+              className={cn(
+                "flex flex-1 flex-col items-center justify-center gap-6",
+                showListDetailHeader ? "pt-8" : "pt-32",
+              )}
               aria-label="Lege staat"
             >
               <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
