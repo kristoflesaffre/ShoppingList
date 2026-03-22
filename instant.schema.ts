@@ -25,6 +25,11 @@ const schema = i.schema({
       order: i.number(),
       /** Wie dit item “op zich neemt” in een gedeeld lijstje (Instant user id). */
       claimedByInstantUserId: i.string().optional().indexed(),
+      /**
+       * Voornaam van de claimer, gezet bij claim (denormalized).
+       * Andere deelnemers zien zo “Chloé haalt dit” zonder `profiles.firstName` te mogen lezen.
+       */
+      claimedByDisplayName: i.string().optional(),
       recipeGroupId: i.string().optional(),
       recipeName: i.string().optional(),
       recipeLink: i.string().optional(),

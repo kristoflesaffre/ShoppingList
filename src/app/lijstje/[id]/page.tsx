@@ -45,6 +45,37 @@ import {
   type SavedRecipe,
 } from "@/lib/recipe_library";
 
+/** Profiel van een andere claimer: avatar + voornaam op itemkaart. */
+type ClaimerProfileInfo = { avatarUrl?: string; firstName?: string };
+
+function otherClaimerDisplayLabel(
+  claimerUserId: string | null | undefined,
+  storedDisplayName: string | null | undefined,
+  claimProfileByUserId: Map<string, ClaimerProfileInfo>,
+): string {
+  const stored = storedDisplayName?.trim();
+  if (stored) return `${stored} haalt dit`;
+  if (!claimerUserId) return "Deelnemer haalt dit";
+  const fn = claimProfileByUserId.get(claimerUserId)?.firstName?.trim();
+  return fn ? `${fn} haalt dit` : "Deelnemer haalt dit";
+}
+
+/** Alleen voornaam uit profiel (registratie); geen afleiding uit e-mail. */
+function claimDisplayNameFromProfileOnly(
+  firstName: string | null | undefined,
+): string {
+  return firstName?.trim() ?? "";
+}
+
+function readClaimedByDisplayNameFromInstantRow(
+  it: Record<string, unknown>,
+): string | undefined {
+  const raw = it.claimedByDisplayName ?? it.claimed_by_display_name;
+  if (typeof raw !== "string") return undefined;
+  const t = raw.trim();
+  return t.length > 0 ? t : undefined;
+}
+
 type ListItem = {
   id: string;
   name: string;
@@ -53,6 +84,8 @@ type ListItem = {
   section: string;
   /** Wie dit item claimt in een gedeeld lijstje (Instant user id). */
   claimedByInstantUserId?: string;
+  /** Voornaam op item gezet bij claim (voor labels voor andere deelnemers). */
+  claimedByDisplayName?: string;
   /** Zelfde id voor alle regels uit één toegepast recept (Figma 134:767). */
   recipeGroupId?: string;
   recipeName?: string;
@@ -1109,7 +1142,7 @@ function SortableItemItems({
   onEdit: (item: ListItem) => void;
   onAddToSection: (sectionTitle: string) => void;
   currentUserId: string;
-  claimProfileByUserId: Map<string, { avatarUrl?: string }>;
+  claimProfileByUserId: Map<string, ClaimerProfileInfo>;
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
@@ -1255,7 +1288,7 @@ function SortableItemRow({
   onDelete: (id: string) => void;
   onEdit: (item: ListItem) => void;
   currentUserId: string;
-  claimProfileByUserId: Map<string, { avatarUrl?: string }>;
+  claimProfileByUserId: Map<string, ClaimerProfileInfo>;
 }) {
   const isRemoving = removingId === item.id;
   const isAdding = addingId === item.id;
@@ -1303,7 +1336,7 @@ function SortableItemCard({
   onDelete: () => void;
   onEdit: () => void;
   currentUserId: string;
-  claimProfileByUserId: Map<string, { avatarUrl?: string }>;
+  claimProfileByUserId: Map<string, ClaimerProfileInfo>;
 }) {
   const {
     attributes,
@@ -1347,7 +1380,11 @@ function SortableItemCard({
             claimedByUserId: item.claimedByInstantUserId ?? null,
             currentUserId,
             onClaimChange: onRemoteClaimChange,
-            otherClaimerLabel: "Deelnemer haalt dit",
+            otherClaimerLabel: otherClaimerDisplayLabel(
+              item.claimedByInstantUserId ?? null,
+              item.claimedByDisplayName ?? null,
+              claimProfileByUserId,
+            ),
             otherClaimerAvatar: (() => {
               const oid = item.claimedByInstantUserId;
               if (!oid || oid === currentUserId) return undefined;
@@ -1421,6 +1458,22 @@ export default function ListDetailPage({
 
   const { isLoading, error, data } = db.useQuery(listDetailQuery);
 
+  const myProfileQueryId = user?.id ?? "__my_profile_none__";
+  const { data: myProfileData } = db.useQuery({
+    profiles: {
+      $: { where: { instantUserId: myProfileQueryId } },
+    },
+  });
+  const myFirstName = React.useMemo(() => {
+    const raw = myProfileData?.profiles?.[0]?.firstName;
+    return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
+  }, [myProfileData?.profiles]);
+
+  const myFirstNameRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    myFirstNameRef.current = myFirstName;
+  }, [myFirstName]);
+
   const listData = data?.lists?.[0];
 
   const canAccess = React.useMemo(() => {
@@ -1446,18 +1499,43 @@ export default function ListDetailPage({
     if (!listData?.items) return [];
     return [...listData.items]
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-      .map((it) => ({
-        id: it.id,
-        name: it.name,
-        quantity: it.quantity,
-        checked: it.checked,
-        section: it.section,
-        claimedByInstantUserId: it.claimedByInstantUserId || undefined,
-        recipeGroupId: it.recipeGroupId || undefined,
-        recipeName: it.recipeName || undefined,
-        recipeLink: it.recipeLink || undefined,
-      }));
+      .map((it) => {
+        const row = it as unknown as Record<string, unknown>;
+        return {
+          id: it.id,
+          name: it.name,
+          quantity: it.quantity,
+          checked: it.checked,
+          section: it.section,
+          claimedByInstantUserId: it.claimedByInstantUserId || undefined,
+          claimedByDisplayName: readClaimedByDisplayNameFromInstantRow(row),
+          recipeGroupId: it.recipeGroupId || undefined,
+          recipeName: it.recipeName || undefined,
+          recipeLink: it.recipeLink || undefined,
+        };
+      });
   }, [listData]);
+
+  /**
+   * Items die jij claimt: `claimedByDisplayName` gelijk houden aan profiel-voornaam.
+   * Vult lege waarden (trage profiel-query) en corrigeert oude e-mail-gebaseerde teksten.
+   */
+  React.useEffect(() => {
+    if (!user?.id) return;
+    const resolved = claimDisplayNameFromProfileOnly(myFirstName);
+    if (!resolved) return;
+    const mine = items.filter(
+      (i) =>
+        i.claimedByInstantUserId === user.id &&
+        i.claimedByDisplayName?.trim() !== resolved,
+    );
+    if (mine.length === 0) return;
+    void db.transact(
+      mine.map((i) =>
+        db.tx.items[i.id].update({ claimedByDisplayName: resolved }),
+      ),
+    );
+  }, [user?.id, myFirstName, items]);
 
   const claimerIds = React.useMemo(() => {
     const ids = new Set<string>();
@@ -1492,10 +1570,18 @@ export default function ListDetailPage({
   );
 
   const claimProfileByUserId = React.useMemo(() => {
-    const m = new Map<string, { avatarUrl?: string }>();
+    const m = new Map<string, ClaimerProfileInfo>();
     for (const p of claimerProfileData?.profiles ?? []) {
       if (p.instantUserId) {
-        m.set(p.instantUserId, { avatarUrl: p.avatarUrl ?? undefined });
+        const raw = p.firstName;
+        const firstName =
+          typeof raw === "string" && raw.trim().length > 0
+            ? raw.trim()
+            : undefined;
+        m.set(p.instantUserId, {
+          avatarUrl: p.avatarUrl ?? undefined,
+          firstName,
+        });
       }
     }
     return m;
@@ -1747,6 +1833,7 @@ export default function ListDetailPage({
             db.tx.items[itemId].update({ checked: true }),
             db.tx.items[itemId].merge({
               claimedByInstantUserId: null,
+              claimedByDisplayName: null,
             } as never),
           ]);
         } else {
@@ -1775,12 +1862,18 @@ export default function ListDetailPage({
         db.transact(
           db.tx.items[itemId].merge({
             claimedByInstantUserId: null,
+            claimedByDisplayName: null,
           } as never),
         );
       } else {
+        const displayName = claimDisplayNameFromProfileOnly(
+          myFirstNameRef.current,
+        );
         db.transact(
           db.tx.items[itemId].update({
             claimedByInstantUserId: nextClaimUserId,
+            /** Denormalized: alleen registratie-voornaam; leeg tot profiel geladen (backfill-effect vult bij). */
+            claimedByDisplayName: displayName,
           }),
         );
       }
@@ -1863,7 +1956,12 @@ export default function ListDetailPage({
           recipeName: item.recipeName ?? "",
           recipeLink: item.recipeLink ?? "",
           ...(item.claimedByInstantUserId
-            ? { claimedByInstantUserId: item.claimedByInstantUserId }
+            ? {
+                claimedByInstantUserId: item.claimedByInstantUserId,
+                ...(item.claimedByDisplayName
+                  ? { claimedByDisplayName: item.claimedByDisplayName }
+                  : {}),
+              }
             : {}),
         })
         .link({ list: listId }),
