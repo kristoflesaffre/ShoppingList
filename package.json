@@ -18,6 +18,8 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@instantdb/admin": "^0.22.158",
+    "@instantdb/core": "^0.22.158",
     "@instantdb/react": "^0.22.149",
     "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.2",

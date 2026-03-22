@@ -1,4 +1,5 @@
-import { i } from "@instantdb/react";
+/** Core i.p.v. react: zelfde schema, geen React-runtime in API-routes / admin. */
+import { i } from "@instantdb/core";
 
 const schema = i.schema({
   entities: {

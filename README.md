@@ -42,4 +42,11 @@ npm run build-storybook  # Storybook statische build
 1. `npm install` (eenmalig)
 2. `npm run dev` voor de app, of `npm run storybook` voor componenten
 
-InstantDB vereist nog configuratie (app ID, env vars); zie [InstantDB-docs](https://instantdb.com/docs).
+### InstantDB & omgeving
+
+- **App ID** – staat in [src/lib/instant_app_id.ts](src/lib/instant_app_id.ts); optioneel override met `NEXT_PUBLIC_INSTANT_APP_ID`.
+- **Inloggen met e-mail + paswoord** – vereist een **Admin-token** van het [Instant-dashboard](https://instantdb.com/docs/backend) (Settings → Admin):
+  - Zet lokaal/productie: `INSTANT_APP_ADMIN_TOKEN=<jouw-token>`
+  - Zonder deze variabele geeft de API `503` en zie je een duidelijke foutmelding op het inlogscherm.
+
+Meer achtergrond: [InstantDB-docs](https://instantdb.com/docs).

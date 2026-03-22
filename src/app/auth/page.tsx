@@ -20,7 +20,13 @@ function getPostAuthDestination(): string {
 import { db } from "@/lib/db";
 import { fileToAvatarDataUrl, hashPasswordForProfile } from "@/lib/profile_crypto";
 
-type AuthStep = "landing" | "email" | "code" | "password" | "photo";
+type AuthStep =
+  | "landing"
+  | "login-credentials"
+  | "email"
+  | "code"
+  | "password"
+  | "photo";
 
 type AuthFlow = "login" | "register";
 
@@ -103,6 +109,7 @@ export default function AuthPage() {
   const [isVerifying, setIsVerifying] = React.useState(false);
   const [isSavingPassword, setIsSavingPassword] = React.useState(false);
   const [isSavingAvatar, setIsSavingAvatar] = React.useState(false);
+  const [isPasswordSigningIn, setIsPasswordSigningIn] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const profileIdRef = React.useRef<string | null>(null);
@@ -123,7 +130,12 @@ export default function AuthPage() {
     if (!user) return;
     if (PROFILE_SETUP_STEPS.includes(step)) return;
     if (registerCodeCompletingRef.current) return;
-    if (step === "landing" || step === "email" || step === "code") {
+    if (
+      step === "landing" ||
+      step === "login-credentials" ||
+      step === "email" ||
+      step === "code"
+    ) {
       router.replace(getPostAuthDestination());
     }
   }, [user, step, router]);
@@ -145,6 +157,7 @@ export default function AuthPage() {
   if (
     user &&
     step !== "landing" &&
+    step !== "login-credentials" &&
     step !== "email" &&
     step !== "code" &&
     !PROFILE_SETUP_STEPS.includes(step)
@@ -154,7 +167,7 @@ export default function AuthPage() {
 
   const handleStartLogin = () => {
     setFlow("login");
-    setStep("email");
+    setStep("login-credentials");
     setEmail("");
     setCode("");
     setPassword("");
@@ -231,9 +244,67 @@ export default function AuthPage() {
     }
   };
 
+  const handleLoginWithPassword = async () => {
+    const e = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) || !password) return;
+    setIsPasswordSigningIn(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/password-sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: e, password }),
+      });
+      const raw = await res.text();
+      let data: {
+        error?: unknown;
+        message?: unknown;
+        token?: unknown;
+        refresh_token?: unknown;
+      } = {};
+      try {
+        data = raw ? (JSON.parse(raw) as typeof data) : {};
+      } catch {
+        setError(
+          raw
+            ? `Serverantwoord ongeldig (${res.status}).`
+            : "Inloggen mislukt. Probeer opnieuw.",
+        );
+        return;
+      }
+
+      const errMsg = [data.error, data.message].find(
+        (v): v is string => typeof v === "string" && v.length > 0,
+      );
+      if (!res.ok) {
+        setError(errMsg ?? `Inloggen mislukt (${res.status}).`);
+        return;
+      }
+
+      const authToken = [data.token, data.refresh_token].find(
+        (v): v is string => typeof v === "string" && v.length > 0,
+      );
+      if (!authToken) {
+        setError(
+          errMsg ??
+            "Inloggen mislukt: geen token van de server. Controleer INSTANT_APP_ADMIN_TOKEN en de serverlogs.",
+        );
+        return;
+      }
+      await db.auth.signInWithToken(authToken);
+      router.replace(getPostAuthDestination());
+    } catch {
+      setError("Netwerkfout. Probeer opnieuw.");
+    } finally {
+      setIsPasswordSigningIn(false);
+    }
+  };
+
   const handleGoBack = async () => {
     setError(null);
-    if (step === "email") {
+    if (step === "login-credentials") {
+      setStep("landing");
+    } else if (step === "email") {
       setStep("landing");
     } else if (step === "code") {
       setStep("email");
@@ -385,9 +456,102 @@ export default function AuthPage() {
     );
   }
 
-  /* ── Email step ── */
+  /* ── Inloggen: e-mail + paswoord (Figma 377:1307) ── */
+  if (step === "login-credentials") {
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const canSubmit = emailOk && password.length > 0 && !isPasswordSigningIn;
+
+    return (
+      <div
+        className={cn(authShell, "pt-[env(safe-area-inset-top,0px)]")}
+      >
+        <div className={cn(authContentWrap, "gap-6 pt-12")}>
+          <StepHeader title="Inloggen" onBack={handleGoBack} />
+
+          <form
+            id="auth-login-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleLoginWithPassword();
+            }}
+            className="flex flex-col gap-6"
+          >
+            <InputField
+              label="Je e-mailadres"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoFocus
+              placeholder="E-mailadres"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError(null);
+              }}
+            />
+
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="auth-login-password"
+                className="text-sm font-normal leading-5 text-[var(--text-primary)]"
+              >
+                Je paswoord
+              </label>
+              <div className="relative flex w-full items-center">
+                <input
+                  id="auth-login-password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Paswoord"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError(null);
+                  }}
+                  className={cn(
+                    "h-12 w-full rounded-md border border-[var(--border-default)] bg-[var(--white)] py-2 pl-4 pr-12 text-base leading-6 text-[var(--text-primary)]",
+                    "placeholder:text-[var(--text-placeholder)] focus-visible:border-[var(--border-focus)] focus-visible:outline-none",
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  aria-label={showPassword ? "Verberg paswoord" : "Toon paswoord"}
+                >
+                  <PasswordVisibilityIcon passwordVisible={showPassword} />
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <p className="text-sm text-[var(--error-600)]">{error}</p>
+            )}
+          </form>
+        </div>
+
+        <div
+          className={cn(
+            "mx-auto flex w-full max-w-[768px] justify-center px-4",
+            authFooterPad,
+          )}
+        >
+          <Button
+            variant="primary"
+            type="submit"
+            form="auth-login-form"
+            disabled={!canSubmit}
+            className="w-full max-w-[320px]"
+          >
+            {isPasswordSigningIn ? "Inloggen…" : "Inloggen"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── E-mail (alleen registratie → magic code) ── */
   if (step === "email") {
-    const title = flow === "login" ? "Inloggen" : "Account aanmaken";
     const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
     return (
@@ -395,7 +559,7 @@ export default function AuthPage() {
         className={cn(authShell, "pt-[env(safe-area-inset-top,0px)]")}
       >
         <div className={cn(authContentWrap, "gap-6 pt-12")}>
-          <StepHeader title={title} onBack={handleGoBack} />
+          <StepHeader title="Account aanmaken" onBack={handleGoBack} />
 
           <form
             onSubmit={(e) => {

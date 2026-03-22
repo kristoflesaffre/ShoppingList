@@ -1,7 +1,8 @@
 import { init } from "@instantdb/react";
 import schema from "../../instant.schema";
+import { INSTANT_APP_ID } from "@/lib/instant_app_id";
 
 export const db = init({
-  appId: "c63df57f-510a-46bc-8687-912d030c9359",
+  appId: INSTANT_APP_ID,
   schema,
 });
