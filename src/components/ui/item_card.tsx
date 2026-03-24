@@ -5,9 +5,15 @@ import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "./checkbox";
 
-export type ItemCardVariant = "default" | "gotten-by-you" | "gotten-by-other";
+export type ItemCardVariant =
+  | "default"
+  | "gotten-by-you"
+  | "gotten-by-other"
+  | "master";
 export type ItemCardState = "default" | "editable";
 export type ItemCardSize = "default";
+/** `bare` = alleen titel + hoeveelheid, border, geen checkbox/acties (Figma 797:4486). */
+export type ItemCardPresentation = "default" | "bare";
 
 /** Realtime “ik haal dit” / “ander haalt dit” voor gedeelde lijsten (InstantDB). */
 export type ItemCardSyncListClaim = {
@@ -23,8 +29,10 @@ export type ItemCardSyncListClaim = {
 
 /**
  * Item card: single list item with checkbox, name, quantity, and variant-specific actions.
- * Variants: default, gotten-by-you, gotten-by-other. Checked state via checked/defaultChecked + onCheckedChange.
+ * Variants: default, gotten-by-you, gotten-by-other, master (Figma 797:4807 – tekst + divider + plus-circle).
+ * Checked state via checked/defaultChecked + onCheckedChange (niet van toepassing op `variant="master"`-layout).
  * States: default, editable.
+ * Presentation `bare`: statische kaart (wit, rand neutrals/100, pl-16/pr-12/py-12) zonder checkbox, claim of rechterkolom.
  * @param asChild - When true, merges container props onto the single child (Radix Slot)
  */
 export interface ItemCardProps extends Omit<
@@ -47,6 +55,8 @@ export interface ItemCardProps extends Omit<
   onCheckedChange?: (checked: boolean) => void;
   variant?: ItemCardVariant;
   state?: ItemCardState;
+  /** Alleen inhoudelijke layout; bij `bare` worden variant/state UI (checkbox, editable, claim) genegeerd. */
+  presentation?: ItemCardPresentation;
   size?: ItemCardSize;
   asChild?: boolean;
   children?: React.ReactNode;
@@ -58,6 +68,8 @@ export interface ItemCardProps extends Omit<
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   /** Gezet op lijst-detail: claim wordt gesynchroniseerd via InstantDB. */
   syncListClaim?: ItemCardSyncListClaim;
+  /** Bij `variant="master"`: plus-actie (items van master toevoegen). */
+  onMasterAdd?: () => void;
   className?: string;
 }
 
@@ -133,6 +145,26 @@ function PencilIcon({ className }: { className?: string }) {
     >
       <path
         d="M7.17663 23.8235C7.03379 23.6807 6.97224 23.4751 7.01172 23.2777L7.94074 18.633C7.96397 18.5157 8.02087 18.4089 8.10564 18.323L19.2539 7.17679C19.4896 6.94107 19.8728 6.94107 20.1086 7.17679L23.8246 10.8926C23.9361 11.0064 24 11.1596 24 11.3199C24 11.4801 23.9361 11.6334 23.8246 11.7472L21.0376 14.534L12.6764 22.8934C12.5905 22.9782 12.4836 23.0362 12.3664 23.0594L7.72126 23.9884C7.68178 23.9965 7.6423 24 7.60281 24C7.44488 23.9988 7.29043 23.9361 7.17663 23.8235ZM17.7465 10.3909L20.6091 13.2533L22.5426 11.3199L19.6801 8.45757L17.7465 10.3909ZM8.37274 22.6263L11.9506 21.911L19.7544 14.1079L16.893 11.2456L9.08808 19.0499L8.37274 22.6263Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Zelfde geometry als `public/icons/plus-circle.svg` – 24×24, `currentColor`. */
+function PlusCircleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn("size-6 shrink-0", className)}
+      width={24}
+      height={24}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M15.079 11.9997C15.079 12.2867 14.847 12.5197 14.559 12.5197H12.519V14.5607C12.519 14.8477 12.286 15.0807 11.999 15.0807C11.712 15.0807 11.479 14.8487 11.479 14.5607V12.5197H9.43997C9.15297 12.5197 8.91997 12.2867 8.91997 11.9997C8.91997 11.7127 9.15297 11.4797 9.43997 11.4797H11.48V9.43973C11.48 9.15273 11.713 8.91973 12 8.91973C12.287 8.91973 12.52 9.15273 12.52 9.43973V11.4797H14.56C14.847 11.4797 15.079 11.7127 15.079 11.9997ZM21.529 11.9997C21.529 17.2547 17.255 21.5287 12 21.5287C6.74497 21.5287 2.46997 17.2547 2.46997 11.9997C2.46997 6.74473 6.74497 2.46973 12 2.46973C17.255 2.46973 21.529 6.74473 21.529 11.9997ZM20.49 11.9997C20.49 7.31873 16.681 3.50973 12 3.50973C7.31897 3.50973 3.50997 7.31873 3.50997 11.9997C3.50997 16.6817 7.31897 20.4897 12 20.4897C16.681 20.4897 20.49 16.6817 20.49 11.9997Z"
         fill="currentColor"
       />
     </svg>
@@ -278,6 +310,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       onCheckedChange,
       variant = "default",
       state = "default",
+      presentation = "default",
       size = "default",
       asChild = false,
       children,
@@ -287,6 +320,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       onDelete,
       dragHandleProps,
       syncListClaim,
+      onMasterAdd,
       style: incomingStyle,
       ...restProps
     },
@@ -314,23 +348,27 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       [onCheckedChange],
     );
 
+    const isBare = presentation === "bare";
     const isEditable = state === "editable";
     const useSyncClaim = syncListClaim != null;
     const remoteClaimedBy = syncListClaim?.claimedByUserId ?? null;
 
     // effectiveVariant: met syncListClaim vanaf InstantDB; anders interne claim (Storybook / recepten).
-    // Afgevinkt = altijd default (doorstreept).
-    const effectiveVariant: ItemCardVariant = isChecked
-      ? "default"
-      : useSyncClaim
-        ? !remoteClaimedBy
+    // Afgevinkt = default (doorstreept); `master` blijft master voor de plus-layout.
+    const effectiveVariant: ItemCardVariant =
+      variant === "master"
+        ? "master"
+        : isChecked
           ? "default"
-          : remoteClaimedBy === syncListClaim!.currentUserId
-            ? "gotten-by-you"
-            : "gotten-by-other"
-        : claimedByMe && variant === "default"
-          ? "gotten-by-you"
-          : variant;
+          : useSyncClaim
+            ? !remoteClaimedBy
+              ? "default"
+              : remoteClaimedBy === syncListClaim!.currentUserId
+                ? "gotten-by-you"
+                : "gotten-by-other"
+            : claimedByMe && variant === "default"
+              ? "gotten-by-you"
+              : variant;
     const isGottenByYou = effectiveVariant === "gotten-by-you";
     const isGottenByOther = effectiveVariant === "gotten-by-other";
     const effectiveClaimedByLabel =
@@ -345,34 +383,45 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
           ? "jij haalt dit"
           : null);
     const showCheckbox =
+      !isBare &&
       !isEditable &&
       (effectiveVariant === "default" ||
         effectiveVariant === "gotten-by-you" ||
         effectiveVariant === "gotten-by-other");
     const showClaimButton =
-      !isEditable && (effectiveVariant === "default" || isGottenByYou);
+      !isBare && !isEditable && (effectiveVariant === "default" || isGottenByYou);
     const showContentBlock =
+      isBare ||
+      effectiveVariant === "master" ||
       effectiveVariant === "default" ||
       isGottenByYou ||
       isEditable ||
       (isGottenByOther && !isEditable);
+
+    const isMasterLayout =
+      variant === "master" && !isEditable && !isBare;
 
     /**
      * gotten-by-you: 1px border primary 500 op de buitenrand (zelfde box als default gray border —
      * geen inset + transparante border: dat gaf een witte ring tussen rand en blauwe lijn).
      * Drop shadow alleen via inline style (Tailwind shadow-[] is onbetrouwbaar met var).
      */
-    const showGottenByYouChrome = isGottenByYou && !isGottenByOther;
-    const containerClassName = cn(
-      containerBase,
-      isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
-      !isGottenByOther && "bg-[var(--white)]",
-      !isGottenByOther &&
-        !isGottenByYou &&
-        "border border-[var(--gray-100)]",
-      showGottenByYouChrome && "border border-[var(--blue-500)]",
-      className,
-    );
+    const showGottenByYouChrome = !isBare && isGottenByYou && !isGottenByOther;
+    const containerClassName = isBare
+      ? cn(
+          "flex w-full min-w-0 items-center rounded-md border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3",
+          className,
+        )
+      : cn(
+          containerBase,
+          isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
+          !isGottenByOther && "bg-[var(--white)]",
+          !isGottenByOther &&
+            !isGottenByYou &&
+            "border border-[var(--gray-100)]",
+          showGottenByYouChrome && "border border-[var(--blue-500)]",
+          className,
+        );
 
     const containerStyle: React.CSSProperties = {
       ...(incomingStyle && typeof incomingStyle === "object" ? incomingStyle : {}),
@@ -383,6 +432,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       ref,
       "data-variant": variant,
       "data-state": state,
+      "data-presentation": presentation,
       "data-size": size,
       className: containerClassName,
       style: containerStyle,
@@ -422,9 +472,33 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
     );
 
     const isLeftClickable =
-      !isEditable && showCheckbox && !isGottenByOther;
+      !isBare && !isEditable && showCheckbox && !isGottenByOther;
 
-    const defaultContent = (
+    const defaultContent = isBare ? (
+      <div className="min-w-0 flex flex-1 flex-col gap-0">{textContent}</div>
+    ) : isMasterLayout ? (
+      <>
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="min-w-0 flex flex-1 flex-col gap-0">{textContent}</div>
+        </div>
+        <div className="flex w-11 shrink-0 items-center gap-3">
+          <ItemDivider />
+          <button
+            type="button"
+            aria-label="Item van masterlijst toevoegen"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMasterAdd?.();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-action-primary transition-colors hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+            disabled={!onMasterAdd}
+          >
+            <PlusCircleIcon />
+          </button>
+        </div>
+      </>
+    ) : (
       <>
         <div
           className={cn(

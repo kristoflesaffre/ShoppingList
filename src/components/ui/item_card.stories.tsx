@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "@storybook/test";
 import { ItemCard } from "./item_card";
 
 const meta: Meta<typeof ItemCard> = {
@@ -39,13 +40,20 @@ const meta: Meta<typeof ItemCard> = {
     },
     variant: {
       control: "select",
-      options: ["default", "gotten-by-you", "gotten-by-other"],
-      description: "Card variant",
+      options: ["default", "gotten-by-you", "gotten-by-other", "master"],
+      description:
+        "master = divider + plus-circle (Figma 797:4807); vereist onMasterAdd voor klik",
     },
     state: {
       control: "select",
       options: ["default", "editable"],
       description: "default or editable",
+    },
+    presentation: {
+      control: "select",
+      options: ["default", "bare"],
+      description:
+        "bare = alleen titel + hoeveelheid, rand, geen controls (Figma 797:4486)",
     },
     size: { control: "select", options: ["default"], description: "Size" },
     asChild: {
@@ -108,6 +116,26 @@ export const GottenByOther: Story = {
   },
 };
 
+/** Bare – statische kaart, geen checkbox/claim/bewerken (Figma 797:4486) */
+export const Bare: Story = {
+  args: {
+    itemName: "Item name",
+    quantity: "Quantity",
+    presentation: "bare",
+  },
+};
+
+/** Master – tekst + divider + plus (public/icons/plus-circle.svg, Figma 797:4807) */
+export const Master: Story = {
+  args: {
+    itemName: "Item name",
+    quantity: "Quantity",
+    variant: "master",
+    state: "default",
+    onMasterAdd: fn(),
+  },
+};
+
 /** Editable – reorder, pencil, delete */
 export const Editable: Story = {
   args: {
@@ -133,6 +161,18 @@ export const EditableChecked: Story = {
 export const AllVariants: Story = {
   render: () => (
     <div className="flex w-[358px] flex-col gap-4">
+      <ItemCard
+        itemName="Item name"
+        quantity="Quantity"
+        presentation="bare"
+      />
+      <ItemCard
+        itemName="Item name"
+        quantity="Quantity"
+        variant="master"
+        state="default"
+        onMasterAdd={fn()}
+      />
       <ItemCard
         itemName="Item name"
         quantity="Quantity"
