@@ -9,7 +9,8 @@ export type ItemCardVariant =
   | "default"
   | "gotten-by-you"
   | "gotten-by-other"
-  | "master";
+  | "master"
+  | "added";
 export type ItemCardState = "default" | "editable";
 export type ItemCardSize = "default";
 /** `bare` = alleen titel + hoeveelheid, border, geen checkbox/acties (Figma 797:4486). */
@@ -29,7 +30,7 @@ export type ItemCardSyncListClaim = {
 
 /**
  * Item card: single list item with checkbox, name, quantity, and variant-specific actions.
- * Variants: default, gotten-by-you, gotten-by-other, master (Figma 797:4807 – tekst + divider + plus-circle).
+ * Variants: default, gotten-by-you, gotten-by-other, master (797:4807), added (797:5139 – primary-400, minus/plus, witte tekst).
  * Checked state via checked/defaultChecked + onCheckedChange (niet van toepassing op `variant="master"`-layout).
  * States: default, editable.
  * Presentation `bare`: statische kaart (wit, rand neutrals/100, pl-16/pr-12/py-12) zonder checkbox, claim of rechterkolom.
@@ -70,6 +71,10 @@ export interface ItemCardProps extends Omit<
   syncListClaim?: ItemCardSyncListClaim;
   /** Bij `variant="master"`: plus-actie (items van master toevoegen). */
   onMasterAdd?: () => void;
+  /** Bij `variant="added"`: linkerknop (min); bv. hoeveelheid omlaag of regel verwijderen. */
+  onAddedDecrement?: () => void;
+  /** Bij `variant="added"`: rechterknop (plus); bv. hoeveelheid omhoog. */
+  onAddedIncrement?: () => void;
   className?: string;
 }
 
@@ -147,6 +152,31 @@ function PencilIcon({ className }: { className?: string }) {
         d="M7.17663 23.8235C7.03379 23.6807 6.97224 23.4751 7.01172 23.2777L7.94074 18.633C7.96397 18.5157 8.02087 18.4089 8.10564 18.323L19.2539 7.17679C19.4896 6.94107 19.8728 6.94107 20.1086 7.17679L23.8246 10.8926C23.9361 11.0064 24 11.1596 24 11.3199C24 11.4801 23.9361 11.6334 23.8246 11.7472L21.0376 14.534L12.6764 22.8934C12.5905 22.9782 12.4836 23.0362 12.3664 23.0594L7.72126 23.9884C7.68178 23.9965 7.6423 24 7.60281 24C7.44488 23.9988 7.29043 23.9361 7.17663 23.8235ZM17.7465 10.3909L20.6091 13.2533L22.5426 11.3199L19.6801 8.45757L17.7465 10.3909ZM8.37274 22.6263L11.9506 21.911L19.7544 14.1079L16.893 11.2456L9.08808 19.0499L8.37274 22.6263Z"
         fill="currentColor"
       />
+    </svg>
+  );
+}
+
+/**
+ * Zelfde pad als `public/icons/minus-circle.svg`, gecentreerd in 24×24 zoals plus
+ * (19.06→24 inset ≈ 2.47), anders oogt de cirkel groter dan `PlusCircleIcon`.
+ */
+function MinusCircleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn("size-6 shrink-0", className)}
+      width={24}
+      height={24}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <g transform="translate(2.47 2.47)">
+        <path
+          fill="currentColor"
+          d="M10.05,10.05h-3.08c-.29,0-.52-.23-.52-.52s.23-.52.52-.52h3.08M10.05,9.01h2.04c.29,0,.52.23.52.52s-.23.52-.52.52h-2.04M19.06,9.53c0,5.26-4.27,9.53-9.53,9.53S0,14.78,0,9.53,4.27,0,9.53,0s9.53,4.28,9.53,9.53ZM18.02,9.53c0-4.68-3.81-8.49-8.49-8.49S1.04,4.85,1.04,9.53s3.81,8.49,8.49,8.49,8.49-3.81,8.49-8.49Z"
+        />
+      </g>
     </svg>
   );
 }
@@ -297,6 +327,21 @@ function ItemDivider() {
   );
 }
 
+/** Verticale scheidlijn voor `variant="added"`: wit op primary-400 (Figma 797:5139). */
+function AddedItemDivider() {
+  return (
+    <span
+      className="relative flex h-[44px] w-0 min-w-0 shrink-0 items-center justify-center"
+      aria-hidden="true"
+    >
+      <span
+        className="absolute left-1/2 top-0 h-[44px] w-px -translate-x-1/2 bg-[var(--white)]"
+        aria-hidden="true"
+      />
+    </span>
+  );
+}
+
 const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
   (
     {
@@ -321,6 +366,8 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       dragHandleProps,
       syncListClaim,
       onMasterAdd,
+      onAddedDecrement,
+      onAddedIncrement,
       style: incomingStyle,
       ...restProps
     },
@@ -354,13 +401,15 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
     const remoteClaimedBy = syncListClaim?.claimedByUserId ?? null;
 
     // effectiveVariant: met syncListClaim vanaf InstantDB; anders interne claim (Storybook / recepten).
-    // Afgevinkt = default (doorstreept); `master` blijft master voor de plus-layout.
+    // Afgevinkt = default (doorstreept); `master` / `added` blijven vast voor hun layout.
     const effectiveVariant: ItemCardVariant =
       variant === "master"
         ? "master"
-        : isChecked
-          ? "default"
-          : useSyncClaim
+        : variant === "added"
+          ? "added"
+          : isChecked
+            ? "default"
+            : useSyncClaim
             ? !remoteClaimedBy
               ? "default"
               : remoteClaimedBy === syncListClaim!.currentUserId
@@ -393,6 +442,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
     const showContentBlock =
       isBare ||
       effectiveVariant === "master" ||
+      effectiveVariant === "added" ||
       effectiveVariant === "default" ||
       isGottenByYou ||
       isEditable ||
@@ -400,6 +450,9 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
 
     const isMasterLayout =
       variant === "master" && !isEditable && !isBare;
+
+    const isAddedLayout =
+      variant === "added" && !isEditable && !isBare;
 
     /**
      * gotten-by-you: 1px border primary 500 op de buitenrand (zelfde box als default gray border —
@@ -412,16 +465,22 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
           "flex w-full min-w-0 items-center rounded-md border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3",
           className,
         )
-      : cn(
-          containerBase,
-          isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
-          !isGottenByOther && "bg-[var(--white)]",
-          !isGottenByOther &&
-            !isGottenByYou &&
-            "border border-[var(--gray-100)]",
-          showGottenByYouChrome && "border border-[var(--blue-500)]",
-          className,
-        );
+      : isAddedLayout
+        ? cn(
+            /* Figma 797:5139: gap-12 + padding sp-12 rondom (niet pl-16/pr-12 van default item) */
+            "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-md bg-[var(--blue-400)] p-3",
+            className,
+          )
+        : cn(
+            containerBase,
+            isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
+            !isGottenByOther && "bg-[var(--white)]",
+            !isGottenByOther &&
+              !isGottenByYou &&
+              "border border-[var(--gray-100)]",
+            showGottenByYouChrome && "border border-[var(--blue-500)]",
+            className,
+          );
 
     const containerStyle: React.CSSProperties = {
       ...(incomingStyle && typeof incomingStyle === "object" ? incomingStyle : {}),
@@ -463,6 +522,19 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       </>
     );
 
+    const addedTextContent = (
+      <>
+        <span className="w-full truncate text-center font-medium text-base leading-24 tracking-normal text-[var(--text-inverse)]">
+          {itemName}
+        </span>
+        {quantity != null && (
+          <span className="w-full text-center font-normal text-sm leading-20 tracking-normal text-[var(--text-inverse)]">
+            {quantity}
+          </span>
+        )}
+      </>
+    );
+
     const handleLeftClick = React.useCallback(
       () => {
         if (isGottenByOther) return;
@@ -497,6 +569,44 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             <PlusCircleIcon />
           </button>
         </div>
+      </>
+    ) : isAddedLayout ? (
+      <>
+        {/*
+         * Figma 797:5139: icon-hulpzone p-4 (4px) + 24px glyph = 32px – zelfde hit area als master plus-knop (size-8 + p-1).
+         * Geen w-11: dat is voor reorder/handle-kolom elders, niet voor dit icoon-slot.
+         */}
+        <button
+          type="button"
+          aria-label="Hoeveelheid verminderen"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddedDecrement?.();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--text-inverse)] transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)] disabled:pointer-events-none disabled:opacity-50"
+          disabled={!onAddedDecrement}
+        >
+          <MinusCircleIcon />
+        </button>
+        <AddedItemDivider />
+        <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0 text-center">
+          {addedTextContent}
+        </div>
+        <AddedItemDivider />
+        <button
+          type="button"
+          aria-label="Hoeveelheid verhogen"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddedIncrement?.();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--text-inverse)] transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)] disabled:pointer-events-none disabled:opacity-50"
+          disabled={!onAddedIncrement}
+        >
+          <PlusCircleIcon />
+        </button>
       </>
     ) : (
       <>

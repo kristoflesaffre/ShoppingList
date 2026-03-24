@@ -40,9 +40,15 @@ const meta: Meta<typeof ItemCard> = {
     },
     variant: {
       control: "select",
-      options: ["default", "gotten-by-you", "gotten-by-other", "master"],
+      options: [
+        "default",
+        "gotten-by-you",
+        "gotten-by-other",
+        "master",
+        "added",
+      ],
       description:
-        "master = divider + plus-circle (Figma 797:4807); vereist onMasterAdd voor klik",
+        "master = plus rechts (797:4807); added = primary-400, min/plus (797:5139)",
     },
     state: {
       control: "select",
@@ -136,6 +142,18 @@ export const Master: Story = {
   },
 };
 
+/** Added – primary-400, minus + plus, witte tekst (Figma 797:5139) */
+export const Added: Story = {
+  args: {
+    itemName: "Item name",
+    quantity: "Quantity",
+    variant: "added",
+    state: "default",
+    onAddedDecrement: fn(),
+    onAddedIncrement: fn(),
+  },
+};
+
 /** Editable – reorder, pencil, delete */
 export const Editable: Story = {
   args: {
@@ -172,6 +190,14 @@ export const AllVariants: Story = {
         variant="master"
         state="default"
         onMasterAdd={fn()}
+      />
+      <ItemCard
+        itemName="Item name"
+        quantity="Quantity"
+        variant="added"
+        state="default"
+        onAddedDecrement={fn()}
+        onAddedIncrement={fn()}
       />
       <ItemCard
         itemName="Item name"
