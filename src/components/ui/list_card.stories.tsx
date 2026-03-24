@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "@storybook/test";
 import { ListCard } from "./list_card";
 
 const FOOD_ICONS = [
@@ -75,8 +76,9 @@ const meta: Meta<typeof ListCard> = {
     },
     displayVariant: {
       control: "select",
-      options: ["default", "shared"],
-      description: "shared = itemtelling + (gedeeld met …) — Figma 762:3452",
+      options: ["default", "shared", "master"],
+      description:
+        "shared = (gedeeld met …) — 762:3452; master = plus-circle — 773:4183",
     },
     sharedWithFirstName: {
       control: "text",
@@ -120,6 +122,29 @@ export const Editable: Story = {
   },
 };
 
+const masterListIcon = (
+  <img
+    src="/logos/logos-action.svg"
+    alt=""
+    width={48}
+    height={48}
+    className="size-12 shrink-0 object-contain"
+    aria-hidden
+  />
+);
+
+/** Masterlijst-tegel – Figma 773:4183 (`public/icons/plus-circle.svg` in de kaart) */
+export const Master: Story = {
+  args: {
+    listName: "Master list name",
+    itemCount: "6 items",
+    icon: masterListIcon,
+    state: "default",
+    displayVariant: "master",
+    onMasterAdd: fn(),
+  },
+};
+
 /** Gedeelde lijst – Figma 762:3452 */
 export const Shared: Story = {
   args: {
@@ -159,6 +184,14 @@ export const AllVariants: Story = {
         state="default"
         displayVariant="shared"
         sharedWithFirstName="Chloé"
+      />
+      <ListCard
+        listName="Master list name"
+        itemCount="6 items"
+        icon={masterListIcon}
+        state="default"
+        displayVariant="master"
+        onMasterAdd={fn()}
       />
     </div>
   ),

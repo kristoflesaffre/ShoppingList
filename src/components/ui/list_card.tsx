@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 
 export type ListCardSize = "default";
 export type ListCardState = "default" | "editable";
-/** Figma 762:3452 State=shared: itemtelling + “(gedeeld met …)”. */
-export type ListCardDisplayVariant = "default" | "shared";
+/** `default` | `shared` (Figma 762:3452) | `master` (Figma 773:4183 – divider + plus-circle). */
+export type ListCardDisplayVariant = "default" | "shared" | "master";
 
 /**
  * List card: displays a list summary (icon, name, date, item count). Used on Home for list overview.
@@ -28,6 +28,7 @@ export interface ListCardProps
   state?: ListCardState;
   /**
    * “shared” toont itemtelling in primary-kleur + grijs “(gedeeld met …)” (Figma 762:3452).
+   * “master” toont alleen titel + itemtelling in primary, scheiding en plus-actie (Figma 773:4183).
    */
   displayVariant?: ListCardDisplayVariant;
   /** Voornaam voor het gedeeld-met-label; bij ontbreken: “deelnemer”. */
@@ -42,6 +43,8 @@ export interface ListCardProps
   onReorder?: () => void;
   /** Called when the delete button is clicked (editable state) */
   onDelete?: () => void;
+  /** Called when the plus-circle actie wordt geklikt (`displayVariant="master"`) */
+  onMasterAdd?: () => void;
   /** Props for drag handle (listeners + attributes from useSortable). When set, reorder uses drag instead of onClick. */
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   className?: string;
@@ -59,6 +62,26 @@ function ReorderIcon({ className }: { className?: string }) {
     >
       <path
         d="M18.062 8.19952C18.062 7.90252 18.303 7.66152 18.6 7.66152H25.5C25.797 7.66152 26.038 7.90252 26.038 8.19952C26.038 8.49652 25.797 8.73752 25.5 8.73752H18.6C18.303 8.73752 18.062 8.49652 18.062 8.19952ZM25.5 13.7615H18.6C18.303 13.7615 18.062 14.0025 18.062 14.2995C18.062 14.5965 18.303 14.8375 18.6 14.8375H25.5C25.797 14.8375 26.038 14.5965 26.038 14.2995C26.038 14.0025 25.797 13.7615 25.5 13.7615ZM25.5 19.7615H18.6C18.303 19.7615 18.062 20.0025 18.062 20.2995C18.062 20.5965 18.303 20.8375 18.6 20.8375H25.5C25.797 20.8375 26.038 20.5965 26.038 20.2995C26.038 20.0025 25.797 19.7615 25.5 19.7615ZM12.075 16.5145C11.862 16.3075 11.522 16.3115 11.315 16.5255C11.108 16.7385 11.113 17.0785 11.326 17.2855L13.874 19.7615H12.6C9.53304 19.7615 7.03804 17.2665 7.03804 14.1995C7.03804 11.0805 9.48104 8.63752 12.6 8.63752H15.2C15.497 8.63752 15.738 8.39652 15.738 8.09952C15.738 7.80252 15.497 7.56152 15.2 7.56152H12.6C8.87804 7.56152 5.96204 10.4775 5.96204 14.1995C5.96204 17.8595 8.94004 20.8375 12.6 20.8375H13.928L11.414 23.4255C11.207 23.6385 11.212 23.9795 11.425 24.1865C11.529 24.2885 11.664 24.3385 11.8 24.3385C11.94 24.3385 12.08 24.2835 12.186 24.1755L15.586 20.6755C15.793 20.4625 15.788 20.1215 15.575 19.9145L12.075 16.5145Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** public/icons/plus-circle.svg – 24×24, kleur via currentColor. */
+function PlusCircleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn("size-6 shrink-0", className)}
+      width={24}
+      height={24}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M15.079 11.9997C15.079 12.2867 14.847 12.5197 14.559 12.5197H12.519V14.5607C12.519 14.8477 12.286 15.0807 11.999 15.0807C11.712 15.0807 11.479 14.8487 11.479 14.5607V12.5197H9.43997C9.15297 12.5197 8.91997 12.2867 8.91997 11.9997C8.91997 11.7127 9.15297 11.4797 9.43997 11.4797H11.48V9.43973C11.48 9.15273 11.713 8.91973 12 8.91973C12.287 8.91973 12.52 9.15273 12.52 9.43973V11.4797H14.56C14.847 11.4797 15.079 11.7127 15.079 11.9997ZM21.529 11.9997C21.529 17.2547 17.255 21.5287 12 21.5287C6.74497 21.5287 2.46997 17.2547 2.46997 11.9997C2.46997 6.74473 6.74497 2.46973 12 2.46973C17.255 2.46973 21.529 6.74473 21.529 11.9997ZM20.49 11.9997C20.49 7.31873 16.681 3.50973 12 3.50973C7.31897 3.50973 3.50997 7.31873 3.50997 11.9997C3.50997 16.6817 7.31897 20.4897 12 20.4897C16.681 20.4897 20.49 16.6817 20.49 11.9997Z"
         fill="currentColor"
       />
     </svg>
@@ -160,12 +183,14 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
       children,
       onReorder,
       onDelete,
+      onMasterAdd,
       dragHandleProps,
       ...props
     },
     ref
   ) => {
     const isEditable = state === "editable";
+    const isMaster = displayVariant === "master";
 
     const containerClassName = cn(
       containerBase,
@@ -209,13 +234,17 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
           <span className="truncate font-medium text-base leading-24 tracking-normal text-[var(--text-primary)]">
             {listName}
           </span>
-          {date != null && (
+          {date != null && !isMaster && (
             <span className="font-normal text-sm leading-20 tracking-normal text-[var(--gray-400)]">
               {date}
             </span>
           )}
           {itemCount != null &&
-            (displayVariant === "shared" ? (
+            (isMaster ? (
+              <span className="font-normal text-xs leading-16 tracking-normal text-action-primary">
+                {itemCount}
+              </span>
+            ) : displayVariant === "shared" ? (
               <span className="block min-w-0 font-normal text-xs leading-16 tracking-normal">
                 <span className="text-[var(--blue-500)]">{itemCount}</span>
                 <span className="text-[var(--gray-400)]">
@@ -230,18 +259,39 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
               </span>
             ))}
         </div>
-        <EditableSection isEditable={isEditable}>
-          <EditableDivider />
-          <button
-            type="button"
-            aria-label="Delete list"
-            onClick={onDelete}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-          >
-            <TrashIcon />
-          </button>
-        </EditableSection>
+        {isMaster ? (
+          /** Zelfde wrapper als delete-kolom (`EditableSection` + `isEditable`) zodat divider en uitlijning 1:1 matchen. */
+          <EditableSection isEditable>
+            <EditableDivider />
+            <button
+              type="button"
+              aria-label="Items van masterlijst toevoegen"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMasterAdd?.();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-action-primary transition-colors hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+              disabled={!onMasterAdd}
+            >
+              <PlusCircleIcon />
+            </button>
+          </EditableSection>
+        ) : null}
+        {(!isMaster || isEditable) && (
+          <EditableSection isEditable={isEditable}>
+            <EditableDivider />
+            <button
+              type="button"
+              aria-label="Delete list"
+              onClick={onDelete}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+            >
+              <TrashIcon />
+            </button>
+          </EditableSection>
+        )}
       </>
     );
 
