@@ -32,11 +32,15 @@ import { Snackbar } from "@/components/ui/snackbar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
+import { RadioSelectTile } from "@/components/ui/radio_select_tile";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { AppBottomNav } from "@/components/app_bottom_nav";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
+
+/** Soort nieuw lijstje in create-modal (Figma 772:3065); bewaren gebruikt nu alleen `blank` in de DB. */
+type NewListKind = "blank" | "from_master" | "master";
 
 type HomeList = {
   id: string;
@@ -203,6 +207,26 @@ function SortableListCard({
   );
 }
 
+/** SVG als externe img kan geen currentColor; mask + action-primary (= primary 500) voor monochrome iconen. */
+function IconPrimaryMask({ src, className }: { src: string; className?: string }) {
+  return (
+    <span
+      className={cn("inline-block size-10 shrink-0 bg-action-primary", className)}
+      style={{
+        WebkitMaskImage: `url("${src}")`,
+        maskImage: `url("${src}")`,
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+      }}
+      aria-hidden
+    />
+  );
+}
+
 export default function Home() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
@@ -350,6 +374,7 @@ export default function Home() {
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newListName, setNewListName] = React.useState("");
+  const [newListKind, setNewListKind] = React.useState<NewListKind>("blank");
   const [lastDeleted, setLastDeleted] = React.useState<{
     listId: string;
     listName: string;
@@ -453,16 +478,19 @@ export default function Home() {
 
   const handleOpenCreateModal = () => {
     setNewListName("");
+    setNewListKind("blank");
     setIsCreateModalOpen(true);
   };
 
   const handleCloseCreateModal = () => {
     setIsCreateModalOpen(false);
     setNewListName("");
+    setNewListKind("blank");
   };
 
   const handleSaveNewList = React.useCallback(() => {
     if (!user) return;
+    /* Toekomst: gebruik `newListKind` (blank | from_master | master); nu zelfde create als blanco. */
     const name = newListName.trim() || "Nieuw lijstje";
     const now = new Date();
     const newId = iid();
@@ -592,7 +620,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Slide-in modal – Nieuw lijstje (Figma 472:2235) */}
+      {/* Slide-in modal – Nieuw lijstje (Figma 472:2235, tiles 772:3065) */}
       <SlideInModal
         open={isCreateModalOpen}
         onClose={handleCloseCreateModal}
@@ -608,7 +636,7 @@ export default function Home() {
           </Button>
         }
       >
-        <div className="flex flex-col items-center gap-8">
+        <div className="flex w-full flex-col items-center gap-8">
           <InputField
             label="Naam lijstje"
             placeholder="Naam lijstje"
@@ -619,6 +647,62 @@ export default function Home() {
               if (e.key === "Enter" && newListName.trim()) handleSaveNewList();
             }}
           />
+          <div
+            role="radiogroup"
+            aria-label="Soort lijstje"
+            className="flex w-full flex-col gap-4"
+          >
+            <RadioSelectTile
+              role="radio"
+              aria-checked={newListKind === "blank"}
+              tabIndex={0}
+              variant={newListKind === "blank" ? "selected" : "unselected"}
+              title="Lijstje"
+              subtitle="Nieuw blanco lijstje"
+              onClick={() => setNewListKind("blank")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setNewListKind("blank");
+                }
+              }}
+              className="cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+            />
+            <RadioSelectTile
+              role="radio"
+              aria-checked={newListKind === "from_master"}
+              tabIndex={0}
+              variant={newListKind === "from_master" ? "selected" : "unselected"}
+              title="Lijstje van master lijstje"
+              subtitle="Vertrek van bestaand master lijstje"
+              icon={<IconPrimaryMask src="/icons/list-from-master-list.svg" />}
+              onClick={() => setNewListKind("from_master")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setNewListKind("from_master");
+                }
+              }}
+              className="cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+            />
+            <RadioSelectTile
+              role="radio"
+              aria-checked={newListKind === "master"}
+              tabIndex={0}
+              variant={newListKind === "master" ? "selected" : "unselected"}
+              title="Master lijstje"
+              subtitle="Template lijstje voor een winkel"
+              icon={<IconPrimaryMask src="/icons/master-list.svg" />}
+              onClick={() => setNewListKind("master")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setNewListKind("master");
+                }
+              }}
+              className="cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+            />
+          </div>
         </div>
       </SlideInModal>
 
