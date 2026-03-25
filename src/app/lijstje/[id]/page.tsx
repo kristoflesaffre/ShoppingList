@@ -1541,6 +1541,9 @@ export default function ListDetailPage({
     if (!listData || !canAccess) router.replace("/");
   }, [authLoading, user, isLoading, listData, canAccess, router]);
   const listName = listData?.name ?? "Lijstje";
+  const listIcon = listData?.icon ?? "";
+  const isMasterList =
+    typeof listIcon === "string" && listIcon.startsWith("/logos/");
 
   const items: ListItem[] = React.useMemo(() => {
     if (!listData?.items) return [];
@@ -2099,8 +2102,10 @@ export default function ListDetailPage({
   }, [items]);
 
   const hasItems = items.length > 0;
+  const isMasterEmpty = isMasterList && !hasItems;
 
-  const showListDetailHeader = hasItems || showSharedDetailRow;
+  const showListDetailHeader =
+    hasItems || showSharedDetailRow || isMasterEmpty;
 
   const handleReorderItems = React.useCallback(
     (event: DragEndEvent) => {
@@ -2194,8 +2199,14 @@ export default function ListDetailPage({
         </header>
       </div>
 
-      <div className="flex flex-1 flex-col px-4 pb-24 pt-4 mt-[calc(56px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6">
+      <div
+        className={cn(
+          "flex flex-1 flex-col px-4 pb-24 mt-[calc(56px+env(safe-area-inset-top,0px))]",
+          isMasterEmpty ? "pt-8" : "pt-4",
+        )}
+      >
+        {/* Geen extra gradient: zelfde principe als gewone lijstdetail — alleen body::before (globals.css). */}
+        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6">
           {showListDetailHeader ? (
             <div className="flex items-start gap-4">
               <div className="min-w-0 flex-1 flex flex-col gap-0">
@@ -2236,25 +2247,56 @@ export default function ListDetailPage({
           ) : null}
 
           {!hasItems ? (
-            <section
-              className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-6",
-                showListDetailHeader ? "pt-8" : "pt-32",
-              )}
-              aria-label="Lege staat"
-            >
-              <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
-                Geen items in je lijstje
-              </p>
-              <MiniButton
-                type="button"
-                variant="primary"
-                aria-label="Item toevoegen"
-                onClick={handleOpenNewItemModal}
+            isMasterEmpty ? (
+              <section
+                className="flex flex-1 flex-col items-center justify-center gap-6 px-0 pb-8"
+                aria-label="Lege masterlijst"
               >
-                Voeg item toe
-              </MiniButton>
-            </section>
+                <div className="flex w-full max-w-[358px] flex-col items-center gap-6">
+                  <div className="relative size-24 shrink-0 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- store-SVG uit /public/logos */}
+                    <img
+                      src={listIcon}
+                      alt=""
+                      width={96}
+                      height={96}
+                      className="size-full object-contain"
+                    />
+                  </div>
+                  <p className="w-full text-center text-base font-medium leading-24 tracking-normal text-[var(--gray-500)]">
+                    Geen items in je lijstje
+                  </p>
+                  <MiniButton
+                    type="button"
+                    variant="primary"
+                    aria-label="Item toevoegen"
+                    onClick={handleOpenNewItemModal}
+                  >
+                    Voeg item toe
+                  </MiniButton>
+                </div>
+              </section>
+            ) : (
+              <section
+                className={cn(
+                  "flex flex-1 flex-col items-center justify-center gap-6",
+                  showListDetailHeader ? "pt-8" : "pt-32",
+                )}
+                aria-label="Lege staat"
+              >
+                <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
+                  Geen items in je lijstje
+                </p>
+                <MiniButton
+                  type="button"
+                  variant="primary"
+                  aria-label="Item toevoegen"
+                  onClick={handleOpenNewItemModal}
+                >
+                  Voeg item toe
+                </MiniButton>
+              </section>
+            )
           ) : (
             <DndContext
               sensors={sensors}
@@ -2309,15 +2351,17 @@ export default function ListDetailPage({
         </div>
       )}
 
-      <div className="pointer-events-none fixed bottom-[45px] left-0 right-0 z-20 px-4">
-        <div className="mx-auto flex w-full max-w-[956px] justify-end">
-          <FloatingActionButton
-            aria-label="Item toevoegen"
-            className="pointer-events-auto"
-            onClick={handleOpenNewItemModal}
-          />
+      {!isMasterEmpty ? (
+        <div className="pointer-events-none fixed bottom-[45px] left-0 right-0 z-20 px-4">
+          <div className="mx-auto flex w-full max-w-[956px] justify-end">
+            <FloatingActionButton
+              aria-label="Item toevoegen"
+              className="pointer-events-auto"
+              onClick={handleOpenNewItemModal}
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <NewItemModal
         open={isNewItemOpen || editingItem != null}
