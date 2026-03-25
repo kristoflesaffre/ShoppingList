@@ -54,7 +54,7 @@ type HomeList = {
   /** Lidmaatschappen om mee te verwijderen bij delete (alleen bij eigenaar). */
   membershipIds?: string[];
   /** Figma 762:3452: toon “gedeeld met …” op de kaart. */
-  displayVariant: "default" | "shared";
+  displayVariant: "default" | "shared" | "master";
   /** Voornaam van de andere partij (deelnemer of eigenaar); null = ListCard toont “deelnemer”. */
   sharedWithFirstName: string | null;
 };
@@ -109,33 +109,89 @@ function SortableListItems({
   const { active } = useDndContext();
   const isDndActive = active != null;
 
+  const normalLists = lists.filter((l) => l.displayVariant !== "master");
+  const masterLists = lists.filter((l) => l.displayVariant === "master");
+
   return (
     <div className="flex flex-col">
-      {lists.map((list, index) => {
-        const isRemoving = removingId === list.id;
-        const isAdding = addingId === list.id;
-        const isAddingCollapsed = isAdding && !addingIdExpanded;
-        const isAnimating = isRemoving || isAddingCollapsed;
+      {normalLists.length > 0 ? (
+        <div className="flex flex-col">
+          <h2 className="text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
+            Gewone lijstjes
+          </h2>
+          <div className="mt-4 flex flex-col">
+            {normalLists.map((list, index) => {
+              const isRemoving = removingId === list.id;
+              const isAdding = addingId === list.id;
+              const isAddingCollapsed = isAdding && !addingIdExpanded;
+              const isAnimating = isRemoving || isAddingCollapsed;
 
-        const wrapperClass = isDndActive
-          ? cn(index < lists.length - 1 ? "mb-3" : "mb-0")
-          : cn(
-              "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-              isAnimating ? "max-h-0 opacity-0 mb-0" : "max-h-[200px] opacity-100",
-              !isAnimating && (index < lists.length - 1 ? "mb-3" : "mb-0")
-            );
+              const wrapperClass = isDndActive
+                ? cn(index < normalLists.length - 1 ? "mb-3" : "mb-0")
+                : cn(
+                    "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+                    isAnimating
+                      ? "max-h-0 opacity-0 mb-0"
+                      : "max-h-[200px] opacity-100",
+                    !isAnimating && (index < normalLists.length - 1 ? "mb-3" : "mb-0")
+                  );
 
-        return (
-          <div key={list.id} className={wrapperClass}>
-            <SortableListCard
-              list={list}
-              isEditMode={isEditMode}
-              onDelete={() => onDelete(list.id)}
-              onOpenList={() => onOpenList(list.id)}
-            />
+              return (
+                <div key={list.id} className={wrapperClass}>
+                  <SortableListCard
+                    list={list}
+                    isEditMode={isEditMode}
+                    onDelete={() => onDelete(list.id)}
+                    onOpenList={() => onOpenList(list.id)}
+                  />
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+      ) : null}
+
+      {masterLists.length > 0 ? (
+        <div
+          className={cn(
+            "flex flex-col",
+            normalLists.length > 0 ? "mt-8" : undefined,
+          )}
+        >
+          <h2 className="text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
+            Master lijstjes
+          </h2>
+          <div className="mt-4 flex flex-col">
+            {masterLists.map((list, index) => {
+              const isRemoving = removingId === list.id;
+              const isAdding = addingId === list.id;
+              const isAddingCollapsed = isAdding && !addingIdExpanded;
+              const isAnimating = isRemoving || isAddingCollapsed;
+
+              const wrapperClass = isDndActive
+                ? cn(index < masterLists.length - 1 ? "mb-3" : "mb-0")
+                : cn(
+                    "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+                    isAnimating
+                      ? "max-h-0 opacity-0 mb-0"
+                      : "max-h-[200px] opacity-100",
+                    !isAnimating && (index < masterLists.length - 1 ? "mb-3" : "mb-0")
+                  );
+
+              return (
+                <div key={list.id} className={wrapperClass}>
+                  <SortableListCard
+                    list={list}
+                    isEditMode={isEditMode}
+                    onDelete={() => onDelete(list.id)}
+                    onOpenList={() => onOpenList(list.id)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -306,6 +362,7 @@ export default function Home() {
 
   const lists: HomeList[] = React.useMemo(() => {
     const owned: HomeList[] = (data?.lists ?? []).map((l) => {
+      const isMaster = typeof l.icon === "string" && l.icon.startsWith("/logos/");
       const memberIds = ((l.memberships ?? []) as ListMembershipRow[])
         .map((m) => m.instantUserId)
         .filter((id): id is string => !!id && id !== user?.id);
@@ -324,8 +381,8 @@ export default function Home() {
         items: l.items ?? [],
         isOwner: true,
         membershipIds: (l.memberships ?? []).map((m) => m.id),
-        displayVariant: hasOtherMembers ? "shared" : "default",
-        sharedWithFirstName: hasOtherMembers ? sharedName : null,
+        displayVariant: isMaster ? "master" : hasOtherMembers ? "shared" : "default",
+        sharedWithFirstName: isMaster ? null : hasOtherMembers ? sharedName : null,
       };
     });
 
@@ -336,6 +393,7 @@ export default function Home() {
           l != null && typeof l === "object" && "id" in l,
       )
       .map((l) => {
+        const isMaster = typeof l.icon === "string" && l.icon.startsWith("/logos/");
         const ownerId =
           "ownerId" in l && typeof l.ownerId === "string"
             ? l.ownerId
@@ -352,8 +410,8 @@ export default function Home() {
           order: l.order,
           items: l.items ?? [],
           isOwner: false,
-          displayVariant: "shared" as const,
-          sharedWithFirstName: ownerFirst,
+          displayVariant: isMaster ? "master" : ("shared" as const),
+          sharedWithFirstName: isMaster ? null : ownerFirst,
         };
       });
 
