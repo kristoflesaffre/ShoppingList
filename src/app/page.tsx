@@ -490,22 +490,33 @@ export default function Home() {
 
   const handleSaveNewList = React.useCallback(() => {
     if (!user) return;
-    /* Toekomst: gebruik `newListKind` (blank | from_master | master); nu zelfde create als blanco. */
-    const name = newListName.trim() || "Nieuw lijstje";
+    const name = newListName.trim();
+    if (!name) return;
+
+    if (newListKind === "master") {
+      router.push(
+        `/nieuw-lijstje/selecteer-winkel?naam=${encodeURIComponent(name)}`,
+      );
+      handleCloseCreateModal();
+      return;
+    }
+
+    const listName = name;
+    const icon = getIconForNewList(lists);
     const now = new Date();
     const newId = iid();
     db.transact(
       db.tx.lists[newId].update({
-        name,
+        name: listName,
         date: now.toLocaleDateString("nl-NL"),
-        icon: getIconForNewList(lists),
+        icon,
         order: lists.length > 0 ? Math.min(...lists.map((l) => l.order)) - 1 : 0,
         ownerId: user.id,
       }),
     );
     setAddingId(newId);
     handleCloseCreateModal();
-  }, [newListName, lists, user]);
+  }, [newListName, newListKind, lists, user, router]);
 
   const handleOpenList = (listId: string) => {
     router.push(`/lijstje/${listId}`);
@@ -620,7 +631,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Slide-in modal – Nieuw lijstje (Figma 472:2235, tiles 772:3065) */}
+      {/* Slide-in: Nieuw lijstje (472:2235, 772:3065); master → fullscreen winkelkeuze (794:3317) */}
       <SlideInModal
         open={isCreateModalOpen}
         onClose={handleCloseCreateModal}
@@ -644,7 +655,8 @@ export default function Home() {
             autoComplete="off"
             onChange={(e) => setNewListName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && newListName.trim()) handleSaveNewList();
+              if (e.key !== "Enter") return;
+              if (newListName.trim()) handleSaveNewList();
             }}
           />
           <div
@@ -672,7 +684,9 @@ export default function Home() {
               role="radio"
               aria-checked={newListKind === "from_master"}
               tabIndex={0}
-              variant={newListKind === "from_master" ? "selected" : "unselected"}
+              variant={
+                newListKind === "from_master" ? "selected" : "unselected"
+              }
               title="Lijstje van master lijstje"
               subtitle="Vertrek van bestaand master lijstje"
               icon={<IconPrimaryMask src="/icons/list-from-master-list.svg" />}

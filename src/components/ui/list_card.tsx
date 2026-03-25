@@ -33,7 +33,7 @@ export interface ListCardProps
   displayVariant?: ListCardDisplayVariant;
   /** Voornaam voor het gedeeld-met-label; bij ontbreken: “deelnemer”. */
   sharedWithFirstName?: string;
-  /** Only "default" is defined (gap-3, px-3, py-3). */
+  /** Only "default" is defined (gap-3; padding via containerBase). */
   size?: ListCardSize;
   /** When true, the single child replaces the default card content and receives merged container props */
   asChild?: boolean;
@@ -106,12 +106,12 @@ function TrashIcon({ className }: { className?: string }) {
   );
 }
 
-/** Figma 494:2412: bg white, border bd-1 gray-100, rounded rd-8, gap scale/12 (12px), px/py sp-12 (12px). */
+/** Figma 494:2412: bg white, border bd-1 gray-100, rounded rd-8; horizontale gap scale/12 (12px) tussen zichtbare kolommen; pl/pr sp-12 = 12px (--space-3). */
 const containerBase =
-  "flex w-full min-w-0 items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3";
+  "flex w-full min-w-0 items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-[var(--space-3)] pr-[var(--space-3)]";
 
 const sizeStyles: Record<ListCardSize, string> = {
-  default: "gap-3 px-3 py-3",
+  default: "gap-3",
 };
 
 /** Figma: divider wrapper h-60 w-0 shrink-0; line 1px × 60px, neutrals/100. */
@@ -211,7 +211,10 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
 
     const defaultContent = (
       <>
-        <EditableSection isEditable={isEditable}>
+        <EditableSection
+          isEditable={isEditable}
+          className={!isEditable ? "hidden" : undefined}
+        >
           <button
             type="button"
             aria-label="Reorder list"
@@ -279,7 +282,10 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
           </EditableSection>
         ) : null}
         {(!isMaster || isEditable) && (
-          <EditableSection isEditable={isEditable}>
+          <EditableSection
+            isEditable={isEditable}
+            className={!isEditable ? "hidden" : undefined}
+          >
             <EditableDivider />
             <button
               type="button"

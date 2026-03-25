@@ -47,7 +47,7 @@ const LogoTile = React.forwardRef<HTMLDivElement, LogoTileProps>(
     const isDisabled = state === "disabled";
 
     const containerClassName = cn(
-      "flex w-[5.125rem] shrink-0 flex-col items-center gap-2 rounded-md p-3 tracking-normal",
+      "flex h-full min-h-0 min-w-0 w-[5.125rem] shrink-0 flex-col items-center gap-2 rounded-md p-3 tracking-normal",
       isDisabled
         ? "bg-blue-25 pointer-events-none shadow-none"
         : "bg-background-elevated shadow-drop",
@@ -80,7 +80,7 @@ const LogoTile = React.forwardRef<HTMLDivElement, LogoTileProps>(
         </span>
         <span
           className={cn(
-            "w-full min-w-0 shrink-0 text-center text-sm font-medium leading-20",
+            "w-full min-w-0 max-w-full shrink-0 truncate text-center text-sm font-medium leading-20",
             isDisabled ? "text-gray-400" : "text-text-primary",
           )}
         >
