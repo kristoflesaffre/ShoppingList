@@ -44,6 +44,7 @@ import {
   type RecipeIngredient,
   type SavedRecipe,
 } from "@/lib/recipe_library";
+import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 
 /** Profiel van een andere claimer: avatar + voornaam op itemkaart. */
 type ClaimerProfileInfo = { avatarUrl?: string; firstName?: string };
@@ -1582,6 +1583,16 @@ export default function ListDetailPage({
   const listIcon = listData?.icon ?? "";
   const isMasterList =
     typeof listIcon === "string" && listIcon.startsWith("/logos/");
+  const masterStoreLabel = React.useMemo(() => {
+    if (!isMasterList) return "";
+    const logoFile = listIcon.split("/").pop() ?? "";
+    const match =
+      MASTER_STORE_OPTIONS.find((s) => {
+        const storeLogoFile = s.logoSrc.split("/").pop() ?? "";
+        return storeLogoFile.length > 0 && storeLogoFile === logoFile;
+      }) ?? null;
+    return match?.label ?? "";
+  }, [isMasterList, listIcon]);
 
   const items: ListItem[] = React.useMemo(() => {
     if (!listData?.items) return [];
@@ -2240,7 +2251,7 @@ export default function ListDetailPage({
       <div
         className={cn(
           "flex flex-1 flex-col px-4 pb-24 mt-[calc(56px+env(safe-area-inset-top,0px))]",
-          isMasterEmpty ? "pt-8" : "pt-4",
+          isMasterList ? "pt-8" : "pt-4",
         )}
       >
         {/* Geen extra gradient: zelfde principe als gewone lijstdetail — alleen body::before (globals.css). */}
@@ -2251,6 +2262,21 @@ export default function ListDetailPage({
                 <h2 className="text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
                   {listName}
                 </h2>
+                {isMasterList && masterStoreLabel ? (
+                  <div className="mt-0 flex w-full items-center justify-start gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- store-SVG uit /public/logos */}
+                    <img
+                      src={listIcon}
+                      alt=""
+                      width={24}
+                      height={24}
+                      className="size-6 object-contain"
+                    />
+                    <p className="text-sm font-normal leading-20 tracking-normal text-[var(--text-tertiary)]">
+                      {masterStoreLabel}
+                    </p>
+                  </div>
+                ) : null}
                 {showSharedDetailRow ? (
                   <div className="mt-1 flex min-w-0 items-center gap-1">
                     <span className="relative size-4 shrink-0 overflow-hidden rounded-full bg-[var(--gray-100)] ring-1 ring-[var(--gray-100)]">
