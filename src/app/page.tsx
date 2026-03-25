@@ -636,7 +636,6 @@ export default function Home() {
         open={isCreateModalOpen}
         onClose={handleCloseCreateModal}
         title="Nieuw lijstje"
-        compact
         footer={
           <Button
             variant="primary"

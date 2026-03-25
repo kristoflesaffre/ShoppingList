@@ -15,8 +15,6 @@ export interface SlideInModalProps {
   children: React.ReactNode;
   /** Optional sticky footer, 24px from bottom */
   footer?: React.ReactNode;
-  /** When true, panel height fits content instead of full screen */
-  compact?: boolean;
   /** When provided, shows a back arrow on the left of the header */
   onBack?: () => void;
   /** Optional class for the panel */
@@ -78,7 +76,7 @@ function BackArrowIcon({ className }: { className?: string }) {
 
 /**
  * Slide-in modal from bottom with overlay. Figma 472:2235.
- * Animates in from bottom; overlay dims the background.
+ * Paneelhoogte volgt de inhoud tot max. `100dvh − 48px`; lange inhoud scrollt in het body-gedeelte.
  */
 export function SlideInModal({
   open,
@@ -86,7 +84,6 @@ export function SlideInModal({
   title,
   children,
   footer,
-  compact = false,
   onBack,
   className,
   containerClassName,
@@ -147,16 +144,14 @@ export function SlideInModal({
         aria-label="Sluiten"
       />
 
-      {/* Panel – fullscreen or compact (content height) */}
+      {/* Panel: hoogte tot inhoud, max. viewport minus 48px; body scrollt bij overflow */}
       <div
         className={cn(
-          "relative z-10 flex w-full flex-col rounded-t-[var(--radius-md)] bg-[var(--white)] shadow-[0px_1px_4px_0px_rgba(0,0,0,0.13)] transition-transform duration-500 ease-out",
+          "relative z-10 flex max-h-[calc(100dvh-48px)] w-full flex-col overflow-hidden rounded-t-[var(--radius-md)] bg-[var(--white)] shadow-[0px_1px_4px_0px_rgba(0,0,0,0.13)] transition-transform duration-500 ease-out",
           isAnimatingIn && !isClosing ? "translate-y-0" : "translate-y-full",
-          compact && "max-h-[calc(100dvh-48px)]",
           className
         )}
         style={{
-          ...(compact ? {} : { height: "calc(100dvh - 48px)" }),
           transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
@@ -168,35 +163,30 @@ export function SlideInModal({
         />
         <div
           className={cn(
-            "flex flex-col",
-            compact ? "min-h-0 shrink-0" : "min-h-0 flex-1"
+            "flex flex-col overflow-y-auto overflow-x-hidden pb-4 pt-6",
+            footer
+              ? "max-h-[calc(100dvh-48px-4rem-5.5rem)]"
+              : "max-h-[calc(100dvh-48px-4rem)]",
+            bodyFullWidth
+              ? "w-full min-w-0 items-stretch px-0"
+              : "items-center px-4",
           )}
         >
-          <div
-            className={cn(
-              "flex flex-col pb-4 pt-6",
-              bodyFullWidth
-                ? "w-full min-w-0 items-stretch px-0"
-                : "items-center px-4",
-              compact ? "shrink-0" : "flex-1 overflow-y-auto"
-            )}
-          >
-            {bodyFullWidth ? (
-              <div className="w-full min-w-0 [&>*]:w-full">{children}</div>
-            ) : (
-              <div className="mx-auto w-full max-w-[768px] [&>*]:w-full">
-                {children}
-              </div>
-            )}
-          </div>
-          {footer && (
-            <div className="shrink-0 px-4 pb-6 pt-4">
-              <div className="mx-auto flex w-full max-w-[768px] justify-center">
-                {footer}
-              </div>
+          {bodyFullWidth ? (
+            <div className="w-full min-w-0 [&>*]:w-full">{children}</div>
+          ) : (
+            <div className="mx-auto w-full max-w-[768px] [&>*]:w-full">
+              {children}
             </div>
           )}
         </div>
+        {footer ? (
+          <div className="shrink-0 px-4 pb-6 pt-4">
+            <div className="mx-auto flex w-full max-w-[768px] justify-center">
+              {footer}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

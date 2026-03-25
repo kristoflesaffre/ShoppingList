@@ -64,7 +64,6 @@ export function ShareListModal({
       open={open}
       onClose={onClose}
       title="Lijstje delen"
-      compact
       bodyFullWidth
       className="rounded-t-[var(--radius-md)]"
     >

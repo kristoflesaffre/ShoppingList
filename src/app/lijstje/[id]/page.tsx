@@ -486,6 +486,7 @@ function NewItemModal({
   storedRecipes,
   onSaveRecipeToLibrary,
   onApplyRecipeToList,
+  isMasterList = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -496,6 +497,8 @@ function NewItemModal({
   storedRecipes: SavedRecipe[];
   onSaveRecipeToLibrary: (recipe: SavedRecipe) => void;
   onApplyRecipeToList: (items: ListItem[]) => void;
+  /** Masterlijst: beperkte flow alleen naam + hoeveelheid (Figma 797:3883). */
+  isMasterList?: boolean;
 }) {
   const isEditMode = editingItem != null;
   const [selectedDay, setSelectedDay] = React.useState("Geen");
@@ -526,6 +529,8 @@ function NewItemModal({
 
   const canAdd = itemName.trim().length > 0;
   const canSaveRecipe = recipeName.trim().length > 0;
+  /** Geen dag/recept-flow (masterlijst). */
+  const masterItemFormOnly = isMasterList && !showRecipeForm;
 
   const filteredRecipes = React.useMemo(() => {
     const q = recipeSearch.trim().toLowerCase();
@@ -735,7 +740,7 @@ function NewItemModal({
       : "Item(s) toevoegen";
 
   const itemFooter =
-    isEditMode || activeTab === "first" ? (
+    isEditMode || activeTab === "first" || masterItemFormOnly ? (
       <Button
         variant="primary"
         disabled={!isEditMode && !canAdd}
@@ -764,52 +769,68 @@ function NewItemModal({
       onBack={showRecipeForm ? closeRecipeFormPanel : undefined}
       footer={showRecipeForm ? recipeFooter : itemFooter}
       disableEscapeClose={ingredientSlideOpen}
-      bodyFullWidth
+      bodyFullWidth={!masterItemFormOnly}
     >
       <div className="overflow-hidden">
         <div
-          className="flex w-full"
+          className="relative flex w-full"
           style={{
             transform: showRecipeForm ? "translateX(-100%)" : "translateX(0)",
             transition: SLIDE_TRANSITION,
           }}
         >
           {/* Panel 1: Item form */}
-          <div className="w-full shrink-0">
+          <div className="relative z-[1] w-full shrink-0">
             <div className="mx-auto w-full max-w-[768px] px-4">
-              <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-                  Dag
-                </span>
-                <div className="grid grid-cols-4 gap-2">
-                  {DAY_OPTIONS.map((day) => (
-                    <ToggleButton
-                      key={day.value}
-                      variant={selectedDay === day.value ? "active" : "inactive"}
-                      className="w-full"
-                      onClick={() => {
-                        setSelectedDay(day.value);
-                        if (day.value === "Geen") setActiveTab("first");
-                      }}
-                    >
-                      {day.label}
-                    </ToggleButton>
-                  ))}
-                </div>
-              </div>
+              <div
+                className={cn(
+                  "flex flex-col",
+                  masterItemFormOnly ? "gap-4" : "gap-6",
+                )}
+              >
+              {!isMasterList ? (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+                      Dag
+                    </span>
+                    <div className="grid grid-cols-4 gap-2">
+                      {DAY_OPTIONS.map((day) => (
+                        <ToggleButton
+                          key={day.value}
+                          variant={
+                            selectedDay === day.value ? "active" : "inactive"
+                          }
+                          className="w-full"
+                          onClick={() => {
+                            setSelectedDay(day.value);
+                            if (day.value === "Geen") setActiveTab("first");
+                          }}
+                        >
+                          {day.label}
+                        </ToggleButton>
+                      ))}
+                    </div>
+                  </div>
 
-              {!isEditMode && (
-                <PillTab
-                  value={activeTab}
-                  onValueChange={setActiveTab}
-                  labelFirst="item"
-                  labelSecond="recept"
-                />
-              )}
+                  {!isEditMode && (
+                    <PillTab
+                      value={activeTab}
+                      onValueChange={setActiveTab}
+                      labelFirst="item"
+                      labelSecond="recept"
+                    />
+                  )}
+                </>
+              ) : null}
 
-              {(isEditMode || activeTab === "first") && (
-                <div className="flex flex-col gap-6">
+              {(isEditMode || activeTab === "first" || isMasterList) && (
+                <div
+                  className={cn(
+                    "flex flex-col",
+                    masterItemFormOnly ? "gap-4" : "gap-6",
+                  )}
+                >
                   <InputField
                     label="Naam item"
                     placeholder="Naam item"
@@ -836,7 +857,7 @@ function NewItemModal({
                 </div>
               )}
 
-              {!isEditMode && activeTab === "second" && (
+              {!isMasterList && !isEditMode && activeTab === "second" && (
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-3">
                     <div className="flex min-w-0 flex-1 items-center gap-[12px]">
@@ -914,8 +935,14 @@ function NewItemModal({
             </div>
           </div>
 
-          {/* Panel 2: Recipe form */}
-          <div className="w-full shrink-0">
+          {/* Panel 2: buiten flex-flow als verborgen — anders rekt de rij naar receptformulier-hoogte en ontstaat witruimte onder het itemformulier */}
+          <div
+            className={cn(
+              "w-full shrink-0",
+              !showRecipeForm &&
+                "pointer-events-none absolute left-full top-0 z-0 w-full min-w-0",
+            )}
+          >
             <div className="mx-auto w-full max-w-[768px] px-4">
               <div className="flex flex-col">
               <div className="flex flex-col gap-6">
@@ -991,7 +1018,6 @@ function NewItemModal({
     <SlideInModal
       open={ingredientSlideOpen}
       onClose={closeIngredientForm}
-      compact
       title={
         editingIngredientId ? "Ingrediënt wijzigen" : "Ingrediënt toevoegen"
       }
@@ -2239,10 +2265,12 @@ export default function ListDetailPage({
                   </div>
                 ) : null}
               </div>
-              <EditButton
-                variant={isEditMode ? "active" : "inactive"}
-                onClick={() => setIsEditMode((p) => !p)}
-              />
+              {!isMasterEmpty ? (
+                <EditButton
+                  variant={isEditMode ? "active" : "inactive"}
+                  onClick={() => setIsEditMode((p) => !p)}
+                />
+              ) : null}
             </div>
           ) : null}
 
@@ -2377,6 +2405,7 @@ export default function ListDetailPage({
         storedRecipes={savedRecipes}
         onSaveRecipeToLibrary={handleSaveRecipeToLibrary}
         onApplyRecipeToList={handleAddItemsFromRecipe}
+        isMasterList={isMasterList}
       />
 
       <ShareListModal
