@@ -1,0 +1,307 @@
+"use client";
+
+import * as React from "react";
+import { Suspense } from "react";
+import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
+import { id as iid } from "@instantdb/react";
+import { Button } from "@/components/ui/button";
+import { AppBottomNav } from "@/components/app_bottom_nav";
+import { db } from "@/lib/db";
+import { ListCard } from "@/components/ui/list_card";
+
+/** Zelfde pijl als SlideInModal — public/icons/arrow.svg */
+function BackArrowIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M3.59377 12.31C3.60777 12.329 3.61477 12.351 3.63177 12.368L9.23178 17.968C9.33378 18.069 9.46678 18.119 9.59978 18.119C9.73278 18.119 9.86678 18.068 9.96778 17.968C10.1698 17.765 10.1698 17.435 9.96778 17.232L5.25578 12.521L19.9998 12.521C20.2868 12.521 20.5198 12.288 20.5198 12.001C20.5198 11.714 20.2868 11.48 19.9998 11.48L5.25477 11.48L9.96678 6.768C10.1688 6.565 10.1688 6.236 9.96577 6.033C9.76477 5.83 9.43378 5.83 9.23078 6.033L3.63078 11.633C3.61378 11.65 3.60577 11.673 3.59177 11.692C3.56477 11.727 3.53678 11.76 3.51978 11.801C3.46677 11.929 3.46677 12.072 3.51978 12.2C3.53778 12.241 3.56677 12.275 3.59377 12.31Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function StoreLogoImg({ src }: { src: string }) {
+  return (
+    <Image
+      src={src}
+      alt=""
+      width={48}
+      height={48}
+      className="size-12 max-h-full max-w-full object-contain"
+      aria-hidden
+    />
+  );
+}
+
+const FOOD_ICONS = [
+  "/images/ui/food/icon_apple.png",
+  "/images/ui/food/icon_aubergine.png",
+  "/images/ui/food/icon_banana.png",
+  "/images/ui/food/icon_blueberries.png",
+  "/images/ui/food/icon_bread.png",
+  "/images/ui/food/icon_carrot.png",
+  "/images/ui/food/icon_cheese.png",
+  "/images/ui/food/icon_milk.png",
+  "/images/ui/food/icon_nutella.png",
+  "/images/ui/food/icon_strawberry.png",
+  "/images/ui/food/icon_tangerine.png",
+] as const;
+
+type TemplateItem = {
+  id: string;
+  name: string;
+  quantity: string;
+  checked?: boolean;
+  section: string;
+  recipeGroupId?: string;
+  recipeName?: string;
+  recipeLink?: string;
+};
+
+type MasterListRow = {
+  id: string;
+  name: string;
+  icon: string;
+  order?: number;
+  items?: TemplateItem[];
+};
+
+function getIconForNewList(existingIcons: string[]): string {
+  const usedIcons = new Set(existingIcons);
+  const unusedIcons = FOOD_ICONS.filter((icon) => !usedIcons.has(icon));
+  const pool = unusedIcons.length > 0 ? unusedIcons : [...FOOD_ICONS];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function SelecteerMasterLijstPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const listNameRaw = searchParams.get("naam") ?? "";
+
+  const { isLoading: authLoading, user } = db.useAuth();
+  const ownerId = user?.id ?? "__no_user__";
+
+  const { isLoading, error, data } = db.useQuery({
+    lists: {
+      items: {},
+      memberships: {},
+      $: { where: { ownerId } },
+    },
+    profiles: {
+      $: { where: { instantUserId: ownerId } },
+    },
+  });
+
+  const profileRow = data?.profiles?.[0];
+  const profileAvatarUrl = profileRow?.avatarUrl ?? null;
+  const profileFirstName = (profileRow?.firstName ?? "").trim() || null;
+
+  React.useEffect(() => {
+    if (!authLoading && !user) router.replace("/auth");
+  }, [authLoading, user, router]);
+
+  const masterLists: MasterListRow[] = React.useMemo(() => {
+    const rawLists = data?.lists ?? [];
+    const template = rawLists
+      .filter(
+        (l: unknown) =>
+          typeof l === "object" &&
+          l != null &&
+          "icon" in l &&
+          typeof (l as { icon?: unknown }).icon === "string" &&
+          String((l as { icon?: unknown }).icon).startsWith("/logos/"),
+      )
+      .map((l: any) => ({
+        id: String(l.id),
+        name: String(l.name ?? "Master lijstje"),
+        icon: String(l.icon ?? ""),
+        order: typeof l.order === "number" ? l.order : 0,
+        items: (l.items ?? []) as TemplateItem[],
+      }));
+    template.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    return template;
+  }, [data?.lists]);
+
+  const myIcons = React.useMemo(() => {
+    const rawLists = data?.lists ?? [];
+    return rawLists
+      .map((l: any) => (typeof l?.icon === "string" ? l.icon : null))
+      .filter((x: string | null): x is string => Boolean(x));
+  }, [data?.lists]);
+
+  const handlePickMaster = React.useCallback(
+    (template: MasterListRow) => {
+      if (!user) return;
+
+      const now = new Date();
+      const name = listNameRaw.trim() || "Nieuw lijstje";
+      const newId = iid();
+
+      // Nieuwe lijst moet géén master-layout triggeren, dus we kiezen een "food icon".
+      const newIcon = getIconForNewList(myIcons);
+      const order = data?.lists?.length
+        ? Math.min(
+            ...((data.lists as any[]).map((l) =>
+              typeof l?.order === "number" ? l.order : 0,
+            ) as number[]),
+          ) - 1
+        : 0;
+
+      const templateItems = (template.items ?? []).filter(
+        (i): i is TemplateItem =>
+          Boolean(i) &&
+          typeof i.id === "string" &&
+          typeof i.name === "string" &&
+          typeof i.quantity === "string" &&
+          typeof i.section === "string",
+      );
+
+      const newItems = templateItems.map((t) => {
+        const newItemId = iid();
+        return {
+          newItemId,
+          name: t.name,
+          quantity: t.quantity,
+          section: t.section,
+          recipeGroupId: t.recipeGroupId ?? "",
+          recipeName: t.recipeName ?? "",
+          recipeLink: t.recipeLink ?? "",
+        };
+      });
+
+      const txns = [
+        db.tx.lists[newId].update({
+          name,
+          date: now.toLocaleDateString("nl-NL"),
+          icon: newIcon,
+          order,
+          ownerId: user.id,
+        }),
+        ...newItems.map((ni, idx) =>
+          db.tx.items[ni.newItemId].update({
+            name: ni.name,
+            quantity: ni.quantity,
+            checked: false,
+            section: ni.section,
+            order: idx,
+            recipeGroupId: ni.recipeGroupId ?? "",
+            recipeName: ni.recipeName ?? "",
+            recipeLink: ni.recipeLink ?? "",
+          }).link({ list: newId }),
+        ),
+      ];
+
+      db.transact(txns as Parameters<typeof db.transact>[0]);
+      router.push(`/lijstje/${newId}`);
+    },
+    [data?.lists, listNameRaw, myIcons, router, user],
+  );
+
+  if (authLoading || !user || isLoading) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center">
+        <p className="text-base text-text-secondary">Laden…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center px-4">
+        <p className="text-base text-[var(--error-600)]">
+          Er ging iets mis: {error.message}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative flex min-h-dvh w-full flex-col bg-gradient-to-b from-[#dcddfc] to-[var(--white)] px-4">
+      <div className="flex flex-1 flex-col pb-[96px] pt-[calc(52px+env(safe-area-inset-top,0px))]">
+        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
+          <header className="mb-6 flex min-w-0 items-center gap-4">
+            <Button
+              type="button"
+              variant="tertiary"
+              onClick={() => router.push("/")}
+              aria-label="Terug naar lijstjes"
+              className="relative z-[1] !min-w-0 size-10 shrink-0 p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus [&_svg]:size-6"
+            >
+              <BackArrowIcon className="size-6 shrink-0" />
+            </Button>
+            <h1 className="min-w-0 flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
+              Selecteer master lijstje
+            </h1>
+          </header>
+
+          {masterLists.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-6">
+              <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
+                Je hebt nog geen masterlijstjes
+              </p>
+            </div>
+          ) : (
+            <div className="flex w-full min-w-0 flex-col gap-3">
+              {masterLists.map((ml) => {
+                const count = ml.items?.length ?? 0;
+                const itemCountLabel = count === 1 ? "1 item" : `${count} items`;
+                return (
+                  <ListCard
+                    key={ml.id}
+                    listName={ml.name}
+                    itemCount={itemCountLabel}
+                    icon={<StoreLogoImg src={ml.icon} />}
+                    onClick={() => handlePickMaster(ml)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handlePickMaster(ml);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <AppBottomNav
+        active="lijstjes"
+        profileAvatarUrl={profileAvatarUrl}
+        profileFirstName={profileFirstName}
+        onLijstjes={() => router.push("/")}
+        onProfiel={() => router.push("/profiel")}
+        onFabClick={() => router.push("/")}
+      />
+    </div>
+  );
+}
+
+export default function SelecteerMasterLijstPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-dvh items-center justify-center px-4">
+          <p className="text-base text-text-secondary">Laden…</p>
+        </div>
+      }
+    >
+      <SelecteerMasterLijstPageContent />
+    </Suspense>
+  );
+}
+

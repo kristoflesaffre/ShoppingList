@@ -32,7 +32,7 @@ import { Snackbar } from "@/components/ui/snackbar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
-import { RadioSelectTile } from "@/components/ui/radio_select_tile";
+import { SelectTile } from "@/components/ui/select_tile";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { AppBottomNav } from "@/components/app_bottom_nav";
@@ -41,6 +41,50 @@ type ListMembershipRow = { id?: string; instantUserId?: string };
 
 /** Soort nieuw lijstje in create-modal (Figma 772:3065); bewaren gebruikt nu alleen `blank` in de DB. */
 type NewListKind = "blank" | "from_master" | "master";
+
+const HOME_NEW_LIST_FORM_ID = "home-new-list-form";
+
+/** Native radio + SelectTile zodat FormData bij “Bewaren” altijd de echte tegelkeuze wéérgeeft (geen React-state drift). */
+function NewListKindFormOption({
+  value,
+  defaultChecked,
+  title,
+  subtitle,
+  icon,
+}: {
+  value: NewListKind;
+  defaultChecked?: boolean;
+  title: string;
+  subtitle: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <label className="flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md focus-within:outline-none focus-within:ring-2 focus-within:ring-border-focus focus-within:ring-offset-2">
+      <input
+        type="radio"
+        name="newListKind"
+        value={value}
+        defaultChecked={defaultChecked}
+        className="peer sr-only"
+      />
+      <span
+        className={cn(
+          "inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--blue-200)] bg-[var(--white)] transition-colors",
+          "peer-checked:border-action-primary peer-checked:[&>span]:opacity-100",
+        )}
+        aria-hidden
+      >
+        <span className="size-4 rounded-full border border-[var(--blue-100)] bg-action-primary opacity-0 transition-opacity" />
+      </span>
+      <SelectTile
+        className="min-w-0 flex-1"
+        title={title}
+        subtitle={subtitle}
+        icon={icon}
+      />
+    </label>
+  );
+}
 
 type HomeList = {
   id: string;
@@ -432,7 +476,8 @@ export default function Home() {
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newListName, setNewListName] = React.useState("");
-  const [newListKind, setNewListKind] = React.useState<NewListKind>("blank");
+  /** Nieuwe key bij elke modal-open: remount van het formulier zodat radio’s terug naar default staan. */
+  const [newListFormKey, setNewListFormKey] = React.useState(0);
   const [lastDeleted, setLastDeleted] = React.useState<{
     listId: string;
     listName: string;
@@ -534,47 +579,66 @@ export default function Home() {
     setAddingId(lastDeleted.listId);
   }, [lastDeleted, user]);
 
+  const handleCloseCreateModal = React.useCallback(() => {
+    setIsCreateModalOpen(false);
+    setNewListName("");
+  }, []);
+
   const handleOpenCreateModal = () => {
     setNewListName("");
-    setNewListKind("blank");
+    setNewListFormKey((k) => k + 1);
     setIsCreateModalOpen(true);
   };
 
-  const handleCloseCreateModal = () => {
-    setIsCreateModalOpen(false);
-    setNewListName("");
-    setNewListKind("blank");
-  };
+  const handleNewListFormSubmit = React.useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!user) return;
+      const fd = new FormData(event.currentTarget);
+      const name = String(fd.get("newListName") ?? "").trim();
+      if (!name) return;
+      const rawKind = fd.get("newListKind");
+      const kind: NewListKind =
+        rawKind === "from_master" || rawKind === "master" || rawKind === "blank"
+          ? rawKind
+          : "blank";
 
-  const handleSaveNewList = React.useCallback(() => {
-    if (!user) return;
-    const name = newListName.trim();
-    if (!name) return;
+      if (kind === "from_master") {
+        router.push(
+          `/nieuw-lijstje/selecteer-master-lijstje?naam=${encodeURIComponent(
+            name,
+          )}`,
+        );
+        handleCloseCreateModal();
+        return;
+      }
+      if (kind === "master") {
+        router.push(
+          `/nieuw-lijstje/selecteer-winkel?naam=${encodeURIComponent(name)}`,
+        );
+        handleCloseCreateModal();
+        return;
+      }
 
-    if (newListKind === "master") {
-      router.push(
-        `/nieuw-lijstje/selecteer-winkel?naam=${encodeURIComponent(name)}`,
+      const listName = name;
+      const icon = getIconForNewList(lists);
+      const now = new Date();
+      const newId = iid();
+      db.transact(
+        db.tx.lists[newId].update({
+          name: listName,
+          date: now.toLocaleDateString("nl-NL"),
+          icon,
+          order:
+            lists.length > 0 ? Math.min(...lists.map((l) => l.order)) - 1 : 0,
+          ownerId: user.id,
+        }),
       );
+      setAddingId(newId);
       handleCloseCreateModal();
-      return;
-    }
-
-    const listName = name;
-    const icon = getIconForNewList(lists);
-    const now = new Date();
-    const newId = iid();
-    db.transact(
-      db.tx.lists[newId].update({
-        name: listName,
-        date: now.toLocaleDateString("nl-NL"),
-        icon,
-        order: lists.length > 0 ? Math.min(...lists.map((l) => l.order)) - 1 : 0,
-        ownerId: user.id,
-      }),
-    );
-    setAddingId(newId);
-    handleCloseCreateModal();
-  }, [newListName, newListKind, lists, user, router]);
+    },
+    [user, lists, router, handleCloseCreateModal],
+  );
 
   const handleOpenList = (listId: string) => {
     router.push(`/lijstje/${listId}`);
@@ -696,85 +760,54 @@ export default function Home() {
         title="Nieuw lijstje"
         footer={
           <Button
+            type="submit"
+            form={HOME_NEW_LIST_FORM_ID}
             variant="primary"
-            onClick={handleSaveNewList}
             disabled={!newListName.trim()}
           >
             Bewaren
           </Button>
         }
       >
-        <div className="flex w-full flex-col items-center gap-8">
+        <form
+          id={HOME_NEW_LIST_FORM_ID}
+          key={newListFormKey}
+          onSubmit={handleNewListFormSubmit}
+          className="flex w-full flex-col items-center gap-8"
+        >
           <InputField
             label="Naam lijstje"
             placeholder="Naam lijstje"
+            name="newListName"
             value={newListName}
             autoComplete="off"
             onChange={(e) => setNewListName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key !== "Enter") return;
-              if (newListName.trim()) handleSaveNewList();
-            }}
           />
           <div
             role="radiogroup"
             aria-label="Soort lijstje"
             className="flex w-full flex-col gap-4"
           >
-            <RadioSelectTile
-              role="radio"
-              aria-checked={newListKind === "blank"}
-              tabIndex={0}
-              variant={newListKind === "blank" ? "selected" : "unselected"}
+            <NewListKindFormOption
+              value="blank"
+              defaultChecked
               title="Lijstje"
               subtitle="Nieuw blanco lijstje"
-              onClick={() => setNewListKind("blank")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setNewListKind("blank");
-                }
-              }}
-              className="cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
             />
-            <RadioSelectTile
-              role="radio"
-              aria-checked={newListKind === "from_master"}
-              tabIndex={0}
-              variant={
-                newListKind === "from_master" ? "selected" : "unselected"
-              }
+            <NewListKindFormOption
+              value="from_master"
               title="Lijstje van master lijstje"
-              subtitle="Vertrek van bestaand master lijstje"
+              subtitle="Vertrek van bestaand master lijstje (geen winkel kiezen)"
               icon={<IconPrimaryMask src="/icons/list-from-master-list.svg" />}
-              onClick={() => setNewListKind("from_master")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setNewListKind("from_master");
-                }
-              }}
-              className="cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
             />
-            <RadioSelectTile
-              role="radio"
-              aria-checked={newListKind === "master"}
-              tabIndex={0}
-              variant={newListKind === "master" ? "selected" : "unselected"}
+            <NewListKindFormOption
+              value="master"
               title="Master lijstje"
-              subtitle="Template lijstje voor een winkel"
+              subtitle="Nieuwe template: eerst winkel kiezen"
               icon={<IconPrimaryMask src="/icons/master-list.svg" />}
-              onClick={() => setNewListKind("master")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setNewListKind("master");
-                }
-              }}
-              className="cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
             />
           </div>
-        </div>
+        </form>
       </SlideInModal>
 
       {/* Snackbar – positioned above bottom nav */}
