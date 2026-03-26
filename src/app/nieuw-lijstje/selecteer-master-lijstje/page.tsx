@@ -4,7 +4,6 @@ import * as React from "react";
 import { Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { id as iid } from "@instantdb/react";
 import { Button } from "@/components/ui/button";
 import { AppBottomNav } from "@/components/app_bottom_nav";
 import { db } from "@/lib/db";
@@ -43,45 +42,13 @@ function StoreLogoImg({ src }: { src: string }) {
   );
 }
 
-const FOOD_ICONS = [
-  "/images/ui/food/icon_apple.png",
-  "/images/ui/food/icon_aubergine.png",
-  "/images/ui/food/icon_banana.png",
-  "/images/ui/food/icon_blueberries.png",
-  "/images/ui/food/icon_bread.png",
-  "/images/ui/food/icon_carrot.png",
-  "/images/ui/food/icon_cheese.png",
-  "/images/ui/food/icon_milk.png",
-  "/images/ui/food/icon_nutella.png",
-  "/images/ui/food/icon_strawberry.png",
-  "/images/ui/food/icon_tangerine.png",
-] as const;
-
-type TemplateItem = {
-  id: string;
-  name: string;
-  quantity: string;
-  checked?: boolean;
-  section: string;
-  recipeGroupId?: string;
-  recipeName?: string;
-  recipeLink?: string;
-};
-
 type MasterListRow = {
   id: string;
   name: string;
   icon: string;
   order?: number;
-  items?: TemplateItem[];
+  items?: { id: string }[];
 };
-
-function getIconForNewList(existingIcons: string[]): string {
-  const usedIcons = new Set(existingIcons);
-  const unusedIcons = FOOD_ICONS.filter((icon) => !usedIcons.has(icon));
-  const pool = unusedIcons.length > 0 ? unusedIcons : [...FOOD_ICONS];
-  return pool[Math.floor(Math.random() * pool.length)];
-}
 
 function SelecteerMasterLijstPageContent() {
   const router = useRouter();
@@ -126,85 +93,23 @@ function SelecteerMasterLijstPageContent() {
         name: String(l.name ?? "Master lijstje"),
         icon: String(l.icon ?? ""),
         order: typeof l.order === "number" ? l.order : 0,
-        items: (l.items ?? []) as TemplateItem[],
+        items: Array.isArray(l.items) ? l.items : [],
       }));
     template.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     return template;
   }, [data?.lists]);
 
-  const myIcons = React.useMemo(() => {
-    const rawLists = data?.lists ?? [];
-    return rawLists
-      .map((l: any) => (typeof l?.icon === "string" ? l.icon : null))
-      .filter((x: string | null): x is string => Boolean(x));
-  }, [data?.lists]);
-
   const handlePickMaster = React.useCallback(
     (template: MasterListRow) => {
       if (!user) return;
-
-      const now = new Date();
       const name = listNameRaw.trim() || "Nieuw lijstje";
-      const newId = iid();
-
-      // Nieuwe lijst moet géén master-layout triggeren, dus we kiezen een "food icon".
-      const newIcon = getIconForNewList(myIcons);
-      const order = data?.lists?.length
-        ? Math.min(
-            ...((data.lists as any[]).map((l) =>
-              typeof l?.order === "number" ? l.order : 0,
-            ) as number[]),
-          ) - 1
-        : 0;
-
-      const templateItems = (template.items ?? []).filter(
-        (i): i is TemplateItem =>
-          Boolean(i) &&
-          typeof i.id === "string" &&
-          typeof i.name === "string" &&
-          typeof i.quantity === "string" &&
-          typeof i.section === "string",
+      router.push(
+        `/nieuw-lijstje/selecteer-master-lijstje/${encodeURIComponent(
+          template.id,
+        )}/items?naam=${encodeURIComponent(name)}`,
       );
-
-      const newItems = templateItems.map((t) => {
-        const newItemId = iid();
-        return {
-          newItemId,
-          name: t.name,
-          quantity: t.quantity,
-          section: t.section,
-          recipeGroupId: t.recipeGroupId ?? "",
-          recipeName: t.recipeName ?? "",
-          recipeLink: t.recipeLink ?? "",
-        };
-      });
-
-      const txns = [
-        db.tx.lists[newId].update({
-          name,
-          date: now.toLocaleDateString("nl-NL"),
-          icon: newIcon,
-          order,
-          ownerId: user.id,
-        }),
-        ...newItems.map((ni, idx) =>
-          db.tx.items[ni.newItemId].update({
-            name: ni.name,
-            quantity: ni.quantity,
-            checked: false,
-            section: ni.section,
-            order: idx,
-            recipeGroupId: ni.recipeGroupId ?? "",
-            recipeName: ni.recipeName ?? "",
-            recipeLink: ni.recipeLink ?? "",
-          }).link({ list: newId }),
-        ),
-      ];
-
-      db.transact(txns as Parameters<typeof db.transact>[0]);
-      router.push(`/lijstje/${newId}`);
     },
-    [data?.lists, listNameRaw, myIcons, router, user],
+    [listNameRaw, router, user],
   );
 
   if (authLoading || !user || isLoading) {
