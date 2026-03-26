@@ -141,6 +141,7 @@ function SortableListItems({
   addingIdExpanded,
   onDelete,
   onOpenList,
+  onStartFromMaster,
 }: {
   lists: HomeList[];
   isEditMode: boolean;
@@ -149,6 +150,7 @@ function SortableListItems({
   addingIdExpanded: boolean;
   onDelete: (id: string) => void;
   onOpenList: (id: string) => void;
+  onStartFromMaster: (id: string) => void;
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
@@ -203,6 +205,7 @@ function SortableListItems({
                     isEditMode={isEditMode}
                     onDelete={() => onDelete(list.id)}
                     onOpenList={() => onOpenList(list.id)}
+                    onStartFromMaster={() => onStartFromMaster(list.id)}
                   />
                 </div>
               );
@@ -257,6 +260,7 @@ function SortableListItems({
                     isEditMode={isEditMode}
                     onDelete={() => onDelete(list.id)}
                     onOpenList={() => onOpenList(list.id)}
+                    onStartFromMaster={() => onStartFromMaster(list.id)}
                   />
                 </div>
               );
@@ -273,11 +277,13 @@ function SortableListCard({
   isEditMode,
   onDelete,
   onOpenList,
+  onStartFromMaster,
 }: {
   list: HomeList;
   isEditMode: boolean;
   onDelete: () => void;
   onOpenList: () => void;
+  onStartFromMaster: () => void;
 }) {
   const {
     attributes,
@@ -326,6 +332,11 @@ function SortableListCard({
           state={isEditMode ? "editable" : "default"}
           onDelete={isEditMode && list.isOwner ? onDelete : undefined}
           onReorder={undefined}
+          onMasterAdd={
+            !isEditMode && list.displayVariant === "master"
+              ? onStartFromMaster
+              : undefined
+          }
           dragHandleProps={isEditMode ? { ...attributes, ...listeners } : undefined}
           onClick={!isEditMode ? onOpenList : undefined}
           className={cn(!isEditMode && "cursor-pointer")}
@@ -504,6 +515,9 @@ export default function Home() {
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newListName, setNewListName] = React.useState("");
+  const [quickMasterListName, setQuickMasterListName] = React.useState("");
+  const [quickMasterId, setQuickMasterId] = React.useState<string | null>(null);
+  const [isQuickMasterModalOpen, setIsQuickMasterModalOpen] = React.useState(false);
   /** Nieuwe key bij elke modal-open: remount van het formulier zodat radio’s terug naar default staan. */
   const [newListFormKey, setNewListFormKey] = React.useState(0);
   const [lastDeleted, setLastDeleted] = React.useState<{
@@ -617,6 +631,34 @@ export default function Home() {
     setNewListFormKey((k) => k + 1);
     setIsCreateModalOpen(true);
   };
+
+  const handleCloseQuickMasterModal = React.useCallback(() => {
+    setIsQuickMasterModalOpen(false);
+    setQuickMasterId(null);
+    setQuickMasterListName("");
+  }, []);
+
+  const handleStartFromMaster = React.useCallback((masterId: string) => {
+    setQuickMasterId(masterId);
+    setQuickMasterListName("");
+    setIsQuickMasterModalOpen(true);
+  }, []);
+
+  const handleQuickMasterSubmit = React.useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!quickMasterId) return;
+      const name = quickMasterListName.trim();
+      if (!name) return;
+      router.push(
+        `/nieuw-lijstje/selecteer-master-lijstje/${encodeURIComponent(
+          quickMasterId,
+        )}/items?naam=${encodeURIComponent(name)}`,
+      );
+      handleCloseQuickMasterModal();
+    },
+    [handleCloseQuickMasterModal, quickMasterId, quickMasterListName, router],
+  );
 
   const handleNewListFormSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -774,6 +816,7 @@ export default function Home() {
                   addingIdExpanded={addingIdExpanded}
                   onDelete={handleDeleteList}
                   onOpenList={handleOpenList}
+                  onStartFromMaster={handleStartFromMaster}
                 />
               </SortableContext>
             </DndContext>
@@ -835,6 +878,37 @@ export default function Home() {
               icon={<IconPrimaryMask src="/icons/master-list.svg" />}
             />
           </div>
+        </form>
+      </SlideInModal>
+
+      <SlideInModal
+        open={isQuickMasterModalOpen}
+        onClose={handleCloseQuickMasterModal}
+        title="Naam lijstje"
+        footer={
+          <Button
+            type="submit"
+            form="quick-master-create-form"
+            variant="primary"
+            disabled={!quickMasterListName.trim()}
+          >
+            Bewaren
+          </Button>
+        }
+      >
+        <form
+          id="quick-master-create-form"
+          onSubmit={handleQuickMasterSubmit}
+          className="flex w-full flex-col items-center gap-8"
+        >
+          <InputField
+            label="Naam lijstje"
+            placeholder="Naam lijstje"
+            name="newListName"
+            value={quickMasterListName}
+            autoComplete="off"
+            onChange={(e) => setQuickMasterListName(e.target.value)}
+          />
         </form>
       </SlideInModal>
 
