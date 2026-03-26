@@ -99,7 +99,7 @@ const EditButton = React.forwardRef<HTMLButtonElement, EditButtonProps>(
     > = {
       inactive: {
         default:
-          "bg-[var(--action-secondary-bg)] text-[var(--action-secondary-foreground)] hover:bg-[var(--action-ghost-hover)]",
+          "bg-[var(--action-secondary-bg)] text-[var(--blue-500)] hover:bg-[var(--action-ghost-hover)]",
         disabled:
           "text-[var(--blue-300)] bg-[var(--blue-25)]",
       },

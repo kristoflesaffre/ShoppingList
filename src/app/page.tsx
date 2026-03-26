@@ -152,32 +152,48 @@ function SortableListItems({
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
+  const [showAllNormal, setShowAllNormal] = React.useState(false);
+  const [showAllMaster, setShowAllMaster] = React.useState(false);
 
   const normalLists = lists.filter((l) => l.displayVariant !== "master");
   const masterLists = lists.filter((l) => l.displayVariant === "master");
+  const visibleNormalLists = showAllNormal ? normalLists : normalLists.slice(0, 3);
+  const visibleMasterLists = showAllMaster ? masterLists : masterLists.slice(0, 3);
 
   return (
     <div className="flex flex-col">
       {normalLists.length > 0 ? (
         <div className="flex flex-col">
-          <h2 className="text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
-            Gewone lijstjes
-          </h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
+              Lijstjes
+            </h2>
+            {normalLists.length > 3 ? (
+              <button
+                type="button"
+                onClick={() => setShowAllNormal((prev) => !prev)}
+                className="text-sm font-medium leading-20 tracking-normal text-[var(--blue-500)] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+              >
+                {showAllNormal ? "Toon minder" : "Toon meer"}
+              </button>
+            ) : null}
+          </div>
           <div className="mt-4 flex flex-col">
-            {normalLists.map((list, index) => {
+            {visibleNormalLists.map((list, index) => {
               const isRemoving = removingId === list.id;
               const isAdding = addingId === list.id;
               const isAddingCollapsed = isAdding && !addingIdExpanded;
               const isAnimating = isRemoving || isAddingCollapsed;
 
               const wrapperClass = isDndActive
-                ? cn(index < normalLists.length - 1 ? "mb-3" : "mb-0")
+                ? cn(index < visibleNormalLists.length - 1 ? "mb-3" : "mb-0")
                 : cn(
                     "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
                     isAnimating
                       ? "max-h-0 opacity-0 mb-0"
                       : "max-h-[200px] opacity-100",
-                    !isAnimating && (index < normalLists.length - 1 ? "mb-3" : "mb-0")
+                    !isAnimating &&
+                      (index < visibleNormalLists.length - 1 ? "mb-3" : "mb-0")
                   );
 
               return (
@@ -202,24 +218,36 @@ function SortableListItems({
             normalLists.length > 0 ? "mt-8" : undefined,
           )}
         >
-          <h2 className="text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
-            Master lijstjes
-          </h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
+              Master lijstjes
+            </h2>
+            {masterLists.length > 3 ? (
+              <button
+                type="button"
+                onClick={() => setShowAllMaster((prev) => !prev)}
+                className="text-sm font-medium leading-20 tracking-normal text-[var(--blue-500)] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+              >
+                {showAllMaster ? "Toon minder" : "Toon meer"}
+              </button>
+            ) : null}
+          </div>
           <div className="mt-4 flex flex-col">
-            {masterLists.map((list, index) => {
+            {visibleMasterLists.map((list, index) => {
               const isRemoving = removingId === list.id;
               const isAdding = addingId === list.id;
               const isAddingCollapsed = isAdding && !addingIdExpanded;
               const isAnimating = isRemoving || isAddingCollapsed;
 
               const wrapperClass = isDndActive
-                ? cn(index < masterLists.length - 1 ? "mb-3" : "mb-0")
+                ? cn(index < visibleMasterLists.length - 1 ? "mb-3" : "mb-0")
                 : cn(
                     "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
                     isAnimating
                       ? "max-h-0 opacity-0 mb-0"
                       : "max-h-[200px] opacity-100",
-                    !isAnimating && (index < masterLists.length - 1 ? "mb-3" : "mb-0")
+                    !isAnimating &&
+                      (index < visibleMasterLists.length - 1 ? "mb-3" : "mb-0")
                   );
 
               return (

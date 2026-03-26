@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 import { SwipeToAdd } from "@/components/ui/swipe_to_add";
+import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 
 type TemplateItem = {
   id: string;
@@ -629,28 +630,45 @@ export default function SelecteerMasterItemsPage() {
                       isRemoving ? "max-h-0 opacity-0 mb-0" : "max-h-[200px] opacity-100",
                     )}
                   >
-                    <SwipeToAdd
-                      onAdd={() => handleAdd(item)}
-                      disabled={qty != null}
-                      addActionLabel={`Veeg naar rechts om "${item.name}" toe te voegen`}
+                    <SwipeToDelete
+                      onDelete={() => restoreOriginalState(item.id)}
+                      disabled={qty == null}
+                      deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}
                     >
-                      <SelectableItemCard
-                        item={item}
-                        addedQuantity={qty}
-                        displayQuantity={
-                          qty == null
-                            ? item.quantity
-                            : formatQuantity(qty, parsed.unit)
-                        }
+                      <SwipeToAdd
                         onAdd={() => handleAdd(item)}
-                        onIncrement={() => handleIncrement(item)}
-                        onDecrement={() => handleDecrement(item)}
-                        onCancelAdd={() => restoreOriginalState(item.id)}
-                      />
-                    </SwipeToAdd>
+                        disabled={qty != null}
+                        addActionLabel={`Veeg naar rechts om "${item.name}" toe te voegen`}
+                      >
+                        <SelectableItemCard
+                          item={item}
+                          addedQuantity={qty}
+                          displayQuantity={
+                            qty == null
+                              ? item.quantity
+                              : formatQuantity(qty, parsed.unit)
+                          }
+                          onAdd={() => handleAdd(item)}
+                          onIncrement={() => handleIncrement(item)}
+                          onDecrement={() => handleDecrement(item)}
+                          onCancelAdd={() => restoreOriginalState(item.id)}
+                        />
+                      </SwipeToAdd>
+                    </SwipeToDelete>
                   </div>
                 );
               })}
+          </div>
+
+          <div className="flex w-full justify-center pb-2 pt-1">
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleDone}
+              disabled={Object.keys(selectedQuantitiesById).length === 0}
+            >
+              Gereed
+            </Button>
           </div>
         </div>
       </div>

@@ -262,7 +262,7 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
               </span>
             ))}
         </div>
-        {isMaster ? (
+        {isMaster && !isEditable ? (
           /** Zelfde wrapper als delete-kolom (`EditableSection` + `isEditable`) zodat divider en uitlijning 1:1 matchen. */
           <EditableSection isEditable>
             <EditableDivider />
@@ -274,7 +274,7 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
                 onMasterAdd?.();
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-action-primary transition-colors hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-action-primary transition-colors hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none"
               disabled={!onMasterAdd}
             >
               <PlusCircleIcon />
