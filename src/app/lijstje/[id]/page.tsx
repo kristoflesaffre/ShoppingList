@@ -771,6 +771,7 @@ function NewItemModal({
       footer={showRecipeForm ? recipeFooter : itemFooter}
       disableEscapeClose={ingredientSlideOpen}
       bodyFullWidth={!masterItemFormOnly}
+      className={!masterItemFormOnly ? "h-[calc(100dvh-48px)]" : undefined}
     >
       <div className="overflow-hidden">
         <div
@@ -1024,6 +1025,7 @@ function NewItemModal({
       }
       titleId="ingredient-form-slide-title"
       containerClassName="z-[60]"
+      className={!masterItemFormOnly ? "h-[calc(100dvh-48px)]" : undefined}
       footer={
         <Button
           variant="primary"
