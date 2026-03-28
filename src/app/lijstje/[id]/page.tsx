@@ -1190,7 +1190,7 @@ function SortableItemItems({
           className={cn(
             "overflow-hidden transition-[max-height,opacity] duration-200",
             "[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
-            isSectionRemoving ? "max-h-0 opacity-0" : "max-h-[9000px] opacity-100"
+            isSectionRemoving ? "max-h-0 opacity-0" : "max-h-[999999px] opacity-100"
           )}
         >
           <div className="mb-4 flex items-center gap-3 pr-4">
