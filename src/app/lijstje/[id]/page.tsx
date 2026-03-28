@@ -1190,7 +1190,7 @@ function SortableItemItems({
           className={cn(
             "overflow-hidden transition-[max-height,opacity] duration-200",
             "[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
-            isSectionRemoving ? "max-h-0 opacity-0" : "max-h-[3000px] opacity-100"
+            isSectionRemoving ? "max-h-0 opacity-0" : "max-h-[9000px] opacity-100"
           )}
         >
           <div className="mb-4 flex items-center gap-3 pr-4">
@@ -1334,7 +1334,8 @@ function SortableItemRow({
     ? ""
     : cn(
         "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-        isAnimating ? "max-h-0 opacity-0" : "max-h-[200px] opacity-100",
+        /* Ruime max voor lange namen / grotere tekst; collapse-animatie blijft werken */
+        isAnimating ? "max-h-0 opacity-0" : "max-h-[1200px] opacity-100",
       );
 
   return (
@@ -2214,7 +2215,7 @@ export default function ListDetailPage({
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col">
+    <div className="relative w-full min-h-dvh">
       <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
         <header className="mx-auto flex h-14 max-w-[956px] items-center gap-4 px-4">
           <button
@@ -2250,14 +2251,17 @@ export default function ListDetailPage({
         </header>
       </div>
 
-      <div
+      <main
         className={cn(
-          "flex flex-1 flex-col px-4 pb-24 mt-[calc(56px+env(safe-area-inset-top,0px))]",
+          "px-4",
+          /* FAB ~bottom 45px + hoogte ~64px + extra lucht; safe-area voor home-indicator */
+          "pb-[calc(200px+env(safe-area-inset-bottom,0px))]",
+          "mt-[calc(56px+env(safe-area-inset-top,0px))]",
           isMasterList ? "pt-8" : "pt-4",
         )}
       >
         {/* Geen extra gradient: zelfde principe als gewone lijstdetail — alleen body::before (globals.css). */}
-        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6">
+        <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6">
           {showListDetailHeader ? (
             <div className="flex items-start gap-4">
               <div className="min-w-0 flex-1 flex flex-col gap-0">
@@ -2317,7 +2321,7 @@ export default function ListDetailPage({
           {!hasItems ? (
             isMasterEmpty ? (
               <section
-                className="flex flex-1 flex-col items-center justify-center gap-6 px-0 pb-8"
+                className="flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-col items-center justify-center gap-6 px-0 pb-8"
                 aria-label="Lege masterlijst"
               >
                 <div className="flex w-full max-w-[358px] flex-col items-center gap-6">
@@ -2347,7 +2351,7 @@ export default function ListDetailPage({
             ) : (
               <section
                 className={cn(
-                  "flex flex-1 flex-col items-center justify-center gap-6",
+                  "flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-col items-center justify-center gap-6",
                   showListDetailHeader ? "pt-8" : "pt-32",
                 )}
                 aria-label="Lege staat"
@@ -2404,7 +2408,7 @@ export default function ListDetailPage({
             </DndContext>
           )}
         </div>
-      </div>
+      </main>
 
       {snackbarMessage && (
         <div
