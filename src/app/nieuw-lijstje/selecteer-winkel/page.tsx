@@ -168,8 +168,8 @@ function SelecteerWinkelContent() {
         profileAvatarUrl={profileAvatarUrl}
         profileFirstName={profileFirstName}
         onLijstjes={() => router.push("/")}
+        onRecepten={() => router.push("/recepten")}
         onProfiel={() => router.push("/profiel")}
-        onFabClick={() => router.push("/")}
       />
     </div>
   );

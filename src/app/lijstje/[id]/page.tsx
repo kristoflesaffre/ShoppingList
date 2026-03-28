@@ -46,6 +46,10 @@ import {
 } from "@/lib/recipe_library";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 import { listIsMasterTemplate } from "@/lib/list-master";
+import {
+  APP_FAB_BOTTOM_CLASS,
+  APP_FAB_INNER_PX4_CLASS,
+} from "@/lib/app-layout";
 
 /** Profiel van een andere claimer: avatar + voornaam op itemkaart. */
 type ClaimerProfileInfo = { avatarUrl?: string; firstName?: string };
@@ -2257,7 +2261,7 @@ export default function ListDetailPage({
         className={cn(
           /* Geen px-4 op main: zelfde patroon als header (max-w + mx-auto + px-4 op één kolom),
              anders op bredere schermen een andere linkerrand dan de terugpijl. */
-          "pb-[calc(200px+env(safe-area-inset-bottom,0px))]",
+          "pb-[calc(243px+env(safe-area-inset-bottom,0px))]",
           "mt-[calc(56px+env(safe-area-inset-top,0px))]",
           isMasterList ? "pt-8" : "pt-4",
         )}
@@ -2414,7 +2418,7 @@ export default function ListDetailPage({
 
       {snackbarMessage && (
         <div
-          className="fixed inset-x-0 bottom-24 z-10 flex justify-center px-2"
+          className="fixed inset-x-0 bottom-[calc(168px+env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-2"
           role="region"
           aria-label="Melding"
         >
@@ -2427,8 +2431,13 @@ export default function ListDetailPage({
       )}
 
       {!isMasterEmpty ? (
-        <div className="pointer-events-none fixed bottom-[45px] left-0 right-0 z-20">
-          <div className="mx-auto flex w-full max-w-[956px] justify-end px-4">
+        <div
+          className={cn(
+            "pointer-events-none fixed inset-x-0 z-20",
+            APP_FAB_BOTTOM_CLASS,
+          )}
+        >
+          <div className={APP_FAB_INNER_PX4_CLASS}>
             <FloatingActionButton
               aria-label="Item toevoegen"
               className="pointer-events-auto"

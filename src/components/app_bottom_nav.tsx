@@ -3,14 +3,20 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-/** Lijstjes-tab: `public/icons/list.svg` via mask; `bg-current` volgt tab `text-*` (primary 500 / 300). */
-function ListIcon({ className }: { className?: string }) {
+/** Mask-iconen: `bg-current` volgt tab `text-*` (primary 500 actief, neutrals 500 inactief → `--gray-500`). */
+function MaskNavIcon({
+  src,
+  className,
+}: {
+  src: string;
+  className?: string;
+}) {
   return (
     <span
       className={cn("inline-block shrink-0 bg-current", className)}
       style={{
-        WebkitMaskImage: "url(/icons/list.svg)",
-        maskImage: "url(/icons/list.svg)",
+        WebkitMaskImage: `url(${src})`,
+        maskImage: `url(${src})`,
         WebkitMaskSize: "contain",
         maskSize: "contain",
         WebkitMaskRepeat: "no-repeat",
@@ -21,6 +27,14 @@ function ListIcon({ className }: { className?: string }) {
       aria-hidden
     />
   );
+}
+
+function ListIcon({ className }: { className?: string }) {
+  return <MaskNavIcon src="/icons/list.svg" className={className} />;
+}
+
+function ReceptenIcon({ className }: { className?: string }) {
+  return <MaskNavIcon src="/icons/chef_hat.svg" className={className} />;
 }
 
 function AvatarIcon({ className }: { className?: string }) {
@@ -43,29 +57,9 @@ function AvatarIcon({ className }: { className?: string }) {
   );
 }
 
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width={24}
-      height={24}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden
-    >
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M12 1C12.5523 1 13 1.44772 13 2V11H22C22.5523 11 23 11.4477 23 12C23 12.5523 22.5523 13 22 13H13V22C13 22.5523 12.5523 23 12 23C11.4477 23 11 22.5523 11 22V13H2C1.44772 13 1 12.5523 1 12C1 11.4477 1.44772 11 2 11H11V2C11 1.44772 11.4477 1 12 1Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
 export interface AppBottomNavProps {
-  /** Actieve tab – Figma bottom nav 672:2703 */
-  active: "lijstjes" | "profiel";
+  /** Actieve tab – Figma 854:7039 */
+  active: "lijstjes" | "recepten" | "profiel";
   /** Data-URL of URL voor profieltab; null = placeholder icoon */
   profileAvatarUrl: string | null;
   /**
@@ -74,29 +68,23 @@ export interface AppBottomNavProps {
    */
   profileFirstName?: string | null;
   onLijstjes: () => void;
+  onRecepten: () => void;
   onProfiel: () => void;
-  /** Alleen startscherm: FAB “nieuw lijstje” */
-  onFabClick?: () => void;
 }
 
 /**
- * Vaste bottom navigation (Lijstjes / Profiel), optioneel midden-FAB.
- * Figma: afgeronde bovenkant, schaduw, safe-area onderaan.
+ * Vaste bottom navigation: Lijstjes, Recepten, Profiel (Figma 854:7039).
  */
 export function AppBottomNav({
   active,
   profileAvatarUrl,
   profileFirstName,
   onLijstjes,
+  onRecepten,
   onProfiel,
-  onFabClick,
 }: AppBottomNavProps) {
-  const showFab = typeof onFabClick === "function";
   const trimmedName = profileFirstName?.trim() ?? "";
   const profileTabLabel = trimmedName.length > 0 ? trimmedName : "Profiel";
-  /** Zelfde lay-out als met FAB: plus staat absolute en telt niet mee in flex; justify-around zou tabs naar het midden trekken. */
-  const navItemLayout =
-    "mx-auto flex min-h-[40px] w-full max-w-[390px] items-center justify-center gap-[149px] px-6 py-1";
 
   return (
     <div
@@ -105,69 +93,103 @@ export function AppBottomNav({
         "pb-[calc(8px+env(safe-area-inset-bottom,0px))]",
       )}
     >
-      <nav className={cn("relative", navItemLayout)} aria-label="Hoofdnavigatie">
-        <button
-          type="button"
-          onClick={onLijstjes}
-          className={cn(
-            "flex w-[41px] shrink-0 flex-col items-center gap-1",
-            active === "lijstjes"
-              ? "text-[var(--blue-500)]"
-              : "text-[var(--blue-300)]",
-          )}
-        >
-          <ListIcon className="size-6" />
-          <span className="text-xs font-normal leading-4 tracking-normal">
-            Lijstjes
-          </span>
-        </button>
-
-        {showFab ? (
+      <nav
+        className="mx-auto grid min-h-[40px] w-full max-w-[390px] grid-cols-3 items-center px-4 py-1"
+        aria-label="Hoofdnavigatie"
+      >
+        <div className="flex justify-center">
           <button
             type="button"
-            onClick={onFabClick}
-            aria-label="Nieuw lijstje"
-            className="absolute left-1/2 top-[-22px] flex size-[72px] -translate-x-1/2 items-center justify-center rounded-full border-[5px] border-[var(--blue-200)] bg-[var(--blue-500)] text-[var(--white)] shadow-[var(--shadow-drop)] transition-[border-width,color] duration-150 ease-out hover:bg-[var(--blue-600)] active:border-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-          >
-            <PlusIcon className="size-6" />
-          </button>
-        ) : null}
-
-        <button
-          type="button"
-          onClick={onProfiel}
-          aria-label={
-            trimmedName.length > 0 ? `Profiel, ${trimmedName}` : "Profiel"
-          }
-          aria-current={active === "profiel" ? "page" : undefined}
-          className={cn(
-            "flex min-w-[41px] max-w-[104px] shrink-0 flex-col items-center gap-1",
-            active === "profiel"
-              ? "text-[var(--blue-500)]"
-              : "text-[var(--blue-300)]",
-          )}
-        >
-          <span className="relative size-6 shrink-0 overflow-hidden rounded-full bg-[var(--gray-100)] ring-1 ring-[var(--gray-100)]">
-            {profileAvatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- data-URL uit profiel
-              <img
-                src={profileAvatarUrl}
-                alt=""
-                width={24}
-                height={24}
-                className="size-full object-cover"
-              />
-            ) : (
-              <AvatarIcon className="size-6 text-[var(--blue-300)]" />
+            onClick={onLijstjes}
+            aria-current={active === "lijstjes" ? "page" : undefined}
+            className={cn(
+              "flex w-[41px] shrink-0 flex-col items-center gap-1",
+              active === "lijstjes"
+                ? "text-[var(--blue-500)]"
+                : "text-[var(--gray-500)]",
             )}
-          </span>
-          <span
-            className="w-full truncate text-center text-xs font-normal leading-4 tracking-normal"
-            title={trimmedName.length > 0 ? trimmedName : undefined}
           >
-            {profileTabLabel}
-          </span>
-        </button>
+            <ListIcon className="size-6" />
+            <span className="text-xs font-normal leading-4 tracking-normal">
+              Lijstjes
+            </span>
+          </button>
+        </div>
+
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={onRecepten}
+            aria-current={active === "recepten" ? "page" : undefined}
+            className={cn(
+              "flex w-[41px] shrink-0 flex-col items-center gap-1",
+              active === "recepten"
+                ? "text-[var(--blue-500)]"
+                : "text-[var(--gray-500)]",
+            )}
+          >
+            <ReceptenIcon className="size-6" />
+            <span className="text-xs font-normal leading-4 tracking-normal">
+              Recepten
+            </span>
+          </button>
+        </div>
+
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={onProfiel}
+            aria-label={
+              trimmedName.length > 0 ? `Profiel, ${trimmedName}` : "Profiel"
+            }
+            aria-current={active === "profiel" ? "page" : undefined}
+            className={cn(
+              "flex min-w-[41px] max-w-[104px] shrink-0 flex-col items-center gap-1",
+              active === "profiel"
+                ? "text-[var(--blue-500)]"
+                : "text-[var(--gray-500)]",
+            )}
+          >
+            <span className="relative size-6 shrink-0 overflow-hidden rounded-full bg-[var(--gray-100)]">
+              {profileAvatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- data-URL uit profiel
+                <img
+                  src={profileAvatarUrl}
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="size-full object-cover"
+                />
+              ) : (
+                <span className="flex size-full items-center justify-center">
+                  <AvatarIcon
+                    className={cn(
+                      "size-6",
+                      active === "profiel"
+                        ? "text-[var(--blue-500)]"
+                        : "text-[var(--gray-500)]",
+                    )}
+                  />
+                </span>
+              )}
+              <span
+                aria-hidden
+                className={cn(
+                  "pointer-events-none absolute inset-0 rounded-full",
+                  active === "profiel"
+                    ? "shadow-[inset_0_0_0_1px_var(--blue-500)]"
+                    : "shadow-[inset_0_0_0_1px_var(--gray-500)]",
+                )}
+              />
+            </span>
+            <span
+              className="w-full truncate text-center text-xs font-normal leading-4 tracking-normal"
+              title={trimmedName.length > 0 ? trimmedName : undefined}
+            >
+              {profileTabLabel}
+            </span>
+          </button>
+        </div>
       </nav>
     </div>
   );

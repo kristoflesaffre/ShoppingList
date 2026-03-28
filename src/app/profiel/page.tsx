@@ -203,6 +203,7 @@ export default function ProfielPage() {
         profileAvatarUrl={profileAvatarUrl}
         profileFirstName={profileFirstName}
         onLijstjes={() => router.push("/")}
+        onRecepten={() => router.push("/recepten")}
         onProfiel={() => router.push("/profiel")}
       />
     </div>

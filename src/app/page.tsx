@@ -41,6 +41,11 @@ import {
 import { listIsMasterTemplate } from "@/lib/list-master";
 import { db } from "@/lib/db";
 import { AppBottomNav } from "@/components/app_bottom_nav";
+import { FloatingActionButton } from "@/components/ui/floating_action_button";
+import {
+  APP_FAB_BOTTOM_CLASS,
+  APP_FAB_INNER_FLUSH_CLASS,
+} from "@/lib/app-layout";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -776,7 +781,7 @@ export default function Home() {
   return (
     <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
       {/* Content area */}
-      <div className="flex flex-1 flex-col pb-[96px] pt-[calc(52px+env(safe-area-inset-top,0px))]">
+      <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
           {hasLists && (
             <div className="mb-6 flex items-center gap-4">
@@ -929,7 +934,7 @@ export default function Home() {
 
       {/* Snackbar – positioned above bottom nav */}
       {snackbarMessage && (
-        <div className="fixed inset-x-0 bottom-[96px] z-10 flex justify-center px-2">
+        <div className="fixed inset-x-0 bottom-[calc(183px+env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-2">
           <Snackbar
             message={snackbarMessage}
             actionLabel="Zet terug"
@@ -943,9 +948,24 @@ export default function Home() {
         profileAvatarUrl={profileAvatarUrl}
         profileFirstName={profileFirstName}
         onLijstjes={() => router.push("/")}
+        onRecepten={() => router.push("/recepten")}
         onProfiel={() => router.push("/profiel")}
-        onFabClick={handleOpenCreateModal}
       />
+
+      <div
+        className={cn(
+          "pointer-events-none fixed inset-x-0 z-20",
+          APP_FAB_BOTTOM_CLASS,
+        )}
+      >
+        <div className={APP_FAB_INNER_FLUSH_CLASS}>
+          <FloatingActionButton
+            aria-label="Nieuw lijstje"
+            className="pointer-events-auto"
+            onClick={handleOpenCreateModal}
+          />
+        </div>
+      </div>
     </div>
   );
 }
