@@ -34,6 +34,11 @@ import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
 import { SelectTile } from "@/components/ui/select_tile";
 import { cn } from "@/lib/utils";
+import {
+  defaultNewListName,
+  selectListNameInputOnFocus,
+} from "@/lib/list-default-name";
+import { listIsMasterTemplate } from "@/lib/list-master";
 import { db } from "@/lib/db";
 import { AppBottomNav } from "@/components/app_bottom_nav";
 
@@ -101,6 +106,8 @@ type HomeList = {
   displayVariant: "default" | "shared" | "master";
   /** Voornaam van de andere partij (deelnemer of eigenaar); null = ListCard toont “deelnemer”. */
   sharedWithFirstName: string | null;
+  /** Master-template (niet: weeklijst met winkel-logo). */
+  isMasterTemplate: boolean;
 };
 
 const FOOD_ICONS = [
@@ -445,7 +452,7 @@ export default function Home() {
 
   const lists: HomeList[] = React.useMemo(() => {
     const owned: HomeList[] = (data?.lists ?? []).map((l) => {
-      const isMaster = typeof l.icon === "string" && l.icon.startsWith("/logos/");
+      const isMaster = listIsMasterTemplate(l);
       const memberIds = ((l.memberships ?? []) as ListMembershipRow[])
         .map((m) => m.instantUserId)
         .filter((id): id is string => !!id && id !== user?.id);
@@ -466,6 +473,7 @@ export default function Home() {
         membershipIds: (l.memberships ?? []).map((m) => m.id),
         displayVariant: isMaster ? "master" : hasOtherMembers ? "shared" : "default",
         sharedWithFirstName: isMaster ? null : hasOtherMembers ? sharedName : null,
+        isMasterTemplate: isMaster,
       };
     });
 
@@ -476,7 +484,7 @@ export default function Home() {
           l != null && typeof l === "object" && "id" in l,
       )
       .map((l) => {
-        const isMaster = typeof l.icon === "string" && l.icon.startsWith("/logos/");
+        const isMaster = listIsMasterTemplate(l);
         const ownerId =
           "ownerId" in l && typeof l.ownerId === "string"
             ? l.ownerId
@@ -495,6 +503,7 @@ export default function Home() {
           isOwner: false,
           displayVariant: isMaster ? "master" : ("shared" as const),
           sharedWithFirstName: isMaster ? null : ownerFirst,
+          isMasterTemplate: isMaster,
         };
       });
 
@@ -525,6 +534,7 @@ export default function Home() {
     listName: string;
     order: number;
     icon: string;
+    isMasterTemplate: boolean;
   } | null>(null);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
     null,
@@ -597,6 +607,7 @@ export default function Home() {
           listName: list.name,
           order: list.order,
           icon: list.icon,
+          isMasterTemplate: list.isMasterTemplate,
         });
         setSnackbarMessage(`'${list.name}' verwijderd`);
         setRemovingId(null);
@@ -614,6 +625,7 @@ export default function Home() {
         icon: lastDeleted.icon,
         order: lastDeleted.order,
         ownerId: user.id,
+        isMasterTemplate: lastDeleted.isMasterTemplate,
       }),
     );
     setLastDeleted(null);
@@ -627,7 +639,7 @@ export default function Home() {
   }, []);
 
   const handleOpenCreateModal = () => {
-    setNewListName("");
+    setNewListName(defaultNewListName());
     setNewListFormKey((k) => k + 1);
     setIsCreateModalOpen(true);
   };
@@ -640,7 +652,7 @@ export default function Home() {
 
   const handleStartFromMaster = React.useCallback((masterId: string) => {
     setQuickMasterId(masterId);
-    setQuickMasterListName("");
+    setQuickMasterListName(defaultNewListName());
     setIsQuickMasterModalOpen(true);
   }, []);
 
@@ -702,6 +714,7 @@ export default function Home() {
           order:
             lists.length > 0 ? Math.min(...lists.map((l) => l.order)) - 1 : 0,
           ownerId: user.id,
+          isMasterTemplate: false,
         }),
       );
       setAddingId(newId);
@@ -853,6 +866,7 @@ export default function Home() {
             value={newListName}
             autoComplete="off"
             onChange={(e) => setNewListName(e.target.value)}
+            onFocus={selectListNameInputOnFocus}
           />
           <div
             role="radiogroup"
@@ -908,6 +922,7 @@ export default function Home() {
             value={quickMasterListName}
             autoComplete="off"
             onChange={(e) => setQuickMasterListName(e.target.value)}
+            onFocus={selectListNameInputOnFocus}
           />
         </form>
       </SlideInModal>

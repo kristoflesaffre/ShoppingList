@@ -8,6 +8,12 @@ const schema = i.schema({
       date: i.string(),
       icon: i.string(),
       order: i.number(),
+      /**
+       * Master-template (winkelkeuze-flow): aparte sectie + bare items.
+       * false = gewoon lijstje (ook met /logos/-icoon van master).
+       * Ontbreekt: legacy — dan nog steeds master als icon onder /logos/ valt.
+       */
+      isMasterTemplate: i.boolean().optional(),
       /** Instant auth user id; alleen lijsten van deze gebruiker tonen. */
       ownerId: i.string().optional().indexed(),
       /** Unieke token voor uitnodigingslink (/deel/[token]); alleen gezet door eigenaar. */

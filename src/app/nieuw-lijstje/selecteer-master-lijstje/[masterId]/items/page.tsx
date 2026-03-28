@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
+import { defaultNewListName } from "@/lib/list-default-name";
+import { listIsMasterTemplate } from "@/lib/list-master";
 import { SwipeToAdd } from "@/components/ui/swipe_to_add";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 
@@ -28,27 +30,6 @@ type MasterList = {
   items: TemplateItem[];
   order: number;
 };
-
-const FOOD_ICONS = [
-  "/images/ui/food/icon_apple.png",
-  "/images/ui/food/icon_aubergine.png",
-  "/images/ui/food/icon_banana.png",
-  "/images/ui/food/icon_blueberries.png",
-  "/images/ui/food/icon_bread.png",
-  "/images/ui/food/icon_carrot.png",
-  "/images/ui/food/icon_cheese.png",
-  "/images/ui/food/icon_milk.png",
-  "/images/ui/food/icon_nutella.png",
-  "/images/ui/food/icon_strawberry.png",
-  "/images/ui/food/icon_tangerine.png",
-] as const;
-
-function getIconForNewList(existingIcons: string[]): string {
-  const usedIcons = new Set(existingIcons);
-  const unusedIcons = FOOD_ICONS.filter((icon) => !usedIcons.has(icon));
-  const pool = unusedIcons.length > 0 ? unusedIcons : [...FOOD_ICONS];
-  return pool[Math.floor(Math.random() * pool.length)];
-}
 
 function BackArrowIcon({ className }: { className?: string }) {
   return (
@@ -259,7 +240,8 @@ export default function SelecteerMasterItemsPage() {
   const router = useRouter();
   const params = useParams<{ masterId: string }>();
   const searchParams = useSearchParams();
-  const listName = (searchParams.get("naam") ?? "").trim() || "Nieuw lijstje";
+  const listName =
+    (searchParams.get("naam") ?? "").trim() || defaultNewListName();
   const masterId = decodeURIComponent(String(params.masterId ?? ""));
 
   const { isLoading: authLoading, user } = db.useAuth();
@@ -280,9 +262,7 @@ export default function SelecteerMasterItemsPage() {
     const rawLists = (data?.lists ?? []) as any[];
     const found = rawLists.find(
       (l) =>
-        String(l?.id ?? "") === masterId &&
-        typeof l?.icon === "string" &&
-        l.icon.startsWith("/logos/"),
+        String(l?.id ?? "") === masterId && listIsMasterTemplate(l as any),
     );
     if (!found) return null;
     const items = (found.items ?? [])
@@ -473,12 +453,9 @@ export default function SelecteerMasterItemsPage() {
     if (selectedItems.length === 0) return;
 
     const myLists = (data?.lists ?? []) as any[];
-    const myIcons = myLists
-      .map((l) => (typeof l?.icon === "string" ? l.icon : null))
-      .filter((x): x is string => Boolean(x));
     const now = new Date();
     const newId = iid();
-    const icon = getIconForNewList(myIcons);
+    const icon = masterList.icon;
     const order =
       myLists.length > 0
         ? Math.min(
@@ -493,6 +470,7 @@ export default function SelecteerMasterItemsPage() {
         icon,
         order,
         ownerId: user.id,
+        isMasterTemplate: false,
       }),
       ...selectedItems.map((item, index) =>
         db.tx.items[iid()]

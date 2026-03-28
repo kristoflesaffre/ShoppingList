@@ -12,6 +12,7 @@ import {
   MASTER_STORE_OPTIONS,
   findMasterStoreBySlug,
 } from "@/lib/master-stores";
+import { defaultNewListName } from "@/lib/list-default-name";
 import { cn } from "@/lib/utils";
 
 /** Zelfde pijl als SlideInModal — public/icons/arrow.svg */
@@ -78,7 +79,7 @@ function SelecteerWinkelContent() {
       if (!user) return;
       const store = findMasterStoreBySlug(slug);
       if (!store) return;
-      const name = listNameRaw.trim() || "Nieuw lijstje";
+      const name = listNameRaw.trim() || defaultNewListName();
       const myLists = data?.lists ?? [];
       const order =
         myLists.length > 0
@@ -93,6 +94,7 @@ function SelecteerWinkelContent() {
           icon: store.logoSrc,
           order,
           ownerId: user.id,
+          isMasterTemplate: true,
         }),
       );
       router.push(`/lijstje/${newId}`);

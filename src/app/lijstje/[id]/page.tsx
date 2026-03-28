@@ -45,6 +45,7 @@ import {
   type SavedRecipe,
 } from "@/lib/recipe_library";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
+import { listIsMasterTemplate } from "@/lib/list-master";
 
 /** Profiel van een andere claimer: avatar + voornaam op itemkaart. */
 type ClaimerProfileInfo = { avatarUrl?: string; firstName?: string };
@@ -1584,8 +1585,9 @@ export default function ListDetailPage({
   }, [authLoading, user, isLoading, listData, canAccess, router]);
   const listName = listData?.name ?? "Lijstje";
   const listIcon = listData?.icon ?? "";
-  const isMasterList =
-    typeof listIcon === "string" && listIcon.startsWith("/logos/");
+  const isMasterList = listIsMasterTemplate(
+    listData as { isMasterTemplate?: boolean; icon?: string; name?: string },
+  );
   const masterStoreLabel = React.useMemo(() => {
     if (!isMasterList) return "";
     const logoFile = listIcon.split("/").pop() ?? "";
@@ -2253,15 +2255,15 @@ export default function ListDetailPage({
 
       <main
         className={cn(
-          "px-4",
-          /* FAB ~bottom 45px + hoogte ~64px + extra lucht; safe-area voor home-indicator */
+          /* Geen px-4 op main: zelfde patroon als header (max-w + mx-auto + px-4 op één kolom),
+             anders op bredere schermen een andere linkerrand dan de terugpijl. */
           "pb-[calc(200px+env(safe-area-inset-bottom,0px))]",
           "mt-[calc(56px+env(safe-area-inset-top,0px))]",
           isMasterList ? "pt-8" : "pt-4",
         )}
       >
         {/* Geen extra gradient: zelfde principe als gewone lijstdetail — alleen body::before (globals.css). */}
-        <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6">
+        <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6 px-4">
           {showListDetailHeader ? (
             <div className="flex items-start gap-4">
               <div className="min-w-0 flex-1 flex flex-col gap-0">
@@ -2425,8 +2427,8 @@ export default function ListDetailPage({
       )}
 
       {!isMasterEmpty ? (
-        <div className="pointer-events-none fixed bottom-[45px] left-0 right-0 z-20 px-4">
-          <div className="mx-auto flex w-full max-w-[956px] justify-end">
+        <div className="pointer-events-none fixed bottom-[45px] left-0 right-0 z-20">
+          <div className="mx-auto flex w-full max-w-[956px] justify-end px-4">
             <FloatingActionButton
               aria-label="Item toevoegen"
               className="pointer-events-auto"

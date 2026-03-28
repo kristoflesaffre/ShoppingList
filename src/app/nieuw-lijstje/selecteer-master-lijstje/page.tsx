@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/button";
 import { AppBottomNav } from "@/components/app_bottom_nav";
 import { db } from "@/lib/db";
 import { ListCard } from "@/components/ui/list_card";
+import { defaultNewListName } from "@/lib/list-default-name";
+import {
+  listIsMasterTemplate,
+  type ListMasterTemplateFields,
+} from "@/lib/list-master";
 
 /** Zelfde pijl als SlideInModal — public/icons/arrow.svg */
 function BackArrowIcon({ className }: { className?: string }) {
@@ -84,9 +89,7 @@ function SelecteerMasterLijstPageContent() {
         (l: unknown) =>
           typeof l === "object" &&
           l != null &&
-          "icon" in l &&
-          typeof (l as { icon?: unknown }).icon === "string" &&
-          String((l as { icon?: unknown }).icon).startsWith("/logos/"),
+          listIsMasterTemplate(l as ListMasterTemplateFields),
       )
       .map((l: any) => ({
         id: String(l.id),
@@ -102,7 +105,7 @@ function SelecteerMasterLijstPageContent() {
   const handlePickMaster = React.useCallback(
     (template: MasterListRow) => {
       if (!user) return;
-      const name = listNameRaw.trim() || "Nieuw lijstje";
+      const name = listNameRaw.trim() || defaultNewListName();
       router.push(
         `/nieuw-lijstje/selecteer-master-lijstje/${encodeURIComponent(
           template.id,
