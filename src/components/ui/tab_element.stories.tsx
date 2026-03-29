@@ -61,15 +61,17 @@ export const Active: Story = {
   ),
 };
 
+function InGroupLikeFigmaDemo() {
+  const [v, setV] = React.useState("1");
+  return (
+    <TabGroup value={v} onValueChange={setV}>
+      <TabElement value="1">Tab 1</TabElement>
+      <TabElement value="2">Tab</TabElement>
+    </TabGroup>
+  );
+}
+
 /** Zelfde opbouw als Figma-tab group: eerste actief, tweede inactief */
 export const InGroupLikeFigma: Story = {
-  render: () => {
-    const [v, setV] = React.useState("1");
-    return (
-      <TabGroup value={v} onValueChange={setV}>
-        <TabElement value="1">Tab 1</TabElement>
-        <TabElement value="2">Tab</TabElement>
-      </TabGroup>
-    );
-  },
+  render: () => <InGroupLikeFigmaDemo />,
 };
