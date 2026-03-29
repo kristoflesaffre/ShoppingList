@@ -29,12 +29,34 @@ function MaskNavIcon({
   );
 }
 
-function ListIcon({ className }: { className?: string }) {
-  return <MaskNavIcon src="/icons/list.svg" className={className} />;
+function ListIcon({
+  className,
+  filled,
+}: {
+  className?: string;
+  filled?: boolean;
+}) {
+  return (
+    <MaskNavIcon
+      src={filled ? "/icons/list_filled.svg" : "/icons/list.svg"}
+      className={className}
+    />
+  );
 }
 
-function ReceptenIcon({ className }: { className?: string }) {
-  return <MaskNavIcon src="/icons/chef_hat.svg" className={className} />;
+function ReceptenIcon({
+  className,
+  filled,
+}: {
+  className?: string;
+  filled?: boolean;
+}) {
+  return (
+    <MaskNavIcon
+      src={filled ? "/icons/chef_hat_filled.svg" : "/icons/chef_hat.svg"}
+      className={className}
+    />
+  );
 }
 
 function AvatarIcon({ className }: { className?: string }) {
@@ -109,7 +131,7 @@ export function AppBottomNav({
                 : "text-[var(--gray-500)]",
             )}
           >
-            <ListIcon className="size-6" />
+            <ListIcon className="size-6" filled={active === "lijstjes"} />
             <span className="text-xs font-normal leading-4 tracking-normal">
               Lijstjes
             </span>
@@ -128,7 +150,10 @@ export function AppBottomNav({
                 : "text-[var(--gray-500)]",
             )}
           >
-            <ReceptenIcon className="size-6" />
+            <ReceptenIcon
+              className="size-6"
+              filled={active === "recepten"}
+            />
             <span className="text-xs font-normal leading-4 tracking-normal">
               Recepten
             </span>
@@ -160,16 +185,16 @@ export function AppBottomNav({
                   height={24}
                   className="size-full object-cover"
                 />
+              ) : active === "profiel" ? (
+                <span className="flex size-full items-center justify-center">
+                  <MaskNavIcon
+                    src="/icons/avatar_filled.svg"
+                    className="size-6"
+                  />
+                </span>
               ) : (
                 <span className="flex size-full items-center justify-center">
-                  <AvatarIcon
-                    className={cn(
-                      "size-6",
-                      active === "profiel"
-                        ? "text-[var(--blue-500)]"
-                        : "text-[var(--gray-500)]",
-                    )}
-                  />
+                  <AvatarIcon className="size-6" />
                 </span>
               )}
               <span
