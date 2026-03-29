@@ -23,6 +23,7 @@ import {
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { ItemCard } from "@/components/ui/item_card";
+import { RecipeIngredientSortableList } from "@/app/recepten/recipe_ingredient_sortable_list";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { EditButton } from "@/components/ui/edit_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
@@ -356,131 +357,6 @@ function parseQuantity(qty: string): { stepperValue: number; quantityDesc: strin
 
 const SLIDE_TRANSITION = "transform 350ms cubic-bezier(0.16, 1, 0.3, 1)";
 
-/** Sorteerbare ingrediëntregel in receptformulier (zelfde patroon als SortableItemCard). */
-function SortableIngredientCard({
-  ingredient,
-  onDelete,
-  onEdit,
-}: {
-  ingredient: Ingredient;
-  onDelete: () => void;
-  onEdit: () => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: ingredient.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        isDragging &&
-          "z-10 cursor-grabbing opacity-90 shadow-[var(--shadow-drop)]"
-      )}
-    >
-      <ItemCard
-        itemName={ingredient.name}
-        quantity={ingredient.quantity}
-        state="editable"
-        onDelete={onDelete}
-        onEdit={onEdit}
-        dragHandleProps={{ ...attributes, ...listeners }}
-      />
-    </div>
-  );
-}
-
-/** Moet binnen DndContext staan (voor useDndContext). */
-function RecipeIngredientsSortableBody({
-  ingredients,
-  onDelete,
-  onEdit,
-}: {
-  ingredients: Ingredient[];
-  onDelete: (id: string) => void;
-  onEdit: (id: string) => void;
-}) {
-  const { active } = useDndContext();
-  const isDndActive = active != null;
-
-  return (
-    <SortableContext
-      items={ingredients.map((i) => i.id)}
-      strategy={verticalListSortingStrategy}
-    >
-      <div className="flex flex-col gap-3">
-        {ingredients.map((ing) => {
-          const wrapperClass = isDndActive
-            ? ""
-            : cn(
-                "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-                "max-h-[200px] opacity-100"
-              );
-          return (
-            <div key={ing.id} className={wrapperClass}>
-              <SortableIngredientCard
-                ingredient={ing}
-                onDelete={() => onDelete(ing.id)}
-                onEdit={() => onEdit(ing.id)}
-              />
-            </div>
-          );
-        })}
-      </div>
-    </SortableContext>
-  );
-}
-
-function RecipeIngredientsDnd({
-  ingredients,
-  onDragEnd,
-  onDelete,
-  onEdit,
-}: {
-  ingredients: Ingredient[];
-  onDragEnd: (event: DragEndEvent) => void;
-  onDelete: (id: string) => void;
-  onEdit: (id: string) => void;
-}) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 3 },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 100, tolerance: 8 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={onDragEnd}
-      modifiers={[restrictToVerticalAxis]}
-    >
-      <RecipeIngredientsSortableBody
-        ingredients={ingredients}
-        onDelete={onDelete}
-        onEdit={onEdit}
-      />
-    </DndContext>
-  );
-}
-
 /** New Item Modal – slide-in from FAB, section plus, or edit from pencil */
 function NewItemModal({
   open,
@@ -725,17 +601,6 @@ function NewItemModal({
     editingIngredientId,
     closeIngredientForm,
   ]);
-
-  const handleReorderIngredients = React.useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over == null || active.id === over.id) return;
-    setIngredients((current) => {
-      const oldIndex = current.findIndex((i) => i.id === active.id);
-      const newIndex = current.findIndex((i) => i.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return current;
-      return arrayMove(current, oldIndex, newIndex);
-    });
-  }, []);
 
   const modalTitle = showRecipeForm
     ? editingLibraryRecipeId
@@ -1007,9 +872,9 @@ function NewItemModal({
                     </MiniButton>
                   </div>
                 ) : (
-                  <RecipeIngredientsDnd
+                  <RecipeIngredientSortableList
                     ingredients={ingredients}
-                    onDragEnd={handleReorderIngredients}
+                    onDragEndReorder={(reordered) => setIngredients(reordered)}
                     onDelete={handleDeleteIngredient}
                     onEdit={openIngredientFormEdit}
                   />
@@ -1726,6 +1591,7 @@ export default function ListDetailPage({
         name: r.name,
         link: r.link,
         persons: r.persons,
+        photoUrl: r.photoUrl ?? null,
         ingredients: [...(r.ingredients ?? [])]
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .map((ing) => ({
@@ -1836,11 +1702,17 @@ export default function ListDetailPage({
       );
 
       const allRecipes = recipeData?.recipes ?? [];
-      const existingOrder = allRecipes.find((r) => r.id === recipe.id)?.order ?? 0;
+      const existingRecipeRow = allRecipes.find((r) => r.id === recipe.id);
+      const existingOrder = existingRecipeRow?.order ?? 0;
       const newOrder =
         allRecipes.length > 0
           ? Math.min(...allRecipes.map((r) => r.order ?? 0)) - 1
           : 0;
+
+      const photoPatch =
+        !isNew && existingRecipeRow?.photoUrl
+          ? { photoUrl: existingRecipeRow.photoUrl }
+          : {};
 
       const txns = [
         db.tx.recipes[recipeId].update({
@@ -1848,6 +1720,7 @@ export default function ListDetailPage({
           link: recipe.link,
           persons: recipe.persons,
           order: isNew ? newOrder : existingOrder,
+          ...photoPatch,
         }),
         ...recipe.ingredients.map((ing, i) => {
           const ingId = isNew || !existingIngredientIds.includes(ing.id)

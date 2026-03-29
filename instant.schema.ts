@@ -45,6 +45,8 @@ const schema = i.schema({
       link: i.string(),
       persons: i.number(),
       order: i.number(),
+      /** Data-URL of gecodeerde receptfoto (zelfde patroon als profiel-avatar). */
+      photoUrl: i.string().optional(),
     }),
     recipeIngredients: i.entity({
       name: i.string(),

@@ -14,5 +14,7 @@ export type SavedRecipe = {
   name: string;
   link: string;
   persons: number;
+  /** Optionele receptfoto (data-URL). */
+  photoUrl?: string | null;
   ingredients: RecipeIngredient[];
 };
