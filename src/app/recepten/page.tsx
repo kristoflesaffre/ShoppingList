@@ -2,9 +2,29 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { CSS } from "@dnd-kit/utilities";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { AppBottomNav } from "@/components/app_bottom_nav";
+import { EditButton } from "@/components/ui/edit_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { SearchBar } from "@/components/ui/search_bar";
@@ -22,55 +42,77 @@ import { cn } from "@/lib/utils";
 
 const RECEPT_FORM_ID = "recepten-form";
 
-function PlusCircleIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width={24}
-      height={24}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M15.079 11.9997C15.079 12.2867 14.847 12.5197 14.559 12.5197H12.519V14.5607C12.519 14.8477 12.286 15.0807 11.999 15.0807C11.712 15.0807 11.479 14.8487 11.479 14.5607V12.5197H9.43997C9.15297 12.5197 8.91997 12.2867 8.91997 11.9997C8.91997 11.7127 9.15297 11.4797 9.43997 11.4797H11.48V9.43973C11.48 9.15273 11.713 8.91973 12 8.91973C12.287 8.91973 12.52 9.15273 12.52 9.43973V11.4797H14.56C14.847 11.4797 15.079 11.7127 15.079 11.9997ZM21.529 11.9997C21.529 17.2547 17.255 21.5287 12 21.5287C6.74497 21.5287 2.46997 17.2547 2.46997 11.9997C2.46997 6.74473 6.74497 2.46973 12 2.46973C17.255 2.46973 21.529 6.74473 21.529 11.9997ZM20.49 11.9997C20.49 7.31873 16.681 3.50973 12 3.50973C7.31897 3.50973 3.50997 7.31873 3.50997 11.9997C3.50997 16.6817 7.31897 20.4897 12 20.4897C16.681 20.4897 20.49 16.6817 20.49 11.9997Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function MaskNavIcon({
-  src,
-  className,
-}: {
-  src: string;
-  className?: string;
-}) {
-  return (
-    <span
-      className={cn("inline-block shrink-0 bg-current", className)}
-      style={{
-        WebkitMaskImage: `url(${src})`,
-        maskImage: `url(${src})`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-      aria-hidden
-    />
-  );
-}
-
-function ChefHatPageIcon({ className }: { className?: string }) {
-  return <MaskNavIcon src="/icons/chef_hat.svg" className={className} />;
-}
-
 type DraftRow = { key: string; name: string; quantity: string };
+
+function SortableRecipeRow({
+  recipe,
+  isEditMode,
+  onOpen,
+  onEdit,
+  onDelete,
+}: {
+  recipe: SavedRecipe;
+  isEditMode: boolean;
+  onOpen: (r: SavedRecipe) => void;
+  onEdit: (r: SavedRecipe) => void;
+  onDelete: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: recipe.id, disabled: !isEditMode });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const n = recipe.ingredients.length;
+  const itemCount = n === 1 ? "1 item" : `${n} items`;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        isDragging &&
+          "z-10 cursor-grabbing opacity-90 shadow-[var(--shadow-drop)]",
+      )}
+    >
+      <RecipeTile
+        recipeName={recipe.name}
+        itemCount={itemCount}
+        state={isEditMode ? "editable" : "bare"}
+        dragHandleProps={
+          isEditMode ? { ...attributes, ...listeners } : undefined
+        }
+        onEdit={isEditMode ? () => onEdit(recipe) : undefined}
+        onDelete={isEditMode ? () => onDelete(recipe.id) : undefined}
+        className={cn(
+          !isEditMode &&
+            "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+        )}
+        role={!isEditMode ? "button" : undefined}
+        tabIndex={!isEditMode ? 0 : undefined}
+        onClick={!isEditMode ? () => onOpen(recipe) : undefined}
+        onKeyDown={
+          !isEditMode
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onOpen(recipe);
+                }
+              }
+            : undefined
+        }
+      />
+    </div>
+  );
+}
 
 export default function ReceptenPage() {
   const router = useRouter();
@@ -111,6 +153,7 @@ export default function ReceptenPage() {
       }));
   }, [recipeData]);
 
+  const [isEditMode, setIsEditMode] = React.useState(false);
   const [recipeSearch, setRecipeSearch] = React.useState("");
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editingRecipeId, setEditingRecipeId] = React.useState<string | null>(
@@ -120,6 +163,16 @@ export default function ReceptenPage() {
   const [recipeLink, setRecipeLink] = React.useState("");
   const [recipePersons, setRecipePersons] = React.useState(2);
   const [draftRows, setDraftRows] = React.useState<DraftRow[]>([]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
@@ -163,6 +216,38 @@ export default function ReceptenPage() {
     if (!q) return savedRecipes;
     return savedRecipes.filter((r) => r.name.toLowerCase().includes(q));
   }, [savedRecipes, recipeSearch]);
+
+  const displayRecipes = isEditMode ? savedRecipes : filteredRecipes;
+
+  const handleReorderRecipes = React.useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (over == null || active.id === over.id) return;
+      const oldIndex = savedRecipes.findIndex((r) => r.id === active.id);
+      const newIndex = savedRecipes.findIndex((r) => r.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const reordered = arrayMove(savedRecipes, oldIndex, newIndex);
+      const txns = reordered.map((r, i) =>
+        db.tx.recipes[r.id].update({ order: i }),
+      );
+      void db.transact(txns);
+    },
+    [savedRecipes],
+  );
+
+  const handleDeleteRecipe = React.useCallback(
+    (recipeId: string) => {
+      const recipe = savedRecipes.find((r) => r.id === recipeId);
+      const ingIds = recipe?.ingredients.map((i) => i.id) ?? [];
+      void db.transact(
+        [
+          ...ingIds.map((id) => db.tx.recipeIngredients[id].delete()),
+          db.tx.recipes[recipeId].delete(),
+        ] as Parameters<typeof db.transact>[0],
+      );
+    },
+    [savedRecipes],
+  );
 
   const handleSubmit = React.useCallback(
     (e: React.FormEvent) => {
@@ -260,46 +345,79 @@ export default function ReceptenPage() {
     );
   }
 
+  const hasRecipes = savedRecipes.length > 0;
+
   return (
     <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
-          <div className="mb-6 flex items-center gap-4">
-            <h1 className="flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
-              Jouw recepten
+        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6">
+          <div className="flex items-start gap-4">
+            <h1 className="min-w-0 flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
+              Mijn recepten
             </h1>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <ChefHatPageIcon className="size-6 shrink-0 text-[var(--text-primary)]" />
-              <p className="min-w-0 text-base font-medium leading-24 text-text-secondary">
-                Bibliotheek
-              </p>
-            </div>
-            {savedRecipes.length > 0 ? (
-              <button
+            {hasRecipes ? (
+              <EditButton
                 type="button"
-                aria-label="Recept toevoegen"
-                onClick={openNew}
-                className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <PlusCircleIcon />
-              </button>
+                variant={isEditMode ? "active" : "inactive"}
+                onClick={() => setIsEditMode((v) => !v)}
+                className="shrink-0"
+              />
             ) : null}
           </div>
 
-          {savedRecipes.length > 0 ? (
-            <div className="mt-4">
+          {hasRecipes ? (
+            <>
               <SearchBar
                 placeholder="Zoek recept"
                 value={recipeSearch}
                 onValueChange={setRecipeSearch}
               />
-            </div>
-          ) : null}
 
-          {savedRecipes.length === 0 ? (
+              {!isEditMode && filteredRecipes.length === 0 ? (
+                <p className="py-8 text-center text-base font-medium leading-24 text-[var(--text-tertiary)]">
+                  Geen recepten gevonden
+                </p>
+              ) : displayRecipes.length === 0 ? null : isEditMode ? (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleReorderRecipes}
+                  modifiers={[restrictToVerticalAxis]}
+                >
+                  <SortableContext
+                    items={savedRecipes.map((r) => r.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="flex flex-col gap-4">
+                      {displayRecipes.map((r) => (
+                        <SortableRecipeRow
+                          key={r.id}
+                          recipe={r}
+                          isEditMode
+                          onOpen={openEdit}
+                          onEdit={openEdit}
+                          onDelete={handleDeleteRecipe}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {displayRecipes.map((r) => (
+                    <SortableRecipeRow
+                      key={r.id}
+                      recipe={r}
+                      isEditMode={false}
+                      onOpen={openEdit}
+                      onEdit={openEdit}
+                      onDelete={handleDeleteRecipe}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-6 py-12">
               <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
                 Je hebt nog geen recepten toegevoegd
@@ -307,35 +425,6 @@ export default function ReceptenPage() {
               <MiniButton variant="primary" onClick={openNew}>
                 Voeg recept toe
               </MiniButton>
-            </div>
-          ) : filteredRecipes.length === 0 ? (
-            <p className="py-8 text-center text-base font-medium leading-24 text-[var(--text-tertiary)]">
-              Geen recepten gevonden
-            </p>
-          ) : (
-            <div className="mt-4 flex flex-col gap-3">
-              {filteredRecipes.map((r) => {
-                const n = r.ingredients.length;
-                const itemCount = n === 1 ? "1 item" : `${n} items`;
-                return (
-                  <RecipeTile
-                    key={r.id}
-                    recipeName={r.name}
-                    itemCount={itemCount}
-                    onEdit={() => openEdit(r)}
-                    className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openEdit(r)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openEdit(r);
-                      }
-                    }}
-                  />
-                );
-              })}
             </div>
           )}
         </div>
