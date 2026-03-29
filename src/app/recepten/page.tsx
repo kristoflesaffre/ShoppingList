@@ -33,6 +33,7 @@ import { InputField } from "@/components/ui/input_field";
 import { Stepper } from "@/components/ui/stepper";
 import { Button } from "@/components/ui/button";
 import { MiniButton } from "@/components/ui/mini_button";
+import { Snackbar } from "@/components/ui/snackbar";
 import {
   APP_FAB_BOTTOM_CLASS,
   APP_FAB_INNER_FLUSH_CLASS,
@@ -43,6 +44,21 @@ import { cn } from "@/lib/utils";
 const RECEPT_FORM_ID = "recepten-form";
 
 type DraftRow = { key: string; name: string; quantity: string };
+
+/** Snapshot voor Snackbar-undo na verwijderen (zelfde ids als InstantDB). */
+type RecipeUndoSnapshot = {
+  id: string;
+  name: string;
+  link: string;
+  persons: number;
+  order: number;
+  ingredients: Array<{
+    id: string;
+    name: string;
+    quantity: string;
+    order: number;
+  }>;
+};
 
 function SortableRecipeRow({
   recipe,
@@ -163,6 +179,11 @@ export default function ReceptenPage() {
   const [recipeLink, setRecipeLink] = React.useState("");
   const [recipePersons, setRecipePersons] = React.useState(2);
   const [draftRows, setDraftRows] = React.useState<DraftRow[]>([]);
+  const [lastDeletedRecipe, setLastDeletedRecipe] =
+    React.useState<RecipeUndoSnapshot | null>(null);
+  const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
+    null,
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -177,6 +198,15 @@ export default function ReceptenPage() {
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
+
+  React.useEffect(() => {
+    if (!snackbarMessage) return;
+    const timeout = window.setTimeout(() => {
+      setSnackbarMessage(null);
+      setLastDeletedRecipe(null);
+    }, 4500);
+    return () => window.clearTimeout(timeout);
+  }, [snackbarMessage]);
 
   const resetForm = React.useCallback(() => {
     setEditingRecipeId(null);
@@ -235,19 +265,78 @@ export default function ReceptenPage() {
     [savedRecipes],
   );
 
+  const buildRecipeUndoSnapshot = React.useCallback(
+    (recipeId: string): RecipeUndoSnapshot | null => {
+      const r = recipeData?.recipes?.find((x) => x.id === recipeId);
+      if (!r) return null;
+      const ings = [...(r.ingredients ?? [])].sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0),
+      );
+      return {
+        id: r.id,
+        name: r.name,
+        link: r.link,
+        persons: r.persons,
+        order: r.order ?? 0,
+        ingredients: ings.map((ing, i) => ({
+          id: ing.id,
+          name: ing.name,
+          quantity: ing.quantity,
+          order: ing.order ?? i,
+        })),
+      };
+    },
+    [recipeData],
+  );
+
   const handleDeleteRecipe = React.useCallback(
     (recipeId: string) => {
-      const recipe = savedRecipes.find((r) => r.id === recipeId);
-      const ingIds = recipe?.ingredients.map((i) => i.id) ?? [];
+      const snapshot = buildRecipeUndoSnapshot(recipeId);
+      if (!snapshot) return;
+
       void db.transact(
         [
-          ...ingIds.map((id) => db.tx.recipeIngredients[id].delete()),
+          ...snapshot.ingredients.map((ing) =>
+            db.tx.recipeIngredients[ing.id].delete(),
+          ),
           db.tx.recipes[recipeId].delete(),
         ] as Parameters<typeof db.transact>[0],
       );
+
+      if (editingRecipeId === recipeId) {
+        closeModal();
+      }
+
+      setLastDeletedRecipe(snapshot);
+      setSnackbarMessage(`'${snapshot.name}' verwijderd`);
     },
-    [savedRecipes],
+    [buildRecipeUndoSnapshot, editingRecipeId, closeModal],
   );
+
+  const handleUndoDeleteRecipe = React.useCallback(() => {
+    if (!lastDeletedRecipe) return;
+    const s = lastDeletedRecipe;
+    const txns = [
+      db.tx.recipes[s.id].update({
+        name: s.name,
+        link: s.link,
+        persons: s.persons,
+        order: s.order,
+      }),
+      ...s.ingredients.map((ing) =>
+        db.tx.recipeIngredients[ing.id]
+          .update({
+            name: ing.name,
+            quantity: ing.quantity,
+            order: ing.order,
+          })
+          .link({ recipe: s.id }),
+      ),
+    ];
+    void db.transact(txns as Parameters<typeof db.transact>[0]);
+    setLastDeletedRecipe(null);
+    setSnackbarMessage(null);
+  }, [lastDeletedRecipe]);
 
   const handleSubmit = React.useCallback(
     (e: React.FormEvent) => {
@@ -522,6 +611,16 @@ export default function ReceptenPage() {
           </div>
         </form>
       </SlideInModal>
+
+      {snackbarMessage && (
+        <div className="fixed inset-x-0 bottom-[calc(183px+env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-2">
+          <Snackbar
+            message={snackbarMessage}
+            actionLabel="Zet terug"
+            onAction={handleUndoDeleteRecipe}
+          />
+        </div>
+      )}
 
       <AppBottomNav
         active="recepten"
