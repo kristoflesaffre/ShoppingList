@@ -29,11 +29,15 @@ const meta: Meta<typeof RecipeTile> = {
   tags: ["autodocs"],
   argTypes: {
     recipeName: { control: "text", description: "Recipe name" },
-    itemCount: { control: "text", description: "Number of ingredients (e.g. '5 items')" },
+    itemCount: {
+      control: "text",
+      description: "Number of ingredients (e.g. '5 items')",
+    },
     state: {
       control: "select",
-      options: ["default", "disabled"],
-      description: "Visual state of the tile",
+      options: ["default", "bare", "editable", "disabled"],
+      description:
+        "Figma 520:2469 — default (+potlood), bare (alleen tekst), editable (+sleep+prullenbak), disabled",
     },
   },
 };
@@ -41,12 +45,36 @@ const meta: Meta<typeof RecipeTile> = {
 export default meta;
 type Story = StoryObj<typeof RecipeTile>;
 
+/** Standaard: witte kaart + schaduw + potlood (Figma “Default”). */
 export const Default: Story = {
   args: {
     recipeName: "Pasta bolognese",
     itemCount: "5 items",
     state: "default",
     onEdit: fn(),
+  },
+};
+
+/** Alleen titel + subtitel, geen iconen (Figma “Bare”). */
+export const Bare: Story = {
+  args: {
+    recipeName: "Pasta bolognese",
+    itemCount: "5 items",
+    state: "bare",
+  },
+};
+
+/** Volgorde | tekst + potlood | verwijderen (Figma “Editable”). */
+export const Editable: Story = {
+  args: {
+    recipeName: "Pasta bolognese",
+    itemCount: "5 items",
+    state: "editable",
+    onEdit: fn(),
+    onDelete: fn(),
+    dragHandleProps: {
+      onPointerDown: fn(),
+    },
   },
 };
 
@@ -77,11 +105,40 @@ export const LongName: Story = {
 };
 
 export const AllStates: Story = {
-  name: "All states",
+  name: "All states (Figma order)",
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", width: "358px" }}>
-      <RecipeTile recipeName="Pasta bolognese" itemCount="5 items" state="default" onEdit={fn()} />
-      <RecipeTile recipeName="Pasta bolognese" itemCount="5 items" state="disabled" />
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--space-3)",
+        width: "358px",
+      }}
+    >
+      <RecipeTile
+        recipeName="Recipe name"
+        itemCount="5 items"
+        state="default"
+        onEdit={fn()}
+      />
+      <RecipeTile
+        recipeName="Recipe name"
+        itemCount="5 items"
+        state="disabled"
+      />
+      <RecipeTile
+        recipeName="Recipe name"
+        itemCount="5 items"
+        state="bare"
+      />
+      <RecipeTile
+        recipeName="Recipe name"
+        itemCount="5 items"
+        state="editable"
+        onEdit={fn()}
+        onDelete={fn()}
+        dragHandleProps={{}}
+      />
     </div>
   ),
 };
