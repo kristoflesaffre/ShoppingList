@@ -1,13 +1,13 @@
 {
   "task": "generate_consistent_food_image",
-  "version": "1.0",
+  "version": "1.2",
   "use_case": "Create a highly consistent premium food image for any dish based on a fixed visual style and optional image references.",
   "input_variables": {
     "dish_name": "{{DISH_NAME}}",
     "dish_description": "{{OPTIONAL_DISH_DESCRIPTION}}"
   },
   "instructions": {
-    "core_prompt": "Create a photorealistic premium food image of {{DISH_NAME}}. {{OPTIONAL_DISH_DESCRIPTION}} Present the dish in a clean, refined, modern editorial food-photography style matching the reference examples. The food must be shown from a perfect top-down 90-degree overhead view, centered in the frame, plated on a single ceramic plate or bowl, isolated on a clean light neutral background. The result must feel like a polished food delivery hero image or premium cookbook product shot.",
+    "core_prompt": "Create a photorealistic premium food image of {{DISH_NAME}}. {{OPTIONAL_DISH_DESCRIPTION}} Present the dish in a clean, refined, modern editorial food-photography style matching the reference examples. The food must be shown from a perfect top-down 90-degree overhead view, centered in the frame, on a single colored ceramic plate or bowl. CRITICAL: Every pixel of the backdrop outside the dish must be uniform pure white — identical to hexadecimal #FFFFFF / RGB 255,255,255 — with no gray cast, no warm off-white, no cool off-white, no paper grain, and no visible surface texture on the floor. The result must feel like a polished food delivery hero image or premium cookbook product shot.",
     "style_goal": "Keep the visual style extremely consistent across all dishes, regardless of cuisine.",
     "reinterpretation_rule": "If the dish is normally messy, rustic, or informal, reinterpret it into a neat, visually balanced plated presentation while keeping the dish recognizable.",
     "dish_fidelity_rule": "The dish must remain clearly identifiable as {{DISH_NAME}}. Do not transform it into a different recipe."
@@ -16,10 +16,10 @@
     "camera_angle": "perfectly overhead, 90-degree top-down",
     "framing": "single dish only, centered, symmetrical or intentionally balanced radial composition",
     "crop": "dish fully visible with comfortable whitespace around it",
-    "background": "plain light gray or off-white seamless studio background",
+    "background": "Infinite seamless studio cyclorama or digital cutout: the entire canvas outside the plate or bowl is flat, uniform pure white (#FFFFFF). Do not simulate a real tabletop, paper, stone, concrete, marble, linen, or vinyl. No lighting gradient across the background (no vignette, no darker corners, no brighter center). No atmospheric haze that tints the white. If any shadow is rendered, it must be confined to a hair-thin contact ring touching the outer rim only and must not darken the surrounding white field — the white outside the dish must still read as #FFFFFF, not light gray.",
     "plate_position": "exactly centered",
     "scale_consistency": "plate or bowl should occupy roughly 70 to 85 percent of the frame",
-    "negative_space": "clean and controlled, no clutter"
+    "negative_space": "clean and controlled, no clutter; negative space is literal #FFFFFF white only"
   },
   "plating_rules": {
     "presentation": "refined, deliberate, minimal, premium",
@@ -32,8 +32,8 @@
     "consistency_bias": "prioritize visual consistency over chef-level originality"
   },
   "materials_and_props": {
-    "serveware": "single matte ceramic plate or bowl with subtle handmade texture",
-    "plate_color_rule": "select a ceramic color that contrasts nicely with the dish, preferably muted blue, teal, rust, ochre, cream, or earthy tones",
+    "serveware": "single matte or satin-glaze ceramic plate or bowl with subtle handmade texture, same premium ceramic character and finish language as in the reference images",
+    "plate_color_rule": "The serveware must always be clearly colored—never plain white, ivory, cream, or undyed porcelain. For each image, choose one random but harmonious ceramic color that contrasts with the food, aligned with the reference style (e.g. deep teal, forest green, sage, terracotta, rust, burnt orange, ochre, slate blue, dusty rose, plum, charcoal glaze, warm brown). Vary the hue across generations while keeping the same material quality and plate vocabulary as the references.",
     "allowed_props": "none except ingredients or garnish that are directly part of the plated dish",
     "forbidden_props": [
       "cutlery",
@@ -45,17 +45,18 @@
       "multiple dishes",
       "background ingredients outside the plate",
       "text",
-      "logos"
+      "logos",
+      "white or cream-colored plates or bowls"
     ]
   },
   "lighting_and_rendering": {
-    "lighting": "soft diffused studio lighting",
-    "shadow_behavior": "very soft subtle shadows only",
-    "highlights": "controlled, no blown highlights",
+    "lighting": "high-key soft diffused studio lighting balanced so the empty backdrop stays at full white exposure — not moody or low-key",
+    "shadow_behavior": "Do not throw large soft gray shadows onto the backdrop. The white field must stay at #FFFFFF. At most a minimal contact cue at the plate edge if needed, without graying the surrounding pixels",
+    "highlights": "controlled, no blown highlights on food",
     "color": "natural, appetizing, slightly enhanced but believable",
-    "texture": "high detail, realistic food texture, realistic ceramic texture",
+    "texture": "high detail on food and ceramic only; the backdrop has zero texture",
     "focus": "entire dish sharp and in focus",
-    "render_style": "photorealistic premium food photography"
+    "render_style": "photorealistic premium food photography with catalog-style isolated-on-white compositing"
   },
   "quality_controls": {
     "must_be": [
@@ -66,7 +67,9 @@
       "premium",
       "consistent with references",
       "highly appetizing",
-      "visually simple"
+      "visually simple",
+      "backdrop uniformly #FFFFFF pure white with zero gray tint in corners or mid-frame",
+      "colored ceramic serveware only (not white)"
     ],
     "must_not_be": [
       "cartoon",
@@ -76,25 +79,30 @@
       "angled camera",
       "side view",
       "busy background",
+      "gray, silver-gray, warm-gray, or off-white studio floor or paper",
+      "subtle texture or noise on the backdrop that reads as gray",
+      "radial gradient or vignette on background",
       "overstyled table scene",
       "cheap fast-food ad style",
       "floating ingredients",
-      "deformed food"
+      "deformed food",
+      "white, cream, or ivory plate or bowl",
+      "marble, concrete, tile, or wood visible as surface"
     ]
   },
   "reference_strategy": {
     "recommended_number_of_reference_images": 4,
     "minimum_reference_images": 3,
     "maximum_reference_images": 5,
-    "reference_use_instruction": "Use the reference images only for style consistency, composition, plate treatment, lighting, and overall presentation language. Do not copy the exact food item from the references unless it matches {{DISH_NAME}}."
+    "reference_use_instruction": "Use the reference images for style consistency: composition, lighting on the food, presentation language, and especially the type of colored matte ceramics and surface quality. For the BACKDROP ONLY: ignore any grayish tone if present in references — output must be cleaner, full #FFFFFF white. Do not copy the exact food from the references unless it matches {{DISH_NAME}}. Pick a plate color that could belong in the same set as the references but may differ hue per image."
   },
   "fallback_behavior": {
-    "for_soups": "Use a centered bowl, smooth surface, elegant cream swirl or oil ring, minimal garnish in the center.",
-    "for_pasta": "Keep pasta neatly twirled or clearly arranged, avoid chaotic scattered noodles.",
-    "for_pizza": "Use one complete centered pizza in overhead view on neutral background, maintain the same premium studio style.",
-    "for_wraps_or_tacos": "Use a clean open presentation viewed top-down, with organized fillings and restrained garnish.",
-    "for_curries_or_stews": "Use a refined plated bowl or plate presentation with clearly separated rice or accompaniment if appropriate.",
-    "for_rustic_dishes": "Clean up the composition and simplify the plating without losing recognizability."
+    "for_soups": "Use a centered bowl, smooth surface, elegant cream swirl or oil ring, minimal garnish in the center. Backdrop #FFFFFF.",
+    "for_pasta": "Keep pasta neatly twirled or clearly arranged, avoid chaotic scattered noodles. Backdrop #FFFFFF.",
+    "for_pizza": "Use one complete centered pizza in overhead view on uniform #FFFFFF background, maintain premium studio style and colored serveware if shown.",
+    "for_wraps_or_tacos": "Use a clean open presentation viewed top-down, with organized fillings and restrained garnish. Backdrop #FFFFFF.",
+    "for_curries_or_stews": "Use a refined plated bowl or plate presentation with clearly separated rice or accompaniment if appropriate. Backdrop #FFFFFF.",
+    "for_rustic_dishes": "Clean up the composition and simplify the plating without losing recognizability. Backdrop #FFFFFF."
   },
-  "final_generation_prompt": "Create a photorealistic premium studio food image of {{DISH_NAME}}. {{OPTIONAL_DISH_DESCRIPTION}} Match the visual language of the reference images: perfectly overhead 90-degree top-down view, one centered ceramic plate or bowl, clean light neutral background, soft diffused studio lighting, minimal shadows, elegant premium plating, highly realistic textures, balanced composition, subtle purposeful garnish, no props, no cutlery, no hands, no clutter, no text. Keep the dish clearly recognizable as {{DISH_NAME}}, but reinterpret it into a visually clean and refined presentation when needed. Prioritize consistency, simplicity, realism, and appetizing premium food styling."
+  "final_generation_prompt": "CRITICAL BACKGROUND — READ FIRST: The entire image background (all pixels not part of the food or the colored ceramic plate/bowl) must be perfectly flat, uniform pure white, exactly #FFFFFF (RGB 255,255,255). No light gray, no cool gray, no warm gray, no texture, no paper grain, no concrete, no marble, no gradient, no vignette, no darker corners, no softer mid-gray studio floor. Think e-commerce product photo cutout on true white. Lighting must be high-key so the empty frame stays at full white. Create a photorealistic premium studio food image of {{DISH_NAME}}. {{OPTIONAL_DISH_DESCRIPTION}} Match the reference images for: overhead 90-degree top-down view, one centered colored ceramic plate or bowl (never white or cream ceramic; choose a random contrasting matte glaze in the same family as references: teal, green, terracotta, rust, slate blue, dusty rose, charcoal glaze, etc.), soft diffused food lighting on the subject only, elegant premium plating, realistic textures on food and ceramic, balanced composition, subtle purposeful garnish, no props, cutlery, hands, clutter, or text. The dish must stay clearly recognizable as {{DISH_NAME}}; reinterpret into a clean refined presentation if needed. Do not let the reference images’ backdrop color — if any — pull the output away from #FFFFFF; the output background must be whiter and cleaner than typical stock food photos."
 }
