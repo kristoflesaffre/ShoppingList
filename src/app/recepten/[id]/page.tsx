@@ -14,6 +14,7 @@ import type { RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
 import { RecipeIngredientSortableList } from "@/app/recepten/recipe_ingredient_sortable_list";
 import { RecipeIngredientFormSlideIn } from "@/components/recipe_ingredient_form_slide_in";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
+import { PhotoSourceSlideIn } from "@/components/photo_source_slide_in";
 import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
 import { APP_FAB_INNER_PX4_CLASS } from "@/lib/app-layout";
 import { cn } from "@/lib/utils";
@@ -95,6 +96,8 @@ export default function ReceptDetailPage() {
   const [photoError, setPhotoError] = React.useState<string | null>(null);
   const [photoSaving, setPhotoSaving] = React.useState(false);
   const [ingredientSlideOpen, setIngredientSlideOpen] = React.useState(false);
+  const [photoSourceSlideOpen, setPhotoSourceSlideOpen] =
+    React.useState(false);
   const photoInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -191,6 +194,31 @@ export default function ReceptDetailPage() {
     setPhotoError(null);
     photoInputRef.current?.click();
   }, []);
+
+  const photoSourceSlideTitle = detailPhotoEditMode
+    ? savedRecipe?.photoUrl
+      ? "Foto wijzigen"
+      : "Foto toevoegen"
+    : "Foto toevoegen";
+
+  const openPhotoSourceSlide = React.useCallback(() => {
+    setPhotoSourceSlideOpen(true);
+  }, []);
+
+  const closePhotoSourceSlide = React.useCallback(() => {
+    setPhotoSourceSlideOpen(false);
+  }, []);
+
+  const handlePickPhotoFromDevice = React.useCallback(() => {
+    closePhotoSourceSlide();
+    requestAnimationFrame(() => openPhotoPicker());
+  }, [closePhotoSourceSlide, openPhotoPicker]);
+
+  const handleGoToAiGenerator = React.useCallback(() => {
+    closePhotoSourceSlide();
+    const dishName = encodeURIComponent(savedRecipe?.name ?? "");
+    router.push(`/food-image-generator?dishName=${dishName}`);
+  }, [closePhotoSourceSlide, savedRecipe?.name, router]);
 
   const handleRecipePhotoChange = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -346,7 +374,7 @@ export default function ReceptDetailPage() {
                     type="button"
                     variant="secondary"
                     disabled={photoSaving}
-                    onClick={openPhotoPicker}
+                    onClick={openPhotoSourceSlide}
                     className="pointer-events-auto"
                   >
                     {photoSaving
@@ -368,7 +396,7 @@ export default function ReceptDetailPage() {
                 type="button"
                 variant="secondary"
                 disabled={photoSaving}
-                onClick={openPhotoPicker}
+                onClick={openPhotoSourceSlide}
               >
                 {photoSaving ? "Bezig…" : "Foto toevoegen"}
               </MiniButton>
@@ -507,6 +535,14 @@ export default function ReceptDetailPage() {
         titleId="recept-detail-ingredient-form"
         containerClassName="z-[50]"
         slideClassName="h-[calc(100dvh-48px)]"
+      />
+
+      <PhotoSourceSlideIn
+        open={photoSourceSlideOpen}
+        onClose={closePhotoSourceSlide}
+        title={photoSourceSlideTitle}
+        onPickFromDevice={handlePickPhotoFromDevice}
+        onGenerateWithAi={handleGoToAiGenerator}
       />
     </div>
   );

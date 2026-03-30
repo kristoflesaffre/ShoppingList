@@ -53,6 +53,19 @@ const schema = i.schema({
       quantity: i.string(),
       order: i.number(),
     }),
+    /** Server-side gegenereerde food images; image payload wordt als base64 opgeslagen. */
+    foodImages: i.entity({
+      ownerId: i.string().indexed(),
+      dishName: i.string(),
+      dishDescription: i.string().optional(),
+      provider: i.string(),
+      model: i.string(),
+      referenceImageCount: i.number(),
+      estimatedCost: i.number(),
+      imageBase64: i.string(),
+      imageMimeType: i.string(),
+      createdAtIso: i.string().indexed(),
+    }),
     /** Eén profiel per Instant-auth user: optioneel wachtwoord-hash + avatar (data-URL). */
     profiles: i.entity({
       instantUserId: i.string().unique().indexed(),

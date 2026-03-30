@@ -327,7 +327,7 @@ export default function ReceptenPage() {
   const hasRecipes = savedRecipes.length > 0;
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--white)] px-[16px]">
+    <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6">
           <div className="flex items-start gap-4">

@@ -1,0 +1,100 @@
+{
+  "task": "generate_consistent_food_image",
+  "version": "1.0",
+  "use_case": "Create a highly consistent premium food image for any dish based on a fixed visual style and optional image references.",
+  "input_variables": {
+    "dish_name": "{{DISH_NAME}}",
+    "dish_description": "{{OPTIONAL_DISH_DESCRIPTION}}"
+  },
+  "instructions": {
+    "core_prompt": "Create a photorealistic premium food image of {{DISH_NAME}}. {{OPTIONAL_DISH_DESCRIPTION}} Present the dish in a clean, refined, modern editorial food-photography style matching the reference examples. The food must be shown from a perfect top-down 90-degree overhead view, centered in the frame, plated on a single ceramic plate or bowl, isolated on a clean light neutral background. The result must feel like a polished food delivery hero image or premium cookbook product shot.",
+    "style_goal": "Keep the visual style extremely consistent across all dishes, regardless of cuisine.",
+    "reinterpretation_rule": "If the dish is normally messy, rustic, or informal, reinterpret it into a neat, visually balanced plated presentation while keeping the dish recognizable.",
+    "dish_fidelity_rule": "The dish must remain clearly identifiable as {{DISH_NAME}}. Do not transform it into a different recipe."
+  },
+  "composition": {
+    "camera_angle": "perfectly overhead, 90-degree top-down",
+    "framing": "single dish only, centered, symmetrical or intentionally balanced radial composition",
+    "crop": "dish fully visible with comfortable whitespace around it",
+    "background": "plain light gray or off-white seamless studio background",
+    "plate_position": "exactly centered",
+    "scale_consistency": "plate or bowl should occupy roughly 70 to 85 percent of the frame",
+    "negative_space": "clean and controlled, no clutter"
+  },
+  "plating_rules": {
+    "presentation": "refined, deliberate, minimal, premium",
+    "structure": "main food element must read immediately and clearly",
+    "sauce_rule": "when suitable, use a smooth puree, sauce bed, or elegant sauce accent to improve composition",
+    "garnish_rule": "use only small purposeful garnishes such as herbs, microgreens, cracked pepper, parmesan, chili slices, or vegetable accents when appropriate",
+    "cleanliness": "plate rim must stay clean",
+    "portioning": "avoid overcrowding, keep plating visually organized",
+    "geometry": "prefer circular, centered, nested, radial, or neatly stacked layouts when suitable",
+    "consistency_bias": "prioritize visual consistency over chef-level originality"
+  },
+  "materials_and_props": {
+    "serveware": "single matte ceramic plate or bowl with subtle handmade texture",
+    "plate_color_rule": "select a ceramic color that contrasts nicely with the dish, preferably muted blue, teal, rust, ochre, cream, or earthy tones",
+    "allowed_props": "none except ingredients or garnish that are directly part of the plated dish",
+    "forbidden_props": [
+      "cutlery",
+      "napkins",
+      "glasses",
+      "hands",
+      "table decoration",
+      "wooden boards",
+      "multiple dishes",
+      "background ingredients outside the plate",
+      "text",
+      "logos"
+    ]
+  },
+  "lighting_and_rendering": {
+    "lighting": "soft diffused studio lighting",
+    "shadow_behavior": "very soft subtle shadows only",
+    "highlights": "controlled, no blown highlights",
+    "color": "natural, appetizing, slightly enhanced but believable",
+    "texture": "high detail, realistic food texture, realistic ceramic texture",
+    "focus": "entire dish sharp and in focus",
+    "render_style": "photorealistic premium food photography"
+  },
+  "quality_controls": {
+    "must_be": [
+      "photorealistic",
+      "clean",
+      "centered",
+      "top-down",
+      "premium",
+      "consistent with references",
+      "highly appetizing",
+      "visually simple"
+    ],
+    "must_not_be": [
+      "cartoon",
+      "illustration",
+      "3D render look",
+      "messy plating",
+      "angled camera",
+      "side view",
+      "busy background",
+      "overstyled table scene",
+      "cheap fast-food ad style",
+      "floating ingredients",
+      "deformed food"
+    ]
+  },
+  "reference_strategy": {
+    "recommended_number_of_reference_images": 4,
+    "minimum_reference_images": 3,
+    "maximum_reference_images": 5,
+    "reference_use_instruction": "Use the reference images only for style consistency, composition, plate treatment, lighting, and overall presentation language. Do not copy the exact food item from the references unless it matches {{DISH_NAME}}."
+  },
+  "fallback_behavior": {
+    "for_soups": "Use a centered bowl, smooth surface, elegant cream swirl or oil ring, minimal garnish in the center.",
+    "for_pasta": "Keep pasta neatly twirled or clearly arranged, avoid chaotic scattered noodles.",
+    "for_pizza": "Use one complete centered pizza in overhead view on neutral background, maintain the same premium studio style.",
+    "for_wraps_or_tacos": "Use a clean open presentation viewed top-down, with organized fillings and restrained garnish.",
+    "for_curries_or_stews": "Use a refined plated bowl or plate presentation with clearly separated rice or accompaniment if appropriate.",
+    "for_rustic_dishes": "Clean up the composition and simplify the plating without losing recognizability."
+  },
+  "final_generation_prompt": "Create a photorealistic premium studio food image of {{DISH_NAME}}. {{OPTIONAL_DISH_DESCRIPTION}} Match the visual language of the reference images: perfectly overhead 90-degree top-down view, one centered ceramic plate or bowl, clean light neutral background, soft diffused studio lighting, minimal shadows, elegant premium plating, highly realistic textures, balanced composition, subtle purposeful garnish, no props, no cutlery, no hands, no clutter, no text. Keep the dish clearly recognizable as {{DISH_NAME}}, but reinterpret it into a visually clean and refined presentation when needed. Prioritize consistency, simplicity, realism, and appetizing premium food styling."
+}

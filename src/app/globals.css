@@ -5,12 +5,19 @@
 @tailwind utilities;
 
 /**
- * App-achtergrond: effen wit (geen gradient).
+ * App-achtergrond: globale top->white gradient.
+ * Receptdetail kan lokaal wit blijven via eigen pagina-wrapper.
  */
 html {
   min-height: 100%;
   min-height: 100dvh;
-  background-color: var(--white);
+  background:
+    linear-gradient(
+      180deg,
+      var(--blue-100) 0px,
+      var(--blue-50) 120px,
+      var(--white) 320px
+    );
 }
 
 body {
@@ -19,6 +26,6 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
-  background: var(--white) !important;
+  background: transparent;
   position: relative;
 }
