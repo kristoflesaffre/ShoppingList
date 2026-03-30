@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { MiniButton } from "@/components/ui/mini_button";
 import { FoodImageGenerator } from "@/components/food-image-generator";
 
-export default function FoodImageGeneratorPage() {
+function FoodImageGeneratorPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoading: authLoading, user } = db.useAuth();
@@ -44,5 +44,13 @@ export default function FoodImageGeneratorPage() {
         initialDishName={initialDishName}
       />
     </main>
+  );
+}
+
+export default function FoodImageGeneratorPage() {
+  return (
+    <React.Suspense>
+      <FoodImageGeneratorPageInner />
+    </React.Suspense>
   );
 }
