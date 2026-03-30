@@ -24,6 +24,9 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { ItemCard } from "@/components/ui/item_card";
 import { RecipeIngredientSortableList } from "@/app/recepten/recipe_ingredient_sortable_list";
+import { RecipeIngredientFormSlideIn } from "@/components/recipe_ingredient_form_slide_in";
+import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
+import { parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { EditButton } from "@/components/ui/edit_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
@@ -342,19 +345,6 @@ function FishIcon({ className }: { className?: string }) {
 
 type Ingredient = RecipeIngredient;
 
-/** Parse quantity "2 stuks" or "5 kg" into { stepperValue, quantityDesc } */
-function parseQuantity(qty: string): { stepperValue: number; quantityDesc: string } {
-  const match = qty.match(/^(\d+)\s*(.*)$/);
-  if (match) {
-    const num = parseInt(match[1], 10);
-    return {
-      stepperValue: Number.isNaN(num) ? 1 : num,
-      quantityDesc: match[2].trim() || "stuk",
-    };
-  }
-  return { stepperValue: 1, quantityDesc: qty.trim() || "stuk" };
-}
-
 const SLIDE_TRANSITION = "transform 350ms cubic-bezier(0.16, 1, 0.3, 1)";
 
 /** New Item Modal – slide-in from FAB, section plus, or edit from pencil */
@@ -405,9 +395,6 @@ function NewItemModal({
   const [editingIngredientId, setEditingIngredientId] = React.useState<
     string | null
   >(null);
-  const [ingName, setIngName] = React.useState("");
-  const [ingStepper, setIngStepper] = React.useState(1);
-  const [ingQtyDesc, setIngQtyDesc] = React.useState("stuk");
 
   const canAdd = itemName.trim().length > 0;
   const canSaveRecipe = recipeName.trim().length > 0;
@@ -438,14 +425,10 @@ function NewItemModal({
       setIngredients([]);
       setIngredientSlideOpen(false);
       setEditingIngredientId(null);
-      setIngName("");
-      setIngStepper(1);
-      setIngQtyDesc("stuk");
     } else if (editingItem) {
       setItemName(editingItem.name);
-      const { stepperValue: sv, quantityDesc: qd } = parseQuantity(
-        editingItem.quantity
-      );
+      const { stepperValue: sv, quantityDesc: qd } =
+        parseRecipeIngredientQuantity(editingItem.quantity);
       setStepperValue(sv);
       setQuantityDesc(qd);
       setSelectedDay(
@@ -486,9 +469,6 @@ function NewItemModal({
     setIngredients([]);
     setIngredientSlideOpen(false);
     setEditingIngredientId(null);
-    setIngName("");
-    setIngStepper(1);
-    setIngQtyDesc("stuk");
   }, []);
 
   const openNewRecipeForm = React.useCallback(() => {
@@ -549,16 +529,10 @@ function NewItemModal({
   const closeIngredientForm = React.useCallback(() => {
     setIngredientSlideOpen(false);
     setEditingIngredientId(null);
-    setIngName("");
-    setIngStepper(1);
-    setIngQtyDesc("stuk");
   }, []);
 
   const openIngredientFormAdd = React.useCallback(() => {
     setEditingIngredientId(null);
-    setIngName("");
-    setIngStepper(1);
-    setIngQtyDesc("stuk");
     setIngredientSlideOpen(true);
   }, []);
 
@@ -567,40 +541,38 @@ function NewItemModal({
       const ing = ingredients.find((i) => i.id === id);
       if (!ing) return;
       setEditingIngredientId(id);
-      setIngName(ing.name);
-      const { stepperValue: sv, quantityDesc: qd } = parseQuantity(ing.quantity);
-      setIngStepper(sv);
-      setIngQtyDesc(qd);
       setIngredientSlideOpen(true);
     },
     [ingredients],
   );
 
-  const handleSaveIngredient = React.useCallback(() => {
-    if (!ingName.trim()) return;
-    const qty = `${ingStepper} ${ingQtyDesc}`;
-    if (editingIngredientId) {
-      setIngredients((prev) =>
-        prev.map((i) =>
-          i.id === editingIngredientId
-            ? { ...i, name: ingName.trim(), quantity: qty }
-            : i,
-        ),
-      );
-    } else {
-      setIngredients((prev) => [
-        ...prev,
-        { id: `ing-${Date.now()}`, name: ingName.trim(), quantity: qty },
-      ]);
-    }
-    closeIngredientForm();
-  }, [
-    ingName,
-    ingStepper,
-    ingQtyDesc,
-    editingIngredientId,
-    closeIngredientForm,
-  ]);
+  const handleIngredientFormSubmit = React.useCallback(
+    (draft: RecipeIngredientFormDraft) => {
+      if (draft.id) {
+        setIngredients((prev) =>
+          prev.map((i) =>
+            i.id === draft.id
+              ? { ...i, name: draft.name, quantity: draft.quantity }
+              : i,
+          ),
+        );
+      } else {
+        setIngredients((prev) => [
+          ...prev,
+          {
+            id: `ing-${Date.now()}`,
+            name: draft.name,
+            quantity: draft.quantity,
+          },
+        ]);
+      }
+    },
+    [],
+  );
+
+  const ingredientSlideInitial = editingIngredientId
+    ? ingredients.find((i) => i.id === editingIngredientId) ?? null
+    : null;
 
   const modalTitle = showRecipeForm
     ? editingLibraryRecipeId
@@ -887,51 +859,15 @@ function NewItemModal({
       </div>
     </SlideInModal>
 
-    <SlideInModal
+    <RecipeIngredientFormSlideIn
       open={ingredientSlideOpen}
       onClose={closeIngredientForm}
-      title={
-        editingIngredientId ? "Ingrediënt wijzigen" : "Ingrediënt toevoegen"
-      }
+      initial={ingredientSlideInitial}
+      onSubmit={handleIngredientFormSubmit}
       titleId="ingredient-form-slide-title"
       containerClassName="z-[60]"
-      className={!masterItemFormOnly ? "h-[calc(100dvh-48px)]" : undefined}
-      footer={
-        <Button
-          variant="primary"
-          disabled={!ingName.trim()}
-          onClick={handleSaveIngredient}
-        >
-          {editingIngredientId ? "Bewaren" : "Toevoegen"}
-        </Button>
-      }
-    >
-      <div className="flex flex-col gap-6">
-        <InputField
-          label="Naam ingrediënt"
-          placeholder="Naam ingrediënt"
-          value={ingName}
-          onChange={(e) => setIngName(e.target.value)}
-        />
-        <div className="flex flex-col gap-2">
-          <Stepper
-            label="Hoeveelheid"
-            value={ingStepper}
-            onValueChange={setIngStepper}
-            min={1}
-          />
-          <InputField
-            value={ingQtyDesc}
-            className="text-center"
-            onFocus={(e) => {
-              const input = e.target;
-              requestAnimationFrame(() => input.select());
-            }}
-            onChange={(e) => setIngQtyDesc(e.target.value)}
-          />
-        </div>
-      </div>
-    </SlideInModal>
+      slideClassName={!masterItemFormOnly ? "h-[calc(100dvh-48px)]" : undefined}
+    />
     </>
   );
 }

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
+import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { EditButton } from "@/components/ui/edit_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
@@ -11,6 +12,8 @@ import { TabElement } from "@/components/ui/tab_element";
 import { RecipeEditorSlideIn } from "@/app/recepten/recipe_editor_slide_in";
 import type { RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
 import { RecipeIngredientSortableList } from "@/app/recepten/recipe_ingredient_sortable_list";
+import { RecipeIngredientFormSlideIn } from "@/components/recipe_ingredient_form_slide_in";
+import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
 import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
 import { APP_FAB_INNER_PX4_CLASS } from "@/lib/app-layout";
 import { cn } from "@/lib/utils";
@@ -91,6 +94,7 @@ export default function ReceptDetailPage() {
     React.useState(false);
   const [photoError, setPhotoError] = React.useState<string | null>(null);
   const [photoSaving, setPhotoSaving] = React.useState(false);
+  const [ingredientSlideOpen, setIngredientSlideOpen] = React.useState(false);
   const photoInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -150,6 +154,38 @@ export default function ReceptDetailPage() {
   const handleLijstjeIngredientEdit = React.useCallback(() => {
     openEditor();
   }, [openEditor]);
+
+  const openFabAddIngredient = React.useCallback(() => {
+    setDetailPhotoEditMode(false);
+    setIngredientSlideOpen(true);
+  }, []);
+
+  const closeIngredientSlide = React.useCallback(() => {
+    setIngredientSlideOpen(false);
+  }, []);
+
+  const handleAddIngredientFromFab = React.useCallback(
+    async (draft: RecipeIngredientFormDraft) => {
+      if (!savedRecipe) return;
+      const r = recipeData?.recipes?.find((x) => x.id === savedRecipe.id);
+      const ings = r?.ingredients ?? [];
+      const nextOrder =
+        ings.length === 0
+          ? 0
+          : Math.max(...ings.map((i) => i.order ?? 0)) + 1;
+      const ingId = iid();
+      await db.transact(
+        db.tx.recipeIngredients[ingId]
+          .update({
+            name: draft.name,
+            quantity: draft.quantity,
+            order: nextOrder,
+          })
+          .link({ recipe: savedRecipe.id }),
+      );
+    },
+    [recipeData?.recipes, savedRecipe],
+  );
 
   const openPhotoPicker = React.useCallback(() => {
     setPhotoError(null);
@@ -359,7 +395,8 @@ export default function ReceptDetailPage() {
             <ul className="relative z-[1] flex flex-col">
               {savedRecipe.ingredients.length === 0 ? (
                 <li className="py-4 text-sm text-[var(--text-tertiary)]">
-                  Nog geen ingrediënten. Tik op Wijzigen om ze toe te voegen.
+                  Nog geen ingrediënten. Tik op + om er een toe te voegen of gebruik
+                  Wijzigen voor het volledige recept.
                 </li>
               ) : (
                 savedRecipe.ingredients.map((ing) => (
@@ -448,9 +485,9 @@ export default function ReceptDetailPage() {
       <div className="pointer-events-none fixed inset-x-0 bottom-[calc(24px+env(safe-area-inset-bottom,0px))] z-20">
         <div className={cn(APP_FAB_INNER_PX4_CLASS, "pointer-events-none")}>
           <FloatingActionButton
-            aria-label="Recept bewerken"
+            aria-label="Ingrediënt toevoegen"
             className="pointer-events-auto shadow-[var(--shadow-drop)]"
-            onClick={openEditor}
+            onClick={openFabAddIngredient}
           />
         </div>
       </div>
@@ -460,6 +497,16 @@ export default function ReceptDetailPage() {
         onClose={closeEditor}
         recipeToEdit={savedRecipe}
         recipeData={recipeData}
+      />
+
+      <RecipeIngredientFormSlideIn
+        open={ingredientSlideOpen}
+        onClose={closeIngredientSlide}
+        initial={null}
+        onSubmit={handleAddIngredientFromFab}
+        titleId="recept-detail-ingredient-form"
+        containerClassName="z-[50]"
+        slideClassName="h-[calc(100dvh-48px)]"
       />
     </div>
   );
