@@ -85,7 +85,7 @@ export function PhotoSourceSlideIn({
         >
           <SelectTile
             title="Genereren met AI"
-            subtitle="Binnenkort beschikbaar"
+            subtitle="Stijlvolle foodfoto (OpenAI)"
             icon={<IconImageAi />}
           />
         </button>

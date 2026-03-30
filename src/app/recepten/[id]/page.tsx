@@ -15,6 +15,8 @@ import { RecipeIngredientSortableList } from "@/app/recepten/recipe_ingredient_s
 import { RecipeIngredientFormSlideIn } from "@/components/recipe_ingredient_form_slide_in";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
 import { PhotoSourceSlideIn } from "@/components/photo_source_slide_in";
+import { FoodImageGeneratorSlideIn } from "@/components/food_image_generator_slide_in";
+import type { FoodImageGenerationResult } from "@/components/food-image-generator";
 import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
 import { APP_FAB_INNER_PX4_CLASS } from "@/lib/app-layout";
 import { cn } from "@/lib/utils";
@@ -98,6 +100,9 @@ export default function ReceptDetailPage() {
   const [ingredientSlideOpen, setIngredientSlideOpen] = React.useState(false);
   const [photoSourceSlideOpen, setPhotoSourceSlideOpen] =
     React.useState(false);
+  const [aiFoodImageSlideOpen, setAiFoodImageSlideOpen] =
+    React.useState(false);
+  const [aiFoodImageSlideKey, setAiFoodImageSlideKey] = React.useState(0);
   const photoInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -214,11 +219,58 @@ export default function ReceptDetailPage() {
     requestAnimationFrame(() => openPhotoPicker());
   }, [closePhotoSourceSlide, openPhotoPicker]);
 
-  const handleGoToAiGenerator = React.useCallback(() => {
+  const openAiFoodImageSlide = React.useCallback(() => {
     closePhotoSourceSlide();
-    const dishName = encodeURIComponent(savedRecipe?.name ?? "");
-    router.push(`/food-image-generator?dishName=${dishName}`);
-  }, [closePhotoSourceSlide, savedRecipe?.name, router]);
+    setAiFoodImageSlideKey((k) => k + 1);
+    setAiFoodImageSlideOpen(true);
+  }, [closePhotoSourceSlide]);
+
+  const closeAiFoodImageSlide = React.useCallback(() => {
+    setAiFoodImageSlideOpen(false);
+  }, []);
+
+  const handleAiFoodImageBack = React.useCallback(() => {
+    setAiFoodImageSlideOpen(false);
+    setPhotoSourceSlideOpen(true);
+  }, []);
+
+  const handleAiFoodImageApplied = React.useCallback(
+    async (result: FoodImageGenerationResult) => {
+      if (!savedRecipe) {
+        throw new Error("Geen recept geladen.");
+      }
+      setPhotoError(null);
+      setPhotoSaving(true);
+      try {
+        const absolute = new URL(
+          result.imageUrl,
+          window.location.origin,
+        ).toString();
+        const imgRes = await fetch(absolute);
+        if (!imgRes.ok) {
+          throw new Error("Gegenereerde afbeelding ophalen mislukt.");
+        }
+        const blob = await imgRes.blob();
+        const file = new File([blob], "generated-food.png", {
+          type: blob.type || "image/png",
+        });
+        const dataUrl = await fileToAvatarDataUrl(file);
+        await db.transact(
+          db.tx.recipes[savedRecipe.id].update({ photoUrl: dataUrl }),
+        );
+        setDetailPhotoEditMode(false);
+        setAiFoodImageSlideOpen(false);
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Foto opslaan mislukt.";
+        setPhotoError(msg);
+        throw err;
+      } finally {
+        setPhotoSaving(false);
+      }
+    },
+    [savedRecipe],
+  );
 
   const handleRecipePhotoChange = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -542,7 +594,17 @@ export default function ReceptDetailPage() {
         onClose={closePhotoSourceSlide}
         title={photoSourceSlideTitle}
         onPickFromDevice={handlePickPhotoFromDevice}
-        onGenerateWithAi={handleGoToAiGenerator}
+        onGenerateWithAi={openAiFoodImageSlide}
+      />
+
+      <FoodImageGeneratorSlideIn
+        key={aiFoodImageSlideKey}
+        open={aiFoodImageSlideOpen}
+        onClose={closeAiFoodImageSlide}
+        onBack={handleAiFoodImageBack}
+        ownerId={user.id}
+        initialDishName={savedRecipe.name}
+        onGenerationComplete={handleAiFoodImageApplied}
       />
     </div>
   );
