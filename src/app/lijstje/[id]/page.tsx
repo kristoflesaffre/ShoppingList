@@ -51,7 +51,6 @@ import {
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import {
-  APP_FAB_BOTTOM_CLASS,
   APP_FAB_INNER_PX4_CLASS,
 } from "@/lib/app-layout";
 
@@ -2242,10 +2241,7 @@ export default function ListDetailPage({
 
       {!isMasterEmpty ? (
         <div
-          className={cn(
-            "pointer-events-none fixed inset-x-0 z-20",
-            APP_FAB_BOTTOM_CLASS,
-          )}
+          className="pointer-events-none fixed inset-x-0 bottom-[calc(24px+env(safe-area-inset-bottom,0px))] z-20"
         >
           <div className={APP_FAB_INNER_PX4_CLASS}>
             <FloatingActionButton
