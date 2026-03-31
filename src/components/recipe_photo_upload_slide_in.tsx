@@ -74,15 +74,7 @@ export function RecipePhotoUploadSlideIn({
     setError(null);
     try {
       const base64Images = await Promise.all(
-        images.map(
-          (img) =>
-            new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = () => reject(new Error("Lezen mislukt"));
-              reader.readAsDataURL(img.file);
-            }),
-        ),
+        images.map((img) => compressImage(img.file)),
       );
 
       const res = await fetch("/api/extract-recipe-from-photos", {
@@ -211,6 +203,41 @@ export function RecipePhotoUploadSlideIn({
       </div>
     </SlideInModal>
   );
+}
+
+/** Resize naar max 1024px en converteer naar JPEG voor kleinere upload. */
+function compressImage(file: File, maxDim = 1024, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const { width, height } = img;
+      let newW = width;
+      let newH = height;
+      if (width > maxDim || height > maxDim) {
+        if (width >= height) {
+          newW = maxDim;
+          newH = Math.round((height / width) * maxDim);
+        } else {
+          newH = maxDim;
+          newW = Math.round((width / height) * maxDim);
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = newW;
+      canvas.height = newH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas niet beschikbaar")); return; }
+      ctx.drawImage(img, 0, 0, newW, newH);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Afbeelding laden mislukt"));
+    };
+    img.src = objectUrl;
+  });
 }
 
 function UploadIcon() {
