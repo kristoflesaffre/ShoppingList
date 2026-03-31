@@ -3,6 +3,7 @@
 import * as React from "react";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export type FoodImageGenerationResult = {
   generationId: string | null;
@@ -115,7 +116,7 @@ export function FoodImageGenerator({
       }
     >
       <InputField
-        label="Gerechtnaam"
+        label={embedMode ? "Naam ingrediënt" : "Gerechtnaam"}
         placeholder="Bijv. Chicken tikka masala"
         value={dishName}
         onChange={(e) => setDishName(e.target.value)}
@@ -123,30 +124,42 @@ export function FoodImageGenerator({
 
       <div className="flex w-full flex-col gap-2">
         <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-          Optionele beschrijving
+          {embedMode ? "Extra context" : "Optionele beschrijving"}
         </label>
         <textarea
           value={dishDescription}
           onChange={(e) => setDishDescription(e.target.value)}
-          placeholder="Extra context voor het gerecht (optioneel)"
+          placeholder={
+            embedMode
+              ? "Extra context (optioneel)"
+              : "Extra context voor het gerecht (optioneel)"
+          }
           rows={embedMode ? 3 : 4}
           className="w-full rounded-md border border-[var(--border-default)] bg-[var(--white)] px-4 py-3 text-base leading-24 text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         />
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div
+        className={cn("flex flex-col gap-2", embedMode && "items-center")}
+      >
         <Button
           type="button"
           variant="primary"
           disabled={!canGenerate}
           onClick={() => void handleGenerate()}
-          className="w-full max-w-none"
+          className={embedMode ? "self-center" : "w-full max-w-none"}
         >
           {loading
-            ? "Afbeelding genereren..."
+            ? embedMode
+              ? "Genereren…"
+              : "Afbeelding genereren..."
             : applying
-              ? "Foto op recept zetten..."
-              : "Genereer food image"}
+              ? embedMode
+                ? "Foto op recept zetten…"
+                : "Foto op recept zetten..."
+              : embedMode
+                ? "Genereer afbeelding"
+                : "Genereer food image"}
         </Button>
         {!embedMode ? (
           <p className="text-sm leading-20 text-[var(--text-secondary)]">

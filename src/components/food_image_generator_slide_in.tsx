@@ -28,15 +28,14 @@ export function FoodImageGeneratorSlideIn({
       open={open}
       onClose={onClose}
       onBack={onBack}
-      title="Food image genereren"
+      title="AI food image generator"
       titleId="food-image-generator-slide-in-title"
       containerClassName="z-[70]"
       className="pb-0"
     >
-      <div className="flex w-full flex-col gap-4 px-4 pb-6">
-        <p className="text-sm leading-20 text-[var(--text-secondary)]">
-          Genereer een consistente top-down food image. Na generatie wordt de
-          foto automatisch op je recept gezet.
+      <div className="flex w-full flex-col gap-6 px-4 pb-6">
+        <p className="text-base font-light leading-24 text-[var(--text-primary)]">
+          Genereer een afbeelding van je gerecht met AI.
         </p>
         <FoodImageGenerator
           ownerId={ownerId}
