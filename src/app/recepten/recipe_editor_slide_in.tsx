@@ -13,6 +13,8 @@ import {
   RecipeIngredientFormSlideIn,
   type RecipeIngredientFormDraft,
 } from "@/components/recipe_ingredient_form_slide_in";
+import { RecipeAiSourceSlideIn } from "@/components/recipe_ai_source_slide_in";
+import { RecipePhotoUploadSlideIn, type ExtractedRecipeData } from "@/components/recipe_photo_upload_slide_in";
 import type { RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 
@@ -48,11 +50,16 @@ export function RecipeEditorSlideIn({
   >(null);
   const [aiLoading, setAiLoading] = React.useState(false);
   const [aiError, setAiError] = React.useState<string | null>(null);
+  const [aiSourceSlideOpen, setAiSourceSlideOpen] = React.useState(false);
+  const [photoUploadSlideOpen, setPhotoUploadSlideOpen] = React.useState(false);
+  const recipeLinkInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (!open) return;
     setAiLoading(false);
     setAiError(null);
+    setAiSourceSlideOpen(false);
+    setPhotoUploadSlideOpen(false);
     if (recipeToEdit) {
       setRecipeName(recipeToEdit.name);
       setRecipeLink(recipeToEdit.link);
@@ -234,6 +241,54 @@ export function RecipeEditorSlideIn({
     }
   }, [recipeLink, recipeName]);
 
+  const openAiSourceSlide = React.useCallback(() => {
+    setAiSourceSlideOpen(true);
+  }, []);
+
+  const closeAiSourceSlide = React.useCallback(() => {
+    setAiSourceSlideOpen(false);
+  }, []);
+
+  const handlePickPhotosForAi = React.useCallback(() => {
+    closeAiSourceSlide();
+    setPhotoUploadSlideOpen(true);
+  }, [closeAiSourceSlide]);
+
+  const handlePhotoUploadBack = React.useCallback(() => {
+    setPhotoUploadSlideOpen(false);
+    setAiSourceSlideOpen(true);
+  }, []);
+
+  const closePhotoUploadSlide = React.useCallback(() => {
+    setPhotoUploadSlideOpen(false);
+  }, []);
+
+  const handlePhotoExtracted = React.useCallback(
+    (data: ExtractedRecipeData) => {
+      if (data.steps) setRecipeSteps(data.steps);
+      if (data.persons) setRecipePersons(data.persons);
+      if (data.name && !recipeName.trim()) setRecipeName(data.name);
+      if (data.ingredients?.length) {
+        setIngredients(
+          data.ingredients.map((ing) => ({
+            id: `new-${iid()}`,
+            name: ing.name,
+            quantity: ing.quantity,
+          })),
+        );
+      }
+    },
+    [recipeName],
+  );
+
+  const handleUseLinkForAi = React.useCallback(() => {
+    closeAiSourceSlide();
+    requestAnimationFrame(() => {
+      recipeLinkInputRef.current?.focus();
+      recipeLinkInputRef.current?.select();
+    });
+  }, [closeAiSourceSlide]);
+
   const ingredientSlideInitial = editingIngredientId
     ? ingredients.find((i) => i.id === editingIngredientId) ?? null
     : null;
@@ -244,18 +299,25 @@ export function RecipeEditorSlideIn({
       open={open}
       onClose={onClose}
       title={recipeToEdit ? "Recept wijzigen" : "Nieuw recept"}
-      disableEscapeClose={ingredientSlideOpen}
+      disableEscapeClose={ingredientSlideOpen || aiSourceSlideOpen || photoUploadSlideOpen}
       bodyFullWidth
       className="h-[calc(100dvh-48px)]"
       footer={
-        <Button
-          type="submit"
-          form={RECIPE_EDITOR_FORM_ID}
-          variant="primary"
-          disabled={!recipeName.trim()}
-        >
-          Bewaren
-        </Button>
+        <div className="flex flex-col items-center gap-3">
+          {!recipeToEdit ? (
+            <Button type="button" variant="secondary" onClick={openAiSourceSlide}>
+              Toevoegen met AI
+            </Button>
+          ) : null}
+          <Button
+            type="submit"
+            form={RECIPE_EDITOR_FORM_ID}
+            variant="primary"
+            disabled={!recipeName.trim()}
+          >
+            Bewaren
+          </Button>
+        </div>
       }
     >
       <form
@@ -274,6 +336,7 @@ export function RecipeEditorSlideIn({
             label="Link recept"
             placeholder="http://www.recept.com"
             value={recipeLink}
+            ref={recipeLinkInputRef}
             onChange={(e) => setRecipeLink(e.target.value)}
           />
           {hasValidRecipeLink ? (
@@ -364,6 +427,18 @@ export function RecipeEditorSlideIn({
         titleId="recipe-editor-ingredient-form-slide-title"
         containerClassName="z-[60]"
         slideClassName="h-[calc(100dvh-48px)]"
+      />
+      <RecipeAiSourceSlideIn
+        open={aiSourceSlideOpen}
+        onClose={closeAiSourceSlide}
+        onPickPhotos={handlePickPhotosForAi}
+        onUseLink={handleUseLinkForAi}
+      />
+      <RecipePhotoUploadSlideIn
+        open={photoUploadSlideOpen}
+        onClose={closePhotoUploadSlide}
+        onBack={handlePhotoUploadBack}
+        onExtracted={handlePhotoExtracted}
       />
     </SlideInModal>
   );
