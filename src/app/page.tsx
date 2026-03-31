@@ -44,7 +44,7 @@ import { AppBottomNav } from "@/components/app_bottom_nav";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import {
   APP_FAB_BOTTOM_CLASS,
-  APP_FAB_INNER_FLUSH_CLASS,
+  APP_FAB_INNER_PX4_CLASS,
 } from "@/lib/app-layout";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
@@ -958,7 +958,7 @@ export default function Home() {
           APP_FAB_BOTTOM_CLASS,
         )}
       >
-        <div className={APP_FAB_INNER_FLUSH_CLASS}>
+        <div className={APP_FAB_INNER_PX4_CLASS}>
           <FloatingActionButton
             aria-label="Nieuw lijstje"
             className="pointer-events-auto"
