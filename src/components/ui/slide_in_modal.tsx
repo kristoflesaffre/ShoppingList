@@ -163,7 +163,7 @@ export function SlideInModal({
         />
         <div
           className={cn(
-            "flex flex-col overflow-y-auto overflow-x-hidden pb-4 pt-6",
+            "flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-4 pt-6",
             footer
               ? "max-h-[calc(100dvh-48px-4rem-5.5rem)]"
               : "max-h-[calc(100dvh-48px-4rem)]",
@@ -181,7 +181,7 @@ export function SlideInModal({
           )}
         </div>
         {footer ? (
-          <div className="shrink-0 px-4 pb-6 pt-4">
+          <div className="shrink-0 px-4 pb-[24px] pt-4">
             <div className="mx-auto flex w-full max-w-[768px] justify-center">
               {footer}
             </div>
