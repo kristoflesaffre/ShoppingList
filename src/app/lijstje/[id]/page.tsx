@@ -756,6 +756,7 @@ function NewItemModal({
                               key={r.id}
                               recipeName={r.name}
                               itemCount={itemCount}
+                              photoUrl={r.photoUrl ?? undefined}
                               onEdit={() => openRecipeForEdit(r)}
                               className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
                               role="button"

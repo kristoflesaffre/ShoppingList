@@ -2,6 +2,10 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { RecipeTile } from "./recipe_tile";
 
+/** Voorbeeld-URL voor Storybook (geen data-URL; thumbnailformaat). */
+const DEMO_RECIPE_PHOTO =
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=96&h=96&fit=crop";
+
 const meta: Meta<typeof RecipeTile> = {
   title: "UI/RecipeTile",
   component: RecipeTile,
@@ -55,6 +59,17 @@ export const Default: Story = {
   },
 };
 
+export const DefaultWithPhoto: Story = {
+  name: "Default with photo",
+  args: {
+    recipeName: "Pasta bolognese",
+    itemCount: "5 items",
+    state: "default",
+    photoUrl: DEMO_RECIPE_PHOTO,
+    onEdit: fn(),
+  },
+};
+
 /** Alleen titel + subtitel, geen iconen (Figma “Bare”). */
 export const Bare: Story = {
   args: {
@@ -83,6 +98,16 @@ export const Disabled: Story = {
     recipeName: "Pasta bolognese",
     itemCount: "5 items",
     state: "disabled",
+  },
+};
+
+export const DisabledWithPhoto: Story = {
+  name: "Disabled with photo",
+  args: {
+    recipeName: "Pasta bolognese",
+    itemCount: "5 items",
+    state: "disabled",
+    photoUrl: DEMO_RECIPE_PHOTO,
   },
 };
 

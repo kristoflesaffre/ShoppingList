@@ -94,6 +94,7 @@ function SortableRecipeRow({
       <RecipeTile
         recipeName={recipe.name}
         itemCount={itemCount}
+        photoUrl={recipe.photoUrl ?? undefined}
         state={isEditMode ? "editable" : "bare"}
         dragHandleProps={
           isEditMode ? { ...attributes, ...listeners } : undefined

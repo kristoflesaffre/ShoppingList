@@ -27,6 +27,8 @@ export interface RecipeTileProps
   onDelete?: () => void;
   /** Alleen `state="editable"`: dnd-kit `listeners` + `attributes` op de volgorde-knop. */
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  /** Optionele receptfoto (bijv. data-URL); cirkel links, of in editable-blok na sleep-kolom (Figma 520:2469). */
+  photoUrl?: string | null;
   className?: string;
 }
 
@@ -96,6 +98,36 @@ function EditableDivider() {
   );
 }
 
+function RecipePhotoThumb({
+  src,
+  isDisabled,
+}: {
+  src: string;
+  isDisabled: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "relative size-12 min-h-12 min-w-12 shrink-0 overflow-hidden rounded-full shadow-[var(--shadow-drop)]",
+        isDisabled && "opacity-[0.3]",
+      )}
+    >
+      {/* data-URL / willekeurige hosts: bewust geen next/image */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        width={48}
+        height={48}
+        decoding="async"
+        loading="lazy"
+        className="size-full object-cover"
+        aria-hidden
+      />
+    </span>
+  );
+}
+
 function RecipeTextBlock({
   recipeName,
   itemCount,
@@ -156,6 +188,7 @@ const RecipeTile = React.forwardRef<HTMLDivElement, RecipeTileProps>(
       onEdit,
       onDelete,
       dragHandleProps,
+      photoUrl,
       ...props
     },
     ref,
@@ -164,6 +197,11 @@ const RecipeTile = React.forwardRef<HTMLDivElement, RecipeTileProps>(
     const isBare = state === "bare";
     const isDefault = state === "default";
     const isEditable = state === "editable";
+    const trimmedPhoto =
+      typeof photoUrl === "string" && photoUrl.trim().length > 0
+        ? photoUrl.trim()
+        : null;
+    const hasPhoto = trimmedPhoto != null;
 
     const containerClassName = cn(
       "flex w-full min-w-0 items-center rounded-md",
@@ -190,14 +228,30 @@ const RecipeTile = React.forwardRef<HTMLDivElement, RecipeTileProps>(
       />
     );
 
+    const photoThumb = hasPhoto ? (
+      <RecipePhotoThumb src={trimmedPhoto} isDisabled={isDisabled} />
+    ) : null;
+    const shouldShowPhotoOutsideEditable = !isEditable ? photoThumb : null;
+
     const defaultContent = (
       <>
-        {isDisabled ? textBlock : null}
+        {isDisabled ? (
+          <>
+            {shouldShowPhotoOutsideEditable}
+            {textBlock}
+          </>
+        ) : null}
 
-        {isBare ? textBlock : null}
+        {isBare ? (
+          <>
+            {shouldShowPhotoOutsideEditable}
+            {textBlock}
+          </>
+        ) : null}
 
         {isDefault ? (
           <>
+            {shouldShowPhotoOutsideEditable}
             {textBlock}
             {onEdit != null ? <PencilButton onEdit={onEdit} /> : null}
           </>
