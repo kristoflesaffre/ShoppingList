@@ -91,13 +91,13 @@ export async function POST(req: Request) {
   }
 
   // Stuur naar OpenAI Chat Completions
-  const systemPrompt = `Je bent een recept-extractor. Gegeven de tekst van een webpagina, extraheer het recept en geef een JSON-object terug met de volgende structuur:
+  const systemPrompt = `Je bent een recept-extractor en -vertaler. Gegeven de tekst van een webpagina, extraheer het recept en geef een JSON-object terug. Vertaal alle tekst (naam, bereidingsstappen en ingrediëntnamen) altijd naar het Nederlands, ongeacht de taal van de bronpagina. Geef een JSON-object terug met de volgende structuur:
 {
-  "name": "<naam van het recept, of null als niet gevonden>",
+  "name": "<naam van het recept in het Nederlands, of null als niet gevonden>",
   "persons": <aantal personen als getal, of null als niet gevonden>,
-  "steps": "<bereidingsstappen als genummerde lijst, 1 stap per regel, bv. '1. Verwarm de oven...\\n2. ...'>, leeg als niet gevonden",
+  "steps": "<bereidingsstappen in het Nederlands als genummerde lijst, 1 stap per regel, bv. '1. Verwarm de oven...\\n2. ...'>, leeg als niet gevonden",
   "ingredients": [
-    { "name": "<ingredientnaam>", "quantity": "<hoeveelheid en eenheid, bv. '200 g' of '2 stuks', leeg string als onbekend>" }
+    { "name": "<ingredientnaam in het Nederlands>", "quantity": "<hoeveelheid en eenheid, bv. '200 g' of '2 stuks', leeg string als onbekend>" }
   ]
 }
 Geef alleen dit JSON-object terug, zonder extra tekst.`;

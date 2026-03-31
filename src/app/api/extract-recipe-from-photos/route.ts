@@ -37,9 +37,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const systemPrompt = `Je bent een recept-extractor die foto's analyseert (bv. screenshots van recepten, foto's van gerechten of receptenboeken). Analyseer alle aangeleverde afbeeldingen samen en extraheer het recept. Volg deze regels strikt:
+  const systemPrompt = `Je bent een recept-extractor en -vertaler die foto's analyseert (bv. screenshots van recepten, foto's van gerechten of receptenboeken). Analyseer alle aangeleverde afbeeldingen samen en extraheer het recept. Vertaal alle tekst (naam, bereidingsstappen en ingrediëntnamen) altijd naar het Nederlands, ongeacht de taal op de foto's. Volg deze regels strikt:
 
-1. Extraheer naam, aantal personen, bereidingsstappen en ingrediënten.
+1. Extraheer naam, aantal personen, bereidingsstappen en ingrediënten, en vertaal alles naar het Nederlands.
 2. Als er geen receptnaam zichtbaar is, verzin een logische, begrijpelijke Nederlandstalige naam op basis van de zichtbare ingrediënten of het gerecht.
 3. Converteer alle hoeveelheden van Amerikaans naar metrisch systeem:
    - 1 cup vloeistof = 240 ml
@@ -53,11 +53,11 @@ export async function POST(req: Request) {
 
 Geef alleen dit JSON-object terug, zonder extra tekst of markdown:
 {
-  "name": "<receptnaam, nooit null>",
+  "name": "<receptnaam in het Nederlands, nooit null>",
   "persons": <aantal personen als getal, of null als onbekend>,
-  "steps": "<genummerde bereidingsstappen, 1 per regel, leeg als onbekend>",
+  "steps": "<genummerde bereidingsstappen in het Nederlands, 1 per regel, leeg als onbekend>",
   "ingredients": [
-    { "name": "<ingredientnaam>", "quantity": "<hoeveelheid en eenheid in metrisch, leeg als onbekend>" }
+    { "name": "<ingredientnaam in het Nederlands>", "quantity": "<hoeveelheid en eenheid in metrisch, leeg als onbekend>" }
   ]
 }`;
 
