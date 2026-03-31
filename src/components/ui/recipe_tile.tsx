@@ -204,7 +204,7 @@ const RecipeTile = React.forwardRef<HTMLDivElement, RecipeTileProps>(
     const hasPhoto = trimmedPhoto != null;
 
     const containerClassName = cn(
-      "flex w-full min-w-0 items-center rounded-md",
+      "flex w-full min-w-0 items-center rounded-md min-h-12",
       isDisabled
         ? "gap-3 bg-[var(--blue-25)] py-[var(--space-3)] pl-[var(--space-4)] pr-[var(--space-3)] pointer-events-none"
         : "gap-3 bg-[var(--white)] py-[var(--space-3)] pl-[var(--space-4)] pr-[var(--space-3)] shadow-drop",
@@ -228,30 +228,30 @@ const RecipeTile = React.forwardRef<HTMLDivElement, RecipeTileProps>(
       />
     );
 
-    const photoThumb = hasPhoto ? (
-      <RecipePhotoThumb src={trimmedPhoto} isDisabled={isDisabled} />
-    ) : null;
-    const shouldShowPhotoOutsideEditable = !isEditable ? photoThumb : null;
+    const photoSlot =
+      !isEditable && hasPhoto ? (
+        <RecipePhotoThumb src={trimmedPhoto} isDisabled={isDisabled} />
+      ) : null;
 
     const defaultContent = (
       <>
         {isDisabled ? (
           <>
-            {shouldShowPhotoOutsideEditable}
+            {photoSlot}
             {textBlock}
           </>
         ) : null}
 
         {isBare ? (
           <>
-            {shouldShowPhotoOutsideEditable}
+            {photoSlot}
             {textBlock}
           </>
         ) : null}
 
         {isDefault ? (
           <>
-            {shouldShowPhotoOutsideEditable}
+            {photoSlot}
             {textBlock}
             {onEdit != null ? <PencilButton onEdit={onEdit} /> : null}
           </>

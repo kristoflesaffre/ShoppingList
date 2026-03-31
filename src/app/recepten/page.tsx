@@ -32,7 +32,6 @@ import { RecipeEditorSlideIn } from "@/app/recepten/recipe_editor_slide_in";
 import { Snackbar } from "@/components/ui/snackbar";
 import {
   APP_FAB_BOTTOM_CLASS,
-  APP_FAB_INNER_PX4_CLASS,
 } from "@/lib/app-layout";
 import type { SavedRecipe } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
@@ -440,12 +439,14 @@ export default function ReceptenPage() {
           APP_FAB_BOTTOM_CLASS,
         )}
       >
-        <div className={APP_FAB_INNER_PX4_CLASS}>
-          <FloatingActionButton
-            aria-label="Nieuw recept"
-            className="pointer-events-auto"
-            onClick={openNew}
-          />
+        <div className="px-[16px]">
+          <div className="mx-auto flex w-full max-w-[956px] justify-end">
+            <FloatingActionButton
+              aria-label="Nieuw recept"
+              className="pointer-events-auto"
+              onClick={openNew}
+            />
+          </div>
         </div>
       </div>
     </div>
