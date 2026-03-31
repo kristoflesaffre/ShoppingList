@@ -117,6 +117,7 @@ export default function ReceptDetailPage() {
       id: r.id,
       name: r.name,
       link: r.link,
+      steps: r.steps ?? "",
       persons: r.persons,
       photoUrl: r.photoUrl ?? null,
       ingredients: [...(r.ingredients ?? [])]
@@ -324,6 +325,10 @@ export default function ReceptDetailPage() {
     savedRecipe.name.length > 28
       ? `${savedRecipe.name.slice(0, 28)}…`
       : savedRecipe.name;
+  const recipeSteps = (savedRecipe.steps ?? "")
+    .split(/\r?\n/)
+    .map((s) => s.trim().replace(/^\d+[.)]\s*/, ""))
+    .filter((s) => s.length > 0);
 
   return (
     <div className="relative min-h-dvh w-full bg-[var(--white)]">
@@ -499,9 +504,28 @@ export default function ReceptDetailPage() {
           ) : null}
 
           {detailTab === "recept" ? (
-            <div className="relative z-[1] flex flex-col items-center gap-6 pt-6">
+            <div className="relative z-[1] flex flex-col gap-6">
+              {recipeSteps.length > 0 ? (
+                <ol className="flex flex-col gap-4">
+                  {recipeSteps.map((step, index) => (
+                    <React.Fragment key={`${index}-${step}`}>
+                      <li className="flex items-start gap-6">
+                        <span className="shrink-0 text-2xl font-bold leading-24 tracking-normal text-[var(--text-primary)]">
+                          {index + 1}
+                        </span>
+                        <p className="min-w-0 flex-1 text-base font-normal leading-24 tracking-normal text-[var(--text-secondary)]">
+                          {step}
+                        </p>
+                      </li>
+                      {index < recipeSteps.length - 1 && (
+                        <div className="h-px w-full bg-[var(--border-subtle)]" />
+                      )}
+                    </React.Fragment>
+                  ))}
+                </ol>
+              ) : null}
               {savedRecipe.link.trim() ? (
-                <MiniButton variant="secondary" asChild>
+                <MiniButton variant="secondary" asChild className="self-center">
                   <a
                     href={savedRecipe.link.trim()}
                     target="_blank"
@@ -514,6 +538,7 @@ export default function ReceptDetailPage() {
                 <MiniButton
                   type="button"
                   variant="secondary"
+                  className="self-center"
                   onClick={openEditor}
                 >
                   Link recept

@@ -13,6 +13,8 @@ export type SavedRecipe = {
   id: string;
   name: string;
   link: string;
+  /** Optionele bereidingsstappen (plain text, 1 stap per regel). */
+  steps?: string;
   persons: number;
   /** Optionele receptfoto (data-URL). */
   photoUrl?: string | null;

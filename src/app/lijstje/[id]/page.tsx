@@ -1526,6 +1526,7 @@ export default function ListDetailPage({
         id: r.id,
         name: r.name,
         link: r.link,
+        steps: r.steps ?? "",
         persons: r.persons,
         photoUrl: r.photoUrl ?? null,
         ingredients: [...(r.ingredients ?? [])]

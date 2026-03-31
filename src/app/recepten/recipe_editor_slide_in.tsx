@@ -22,6 +22,7 @@ type RecipeRow = {
   id: string;
   ingredients?: Array<{ id: string }>;
   order?: number;
+  steps?: string;
   photoUrl?: string;
 };
 
@@ -38,23 +39,30 @@ export function RecipeEditorSlideIn({
 }) {
   const [recipeName, setRecipeName] = React.useState("");
   const [recipeLink, setRecipeLink] = React.useState("");
+  const [recipeSteps, setRecipeSteps] = React.useState("");
   const [recipePersons, setRecipePersons] = React.useState(2);
   const [ingredients, setIngredients] = React.useState<RecipeIngredient[]>([]);
   const [ingredientSlideOpen, setIngredientSlideOpen] = React.useState(false);
   const [editingIngredientId, setEditingIngredientId] = React.useState<
     string | null
   >(null);
+  const [aiLoading, setAiLoading] = React.useState(false);
+  const [aiError, setAiError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!open) return;
+    setAiLoading(false);
+    setAiError(null);
     if (recipeToEdit) {
       setRecipeName(recipeToEdit.name);
       setRecipeLink(recipeToEdit.link);
+      setRecipeSteps(recipeToEdit.steps ?? "");
       setRecipePersons(recipeToEdit.persons);
       setIngredients(recipeToEdit.ingredients);
     } else {
       setRecipeName("");
       setRecipeLink("");
+      setRecipeSteps("");
       setRecipePersons(2);
       setIngredients([]);
     }
@@ -104,6 +112,7 @@ export function RecipeEditorSlideIn({
         db.tx.recipes[recipeId].update({
           name: recipeName.trim(),
           link: recipeLink.trim(),
+          steps: recipeSteps.trim(),
           persons: recipePersons,
           order: isNew ? newOrder : existingOrder,
           ...photoPatch,
@@ -127,6 +136,7 @@ export function RecipeEditorSlideIn({
     [
       recipeName,
       recipeLink,
+      recipeSteps,
       recipePersons,
       ingredients,
       recipeToEdit,
@@ -180,6 +190,50 @@ export function RecipeEditorSlideIn({
     [],
   );
 
+  const handleGebruikAI = React.useCallback(async () => {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await fetch("/api/extract-recipe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: recipeLink }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Onbekende fout" }));
+        throw new Error(
+          typeof err?.error === "string" ? err.error : "Onbekende fout",
+        );
+      }
+      const data = (await res.json()) as {
+        name?: string | null;
+        persons?: number | null;
+        steps?: string;
+        ingredients?: Array<{ name: string; quantity: string }>;
+      };
+      if (data.steps) setRecipeSteps(data.steps);
+      if (data.persons) setRecipePersons(data.persons);
+      if (data.name && !recipeName.trim()) setRecipeName(data.name);
+      if (data.ingredients?.length) {
+        setIngredients(
+          data.ingredients.map((ing) => ({
+            id: `new-${iid()}`,
+            name: ing.name,
+            quantity: ing.quantity,
+          })),
+        );
+      }
+    } catch (e) {
+      setAiError(
+        e instanceof Error
+          ? e.message
+          : "Kon recept niet extraheren. Probeer het opnieuw.",
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  }, [recipeLink, recipeName]);
+
   const ingredientSlideInitial = editingIngredientId
     ? ingredients.find((i) => i.id === editingIngredientId) ?? null
     : null;
@@ -223,12 +277,34 @@ export function RecipeEditorSlideIn({
             onChange={(e) => setRecipeLink(e.target.value)}
           />
           {hasValidRecipeLink ? (
-            <div className="flex justify-end">
-              <MiniButton type="button" variant="secondary">
-                Gebruik AI
+            <div className="flex flex-col items-end gap-1">
+              <MiniButton
+                type="button"
+                variant="secondary"
+                onClick={handleGebruikAI}
+                disabled={aiLoading}
+              >
+                {aiLoading ? "Bezig…" : "Gebruik AI"}
               </MiniButton>
+              {aiError ? (
+                <p className="text-xs text-[var(--color-error,#ef4444)]">
+                  {aiError}
+                </p>
+              ) : null}
             </div>
           ) : null}
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+            Bereidingsstappen
+          </label>
+          <textarea
+            value={recipeSteps}
+            onChange={(e) => setRecipeSteps(e.target.value)}
+            placeholder={"1. Verwarm de oven\n2. Meng de ingrediënten\n3. Bak 25 minuten"}
+            rows={5}
+            className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-elevated)] px-4 py-3 text-base leading-24 tracking-normal text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          />
         </div>
         <Stepper
           label="Aantal personen"

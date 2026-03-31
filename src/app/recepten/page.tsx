@@ -41,6 +41,7 @@ type RecipeUndoSnapshot = {
   id: string;
   name: string;
   link: string;
+  steps?: string;
   persons: number;
   order: number;
   photoUrl?: string | null;
@@ -156,6 +157,7 @@ export default function ReceptenPage() {
         id: r.id,
         name: r.name,
         link: r.link,
+        steps: r.steps ?? "",
         persons: r.persons,
         photoUrl: r.photoUrl ?? null,
         ingredients: [...(r.ingredients ?? [])]
@@ -252,6 +254,7 @@ export default function ReceptenPage() {
         id: r.id,
         name: r.name,
         link: r.link,
+        steps: r.steps ?? "",
         persons: r.persons,
         order: r.order ?? 0,
         photoUrl: r.photoUrl ?? null,
@@ -297,6 +300,7 @@ export default function ReceptenPage() {
       db.tx.recipes[s.id].update({
         name: s.name,
         link: s.link,
+        steps: s.steps ?? "",
         persons: s.persons,
         order: s.order,
         ...(s.photoUrl ? { photoUrl: s.photoUrl } : {}),

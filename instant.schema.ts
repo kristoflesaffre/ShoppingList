@@ -43,6 +43,8 @@ const schema = i.schema({
     recipes: i.entity({
       name: i.string(),
       link: i.string(),
+      /** Optionele bereidingsstappen (plain text, 1 stap per regel). */
+      steps: i.string().optional(),
       persons: i.number(),
       order: i.number(),
       /** Data-URL of gecodeerde receptfoto (zelfde patroon als profiel-avatar). */
