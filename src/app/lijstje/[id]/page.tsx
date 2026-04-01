@@ -42,6 +42,11 @@ import { SearchBar } from "@/components/ui/search_bar";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { id as iid } from "@instantdb/react";
 import { cn, isIPhoneDevice } from "@/lib/utils";
+import { LoyaltyCardScanResultSlideIn } from "@/components/loyalty_card_scan_result_slide_in";
+import { LoyaltyCardSwipeShell } from "@/components/loyalty_card_swipe_shell";
+import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
+import { decodeLoyaltyCard } from "@/lib/decode_loyalty_card";
+import type { DecodeResult } from "@/lib/loyalty_card";
 import { db } from "@/lib/db";
 import { ShareListModal } from "@/components/share_list_modal";
 import {
@@ -1514,6 +1519,19 @@ export default function ListDetailPage({
   const [addingId, setAddingId] = React.useState<string | null>(null);
   const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
   const [shareModalOpen, setShareModalOpen] = React.useState(false);
+  const [loyaltyCardSlideOpen, setLoyaltyCardSlideOpen] = React.useState(false);
+  const [loyaltyCardViewSlideOpen, setLoyaltyCardViewSlideOpen] = React.useState(false);
+  const [loyaltyCardScanResultOpen, setLoyaltyCardScanResultOpen] = React.useState(false);
+  const [loyaltyDecodeResult, setLoyaltyDecodeResult] = React.useState<Extract<DecodeResult, { ok: true }> | null>(null);
+  const [loyaltyDecodeError, setLoyaltyDecodeError] = React.useState<string | null>(null);
+  const [loyaltySaving, setLoyaltySaving] = React.useState(false);
+  const loyaltyCardPhotoInputRef = React.useRef<HTMLInputElement>(null);
+  const { data: loyaltyCardData } = db.useQuery(
+    listId
+      ? { lists: { loyaltyCard: {}, $: { where: { id: listId } } } }
+      : null,
+  );
+  const existingLoyaltyCard = loyaltyCardData?.lists?.[0]?.loyaltyCard ?? null;
   const { data: recipeData } = db.useQuery({
     recipes: { ingredients: {} },
   });
@@ -2011,6 +2029,12 @@ export default function ListDetailPage({
     })
   );
 
+  const showLoyaltySwipe =
+    !isMasterList &&
+    existingLoyaltyCard != null &&
+    typeof existingLoyaltyCard.rawValue === "string" &&
+    existingLoyaltyCard.rawValue.length > 0;
+
   if (authLoading || !user || isLoading) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
@@ -2030,8 +2054,14 @@ export default function ListDetailPage({
     );
   }
 
-  return (
-    <div className="relative w-full min-h-dvh">
+  const mainSurfaceClassName = cn(
+    "pb-[calc(243px+env(safe-area-inset-bottom,0px))]",
+    !showLoyaltySwipe &&
+      "mt-[calc(56px+env(safe-area-inset-top,0px))]",
+    isMasterList ? "pt-8" : "pt-4",
+  );
+
+  const listAppHeader = (
       <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
         <header className="mx-auto flex h-14 max-w-[956px] items-center gap-4 px-4">
           <button
@@ -2066,15 +2096,11 @@ export default function ListDetailPage({
           </button>
         </header>
       </div>
+  );
 
+  const listMain = (
       <main
-        className={cn(
-          /* Geen px-4 op main: zelfde patroon als header (max-w + mx-auto + px-4 op één kolom),
-             anders op bredere schermen een andere linkerrand dan de terugpijl. */
-          "pb-[calc(243px+env(safe-area-inset-bottom,0px))]",
-          "mt-[calc(56px+env(safe-area-inset-top,0px))]",
-          isMasterList ? "pt-8" : "pt-4",
-        )}
+        className={mainSurfaceClassName}
       >
         {/* Geen extra gradient: zelfde principe als gewone lijstdetail — alleen body::before (globals.css). */}
         <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6 px-4">
@@ -2132,6 +2158,55 @@ export default function ListDetailPage({
                 />
               ) : null}
             </div>
+          ) : null}
+
+          {isMasterList ? (
+            existingLoyaltyCard ? (
+              <div className="flex w-full items-center gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--white)] py-3 pl-4 pr-3">
+                {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
+                <img
+                  src={listIcon}
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="size-6 shrink-0 object-contain"
+                />
+                <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-tertiary)]">
+                  Klantenkaart gekoppeld
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setLoyaltyCardViewSlideOpen(true)}
+                  className="shrink-0 text-xs font-normal leading-4 tracking-normal text-[var(--blue-500)] underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                >
+                  Wijzigen
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLoyaltyCardSlideOpen(true)}
+                className="flex w-full items-center gap-3 rounded-lg border border-dashed border-[var(--blue-500)] bg-[var(--white)] py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                <span
+                  aria-hidden="true"
+                  className="inline-block size-6 shrink-0 bg-[var(--blue-500)]"
+                  style={{
+                    WebkitMaskImage: 'url("/icons/icons/qr.svg")',
+                    maskImage: 'url("/icons/icons/qr.svg")',
+                    WebkitMaskRepeat: "no-repeat",
+                    maskRepeat: "no-repeat",
+                    WebkitMaskSize: "contain",
+                    maskSize: "contain",
+                    WebkitMaskPosition: "center",
+                    maskPosition: "center",
+                  }}
+                />
+                <p className="text-sm font-normal leading-20 tracking-normal text-[var(--blue-500)]">
+                  Klantenkaart koppelen
+                </p>
+              </button>
+            )
           ) : null}
 
           {!hasItems ? (
@@ -2225,7 +2300,10 @@ export default function ListDetailPage({
           )}
         </div>
       </main>
+  );
 
+  const listBottomChrome = (
+    <>
       {snackbarMessage && (
         <div
           className="fixed inset-x-0 bottom-[calc(168px+env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-2"
@@ -2253,7 +2331,11 @@ export default function ListDetailPage({
           </div>
         </div>
       ) : null}
+    </>
+  );
 
+  const listModals = (
+    <>
       <NewItemModal
         open={isNewItemOpen || editingItem != null}
         onClose={() => {
@@ -2277,6 +2359,188 @@ export default function ListDetailPage({
         shareUrl={shareUrl}
         urlReady={Boolean(listData?.shareToken && shareUrl)}
       />
+
+      <input
+        ref={loyaltyCardPhotoInputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        tabIndex={-1}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          e.target.value = "";
+          setLoyaltyDecodeError(null);
+          const reader = new FileReader();
+          reader.onload = async () => {
+            const dataUrl = reader.result as string;
+            const result = await decodeLoyaltyCard(dataUrl);
+            if (!result.ok) {
+              setLoyaltyDecodeError(result.error);
+              return;
+            }
+            setLoyaltyDecodeResult(result);
+            setLoyaltyCardScanResultOpen(true);
+          };
+          reader.readAsDataURL(file);
+        }}
+      />
+
+      <SlideInModal
+        open={loyaltyCardSlideOpen}
+        onClose={() => setLoyaltyCardSlideOpen(false)}
+        title="Klantenkaart koppelen"
+        titleId="loyalty-card-slide-title"
+        disableEscapeClose={loyaltyCardScanResultOpen}
+        footer={
+          <div className="flex w-full flex-col items-center gap-3">
+            {loyaltyDecodeError ? (
+              <p className="text-center text-xs text-[var(--color-error,#ef4444)]">
+                {loyaltyDecodeError}
+              </p>
+            ) : null}
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                setLoyaltyDecodeError(null);
+                loyaltyCardPhotoInputRef.current?.click();
+              }}
+            >
+              Screenshot toevoegen
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center gap-6 px-4 text-center">
+          <span
+            aria-hidden="true"
+            className="inline-block size-20 shrink-0 bg-[var(--blue-500)]"
+            style={{
+              WebkitMaskImage: 'url("/icons/icons/qr.svg")',
+              maskImage: 'url("/icons/icons/qr.svg")',
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+            }}
+          />
+          <div className="flex flex-col gap-2">
+            <h3 className="text-base font-semibold leading-24 tracking-normal text-[var(--text-primary)]">
+              Maak een screenshot van je klantenkaart
+            </h3>
+            <p className="text-sm font-normal leading-20 tracking-normal text-[var(--text-secondary)]">
+              Upload een screenshot van de QR-code of barcode op je klantenkaart.
+              We bewaren deze zodat de kassier hem kan scannen tijdens het afrekenen.
+            </p>
+          </div>
+        </div>
+      </SlideInModal>
+
+      <SlideInModal
+        open={loyaltyCardViewSlideOpen}
+        onClose={() => setLoyaltyCardViewSlideOpen(false)}
+        title="Klantenkaart"
+        titleId="loyalty-card-view-slide-title"
+        disableEscapeClose={loyaltyCardScanResultOpen}
+        footer={
+          <div className="flex w-full flex-col items-center gap-3">
+            {loyaltyDecodeError ? (
+              <p className="text-center text-xs text-[var(--color-error,#ef4444)]">
+                {loyaltyDecodeError}
+              </p>
+            ) : null}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setLoyaltyDecodeError(null);
+                loyaltyCardPhotoInputRef.current?.click();
+              }}
+            >
+              Nieuwe screenshot opladen
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center gap-6 px-4">
+          {existingLoyaltyCard ? (
+            <>
+              <div className="flex items-center justify-center rounded-xl bg-white p-4 shadow-sm">
+                <LoyaltyCardDisplay
+                  codeType={existingLoyaltyCard.codeType as "qr" | "barcode"}
+                  codeFormat={existingLoyaltyCard.codeFormat}
+                  rawValue={existingLoyaltyCard.rawValue}
+                />
+              </div>
+            </>
+          ) : null}
+        </div>
+      </SlideInModal>
+
+      <LoyaltyCardScanResultSlideIn
+        open={loyaltyCardScanResultOpen}
+        onClose={() => setLoyaltyCardScanResultOpen(false)}
+        onBack={() => setLoyaltyCardScanResultOpen(false)}
+        decodeResult={loyaltyDecodeResult}
+        saving={loyaltySaving}
+        onSave={async () => {
+          if (!loyaltyDecodeResult || !listId) return;
+          setLoyaltySaving(true);
+          try {
+            const cardId = iid();
+            await db.transact([
+              ...(existingLoyaltyCard
+                ? [db.tx.loyaltyCards[existingLoyaltyCard.id].delete()]
+                : []),
+              db.tx.loyaltyCards[cardId].update({
+                codeType: loyaltyDecodeResult.codeType,
+                codeFormat: loyaltyDecodeResult.codeFormat,
+                rawValue: loyaltyDecodeResult.rawValue,
+                cardName: listData?.name ?? "",
+                createdAtIso: new Date().toISOString(),
+              }),
+              db.tx.lists[listId].link({ loyaltyCard: cardId }),
+            ]);
+            setLoyaltyCardScanResultOpen(false);
+            setLoyaltyCardSlideOpen(false);
+            setLoyaltyCardViewSlideOpen(false);
+          } finally {
+            setLoyaltySaving(false);
+          }
+        }}
+      />
+    </>
+  );
+
+  const listDetailRoot = (
+    <div className="relative w-full min-h-dvh">
+      {listAppHeader}
+      {listMain}
+      {listBottomChrome}
+      {listModals}
     </div>
   );
+
+  if (showLoyaltySwipe && existingLoyaltyCard) {
+    return (
+      <>
+        <LoyaltyCardSwipeShell
+          appHeader={listAppHeader}
+          bottomChrome={listBottomChrome}
+          listIcon={listIcon}
+          codeType={existingLoyaltyCard.codeType as "qr" | "barcode"}
+          codeFormat={String(existingLoyaltyCard.codeFormat ?? "")}
+          rawValue={existingLoyaltyCard.rawValue}
+        >
+          {listMain}
+        </LoyaltyCardSwipeShell>
+        {listModals}
+      </>
+    );
+  }
+
+  return listDetailRoot;
 }

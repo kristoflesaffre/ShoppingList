@@ -46,3 +46,13 @@ export function findMasterStoreBySlug(
 ): (typeof MASTER_STORE_OPTIONS)[number] | undefined {
   return MASTER_STORE_OPTIONS.find((s) => s.slug === slug);
 }
+
+/** Zelfde logo-bestandsnaam als op het lijstje → winkelnaam voor o.a. klantenkaart-titel. */
+export function masterStoreLabelFromListIcon(iconPath: string): string {
+  const logoFile = iconPath.split("/").pop() ?? "";
+  if (!logoFile) return "";
+  const match = MASTER_STORE_OPTIONS.find(
+    (s) => (s.logoSrc.split("/").pop() ?? "") === logoFile,
+  );
+  return match?.label ?? "";
+}

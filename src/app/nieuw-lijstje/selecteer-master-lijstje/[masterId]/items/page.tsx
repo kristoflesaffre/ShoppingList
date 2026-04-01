@@ -23,12 +23,21 @@ type TemplateItem = {
   recipeLink?: string;
 };
 
+type MasterLoyaltySnapshot = {
+  codeType: string;
+  codeFormat: string;
+  rawValue: string;
+  cardName: string;
+};
+
 type MasterList = {
   id: string;
   name: string;
   icon: string;
   items: TemplateItem[];
   order: number;
+  /** Gekopieerd naar het nieuwe lijstje wanneer aanwezig op de master. */
+  loyaltyCard: MasterLoyaltySnapshot | null;
 };
 
 function BackArrowIcon({ className }: { className?: string }) {
@@ -250,6 +259,7 @@ export default function SelecteerMasterItemsPage() {
   const { isLoading, error, data } = db.useQuery({
     lists: {
       items: {},
+      loyaltyCard: {},
       $: { where: { ownerId } },
     },
   });
@@ -283,12 +293,35 @@ export default function SelecteerMasterItemsPage() {
         recipeName: typeof i.recipeName === "string" ? i.recipeName : undefined,
         recipeLink: typeof i.recipeLink === "string" ? i.recipeLink : undefined,
       }));
+    const lc = (found as { loyaltyCard?: unknown }).loyaltyCard as
+      | Record<string, unknown>
+      | null
+      | undefined;
+    let loyaltyCard: MasterLoyaltySnapshot | null = null;
+    if (
+      lc &&
+      typeof lc.codeType === "string" &&
+      typeof lc.rawValue === "string" &&
+      lc.rawValue.length > 0
+    ) {
+      loyaltyCard = {
+        codeType: lc.codeType,
+        codeFormat: typeof lc.codeFormat === "string" ? lc.codeFormat : "",
+        rawValue: lc.rawValue,
+        cardName:
+          typeof lc.cardName === "string" && lc.cardName.trim().length > 0
+            ? lc.cardName
+            : String(found.name ?? "Master lijstje"),
+      };
+    }
+
     return {
       id: String(found.id),
       name: String(found.name ?? "Master lijstje"),
       icon: String(found.icon),
       items,
       order: typeof found.order === "number" ? found.order : 0,
+      loyaltyCard,
     };
   }, [data?.lists, masterId]);
 
@@ -463,7 +496,7 @@ export default function SelecteerMasterItemsPage() {
           ) - 1
         : 0;
 
-    const txns = [
+    const txns: Parameters<typeof db.transact>[0] = [
       db.tx.lists[newId].update({
         name: listName,
         date: now.toLocaleDateString("nl-NL"),
@@ -491,7 +524,22 @@ export default function SelecteerMasterItemsPage() {
       ),
     ];
 
-    db.transact(txns as Parameters<typeof db.transact>[0]);
+    if (masterList.loyaltyCard) {
+      const cardId = iid();
+      const lc = masterList.loyaltyCard;
+      txns.push(
+        db.tx.loyaltyCards[cardId].update({
+          codeType: lc.codeType,
+          codeFormat: lc.codeFormat,
+          rawValue: lc.rawValue,
+          cardName: lc.cardName,
+          createdAtIso: now.toISOString(),
+        }),
+        db.tx.lists[newId].link({ loyaltyCard: cardId }),
+      );
+    }
+
+    db.transact(txns);
     router.push(`/lijstje/${newId}`);
   }, [
     data?.lists,

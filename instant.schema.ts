@@ -77,6 +77,18 @@ const schema = i.schema({
       passwordSalt: i.string().optional(),
       avatarUrl: i.string().optional(),
     }),
+    /** Gedecodeerde klantenkaart (QR of barcode) gekoppeld aan een masterlijstje. */
+    loyaltyCards: i.entity({
+      /** “qr” of “barcode” */
+      codeType: i.string(),
+      /** Bijv. “QRCode”, “EAN-13”, “Code128” */
+      codeFormat: i.string(),
+      /** De ruwe tekst/URL die werd gedecodeerd. */
+      rawValue: i.string(),
+      /** Naam die de gebruiker heeft ingegeven (bijv. “Colruyt”). */
+      cardName: i.string(),
+      createdAtIso: i.string(),
+    }),
   },
   links: {
     listItems: {
@@ -90,6 +102,10 @@ const schema = i.schema({
     listMemberships: {
       forward: { on: "lists", has: "many", label: "memberships" },
       reverse: { on: "listMembers", has: "one", label: "list" },
+    },
+    listLoyaltyCard: {
+      forward: { on: "lists", has: "one", label: "loyaltyCard" },
+      reverse: { on: "loyaltyCards", has: "one", label: "list" },
     },
   },
 });

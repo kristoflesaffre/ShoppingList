@@ -8,6 +8,11 @@ const nextConfig = {
   serverActions: {
     bodySizeLimit: "20mb",
   },
+  webpack(config) {
+    // Nodig voor zxing-wasm (client-side QR/barcode decoder)
+    config.experiments = { ...config.experiments, asyncWebAssembly: true };
+    return config;
+  },
 };
 
 export default nextConfig;

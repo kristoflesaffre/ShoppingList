@@ -162,6 +162,12 @@ export function SwipeToDelete({
         }
         return;
       }
+      /* Alleen naar-links = verwijderen; naar-rechts niet vastleggen (o.a. horizontaal scrollen). */
+      if (dx >= 0) {
+        draggingRef.current = false;
+        pointerIdRef.current = null;
+        return;
+      }
       axisLockedRef.current = "h";
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -179,7 +185,13 @@ export function SwipeToDelete({
       maxRevealRef.current,
     );
 
-    if (e.cancelable && Math.abs(dx) > PREVENT_DEFAULT_DX) e.preventDefault();
+    if (
+      e.cancelable &&
+      Math.abs(dx) > PREVENT_DEFAULT_DX &&
+      next < 0
+    ) {
+      e.preventDefault();
+    }
     offsetLiveRef.current = next;
     setOffset(next);
   }, []);
