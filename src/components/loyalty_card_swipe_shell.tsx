@@ -40,6 +40,7 @@ type DragSession = {
   axis: "h" | "v" | null;
   width: number;
   lastExtra: number;
+  fromDeleteSurface: boolean;
   /** Loyalty: meteen capture voor betrouwbare touch op SVG/QR (iOS). */
   earlyCapture: boolean;
 };
@@ -110,7 +111,6 @@ export function LoyaltyCardSwipeShell({
 
   const onPointerDownCapture = React.useCallback((e: React.PointerEvent) => {
     if (e.button !== 0) return;
-    if (isSwipeToDeleteSurface(e.target)) return;
     if (isInteractiveSwipeTarget(e.target)) return;
     const area = swipeAreaRef.current;
     if (!area) return;
@@ -120,6 +120,7 @@ export function LoyaltyCardSwipeShell({
 
     const origin = dragExtraPx;
     const onLoyalty = panelRef.current === "loyalty";
+    const fromDeleteSurface = isSwipeToDeleteSurface(e.target);
     const earlyCapture = onLoyalty;
     if (earlyCapture) {
       try {
@@ -137,6 +138,7 @@ export function LoyaltyCardSwipeShell({
       axis: null,
       width: w,
       lastExtra: origin,
+      fromDeleteSurface,
       earlyCapture,
     };
     setIsDragging(true);
@@ -182,6 +184,14 @@ export function LoyaltyCardSwipeShell({
           } catch {
             /* ignore */
           }
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onUp);
+          window.removeEventListener("pointercancel", onUp);
+          sessionRef.current = null;
+          setIsDragging(false);
+          return;
+        }
+        if (s.fromDeleteSurface && dx < 0) {
           window.removeEventListener("pointermove", onMove);
           window.removeEventListener("pointerup", onUp);
           window.removeEventListener("pointercancel", onUp);
