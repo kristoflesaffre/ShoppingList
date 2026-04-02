@@ -11,7 +11,7 @@ export type ItemCardVariant =
   | "gotten-by-other"
   | "master"
   | "added";
-export type ItemCardState = "default" | "editable";
+export type ItemCardState = "default" | "shared" | "editable";
 export type ItemCardSize = "default";
 /** `bare` = alleen titel + hoeveelheid, border, geen checkbox/acties (Figma 797:4486). */
 export type ItemCardPresentation = "default" | "bare";
@@ -32,7 +32,7 @@ export type ItemCardSyncListClaim = {
  * Item card: single list item with checkbox, name, quantity, and variant-specific actions.
  * Variants: default, gotten-by-you, gotten-by-other, master (797:4807), added (797:5139 – primary-400, minus/plus, witte tekst).
  * Checked state via checked/defaultChecked + onCheckedChange (niet van toepassing op `variant="master"`-layout).
- * States: default, editable.
+ * States: default (zonder claim-icoon), shared (met claim-icoon), editable.
  * Presentation `bare`: statische kaart (wit, rand neutrals/100, pl-16/pr-12/py-12) zonder checkbox, claim of rechterkolom.
  * @param asChild - When true, merges container props onto the single child (Radix Slot)
  */
@@ -397,6 +397,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
 
     const isBare = presentation === "bare";
     const isEditable = state === "editable";
+    const isShared = state === "shared";
     const useSyncClaim = syncListClaim != null;
     const remoteClaimedBy = syncListClaim?.claimedByUserId ?? null;
 
@@ -438,7 +439,10 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
         effectiveVariant === "gotten-by-you" ||
         effectiveVariant === "gotten-by-other");
     const showClaimButton =
-      !isBare && !isEditable && (effectiveVariant === "default" || isGottenByYou);
+      !isBare &&
+      !isEditable &&
+      isShared &&
+      (effectiveVariant === "default" || isGottenByYou);
     const showContentBlock =
       isBare ||
       effectiveVariant === "master" ||
@@ -715,14 +719,14 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
         <AnimatedRightSection
           isVisible={
             isEditable ||
-            (effectiveVariant === "default" && !isChecked) ||
+            (isShared && effectiveVariant === "default" && !isChecked) ||
             isGottenByYou ||
             isGottenByOther
           }
           widthClass={
             isEditable
               ? "w-24"
-              : (effectiveVariant === "default" && !isChecked) ||
+              : (isShared && effectiveVariant === "default" && !isChecked) ||
                   isGottenByYou ||
                   isGottenByOther
                 ? "w-11"
@@ -734,7 +738,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               "absolute inset-0 flex items-center gap-3",
               "transition-opacity [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] duration-[var(--item-card-duration)]",
               !isEditable &&
-              ((effectiveVariant === "default" && !isChecked) ||
+              ((isShared && effectiveVariant === "default" && !isChecked) ||
                 isGottenByYou ||
                 isGottenByOther)
                 ? "opacity-100"

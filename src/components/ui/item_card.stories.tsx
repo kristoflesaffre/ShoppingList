@@ -52,8 +52,8 @@ const meta: Meta<typeof ItemCard> = {
     },
     state: {
       control: "select",
-      options: ["default", "editable"],
-      description: "default or editable",
+      options: ["default", "shared", "editable"],
+      description: "default (zonder claim), shared (met claim), of editable",
     },
     presentation: {
       control: "select",
@@ -73,13 +73,23 @@ export default meta;
 
 type Story = StoryObj<typeof ItemCard>;
 
-/** Default – unchecked, claim hand icon */
+/** Default – unchecked, zonder claim hand icon */
 export const Default: Story = {
   args: {
     itemName: "Item name",
     quantity: "Quantity",
     variant: "default",
     state: "default",
+  },
+};
+
+/** Shared – unchecked, claim hand icon zichtbaar */
+export const Shared: Story = {
+  args: {
+    itemName: "Item name",
+    quantity: "Quantity",
+    variant: "default",
+    state: "shared",
   },
 };
 
@@ -101,7 +111,7 @@ export const GottenByYou: Story = {
     quantity: "Quantity",
     claimedByLabel: "jij haalt dit",
     variant: "gotten-by-you",
-    state: "default",
+    state: "shared",
   },
 };
 
@@ -118,7 +128,7 @@ export const GottenByOther: Story = {
       />
     ),
     variant: "gotten-by-other",
-    state: "default",
+    state: "shared",
   },
 };
 
@@ -209,6 +219,12 @@ export const AllVariants: Story = {
         itemName="Item name"
         quantity="Quantity"
         variant="default"
+        state="shared"
+      />
+      <ItemCard
+        itemName="Item name"
+        quantity="Quantity"
+        variant="default"
         state="default"
         checked
       />
@@ -217,7 +233,7 @@ export const AllVariants: Story = {
         quantity="Quantity"
         claimedByLabel="jij haalt dit"
         variant="gotten-by-you"
-        state="default"
+        state="shared"
       />
       <ItemCard
         itemName="Item name"
@@ -227,7 +243,7 @@ export const AllVariants: Story = {
           <div className="size-8 rounded-full bg-[var(--gray-200)]" aria-hidden />
         }
         variant="gotten-by-other"
-        state="default"
+        state="shared"
       />
       <ItemCard
         itemName="Item name"

@@ -956,6 +956,7 @@ function SortableItemItems({
   sections,
   isEditMode,
   isMasterList,
+  isSharedList,
   removingId,
   removingSectionTitle,
   addingId,
@@ -973,6 +974,7 @@ function SortableItemItems({
   sections: { title: string; items: ListItem[] }[];
   isEditMode: boolean;
   isMasterList: boolean;
+  isSharedList: boolean;
   removingId: string | null;
   removingSectionTitle: string | null;
   addingId: string | null;
@@ -1043,6 +1045,7 @@ function SortableItemItems({
                         isEditMode={isEditMode}
                         isDndActive={isDndActive}
                         isMasterList={isMasterList}
+                        isSharedList={isSharedList}
                         removingId={removingId}
                         addingId={addingId}
                         addingIdExpanded={addingIdExpanded}
@@ -1085,6 +1088,7 @@ function SortableItemItems({
                         isEditMode={isEditMode}
                         isDndActive={isDndActive}
                         isMasterList={isMasterList}
+                        isSharedList={isSharedList}
                         removingId={removingId}
                         addingId={addingId}
                         addingIdExpanded={addingIdExpanded}
@@ -1113,6 +1117,7 @@ function SortableItemRow({
   isEditMode,
   isDndActive,
   isMasterList,
+  isSharedList,
   removingId,
   addingId,
   addingIdExpanded,
@@ -1127,6 +1132,7 @@ function SortableItemRow({
   isEditMode: boolean;
   isDndActive: boolean;
   isMasterList: boolean;
+  isSharedList: boolean;
   removingId: string | null;
   addingId: string | null;
   addingIdExpanded: boolean;
@@ -1155,6 +1161,7 @@ function SortableItemRow({
         item={item}
         isEditMode={isEditMode}
         isMasterList={isMasterList}
+        isSharedList={isSharedList}
         onCheckedChange={(checked) => onCheckedChange(item.id, checked)}
         onRemoteClaimChange={(claimUserId) =>
           onRemoteClaimChange(item.id, claimUserId)
@@ -1172,6 +1179,7 @@ function SortableItemCard({
   item,
   isEditMode,
   isMasterList,
+  isSharedList,
   onCheckedChange,
   onRemoteClaimChange,
   onDelete,
@@ -1182,6 +1190,7 @@ function SortableItemCard({
   item: ListItem;
   isEditMode: boolean;
   isMasterList: boolean;
+  isSharedList: boolean;
   onCheckedChange: (checked: boolean) => void;
   onRemoteClaimChange: (claimUserId: string | null) => void;
   onDelete: () => void;
@@ -1222,7 +1231,7 @@ function SortableItemCard({
           checked={item.checked}
           onCheckedChange={onCheckedChange}
           presentation={isMasterList && !isEditMode ? "bare" : "default"}
-          state={isEditMode ? "editable" : "default"}
+          state={isEditMode ? "editable" : (isSharedList ? "shared" : "default")}
           onDelete={isEditMode ? onDelete : undefined}
           onEdit={isEditMode ? onEdit : undefined}
           dragHandleProps={
@@ -2277,6 +2286,7 @@ export default function ListDetailPage({
                   sections={sections}
                   isEditMode={isEditMode}
                   isMasterList={isMasterList}
+                  isSharedList={showSharedDetailRow}
                   removingId={removingId}
                   removingSectionTitle={removingSectionTitle}
                   addingId={addingId}
