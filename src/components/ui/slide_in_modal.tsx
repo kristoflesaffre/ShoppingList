@@ -182,7 +182,7 @@ export function SlideInModal({
         </div>
         {footer ? (
           <div className="shrink-0 px-4 pb-[24px] pt-4">
-            <div className="mx-auto flex w-full max-w-[768px] justify-center">
+            <div className="mx-auto flex w-full max-w-[320px] flex-col items-stretch gap-3 [&_button]:w-full">
               {footer}
             </div>
           </div>
