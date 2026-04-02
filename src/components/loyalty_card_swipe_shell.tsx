@@ -101,8 +101,10 @@ export function LoyaltyCardSwipeShell({
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const storeLabel = masterStoreLabelFromListIcon(listIcon);
+  /** Figma 903:5986 – titel bv. "Klantenkaart Lidl", page title + bold + lh 32. */
   const loyaltyHeading =
     storeLabel.length > 0 ? `Klantenkaart ${storeLabel}` : "Klantenkaart";
+  const isQrPanel = codeType === "qr";
 
   const translatePx =
     vpW > 0
@@ -268,23 +270,29 @@ export function LoyaltyCardSwipeShell({
             aria-label="Klantenkaart"
             aria-hidden={!loyaltyVisible}
           >
-            <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto overflow-x-hidden px-[var(--space-4)] pb-[calc(var(--space-6)+env(safe-area-inset-bottom,0px))] pt-[var(--space-4)] [touch-action:pan-y]">
-              <h2 className="text-center text-[length:var(--text-page-title)] font-bold leading-[var(--leading-32)] tracking-[var(--tracking-normal)] text-[var(--text-primary)]">
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overflow-x-hidden px-[var(--space-4)] pb-[calc(var(--space-12)+env(safe-area-inset-bottom,0px))] pt-[var(--space-4)] [touch-action:pan-y]">
+              <h2 className="px-[var(--space-2)] text-center text-[length:var(--text-page-title)] font-bold leading-[var(--leading-32)] tracking-[var(--tracking-normal)] text-[var(--text-primary)]">
                 {loyaltyHeading}
               </h2>
-              <div className="mt-[var(--space-8)] box-border flex aspect-square w-[min(256px,70vw)] max-w-full shrink-0 flex-col bg-[var(--white)] p-[var(--space-1)]">
+              {/* Figma 903:5986 – _qr-code--base: 256×256, wit, p 4px (sp-4); logo 98px onder de code */}
+              <div
+                className={cn(
+                  "mt-[var(--space-8)] box-border flex w-full max-w-[256px] shrink-0 flex-col bg-[var(--white)] p-[var(--space-1)]",
+                  isQrPanel && "aspect-square max-h-[256px]",
+                )}
+              >
                 <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden [&_svg]:pointer-events-none">
                   <LoyaltyCardDisplay
                     codeType={codeType}
                     codeFormat={codeFormat}
                     rawValue={rawValue}
                     displaySize="fullscreen"
-                    fullscreenQrSize={248}
+                    fullscreenQrSize={isQrPanel ? 248 : undefined}
                   />
                 </div>
               </div>
               {listIcon ? (
-                <div className="mt-auto flex flex-1 flex-col justify-end pt-[var(--space-8)]">
+                <div className="mt-[var(--space-12)] flex shrink-0 flex-col items-center">
                   {/* eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos */}
                   <img
                     src={listIcon}
