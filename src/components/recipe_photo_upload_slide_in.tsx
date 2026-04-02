@@ -145,7 +145,20 @@ export function RecipePhotoUploadSlideIn({
             onClick={() => fileInputRef.current?.click()}
             className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--border-default)] bg-[var(--bg-elevated)] px-4 py-12 text-center transition-colors hover:border-[var(--blue-500)] hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
-            <UploadIcon />
+            <span
+              aria-hidden="true"
+              className="inline-block size-10 shrink-0 bg-[var(--blue-500)]"
+              style={{
+                WebkitMaskImage: 'url("/icons/icons/image.svg")',
+                maskImage: 'url("/icons/icons/image.svg")',
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+              }}
+            />
             <div className="flex flex-col gap-1">
               <p className="text-base font-medium leading-24 text-[var(--text-primary)]">
                 Tik om foto&apos;s te kiezen
@@ -198,7 +211,8 @@ export function RecipePhotoUploadSlideIn({
 
         <p className="text-center text-xs leading-18 text-[var(--text-tertiary)]">
           AI herkent ingrediënten, bereidingsstappen en de receptnaam. Amerikaanse
-          maateenheden worden automatisch omgezet naar metrisch.
+          maateenheden worden automatisch omgezet naar metrisch, en recepten worden
+          naar het Nederlands vertaald.
         </p>
       </div>
     </SlideInModal>
@@ -238,34 +252,6 @@ function compressImage(file: File, maxDim = 1024, quality = 0.85): Promise<strin
     };
     img.src = objectUrl;
   });
-}
-
-function UploadIcon() {
-  return (
-    <svg
-      width="40"
-      height="40"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-      className="text-[var(--blue-500)]"
-    >
-      <path
-        d="M12 16V8M12 8L9 11M12 8L15 11"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8 20H5C3.89543 20 3 19.1046 3 18V6C3 4.89543 3.89543 4 5 4H19C20.1046 4 21 4.89543 21 6V18C21 19.1046 20.1046 20 19 20H16"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 function SmallCrossIcon() {
