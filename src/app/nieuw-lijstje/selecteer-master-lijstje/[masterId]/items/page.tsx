@@ -38,6 +38,8 @@ type MasterList = {
   order: number;
   /** Gekopieerd naar het nieuwe lijstje wanneer aanwezig op de master. */
   loyaltyCard: MasterLoyaltySnapshot | null;
+  /** Tweede slot (Lidl) bij combi Lidl/Delhaize-master. */
+  loyaltyCardSecondary: MasterLoyaltySnapshot | null;
 };
 
 function BackArrowIcon({ className }: { className?: string }) {
@@ -260,6 +262,7 @@ export default function SelecteerMasterItemsPage() {
     lists: {
       items: {},
       loyaltyCard: {},
+      loyaltyCardSecondary: {},
       $: { where: { ownerId } },
     },
   });
@@ -315,6 +318,26 @@ export default function SelecteerMasterItemsPage() {
       };
     }
 
+    const lc2 = (found as { loyaltyCardSecondary?: unknown })
+      .loyaltyCardSecondary as Record<string, unknown> | null | undefined;
+    let loyaltyCardSecondary: MasterLoyaltySnapshot | null = null;
+    if (
+      lc2 &&
+      typeof lc2.codeType === "string" &&
+      typeof lc2.rawValue === "string" &&
+      lc2.rawValue.length > 0
+    ) {
+      loyaltyCardSecondary = {
+        codeType: lc2.codeType,
+        codeFormat: typeof lc2.codeFormat === "string" ? lc2.codeFormat : "",
+        rawValue: lc2.rawValue,
+        cardName:
+          typeof lc2.cardName === "string" && lc2.cardName.trim().length > 0
+            ? lc2.cardName
+            : String(found.name ?? "Master lijstje"),
+      };
+    }
+
     return {
       id: String(found.id),
       name: String(found.name ?? "Master lijstje"),
@@ -322,6 +345,7 @@ export default function SelecteerMasterItemsPage() {
       items,
       order: typeof found.order === "number" ? found.order : 0,
       loyaltyCard,
+      loyaltyCardSecondary,
     };
   }, [data?.lists, masterId]);
 
@@ -536,6 +560,21 @@ export default function SelecteerMasterItemsPage() {
           createdAtIso: now.toISOString(),
         }),
         db.tx.lists[newId].link({ loyaltyCard: cardId }),
+      );
+    }
+
+    if (masterList.loyaltyCardSecondary) {
+      const cardId2 = iid();
+      const lc2 = masterList.loyaltyCardSecondary;
+      txns.push(
+        db.tx.loyaltyCards[cardId2].update({
+          codeType: lc2.codeType,
+          codeFormat: lc2.codeFormat,
+          rawValue: lc2.rawValue,
+          cardName: lc2.cardName,
+          createdAtIso: now.toISOString(),
+        }),
+        db.tx.lists[newId].link({ loyaltyCardSecondary: cardId2 }),
       );
     }
 

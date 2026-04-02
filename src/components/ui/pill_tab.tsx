@@ -36,8 +36,9 @@ export interface PillTabProps {
 const containerBase =
   "relative flex w-full gap-0 overflow-hidden rounded-pill border border-[var(--gray-100)] bg-[var(--gray-25)]";
 
+/** vaste min-h: actief (semibold) vs inactief (normal) mag de pill niet laten verspringen (Figma 903:6212). */
 const tabBase =
-  "flex flex-1 min-w-0 items-center justify-center text-base leading-24 tracking-normal whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
+  "flex min-h-[48px] flex-1 min-w-0 items-center justify-center text-base leading-[length:var(--leading-24)] tracking-normal whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
 
 const sizeStyles: Record<PillTabSize, string> = {
   default: "px-4 py-2",

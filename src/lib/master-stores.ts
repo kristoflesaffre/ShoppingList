@@ -56,3 +56,16 @@ export function masterStoreLabelFromListIcon(iconPath: string): string {
   );
   return match?.label ?? "";
 }
+
+/** Combi Lidl+Delhaize (Figma 913:5842): twee loyalty-slots op één lijst. */
+export function listIconIsLidlDelhaizeCombo(iconPath: string): boolean {
+  const logoFile = iconPath.split("/").pop() ?? "";
+  return logoFile === "logos-lidl-delhaize.svg";
+}
+
+const delhaizeStore = MASTER_STORE_OPTIONS.find((s) => s.slug === "delhaize")!;
+const lidlStore = MASTER_STORE_OPTIONS.find((s) => s.slug === "lidl")!;
+
+/** Logo’s per loyalty-slot bij `lidl-delhaize` combi (primary = Delhaize, secondary = Lidl). */
+export const LOYALTY_COMBO_PRIMARY_LOGO_SRC = delhaizeStore.logoSrc;
+export const LOYALTY_COMBO_SECONDARY_LOGO_SRC = lidlStore.logoSrc;

@@ -107,6 +107,11 @@ const schema = i.schema({
       forward: { on: "lists", has: "one", label: "loyaltyCard" },
       reverse: { on: "loyaltyCards", has: "one", label: "list" },
     },
+    /** Tweede slot (Lidl) bij combi-master `lidl-delhaize`; primary blijft Delhaize. */
+    listLoyaltyCardSecondary: {
+      forward: { on: "lists", has: "one", label: "loyaltyCardSecondary" },
+      reverse: { on: "loyaltyCards", has: "one", label: "listSecondary" },
+    },
   },
 });
 

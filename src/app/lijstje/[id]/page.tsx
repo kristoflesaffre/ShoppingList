@@ -43,7 +43,10 @@ import { RecipeTile } from "@/components/ui/recipe_tile";
 import { id as iid } from "@instantdb/react";
 import { cn, isIPhoneDevice } from "@/lib/utils";
 import { LoyaltyCardScanResultSlideIn } from "@/components/loyalty_card_scan_result_slide_in";
-import { LoyaltyCardSwipeShell } from "@/components/loyalty_card_swipe_shell";
+import {
+  LoyaltyCardSwipeShell,
+  type LoyaltySwipePane,
+} from "@/components/loyalty_card_swipe_shell";
 import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
 import { decodeLoyaltyCard } from "@/lib/decode_loyalty_card";
 import type { DecodeResult } from "@/lib/loyalty_card";
@@ -53,7 +56,13 @@ import {
   type RecipeIngredient,
   type SavedRecipe,
 } from "@/lib/recipe_library";
-import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
+import {
+  MASTER_STORE_OPTIONS,
+  listIconIsLidlDelhaizeCombo,
+  LOYALTY_COMBO_PRIMARY_LOGO_SRC,
+  LOYALTY_COMBO_SECONDARY_LOGO_SRC,
+  masterStoreLabelFromListIcon,
+} from "@/lib/master-stores";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import {
   APP_FAB_INNER_PX4_CLASS,
@@ -1535,13 +1544,29 @@ export default function ListDetailPage({
   const [loyaltyDecodeError, setLoyaltyDecodeError] = React.useState<string | null>(null);
   const [loyaltySaving, setLoyaltySaving] = React.useState(false);
   const [loyaltyPanel, setLoyaltyPanel] = React.useState<"list" | "loyalty">("list");
+  /** Bij combi Lidl/Delhaize: welk slot koppelen/hernieuwen (primary = Delhaize). */
+  const [loyaltySlot, setLoyaltySlot] = React.useState<"delhaize" | "lidl">(
+    "delhaize",
+  );
+  const [loyaltyViewSlot, setLoyaltyViewSlot] = React.useState<
+    "delhaize" | "lidl"
+  >("delhaize");
   const loyaltyCardPhotoInputRef = React.useRef<HTMLInputElement>(null);
   const { data: loyaltyCardData } = db.useQuery(
     listId
-      ? { lists: { loyaltyCard: {}, $: { where: { id: listId } } } }
+      ? {
+          lists: {
+            loyaltyCard: {},
+            loyaltyCardSecondary: {},
+            $: { where: { id: listId } },
+          },
+        }
       : null,
   );
   const existingLoyaltyCard = loyaltyCardData?.lists?.[0]?.loyaltyCard ?? null;
+  const existingLoyaltyCardSecondary =
+    loyaltyCardData?.lists?.[0]?.loyaltyCardSecondary ?? null;
+  const isLidlDelhaizeList = listIconIsLidlDelhaizeCombo(listIcon);
   const { data: recipeData } = db.useQuery({
     recipes: { ingredients: {} },
   });
@@ -2039,11 +2064,62 @@ export default function ListDetailPage({
     })
   );
 
-  const showLoyaltySwipe =
-    !isMasterList &&
-    existingLoyaltyCard != null &&
-    typeof existingLoyaltyCard.rawValue === "string" &&
-    existingLoyaltyCard.rawValue.length > 0;
+  const loyaltySwipePanes = React.useMemo((): LoyaltySwipePane[] => {
+    const panes: LoyaltySwipePane[] = [];
+    if (isLidlDelhaizeList) {
+      if (
+        existingLoyaltyCard &&
+        typeof existingLoyaltyCard.rawValue === "string" &&
+        existingLoyaltyCard.rawValue.length > 0
+      ) {
+        panes.push({
+          heading: "Klantenkaart Delhaize",
+          codeType: existingLoyaltyCard.codeType as "qr" | "barcode",
+          codeFormat: String(existingLoyaltyCard.codeFormat ?? ""),
+          rawValue: existingLoyaltyCard.rawValue,
+          footerLogoSrc: LOYALTY_COMBO_PRIMARY_LOGO_SRC,
+          pillTabLabel: "Delhaize",
+        });
+      }
+      if (
+        existingLoyaltyCardSecondary &&
+        typeof existingLoyaltyCardSecondary.rawValue === "string" &&
+        existingLoyaltyCardSecondary.rawValue.length > 0
+      ) {
+        panes.push({
+          heading: "Klantenkaart Lidl",
+          codeType: existingLoyaltyCardSecondary.codeType as "qr" | "barcode",
+          codeFormat: String(existingLoyaltyCardSecondary.codeFormat ?? ""),
+          rawValue: existingLoyaltyCardSecondary.rawValue,
+          footerLogoSrc: LOYALTY_COMBO_SECONDARY_LOGO_SRC,
+          pillTabLabel: "Lidl",
+        });
+      }
+    } else if (
+      existingLoyaltyCard &&
+      typeof existingLoyaltyCard.rawValue === "string" &&
+      existingLoyaltyCard.rawValue.length > 0
+    ) {
+      const label = masterStoreLabelFromListIcon(listIcon);
+      panes.push({
+        heading: label ? `Klantenkaart ${label}` : "Klantenkaart",
+        codeType: existingLoyaltyCard.codeType as "qr" | "barcode",
+        codeFormat: String(existingLoyaltyCard.codeFormat ?? ""),
+        rawValue: existingLoyaltyCard.rawValue,
+        footerLogoSrc: listIcon,
+      });
+    }
+    return panes;
+  }, [
+    isLidlDelhaizeList,
+    listIcon,
+    existingLoyaltyCard,
+    existingLoyaltyCardSecondary,
+  ]);
+
+  const showLoyaltySwipe = !isMasterList && loyaltySwipePanes.length > 0;
+  /** Alleen op masterlijsten (Figma): koppel-/wijzig-rijen; gewone lijstjes enkel swipe-naar-QR. */
+  const showLoyaltyLinkRows = isMasterList;
   const hideFabOnLoyaltyPanel = showLoyaltySwipe && loyaltyPanel === "loyalty";
 
   if (authLoading || !user || isLoading) {
@@ -2171,53 +2247,195 @@ export default function ListDetailPage({
             </div>
           ) : null}
 
-          {isMasterList ? (
-            existingLoyaltyCard ? (
-              <div className="flex w-full items-center gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--white)] py-3 pl-4 pr-3">
-                {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
-                <img
-                  src={listIcon}
-                  alt=""
-                  width={24}
-                  height={24}
-                  className="size-6 shrink-0 object-contain"
-                />
-                <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-tertiary)]">
-                  Klantenkaart gekoppeld
-                </p>
+          {showLoyaltyLinkRows ? (
+            isLidlDelhaizeList ? (
+              <div className="flex w-full flex-col gap-3">
+                {existingLoyaltyCard ? (
+                  <div className="flex w-full items-center gap-3 rounded-md border border-[var(--gray-100)] border-solid bg-[var(--white)] py-3 pl-4 pr-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
+                    <img
+                      src={LOYALTY_COMBO_PRIMARY_LOGO_SRC}
+                      alt=""
+                      width={24}
+                      height={24}
+                      className="size-6 shrink-0 object-contain"
+                    />
+                    <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+                      Klantenkaart gekoppeld
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoyaltyViewSlot("delhaize");
+                        setLoyaltyCardViewSlideOpen(true);
+                      }}
+                      className="shrink-0 text-sm font-normal leading-20 tracking-normal text-action-primary underline decoration-action-primary underline-offset-2 transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                    >
+                      Wijzigen
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoyaltySlot("delhaize");
+                      setLoyaltyCardSlideOpen(true);
+                    }}
+                    aria-label="Klantenkaart Delhaize koppelen"
+                    className="flex w-full items-center gap-3 rounded-md border border-dashed border-[var(--blue-500)] bg-[var(--white)] py-3 pl-4 pr-3 text-left transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
+                    <img
+                      src={LOYALTY_COMBO_PRIMARY_LOGO_SRC}
+                      alt=""
+                      width={24}
+                      height={24}
+                      className="size-6 shrink-0 object-contain"
+                    />
+                    <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-action-primary">
+                      Klantenkaart koppelen
+                    </p>
+                    <span
+                      aria-hidden="true"
+                      className="inline-block size-6 shrink-0 bg-[var(--blue-500)]"
+                      style={{
+                        WebkitMaskImage: 'url("/icons/icons/qr.svg")',
+                        maskImage: 'url("/icons/icons/qr.svg")',
+                        WebkitMaskRepeat: "no-repeat",
+                        maskRepeat: "no-repeat",
+                        WebkitMaskSize: "contain",
+                        maskSize: "contain",
+                        WebkitMaskPosition: "center",
+                        maskPosition: "center",
+                      }}
+                    />
+                  </button>
+                )}
+                {existingLoyaltyCardSecondary ? (
+                  <div className="flex w-full items-center gap-3 rounded-md border border-[var(--gray-100)] border-solid bg-[var(--white)] py-3 pl-4 pr-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
+                    <img
+                      src={LOYALTY_COMBO_SECONDARY_LOGO_SRC}
+                      alt=""
+                      width={24}
+                      height={24}
+                      className="size-6 shrink-0 object-contain"
+                    />
+                    <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+                      Klantenkaart gekoppeld
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoyaltyViewSlot("lidl");
+                        setLoyaltyCardViewSlideOpen(true);
+                      }}
+                      className="shrink-0 text-sm font-normal leading-20 tracking-normal text-action-primary underline decoration-action-primary underline-offset-2 transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                    >
+                      Wijzigen
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoyaltySlot("lidl");
+                      setLoyaltyCardSlideOpen(true);
+                    }}
+                    aria-label="Klantenkaart Lidl koppelen"
+                    className="flex w-full items-center gap-3 rounded-md border border-dashed border-[var(--blue-500)] bg-[var(--white)] py-3 pl-4 pr-3 text-left transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
+                    <img
+                      src={LOYALTY_COMBO_SECONDARY_LOGO_SRC}
+                      alt=""
+                      width={24}
+                      height={24}
+                      className="size-6 shrink-0 object-contain"
+                    />
+                    <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-action-primary">
+                      Klantenkaart koppelen
+                    </p>
+                    <span
+                      aria-hidden="true"
+                      className="inline-block size-6 shrink-0 bg-[var(--blue-500)]"
+                      style={{
+                        WebkitMaskImage: 'url("/icons/icons/qr.svg")',
+                        maskImage: 'url("/icons/icons/qr.svg")',
+                        WebkitMaskRepeat: "no-repeat",
+                        maskRepeat: "no-repeat",
+                        WebkitMaskSize: "contain",
+                        maskSize: "contain",
+                        WebkitMaskPosition: "center",
+                        maskPosition: "center",
+                      }}
+                    />
+                  </button>
+                )}
+              </div>
+            ) : isMasterList ? (
+              existingLoyaltyCard ? (
+                <div className="flex w-full items-center gap-3 rounded-md border border-[var(--gray-100)] border-solid bg-[var(--white)] py-3 pl-4 pr-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
+                  <img
+                    src={listIcon}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="size-6 shrink-0 object-contain"
+                  />
+                  <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+                    Klantenkaart gekoppeld
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoyaltyViewSlot("delhaize");
+                      setLoyaltyCardViewSlideOpen(true);
+                    }}
+                    className="shrink-0 text-sm font-normal leading-20 tracking-normal text-action-primary underline decoration-action-primary underline-offset-2 transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                  >
+                    Wijzigen
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setLoyaltyCardViewSlideOpen(true)}
-                  className="shrink-0 text-xs font-normal leading-4 tracking-normal text-[var(--blue-500)] underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  Wijzigen
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setLoyaltyCardSlideOpen(true)}
-                className="flex w-full items-center gap-3 rounded-lg border border-dashed border-[var(--blue-500)] bg-[var(--white)] py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <span
-                  aria-hidden="true"
-                  className="inline-block size-6 shrink-0 bg-[var(--blue-500)]"
-                  style={{
-                    WebkitMaskImage: 'url("/icons/icons/qr.svg")',
-                    maskImage: 'url("/icons/icons/qr.svg")',
-                    WebkitMaskRepeat: "no-repeat",
-                    maskRepeat: "no-repeat",
-                    WebkitMaskSize: "contain",
-                    maskSize: "contain",
-                    WebkitMaskPosition: "center",
-                    maskPosition: "center",
+                  onClick={() => {
+                    setLoyaltySlot("delhaize");
+                    setLoyaltyCardSlideOpen(true);
                   }}
-                />
-                <p className="text-sm font-normal leading-20 tracking-normal text-[var(--blue-500)]">
-                  Klantenkaart koppelen
-                </p>
-              </button>
-            )
+                  aria-label="Klantenkaart koppelen"
+                  className="flex w-full items-center gap-3 rounded-md border border-dashed border-[var(--blue-500)] bg-[var(--white)] py-3 pl-4 pr-3 text-left transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
+                  <img
+                    src={listIcon}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="size-6 shrink-0 object-contain"
+                  />
+                  <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-action-primary">
+                    Klantenkaart koppelen
+                  </p>
+                  <span
+                    aria-hidden="true"
+                    className="inline-block size-6 shrink-0 bg-[var(--blue-500)]"
+                    style={{
+                      WebkitMaskImage: 'url("/icons/icons/qr.svg")',
+                      maskImage: 'url("/icons/icons/qr.svg")',
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                      WebkitMaskPosition: "center",
+                      maskPosition: "center",
+                    }}
+                  />
+                </button>
+              )
+            ) : null
           ) : null}
 
           {!hasItems ? (
@@ -2469,6 +2687,7 @@ export default function ListDetailPage({
               variant="secondary"
               onClick={() => {
                 setLoyaltyDecodeError(null);
+                setLoyaltySlot(loyaltyViewSlot);
                 loyaltyCardPhotoInputRef.current?.click();
               }}
             >
@@ -2478,17 +2697,21 @@ export default function ListDetailPage({
         }
       >
         <div className="flex flex-col items-center gap-6 px-4">
-          {existingLoyaltyCard ? (
-            <>
+          {(() => {
+            const cardForView =
+              isLidlDelhaizeList && loyaltyViewSlot === "lidl"
+                ? existingLoyaltyCardSecondary
+                : existingLoyaltyCard;
+            return cardForView ? (
               <div className="flex items-center justify-center rounded-xl bg-white p-4 shadow-sm">
                 <LoyaltyCardDisplay
-                  codeType={existingLoyaltyCard.codeType as "qr" | "barcode"}
-                  codeFormat={existingLoyaltyCard.codeFormat}
-                  rawValue={existingLoyaltyCard.rawValue}
+                  codeType={cardForView.codeType as "qr" | "barcode"}
+                  codeFormat={cardForView.codeFormat}
+                  rawValue={cardForView.rawValue}
                 />
               </div>
-            </>
-          ) : null}
+            ) : null;
+          })()}
         </div>
       </SlideInModal>
 
@@ -2503,9 +2726,14 @@ export default function ListDetailPage({
           setLoyaltySaving(true);
           try {
             const cardId = iid();
+            const linkSecondary =
+              isLidlDelhaizeList && loyaltySlot === "lidl";
+            const existingForSlot = linkSecondary
+              ? existingLoyaltyCardSecondary
+              : existingLoyaltyCard;
             await db.transact([
-              ...(existingLoyaltyCard
-                ? [db.tx.loyaltyCards[existingLoyaltyCard.id].delete()]
+              ...(existingForSlot
+                ? [db.tx.loyaltyCards[existingForSlot.id].delete()]
                 : []),
               db.tx.loyaltyCards[cardId].update({
                 codeType: loyaltyDecodeResult.codeType,
@@ -2514,7 +2742,9 @@ export default function ListDetailPage({
                 cardName: listData?.name ?? "",
                 createdAtIso: new Date().toISOString(),
               }),
-              db.tx.lists[listId].link({ loyaltyCard: cardId }),
+              linkSecondary
+                ? db.tx.lists[listId].link({ loyaltyCardSecondary: cardId })
+                : db.tx.lists[listId].link({ loyaltyCard: cardId }),
             ]);
             setLoyaltyCardScanResultOpen(false);
             setLoyaltyCardSlideOpen(false);
@@ -2536,16 +2766,13 @@ export default function ListDetailPage({
     </div>
   );
 
-  if (showLoyaltySwipe && existingLoyaltyCard) {
+  if (showLoyaltySwipe) {
     return (
       <>
         <LoyaltyCardSwipeShell
           appHeader={listAppHeader}
           bottomChrome={listBottomChrome}
-          listIcon={listIcon}
-          codeType={existingLoyaltyCard.codeType as "qr" | "barcode"}
-          codeFormat={String(existingLoyaltyCard.codeFormat ?? "")}
-          rawValue={existingLoyaltyCard.rawValue}
+          loyaltyPanes={loyaltySwipePanes}
           onPanelChange={setLoyaltyPanel}
         >
           {listMain}

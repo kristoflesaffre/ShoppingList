@@ -2,9 +2,20 @@
 
 import * as React from "react";
 import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
+import { PillTab, type PillTabVariant } from "@/components/ui/pill_tab";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
-import { masterStoreLabelFromListIcon } from "@/lib/master-stores";
 import { cn } from "@/lib/utils";
+
+/** Eén of twee kaarten in het loyalty-paneel (combi Lidl/Delhaize: pill-tabs + één QR tegelijk). */
+export type LoyaltySwipePane = {
+  heading: string;
+  codeType: LoyaltyCardCodeType;
+  codeFormat: string;
+  rawValue: string;
+  footerLogoSrc: string;
+  /** Kort label in pill-tab links/rechts (verplicht voor beide panelen bij combi). */
+  pillTabLabel?: string;
+};
 
 /** Zelfde offset als `mt` op main / hoogte app-header op lijstdetail. */
 const LIST_APP_HEADER_OFFSET = "calc(56px + env(safe-area-inset-top, 0px))";
@@ -26,10 +37,8 @@ export type LoyaltyCardSwipeShellProps = {
   appHeader: React.ReactNode;
   bottomChrome: React.ReactNode;
   children: React.ReactNode;
-  listIcon: string;
-  codeType: LoyaltyCardCodeType;
-  codeFormat: string;
-  rawValue: string;
+  /** Minstens één paneel met geldige rawValue (lijst-detail bepaalt welke). */
+  loyaltyPanes: LoyaltySwipePane[];
   onPanelChange?: (panel: "list" | "loyalty") => void;
 };
 
@@ -54,10 +63,7 @@ export function LoyaltyCardSwipeShell({
   appHeader,
   bottomChrome,
   children,
-  listIcon,
-  codeType,
-  codeFormat,
-  rawValue,
+  loyaltyPanes,
   onPanelChange,
 }: LoyaltyCardSwipeShellProps) {
   const swipeAreaRef = React.useRef<HTMLDivElement>(null);
@@ -68,6 +74,32 @@ export function LoyaltyCardSwipeShell({
   const [dragExtraPx, setDragExtraPx] = React.useState(0);
   const [isDragging, setIsDragging] = React.useState(false);
   const [vpW, setVpW] = React.useState(0);
+  /** Combi: welke kaart (links/rechts pill). */
+  const [comboPillValue, setComboPillValue] =
+    React.useState<PillTabVariant>("first");
+  /** Na elk volledig verlaten van het loyalty-paneel: bij volgende open wisselt default-pill. */
+  const loyaltyReopenCycleRef = React.useRef(0);
+  const prevPanelForCycleRef = React.useRef<"list" | "loyalty">("list");
+
+  const useComboPillTabs =
+    loyaltyPanes.length === 2 &&
+    loyaltyPanes[0]?.pillTabLabel != null &&
+    loyaltyPanes[0].pillTabLabel.length > 0 &&
+    loyaltyPanes[1]?.pillTabLabel != null &&
+    loyaltyPanes[1].pillTabLabel.length > 0;
+
+  React.useEffect(() => {
+    const prev = prevPanelForCycleRef.current;
+    if (prev === "loyalty" && panel === "list") {
+      loyaltyReopenCycleRef.current += 1;
+    }
+    if (panel === "loyalty" && useComboPillTabs) {
+      setComboPillValue(
+        loyaltyReopenCycleRef.current % 2 === 0 ? "first" : "second",
+      );
+    }
+    prevPanelForCycleRef.current = panel;
+  }, [panel, useComboPillTabs]);
 
   React.useEffect(() => {
     panelRef.current = panel;
@@ -99,12 +131,6 @@ export function LoyaltyCardSwipeShell({
   const reduceMotion =
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  const storeLabel = masterStoreLabelFromListIcon(listIcon);
-  /** Figma 903:5986 – titel bv. "Klantenkaart Lidl", page title + bold + lh 32. */
-  const loyaltyHeading =
-    storeLabel.length > 0 ? `Klantenkaart ${storeLabel}` : "Klantenkaart";
-  const isQrPanel = codeType === "qr";
 
   const translatePx =
     vpW > 0
@@ -270,39 +296,125 @@ export function LoyaltyCardSwipeShell({
             aria-label="Klantenkaart"
             aria-hidden={!loyaltyVisible}
           >
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overflow-x-hidden px-[var(--space-4)] pb-[calc(var(--space-12)+env(safe-area-inset-bottom,0px))] pt-[var(--space-4)] [touch-action:pan-y]">
-              <h2 className="px-[var(--space-2)] text-center text-[length:var(--text-page-title)] font-bold leading-[var(--leading-32)] tracking-[var(--tracking-normal)] text-[var(--text-primary)]">
-                {loyaltyHeading}
-              </h2>
-              {/* Figma 903:5986 – _qr-code--base: 256×256, wit, p 4px (sp-4); logo 98px onder de code */}
+            <div
+              className={cn(
+                "flex min-h-0 flex-1 flex-col items-center overflow-y-auto overflow-x-hidden px-[var(--space-4)] pb-[calc(var(--space-12)+env(safe-area-inset-bottom,0px))] [touch-action:pan-y]",
+                useComboPillTabs
+                  ? "justify-start pt-[var(--space-12)]"
+                  : "justify-center pt-[var(--space-4)]",
+              )}
+            >
               <div
                 className={cn(
-                  "mt-[var(--space-8)] box-border flex w-full max-w-[256px] shrink-0 flex-col bg-[var(--white)] p-[var(--space-1)]",
-                  isQrPanel && "aspect-square max-h-[256px]",
+                  "flex w-full flex-col items-center",
+                  !useComboPillTabs && loyaltyPanes.length > 1
+                    ? "gap-[var(--space-12)]"
+                    : useComboPillTabs
+                      ? "min-h-0 flex-1"
+                      : "",
                 )}
               >
-                <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden [&_svg]:pointer-events-none">
-                  <LoyaltyCardDisplay
-                    codeType={codeType}
-                    codeFormat={codeFormat}
-                    rawValue={rawValue}
-                    displaySize="fullscreen"
-                    fullscreenQrSize={isQrPanel ? 248 : undefined}
-                  />
-                </div>
+                {useComboPillTabs ? (
+                  <>
+                    {/**
+                     * Figma 903:6212 / 903:6569 — pill blijft top-aligned; alleen blok eronder
+                     * mag in hoogte wisselen (anders verspringt de pill door justify-center op de hele kolom).
+                     */}
+                    <PillTab
+                      value={comboPillValue}
+                      onValueChange={setComboPillValue}
+                      labelFirst={loyaltyPanes[0]!.pillTabLabel!}
+                      labelSecond={loyaltyPanes[1]!.pillTabLabel!}
+                      className="mb-[var(--space-8)] w-full max-w-[400px] shrink-0"
+                      data-swipe-ignore=""
+                    />
+                    <div className="flex min-h-0 w-full max-w-[400px] flex-1 flex-col items-center justify-center">
+                      {(() => {
+                        const pane =
+                          loyaltyPanes[comboPillValue === "first" ? 0 : 1]!;
+                        const isQr = pane.codeType === "qr";
+                        return (
+                          <div className="flex w-full flex-col items-center">
+                            <h2 className="flex min-h-[calc(2*var(--leading-32))] items-center justify-center px-[var(--space-2)] text-center text-[length:var(--text-page-title)] font-bold leading-[var(--leading-32)] tracking-[var(--tracking-normal)] text-[var(--text-primary)]">
+                              {pane.heading}
+                            </h2>
+                            <div
+                              className={cn(
+                                "mt-[var(--space-8)] box-border flex w-full max-w-[256px] shrink-0 flex-col bg-[var(--white)] p-[var(--space-1)]",
+                                isQr && "aspect-square max-h-[256px]",
+                              )}
+                            >
+                              <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden [&_svg]:pointer-events-none">
+                                <LoyaltyCardDisplay
+                                  codeType={pane.codeType}
+                                  codeFormat={pane.codeFormat}
+                                  rawValue={pane.rawValue}
+                                  displaySize="fullscreen"
+                                  fullscreenQrSize={isQr ? 248 : undefined}
+                                />
+                              </div>
+                            </div>
+                            {pane.footerLogoSrc ? (
+                              <div className="mt-[var(--space-12)] flex h-[98px] shrink-0 flex-col items-center justify-end">
+                                {/* eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos */}
+                                <img
+                                  src={pane.footerLogoSrc}
+                                  alt=""
+                                  width={98}
+                                  height={98}
+                                  className="pointer-events-none size-[98px] shrink-0 object-contain"
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </>
+                ) : (
+                  loyaltyPanes.map((pane, idx) => {
+                    const isQr = pane.codeType === "qr";
+                    return (
+                      <div
+                        key={`${pane.heading}-${idx}`}
+                        className="flex w-full max-w-[400px] flex-col items-center"
+                      >
+                        <h2 className="px-[var(--space-2)] text-center text-[length:var(--text-page-title)] font-bold leading-[var(--leading-32)] tracking-[var(--tracking-normal)] text-[var(--text-primary)]">
+                          {pane.heading}
+                        </h2>
+                        <div
+                          className={cn(
+                            "mt-[var(--space-8)] box-border flex w-full max-w-[256px] shrink-0 flex-col bg-[var(--white)] p-[var(--space-1)]",
+                            isQr && "aspect-square max-h-[256px]",
+                          )}
+                        >
+                          <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden [&_svg]:pointer-events-none">
+                            <LoyaltyCardDisplay
+                              codeType={pane.codeType}
+                              codeFormat={pane.codeFormat}
+                              rawValue={pane.rawValue}
+                              displaySize="fullscreen"
+                              fullscreenQrSize={isQr ? 248 : undefined}
+                            />
+                          </div>
+                        </div>
+                        {pane.footerLogoSrc ? (
+                          <div className="mt-[var(--space-12)] flex shrink-0 flex-col items-center">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos */}
+                            <img
+                              src={pane.footerLogoSrc}
+                              alt=""
+                              width={98}
+                              height={98}
+                              className="pointer-events-none size-[98px] shrink-0 object-contain"
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                )}
               </div>
-              {listIcon ? (
-                <div className="mt-[var(--space-12)] flex shrink-0 flex-col items-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos */}
-                  <img
-                    src={listIcon}
-                    alt=""
-                    width={98}
-                    height={98}
-                    className="pointer-events-none size-[98px] shrink-0 object-contain"
-                  />
-                </div>
-              ) : null}
             </div>
           </section>
 
