@@ -278,6 +278,7 @@ export function SwipeToDelete({
 
       <div
         ref={surfaceRef}
+        data-swipe-to-delete-surface=""
         className="relative z-[1] touch-pan-y rounded-md"
         style={{
           transform: `translate3d(${offset}px,0,0)`,

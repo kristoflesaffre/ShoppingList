@@ -16,6 +16,12 @@ function isInteractiveSwipeTarget(target: EventTarget | null) {
   );
 }
 
+/** Item-rij swipe-to-delete: niet in capture-fase overnemen (LoyaltyCardSwipeShell). */
+function isSwipeToDeleteSurface(target: EventTarget | null) {
+  if (!(target instanceof Element)) return false;
+  return !!target.closest("[data-swipe-to-delete-surface]");
+}
+
 export type LoyaltyCardSwipeShellProps = {
   appHeader: React.ReactNode;
   bottomChrome: React.ReactNode;
@@ -104,6 +110,7 @@ export function LoyaltyCardSwipeShell({
 
   const onPointerDownCapture = React.useCallback((e: React.PointerEvent) => {
     if (e.button !== 0) return;
+    if (isSwipeToDeleteSurface(e.target)) return;
     if (isInteractiveSwipeTarget(e.target)) return;
     const area = swipeAreaRef.current;
     if (!area) return;
