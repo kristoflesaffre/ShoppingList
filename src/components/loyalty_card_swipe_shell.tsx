@@ -30,6 +30,7 @@ export type LoyaltyCardSwipeShellProps = {
   codeType: LoyaltyCardCodeType;
   codeFormat: string;
   rawValue: string;
+  onPanelChange?: (panel: "list" | "loyalty") => void;
 };
 
 type DragSession = {
@@ -57,6 +58,7 @@ export function LoyaltyCardSwipeShell({
   codeType,
   codeFormat,
   rawValue,
+  onPanelChange,
 }: LoyaltyCardSwipeShellProps) {
   const swipeAreaRef = React.useRef<HTMLDivElement>(null);
   const sessionRef = React.useRef<DragSession | null>(null);
@@ -70,6 +72,10 @@ export function LoyaltyCardSwipeShell({
   React.useEffect(() => {
     panelRef.current = panel;
   }, [panel]);
+
+  React.useEffect(() => {
+    onPanelChange?.(panel);
+  }, [onPanelChange, panel]);
 
   const loyaltyVisible = panel === "loyalty" && dragExtraPx === 0;
 

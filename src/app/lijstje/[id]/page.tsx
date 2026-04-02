@@ -1525,6 +1525,7 @@ export default function ListDetailPage({
   const [loyaltyDecodeResult, setLoyaltyDecodeResult] = React.useState<Extract<DecodeResult, { ok: true }> | null>(null);
   const [loyaltyDecodeError, setLoyaltyDecodeError] = React.useState<string | null>(null);
   const [loyaltySaving, setLoyaltySaving] = React.useState(false);
+  const [loyaltyPanel, setLoyaltyPanel] = React.useState<"list" | "loyalty">("list");
   const loyaltyCardPhotoInputRef = React.useRef<HTMLInputElement>(null);
   const { data: loyaltyCardData } = db.useQuery(
     listId
@@ -2034,6 +2035,7 @@ export default function ListDetailPage({
     existingLoyaltyCard != null &&
     typeof existingLoyaltyCard.rawValue === "string" &&
     existingLoyaltyCard.rawValue.length > 0;
+  const hideFabOnLoyaltyPanel = showLoyaltySwipe && loyaltyPanel === "loyalty";
 
   if (authLoading || !user || isLoading) {
     return (
@@ -2318,7 +2320,7 @@ export default function ListDetailPage({
         </div>
       )}
 
-      {!isMasterEmpty ? (
+      {!isMasterEmpty && !hideFabOnLoyaltyPanel ? (
         <div
           className="pointer-events-none fixed inset-x-0 bottom-[calc(24px+env(safe-area-inset-bottom,0px))] z-20"
         >
@@ -2534,6 +2536,7 @@ export default function ListDetailPage({
           codeType={existingLoyaltyCard.codeType as "qr" | "barcode"}
           codeFormat={String(existingLoyaltyCard.codeFormat ?? "")}
           rawValue={existingLoyaltyCard.rawValue}
+          onPanelChange={setLoyaltyPanel}
         >
           {listMain}
         </LoyaltyCardSwipeShell>
