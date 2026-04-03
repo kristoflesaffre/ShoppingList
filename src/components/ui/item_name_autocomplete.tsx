@@ -88,20 +88,32 @@ export function ItemNameAutocomplete({
     if (!containerRef.current || !showDropdown) return;
     const rect = containerRef.current.getBoundingClientRect();
     const vv = window.visualViewport;
-    const visibleBottom = vv
-      ? vv.offsetTop + vv.height
-      : window.innerHeight;
+
+    /**
+     * `position: fixed` op iOS is relatief aan de visual viewport.
+     * getBoundingClientRect() geeft layout viewport coördinaten.
+     * Verschil = vv.offsetTop (hoeveel de visual viewport verschoven is t.o.v. layout viewport).
+     *
+     * Conversie:  coord_in_vv = coord_in_layout - vv.offsetTop
+     * Voor fixed bottom:  bottom = vvHeight - rectTopInVV - 4
+     * Voor fixed top:     top    = rectBottomInVV + 4
+     */
+    const vvOffsetTop = vv?.offsetTop ?? 0;
+    const vvHeight = vv?.height ?? window.innerHeight;
+
+    const rectTopInVV = rect.top - vvOffsetTop;
+    const rectBottomInVV = rect.bottom - vvOffsetTop;
 
     const estHeight = Math.min(suggestions.length, MAX_SUGGESTIONS) * ROW_HEIGHT;
-    const spaceBelow = visibleBottom - rect.bottom;
-    const spaceAbove = rect.top; // afstand van bovenkant input tot bovenkant viewport
+    const spaceBelow = vvHeight - rectBottomInVV;
+    const spaceAbove = rectTopInVV;
 
     if (spaceBelow < estHeight + 8) {
       // Niet genoeg ruimte onder → toon boven de input
       const maxH = Math.min(estHeight, spaceAbove - 8);
       setDropdownStyle({
         position: "fixed",
-        bottom: window.innerHeight - rect.top + 4,
+        bottom: vvHeight - rectTopInVV + 4,
         left: rect.left,
         width: rect.width,
         maxHeight: maxH > 0 ? maxH : estHeight,
@@ -111,7 +123,7 @@ export function ItemNameAutocomplete({
       // Genoeg ruimte onder → toon onder de input
       setDropdownStyle({
         position: "fixed",
-        top: rect.bottom + 4,
+        top: rectBottomInVV + 4,
         left: rect.left,
         width: rect.width,
         maxHeight: spaceBelow - 8,
