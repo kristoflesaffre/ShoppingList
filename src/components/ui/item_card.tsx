@@ -700,7 +700,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             <div
               className={cn(
                 "relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--gray-100)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover",
-                isChecked && "opacity-50",
+                isChecked && "opacity-20",
               )}
             >
               {itemThumbnail}
