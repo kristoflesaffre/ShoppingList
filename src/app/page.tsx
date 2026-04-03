@@ -39,6 +39,7 @@ import {
   selectListNameInputOnFocus,
 } from "@/lib/list-default-name";
 import { listIsMasterTemplate } from "@/lib/list-master";
+import { storeLogosFromListIcon } from "@/lib/master-stores";
 import { db } from "@/lib/db";
 import { AppBottomNav } from "@/components/app_bottom_nav";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
@@ -54,7 +55,7 @@ type NewListKind = "blank" | "from_master" | "master";
 
 const HOME_NEW_LIST_FORM_ID = "home-new-list-form";
 
-/** Native radio + SelectTile zodat FormData bij “Bewaren” altijd de echte tegelkeuze wéérgeeft (geen React-state drift). */
+/** Native radio + SelectTile zodat FormData bij "Bewaren" altijd de echte tegelkeuze wéérgeeft (geen React-state drift). */
 function NewListKindFormOption({
   value,
   defaultChecked,
@@ -107,10 +108,12 @@ type HomeList = {
   isOwner: boolean;
   /** Lidmaatschappen om mee te verwijderen bij delete (alleen bij eigenaar). */
   membershipIds?: string[];
-  /** Figma 762:3452: toon “gedeeld met …” op de kaart. */
-  displayVariant: "default" | "shared" | "master";
-  /** Voornaam van de andere partij (deelnemer of eigenaar); null = ListCard toont “deelnemer”. */
+  /** Figma 762:3452: toon "gedeeld met …" op de kaart. */
+  displayVariant: "default" | "shared" | "master" | "from-master";
+  /** Voornaam van de andere partij (deelnemer of eigenaar); null = ListCard toont "deelnemer". */
   sharedWithFirstName: string | null;
+  /** Winkellogo-URL's (1-2) voor kaartbadge bij displayVariant "from-master". */
+  storeLogos: string[];
   /** Master-template (niet: weeklijst met winkel-logo). */
   isMasterTemplate: boolean;
 };
@@ -138,6 +141,18 @@ function getIconForNewList(existingLists: HomeList[]): string {
   const unusedIcons = FOOD_ICONS.filter((icon) => !usedIcons.has(icon));
   const pool = unusedIcons.length > 0 ? unusedIcons : [...FOOD_ICONS];
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/**
+ * Deterministische food icon voor een from-master lijst op basis van de lijst-ID.
+ * Geeft altijd hetzelfde icoon terug voor hetzelfde ID (ook voor legacy DB-items met store logo).
+ */
+function foodIconFromId(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) {
+    h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+  }
+  return FOOD_ICONS[Math.abs(h) % FOOD_ICONS.length];
 }
 
 function itemCountLabel(count: number): string {
@@ -329,12 +344,17 @@ function SortableListCard({
           date={list.date}
           itemCount={itemCountLabel(list.items?.length ?? 0)}
           displayVariant={list.displayVariant}
+          storeLogos={list.storeLogos}
           sharedWithFirstName={
             list.sharedWithFirstName ?? undefined
           }
           icon={
             <Image
-              src={list.icon}
+              src={
+                list.displayVariant === "from-master" && list.icon.startsWith("/logos/")
+                  ? foodIconFromId(list.id)
+                  : list.icon
+              }
               alt=""
               width={48}
               height={48}
@@ -467,6 +487,10 @@ export default function Home() {
         primaryOtherId != null
           ? shareFirstNameByUserId.get(primaryOtherId) ?? null
           : null;
+      const isFromMaster =
+        !isMaster &&
+        typeof l.icon === "string" &&
+        l.icon.startsWith("/logos/");
       return {
         id: l.id,
         name: l.name,
@@ -476,7 +500,14 @@ export default function Home() {
         items: l.items ?? [],
         isOwner: true,
         membershipIds: (l.memberships ?? []).map((m) => m.id),
-        displayVariant: isMaster ? "master" : hasOtherMembers ? "shared" : "default",
+        displayVariant: isMaster
+          ? "master"
+          : hasOtherMembers
+            ? "shared"
+            : isFromMaster
+              ? "from-master"
+              : "default",
+        storeLogos: isFromMaster ? storeLogosFromListIcon(l.icon) : [],
         sharedWithFirstName: isMaster ? null : hasOtherMembers ? sharedName : null,
         isMasterTemplate: isMaster,
       };
@@ -498,6 +529,10 @@ export default function Home() {
           ownerId != null
             ? shareFirstNameByUserId.get(ownerId) ?? null
             : null;
+        const isFromMaster =
+          !isMaster &&
+          typeof l.icon === "string" &&
+          l.icon.startsWith("/logos/");
         return {
           id: l.id,
           name: l.name,
@@ -506,8 +541,13 @@ export default function Home() {
           order: l.order,
           items: l.items ?? [],
           isOwner: false,
-          displayVariant: isMaster ? "master" : ("shared" as const),
-          sharedWithFirstName: isMaster ? null : ownerFirst,
+          displayVariant: isMaster
+            ? ("master" as const)
+            : isFromMaster
+              ? ("from-master" as const)
+              : ("shared" as const),
+          sharedWithFirstName: isMaster || isFromMaster ? null : ownerFirst,
+          storeLogos: isFromMaster ? storeLogosFromListIcon(l.icon) : [],
           isMasterTemplate: isMaster,
         };
       });

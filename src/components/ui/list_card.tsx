@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export type ListCardSize = "default";
 export type ListCardState = "default" | "editable";
 /** `default` | `shared` (Figma 762:3452) | `master` (Figma 773:4183 – divider + plus-circle). */
-export type ListCardDisplayVariant = "default" | "shared" | "master";
+export type ListCardDisplayVariant = "default" | "shared" | "master" | "from-master";
 
 /**
  * List card: displays a list summary (icon, name, date, item count). Used on Home for list overview.
@@ -29,8 +29,11 @@ export interface ListCardProps
   /**
    * “shared” toont itemtelling in primary-kleur + grijs “(gedeeld met …)” (Figma 762:3452).
    * “master” toont alleen titel + itemtelling in primary, scheiding en plus-actie (Figma 773:4183).
+   * “from-master” toont winkellogo-badges rechtsboven naast de lijstnaam (Figma 927:7808).
    */
   displayVariant?: ListCardDisplayVariant;
+  /** Logo-URL's (1-2) voor winkelbadges; alleen getoond bij `displayVariant=”from-master”`. */
+  storeLogos?: string[];
   /** Voornaam voor het gedeeld-met-label; bij ontbreken: “deelnemer”. */
   sharedWithFirstName?: string;
   /** Only "default" is defined (gap-3; padding via containerBase). */
@@ -178,6 +181,7 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
       state = "default",
       displayVariant = "default",
       sharedWithFirstName,
+      storeLogos,
       size = "default",
       asChild = false,
       children,
@@ -191,6 +195,7 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
   ) => {
     const isEditable = state === "editable";
     const isMaster = displayVariant === "master";
+    const isFromMaster = displayVariant === "from-master";
 
     const containerClassName = cn(
       containerBase,
@@ -234,9 +239,23 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
           </span>
         )}
         <div className="min-w-0 flex-1 flex flex-col gap-0">
-          <span className="truncate font-medium text-base leading-24 tracking-normal text-[var(--text-primary)]">
-            {listName}
-          </span>
+          {isFromMaster && storeLogos && storeLogos.length > 0 ? (
+            <div className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate font-medium text-base leading-24 tracking-normal text-[var(--text-primary)]">
+                {listName}
+              </span>
+              <div className="flex shrink-0 items-center">
+                {storeLogos.map((src, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={src} alt="" width={24} height={24} className="size-6 shrink-0 object-contain" aria-hidden />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <span className="truncate font-medium text-base leading-24 tracking-normal text-[var(--text-primary)]">
+              {listName}
+            </span>
+          )}
           {date != null && !isMaster && (
             <span className="font-normal text-sm leading-20 tracking-normal text-[var(--gray-400)]">
               {date}

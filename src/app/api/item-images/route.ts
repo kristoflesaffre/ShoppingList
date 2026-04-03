@@ -8,7 +8,12 @@ export async function GET() {
     const files = await readdir(dir);
     const slugs = files
       .filter((f) => /\.(jpe?g|png|webp)$/i.test(f))
-      .map((f) => f.replace(/\.[^.]+$/, ""));
+      .map((f) =>
+        f
+          .replace(/\.[^.]+$/, "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, ""),
+      );
     return NextResponse.json(slugs);
   } catch {
     return NextResponse.json([]);

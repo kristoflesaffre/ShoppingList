@@ -145,6 +145,32 @@ export const Master: Story = {
   },
 };
 
+/** From-master lijst – Figma 927:7808: winkellogo-badge(s) rechtsboven */
+export const FromMaster: Story = {
+  args: {
+    listName: "List name",
+    date: "25-04-2026",
+    itemCount: "6 items",
+    icon: defaultIcon,
+    state: "default",
+    displayVariant: "from-master",
+    storeLogos: ["/logos/logos-delhaize.svg", "/logos/logos-lidl.svg"],
+  },
+};
+
+/** From-master met één winkel */
+export const FromMasterSingleStore: Story = {
+  args: {
+    listName: "Lidl weekboodschappen",
+    date: "25-04-2026",
+    itemCount: "12 items",
+    icon: defaultIcon,
+    state: "default",
+    displayVariant: "from-master",
+    storeLogos: ["/logos/logos-lidl.svg"],
+  },
+};
+
 /** Gedeelde lijst – Figma 762:3452 */
 export const Shared: Story = {
   args: {
@@ -192,6 +218,15 @@ export const AllVariants: Story = {
         state="default"
         displayVariant="master"
         onMasterAdd={fn()}
+      />
+      <ListCard
+        listName="Weekboodschappen"
+        date="25-04-2026"
+        itemCount="6 items"
+        icon={defaultIcon}
+        state="default"
+        displayVariant="from-master"
+        storeLogos={["/logos/logos-delhaize.svg", "/logos/logos-lidl.svg"]}
       />
     </div>
   ),

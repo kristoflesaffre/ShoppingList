@@ -8,6 +8,27 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
+
+const FOOD_ICONS = [
+  "/images/ui/food/icon_apple.png",
+  "/images/ui/food/icon_aubergine.png",
+  "/images/ui/food/icon_banana.png",
+  "/images/ui/food/icon_blueberries.png",
+  "/images/ui/food/icon_bread.png",
+  "/images/ui/food/icon_carrot.png",
+  "/images/ui/food/icon_cheese.png",
+  "/images/ui/food/icon_milk.png",
+  "/images/ui/food/icon_nutella.png",
+  "/images/ui/food/icon_strawberry.png",
+  "/images/ui/food/icon_tangerine.png",
+] as const;
+
+function pickFoodIconForNewList(existingLists: { icon?: string }[]): string {
+  const usedIcons = new Set(existingLists.map((l) => l.icon ?? ""));
+  const unused = FOOD_ICONS.filter((icon) => !usedIcons.has(icon));
+  const pool = unused.length > 0 ? unused : [...FOOD_ICONS];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 import { defaultNewListName } from "@/lib/list-default-name";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import { SwipeToAdd } from "@/components/ui/swipe_to_add";
@@ -512,7 +533,7 @@ export default function SelecteerMasterItemsPage() {
     const myLists = (data?.lists ?? []) as any[];
     const now = new Date();
     const newId = iid();
-    const icon = masterList.icon;
+    const icon = pickFoodIconForNewList(myLists);
     const order =
       myLists.length > 0
         ? Math.min(

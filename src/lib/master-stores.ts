@@ -69,3 +69,14 @@ const lidlStore = MASTER_STORE_OPTIONS.find((s) => s.slug === "lidl")!;
 /** Logo’s per loyalty-slot bij `lidl-delhaize` combi (primary = Delhaize, secondary = Lidl). */
 export const LOYALTY_COMBO_PRIMARY_LOGO_SRC = delhaizeStore.logoSrc;
 export const LOYALTY_COMBO_SECONDARY_LOGO_SRC = lidlStore.logoSrc;
+
+/**
+ * Logo-URL(s) die getoond worden als badge op een weeklijstje dat van een masterlijst komt.
+ * Bij de Lidl/Delhaize-combi worden twee aparte logo’s teruggegeven (primary eerst).
+ */
+export function storeLogosFromListIcon(iconPath: string): string[] {
+  if (listIconIsLidlDelhaizeCombo(iconPath)) {
+    return [LOYALTY_COMBO_PRIMARY_LOGO_SRC, LOYALTY_COMBO_SECONDARY_LOGO_SRC];
+  }
+  return [iconPath];
+}
