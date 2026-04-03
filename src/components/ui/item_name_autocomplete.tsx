@@ -52,14 +52,14 @@ export function ItemNameAutocomplete({
     const norm = normalizeForMatch(q);
     if (!norm) return [];
 
-    const matching = slugs.filter((slug) => slug.includes(norm));
+    // Alleen slugs waarbij minstens één woord begint met de zoekterm
+    const matching = slugs.filter((slug) =>
+      slug.split("_").some((word) => word.startsWith(norm)),
+    );
 
+    // Sorteer: eerste woord begint ermee → hoger dan volgend woord
     matching.sort((a, b) => {
-      const rank = (s: string) => {
-        if (s.startsWith(norm)) return 0;
-        if (s.split("_").some((w) => w.startsWith(norm))) return 1;
-        return 2;
-      };
+      const rank = (s: string) => (s.startsWith(norm) ? 0 : 1);
       return rank(a) - rank(b);
     });
 
