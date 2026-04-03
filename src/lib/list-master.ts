@@ -9,9 +9,9 @@ export type ListMasterTemplateFields = {
   name?: string | null;
 };
 
-/** Standaard weeklijstnaam van de app: "Lijstje maart week 4" — geen master-template. */
+/** Standaard weeklijstnaam: "Maart week 4" of legacy "Lijstje maart week 4" — geen master-template. */
 const DEFAULT_WEEK_LIST_NAME =
-  /^Lijstje\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+week\s+\d+$/i;
+  /^(?:Lijstje\s+)?(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+week\s+\d+$/i;
 
 /** True = template (masterlijst-sectie, bare items op detail); false = gewoon lijstje met checkboxes. */
 export function listIsMasterTemplate(
