@@ -23,7 +23,7 @@ function fetchSlugs(): Promise<string[]> {
   return fetchPromise;
 }
 
-function normalizeForMatch(name: string): string {
+export function normalizeForMatch(name: string): string {
   return name
     .toLowerCase()
     .trim()
@@ -68,6 +68,30 @@ export function matchItemPhotoUrl(
   }
 
   return null;
+}
+
+/**
+ * Hook that exposes the raw slug list (bestandsnamen zonder extensie, genormaliseerd).
+ * Shares the same fetch as useItemPhotoUrl.
+ */
+export function useItemSlugs(): string[] {
+  const [slugs, setSlugs] = React.useState<string[]>(cachedSlugs ?? []);
+
+  React.useEffect(() => {
+    if (cachedSlugs) {
+      setSlugs(cachedSlugs);
+      return;
+    }
+    let cancelled = false;
+    fetchSlugs().then((result) => {
+      if (!cancelled) setSlugs(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return slugs;
 }
 
 /**

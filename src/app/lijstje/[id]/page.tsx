@@ -36,6 +36,7 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { ToggleButton } from "@/components/ui/toggle_button";
 import { PillTab } from "@/components/ui/pill_tab";
 import { InputField } from "@/components/ui/input_field";
+import { ItemNameAutocomplete } from "@/components/ui/item_name_autocomplete";
 import { Stepper } from "@/components/ui/stepper";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search_bar";
@@ -689,11 +690,11 @@ function NewItemModal({
                     masterItemFormOnly ? "gap-4" : "gap-6",
                   )}
                 >
-                  <InputField
+                  <ItemNameAutocomplete
                     label="Naam item"
                     placeholder="Naam item"
                     value={itemName}
-                    onChange={(e) => setItemName(e.target.value)}
+                    onChange={setItemName}
                   />
                   <div className="flex flex-col gap-2">
                     <Stepper
