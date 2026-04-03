@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 
 /** Slug "vleesje_noe" → "Vleesje noe" (eerste woord hoofdletter, rest kleine letters). */
 function slugToDisplayName(slug: string): string {
-  const words = slug.split("_");
-  return words
+  return slug
+    .split("_")
     .map((word, i) =>
       i === 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word,
     )
@@ -17,6 +17,8 @@ function slugToDisplayName(slug: string): string {
 }
 
 const MAX_SUGGESTIONS = 6;
+/** Geschatte hoogte per rij (afbeelding 40px + py-2*2 = 16px). */
+const ROW_HEIGHT = 56;
 
 export type ItemNameAutocompleteProps = {
   value: string;
@@ -37,9 +39,7 @@ export function ItemNameAutocomplete({
   const [open, setOpen] = React.useState(false);
   const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const [dropdownStyle, setDropdownStyle] = React.useState<React.CSSProperties>(
-    {},
-  );
+  const [dropdownStyle, setDropdownStyle] = React.useState<React.CSSProperties>({});
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -54,7 +54,6 @@ export function ItemNameAutocomplete({
 
     const matching = slugs.filter((slug) => slug.includes(norm));
 
-    // Sorteer: prefix > woord-prefix > bevat
     matching.sort((a, b) => {
       const rank = (s: string) => {
         if (s.startsWith(norm)) return 0;
@@ -69,37 +68,74 @@ export function ItemNameAutocomplete({
 
   const showDropdown = open && suggestions.length > 0;
 
-  // Reset highlight bij nieuwe suggesties
   React.useEffect(() => {
     setHighlightedIndex(-1);
   }, [suggestions]);
 
-  // Herbereken positie wanneer dropdown zichtbaar wordt of waarde wijzigt
-  React.useLayoutEffect(() => {
+  /**
+   * Herbereken de fixed-positie van de dropdown.
+   *
+   * Strategie (hetzelfde als native iOS-apps):
+   * - Gebruik `visualViewport.height` als maatstaf voor de beschikbare ruimte.
+   *   Wanneer het keyboard opent, krimpt visualViewport.height maar blijft
+   *   window.innerHeight onveranderd. Zo detecteren we de keyboard.
+   * - De "zichtbare ondergrens" in fixed-coördinaten =
+   *     visualViewport.offsetTop + visualViewport.height
+   * - Is er minder ruimte onder de input dan de dropdown nodig heeft?
+   *   → Toon boven de input (standaard iOS-patroon).
+   */
+  const recalcPosition = React.useCallback(() => {
     if (!containerRef.current || !showDropdown) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const estHeight = Math.min(suggestions.length, MAX_SUGGESTIONS) * 56;
+    const vv = window.visualViewport;
+    const visibleBottom = vv
+      ? vv.offsetTop + vv.height
+      : window.innerHeight;
 
-    if (spaceBelow < estHeight + 8 && rect.top > estHeight + 8) {
-      // Render boven de input
+    const estHeight = Math.min(suggestions.length, MAX_SUGGESTIONS) * ROW_HEIGHT;
+    const spaceBelow = visibleBottom - rect.bottom;
+    const spaceAbove = rect.top; // afstand van bovenkant input tot bovenkant viewport
+
+    if (spaceBelow < estHeight + 8) {
+      // Niet genoeg ruimte onder → toon boven de input
+      const maxH = Math.min(estHeight, spaceAbove - 8);
       setDropdownStyle({
         position: "fixed",
         bottom: window.innerHeight - rect.top + 4,
         left: rect.left,
         width: rect.width,
+        maxHeight: maxH > 0 ? maxH : estHeight,
         zIndex: 9999,
       });
     } else {
+      // Genoeg ruimte onder → toon onder de input
       setDropdownStyle({
         position: "fixed",
         top: rect.bottom + 4,
         left: rect.left,
         width: rect.width,
+        maxHeight: spaceBelow - 8,
         zIndex: 9999,
       });
     }
-  }, [showDropdown, value, suggestions.length]);
+  }, [showDropdown, suggestions.length]);
+
+  // Herbereken bij open/dicht van dropdown, bij typen, en bij resize van visualViewport
+  React.useLayoutEffect(() => {
+    recalcPosition();
+  }, [recalcPosition, value]);
+
+  React.useEffect(() => {
+    if (!showDropdown) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    vv.addEventListener("resize", recalcPosition);
+    vv.addEventListener("scroll", recalcPosition);
+    return () => {
+      vv.removeEventListener("resize", recalcPosition);
+      vv.removeEventListener("scroll", recalcPosition);
+    };
+  }, [showDropdown, recalcPosition]);
 
   const handleSelect = React.useCallback(
     (slug: string) => {
@@ -114,9 +150,7 @@ export function ItemNameAutocomplete({
       if (!showDropdown) return;
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setHighlightedIndex((i) =>
-          Math.min(i + 1, suggestions.length - 1),
-        );
+        setHighlightedIndex((i) => Math.min(i + 1, suggestions.length - 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setHighlightedIndex((i) => Math.max(i - 1, 0));
@@ -136,7 +170,7 @@ export function ItemNameAutocomplete({
           <ul
             role="listbox"
             style={dropdownStyle}
-            className="overflow-hidden rounded-[var(--radius-sm,6px)] border border-[var(--gray-100)] bg-[var(--white)] shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+            className="overflow-y-auto overflow-x-hidden rounded-[var(--radius-sm,6px)] border border-[var(--gray-100)] bg-[var(--white)] shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
             onMouseDown={(e) => e.preventDefault()}
           >
             {suggestions.map((slug, i) => (
@@ -187,7 +221,6 @@ export function ItemNameAutocomplete({
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => {
-          // Kleine vertraging zodat mousedown op de dropdown eerst vuurt
           setTimeout(() => setOpen(false), 150);
         }}
         onKeyDown={handleKeyDown}
