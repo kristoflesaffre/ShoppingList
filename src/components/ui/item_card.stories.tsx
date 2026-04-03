@@ -2,6 +2,19 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { ItemCard } from "./item_card";
 
+/** Figma 923:7726 — 44×44, object-cover; placeholder voor Storybook. */
+function StoryItemThumbnail() {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- externe placeholder voor stories
+    <img
+      src="https://picsum.photos/id/292/88/88"
+      alt="Voorbeeld productfoto"
+      width={44}
+      height={44}
+    />
+  );
+}
+
 const meta: Meta<typeof ItemCard> = {
   title: "UI/ItemCard",
   component: ItemCard,
@@ -65,6 +78,11 @@ const meta: Meta<typeof ItemCard> = {
     asChild: {
       control: "boolean",
       description: "Replace content with child (Radix Slot)",
+    },
+    itemThumbnail: {
+      control: false,
+      description:
+        "44×44 thumbnail (Figma with photo); verborgen in editable / bare / master / added",
     },
   },
 };
@@ -185,6 +203,81 @@ export const EditableChecked: Story = {
   },
 };
 
+/** Met foto — checkbox, 44×44 thumbnail, tekst (Figma 923:7766) */
+export const WithPhoto: Story = {
+  args: {
+    itemName: "Item name",
+    quantity: "Quantity",
+    variant: "default",
+    state: "default",
+    itemThumbnail: <StoryItemThumbnail />,
+  },
+};
+
+/** Met foto + shared — claim-hand zichtbaar */
+export const WithPhotoShared: Story = {
+  args: {
+    itemName: "Item name",
+    quantity: "Quantity",
+    variant: "default",
+    state: "shared",
+    itemThumbnail: <StoryItemThumbnail />,
+  },
+};
+
+/** Met foto + gotten by you */
+export const WithPhotoGottenByYou: Story = {
+  args: {
+    itemName: "Item name",
+    quantity: "Quantity",
+    claimedByLabel: "jij haalt dit",
+    variant: "gotten-by-you",
+    state: "shared",
+    itemThumbnail: <StoryItemThumbnail />,
+  },
+};
+
+/** Met foto + afgevinkt */
+export const WithPhotoChecked: Story = {
+  args: {
+    itemName: "Item name",
+    quantity: "Quantity",
+    variant: "default",
+    state: "default",
+    checked: true,
+    itemThumbnail: <StoryItemThumbnail />,
+  },
+};
+
+/** Met foto + gotten by other */
+export const WithPhotoGottenByOther: Story = {
+  args: {
+    itemName: "Item name",
+    quantity: "Quantity",
+    claimedByLabel: "Anne haalt dit",
+    avatar: (
+      <div
+        className="size-8 rounded-full bg-[var(--gray-200)]"
+        aria-hidden
+      />
+    ),
+    variant: "gotten-by-other",
+    state: "shared",
+    itemThumbnail: <StoryItemThumbnail />,
+  },
+};
+
+/** Thumbnail prop gezet maar editable: foto wordt niet getoond */
+export const EditableIgnoresThumbnail: Story = {
+  args: {
+    itemName: "Item name",
+    quantity: "Quantity",
+    variant: "default",
+    state: "editable",
+    itemThumbnail: <StoryItemThumbnail />,
+  },
+};
+
 /** All variants */
 export const AllVariants: Story = {
   render: () => (
@@ -208,6 +301,13 @@ export const AllVariants: Story = {
         state="default"
         onAddedDecrement={fn()}
         onAddedIncrement={fn()}
+      />
+      <ItemCard
+        itemName="Item name"
+        quantity="Quantity"
+        variant="default"
+        state="default"
+        itemThumbnail={<StoryItemThumbnail />}
       />
       <ItemCard
         itemName="Item name"

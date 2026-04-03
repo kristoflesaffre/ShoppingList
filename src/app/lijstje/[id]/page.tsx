@@ -64,6 +64,7 @@ import {
   masterStoreLabelFromListIcon,
 } from "@/lib/master-stores";
 import { listIsMasterTemplate } from "@/lib/list-master";
+import { useItemPhotoUrl } from "@/lib/item-photos";
 import {
   APP_FAB_INNER_PX4_CLASS,
 } from "@/lib/app-layout";
@@ -966,6 +967,7 @@ function SortableItemItems({
   isEditMode,
   isMasterList,
   isSharedList,
+  getPhotoUrl,
   removingId,
   removingSectionTitle,
   addingId,
@@ -984,6 +986,7 @@ function SortableItemItems({
   isEditMode: boolean;
   isMasterList: boolean;
   isSharedList: boolean;
+  getPhotoUrl?: (name: string) => string | null;
   removingId: string | null;
   removingSectionTitle: string | null;
   addingId: string | null;
@@ -1055,6 +1058,7 @@ function SortableItemItems({
                         isDndActive={isDndActive}
                         isMasterList={isMasterList}
                         isSharedList={isSharedList}
+                        getPhotoUrl={getPhotoUrl}
                         removingId={removingId}
                         addingId={addingId}
                         addingIdExpanded={addingIdExpanded}
@@ -1098,6 +1102,7 @@ function SortableItemItems({
                         isDndActive={isDndActive}
                         isMasterList={isMasterList}
                         isSharedList={isSharedList}
+                        getPhotoUrl={getPhotoUrl}
                         removingId={removingId}
                         addingId={addingId}
                         addingIdExpanded={addingIdExpanded}
@@ -1127,6 +1132,7 @@ function SortableItemRow({
   isDndActive,
   isMasterList,
   isSharedList,
+  getPhotoUrl,
   removingId,
   addingId,
   addingIdExpanded,
@@ -1142,6 +1148,7 @@ function SortableItemRow({
   isDndActive: boolean;
   isMasterList: boolean;
   isSharedList: boolean;
+  getPhotoUrl?: (name: string) => string | null;
   removingId: string | null;
   addingId: string | null;
   addingIdExpanded: boolean;
@@ -1171,6 +1178,7 @@ function SortableItemRow({
         isEditMode={isEditMode}
         isMasterList={isMasterList}
         isSharedList={isSharedList}
+        getPhotoUrl={getPhotoUrl}
         onCheckedChange={(checked) => onCheckedChange(item.id, checked)}
         onRemoteClaimChange={(claimUserId) =>
           onRemoteClaimChange(item.id, claimUserId)
@@ -1189,6 +1197,7 @@ function SortableItemCard({
   isEditMode,
   isMasterList,
   isSharedList,
+  getPhotoUrl,
   onCheckedChange,
   onRemoteClaimChange,
   onDelete,
@@ -1200,6 +1209,7 @@ function SortableItemCard({
   isEditMode: boolean;
   isMasterList: boolean;
   isSharedList: boolean;
+  getPhotoUrl?: (name: string) => string | null;
   onCheckedChange: (checked: boolean) => void;
   onRemoteClaimChange: (claimUserId: string | null) => void;
   onDelete: () => void;
@@ -1241,6 +1251,14 @@ function SortableItemCard({
           onCheckedChange={onCheckedChange}
           presentation={isMasterList && !isEditMode ? "bare" : "default"}
           state={isEditMode ? "editable" : (isSharedList ? "shared" : "default")}
+          itemThumbnail={(() => {
+            const photoUrl = getPhotoUrl?.(item.name);
+            if (!photoUrl) return undefined;
+            return (
+              // eslint-disable-next-line @next/next/no-img-element -- local public asset
+              <img src={photoUrl} alt="" width={44} height={44} className="size-full object-cover" />
+            );
+          })()}
           onDelete={isEditMode ? onDelete : undefined}
           onEdit={isEditMode ? onEdit : undefined}
           dragHandleProps={
@@ -1308,6 +1326,7 @@ export default function ListDetailPage({
 }) {
   const router = useRouter();
   const routeParams = useParams();
+  const getPhotoUrl = useItemPhotoUrl();
   const { isLoading: authLoading, user } = db.useAuth();
   const routeListId = resolvedRouteListId(params.id, routeParams?.id);
   const listQueryId = routeListId ?? LIJSTJE_QUERY_PLACEHOLDER_ID;
@@ -2505,6 +2524,7 @@ export default function ListDetailPage({
                   isEditMode={isEditMode}
                   isMasterList={isMasterList}
                   isSharedList={showSharedDetailRow}
+                  getPhotoUrl={getPhotoUrl}
                   removingId={removingId}
                   removingSectionTitle={removingSectionTitle}
                   addingId={addingId}

@@ -34,6 +34,8 @@ export type ItemCardSyncListClaim = {
  * Checked state via checked/defaultChecked + onCheckedChange (niet van toepassing op `variant="master"`-layout).
  * States: default (zonder claim-icoon), shared (met claim-icoon), editable.
  * Presentation `bare`: statische kaart (wit, rand neutrals/100, pl-16/pr-12/py-12) zonder checkbox, claim of rechterkolom.
+ * Optionele **thumbnail** (Figma `with photo`, node 923:7766): alleen zichtbaar als `itemThumbnail` gezet is
+ * en niet in `state="editable"`, `presentation="bare"`, of variant `master` / `added`.
  * @param asChild - When true, merges container props onto the single child (Radix Slot)
  */
 export interface ItemCardProps extends Omit<
@@ -75,6 +77,11 @@ export interface ItemCardProps extends Omit<
   onAddedDecrement?: () => void;
   /** Bij `variant="added"`: rechterknop (plus); bv. hoeveelheid omhoog. */
   onAddedIncrement?: () => void;
+  /**
+   * Vierkante productfoto 44×44 (Figma 923:7726). Alleen gerenderd als truthy;
+   * nooit in editable / bare / master / added.
+   */
+  itemThumbnail?: React.ReactNode;
   className?: string;
 }
 
@@ -368,6 +375,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       onMasterAdd,
       onAddedDecrement,
       onAddedIncrement,
+      itemThumbnail,
       style: incomingStyle,
       ...restProps
     },
@@ -458,6 +466,12 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
     const isAddedLayout =
       variant === "added" && !isEditable && !isBare;
 
+    const showItemThumbnail =
+      itemThumbnail != null &&
+      !isEditable &&
+      !isMasterLayout &&
+      !isAddedLayout;
+
     /**
      * gotten-by-you: 1px border primary 500 op de buitenrand (zelfde box als default gray border —
      * geen inset + transparante border: dat gaf een witte ring tussen rand en blauwe lijn).
@@ -467,6 +481,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
     const containerClassName = isBare
       ? cn(
           "flex w-full min-w-0 items-center rounded-md border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3",
+          showItemThumbnail && "gap-3",
           className,
         )
       : isAddedLayout
@@ -551,7 +566,14 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       !isBare && !isEditable && showCheckbox && !isGottenByOther;
 
     const defaultContent = isBare ? (
-      <div className="min-w-0 flex flex-1 flex-col gap-0">{textContent}</div>
+      <>
+        {showItemThumbnail && (
+          <div className="relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--gray-100)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover">
+            {itemThumbnail}
+          </div>
+        )}
+        <div className="min-w-0 flex flex-1 flex-col gap-0">{textContent}</div>
+      </>
     ) : isMasterLayout ? (
       <>
         <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -673,6 +695,17 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               </>
             }
           />
+
+          {showItemThumbnail ? (
+            <div
+              className={cn(
+                "relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--gray-100)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover",
+                isChecked && "opacity-50",
+              )}
+            >
+              {itemThumbnail}
+            </div>
+          ) : null}
 
           {showContentBlock && (
             <div className="min-w-0 flex flex-1 flex-col gap-0">
