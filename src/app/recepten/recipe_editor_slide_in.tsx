@@ -323,16 +323,14 @@ export function RecipeEditorSlideIn({
       className="h-[calc(100dvh-48px)]"
       footer={
         !isAiTab ? (
-          <div className="flex flex-col items-center">
-            <Button
-              type="submit"
-              form={RECIPE_EDITOR_FORM_ID}
-              variant="primary"
-              disabled={!recipeName.trim()}
-            >
-              Bewaren
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            form={RECIPE_EDITOR_FORM_ID}
+            variant="primary"
+            disabled={!recipeName.trim()}
+          >
+            Bewaren
+          </Button>
         ) : undefined
       }
     >

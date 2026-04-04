@@ -35,7 +35,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button";
 
     const base =
-      "inline-flex max-w-[280px] min-w-[200px] items-center justify-center overflow-hidden font-medium text-base leading-24 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
+      "inline-flex w-full max-w-[320px] items-center justify-center overflow-hidden font-medium text-base leading-24 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
 
     const sizeStyles = {
       default: "py-2 px-4 rounded-[var(--radius-pill)]",
