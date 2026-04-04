@@ -1588,7 +1588,11 @@ export default function ListDetailPage({
   const existingLoyaltyCard = loyaltyCardData?.lists?.[0]?.loyaltyCard ?? null;
   const existingLoyaltyCardSecondary =
     loyaltyCardData?.lists?.[0]?.loyaltyCardSecondary ?? null;
-  const isLidlDelhaizeList = listIconIsLidlDelhaizeCombo(masterIcon);
+  const isLidlDelhaizeList =
+    listIconIsLidlDelhaizeCombo(masterIcon) ||
+    // Retroactieve detectie voor lijstjes aangemaakt vóór masterIcon werd opgeslagen:
+    // een secondary loyalty card kan alleen bestaan op een Lidl/Delhaize-combinatielijst.
+    (!isMasterList && existingLoyaltyCardSecondary !== null);
   const { data: recipeData } = db.useQuery({
     recipes: { ingredients: {} },
   });
@@ -2122,13 +2126,16 @@ export default function ListDetailPage({
       typeof existingLoyaltyCard.rawValue === "string" &&
       existingLoyaltyCard.rawValue.length > 0
     ) {
-      const label = masterStoreLabelFromListIcon(listIcon);
+      // masterIcon bevat het winkellogo (nieuwe lijstjes) of valt terug op listIcon (oude lijstjes).
+      // Gebruik enkel als het een erkend winkellogo is — nooit een voedselpictogram tonen.
+      const storeLogoSrc = masterStoreLabelFromListIcon(masterIcon) ? masterIcon : "";
+      const label = masterStoreLabelFromListIcon(masterIcon) || masterStoreLabelFromListIcon(listIcon);
       panes.push({
         heading: label ? `Klantenkaart ${label}` : "Klantenkaart",
         codeType: existingLoyaltyCard.codeType as "qr" | "barcode",
         codeFormat: String(existingLoyaltyCard.codeFormat ?? ""),
         rawValue: existingLoyaltyCard.rawValue,
-        footerLogoSrc: masterIcon,
+        footerLogoSrc: storeLogoSrc,
       });
     }
     return panes;

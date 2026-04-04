@@ -351,6 +351,8 @@ function SortableListCard({
           icon={
             <Image
               src={
+                // Oude lijstjes: icon = winkellogo → vervang door deterministisch voedselpictogram.
+                // Nieuwe lijstjes: icon = al een voedselpictogram → gebruik rechtstreeks.
                 list.displayVariant === "from-master" && list.icon.startsWith("/logos/")
                   ? foodIconFromId(list.id)
                   : list.icon
@@ -487,10 +489,14 @@ export default function Home() {
         primaryOtherId != null
           ? shareFirstNameByUserId.get(primaryOtherId) ?? null
           : null;
-      const isFromMaster =
-        !isMaster &&
-        typeof l.icon === "string" &&
-        l.icon.startsWith("/logos/");
+      // masterIcon = winkellogo opgeslagen bij aanmaken; voor oude lijstjes valt het terug op icon (= was al een winkellogo).
+      const masterIconSrc: string = (l as Record<string, unknown>).masterIcon as string || "";
+      const effectiveStoreIcon = masterIconSrc.startsWith("/logos/")
+        ? masterIconSrc
+        : typeof l.icon === "string" && l.icon.startsWith("/logos/")
+          ? l.icon
+          : "";
+      const isFromMaster = !isMaster && effectiveStoreIcon.length > 0;
       return {
         id: l.id,
         name: l.name,
@@ -507,7 +513,7 @@ export default function Home() {
             : isFromMaster
               ? "from-master"
               : "default",
-        storeLogos: isFromMaster ? storeLogosFromListIcon(l.icon) : [],
+        storeLogos: isFromMaster ? storeLogosFromListIcon(effectiveStoreIcon) : [],
         sharedWithFirstName: isMaster ? null : hasOtherMembers ? sharedName : null,
         isMasterTemplate: isMaster,
       };
@@ -529,10 +535,13 @@ export default function Home() {
           ownerId != null
             ? shareFirstNameByUserId.get(ownerId) ?? null
             : null;
-        const isFromMaster =
-          !isMaster &&
-          typeof l.icon === "string" &&
-          l.icon.startsWith("/logos/");
+        const masterIconSrc2: string = (l as Record<string, unknown>).masterIcon as string || "";
+        const effectiveStoreIcon2 = masterIconSrc2.startsWith("/logos/")
+          ? masterIconSrc2
+          : typeof l.icon === "string" && l.icon.startsWith("/logos/")
+            ? l.icon
+            : "";
+        const isFromMaster = !isMaster && effectiveStoreIcon2.length > 0;
         return {
           id: l.id,
           name: l.name,
@@ -547,7 +556,7 @@ export default function Home() {
               ? ("from-master" as const)
               : ("shared" as const),
           sharedWithFirstName: isMaster || isFromMaster ? null : ownerFirst,
-          storeLogos: isFromMaster ? storeLogosFromListIcon(l.icon) : [],
+          storeLogos: isFromMaster ? storeLogosFromListIcon(effectiveStoreIcon2) : [],
           isMasterTemplate: isMaster,
         };
       });
