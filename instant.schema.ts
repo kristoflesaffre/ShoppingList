@@ -7,6 +7,11 @@ const schema = i.schema({
       name: i.string(),
       date: i.string(),
       icon: i.string(),
+      /**
+       * Logo van de master-winkel bij lijsten aangemaakt vanuit een master; gebruikt o.a. voor
+       * Lidl/Delhaize-combo en loyalty-footer. Ontbreekt op oudere lijsten → val terug op `icon`.
+       */
+      masterIcon: i.string().optional(),
       order: i.number(),
       /**
        * Master-template (winkelkeuze-flow): aparte sectie + bare items.

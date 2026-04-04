@@ -267,14 +267,16 @@ export function SwipeToDelete({
       role="group"
       aria-label={deleteActionLabel}
     >
-      <div
-        className="pointer-events-none absolute inset-0 rounded-md border border-[var(--error-600)] bg-[var(--error-600)]"
-        aria-hidden="true"
-      >
-        <div className="absolute right-[24px] top-1/2 -translate-y-1/2">
-          <RecycleBinSwipeIcon />
+      {offset < 0 && (
+        <div
+          className="pointer-events-none absolute inset-0 rounded-md bg-[var(--error-600)]"
+          aria-hidden="true"
+        >
+          <div className="absolute right-[24px] top-1/2 -translate-y-1/2">
+            <RecycleBinSwipeIcon />
+          </div>
         </div>
-      </div>
+      )}
 
       <div
         ref={surfaceRef}

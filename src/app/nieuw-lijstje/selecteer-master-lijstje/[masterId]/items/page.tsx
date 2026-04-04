@@ -546,6 +546,7 @@ export default function SelecteerMasterItemsPage() {
         name: listName,
         date: now.toLocaleDateString("nl-NL"),
         icon,
+        masterIcon: masterList.icon,
         order,
         ownerId: user.id,
         isMasterTemplate: false,

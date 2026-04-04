@@ -1433,6 +1433,8 @@ export default function ListDetailPage({
   }, [authLoading, user, isLoading, listData, canAccess, router]);
   const listName = listData?.name ?? "Lijstje";
   const listIcon = listData?.icon ?? "";
+  /** Logo van de master-winkel (opgeslagen bij aanmaken vanuit master; fallback = listIcon voor oude lijstjes). */
+  const masterIcon: string = (listData as Record<string, unknown>)?.masterIcon as string || listIcon;
   const isMasterList = listIsMasterTemplate(
     listData as { isMasterTemplate?: boolean; icon?: string; name?: string },
   );
@@ -1586,7 +1588,7 @@ export default function ListDetailPage({
   const existingLoyaltyCard = loyaltyCardData?.lists?.[0]?.loyaltyCard ?? null;
   const existingLoyaltyCardSecondary =
     loyaltyCardData?.lists?.[0]?.loyaltyCardSecondary ?? null;
-  const isLidlDelhaizeList = listIconIsLidlDelhaizeCombo(listIcon);
+  const isLidlDelhaizeList = listIconIsLidlDelhaizeCombo(masterIcon);
   const { data: recipeData } = db.useQuery({
     recipes: { ingredients: {} },
   });
@@ -2126,7 +2128,7 @@ export default function ListDetailPage({
         codeType: existingLoyaltyCard.codeType as "qr" | "barcode",
         codeFormat: String(existingLoyaltyCard.codeFormat ?? ""),
         rawValue: existingLoyaltyCard.rawValue,
-        footerLogoSrc: listIcon,
+        footerLogoSrc: masterIcon,
       });
     }
     return panes;

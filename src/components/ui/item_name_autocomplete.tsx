@@ -3,22 +3,33 @@
 import * as React from "react";
 import ReactDOM from "react-dom";
 import { InputField } from "@/components/ui/input_field";
-import { useItemSlugs, normalizeForMatch } from "@/lib/item-photos";
+import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
+import { useItemSlugs, useItemPhotoUrl, normalizeForMatch } from "@/lib/item-photos";
 import { cn } from "@/lib/utils";
 
 /** Slug "vleesje_noe" → "Vleesje noe" (eerste woord hoofdletter, rest kleine letters). */
 function slugToDisplayName(slug: string): string {
   return slug
     .split("_")
-    .map((word, i) =>
-      i === 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word,
-    )
+    .map((w, i) => (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w))
     .join(" ");
 }
 
 const MAX_SUGGESTIONS = 6;
-/** Geschatte hoogte per rij (afbeelding 40px + py-2*2 = 16px). */
 const ROW_HEIGHT = 56;
+
+/** True wanneer de viewport smaller is dan 768px (md breakpoint). */
+function useIsSmallScreen(): boolean {
+  const [isSmall, setIsSmall] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsSmall(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsSmall(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isSmall;
+}
 
 export type ItemNameAutocompleteProps = {
   value: string;
@@ -28,7 +39,9 @@ export type ItemNameAutocompleteProps = {
   className?: string;
 };
 
-export function ItemNameAutocomplete({
+// ─── Large-screen dropdown ────────────────────────────────────────────────────
+
+function LargeScreenAutocomplete({
   value,
   onChange,
   label,
@@ -51,18 +64,12 @@ export function ItemNameAutocomplete({
     if (!q || !slugs.length) return [];
     const norm = normalizeForMatch(q);
     if (!norm) return [];
-
-    // Alleen slugs waarbij minstens één woord begint met de zoekterm
     const matching = slugs.filter((slug) =>
-      slug.split("_").some((word) => word.startsWith(norm)),
+      slug.split("_").some((w) => w.startsWith(norm)),
     );
-
-    // Sorteer: eerste woord begint ermee → hoger dan volgend woord
-    matching.sort((a, b) => {
-      const rank = (s: string) => (s.startsWith(norm) ? 0 : 1);
-      return rank(a) - rank(b);
-    });
-
+    matching.sort(
+      (a, b) => (a.startsWith(norm) ? 0 : 1) - (b.startsWith(norm) ? 0 : 1),
+    );
     return matching.slice(0, MAX_SUGGESTIONS);
   }, [slugs, value]);
 
@@ -72,44 +79,19 @@ export function ItemNameAutocomplete({
     setHighlightedIndex(-1);
   }, [suggestions]);
 
-  /**
-   * Herbereken de fixed-positie van de dropdown.
-   *
-   * Strategie (hetzelfde als native iOS-apps):
-   * - Gebruik `visualViewport.height` als maatstaf voor de beschikbare ruimte.
-   *   Wanneer het keyboard opent, krimpt visualViewport.height maar blijft
-   *   window.innerHeight onveranderd. Zo detecteren we de keyboard.
-   * - De "zichtbare ondergrens" in fixed-coördinaten =
-   *     visualViewport.offsetTop + visualViewport.height
-   * - Is er minder ruimte onder de input dan de dropdown nodig heeft?
-   *   → Toon boven de input (standaard iOS-patroon).
-   */
   const recalcPosition = React.useCallback(() => {
     if (!containerRef.current || !showDropdown) return;
     const rect = containerRef.current.getBoundingClientRect();
     const vv = window.visualViewport;
-
-    /**
-     * `position: fixed` op iOS is relatief aan de visual viewport.
-     * getBoundingClientRect() geeft layout viewport coördinaten.
-     * Verschil = vv.offsetTop (hoeveel de visual viewport verschoven is t.o.v. layout viewport).
-     *
-     * Conversie:  coord_in_vv = coord_in_layout - vv.offsetTop
-     * Voor fixed bottom:  bottom = vvHeight - rectTopInVV - 4
-     * Voor fixed top:     top    = rectBottomInVV + 4
-     */
     const vvOffsetTop = vv?.offsetTop ?? 0;
     const vvHeight = vv?.height ?? window.innerHeight;
-
     const rectTopInVV = rect.top - vvOffsetTop;
     const rectBottomInVV = rect.bottom - vvOffsetTop;
-
     const estHeight = Math.min(suggestions.length, MAX_SUGGESTIONS) * ROW_HEIGHT;
     const spaceBelow = vvHeight - rectBottomInVV;
     const spaceAbove = rectTopInVV;
 
     if (spaceBelow < estHeight + 8) {
-      // Niet genoeg ruimte onder → toon boven de input
       const maxH = Math.min(estHeight, spaceAbove - 8);
       setDropdownStyle({
         position: "fixed",
@@ -120,7 +102,6 @@ export function ItemNameAutocomplete({
         zIndex: 9999,
       });
     } else {
-      // Genoeg ruimte onder → toon onder de input
       setDropdownStyle({
         position: "fixed",
         top: rectBottomInVV + 4,
@@ -132,7 +113,6 @@ export function ItemNameAutocomplete({
     }
   }, [showDropdown, suggestions.length]);
 
-  // Herbereken bij open/dicht van dropdown, bij typen, en bij resize van visualViewport
   React.useLayoutEffect(() => {
     recalcPosition();
   }, [recalcPosition, value]);
@@ -232,9 +212,7 @@ export function ItemNameAutocomplete({
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => {
-          setTimeout(() => setOpen(false), 150);
-        }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={handleKeyDown}
         autoComplete="off"
         role="combobox"
@@ -244,5 +222,75 @@ export function ItemNameAutocomplete({
       />
       {dropdown}
     </div>
+  );
+}
+
+// ─── Small-screen trigger + slide-in ─────────────────────────────────────────
+
+function SmallScreenAutocomplete({
+  value,
+  onChange,
+  label,
+  placeholder,
+  className,
+}: ItemNameAutocompleteProps) {
+  const [slideInOpen, setSlideInOpen] = React.useState(false);
+  const getPhotoUrl = useItemPhotoUrl();
+  const photoUrl = value ? getPhotoUrl(value) : null;
+
+  return (
+    <div className={cn("relative w-full", className)}>
+      {label && (
+        <p className="mb-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+          {label}
+        </p>
+      )}
+      {/* Knop die eruitziet als een InputField maar het keyboard NIET toont */}
+      <button
+        type="button"
+        onClick={() => setSlideInOpen(true)}
+        className="flex h-12 w-full items-center gap-3 rounded-lg border border-[#c6c8ce] bg-[var(--white)] px-4 text-left text-base leading-24 tracking-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        aria-haspopup="dialog"
+      >
+        {value ? (
+          <>
+            {photoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={photoUrl}
+                alt=""
+                width={32}
+                height={32}
+                className="size-8 shrink-0 object-cover"
+                aria-hidden
+              />
+            )}
+            <span className="min-w-0 truncate text-[var(--text-primary)]">{value}</span>
+          </>
+        ) : (
+          <span className="text-[var(--text-placeholder)]">{placeholder}</span>
+        )}
+      </button>
+
+      <ItemNameSearchSlideIn
+        open={slideInOpen}
+        onClose={() => setSlideInOpen(false)}
+        initialValue={value}
+        onSelect={(name) => onChange(name)}
+      />
+    </div>
+  );
+}
+
+// ─── Publieke component: kiest automatisch op basis van schermgrootte ─────────
+
+export function ItemNameAutocomplete(props: ItemNameAutocompleteProps) {
+  const isSmall = useIsSmallScreen();
+  // Tijdens SSR/hydration (isSmall = false) renderen we de large versie;
+  // na mount switcht hij correct.
+  return isSmall ? (
+    <SmallScreenAutocomplete {...props} />
+  ) : (
+    <LargeScreenAutocomplete {...props} />
   );
 }
