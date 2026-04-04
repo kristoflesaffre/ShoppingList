@@ -4,6 +4,7 @@ import * as React from "react";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { Stepper } from "@/components/ui/stepper";
+import { ItemNameAutocomplete } from "@/components/ui/item_name_autocomplete";
 import { Button } from "@/components/ui/button";
 import { parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
 
@@ -99,11 +100,11 @@ export function RecipeIngredientFormSlideIn({
       }
     >
       <div className="flex flex-col gap-6">
-        <InputField
+        <ItemNameAutocomplete
           label="Naam ingrediënt"
           placeholder="Naam ingrediënt"
           value={ingName}
-          onChange={(e) => setIngName(e.target.value)}
+          onChange={setIngName}
         />
         <div className="flex flex-col gap-2">
           <Stepper
