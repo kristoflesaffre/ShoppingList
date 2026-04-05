@@ -43,10 +43,7 @@ import { storeLogosFromListIcon } from "@/lib/master-stores";
 import { db } from "@/lib/db";
 import { AppBottomNav } from "@/components/app_bottom_nav";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
-import {
-  APP_FAB_BOTTOM_CLASS,
-  APP_FAB_INNER_PX4_CLASS,
-} from "@/lib/app-layout";
+import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -1007,12 +1004,14 @@ export default function Home() {
           APP_FAB_BOTTOM_CLASS,
         )}
       >
-        <div className={APP_FAB_INNER_PX4_CLASS}>
-          <FloatingActionButton
-            aria-label="Nieuw lijstje"
-            className="pointer-events-auto"
-            onClick={handleOpenCreateModal}
-          />
+        <div className="px-[16px]">
+          <div className="mx-auto flex w-full max-w-[956px] justify-end">
+            <FloatingActionButton
+              aria-label="Nieuw lijstje"
+              className="pointer-events-auto"
+              onClick={handleOpenCreateModal}
+            />
+          </div>
         </div>
       </div>
     </div>
