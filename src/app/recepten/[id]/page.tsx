@@ -98,6 +98,7 @@ export default function ReceptDetailPage() {
   const [photoError, setPhotoError] = React.useState<string | null>(null);
   const [photoSaving, setPhotoSaving] = React.useState(false);
   const [ingredientSlideOpen, setIngredientSlideOpen] = React.useState(false);
+  const [editingIngredientId, setEditingIngredientId] = React.useState<string | null>(null);
   const [photoSourceSlideOpen, setPhotoSourceSlideOpen] =
     React.useState(false);
   const [aiFoodImageSlideOpen, setAiFoodImageSlideOpen] =
@@ -160,17 +161,21 @@ export default function ReceptDetailPage() {
     [],
   );
 
-  const handleLijstjeIngredientEdit = React.useCallback(() => {
-    openEditor();
-  }, [openEditor]);
+  const handleLijstjeIngredientEdit = React.useCallback((id: string) => {
+    setEditingIngredientId(id);
+    setDetailPhotoEditMode(false);
+    setIngredientSlideOpen(true);
+  }, []);
 
   const openFabAddIngredient = React.useCallback(() => {
     setDetailPhotoEditMode(false);
+    setEditingIngredientId(null);
     setIngredientSlideOpen(true);
   }, []);
 
   const closeIngredientSlide = React.useCallback(() => {
     setIngredientSlideOpen(false);
+    setEditingIngredientId(null);
   }, []);
 
   const handleAddIngredientFromFab = React.useCallback(
@@ -194,6 +199,24 @@ export default function ReceptDetailPage() {
       );
     },
     [recipeData?.recipes, savedRecipe],
+  );
+
+  const handleEditIngredient = React.useCallback(
+    async (draft: RecipeIngredientFormDraft) => {
+      if (!draft.id) return;
+      await db.transact(
+        db.tx.recipeIngredients[draft.id].update({
+          name: draft.name,
+          quantity: draft.quantity,
+        }),
+      );
+    },
+    [],
+  );
+
+  const editingIngredient = React.useMemo(
+    () => savedRecipe?.ingredients.find((i) => i.id === editingIngredientId) ?? null,
+    [savedRecipe?.ingredients, editingIngredientId],
   );
 
   const openPhotoPicker = React.useCallback(() => {
@@ -607,8 +630,8 @@ export default function ReceptDetailPage() {
       <RecipeIngredientFormSlideIn
         open={ingredientSlideOpen}
         onClose={closeIngredientSlide}
-        initial={null}
-        onSubmit={handleAddIngredientFromFab}
+        initial={editingIngredient}
+        onSubmit={editingIngredientId ? handleEditIngredient : handleAddIngredientFromFab}
         titleId="recept-detail-ingredient-form"
         containerClassName="z-[50]"
         slideClassName="h-[calc(100dvh-48px)]"
