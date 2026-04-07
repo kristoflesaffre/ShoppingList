@@ -143,7 +143,7 @@ function SelecteerMasterLijstPageContent() {
               variant="tertiary"
               onClick={() => router.push("/")}
               aria-label="Terug naar lijstjes"
-              className="relative z-[1] !min-w-0 size-10 shrink-0 p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus [&_svg]:size-6"
+              className="relative z-[1] !min-w-0 !w-10 size-10 shrink-0 p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus [&_svg]:size-6"
             >
               <BackArrowIcon className="size-6 shrink-0" />
             </Button>

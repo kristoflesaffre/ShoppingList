@@ -33,6 +33,7 @@ import { defaultNewListName } from "@/lib/list-default-name";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import { SwipeToAdd } from "@/components/ui/swipe_to_add";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
+import { useItemPhotoUrl } from "@/lib/item-photos";
 
 type TemplateItem = {
   id: string;
@@ -177,6 +178,7 @@ function SelectableItemCard({
   item,
   addedQuantity,
   displayQuantity,
+  photoUrl,
   onAdd,
   onIncrement,
   onDecrement,
@@ -185,6 +187,7 @@ function SelectableItemCard({
   item: TemplateItem;
   addedQuantity: number | null;
   displayQuantity: string;
+  photoUrl?: string | null;
   onAdd: () => void;
   onIncrement: () => void;
   onDecrement: () => void;
@@ -243,6 +246,17 @@ function SelectableItemCard({
         </>
       ) : (
         <>
+          {photoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photoUrl}
+              alt=""
+              width={44}
+              height={44}
+              className="size-11 shrink-0 rounded-[4px] object-contain"
+              aria-hidden
+            />
+          )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-medium leading-24 tracking-normal text-text-primary">
               {item.name}
@@ -277,6 +291,7 @@ export default function SelecteerMasterItemsPage() {
   const masterId = decodeURIComponent(String(params.masterId ?? ""));
 
   const { isLoading: authLoading, user } = db.useAuth();
+  const getPhotoUrl = useItemPhotoUrl();
   const ownerId = user?.id ?? "__no_user__";
 
   const { isLoading, error, data } = db.useQuery({
@@ -656,7 +671,7 @@ export default function SelecteerMasterItemsPage() {
               )
             }
             aria-label="Terug naar masterlijsten"
-            className="relative z-[1] !min-w-0 size-10 shrink-0 p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus [&_svg]:size-6"
+            className="relative z-[1] !min-w-0 !w-10 size-10 shrink-0 p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus [&_svg]:size-6"
           >
             <BackArrowIcon className="size-6 shrink-0" />
           </Button>
@@ -735,6 +750,7 @@ export default function SelecteerMasterItemsPage() {
                               ? item.quantity
                               : formatQuantity(qty, parsed.unit)
                           }
+                          photoUrl={getPhotoUrl(item.name)}
                           onAdd={() => handleAdd(item)}
                           onIncrement={() => handleIncrement(item)}
                           onDecrement={() => handleDecrement(item)}
