@@ -19,6 +19,7 @@ import { FoodImageGeneratorSlideIn } from "@/components/food_image_generator_sli
 import type { FoodImageGenerationResult } from "@/components/food-image-generator";
 import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
 import { APP_FAB_INNER_PX4_CLASS } from "@/lib/app-layout";
+import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
 
 function BackArrowIcon({ className }: { className?: string }) {
@@ -91,6 +92,20 @@ export default function ReceptDetailPage() {
   });
 
   const [detailTab, setDetailTab] = React.useState<DetailTab>("ingredienten");
+  const [ingredientView, setIngredientView] = React.useState<"groot" | "klein" | "lijst">("groot");
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem("ingredientView");
+    if (saved === "groot" || saved === "klein" || saved === "lijst") {
+      setIngredientView(saved);
+    }
+  }, []);
+
+  const handleIngredientViewChange = React.useCallback((view: "groot" | "klein" | "lijst") => {
+    setIngredientView(view);
+    localStorage.setItem("ingredientView", view);
+  }, []);
+  const getPhotoUrl = useIngredientPhotoUrl();
   const [recipeEditorOpen, setRecipeEditorOpen] = React.useState(false);
   /** Figma 863:5339 — na tik op Wijzigen: knop Gereed, foto 10%, overlay «Foto wijzigen». */
   const [detailPhotoEditMode, setDetailPhotoEditMode] =
@@ -500,30 +515,94 @@ export default function ReceptDetailPage() {
           </div>
 
           {detailTab === "ingredienten" ? (
-            <ul className="relative z-[1] flex flex-col">
-              {savedRecipe.ingredients.length === 0 ? (
-                <li className="py-4 text-sm text-[var(--text-tertiary)]">
-                  Nog geen ingrediënten. Tik op + om er een toe te voegen of gebruik
-                  Wijzigen voor het volledige recept.
-                </li>
-              ) : (
-                savedRecipe.ingredients.map((ing) => (
-                  <li
-                    key={ing.id}
+            <div className="relative z-[1] flex w-full flex-col gap-4">
+              {/* Pill tab: Groot / Klein / Lijst */}
+              <div
+                role="tablist"
+                aria-label="Weergave ingrediënten"
+                className="relative flex w-full overflow-hidden rounded-pill border border-[var(--gray-100)] bg-[var(--gray-25)]"
+              >
+                {/* Sliding white indicator */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 left-0 w-1/3 rounded-pill bg-[var(--white)] transition-transform duration-200 ease-out"
+                  style={{ transform: `translateX(${["groot", "klein", "lijst"].indexOf(ingredientView) * 100}%)` }}
+                />
+                {(["groot", "klein", "lijst"] as const).map((view) => (
+                  <button
+                    key={view}
+                    type="button"
+                    role="tab"
+                    aria-selected={ingredientView === view}
+                    onClick={() => handleIngredientViewChange(view)}
                     className={cn(
-                      "flex flex-col gap-3 border-b border-[var(--border-subtle)] py-3 text-base font-medium leading-24 text-[var(--text-primary)] last:border-b-0",
+                      "relative z-10 flex flex-1 items-center justify-center rounded-pill px-4 py-[10px] text-base font-semibold leading-24 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                      ingredientView === view
+                        ? "text-[var(--blue-500)]"
+                        : "text-[var(--gray-300)]",
                     )}
                   >
-                    <div className="flex items-center gap-6">
-                      <span className="min-w-0 flex-1">{ing.name}</span>
-                      <span className="shrink-0 whitespace-nowrap text-right">
-                        {ing.quantity}
-                      </span>
-                    </div>
-                  </li>
-                ))
+                    {view === "groot" ? "Groot" : view === "klein" ? "Klein" : "Lijst"}
+                  </button>
+                ))}
+              </div>
+
+              {/* Groot: 3 kolommen, 12px tekst */}
+              {ingredientView === "groot" && (
+                savedRecipe.ingredients.length === 0 ? (
+                  <p className="py-4 text-sm text-[var(--text-tertiary)]">
+                    Nog geen ingrediënten. Tik op + om er een toe te voegen.
+                  </p>
+                ) : (
+                  <IngredientGrid
+                    ingredients={savedRecipe.ingredients}
+                    cols={3}
+                    getPhotoUrl={getPhotoUrl}
+                    textSize="text-xs"
+                  />
+                )
               )}
-            </ul>
+
+              {/* Klein: 4 kolommen, 10px tekst */}
+              {ingredientView === "klein" && (
+                savedRecipe.ingredients.length === 0 ? (
+                  <p className="py-4 text-sm text-[var(--text-tertiary)]">
+                    Nog geen ingrediënten. Tik op + om er een toe te voegen.
+                  </p>
+                ) : (
+                  <IngredientGrid
+                    ingredients={savedRecipe.ingredients}
+                    cols={4}
+                    getPhotoUrl={getPhotoUrl}
+                    textSize="text-[10px]"
+                  />
+                )
+              )}
+
+              {/* Lijst: bestaande verticale lijst */}
+              {ingredientView === "lijst" && (
+                savedRecipe.ingredients.length === 0 ? (
+                  <p className="py-4 text-sm text-[var(--text-tertiary)]">
+                    Nog geen ingrediënten. Tik op + om er een toe te voegen of gebruik
+                    Wijzigen voor het volledige recept.
+                  </p>
+                ) : (
+                  <ul className="flex w-full flex-col">
+                    {savedRecipe.ingredients.map((ing) => (
+                      <li
+                        key={ing.id}
+                        className="flex flex-col gap-3 border-b border-[var(--border-subtle)] py-3 text-base font-medium leading-24 text-[var(--text-primary)] last:border-b-0"
+                      >
+                        <div className="flex items-center gap-6">
+                          <span className="min-w-0 flex-1">{ing.name}</span>
+                          <span className="shrink-0 whitespace-nowrap text-right">{ing.quantity}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              )}
+            </div>
           ) : null}
 
           {detailTab === "recept" ? (
@@ -654,6 +733,93 @@ export default function ReceptDetailPage() {
         initialDishName={savedRecipe.name}
         onGenerationComplete={handleAiFoodImageApplied}
       />
+    </div>
+  );
+}
+
+// ─── Ingredient grid (Groot / Klein) ─────────────────────────────────────────
+
+function IngredientGrid({
+  ingredients,
+  cols,
+  getPhotoUrl,
+  textSize,
+}: {
+  ingredients: RecipeIngredient[];
+  cols: 3 | 4;
+  getPhotoUrl: (name: string) => string | null;
+  textSize: string;
+}) {
+  // Chunk into rows
+  const rows: RecipeIngredient[][] = [];
+  for (let i = 0; i < ingredients.length; i += cols) {
+    rows.push(ingredients.slice(i, i + cols));
+  }
+
+  return (
+    <div className="flex w-full flex-col">
+      {rows.map((row, rowIdx) => {
+        const isLastRow = rowIdx === rows.length - 1;
+        const isPartialRow = row.length < cols;
+        return (
+          <React.Fragment key={rowIdx}>
+            <div
+              className={cn(
+                "flex gap-4 py-3",
+                isLastRow && isPartialRow ? "justify-center" : "",
+              )}
+            >
+              {row.map((ing) => {
+                const photoUrl = getPhotoUrl(ing.name);
+                return (
+                  <div
+                    key={ing.id}
+                    className="flex flex-col items-center gap-2 min-w-0 shrink-0"
+                    style={
+                      isLastRow && isPartialRow
+                        ? { width: `calc((100% - ${(cols - 1) * 16}px) / ${cols})` }
+                        : { flex: "1 0 0" }
+                    }
+                  >
+                    <div className="aspect-square w-full overflow-hidden rounded-sm bg-[var(--white)]">
+                      {photoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={photoUrl}
+                          alt=""
+                          className="size-full object-contain"
+                          aria-hidden
+                        />
+                      ) : null}
+                    </div>
+                    <div className="w-full text-center">
+                      <p
+                        className={cn(
+                          textSize,
+                          "font-medium leading-4 text-[var(--text-primary)] break-words",
+                        )}
+                      >
+                        {ing.name}
+                      </p>
+                      <p
+                        className={cn(
+                          textSize,
+                          "font-normal leading-4 text-[var(--text-secondary)]",
+                        )}
+                      >
+                        {ing.quantity}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {!isLastRow && (
+              <div className="border-t border-[var(--border-subtle)]" />
+            )}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 }
