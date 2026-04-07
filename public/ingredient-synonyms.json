@@ -1,0 +1,293 @@
+{
+  "_comment": "Synoniemen voor ingrediënten. Sleutel = alternatieve naam (kleine letters, accenten OK), waarde = slug uit public/images/ingredients/. Voeg zelf regels toe.",
+
+  "ui": "ajuinen",
+  "uien": "ajuinen",
+  "ajuin": "ajuinen",
+  "uitje": "ajuinen",
+  "uitjes": "ajuinen",
+  "ui gesnipperd": "ajuinen",
+  "gesnipperde ui": "ajuinen",
+  "uienringen": "ajuinen",
+
+  "rode ui": "rode_ajuin",
+  "rode uien": "rode_ajuin",
+  "rode ajuin": "rode_ajuin",
+
+  "knoflook": "look",
+  "knoflookteentje": "look",
+  "knoflookteentjes": "look",
+  "lookteentje": "look",
+  "lookteentjes": "look",
+  "teentje knoflook": "look",
+  "teentjes knoflook": "look",
+
+  "wortel": "wortelen",
+  "worteltje": "wortelen",
+  "worteltjes": "wortelen",
+  "peen": "wortelen",
+  "penen": "wortelen",
+  "geraspte wortel": "geraspte_wortelen",
+  "geraspte wortels": "geraspte_wortelen",
+
+  "appel": "appels_1",
+  "appels": "appels_1",
+
+  "ei": "eieren_1",
+  "eieren": "eieren_1",
+
+  "banaan": "bananen",
+
+  "tomaat": "tomaten",
+  "tomaatje": "tomaten",
+  "kerstomaat": "kerstomaatjes",
+  "kerstomaten": "kerstomaatjes",
+  "cherrytomaatje": "kerstomaatjes",
+  "cherrytomaatjes": "kerstomaatjes",
+  "cherry tomaten": "kerstomaatjes",
+  "tomaten uit blik": "tomaten_uit_blik",
+  "gepelde tomaten": "blik_tomaten",
+  "ingeblikte tomaten": "blik_tomaten",
+
+  "paprika": "paprika",
+  "gele paprika": "gele_paprika",
+  "rode paprika": "paprika",
+  "groene paprika": "paprika",
+
+  "champignon": "champignons",
+  "paddenstoel": "champignons",
+  "paddenstoelen": "champignons",
+
+  "framboos": "frambozen",
+
+  "bosbes": "bosbessen",
+  "blauwe bes": "bosbessen",
+  "blauwe bessen": "bosbessen",
+
+  "peer": "peren",
+
+  "mandarijn": "mandarijnen",
+
+  "sjalot": "sjalotten",
+  "sjalotje": "sjalotten",
+  "sjalotjes": "sjalotten",
+
+  "kappertje": "zilveruitjes",
+  "zilverui": "zilveruitjes",
+
+  "pijpajuintje": "pijpajuin",
+  "bosui": "pijpajuin",
+  "bosuitje": "pijpajuin",
+  "bosuitjes": "pijpajuin",
+  "lente-ui": "pijpajuin",
+  "lenteui": "pijpajuin",
+  "lenteuitje": "pijpajuin",
+
+  "aardappel": "aardappelen",
+  "aardappels": "aardappelen",
+  "aardappeltje": "aardappelen",
+  "aardappeltjes": "aardappelen",
+  "frietaardappelen": "aardappelen",
+  "zoete aardappel": "zoete_aardappelen",
+  "zoete aardappels": "zoete_aardappelen",
+  "bataat": "zoete_aardappelen",
+  "butternut squash": "butternut",
+  "pompoen": "butternut",
+
+  "aardbeien": "aardbeien",
+  "aardbei": "aardbeien",
+
+  "kip": "kipfilet",
+  "kippenborst": "kipfilet",
+  "kipdij": "kipdijfilet",
+  "kipdijen": "kipdijfilet",
+  "kalkoen": "kalkoenlapjes",
+
+  "zalm filet": "zalm",
+  "gerookte zalm": "gerookte_zalm",
+
+  "scampi": "scampis",
+
+  "gehakt vlees": "gehakt",
+  "rundergehakt": "gehakt",
+  "varkensgehakt": "gehakt",
+
+  "spekblokje": "spekblokjes",
+  "lardons": "spekblokjes",
+
+  "parma ham": "parmaham",
+  "rauwe ham": "parmaham",
+
+  "mozzarella": "mozarella",
+  "mozzarelle": "mozarella",
+  "parmezaanse kaas": "parmezaan",
+  "parmezaankaas": "parmezaan",
+  "parmezaan kaas": "parmezaan",
+  "gruyere": "geraspte_kaas",
+  "gruyère": "geraspte_kaas",
+  "kaas": "geraspte_kaas",
+  "geraspte kaas": "geraspte_kaas",
+  "platte kaas": "platte_kaas",
+
+  "room": "room",
+  "slagroom": "room",
+  "zure room": "zure_room",
+
+  "volle melk": "melk",
+  "halfvolle melk": "melk",
+
+  "gist": "verse_gist",
+  "droge gist": "gedroogde_gist",
+  "droogzout": "gedroogde_gist",
+
+  "bloem": "zelfrijzend_bakmeel",
+  "tarwebloem": "zelfrijzend_bakmeel",
+  "patentbloem": "zelfrijzend_bakmeel",
+  "speltmeel": "speltbloem",
+
+  "poedersuiker": "bloemsuiker",
+  "fijne suiker": "suiker",
+  "kristalsuiker": "suiker",
+  "basterdsuiker": "bruine_suiker",
+  "cassonade": "bruine_suiker",
+  "bruine suiker": "bruine_suiker",
+
+  "olijfolie extra vierge": "olijfolie",
+  "extra vergine olijfolie": "olijfolie",
+  "arachide olie": "arachideolie",
+  "kokosolie": "kokosolie",
+  "kokosvet": "kokosolie",
+  "sesamolie": "sesamolie",
+  "zonnebloem olie": "zonnebloemolie",
+  "plantaardige olie": "zonnebloemolie",
+
+  "bouillon blokje": "bouillon",
+  "groentenbouillon": "groentenbouillon",
+  "kippenbouillon": "kippenbouillon",
+  "runderbouillon": "rundsbouillon",
+  "vleesbouillon": "vleesbouillon",
+  "visbouillon": "visbouillon",
+
+  "chilivlokken": "chilipepers",
+  "chili": "chilipepers",
+  "rode peper": "chilipepers",
+  "jalapeño": "jalapenos",
+
+  "gemberpowder": "gember",
+  "verse gember": "gember",
+
+  "currypoeder": "curry",
+  "currypasta": "rode_currypasta",
+
+  "soja saus": "sojasaus",
+  "sojasaus": "sojasaus",
+
+  "honing": "honing",
+  "vloeibare honing": "honing",
+
+  "mayonnaise": "mayonaise",
+
+  "amandel": "amandelen",
+  "walnoot": "walnoten",
+  "hazelnoot": "hazelnoten",
+  "gehakte noten": "gehakte_walnoten",
+
+  "cacao poeder": "cacao",
+  "cacaopoeder": "cacao",
+  "pure chocolade": "chocolade",
+  "melkchocolade": "chocolade",
+
+  "pasta": "lasagnevellen",
+  "spaghetti": "cappelini",
+
+  "wraps": "wraps",
+  "tortilla": "wraps",
+
+  "broodkruimels": "paneermeel",
+  "broodkruim": "paneermeel",
+
+  "mosterd": "mosterd",
+  "dijonmmosterd": "mosterd",
+
+  "selderij": "selder",
+  "selderie": "selder",
+
+  "paksoy": "paksoi",
+
+  "avocado": "avocado",
+  "limoensap": "limoen",
+  "citroensap": "citroen",
+  "limoen": "limoen",
+
+  "verse peterselie": "peterselie",
+  "verse basilicum": "basilicum",
+  "verse munt": "munt",
+  "verse koriander": "koriander",
+  "verse tijm": "tijm",
+  "verse rozemarijn": "rozemarijn",
+  "verse bieslook": "bieslook",
+  "laurierblad": "laurier",
+  "laurierblaadjes": "laurier",
+
+  "vanilleextract": "vanillearoma",
+  "vanille extract": "vanillearoma",
+  "vanillestokje": "vanillestokjes",
+
+  "komkommertje": "komkommer",
+  "mini komkommer": "mini_komkommers",
+  "mini komkommers": "mini_komkommers",
+
+  "ijssla": "ijsbergsla",
+  "sla": "ijsbergsla",
+
+  "radiJs": "radijsjes",
+  "radijs": "radijsjes",
+
+  "witlof": "witloof",
+  "witloof": "witloof",
+
+  "asperge": "groene_asperges",
+  "asperges": "groene_asperges",
+
+  "rijstvellen": "rijstpapier",
+
+  "mais": "mais",
+  "maïs": "mais",
+  "maïskorrels": "mais",
+  "maiskorrels": "mais",
+
+  "maïzena": "maizena",
+  "zetmeel": "maizena",
+
+  "yoghurt": "yoghurt",
+  "Griekse yoghurt": "yoghurt",
+
+  "passata": "passata",
+  "tomatenpuree": "tomatenpuree",
+  "geconcentreerde tomatenpuree": "tomatenpuree",
+  "tomatenblokjes": "tomatenblokjes",
+
+  "oester": "scampis",
+
+  "rode wijn": "rode_wijn",
+  "witte wijn": "witte_wijn",
+
+  "ghee": "ghee",
+  "geklaarde boter": "ghee",
+
+  "kokosmelk": "kokosmelk",
+  "kokosroom": "kokosmelk",
+
+  "augurk": "augurken",
+
+  "suikerklontje": "suikerklontjes",
+  "hagelslag": "hagelslag",
+  "pudding": "pudding_poeder",
+  "puddingpoeder": "pudding_poeder",
+
+  "satékruiden": "satekruiden",
+  "satésaus": "satekruiden",
+
+  "kippenkruiden": "kippenkruiden",
+  "bbq kruiden": "kippenkruiden"
+}
