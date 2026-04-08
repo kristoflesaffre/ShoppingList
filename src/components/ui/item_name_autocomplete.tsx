@@ -5,6 +5,7 @@ import ReactDOM from "react-dom";
 import { InputField } from "@/components/ui/input_field";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
 import { useItemSlugs, useItemPhotoUrl, normalizeForMatch } from "@/lib/item-photos";
+import { useIngredientSlugs, useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
 
 /** Slug "vleesje_noe" → "Vleesje noe" (eerste woord hoofdletter, rest kleine letters). */
@@ -37,6 +38,8 @@ export type ItemNameAutocompleteProps = {
   label?: string;
   placeholder?: string;
   className?: string;
+  /** `ingredients` = suggesties en thumbnails uit /images/ingredients (webp); default = items jpg. */
+  photoCatalog?: "items" | "ingredients";
 };
 
 // ─── Large-screen dropdown ────────────────────────────────────────────────────
@@ -47,8 +50,11 @@ function LargeScreenAutocomplete({
   label,
   placeholder,
   className,
+  photoCatalog = "items",
 }: ItemNameAutocompleteProps) {
-  const slugs = useItemSlugs();
+  const itemSlugs = useItemSlugs();
+  const ingredientSlugs = useIngredientSlugs();
+  const slugs = photoCatalog === "ingredients" ? ingredientSlugs : itemSlugs;
   const [open, setOpen] = React.useState(false);
   const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -183,7 +189,11 @@ function LargeScreenAutocomplete({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`/images/items/${slug}.jpg`}
+                    src={
+                      photoCatalog === "ingredients"
+                        ? `/images/ingredients/${slug}_160.webp`
+                        : `/images/items/${slug}.jpg`
+                    }
                     alt=""
                     width={40}
                     height={40}
@@ -233,9 +243,13 @@ function SmallScreenAutocomplete({
   label,
   placeholder,
   className,
+  photoCatalog = "items",
 }: ItemNameAutocompleteProps) {
   const [slideInOpen, setSlideInOpen] = React.useState(false);
-  const getPhotoUrl = useItemPhotoUrl();
+  const getItemPhotoUrl = useItemPhotoUrl();
+  const getIngredientPhotoUrl = useIngredientPhotoUrl(160);
+  const getPhotoUrl =
+    photoCatalog === "ingredients" ? getIngredientPhotoUrl : getItemPhotoUrl;
   const photoUrl = value ? getPhotoUrl(value) : null;
 
   return (
@@ -277,6 +291,7 @@ function SmallScreenAutocomplete({
         onClose={() => setSlideInOpen(false)}
         initialValue={value}
         onSelect={(name) => onChange(name)}
+        photoCatalog={photoCatalog}
       />
     </div>
   );

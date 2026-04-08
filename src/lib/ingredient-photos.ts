@@ -110,7 +110,30 @@ export function matchIngredientPhotoUrl(
   return null;
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+// ─── Hooks ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Raw slug bases from `/api/ingredient-images` (zelfde cache als useIngredientPhotoUrl).
+ */
+export function useIngredientSlugs(): string[] {
+  const [slugs, setSlugs] = React.useState<string[]>(cachedSlugs ?? []);
+
+  React.useEffect(() => {
+    if (cachedSlugs) {
+      setSlugs(cachedSlugs);
+      return;
+    }
+    let cancelled = false;
+    void fetchSlugs().then((result) => {
+      if (!cancelled) setSlugs(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return slugs;
+}
 
 /**
  * Hook that returns a function resolving an ingredient name to its photo URL.

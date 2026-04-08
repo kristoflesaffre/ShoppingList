@@ -149,8 +149,8 @@ export function RecipePhotoUploadSlideIn({
               aria-hidden="true"
               className="inline-block size-10 shrink-0 bg-[var(--blue-500)]"
               style={{
-                WebkitMaskImage: 'url("/icons/icons/image.svg")',
-                maskImage: 'url("/icons/icons/image.svg")',
+                WebkitMaskImage: 'url("/icons/image.svg")',
+                maskImage: 'url("/icons/image.svg")',
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
                 WebkitMaskSize: "contain",

@@ -31,11 +31,11 @@ function MaskIcon({
 }
 
 function IconPhotoUpload() {
-  return <MaskIcon maskUrl="/icons/icons/image.svg" ariaLabel="Foto opladen" />;
+  return <MaskIcon maskUrl="/icons/image.svg" ariaLabel="Foto opladen" />;
 }
 
 function IconLinkShare() {
-  return <MaskIcon maskUrl="/icons/icons/link.svg" ariaLabel="Link delen" />;
+  return <MaskIcon maskUrl="/icons/link.svg" ariaLabel="Link delen" />;
 }
 
 export function RecipeAiSourceSlideIn({

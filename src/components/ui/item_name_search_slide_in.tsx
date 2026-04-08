@@ -3,6 +3,7 @@
 import * as React from "react";
 import ReactDOM from "react-dom";
 import { useItemSlugs, normalizeForMatch } from "@/lib/item-photos";
+import { useIngredientSlugs } from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
 
 const SLIDE_MS = 450;
@@ -97,6 +98,8 @@ export type ItemNameSearchSlideInProps = {
   initialValue: string;
   onSelect: (name: string) => void;
   title?: string;
+  /** `ingredients` = webp onder /images/ingredients; default = item jpg’s. */
+  photoCatalog?: "items" | "ingredients";
 };
 
 export function ItemNameSearchSlideIn({
@@ -105,8 +108,11 @@ export function ItemNameSearchSlideIn({
   initialValue,
   onSelect,
   title = "Ingrediënt",
+  photoCatalog = "items",
 }: ItemNameSearchSlideInProps) {
-  const slugs = useItemSlugs();
+  const itemSlugs = useItemSlugs();
+  const ingredientSlugs = useIngredientSlugs();
+  const slugs = photoCatalog === "ingredients" ? ingredientSlugs : itemSlugs;
   const [query, setQuery] = React.useState(initialValue);
   const [animIn, setAnimIn] = React.useState(false);
   const [domVisible, setDomVisible] = React.useState(false);
@@ -275,7 +281,11 @@ export function ItemNameSearchSlideIn({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={`/images/items/${slug}.jpg`}
+                  src={
+                    photoCatalog === "ingredients"
+                      ? `/images/ingredients/${slug}_160.webp`
+                      : `/images/items/${slug}.jpg`
+                  }
                   alt=""
                   width={32}
                   height={32}

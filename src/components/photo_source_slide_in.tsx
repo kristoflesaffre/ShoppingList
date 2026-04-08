@@ -33,14 +33,14 @@ function MaskIcon({
 function IconImageUpload() {
   return (
     <MaskIcon
-      maskUrl="/icons/icons/image.svg"
+      maskUrl="/icons/image.svg"
       ariaLabel="Foto uploaden"
     />
   );
 }
 
 function IconImageAi() {
-  return <MaskIcon maskUrl="/icons/icons/image_ai.svg" ariaLabel="AI" />;
+  return <MaskIcon maskUrl="/icons/image_ai.svg" ariaLabel="AI" />;
 }
 
 export function PhotoSourceSlideIn({

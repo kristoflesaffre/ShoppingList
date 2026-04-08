@@ -2328,8 +2328,8 @@ export default function ListDetailPage({
                       aria-hidden="true"
                       className="inline-block size-6 shrink-0 bg-[var(--blue-500)]"
                       style={{
-                        WebkitMaskImage: 'url("/icons/icons/qr.svg")',
-                        maskImage: 'url("/icons/icons/qr.svg")',
+                        WebkitMaskImage: 'url("/icons/qr.svg")',
+                        maskImage: 'url("/icons/qr.svg")',
                         WebkitMaskRepeat: "no-repeat",
                         maskRepeat: "no-repeat",
                         WebkitMaskSize: "contain",
@@ -2389,8 +2389,8 @@ export default function ListDetailPage({
                       aria-hidden="true"
                       className="inline-block size-6 shrink-0 bg-[var(--blue-500)]"
                       style={{
-                        WebkitMaskImage: 'url("/icons/icons/qr.svg")',
-                        maskImage: 'url("/icons/icons/qr.svg")',
+                        WebkitMaskImage: 'url("/icons/qr.svg")',
+                        maskImage: 'url("/icons/qr.svg")',
                         WebkitMaskRepeat: "no-repeat",
                         maskRepeat: "no-repeat",
                         WebkitMaskSize: "contain",
@@ -2452,8 +2452,8 @@ export default function ListDetailPage({
                     aria-hidden="true"
                     className="inline-block size-6 shrink-0 bg-[var(--blue-500)]"
                     style={{
-                      WebkitMaskImage: 'url("/icons/icons/qr.svg")',
-                      maskImage: 'url("/icons/icons/qr.svg")',
+                      WebkitMaskImage: 'url("/icons/qr.svg")',
+                      maskImage: 'url("/icons/qr.svg")',
                       WebkitMaskRepeat: "no-repeat",
                       maskRepeat: "no-repeat",
                       WebkitMaskSize: "contain",
@@ -2677,8 +2677,8 @@ export default function ListDetailPage({
             aria-hidden="true"
             className="inline-block size-20 shrink-0 bg-[var(--blue-500)]"
             style={{
-              WebkitMaskImage: 'url("/icons/icons/qr.svg")',
-              maskImage: 'url("/icons/icons/qr.svg")',
+              WebkitMaskImage: 'url("/icons/qr.svg")',
+              maskImage: 'url("/icons/qr.svg")',
               WebkitMaskRepeat: "no-repeat",
               maskRepeat: "no-repeat",
               WebkitMaskSize: "contain",

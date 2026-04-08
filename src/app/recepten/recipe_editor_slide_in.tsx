@@ -353,14 +353,14 @@ export function RecipeEditorSlideIn({
               <SelectTile
                 title="Foto's opladen"
                 subtitle="Selecteer één of meerdere foto's"
-                icon={<AiOptionIcon maskUrl="/icons/icons/image.svg" ariaLabel="Foto opladen" />}
+                icon={<AiOptionIcon maskUrl="/icons/image.svg" ariaLabel="Foto opladen" />}
               />
             </button>
             <button type="button" onClick={handleUseLinkForAi} className="w-full bg-transparent p-0 text-left">
               <SelectTile
                 title="Een link plakken"
                 subtitle="Plak een link van een website"
-                icon={<AiOptionIcon maskUrl="/icons/icons/link.svg" ariaLabel="Link plakken" />}
+                icon={<AiOptionIcon maskUrl="/icons/link.svg" ariaLabel="Link plakken" />}
               />
             </button>
           </div>
