@@ -101,6 +101,10 @@
   "kippenborst": "kipfilet",
   "kipdij": "kipdijfilet",
   "kipdijen": "kipdijfilet",
+  "kippenboutenfilet": "kipdijfilet",
+  "kippendijenfilet": "kipdijfilet",
+  "kippenworst": "kippenworsten",
+  "kippenschnitzel": "kipschnitzel",
   "kalkoen": "kalkoenlapjes",
 
   "zalm filet": "zalm",
@@ -261,6 +265,7 @@
 
   "yoghurt": "yoghurt",
   "Griekse yoghurt": "yoghurt",
+  "kwark": "platte_kaas",
 
   "passata": "passata",
   "tomatenpuree": "tomatenpuree",

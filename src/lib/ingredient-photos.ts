@@ -62,54 +62,49 @@ export function matchIngredientPhotoUrl(
   size: 160 | 240 | 320 = 320,
 ): string | null {
   const normalized = normalizeForMatch(itemName);
-  if (!normalized) return null;
+  if (!normalized || slugs.length === 0) return null;
 
-  // 1. Synonym lookup (exact normalized key)
+  const url = (slug: string) => `/images/ingredients/${slug}_${size}.webp`;
+
+  // 1. Exact synonym key match
   const synonymSlug = synonyms[normalized];
-  if (synonymSlug && slugs.includes(synonymSlug)) {
-    return `/images/ingredients/${synonymSlug}_${size}.webp`;
-  }
+  if (synonymSlug && slugs.includes(synonymSlug)) return url(synonymSlug);
 
-  // 2. Synonym lookup via word prefix (e.g. "verse peterselie" → key "verse_peterselie")
-  if (!synonymSlug) {
-    // Try partial synonym match: check if any synonym key is a prefix of the input
-    for (const [synKey, synSlug] of Object.entries(synonyms)) {
-      if (normalized.startsWith(synKey) || synKey.startsWith(normalized)) {
-        if (slugs.includes(synSlug)) {
-          return `/images/ingredients/${synSlug}_${size}.webp`;
-        }
-      }
+  // 2. Exact slug match — must happen BEFORE partial synonym matching to prevent
+  //    e.g. "bloemkool" matching the "bloem" synonym entry
+  if (slugs.includes(normalized)) return url(normalized);
+
+  // 3. Slug starts with normalized + "_" (e.g. "appels" → "appels_1")
+  const prefixMatch = slugs.find((s) => s.startsWith(normalized + "_"));
+  if (prefixMatch) return url(prefixMatch);
+
+  // 4. Partial synonym match — only on exact word boundaries to avoid false positives
+  //    (e.g. "verse peterselie" matches synonym key "peterselie")
+  for (const [synKey, synSlug] of Object.entries(synonyms)) {
+    if (synKey === normalized) continue; // already checked in step 1
+    // Match if the input ends with the synonym key as a full word segment
+    if (
+      normalized === synKey ||
+      normalized.endsWith("_" + synKey) ||
+      normalized.startsWith(synKey + "_")
+    ) {
+      if (slugs.includes(synSlug)) return url(synSlug);
     }
   }
 
-  if (slugs.length === 0) return null;
+  // 5. Normalized starts with a slug (multi-word slug: "zelfrijzend_bakmeel")
+  const slugStartMatch = slugs.find(
+    (s) => s.length > 3 && normalized.startsWith(s),
+  );
+  if (slugStartMatch) return url(slugStartMatch);
 
-  // 3. Exact slug match
-  if (slugs.includes(normalized)) {
-    return `/images/ingredients/${normalized}_${size}.webp`;
-  }
-
-  // 4. Slug starts with normalized name (e.g. "appels" → "appels_1")
-  const prefixMatch = slugs.find((s) => s.startsWith(normalized + "_") || s === normalized);
-  if (prefixMatch) {
-    return `/images/ingredients/${prefixMatch}_${size}.webp`;
-  }
-
-  // 5. Normalized name starts with slug (e.g. "zelfrijzend bakmeel" → "zelfrijzend_bakmeel")
-  const partialMatch = slugs.find((s) => normalized.startsWith(s));
-  if (partialMatch) {
-    return `/images/ingredients/${partialMatch}_${size}.webp`;
-  }
-
-  // 6. Word-level match: any word in the input matches a slug prefix
-  const words = normalized.split("_").filter((w) => w.length > 2);
+  // 6. Word-level match: each word in the input must fully match a slug or slug prefix
+  const words = normalized.split("_").filter((w) => w.length > 3);
   for (const word of words) {
     const wordMatch = slugs.find(
-      (s) => s === word || s.startsWith(word + "_") || word.startsWith(s + "_"),
+      (s) => s === word || s.startsWith(word + "_"),
     );
-    if (wordMatch) {
-      return `/images/ingredients/${wordMatch}_${size}.webp`;
-    }
+    if (wordMatch) return url(wordMatch);
   }
 
   return null;
