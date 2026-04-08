@@ -60,7 +60,7 @@ const BORDER = "#e2e4e6";
 const BORDER_LIGHT = "#f1f1f3";
 // A4 at 96 dpi = 794 × 1123 px; usable width with 52px side padding = 690px
 const PAGE_W = 794;
-const COLS = 3;
+const COLS = 5;
 const SIDE_PAD = 52;
 const CONTENT_W = PAGE_W - SIDE_PAD * 2; // 690px
 const COL_GAP = 16;
@@ -203,8 +203,6 @@ function RecipePdfLayout({
                     gap: "10px",
                     padding: "16px 12px",
                     backgroundColor: "#ffffff",
-                    border: `1px solid ${BORDER}`,
-                    borderRadius: "12px",
                     boxSizing: "border-box",
                     visibility: invisible ? "hidden" : "visible",
                   }}
@@ -214,8 +212,8 @@ function RecipePdfLayout({
                       {/* Image container — white bg, object-contain */}
                       <div
                         style={{
-                          width: "110px",
-                          height: "110px",
+                          width: "88px",
+                          height: "88px",
                           borderRadius: "10px",
                           overflow: "hidden",
                           backgroundColor: "#ffffff",
@@ -448,20 +446,51 @@ export function RecipeShareSlideIn({
         compress: true,
       });
 
-      // Always fill full A4 width; let height follow the content aspect ratio.
-      // If the content is taller than one page, add extra pages — no side margins ever.
-      const imgData = canvas.toDataURL("image/jpeg", 0.93);
-      const totalHeightMm = pdfW * (canvas.height / canvas.width);
+      // Always fill full A4 width; split into pages at whitespace rows so text is never cut.
+      const pageHeightPx = Math.floor(canvas.width * (pdfH / pdfW));
 
-      if (totalHeightMm <= pdfH) {
-        pdf.addImage(imgData, "JPEG", 0, 0, pdfW, totalHeightMm);
-      } else {
-        // Multi-page: slide the image upward on each page
-        const pages = Math.ceil(totalHeightMm / pdfH);
-        for (let p = 0; p < pages; p++) {
-          if (p > 0) pdf.addPage();
-          pdf.addImage(imgData, "JPEG", 0, -p * pdfH, pdfW, totalHeightMm);
+      // Find the last mostly-white row at or before `fromY` (search back up to `rangePx`).
+      const lastWhiteRow = (fromY: number, rangePx: number): number => {
+        const ctx2d = canvas.getContext("2d");
+        if (!ctx2d) return fromY;
+        const step = Math.max(1, Math.floor(canvas.width / 80));
+        for (let y = fromY; y > Math.max(0, fromY - rangePx); y--) {
+          const row = ctx2d.getImageData(0, y, canvas.width, 1).data;
+          let white = true;
+          for (let x = 0; x < row.length; x += step * 4) {
+            if (row[x] < 238) { white = false; break; }
+          }
+          if (white) return y;
         }
+        return Math.max(0, fromY - rangePx);
+      };
+
+      // Build page slices: [startPx, endPx]
+      const slices: [number, number][] = [];
+      let curY = 0;
+      while (curY < canvas.height) {
+        const ideal = curY + pageHeightPx;
+        if (ideal >= canvas.height) {
+          slices.push([curY, canvas.height]);
+          break;
+        }
+        // Search back up to 12% of a page height for a safe whitespace break
+        const safeY = lastWhiteRow(ideal, Math.floor(pageHeightPx * 0.12));
+        slices.push([curY, safeY]);
+        curY = safeY + 1;
+      }
+
+      // Render each slice onto its own PDF page
+      for (let i = 0; i < slices.length; i++) {
+        const [startY, endY] = slices[i];
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = endY - startY;
+        const sCtx = sliceCanvas.getContext("2d")!;
+        sCtx.drawImage(canvas, 0, startY, canvas.width, endY - startY, 0, 0, canvas.width, endY - startY);
+        const sliceHeightMm = pdfW * (sliceCanvas.height / sliceCanvas.width);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(sliceCanvas.toDataURL("image/jpeg", 0.93), "JPEG", 0, 0, pdfW, sliceHeightMm);
       }
 
       const pdfBlob = pdf.output("blob");
