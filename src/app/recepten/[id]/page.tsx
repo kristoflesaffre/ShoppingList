@@ -17,6 +17,7 @@ import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_f
 import { PhotoSourceSlideIn } from "@/components/photo_source_slide_in";
 import { FoodImageGeneratorSlideIn } from "@/components/food_image_generator_slide_in";
 import type { FoodImageGenerationResult } from "@/components/food-image-generator";
+import { RecipeShareSlideIn } from "@/components/recipe_share_slide_in";
 import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
 import { APP_FAB_INNER_PX4_CLASS } from "@/lib/app-layout";
 import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
@@ -107,6 +108,7 @@ export default function ReceptDetailPage() {
     localStorage.setItem("ingredientView", view);
   }, []);
   const getPhotoUrl = useIngredientPhotoUrl();
+  const [shareSlideOpen, setShareSlideOpen] = React.useState(false);
   const [recipeEditorOpen, setRecipeEditorOpen] = React.useState(false);
   /** Figma 863:5339 — na tik op Wijzigen: knop Gereed, foto 10%, overlay «Foto wijzigen». */
   const [detailPhotoEditMode, setDetailPhotoEditMode] =
@@ -386,9 +388,9 @@ export default function ReceptDetailPage() {
           </p>
           <button
             type="button"
-            aria-label="Delen (beschikbaar binnenkort)"
-            disabled
-            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-50"
+            aria-label="Recept delen"
+            onClick={() => setShareSlideOpen(true)}
+            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
             <ShareIcon />
           </button>
@@ -699,6 +701,15 @@ export default function ReceptDetailPage() {
           />
         </div>
       </div>
+
+      <RecipeShareSlideIn
+        open={shareSlideOpen}
+        onClose={() => setShareSlideOpen(false)}
+        recipe={savedRecipe}
+        existingShareToken={
+          recipeData?.recipes?.find((r) => r.id === recipeId)?.shareToken ?? null
+        }
+      />
 
       <RecipeEditorSlideIn
         open={recipeEditorOpen}

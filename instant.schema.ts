@@ -54,6 +54,8 @@ const schema = i.schema({
       order: i.number(),
       /** Data-URL of gecodeerde receptfoto (zelfde patroon als profiel-avatar). */
       photoUrl: i.string().optional(),
+      /** Unieke token voor deellink (/deel/recept/[token]); alleen gezet bij expliciete deling. */
+      shareToken: i.string().optional().unique().indexed(),
     }),
     recipeIngredients: i.entity({
       name: i.string(),
