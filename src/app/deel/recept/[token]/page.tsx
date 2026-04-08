@@ -58,8 +58,7 @@ export default function DeelReceptPage() {
       (a, b) => (a.order ?? 0) - (b.order ?? 0),
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const txns: any[] = [
+    const txns = [
       db.tx.recipes[newRecipeId].update({
         name: recipe.name,
         link: recipe.link ?? "",
@@ -68,20 +67,16 @@ export default function DeelReceptPage() {
         order: Date.now(),
         ...(recipe.photoUrl !== undefined ? { photoUrl: recipe.photoUrl } : {}),
       }),
+      ...sortedIngredients.map((ing, i) => {
+        const ingId = iid();
+        return db.tx.recipeIngredients[ingId]
+          .update({ name: ing.name, quantity: ing.quantity, order: i })
+          .link({ recipe: newRecipeId });
+      }),
     ];
 
-    for (let i = 0; i < sortedIngredients.length; i++) {
-      const ing = sortedIngredients[i];
-      const ingId = iid();
-      txns.push(
-        db.tx.recipeIngredients[ingId]
-          .update({ name: ing.name, quantity: ing.quantity, order: i })
-          .link({ recipe: newRecipeId }),
-      );
-    }
-
     try {
-      await db.transact(txns);
+      await db.transact(txns as Parameters<typeof db.transact>[0]);
       setDone(true);
       router.replace(`/recepten/${newRecipeId}`);
     } catch (err) {
