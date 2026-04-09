@@ -120,6 +120,8 @@ export async function fileToAvatarDataUrl(file: File): Promise<string> {
   canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas niet beschikbaar");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
   ctx.drawImage(bitmap, 0, 0, w, h);
   const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
   bitmap.close();
