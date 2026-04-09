@@ -33,6 +33,41 @@ function MaskIcon({ src, ariaLabel }: { src: string; ariaLabel: string }) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Replaces near-white pixels (all channels > 235) with the given hex bg color.
+ * Used to remove the white JPEG background from AI-generated recipe photos so
+ * they blend into the export's colored background.
+ */
+async function replaceWhiteWithBg(src: string, bgHex: string): Promise<string> {
+  return new Promise<string>((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) { resolve(src); return; }
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const { data } = imageData;
+      const bgR = parseInt(bgHex.slice(1, 3), 16);
+      const bgG = parseInt(bgHex.slice(3, 5), 16);
+      const bgB = parseInt(bgHex.slice(5, 7), 16);
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] > 235 && data[i + 1] > 235 && data[i + 2] > 235) {
+          data[i] = bgR;
+          data[i + 1] = bgG;
+          data[i + 2] = bgB;
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+}
+
 async function preloadImages(urls: (string | null | undefined)[]): Promise<void> {
   const valid = urls.filter(Boolean) as string[];
   await Promise.all(
@@ -52,43 +87,28 @@ async function preloadImages(urls: (string | null | undefined)[]): Promise<void>
 // ─── PDF layout (off-screen, captured by html2canvas) ─────────────────────────
 
 const FONT = '"Inter", ui-sans-serif, system-ui, -apple-system, sans-serif';
-const BLUE = "#4f55f1";
+const BG = "#edeefe";
 const TEXT_PRIMARY = "#16181a";
 const TEXT_SECONDARY = "#595f6a";
-const TEXT_TERTIARY = "#8c929d";
-const BORDER = "#e2e4e6";
-const BORDER_LIGHT = "#f1f1f3";
-// A4 at 96 dpi = 794 × 1123 px; usable width with 52px side padding = 690px
+const BORDER_LIGHT = "#e8e8ec";
+// A4 at 96 dpi = 794 × 1123 px
 const PAGE_W = 794;
-const COLS = 5;
-const SIDE_PAD = 52;
-const CONTENT_W = PAGE_W - SIDE_PAD * 2; // 690px
-const COL_GAP = 16;
-const COL_W = (CONTENT_W - COL_GAP * (COLS - 1)) / COLS; // 218px
+const COLS = 6;
+const SIDE_PAD = 40;
+const CONTENT_W = PAGE_W - SIDE_PAD * 2; // 714px
+const COL_GAP = 10;
+const COL_W = (CONTENT_W - COL_GAP * (COLS - 1)) / COLS; // ~109px
 
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <h2
-      style={{
-        fontSize: "22px",
-        fontWeight: "700",
-        color: TEXT_PRIMARY,
-        margin: "0 0 20px 0",
-        letterSpacing: "-0.2px",
-        fontFamily: FONT,
-      }}
-    >
-      {title}
-    </h2>
-  );
-}
+const SHADOW = "0 8px 28px rgba(0,0,0,0.22), 0 3px 8px rgba(0,0,0,0.16)";
 
 function RecipePdfLayout({
   recipe,
   ingredientPhotoUrls,
+  photoUrlOverride,
 }: {
   recipe: SavedRecipe;
   ingredientPhotoUrls: (string | null)[];
+  photoUrlOverride?: string | null;
 }) {
   const recipeSteps = (recipe.steps ?? "")
     .split(/\r?\n/)
@@ -111,77 +131,87 @@ function RecipePdfLayout({
     <div
       style={{
         width: `${PAGE_W}px`,
-        backgroundColor: "#ffffff",
+        backgroundColor: BG,
         fontFamily: FONT,
         boxSizing: "border-box",
-        padding: `56px ${SIDE_PAD}px 56px`,
+        padding: `48px ${SIDE_PAD}px 56px`,
         display: "flex",
         flexDirection: "column",
+        alignItems: "center",
         color: TEXT_PRIMARY,
       }}
     >
-      {/* ── Title ── */}
-      <div style={{ textAlign: "center", marginBottom: "10px" }}>
-        <h1
+      {/* ── Header pill — exact Figma scaling: radius=208.587/2100×794≈79px,
+           padding=49.53/2100×794≈19px vertical, 62.576/2100×794≈24px horizontal
+           RECEPT: 29.932/2100×794≈11px medium, name: 62.402/2100×794≈24px bold ── */}
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "79px",
+          padding: "19px 24px",
+          textAlign: "center",
+          marginBottom: "36px",
+        }}
+      >
+        <p
           style={{
-            fontSize: "40px",
-            fontWeight: "800",
+            fontSize: "11px",
+            fontWeight: "500",
+            color: TEXT_SECONDARY,
+            margin: "0 0 2px 0",
+            letterSpacing: "0px",
+            fontFamily: FONT,
+            lineHeight: "normal",
+          }}
+        >
+          RECEPT
+        </p>
+        <p
+          style={{
+            fontSize: "24px",
+            fontWeight: "700",
             color: TEXT_PRIMARY,
             margin: 0,
-            lineHeight: "1.15",
-            letterSpacing: "-0.8px",
+            lineHeight: "normal",
             fontFamily: FONT,
           }}
         >
           {recipe.name}
-        </h1>
+        </p>
       </div>
 
-      {/* Persons + photo */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "14px",
-          marginBottom: "44px",
-        }}
-      >
-        {recipe.persons > 0 && (
-          <p
-            style={{
-              fontSize: "16px",
-              color: TEXT_TERTIARY,
-              margin: 0,
-              fontWeight: "400",
-              letterSpacing: "0.1px",
-            }}
-          >
-            {recipe.persons} {recipe.persons === 1 ? "persoon" : "personen"}
-          </p>
-        )}
-        {recipe.photoUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
+      {/* ── Recipe photo ── */}
+      {(photoUrlOverride ?? recipe.photoUrl) && (
+        <div
+          style={{
+            width: "210px",
+            height: "210px",
+            borderRadius: "50%",
+            overflow: "hidden",
+            backgroundColor: BG,
+            flexShrink: 0,
+            marginBottom: "40px",
+            boxShadow: SHADOW,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={recipe.photoUrl}
+            src={(photoUrlOverride ?? recipe.photoUrl)!}
             alt=""
             crossOrigin="anonymous"
             style={{
-              width: "240px",
-              height: "240px",
-              objectFit: "cover",
-              borderRadius: "50%",
-              boxShadow: "0 6px 32px rgba(0,0,0,0.13)",
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
               display: "block",
             }}
           />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Ingredients ── */}
       {ingredients.length > 0 && (
-        <div style={{ marginBottom: "40px" }}>
-          <SectionHeader title="Ingrediënten" />
+        <div style={{ width: "100%", marginBottom: "32px" }}>
           <div
             style={{
               display: "flex",
@@ -200,27 +230,26 @@ function RecipePdfLayout({
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    gap: "10px",
-                    padding: "16px 12px",
-                    backgroundColor: "#ffffff",
+                    gap: "8px",
                     boxSizing: "border-box",
                     visibility: invisible ? "hidden" : "visible",
                   }}
                 >
                   {!invisible && (
                     <>
-                      {/* Image container — white bg, object-contain */}
+                      {/* Square image */}
                       <div
                         style={{
-                          width: "88px",
-                          height: "88px",
-                          borderRadius: "10px",
+                          width: `${COL_W}px`,
+                          height: `${COL_W}px`,
                           overflow: "hidden",
-                          backgroundColor: "#ffffff",
+                          backgroundColor: BG,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           flexShrink: 0,
+                          boxShadow: SHADOW,
+                          borderRadius: "8px",
                         }}
                       >
                         {photoUrl ? (
@@ -229,14 +258,9 @@ function RecipePdfLayout({
                             src={photoUrl}
                             alt=""
                             crossOrigin="anonymous"
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "contain",
-                            }}
+                            style={{ width: "100%", height: "100%", objectFit: "contain" }}
                           />
                         ) : (
-                          /* Placeholder dot when no image */
                           <div
                             style={{
                               width: "32px",
@@ -248,14 +272,14 @@ function RecipePdfLayout({
                         )}
                       </div>
                       {/* Name + quantity */}
-                      <div style={{ textAlign: "center" }}>
+                      <div style={{ textAlign: "center", width: "100%" }}>
                         <p
                           style={{
                             fontSize: "13px",
-                            fontWeight: "600",
+                            fontWeight: "700",
                             color: TEXT_PRIMARY,
-                            margin: "0 0 3px 0",
-                            lineHeight: "1.35",
+                            margin: "0 0 2px 0",
+                            lineHeight: "1.3",
                             fontFamily: FONT,
                           }}
                         >
@@ -263,8 +287,8 @@ function RecipePdfLayout({
                         </p>
                         <p
                           style={{
-                            fontSize: "12px",
-                            fontWeight: "400",
+                            fontSize: "13px",
+                            fontWeight: "500",
                             color: TEXT_SECONDARY,
                             margin: 0,
                             fontFamily: FONT,
@@ -282,38 +306,36 @@ function RecipePdfLayout({
         </div>
       )}
 
-      {/* ── Steps ── */}
+      {/* ── Steps (white rounded card) ── */}
       {recipeSteps.length > 0 && (
-        <>
-          <div style={{ height: "1px", backgroundColor: BORDER, marginBottom: "36px" }} />
-          <div>
-            <SectionHeader title="Bereiding" />
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              {recipeSteps.map((step, i) => (
+        <div
+          style={{
+            width: "100%",
+            backgroundColor: "#ffffff",
+            borderRadius: "24px",
+            padding: "32px 40px",
+            boxSizing: "border-box",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {recipeSteps.map((step, i) => (
+              <div key={i}>
                 <div
-                  key={i}
                   style={{
                     display: "flex",
-                    gap: "16px",
+                    gap: "20px",
                     alignItems: "flex-start",
-                    paddingTop: i === 0 ? "0" : "14px",
-                    paddingBottom: i < recipeSteps.length - 1 ? "14px" : "0",
-                    borderBottom:
-                      i < recipeSteps.length - 1
-                        ? `1px solid ${BORDER_LIGHT}`
-                        : "none",
+                    padding: "16px 0",
                   }}
                 >
-                  {/* Step number — grote vette tekst, zoals in de app */}
                   <span
                     style={{
                       flexShrink: 0,
-                      width: "32px",
-                      fontSize: "24px",
-                      fontWeight: "800",
+                      width: "28px",
+                      fontSize: "22px",
+                      fontWeight: "700",
                       color: TEXT_PRIMARY,
-                      lineHeight: "1",
-                      paddingTop: "3px",
+                      lineHeight: "1.4",
                       fontFamily: FONT,
                     }}
                   >
@@ -322,37 +344,26 @@ function RecipePdfLayout({
                   <p
                     style={{
                       fontSize: "14px",
-                      color: TEXT_PRIMARY,
+                      fontWeight: "400",
+                      color: TEXT_SECONDARY,
                       margin: 0,
-                      lineHeight: "1.65",
+                      lineHeight: "1.7",
                       flex: 1,
-                      paddingTop: "5px",
+                      paddingTop: "4px",
                       fontFamily: FONT,
                     }}
                   >
                     {step}
                   </p>
                 </div>
-              ))}
-            </div>
+                {i < recipeSteps.length - 1 && (
+                  <div style={{ height: "1px", backgroundColor: BORDER_LIGHT }} />
+                )}
+              </div>
+            ))}
           </div>
-        </>
+        </div>
       )}
-
-      {/* ── Footer ── */}
-      <div
-        style={{
-          marginTop: "48px",
-          borderTop: `1px solid ${BORDER_LIGHT}`,
-          paddingTop: "14px",
-          display: "flex",
-          justifyContent: "center",
-        }}
-      >
-        <p style={{ fontSize: "11px", color: TEXT_TERTIARY, margin: 0, fontFamily: FONT }}>
-          Shopping List App
-        </p>
-      </div>
     </div>
   );
 }
@@ -376,6 +387,17 @@ export function RecipeShareSlideIn({
   const [linkHint, setLinkHint] = React.useState<string | null>(null);
   const [generating, setGenerating] = React.useState(false);
   const [pdfError, setPdfError] = React.useState<string | null>(null);
+  const [exportPhotoUrl, setExportPhotoUrl] = React.useState<string | null>(null);
+  const [isLg, setIsLg] = React.useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : false,
+  );
+  React.useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setIsLg(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsLg(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
   const getIngredientPhotoUrl = useIngredientPhotoUrl(240);
 
   const ingredientPhotoUrls = React.useMemo(
@@ -410,25 +432,29 @@ export function RecipeShareSlideIn({
     }
   }, [existingShareToken, recipe.id]);
 
-  const handlePdfShare = React.useCallback(async () => {
+  const handlePngShare = React.useCallback(async () => {
     setGenerating(true);
     setPdfError(null);
     try {
       await preloadImages([recipe.photoUrl, ...ingredientPhotoUrls]);
-      // Small tick so the browser can render the loaded images
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Replace white background of recipe photo so it blends into the BG color
+      if (recipe.photoUrl) {
+        const processed = await replaceWhiteWithBg(recipe.photoUrl, BG);
+        setExportPhotoUrl(processed);
+      }
+      // Allow React to re-render with the processed photo before capturing
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       const { default: html2canvas } = await import("html2canvas");
-      const { default: jsPDF } = await import("jspdf");
 
       const element = pdfContainerRef.current;
       if (!element) return;
 
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: "#ffffff",
+        backgroundColor: BG,
         logging: false,
         width: element.scrollWidth,
         height: element.scrollHeight,
@@ -436,69 +462,14 @@ export function RecipeShareSlideIn({
         windowHeight: element.scrollHeight,
       });
 
-      const pdfW = 210; // A4 mm
-      const pdfH = 297;
-      // Aspect ratio of captured content
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-        compress: true,
-      });
-
-      // Always fill full A4 width; split into pages at whitespace rows so text is never cut.
-      const pageHeightPx = Math.floor(canvas.width * (pdfH / pdfW));
-
-      // Find the last mostly-white row at or before `fromY` (search back up to `rangePx`).
-      const lastWhiteRow = (fromY: number, rangePx: number): number => {
-        const ctx2d = canvas.getContext("2d");
-        if (!ctx2d) return fromY;
-        const step = Math.max(1, Math.floor(canvas.width / 80));
-        for (let y = fromY; y > Math.max(0, fromY - rangePx); y--) {
-          const row = ctx2d.getImageData(0, y, canvas.width, 1).data;
-          let white = true;
-          for (let x = 0; x < row.length; x += step * 4) {
-            if (row[x] < 238) { white = false; break; }
-          }
-          if (white) return y;
-        }
-        return Math.max(0, fromY - rangePx);
-      };
-
-      // Build page slices: [startPx, endPx]
-      const slices: [number, number][] = [];
-      let curY = 0;
-      while (curY < canvas.height) {
-        const ideal = curY + pageHeightPx;
-        if (ideal >= canvas.height) {
-          slices.push([curY, canvas.height]);
-          break;
-        }
-        // Search back up to 12% of a page height for a safe whitespace break
-        const safeY = lastWhiteRow(ideal, Math.floor(pageHeightPx * 0.12));
-        slices.push([curY, safeY]);
-        curY = safeY + 1;
-      }
-
-      // Render each slice onto its own PDF page
-      for (let i = 0; i < slices.length; i++) {
-        const [startY, endY] = slices[i];
-        const sliceCanvas = document.createElement("canvas");
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = endY - startY;
-        const sCtx = sliceCanvas.getContext("2d")!;
-        sCtx.drawImage(canvas, 0, startY, canvas.width, endY - startY, 0, 0, canvas.width, endY - startY);
-        const sliceHeightMm = pdfW * (sliceCanvas.height / sliceCanvas.width);
-        if (i > 0) pdf.addPage();
-        pdf.addImage(sliceCanvas.toDataURL("image/jpeg", 0.93), "JPEG", 0, 0, pdfW, sliceHeightMm);
-      }
-
-      const pdfBlob = pdf.output("blob");
       const safeName = recipe.name.replace(/[^a-z0-9\u00C0-\u024F\s]/gi, "").trim() || "recept";
-      const fileName = `${safeName}.pdf`;
-      const file = new File([pdfBlob], fileName, { type: "application/pdf" });
+      const fileName = `${safeName}.png`;
 
-      // On mobile (iOS/Android) use native share sheet; on desktop always download.
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob mislukt"))), "image/png"),
+      );
+      const file = new File([blob], fileName, { type: "image/png" });
+
       const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       if (
         isMobileDevice &&
@@ -507,7 +478,7 @@ export function RecipeShareSlideIn({
       ) {
         await navigator.share({ files: [file], title: recipe.name });
       } else {
-        const objUrl = URL.createObjectURL(pdfBlob);
+        const objUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = objUrl;
         a.download = fileName;
@@ -518,11 +489,12 @@ export function RecipeShareSlideIn({
       }
     } catch (err) {
       if (err instanceof Error && err.name !== "AbortError") {
-        setPdfError("PDF genereren mislukt. Probeer opnieuw.");
-        console.error("PDF generation error:", err);
+        setPdfError("Afbeelding genereren mislukt. Probeer opnieuw.");
+        console.error("PNG generation error:", err);
       }
     } finally {
       setGenerating(false);
+      setExportPhotoUrl(null);
     }
   }, [recipe, ingredientPhotoUrls]);
 
@@ -550,14 +522,14 @@ export function RecipeShareSlideIn({
 
           <button
             type="button"
-            onClick={() => void handlePdfShare()}
+            onClick={() => void handlePngShare()}
             disabled={generating}
             className="w-full bg-transparent p-0 text-left disabled:opacity-50"
           >
             <SelectTile
-              title="PDF delen"
-              subtitle={generating ? "PDF genereren…" : "Genereer een PDF die je kan delen"}
-              icon={<MaskIcon src="/icons/pdf.svg" ariaLabel="PDF" />}
+              title={isLg ? "Afbeelding downloaden" : "Afbeelding delen"}
+              subtitle={generating ? "Afbeelding genereren…" : "Genereer een PNG die je kan delen"}
+              icon={<MaskIcon src="/icons/image.svg" ariaLabel="Afbeelding" />}
               state={generating ? "disabled" : "default"}
             />
           </button>
@@ -569,7 +541,7 @@ export function RecipeShareSlideIn({
         </div>
       </SlideInModal>
 
-      {/* Off-screen A4 layout captured by html2canvas */}
+      {/* Off-screen layout captured by html2canvas */}
       <div
         aria-hidden="true"
         style={{
@@ -584,6 +556,7 @@ export function RecipeShareSlideIn({
           <RecipePdfLayout
             recipe={recipe}
             ingredientPhotoUrls={ingredientPhotoUrls}
+            photoUrlOverride={exportPhotoUrl}
           />
         </div>
       </div>
