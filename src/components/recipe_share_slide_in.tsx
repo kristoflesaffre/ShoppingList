@@ -379,7 +379,7 @@ export function RecipeShareSlideIn({
   const getIngredientPhotoUrl = useIngredientPhotoUrl(240);
 
   const ingredientPhotoUrls = React.useMemo(
-    () => recipe.ingredients.map((ing) => getIngredientPhotoUrl(ing.name)),
+    () => recipe.ingredients.map((ing) => getIngredientPhotoUrl(ing.name, ing.quantity)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [recipe.ingredients, getIngredientPhotoUrl],
   );

@@ -55,26 +55,83 @@ function fetchSynonyms(): Promise<Record<string, string>> {
 
 // ─── Matching ─────────────────────────────────────────────────────────────────
 
+/**
+ * Parses a leading integer from a quantity string like "4", "4 stuks", "2 el".
+ * Returns null if no leading integer is found.
+ */
+function parseLeadingCount(quantity: string | undefined): number | null {
+  if (!quantity) return null;
+  const m = quantity.trim().match(/^(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/**
+ * Among slugs that match `base_N` (numeric-only suffix), pick the best for
+ * `count`. Returns the slug whose N is the largest value ≤ count. If count
+ * is below all variants, returns the lowest. If count is above all, returns
+ * the highest (as requested).
+ */
+function pickCountVariant(
+  base: string,
+  slugs: string[],
+  count: number,
+): string | null {
+  const variants = slugs
+    .filter((s) => {
+      if (!s.startsWith(base + "_")) return false;
+      const suffix = s.slice(base.length + 1);
+      return /^\d+$/.test(suffix);
+    })
+    .map((s) => ({ slug: s, n: parseInt(s.slice(base.length + 1), 10) }))
+    .sort((a, b) => a.n - b.n);
+
+  if (variants.length === 0) return null;
+
+  // Largest variant whose count is ≤ requested count
+  const below = [...variants].reverse().find((v) => v.n <= count);
+  if (below) return below.slug;
+
+  // count is below all variants → use the smallest
+  return variants[0].slug;
+}
+
 export function matchIngredientPhotoUrl(
   itemName: string,
   slugs: string[],
   synonyms: Record<string, string>,
   size: 160 | 240 | 320 = 320,
+  quantity?: string,
 ): string | null {
   const normalized = normalizeForMatch(itemName);
   if (!normalized || slugs.length === 0) return null;
 
   const url = (slug: string) => `/images/ingredients/${slug}_${size}.webp`;
+  const count = parseLeadingCount(quantity);
 
-  // 1. Exact synonym key match
+  // 1. Exact synonym key match — if synonym points to a count-variant base and
+  //    we have a quantity, use count-aware picking instead of returning _1 directly
   const synonymSlug = synonyms[normalized];
-  if (synonymSlug && slugs.includes(synonymSlug)) return url(synonymSlug);
+  if (synonymSlug && slugs.includes(synonymSlug)) {
+    if (count !== null) {
+      // Derive the base from the synonym slug (strip trailing _N if present)
+      const baseMatch = synonymSlug.match(/^(.+?)_(\d+)$/);
+      if (baseMatch) {
+        const countMatch = pickCountVariant(baseMatch[1], slugs, count);
+        if (countMatch) return url(countMatch);
+      }
+    }
+    return url(synonymSlug);
+  }
 
   // 2. Exact slug match — must happen BEFORE partial synonym matching to prevent
   //    e.g. "bloemkool" matching the "bloem" synonym entry
   if (slugs.includes(normalized)) return url(normalized);
 
-  // 3. Slug starts with normalized + "_" (e.g. "appels" → "appels_1")
+  // 3. Slug starts with normalized + "_" — prefer count-variant if available
+  if (count !== null) {
+    const countMatch = pickCountVariant(normalized, slugs, count);
+    if (countMatch) return url(countMatch);
+  }
   const prefixMatch = slugs.find((s) => s.startsWith(normalized + "_"));
   if (prefixMatch) return url(prefixMatch);
 
@@ -141,7 +198,7 @@ export function useIngredientSlugs(): string[] {
  */
 export function useIngredientPhotoUrl(
   size: 160 | 240 | 320 = 320,
-): (name: string) => string | null {
+): (name: string, quantity?: string) => string | null {
   const [slugs, setSlugs] = React.useState<string[]>(cachedSlugs ?? []);
   const [synonyms, setSynonyms] = React.useState<Record<string, string>>(
     cachedSynonyms ?? {},
@@ -157,7 +214,8 @@ export function useIngredientPhotoUrl(
   }, []);
 
   return React.useCallback(
-    (name: string) => matchIngredientPhotoUrl(name, slugs, synonyms, size),
+    (name: string, quantity?: string) =>
+      matchIngredientPhotoUrl(name, slugs, synonyms, size, quantity),
     [slugs, synonyms, size],
   );
 }

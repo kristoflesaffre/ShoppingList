@@ -759,7 +759,7 @@ function IngredientGrid({
 }: {
   ingredients: RecipeIngredient[];
   cols: 3 | 4;
-  getPhotoUrl: (name: string) => string | null;
+  getPhotoUrl: (name: string, quantity?: string) => string | null;
   textSize: string;
 }) {
   // Chunk into rows
@@ -782,7 +782,7 @@ function IngredientGrid({
               )}
             >
               {row.map((ing) => {
-                const photoUrl = getPhotoUrl(ing.name);
+                const photoUrl = getPhotoUrl(ing.name, ing.quantity);
                 return (
                   <div
                     key={ing.id}
