@@ -53,6 +53,69 @@ function fetchSynonyms(): Promise<Record<string, string>> {
   return synonymFetchPromise;
 }
 
+// ─── Ingredient name normalisation ───────────────────────────────────────────
+
+/**
+ * Converts a slug like "zelfrijzend_bakmeel" to a display name "Zelfrijzend bakmeel".
+ */
+function slugToDisplayName(slug: string): string {
+  return slug.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+}
+
+/**
+ * Given an AI-provided ingredient name, tries to map it to the canonical catalog
+ * name using the synonym table and slug list. Falls back to the original name.
+ *
+ * Examples:
+ *   "ui"      → "Ajuin"        (via synonym "ui" → "ajuin")
+ *   "Eieren"  → "Eieren"       (slug already exists)
+ *   "blabla"  → "blabla"       (no match, keep original)
+ */
+export function normalizeIngredientName(
+  name: string,
+  slugs: string[],
+  synonyms: Record<string, string>,
+): string {
+  if (!name.trim() || slugs.length === 0) return name;
+  const normalized = normalizeForMatch(name);
+
+  // 1. Exact synonym match
+  const synonymSlug = synonyms[normalized];
+  if (synonymSlug) {
+    // Strip any count suffix (_1, _2, …) to get the base display name
+    const base = synonymSlug.replace(/_\d+$/, "");
+    return slugToDisplayName(base);
+  }
+
+  // 2. Exact slug match (already canonical — just re-capitalise)
+  const exactSlug = slugs.find((s) => s.replace(/_\d+$/, "") === normalized);
+  if (exactSlug) return slugToDisplayName(normalized);
+
+  // 3. No match → return original unchanged
+  return name;
+}
+
+/**
+ * Hook that returns a function to normalise an AI-provided ingredient name to
+ * its catalog display name. Uses the same caches as useIngredientPhotoUrl.
+ */
+export function useNormalizeIngredientName(): (name: string) => string {
+  const [slugs, setSlugs] = React.useState<string[]>(cachedSlugs ?? []);
+  const [synonyms, setSynonyms] = React.useState<Record<string, string>>(
+    cachedSynonyms ?? {},
+  );
+
+  React.useEffect(() => {
+    if (!cachedSlugs) void fetchSlugs().then(setSlugs);
+    if (!cachedSynonyms) void fetchSynonyms().then(setSynonyms);
+  }, []);
+
+  return React.useCallback(
+    (name: string) => normalizeIngredientName(name, slugs, synonyms),
+    [slugs, synonyms],
+  );
+}
+
 // ─── Matching ─────────────────────────────────────────────────────────────────
 
 /**

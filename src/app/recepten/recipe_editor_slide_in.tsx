@@ -20,6 +20,8 @@ import { RecipeLinkSlideIn, type ExtractedRecipeLinkData } from "@/components/re
 import { RecipePhotoUploadSlideIn, type ExtractedRecipeData } from "@/components/recipe_photo_upload_slide_in";
 import type { RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
+import { useNormalizeIngredientName } from "@/lib/ingredient-photos";
+import { normalizeQuantity } from "@/lib/recipe_ingredient_quantity";
 
 export const RECIPE_EDITOR_FORM_ID = "recepten-recipe-editor-form";
 
@@ -47,6 +49,7 @@ export function RecipeEditorSlideIn({
   const [recipeStepsArray, setRecipeStepsArray] = React.useState<string[]>(["", ""]);
   const [recipePersons, setRecipePersons] = React.useState(2);
   const [ingredients, setIngredients] = React.useState<RecipeIngredient[]>([]);
+  const normalizeIngredientName = useNormalizeIngredientName();
   const [ingredientSlideOpen, setIngredientSlideOpen] = React.useState(false);
   const [editingIngredientId, setEditingIngredientId] = React.useState<
     string | null
@@ -273,14 +276,14 @@ export function RecipeEditorSlideIn({
         setIngredients(
           data.ingredients.map((ing) => ({
             id: `new-${iid()}`,
-            name: ing.name,
-            quantity: ing.quantity,
+            name: normalizeIngredientName(ing.name),
+            quantity: normalizeQuantity(ing.quantity),
           })),
         );
       }
       setActiveTab("manueel");
     },
-    [recipeName],
+    [recipeName, normalizeIngredientName],
   );
 
   const handleUseLinkForAi = React.useCallback(() => {
@@ -296,14 +299,14 @@ export function RecipeEditorSlideIn({
         setIngredients(
           data.ingredients.map((ing) => ({
             id: `new-${iid()}`,
-            name: ing.name,
-            quantity: ing.quantity,
+            name: normalizeIngredientName(ing.name),
+            quantity: normalizeQuantity(ing.quantity),
           })),
         );
       }
       setActiveTab("manueel");
     },
-    [recipeName],
+    [recipeName, normalizeIngredientName],
   );
 
   const ingredientSlideInitial = editingIngredientId
