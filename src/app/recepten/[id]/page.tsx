@@ -518,7 +518,7 @@ export default function ReceptDetailPage() {
           </div>
 
           {detailTab === "ingredienten" ? (
-            <div className="relative z-[1] flex w-full flex-col gap-4">
+            <div className="relative z-[1] flex w-full flex-col gap-4 py-2">
               {/* Pill tab: Groot / Klein / Lijst */}
               <div
                 role="tablist"
@@ -550,7 +550,7 @@ export default function ReceptDetailPage() {
                 ))}
               </div>
 
-              {/* Groot: 3 kolommen, 12px tekst */}
+              {/* Groot: 4 kolommen */}
               {ingredientView === "groot" && (
                 savedRecipe.ingredients.length === 0 ? (
                   <p className="py-4 text-sm text-[var(--text-tertiary)]">
@@ -559,14 +559,16 @@ export default function ReceptDetailPage() {
                 ) : (
                   <IngredientGrid
                     ingredients={savedRecipe.ingredients}
-                    cols={3}
+                    gridClass="grid-cols-3"
+                    lgGridClass="lg:grid-cols-4"
                     getPhotoUrl={getPhotoUrl}
-                    textSize="text-xs"
+                    textSize="text-[10px]"
+                    lgTextSize="lg:text-[15px]"
                   />
                 )
               )}
 
-              {/* Klein: 4 kolommen, 10px tekst */}
+              {/* Klein: 6 kolommen */}
               {ingredientView === "klein" && (
                 savedRecipe.ingredients.length === 0 ? (
                   <p className="py-4 text-sm text-[var(--text-tertiary)]">
@@ -575,9 +577,11 @@ export default function ReceptDetailPage() {
                 ) : (
                   <IngredientGrid
                     ingredients={savedRecipe.ingredients}
-                    cols={4}
+                    gridClass="grid-cols-4"
+                    lgGridClass="lg:grid-cols-6"
                     getPhotoUrl={getPhotoUrl}
                     textSize="text-[10px]"
+                    lgTextSize="lg:text-[15px]"
                   />
                 )
               )}
@@ -750,86 +754,64 @@ export default function ReceptDetailPage() {
 }
 
 // ─── Ingredient grid (Groot / Klein) ─────────────────────────────────────────
+// gridClass / lgGridClass must be full Tailwind class strings (no dynamic
+// interpolation) so Tailwind picks them up at build time.
 
 function IngredientGrid({
   ingredients,
-  cols,
+  gridClass,
+  lgGridClass,
   getPhotoUrl,
   textSize,
+  lgTextSize,
 }: {
   ingredients: RecipeIngredient[];
-  cols: 3 | 4;
+  /** CSS grid-cols class for mobile, e.g. "grid-cols-3" */
+  gridClass: string;
+  /** CSS grid-cols class for lg breakpoint, e.g. "lg:grid-cols-2" */
+  lgGridClass: string;
   getPhotoUrl: (name: string, quantity?: string) => string | null;
   textSize: string;
+  lgTextSize: string;
 }) {
-  // Chunk into rows
-  const rows: RecipeIngredient[][] = [];
-  for (let i = 0; i < ingredients.length; i += cols) {
-    rows.push(ingredients.slice(i, i + cols));
-  }
-
   return (
-    <div className="flex w-full flex-col">
-      {rows.map((row, rowIdx) => {
-        const isLastRow = rowIdx === rows.length - 1;
-        const isPartialRow = row.length < cols;
+    <div className={cn("grid w-full gap-x-4 gap-y-6", gridClass, lgGridClass)}>
+      {ingredients.map((ing) => {
+        const photoUrl = getPhotoUrl(ing.name, ing.quantity);
         return (
-          <React.Fragment key={rowIdx}>
-            <div
-              className={cn(
-                "flex gap-4 py-3",
-                isLastRow && isPartialRow ? "justify-center" : "",
-              )}
-            >
-              {row.map((ing) => {
-                const photoUrl = getPhotoUrl(ing.name, ing.quantity);
-                return (
-                  <div
-                    key={ing.id}
-                    className="flex flex-col items-center gap-2 min-w-0 shrink-0"
-                    style={
-                      isLastRow && isPartialRow
-                        ? { width: `calc((100% - ${(cols - 1) * 16}px) / ${cols})` }
-                        : { flex: "1 0 0" }
-                    }
-                  >
-                    <div className="aspect-square w-full overflow-hidden rounded-sm bg-[var(--white)]">
-                      {photoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={photoUrl}
-                          alt=""
-                          className="size-full object-contain"
-                          aria-hidden
-                        />
-                      ) : null}
-                    </div>
-                    <div className="w-full text-center">
-                      <p
-                        className={cn(
-                          textSize,
-                          "font-medium leading-4 text-[var(--text-primary)] break-words",
-                        )}
-                      >
-                        {ing.name}
-                      </p>
-                      <p
-                        className={cn(
-                          textSize,
-                          "font-normal leading-4 text-[var(--text-secondary)]",
-                        )}
-                      >
-                        {ing.quantity}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+          <div key={ing.id} className="flex flex-col items-center gap-2 min-w-0">
+            <div className="aspect-square w-full overflow-hidden rounded-sm bg-[var(--white)]">
+              {photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoUrl}
+                  alt=""
+                  className="size-full object-contain"
+                  aria-hidden
+                />
+              ) : null}
             </div>
-            {!isLastRow && (
-              <div className="border-t border-[var(--border-subtle)]" />
-            )}
-          </React.Fragment>
+            <div className="w-full text-center">
+              <p
+                className={cn(
+                  textSize,
+                  lgTextSize,
+                  "font-medium leading-4 text-[var(--text-primary)] break-words",
+                )}
+              >
+                {ing.name}
+              </p>
+              <p
+                className={cn(
+                  textSize,
+                  lgTextSize,
+                  "font-normal leading-4 text-[var(--text-secondary)]",
+                )}
+              >
+                {ing.quantity}
+              </p>
+            </div>
+          </div>
         );
       })}
     </div>
