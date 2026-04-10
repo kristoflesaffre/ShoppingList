@@ -30,6 +30,8 @@ export interface SlideInModalProps {
    * Use for full-bleed layouts (e.g. horizontal slides); add `px-4` + `max-w-[768px] mx-auto` inside your content.
    */
   bodyFullWidth?: boolean;
+  /** Extra classes on the scrollable body (merged last; e.g. `pb-0` to control padding in children only). */
+  bodyClassName?: string;
 }
 
 const SLIDE_DURATION_MS = 500;
@@ -90,6 +92,7 @@ export function SlideInModal({
   titleId = "slide-in-modal-title",
   disableEscapeClose = false,
   bodyFullWidth = false,
+  bodyClassName,
 }: SlideInModalProps) {
   const [isAnimatingIn, setIsAnimatingIn] = React.useState(false);
   const [isClosing, setIsClosing] = React.useState(false);
@@ -170,6 +173,7 @@ export function SlideInModal({
             bodyFullWidth
               ? "w-full min-w-0 items-stretch px-0"
               : "items-center px-4",
+            bodyClassName,
           )}
         >
           {bodyFullWidth ? (

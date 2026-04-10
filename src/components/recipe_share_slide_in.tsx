@@ -506,8 +506,13 @@ export function RecipeShareSlideIn({
         </div>
       ) : null}
 
-      <SlideInModal open={open} onClose={onClose} title="Recept delen">
-        <div className="flex w-full flex-col gap-4 pb-[calc(45px+env(safe-area-inset-bottom,0px))]">
+      <SlideInModal
+        open={open}
+        onClose={onClose}
+        title="Recept delen"
+        bodyClassName="pb-0"
+      >
+        <div className="flex w-full flex-col gap-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
           <button
             type="button"
             onClick={() => void handleLinkShare()}
