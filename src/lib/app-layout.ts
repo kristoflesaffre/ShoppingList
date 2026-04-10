@@ -14,3 +14,10 @@ export const APP_FAB_INNER_FLUSH_CLASS = fabInnerBase;
 
 /** Inner rij met `px-4`, gelijk aan lijstje-detail contentkolom. */
 export const APP_FAB_INNER_PX4_CLASS = cn(fabInnerBase, "px-4");
+
+/**
+ * FAB op schermen **zonder** `AppBottomNav` (receptdetail, lijstje-detail).
+ * Alleen `24px` vanaf de onderkant van de layout-viewport — géén `+ env(safe-area-inset-bottom)`:
+ * op iPhone zou die extra inset de knop ~30px te hoog plaatsen t.o.v. mobiele browser-emulatie.
+ */
+export const APP_FAB_BOTTOM_NO_NAV_CLASS = "bottom-[24px]";

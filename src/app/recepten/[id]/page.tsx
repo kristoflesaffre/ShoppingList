@@ -19,7 +19,10 @@ import { FoodImageGeneratorSlideIn } from "@/components/food_image_generator_sli
 import type { FoodImageGenerationResult } from "@/components/food-image-generator";
 import { RecipeShareSlideIn } from "@/components/recipe_share_slide_in";
 import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
-import { APP_FAB_INNER_PX4_CLASS } from "@/lib/app-layout";
+import {
+  APP_FAB_BOTTOM_NO_NAV_CLASS,
+  APP_FAB_INNER_PX4_CLASS,
+} from "@/lib/app-layout";
 import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
 
@@ -696,7 +699,12 @@ export default function ReceptDetailPage() {
         </div>
       </main>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(24px+env(safe-area-inset-bottom,0px))] z-20">
+      <div
+        className={cn(
+          "pointer-events-none fixed inset-x-0 z-20",
+          APP_FAB_BOTTOM_NO_NAV_CLASS,
+        )}
+      >
         <div className={cn(APP_FAB_INNER_PX4_CLASS, "pointer-events-none")}>
           <FloatingActionButton
             aria-label="Ingrediënt toevoegen"
