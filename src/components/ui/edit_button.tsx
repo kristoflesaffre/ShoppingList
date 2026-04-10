@@ -84,6 +84,25 @@ const EditButton = React.forwardRef<HTMLButtonElement, EditButtonProps>(
     },
     ref
   ) => {
+    /** Alleen schaalanimatie bij Wijzigen ↔ Gereed; niet bij eerste mount (nieuwe route = nieuwe mount). */
+    const hasCommittedRef = React.useRef(false);
+    const prevVariantRef = React.useRef(variant);
+    const [playScaleAnim, setPlayScaleAnim] = React.useState(false);
+
+    React.useEffect(() => {
+      if (!hasCommittedRef.current) {
+        hasCommittedRef.current = true;
+        prevVariantRef.current = variant;
+        return;
+      }
+      if (prevVariantRef.current !== variant) {
+        prevVariantRef.current = variant;
+        setPlayScaleAnim(true);
+        const id = window.setTimeout(() => setPlayScaleAnim(false), 280);
+        return () => window.clearTimeout(id);
+      }
+    }, [variant]);
+
     const Comp = asChild ? Slot : "button";
 
     const base =
@@ -149,11 +168,12 @@ const EditButton = React.forwardRef<HTMLButtonElement, EditButtonProps>(
       </Comp>
     );
 
-    /* Wrapper met key={variant} triggert schaalanimatie bij variant switch */
     return (
       <span
-        key={variant}
-        className="inline-flex animate-edit-button-scale"
+        className={cn(
+          "inline-flex",
+          playScaleAnim && "animate-edit-button-scale",
+        )}
       >
         {buttonElement}
       </span>
