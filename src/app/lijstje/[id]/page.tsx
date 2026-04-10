@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   DndContext,
@@ -23,36 +25,48 @@ import {
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { ItemCard } from "@/components/ui/item_card";
-import { RecipeIngredientSortableList } from "@/app/recepten/recipe_ingredient_sortable_list";
-import { RecipeIngredientFormSlideIn } from "@/components/recipe_ingredient_form_slide_in";
-import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
-import { parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
+
+const RecipeIngredientSortableList = dynamic(
+  () => import("@/app/recepten/recipe_ingredient_sortable_list").then((m) => m.RecipeIngredientSortableList),
+  { ssr: false },
+);
+const RecipeIngredientFormSlideIn = dynamic(
+  () => import("@/components/recipe_ingredient_form_slide_in").then((m) => m.RecipeIngredientFormSlideIn),
+  { ssr: false },
+);
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { EditButton } from "@/components/ui/edit_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Snackbar } from "@/components/ui/snackbar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
-import { ToggleButton } from "@/components/ui/toggle_button";
-import { PillTab } from "@/components/ui/pill_tab";
 import { InputField } from "@/components/ui/input_field";
-import { ItemNameAutocomplete } from "@/components/ui/item_name_autocomplete";
-import { Stepper } from "@/components/ui/stepper";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search_bar";
-import { RecipeTile } from "@/components/ui/recipe_tile";
 import { id as iid } from "@instantdb/react";
 import { cn, isIPhoneDevice } from "@/lib/utils";
-import { LoyaltyCardScanResultSlideIn } from "@/components/loyalty_card_scan_result_slide_in";
+import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
+const LoyaltyCardScanResultSlideIn = dynamic(
+  () => import("@/components/loyalty_card_scan_result_slide_in").then((m) => m.LoyaltyCardScanResultSlideIn),
+  { ssr: false },
+);
 import {
   LoyaltyCardSwipeShell,
   type LoyaltySwipePane,
 } from "@/components/loyalty_card_swipe_shell";
-import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
+import dynamic from "next/dynamic";
+
+const LoyaltyCardDisplay = dynamic(
+  () => import("@/components/loyalty_card_display").then((m) => m.LoyaltyCardDisplay),
+  { ssr: false },
+);
 import { decodeLoyaltyCard } from "@/lib/decode_loyalty_card";
 import type { DecodeResult } from "@/lib/loyalty_card";
 import { db } from "@/lib/db";
-import { ShareListModal } from "@/components/share_list_modal";
+const ShareListModal = dynamic(
+  () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
+  { ssr: false },
+);
 import {
   type RecipeIngredient,
   type SavedRecipe,
@@ -102,21 +116,7 @@ function readClaimedByDisplayNameFromInstantRow(
   return t.length > 0 ? t : undefined;
 }
 
-type ListItem = {
-  id: string;
-  name: string;
-  quantity: string;
-  checked: boolean;
-  section: string;
-  /** Wie dit item claimt in een gedeeld lijstje (Instant user id). */
-  claimedByInstantUserId?: string;
-  /** Voornaam op item gezet bij claim (voor labels voor andere deelnemers). */
-  claimedByDisplayName?: string;
-  /** Zelfde id voor alle regels uit één toegepast recept (Figma 134:767). */
-  recipeGroupId?: string;
-  recipeName?: string;
-  recipeLink?: string;
-};
+import type { ListItem } from "./new_item_modal";
 
 type SectionItemsChunk =
   | { type: "plain"; items: ListItem[] }
@@ -168,17 +168,6 @@ const SECTION_ORDER = [
   "Vrijdag",
   "Zaterdag",
   "Zondag",
-] as const;
-
-const DAY_OPTIONS = [
-  { label: "Geen", value: "Geen" },
-  { label: "Ma", value: "Maandag" },
-  { label: "Di", value: "Dinsdag" },
-  { label: "Wo", value: "Woensdag" },
-  { label: "Do", value: "Donderdag" },
-  { label: "Vr", value: "Vrijdag" },
-  { label: "Za", value: "Zaterdag" },
-  { label: "Zo", value: "Zondag" },
 ] as const;
 
 
@@ -339,555 +328,10 @@ function ChefHatIcon({ className }: { className?: string }) {
   );
 }
 
-/** public/icons/fish.svg – ingrediënt-sectie icoon */
-function FishIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M20.9625 3.3075C20.923 3.1795 20.8225 3.0795 20.6935 3.0415C20.4895 2.9805 15.7 1.5995 11.938 3.486C10.215 2.839 7.7255 2.899 6.327 4.297C6.231 4.393 6.1905 4.531 6.219 4.6635C6.2475 4.7965 6.341 4.9055 6.468 4.954C7.3465 5.2875 8.0995 5.897 8.6095 6.6825C6.3705 10.3575 6.9235 14.579 7.189 15.9565L2.831 16.4375C2.678 16.454 2.5485 16.557 2.4975 16.7025C2.4465 16.8475 2.4835 17.0085 2.592 17.1175L6.857 21.3825C6.9335 21.4595 7.0355 21.5 7.14 21.5C7.1845 21.5 7.229 21.4925 7.2725 21.4775C7.4175 21.4265 7.5205 21.2975 7.5375 21.1445L8.023 16.7955C8.582 16.9045 9.6135 17.0625 10.8855 17.0625C13.301 17.0625 16.584 16.491 19.1485 13.927C22.989 10.0815 21.047 3.5825 20.9625 3.3075ZM6.8345 20.229L3.7465 17.141L7.222 16.7575L6.8345 20.229ZM18.5825 13.3625C14.837 17.107 9.223 16.2205 8.0105 15.975C7.7955 14.918 7.095 10.511 9.4165 6.902C9.4975 6.7765 9.5015 6.616 9.427 6.486C8.9395 5.639 8.221 4.946 7.366 4.4865C8.536 3.7425 10.3095 3.7475 11.618 4.229C12.0615 6.586 12.8895 8.281 14.2865 9.6775C15.654 11.1005 17.3715 12.071 19.2785 12.518C19.072 12.8105 18.848 13.0965 18.5825 13.3625ZM19.7225 11.795C17.861 11.4135 16.1845 10.4975 14.858 9.117C13.59 7.8495 12.8335 6.303 12.418 4.1505C15.4565 2.699 19.318 3.518 20.2555 3.753C20.502 4.705 21.371 8.69 19.7225 11.795ZM17.415 5.615C17.415 6.1555 16.9755 6.595 16.435 6.595C15.8945 6.595 15.455 6.1555 15.455 5.615C15.455 5.0745 15.8945 4.635 16.435 4.635C16.9755 4.635 17.415 5.0745 17.415 5.615Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-type Ingredient = RecipeIngredient;
-
-const SLIDE_TRANSITION = "transform 350ms cubic-bezier(0.16, 1, 0.3, 1)";
-
-/** New Item Modal – slide-in from FAB, section plus, or edit from pencil */
-function NewItemModal({
-  open,
-  onClose,
-  onAdd,
-  editingItem,
-  onSave,
-  initialSection,
-  storedRecipes,
-  onSaveRecipeToLibrary,
-  onApplyRecipeToList,
-  isMasterList = false,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onAdd: (item: { name: string; quantity: string; section: string }) => void;
-  editingItem?: ListItem | null;
-  onSave?: (item: ListItem) => void;
-  initialSection?: string | null;
-  storedRecipes: SavedRecipe[];
-  onSaveRecipeToLibrary: (recipe: SavedRecipe) => void;
-  onApplyRecipeToList: (items: ListItem[]) => void;
-  /** Masterlijst: beperkte flow alleen naam + hoeveelheid (Figma 797:3883). */
-  isMasterList?: boolean;
-}) {
-  const isEditMode = editingItem != null;
-  const [selectedDay, setSelectedDay] = React.useState("Geen");
-  const [activeTab, setActiveTab] = React.useState<"first" | "second">("first");
-  const [itemName, setItemName] = React.useState("");
-  const [stepperValue, setStepperValue] = React.useState(1);
-  const [quantityDesc, setQuantityDesc] = React.useState("stuk");
-  const [recipeSearch, setRecipeSearch] = React.useState("");
-  const [showRecipeForm, setShowRecipeForm] = React.useState(false);
-  /** Bewerken van bestaand recept uit bibliotheek (vs. nieuw). */
-  const [editingLibraryRecipeId, setEditingLibraryRecipeId] = React.useState<
-    string | null
-  >(null);
-
-  const [recipeName, setRecipeName] = React.useState("");
-  const [recipeLink, setRecipeLink] = React.useState("");
-  const [recipePersons, setRecipePersons] = React.useState(2);
-  const [ingredients, setIngredients] = React.useState<Ingredient[]>([]);
-
-  /** Slide-in om ingrediënt toe te voegen of te bewerken (genest in receptflow). */
-  const [ingredientSlideOpen, setIngredientSlideOpen] = React.useState(false);
-  const [editingIngredientId, setEditingIngredientId] = React.useState<
-    string | null
-  >(null);
-
-  const canAdd = itemName.trim().length > 0;
-  const canSaveRecipe = recipeName.trim().length > 0;
-  /** Geen dag/recept-flow (masterlijst). */
-  const masterItemFormOnly = isMasterList && !showRecipeForm;
-
-  const filteredRecipes = React.useMemo(() => {
-    const q = recipeSearch.trim().toLowerCase();
-    if (!q) return storedRecipes;
-    return storedRecipes.filter((r) =>
-      r.name.toLowerCase().includes(q),
-    );
-  }, [storedRecipes, recipeSearch]);
-
-  React.useEffect(() => {
-    if (!open) {
-      setSelectedDay("Geen");
-      setActiveTab("first");
-      setItemName("");
-      setStepperValue(1);
-      setQuantityDesc("stuk");
-      setRecipeSearch("");
-      setShowRecipeForm(false);
-      setEditingLibraryRecipeId(null);
-      setRecipeName("");
-      setRecipeLink("");
-      setRecipePersons(2);
-      setIngredients([]);
-      setIngredientSlideOpen(false);
-      setEditingIngredientId(null);
-    } else if (editingItem) {
-      setItemName(editingItem.name);
-      const { stepperValue: sv, quantityDesc: qd } =
-        parseRecipeIngredientQuantity(editingItem.quantity);
-      setStepperValue(sv);
-      setQuantityDesc(qd);
-      setSelectedDay(
-        editingItem.section === "Algemeen" ? "Geen" : editingItem.section
-      );
-      setActiveTab("first");
-    } else if (initialSection) {
-      setSelectedDay(
-        initialSection === "Algemeen" ? "Geen" : initialSection
-      );
-      setActiveTab("first");
-    }
-  }, [open, editingItem, initialSection]);
-
-  const handleAdd = () => {
-    if (!canAdd && !isEditMode) return;
-    const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
-    const qty = `${stepperValue} ${quantityDesc}`;
-    if (isEditMode && editingItem && onSave) {
-      onSave({
-        ...editingItem,
-        name: itemName.trim(),
-        quantity: qty,
-        section,
-      });
-    } else {
-      onAdd({ name: itemName.trim(), quantity: qty, section });
-    }
-    onClose();
-  };
-
-  const closeRecipeFormPanel = React.useCallback(() => {
-    setShowRecipeForm(false);
-    setEditingLibraryRecipeId(null);
-    setRecipeName("");
-    setRecipeLink("");
-    setRecipePersons(2);
-    setIngredients([]);
-    setIngredientSlideOpen(false);
-    setEditingIngredientId(null);
-  }, []);
-
-  const openNewRecipeForm = React.useCallback(() => {
-    setEditingLibraryRecipeId(null);
-    setRecipeName("");
-    setRecipeLink("");
-    setRecipePersons(2);
-    setIngredients([]);
-    setShowRecipeForm(true);
-  }, []);
-
-  const openRecipeForEdit = React.useCallback((recipe: SavedRecipe) => {
-    setEditingLibraryRecipeId(recipe.id);
-    setRecipeName(recipe.name);
-    setRecipeLink(recipe.link);
-    setRecipePersons(recipe.persons);
-    setIngredients(recipe.ingredients.map((i) => ({ ...i })));
-    setShowRecipeForm(true);
-  }, []);
-
-  const handleSaveRecipe = () => {
-    if (!canSaveRecipe) return;
-    onSaveRecipeToLibrary({
-      id: editingLibraryRecipeId ?? `recipe-${Date.now()}`,
-      name: recipeName.trim(),
-      link: recipeLink.trim(),
-      persons: recipePersons,
-      ingredients: ingredients.map((i) => ({ ...i })),
-    });
-    closeRecipeFormPanel();
-  };
-
-  const handleSelectRecipe = React.useCallback(
-    (recipe: SavedRecipe) => {
-      const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
-      const ts = Date.now();
-      const recipeGroupId = `recipe-${recipe.id}-${ts}`;
-      const link = recipe.link.trim();
-      const newItems: ListItem[] = recipe.ingredients.map((ing, i) => ({
-        id: `from-recipe-${recipe.id}-${ts}-${i}`,
-        name: ing.name,
-        quantity: ing.quantity,
-        checked: false,
-        section,
-        recipeGroupId,
-        recipeName: recipe.name.trim(),
-        recipeLink: link.length > 0 ? link : undefined,
-      }));
-      onApplyRecipeToList(newItems);
-    },
-    [selectedDay, onApplyRecipeToList],
-  );
-
-  const handleDeleteIngredient = React.useCallback((id: string) => {
-    setIngredients((prev) => prev.filter((i) => i.id !== id));
-  }, []);
-
-  const closeIngredientForm = React.useCallback(() => {
-    setIngredientSlideOpen(false);
-    setEditingIngredientId(null);
-  }, []);
-
-  const openIngredientFormAdd = React.useCallback(() => {
-    setEditingIngredientId(null);
-    setIngredientSlideOpen(true);
-  }, []);
-
-  const openIngredientFormEdit = React.useCallback(
-    (id: string) => {
-      const ing = ingredients.find((i) => i.id === id);
-      if (!ing) return;
-      setEditingIngredientId(id);
-      setIngredientSlideOpen(true);
-    },
-    [ingredients],
-  );
-
-  const handleIngredientFormSubmit = React.useCallback(
-    (draft: RecipeIngredientFormDraft) => {
-      if (draft.id) {
-        setIngredients((prev) =>
-          prev.map((i) =>
-            i.id === draft.id
-              ? { ...i, name: draft.name, quantity: draft.quantity }
-              : i,
-          ),
-        );
-      } else {
-        setIngredients((prev) => [
-          ...prev,
-          {
-            id: `ing-${Date.now()}`,
-            name: draft.name,
-            quantity: draft.quantity,
-          },
-        ]);
-      }
-    },
-    [],
-  );
-
-  const ingredientSlideInitial = editingIngredientId
-    ? ingredients.find((i) => i.id === editingIngredientId) ?? null
-    : null;
-
-  const modalTitle = showRecipeForm
-    ? editingLibraryRecipeId
-      ? "Recept wijzigen"
-      : "Recept toevoegen"
-    : isEditMode
-      ? "Wijzig item(s)"
-      : "Item(s) toevoegen";
-
-  const itemFooter =
-    isEditMode || activeTab === "first" || masterItemFormOnly ? (
-      <Button
-        variant="primary"
-        disabled={!isEditMode && !canAdd}
-        onClick={handleAdd}
-      >
-        {isEditMode ? "Bewaren" : "Toevoegen"}
-      </Button>
-    ) : undefined;
-
-  const recipeFooter = (
-    <Button
-      variant="primary"
-      disabled={!canSaveRecipe}
-      onClick={handleSaveRecipe}
-    >
-      Bewaren
-    </Button>
-  );
-
-  return (
-    <>
-    <SlideInModal
-      open={open}
-      onClose={onClose}
-      title={modalTitle}
-      onBack={showRecipeForm ? closeRecipeFormPanel : undefined}
-      footer={showRecipeForm ? recipeFooter : itemFooter}
-      disableEscapeClose={ingredientSlideOpen}
-      bodyFullWidth={!masterItemFormOnly}
-      className={!masterItemFormOnly ? "h-[calc(100dvh-48px)]" : undefined}
-    >
-      <div className="overflow-hidden">
-        <div
-          className="relative flex w-full"
-          style={{
-            transform: showRecipeForm ? "translateX(-100%)" : "translateX(0)",
-            transition: SLIDE_TRANSITION,
-          }}
-        >
-          {/* Panel 1: Item form */}
-          <div className="relative z-[1] w-full shrink-0">
-            <div className="mx-auto w-full max-w-[768px] px-4">
-              <div
-                className={cn(
-                  "flex flex-col",
-                  masterItemFormOnly ? "gap-4" : "gap-6",
-                )}
-              >
-              {!isMasterList ? (
-                <>
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-                      Dag
-                    </span>
-                    <div className="grid grid-cols-4 gap-2">
-                      {DAY_OPTIONS.map((day) => (
-                        <ToggleButton
-                          key={day.value}
-                          variant={
-                            selectedDay === day.value ? "active" : "inactive"
-                          }
-                          className="w-full"
-                          onClick={() => {
-                            setSelectedDay(day.value);
-                            if (day.value === "Geen") setActiveTab("first");
-                          }}
-                        >
-                          {day.label}
-                        </ToggleButton>
-                      ))}
-                    </div>
-                  </div>
-
-                  {!isEditMode && (
-                    <PillTab
-                      value={activeTab}
-                      onValueChange={setActiveTab}
-                      labelFirst="item"
-                      labelSecond="recept"
-                    />
-                  )}
-                </>
-              ) : null}
-
-              {(isEditMode || activeTab === "first" || isMasterList) && (
-                <div
-                  className={cn(
-                    "flex flex-col",
-                    masterItemFormOnly ? "gap-4" : "gap-6",
-                  )}
-                >
-                  <ItemNameAutocomplete
-                    label="Naam item"
-                    placeholder="Naam item"
-                    value={itemName}
-                    onChange={setItemName}
-                  />
-                  <div className="flex flex-col gap-2">
-                    <Stepper
-                      label="Hoeveelheid"
-                      value={stepperValue}
-                      onValueChange={setStepperValue}
-                      min={1}
-                    />
-                    <InputField
-                      value={quantityDesc}
-                      className="text-center"
-                      onFocus={(e) => {
-                        const input = e.target;
-                        requestAnimationFrame(() => input.select());
-                      }}
-                      onChange={(e) => setQuantityDesc(e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {!isMasterList && !isEditMode && activeTab === "second" && (
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex min-w-0 flex-1 items-center gap-[12px]">
-                      <ChefHatIcon className="size-6 shrink-0 text-[var(--text-primary)]" />
-                      <h3 className="min-w-0 text-section-title font-bold leading-24 tracking-normal text-[var(--text-primary)]">
-                        Jouw recepten
-                      </h3>
-                    </div>
-                    {storedRecipes.length > 0 && (
-                      <button
-                        type="button"
-                        aria-label="Recept toevoegen"
-                        onClick={openNewRecipeForm}
-                        className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                      >
-                        <PlusCircleIcon />
-                      </button>
-                    )}
-                  </div>
-                  {storedRecipes.length > 0 ? (
-                    <SearchBar
-                      placeholder="Zoek recept"
-                      value={recipeSearch}
-                      onValueChange={setRecipeSearch}
-                    />
-                  ) : null}
-                  {storedRecipes.length === 0 ? (
-                    <div className="flex flex-col items-center gap-4 py-8">
-                      <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
-                        Je hebt nog geen recepten toegevoegd
-                      </p>
-                      <MiniButton
-                        variant="primary"
-                        onClick={openNewRecipeForm}
-                      >
-                        Voeg recept toe
-                      </MiniButton>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      {filteredRecipes.length === 0 ? (
-                        <p className="py-4 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
-                          Geen recepten gevonden
-                        </p>
-                      ) : (
-                        filteredRecipes.map((r) => {
-                          const n = r.ingredients.length;
-                          const itemCount =
-                            n === 1 ? "1 item" : `${n} items`;
-                          return (
-                            <RecipeTile
-                              key={r.id}
-                              recipeName={r.name}
-                              itemCount={itemCount}
-                              photoUrl={r.photoUrl ?? undefined}
-                              onEdit={() => openRecipeForEdit(r)}
-                              className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => handleSelectRecipe(r)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  handleSelectRecipe(r);
-                                }
-                              }}
-                            />
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              </div>
-            </div>
-          </div>
-
-          {/* Panel 2: buiten flex-flow als verborgen — anders rekt de rij naar receptformulier-hoogte en ontstaat witruimte onder het itemformulier */}
-          <div
-            className={cn(
-              "w-full shrink-0",
-              !showRecipeForm &&
-                "pointer-events-none absolute left-full top-0 z-0 w-full min-w-0",
-            )}
-          >
-            <div className="mx-auto w-full max-w-[768px] px-4">
-              <div className="flex flex-col">
-              <div className="flex flex-col gap-6">
-                <InputField
-                  label="Naam recept"
-                  placeholder="Naam recept"
-                  value={recipeName}
-                  onChange={(e) => setRecipeName(e.target.value)}
-                />
-                <InputField
-                  label="Link recept"
-                  placeholder="http://www.recept.com"
-                  value={recipeLink}
-                  onChange={(e) => setRecipeLink(e.target.value)}
-                />
-                <Stepper
-                  label="Aantal personen"
-                  value={recipePersons}
-                  onValueChange={setRecipePersons}
-                  min={1}
-                />
-              </div>
-
-              {/* Ingrediënten sectie – 48px boven de titel t.o.v. stepper */}
-              <div className="mt-[48px] flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex min-w-0 flex-1 items-center gap-[12px]">
-                    <FishIcon className="size-6 shrink-0 text-[var(--text-primary)]" />
-                    <h3 className="min-w-0 text-section-title font-bold leading-24 tracking-normal text-[var(--text-primary)]">
-                      Ingrediënten
-                    </h3>
-                  </div>
-                  {ingredients.length > 0 && (
-                    <button
-                      type="button"
-                      aria-label="Ingrediënt toevoegen"
-                      onClick={openIngredientFormAdd}
-                      className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      <PlusCircleIcon />
-                    </button>
-                  )}
-                </div>
-
-                {ingredients.length === 0 ? (
-                  <div className="flex flex-col items-center gap-4 py-8">
-                    <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
-                      Je hebt nog geen ingrediënten toegevoegd
-                    </p>
-                    <MiniButton
-                      variant="primary"
-                      onClick={openIngredientFormAdd}
-                    >
-                      Voeg ingrediënt toe
-                    </MiniButton>
-                  </div>
-                ) : (
-                  <RecipeIngredientSortableList
-                    ingredients={ingredients}
-                    onDragEndReorder={(reordered) => setIngredients(reordered)}
-                    onDelete={handleDeleteIngredient}
-                    onEdit={openIngredientFormEdit}
-                  />
-                )}
-              </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </SlideInModal>
-
-    <RecipeIngredientFormSlideIn
-      open={ingredientSlideOpen}
-      onClose={closeIngredientForm}
-      initial={ingredientSlideInitial}
-      onSubmit={handleIngredientFormSubmit}
-      titleId="ingredient-form-slide-title"
-      containerClassName="z-[60]"
-      slideClassName={!masterItemFormOnly ? "h-[calc(100dvh-48px)]" : undefined}
-    />
-    </>
-  );
-}
+const NewItemModal = dynamic(
+  () => import("./new_item_modal").then((m) => m.NewItemModal),
+  { ssr: false },
+);
 
 /** Maakt ingevoerde recept-URL bruikbaar als href (o.a. zonder https://). */
 function hrefFromRecipeLink(raw: string): string {
@@ -1257,8 +701,7 @@ function SortableItemCard({
             const photoUrl = getPhotoUrl?.(item.name);
             if (!photoUrl) return undefined;
             return (
-              // eslint-disable-next-line @next/next/no-img-element -- local public asset
-              <img src={photoUrl} alt="" width={44} height={44} className="size-full object-cover" />
+              <Image src={photoUrl} alt="" width={44} height={44} className="size-full object-cover" />
             );
           })()}
           onDelete={isEditMode ? onDelete : undefined}
@@ -1343,6 +786,8 @@ export default function ListDetailPage({
       lists: {
         items: {},
         memberships: {},
+        loyaltyCard: {},
+        loyaltyCardSecondary: {},
         $: { where: { id: listQueryId } },
       },
     }),
@@ -1575,20 +1020,9 @@ export default function ListDetailPage({
     "delhaize" | "lidl"
   >("delhaize");
   const loyaltyCardPhotoInputRef = React.useRef<HTMLInputElement>(null);
-  const { data: loyaltyCardData } = db.useQuery(
-    listId
-      ? {
-          lists: {
-            loyaltyCard: {},
-            loyaltyCardSecondary: {},
-            $: { where: { id: listId } },
-          },
-        }
-      : null,
-  );
-  const existingLoyaltyCard = loyaltyCardData?.lists?.[0]?.loyaltyCard ?? null;
+  const existingLoyaltyCard = data?.lists?.[0]?.loyaltyCard ?? null;
   const existingLoyaltyCardSecondary =
-    loyaltyCardData?.lists?.[0]?.loyaltyCardSecondary ?? null;
+    data?.lists?.[0]?.loyaltyCardSecondary ?? null;
   const isLidlDelhaizeList =
     listIconIsLidlDelhaizeCombo(masterIcon) ||
     // Retroactieve detectie voor lijstjes aangemaakt vóór masterIcon werd opgeslagen:
@@ -2153,12 +1587,7 @@ export default function ListDetailPage({
   const hideFabOnLoyaltyPanel = showLoyaltySwipe && loyaltyPanel === "loyalty";
 
   if (authLoading || !user || isLoading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <p className="text-base text-text-secondary">Laden…</p>
-      </div>
-    );
-
+    return <PageSpinner surface="white" />;
   }
 
   if (error) {
@@ -2181,14 +1610,13 @@ export default function ListDetailPage({
   const listAppHeader = (
       <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
         <header className="mx-auto flex h-14 max-w-[956px] items-center gap-4 px-4">
-          <button
-            type="button"
-            onClick={() => router.push("/")}
+          <Link
+            href="/"
             aria-label="Terug naar lijstjes"
             className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
             <BackArrowIcon />
-          </button>
+          </Link>
           <h1 className="flex-1 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
             {listName}
           </h1>

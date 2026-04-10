@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 /** Mask-iconen: `bg-current` volgt tab `text-*` (primary 500 actief, neutrals 500 inactief → `--gray-500`). */
@@ -89,9 +90,6 @@ export interface AppBottomNavProps {
    * Leeg/ontbrekend → label "Profiel" (legacy accounts).
    */
   profileFirstName?: string | null;
-  onLijstjes: () => void;
-  onRecepten: () => void;
-  onProfiel: () => void;
 }
 
 /**
@@ -101,12 +99,11 @@ export function AppBottomNav({
   active,
   profileAvatarUrl,
   profileFirstName,
-  onLijstjes,
-  onRecepten,
-  onProfiel,
 }: AppBottomNavProps) {
   const trimmedName = profileFirstName?.trim() ?? "";
   const profileTabLabel = trimmedName.length > 0 ? trimmedName : "Profiel";
+
+  const tabClass = "flex w-[41px] shrink-0 flex-col items-center gap-1 no-underline";
 
   return (
     <div
@@ -120,12 +117,11 @@ export function AppBottomNav({
         aria-label="Hoofdnavigatie"
       >
         <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={onLijstjes}
+          <Link
+            href="/"
             aria-current={active === "lijstjes" ? "page" : undefined}
             className={cn(
-              "flex w-[41px] shrink-0 flex-col items-center gap-1",
+              tabClass,
               active === "lijstjes"
                 ? "text-[var(--blue-500)]"
                 : "text-[var(--gray-500)]",
@@ -135,16 +131,15 @@ export function AppBottomNav({
             <span className="text-xs font-normal leading-4 tracking-normal">
               Lijstjes
             </span>
-          </button>
+          </Link>
         </div>
 
         <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={onRecepten}
+          <Link
+            href="/recepten"
             aria-current={active === "recepten" ? "page" : undefined}
             className={cn(
-              "flex w-[41px] shrink-0 flex-col items-center gap-1",
+              tabClass,
               active === "recepten"
                 ? "text-[var(--blue-500)]"
                 : "text-[var(--gray-500)]",
@@ -157,19 +152,18 @@ export function AppBottomNav({
             <span className="text-xs font-normal leading-4 tracking-normal">
               Recepten
             </span>
-          </button>
+          </Link>
         </div>
 
         <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={onProfiel}
+          <Link
+            href="/profiel"
             aria-label={
               trimmedName.length > 0 ? `Profiel, ${trimmedName}` : "Profiel"
             }
             aria-current={active === "profiel" ? "page" : undefined}
             className={cn(
-              "flex min-w-[41px] max-w-[104px] shrink-0 flex-col items-center gap-1",
+              "flex min-w-[41px] max-w-[104px] shrink-0 flex-col items-center gap-1 no-underline",
               active === "profiel"
                 ? "text-[var(--blue-500)]"
                 : "text-[var(--gray-500)]",
@@ -213,7 +207,7 @@ export function AppBottomNav({
             >
               {profileTabLabel}
             </span>
-          </button>
+          </Link>
         </div>
       </nav>
     </div>

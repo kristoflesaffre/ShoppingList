@@ -2,11 +2,13 @@
 
 import * as React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 
 const FOOD_ICONS = [
@@ -247,8 +249,7 @@ function SelectableItemCard({
       ) : (
         <>
           {photoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={photoUrl}
               alt=""
               width={44}
@@ -629,11 +630,7 @@ export default function SelecteerMasterItemsPage() {
   ]);
 
   if (authLoading || !user || isLoading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <p className="text-base text-text-secondary">Laden…</p>
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   if (error) {
@@ -660,21 +657,13 @@ export default function SelecteerMasterItemsPage() {
     <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-gradient-to-b from-[#e3e4ff] to-[var(--white)]">
       <header className="relative z-[1] flex h-16 shrink-0 bg-[var(--white)] px-4">
         <div className="mx-auto flex w-full max-w-[956px] items-center gap-4">
-          <Button
-            type="button"
-            variant="tertiary"
-            onClick={() =>
-              router.push(
-                `/nieuw-lijstje/selecteer-master-lijstje?naam=${encodeURIComponent(
-                  listName,
-                )}`,
-              )
-            }
+          <Link
+            href={`/nieuw-lijstje/selecteer-master-lijstje?naam=${encodeURIComponent(listName)}`}
             aria-label="Terug naar masterlijsten"
-            className="relative z-[1] !min-w-0 !w-10 size-10 shrink-0 p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus [&_svg]:size-6"
+            className="relative z-[1] flex !min-w-0 !w-10 size-10 shrink-0 items-center justify-center p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus rounded-md"
           >
             <BackArrowIcon className="size-6 shrink-0" />
-          </Button>
+          </Link>
           <h1 className="min-w-0 flex-1 truncate text-center text-base font-medium leading-24 tracking-normal text-text-primary">
             {listName}
           </h1>

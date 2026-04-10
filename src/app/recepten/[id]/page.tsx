@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
@@ -9,15 +11,32 @@ import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { TabGroup } from "@/components/ui/tab_group";
 import { TabElement } from "@/components/ui/tab_element";
-import { RecipeEditorSlideIn } from "@/app/recepten/recipe_editor_slide_in";
+import dynamic from "next/dynamic";
 import type { RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
 import { RecipeIngredientSortableList } from "@/app/recepten/recipe_ingredient_sortable_list";
-import { RecipeIngredientFormSlideIn } from "@/components/recipe_ingredient_form_slide_in";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
-import { PhotoSourceSlideIn } from "@/components/photo_source_slide_in";
-import { FoodImageGeneratorSlideIn } from "@/components/food_image_generator_slide_in";
 import type { FoodImageGenerationResult } from "@/components/food-image-generator";
-import { RecipeShareSlideIn } from "@/components/recipe_share_slide_in";
+
+const RecipeEditorSlideIn = dynamic(
+  () => import("@/app/recepten/recipe_editor_slide_in").then((m) => m.RecipeEditorSlideIn),
+  { ssr: false },
+);
+const RecipeIngredientFormSlideIn = dynamic(
+  () => import("@/components/recipe_ingredient_form_slide_in").then((m) => m.RecipeIngredientFormSlideIn),
+  { ssr: false },
+);
+const PhotoSourceSlideIn = dynamic(
+  () => import("@/components/photo_source_slide_in").then((m) => m.PhotoSourceSlideIn),
+  { ssr: false },
+);
+const FoodImageGeneratorSlideIn = dynamic(
+  () => import("@/components/food_image_generator_slide_in").then((m) => m.FoodImageGeneratorSlideIn),
+  { ssr: false },
+);
+const RecipeShareSlideIn = dynamic(
+  () => import("@/components/recipe_share_slide_in").then((m) => m.RecipeShareSlideIn),
+  { ssr: false },
+);
 import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
 import {
   APP_FAB_BOTTOM_NO_NAV_CLASS,
@@ -25,6 +44,7 @@ import {
 } from "@/lib/app-layout";
 import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
+import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 function BackArrowIcon({ className }: { className?: string }) {
   return (
@@ -92,9 +112,11 @@ export default function ReceptDetailPage() {
   const recipeId = typeof params.id === "string" ? params.id : "";
 
   const { isLoading: authLoading, user } = db.useAuth();
-  const { data: recipeData, isLoading: recipesLoading } = db.useQuery({
-    recipes: { ingredients: {} },
-  });
+  const { data: recipeData, isLoading: recipesLoading } = db.useQuery(
+    recipeId
+      ? { recipes: { ingredients: {}, $: { where: { id: recipeId } } } }
+      : null,
+  );
 
   const [detailTab, setDetailTab] = React.useState<DetailTab>("ingredienten");
   const [ingredientView, setIngredientView] = React.useState<"groot" | "klein" | "lijst">("groot");
@@ -345,11 +367,7 @@ export default function ReceptDetailPage() {
   );
 
   if (authLoading || !user || recipesLoading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-[var(--white)]">
-        <p className="text-base text-text-secondary">Laden…</p>
-      </div>
-    );
+    return <PageSpinner surface="white" />;
   }
 
   if (!savedRecipe) {
@@ -358,9 +376,11 @@ export default function ReceptDetailPage() {
         <p className="text-center text-base text-[var(--text-secondary)]">
           Dit recept bestaat niet (meer).
         </p>
-        <MiniButton variant="primary" onClick={() => router.push("/recepten")}>
-          Terug naar recepten
-        </MiniButton>
+        <Link href="/recepten">
+          <MiniButton variant="primary">
+            Terug naar recepten
+          </MiniButton>
+        </Link>
       </div>
     );
   }
@@ -378,14 +398,13 @@ export default function ReceptDetailPage() {
     <div className="relative min-h-dvh w-full bg-[var(--white)]">
       <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
         <header className="mx-auto flex h-16 max-w-[956px] items-center gap-4 px-4">
-          <button
-            type="button"
-            onClick={() => router.push("/recepten")}
+          <Link
+            href="/recepten"
             aria-label="Terug naar mijn recepten"
             className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
             <BackArrowIcon />
-          </button>
+          </Link>
           <p className="min-w-0 flex-1 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)] truncate">
             {navTitle}
           </p>
@@ -457,8 +476,7 @@ export default function ReceptDetailPage() {
                   )}
                 />
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element -- statische placeholder (Figma)
-                <img
+                <Image
                   src="/images/ui/recipe_plate.png"
                   alt=""
                   width={124}
@@ -667,14 +685,11 @@ export default function ReceptDetailPage() {
                     Nog geen ingrediënten. Gebruik Wijzigen om ze toe te voegen,
                     of ga naar een lijstje om dit recept toe te passen.
                   </p>
-                  <MiniButton
-                    variant="primary"
-                    type="button"
-                    className="self-center"
-                    onClick={() => router.push("/")}
-                  >
-                    Ga naar lijstjes
-                  </MiniButton>
+                  <Link href="/" className="self-center no-underline">
+                    <MiniButton variant="primary" type="button">
+                      Ga naar lijstjes
+                    </MiniButton>
+                  </Link>
                 </>
               ) : (
                 <>
@@ -684,14 +699,11 @@ export default function ReceptDetailPage() {
                     onDelete={handleLijstjeIngredientDelete}
                     onEdit={handleLijstjeIngredientEdit}
                   />
-                  <MiniButton
-                    variant="secondary"
-                    type="button"
-                    className="self-center"
-                    onClick={() => router.push("/")}
-                  >
-                    Ga naar lijstjes
-                  </MiniButton>
+                  <Link href="/" className="self-center no-underline">
+                    <MiniButton variant="secondary" type="button">
+                      Ga naar lijstjes
+                    </MiniButton>
+                  </Link>
                 </>
               )}
             </div>
@@ -788,13 +800,14 @@ function IngredientGrid({
         const photoUrl = getPhotoUrl(ing.name, ing.quantity);
         return (
           <div key={ing.id} className="flex flex-col items-center gap-2 min-w-0">
-            <div className="aspect-square w-full overflow-hidden rounded-sm bg-[var(--white)]">
+            <div className="relative aspect-square w-full overflow-hidden rounded-sm bg-[var(--white)]">
               {photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={photoUrl}
                   alt=""
-                  className="size-full object-contain"
+                  fill
+                  sizes="(min-width: 1024px) 160px, 100px"
+                  className="object-contain"
                   aria-hidden
                 />
               ) : null}

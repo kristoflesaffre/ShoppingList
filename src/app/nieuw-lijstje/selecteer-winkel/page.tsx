@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
 } from "@/lib/master-stores";
 import { defaultNewListName } from "@/lib/list-default-name";
 import { cn } from "@/lib/utils";
+import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 /** Zelfde pijl als SlideInModal — public/icons/arrow.svg */
 function BackArrowIcon({ className }: { className?: string }) {
@@ -58,7 +60,6 @@ function SelecteerWinkelContent() {
 
   const { isLoading, error, data } = db.useQuery({
     lists: {
-      items: {},
       $: { where: { ownerId } },
     },
     profiles: {
@@ -103,11 +104,7 @@ function SelecteerWinkelContent() {
   );
 
   if (authLoading || !user || isLoading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <p className="text-base text-text-secondary">Laden…</p>
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   if (error) {
@@ -125,15 +122,13 @@ function SelecteerWinkelContent() {
       <div className="flex flex-1 flex-col pb-[96px] pt-[calc(52px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
           <header className="mb-6 flex min-w-0 items-center gap-4">
-            <Button
-              type="button"
-              variant="tertiary"
-              onClick={() => router.push("/")}
+            <Link
+              href="/"
               aria-label="Terug naar lijstjes"
-              className="relative z-[1] !min-w-0 !w-10 size-10 shrink-0 p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus [&_svg]:size-6"
+              className="relative z-[1] flex !min-w-0 !w-10 size-10 shrink-0 items-center justify-center p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus rounded-md"
             >
               <BackArrowIcon className="size-6 shrink-0" />
-            </Button>
+            </Link>
             <h1 className="min-w-0 flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
               Selecteer winkel
             </h1>
@@ -167,9 +162,6 @@ function SelecteerWinkelContent() {
         active="lijstjes"
         profileAvatarUrl={profileAvatarUrl}
         profileFirstName={profileFirstName}
-        onLijstjes={() => router.push("/")}
-        onRecepten={() => router.push("/recepten")}
-        onProfiel={() => router.push("/profiel")}
       />
     </div>
   );
@@ -178,11 +170,7 @@ function SelecteerWinkelContent() {
 export default function SelecteerWinkelPage() {
   return (
     <Suspense
-      fallback={
-        <div className="flex min-h-dvh items-center justify-center px-4">
-          <p className="text-base text-text-secondary">Laden…</p>
-        </div>
-      }
+      fallback={<PageSpinner />}
     >
       <SelecteerWinkelContent />
     </Suspense>

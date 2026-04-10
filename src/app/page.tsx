@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -44,6 +45,7 @@ import { db } from "@/lib/db";
 import { AppBottomNav } from "@/components/app_bottom_nav";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
+import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -164,7 +166,6 @@ function SortableListItems({
   addingId,
   addingIdExpanded,
   onDelete,
-  onOpenList,
   onStartFromMaster,
 }: {
   lists: HomeList[];
@@ -173,7 +174,6 @@ function SortableListItems({
   addingId: string | null;
   addingIdExpanded: boolean;
   onDelete: (id: string) => void;
-  onOpenList: (id: string) => void;
   onStartFromMaster: (id: string) => void;
 }) {
   const { active } = useDndContext();
@@ -228,7 +228,6 @@ function SortableListItems({
                     list={list}
                     isEditMode={isEditMode}
                     onDelete={() => onDelete(list.id)}
-                    onOpenList={() => onOpenList(list.id)}
                     onStartFromMaster={() => onStartFromMaster(list.id)}
                   />
                 </div>
@@ -283,7 +282,6 @@ function SortableListItems({
                     list={list}
                     isEditMode={isEditMode}
                     onDelete={() => onDelete(list.id)}
-                    onOpenList={() => onOpenList(list.id)}
                     onStartFromMaster={() => onStartFromMaster(list.id)}
                   />
                 </div>
@@ -300,13 +298,11 @@ function SortableListCard({
   list,
   isEditMode,
   onDelete,
-  onOpenList,
   onStartFromMaster,
 }: {
   list: HomeList;
   isEditMode: boolean;
   onDelete: () => void;
-  onOpenList: () => void;
   onStartFromMaster: () => void;
 }) {
   const {
@@ -323,6 +319,42 @@ function SortableListCard({
     transition,
   };
 
+  const card = (
+    <ListCard
+      listName={list.name}
+      date={list.date}
+      itemCount={itemCountLabel(list.items?.length ?? 0)}
+      displayVariant={list.displayVariant}
+      storeLogos={list.storeLogos}
+      sharedWithFirstName={
+        list.sharedWithFirstName ?? undefined
+      }
+      icon={
+        <Image
+          src={
+            list.displayVariant === "from-master" && list.icon.startsWith("/logos/")
+              ? foodIconFromId(list.id)
+              : list.icon
+          }
+          alt=""
+          width={48}
+          height={48}
+          className="object-contain"
+        />
+      }
+      state={isEditMode ? "editable" : "default"}
+      onDelete={isEditMode && list.isOwner ? onDelete : undefined}
+      onReorder={undefined}
+      onMasterAdd={
+        !isEditMode && list.displayVariant === "master"
+          ? onStartFromMaster
+          : undefined
+      }
+      dragHandleProps={isEditMode ? { ...attributes, ...listeners } : undefined}
+      className={cn(!isEditMode && "cursor-pointer")}
+    />
+  );
+
   return (
     <div
       ref={setNodeRef}
@@ -336,42 +368,13 @@ function SortableListCard({
         onDelete={!isEditMode && list.isOwner ? onDelete : undefined}
         deleteActionLabel="Lijstje verwijderen"
       >
-        <ListCard
-          listName={list.name}
-          date={list.date}
-          itemCount={itemCountLabel(list.items?.length ?? 0)}
-          displayVariant={list.displayVariant}
-          storeLogos={list.storeLogos}
-          sharedWithFirstName={
-            list.sharedWithFirstName ?? undefined
-          }
-          icon={
-            <Image
-              src={
-                // Oude lijstjes: icon = winkellogo → vervang door deterministisch voedselpictogram.
-                // Nieuwe lijstjes: icon = al een voedselpictogram → gebruik rechtstreeks.
-                list.displayVariant === "from-master" && list.icon.startsWith("/logos/")
-                  ? foodIconFromId(list.id)
-                  : list.icon
-              }
-              alt=""
-              width={48}
-              height={48}
-              className="object-contain"
-            />
-          }
-          state={isEditMode ? "editable" : "default"}
-          onDelete={isEditMode && list.isOwner ? onDelete : undefined}
-          onReorder={undefined}
-          onMasterAdd={
-            !isEditMode && list.displayVariant === "master"
-              ? onStartFromMaster
-              : undefined
-          }
-          dragHandleProps={isEditMode ? { ...attributes, ...listeners } : undefined}
-          onClick={!isEditMode ? onOpenList : undefined}
-          className={cn(!isEditMode && "cursor-pointer")}
-        />
+        {isEditMode ? (
+          card
+        ) : (
+          <Link href={`/lijstje/${list.id}`} className="block no-underline">
+            {card}
+          </Link>
+        )}
       </SwipeToDelete>
     </div>
   );
@@ -774,10 +777,6 @@ export default function Home() {
     [user, lists, router, handleCloseCreateModal],
   );
 
-  const handleOpenList = (listId: string) => {
-    router.push(`/lijstje/${listId}`);
-  };
-
   const handleReorderLists = React.useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
@@ -807,11 +806,7 @@ export default function Home() {
   );
 
   if (authLoading || !user || isLoading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <p className="text-base text-text-secondary">Laden…</p>
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   if (error) {
@@ -879,7 +874,6 @@ export default function Home() {
                   addingId={addingId}
                   addingIdExpanded={addingIdExpanded}
                   onDelete={handleDeleteList}
-                  onOpenList={handleOpenList}
                   onStartFromMaster={handleStartFromMaster}
                 />
               </SortableContext>
@@ -993,9 +987,6 @@ export default function Home() {
         active="lijstjes"
         profileAvatarUrl={profileAvatarUrl}
         profileFirstName={profileFirstName}
-        onLijstjes={() => router.push("/")}
-        onRecepten={() => router.push("/recepten")}
-        onProfiel={() => router.push("/profiel")}
       />
 
       <div

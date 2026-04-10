@@ -9,6 +9,7 @@ import { MiniButton } from "@/components/ui/mini_button";
 import { AppBottomNav } from "@/components/app_bottom_nav";
 import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
 import { cn } from "@/lib/utils";
+import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 /**
  * Mijn profiel – Figma 760:3043: grote foto, wijzigen, uitloggen.
@@ -88,11 +89,7 @@ export default function ProfielPage() {
   };
 
   if (authLoading || !user || isLoading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <p className="text-base text-text-secondary">Laden…</p>
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   if (error) {
@@ -202,9 +199,6 @@ export default function ProfielPage() {
         active="profiel"
         profileAvatarUrl={profileAvatarUrl}
         profileFirstName={profileFirstName}
-        onLijstjes={() => router.push("/")}
-        onRecepten={() => router.push("/recepten")}
-        onProfiel={() => router.push("/profiel")}
       />
     </div>
   );

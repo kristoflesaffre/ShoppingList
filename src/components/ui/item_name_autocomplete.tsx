@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import ReactDOM from "react-dom";
 import { InputField } from "@/components/ui/input_field";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
@@ -187,8 +188,7 @@ function LargeScreenAutocomplete({
                     i > 0 && "border-t border-[var(--gray-100)]",
                   )}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={
                       photoCatalog === "ingredients"
                         ? `/images/ingredients/${slug}_160.webp`
@@ -269,8 +269,7 @@ function SmallScreenAutocomplete({
         {value ? (
           <>
             {photoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={photoUrl}
                 alt=""
                 width={32}

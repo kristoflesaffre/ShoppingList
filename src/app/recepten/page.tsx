@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -28,13 +29,19 @@ import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { SearchBar } from "@/components/ui/search_bar";
 import { MiniButton } from "@/components/ui/mini_button";
-import { RecipeEditorSlideIn } from "@/app/recepten/recipe_editor_slide_in";
+import dynamic from "next/dynamic";
+
+const RecipeEditorSlideIn = dynamic(
+  () => import("@/app/recepten/recipe_editor_slide_in").then((m) => m.RecipeEditorSlideIn),
+  { ssr: false },
+);
 import { Snackbar } from "@/components/ui/snackbar";
 import {
   APP_FAB_BOTTOM_CLASS,
 } from "@/lib/app-layout";
 import type { SavedRecipe } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
+import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 /** Snapshot voor Snackbar-undo na verwijderen (zelfde ids als InstantDB). */
 type RecipeUndoSnapshot = {
@@ -64,7 +71,6 @@ function SortableRecipeRow({
   onEdit: (r: SavedRecipe) => void;
   onDelete: (id: string) => void;
 }) {
-  const router = useRouter();
   const {
     attributes,
     listeners,
@@ -82,6 +88,24 @@ function SortableRecipeRow({
   const n = recipe.ingredients.length;
   const itemCount = n === 1 ? "1 item" : `${n} items`;
 
+  const tile = (
+    <RecipeTile
+      recipeName={recipe.name}
+      itemCount={itemCount}
+      photoUrl={recipe.photoUrl ?? undefined}
+      state={isEditMode ? "editable" : "bare"}
+      dragHandleProps={
+        isEditMode ? { ...attributes, ...listeners } : undefined
+      }
+      onEdit={isEditMode ? () => onEdit(recipe) : undefined}
+      onDelete={isEditMode ? () => onDelete(recipe.id) : undefined}
+      className={cn(
+        !isEditMode &&
+          "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+      )}
+    />
+  );
+
   return (
     <div
       ref={setNodeRef}
@@ -91,40 +115,16 @@ function SortableRecipeRow({
           "z-10 cursor-grabbing opacity-90 shadow-[var(--shadow-drop)]",
       )}
     >
-      <RecipeTile
-        recipeName={recipe.name}
-        itemCount={itemCount}
-        photoUrl={recipe.photoUrl ?? undefined}
-        state={isEditMode ? "editable" : "bare"}
-        dragHandleProps={
-          isEditMode ? { ...attributes, ...listeners } : undefined
-        }
-        onEdit={isEditMode ? () => onEdit(recipe) : undefined}
-        onDelete={isEditMode ? () => onDelete(recipe.id) : undefined}
-        className={cn(
-          !isEditMode &&
-            "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-        )}
-        role={!isEditMode ? "button" : undefined}
-        tabIndex={!isEditMode ? 0 : undefined}
-        onClick={
-          !isEditMode
-            ? () => {
-                void router.push(`/recepten/${recipe.id}`);
-              }
-            : undefined
-        }
-        onKeyDown={
-          !isEditMode
-            ? (e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  void router.push(`/recepten/${recipe.id}`);
-                }
-              }
-            : undefined
-        }
-      />
+      {isEditMode ? (
+        tile
+      ) : (
+        <Link
+          href={`/recepten/${recipe.id}`}
+          className="block no-underline"
+        >
+          {tile}
+        </Link>
+      )}
     </div>
   );
 }
@@ -134,17 +134,15 @@ export default function ReceptenPage() {
   const { isLoading: authLoading, user } = db.useAuth();
   const ownerId = user?.id ?? "__no_user__";
 
-  const { isLoading: profileLoading, data: profileData } = db.useQuery({
+  const { isLoading: dataLoading, data: combinedData } = db.useQuery({
     profiles: {
       $: { where: { instantUserId: ownerId } },
     },
-  });
-
-  const { data: recipeData, isLoading: recipesLoading } = db.useQuery({
     recipes: { ingredients: {} },
   });
 
-  const existingProfile = profileData?.profiles?.[0];
+  const existingProfile = combinedData?.profiles?.[0];
+  const recipeData = combinedData;
   const profileAvatarUrl = existingProfile?.avatarUrl ?? null;
   const profileFirstName =
     (existingProfile?.firstName ?? "").trim() || null;
@@ -320,12 +318,8 @@ export default function ReceptenPage() {
     setSnackbarMessage(null);
   }, [lastDeletedRecipe]);
 
-  if (authLoading || !user || profileLoading || recipesLoading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <p className="text-base text-text-secondary">Laden…</p>
-      </div>
-    );
+  if (authLoading || !user || dataLoading) {
+    return <PageSpinner />;
   }
 
   const hasRecipes = savedRecipes.length > 0;
@@ -432,9 +426,6 @@ export default function ReceptenPage() {
         active="recepten"
         profileAvatarUrl={profileAvatarUrl}
         profileFirstName={profileFirstName}
-        onLijstjes={() => router.push("/")}
-        onRecepten={() => router.push("/recepten")}
-        onProfiel={() => router.push("/profiel")}
       />
 
       <div

@@ -29,3 +29,30 @@ body {
   background: transparent;
   position: relative;
 }
+
+/* Route loading: gecentreerde spinner */
+@keyframes route-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.route-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid var(--gray-100);
+  border-top-color: var(--blue-500);
+  border-right-color: var(--blue-300);
+  animation: route-loading-spin 0.72s cubic-bezier(0.55, 0.1, 0.3, 0.9) infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-loading-spinner {
+    animation: none;
+    border-top-color: var(--blue-500);
+    border-right-color: var(--gray-100);
+    opacity: 0.9;
+  }
+}
