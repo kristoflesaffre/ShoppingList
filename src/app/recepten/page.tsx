@@ -273,10 +273,6 @@ export default function ReceptenPage() {
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
     null,
   );
-  /** Alleen onder md: zoekbalk full width bij focus; toggle klapt weg met transitie. */
-  const [recipeSearchMobileExpanded, setRecipeSearchMobileExpanded] =
-    React.useState(false);
-  const recipeSearchWrapRef = React.useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -291,16 +287,6 @@ export default function ReceptenPage() {
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(min-width: 768px)");
-    const onChange = () => {
-      if (mq.matches) setRecipeSearchMobileExpanded(false);
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
 
   React.useEffect(() => {
     if (!snackbarMessage) return;
@@ -324,28 +310,6 @@ export default function ReceptenPage() {
   const closeRecipeEditor = React.useCallback(() => {
     setRecipeEditorOpen(false);
     setRecipeEditorTarget(null);
-  }, []);
-
-  const handleRecipeSearchWrapFocus = React.useCallback(() => {
-    if (typeof window === "undefined") return;
-    if (!window.matchMedia("(max-width: 767px)").matches) return;
-    setRecipeSearchMobileExpanded(true);
-  }, []);
-
-  const handleRecipeSearchWrapBlur = React.useCallback(() => {
-    requestAnimationFrame(() => {
-      const wrap = recipeSearchWrapRef.current;
-      if (!wrap) return;
-      if (
-        typeof window !== "undefined" &&
-        window.matchMedia("(min-width: 768px)").matches
-      ) {
-        return;
-      }
-      if (!wrap.contains(document.activeElement)) {
-        setRecipeSearchMobileExpanded(false);
-      }
-    });
   }, []);
 
   const filteredRecipes = React.useMemo(() => {
@@ -559,13 +523,11 @@ export default function ReceptenPage() {
           {hasRecipes ? (
             <>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-              <div ref={recipeSearchWrapRef} className="order-1 w-full md:max-w-[360px] lg:order-2 lg:w-[280px] lg:max-w-none lg:shrink-0">
+              <div className="order-1 w-full md:max-w-[360px] lg:order-2 lg:w-[280px] lg:max-w-none lg:shrink-0">
                 <SearchBar
                   placeholder="Zoek recept"
                   value={recipeSearch}
                   onValueChange={setRecipeSearch}
-                  onFocus={handleRecipeSearchWrapFocus}
-                  onBlur={handleRecipeSearchWrapBlur}
                 />
               </div>
 
