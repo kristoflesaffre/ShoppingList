@@ -24,7 +24,6 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { db } from "@/lib/db";
 import { AppBottomNav } from "@/components/app_bottom_nav";
-import { EditButton } from "@/components/ui/edit_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { SearchBar } from "@/components/ui/search_bar";
@@ -159,6 +158,22 @@ function SortableRecipeRow({
           {tile}
         </Link>
       )}
+    </div>
+  );
+}
+
+function SectionHeader({ section }: { section: { meta: typeof RECIPE_CATEGORIES[0] | null; recipes: SavedRecipe[] } }) {
+  return (
+    <div className="flex items-center gap-2">
+      {section.meta ? (
+        <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: section.meta.dot }} />
+      ) : null}
+      <span className="text-[11px] font-semibold uppercase leading-16 tracking-[0.8px] text-[var(--text-tertiary)]">
+        {section.meta ? section.meta.labelPlural : "Overige"}
+      </span>
+      <span className="ml-auto text-xs leading-16 text-[var(--text-quaternary,var(--neutrals-400,#a9adb5))]">
+        {section.recipes.length}{" "}{section.recipes.length === 1 ? "recept" : "recepten"}
+      </span>
     </div>
   );
 }
@@ -476,104 +491,87 @@ export default function ReceptenPage() {
     <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6">
-          <div className="flex items-start gap-4">
-            <h1 className="min-w-0 flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
-              Mijn recepten
-            </h1>
-            {hasRecipes ? (
-              <div className="flex shrink-0 items-center gap-2">
-                <EditButton
+          <div className="flex items-center gap-3">
+            {/* Titel + potlood */}
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <h1 className="text-page-title font-bold leading-32 tracking-normal text-text-primary">
+                Mijn recepten
+              </h1>
+              {hasRecipes ? (
+                <button
                   type="button"
-                  variant={isEditMode ? "active" : "inactive"}
+                  aria-label={isEditMode ? "Stop bewerken" : "Bewerken"}
                   onClick={() => setIsEditMode((v) => !v)}
-                  className="shrink-0"
-                />
-              </div>
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M3.17663 19.8235C3.03379 19.6807 2.97224 19.4751 3.01172 19.2777L3.94074 14.633C3.96397 14.5157 4.02087 14.4089 4.10564 14.323L15.2539 3.17679C15.4896 2.94107 15.8728 2.94107 16.1086 3.17679L19.8246 6.89257C19.9361 7.00637 20 7.15965 20 7.31989C20 7.48013 19.9361 7.63341 19.8246 7.7472L17.0376 10.534L8.67642 18.8934C8.59048 18.9782 8.48365 19.0362 8.36636 19.0594L3.72126 19.9884C3.68178 19.9965 3.6423 20 3.60281 20C3.44488 19.9988 3.29043 19.9361 3.17663 19.8235ZM13.7465 6.39094L16.6091 9.25326L18.5426 7.31989L15.6801 4.45757L13.7465 6.39094ZM4.37274 18.6263L7.95062 17.911L15.7544 10.1079L12.893 7.24557L5.08808 15.0499L4.37274 18.6263Z" fill="currentColor"/>
+                  </svg>
+                </button>
+              ) : null}
+            </div>
+            {/* Rechts: toggle (normaal) of Gereed-knop (edit mode) */}
+            {hasRecipes ? (
+              isEditMode ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditMode(false)}
+                  className="h-9 shrink-0 rounded-pill bg-[var(--blue-500)] px-4 text-sm font-medium leading-20 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                >
+                  Gereed
+                </button>
+              ) : (
+                <div
+                  className="box-border flex h-9 shrink-0 items-stretch overflow-hidden rounded-md border border-[var(--gray-200)] bg-[var(--white)]"
+                  role="group"
+                  aria-label="Weergave"
+                >
+                  <button
+                    type="button"
+                    aria-label="Lijstweergave"
+                    aria-pressed={viewMode === "list"}
+                    onClick={() => setViewMode("list")}
+                    className={cn(
+                      "flex w-9 items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      viewMode === "list" ? "bg-[var(--blue-25)]" : "bg-[var(--white)]",
+                    )}
+                  >
+                    <ToggleViewIcon src="/icons/toggle_list.svg" active={viewMode === "list"} />
+                  </button>
+                  <div className="w-px shrink-0 self-stretch bg-[var(--gray-200)]" aria-hidden />
+                  <button
+                    type="button"
+                    aria-label="Tegelweergave"
+                    aria-pressed={viewMode === "grid"}
+                    onClick={() => setViewMode("grid")}
+                    className={cn(
+                      "flex w-9 items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      viewMode === "grid" ? "bg-[var(--blue-25)]" : "bg-[var(--white)]",
+                    )}
+                  >
+                    <ToggleViewIcon src="/icons/toggle_grid.svg" active={viewMode === "grid"} />
+                  </button>
+                </div>
+              )
             ) : null}
           </div>
 
           {hasRecipes ? (
             <>
-              <div
-                className={cn(
-                  "flex min-w-0 items-stretch gap-2",
-                  /* Geen gap bij uitgeklapte zoekbalk: voorkomt zichtbare spleet naast w-0-toggle */
-                  recipeSearchMobileExpanded && "max-md:gap-0",
-                )}
-              >
-                <div ref={recipeSearchWrapRef} className="min-w-0 flex-1">
-                  <SearchBar
-                    placeholder="Zoek recept"
-                    value={recipeSearch}
-                    onValueChange={setRecipeSearch}
-                    onFocus={handleRecipeSearchWrapFocus}
-                    onBlur={handleRecipeSearchWrapBlur}
-                  />
-                </div>
-                {!isEditMode ? (
-                  <div
-                    className={cn(
-                      "box-border flex h-12 shrink-0 items-stretch overflow-hidden rounded-md border border-[var(--gray-200)] bg-[var(--white)]",
-                      /* Alleen width animeren; border wél uitzetten bij w=0 (anders blijft 1px grijze rand zichtbaar) */
-                      "max-md:flex-none max-md:transition-[width] max-md:duration-300 max-md:ease-in-out motion-reduce:transition-none",
-                      recipeSearchMobileExpanded
-                        ? "max-md:pointer-events-none max-md:w-0 max-md:min-w-0 max-md:border-0 max-md:rounded-none"
-                        : "max-md:w-[104px]",
-                      "md:min-w-[100px]",
-                    )}
-                    role="group"
-                    aria-label="Weergave"
-                    aria-hidden={recipeSearchMobileExpanded ? true : undefined}
-                  >
-                    <button
-                      type="button"
-                      aria-label="Lijstweergave"
-                      aria-pressed={viewMode === "list"}
-                      tabIndex={recipeSearchMobileExpanded ? -1 : undefined}
-                      onClick={() => setViewMode("list")}
-                      className={cn(
-                        "flex min-h-0 min-w-0 flex-1 items-center justify-center rounded-l-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
-                        viewMode === "list"
-                          ? "bg-[var(--blue-25)]"
-                          : "bg-[var(--white)]",
-                      )}
-                    >
-                      <ToggleViewIcon
-                        src="/icons/toggle_list.svg"
-                        active={viewMode === "list"}
-                        className="size-6"
-                      />
-                    </button>
-                    <div
-                      className="w-px shrink-0 self-stretch bg-[var(--gray-200)]"
-                      aria-hidden="true"
-                    />
-                    <button
-                      type="button"
-                      aria-label="Tegelweergave"
-                      aria-pressed={viewMode === "grid"}
-                      tabIndex={recipeSearchMobileExpanded ? -1 : undefined}
-                      onClick={() => setViewMode("grid")}
-                      className={cn(
-                        "flex min-h-0 min-w-0 flex-1 items-center justify-center rounded-r-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
-                        viewMode === "grid"
-                          ? "bg-[var(--blue-25)]"
-                          : "bg-[var(--white)]",
-                      )}
-                    >
-                      <ToggleViewIcon
-                        src="/icons/toggle_grid.svg"
-                        active={viewMode === "grid"}
-                        className="size-6"
-                      />
-                    </button>
-                  </div>
-                ) : null}
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+              <div ref={recipeSearchWrapRef} className="order-1 w-full md:max-w-[360px] lg:order-2 lg:w-[280px] lg:max-w-none lg:shrink-0">
+                <SearchBar
+                  placeholder="Zoek recept"
+                  value={recipeSearch}
+                  onValueChange={setRecipeSearch}
+                  onFocus={handleRecipeSearchWrapFocus}
+                  onBlur={handleRecipeSearchWrapBlur}
+                />
               </div>
 
-              {/* Category filter chips – only shown when there are categorised recipes and not in edit mode */}
-              {!isEditMode && visibleCategories.length > 0 ? (
-                <div className="-mx-4 overflow-x-auto px-4">
+              {/* Category filter chips */}
+              {visibleCategories.length > 0 ? (
+                <div className="order-2 -mx-4 min-w-0 overflow-x-auto px-4 lg:order-1 lg:mx-0 lg:flex-1 lg:px-0">
                   <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
                     <button
                       type="button"
@@ -614,6 +612,7 @@ export default function ReceptenPage() {
                   </div>
                 </div>
               ) : null}
+              </div>
 
               {!isEditMode && filteredRecipes.length === 0 ? (
                 <p className="py-8 text-center text-base font-medium leading-24 text-[var(--text-tertiary)]">
@@ -630,39 +629,45 @@ export default function ReceptenPage() {
                     items={savedRecipes.map((r) => r.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <div className="flex flex-col gap-4">
-                      {displayRecipes.map((r) => (
-                        <SortableRecipeRow
-                          key={r.id}
-                          recipe={r}
-                          isEditMode
-                          onEdit={openEdit}
-                          onDelete={handleDeleteRecipe}
-                        />
-                      ))}
-                    </div>
+                    {groupedSections ? (
+                      <div className="flex flex-col gap-6">
+                        {groupedSections.map((section) => (
+                          <div key={section.meta?.id ?? "overige"} className="flex flex-col gap-3">
+                            <SectionHeader section={section} />
+                            <div className="flex flex-col gap-3">
+                              {section.recipes.map((r) => (
+                                <SortableRecipeRow
+                                  key={r.id}
+                                  recipe={r}
+                                  isEditMode
+                                  onEdit={openEdit}
+                                  onDelete={handleDeleteRecipe}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        {displayRecipes.map((r) => (
+                          <SortableRecipeRow
+                            key={r.id}
+                            recipe={r}
+                            isEditMode
+                            onEdit={openEdit}
+                            onDelete={handleDeleteRecipe}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </SortableContext>
                 </DndContext>
               ) : groupedSections ? (
                 <div className="flex flex-col gap-6">
                   {groupedSections.map((section) => (
                     <div key={section.meta?.id ?? "overige"} className="flex flex-col gap-3">
-                      {/* Section header */}
-                      <div className="flex items-center gap-2">
-                        {section.meta ? (
-                          <span
-                            className="size-2 shrink-0 rounded-full"
-                            style={{ backgroundColor: section.meta.dot }}
-                          />
-                        ) : null}
-                        <span className="text-[11px] font-semibold uppercase leading-16 tracking-[0.8px] text-[var(--text-tertiary)]">
-                          {section.meta ? section.meta.labelPlural : "Overige"}
-                        </span>
-                        <span className="ml-auto text-xs leading-16 text-[var(--text-quaternary,var(--neutrals-400,#a9adb5))]">
-                          {section.recipes.length}{" "}
-                          {section.recipes.length === 1 ? "recept" : "recepten"}
-                        </span>
-                      </div>
+                      <SectionHeader section={section} />
                       {/* Tiles / grid */}
                       {viewMode === "grid" ? (
                         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -693,7 +698,7 @@ export default function ReceptenPage() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3">
                   {displayRecipes.map((r) => (
                     <SortableRecipeRow
                       key={r.id}

@@ -86,14 +86,14 @@ function TrashIcon({ className }: { className?: string }) {
   );
 }
 
-/** Figma editable: verticale lijn ~44px hoog, neutrals/100. */
+/** Figma editable: verticale lijn ~48px hoog, neutrals/100. */
 function EditableDivider() {
   return (
     <span
-      className="relative flex h-11 w-0 shrink-0 items-center justify-center"
+      className="relative flex h-12 w-0 shrink-0 items-center justify-center"
       aria-hidden="true"
     >
-      <span className="absolute left-1/2 top-0 h-11 w-px -translate-x-1/2 bg-[var(--gray-100)]" />
+      <span className="absolute left-1/2 top-0 h-12 w-px -translate-x-1/2 bg-[var(--gray-100)]" />
     </span>
   );
 }
