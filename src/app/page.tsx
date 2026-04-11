@@ -370,6 +370,14 @@ function SortableListCard({
       >
         {isEditMode ? (
           card
+        ) : list.displayVariant === "master" ? (
+          <button
+            type="button"
+            className="w-full text-left"
+            onClick={onStartFromMaster}
+          >
+            {card}
+          </button>
         ) : (
           <Link href={`/lijstje/${list.id}`} className="block no-underline">
             {card}
