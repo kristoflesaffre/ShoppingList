@@ -61,6 +61,39 @@ type RecipeUndoSnapshot = {
   }>;
 };
 
+/** `public/icons/toggle_*.svg` — monochrome mask, kleur primary 500 (`--action-primary`). */
+function ToggleViewIcon({
+  src,
+  active,
+  className,
+}: {
+  src: string;
+  active: boolean;
+  /** bv. size-6 in de 48px-hoge toggle naast SearchBar */
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-block size-5 shrink-0 bg-action-primary",
+        !active && "opacity-[0.42]",
+        className,
+      )}
+      style={{
+        WebkitMaskImage: `url("${src}")`,
+        maskImage: `url("${src}")`,
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+      }}
+      aria-hidden
+    />
+  );
+}
+
 function SortableRecipeRow({
   recipe,
   isEditMode,
@@ -130,6 +163,49 @@ function SortableRecipeRow({
   );
 }
 
+function RecipeGridCard({ recipe }: { recipe: SavedRecipe }) {
+  const n = recipe.ingredients.length;
+  const itemCount = n === 1 ? "1 item" : `${n} items`;
+  const hasPhoto =
+    typeof recipe.photoUrl === "string" && recipe.photoUrl.trim().length > 0;
+
+  return (
+    <Link href={`/recepten/${recipe.id}`} className="no-underline">
+      {/* h-full + flex-col so the card stretches to the full grid-row height */}
+      <div className="flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-drop">
+        {/* Photo – vaste aspect-ratio, hoogte wijzigt nooit */}
+        <div className="relative aspect-square w-full shrink-0 bg-[var(--blue-25)]">
+          {hasPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={recipe.photoUrl!}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden>
+                <path d="M26 6H6C4.9 6 4 6.9 4 8v16c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 18H6V8h20v16zm-9-3l-4-5-3 4-2-2.5L5 21h22l-5-6-5 6z" fill="var(--blue-200,#b0b4f8)"/>
+              </svg>
+            </div>
+          )}
+        </div>
+        {/* Info – flex-1 zodat dit gedeelte uitbreidt als de rij hoger wordt door meer tekst */}
+        <div className="flex flex-1 flex-col items-center justify-center gap-0.5 px-3 py-2.5 text-center">
+          <span className="line-clamp-2 text-sm font-medium leading-20 tracking-normal text-text-primary">
+            {recipe.name}
+          </span>
+          <span className="text-xs font-normal leading-16 tracking-normal text-[var(--gray-400)]">
+            {itemCount}
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function ReceptenPage() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
@@ -173,6 +249,7 @@ export default function ReceptenPage() {
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [recipeSearch, setRecipeSearch] = React.useState("");
   const [activeCategory, setActiveCategory] = React.useState<RecipeCategory | null>(null);
+  const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
   const [recipeEditorOpen, setRecipeEditorOpen] = React.useState(false);
   const [recipeEditorTarget, setRecipeEditorTarget] =
     React.useState<SavedRecipe | null>(null);
@@ -181,6 +258,10 @@ export default function ReceptenPage() {
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
     null,
   );
+  /** Alleen onder md: zoekbalk full width bij focus; toggle klapt weg met transitie. */
+  const [recipeSearchMobileExpanded, setRecipeSearchMobileExpanded] =
+    React.useState(false);
+  const recipeSearchWrapRef = React.useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -195,6 +276,16 @@ export default function ReceptenPage() {
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = () => {
+      if (mq.matches) setRecipeSearchMobileExpanded(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   React.useEffect(() => {
     if (!snackbarMessage) return;
@@ -218,6 +309,28 @@ export default function ReceptenPage() {
   const closeRecipeEditor = React.useCallback(() => {
     setRecipeEditorOpen(false);
     setRecipeEditorTarget(null);
+  }, []);
+
+  const handleRecipeSearchWrapFocus = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 767px)").matches) return;
+    setRecipeSearchMobileExpanded(true);
+  }, []);
+
+  const handleRecipeSearchWrapBlur = React.useCallback(() => {
+    requestAnimationFrame(() => {
+      const wrap = recipeSearchWrapRef.current;
+      if (!wrap) return;
+      if (
+        typeof window !== "undefined" &&
+        window.matchMedia("(min-width: 768px)").matches
+      ) {
+        return;
+      }
+      if (!wrap.contains(document.activeElement)) {
+        setRecipeSearchMobileExpanded(false);
+      }
+    });
   }, []);
 
   const filteredRecipes = React.useMemo(() => {
@@ -368,22 +481,95 @@ export default function ReceptenPage() {
               Mijn recepten
             </h1>
             {hasRecipes ? (
-              <EditButton
-                type="button"
-                variant={isEditMode ? "active" : "inactive"}
-                onClick={() => setIsEditMode((v) => !v)}
-                className="shrink-0"
-              />
+              <div className="flex shrink-0 items-center gap-2">
+                <EditButton
+                  type="button"
+                  variant={isEditMode ? "active" : "inactive"}
+                  onClick={() => setIsEditMode((v) => !v)}
+                  className="shrink-0"
+                />
+              </div>
             ) : null}
           </div>
 
           {hasRecipes ? (
             <>
-              <SearchBar
-                placeholder="Zoek recept"
-                value={recipeSearch}
-                onValueChange={setRecipeSearch}
-              />
+              <div
+                className={cn(
+                  "flex min-w-0 items-stretch gap-2",
+                  /* Geen gap bij uitgeklapte zoekbalk: voorkomt zichtbare spleet naast w-0-toggle */
+                  recipeSearchMobileExpanded && "max-md:gap-0",
+                )}
+              >
+                <div ref={recipeSearchWrapRef} className="min-w-0 flex-1">
+                  <SearchBar
+                    placeholder="Zoek recept"
+                    value={recipeSearch}
+                    onValueChange={setRecipeSearch}
+                    onFocus={handleRecipeSearchWrapFocus}
+                    onBlur={handleRecipeSearchWrapBlur}
+                  />
+                </div>
+                {!isEditMode ? (
+                  <div
+                    className={cn(
+                      "box-border flex h-12 shrink-0 items-stretch overflow-hidden rounded-md border border-[var(--gray-200)] bg-[var(--white)]",
+                      /* Alleen width animeren; border wél uitzetten bij w=0 (anders blijft 1px grijze rand zichtbaar) */
+                      "max-md:flex-none max-md:transition-[width] max-md:duration-300 max-md:ease-in-out motion-reduce:transition-none",
+                      recipeSearchMobileExpanded
+                        ? "max-md:pointer-events-none max-md:w-0 max-md:min-w-0 max-md:border-0 max-md:rounded-none"
+                        : "max-md:w-[104px]",
+                      "md:min-w-[100px]",
+                    )}
+                    role="group"
+                    aria-label="Weergave"
+                    aria-hidden={recipeSearchMobileExpanded ? true : undefined}
+                  >
+                    <button
+                      type="button"
+                      aria-label="Lijstweergave"
+                      aria-pressed={viewMode === "list"}
+                      tabIndex={recipeSearchMobileExpanded ? -1 : undefined}
+                      onClick={() => setViewMode("list")}
+                      className={cn(
+                        "flex min-h-0 min-w-0 flex-1 items-center justify-center rounded-l-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                        viewMode === "list"
+                          ? "bg-[var(--blue-25)]"
+                          : "bg-[var(--white)]",
+                      )}
+                    >
+                      <ToggleViewIcon
+                        src="/icons/toggle_list.svg"
+                        active={viewMode === "list"}
+                        className="size-6"
+                      />
+                    </button>
+                    <div
+                      className="w-px shrink-0 self-stretch bg-[var(--gray-200)]"
+                      aria-hidden="true"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Tegelweergave"
+                      aria-pressed={viewMode === "grid"}
+                      tabIndex={recipeSearchMobileExpanded ? -1 : undefined}
+                      onClick={() => setViewMode("grid")}
+                      className={cn(
+                        "flex min-h-0 min-w-0 flex-1 items-center justify-center rounded-r-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                        viewMode === "grid"
+                          ? "bg-[var(--blue-25)]"
+                          : "bg-[var(--white)]",
+                      )}
+                    >
+                      <ToggleViewIcon
+                        src="/icons/toggle_grid.svg"
+                        active={viewMode === "grid"}
+                        className="size-6"
+                      />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
 
               {/* Category filter chips – only shown when there are categorised recipes and not in edit mode */}
               {!isEditMode && visibleCategories.length > 0 ? (
@@ -477,19 +663,33 @@ export default function ReceptenPage() {
                           {section.recipes.length === 1 ? "recept" : "recepten"}
                         </span>
                       </div>
-                      {/* Tiles */}
-                      <div className="flex flex-col gap-3">
-                        {section.recipes.map((r) => (
-                          <SortableRecipeRow
-                            key={r.id}
-                            recipe={r}
-                            isEditMode={false}
-                            onEdit={openEdit}
-                            onDelete={handleDeleteRecipe}
-                          />
-                        ))}
-                      </div>
+                      {/* Tiles / grid */}
+                      {viewMode === "grid" ? (
+                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                          {section.recipes.map((r) => (
+                            <RecipeGridCard key={r.id} recipe={r} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-3">
+                          {section.recipes.map((r) => (
+                            <SortableRecipeRow
+                              key={r.id}
+                              recipe={r}
+                              isEditMode={false}
+                              onEdit={openEdit}
+                              onDelete={handleDeleteRecipe}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
+                  ))}
+                </div>
+              ) : viewMode === "grid" ? (
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  {displayRecipes.map((r) => (
+                    <RecipeGridCard key={r.id} recipe={r} />
                   ))}
                 </div>
               ) : (
