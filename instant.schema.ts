@@ -56,6 +56,8 @@ const schema = i.schema({
       photoUrl: i.string().optional(),
       /** Unieke token voor deellink (/deel/recept/[token]); alleen gezet bij expliciete deling. */
       shareToken: i.string().optional().unique().indexed(),
+      /** Categorie: "voorgerecht" | "hoofdgerecht" | "dessert" | "cocktail" | "ontbijt" | … */
+      category: i.string().optional(),
     }),
     recipeIngredients: i.entity({
       name: i.string(),

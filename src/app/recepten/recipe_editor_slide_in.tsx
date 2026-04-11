@@ -18,7 +18,8 @@ import {
 import { SelectTile } from "@/components/ui/select_tile";
 import { RecipeLinkSlideIn, type ExtractedRecipeLinkData } from "@/components/recipe_link_slide_in";
 import { RecipePhotoUploadSlideIn, type ExtractedRecipeData } from "@/components/recipe_photo_upload_slide_in";
-import type { RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
+import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
+import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { useNormalizeIngredientName } from "@/lib/ingredient-photos";
 import { normalizeQuantity } from "@/lib/recipe_ingredient_quantity";
@@ -48,6 +49,7 @@ export function RecipeEditorSlideIn({
   const [recipeLink, setRecipeLink] = React.useState("");
   const [recipeStepsArray, setRecipeStepsArray] = React.useState<string[]>(["", ""]);
   const [recipePersons, setRecipePersons] = React.useState(2);
+  const [recipeCategory, setRecipeCategory] = React.useState<RecipeCategory | null>(null);
   const [ingredients, setIngredients] = React.useState<RecipeIngredient[]>([]);
   const normalizeIngredientName = useNormalizeIngredientName();
   const [ingredientSlideOpen, setIngredientSlideOpen] = React.useState(false);
@@ -75,12 +77,14 @@ export function RecipeEditorSlideIn({
       const parsed = parseStepsToArray(recipeToEdit.steps ?? "");
       setRecipeStepsArray(parsed.length >= 2 ? parsed : [...parsed, ...Array(2 - parsed.length).fill("")]);
       setRecipePersons(recipeToEdit.persons);
+      setRecipeCategory(recipeToEdit.category ?? null);
       setIngredients(recipeToEdit.ingredients);
     } else {
       setRecipeName("");
       setRecipeLink("");
       setRecipeStepsArray(["", ""]);
       setRecipePersons(2);
+      setRecipeCategory(null);
       setIngredients([]);
     }
   }, [open, recipeToEdit]);
@@ -135,6 +139,7 @@ export function RecipeEditorSlideIn({
             .join("\n"),
           persons: recipePersons,
           order: isNew ? newOrder : existingOrder,
+          ...(recipeCategory != null ? { category: recipeCategory } : {}),
           ...photoPatch,
         }),
         ...builtIngredients.map((ing, i) =>
@@ -158,6 +163,7 @@ export function RecipeEditorSlideIn({
       recipeLink,
       recipeStepsArray,
       recipePersons,
+      recipeCategory,
       ingredients,
       recipeToEdit,
       recipeData?.recipes,
@@ -385,6 +391,35 @@ export function RecipeEditorSlideIn({
           onValueChange={setRecipePersons}
           min={1}
         />
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+            Categorie
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {RECIPE_CATEGORIES.map((cat) => {
+              const isActive = recipeCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setRecipeCategory(isActive ? null : cat.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-sm font-medium leading-18 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                    isActive
+                      ? "bg-[var(--blue-500)] text-white"
+                      : "bg-[var(--neutrals-100,#f0f1f9)] text-[var(--text-secondary)]",
+                  )}
+                >
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: cat.dot }}
+                  />
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div className="flex flex-col gap-2">
           <InputField
             label="Link recept"

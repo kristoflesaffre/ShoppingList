@@ -39,7 +39,8 @@ import { Snackbar } from "@/components/ui/snackbar";
 import {
   APP_FAB_BOTTOM_CLASS,
 } from "@/lib/app-layout";
-import type { SavedRecipe } from "@/lib/recipe_library";
+import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
+import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
@@ -158,6 +159,7 @@ export default function ReceptenPage() {
         steps: r.steps ?? "",
         persons: r.persons,
         photoUrl: r.photoUrl ?? null,
+        category: ((r as Record<string, unknown>).category as RecipeCategory | undefined) ?? null,
         ingredients: [...(r.ingredients ?? [])]
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .map((ing) => ({
@@ -170,6 +172,7 @@ export default function ReceptenPage() {
 
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [recipeSearch, setRecipeSearch] = React.useState("");
+  const [activeCategory, setActiveCategory] = React.useState<RecipeCategory | null>(null);
   const [recipeEditorOpen, setRecipeEditorOpen] = React.useState(false);
   const [recipeEditorTarget, setRecipeEditorTarget] =
     React.useState<SavedRecipe | null>(null);
@@ -218,10 +221,42 @@ export default function ReceptenPage() {
   }, []);
 
   const filteredRecipes = React.useMemo(() => {
+    let result = savedRecipes;
     const q = recipeSearch.trim().toLowerCase();
-    if (!q) return savedRecipes;
-    return savedRecipes.filter((r) => r.name.toLowerCase().includes(q));
-  }, [savedRecipes, recipeSearch]);
+    if (q) result = result.filter((r) => r.name.toLowerCase().includes(q));
+    if (activeCategory) result = result.filter((r) => r.category === activeCategory);
+    return result;
+  }, [savedRecipes, recipeSearch, activeCategory]);
+
+  // Only show category filter chips when there are categorised recipes
+  const usedCategoryIds = React.useMemo(
+    () => new Set(savedRecipes.map((r) => r.category).filter(Boolean)),
+    [savedRecipes],
+  );
+  const visibleCategories = RECIPE_CATEGORIES.filter((c) => usedCategoryIds.has(c.id));
+
+  // Group filtered recipes by category for the sectioned view
+  const groupedSections = React.useMemo(() => {
+    if (activeCategory) {
+      // Single category selected – no section header needed, flat list
+      return null;
+    }
+    if (recipeSearch.trim()) {
+      // Search active – flat list without sections
+      return null;
+    }
+    // Group by category order; uncategorised at the end
+    const sections: Array<{ meta: typeof RECIPE_CATEGORIES[0] | null; recipes: SavedRecipe[] }> = [];
+    for (const cat of RECIPE_CATEGORIES) {
+      const recipes = filteredRecipes.filter((r) => r.category === cat.id);
+      if (recipes.length > 0) sections.push({ meta: cat, recipes });
+    }
+    const uncategorised = filteredRecipes.filter((r) => !r.category);
+    if (uncategorised.length > 0) sections.push({ meta: null, recipes: uncategorised });
+    // If everything is uncategorised, return null (render flat list as before)
+    if (sections.length === 1 && sections[0].meta === null) return null;
+    return sections.length > 0 ? sections : null;
+  }, [filteredRecipes, activeCategory, recipeSearch]);
 
   const displayRecipes = isEditMode ? savedRecipes : filteredRecipes;
 
@@ -350,6 +385,50 @@ export default function ReceptenPage() {
                 onValueChange={setRecipeSearch}
               />
 
+              {/* Category filter chips – only shown when there are categorised recipes and not in edit mode */}
+              {!isEditMode && visibleCategories.length > 0 ? (
+                <div className="-mx-4 overflow-x-auto px-4">
+                  <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveCategory(null)}
+                      className={cn(
+                        "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                        activeCategory === null
+                          ? "bg-[#4f55f1] font-medium text-white"
+                          : "bg-white font-normal text-[#707784]",
+                      )}
+                    >
+                      Alle
+                    </button>
+                    {visibleCategories.map((cat) => {
+                      const isActive = activeCategory === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setActiveCategory(isActive ? null : cat.id)}
+                          className={cn(
+                            "flex shrink-0 items-center gap-1.5 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                            isActive
+                              ? "bg-[#4f55f1] font-medium text-white"
+                              : "bg-white font-normal text-[#707784]",
+                          )}
+                        >
+                          {isActive && (
+                            <span
+                              className="size-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: cat.dot }}
+                            />
+                          )}
+                          {cat.labelPlural}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
               {!isEditMode && filteredRecipes.length === 0 ? (
                 <p className="py-8 text-center text-base font-medium leading-24 text-[var(--text-tertiary)]">
                   Geen recepten gevonden
@@ -378,6 +457,41 @@ export default function ReceptenPage() {
                     </div>
                   </SortableContext>
                 </DndContext>
+              ) : groupedSections ? (
+                <div className="flex flex-col gap-6">
+                  {groupedSections.map((section) => (
+                    <div key={section.meta?.id ?? "overige"} className="flex flex-col gap-3">
+                      {/* Section header */}
+                      <div className="flex items-center gap-2">
+                        {section.meta ? (
+                          <span
+                            className="size-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: section.meta.dot }}
+                          />
+                        ) : null}
+                        <span className="text-[11px] font-semibold uppercase leading-16 tracking-[0.8px] text-[var(--text-tertiary)]">
+                          {section.meta ? section.meta.labelPlural : "Overige"}
+                        </span>
+                        <span className="ml-auto text-xs leading-16 text-[var(--text-quaternary,var(--neutrals-400,#a9adb5))]">
+                          {section.recipes.length}{" "}
+                          {section.recipes.length === 1 ? "recept" : "recepten"}
+                        </span>
+                      </div>
+                      {/* Tiles */}
+                      <div className="flex flex-col gap-3">
+                        {section.recipes.map((r) => (
+                          <SortableRecipeRow
+                            key={r.id}
+                            recipe={r}
+                            isEditMode={false}
+                            onEdit={openEdit}
+                            onDelete={handleDeleteRecipe}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="flex flex-col gap-4">
                   {displayRecipes.map((r) => (
