@@ -12,9 +12,14 @@ import {
   addDays,
   toIsoDate,
   dayEntryHasContent,
+  getMondayOfWeek,
   type DayEntry,
   type CalendarMeal,
 } from "@/lib/calendar-utils";
+
+/** Ruimte boven/onder inhoud (matcht padding op kalender-container). */
+const CAL_SCROLL_TOP_RESERVE_PX = 52;
+const CAL_SCROLL_BOTTOM_RESERVE_PX = 195;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -36,6 +41,94 @@ function formatDayHeader(date: Date): { weekday: string; dateStr: string } {
     weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1),
     dateStr,
   };
+}
+
+/** Ma–zo van dezelfde week; kort label voor weekkop. */
+function formatWeekSectionTitle(monday: Date): string {
+  const sunday = addDays(monday, 6);
+  const sameMonth =
+    monday.getMonth() === sunday.getMonth() &&
+    monday.getFullYear() === sunday.getFullYear();
+  if (sameMonth) {
+    const month = monday.toLocaleDateString("nl-NL", { month: "long" });
+    return `${monday.getDate()}–${sunday.getDate()} ${month}`;
+  }
+  const a = monday.toLocaleDateString("nl-NL", {
+    day: "numeric",
+    month: "short",
+  });
+  const b = sunday.toLocaleDateString("nl-NL", {
+    day: "numeric",
+    month: "short",
+  });
+  return `${a} – ${b}`;
+}
+
+function groupDisplayDaysByWeek(sortedDays: Date[]): {
+  mondayIso: string;
+  monday: Date;
+  days: Date[];
+}[] {
+  const groups: { mondayIso: string; monday: Date; days: Date[] }[] = [];
+  let cur: { mondayIso: string; monday: Date; days: Date[] } | null = null;
+  for (const d of sortedDays) {
+    const monday = startOfDay(getMondayOfWeek(d));
+    const iso = toIsoDate(monday);
+    if (!cur || cur.mondayIso !== iso) {
+      cur = { mondayIso: iso, monday, days: [] };
+      groups.push(cur);
+    }
+    cur.days.push(startOfDay(d));
+  }
+  return groups;
+}
+
+/** Centreert element in het zichtbare midden (niet onder de bottom nav). */
+function scrollElementToComfortableCenter(el: HTMLElement) {
+  const rect = el.getBoundingClientRect();
+  const elCenterY = rect.top + rect.height / 2;
+  const vv = window.visualViewport;
+  const vh = vv?.height ?? window.innerHeight;
+  const vTop = vv?.offsetTop ?? 0;
+  const usableTop = vTop + CAL_SCROLL_TOP_RESERVE_PX;
+  const usableBottom = vTop + vh - CAL_SCROLL_BOTTOM_RESERVE_PX;
+  const visibleCenterY = (usableTop + usableBottom) / 2;
+  const delta = elCenterY - visibleCenterY;
+  window.scrollBy({ top: delta, left: 0, behavior: "auto" });
+}
+
+function dayCollapsedSummary(entry: DayEntry | undefined): string {
+  if (!dayEntryHasContent(entry)) return "Geen planning";
+  const m = entry!.meals.length;
+  const l = entry!.looseIngredients.length;
+  const bits: string[] = [];
+  if (m > 0) bits.push(`${m} ${m === 1 ? "recept" : "recepten"}`);
+  if (l > 0) bits.push("losse ingrediënten");
+  return bits.join(" · ");
+}
+
+function ChevronDownIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden
+      className={cn(
+        "shrink-0 text-[var(--gray-500)] transition-transform duration-200",
+        expanded && "rotate-180",
+      )}
+    >
+      <path
+        d="M5 7.5L10 12.5L15 7.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -154,80 +247,110 @@ function DayCard({
   date,
   entry,
   isToday,
+  collapsible,
+  bodyOpen,
+  onToggleBody,
 }: {
   date: Date;
   entry: DayEntry | undefined;
   isToday: boolean;
+  /** Alleen in huidige week: eerdere dagen inklapbaar. */
+  collapsible?: boolean;
+  bodyOpen?: boolean;
+  onToggleBody?: () => void;
 }) {
   const { weekday, dateStr } = formatDayHeader(date);
   const hasContent = dayEntryHasContent(entry);
+  const expanded = collapsible ? (bodyOpen ?? false) : true;
+
+  const headerRow = (
+    <>
+      {isToday ? (
+        <span className="size-2 shrink-0 rounded-full bg-[var(--blue-500)]" aria-hidden />
+      ) : null}
+      <span
+        className={cn(
+          "text-[11px] font-semibold uppercase leading-4 tracking-[0.7px]",
+          isToday ? "text-[var(--blue-500)]" : "text-[var(--text-tertiary)]",
+        )}
+      >
+        {weekday}
+      </span>
+      <span
+        className={cn(
+          "text-[11px] leading-4",
+          isToday
+            ? "font-medium text-[var(--blue-400)]"
+            : "font-normal text-[var(--text-quaternary,var(--gray-400))]",
+        )}
+      >
+        {dateStr}
+      </span>
+      {isToday ? (
+        <span className="ml-auto rounded-pill bg-[var(--blue-500)] px-2 py-0.5 text-[11px] font-semibold leading-4 text-white">
+          Vandaag
+        </span>
+      ) : null}
+    </>
+  );
+
+  const body =
+    hasContent ? (
+      <div className="rounded-md bg-[var(--white)] px-4 shadow-[var(--shadow-drop)]">
+        {entry!.meals.map((meal, i) => (
+          <React.Fragment key={meal.recipeGroupId}>
+            {i > 0 && (
+              <div className="h-px bg-[var(--gray-100)]" aria-hidden />
+            )}
+            <RecipeMealRow meal={meal} />
+          </React.Fragment>
+        ))}
+        {entry!.looseIngredients.length > 0 && (
+          <div
+            className={cn(
+              entry!.meals.length > 0 && "border-t border-[var(--gray-100)]",
+            )}
+          >
+            <LooseIngredientsBlock ingredients={entry!.looseIngredients} />
+          </div>
+        )}
+      </div>
+    ) : (
+      <div
+        className="h-px w-full border-t border-dashed border-[var(--gray-100)]"
+        aria-hidden
+      />
+    );
+
+  if (collapsible && onToggleBody) {
+    return (
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={onToggleBody}
+          aria-expanded={expanded}
+          className="flex w-full min-w-0 items-center gap-2 rounded-md py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+        >
+          {headerRow}
+          <span className="ml-auto">
+            <ChevronDownIcon expanded={expanded} />
+          </span>
+        </button>
+        {!expanded ? (
+          <p className="pl-0 text-sm leading-5 text-[var(--gray-500)]">
+            {dayCollapsedSummary(entry)}
+          </p>
+        ) : (
+          body
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Dagheader */}
-      <div className="flex items-center gap-2">
-        {isToday ? (
-          <span className="size-2 shrink-0 rounded-full bg-[var(--blue-500)]" aria-hidden />
-        ) : null}
-        <span
-          className={cn(
-            "text-[11px] font-semibold uppercase leading-4 tracking-[0.7px]",
-            isToday ? "text-[var(--blue-500)]" : "text-[var(--text-tertiary)]",
-          )}
-        >
-          {weekday}
-        </span>
-        <span
-          className={cn(
-            "text-[11px] leading-4",
-            isToday
-              ? "font-medium text-[var(--blue-400)]"
-              : "font-normal text-[var(--text-quaternary,var(--gray-400))]",
-          )}
-        >
-          {dateStr}
-        </span>
-        {isToday ? (
-          <span className="ml-auto rounded-pill bg-[var(--blue-500)] px-2 py-0.5 text-[11px] font-semibold leading-4 text-white">
-            Vandaag
-          </span>
-        ) : null}
-      </div>
-
-      {/* Kaart met recepten + losse ingrediënten */}
-      {hasContent ? (
-        <div className="rounded-md bg-[var(--white)] px-4 shadow-[var(--shadow-drop)]">
-          {entry!.meals.map((meal, i) => (
-            <React.Fragment key={meal.recipeGroupId}>
-              {i > 0 && (
-                <div
-                  className="h-px bg-[var(--gray-100)]"
-                  aria-hidden
-                />
-              )}
-              <RecipeMealRow meal={meal} />
-            </React.Fragment>
-          ))}
-          {entry!.looseIngredients.length > 0 && (
-            <div
-              className={cn(
-                entry!.meals.length > 0 &&
-                  "border-t border-[var(--gray-100)]",
-              )}
-            >
-              <LooseIngredientsBlock
-                ingredients={entry!.looseIngredients}
-              />
-            </div>
-          )}
-        </div>
-      ) : (
-        /* Lege dag: subtiele stippellijn */
-        <div
-          className="h-px w-full border-t border-dashed border-[var(--gray-100)]"
-          aria-hidden
-        />
-      )}
+      <div className="flex items-center gap-2">{headerRow}</div>
+      {body}
     </div>
   );
 }
@@ -246,6 +369,14 @@ export default function KalenderPage() {
 
   const topSentinelRef = React.useRef<HTMLDivElement>(null);
   const prependRef = React.useRef<{ scrollHeight: number } | null>(null);
+  const todayRowRef = React.useRef<HTMLDivElement | null>(null);
+  const hasCenteredTodayRef = React.useRef(false);
+  const [weekExpanded, setWeekExpanded] = React.useState<
+    Record<string, boolean>
+  >({});
+  const [dayBodyOpen, setDayBodyOpen] = React.useState<
+    Record<string, boolean>
+  >({});
 
   const { isLoading: dataLoading, data } = db.useQuery(
     ownerId
@@ -317,6 +448,67 @@ export default function KalenderPage() {
     return [...past, ...future];
   }, [startOffset, calendarMap, todayKey]);
 
+  const currentWeekMondayIso = React.useMemo(() => {
+    const [yy, mm, dd] = todayKey.split("-").map((x) => parseInt(x, 10));
+    const todayDate = startOfDay(new Date(yy, mm - 1, dd));
+    return toIsoDate(startOfDay(getMondayOfWeek(todayDate)));
+  }, [todayKey]);
+
+  const weekGroups = React.useMemo(
+    () => groupDisplayDaysByWeek(displayDays),
+    [displayDays],
+  );
+
+  const getWeekIsOpen = React.useCallback(
+    (mondayIso: string) =>
+      weekExpanded[mondayIso] ?? mondayIso >= currentWeekMondayIso,
+    [weekExpanded, currentWeekMondayIso],
+  );
+
+  const toggleWeek = React.useCallback(
+    (mondayIso: string) => {
+      setWeekExpanded((prev) => {
+        const def = mondayIso >= currentWeekMondayIso;
+        const cur = prev[mondayIso] ?? def;
+        return { ...prev, [mondayIso]: !cur };
+      });
+    },
+    [currentWeekMondayIso],
+  );
+
+  const getDayBodyOpen = React.useCallback(
+    (iso: string, pastInCurrentWeek: boolean) => {
+      if (!pastInCurrentWeek) return true;
+      return dayBodyOpen[iso] ?? false;
+    },
+    [dayBodyOpen],
+  );
+
+  const toggleDayBody = React.useCallback((iso: string) => {
+    setDayBodyOpen((prev) => ({
+      ...prev,
+      [iso]: !(prev[iso] ?? false),
+    }));
+  }, []);
+
+  /** Eén keer: vandaag in het midden van het zichtbare gebied (t.o.v. bottom nav). */
+  React.useLayoutEffect(() => {
+    if (hasCenteredTodayRef.current || prependRef.current) return;
+    if (!todayRowRef.current) return;
+    let cancelled = false;
+    const id = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (cancelled || !todayRowRef.current) return;
+        scrollElementToComfortableCenter(todayRowRef.current);
+        hasCenteredTodayRef.current = true;
+      });
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(id);
+    };
+  }, [displayDays]);
+
   if (authLoading || !user || dataLoading) return <PageSpinner />;
 
   const profileData = ((data?.profiles ?? []) as Record<string, unknown>[])[0];
@@ -337,17 +529,70 @@ export default function KalenderPage() {
           {/* Bovenste sentinel voor infinite scroll omhoog */}
           <div ref={topSentinelRef} className="h-px" aria-hidden />
 
-          {/* Dagkaarten */}
-          <div className="flex flex-col gap-5">
-            {displayDays.map((day) => {
-              const iso = toIsoDate(day);
+          {/* Weken (inklapbaar); binnen huidige week zijn eerdere dagen ingeklapt. */}
+          <div className="flex flex-col gap-6">
+            {weekGroups.map(({ mondayIso, monday, days }) => {
+              const wkOpen = getWeekIsOpen(mondayIso);
+              const panelId = `kalender-week-${mondayIso}`;
+              const isCurrentWeek = mondayIso === currentWeekMondayIso;
               return (
-                <DayCard
-                  key={iso}
-                  date={day}
-                  entry={calendarMap.get(iso)}
-                  isToday={iso === todayKey}
-                />
+                <section key={mondayIso} className="flex flex-col gap-4">
+                  <button
+                    type="button"
+                    id={`${panelId}-toggle`}
+                    aria-expanded={wkOpen}
+                    aria-controls={panelId}
+                    onClick={() => toggleWeek(mondayIso)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left",
+                      "bg-[var(--gray-100)] text-text-primary",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+                    )}
+                  >
+                    <span className="text-[11px] font-semibold uppercase leading-4 tracking-[0.6px] text-[var(--text-tertiary)]">
+                      Week
+                    </span>
+                    <span className="min-w-0 flex-1 text-sm font-semibold leading-5">
+                      {formatWeekSectionTitle(monday)}
+                    </span>
+                    <ChevronDownIcon expanded={wkOpen} />
+                  </button>
+                  {wkOpen ? (
+                    <div
+                      id={panelId}
+                      role="region"
+                      aria-labelledby={`${panelId}-toggle`}
+                      className="flex flex-col gap-5 border-l-2 border-[var(--gray-100)] pl-3"
+                    >
+                      {days.map((day) => {
+                        const iso = toIsoDate(day);
+                        const isToday = iso === todayKey;
+                        const pastInCurrentWeek =
+                          isCurrentWeek && iso < todayKey;
+                        return (
+                          <div
+                            key={iso}
+                            ref={isToday ? todayRowRef : undefined}
+                            className={cn(isToday && "scroll-mt-4")}
+                          >
+                            <DayCard
+                              date={day}
+                              entry={calendarMap.get(iso)}
+                              isToday={isToday}
+                              collapsible={pastInCurrentWeek}
+                              bodyOpen={getDayBodyOpen(iso, pastInCurrentWeek)}
+                              onToggleBody={
+                                pastInCurrentWeek
+                                  ? () => toggleDayBody(iso)
+                                  : undefined
+                              }
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </section>
               );
             })}
           </div>

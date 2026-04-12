@@ -4,6 +4,12 @@ import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
+/**
+ * Cache-buster: verhoog na wijziging van `public/icons/calendar_filled.svg` zodat browsers
+ * geen oude mask-image uit cache halen.
+ */
+const CALENDAR_FILLED_SRC = "/icons/calendar_filled.svg?v=2";
+
 /** Mask-iconen: `bg-current` volgt tab `text-*` (primary 500 actief, neutrals 500 inactief → `--gray-500`). */
 function MaskNavIcon({
   src,
@@ -69,7 +75,7 @@ function KalenderIcon({
 }) {
   return (
     <MaskNavIcon
-      src={filled ? "/icons/calendar_filled.svg" : "/icons/calendar.svg"}
+      src={filled ? CALENDAR_FILLED_SRC : "/icons/calendar.svg"}
       className={className}
     />
   );

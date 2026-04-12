@@ -1,5 +1,39 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="7" y="2" width="2" height="5" rx="1" fill="black"/>
-  <rect x="15" y="2" width="2" height="5" rx="1" fill="black"/>
-  <rect x="3" y="4" width="18" height="17" rx="3" fill="black"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 19.5 20.5">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-2, .cls-3, .cls-4 {
+        stroke-width: 1.5px;
+      }
+
+      .cls-2, .cls-4 {
+        stroke: #000;
+      }
+
+      .cls-3 {
+        stroke: #fff;
+      }
+
+      .cls-3, .cls-4 {
+        fill: none;
+      }
+
+      .cls-4 {
+        stroke-linecap: round;
+      }
+    </style>
+  </defs>
+  <path class="cls-4" d="M5.75.75v4"/>
+  <path class="cls-4" d="M13.75.75v4"/>
+  <rect class="cls-2" x=".75" y="2.75" width="18" height="17" rx="3" ry="3"/>
+  <path class="cls-3" d="M0,8.25h19.49"/>
+  <circle class="cls-1" cx="5.75" cy="12.25" r="1"/>
+  <circle class="cls-1" cx="9.75" cy="12.25" r="1"/>
+  <circle class="cls-1" cx="13.75" cy="12.25" r="1"/>
+  <circle class="cls-1" cx="5.75" cy="16.25" r="1"/>
+  <circle class="cls-1" cx="9.75" cy="16.25" r="1"/>
 </svg>
