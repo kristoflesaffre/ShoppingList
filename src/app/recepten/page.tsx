@@ -329,10 +329,6 @@ export default function ReceptenPage() {
 
   // Group filtered recipes by category for the sectioned view
   const groupedSections = React.useMemo(() => {
-    if (activeCategory) {
-      // Single category selected – no section header needed, flat list
-      return null;
-    }
     if (recipeSearch.trim()) {
       // Search active – flat list without sections
       return null;
