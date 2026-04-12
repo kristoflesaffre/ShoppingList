@@ -41,9 +41,9 @@ body::before {
   pointer-events: none;
   background: linear-gradient(
     180deg,
-    var(--blue-100) 0px,
-    var(--blue-50) 120px,
-    var(--white) 320px
+    var(--blue-100) 0%,
+    var(--blue-50) 75%,
+    var(--white) 100%
   );
 }
 

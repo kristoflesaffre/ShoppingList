@@ -146,7 +146,7 @@ function LooseIngredientPhotoGrid({
           const photoUrl = getPhotoUrl(ing.name, ing.quantity);
           return (
             <div key={i} className="flex min-w-0 flex-col items-center gap-2">
-              <div className="relative aspect-square w-full overflow-hidden rounded-sm bg-[var(--white)]">
+              <div className="relative aspect-square w-full overflow-hidden rounded-sm">
                 {photoUrl ? (
                   <Image
                     src={photoUrl}
@@ -181,6 +181,7 @@ function DayCard({
   collapsible,
   bodyOpen,
   onToggleBody,
+  isLast,
 }: {
   date: Date;
   entry: DayEntry | undefined;
@@ -188,6 +189,7 @@ function DayCard({
   collapsible?: boolean;
   bodyOpen?: boolean;
   onToggleBody?: () => void;
+  isLast?: boolean;
 }) {
   const abbr = shortDayAbbr(date);
   const hasContent = dayEntryHasContent(entry);
@@ -262,7 +264,7 @@ function DayCard({
             <div className="pb-3">{body}</div>
           </div>
         </div>
-        <div className="h-px bg-[var(--gray-100)]" aria-hidden />
+        {!isLast && <div className="h-px bg-[var(--gray-100)]" aria-hidden />}
       </div>
     );
   }
@@ -274,7 +276,7 @@ function DayCard({
         {hasContent ? <ChevronDownIcon expanded={true} /> : null}
       </div>
       {body ? <div className="pb-3">{body}</div> : null}
-      <div className="h-px bg-[var(--gray-100)]" aria-hidden />
+      {!isLast && <div className="h-px bg-[var(--gray-100)]" aria-hidden />}
     </div>
   );
 }
@@ -450,7 +452,7 @@ export default function KalenderPage() {
           <div ref={topSentinelRef} className="h-px" aria-hidden />
 
           {/* Weken (inklapbaar); binnen huidige week zijn eerdere dagen ingeklapt. */}
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
             {weekGroups.map(({ mondayIso, monday, days }) => {
               const wkOpen = getWeekIsOpen(mondayIso);
               const panelId = `kalender-week-${mondayIso}`;
@@ -485,12 +487,13 @@ export default function KalenderPage() {
                   >
                     <div className="-mr-3 overflow-hidden pr-3">
                       <div className="flex flex-col gap-3 pl-4">
-                        {days.map((day) => {
+                        {days.map((day, dayIdx) => {
                           const iso = toIsoDate(day);
                           const isToday = iso === todayKey;
                           const isOlderWeek = mondayIso < currentWeekMondayIso;
                           const collapsible =
                             isOlderWeek || (isCurrentWeek && iso < todayKey);
+                          const isLast = dayIdx === days.length - 1;
                           return (
                             <div
                               key={iso}
@@ -508,6 +511,7 @@ export default function KalenderPage() {
                                     ? () => toggleDayBody(iso)
                                     : undefined
                                 }
+                                isLast={isLast}
                               />
                             </div>
                           );
