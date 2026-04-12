@@ -101,9 +101,16 @@ function QrDisplay({
   );
 
   React.useEffect(() => {
-    import("react-qr-code").then((mod) => {
-      setQRCode(() => mod.default as React.ComponentType<{ value: string; size: number }>);
-    }).catch(() => {});
+    import("react-qr-code")
+      .then((mod) => {
+        const Cmp =
+          (mod as { default?: React.ComponentType<{ value: string; size: number }> })
+            .default ??
+          (mod as { QRCode?: React.ComponentType<{ value: string; size: number }> })
+            .QRCode;
+        if (typeof Cmp === "function") setQRCode(() => Cmp);
+      })
+      .catch(() => {});
   }, []);
 
   React.useEffect(() => {
@@ -138,5 +145,8 @@ function QrDisplay({
     );
   }
 
+  if (typeof QRCode !== "function") {
+    return null;
+  }
   return <QRCode value={value} size={pxSize} />;
 }

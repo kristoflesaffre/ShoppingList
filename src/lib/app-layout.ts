@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 /**
  * Bottom offset voor vaste FAB’s: 24px boven de bottom navigation (Figma 854-7039).
  * Nav-hoogte ≈ pt-2 + nav-rij + pb (8+48+8) plus safe-area in de nav-pb.
- * De nav zelf staat in `AppChrome` (root layout), niet op elke pagina.
+ * De nav zelf staat in `AppPersistentBottomNav` (root layout + Suspense), niet op elke pagina.
  */
 export const APP_FAB_BOTTOM_CLASS =
   "bottom-[calc(88px+env(safe-area-inset-bottom,0px))]";

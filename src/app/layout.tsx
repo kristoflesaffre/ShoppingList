@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { AppChrome } from "@/components/app_chrome";
+import { Suspense } from "react";
+import { AppPersistentBottomNav } from "@/components/app_chrome";
 import "./globals.css";
 
 /** Bovenste gradientkleur (blue-100) — sluit aan bij globals.css voor statusbalk/splash. */
@@ -36,7 +37,10 @@ export default function RootLayout({
   return (
     <html lang="nl">
       <body>
-        <AppChrome>{children}</AppChrome>
+        {children}
+        <Suspense fallback={null}>
+          <AppPersistentBottomNav />
+        </Suspense>
       </body>
     </html>
   );

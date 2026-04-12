@@ -3,6 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import {
   DndContext,
@@ -24,65 +25,76 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
-import { ItemCard } from "@/components/ui/item_card";
-
-const RecipeIngredientSortableList = dynamic(
-  () => import("@/app/recepten/recipe_ingredient_sortable_list").then((m) => m.RecipeIngredientSortableList),
-  { ssr: false },
-);
-const RecipeIngredientFormSlideIn = dynamic(
-  () => import("@/components/recipe_ingredient_form_slide_in").then((m) => m.RecipeIngredientFormSlideIn),
-  { ssr: false },
-);
-import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
-import { FloatingActionButton } from "@/components/ui/floating_action_button";
-import { MiniButton } from "@/components/ui/mini_button";
-import { Snackbar } from "@/components/ui/snackbar";
-import { SlideInModal } from "@/components/ui/slide_in_modal";
-import { InputField } from "@/components/ui/input_field";
-import { Button } from "@/components/ui/button";
-import { SearchBar } from "@/components/ui/search_bar";
 import { id as iid } from "@instantdb/react";
-import { cn, isIPhoneDevice } from "@/lib/utils";
-import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
-const LoyaltyCardScanResultSlideIn = dynamic(
-  () => import("@/components/loyalty_card_scan_result_slide_in").then((m) => m.LoyaltyCardScanResultSlideIn),
-  { ssr: false },
-);
 import {
   LoyaltyCardSwipeShell,
   type LoyaltySwipePane,
 } from "@/components/loyalty_card_swipe_shell";
-import dynamic from "next/dynamic";
-
-const LoyaltyCardDisplay = dynamic(
-  () => import("@/components/loyalty_card_display").then((m) => m.LoyaltyCardDisplay),
-  { ssr: false },
-);
+import { Button } from "@/components/ui/button";
+import { FloatingActionButton } from "@/components/ui/floating_action_button";
+import { InputField } from "@/components/ui/input_field";
+import { ItemCard } from "@/components/ui/item_card";
+import { MiniButton } from "@/components/ui/mini_button";
+import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
+import { SearchBar } from "@/components/ui/search_bar";
+import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { Snackbar } from "@/components/ui/snackbar";
+import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { decodeLoyaltyCard } from "@/lib/decode_loyalty_card";
-import type { DecodeResult } from "@/lib/loyalty_card";
 import { db } from "@/lib/db";
-const ShareListModal = dynamic(
-  () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
-  { ssr: false },
-);
-import {
-  type RecipeIngredient,
-  type SavedRecipe,
-} from "@/lib/recipe_library";
-import {
-  MASTER_STORE_OPTIONS,
-  listIconIsLidlDelhaizeCombo,
-  LOYALTY_COMBO_PRIMARY_LOGO_SRC,
-  LOYALTY_COMBO_SECONDARY_LOGO_SRC,
-  masterStoreLabelFromListIcon,
-} from "@/lib/master-stores";
-import { listIsMasterTemplate } from "@/lib/list-master";
-import { useItemPhotoUrl } from "@/lib/item-photos";
 import {
   APP_FAB_BOTTOM_NO_NAV_CLASS,
   APP_FAB_INNER_PX4_CLASS,
 } from "@/lib/app-layout";
+import { useItemPhotoUrl } from "@/lib/item-photos";
+import type { DecodeResult } from "@/lib/loyalty_card";
+import {
+  MASTER_STORE_OPTIONS,
+  LOYALTY_COMBO_PRIMARY_LOGO_SRC,
+  LOYALTY_COMBO_SECONDARY_LOGO_SRC,
+  listIconIsLidlDelhaizeCombo,
+  masterStoreLabelFromListIcon,
+} from "@/lib/master-stores";
+import { listIsMasterTemplate } from "@/lib/list-master";
+import {
+  type RecipeIngredient,
+  type SavedRecipe,
+} from "@/lib/recipe_library";
+import { cn, isIPhoneDevice } from "@/lib/utils";
+import type { ListItem } from "./new_item_modal";
+
+const RecipeIngredientSortableList = dynamic(
+  () =>
+    import("@/app/recepten/recipe_ingredient_sortable_list").then(
+      (m) => m.RecipeIngredientSortableList,
+    ),
+  { ssr: false },
+);
+const RecipeIngredientFormSlideIn = dynamic(
+  () =>
+    import("@/components/recipe_ingredient_form_slide_in").then(
+      (m) => m.RecipeIngredientFormSlideIn,
+    ),
+  { ssr: false },
+);
+const LoyaltyCardScanResultSlideIn = dynamic(
+  () =>
+    import("@/components/loyalty_card_scan_result_slide_in").then(
+      (m) => m.LoyaltyCardScanResultSlideIn,
+    ),
+  { ssr: false },
+);
+const LoyaltyCardDisplay = dynamic(
+  () =>
+    import("@/components/loyalty_card_display").then(
+      (m) => m.LoyaltyCardDisplay,
+    ),
+  { ssr: false },
+);
+const ShareListModal = dynamic(
+  () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
+  { ssr: false },
+);
 
 /** Profiel van een andere claimer: avatar + voornaam op itemkaart. */
 type ClaimerProfileInfo = { avatarUrl?: string; firstName?: string };
@@ -114,8 +126,6 @@ function readClaimedByDisplayNameFromInstantRow(
   const t = raw.trim();
   return t.length > 0 ? t : undefined;
 }
-
-import type { ListItem } from "./new_item_modal";
 
 type SectionItemsChunk =
   | { type: "plain"; items: ListItem[] }
