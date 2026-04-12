@@ -38,6 +38,23 @@ function shortDayAbbr(date: Date): string {
   return date.toLocaleDateString("nl-NL", { weekday: "short" }).slice(0, 2).toUpperCase();
 }
 
+/** ISO-weeknummer (1–53) voor een gegeven datum. */
+function getISOWeekNumber(date: Date): number {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return (
+    1 +
+    Math.round(
+      ((d.getTime() - week1.getTime()) / 86400000 -
+        3 +
+        ((week1.getDay() + 6) % 7)) /
+        7,
+    )
+  );
+}
+
 /** Ma–zo van dezelfde week; kort label voor weekkop. */
 function formatWeekSectionTitle(monday: Date): string {
   const sunday = addDays(monday, 6);
@@ -141,7 +158,7 @@ function LooseIngredientPhotoGrid({
   if (ingredients.length === 0) return null;
   return (
     <div className="py-3">
-      <div className="grid w-full grid-cols-3 gap-x-4 gap-y-6">
+      <div className="grid w-full grid-cols-3 gap-x-4 gap-y-6 lg:grid-cols-6">
         {ingredients.map((ing, i) => {
           const photoUrl = getPhotoUrl(ing.name, ing.quantity);
           return (
@@ -199,7 +216,7 @@ function DayCard({
   // Compacte headerrij: afkorting + samenvatting + Vandaag-badge + chevron
   const headerContent = (
     <>
-      <span className="w-[35px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap text-base font-bold leading-6 text-text-primary">
+      <span className="w-[35px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] font-bold leading-5 text-text-primary">
         {abbr}
       </span>
       <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-normal leading-5 text-[var(--gray-400)]">
@@ -457,37 +474,46 @@ export default function KalenderPage() {
               const wkOpen = getWeekIsOpen(mondayIso);
               const panelId = `kalender-week-${mondayIso}`;
               const isCurrentWeek = mondayIso === currentWeekMondayIso;
+              const weekNumber = getISOWeekNumber(monday);
               return (
-                <section key={mondayIso} className="flex flex-col">
-                  <button
-                    type="button"
-                    id={`${panelId}-toggle`}
-                    aria-expanded={wkOpen}
-                    aria-controls={panelId}
-                    onClick={() => toggleWeek(mondayIso)}
-                    className="flex w-full items-center gap-3 pb-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                  >
-                    <span className="shrink-0 text-sm font-normal leading-5 text-[var(--gray-400)]">
-                      Week
-                    </span>
-                    <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium leading-6 text-text-primary">
-                      {formatWeekSectionTitle(monday)}
-                    </span>
-                    <ChevronDownIcon expanded={wkOpen} />
-                  </button>
-                  <div className="mb-3 h-px bg-[var(--gray-100)]" aria-hidden />
-                  <div
-                    id={panelId}
-                    role="region"
-                    aria-labelledby={`${panelId}-toggle`}
-                    className={cn(
-                      "grid transition-[grid-template-rows] duration-300 ease-in-out",
-                      wkOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-                    )}
-                  >
-                    <div className="-mr-3 overflow-hidden pr-3">
-                      <div className="flex flex-col gap-3 pl-4">
-                        {days.map((day, dayIdx) => {
+                <section key={mondayIso}>
+                  <div className="flex flex-col rounded-[8px] border border-[var(--gray-100)] bg-[var(--white)] p-3">
+                    <button
+                      type="button"
+                      id={`${panelId}-toggle`}
+                      aria-expanded={wkOpen}
+                      aria-controls={panelId}
+                      onClick={() => toggleWeek(mondayIso)}
+                      className="flex w-full items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                    >
+                      {/* WEEK-badge */}
+                      <div className="flex shrink-0 flex-col items-center gap-px rounded-[4px] bg-[var(--blue-25)] px-2 py-1">
+                        <span className="text-[8px] font-semibold leading-[8px] text-[var(--blue-500)]">
+                          WEEK
+                        </span>
+                        <span className="text-[18px] font-bold leading-[18px] text-text-primary">
+                          {weekNumber}
+                        </span>
+                      </div>
+                      <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium leading-6 text-text-primary">
+                        {formatWeekSectionTitle(monday)}
+                      </span>
+                      <ChevronDownIcon expanded={wkOpen} />
+                    </button>
+                    <div
+                      id={panelId}
+                      role="region"
+                      aria-labelledby={`${panelId}-toggle`}
+                      className={cn(
+                        "grid transition-[grid-template-rows] duration-300 ease-in-out",
+                        wkOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                      )}
+                    >
+                      <div className="-mr-3 overflow-hidden pr-3">
+                        <div className="flex flex-col gap-3 pl-4 pt-3">
+                          {/* Separator bovenaan eerste dag */}
+                          <div className="h-px bg-[var(--gray-100)]" aria-hidden />
+                          {days.map((day, dayIdx) => {
                           const iso = toIsoDate(day);
                           const isToday = iso === todayKey;
                           const isOlderWeek = mondayIso < currentWeekMondayIso;
@@ -516,6 +542,7 @@ export default function KalenderPage() {
                             </div>
                           );
                         })}
+                        </div>
                       </div>
                     </div>
                   </div>
