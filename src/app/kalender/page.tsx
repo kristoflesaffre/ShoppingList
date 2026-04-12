@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
+import { RecipeTile } from "@/components/ui/recipe_tile";
 import {
   buildCalendarEntries,
   addDays,
@@ -14,7 +15,7 @@ import {
   dayEntryHasContent,
   getMondayOfWeek,
   type DayEntry,
-  type CalendarMeal,
+
 } from "@/lib/calendar-utils";
 import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 
@@ -130,80 +131,6 @@ function ChevronDownIcon({ expanded }: { expanded: boolean }) {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function ChefHatPlaceholder() {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden
-      className="text-[var(--blue-300)]"
-    >
-      <path
-        d="M12 3C9.24 3 7 5.24 7 8C7 9.56 7.7 10.96 8.8 11.9V15H15.2V11.9C16.3 10.96 17 9.56 17 8C17 5.24 14.76 3 12 3Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M8.8 15H15.2V17C15.2 17.55 14.75 18 14.2 18H9.8C9.25 18 8.8 17.55 8.8 17V15Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
-  );
-}
-
-function RecipeMealRow({ meal }: { meal: CalendarMeal }) {
-  const content = (
-    <div className="flex items-center gap-3 py-3">
-      <span className="relative size-12 shrink-0 overflow-hidden rounded-full bg-[var(--blue-25)]">
-        {meal.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={meal.photoUrl}
-            alt=""
-            width={48}
-            height={48}
-            className="size-full object-cover"
-            loading="lazy"
-            decoding="async"
-          />
-        ) : (
-          <span className="flex size-full items-center justify-center">
-            <ChefHatPlaceholder />
-          </span>
-        )}
-      </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-0">
-        <span className="truncate text-base font-medium leading-6 text-text-primary">
-          {meal.recipeName}
-        </span>
-        <span className="text-sm font-normal leading-5 text-[var(--gray-400)]">
-          {meal.ingredientCount}{" "}
-          {meal.ingredientCount === 1 ? "ingrediënt" : "ingrediënten"}
-        </span>
-      </div>
-    </div>
-  );
-
-  if (meal.recipeId) {
-    return (
-      <Link
-        href={`/recepten/${meal.recipeId}`}
-        className="block no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-      >
-        {content}
-      </Link>
-    );
-  }
-  return <div>{content}</div>;
-}
 
 function LooseIngredientPhotoGrid({
   ingredients,
@@ -285,17 +212,30 @@ function DayCard({
   );
 
   const body = hasContent ? (
-    <div className="rounded-md bg-[var(--white)] px-4 shadow-[var(--shadow-drop)]">
-      {entry!.meals.map((meal, i) => (
-        <React.Fragment key={meal.recipeGroupId}>
-          {i > 0 && <div className="h-px bg-[var(--gray-100)]" aria-hidden />}
-          <RecipeMealRow meal={meal} />
-        </React.Fragment>
-      ))}
+    <div className="flex flex-col gap-2">
+      {entry!.meals.map((meal) => {
+        const tile = (
+          <RecipeTile
+            recipeName={meal.recipeName}
+            itemCount={`${meal.ingredientCount} ${meal.ingredientCount === 1 ? "ingrediënt" : "ingrediënten"}`}
+            photoUrl={meal.photoUrl}
+            state="bare"
+          />
+        );
+        return meal.recipeId ? (
+          <Link
+            key={meal.recipeGroupId}
+            href={`/recepten/${meal.recipeId}`}
+            className="block no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 rounded-md"
+          >
+            {tile}
+          </Link>
+        ) : (
+          <div key={meal.recipeGroupId}>{tile}</div>
+        );
+      })}
       {entry!.looseIngredients.length > 0 && (
-        <div className={cn(entry!.meals.length > 0 && "border-t border-[var(--gray-100)]")}>
-          <LooseIngredientPhotoGrid ingredients={entry!.looseIngredients} />
-        </div>
+        <LooseIngredientPhotoGrid ingredients={entry!.looseIngredients} />
       )}
     </div>
   ) : null;
@@ -318,7 +258,7 @@ function DayCard({
             expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
           )}
         >
-          <div className="overflow-hidden">
+          <div className="-mr-3 overflow-hidden pr-3">
             <div className="pb-3">{body}</div>
           </div>
         </div>
@@ -543,7 +483,7 @@ export default function KalenderPage() {
                       wkOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
                     )}
                   >
-                    <div className="overflow-hidden">
+                    <div className="-mr-3 overflow-hidden pr-3">
                       <div className="flex flex-col gap-3 pl-4">
                         {days.map((day) => {
                           const iso = toIsoDate(day);
