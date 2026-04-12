@@ -108,7 +108,7 @@ function QrDisplay({
             .default ??
           (mod as { QRCode?: React.ComponentType<{ value: string; size: number }> })
             .QRCode;
-        if (typeof Cmp === "function") setQRCode(() => Cmp);
+        if (Cmp != null) setQRCode(() => Cmp as React.ComponentType<{ value: string; size: number }>);
       })
       .catch(() => {});
   }, []);
