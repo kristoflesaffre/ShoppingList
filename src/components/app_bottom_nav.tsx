@@ -60,6 +60,21 @@ function ReceptenIcon({
   );
 }
 
+function KalenderIcon({
+  className,
+  filled,
+}: {
+  className?: string;
+  filled?: boolean;
+}) {
+  return (
+    <MaskNavIcon
+      src={filled ? "/icons/calendar_filled.svg" : "/icons/calendar.svg"}
+      className={className}
+    />
+  );
+}
+
 function AvatarIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -82,7 +97,7 @@ function AvatarIcon({ className }: { className?: string }) {
 
 export interface AppBottomNavProps {
   /** Actieve tab – Figma 854:7039 */
-  active: "lijstjes" | "recepten" | "profiel";
+  active: "lijstjes" | "recepten" | "kalender" | "profiel";
   /** Data-URL of URL voor profieltab; null = placeholder icoon */
   profileAvatarUrl: string | null;
   /**
@@ -113,7 +128,7 @@ export function AppBottomNav({
       )}
     >
       <nav
-        className="mx-auto grid min-h-[40px] w-full max-w-[390px] grid-cols-3 items-center px-4 py-1"
+        className="mx-auto grid min-h-[40px] w-full max-w-[390px] grid-cols-4 items-center px-4 py-1"
         aria-label="Hoofdnavigatie"
       >
         <div className="flex justify-center">
@@ -151,6 +166,24 @@ export function AppBottomNav({
             />
             <span className="text-xs font-normal leading-4 tracking-normal">
               Recepten
+            </span>
+          </Link>
+        </div>
+
+        <div className="flex justify-center">
+          <Link
+            href="/kalender"
+            aria-current={active === "kalender" ? "page" : undefined}
+            className={cn(
+              tabClass,
+              active === "kalender"
+                ? "text-[var(--blue-500)]"
+                : "text-[var(--gray-500)]",
+            )}
+          >
+            <KalenderIcon className="size-6" filled={active === "kalender"} />
+            <span className="text-xs font-normal leading-4 tracking-normal">
+              Kalender
             </span>
           </Link>
         </div>
