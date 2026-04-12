@@ -41,7 +41,6 @@ import {
 import { listIsMasterTemplate } from "@/lib/list-master";
 import { storeLogosFromListIcon } from "@/lib/master-stores";
 import { db } from "@/lib/db";
-import { AppBottomNav } from "@/components/app_bottom_nav";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
@@ -430,14 +429,7 @@ export default function Home() {
       list: { items: {} },
       $: { where: { instantUserId: ownerId } },
     },
-    profiles: {
-      $: { where: { instantUserId: ownerId } },
-    },
   });
-
-  const profileRow = data?.profiles?.[0];
-  const profileAvatarUrl = profileRow?.avatarUrl ?? null;
-  const profileFirstName = (profileRow?.firstName ?? "").trim() || null;
 
   const shareRelatedUserIds = React.useMemo(() => {
     const ids = new Set<string>();
@@ -1009,12 +1001,6 @@ export default function Home() {
           />
         </div>
       )}
-
-      <AppBottomNav
-        active="lijstjes"
-        profileAvatarUrl={profileAvatarUrl}
-        profileFirstName={profileFirstName}
-      />
 
       <div
         className={cn(

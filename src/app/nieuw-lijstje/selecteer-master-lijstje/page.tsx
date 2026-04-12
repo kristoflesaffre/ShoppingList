@@ -6,7 +6,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { AppBottomNav } from "@/components/app_bottom_nav";
 import { db } from "@/lib/db";
 import { ListCard } from "@/components/ui/list_card";
 import { defaultNewListName } from "@/lib/list-default-name";
@@ -70,14 +69,7 @@ function SelecteerMasterLijstPageContent() {
       items: {},
       $: { where: { ownerId } },
     },
-    profiles: {
-      $: { where: { instantUserId: ownerId } },
-    },
   });
-
-  const profileRow = data?.profiles?.[0];
-  const profileAvatarUrl = profileRow?.avatarUrl ?? null;
-  const profileFirstName = (profileRow?.firstName ?? "").trim() || null;
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
@@ -182,11 +174,6 @@ function SelecteerMasterLijstPageContent() {
         </div>
       </div>
 
-      <AppBottomNav
-        active="lijstjes"
-        profileAvatarUrl={profileAvatarUrl}
-        profileFirstName={profileFirstName}
-      />
     </div>
   );
 }

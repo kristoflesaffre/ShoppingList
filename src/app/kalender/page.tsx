@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
-import { AppBottomNav } from "@/components/app_bottom_nav";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import {
   buildCalendarEntries,
@@ -383,7 +382,6 @@ export default function KalenderPage() {
       ? {
           lists: { $: { where: { ownerId } }, items: {} },
           recipes: {},
-          profiles: { $: { where: { instantUserId: ownerId } } },
         }
       : null,
   );
@@ -511,12 +509,6 @@ export default function KalenderPage() {
 
   if (authLoading || !user || dataLoading) return <PageSpinner />;
 
-  const profileData = ((data?.profiles ?? []) as Record<string, unknown>[])[0];
-  const profileAvatarUrl =
-    typeof profileData?.avatarUrl === "string" ? profileData.avatarUrl : null;
-  const profileFirstName =
-    typeof profileData?.firstName === "string" ? profileData.firstName : null;
-
   return (
     <div className="relative flex min-h-dvh w-full flex-col px-4">
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
@@ -598,12 +590,6 @@ export default function KalenderPage() {
           </div>
         </div>
       </div>
-
-      <AppBottomNav
-        active="kalender"
-        profileAvatarUrl={profileAvatarUrl}
-        profileFirstName={profileFirstName}
-      />
     </div>
   );
 }

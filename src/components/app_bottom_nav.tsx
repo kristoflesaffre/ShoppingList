@@ -4,12 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-/**
- * Cache-buster: verhoog na wijziging van `public/icons/calendar_filled.svg` zodat browsers
- * geen oude mask-image uit cache halen.
- */
-const CALENDAR_FILLED_SRC = "/icons/calendar_filled.svg?v=2";
-
 /** Mask-iconen: `bg-current` volgt tab `text-*` (primary 500 actief, neutrals 500 inactief → `--gray-500`). */
 function MaskNavIcon({
   src,
@@ -66,6 +60,77 @@ function ReceptenIcon({
   );
 }
 
+/** Zelfde beeldvlak als `calendar.svg` (24×24; inhoud ~17×17,84 volgens clip). */
+const CAL_OUTLINE_VB = 24;
+const CAL_FILLED_W = 19.5;
+const CAL_FILLED_H = 20.5;
+/** Matcht `calendar.svg` clipPath (16,9698 × 17,84). */
+const CAL_CONTENT_W = 16.9698;
+const CAL_CONTENT_H = 17.84;
+const CAL_FILLED_SCALE = Math.min(
+  CAL_CONTENT_W / CAL_FILLED_W,
+  CAL_CONTENT_H / CAL_FILLED_H,
+);
+const CAL_FILLED_TX =
+  (CAL_OUTLINE_VB - CAL_FILLED_W * CAL_FILLED_SCALE) / 2;
+const CAL_FILLED_TY =
+  (CAL_OUTLINE_VB - CAL_FILLED_H * CAL_FILLED_SCALE) / 2;
+
+/**
+ * Gevulde kalender: géén mask — anders worden witte details niet getoond (mask = één kleur).
+ * Zelfde viewBox 24×24 + schaal als outline zodat beide even groot ogen in de tab.
+ */
+function CalendarFilledIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width={24}
+      height={24}
+      viewBox={`0 0 ${CAL_OUTLINE_VB} ${CAL_OUTLINE_VB}`}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <g
+        transform={`translate(${CAL_FILLED_TX} ${CAL_FILLED_TY}) scale(${CAL_FILLED_SCALE})`}
+      >
+        <path
+          d="M5.75.75v4"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+        />
+        <path
+          d="M13.75.75v4"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+        />
+        <rect
+          x={0.75}
+          y={2.75}
+          width={18}
+          height={17}
+          rx={3}
+          fill="currentColor"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        />
+        <path
+          d="M0 8.25H19.49"
+          stroke="var(--white)"
+          strokeWidth={1.5}
+        />
+        <circle cx={5.75} cy={12.25} r={1} fill="var(--white)" />
+        <circle cx={9.75} cy={12.25} r={1} fill="var(--white)" />
+        <circle cx={13.75} cy={12.25} r={1} fill="var(--white)" />
+        <circle cx={5.75} cy={16.25} r={1} fill="var(--white)" />
+        <circle cx={9.75} cy={16.25} r={1} fill="var(--white)" />
+      </g>
+    </svg>
+  );
+}
+
 function KalenderIcon({
   className,
   filled,
@@ -73,12 +138,10 @@ function KalenderIcon({
   className?: string;
   filled?: boolean;
 }) {
-  return (
-    <MaskNavIcon
-      src={filled ? CALENDAR_FILLED_SRC : "/icons/calendar.svg"}
-      className={className}
-    />
-  );
+  if (filled) {
+    return <CalendarFilledIcon className={className} />;
+  }
+  return <MaskNavIcon src="/icons/calendar.svg" className={className} />;
 }
 
 function AvatarIcon({ className }: { className?: string }) {

@@ -7,17 +7,18 @@
 /**
  * App-achtergrond: globale top->white gradient.
  * Receptdetail kan lokaal wit blijven via eigen pagina-wrapper.
+ *
+ * iOS (Safari / PWA + viewport-fit=cover): gradient op `html` tekent vaak niet in de
+ * statusbalk/notch → witte balk. Oplossing: vaste `body::before` over het volledige
+ * scherm + solide `--blue-100` op `html` als fallback.
  */
 html {
   min-height: 100%;
   min-height: 100dvh;
-  background:
-    linear-gradient(
-      180deg,
-      var(--blue-100) 0px,
-      var(--blue-50) 120px,
-      var(--white) 320px
-    );
+  min-height: -webkit-fill-available;
+  /* Onder notch/statusbalk altijd topkleur i.p.v. wit */
+  background-color: var(--blue-100);
+  color-scheme: light;
 }
 
 body {
@@ -27,7 +28,23 @@ body {
   min-height: 100dvh;
   min-height: -webkit-fill-available;
   background: transparent;
+  /* Zodat ::before met z-index:-1 boven html blijft maar onder pagina-inhoud */
   position: relative;
+  z-index: 0;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    var(--blue-100) 0px,
+    var(--blue-50) 120px,
+    var(--white) 320px
+  );
 }
 
 /* Route loading: gecentreerde spinner */

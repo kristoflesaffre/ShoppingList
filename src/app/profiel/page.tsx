@@ -6,7 +6,6 @@ import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { MiniButton } from "@/components/ui/mini_button";
-import { AppBottomNav } from "@/components/app_bottom_nav";
 import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
 import { cn } from "@/lib/utils";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
@@ -195,11 +194,6 @@ export default function ProfielPage() {
         onChange={handleFileChange}
       />
 
-      <AppBottomNav
-        active="profiel"
-        profileAvatarUrl={profileAvatarUrl}
-        profileFirstName={profileFirstName}
-      />
     </div>
   );
 }

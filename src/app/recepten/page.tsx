@@ -23,7 +23,6 @@ import {
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { db } from "@/lib/db";
-import { AppBottomNav } from "@/components/app_bottom_nav";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { SearchBar } from "@/components/ui/search_bar";
@@ -226,18 +225,9 @@ export default function ReceptenPage() {
   const { isLoading: authLoading, user } = db.useAuth();
   const ownerId = user?.id ?? "__no_user__";
 
-  const { isLoading: dataLoading, data: combinedData } = db.useQuery({
-    profiles: {
-      $: { where: { instantUserId: ownerId } },
-    },
+  const { isLoading: dataLoading, data: recipeData } = db.useQuery({
     recipes: { ingredients: {} },
   });
-
-  const existingProfile = combinedData?.profiles?.[0];
-  const recipeData = combinedData;
-  const profileAvatarUrl = existingProfile?.avatarUrl ?? null;
-  const profileFirstName =
-    (existingProfile?.firstName ?? "").trim() || null;
 
   const savedRecipes: SavedRecipe[] = React.useMemo(() => {
     if (!recipeData?.recipes) return [];
@@ -698,12 +688,6 @@ export default function ReceptenPage() {
           />
         </div>
       )}
-
-      <AppBottomNav
-        active="recepten"
-        profileAvatarUrl={profileAvatarUrl}
-        profileFirstName={profileFirstName}
-      />
 
       <div
         className={cn(

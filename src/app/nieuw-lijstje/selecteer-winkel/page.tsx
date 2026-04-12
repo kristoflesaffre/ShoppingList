@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { Button } from "@/components/ui/button";
 import { LogoTile } from "@/components/ui/logo_tile";
-import { AppBottomNav } from "@/components/app_bottom_nav";
 import { db } from "@/lib/db";
 import {
   MASTER_STORE_OPTIONS,
@@ -62,14 +61,7 @@ function SelecteerWinkelContent() {
     lists: {
       $: { where: { ownerId } },
     },
-    profiles: {
-      $: { where: { instantUserId: ownerId } },
-    },
   });
-
-  const profileRow = data?.profiles?.[0];
-  const profileAvatarUrl = profileRow?.avatarUrl ?? null;
-  const profileFirstName = (profileRow?.firstName ?? "").trim() || null;
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
@@ -158,11 +150,6 @@ function SelecteerWinkelContent() {
         </div>
       </div>
 
-      <AppBottomNav
-        active="lijstjes"
-        profileAvatarUrl={profileAvatarUrl}
-        profileFirstName={profileFirstName}
-      />
     </div>
   );
 }
