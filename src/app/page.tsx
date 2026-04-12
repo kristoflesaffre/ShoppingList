@@ -304,6 +304,7 @@ function SortableListCard({
   onDelete: () => void;
   onStartFromMaster: () => void;
 }) {
+  const router = useRouter();
   const {
     attributes,
     listeners,
@@ -370,13 +371,15 @@ function SortableListCard({
         {isEditMode ? (
           card
         ) : list.displayVariant === "master" ? (
-          <button
-            type="button"
-            className="w-full text-left"
-            onClick={onStartFromMaster}
+          <div
+            role="link"
+            tabIndex={0}
+            className="cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 rounded-md"
+            onClick={() => router.push(`/lijstje/${list.id}`)}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push(`/lijstje/${list.id}`); }}
           >
             {card}
-          </button>
+          </div>
         ) : (
           <Link href={`/lijstje/${list.id}`} className="block no-underline">
             {card}
