@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ import {
   type DayEntry,
   type CalendarMeal,
 } from "@/lib/calendar-utils";
+import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 
 /** Ruimte boven/onder inhoud (matcht padding op kalender-container). */
 const CAL_SCROLL_TOP_RESERVE_PX = 52;
@@ -30,16 +32,9 @@ function startOfDay(date: Date): Date {
   return d;
 }
 
-function formatDayHeader(date: Date): { weekday: string; dateStr: string } {
-  const weekday = date.toLocaleDateString("nl-NL", { weekday: "long" });
-  const dateStr = date.toLocaleDateString("nl-NL", {
-    day: "numeric",
-    month: "long",
-  });
-  return {
-    weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1),
-    dateStr,
-  };
+/** Twee-letterige dagafkorting: MA, DI, WO, DO, VR, ZA, ZO */
+function shortDayAbbr(date: Date): string {
+  return date.toLocaleDateString("nl-NL", { weekday: "short" }).slice(0, 2).toUpperCase();
 }
 
 /** Ma–zo van dezelfde week; kort label voor weekkop. */
@@ -97,13 +92,14 @@ function scrollElementToComfortableCenter(el: HTMLElement) {
 }
 
 function dayCollapsedSummary(entry: DayEntry | undefined): string {
-  if (!dayEntryHasContent(entry)) return "Geen planning";
-  const m = entry!.meals.length;
-  const l = entry!.looseIngredients.length;
-  const bits: string[] = [];
-  if (m > 0) bits.push(`${m} ${m === 1 ? "recept" : "recepten"}`);
-  if (l > 0) bits.push("losse ingrediënten");
-  return bits.join(" · ");
+  if (!entry) return "";
+  if (entry.meals.length > 0) {
+    return entry.meals.map((m) => m.recipeName).join(", ");
+  }
+  if (entry.looseIngredients.length > 0) {
+    return entry.looseIngredients.map((i) => i.name).join(", ");
+  }
+  return "";
 }
 
 function ChevronDownIcon({ expanded }: { expanded: boolean }) {
@@ -115,7 +111,7 @@ function ChevronDownIcon({ expanded }: { expanded: boolean }) {
       fill="none"
       aria-hidden
       className={cn(
-        "shrink-0 text-[var(--gray-500)] transition-transform duration-200",
+        "shrink-0 text-[var(--blue-500)] transition-transform duration-200",
         expanded && "rotate-180",
       )}
     >
@@ -209,34 +205,43 @@ function RecipeMealRow({ meal }: { meal: CalendarMeal }) {
   return <div>{content}</div>;
 }
 
-function LooseIngredientsBlock({
+function LooseIngredientPhotoGrid({
   ingredients,
 }: {
   ingredients: { name: string; quantity: string }[];
 }) {
+  const getPhotoUrl = useIngredientPhotoUrl();
   if (ingredients.length === 0) return null;
   return (
-    <div className="pt-1">
-      <div className="flex items-center gap-1.5 pb-2">
-        <span className="h-px flex-1 bg-[var(--gray-100)]" aria-hidden />
-        <span className="text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--text-tertiary)]">
-          Losse ingrediënten
-        </span>
-        <span className="h-px flex-1 bg-[var(--gray-100)]" aria-hidden />
-      </div>
-      <div className="flex flex-col gap-1 pb-1">
-        {ingredients.map((ing, i) => (
-          <div key={i} className="flex items-baseline gap-1.5">
-            <span className="text-sm leading-5 text-text-primary">
-              {ing.name}
-            </span>
-            {ing.quantity ? (
-              <span className="text-sm leading-5 text-[var(--gray-400)]">
-                ({ing.quantity})
-              </span>
-            ) : null}
-          </div>
-        ))}
+    <div className="py-3">
+      <div className="grid w-full grid-cols-3 gap-x-4 gap-y-6">
+        {ingredients.map((ing, i) => {
+          const photoUrl = getPhotoUrl(ing.name, ing.quantity);
+          return (
+            <div key={i} className="flex min-w-0 flex-col items-center gap-2">
+              <div className="relative aspect-square w-full overflow-hidden rounded-sm bg-[var(--white)]">
+                {photoUrl ? (
+                  <Image
+                    src={photoUrl}
+                    alt=""
+                    fill
+                    sizes="100px"
+                    className="object-contain"
+                    aria-hidden
+                  />
+                ) : null}
+              </div>
+              <div className="w-full text-center">
+                <p className="break-words text-[13px] font-medium leading-5 text-[var(--text-primary)]">
+                  {ing.name}
+                </p>
+                <p className="text-[13px] font-normal leading-5 text-[var(--text-secondary)]">
+                  {ing.quantity}
+                </p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -253,103 +258,83 @@ function DayCard({
   date: Date;
   entry: DayEntry | undefined;
   isToday: boolean;
-  /** Alleen in huidige week: eerdere dagen inklapbaar. */
   collapsible?: boolean;
   bodyOpen?: boolean;
   onToggleBody?: () => void;
 }) {
-  const { weekday, dateStr } = formatDayHeader(date);
+  const abbr = shortDayAbbr(date);
   const hasContent = dayEntryHasContent(entry);
   const expanded = collapsible ? (bodyOpen ?? false) : true;
+  const summary = dayCollapsedSummary(entry);
 
-  const headerRow = (
+  // Compacte headerrij: afkorting + samenvatting + Vandaag-badge + chevron
+  const headerContent = (
     <>
-      {isToday ? (
-        <span className="size-2 shrink-0 rounded-full bg-[var(--blue-500)]" aria-hidden />
-      ) : null}
-      <span
-        className={cn(
-          "text-[11px] font-semibold uppercase leading-4 tracking-[0.7px]",
-          isToday ? "text-[var(--blue-500)]" : "text-[var(--text-tertiary)]",
-        )}
-      >
-        {weekday}
+      <span className="w-[35px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap text-base font-bold leading-6 text-text-primary">
+        {abbr}
       </span>
-      <span
-        className={cn(
-          "text-[11px] leading-4",
-          isToday
-            ? "font-medium text-[var(--blue-400)]"
-            : "font-normal text-[var(--text-quaternary,var(--gray-400))]",
-        )}
-      >
-        {dateStr}
+      <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-normal leading-5 text-[var(--gray-400)]">
+        {summary}
       </span>
       {isToday ? (
-        <span className="ml-auto rounded-pill bg-[var(--blue-500)] px-2 py-0.5 text-[11px] font-semibold leading-4 text-white">
+        <span className="shrink-0 rounded bg-[var(--blue-500)] px-2 py-1 text-[10px] font-medium leading-3 text-white">
           Vandaag
         </span>
       ) : null}
     </>
   );
 
-  const body =
-    hasContent ? (
-      <div className="rounded-md bg-[var(--white)] px-4 shadow-[var(--shadow-drop)]">
-        {entry!.meals.map((meal, i) => (
-          <React.Fragment key={meal.recipeGroupId}>
-            {i > 0 && (
-              <div className="h-px bg-[var(--gray-100)]" aria-hidden />
-            )}
-            <RecipeMealRow meal={meal} />
-          </React.Fragment>
-        ))}
-        {entry!.looseIngredients.length > 0 && (
-          <div
-            className={cn(
-              entry!.meals.length > 0 && "border-t border-[var(--gray-100)]",
-            )}
-          >
-            <LooseIngredientsBlock ingredients={entry!.looseIngredients} />
-          </div>
-        )}
-      </div>
-    ) : (
-      <div
-        className="h-px w-full border-t border-dashed border-[var(--gray-100)]"
-        aria-hidden
-      />
-    );
+  const body = hasContent ? (
+    <div className="rounded-md bg-[var(--white)] px-4 shadow-[var(--shadow-drop)]">
+      {entry!.meals.map((meal, i) => (
+        <React.Fragment key={meal.recipeGroupId}>
+          {i > 0 && <div className="h-px bg-[var(--gray-100)]" aria-hidden />}
+          <RecipeMealRow meal={meal} />
+        </React.Fragment>
+      ))}
+      {entry!.looseIngredients.length > 0 && (
+        <div className={cn(entry!.meals.length > 0 && "border-t border-[var(--gray-100)]")}>
+          <LooseIngredientPhotoGrid ingredients={entry!.looseIngredients} />
+        </div>
+      )}
+    </div>
+  ) : null;
 
   if (collapsible && onToggleBody) {
     return (
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col">
         <button
           type="button"
           onClick={onToggleBody}
           aria-expanded={expanded}
-          className="flex w-full min-w-0 items-center gap-2 rounded-md py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+          className="flex w-full min-w-0 items-center gap-3 pb-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
         >
-          {headerRow}
-          <span className="ml-auto">
-            <ChevronDownIcon expanded={expanded} />
-          </span>
+          {headerContent}
+          <ChevronDownIcon expanded={expanded} />
         </button>
-        {!expanded ? (
-          <p className="pl-0 text-sm leading-5 text-[var(--gray-500)]">
-            {dayCollapsedSummary(entry)}
-          </p>
-        ) : (
-          body
-        )}
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows] duration-300 ease-in-out",
+            expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+          )}
+        >
+          <div className="overflow-hidden">
+            <div className="pb-3">{body}</div>
+          </div>
+        </div>
+        <div className="h-px bg-[var(--gray-100)]" aria-hidden />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">{headerRow}</div>
-      {body}
+    <div className="flex flex-col">
+      <div className="flex items-center gap-3 pb-3">
+        {headerContent}
+        {hasContent ? <ChevronDownIcon expanded={true} /> : null}
+      </div>
+      {body ? <div className="pb-3">{body}</div> : null}
+      <div className="h-px bg-[var(--gray-100)]" aria-hidden />
     </div>
   );
 }
@@ -434,7 +419,10 @@ export default function KalenderPage() {
     const todayDate = startOfDay(new Date(yy, mm - 1, dd));
     const past: Date[] = [];
     for (let i = startOffset; i <= 0; i++) {
-      past.push(startOfDay(addDays(todayDate, i)));
+      const d = startOfDay(addDays(todayDate, i));
+      if (dayEntryHasContent(calendarMap.get(toIsoDate(d)))) {
+        past.push(d);
+      }
     }
     const future: Date[] = [];
     for (const [iso, entry] of Array.from(calendarMap.entries())) {
@@ -475,8 +463,8 @@ export default function KalenderPage() {
   );
 
   const getDayBodyOpen = React.useCallback(
-    (iso: string, pastInCurrentWeek: boolean) => {
-      if (!pastInCurrentWeek) return true;
+    (iso: string, collapsible: boolean) => {
+      if (!collapsible) return true;
       return dayBodyOpen[iso] ?? false;
     },
     [dayBodyOpen],
@@ -528,62 +516,65 @@ export default function KalenderPage() {
               const panelId = `kalender-week-${mondayIso}`;
               const isCurrentWeek = mondayIso === currentWeekMondayIso;
               return (
-                <section key={mondayIso} className="flex flex-col gap-4">
+                <section key={mondayIso} className="flex flex-col">
                   <button
                     type="button"
                     id={`${panelId}-toggle`}
                     aria-expanded={wkOpen}
                     aria-controls={panelId}
                     onClick={() => toggleWeek(mondayIso)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left",
-                      "bg-[var(--gray-100)] text-text-primary",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                    )}
+                    className="flex w-full items-center gap-3 pb-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
                   >
-                    <span className="text-[11px] font-semibold uppercase leading-4 tracking-[0.6px] text-[var(--text-tertiary)]">
+                    <span className="shrink-0 text-sm font-normal leading-5 text-[var(--gray-400)]">
                       Week
                     </span>
-                    <span className="min-w-0 flex-1 text-sm font-semibold leading-5">
+                    <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium leading-6 text-text-primary">
                       {formatWeekSectionTitle(monday)}
                     </span>
                     <ChevronDownIcon expanded={wkOpen} />
                   </button>
-                  {wkOpen ? (
-                    <div
-                      id={panelId}
-                      role="region"
-                      aria-labelledby={`${panelId}-toggle`}
-                      className="flex flex-col gap-5 border-l-2 border-[var(--gray-100)] pl-3"
-                    >
-                      {days.map((day) => {
-                        const iso = toIsoDate(day);
-                        const isToday = iso === todayKey;
-                        const pastInCurrentWeek =
-                          isCurrentWeek && iso < todayKey;
-                        return (
-                          <div
-                            key={iso}
-                            ref={isToday ? todayRowRef : undefined}
-                            className={cn(isToday && "scroll-mt-4")}
-                          >
-                            <DayCard
-                              date={day}
-                              entry={calendarMap.get(iso)}
-                              isToday={isToday}
-                              collapsible={pastInCurrentWeek}
-                              bodyOpen={getDayBodyOpen(iso, pastInCurrentWeek)}
-                              onToggleBody={
-                                pastInCurrentWeek
-                                  ? () => toggleDayBody(iso)
-                                  : undefined
-                              }
-                            />
-                          </div>
-                        );
-                      })}
+                  <div className="mb-3 h-px bg-[var(--gray-100)]" aria-hidden />
+                  <div
+                    id={panelId}
+                    role="region"
+                    aria-labelledby={`${panelId}-toggle`}
+                    className={cn(
+                      "grid transition-[grid-template-rows] duration-300 ease-in-out",
+                      wkOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                    )}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="flex flex-col gap-3 pl-4">
+                        {days.map((day) => {
+                          const iso = toIsoDate(day);
+                          const isToday = iso === todayKey;
+                          const isOlderWeek = mondayIso < currentWeekMondayIso;
+                          const collapsible =
+                            isOlderWeek || (isCurrentWeek && iso < todayKey);
+                          return (
+                            <div
+                              key={iso}
+                              ref={isToday ? todayRowRef : undefined}
+                              className={cn(isToday && "scroll-mt-4")}
+                            >
+                              <DayCard
+                                date={day}
+                                entry={calendarMap.get(iso)}
+                                isToday={isToday}
+                                collapsible={collapsible}
+                                bodyOpen={getDayBodyOpen(iso, collapsible)}
+                                onToggleBody={
+                                  collapsible
+                                    ? () => toggleDayBody(iso)
+                                    : undefined
+                                }
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  ) : null}
+                  </div>
                 </section>
               );
             })}
