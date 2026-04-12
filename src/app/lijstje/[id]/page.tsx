@@ -35,7 +35,6 @@ const RecipeIngredientFormSlideIn = dynamic(
   { ssr: false },
 );
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
-import { EditButton } from "@/components/ui/edit_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Snackbar } from "@/components/ui/snackbar";
@@ -1609,7 +1608,7 @@ export default function ListDetailPage({
 
   const listAppHeader = (
       <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
-        <header className="mx-auto flex h-14 max-w-[956px] items-center gap-4 px-4">
+        <header className="relative mx-auto flex h-14 max-w-[956px] items-center px-4">
           <Link
             href="/"
             aria-label="Terug naar lijstjes"
@@ -1617,9 +1616,10 @@ export default function ListDetailPage({
           >
             <BackArrowIcon />
           </Link>
-          <h1 className="flex-1 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+          <h1 className="pointer-events-none absolute inset-x-0 truncate px-24 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
             {listName}
           </h1>
+          <div className="flex-1" />
           {isListOwner ? (
             <button
               type="button"
@@ -1632,6 +1632,7 @@ export default function ListDetailPage({
           ) : (
             <span className="size-6 shrink-0" aria-hidden />
           )}
+          <div className="w-4 shrink-0" aria-hidden />
           <button
             type="button"
             aria-label="Meer opties"
@@ -1650,11 +1651,25 @@ export default function ListDetailPage({
         {/* Geen extra gradient: zelfde principe als gewone lijstdetail — alleen body::before (globals.css). */}
         <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6 px-4">
           {showListDetailHeader ? (
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1 flex flex-col gap-0">
-                <h2 className="text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
-                  {listName}
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
+                    {listName}
+                  </h2>
+                  {!isMasterEmpty ? (
+                    <button
+                      type="button"
+                      aria-label={isEditMode ? "Stop bewerken" : "Bewerken"}
+                      onClick={() => setIsEditMode((p) => !p)}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+                        <path d="M3.17663 19.8235C3.03379 19.6807 2.97224 19.4751 3.01172 19.2777L3.94074 14.633C3.96397 14.5157 4.02087 14.4089 4.10564 14.323L15.2539 3.17679C15.4896 2.94107 15.8728 2.94107 16.1086 3.17679L19.8246 6.89257C19.9361 7.00637 20 7.15965 20 7.31989C20 7.48013 19.9361 7.63341 19.8246 7.7472L17.0376 10.534L8.67642 18.8934C8.59048 18.9782 8.48365 19.0362 8.36636 19.0594L3.72126 19.9884C3.68178 19.9965 3.6423 20 3.60281 20C3.44488 19.9988 3.29043 19.9361 3.17663 19.8235ZM13.7465 6.39094L16.6091 9.25326L18.5426 7.31989L15.6801 4.45757L13.7465 6.39094ZM4.37274 18.6263L7.95062 17.911L15.7544 10.1079L12.893 7.24557L5.08808 15.0499L4.37274 18.6263Z" fill="currentColor"/>
+                      </svg>
+                    </button>
+                  ) : null}
+                </div>
                 {isMasterList && masterStoreLabel ? (
                   <div className="mt-0 flex w-full items-center justify-start gap-2">
                     {/* eslint-disable-next-line @next/next/no-img-element -- store-SVG uit /public/logos */}
@@ -1696,11 +1711,14 @@ export default function ListDetailPage({
                   </div>
                 ) : null}
               </div>
-              {!isMasterEmpty ? (
-                <EditButton
-                  variant={isEditMode ? "active" : "inactive"}
-                  onClick={() => setIsEditMode((p) => !p)}
-                />
+              {isEditMode ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditMode(false)}
+                  className="h-9 shrink-0 rounded-pill bg-[var(--blue-500)] px-4 text-sm font-medium leading-20 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                >
+                  Gereed
+                </button>
               ) : null}
             </div>
           ) : null}
