@@ -38,6 +38,7 @@ import { MiniButton } from "@/components/ui/mini_button";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { SearchBar } from "@/components/ui/search_bar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { SelectTile } from "@/components/ui/select_tile";
 import { Snackbar } from "@/components/ui/snackbar";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { decodeLoyaltyCard } from "@/lib/decode_loyalty_card";
@@ -88,6 +89,13 @@ const LoyaltyCardDisplay = dynamic(
   () =>
     import("@/components/loyalty_card_display").then(
       (m) => m.LoyaltyCardDisplay,
+    ),
+  { ssr: false },
+);
+const CameraBarcodeScannerSlideIn = dynamic(
+  () =>
+    import("@/components/camera_barcode_scanner_slide_in").then(
+      (m) => m.CameraBarcodeScannerSlideIn,
     ),
   { ssr: false },
 );
@@ -1017,6 +1025,7 @@ export default function ListDetailPage({
   const [loyaltyCardSlideOpen, setLoyaltyCardSlideOpen] = React.useState(false);
   const [loyaltyCardViewSlideOpen, setLoyaltyCardViewSlideOpen] = React.useState(false);
   const [loyaltyCardScanResultOpen, setLoyaltyCardScanResultOpen] = React.useState(false);
+  const [loyaltyCameraScanOpen, setLoyaltyCameraScanOpen] = React.useState(false);
   const [loyaltyDecodeResult, setLoyaltyDecodeResult] = React.useState<Extract<DecodeResult, { ok: true }> | null>(null);
   const [loyaltyDecodeError, setLoyaltyDecodeError] = React.useState<string | null>(null);
   const [loyaltySaving, setLoyaltySaving] = React.useState(false);
@@ -2111,53 +2120,89 @@ export default function ListDetailPage({
         onClose={() => setLoyaltyCardSlideOpen(false)}
         title="Klantenkaart koppelen"
         titleId="loyalty-card-slide-title"
-        disableEscapeClose={loyaltyCardScanResultOpen}
+        disableEscapeClose={loyaltyCardScanResultOpen || loyaltyCameraScanOpen}
         footer={
-          <div className="flex w-full flex-col items-center gap-3">
-            {loyaltyDecodeError ? (
-              <p className="text-center text-xs text-[var(--color-error,#ef4444)]">
-                {loyaltyDecodeError}
-              </p>
-            ) : null}
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => {
-                setLoyaltyDecodeError(null);
-                loyaltyCardPhotoInputRef.current?.click();
-              }}
-            >
-              Screenshot toevoegen
-            </Button>
-          </div>
+          loyaltyDecodeError ? (
+            <p className="text-center text-xs text-[var(--color-error,#ef4444)]">
+              {loyaltyDecodeError}
+            </p>
+          ) : null
         }
       >
-        <div className="flex flex-col items-center gap-6 px-4 text-center">
-          <span
-            aria-hidden="true"
-            className="inline-block size-20 shrink-0 bg-[var(--blue-500)]"
-            style={{
-              WebkitMaskImage: 'url("/icons/qr.svg")',
-              maskImage: 'url("/icons/qr.svg")',
-              WebkitMaskRepeat: "no-repeat",
-              maskRepeat: "no-repeat",
-              WebkitMaskSize: "contain",
-              maskSize: "contain",
-              WebkitMaskPosition: "center",
-              maskPosition: "center",
+        <div className="flex w-full flex-col gap-4 px-4">
+          <button
+            type="button"
+            onClick={() => {
+              setLoyaltyDecodeError(null);
+              setLoyaltyCameraScanOpen(true);
             }}
-          />
-          <div className="flex flex-col gap-2">
-            <h3 className="text-base font-semibold leading-24 tracking-normal text-[var(--text-primary)]">
-              Maak een screenshot van je klantenkaart
-            </h3>
-            <p className="text-sm font-normal leading-20 tracking-normal text-[var(--text-secondary)]">
-              Upload een screenshot van de QR-code of barcode op je klantenkaart.
-              We bewaren deze zodat de kassier hem kan scannen tijdens het afrekenen.
-            </p>
-          </div>
+            className="w-full bg-transparent p-0 text-left"
+          >
+            <SelectTile
+              title="Scan met camera"
+              subtitle="Richt je camera op de code"
+              icon={
+                <span
+                  role="img"
+                  aria-label="Camera"
+                  className="inline-block size-10 shrink-0 bg-[var(--action-primary)]"
+                  style={{
+                    WebkitMaskImage: 'url("/icons/camera.svg")',
+                    maskImage: 'url("/icons/camera.svg")',
+                    WebkitMaskRepeat: "no-repeat",
+                    maskRepeat: "no-repeat",
+                    WebkitMaskSize: "contain",
+                    maskSize: "contain",
+                    WebkitMaskPosition: "center",
+                    maskPosition: "center",
+                  }}
+                />
+              }
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setLoyaltyDecodeError(null);
+              loyaltyCardPhotoInputRef.current?.click();
+            }}
+            className="w-full bg-transparent p-0 text-left"
+          >
+            <SelectTile
+              title="Screenshot toevoegen"
+              subtitle="Upload een afbeelding"
+              icon={
+                <span
+                  role="img"
+                  aria-label="QR-code"
+                  className="inline-block size-10 shrink-0 bg-[var(--action-primary)]"
+                  style={{
+                    WebkitMaskImage: 'url("/icons/qr.svg")',
+                    maskImage: 'url("/icons/qr.svg")',
+                    WebkitMaskRepeat: "no-repeat",
+                    maskRepeat: "no-repeat",
+                    WebkitMaskSize: "contain",
+                    maskSize: "contain",
+                    WebkitMaskPosition: "center",
+                    maskPosition: "center",
+                  }}
+                />
+              }
+            />
+          </button>
         </div>
       </SlideInModal>
+
+      <CameraBarcodeScannerSlideIn
+        open={loyaltyCameraScanOpen}
+        onClose={() => setLoyaltyCameraScanOpen(false)}
+        onDecoded={(result) => {
+          setLoyaltyCameraScanOpen(false);
+          setLoyaltyDecodeResult(result);
+          setLoyaltyCardScanResultOpen(true);
+        }}
+      />
 
       <SlideInModal
         open={loyaltyCardViewSlideOpen}

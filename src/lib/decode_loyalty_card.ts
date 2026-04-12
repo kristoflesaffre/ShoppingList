@@ -16,21 +16,19 @@ const QR_FORMATS = new Set([
   "MaxiCode",
 ]);
 
-export async function decodeLoyaltyCard(dataUrl: string): Promise<DecodeResult> {
+/**
+ * Decodeer een barcode/QR-code vanuit een `ImageData` object.
+ * Wordt intern gebruikt door `decodeLoyaltyCard` en direct door de live camera scanner.
+ */
+export async function decodeLoyaltyCardFromImageData(
+  imageData: ImageData,
+  opts?: { tryHarder?: boolean },
+): Promise<DecodeResult> {
   const { readBarcodes } = await import("zxing-wasm/reader");
 
-  const img = await loadImage(dataUrl);
-  const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return { ok: false, error: "Canvas niet beschikbaar." };
-  ctx.drawImage(img, 0, 0);
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
   const results = await readBarcodes(imageData, {
-    formats: [],   // [] = all supported formats
-    tryHarder: true,
+    formats: [],
+    tryHarder: opts?.tryHarder ?? true,
   });
 
   const hit = results.find((r) => r.isValid);
@@ -41,6 +39,18 @@ export async function decodeLoyaltyCard(dataUrl: string): Promise<DecodeResult> 
   const fmt = hit.format as string;
   const codeType: LoyaltyCardCodeType = QR_FORMATS.has(fmt) ? "qr" : "barcode";
   return { ok: true, codeType, codeFormat: fmt, rawValue: hit.text };
+}
+
+export async function decodeLoyaltyCard(dataUrl: string): Promise<DecodeResult> {
+  const img = await loadImage(dataUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return { ok: false, error: "Canvas niet beschikbaar." };
+  ctx.drawImage(img, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  return decodeLoyaltyCardFromImageData(imageData, { tryHarder: true });
 }
 
 function loadImage(dataUrl: string): Promise<HTMLImageElement> {
