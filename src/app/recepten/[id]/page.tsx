@@ -597,8 +597,9 @@ export default function ReceptDetailPage() {
                     gridClass="grid-cols-3"
                     lgGridClass="lg:grid-cols-4"
                     getPhotoUrl={getPhotoUrl}
-                    textSize="text-[10px]"
+                    textSize="text-[13px]"
                     lgTextSize="lg:text-[15px]"
+                    leadingClass="leading-5 lg:leading-4"
                   />
                 )
               )}
@@ -798,6 +799,7 @@ function IngredientGrid({
   getPhotoUrl,
   textSize,
   lgTextSize,
+  leadingClass = "leading-4",
 }: {
   ingredients: RecipeIngredient[];
   /** CSS grid-cols class for mobile, e.g. "grid-cols-3" */
@@ -807,6 +809,8 @@ function IngredientGrid({
   getPhotoUrl: (name: string, quantity?: string) => string | null;
   textSize: string;
   lgTextSize: string;
+  /** Regelhoogte naam + hoeveelheid (default leading-4); bij grotere mobiele tekst o.a. leading-5 lg:leading-4 */
+  leadingClass?: string;
 }) {
   return (
     <div className={cn("grid w-full gap-x-4 gap-y-6", gridClass, lgGridClass)}>
@@ -831,7 +835,8 @@ function IngredientGrid({
                 className={cn(
                   textSize,
                   lgTextSize,
-                  "font-medium leading-4 text-[var(--text-primary)] break-words",
+                  "font-medium text-[var(--text-primary)] break-words",
+                  leadingClass,
                 )}
               >
                 {ing.name}
@@ -840,7 +845,8 @@ function IngredientGrid({
                 className={cn(
                   textSize,
                   lgTextSize,
-                  "font-normal leading-4 text-[var(--text-secondary)]",
+                  "font-normal text-[var(--text-secondary)]",
+                  leadingClass,
                 )}
               >
                 {ing.quantity}
