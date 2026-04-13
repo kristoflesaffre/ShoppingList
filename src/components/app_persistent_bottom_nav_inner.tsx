@@ -11,6 +11,7 @@ function isMainBottomNavRoute(pathname: string): boolean {
   if (pathname === "/") return true;
   if (pathname === "/recepten") return true;
   if (pathname === "/kalender") return true;
+  if (pathname === "/klantenkaarten") return true;
   if (pathname === "/profiel") return true;
   if (pathname === "/nieuw-lijstje/selecteer-winkel") return true;
   if (pathname === "/nieuw-lijstje/selecteer-master-lijstje") return true;
@@ -19,6 +20,7 @@ function isMainBottomNavRoute(pathname: string): boolean {
 
 function navActiveForPath(pathname: string): AppBottomNavProps["active"] {
   if (pathname === "/kalender") return "kalender";
+  if (pathname === "/klantenkaarten") return "klantenkaarten";
   if (pathname === "/profiel") return "profiel";
   if (pathname === "/recepten") return "recepten";
   return "lijstjes";

@@ -86,7 +86,7 @@ const schema = i.schema({
       passwordSalt: i.string().optional(),
       avatarUrl: i.string().optional(),
     }),
-    /** Gedecodeerde klantenkaart (QR of barcode) gekoppeld aan een masterlijstje. */
+    /** Gedecodeerde klantenkaart (QR of barcode) — gekoppeld aan een lijst én/of rechtstreeks aan een gebruiker. */
     loyaltyCards: i.entity({
       /** “qr” of “barcode” */
       codeType: i.string(),
@@ -97,6 +97,11 @@ const schema = i.schema({
       /** Naam die de gebruiker heeft ingegeven (bijv. “Colruyt”). */
       cardName: i.string(),
       createdAtIso: i.string(),
+      /**
+       * Eigenaar (Instant auth user id). Gezet bij zelfstandige klantenkaarten (klantenkaarten-pagina).
+       * Ontbreekt op kaarten die enkel via een lijst-link opgeslagen zijn.
+       */
+      ownerId: i.string().optional().indexed(),
     }),
   },
   links: {

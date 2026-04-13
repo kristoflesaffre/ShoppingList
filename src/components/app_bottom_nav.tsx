@@ -164,9 +164,36 @@ function AvatarIcon({ className }: { className?: string }) {
   );
 }
 
+function KaartenIcon({
+  className,
+  filled,
+}: {
+  className?: string;
+  filled?: boolean;
+}) {
+  if (filled) {
+    return (
+      <svg
+        className={className}
+        width={24}
+        height={24}
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden
+      >
+        <rect x="2" y="5" width="20" height="14" rx="2" fill="currentColor" />
+        <path d="M2 10H22" stroke="var(--white)" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M6 15.5H10" stroke="var(--white)" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  return <MaskNavIcon src="/icons/card.svg" className={className} />;
+}
+
 export interface AppBottomNavProps {
   /** Actieve tab – Figma 854:7039 */
-  active: "lijstjes" | "recepten" | "kalender" | "profiel";
+  active: "lijstjes" | "recepten" | "kalender" | "klantenkaarten" | "profiel";
   /** Data-URL of URL voor profieltab; null = placeholder icoon */
   profileAvatarUrl: string | null;
   /**
@@ -197,7 +224,7 @@ export function AppBottomNav({
       )}
     >
       <nav
-        className="mx-auto grid min-h-[40px] w-full max-w-[390px] grid-cols-4 items-center px-4 py-1"
+        className="mx-auto grid min-h-[40px] w-full max-w-[390px] grid-cols-5 items-center px-2 py-1"
         aria-label="Hoofdnavigatie"
       >
         <div className="flex justify-center">
@@ -253,6 +280,24 @@ export function AppBottomNav({
             <KalenderIcon className="size-6" filled={active === "kalender"} />
             <span className="text-xs font-normal leading-4 tracking-normal">
               Kalender
+            </span>
+          </Link>
+        </div>
+
+        <div className="flex justify-center">
+          <Link
+            href="/klantenkaarten"
+            aria-current={active === "klantenkaarten" ? "page" : undefined}
+            className={cn(
+              tabClass,
+              active === "klantenkaarten"
+                ? "text-[var(--blue-500)]"
+                : "text-[var(--gray-500)]",
+            )}
+          >
+            <KaartenIcon className="size-6" filled={active === "klantenkaarten"} />
+            <span className="text-xs font-normal leading-4 tracking-normal">
+              Kaarten
             </span>
           </Link>
         </div>
