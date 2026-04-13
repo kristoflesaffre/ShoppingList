@@ -143,7 +143,7 @@ export function CameraBarcodeScannerSlideIn({
 
       <div className="flex flex-col items-center gap-4 px-4 pb-6">
         {cameraError ? (
-          <div className="flex min-h-[240px] w-full flex-col items-center justify-center gap-3 rounded-[12px] bg-[var(--gray-50)] px-6 text-center">
+          <div className="flex min-h-[240px] w-full max-w-[480px] flex-col items-center justify-center gap-3 rounded-[12px] bg-[var(--gray-50)] px-6 text-center">
             <span
               aria-hidden="true"
               className="inline-block size-12 shrink-0 bg-[var(--gray-400)]"
@@ -161,7 +161,7 @@ export function CameraBarcodeScannerSlideIn({
             <p className="text-sm font-medium text-[var(--text-secondary)]">{cameraError}</p>
           </div>
         ) : (
-          <div className="relative w-full overflow-hidden rounded-[12px] bg-black" style={{ aspectRatio: "4/3" }}>
+          <div className="relative w-full max-w-[480px] overflow-hidden rounded-[12px] bg-black" style={{ aspectRatio: "4/3", maxHeight: "min(55dvh, 360px)" }}>
             {/* Video feed */}
             <video
               ref={videoRef}

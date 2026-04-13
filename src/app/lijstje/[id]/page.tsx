@@ -2221,7 +2221,7 @@ export default function ListDetailPage({
         onClose={() => setLoyaltyCardViewSlideOpen(false)}
         title="Klantenkaart"
         titleId="loyalty-card-view-slide-title"
-        disableEscapeClose={loyaltyCardScanResultOpen}
+        disableEscapeClose={loyaltyCardScanResultOpen || loyaltyCameraScanOpen}
         footer={
           <div className="flex w-full flex-col items-center gap-3">
             {loyaltyDecodeError ? (
@@ -2231,6 +2231,17 @@ export default function ListDetailPage({
             ) : null}
             <Button
               type="button"
+              variant="primary"
+              onClick={() => {
+                setLoyaltyDecodeError(null);
+                setLoyaltySlot(loyaltyViewSlot);
+                setLoyaltyCameraScanOpen(true);
+              }}
+            >
+              Scan met camera
+            </Button>
+            <Button
+              type="button"
               variant="secondary"
               onClick={() => {
                 setLoyaltyDecodeError(null);
@@ -2238,7 +2249,7 @@ export default function ListDetailPage({
                 loyaltyCardPhotoInputRef.current?.click();
               }}
             >
-              Nieuwe screenshot opladen
+              Screenshot opladen
             </Button>
           </div>
         }
@@ -2249,14 +2260,33 @@ export default function ListDetailPage({
               isLidlDelhaizeList && loyaltyViewSlot === "lidl"
                 ? existingLoyaltyCardSecondary
                 : existingLoyaltyCard;
+            const viewLogoSrc = isLidlDelhaizeList
+              ? loyaltyViewSlot === "lidl"
+                ? LOYALTY_COMBO_SECONDARY_LOGO_SRC
+                : LOYALTY_COMBO_PRIMARY_LOGO_SRC
+              : masterStoreLabelFromListIcon(masterIcon)
+                ? masterIcon
+                : "";
             return cardForView ? (
-              <div className="flex items-center justify-center rounded-xl bg-white p-4 shadow-sm">
-                <LoyaltyCardDisplay
-                  codeType={cardForView.codeType as "qr" | "barcode"}
-                  codeFormat={cardForView.codeFormat}
-                  rawValue={cardForView.rawValue}
-                />
-              </div>
+              <>
+                <div className="flex items-center justify-center rounded-xl bg-white p-4 shadow-sm">
+                  <LoyaltyCardDisplay
+                    codeType={cardForView.codeType as "qr" | "barcode"}
+                    codeFormat={cardForView.codeFormat}
+                    rawValue={cardForView.rawValue}
+                  />
+                </div>
+                {viewLogoSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos
+                  <img
+                    src={viewLogoSrc}
+                    alt=""
+                    width={64}
+                    height={64}
+                    className="pointer-events-none size-16 shrink-0 object-contain"
+                  />
+                ) : null}
+              </>
             ) : null;
           })()}
         </div>
