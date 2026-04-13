@@ -145,8 +145,5 @@ function QrDisplay({
     );
   }
 
-  if (typeof QRCode !== "function") {
-    return null;
-  }
   return <QRCode value={value} size={pxSize} />;
 }
