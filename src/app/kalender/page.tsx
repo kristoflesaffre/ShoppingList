@@ -457,9 +457,9 @@ export default function KalenderPage() {
   if (authLoading || !user || dataLoading) return <PageSpinner />;
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col px-4">
-      <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6">
+    <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
+      <div className="flex min-w-0 flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
+        <div className="mx-auto flex w-full min-w-0 max-w-[956px] flex-1 flex-col gap-6">
           {/* Paginatitel */}
           <h1 className="text-page-title font-bold leading-8 tracking-normal text-text-primary">
             Kalender

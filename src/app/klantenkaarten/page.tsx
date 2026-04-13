@@ -17,10 +17,8 @@ import { LoyaltyCardScanResultSlideIn } from "@/components/loyalty_card_scan_res
 import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
 import { decodeLoyaltyCard } from "@/lib/decode_loyalty_card";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
-import {
-  APP_FAB_BOTTOM_CLASS,
-  APP_FAB_INNER_FLUSH_CLASS,
-} from "@/lib/app-layout";
+import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
+import { cn } from "@/lib/utils";
 import type { DecodeResult } from "@/lib/loyalty_card";
 
 type SuccessDecodeResult = Extract<DecodeResult, { ok: true }>;
@@ -267,8 +265,8 @@ export default function KlantenKaartenPage() {
           : "relative flex min-h-dvh w-full flex-col px-[16px]"
       }
     >
-      <div className="flex flex-1 flex-col pb-[96px] pt-[calc(52px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col pb-[96px] pt-[calc(52px+env(safe-area-inset-top,0px))]">
+        <div className="mx-auto flex w-full min-w-0 max-w-[956px] flex-1 flex-col">
           <div className="mb-6 flex items-center gap-4">
             <h1 className="flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
               Klantenkaarten
@@ -321,16 +319,21 @@ export default function KlantenKaartenPage() {
         </div>
       </div>
 
-      {/* FAB */}
+      {/* FAB — zelfde uitlijning als home/recepten: volle breedte + max-w-956 (niet fixed right-4) */}
       <div
-        className={`fixed right-4 z-10 ${APP_FAB_BOTTOM_CLASS}`}
-        style={{ right: "max(16px, env(safe-area-inset-right, 16px))" }}
+        className={cn(
+          "pointer-events-none fixed inset-x-0 z-20",
+          APP_FAB_BOTTOM_CLASS,
+        )}
       >
-        <div className={APP_FAB_INNER_FLUSH_CLASS}>
-          <FloatingActionButton
-            aria-label="Klantenkaart toevoegen"
-            onClick={() => setAddStoreOpen(true)}
-          />
+        <div className="px-[16px]">
+          <div className="mx-auto flex w-full max-w-[956px] justify-end">
+            <FloatingActionButton
+              aria-label="Klantenkaart toevoegen"
+              className="pointer-events-auto"
+              onClick={() => setAddStoreOpen(true)}
+            />
+          </div>
         </div>
       </div>
 
