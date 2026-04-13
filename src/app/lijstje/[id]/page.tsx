@@ -187,6 +187,17 @@ const SECTION_ORDER = [
   "Zondag",
 ] as const;
 
+const WEEK_DAYS = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"] as const;
+
+/** Bouwt de dagvolgorde op startend vanaf de eerstvolgende dag (morgen-first). */
+function buildDaySectionOrder(): readonly string[] {
+  // getDay(): 0=zo,1=ma,…,6=za → omrekenen naar ma=0…zo=6
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  const nextIdx = (todayIdx + 1) % 7;
+  const rotatedDays = [...WEEK_DAYS.slice(nextIdx), ...WEEK_DAYS.slice(0, nextIdx)];
+  return ["Algemeen", ...rotatedDays];
+}
+
 
 /** public/icons/arrow.svg – terugpijl */
 function BackArrowIcon({ className }: { className?: string }) {
@@ -1495,7 +1506,8 @@ export default function ListDetailPage({
       existing.push(item);
       grouped.set(item.section, existing);
     }
-    return SECTION_ORDER.filter((s) => grouped.has(s)).map((s) => ({
+    const order = buildDaySectionOrder();
+    return order.filter((s) => grouped.has(s)).map((s) => ({
       title: s,
       items: grouped.get(s)!,
     }));
