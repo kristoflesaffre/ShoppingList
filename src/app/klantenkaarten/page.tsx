@@ -120,6 +120,10 @@ const SCALE_EASE = "cubic-bezier(0.14, 0.82, 0.22, 1)";
 const ICON_FADE_MS = 440;
 const ICON_FADE_EASE = "cubic-bezier(0.22, 1, 0.42, 1)";
 
+/** Figma sp-16 = 16px kolomgap; row-gap iets groter bij scaleY zodat visuele rijafstand gelijk blijft. */
+const GRID_GAP_PX = 16;
+const GRID_ROW_GAP_EXTRA_SCALE_Y_PX = 6;
+
 /**
  * Figma 1096:6757 — normaal: hele tegel klikbaar.
  * Figma 1096:7436 — bewerken: logo + naam + rij potlood | scheidingslijn | prullenbak (sp-8 kolom).
@@ -407,7 +411,18 @@ export default function KlantenKaartenPage() {
                 ) : null}
               </div>
 
-              <div className="grid grid-cols-3 items-start gap-4 overflow-visible">
+              <div
+                className="grid grid-cols-3 items-start overflow-visible"
+                style={
+                  isEditMode && !prefersReducedMotion
+                    ? ({
+                        columnGap: GRID_GAP_PX,
+                        // scaleY(1.04) + origin-top eet visuele rijruimte; compenseer zodat ≈ kolom 16px
+                        rowGap: GRID_GAP_PX + GRID_ROW_GAP_EXTRA_SCALE_Y_PX,
+                      } as React.CSSProperties)
+                    : ({ gap: GRID_GAP_PX } as React.CSSProperties)
+                }
+              >
                 {cards.map((card) => (
                   <LoyaltyCardGridTile
                     key={card.id}
