@@ -8,6 +8,7 @@ import {
 } from "@/components/app_bottom_nav";
 
 function isMainBottomNavRoute(pathname: string): boolean {
+  if (pathname.startsWith("/klantenkaarten/toevoegen")) return false;
   if (pathname === "/") return true;
   if (pathname === "/recepten") return true;
   if (pathname === "/kalender") return true;

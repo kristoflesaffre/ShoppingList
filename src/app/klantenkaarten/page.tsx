@@ -3,25 +3,16 @@
 import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 import { MiniButton } from "@/components/ui/mini_button";
-import { SelectTile } from "@/components/ui/select_tile";
-import { LogoTile } from "@/components/ui/logo_tile";
-import { FloatingActionButton } from "@/components/ui/floating_action_button";
-import { CameraBarcodeScannerSlideIn } from "@/components/camera_barcode_scanner_slide_in";
-import { LoyaltyCardScanResultSlideIn } from "@/components/loyalty_card_scan_result_slide_in";
 import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
-import { decodeLoyaltyCard } from "@/lib/decode_loyalty_card";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
+import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
 import { cn } from "@/lib/utils";
-import type { DecodeResult } from "@/lib/loyalty_card";
-
-type SuccessDecodeResult = Extract<DecodeResult, { ok: true }>;
 
 type LoyaltyCardRow = {
   id: string;
@@ -32,30 +23,69 @@ type LoyaltyCardRow = {
   createdAtIso: string;
 };
 
-/** Individuele winkelopties — geen combi-slug (standalone kaarten hebben altijd één code). */
-const STANDALONE_STORE_OPTIONS = MASTER_STORE_OPTIONS.filter(
-  (s) => s.slug !== "lidl-delhaize",
-);
-
 function logoSrcForCardName(cardName: string): string {
   return MASTER_STORE_OPTIONS.find((s) => s.label === cardName)?.logoSrc ?? "";
 }
 
-function ChevronRightIcon({ className }: { className?: string }) {
+/** Figma 1096:7436 EditButton — alert-func-check 24×24 + label */
+function CheckmarkIcon({ className }: { className?: string }) {
   return (
     <svg
       className={className}
-      width="16"
-      height="16"
+      width={24}
+      height={24}
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
       aria-hidden
     >
-      <path d="M9 18l6-6-6-6" />
+      <path
+        d="M20 6L9 17l-5-5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Figma 1096:7436 — action-func-bin, rood (outline) */
+function TrashOutlineIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width={24}
+      height={24}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M5 6h14l-1 14H6L5 6Zm5 5v6m4-6v6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Figma 1096:6757 — action-func-pencil 24×24 */
+function PencilIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width={24}
+      height={24}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M3.17663 19.8235C3.03379 19.6807 2.97224 19.4751 3.01172 19.2777L3.94074 14.633C3.96397 14.5157 4.02087 14.4089 4.10564 14.323L15.2539 3.17679C15.4896 2.94107 15.8728 2.94107 16.1086 3.17679L19.8246 6.89257C19.9361 7.00637 20 7.15965 20 7.31989C20 7.48013 19.9361 7.63341 19.8246 7.7472L17.0376 10.534L8.67642 18.8934C8.59048 18.9782 8.48365 19.0362 8.36636 19.0594L3.72126 19.9884C3.68178 19.9965 3.6423 20 3.60281 20C3.44488 19.9988 3.29043 19.9361 3.17663 19.8235ZM13.7465 6.39094L16.6091 9.25326L18.5426 7.31989L15.6801 4.45757L13.7465 6.39094ZM4.37274 18.6263L7.95062 17.911L15.7544 10.1079L12.893 7.24557L5.08808 15.0499L4.37274 18.6263Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -64,8 +94,8 @@ function CardIcon({ className }: { className?: string }) {
   return (
     <svg
       className={className}
-      width="24"
-      height="24"
+      width={24}
+      height={24}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -80,61 +110,178 @@ function CardIcon({ className }: { className?: string }) {
   );
 }
 
-function StoreLogoImg({ src }: { src: string }) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos
-    <img
-      src={src}
-      alt=""
-      width={40}
-      height={40}
-      className="size-10 max-h-full max-w-full object-contain"
-      aria-hidden
-    />
-  );
-}
+const loyaltyTileCardClass =
+  "flex w-full min-w-0 flex-col rounded-[8px] bg-[var(--white)] p-3 text-center shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)]";
 
-function CardListRow({
+/** Zachte ease-out; scaleY groeit naar beneden (origin-top). */
+const SCALE_MS = 560;
+const SCALE_EASE = "cubic-bezier(0.14, 0.82, 0.22, 1)";
+/** Infaden actie-iconen parallel met schaal. */
+const ICON_FADE_MS = 440;
+const ICON_FADE_EASE = "cubic-bezier(0.22, 1, 0.42, 1)";
+
+/**
+ * Figma 1096:6757 — normaal: hele tegel klikbaar.
+ * Figma 1096:7436 — bewerken: logo + naam + rij potlood | scheidingslijn | prullenbak (sp-8 kolom).
+ * Animatie: schaal en infade starten tegelijk. scaleY met origin-top: bovenkant blijft vast, groei naar onder.
+ */
+function LoyaltyCardGridTile({
   card,
-  onClick,
+  isEditMode,
+  prefersReducedMotion,
+  onOpen,
+  onRequestDelete,
 }: {
   card: LoyaltyCardRow;
-  onClick: () => void;
+  isEditMode: boolean;
+  prefersReducedMotion: boolean;
+  onOpen: () => void;
+  onRequestDelete: () => void;
 }) {
+  const [scaleExpanded, setScaleExpanded] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    if (!isEditMode) {
+      setScaleExpanded(false);
+      return;
+    }
+    if (prefersReducedMotion) {
+      setScaleExpanded(true);
+      return;
+    }
+    setScaleExpanded(false);
+    let id2 = 0;
+    const id1 = requestAnimationFrame(() => {
+      id2 = requestAnimationFrame(() => {
+        setScaleExpanded(true);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(id1);
+      cancelAnimationFrame(id2);
+    };
+  }, [isEditMode, prefersReducedMotion]);
+
   const logoSrc = logoSrcForCardName(card.cardName);
-  const codeLabel =
-    card.codeType === "qr" ? "QR-code" : `Barcode · ${card.codeFormat}`;
+
+  const logoBlock = (
+    <div className="relative size-12 shrink-0 overflow-hidden">
+      {logoSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos
+        <img
+          src={logoSrc}
+          alt=""
+          width={48}
+          height={48}
+          className="size-full object-contain object-center"
+        />
+      ) : (
+        <span className="flex size-full items-center justify-center">
+          <CardIcon className="size-8 text-[var(--gray-400)]" />
+        </span>
+      )}
+    </div>
+  );
+
+  const nameBlock = (
+    <p className="line-clamp-2 w-full min-w-0 break-words text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
+      {card.cardName}
+    </p>
+  );
+
+  /** Alleen verticaal schalen — geen breedte (geen scaleX). */
+  const scaledForEdit =
+    !prefersReducedMotion && isEditMode && scaleExpanded
+      ? "scale-x-100 scale-y-[1.04]"
+      : "scale-x-100 scale-y-100";
+
+  const showEditChrome =
+    isEditMode && (prefersReducedMotion || scaleExpanded);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full min-w-0 items-center gap-4 rounded-[12px] bg-[var(--white)] px-4 py-3 text-left shadow-[0px_1px_4px_0px_rgba(0,0,0,0.08)] transition-colors hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)]"
+    <div
+      style={
+        prefersReducedMotion || !isEditMode
+          ? undefined
+          : ({
+              transitionDuration: `${SCALE_MS}ms`,
+              transitionTimingFunction: SCALE_EASE,
+            } as React.CSSProperties)
+      }
+      className={cn(
+        "relative min-w-0 w-full origin-top",
+        /* Alleen in bewerkmodus transform animeren; in default direct scale 1 (geen “vastgelopen” schaal). */
+        !prefersReducedMotion &&
+          isEditMode &&
+          "transition-transform motion-reduce:transition-none",
+        scaledForEdit,
+      )}
     >
-      <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-[var(--gray-50)] p-1">
-        {logoSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos
-          <img
-            src={logoSrc}
-            alt=""
-            width={40}
-            height={40}
-            className="size-10 object-contain"
+      {/*
+        Default: alleen logo + naam (compacte Figma-hoogte). Editable: zelfde gap-2 + actierij.
+        Geen placeholder-rij in default — die liet tegels kunstmatig hoog ogen na terugschakelen.
+      */}
+      <div
+        className={cn(loyaltyTileCardClass, "relative flex flex-col items-center gap-2")}
+      >
+        <div className={cn(!isEditMode && "pointer-events-none")}>{logoBlock}</div>
+        <div className={cn(!isEditMode && "pointer-events-none w-full min-w-0")}>
+          {nameBlock}
+        </div>
+        {isEditMode ? (
+          <div
+            className={cn(
+              "relative z-[1] flex h-8 w-full min-w-0 shrink-0 items-center justify-between",
+              !prefersReducedMotion &&
+                "transition-opacity motion-reduce:transition-none",
+              showEditChrome
+                ? "opacity-100"
+                : "pointer-events-none opacity-0",
+            )}
+            style={
+              prefersReducedMotion
+                ? undefined
+                : ({
+                    transitionDuration: `${ICON_FADE_MS}ms`,
+                    transitionTimingFunction: ICON_FADE_EASE,
+                  } as React.CSSProperties)
+            }
+          >
+            <button
+              type="button"
+              aria-label={`${card.cardName} openen`}
+              onClick={onOpen}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              <PencilIcon className="size-6" />
+            </button>
+            <div
+              className="h-8 w-px shrink-0 bg-[var(--gray-100)]"
+              aria-hidden
+            />
+            <button
+              type="button"
+              aria-label={`${card.cardName} verwijderen`}
+              onClick={(e) => {
+                e.preventDefault();
+                onRequestDelete();
+              }}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full p-1 text-[var(--error-400)] transition-colors [@media(hover:hover)]:hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              <TrashOutlineIcon className="size-6" />
+            </button>
+          </div>
+        ) : null}
+        {!isEditMode ? (
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-label={`${card.cardName} openen`}
+            className="absolute inset-0 z-[1] rounded-[8px] border-0 bg-transparent p-0 transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
           />
-        ) : (
-          <CardIcon className="size-6 text-[var(--gray-400)]" />
-        )}
+        ) : null}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold leading-5 tracking-normal text-[var(--text-primary)]">
-          {card.cardName}
-        </p>
-        <p className="truncate text-xs font-normal text-[var(--text-secondary)]">
-          {codeLabel}
-        </p>
-      </div>
-      <ChevronRightIcon className="size-5 shrink-0 text-[var(--gray-400)]" />
-    </button>
+    </div>
   );
 }
 
@@ -153,24 +300,19 @@ export default function KlantenKaartenPage() {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
 
-  // ── Add flow ──────────────────────────────────────────────────────────────
-  const [addStoreOpen, setAddStoreOpen] = React.useState(false);
-  const [addScanMethodOpen, setAddScanMethodOpen] = React.useState(false);
-  const [addCameraOpen, setAddCameraOpen] = React.useState(false);
-  const [addResultOpen, setAddResultOpen] = React.useState(false);
-  const [selectedStore, setSelectedStore] = React.useState<
-    (typeof MASTER_STORE_OPTIONS)[number] | null
-  >(null);
-  const [decodeResult, setDecodeResult] =
-    React.useState<SuccessDecodeResult | null>(null);
-  const [decodeError, setDecodeError] = React.useState<string | null>(null);
-  const [saving, setSaving] = React.useState(false);
-  const photoInputRef = React.useRef<HTMLInputElement>(null);
-
-  // ── View / delete flow ────────────────────────────────────────────────────
   const [viewCard, setViewCard] = React.useState<LoyaltyCardRow | null>(null);
   const [viewOpen, setViewOpen] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = React.useState(false);
+
+  const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mq.matches);
+    const onChange = () => setPrefersReducedMotion(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   const cards: LoyaltyCardRow[] = React.useMemo(() => {
     if (!data?.loyaltyCards) return [];
@@ -190,54 +332,6 @@ export default function KlantenKaartenPage() {
       }));
   }, [data]);
 
-  const handleStoreSelect = (store: (typeof MASTER_STORE_OPTIONS)[number]) => {
-    setSelectedStore(store);
-    setAddStoreOpen(false);
-    setDecodeError(null);
-    setDecodeResult(null);
-    setAddScanMethodOpen(true);
-  };
-
-  const handlePhotoFile = async (file: File) => {
-    setDecodeError(null);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result as string;
-      const result = await decodeLoyaltyCard(dataUrl);
-      if (!result.ok) {
-        setDecodeError(result.error);
-        return;
-      }
-      setDecodeResult(result);
-      setAddScanMethodOpen(false);
-      setAddResultOpen(true);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSave = async () => {
-    if (!decodeResult || !user || !selectedStore) return;
-    setSaving(true);
-    try {
-      const cardId = iid();
-      await db.transact(
-        db.tx.loyaltyCards[cardId].update({
-          codeType: decodeResult.codeType,
-          codeFormat: decodeResult.codeFormat,
-          rawValue: decodeResult.rawValue,
-          cardName: selectedStore.label,
-          createdAtIso: new Date().toISOString(),
-          ownerId: user.id,
-        }),
-      );
-      setAddResultOpen(false);
-      setDecodeResult(null);
-      setSelectedStore(null);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleDeleteCard = async (id: string) => {
     setDeletingId(id);
     try {
@@ -249,6 +343,17 @@ export default function KlantenKaartenPage() {
     }
   };
 
+  const confirmDelete = (card: LoyaltyCardRow) => {
+    if (
+      !window.confirm(
+        `Weet je zeker dat je de klantenkaart “${card.cardName}” wilt verwijderen?`,
+      )
+    ) {
+      return;
+    }
+    void handleDeleteCard(card.id);
+  };
+
   if (authLoading || !user || isLoading) {
     return <PageSpinner />;
   }
@@ -258,27 +363,74 @@ export default function KlantenKaartenPage() {
   const empty = cards.length === 0;
 
   return (
-    <div
-      className={
-        empty
-          ? "relative flex min-h-dvh w-full flex-col bg-gradient-to-b from-[var(--blue-100)] to-[var(--white)] px-[16px]"
-          : "relative flex min-h-dvh w-full flex-col px-[16px]"
-      }
-    >
-      <div className="flex min-w-0 flex-1 flex-col pb-[96px] pt-[calc(52px+env(safe-area-inset-top,0px))]">
+    <div className="relative flex min-h-dvh w-full flex-col bg-gradient-to-b from-[var(--blue-100)] to-[var(--white)] px-[16px]">
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 flex-col pt-[calc(52px+env(safe-area-inset-top,0px))]",
+          "pb-[calc(100px+env(safe-area-inset-bottom,0px))]",
+        )}
+      >
         <div className="mx-auto flex w-full min-w-0 max-w-[956px] flex-1 flex-col">
-          <div className="mb-6 flex items-center gap-4">
-            <h1 className="flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
-              Klantenkaarten
-            </h1>
-          </div>
+          {!empty ? (
+            <div className="mb-0 flex shrink-0 flex-col gap-6">
+              {/* Figma 1096:6757 — titel + potlood (sp-8); 1096:7436 — titel + Gereed met vinkje (sp-16) */}
+              <div
+                className={cn(
+                  "flex min-h-8 items-center",
+                  isEditMode ? "gap-4" : "min-h-9 gap-3",
+                )}
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <h1 className="min-w-0 truncate text-page-title font-bold leading-32 tracking-normal text-text-primary">
+                    Klantenkaarten
+                  </h1>
+                  {!isEditMode ? (
+                    <button
+                      type="button"
+                      aria-label="Bewerken"
+                      onClick={() => setIsEditMode(true)}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    >
+                      <PencilIcon className="size-6" />
+                    </button>
+                  ) : null}
+                </div>
+                {isEditMode ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditMode(false)}
+                    className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--blue-500)] px-2 py-1 text-sm font-normal leading-20 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  >
+                    <CheckmarkIcon className="size-6 shrink-0" />
+                    Gereed
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="grid grid-cols-3 items-start gap-4 overflow-visible">
+                {cards.map((card) => (
+                  <LoyaltyCardGridTile
+                    key={card.id}
+                    card={card}
+                    isEditMode={isEditMode}
+                    prefersReducedMotion={prefersReducedMotion}
+                    onOpen={() => {
+                      setViewCard(card);
+                      setViewOpen(true);
+                    }}
+                    onRequestDelete={() => confirmDelete(card)}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {empty ? (
             <section
               className="flex min-h-[min(520px,calc(100dvh-12rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] flex-1 flex-col items-center justify-center"
               aria-label="Geen klantenkaarten"
             >
-              <div className="flex w-full max-w-[358px] flex-col items-center gap-6 text-center">
+              <div className="flex w-full max-w-[358px] flex-col items-center gap-0 text-center">
                 <div className="relative size-24 shrink-0 overflow-hidden">
                   <Image
                     src="/images/ui/klantenkaart.png"
@@ -289,208 +441,43 @@ export default function KlantenKaartenPage() {
                     priority
                   />
                 </div>
-                <p className="w-full text-base font-medium leading-24 tracking-normal text-[var(--gray-500)]">
+                <p className="mt-0 w-full text-base font-medium leading-24 tracking-normal text-[var(--gray-500)]">
                   Je hebt nog geen klantenkaarten
                 </p>
                 <MiniButton
                   type="button"
                   variant="primary"
                   aria-label="Klantenkaart toevoegen"
-                  onClick={() => setAddStoreOpen(true)}
+                  className="mt-6"
+                  onClick={() => router.push("/klantenkaarten/toevoegen")}
                 >
                   Voeg kaart toe
                 </MiniButton>
               </div>
             </section>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {cards.map((card) => (
-                <CardListRow
-                  key={card.id}
-                  card={card}
-                  onClick={() => {
-                    setViewCard(card);
-                    setViewOpen(true);
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {/* FAB — zelfde uitlijning als home/recepten: volle breedte + max-w-956 (niet fixed right-4) */}
-      <div
-        className={cn(
-          "pointer-events-none fixed inset-x-0 z-20",
-          APP_FAB_BOTTOM_CLASS,
-        )}
-      >
-        <div className="px-[16px]">
-          <div className="mx-auto flex w-full max-w-[956px] justify-end">
-            <FloatingActionButton
-              aria-label="Klantenkaart toevoegen"
-              className="pointer-events-auto"
-              onClick={() => setAddStoreOpen(true)}
-            />
+      {!empty && !isEditMode ? (
+        <div
+          className={cn(
+            "pointer-events-none fixed inset-x-0 z-20",
+            APP_FAB_BOTTOM_CLASS,
+          )}
+        >
+          <div className="px-[16px]">
+            <div className="mx-auto flex w-full max-w-[956px] justify-end">
+              <FloatingActionButton
+                aria-label="Klantenkaart toevoegen"
+                className="pointer-events-auto"
+                onClick={() => router.push("/klantenkaarten/toevoegen")}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
-      {/* Hidden file input */}
-      <input
-        ref={photoInputRef}
-        type="file"
-        accept="image/*"
-        className="sr-only"
-        tabIndex={-1}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          e.target.value = "";
-          void handlePhotoFile(file);
-        }}
-      />
-
-      {/* ── Stap 1: Kies winkel ─────────────────────────────────────────── */}
-      <SlideInModal
-        open={addStoreOpen}
-        onClose={() => setAddStoreOpen(false)}
-        title="Kies een winkel"
-        titleId="add-card-store-title"
-      >
-        <div className="grid w-full grid-cols-3 gap-3 px-4 pb-2 sm:gap-4">
-          {STANDALONE_STORE_OPTIONS.map((store) => (
-            <button
-              key={store.slug}
-              type="button"
-              aria-label={`Selecteer ${store.label}`}
-              onClick={() => handleStoreSelect(store)}
-              className="flex h-full min-h-[6.5rem] min-w-0 flex-col items-stretch rounded-md border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-            >
-              <LogoTile
-                className="h-full min-h-[6.5rem] w-full min-w-0 justify-between"
-                label={store.label}
-                logo={<StoreLogoImg src={store.logoSrc} />}
-              />
-            </button>
-          ))}
-        </div>
-      </SlideInModal>
-
-      {/* ── Stap 2: Scan methode ─────────────────────────────────────────── */}
-      <SlideInModal
-        open={addScanMethodOpen}
-        onClose={() => setAddScanMethodOpen(false)}
-        onBack={() => {
-          setAddScanMethodOpen(false);
-          setAddStoreOpen(true);
-        }}
-        title={selectedStore ? `Klantenkaart ${selectedStore.label}` : "Klantenkaart toevoegen"}
-        titleId="add-card-method-title"
-        disableEscapeClose={addCameraOpen}
-        footer={
-          decodeError ? (
-            <p className="text-center text-xs text-[var(--color-error,#ef4444)]">
-              {decodeError}
-            </p>
-          ) : null
-        }
-      >
-        <div className="flex w-full flex-col gap-4 px-4">
-          <button
-            type="button"
-            onClick={() => {
-              setDecodeError(null);
-              setAddScanMethodOpen(false);
-              setAddCameraOpen(true);
-            }}
-            className="w-full bg-transparent p-0 text-left"
-          >
-            <SelectTile
-              title="Scan met camera"
-              subtitle="Richt je camera op de code"
-              icon={
-                <span
-                  role="img"
-                  aria-label="Camera"
-                  className="inline-block size-10 shrink-0 bg-[var(--action-primary)]"
-                  style={{
-                    WebkitMaskImage: 'url("/icons/camera.svg")',
-                    maskImage: 'url("/icons/camera.svg")',
-                    WebkitMaskRepeat: "no-repeat",
-                    maskRepeat: "no-repeat",
-                    WebkitMaskSize: "contain",
-                    maskSize: "contain",
-                    WebkitMaskPosition: "center",
-                    maskPosition: "center",
-                  }}
-                />
-              }
-            />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setDecodeError(null);
-              photoInputRef.current?.click();
-            }}
-            className="w-full bg-transparent p-0 text-left"
-          >
-            <SelectTile
-              title="Screenshot toevoegen"
-              subtitle="Upload een afbeelding"
-              icon={
-                <span
-                  role="img"
-                  aria-label="QR-code"
-                  className="inline-block size-10 shrink-0 bg-[var(--action-primary)]"
-                  style={{
-                    WebkitMaskImage: 'url("/icons/qr.svg")',
-                    maskImage: 'url("/icons/qr.svg")',
-                    WebkitMaskRepeat: "no-repeat",
-                    maskRepeat: "no-repeat",
-                    WebkitMaskSize: "contain",
-                    maskSize: "contain",
-                    WebkitMaskPosition: "center",
-                    maskPosition: "center",
-                  }}
-                />
-              }
-            />
-          </button>
-        </div>
-      </SlideInModal>
-
-      {/* ── Stap 3a: Camera scanner ──────────────────────────────────────── */}
-      <CameraBarcodeScannerSlideIn
-        open={addCameraOpen}
-        onClose={() => {
-          setAddCameraOpen(false);
-          setAddScanMethodOpen(true);
-        }}
-        onDecoded={(result) => {
-          setAddCameraOpen(false);
-          setDecodeResult(result);
-          setAddResultOpen(true);
-        }}
-      />
-
-      {/* ── Stap 4: Bevestiging & opslaan ───────────────────────────────── */}
-      <LoyaltyCardScanResultSlideIn
-        open={addResultOpen}
-        onClose={() => setAddResultOpen(false)}
-        onBack={() => {
-          setAddResultOpen(false);
-          setAddScanMethodOpen(true);
-        }}
-        decodeResult={decodeResult}
-        saving={saving}
-        onSave={() => void handleSave()}
-      />
-
-      {/* ── Kaart bekijken ───────────────────────────────────────────────── */}
       <SlideInModal
         open={viewOpen}
         onClose={() => {
