@@ -557,12 +557,19 @@ function SortableItemItems({
         >
           <div
             className={cn(
-              "flex items-center gap-3 pr-4",
+              "flex w-full min-w-0 items-center justify-between gap-3 pr-3",
               isCategoryGrouping ? "mb-3" : "mb-4",
             )}
           >
             {isCategoryGrouping ? (
-              <p className="min-w-0 flex-1 text-xs font-medium uppercase leading-16 tracking-normal text-[var(--blue-900)]">
+              <p
+                className={cn(
+                  "m-0 min-w-0 flex-1 text-xs font-medium uppercase tracking-normal text-[var(--blue-900)]",
+                  isEditMode && showMasterCategoryReorderLink
+                    ? "leading-20"
+                    : "leading-16",
+                )}
+              >
                 {sectionHeading}
               </p>
             ) : (
@@ -576,7 +583,7 @@ function SortableItemItems({
                   type="button"
                   onClick={onOpenMasterCategoryReorder}
                   aria-label="Volgorde van categorieën wijzigen"
-                  className="shrink-0 text-xs font-medium leading-16 tracking-normal text-action-primary underline decoration-action-primary underline-offset-2 transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                  className="m-0 inline-flex shrink-0 items-center p-0 text-left text-sm font-normal leading-20 tracking-normal text-action-primary underline decoration-action-primary underline-offset-2 transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
                 >
                   Volgorde wijzigen
                 </button>
