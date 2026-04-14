@@ -44,6 +44,11 @@ const schema = i.schema({
       recipeGroupId: i.string().optional(),
       recipeName: i.string().optional(),
       recipeLink: i.string().optional(),
+      /**
+       * Supermarkt-categorie (Excel `ingredienten_categorieen.xlsx` → `npm run sync:ingredient-categories`).
+       * Ontbreekt op oude items → afgeleid uit naam bij sync / weergave.
+       */
+      itemCategory: i.string().optional(),
     }),
     recipes: i.entity({
       name: i.string(),

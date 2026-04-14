@@ -13,6 +13,7 @@ import { SearchBar } from "@/components/ui/search_bar";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { MiniButton } from "@/components/ui/mini_button";
 import { cn } from "@/lib/utils";
+import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
 import { parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
 import type { RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
@@ -32,6 +33,8 @@ export type ListItem = {
   quantity: string;
   checked: boolean;
   section: string;
+  /** Supermarkt-categorie; ontbreekt → afgeleid uit naam. */
+  itemCategory?: string;
   claimedByInstantUserId?: string;
   claimedByDisplayName?: string;
   recipeGroupId?: string;
@@ -134,6 +137,7 @@ export function NewItemModal({
   editingItem,
   onSave,
   initialSection,
+  initialItemCategory,
   storedRecipes,
   onSaveRecipeToLibrary,
   onApplyRecipeToList,
@@ -141,10 +145,17 @@ export function NewItemModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onAdd: (item: { name: string; quantity: string; section: string }) => void;
+  onAdd: (item: {
+    name: string;
+    quantity: string;
+    section: string;
+    itemCategory?: string;
+  }) => void;
   editingItem?: ListItem | null;
   onSave?: (item: ListItem) => void;
   initialSection?: string | null;
+  /** Bij groepering “per categorie”: vooringestelde winkel-categorie voor het nieuwe item. */
+  initialItemCategory?: string | null;
   storedRecipes: SavedRecipe[];
   onSaveRecipeToLibrary: (recipe: SavedRecipe) => void;
   onApplyRecipeToList: (items: ListItem[]) => void;
@@ -215,22 +226,35 @@ export function NewItemModal({
         initialSection === "Algemeen" ? "Geen" : initialSection
       );
       setActiveTab("first");
+    } else if (initialItemCategory) {
+      setSelectedDay("Geen");
+      setActiveTab("first");
     }
-  }, [open, editingItem, initialSection]);
+  }, [open, editingItem, initialSection, initialItemCategory]);
 
   const handleAdd = () => {
     if (!canAdd && !isEditMode) return;
     const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
     const qty = `${stepperValue} ${quantityDesc}`;
+    const itemCategory =
+      initialItemCategory && initialItemCategory.trim().length > 0
+        ? initialItemCategory.trim()
+        : resolveItemCategoryFromName(itemName.trim());
     if (isEditMode && editingItem && onSave) {
       onSave({
         ...editingItem,
         name: itemName.trim(),
         quantity: qty,
         section,
+        itemCategory: resolveItemCategoryFromName(itemName.trim()),
       });
     } else {
-      onAdd({ name: itemName.trim(), quantity: qty, section });
+      onAdd({
+        name: itemName.trim(),
+        quantity: qty,
+        section,
+        itemCategory,
+      });
     }
     onClose();
   };
@@ -288,6 +312,7 @@ export function NewItemModal({
         quantity: ing.quantity,
         checked: false,
         section,
+        itemCategory: resolveItemCategoryFromName(ing.name),
         recipeGroupId,
         recipeName: recipe.name.trim(),
         recipeLink: link.length > 0 ? link : undefined,

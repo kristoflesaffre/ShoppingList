@@ -60,6 +60,13 @@ import {
 } from "@/lib/master-stores";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import {
+  categoryHeadingDisplay,
+  effectiveItemCategory,
+  orderedCategorySectionTitles,
+  resolveItemCategoryFromName,
+} from "@/lib/item-ingredient-category";
+import { PillTab } from "@/components/ui/pill_tab";
+import {
   type RecipeIngredient,
   type SavedRecipe,
 } from "@/lib/recipe_library";
@@ -472,6 +479,7 @@ function RecipeGroupHeader({
 /** Renders sortable item cards; must be inside DndContext for drag state. */
 function SortableItemItems({
   sections,
+  groupingMode,
   isEditMode,
   listViewMode,
   isMasterList,
@@ -492,6 +500,8 @@ function SortableItemItems({
   claimProfileByUserId,
 }: {
   sections: { title: string; items: ListItem[] }[];
+  /** Alleen gewone lijstjes: `category` = Figma-koppen per supermarkt-categorie. */
+  groupingMode: "day" | "category";
   isEditMode: boolean;
   listViewMode: "list" | "grid";
   isMasterList: boolean;
@@ -513,15 +523,19 @@ function SortableItemItems({
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
+  const isCategoryGrouping = groupingMode === "category";
 
   return (
     <div className="flex flex-col gap-6">
       {sections.map((section) => {
         const isSectionRemoving = removingSectionTitle === section.title;
+        const sectionHeading = isCategoryGrouping
+          ? categoryHeadingDisplay(section.title)
+          : section.title;
         return (
         <section
           key={section.title}
-          aria-label={section.title}
+          aria-label={sectionHeading}
           className={cn(
             "transition-[max-height,opacity] duration-200",
             "[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
@@ -533,10 +547,21 @@ function SortableItemItems({
             isSectionRemoving ? "max-h-0 opacity-0" : "max-h-[999999px] opacity-100"
           )}
         >
-          <div className="mb-4 flex items-center gap-3 pr-4">
-            <h3 className="flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
-              {section.title}
-            </h3>
+          <div
+            className={cn(
+              "flex items-center gap-3 pr-4",
+              isCategoryGrouping ? "mb-3" : "mb-4",
+            )}
+          >
+            {isCategoryGrouping ? (
+              <p className="min-w-0 flex-1 text-xs font-medium uppercase leading-16 tracking-normal text-[var(--blue-900)]">
+                {sectionHeading}
+              </p>
+            ) : (
+              <h3 className="flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
+                {section.title}
+              </h3>
+            )}
             {isEditMode ? (
               <button
                 type="button"
@@ -559,10 +584,14 @@ function SortableItemItems({
           </div>
           <div className="flex flex-col gap-3">
             {chunkSectionItems(section.items).map((chunk, chunkIndex) => {
-              if (chunk.type === "plain") {
+              if (chunk.type === "plain" || isCategoryGrouping) {
+                const rowKey =
+                  chunk.type === "plain"
+                    ? `plain-${section.title}-${chunkIndex}-${chunk.items[0]?.id ?? "e"}`
+                    : `recipe-flat-${section.title}-${chunk.groupId}-${chunkIndex}`;
                 return (
                   <div
-                    key={`plain-${section.title}-${chunkIndex}-${chunk.items[0]?.id ?? "e"}`}
+                    key={rowKey}
                     className={cn(
                       listViewMode === "grid" ? "grid grid-cols-2 gap-4 lg:grid-cols-4" : "flex flex-col gap-3",
                     )}
@@ -1004,12 +1033,18 @@ export default function ListDetailPage({
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .map((it) => {
         const row = it as unknown as Record<string, unknown>;
+        const rawCat = row.itemCategory ?? row.item_category;
+        const itemCategory =
+          typeof rawCat === "string" && rawCat.trim().length > 0
+            ? rawCat.trim()
+            : undefined;
         return {
           id: it.id,
           name: it.name,
           quantity: it.quantity,
           checked: it.checked,
           section: it.section,
+          itemCategory,
           claimedByInstantUserId: it.claimedByInstantUserId || undefined,
           claimedByDisplayName: readClaimedByDisplayNameFromInstantRow(row),
           recipeGroupId: it.recipeGroupId || undefined,
@@ -1018,6 +1053,23 @@ export default function ListDetailPage({
         };
       });
   }, [listData]);
+
+  /** Zet / ververs `itemCategory` op items (Excel-mapping); alleen gewone lijstjes. */
+  React.useEffect(() => {
+    if (!listId || isMasterList || !user) return;
+    const txs = items
+      .map((it) => {
+        const resolved = resolveItemCategoryFromName(it.name);
+        const stored =
+          typeof it.itemCategory === "string" ? it.itemCategory.trim() : "";
+        if (stored === resolved) return null;
+        return db.tx.items[it.id].update({ itemCategory: resolved });
+      })
+      .filter((tx): tx is NonNullable<typeof tx> => tx != null);
+    if (txs.length > 0) {
+      void db.transact(txs);
+    }
+  }, [listId, isMasterList, user, items]);
 
   /**
    * Items die jij claimt: `claimedByDisplayName` gelijk houden aan profiel-voornaam.
@@ -1096,6 +1148,14 @@ export default function ListDetailPage({
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<ListItem | null>(null);
   const [initialSection, setInitialSection] = React.useState<string | null>(null);
+  const [initialItemCategory, setInitialItemCategory] = React.useState<
+    string | null
+  >(null);
+  const [listGroupingMode, setListGroupingMode] = React.useState<
+    "day" | "category"
+  >("day");
+  const [isListGroupingHydrated, setIsListGroupingHydrated] =
+    React.useState(false);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
     null
   );
@@ -1189,6 +1249,7 @@ export default function ListDetailPage({
   const handleOpenNewItemModal = React.useCallback(() => {
     setEditingItem(null);
     setInitialSection(null);
+    setInitialItemCategory(null);
     setIsNewItemOpen(true);
   }, []);
 
@@ -1306,7 +1367,11 @@ export default function ListDetailPage({
         const section = templateItems[0].section;
         const sectionStart = items.findIndex((i) => i.section === section);
 
-        const newItems = templateItems.map((t) => ({ ...t, id: iid() }));
+        const newItems = templateItems.map((t) => ({
+          ...t,
+          id: iid(),
+          itemCategory: resolveItemCategoryFromName(t.name),
+        }));
         let newArray: ListItem[];
         if (sectionStart === -1) {
           newArray = [...items, ...newItems];
@@ -1327,6 +1392,7 @@ export default function ListDetailPage({
                 quantity: item.quantity,
                 checked: false,
                 section: item.section,
+                itemCategory: item.itemCategory ?? resolveItemCategoryFromName(item.name),
                 order: newArray.findIndex((a) => a.id === item.id),
                 recipeGroupId: item.recipeGroupId ?? "",
                 recipeName: item.recipeName ?? "",
@@ -1348,6 +1414,7 @@ export default function ListDetailPage({
       setIsNewItemOpen(false);
       setEditingItem(null);
       setInitialSection(null);
+      setInitialItemCategory(null);
     },
     [items, listId],
   );
@@ -1449,7 +1516,11 @@ export default function ListDetailPage({
     (sectionTitle: string) => {
       setRemovingSectionTitle(sectionTitle);
       window.setTimeout(() => {
-        const toDelete = items.filter((i) => i.section === sectionTitle);
+        const mode = isMasterList ? "day" : listGroupingMode;
+        const toDelete =
+          mode === "category"
+            ? items.filter((i) => effectiveItemCategory(i) === sectionTitle)
+            : items.filter((i) => i.section === sectionTitle);
         if (toDelete.length > 0) {
           db.transact(
             toDelete.map((i) => db.tx.items[i.id].delete()) as Parameters<
@@ -1460,7 +1531,7 @@ export default function ListDetailPage({
         setRemovingSectionTitle(null);
       }, SECTION_DELETE_ANIMATION_MS);
     },
-    [items],
+    [items, isMasterList, listGroupingMode],
   );
 
   const handleDeleteRecipeGroup = React.useCallback(
@@ -1491,6 +1562,9 @@ export default function ListDetailPage({
           quantity: restoredItem.quantity,
           checked: restoredItem.checked,
           section: restoredItem.section,
+          itemCategory:
+            restoredItem.itemCategory ??
+            resolveItemCategoryFromName(restoredItem.name),
           order: index,
           recipeGroupId: restoredItem.recipeGroupId ?? "",
           recipeName: restoredItem.recipeName ?? "",
@@ -1519,18 +1593,43 @@ export default function ListDetailPage({
   }, [lastDeleted, items, listId]);
 
   const handleAddNewItem = React.useCallback(
-    (newItem: { name: string; quantity: string; section: string }) => {
+    (newItem: {
+      name: string;
+      quantity: string;
+      section: string;
+      itemCategory?: string;
+    }) => {
       const newId = iid();
+      const itemCategory =
+        newItem.itemCategory ?? resolveItemCategoryFromName(newItem.name);
       const item: ListItem = {
         id: newId,
         name: newItem.name,
         quantity: newItem.quantity,
         checked: false,
         section: newItem.section,
+        itemCategory,
       };
 
       let newArray: ListItem[];
-      if (initialSection) {
+      if (
+        initialItemCategory &&
+        !isMasterList &&
+        listGroupingMode === "category"
+      ) {
+        const firstIndex = items.findIndex(
+          (i) => effectiveItemCategory(i) === initialItemCategory,
+        );
+        if (firstIndex === -1) {
+          newArray = [...items, item];
+        } else {
+          newArray = [
+            ...items.slice(0, firstIndex),
+            item,
+            ...items.slice(firstIndex),
+          ];
+        }
+      } else if (initialSection) {
         const firstIndex = items.findIndex(
           (i) => i.section === newItem.section,
         );
@@ -1555,6 +1654,7 @@ export default function ListDetailPage({
             quantity: newItem.quantity,
             checked: false,
             section: newItem.section,
+            itemCategory,
             order: idx,
           })
           .link({ list: listId }),
@@ -1569,34 +1669,61 @@ export default function ListDetailPage({
       db.transact(txns as Parameters<typeof db.transact>[0]);
       setAddingId(newId);
       setIsNewItemOpen(false);
+      setInitialItemCategory(null);
     },
-    [initialSection, items, listId],
+    [
+      initialSection,
+      initialItemCategory,
+      items,
+      listId,
+      isMasterList,
+      listGroupingMode,
+    ],
   );
 
   const handleSaveEditedItem = React.useCallback((updatedItem: ListItem) => {
+    const itemCategory = resolveItemCategoryFromName(updatedItem.name);
     db.transact(
       db.tx.items[updatedItem.id].update({
         name: updatedItem.name,
         quantity: updatedItem.quantity,
         section: updatedItem.section,
+        itemCategory,
       }),
     );
     setEditingItem(null);
   }, []);
 
+  const effectiveListGroupingMode: "day" | "category" = isMasterList
+    ? "day"
+    : listGroupingMode;
+
   const sections = React.useMemo(() => {
+    if (effectiveListGroupingMode === "day") {
+      const grouped = new Map<string, ListItem[]>();
+      for (const item of items) {
+        const existing = grouped.get(item.section) ?? [];
+        existing.push(item);
+        grouped.set(item.section, existing);
+      }
+      const order = buildDaySectionOrder();
+      return order.filter((s) => grouped.has(s)).map((s) => ({
+        title: s,
+        items: grouped.get(s)!,
+      }));
+    }
     const grouped = new Map<string, ListItem[]>();
     for (const item of items) {
-      const existing = grouped.get(item.section) ?? [];
+      const cat = effectiveItemCategory(item);
+      const existing = grouped.get(cat) ?? [];
       existing.push(item);
-      grouped.set(item.section, existing);
+      grouped.set(cat, existing);
     }
-    const order = buildDaySectionOrder();
-    return order.filter((s) => grouped.has(s)).map((s) => ({
-      title: s,
-      items: grouped.get(s)!,
-    }));
-  }, [items]);
+    const titles = orderedCategorySectionTitles(Array.from(grouped.keys()));
+    return titles
+      .filter((t) => grouped.has(t))
+      .map((t) => ({ title: t, items: grouped.get(t)! }));
+  }, [items, effectiveListGroupingMode]);
 
   const hasItems = items.length > 0;
   const isMasterEmpty = isMasterList && !hasItems;
@@ -1630,6 +1757,35 @@ export default function ListDetailPage({
       // no-op: storage unavailable (private mode / blocked)
     }
   }, [listId, listLayoutMode, isListLayoutHydrated]);
+
+  React.useEffect(() => {
+    if (!listId) return;
+    setIsListGroupingHydrated(false);
+    try {
+      const raw = window.localStorage.getItem(`list-grouping-mode:${listId}`);
+      if (raw === "category" || raw === "day") {
+        setListGroupingMode(raw);
+      } else {
+        setListGroupingMode("day");
+      }
+    } catch {
+      setListGroupingMode("day");
+    } finally {
+      setIsListGroupingHydrated(true);
+    }
+  }, [listId]);
+
+  React.useEffect(() => {
+    if (!listId || !isListGroupingHydrated) return;
+    try {
+      window.localStorage.setItem(
+        `list-grouping-mode:${listId}`,
+        listGroupingMode,
+      );
+    } catch {
+      // no-op
+    }
+  }, [listId, listGroupingMode, isListGroupingHydrated]);
 
   const handleReorderItems = React.useCallback(
     (event: DragEndEvent) => {
@@ -1910,6 +2066,22 @@ export default function ListDetailPage({
             </div>
           ) : null}
 
+          {!isMasterList &&
+          hasItems &&
+          isListGroupingHydrated &&
+          !isMasterEmpty ? (
+            <PillTab
+              className="w-full max-w-[358px] self-start"
+              aria-label="Groepering lijst"
+              value={listGroupingMode === "day" ? "first" : "second"}
+              onValueChange={(v) =>
+                setListGroupingMode(v === "first" ? "day" : "category")
+              }
+              labelFirst="Per dag"
+              labelSecond="Per categorie"
+            />
+          ) : null}
+
           {showLoyaltyLinkRows ? (
             isLidlDelhaizeList ? (
               <div className="flex w-full flex-col gap-3">
@@ -2165,6 +2337,7 @@ export default function ListDetailPage({
               >
                 <SortableItemItems
                   sections={sections}
+                  groupingMode={effectiveListGroupingMode}
                   isEditMode={isEditMode}
                   listViewMode={listViewMode}
                   isMasterList={isMasterList}
@@ -2183,7 +2356,13 @@ export default function ListDetailPage({
                     setEditingItem(item);
                   }}
                   onAddToSection={(sectionTitle) => {
-                    setInitialSection(sectionTitle);
+                    if (effectiveListGroupingMode === "category") {
+                      setInitialItemCategory(sectionTitle);
+                      setInitialSection("Algemeen");
+                    } else {
+                      setInitialSection(sectionTitle);
+                      setInitialItemCategory(null);
+                    }
                     setEditingItem(null);
                     setIsNewItemOpen(true);
                   }}
@@ -2240,11 +2419,13 @@ export default function ListDetailPage({
           setIsNewItemOpen(false);
           setEditingItem(null);
           setInitialSection(null);
+          setInitialItemCategory(null);
         }}
         onAdd={handleAddNewItem}
         editingItem={editingItem}
         onSave={handleSaveEditedItem}
         initialSection={initialSection}
+        initialItemCategory={initialItemCategory}
         storedRecipes={savedRecipes}
         onSaveRecipeToLibrary={handleSaveRecipeToLibrary}
         onApplyRecipeToList={handleAddItemsFromRecipe}

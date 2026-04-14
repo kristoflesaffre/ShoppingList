@@ -36,6 +36,7 @@ import { listIsMasterTemplate } from "@/lib/list-master";
 import { SwipeToAdd } from "@/components/ui/swipe_to_add";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { useItemPhotoUrl } from "@/lib/item-photos";
+import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
 
 type TemplateItem = {
   id: string;
@@ -577,6 +578,7 @@ export default function SelecteerMasterItemsPage() {
             ),
             checked: false,
             section: item.section,
+            itemCategory: resolveItemCategoryFromName(item.name),
             order: index,
             recipeGroupId: item.recipeGroupId ?? "",
             recipeName: item.recipeName ?? "",
