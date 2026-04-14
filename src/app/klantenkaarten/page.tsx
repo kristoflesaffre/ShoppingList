@@ -9,6 +9,7 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
+import { LoyaltyCardEditorSlideIn } from "@/components/loyalty_card_editor_slide_in";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { Snackbar } from "@/components/ui/snackbar";
@@ -138,12 +139,14 @@ function LoyaltyCardGridTile({
   isEditMode,
   prefersReducedMotion,
   onOpen,
+  onRequestEdit,
   onRequestDelete,
 }: {
   card: LoyaltyCardRow;
   isEditMode: boolean;
   prefersReducedMotion: boolean;
   onOpen: () => void;
+  onRequestEdit: () => void;
   onRequestDelete: () => void;
 }) {
   const [scaleExpanded, setScaleExpanded] = React.useState(false);
@@ -257,8 +260,8 @@ function LoyaltyCardGridTile({
           >
             <button
               type="button"
-              aria-label={`${card.cardName} openen`}
-              onClick={onOpen}
+              aria-label={`${card.cardName} wijzigen`}
+              onClick={onRequestEdit}
               className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
             >
               <PencilIcon className="size-6" />
@@ -310,6 +313,9 @@ export default function KlantenKaartenPage() {
 
   const [viewCard, setViewCard] = React.useState<LoyaltyCardRow | null>(null);
   const [viewOpen, setViewOpen] = React.useState(false);
+  const [editorCard, setEditorCard] = React.useState<LoyaltyCardRow | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [lastDeletedCard, setLastDeletedCard] =
@@ -464,6 +470,7 @@ export default function KlantenKaartenPage() {
                       setViewCard(card);
                       setViewOpen(true);
                     }}
+                    onRequestEdit={() => setEditorCard(card)}
                     onRequestDelete={() => void handleDeleteCard(card)}
                   />
                 ))}
@@ -523,6 +530,27 @@ export default function KlantenKaartenPage() {
           </div>
         </div>
       ) : null}
+
+      <LoyaltyCardEditorSlideIn
+        card={editorCard}
+        onClose={() => setEditorCard(null)}
+        logoSrc={
+          editorCard ? logoSrcForCardName(editorCard.cardName) : ""
+        }
+        onSaveDecoded={async (result) => {
+          if (!editorCard || !user) return;
+          await db.transact(
+            db.tx.loyaltyCards[editorCard.id].update({
+              codeType: result.codeType,
+              codeFormat: result.codeFormat,
+              rawValue: result.rawValue,
+              cardName: editorCard.cardName,
+              createdAtIso: editorCard.createdAtIso,
+              ownerId: user.id,
+            }),
+          );
+        }}
+      />
 
       <SlideInModal
         open={viewOpen}
