@@ -564,6 +564,8 @@ export default function SelecteerMasterItemsPage() {
         date: now.toLocaleDateString("nl-NL"),
         icon,
         masterIcon: masterList.icon,
+        /** Zelfde categorievolgorde als deze master bij «per categorie». */
+        sourceMasterListId: String(masterList.id),
         order,
         ownerId: user.id,
         isMasterTemplate: false,

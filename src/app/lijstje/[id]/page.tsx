@@ -62,7 +62,6 @@ import { listIsMasterTemplate } from "@/lib/list-master";
 import {
   categoryHeadingDisplay,
   effectiveItemCategory,
-  orderedCategorySectionTitles,
   orderedCategorySectionTitlesWithMasterOverride,
   parseMasterCategoryOrderJson,
   resolveItemCategoryFromName,
@@ -893,6 +892,8 @@ function SortableItemCard({
 
 /** Zelfde idee als /deel/[token]: nooit `id: undefined` in InstaQL — dat kan eindeloos laden geven. */
 const LIJSTJE_QUERY_PLACEHOLDER_ID = "__lijst_detail_missing_route_id__";
+/** Placeholder-id: geen bron-master voor categorievolgorde (secondaire query uitschakelen). */
+const CATEGORY_ORDER_MASTER_QUERY_NONE = "__category_order_master_none__";
 
 function resolvedRouteListId(
   propsId: string | undefined,
@@ -943,6 +944,36 @@ export default function ListDetailPage({
   );
 
   const { isLoading, error, data } = db.useQuery(listDetailQuery);
+
+  const categoryOrderMasterListQueryId = React.useMemo(() => {
+    const row = data?.lists?.[0] as
+      | {
+          id?: string;
+          isMasterTemplate?: boolean | null;
+          sourceMasterListId?: string | null;
+        }
+      | undefined;
+    if (!row?.id || listQueryId === LIJSTJE_QUERY_PLACEHOLDER_ID) {
+      return CATEGORY_ORDER_MASTER_QUERY_NONE;
+    }
+    if (listIsMasterTemplate(row)) return CATEGORY_ORDER_MASTER_QUERY_NONE;
+    const src = row.sourceMasterListId;
+    if (typeof src !== "string" || !src.trim()) {
+      return CATEGORY_ORDER_MASTER_QUERY_NONE;
+    }
+    return src.trim();
+  }, [data?.lists, listQueryId]);
+
+  const categoryOrderMasterQuery = React.useMemo(
+    () => ({
+      lists: {
+        $: { where: { id: categoryOrderMasterListQueryId } },
+      },
+    }),
+    [categoryOrderMasterListQueryId],
+  );
+
+  const { data: categoryOrderMasterData } = db.useQuery(categoryOrderMasterQuery);
 
   const myProfileQueryId = user?.id ?? "__my_profile_none__";
   const { data: myProfileData } = db.useQuery({
@@ -1264,6 +1295,17 @@ export default function ListDetailPage({
   const parsedMasterCategoryOrder = React.useMemo(
     () => parseMasterCategoryOrderJson(masterCategoryOrderJsonFingerprint),
     [masterCategoryOrderJsonFingerprint],
+  );
+
+  const inheritedMasterCategoryOrderJsonFingerprint =
+    (categoryOrderMasterData?.lists?.[0] as
+      | { masterCategoryOrderJson?: string }
+      | undefined)?.masterCategoryOrderJson ?? "";
+
+  const parsedInheritedMasterCategoryOrder = React.useMemo(
+    () =>
+      parseMasterCategoryOrderJson(inheritedMasterCategoryOrderJsonFingerprint),
+    [inheritedMasterCategoryOrderJsonFingerprint],
   );
 
   const DELETE_ANIMATION_MS = 300;
@@ -1766,12 +1808,13 @@ export default function ListDetailPage({
       grouped.set(cat, existing);
     }
     const keys = Array.from(grouped.keys());
-    const titles = isMasterList
-      ? orderedCategorySectionTitlesWithMasterOverride(
-          keys,
-          parsedMasterCategoryOrder,
-        )
-      : orderedCategorySectionTitles(keys);
+    const categoryOrderForSort = isMasterList
+      ? parsedMasterCategoryOrder
+      : parsedInheritedMasterCategoryOrder;
+    const titles = orderedCategorySectionTitlesWithMasterOverride(
+      keys,
+      categoryOrderForSort,
+    );
     return titles
       .filter((t) => grouped.has(t))
       .map((t) => ({ title: t, items: grouped.get(t)! }));
@@ -1780,6 +1823,7 @@ export default function ListDetailPage({
     effectiveListGroupingMode,
     isMasterList,
     parsedMasterCategoryOrder,
+    parsedInheritedMasterCategoryOrder,
   ]);
 
   const hasItems = items.length > 0;

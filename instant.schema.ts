@@ -28,6 +28,11 @@ const schema = i.schema({
        * Ontbreekt → standaordvolgorde uit ingredient_categories.json.
        */
       masterCategoryOrderJson: i.string().optional(),
+      /**
+       * Week-/boodschappenlijst vanuit een master: id van die master-template.
+       * Gebruikt o.a. om `masterCategoryOrderJson` van de master te volgen bij groepering per categorie.
+       */
+      sourceMasterListId: i.string().optional().indexed(),
     }),
     /** Koppeling: gebruiker is deelnemer aan een gedeeld lijstje (realtime samenwerking). */
     listMembers: i.entity({
