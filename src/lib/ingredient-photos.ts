@@ -255,6 +255,84 @@ export function useIngredientSlugs(): string[] {
   return slugs;
 }
 
+/** Zelfde synoniem-map als foto-matching (sleutels al genormaliseerd met `normalizeForMatch`). */
+export function useIngredientSynonyms(): Record<string, string> {
+  const [synonyms, setSynonyms] = React.useState<Record<string, string>>(
+    () => cachedSynonyms ?? {},
+  );
+
+  React.useEffect(() => {
+    if (cachedSynonyms) {
+      setSynonyms(cachedSynonyms);
+      return;
+    }
+    let cancelled = false;
+    void fetchSynonyms().then((s) => {
+      if (!cancelled) setSynonyms(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return synonyms;
+}
+
+/**
+ * Slugs voor autocomplete bij ingrediënten: prefix op slug-woorden + treffers via synoniem-sleutels.
+ */
+export function matchIngredientSlugsForAutocomplete(
+  norm: string,
+  slugs: string[],
+  synonyms: Record<string, string>,
+  max: number,
+): string[] {
+  if (!norm || !slugs.length) return [];
+  const seen = new Set<string>();
+
+  const resolveTarget = (synSlug: string): string | null => {
+    if (slugs.includes(synSlug)) return synSlug;
+    const base = synSlug.replace(/_\d+$/, "");
+    const exactBase = slugs.find((s) => s === base);
+    if (exactBase) return exactBase;
+    const numericVariants = slugs.filter((s) => {
+      if (!s.startsWith(base + "_")) return false;
+      const suf = s.slice(base.length + 1);
+      return /^\d+$/.test(suf);
+    });
+    if (numericVariants.length > 0) {
+      numericVariants.sort(
+        (a, b) =>
+          parseInt(a.slice(base.length + 1), 10) -
+          parseInt(b.slice(base.length + 1), 10),
+      );
+      return numericVariants[0] ?? null;
+    }
+    return slugs.find((s) => s.startsWith(base + "_")) ?? null;
+  };
+
+  for (const slug of slugs) {
+    if (slug.split("_").some((w) => w.startsWith(norm))) seen.add(slug);
+  }
+
+  for (const [synKey, synSlug] of Object.entries(synonyms)) {
+    const keyHit =
+      synKey.startsWith(norm) ||
+      synKey.split("_").some((w) => w.startsWith(norm));
+    if (!keyHit) continue;
+    const resolved = resolveTarget(synSlug);
+    if (resolved) seen.add(resolved);
+  }
+
+  const arr = Array.from(seen);
+  arr.sort(
+    (a, b) =>
+      (a.startsWith(norm) ? 0 : 1) - (b.startsWith(norm) ? 0 : 1) ||
+      a.localeCompare(b),
+  );
+  return arr.slice(0, max);
+}
+
 /**
  * Hook that returns a function resolving an ingredient name to its photo URL.
  * Applies synonyms from /ingredient-synonyms.json before slug matching.

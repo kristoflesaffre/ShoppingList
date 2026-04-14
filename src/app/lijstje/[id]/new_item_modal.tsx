@@ -480,6 +480,7 @@ export function NewItemModal({
                     placeholder="Naam item"
                     value={itemName}
                     onChange={setItemName}
+                    photoCatalog="ingredients"
                   />
                   <div className="flex flex-col gap-2">
                     <Stepper

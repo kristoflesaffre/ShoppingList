@@ -6,7 +6,12 @@ import ReactDOM from "react-dom";
 import { InputField } from "@/components/ui/input_field";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
 import { useItemSlugs, useItemPhotoUrl, normalizeForMatch } from "@/lib/item-photos";
-import { useIngredientSlugs, useIngredientPhotoUrl } from "@/lib/ingredient-photos";
+import {
+  useIngredientSlugs,
+  useIngredientPhotoUrl,
+  useIngredientSynonyms,
+  matchIngredientSlugsForAutocomplete,
+} from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
 
 /** Slug "vleesje_noe" → "Vleesje noe" (eerste woord hoofdletter, rest kleine letters). */
@@ -55,7 +60,10 @@ function LargeScreenAutocomplete({
 }: ItemNameAutocompleteProps) {
   const itemSlugs = useItemSlugs();
   const ingredientSlugs = useIngredientSlugs();
+  const ingredientSynonyms = useIngredientSynonyms();
   const slugs = photoCatalog === "ingredients" ? ingredientSlugs : itemSlugs;
+  const synonyms =
+    photoCatalog === "ingredients" ? ingredientSynonyms : ({} as Record<string, string>);
   const [open, setOpen] = React.useState(false);
   const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -71,6 +79,14 @@ function LargeScreenAutocomplete({
     if (!q || !slugs.length) return [];
     const norm = normalizeForMatch(q);
     if (!norm) return [];
+    if (photoCatalog === "ingredients") {
+      return matchIngredientSlugsForAutocomplete(
+        norm,
+        slugs,
+        synonyms,
+        MAX_SUGGESTIONS,
+      );
+    }
     const matching = slugs.filter((slug) =>
       slug.split("_").some((w) => w.startsWith(norm)),
     );
@@ -78,7 +94,7 @@ function LargeScreenAutocomplete({
       (a, b) => (a.startsWith(norm) ? 0 : 1) - (b.startsWith(norm) ? 0 : 1),
     );
     return matching.slice(0, MAX_SUGGESTIONS);
-  }, [slugs, value]);
+  }, [slugs, value, photoCatalog, synonyms]);
 
   const showDropdown = open && suggestions.length > 0;
 

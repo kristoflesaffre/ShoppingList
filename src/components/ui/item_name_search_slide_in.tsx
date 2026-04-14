@@ -4,10 +4,16 @@ import * as React from "react";
 import Image from "next/image";
 import ReactDOM from "react-dom";
 import { useItemSlugs, normalizeForMatch } from "@/lib/item-photos";
-import { useIngredientSlugs } from "@/lib/ingredient-photos";
+import {
+  useIngredientSlugs,
+  useIngredientSynonyms,
+  matchIngredientSlugsForAutocomplete,
+} from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
 
 const SLIDE_MS = 450;
+/** Max treffers in slide-in; synoniemen kunnen de lijst verlengen. */
+const SLIDE_IN_MAX_SUGGESTIONS = 400;
 /** Pixels reserved at the top (iOS status bar area). */
 const TOP_OFFSET = 48;
 
@@ -113,7 +119,10 @@ export function ItemNameSearchSlideIn({
 }: ItemNameSearchSlideInProps) {
   const itemSlugs = useItemSlugs();
   const ingredientSlugs = useIngredientSlugs();
+  const ingredientSynonyms = useIngredientSynonyms();
   const slugs = photoCatalog === "ingredients" ? ingredientSlugs : itemSlugs;
+  const synonyms =
+    photoCatalog === "ingredients" ? ingredientSynonyms : ({} as Record<string, string>);
   const [query, setQuery] = React.useState(initialValue);
   const [animIn, setAnimIn] = React.useState(false);
   const [domVisible, setDomVisible] = React.useState(false);
@@ -163,14 +172,22 @@ export function ItemNameSearchSlideIn({
 
   const suggestions = React.useMemo(() => {
     if (!norm || !slugs.length) return [];
+    if (photoCatalog === "ingredients") {
+      return matchIngredientSlugsForAutocomplete(
+        norm,
+        slugs,
+        synonyms,
+        SLIDE_IN_MAX_SUGGESTIONS,
+      );
+    }
     const matching = slugs.filter((slug) =>
       slug.split("_").some((w) => w.startsWith(norm)),
     );
     matching.sort(
       (a, b) => (a.startsWith(norm) ? 0 : 1) - (b.startsWith(norm) ? 0 : 1),
     );
-    return matching;
-  }, [slugs, norm]);
+    return matching.slice(0, SLIDE_IN_MAX_SUGGESTIONS);
+  }, [slugs, norm, photoCatalog, synonyms]);
 
   /** Onmiddellijk selecteren — geen sluit-animatie-vertraging */
   const handleSelect = React.useCallback(
