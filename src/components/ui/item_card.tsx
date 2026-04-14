@@ -713,9 +713,9 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
                     onClaim?.();
                   }
                 }}
-                className="flex size-8 shrink-0 items-center justify-center bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                className="relative flex size-8 shrink-0 items-start justify-end bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
               >
-                <span className="flex size-6 items-center justify-center rounded-[4px] bg-[var(--blue-50)] text-[var(--blue-300)]">
+                <span className="absolute right-0 top-0 flex size-6 items-center justify-center rounded-[4px] bg-[var(--blue-50)] text-[var(--blue-300)]">
                   <HandIcon className="size-5" />
                 </span>
               </button>
@@ -734,9 +734,9 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
                     onClaim?.();
                   }
                 }}
-                className="flex size-8 shrink-0 items-center justify-center bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                className="relative flex size-8 shrink-0 items-start justify-end bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
               >
-                <span className="flex size-6 items-center justify-center rounded-[4px] bg-[var(--blue-500)] text-[var(--white)]">
+                <span className="absolute right-0 top-0 flex size-6 items-center justify-center rounded-[4px] bg-[var(--blue-500)] text-[var(--white)]">
                   <HandIcon className="size-5" />
                 </span>
               </button>
