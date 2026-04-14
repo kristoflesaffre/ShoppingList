@@ -1054,9 +1054,9 @@ export default function ListDetailPage({
       });
   }, [listData]);
 
-  /** Zet / ververs `itemCategory` op items (Excel-mapping); alleen gewone lijstjes. */
+  /** Zet / ververs `itemCategory` op items (Excel-mapping); ook master (groepering per inhoud). */
   React.useEffect(() => {
-    if (!listId || isMasterList || !user) return;
+    if (!listId || !user) return;
     const txs = items
       .map((it) => {
         const resolved = resolveItemCategoryFromName(it.name);
@@ -1069,7 +1069,7 @@ export default function ListDetailPage({
     if (txs.length > 0) {
       void db.transact(txs);
     }
-  }, [listId, isMasterList, user, items]);
+  }, [listId, user, items]);
 
   /**
    * Items die jij claimt: `claimedByDisplayName` gelijk houden aan profiel-voornaam.
@@ -1516,7 +1516,7 @@ export default function ListDetailPage({
     (sectionTitle: string) => {
       setRemovingSectionTitle(sectionTitle);
       window.setTimeout(() => {
-        const mode = isMasterList ? "day" : listGroupingMode;
+        const mode = isMasterList ? "category" : listGroupingMode;
         const toDelete =
           mode === "category"
             ? items.filter((i) => effectiveItemCategory(i) === sectionTitle)
@@ -1614,8 +1614,7 @@ export default function ListDetailPage({
       let newArray: ListItem[];
       if (
         initialItemCategory &&
-        !isMasterList &&
-        listGroupingMode === "category"
+        (isMasterList || listGroupingMode === "category")
       ) {
         const firstIndex = items.findIndex(
           (i) => effectiveItemCategory(i) === initialItemCategory,
@@ -1699,7 +1698,9 @@ export default function ListDetailPage({
     : listGroupingMode;
 
   const sections = React.useMemo(() => {
-    if (effectiveListGroupingMode === "day") {
+    const useDaySections =
+      !isMasterList && effectiveListGroupingMode === "day";
+    if (useDaySections) {
       const grouped = new Map<string, ListItem[]>();
       for (const item of items) {
         const existing = grouped.get(item.section) ?? [];
@@ -1723,7 +1724,7 @@ export default function ListDetailPage({
     return titles
       .filter((t) => grouped.has(t))
       .map((t) => ({ title: t, items: grouped.get(t)! }));
-  }, [items, effectiveListGroupingMode]);
+  }, [items, effectiveListGroupingMode, isMasterList]);
 
   const hasItems = items.length > 0;
   const isMasterEmpty = isMasterList && !hasItems;
@@ -2337,7 +2338,9 @@ export default function ListDetailPage({
               >
                 <SortableItemItems
                   sections={sections}
-                  groupingMode={effectiveListGroupingMode}
+                  groupingMode={
+                    isMasterList ? "category" : effectiveListGroupingMode
+                  }
                   isEditMode={isEditMode}
                   listViewMode={listViewMode}
                   isMasterList={isMasterList}
@@ -2356,7 +2359,10 @@ export default function ListDetailPage({
                     setEditingItem(item);
                   }}
                   onAddToSection={(sectionTitle) => {
-                    if (effectiveListGroupingMode === "category") {
+                    if (
+                      effectiveListGroupingMode === "category" ||
+                      isMasterList
+                    ) {
                       setInitialItemCategory(sectionTitle);
                       setInitialSection("Algemeen");
                     } else {
