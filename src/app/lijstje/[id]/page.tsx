@@ -988,6 +988,16 @@ export default function ListDetailPage({
     return match?.label ?? "";
   }, [isMasterList, listIcon]);
 
+  /** Zelfde als home-migratie: bookmark naar master opent detail zonder home. */
+  React.useEffect(() => {
+    if (!isListOwner || !listId || !listData || !isMasterList) return;
+    const label = masterStoreLabelFromListIcon(listIcon);
+    if (!label) return;
+    const current = String(listData.name ?? "").trim();
+    if (current === label) return;
+    void db.transact(db.tx.lists[listId].update({ name: label }));
+  }, [isListOwner, listId, listData, isMasterList, listIcon]);
+
   const items: ListItem[] = React.useMemo(() => {
     if (!listData?.items) return [];
     return [...listData.items]

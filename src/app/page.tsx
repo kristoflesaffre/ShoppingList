@@ -39,7 +39,10 @@ import {
   selectListNameInputOnFocus,
 } from "@/lib/list-default-name";
 import { listIsMasterTemplate } from "@/lib/list-master";
-import { storeLogosFromListIcon } from "@/lib/master-stores";
+import {
+  masterStoreLabelFromListIcon,
+  storeLogosFromListIcon,
+} from "@/lib/master-stores";
 import { db } from "@/lib/db";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { APP_FAB_BOTTOM_CLASS, APP_SNACKBAR_FIXTURE_CLASS } from "@/lib/app-layout";
@@ -468,6 +471,24 @@ export default function Home() {
   const { data: shareProfilesData } = db.useQuery(
     shareProfilesQuery as unknown as Parameters<typeof db.useQuery>[0],
   );
+
+  /** Bestaande masterlijsten: naam gelijkzetten aan winkel uit het logo (Lidl, Delhaize, …). */
+  React.useEffect(() => {
+    if (!user || authLoading || isLoading || !data?.lists) return;
+    const txs = data.lists
+      .filter((l) => listIsMasterTemplate(l))
+      .map((l) => {
+        const icon = typeof l.icon === "string" ? l.icon : "";
+        const label = masterStoreLabelFromListIcon(icon);
+        const current = String((l as { name?: string }).name ?? "").trim();
+        if (!label || current === label) return null;
+        return db.tx.lists[String(l.id)].update({ name: label });
+      })
+      .filter((tx): tx is NonNullable<typeof tx> => tx != null);
+    if (txs.length > 0) {
+      void db.transact(txs);
+    }
+  }, [user, authLoading, isLoading, data?.lists]);
 
   const shareFirstNameByUserId = React.useMemo(() => {
     const m = new Map<string, string>();

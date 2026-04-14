@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { Button } from "@/components/ui/button";
 import { LogoTile } from "@/components/ui/logo_tile";
@@ -12,7 +12,6 @@ import {
   MASTER_STORE_OPTIONS,
   findMasterStoreBySlug,
 } from "@/lib/master-stores";
-import { defaultNewListName } from "@/lib/list-default-name";
 import { cn } from "@/lib/utils";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
@@ -51,8 +50,6 @@ function StoreLogoImg({ src }: { src: string }) {
 
 function SelecteerWinkelContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const listNameRaw = searchParams.get("naam") ?? "";
 
   const { isLoading: authLoading, user } = db.useAuth();
   const ownerId = user?.id ?? "__no_user__";
@@ -72,7 +69,6 @@ function SelecteerWinkelContent() {
       if (!user) return;
       const store = findMasterStoreBySlug(slug);
       if (!store) return;
-      const name = listNameRaw.trim() || defaultNewListName();
       const myLists = data?.lists ?? [];
       const order =
         myLists.length > 0
@@ -82,7 +78,7 @@ function SelecteerWinkelContent() {
       const newId = iid();
       db.transact(
         db.tx.lists[newId].update({
-          name,
+          name: store.label,
           date: now.toLocaleDateString("nl-NL"),
           icon: store.logoSrc,
           order,
@@ -92,7 +88,7 @@ function SelecteerWinkelContent() {
       );
       router.push(`/lijstje/${newId}`);
     },
-    [user, data?.lists, listNameRaw, router],
+    [user, data?.lists, router],
   );
 
   if (authLoading || !user || isLoading) {
