@@ -321,6 +321,38 @@ function PlusCircleIcon({ className }: { className?: string }) {
   );
 }
 
+/** `public/icons/toggle_*.svg` als monochrome mask met primary kleur. */
+function ToggleViewIcon({
+  src,
+  active,
+  className,
+}: {
+  src: string;
+  active: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-block size-5 shrink-0 bg-action-primary",
+        !active && "opacity-[0.42]",
+        className,
+      )}
+      style={{
+        WebkitMaskImage: `url("${src}")`,
+        maskImage: `url("${src}")`,
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+      }}
+      aria-hidden
+    />
+  );
+}
+
 /** public/icons/chef_hat.svg */
 function ChefHatIcon({ className }: { className?: string }) {
   return (
@@ -440,6 +472,7 @@ function RecipeGroupHeader({
 function SortableItemItems({
   sections,
   isEditMode,
+  listViewMode,
   isMasterList,
   isSharedList,
   getPhotoUrl,
@@ -459,6 +492,7 @@ function SortableItemItems({
 }: {
   sections: { title: string; items: ListItem[] }[];
   isEditMode: boolean;
+  listViewMode: "list" | "grid";
   isMasterList: boolean;
   isSharedList: boolean;
   getPhotoUrl?: (name: string) => string | null;
@@ -523,13 +557,16 @@ function SortableItemItems({
                 return (
                   <div
                     key={`plain-${section.title}-${chunkIndex}-${chunk.items[0]?.id ?? "e"}`}
-                    className="flex flex-col gap-3"
+                    className={cn(
+                      listViewMode === "grid" ? "grid grid-cols-2 gap-4 lg:grid-cols-4" : "flex flex-col gap-3",
+                    )}
                   >
                     {chunk.items.map((item) => (
                       <SortableItemRow
                         key={item.id}
                         item={item}
                         isEditMode={isEditMode}
+                        listViewMode={listViewMode}
                         isDndActive={isDndActive}
                         isMasterList={isMasterList}
                         isSharedList={isSharedList}
@@ -568,12 +605,19 @@ function SortableItemItems({
                         : undefined
                     }
                   />
-                  <div className="flex flex-col gap-2 pl-2">
+                  <div
+                    className={cn(
+                      listViewMode === "grid"
+                        ? "grid grid-cols-2 gap-4 pl-0 lg:grid-cols-4"
+                        : "flex flex-col gap-2 pl-2",
+                    )}
+                  >
                     {chunk.items.map((item) => (
                       <SortableItemRow
                         key={item.id}
                         item={item}
                         isEditMode={isEditMode}
+                        listViewMode={listViewMode}
                         isDndActive={isDndActive}
                         isMasterList={isMasterList}
                         isSharedList={isSharedList}
@@ -604,6 +648,7 @@ function SortableItemItems({
 function SortableItemRow({
   item,
   isEditMode,
+  listViewMode,
   isDndActive,
   isMasterList,
   isSharedList,
@@ -620,6 +665,7 @@ function SortableItemRow({
 }: {
   item: ListItem;
   isEditMode: boolean;
+  listViewMode: "list" | "grid";
   isDndActive: boolean;
   isMasterList: boolean;
   isSharedList: boolean;
@@ -651,6 +697,7 @@ function SortableItemRow({
       <SortableItemCard
         item={item}
         isEditMode={isEditMode}
+        listViewMode={listViewMode}
         isMasterList={isMasterList}
         isSharedList={isSharedList}
         getPhotoUrl={getPhotoUrl}
@@ -670,6 +717,7 @@ function SortableItemRow({
 function SortableItemCard({
   item,
   isEditMode,
+  listViewMode,
   isMasterList,
   isSharedList,
   getPhotoUrl,
@@ -682,6 +730,7 @@ function SortableItemCard({
 }: {
   item: ListItem;
   isEditMode: boolean;
+  listViewMode: "list" | "grid";
   isMasterList: boolean;
   isSharedList: boolean;
   getPhotoUrl?: (name: string) => string | null;
@@ -726,11 +775,18 @@ function SortableItemCard({
           onCheckedChange={onCheckedChange}
           presentation={isMasterList && !isEditMode ? "bare" : "default"}
           state={isEditMode ? "editable" : (isSharedList ? "shared" : "default")}
+          density={listViewMode === "grid" ? "grid" : "default"}
           itemThumbnail={(() => {
             const photoUrl = getPhotoUrl?.(item.name);
             if (!photoUrl) return undefined;
             return (
-              <Image src={photoUrl} alt="" width={44} height={44} className="size-full object-cover" />
+              <Image
+                src={photoUrl}
+                alt=""
+                width={listViewMode === "grid" ? 64 : 44}
+                height={listViewMode === "grid" ? 64 : 44}
+                className="size-full object-cover"
+              />
             );
           })()}
           onDelete={isEditMode ? onDelete : undefined}
@@ -1017,6 +1073,7 @@ export default function ListDetailPage({
   }, [claimerProfileData?.profiles]);
 
   const [isEditMode, setIsEditMode] = React.useState(false);
+  const [listLayoutMode, setListLayoutMode] = React.useState<"list" | "grid">("list");
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<ListItem | null>(null);
   const [initialSection, setInitialSection] = React.useState<string | null>(null);
@@ -1519,6 +1576,7 @@ export default function ListDetailPage({
 
   const showListDetailHeader =
     hasItems || showSharedDetailRow || isMasterEmpty;
+  const listViewMode: "list" | "grid" = isEditMode ? "list" : listLayoutMode;
 
   const handleReorderItems = React.useCallback(
     (event: DragEndEvent) => {
@@ -1751,6 +1809,50 @@ export default function ListDetailPage({
                 >
                   Gereed
                 </button>
+              ) : hasItems ? (
+                <div
+                  className="box-border flex h-9 shrink-0 items-stretch overflow-hidden rounded-[4px] border border-[var(--gray-100)] bg-[var(--white)]"
+                  role="group"
+                  aria-label="Weergave"
+                >
+                  <button
+                    type="button"
+                    aria-label="Lijstweergave"
+                    aria-pressed={listLayoutMode === "list"}
+                    onClick={() => setListLayoutMode("list")}
+                    className={cn(
+                      "flex w-9 items-center justify-center p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      listLayoutMode === "list"
+                        ? "bg-[var(--white)]"
+                        : "bg-[var(--blue-25)]",
+                    )}
+                  >
+                    <ToggleViewIcon
+                      src="/icons/toggle_list.svg"
+                      active={listLayoutMode === "list"}
+                      className="size-6"
+                    />
+                  </button>
+                  <div className="h-8 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+                  <button
+                    type="button"
+                    aria-label="Tegelweergave"
+                    aria-pressed={listLayoutMode === "grid"}
+                    onClick={() => setListLayoutMode("grid")}
+                    className={cn(
+                      "flex w-9 items-center justify-center p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      listLayoutMode === "grid"
+                        ? "bg-[var(--blue-25)]"
+                        : "bg-[var(--white)]",
+                    )}
+                  >
+                    <ToggleViewIcon
+                      src="/icons/toggle_grid.svg"
+                      active={listLayoutMode === "grid"}
+                      className="size-6"
+                    />
+                  </button>
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -2011,6 +2113,7 @@ export default function ListDetailPage({
                 <SortableItemItems
                   sections={sections}
                   isEditMode={isEditMode}
+                  listViewMode={listViewMode}
                   isMasterList={isMasterList}
                   isSharedList={showSharedDetailRow}
                   getPhotoUrl={getPhotoUrl}

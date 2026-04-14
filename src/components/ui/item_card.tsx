@@ -15,6 +15,8 @@ export type ItemCardState = "default" | "shared" | "editable";
 export type ItemCardSize = "default";
 /** `bare` = alleen titel + hoeveelheid, border, geen checkbox/acties (Figma 797:4486). */
 export type ItemCardPresentation = "default" | "bare";
+/** `grid` = compacte tegelweergave voor gewone lijstjes. */
+export type ItemCardDensity = "default" | "grid";
 
 /** Realtime “ik haal dit” / “ander haalt dit” voor gedeelde lijsten (InstantDB). */
 export type ItemCardSyncListClaim = {
@@ -82,6 +84,7 @@ export interface ItemCardProps extends Omit<
    * nooit in editable / bare / master / added.
    */
   itemThumbnail?: React.ReactNode;
+  density?: ItemCardDensity;
   className?: string;
 }
 
@@ -228,6 +231,8 @@ function TrashIcon({ className }: { className?: string }) {
 /** Figma 508:1729: gap-12, pl-16 pr-12 py-12, rounded rd-8. Min-height keeps card height stable when checked (divider + claim hidden). */
 const containerBase =
   "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-md py-3 pl-4 pr-3";
+const gridTileThumbClass =
+  "relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--gray-100)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover";
 
 /** Duration for ItemCard state transition. Identical to ListCard. */
 const ANIM_DURATION_MS = 120;
@@ -376,6 +381,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       onAddedDecrement,
       onAddedIncrement,
       itemThumbnail,
+      density = "default",
       style: incomingStyle,
       ...restProps
     },
@@ -465,6 +471,11 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
 
     const isAddedLayout =
       variant === "added" && !isEditable && !isBare;
+    const gridDensity =
+      density === "grid" &&
+      !isBare &&
+      !isMasterLayout &&
+      !isAddedLayout;
 
     const showItemThumbnail =
       itemThumbnail != null &&
@@ -492,12 +503,16 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
           )
         : cn(
             containerBase,
+            gridDensity &&
+              "!min-h-0 h-[140px] justify-center p-3 shadow-drop overflow-hidden rounded-[var(--radius-md)]",
             isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
             !isGottenByOther && "bg-[var(--white)]",
-            !isGottenByOther &&
+            !gridDensity &&
+              !isGottenByOther &&
               !isGottenByYou &&
               "border border-[var(--gray-100)]",
-            showGottenByYouChrome && "border border-[var(--blue-500)]",
+            !gridDensity && showGottenByYouChrome && "border border-[var(--blue-500)]",
+            gridDensity && isGottenByYou && "border-2 border-[var(--blue-500)]",
             className,
           );
 
@@ -634,6 +649,168 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
           <PlusCircleIcon />
         </button>
       </>
+    ) : gridDensity ? (
+      <div
+        className={cn(
+          "relative flex min-h-[116px] min-w-0 flex-1 flex-col items-center gap-2",
+          isLeftClickable && "cursor-pointer",
+        )}
+        onClick={isLeftClickable ? handleLeftClick : undefined}
+        role={isLeftClickable ? "button" : undefined}
+        tabIndex={isLeftClickable ? 0 : undefined}
+        onKeyDown={
+          isLeftClickable
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleLeftClick();
+                }
+              }
+            : undefined
+        }
+        aria-label={
+          isLeftClickable
+            ? (typeof itemName === "string"
+                ? `Markeer "${itemName}" als gehaald`
+                : "Markeer als gehaald")
+            : undefined
+        }
+      >
+        <div className="absolute inset-x-0 top-0 z-[1] flex items-start justify-between">
+          <div className="flex h-8 w-8 items-start justify-start">
+            {showCheckbox ? (
+              <span onClick={(e) => e.stopPropagation()} className="contents">
+                <Checkbox
+                  size="default"
+                  checked={isChecked}
+                  onCheckedChange={handleCheckedChange}
+                  disabled={isGottenByOther}
+                  className="shrink-0 rounded-[4px] border-[1.3px]"
+                  aria-label={
+                    typeof itemName === "string"
+                      ? `Markeer "${itemName}" als gehaald`
+                      : "Markeer als gehaald"
+                  }
+                />
+              </span>
+            ) : (
+              <span className="size-6" aria-hidden />
+            )}
+          </div>
+          <div className="flex h-8 w-8 items-start justify-end">
+            {showClaimButton && effectiveVariant === "default" && !isChecked ? (
+              <button
+                type="button"
+                aria-label="Claim item"
+                data-item-hand
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (useSyncClaim) {
+                    syncListClaim!.onClaimChange(syncListClaim!.currentUserId);
+                  } else {
+                    setClaimedByMe(true);
+                    onClaim?.();
+                  }
+                }}
+                className="flex size-8 shrink-0 items-center justify-center bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              >
+                <span className="flex size-6 items-center justify-center rounded-[4px] bg-[var(--blue-50)] text-[var(--blue-300)]">
+                  <HandIcon className="size-5" />
+                </span>
+              </button>
+            ) : showClaimButton && isGottenByYou ? (
+              <button
+                type="button"
+                aria-label="Unclaim item"
+                data-item-hand
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (useSyncClaim) {
+                    syncListClaim!.onClaimChange(null);
+                  } else {
+                    setClaimedByMe(false);
+                    onClaim?.();
+                  }
+                }}
+                className="flex size-8 shrink-0 items-center justify-center bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              >
+                <span className="flex size-6 items-center justify-center rounded-[4px] bg-[var(--blue-500)] text-[var(--white)]">
+                  <HandIcon className="size-5" />
+                </span>
+              </button>
+            ) : isGottenByOther ? (
+              <span
+                className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)]"
+                aria-hidden="true"
+              >
+                {useSyncClaim ? syncListClaim!.otherClaimerAvatar : avatar}
+              </span>
+            ) : (
+              <span className="size-8" aria-hidden />
+            )}
+          </div>
+        </div>
+
+        {showItemThumbnail ? (
+          <div className={cn(gridTileThumbClass, isChecked && "opacity-20")}>
+            {itemThumbnail}
+          </div>
+        ) : (
+          <div className={gridTileThumbClass} aria-hidden />
+        )}
+
+        {showContentBlock && (
+          <div className="flex h-[44px] w-full flex-col items-center text-center">
+            {effectiveVariant === "default" && !isEditable && (
+              <>
+                <span
+                  className={cn(
+                    "w-full truncate text-base font-medium leading-24 tracking-normal",
+                    isChecked && "line-through text-[var(--gray-400)]",
+                    !isChecked && "text-[var(--text-primary)]",
+                  )}
+                >
+                  {itemName}
+                </span>
+                {quantity != null && (
+                  <span
+                    className={cn(
+                      "w-full text-sm font-normal leading-20 tracking-normal text-[var(--gray-400)]",
+                      isChecked && "line-through",
+                    )}
+                  >
+                    {quantity}
+                  </span>
+                )}
+              </>
+            )}
+            {isGottenByYou && (
+              <>
+                <span className="w-full truncate text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+                  {itemName}
+                </span>
+                <span className="w-full truncate text-sm font-normal leading-20 text-[var(--blue-500)]">
+                  {effectiveClaimedByLabel}
+                </span>
+              </>
+            )}
+            {isGottenByOther && !isEditable && (
+              <>
+                <span className="w-full truncate text-base font-medium leading-24 text-[var(--gray-400)]">
+                  {itemName}
+                </span>
+                {effectiveClaimedByLabel != null && (
+                  <span className="w-full truncate text-sm font-normal leading-20 text-[var(--blue-500)]">
+                    {effectiveClaimedByLabel}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
     ) : (
       <>
         <div
