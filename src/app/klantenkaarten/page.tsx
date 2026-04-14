@@ -11,7 +11,11 @@ import { MiniButton } from "@/components/ui/mini_button";
 import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
-import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
+import { Snackbar } from "@/components/ui/snackbar";
+import {
+  APP_FAB_BOTTOM_CLASS,
+  APP_SNACKBAR_FIXTURE_CLASS,
+} from "@/lib/app-layout";
 import { cn } from "@/lib/utils";
 
 type LoyaltyCardRow = {
@@ -308,6 +312,11 @@ export default function KlantenKaartenPage() {
   const [viewOpen, setViewOpen] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [isEditMode, setIsEditMode] = React.useState(false);
+  const [lastDeletedCard, setLastDeletedCard] =
+    React.useState<LoyaltyCardRow | null>(null);
+  const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
+    null,
+  );
 
   const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
   React.useEffect(() => {
@@ -336,27 +345,48 @@ export default function KlantenKaartenPage() {
       }));
   }, [data]);
 
-  const handleDeleteCard = async (id: string) => {
-    setDeletingId(id);
-    try {
-      await db.transact(db.tx.loyaltyCards[id].delete());
-      setViewOpen(false);
-      setViewCard(null);
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  React.useEffect(() => {
+    if (!snackbarMessage) return;
+    const timeout = window.setTimeout(() => {
+      setSnackbarMessage(null);
+      setLastDeletedCard(null);
+    }, 4500);
+    return () => window.clearTimeout(timeout);
+  }, [snackbarMessage]);
 
-  const confirmDelete = (card: LoyaltyCardRow) => {
-    if (
-      !window.confirm(
-        `Weet je zeker dat je de klantenkaart “${card.cardName}” wilt verwijderen?`,
-      )
-    ) {
-      return;
-    }
-    void handleDeleteCard(card.id);
-  };
+  const handleUndoDeleteCard = React.useCallback(() => {
+    if (!lastDeletedCard || !user) return;
+    void db.transact(
+      db.tx.loyaltyCards[lastDeletedCard.id].update({
+        codeType: lastDeletedCard.codeType,
+        codeFormat: lastDeletedCard.codeFormat,
+        rawValue: lastDeletedCard.rawValue,
+        cardName: lastDeletedCard.cardName,
+        createdAtIso: lastDeletedCard.createdAtIso,
+        ownerId: user.id,
+      }),
+    );
+    setLastDeletedCard(null);
+    setSnackbarMessage(null);
+  }, [lastDeletedCard, user]);
+
+  const handleDeleteCard = React.useCallback(
+    async (card: LoyaltyCardRow) => {
+      setDeletingId(card.id);
+      try {
+        await db.transact(db.tx.loyaltyCards[card.id].delete());
+        setLastDeletedCard(card);
+        setSnackbarMessage(`'${card.cardName}' verwijderd`);
+        if (viewCard?.id === card.id) {
+          setViewOpen(false);
+          setViewCard(null);
+        }
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [viewCard],
+  );
 
   if (authLoading || !user || isLoading) {
     return <PageSpinner />;
@@ -365,6 +395,7 @@ export default function KlantenKaartenPage() {
   const viewLogoSrc = viewCard ? logoSrcForCardName(viewCard.cardName) : "";
 
   const empty = cards.length === 0;
+  const fabVisible = !empty && !isEditMode && !snackbarMessage;
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-gradient-to-b from-[var(--blue-100)] to-[var(--white)] px-[16px]">
@@ -433,7 +464,7 @@ export default function KlantenKaartenPage() {
                       setViewCard(card);
                       setViewOpen(true);
                     }}
-                    onRequestDelete={() => confirmDelete(card)}
+                    onRequestDelete={() => void handleDeleteCard(card)}
                   />
                 ))}
               </div>
@@ -474,7 +505,7 @@ export default function KlantenKaartenPage() {
         </div>
       </div>
 
-      {!empty && !isEditMode ? (
+      {fabVisible ? (
         <div
           className={cn(
             "pointer-events-none fixed inset-x-0 z-20",
@@ -507,7 +538,7 @@ export default function KlantenKaartenPage() {
             variant="tertiary"
             disabled={deletingId === viewCard?.id}
             onClick={() => {
-              if (viewCard) void handleDeleteCard(viewCard.id);
+              if (viewCard) void handleDeleteCard(viewCard);
             }}
             className="!text-[var(--error-400)] hover:!text-[var(--error-600)]"
           >
@@ -539,6 +570,20 @@ export default function KlantenKaartenPage() {
           </div>
         ) : null}
       </SlideInModal>
+
+      {snackbarMessage ? (
+        <div
+          className={APP_SNACKBAR_FIXTURE_CLASS}
+          role="region"
+          aria-label="Melding"
+        >
+          <Snackbar
+            message={snackbarMessage}
+            actionLabel="Zet terug"
+            onAction={handleUndoDeleteCard}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

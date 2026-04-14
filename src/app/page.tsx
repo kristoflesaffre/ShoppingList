@@ -42,7 +42,7 @@ import { listIsMasterTemplate } from "@/lib/list-master";
 import { storeLogosFromListIcon } from "@/lib/master-stores";
 import { db } from "@/lib/db";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
-import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
+import { APP_FAB_BOTTOM_CLASS, APP_SNACKBAR_FIXTURE_CLASS } from "@/lib/app-layout";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
@@ -993,7 +993,7 @@ export default function Home() {
 
       {/* Snackbar – positioned above bottom nav */}
       {snackbarMessage && (
-        <div className="fixed inset-x-0 bottom-[calc(183px+env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-2">
+        <div className={APP_SNACKBAR_FIXTURE_CLASS}>
           <Snackbar
             message={snackbarMessage}
             actionLabel="Zet terug"
@@ -1002,22 +1002,24 @@ export default function Home() {
         </div>
       )}
 
-      <div
-        className={cn(
-          "pointer-events-none fixed inset-x-0 z-20",
-          APP_FAB_BOTTOM_CLASS,
-        )}
-      >
-        <div className="px-[16px]">
-          <div className="mx-auto flex w-full max-w-[956px] justify-end">
-            <FloatingActionButton
-              aria-label="Nieuw lijstje"
-              className="pointer-events-auto"
-              onClick={handleOpenCreateModal}
-            />
+      {!snackbarMessage ? (
+        <div
+          className={cn(
+            "pointer-events-none fixed inset-x-0 z-20",
+            APP_FAB_BOTTOM_CLASS,
+          )}
+        >
+          <div className="px-[16px]">
+            <div className="mx-auto flex w-full max-w-[956px] justify-end">
+              <FloatingActionButton
+                aria-label="Nieuw lijstje"
+                className="pointer-events-auto"
+                onClick={handleOpenCreateModal}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

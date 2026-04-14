@@ -46,6 +46,7 @@ import { db } from "@/lib/db";
 import {
   APP_FAB_BOTTOM_NO_NAV_CLASS,
   APP_FAB_INNER_PX4_CLASS,
+  APP_SNACKBAR_NO_NAV_FIXTURE_CLASS,
 } from "@/lib/app-layout";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import type { DecodeResult } from "@/lib/loyalty_card";
@@ -2044,7 +2045,7 @@ export default function ListDetailPage({
     <>
       {snackbarMessage && (
         <div
-          className="fixed inset-x-0 bottom-[calc(168px+env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-2"
+          className={APP_SNACKBAR_NO_NAV_FIXTURE_CLASS}
           role="region"
           aria-label="Melding"
         >
@@ -2056,7 +2057,7 @@ export default function ListDetailPage({
         </div>
       )}
 
-      {!isMasterEmpty && !hideFabOnLoyaltyPanel ? (
+      {!isMasterEmpty && !hideFabOnLoyaltyPanel && !snackbarMessage ? (
         <div
           className={cn(
             "pointer-events-none fixed inset-x-0 z-20",

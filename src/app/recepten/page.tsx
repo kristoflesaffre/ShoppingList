@@ -34,9 +34,7 @@ const RecipeEditorSlideIn = dynamic(
   { ssr: false },
 );
 import { Snackbar } from "@/components/ui/snackbar";
-import {
-  APP_FAB_BOTTOM_CLASS,
-} from "@/lib/app-layout";
+import { APP_FAB_BOTTOM_CLASS, APP_SNACKBAR_FIXTURE_CLASS } from "@/lib/app-layout";
 import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
@@ -680,7 +678,7 @@ export default function ReceptenPage() {
       />
 
       {snackbarMessage && (
-        <div className="fixed inset-x-0 bottom-[calc(183px+env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-2">
+        <div className={APP_SNACKBAR_FIXTURE_CLASS}>
           <Snackbar
             message={snackbarMessage}
             actionLabel="Zet terug"
@@ -689,22 +687,24 @@ export default function ReceptenPage() {
         </div>
       )}
 
-      <div
-        className={cn(
-          "pointer-events-none fixed inset-x-0 z-20",
-          APP_FAB_BOTTOM_CLASS,
-        )}
-      >
-        <div className="px-[16px]">
-          <div className="mx-auto flex w-full max-w-[956px] justify-end">
-            <FloatingActionButton
-              aria-label="Nieuw recept"
-              className="pointer-events-auto"
-              onClick={openNew}
-            />
+      {!snackbarMessage ? (
+        <div
+          className={cn(
+            "pointer-events-none fixed inset-x-0 z-20",
+            APP_FAB_BOTTOM_CLASS,
+          )}
+        >
+          <div className="px-[16px]">
+            <div className="mx-auto flex w-full max-w-[956px] justify-end">
+              <FloatingActionButton
+                aria-label="Nieuw recept"
+                className="pointer-events-auto"
+                onClick={openNew}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }
