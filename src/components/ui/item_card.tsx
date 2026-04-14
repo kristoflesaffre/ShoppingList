@@ -504,7 +504,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
         : cn(
             containerBase,
             gridDensity &&
-              "!min-h-0 h-[140px] justify-center p-3 shadow-drop overflow-hidden rounded-[var(--radius-md)]",
+              "!min-h-0 h-[140px] justify-center p-3 shadow-drop rounded-[var(--radius-md)]",
             isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
             !isGottenByOther && "bg-[var(--white)]",
             !gridDensity &&
@@ -742,10 +742,12 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               </button>
             ) : isGottenByOther ? (
               <span
-                className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)]"
+                className="relative flex size-8 shrink-0 items-start justify-end"
                 aria-hidden="true"
               >
-                {useSyncClaim ? syncListClaim!.otherClaimerAvatar : avatar}
+                <span className="absolute right-0 top-0 flex size-6 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)]">
+                  {useSyncClaim ? syncListClaim!.otherClaimerAvatar : avatar}
+                </span>
               </span>
             ) : (
               <span className="size-8" aria-hidden />

@@ -522,8 +522,13 @@ function SortableItemItems({
           key={section.title}
           aria-label={section.title}
           className={cn(
-            "overflow-hidden transition-[max-height,opacity] duration-200",
+            "transition-[max-height,opacity] duration-200",
             "[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
+            isSectionRemoving
+              ? "overflow-hidden"
+              : listViewMode === "grid"
+                ? "overflow-visible"
+                : "overflow-hidden",
             isSectionRemoving ? "max-h-0 opacity-0" : "max-h-[999999px] opacity-100"
           )}
         >
@@ -687,7 +692,9 @@ function SortableItemRow({
   const wrapperClass = isDndActive
     ? ""
     : cn(
-        "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+        listViewMode === "grid"
+          ? "transition-[max-height,opacity,margin] duration-300 ease-out"
+          : "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
         /* Ruime max voor lange namen / grotere tekst; collapse-animatie blijft werken */
         isAnimating ? "max-h-0 opacity-0" : "max-h-[1200px] opacity-100",
       );
@@ -765,7 +772,7 @@ function SortableItemCard({
       )}
     >
       <SwipeToDelete
-        onDelete={!isEditMode && !isMasterList ? onDelete : undefined}
+        onDelete={!isEditMode && !isMasterList && listViewMode !== "grid" ? onDelete : undefined}
         deleteActionLabel="Item verwijderen"
       >
         <ItemCard
