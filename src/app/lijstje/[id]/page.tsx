@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/core";
 import {
   arrayMove,
+  rectSortingStrategy,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -2146,11 +2147,11 @@ export default function ListDetailPage({
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleReorderItems}
-              modifiers={[restrictToVerticalAxis]}
+              modifiers={listViewMode === "grid" ? [] : [restrictToVerticalAxis]}
             >
               <SortableContext
                 items={items.map((i) => i.id)}
-                strategy={verticalListSortingStrategy}
+                strategy={listViewMode === "grid" ? rectSortingStrategy : verticalListSortingStrategy}
               >
                 <SortableItemItems
                   sections={sections}
