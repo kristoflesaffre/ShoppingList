@@ -233,6 +233,8 @@ const containerBase =
   "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-md py-3 pl-4 pr-3";
 const gridTileThumbClass =
   "relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--gray-100)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover";
+const gridTileFallbackClass =
+  "relative flex size-16 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--gray-25)] p-[10px]";
 
 /** Duration for ItemCard state transition. Identical to ListCard. */
 const ANIM_DURATION_MS = 120;
@@ -505,7 +507,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             containerBase,
             gridDensity &&
               "!min-h-0 h-[140px] justify-center p-3 rounded-[var(--radius-md)]",
-            gridDensity && !isGottenByOther && "shadow-drop",
+            gridDensity && !isGottenByOther && !isChecked && "shadow-drop",
             isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
             !isGottenByOther && "bg-[var(--white)]",
             !gridDensity &&
@@ -761,7 +763,21 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             {itemThumbnail}
           </div>
         ) : (
-          <div className={gridTileThumbClass} aria-hidden />
+          <div className={gridTileFallbackClass} aria-hidden>
+            <span
+              className="pointer-events-none inline-block size-12 bg-[var(--gray-200)]"
+              style={{
+                WebkitMaskImage: 'url("/icons/shopping_bag.svg")',
+                maskImage: 'url("/icons/shopping_bag.svg")',
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+              }}
+            />
+          </div>
         )}
 
         {showContentBlock && (
