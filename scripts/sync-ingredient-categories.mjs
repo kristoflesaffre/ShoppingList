@@ -5,8 +5,9 @@
  * Verwachte werkbladen:
  * - **Categorieën** (of eerste blad): één kolom met kop "Categorie" → vaste volgorde secties.
  * - **Ingrediënten** (of **Ingredienten**): kolommen "Ingredient" + "Categorie" → mapping.
- * - **Synoniemen** (optioneel): kolommen "Synoniem" + "Slug" → `/public/ingredient-synonyms.json`
- *   (zelfde formaat als voorheen: sleutel = alternatieve naam, waarde = slug uit `/images/ingredients/`).
+ * - **Synoniemen** (optioneel) → `/public/ingredient-synonyms.json` (sleutel = alternatieve naam, waarde = slug):
+ *   - **Breed (aanbevolen):** kolom A = PNG/slug (`Afbeelding`, `Slug`, `PNG`, …); elke volgende kolom is een extra synoniem voor die rij.
+ *   - **Legacy:** twee kolommen "Synoniem" + "Slug" (of omgekeerde volgorde), één synoniem per rij.
  *
  * Na wijzigingen in de Excel: `npm run sync:ingredient-categories`
  */
@@ -95,30 +96,37 @@ function parseIngredientSheet(rows) {
   return map;
 }
 
+function synonymHeaderCell(h) {
+  const t = String(h ?? "").trim().toLowerCase();
+  return (
+    t.includes("synoni") ||
+    t === "alias" ||
+    t === "alternatief" ||
+    t === "zoekterm"
+  );
+}
+
+function slugHeaderCell(h) {
+  const t = String(h ?? "").trim().toLowerCase();
+  return (
+    t === "slug" ||
+    t === "png" ||
+    t.includes("afbeelding") ||
+    t.includes("bestand") ||
+    t.includes("canonical") ||
+    t.includes("doel")
+  );
+}
+
 /**
- * Blad **Synoniemen**: kolom "Synoniem" (of Synonym) + "Slug" (bestandsnaam-basis, evt. _1).
- * Lege rijen worden overgeslagen. Dubbele synoniemen (na normalisatie): laatste wint + console.warn.
+ * Legacy: één synoniem per rij, twee kolommen (Synoniem ↔ Slug).
  */
-function parseSynonymSheet(rows) {
+function parseSynonymSheetLegacy(rows) {
   /** @type {Record<string, string>} */
   const out = {};
-  if (rows.length < 2) return out;
   const header = (rows[0] ?? []).map((c) => String(c).trim().toLowerCase());
-  const idxSyn = header.findIndex(
-    (h) =>
-      h.includes("synoni") ||
-      h === "alias" ||
-      h === "alternatief" ||
-      h === "zoekterm",
-  );
-  const idxSlug = header.findIndex(
-    (h) =>
-      h === "slug" ||
-      h.includes("afbeelding") ||
-      h.includes("bestand") ||
-      h.includes("canonical") ||
-      h.includes("doel"),
-  );
+  const idxSyn = header.findIndex(synonymHeaderCell);
+  const idxSlug = header.findIndex(slugHeaderCell);
   const colSyn = idxSyn >= 0 ? idxSyn : 0;
   const colSlug = idxSlug >= 0 ? idxSlug : 1;
   if (colSyn === colSlug) return out;
@@ -140,6 +148,54 @@ function parseSynonymSheet(rows) {
     out[keyNorm] = slugNorm;
   }
   return out;
+}
+
+/**
+ * Breed: kolom `slugCol` = bestandsnaam/slug; alle volgende kolommen = synoniemen voor die PNG.
+ * Zelfde slug mag op meerdere rijen staan (synoniemen worden samengevoegd).
+ */
+function parseSynonymSheetWide(rows, slugCol) {
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const slugRaw = String(row[slugCol] ?? "").trim();
+    if (!slugRaw) continue;
+    const slugNorm = normalizeForMatch(slugRaw);
+    if (!slugNorm) continue;
+    for (let c = slugCol + 1; c < row.length; c++) {
+      const synRaw = String(row[c] ?? "").trim();
+      if (!synRaw) continue;
+      const keyNorm = normalizeForMatch(synRaw);
+      if (!keyNorm) continue;
+      if (Object.prototype.hasOwnProperty.call(out, keyNorm) && out[keyNorm] !== slugNorm) {
+        console.warn(
+          `[synoniemen] dubbele sleutel na normalisatie "${keyNorm}": overschrijf met slug "${slugNorm}"`,
+        );
+      }
+      out[keyNorm] = slugNorm;
+    }
+  }
+  return out;
+}
+
+/**
+ * Blad **Synoniemen**:
+ * - Breed: eerste kolom = slug/PNG-kop; daarna synoniemen horizontaal.
+ * - Legacy: kop "Synoniem" in eerste kolom → verticaal twee-koloms-formaat.
+ */
+function parseSynonymSheet(rows) {
+  if (rows.length < 2) return {};
+  const header = (rows[0] ?? []).map((c) => String(c).trim().toLowerCase());
+  if (synonymHeaderCell(header[0])) {
+    return parseSynonymSheetLegacy(rows);
+  }
+  let slugCol = 0;
+  if (!slugHeaderCell(header[0])) {
+    const idx = header.findIndex(slugHeaderCell);
+    if (idx >= 0) slugCol = idx;
+  }
+  return parseSynonymSheetWide(rows, slugCol);
 }
 
 const wb = XLSX.readFile(excelPath);
@@ -219,7 +275,7 @@ if (synSheet) {
   } else {
     const synonymPayload = {
       _comment:
-        "Gegenereerd door npm run sync:ingredient-categories uit werkblad Synoniemen. Sleutels zijn genormaliseerd (kleine letters, underscores); waarden = slug voor /images/ingredients/.",
+        "Gegenereerd door npm run sync:ingredient-categories uit werkblad Synoniemen (breed: slug in kolom A, synoniemen in B+). Sleutels genormaliseerd; waarden = slug voor /images/ingredients/.",
       ...synonymToSlug,
     };
     fs.mkdirSync(path.dirname(synonymsOutPath), { recursive: true });

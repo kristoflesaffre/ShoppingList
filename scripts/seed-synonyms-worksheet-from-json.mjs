@@ -1,6 +1,7 @@
 /**
  * Vult of vervangt het werkblad "Synoniemen" in `ingredienten_categorieen.xlsx`
- * met rijen uit `public/ingredient-synonyms.json` (kolommen Synoniem + Slug).
+ * vanuit `public/ingredient-synonyms.json`:
+ * - Kolom A = slug (PNG-basis); kolommen B… = alle synoniemen voor die slug.
  *
  *   node scripts/seed-synonyms-worksheet-from-json.mjs
  */
@@ -38,19 +39,42 @@ function removeSheet(wb, name) {
 }
 
 const raw = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
-/** @type {Array<[string, string]>} */
-const pairs = [];
-for (const [key, value] of Object.entries(raw)) {
-  if (key.startsWith("_") || typeof value !== "string") continue;
-  pairs.push([key, value]);
+/** @type {Map<string, string[]>} */
+const bySlug = new Map();
+for (const [synKey, slug] of Object.entries(raw)) {
+  if (synKey.startsWith("_") || typeof slug !== "string") continue;
+  const list = bySlug.get(slug);
+  if (list) list.push(synKey);
+  else bySlug.set(slug, [synKey]);
 }
-pairs.sort((a, b) => {
-  const c = a[1].localeCompare(b[1], "nl");
-  if (c !== 0) return c;
-  return a[0].localeCompare(b[0], "nl");
-});
 
-const aoa = [["Synoniem", "Slug"], ...pairs];
+const slugsSorted = Array.from(bySlug.keys()).sort((a, b) =>
+  a.localeCompare(b, "nl"),
+);
+for (const s of slugsSorted) {
+  bySlug.get(s).sort((a, b) => a.localeCompare(b, "nl"));
+}
+
+let maxSyn = 0;
+for (const s of slugsSorted) {
+  maxSyn = Math.max(maxSyn, bySlug.get(s).length);
+}
+const colCount = 1 + maxSyn;
+
+/** @type {string[][]} */
+const header = ["Afbeelding (png / slug)"];
+for (let i = 1; i < colCount; i++) {
+  header.push(`Synoniem ${i}`);
+}
+
+/** @type {string[][]} */
+const aoa = [header];
+for (const slug of slugsSorted) {
+  const syns = bySlug.get(slug);
+  const row = [slug, ...syns];
+  while (row.length < colCount) row.push("");
+  aoa.push(row);
+}
 
 const wb = XLSX.readFile(excelPath);
 const existing = findSheetName(wb);
@@ -60,6 +84,7 @@ wb.SheetNames.push(NEW_SHEET_NAME);
 wb.Sheets[NEW_SHEET_NAME] = XLSX.utils.aoa_to_sheet(aoa);
 
 XLSX.writeFile(wb, excelPath);
+const totalSyns = slugsSorted.reduce((n, s) => n + bySlug.get(s).length, 0);
 console.log(
-  `Wrote werkblad "${NEW_SHEET_NAME}" in ${excelPath} (${pairs.length} rijen + kop).`,
+  `Wrote werkblad "${NEW_SHEET_NAME}" in ${excelPath} (${slugsSorted.length} PNG-rijen, ${totalSyns} synoniemen, ${maxSyn} max kolommen na slug).`,
 );
