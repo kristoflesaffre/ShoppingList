@@ -509,7 +509,10 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
         : cn(
             containerBase,
             gridDensity &&
-              "!min-h-0 h-[140px] justify-center p-3 rounded-[var(--radius-md)]",
+              cn(
+                "!min-h-0 justify-center p-3 rounded-[var(--radius-md)]",
+                isEditable ? "h-auto min-h-[168px]" : "h-[140px]",
+              ),
             gridEditable && "bg-[var(--white)] shadow-drop",
             gridDensity && !gridEditable && !isGottenByOther && !isChecked && "shadow-drop",
             isGottenByOther &&
@@ -789,35 +792,40 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
         )}
 
         {isEditable ? (
-          <div className="flex h-[44px] w-full items-center justify-center gap-3">
-            <button
-              type="button"
-              aria-label="Reorder item"
-              {...(dragHandleProps ?? (onReorder ? { onClick: onReorder } : {}))}
-              className="flex size-6 shrink-0 cursor-grab touch-none items-center justify-center text-[var(--blue-500)] transition-colors hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:cursor-grabbing"
-            >
-              <ReorderIcon className="size-6" />
-            </button>
-            <span className="h-6 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
-            <button
-              type="button"
-              aria-label="Edit item"
-              onClick={onEdit}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-            >
-              <PencilIcon className="size-6" />
-            </button>
-            <span className="h-6 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
-            <button
-              type="button"
-              aria-label="Delete item"
-              onClick={onDelete}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--error-600)] transition-colors hover:text-[var(--error-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-            >
-              <TrashIcon className="size-6" />
-            </button>
+          <div className="flex w-full flex-col items-start gap-0">
+            <span className="w-full truncate text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+              {itemName}
+            </span>
+            <div className="flex h-11 w-full items-center justify-center gap-3">
+              <button
+                type="button"
+                aria-label="Reorder item"
+                {...(dragHandleProps ?? (onReorder ? { onClick: onReorder } : {}))}
+                className="flex size-6 shrink-0 cursor-grab touch-none items-center justify-center text-[var(--blue-500)] transition-colors hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:cursor-grabbing"
+              >
+                <ReorderIcon className="size-6" />
+              </button>
+              <span className="h-6 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+              <button
+                type="button"
+                aria-label="Edit item"
+                onClick={onEdit}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              >
+                <PencilIcon className="size-6" />
+              </button>
+              <span className="h-6 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+              <button
+                type="button"
+                aria-label="Delete item"
+                onClick={onDelete}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="flex size-6 shrink-0 items-center justify-center text-[var(--error-600)] transition-colors hover:text-[var(--error-400)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              >
+                <TrashIcon className="size-6" />
+              </button>
+            </div>
           </div>
         ) : showContentBlock && (
           <div className="flex h-[44px] w-full flex-col items-center text-center">
@@ -1101,7 +1109,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               aria-label="Delete item"
               onClick={onDelete}
               onPointerDown={(e) => e.stopPropagation()}
-              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--error-400)] transition-colors hover:bg-[var(--error-25)] hover:text-[var(--error-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
             >
               <TrashIcon />
             </button>
