@@ -478,12 +478,15 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       !isBare &&
       !isMasterLayout &&
       !isAddedLayout;
+    const gridEditable = gridDensity && isEditable;
 
     const showItemThumbnail =
       itemThumbnail != null &&
       !isEditable &&
       !isMasterLayout &&
       !isAddedLayout;
+    const gridShowThumbnail =
+      itemThumbnail != null && !isMasterLayout && !isAddedLayout;
 
     /**
      * gotten-by-you: 1px border primary 500 op de buitenrand (zelfde box als default gray border —
@@ -507,15 +510,18 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             containerBase,
             gridDensity &&
               "!min-h-0 h-[140px] justify-center p-3 rounded-[var(--radius-md)]",
-            gridDensity && !isGottenByOther && !isChecked && "shadow-drop",
-            isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
-            !isGottenByOther && "bg-[var(--white)]",
+            gridEditable && "bg-[var(--white)] shadow-drop",
+            gridDensity && !gridEditable && !isGottenByOther && !isChecked && "shadow-drop",
+            isGottenByOther &&
+              !gridEditable &&
+              "border border-[var(--gray-100)] bg-[var(--blue-25)]",
+            (!isGottenByOther || gridEditable) && "bg-[var(--white)]",
             !gridDensity &&
               !isGottenByOther &&
               !isGottenByYou &&
               "border border-[var(--gray-100)]",
             !gridDensity && showGottenByYouChrome && "border border-[var(--blue-500)]",
-            gridDensity && isGottenByYou && "border-2 border-[var(--blue-500)]",
+            gridDensity && !gridEditable && isGottenByYou && "border-2 border-[var(--blue-500)]",
             className,
           );
 
@@ -679,86 +685,88 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             : undefined
         }
       >
-        <div className="absolute inset-x-0 top-0 z-[1] flex items-start justify-between">
-          <div className="flex h-8 w-8 items-start justify-start">
-            {showCheckbox ? (
-              <span onClick={(e) => e.stopPropagation()} className="contents">
-                <Checkbox
-                  size="default"
-                  checked={isChecked}
-                  onCheckedChange={handleCheckedChange}
-                  disabled={isGottenByOther}
-                  className="shrink-0 rounded-[4px] border-[1.3px]"
-                  aria-label={
-                    typeof itemName === "string"
-                      ? `Markeer "${itemName}" als gehaald`
-                      : "Markeer als gehaald"
-                  }
-                />
-              </span>
-            ) : (
-              <span className="size-6" aria-hidden />
-            )}
+        {!isEditable && (
+          <div className="absolute inset-x-0 top-0 z-[1] flex items-start justify-between">
+            <div className="flex h-8 w-8 items-start justify-start">
+              {showCheckbox ? (
+                <span onClick={(e) => e.stopPropagation()} className="contents">
+                  <Checkbox
+                    size="default"
+                    checked={isChecked}
+                    onCheckedChange={handleCheckedChange}
+                    disabled={isGottenByOther}
+                    className="shrink-0 rounded-[4px] border-[1.3px]"
+                    aria-label={
+                      typeof itemName === "string"
+                        ? `Markeer "${itemName}" als gehaald`
+                        : "Markeer als gehaald"
+                    }
+                  />
+                </span>
+              ) : (
+                <span className="size-6" aria-hidden />
+              )}
+            </div>
+            <div className="flex h-8 w-8 items-start justify-end">
+              {showClaimButton && effectiveVariant === "default" && !isChecked ? (
+                <button
+                  type="button"
+                  aria-label="Claim item"
+                  data-item-hand
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (useSyncClaim) {
+                      syncListClaim!.onClaimChange(syncListClaim!.currentUserId);
+                    } else {
+                      setClaimedByMe(true);
+                      onClaim?.();
+                    }
+                  }}
+                  className="relative flex size-8 shrink-0 items-start justify-end bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                >
+                  <span className="absolute right-0 top-0 flex size-6 items-center justify-center rounded-[4px] bg-[var(--blue-50)] text-[var(--blue-300)]">
+                    <HandIcon className="size-5" />
+                  </span>
+                </button>
+              ) : showClaimButton && isGottenByYou ? (
+                <button
+                  type="button"
+                  aria-label="Unclaim item"
+                  data-item-hand
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (useSyncClaim) {
+                      syncListClaim!.onClaimChange(null);
+                    } else {
+                      setClaimedByMe(false);
+                      onClaim?.();
+                    }
+                  }}
+                  className="relative flex size-8 shrink-0 items-start justify-end bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                >
+                  <span className="absolute right-0 top-0 flex size-6 items-center justify-center rounded-[4px] bg-[var(--blue-500)] text-[var(--white)]">
+                    <HandIcon className="size-5" />
+                  </span>
+                </button>
+              ) : isGottenByOther ? (
+                <span
+                  className="relative flex size-8 shrink-0 items-start justify-end"
+                  aria-hidden="true"
+                >
+                  <span className="absolute right-0 top-0 flex size-6 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)]">
+                    {useSyncClaim ? syncListClaim!.otherClaimerAvatar : avatar}
+                  </span>
+                </span>
+              ) : (
+                <span className="size-8" aria-hidden />
+              )}
+            </div>
           </div>
-          <div className="flex h-8 w-8 items-start justify-end">
-            {showClaimButton && effectiveVariant === "default" && !isChecked ? (
-              <button
-                type="button"
-                aria-label="Claim item"
-                data-item-hand
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (useSyncClaim) {
-                    syncListClaim!.onClaimChange(syncListClaim!.currentUserId);
-                  } else {
-                    setClaimedByMe(true);
-                    onClaim?.();
-                  }
-                }}
-                className="relative flex size-8 shrink-0 items-start justify-end bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-              >
-                <span className="absolute right-0 top-0 flex size-6 items-center justify-center rounded-[4px] bg-[var(--blue-50)] text-[var(--blue-300)]">
-                  <HandIcon className="size-5" />
-                </span>
-              </button>
-            ) : showClaimButton && isGottenByYou ? (
-              <button
-                type="button"
-                aria-label="Unclaim item"
-                data-item-hand
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (useSyncClaim) {
-                    syncListClaim!.onClaimChange(null);
-                  } else {
-                    setClaimedByMe(false);
-                    onClaim?.();
-                  }
-                }}
-                className="relative flex size-8 shrink-0 items-start justify-end bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-              >
-                <span className="absolute right-0 top-0 flex size-6 items-center justify-center rounded-[4px] bg-[var(--blue-500)] text-[var(--white)]">
-                  <HandIcon className="size-5" />
-                </span>
-              </button>
-            ) : isGottenByOther ? (
-              <span
-                className="relative flex size-8 shrink-0 items-start justify-end"
-                aria-hidden="true"
-              >
-                <span className="absolute right-0 top-0 flex size-6 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)]">
-                  {useSyncClaim ? syncListClaim!.otherClaimerAvatar : avatar}
-                </span>
-              </span>
-            ) : (
-              <span className="size-8" aria-hidden />
-            )}
-          </div>
-        </div>
+        )}
 
-        {showItemThumbnail ? (
+        {gridShowThumbnail ? (
           <div className={cn(gridTileThumbClass, isChecked && "opacity-20")}>
             {itemThumbnail}
           </div>
@@ -780,7 +788,38 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
           </div>
         )}
 
-        {showContentBlock && (
+        {isEditable ? (
+          <div className="flex h-[44px] w-full items-center justify-center gap-3">
+            <button
+              type="button"
+              aria-label="Reorder item"
+              {...(dragHandleProps ?? (onReorder ? { onClick: onReorder } : {}))}
+              className="flex size-6 shrink-0 cursor-grab touch-none items-center justify-center text-[var(--blue-500)] transition-colors hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:cursor-grabbing"
+            >
+              <ReorderIcon className="size-6" />
+            </button>
+            <span className="h-6 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+            <button
+              type="button"
+              aria-label="Edit item"
+              onClick={onEdit}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+            >
+              <PencilIcon className="size-6" />
+            </button>
+            <span className="h-6 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+            <button
+              type="button"
+              aria-label="Delete item"
+              onClick={onDelete}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="flex size-6 shrink-0 items-center justify-center text-[var(--error-600)] transition-colors hover:text-[var(--error-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+            >
+              <TrashIcon className="size-6" />
+            </button>
+          </div>
+        ) : showContentBlock && (
           <div className="flex h-[44px] w-full flex-col items-center text-center">
             {effectiveVariant === "default" && !isEditable && (
               <>

@@ -1469,30 +1469,38 @@ export default function ListDetailPage({
   const handleUndoDelete = React.useCallback(() => {
     if (!lastDeleted) return;
     const { item, index } = lastDeleted;
+    const restoredId = iid();
+    const restoredItem: ListItem = { ...item, id: restoredId };
     const newArray = [...items];
-    newArray.splice(index, 0, item);
+    newArray.splice(index, 0, restoredItem);
     const txns = [
-      db.tx.items[item.id]
+      db.tx.items[restoredId]
         .update({
-          name: item.name,
-          quantity: item.quantity,
-          checked: item.checked,
-          section: item.section,
+          name: restoredItem.name,
+          quantity: restoredItem.quantity,
+          checked: restoredItem.checked,
+          section: restoredItem.section,
           order: index,
-          recipeGroupId: item.recipeGroupId ?? "",
-          recipeName: item.recipeName ?? "",
-          recipeLink: item.recipeLink ?? "",
-          ...(item.claimedByInstantUserId
+          recipeGroupId: restoredItem.recipeGroupId ?? "",
+          recipeName: restoredItem.recipeName ?? "",
+          recipeLink: restoredItem.recipeLink ?? "",
+          ...(restoredItem.claimedByInstantUserId
             ? {
-                claimedByInstantUserId: item.claimedByInstantUserId,
-                ...(item.claimedByDisplayName
-                  ? { claimedByDisplayName: item.claimedByDisplayName }
+                claimedByInstantUserId: restoredItem.claimedByInstantUserId,
+                ...(restoredItem.claimedByDisplayName
+                  ? { claimedByDisplayName: restoredItem.claimedByDisplayName }
                   : {}),
               }
             : {}),
         })
         .link({ list: listId }),
-      ...newArray.map((a, i) => db.tx.items[a.id].update({ order: i })),
+      ...newArray
+        .filter((a) => a.id !== restoredId)
+        .map((a, i) =>
+          db.tx.items[a.id].update({
+            order: newArray.findIndex((x) => x.id === a.id),
+          }),
+        ),
     ];
     db.transact(txns as Parameters<typeof db.transact>[0]);
     setLastDeleted(null);
@@ -1584,7 +1592,7 @@ export default function ListDetailPage({
 
   const showListDetailHeader =
     hasItems || showSharedDetailRow || isMasterEmpty;
-  const listViewMode: "list" | "grid" = isEditMode ? "list" : listLayoutMode;
+  const listViewMode: "list" | "grid" = listLayoutMode;
 
   React.useEffect(() => {
     if (!listId) return;
