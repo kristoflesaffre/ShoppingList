@@ -571,7 +571,7 @@ function SortableItemItems({
               >
                 <RecycleBinIcon />
               </button>
-            ) : (
+            ) : isCategoryGrouping ? null : (
               <button
                 type="button"
                 aria-label={`Item toevoegen aan ${section.title}`}
