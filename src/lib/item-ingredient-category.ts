@@ -233,6 +233,55 @@ export function orderedCategorySectionTitles(keys: string[]): string[] {
   return out;
 }
 
+/** Parseert opgeslagen volgorde vanuit de lijst-entiteit (JSON-array van categorietitels). */
+export function parseMasterCategoryOrderJson(
+  raw: string | null | undefined,
+): string[] | null {
+  if (raw == null || typeof raw !== "string" || raw.trim() === "") {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    const titles = parsed.filter(
+      (x): x is string => typeof x === "string" && x.trim().length > 0,
+    );
+    return titles.length > 0 ? titles : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Categorie-secties sorteren; optioneel `masterOrder` van deze masterlijst.
+ * Sleutels die niet in `masterOrder` voorkomen worden achteraan gezet volgens de standaard JSON-volgorde.
+ */
+export function orderedCategorySectionTitlesWithMasterOverride(
+  keys: string[],
+  masterOrder: string[] | null,
+): string[] {
+  if (!masterOrder?.length) return orderedCategorySectionTitles(keys);
+  const keySet = new Set(keys);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const c of masterOrder) {
+    if (keySet.has(c) && !seen.has(c)) {
+      out.push(c);
+      seen.add(c);
+    }
+  }
+  const remaining = keys.filter((k) => !seen.has(k));
+  if (remaining.length === 0) return out;
+  const tail = orderedCategorySectionTitles(remaining);
+  for (const t of tail) {
+    if (!seen.has(t)) {
+      out.push(t);
+      seen.add(t);
+    }
+  }
+  return out;
+}
+
 export function categoryHeadingDisplay(title: string): string {
   return title.toLocaleUpperCase("nl-NL");
 }

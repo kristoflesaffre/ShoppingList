@@ -63,8 +63,11 @@ import {
   categoryHeadingDisplay,
   effectiveItemCategory,
   orderedCategorySectionTitles,
+  orderedCategorySectionTitlesWithMasterOverride,
+  parseMasterCategoryOrderJson,
   resolveItemCategoryFromName,
 } from "@/lib/item-ingredient-category";
+import { MasterCategoryOrderPanel } from "@/app/lijstje/[id]/master_category_order_panel";
 import { PillTab } from "@/components/ui/pill_tab";
 import {
   type RecipeIngredient,
@@ -496,6 +499,8 @@ function SortableItemItems({
   onDeleteRecipeGroup,
   onEdit,
   onAddToSection,
+  showMasterCategoryReorderLink = false,
+  onOpenMasterCategoryReorder,
   currentUserId,
   claimProfileByUserId,
 }: {
@@ -518,6 +523,9 @@ function SortableItemItems({
   onDeleteRecipeGroup: (groupId: string) => void;
   onEdit: (item: ListItem) => void;
   onAddToSection: (sectionTitle: string) => void;
+  /** Masterlijst in bewerkmodus: geen sectie verwijderen; eerste kop krijgt link naar categorievolgorde. */
+  showMasterCategoryReorderLink?: boolean;
+  onOpenMasterCategoryReorder?: () => void;
   currentUserId: string;
   claimProfileByUserId: Map<string, ClaimerProfileInfo>;
 }) {
@@ -563,14 +571,25 @@ function SortableItemItems({
               </h3>
             )}
             {isEditMode ? (
-              <button
-                type="button"
-                aria-label={`Sectie ${section.title} verwijderen`}
-                onClick={() => onDeleteSection(section.title)}
-                className="flex size-6 shrink-0 items-center justify-center text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <RecycleBinIcon />
-              </button>
+              showMasterCategoryReorderLink ? (
+                <button
+                  type="button"
+                  onClick={onOpenMasterCategoryReorder}
+                  aria-label="Volgorde van categorieën wijzigen"
+                  className="shrink-0 text-xs font-medium leading-16 tracking-normal text-action-primary underline decoration-action-primary underline-offset-2 transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                >
+                  Volgorde wijzigen
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  aria-label={`Sectie ${section.title} verwijderen`}
+                  onClick={() => onDeleteSection(section.title)}
+                  className="flex size-6 shrink-0 items-center justify-center text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                >
+                  <RecycleBinIcon />
+                </button>
+              )
             ) : isCategoryGrouping ? null : (
               <button
                 type="button"
@@ -1143,6 +1162,11 @@ export default function ListDetailPage({
   }, [claimerProfileData?.profiles]);
 
   const [isEditMode, setIsEditMode] = React.useState(false);
+  /** Masterlijst: scherm alleen categorieën slepen (Figma volgorde wijzigen). */
+  const [isMasterCategoryOrderMode, setIsMasterCategoryOrderMode] =
+    React.useState(false);
+  const [masterCategorySnapshotTitles, setMasterCategorySnapshotTitles] =
+    React.useState<string[]>([]);
   const [listLayoutMode, setListLayoutMode] = React.useState<"list" | "grid">("list");
   const [isListLayoutHydrated, setIsListLayoutHydrated] = React.useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
@@ -1220,6 +1244,20 @@ export default function ListDetailPage({
   }, [recipeData]);
 
   const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
+
+  React.useEffect(() => {
+    if (!isEditMode) setIsMasterCategoryOrderMode(false);
+  }, [isEditMode]);
+
+  /** Primitieve dep: Instant kan `lists[0]` muteren zonder nieuwe referentie — dan zou `useMemo([listData])` niet opnieuw lopen. */
+  const masterCategoryOrderJsonFingerprint =
+    (listData as { masterCategoryOrderJson?: string } | undefined)
+      ?.masterCategoryOrderJson ?? "";
+
+  const parsedMasterCategoryOrder = React.useMemo(
+    () => parseMasterCategoryOrderJson(masterCategoryOrderJsonFingerprint),
+    [masterCategoryOrderJsonFingerprint],
+  );
 
   const DELETE_ANIMATION_MS = 300;
   const ADD_ANIMATION_MS = 300;
@@ -1720,17 +1758,36 @@ export default function ListDetailPage({
       existing.push(item);
       grouped.set(cat, existing);
     }
-    const titles = orderedCategorySectionTitles(Array.from(grouped.keys()));
+    const keys = Array.from(grouped.keys());
+    const titles = isMasterList
+      ? orderedCategorySectionTitlesWithMasterOverride(
+          keys,
+          parsedMasterCategoryOrder,
+        )
+      : orderedCategorySectionTitles(keys);
     return titles
       .filter((t) => grouped.has(t))
       .map((t) => ({ title: t, items: grouped.get(t)! }));
-  }, [items, effectiveListGroupingMode, isMasterList]);
+  }, [
+    items,
+    effectiveListGroupingMode,
+    isMasterList,
+    parsedMasterCategoryOrder,
+  ]);
 
   const hasItems = items.length > 0;
   const isMasterEmpty = isMasterList && !hasItems;
 
   const showListDetailHeader =
     hasItems || showSharedDetailRow || isMasterEmpty;
+
+  const handleOpenMasterCategoryReorder = React.useCallback(() => {
+    const titles = sections.map((s) => s.title);
+    if (titles.length === 0) return;
+    setMasterCategorySnapshotTitles(titles);
+    setIsMasterCategoryOrderMode(true);
+  }, [sections]);
+
   const listViewMode: "list" | "grid" = listLayoutMode;
 
   React.useEffect(() => {
@@ -1909,37 +1966,58 @@ export default function ListDetailPage({
   const listAppHeader = (
       <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
         <header className="relative mx-auto flex h-14 max-w-[956px] items-center px-4">
-          <Link
-            href="/"
-            aria-label="Terug naar lijstjes"
-            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-          >
-            <BackArrowIcon />
-          </Link>
-          <h1 className="pointer-events-none absolute inset-x-0 truncate px-24 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
-            {listName}
-          </h1>
-          <div className="flex-1" />
-          {isListOwner ? (
+          {isMasterCategoryOrderMode ? (
             <button
               type="button"
-              aria-label="Lijstje delen"
-              onClick={() => void handleShareInvitePress()}
+              aria-label="Terug naar lijst"
+              onClick={() => setIsMasterCategoryOrderMode(false)}
               className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
             >
-              <PersonAddIcon />
+              <BackArrowIcon />
             </button>
           ) : (
-            <span className="size-6 shrink-0" aria-hidden />
+            <Link
+              href="/"
+              aria-label="Terug naar lijstjes"
+              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              <BackArrowIcon />
+            </Link>
           )}
-          <div className="w-4 shrink-0" aria-hidden />
-          <button
-            type="button"
-            aria-label="Meer opties"
-            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-          >
-            <MoreDotsIcon />
-          </button>
+          <h1 className="pointer-events-none absolute inset-x-0 truncate px-24 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+            {isMasterCategoryOrderMode ? "Volgorde categorieën" : listName}
+          </h1>
+          <div className="flex-1" />
+          {!isMasterCategoryOrderMode ? (
+            <>
+              {isListOwner ? (
+                <button
+                  type="button"
+                  aria-label="Lijstje delen"
+                  onClick={() => void handleShareInvitePress()}
+                  className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                >
+                  <PersonAddIcon />
+                </button>
+              ) : (
+                <span className="size-6 shrink-0" aria-hidden />
+              )}
+              <div className="w-4 shrink-0" aria-hidden />
+              <button
+                type="button"
+                aria-label="Meer opties"
+                className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                <MoreDotsIcon />
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="size-6 shrink-0" aria-hidden />
+              <div className="w-4 shrink-0" aria-hidden />
+              <span className="size-6 shrink-0" aria-hidden />
+            </>
+          )}
         </header>
       </div>
   );
@@ -1950,7 +2028,7 @@ export default function ListDetailPage({
       >
         {/* Geen extra gradient: zelfde principe als gewone lijstdetail — alleen body::before (globals.css). */}
         <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6 px-4">
-          {showListDetailHeader ? (
+          {showListDetailHeader && !isMasterCategoryOrderMode ? (
             <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1 flex flex-col gap-0">
                 <div className="flex items-center gap-2">
@@ -2067,7 +2145,8 @@ export default function ListDetailPage({
             </div>
           ) : null}
 
-          {!isMasterList &&
+          {!isMasterCategoryOrderMode &&
+          !isMasterList &&
           hasItems &&
           isListGroupingHydrated &&
           !isMasterEmpty ? (
@@ -2083,7 +2162,7 @@ export default function ListDetailPage({
             />
           ) : null}
 
-          {showLoyaltyLinkRows ? (
+          {!isMasterCategoryOrderMode && showLoyaltyLinkRows ? (
             isLidlDelhaizeList ? (
               <div className="flex w-full flex-col gap-3">
                 {existingLoyaltyCard ? (
@@ -2274,7 +2353,23 @@ export default function ListDetailPage({
             ) : null
           ) : null}
 
-          {!hasItems ? (
+          {isMasterCategoryOrderMode &&
+          isMasterList &&
+          masterCategorySnapshotTitles.length > 0 ? (
+            <section
+              className="flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-col gap-4 pb-8"
+              aria-label="Volgorde van categorieën wijzigen"
+            >
+              <p className="text-sm font-normal leading-20 tracking-normal text-[var(--text-tertiary)]">
+                Sleep een categorie omhoog of omlaag. De volgorde bepaalt hoe secties op je
+                masterlijst verschijnen.
+              </p>
+              <MasterCategoryOrderPanel
+                categories={masterCategorySnapshotTitles}
+                listId={listId}
+              />
+            </section>
+          ) : !hasItems ? (
             isMasterEmpty ? (
               <section
                 className="flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-col items-center justify-center gap-6 px-0 pb-8"
@@ -2374,6 +2469,10 @@ export default function ListDetailPage({
                   }}
                   currentUserId={user.id}
                   claimProfileByUserId={claimProfileByUserId}
+                  showMasterCategoryReorderLink={
+                    isMasterList && isListOwner && isEditMode
+                  }
+                  onOpenMasterCategoryReorder={handleOpenMasterCategoryReorder}
                 />
               </SortableContext>
             </DndContext>
@@ -2398,7 +2497,10 @@ export default function ListDetailPage({
         </div>
       )}
 
-      {!isMasterEmpty && !hideFabOnLoyaltyPanel && !snackbarMessage ? (
+      {!isMasterEmpty &&
+      !hideFabOnLoyaltyPanel &&
+      !isMasterCategoryOrderMode &&
+      !snackbarMessage ? (
         <div
           className={cn(
             "pointer-events-none fixed inset-x-0 z-20",

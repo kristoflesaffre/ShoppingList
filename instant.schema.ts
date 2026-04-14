@@ -23,6 +23,11 @@ const schema = i.schema({
       ownerId: i.string().optional().indexed(),
       /** Unieke token voor uitnodigingslink (/deel/[token]); alleen gezet door eigenaar. */
       shareToken: i.string().optional().unique().indexed(),
+      /**
+       * Masterlijst: JSON-array van categorietitels (zoals `itemCategory`) voor weergavevolgorde.
+       * Ontbreekt → standaordvolgorde uit ingredient_categories.json.
+       */
+      masterCategoryOrderJson: i.string().optional(),
     }),
     /** Koppeling: gebruiker is deelnemer aan een gedeeld lijstje (realtime samenwerking). */
     listMembers: i.entity({
