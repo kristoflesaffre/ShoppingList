@@ -1081,6 +1081,7 @@ export default function ListDetailPage({
 
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [listLayoutMode, setListLayoutMode] = React.useState<"list" | "grid">("list");
+  const [isListLayoutHydrated, setIsListLayoutHydrated] = React.useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<ListItem | null>(null);
   const [initialSection, setInitialSection] = React.useState<string | null>(null);
@@ -1584,6 +1585,32 @@ export default function ListDetailPage({
   const showListDetailHeader =
     hasItems || showSharedDetailRow || isMasterEmpty;
   const listViewMode: "list" | "grid" = isEditMode ? "list" : listLayoutMode;
+
+  React.useEffect(() => {
+    if (!listId) return;
+    setIsListLayoutHydrated(false);
+    try {
+      const saved = window.localStorage.getItem(`list-view-mode:${listId}`);
+      if (saved === "list" || saved === "grid") {
+        setListLayoutMode(saved);
+      } else {
+        setListLayoutMode("list");
+      }
+    } catch {
+      setListLayoutMode("list");
+    } finally {
+      setIsListLayoutHydrated(true);
+    }
+  }, [listId]);
+
+  React.useEffect(() => {
+    if (!listId || !isListLayoutHydrated) return;
+    try {
+      window.localStorage.setItem(`list-view-mode:${listId}`, listLayoutMode);
+    } catch {
+      // no-op: storage unavailable (private mode / blocked)
+    }
+  }, [listId, listLayoutMode, isListLayoutHydrated]);
 
   const handleReorderItems = React.useCallback(
     (event: DragEndEvent) => {

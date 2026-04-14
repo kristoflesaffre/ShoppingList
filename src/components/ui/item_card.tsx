@@ -504,7 +504,8 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
         : cn(
             containerBase,
             gridDensity &&
-              "!min-h-0 h-[140px] justify-center p-3 shadow-drop rounded-[var(--radius-md)]",
+              "!min-h-0 h-[140px] justify-center p-3 rounded-[var(--radius-md)]",
+            gridDensity && !isGottenByOther && "shadow-drop",
             isGottenByOther && "border border-[var(--gray-100)] bg-[var(--blue-25)]",
             !isGottenByOther && "bg-[var(--white)]",
             !gridDensity &&
