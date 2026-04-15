@@ -218,6 +218,7 @@ function LargeScreenAutocomplete({
                     alt=""
                     width={40}
                     height={40}
+                    unoptimized
                     className="size-10 shrink-0 rounded-[4px] object-contain"
                     aria-hidden
                   />

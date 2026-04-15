@@ -849,6 +849,7 @@ function SortableItemCard({
                 alt=""
                 width={listViewMode === "grid" ? 64 : 44}
                 height={listViewMode === "grid" ? 64 : 44}
+                unoptimized
                 className="size-full object-cover"
               />
             );
