@@ -2208,7 +2208,7 @@ export default function ListDetailPage({
           isListGroupingHydrated &&
           !isMasterEmpty ? (
             <PillTab
-              className="w-full max-w-[358px] self-start"
+              className="w-full min-w-0"
               aria-label="Groepering lijst"
               value={listGroupingMode === "day" ? "first" : "second"}
               onValueChange={(v) =>
