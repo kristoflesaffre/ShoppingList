@@ -36,7 +36,11 @@ import { listIsMasterTemplate } from "@/lib/list-master";
 import { SwipeToAdd } from "@/components/ui/swipe_to_add";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { useItemPhotoUrl } from "@/lib/item-photos";
-import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
+import {
+  categoryHeadingDisplay,
+  orderedCategorySectionTitles,
+  resolveItemCategoryFromName,
+} from "@/lib/item-ingredient-category";
 
 type TemplateItem = {
   id: string;
@@ -501,6 +505,23 @@ export default function SelecteerMasterItemsPage() {
     return store?.label ?? "Winkel";
   }, [masterList]);
 
+  const visibleSections = React.useMemo(() => {
+    if (!masterList) return [] as { title: string; items: TemplateItem[] }[];
+    const grouped = new Map<string, TemplateItem[]>();
+    for (const item of masterList.items) {
+      if (hiddenItemIds.has(item.id)) continue;
+      const category = resolveItemCategoryFromName(item.name);
+      const existing = grouped.get(category) ?? [];
+      existing.push(item);
+      grouped.set(category, existing);
+    }
+    const orderedTitles = orderedCategorySectionTitles(Array.from(grouped.keys()));
+    return orderedTitles.map((title) => ({
+      title,
+      items: grouped.get(title) ?? [],
+    }));
+  }, [masterList, hiddenItemIds]);
+
   const handleAdd = React.useCallback(
     (item: TemplateItem) => {
       if (hiddenItemIds.has(item.id) || removingItemIds.has(item.id)) return;
@@ -710,50 +731,57 @@ export default function SelecteerMasterItemsPage() {
             toevoegen aan je weeklijstje.
           </p>
 
-          <div className="flex w-full flex-col gap-3">
-            {masterList.items
-              .filter((item) => !hiddenItemIds.has(item.id))
-              .map((item) => {
-                const isRemoving = removingItemIds.has(item.id);
-                const qty = selectedQuantitiesById[item.id] ?? null;
-                const parsed = parseQuantity(item.quantity);
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-                      isRemoving ? "max-h-0 opacity-0 mb-0" : "max-h-[200px] opacity-100",
-                    )}
-                  >
-                    <SwipeToDelete
-                      onDelete={() => restoreOriginalState(item.id)}
-                      disabled={qty == null}
-                      deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}
-                    >
-                      <SwipeToAdd
-                        onAdd={() => handleAdd(item)}
-                        disabled={qty != null}
-                        addActionLabel={`Veeg naar rechts om "${item.name}" toe te voegen`}
+          <div className="flex w-full flex-col gap-6">
+            {visibleSections.map((section) => (
+              <section key={section.title} className="flex flex-col gap-3">
+                <h3 className="text-xs font-medium uppercase tracking-normal text-[var(--blue-900)]">
+                  {categoryHeadingDisplay(section.title)}
+                </h3>
+                <div className="flex w-full flex-col gap-3">
+                  {section.items.map((item) => {
+                    const isRemoving = removingItemIds.has(item.id);
+                    const qty = selectedQuantitiesById[item.id] ?? null;
+                    const parsed = parseQuantity(item.quantity);
+                    return (
+                      <div
+                        key={item.id}
+                        className={cn(
+                          "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+                          isRemoving ? "max-h-0 opacity-0 mb-0" : "max-h-[200px] opacity-100",
+                        )}
                       >
-                        <SelectableItemCard
-                          item={item}
-                          addedQuantity={qty}
-                          displayQuantity={
-                            qty == null
-                              ? item.quantity
-                              : formatQuantity(qty, parsed.unit)
-                          }
-                          photoUrl={getPhotoUrl(item.name)}
-                          onAdd={() => handleAdd(item)}
-                          onIncrement={() => handleIncrement(item)}
-                          onDecrement={() => handleDecrement(item)}
-                          onCancelAdd={() => restoreOriginalState(item.id)}
-                        />
-                      </SwipeToAdd>
-                    </SwipeToDelete>
-                  </div>
-                );
-              })}
+                        <SwipeToDelete
+                          onDelete={() => restoreOriginalState(item.id)}
+                          disabled={qty == null}
+                          deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}
+                        >
+                          <SwipeToAdd
+                            onAdd={() => handleAdd(item)}
+                            disabled={qty != null}
+                            addActionLabel={`Veeg naar rechts om "${item.name}" toe te voegen`}
+                          >
+                            <SelectableItemCard
+                              item={item}
+                              addedQuantity={qty}
+                              displayQuantity={
+                                qty == null
+                                  ? item.quantity
+                                  : formatQuantity(qty, parsed.unit)
+                              }
+                              photoUrl={getPhotoUrl(item.name)}
+                              onAdd={() => handleAdd(item)}
+                              onIncrement={() => handleIncrement(item)}
+                              onDecrement={() => handleDecrement(item)}
+                              onCancelAdd={() => restoreOriginalState(item.id)}
+                            />
+                          </SwipeToAdd>
+                        </SwipeToDelete>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
 
           <div className="flex w-full justify-center pb-2 pt-1">
