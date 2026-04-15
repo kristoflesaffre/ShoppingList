@@ -5,7 +5,12 @@ import Image from "next/image";
 import ReactDOM from "react-dom";
 import { InputField } from "@/components/ui/input_field";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
-import { useItemSlugs, useItemPhotoUrl, normalizeForMatch } from "@/lib/item-photos";
+import {
+  useItemSlugs,
+  useItemPhotoUrl,
+  normalizeForMatch,
+  itemPhotoUrlFromSlug,
+} from "@/lib/item-photos";
 import {
   useIngredientSlugs,
   useIngredientPhotoUrl,
@@ -208,7 +213,7 @@ function LargeScreenAutocomplete({
                     src={
                       photoCatalog === "ingredients"
                         ? `/images/ingredients/${slug}_160.webp`
-                        : `/images/items/${slug}.jpg`
+                        : itemPhotoUrlFromSlug(slug, 160)
                     }
                     alt=""
                     width={40}

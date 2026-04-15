@@ -200,12 +200,11 @@ const SECTION_ORDER = [
 
 const WEEK_DAYS = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"] as const;
 
-/** Bouwt de dagvolgorde op startend vanaf de eerstvolgende dag (morgen-first). */
+/** Bouwt de dagvolgorde op startend vanaf vandaag (today-first). */
 function buildDaySectionOrder(): readonly string[] {
   // getDay(): 0=zo,1=ma,…,6=za → omrekenen naar ma=0…zo=6
   const todayIdx = (new Date().getDay() + 6) % 7;
-  const nextIdx = (todayIdx + 1) % 7;
-  const rotatedDays = [...WEEK_DAYS.slice(nextIdx), ...WEEK_DAYS.slice(0, nextIdx)];
+  const rotatedDays = [...WEEK_DAYS.slice(todayIdx), ...WEEK_DAYS.slice(0, todayIdx)];
   return ["Algemeen", ...rotatedDays];
 }
 
@@ -510,7 +509,7 @@ function SortableItemItems({
   listViewMode: "list" | "grid";
   isMasterList: boolean;
   isSharedList: boolean;
-  getPhotoUrl?: (name: string) => string | null;
+  getPhotoUrl?: (name: string, size?: number) => string | null;
   removingId: string | null;
   removingSectionTitle: string | null;
   addingId: string | null;
@@ -729,7 +728,7 @@ function SortableItemRow({
   isDndActive: boolean;
   isMasterList: boolean;
   isSharedList: boolean;
-  getPhotoUrl?: (name: string) => string | null;
+  getPhotoUrl?: (name: string, size?: number) => string | null;
   removingId: string | null;
   addingId: string | null;
   addingIdExpanded: boolean;
@@ -795,7 +794,7 @@ function SortableItemCard({
   listViewMode: "list" | "grid";
   isMasterList: boolean;
   isSharedList: boolean;
-  getPhotoUrl?: (name: string) => string | null;
+  getPhotoUrl?: (name: string, size?: number) => string | null;
   onCheckedChange: (checked: boolean) => void;
   onRemoteClaimChange: (claimUserId: string | null) => void;
   onDelete: () => void;
@@ -839,7 +838,10 @@ function SortableItemCard({
           state={isEditMode ? "editable" : (isSharedList ? "shared" : "default")}
           density={listViewMode === "grid" ? "grid" : "default"}
           itemThumbnail={(() => {
-            const photoUrl = getPhotoUrl?.(item.name);
+            const photoUrl = getPhotoUrl?.(
+              item.name,
+              listViewMode === "grid" ? 240 : 160,
+            );
             if (!photoUrl) return undefined;
             return (
               <Image

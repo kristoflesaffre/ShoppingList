@@ -232,7 +232,7 @@ function TrashIcon({ className }: { className?: string }) {
 const containerBase =
   "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-md py-3 pl-4 pr-3";
 const gridTileThumbClass =
-  "relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--gray-100)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover";
+  "relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-md)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover";
 const gridTileFallbackClass =
   "relative flex size-16 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--gray-25)] p-[10px]";
 
@@ -595,7 +595,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
     const defaultContent = isBare ? (
       <>
         {showItemThumbnail && (
-          <div className="relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--gray-100)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover">
+          <div className="relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover">
             {itemThumbnail}
           </div>
         )}
@@ -942,7 +942,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
           {showItemThumbnail ? (
             <div
               className={cn(
-                "relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--gray-100)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover",
+                "relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover",
                 isChecked && "opacity-20",
               )}
             >

@@ -11,10 +11,11 @@ export async function GET() {
       .map((f) =>
         f
           .replace(/\.[^.]+$/, "")
+          .replace(/_(160|240|320)$/i, "")
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, ""),
       );
-    return NextResponse.json(slugs);
+    return NextResponse.json(Array.from(new Set(slugs)).sort());
   } catch {
     return NextResponse.json([]);
   }

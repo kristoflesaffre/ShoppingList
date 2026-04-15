@@ -3,7 +3,11 @@
 import * as React from "react";
 import Image from "next/image";
 import ReactDOM from "react-dom";
-import { useItemSlugs, normalizeForMatch } from "@/lib/item-photos";
+import {
+  useItemSlugs,
+  normalizeForMatch,
+  itemPhotoUrlFromSlug,
+} from "@/lib/item-photos";
 import {
   useIngredientSlugs,
   useIngredientSynonyms,
@@ -291,7 +295,7 @@ export function ItemNameSearchSlideIn({
                   src={
                     photoCatalog === "ingredients"
                       ? `/images/ingredients/${slug}_160.webp`
-                      : `/images/items/${slug}.jpg`
+                      : itemPhotoUrlFromSlug(slug, 160)
                   }
                   alt=""
                   width={32}
