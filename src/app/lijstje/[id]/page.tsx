@@ -607,7 +607,10 @@ function SortableItemItems({
             )}
           </div>
           <div className="flex flex-col gap-3">
-            {chunkSectionItems(section.items).map((chunk, chunkIndex) => {
+            {(isCategoryGrouping
+              ? [{ type: "plain", items: section.items } satisfies SectionItemsChunk]
+              : chunkSectionItems(section.items)
+            ).map((chunk, chunkIndex) => {
               if (chunk.type === "plain" || isCategoryGrouping) {
                 const rowKey =
                   chunk.type === "plain"
