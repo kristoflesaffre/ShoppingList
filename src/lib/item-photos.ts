@@ -20,15 +20,28 @@ export function itemPhotoUrlFromSlug(slug: string, size?: number): string {
   return `/images/items/${slug}_${normalizedSize}.webp`;
 }
 
+function sanitizeItemSlugs(raw: string[]): string[] {
+  const cleaned = raw
+    .map((slug) =>
+      String(slug)
+        .replace(/_(160|240|320)$/i, "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, ""),
+    )
+    .filter(Boolean);
+  return Array.from(new Set(cleaned)).sort();
+}
+
 function fetchSlugs(): Promise<string[]> {
   if (cachedSlugs) return Promise.resolve(cachedSlugs);
   if (fetchPromise) return fetchPromise;
   fetchPromise = fetch("/api/item-images")
     .then((r) => r.json() as Promise<string[]>)
     .then((slugs) => {
-      cachedSlugs = slugs;
+      const sanitized = sanitizeItemSlugs(slugs);
+      cachedSlugs = sanitized;
       fetchPromise = null;
-      return slugs;
+      return sanitized;
     })
     .catch(() => {
       fetchPromise = null;
@@ -56,9 +69,10 @@ export function matchItemPhotoUrl(
   slugs: string[],
   size?: number,
 ): string | null {
+  const normalizedSlugs = sanitizeItemSlugs(slugs);
   const normalized = normalizeForMatch(itemName);
-  if (!normalized || slugs.length === 0) return null;
-  const slugSet = new Set(slugs);
+  if (!normalized || normalizedSlugs.length === 0) return null;
+  const slugSet = new Set(normalizedSlugs);
 
   const candidates = new Set<string>([normalized]);
   // Tolerantie voor simpele enkelvoud/meervoud-varianten:
@@ -81,13 +95,17 @@ export function matchItemPhotoUrl(
 
   // 2. Slug starts with query (e.g. "brood" -> "brood_kristof")
   for (const c of candidateList) {
-    const startsWith = slugs.find((slug) => slug.startsWith(c + "_") || slug === c);
+    const startsWith = normalizedSlugs.find(
+      (slug) => slug.startsWith(c + "_") || slug === c,
+    );
     if (startsWith) return itemPhotoUrlFromSlug(startsWith, size);
   }
 
   // 3. Query starts with slug (e.g. "aardappelen_gekookt" -> "aardappelen")
   for (const c of candidateList) {
-    const prefixMatch = slugs.find((slug) => c.startsWith(slug + "_") || c.startsWith(slug));
+    const prefixMatch = normalizedSlugs.find(
+      (slug) => c.startsWith(slug + "_") || c.startsWith(slug),
+    );
     if (prefixMatch) return itemPhotoUrlFromSlug(prefixMatch, size);
   }
 
@@ -97,7 +115,7 @@ export function matchItemPhotoUrl(
     const wordCandidates = [word];
     if (word.endsWith("en") && word.length > 4) wordCandidates.push(word.slice(0, -2));
     if (word.endsWith("s") && word.length > 3) wordCandidates.push(word.slice(0, -1));
-    const wordMatch = slugs.find((slug) => wordCandidates.includes(slug));
+    const wordMatch = normalizedSlugs.find((slug) => wordCandidates.includes(slug));
     if (wordMatch) return itemPhotoUrlFromSlug(wordMatch, size);
   }
 
@@ -109,7 +127,9 @@ export function matchItemPhotoUrl(
  * Shares the same fetch as useItemPhotoUrl.
  */
 export function useItemSlugs(): string[] {
-  const [slugs, setSlugs] = React.useState<string[]>(cachedSlugs ?? []);
+  const [slugs, setSlugs] = React.useState<string[]>(
+    cachedSlugs ? sanitizeItemSlugs(cachedSlugs) : [],
+  );
 
   React.useEffect(() => {
     if (cachedSlugs) {
@@ -136,7 +156,9 @@ export function useItemSlugs(): string[] {
 export function useItemPhotoUrl(
   size?: number,
 ): (itemName: string, overrideSize?: number) => string | null {
-  const [slugs, setSlugs] = React.useState<string[]>(cachedSlugs ?? []);
+  const [slugs, setSlugs] = React.useState<string[]>(
+    cachedSlugs ? sanitizeItemSlugs(cachedSlugs) : [],
+  );
   const normalizedSize = normalizeItemPhotoSize(size);
 
   React.useEffect(() => {
