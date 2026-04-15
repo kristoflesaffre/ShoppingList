@@ -135,7 +135,6 @@ export function ItemNameSearchSlideIn({
     height: number;
   } | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const inputBlockRef = React.useRef<HTMLDivElement>(null);
   const panelRef = React.useRef<HTMLDivElement>(null);
   const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -143,12 +142,27 @@ export function ItemNameSearchSlideIn({
     setMounted(true);
   }, []);
 
-  /** Open/close: DOM meteen zichtbaar vóór paint zodat focus() zo dicht mogelijk bij de tik blijft (mobiel toetsenbord). */
+  /**
+   * Open: `visualViewport` meteen in dezelfde layout-fase als `domVisible` zetten zodat de eerste paint
+   * geen volledige-scherm-fallback toont (dat gaf een zichtbare sprong op iOS). Sluiten: viewport pas
+   * wissen als het paneel uit de DOM is.
+   */
   React.useLayoutEffect(() => {
     if (open) {
       if (closeTimerRef.current) {
         clearTimeout(closeTimerRef.current);
         closeTimerRef.current = null;
+      }
+      const vv = typeof window !== "undefined" ? window.visualViewport : null;
+      if (vv) {
+        setViewportRect({
+          top: vv.offsetTop,
+          left: vv.offsetLeft,
+          width: vv.width,
+          height: vv.height,
+        });
+      } else {
+        setViewportRect(null);
       }
       setDomVisible(true);
       requestAnimationFrame(() => {
@@ -160,6 +174,7 @@ export function ItemNameSearchSlideIn({
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     closeTimerRef.current = setTimeout(() => {
       setDomVisible(false);
+      setViewportRect(null);
       closeTimerRef.current = null;
     }, SLIDE_MS);
     return () => {
@@ -174,11 +189,9 @@ export function ItemNameSearchSlideIn({
     if (open) setQuery(initialValue);
   }, [open, initialValue]);
 
+  /** Alleen luisteren naar keyboard/viewport-wijzigingen; initiële rect zit in open-layouteffect. */
   React.useEffect(() => {
-    if (!open || !domVisible) {
-      setViewportRect(null);
-      return;
-    }
+    if (!open || !domVisible) return;
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
 
@@ -190,13 +203,11 @@ export function ItemNameSearchSlideIn({
         height: vv.height,
       });
     };
-    sync();
     vv.addEventListener("resize", sync);
     vv.addEventListener("scroll", sync);
     return () => {
       vv.removeEventListener("resize", sync);
       vv.removeEventListener("scroll", sync);
-      setViewportRect(null);
     };
   }, [open, domVisible]);
 
@@ -224,23 +235,6 @@ export function ItemNameSearchSlideIn({
     panel.addEventListener("transitionend", onEnd);
     return () => panel.removeEventListener("transitionend", onEnd);
   }, [open, animIn]);
-
-  /** Extra: scroll het veld in beeld nadat het toetsenbord layout heeft aangepast. */
-  React.useEffect(() => {
-    if (!open || !domVisible) return;
-    const block = inputBlockRef.current;
-    if (!block) return;
-    const t = window.setTimeout(() => {
-      block.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }, 50);
-    const t2 = window.setTimeout(() => {
-      block.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }, 400);
-    return () => {
-      clearTimeout(t);
-      clearTimeout(t2);
-    };
-  }, [open, domVisible, animIn]);
 
   const handleClose = React.useCallback(() => {
     setAnimIn(false);
@@ -366,7 +360,7 @@ export function ItemNameSearchSlideIn({
         </div>
 
         {/* Search input */}
-        <div ref={inputBlockRef} className="shrink-0 px-4 pb-6">
+        <div className="shrink-0 px-4 pb-6">
           <div className="flex h-12 items-center gap-[10px] rounded-lg border border-[#c6c8ce] bg-white px-4">
             <input
               ref={inputRef}
