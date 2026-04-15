@@ -124,85 +124,49 @@ export function ItemNameSearchSlideIn({
   const synonyms =
     photoCatalog === "ingredients" ? ingredientSynonyms : ({} as Record<string, string>);
   const [query, setQuery] = React.useState(initialValue);
-  const [animIn, setAnimIn] = React.useState(false);
   const [domVisible, setDomVisible] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
-  /** iOS: schil gelijk trekken met `visualViewport` zodat fixed UI boven het toetsenbord blijft. */
-  const [viewportRect, setViewportRect] = React.useState<{
-    top: number;
-    left: number;
-    width: number;
-    height: number;
-  } | null>(null);
+  /**
+   * Bottom-inset in px: afstand van de onderkant van het paneel tot de onderkant
+   * van de layout viewport. Wordt aangepast wanneer het iOS-keyboard opkomt.
+   */
+  const [panelBottomInset, setPanelBottomInset] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const panelRef = React.useRef<HTMLDivElement>(null);
-  const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
 
-  /**
-   * Open: `visualViewport` meteen in dezelfde layout-fase als `domVisible` zetten zodat de eerste paint
-   * geen volledige-scherm-fallback toont (dat gaf een zichtbare sprong op iOS). Sluiten: viewport pas
-   * wissen als het paneel uit de DOM is.
-   */
   React.useLayoutEffect(() => {
     if (open) {
-      if (closeTimerRef.current) {
-        clearTimeout(closeTimerRef.current);
-        closeTimerRef.current = null;
-      }
-      const vv = typeof window !== "undefined" ? window.visualViewport : null;
-      if (vv) {
-        setViewportRect({
-          top: vv.offsetTop,
-          left: vv.offsetLeft,
-          width: vv.width,
-          height: vv.height,
-        });
-      } else {
-        setViewportRect(null);
-      }
       setDomVisible(true);
-      requestAnimationFrame(() => {
-        setAnimIn(true);
-      });
-      return;
-    }
-    setAnimIn(false);
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    closeTimerRef.current = setTimeout(() => {
+    } else {
       setDomVisible(false);
-      setViewportRect(null);
-      closeTimerRef.current = null;
-    }, SLIDE_MS);
-    return () => {
-      if (closeTimerRef.current) {
-        clearTimeout(closeTimerRef.current);
-        closeTimerRef.current = null;
-      }
-    };
+    }
   }, [open]);
 
   React.useEffect(() => {
     if (open) setQuery(initialValue);
   }, [open, initialValue]);
 
-  /** Alleen luisteren naar keyboard/viewport-wijzigingen; initiële rect zit in open-layouteffect. */
+  /**
+   * Synchroniseer paneel-onderkant met visualViewport zodat het paneel boven het
+   * iOS-keyboard blijft. Zonder keyboard is bottomInset 0.
+   */
   React.useEffect(() => {
-    if (!open || !domVisible) return;
+    if (!open || !domVisible) {
+      setPanelBottomInset(0);
+      return;
+    }
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
 
     const sync = () => {
-      setViewportRect({
-        top: vv.offsetTop,
-        left: vv.offsetLeft,
-        width: vv.width,
-        height: vv.height,
-      });
+      const layoutH = window.innerHeight;
+      const bottom = Math.max(0, layoutH - (vv.offsetTop + vv.height));
+      setPanelBottomInset(bottom);
     };
+    sync();
     vv.addEventListener("resize", sync);
     vv.addEventListener("scroll", sync);
     return () => {
@@ -211,35 +175,18 @@ export function ItemNameSearchSlideIn({
     };
   }, [open, domVisible]);
 
-  /** Zodra het veld in de DOM hangt: meteen focus (iOS vereist nabijheid tot de tik). */
+  /** Focus meteen bij openen. */
   React.useLayoutEffect(() => {
     if (!open || !domVisible) return;
     const el = inputRef.current;
     if (!el) return;
     el.focus();
-    const t0 = window.setTimeout(() => {
-      el.focus();
-    }, 0);
+    const t0 = window.setTimeout(() => el.focus(), 0);
     return () => clearTimeout(t0);
   }, [open, domVisible]);
 
-  /** Na slide-animatie opnieuw focussen als het OS het eerste focus() heeft genegeerd. */
-  React.useEffect(() => {
-    if (!open || !animIn) return;
-    const panel = panelRef.current;
-    if (!panel) return;
-    const onEnd = (e: TransitionEvent) => {
-      if (e.propertyName !== "transform") return;
-      inputRef.current?.focus();
-    };
-    panel.addEventListener("transitionend", onEnd);
-    return () => panel.removeEventListener("transitionend", onEnd);
-  }, [open, animIn]);
-
   const handleClose = React.useCallback(() => {
-    setAnimIn(false);
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    closeTimerRef.current = setTimeout(() => onClose(), SLIDE_MS);
+    onClose();
   }, [onClose]);
 
   React.useEffect(() => {
@@ -275,7 +222,6 @@ export function ItemNameSearchSlideIn({
     return matching.slice(0, SLIDE_IN_MAX_SUGGESTIONS);
   }, [slugs, norm, photoCatalog, synonyms]);
 
-  /** Onmiddellijk selecteren — geen sluit-animatie-vertraging */
   const handleSelect = React.useCallback(
     (slug: string) => {
       onSelect(slugToDisplayName(slug));
@@ -296,51 +242,24 @@ export function ItemNameSearchSlideIn({
 
   return ReactDOM.createPortal(
     <div
-      className="fixed z-[60] overflow-hidden"
-      style={
-        viewportRect
-          ? {
-              top: viewportRect.top,
-              left: viewportRect.left,
-              width: viewportRect.width,
-              height: viewportRect.height,
-            }
-          : {
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              minHeight: "100dvh",
-            }
-      }
+      className="fixed inset-0 z-[60]"
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
-      {/* Backdrop — full viewport */}
+      {/* Backdrop — altijd het volledige scherm */}
       <div
-        className={cn(
-          "absolute inset-0 bg-black/50 transition-opacity",
-          animIn ? "opacity-100" : "opacity-0",
-        )}
-        style={{ transitionDuration: `${SLIDE_MS}ms` }}
+        className="absolute inset-0 bg-black/50"
         onClick={handleClose}
         aria-hidden
       />
 
-      {/* Panel — leaves TOP_OFFSET px at the top, slides up from bottom */}
+      {/* Paneel — direct zichtbaar, geen animatie */}
       <div
-        ref={panelRef}
-        className={cn(
-          "absolute inset-x-0 bottom-0 flex flex-col overflow-hidden",
-          "rounded-tl-[8px] rounded-tr-[8px] bg-white",
-          "transition-transform",
-          animIn ? "translate-y-0" : "translate-y-full",
-        )}
+        className="absolute inset-x-0 flex flex-col overflow-hidden rounded-tl-[8px] rounded-tr-[8px] bg-white"
         style={{
           top: TOP_OFFSET,
-          transitionDuration: `${SLIDE_MS}ms`,
-          transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
+          bottom: panelBottomInset,
         }}
       >
         {/* Header — 64px */}
