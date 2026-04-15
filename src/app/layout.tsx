@@ -12,6 +12,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   /** iOS: pagina mag onder notch/statusbalk tekenen → gradient zichtbaar i.p.v. witte balk. */
   viewportFit: "cover",
+  /**
+   * Virtueel toetsenbord legt over de pagina i.p.v. layout te verkleinen
+   * (voorkomt dat modals/slide-ins omhoog springen en inhoud eronder tonen).
+   */
+  interactiveWidget: "overlays-content",
 };
 
 export const metadata: Metadata = {

@@ -11,7 +11,6 @@ import {
 } from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
 
-const SLIDE_MS = 450;
 /** Max treffers in slide-in; synoniemen kunnen de lijst verlengen. */
 const SLIDE_IN_MAX_SUGGESTIONS = 400;
 /** Pixels reserved at the top (iOS status bar area). */
@@ -126,11 +125,6 @@ export function ItemNameSearchSlideIn({
   const [query, setQuery] = React.useState(initialValue);
   const [domVisible, setDomVisible] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
-  /**
-   * Bottom-inset in px: afstand van de onderkant van het paneel tot de onderkant
-   * van de layout viewport. Wordt aangepast wanneer het iOS-keyboard opkomt.
-   */
-  const [panelBottomInset, setPanelBottomInset] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -148,32 +142,6 @@ export function ItemNameSearchSlideIn({
   React.useEffect(() => {
     if (open) setQuery(initialValue);
   }, [open, initialValue]);
-
-  /**
-   * Synchroniseer paneel-onderkant met visualViewport zodat het paneel boven het
-   * iOS-keyboard blijft. Zonder keyboard is bottomInset 0.
-   */
-  React.useEffect(() => {
-    if (!open || !domVisible) {
-      setPanelBottomInset(0);
-      return;
-    }
-    const vv = typeof window !== "undefined" ? window.visualViewport : null;
-    if (!vv) return;
-
-    const sync = () => {
-      const layoutH = window.innerHeight;
-      const bottom = Math.max(0, layoutH - (vv.offsetTop + vv.height));
-      setPanelBottomInset(bottom);
-    };
-    sync();
-    vv.addEventListener("resize", sync);
-    vv.addEventListener("scroll", sync);
-    return () => {
-      vv.removeEventListener("resize", sync);
-      vv.removeEventListener("scroll", sync);
-    };
-  }, [open, domVisible]);
 
   /** Focus meteen bij openen. */
   React.useLayoutEffect(() => {
@@ -254,13 +222,10 @@ export function ItemNameSearchSlideIn({
         aria-hidden
       />
 
-      {/* Paneel — direct zichtbaar, geen animatie */}
+      {/* Paneel: bottom vast op layout-viewport; keyboard legt zich erover (geen omhoogschuiven). */}
       <div
-        className="absolute inset-x-0 flex flex-col overflow-hidden rounded-tl-[8px] rounded-tr-[8px] bg-white"
-        style={{
-          top: TOP_OFFSET,
-          bottom: panelBottomInset,
-        }}
+        className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-tl-[8px] rounded-tr-[8px] bg-white"
+        style={{ top: TOP_OFFSET }}
       >
         {/* Header — 64px */}
         <div className="flex h-16 shrink-0 items-center gap-4 px-4">
