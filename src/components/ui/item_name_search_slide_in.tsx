@@ -127,7 +127,15 @@ export function ItemNameSearchSlideIn({
   const [animIn, setAnimIn] = React.useState(false);
   const [domVisible, setDomVisible] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
+  /** iOS: schil gelijk trekken met `visualViewport` zodat fixed UI boven het toetsenbord blijft. */
+  const [viewportRect, setViewportRect] = React.useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputBlockRef = React.useRef<HTMLDivElement>(null);
   const panelRef = React.useRef<HTMLDivElement>(null);
   const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -166,14 +174,40 @@ export function ItemNameSearchSlideIn({
     if (open) setQuery(initialValue);
   }, [open, initialValue]);
 
+  React.useEffect(() => {
+    if (!open || !domVisible) {
+      setViewportRect(null);
+      return;
+    }
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+
+    const sync = () => {
+      setViewportRect({
+        top: vv.offsetTop,
+        left: vv.offsetLeft,
+        width: vv.width,
+        height: vv.height,
+      });
+    };
+    sync();
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    return () => {
+      vv.removeEventListener("resize", sync);
+      vv.removeEventListener("scroll", sync);
+      setViewportRect(null);
+    };
+  }, [open, domVisible]);
+
   /** Zodra het veld in de DOM hangt: meteen focus (iOS vereist nabijheid tot de tik). */
   React.useLayoutEffect(() => {
     if (!open || !domVisible) return;
     const el = inputRef.current;
     if (!el) return;
-    el.focus({ preventScroll: true });
+    el.focus();
     const t0 = window.setTimeout(() => {
-      el.focus({ preventScroll: true });
+      el.focus();
     }, 0);
     return () => clearTimeout(t0);
   }, [open, domVisible]);
@@ -185,11 +219,28 @@ export function ItemNameSearchSlideIn({
     if (!panel) return;
     const onEnd = (e: TransitionEvent) => {
       if (e.propertyName !== "transform") return;
-      inputRef.current?.focus({ preventScroll: true });
+      inputRef.current?.focus();
     };
     panel.addEventListener("transitionend", onEnd);
     return () => panel.removeEventListener("transitionend", onEnd);
   }, [open, animIn]);
+
+  /** Extra: scroll het veld in beeld nadat het toetsenbord layout heeft aangepast. */
+  React.useEffect(() => {
+    if (!open || !domVisible) return;
+    const block = inputBlockRef.current;
+    if (!block) return;
+    const t = window.setTimeout(() => {
+      block.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }, 50);
+    const t2 = window.setTimeout(() => {
+      block.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }, 400);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(t2);
+    };
+  }, [open, domVisible, animIn]);
 
   const handleClose = React.useCallback(() => {
     setAnimIn(false);
@@ -251,7 +302,23 @@ export function ItemNameSearchSlideIn({
 
   return ReactDOM.createPortal(
     <div
-      className="fixed inset-0 z-[60]"
+      className="fixed z-[60] overflow-hidden"
+      style={
+        viewportRect
+          ? {
+              top: viewportRect.top,
+              left: viewportRect.left,
+              width: viewportRect.width,
+              height: viewportRect.height,
+            }
+          : {
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              minHeight: "100dvh",
+            }
+      }
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -299,7 +366,7 @@ export function ItemNameSearchSlideIn({
         </div>
 
         {/* Search input */}
-        <div className="shrink-0 px-4 pb-6">
+        <div ref={inputBlockRef} className="shrink-0 px-4 pb-6">
           <div className="flex h-12 items-center gap-[10px] rounded-lg border border-[#c6c8ce] bg-white px-4">
             <input
               ref={inputRef}
