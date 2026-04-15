@@ -128,27 +128,68 @@ export function ItemNameSearchSlideIn({
   const [domVisible, setDomVisible] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
   const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
 
-  React.useEffect(() => {
+  /** Open/close: DOM meteen zichtbaar vóór paint zodat focus() zo dicht mogelijk bij de tik blijft (mobiel toetsenbord). */
+  React.useLayoutEffect(() => {
     if (open) {
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-      setQuery(initialValue);
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
       setDomVisible(true);
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => setAnimIn(true));
+        setAnimIn(true);
       });
-      const focusTimer = setTimeout(() => inputRef.current?.focus(), SLIDE_MS / 2);
-      return () => clearTimeout(focusTimer);
-    } else {
-      setAnimIn(false);
-      closeTimerRef.current = setTimeout(() => setDomVisible(false), SLIDE_MS);
+      return;
     }
+    setAnimIn(false);
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(() => {
+      setDomVisible(false);
+      closeTimerRef.current = null;
+    }, SLIDE_MS);
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+    };
+  }, [open]);
+
+  React.useEffect(() => {
+    if (open) setQuery(initialValue);
   }, [open, initialValue]);
+
+  /** Zodra het veld in de DOM hangt: meteen focus (iOS vereist nabijheid tot de tik). */
+  React.useLayoutEffect(() => {
+    if (!open || !domVisible) return;
+    const el = inputRef.current;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    const t0 = window.setTimeout(() => {
+      el.focus({ preventScroll: true });
+    }, 0);
+    return () => clearTimeout(t0);
+  }, [open, domVisible]);
+
+  /** Na slide-animatie opnieuw focussen als het OS het eerste focus() heeft genegeerd. */
+  React.useEffect(() => {
+    if (!open || !animIn) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const onEnd = (e: TransitionEvent) => {
+      if (e.propertyName !== "transform") return;
+      inputRef.current?.focus({ preventScroll: true });
+    };
+    panel.addEventListener("transitionend", onEnd);
+    return () => panel.removeEventListener("transitionend", onEnd);
+  }, [open, animIn]);
 
   const handleClose = React.useCallback(() => {
     setAnimIn(false);
@@ -228,6 +269,7 @@ export function ItemNameSearchSlideIn({
 
       {/* Panel — leaves TOP_OFFSET px at the top, slides up from bottom */}
       <div
+        ref={panelRef}
         className={cn(
           "absolute inset-x-0 bottom-0 flex flex-col overflow-hidden",
           "rounded-tl-[8px] rounded-tr-[8px] bg-white",
@@ -266,6 +308,9 @@ export function ItemNameSearchSlideIn({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Zoek item…"
               autoComplete="off"
+              enterKeyHint="search"
+              inputMode="text"
+              autoFocus
               className="min-w-0 flex-1 bg-transparent text-base leading-6 tracking-normal text-[#16181a] placeholder:text-[#8c929d] focus:outline-none"
             />
             {query.length > 0 && (

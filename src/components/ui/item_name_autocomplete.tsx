@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { flushSync } from "react-dom";
 import Image from "next/image";
 import ReactDOM from "react-dom";
 import { InputField } from "@/components/ui/input_field";
@@ -275,10 +276,12 @@ function SmallScreenAutocomplete({
           {label}
         </p>
       )}
-      {/* Knop die eruitziet als een InputField maar het keyboard NIET toont */}
+      {/* Opent de zoek-slide-in; het echte invoerveld krijgt daar meteen focus (mobiel toetsenbord). */}
       <button
         type="button"
-        onClick={() => setSlideInOpen(true)}
+        onClick={() => {
+          flushSync(() => setSlideInOpen(true));
+        }}
         className="flex h-12 w-full items-center gap-3 rounded-lg border border-[#c6c8ce] bg-[var(--white)] px-4 text-left text-base leading-24 tracking-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         aria-haspopup="dialog"
       >
