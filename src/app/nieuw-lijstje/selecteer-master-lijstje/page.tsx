@@ -87,7 +87,7 @@ function SelecteerMasterLijstPageContent() {
       )
       .map((l: any) => ({
         id: String(l.id),
-        name: String(l.name ?? "Master lijstje"),
+        name: String(l.name ?? "Favorieten lijstje"),
         icon: String(l.icon ?? ""),
         order: typeof l.order === "number" ? l.order : 0,
         items: Array.isArray(l.items) ? l.items : [],
@@ -136,26 +136,28 @@ function SelecteerMasterLijstPageContent() {
               <BackArrowIcon className="size-6 shrink-0" />
             </Link>
             <h1 className="min-w-0 flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
-              Selecteer master lijstje
+              Kies een favorietenlijst
             </h1>
           </header>
 
           {masterLists.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-6">
               <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
-                Je hebt nog geen masterlijstjes
+                Je hebt nog geen favorietenlijsten
               </p>
             </div>
           ) : (
             <div className="flex w-full min-w-0 flex-col gap-3">
               {masterLists.map((ml) => {
                 const count = ml.items?.length ?? 0;
-                const itemCountLabel = count === 1 ? "1 item" : `${count} items`;
+                const itemCountLabel =
+                  count === 1 ? "1 favoriet" : `${count} favorieten`;
                 return (
                   <ListCard
                     key={ml.id}
                     listName={ml.name}
                     itemCount={itemCountLabel}
+                    displayVariant="master"
                     icon={<StoreLogoImg src={ml.icon} />}
                     onClick={() => handlePickMaster(ml)}
                     onKeyDown={(e) => {

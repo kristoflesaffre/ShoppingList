@@ -2,15 +2,16 @@
 
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
+import { parseCalendarWeekListTitle } from "@/lib/list-default-name";
 import { cn } from "@/lib/utils";
 
 export type ListCardSize = "default";
 export type ListCardState = "default" | "editable";
-/** `default` | `shared` (Figma 762:3452) | `master` (Figma 773:4183 – divider + plus-circle). */
+/** `default` | `shared` (Figma 762:3452) | `master` (Figma 1148:8292 – favorietenlijst + plus) | `from-master`. */
 export type ListCardDisplayVariant = "default" | "shared" | "master" | "from-master";
 
 /**
- * List card: displays a list summary (icon, name, date, item count). Used on Home for list overview.
+ * List card: displays a list summary (icon, name, item count). Used on Home for list overview.
  * States: default (display only), editable (reorder handle + dividers + delete button).
  * @param asChild - When true, merges container props onto the single child (Radix Slot)
  */
@@ -18,8 +19,6 @@ export interface ListCardProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
   /** List title (e.g. "Boodschappen") */
   listName?: React.ReactNode;
-  /** Optional date string (e.g. "25-04-2026") */
-  date?: React.ReactNode;
   /** Optional item count label (e.g. "6 items") */
   itemCount?: React.ReactNode;
   /** Left-side icon (e.g. emoji or image), 48×48 area */
@@ -27,12 +26,12 @@ export interface ListCardProps
   /** "default" = display only; "editable" = show reorder and delete actions */
   state?: ListCardState;
   /**
-   * “shared” toont itemtelling in primary-kleur + grijs “(gedeeld met …)” (Figma 762:3452).
-   * “master” toont alleen titel + itemtelling in primary, scheiding en plus-actie (Figma 773:4183).
-   * “from-master” toont winkellogo-badges rechtsboven naast de lijstnaam (Figma 927:7808).
+   * “shared”: subtitel één grijze stijl, bv. “17 producten - met Chloé” (Figma 762:3452).
+   * “master” = favorietenlijst: zelfde tegel als 9010, grijze telling, plus rechts (Figma 1148:8292).
+   * “from-master”: tile volgens Figma 1148:9010 — titelregel, ondertitel itemtelling, winkelicoontje 16px rechts.
    */
   displayVariant?: ListCardDisplayVariant;
-  /** Logo-URL's (1-2) voor winkelbadges; alleen getoond bij `displayVariant=”from-master”`. */
+  /** Logo-URL('s) voor winkel; bij `from-master` rechts in de tegel (Figma 1148:9010). */
   storeLogos?: string[];
   /** Voornaam voor het gedeeld-met-label; bij ontbreken: “deelnemer”. */
   sharedWithFirstName?: string;
@@ -53,11 +52,11 @@ export interface ListCardProps
   className?: string;
 }
 
-/** Reorder/drag handle – public/icons/move_item.svg, 32×32, color via currentColor. */
+/** Reorder/drag handle – public/icons/move_item.svg; Figma 1148:9681 = 24×24 in handle cell. */
 function ReorderIcon({ className }: { className?: string }) {
   return (
     <svg
-      className={cn("size-8 shrink-0", className)}
+      className={cn("size-6 shrink-0", className)}
       viewBox="0 0 32 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
@@ -91,41 +90,112 @@ function PlusCircleIcon({ className }: { className?: string }) {
   );
 }
 
-/** Delete/trash – public/icons/recycle_bin.svg, 32×32, color via currentColor. */
+/** Delete/trash – public/icons/recycle_bin.svg 24×24; Figma 1148:9681 action-func-bin. */
 function TrashIcon({ className }: { className?: string }) {
   return (
     <svg
-      className={cn("size-8 shrink-0", className)}
-      viewBox="0 0 32 32"
+      className={cn("size-6 shrink-0", className)}
+      viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
       <path
-        d="M22.938 13.5933V23.2223C22.938 23.7893 22.717 24.3243 22.317 24.7253C21.916 25.1253 21.381 25.3463 20.814 25.3463H11.186C10.618 25.3463 10.084 25.1253 9.68395 24.7253C9.28295 24.3233 9.06095 23.7893 9.06095 23.2223V13.5933C9.06095 13.3063 9.29395 13.0733 9.58095 13.0733C9.86795 13.0733 10.101 13.3063 10.101 13.5933V23.2223C10.101 23.5073 10.217 23.7873 10.419 23.9893C10.624 24.1943 10.896 24.3073 11.186 24.3073H20.815C21.105 24.3073 21.377 24.1943 21.582 23.9893C21.787 23.7853 21.9 23.5123 21.9 23.2223V13.5933C21.9 13.3063 22.132 13.0733 22.42 13.0733C22.708 13.0733 22.938 13.3063 22.938 13.5933ZM25.346 10.3843C25.346 10.6713 25.114 10.9043 24.826 10.9043H7.17295C6.88595 10.9043 6.65295 10.6713 6.65295 10.3843C6.65295 10.0973 6.88595 9.8643 7.17295 9.8643H12.27V7.1743C12.27 6.8873 12.503 6.6543 12.79 6.6543H19.209C19.496 6.6543 19.729 6.8873 19.729 7.1743V9.8643H24.826C25.113 9.8643 25.346 10.0973 25.346 10.3843ZM13.311 9.8643H18.691V7.6943H13.311V9.8643ZM18.659 20.8143V16.0003C18.659 15.7133 18.427 15.4803 18.139 15.4803C17.851 15.4803 17.619 15.7133 17.619 16.0003V20.8143C17.619 21.1013 17.851 21.3343 18.139 21.3343C18.427 21.3343 18.659 21.1023 18.659 20.8143ZM14.38 20.8143V16.0003C14.38 15.7133 14.147 15.4803 13.86 15.4803C13.573 15.4803 13.34 15.7133 13.34 16.0003V20.8143C13.34 21.1013 13.573 21.3343 13.86 21.3343C14.147 21.3343 14.38 21.1023 14.38 20.8143Z"
+        d="M18.938 9.5933V19.2223C18.938 19.7893 18.717 20.3243 18.317 20.7253C17.916 21.1253 17.381 21.3463 16.814 21.3463H7.18595C6.61795 21.3463 6.08395 21.1253 5.68395 20.7253C5.28295 20.3233 5.06095 19.7893 5.06095 19.2223V9.5933C5.06095 9.3063 5.29395 9.0733 5.58095 9.0733C5.86795 9.0733 6.10095 9.3063 6.10095 9.5933V19.2223C6.10095 19.5073 6.21695 19.7873 6.41895 19.9893C6.62395 20.1943 6.89595 20.3073 7.18595 20.3073H16.815C17.105 20.3073 17.377 20.1943 17.582 19.9893C17.787 19.7853 17.9 19.5123 17.9 19.2223V9.5933C17.9 9.3063 18.132 9.0733 18.42 9.0733C18.708 9.0733 18.938 9.3063 18.938 9.5933ZM21.346 6.3843C21.346 6.6713 21.114 6.9043 20.826 6.9043H3.17295C2.88595 6.9043 2.65295 6.6713 2.65295 6.3843C2.65295 6.0973 2.88595 5.8643 3.17295 5.8643H8.26995V3.1743C8.26995 2.8873 8.50295 2.6543 8.78995 2.6543H15.209C15.496 2.6543 15.729 2.8873 15.729 3.1743V5.8643H20.826C21.113 5.8643 21.346 6.0973 21.346 6.3843ZM9.31095 5.8643H14.691V3.6943H9.31095V5.8643ZM14.659 16.8143V12.0003C14.659 11.7133 14.427 11.4803 14.139 11.4803C13.851 11.4803 13.619 11.7133 13.619 12.0003V16.8143C13.619 17.1013 13.851 17.3343 14.139 17.3343C14.427 17.3343 14.659 17.1023 14.659 16.8143ZM10.38 16.8143V12.0003C10.38 11.7133 10.147 11.4803 9.85995 11.4803C9.57295 11.4803 9.33995 11.7133 9.33995 12.0003V16.8143C9.33995 17.1013 9.57295 17.3343 9.85995 17.3343C10.147 17.3343 10.38 17.1023 10.38 16.8143Z"
         fill="currentColor"
       />
     </svg>
   );
 }
 
-/** Figma 494:2412: bg white, border bd-1 gray-100, rounded rd-8; horizontale gap scale/12 (12px) tussen zichtbare kolommen; pl/pr sp-12 = 12px (--space-3). */
-const containerBase =
-  "flex w-full min-w-0 items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-[var(--space-3)] pr-[var(--space-3)]";
+/** Maandtitel + optionele week-badge wanneer de naam het patroon van `defaultNewListName` volgt. */
+function ListCardTitleWithOptionalBadge({
+  listName,
+  className,
+}: {
+  listName: React.ReactNode;
+  className?: string;
+}) {
+  const titleClass = cn(
+    "min-w-0 truncate text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]",
+    className,
+  );
+  const plain =
+    typeof listName === "string" || typeof listName === "number"
+      ? String(listName)
+      : null;
+  if (plain == null) {
+    return <span className={titleClass}>{listName}</span>;
+  }
+  const { displayName, weekBadge } = parseCalendarWeekListTitle(plain);
+  return (
+    <>
+      <span className={titleClass}>{displayName}</span>
+      {weekBadge != null ? (
+        <span
+          className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[var(--blue-200)] text-[10px] font-semibold leading-none text-white"
+          aria-hidden
+        >
+          {weekBadge}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Figma 1148:8298 — hart vóór «n favorieten»; vulling = Neutrals 100 (`--gray-100`).
+ * Mask op `heart_filled.svg` zodat de kleur uit tokens komt (SVG is zwart ingekleurd).
+ */
+function FavoriteListSubtitleHeartIcon({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-block size-4 shrink-0 bg-[var(--gray-100)]",
+        className,
+      )}
+      style={{
+        WebkitMaskImage: 'url("/icons/heart_filled.svg")',
+        maskImage: 'url("/icons/heart_filled.svg")',
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+      }}
+      aria-hidden
+    />
+  );
+}
+
+/**
+ * Figma 494:2412 — compacte tegel (shared / master).
+ * Figma 1148:9681 — bewerkmodus: zelfde gap/px als 9010 (`gap-3` = 12px, `p-3` = 12px), rij `items-center`.
+ */
+const containerBaseCompact =
+  "flex w-full min-w-0 items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] p-[var(--space-3)]";
+
+/**
+ * Figma 1148:9010 — List card: gap scale/12, px/py sp-12, rd-8, bd-1 gray-100, wit;
+ * `items-end` voor uitlijning icoon / tekst / winkelmerk.
+ */
+const containerBaseFigma9010 =
+  "flex w-full min-w-0 items-end gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] p-[var(--space-3)]";
 
 const sizeStyles: Record<ListCardSize, string> = {
   default: "gap-3",
 };
 
-/** Figma: divider wrapper h-60 w-0 shrink-0; line 1px × 60px, neutrals/100. */
+/** Figma 1148:9681 — verticale lijn 1px × 40px (hoogte rij met 40px-icoon). */
 function EditableDivider() {
   return (
     <span
-      className="relative flex h-[60px] w-0 min-w-0 shrink-0 items-center justify-center"
+      className="relative flex h-10 w-0 min-w-0 shrink-0 items-center justify-center"
       aria-hidden="true"
     >
       <span
-        className="absolute left-1/2 top-0 h-[60px] w-px -translate-x-1/2 bg-[var(--gray-100)]"
+        className="absolute left-1/2 top-0 h-10 w-px -translate-x-1/2 bg-[var(--gray-100)]"
         aria-hidden="true"
       />
     </span>
@@ -175,7 +245,6 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
     {
       className,
       listName = "List name",
-      date,
       itemCount,
       icon,
       state = "default",
@@ -196,11 +265,19 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
     const isEditable = state === "editable";
     const isMaster = displayVariant === "master";
     const isFromMaster = displayVariant === "from-master";
+    /** Stilstaande tegel zoals Figma 1148:9010 (+ master / favorieten: 1148:8292). */
+    const useFigma9010Tile =
+      !isEditable &&
+      (displayVariant === "default" ||
+        displayVariant === "from-master" ||
+        displayVariant === "shared" ||
+        displayVariant === "master");
 
     const containerClassName = cn(
-      containerBase,
-      sizeStyles[size],
-      className
+      useFigma9010Tile
+        ? containerBaseFigma9010
+        : cn(containerBaseCompact, sizeStyles[size]),
+      className,
     );
 
     const containerProps = {
@@ -223,82 +300,179 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
           <button
             type="button"
             aria-label="Reorder list"
-            className="flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:cursor-grabbing"
+            className="flex h-8 w-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-full p-1 text-action-primary transition-colors hover:bg-[var(--blue-25)] hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:cursor-grabbing"
             {...handleButtonProps}
           >
             <ReorderIcon />
           </button>
           <EditableDivider />
         </EditableSection>
-        {icon != null && (
-          <span
-            className="flex size-12 shrink-0 items-center justify-center overflow-hidden text-[2rem] leading-none"
-            aria-hidden="true"
-          >
-            {icon}
-          </span>
-        )}
-        <div className="min-w-0 flex-1 flex flex-col gap-0">
-          {isFromMaster && storeLogos && storeLogos.length > 0 ? (
-            <div className="flex items-center gap-2">
-              <span className="min-w-0 flex-1 truncate font-medium text-base leading-24 tracking-normal text-[var(--text-primary)]">
-                {listName}
+        {isEditable ? (
+          <div className="flex min-w-0 flex-1 items-end gap-3">
+            {icon != null ? (
+              <span
+                className="flex size-10 shrink-0 items-center justify-center overflow-hidden bg-[var(--white)] [&_img]:h-8 [&_img]:w-8 [&_img]:max-h-none [&_img]:max-w-none [&_img]:object-contain"
+                aria-hidden="true"
+              >
+                {icon}
               </span>
-              <div className="flex shrink-0 items-center">
+            ) : null}
+            <div className="flex min-w-0 flex-1 flex-col gap-0">
+              <div className="flex min-w-0 items-center gap-1">
+                <ListCardTitleWithOptionalBadge listName={listName} />
+              </div>
+              {!useFigma9010Tile && (
+                <>
+                  {itemCount != null &&
+                    (isMaster ? (
+                      <span className="flex min-w-0 items-center gap-1 font-normal text-xs leading-16 tracking-normal text-[var(--gray-400)]">
+                        <FavoriteListSubtitleHeartIcon />
+                        <span className="min-w-0 truncate">{itemCount}</span>
+                      </span>
+                    ) : displayVariant === "shared" ? (
+                      <span className="block min-w-0 truncate font-normal text-xs leading-16 tracking-normal text-[var(--gray-400)]">
+                        {itemCount}
+                        {" - met "}
+                        {sharedWithFirstName?.trim() || "deelnemer"}
+                      </span>
+                    ) : (
+                      <span className="font-normal text-xs leading-16 tracking-normal text-[var(--gray-400)]">
+                        {itemCount}
+                      </span>
+                    ))}
+                </>
+              )}
+            </div>
+            {storeLogos && storeLogos.length > 0 ? (
+              <div className="flex shrink-0 flex-col justify-end pb-px">
                 {storeLogos.map((src, i) => (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img key={i} src={src} alt="" width={24} height={24} className="size-6 shrink-0 object-contain" aria-hidden />
+                  <img
+                    key={i}
+                    src={src}
+                    alt=""
+                    width={16}
+                    height={16}
+                    className="size-4 shrink-0 object-contain"
+                    aria-hidden
+                  />
                 ))}
               </div>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            {icon != null && (
+              <span
+                className={cn(
+                  "flex shrink-0 items-center justify-center overflow-hidden bg-[var(--white)]",
+                  useFigma9010Tile
+                    ? "size-10 [&_img]:h-8 [&_img]:w-8 [&_img]:max-h-none [&_img]:max-w-none [&_img]:object-contain"
+                    : "size-12 text-[2rem] leading-none",
+                )}
+                aria-hidden="true"
+              >
+                {icon}
+              </span>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col gap-0">
+              {useFigma9010Tile ? (
+                <>
+                  <div className="flex min-w-0 items-center gap-1">
+                    <ListCardTitleWithOptionalBadge listName={listName} />
+                  </div>
+                  {displayVariant === "shared" ? (
+                    itemCount != null ? (
+                      <p className="w-full truncate text-xs font-normal leading-16 tracking-normal text-[var(--gray-400)]">
+                        {itemCount}
+                        {" - met "}
+                        {sharedWithFirstName?.trim() || "deelnemer"}
+                      </p>
+                    ) : null
+                  ) : displayVariant === "master" && itemCount != null ? (
+                    <p className="flex w-full min-w-0 items-center gap-1 truncate text-xs font-normal leading-16 tracking-normal text-[var(--gray-400)]">
+                      <FavoriteListSubtitleHeartIcon />
+                      <span className="min-w-0 truncate">{itemCount}</span>
+                    </p>
+                  ) : itemCount != null ? (
+                    <p className="w-full truncate text-xs font-normal leading-16 tracking-normal text-[var(--gray-400)]">
+                      {itemCount}
+                    </p>
+                  ) : null}
+                </>
+              ) : isFromMaster && storeLogos && storeLogos.length > 0 ? (
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-1">
+                    <ListCardTitleWithOptionalBadge listName={listName} />
+                  </div>
+                  <div className="flex shrink-0 items-center">
+                    {storeLogos.map((src, i) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={i} src={src} alt="" width={24} height={24} className="size-6 shrink-0 object-contain" aria-hidden />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex min-w-0 items-center gap-1">
+                  <ListCardTitleWithOptionalBadge listName={listName} />
+                </div>
+              )}
+              {!useFigma9010Tile && (
+                <>
+                  {itemCount != null &&
+                    (isMaster ? (
+                      <span className="flex min-w-0 items-center gap-1 font-normal text-xs leading-16 tracking-normal text-[var(--gray-400)]">
+                        <FavoriteListSubtitleHeartIcon />
+                        <span className="min-w-0 truncate">{itemCount}</span>
+                      </span>
+                    ) : displayVariant === "shared" ? (
+                      <span className="block min-w-0 truncate font-normal text-xs leading-16 tracking-normal text-[var(--gray-400)]">
+                        {itemCount}
+                        {" - met "}
+                        {sharedWithFirstName?.trim() || "deelnemer"}
+                      </span>
+                    ) : (
+                      <span className="font-normal text-xs leading-16 tracking-normal text-[var(--blue-500)]">
+                        {itemCount}
+                      </span>
+                    ))}
+                </>
+              )}
             </div>
-          ) : (
-            <span className="truncate font-medium text-base leading-24 tracking-normal text-[var(--text-primary)]">
-              {listName}
-            </span>
-          )}
-          {date != null && !isMaster && (
-            <span className="font-normal text-sm leading-20 tracking-normal text-[var(--gray-400)]">
-              {date}
-            </span>
-          )}
-          {itemCount != null &&
-            (isMaster ? (
-              <span className="font-normal text-xs leading-16 tracking-normal text-action-primary">
-                {itemCount}
-              </span>
-            ) : displayVariant === "shared" ? (
-              <span className="block min-w-0 font-normal text-xs leading-16 tracking-normal">
-                <span className="text-[var(--blue-500)]">{itemCount}</span>
-                <span className="text-[var(--gray-400)]">
-                  {" "}
-                  (gedeeld met{" "}
-                  {sharedWithFirstName?.trim() || "deelnemer"})
-                </span>
-              </span>
-            ) : (
-              <span className="font-normal text-xs leading-16 tracking-normal text-[var(--blue-500)]">
-                {itemCount}
-              </span>
-            ))}
-        </div>
-        {isMaster && !isEditable ? (
-          /** Zelfde wrapper als delete-kolom (`EditableSection` + `isEditable`) zodat divider en uitlijning 1:1 matchen. */
-          <EditableSection isEditable>
-            <EditableDivider />
-            <button
-              type="button"
-              aria-label="Items van masterlijst toevoegen"
-              onClick={(e) => {
-                e.stopPropagation();
-                onMasterAdd?.();
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-action-primary transition-colors hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none"
-              disabled={!onMasterAdd}
-            >
-              <PlusCircleIcon />
-            </button>
-          </EditableSection>
+          </>
+        )}
+        {useFigma9010Tile ? (
+          isFromMaster && storeLogos && storeLogos.length > 0 ? (
+            <div className="flex shrink-0 flex-col justify-end gap-0.5 self-end pb-px">
+              {storeLogos.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={src}
+                  alt=""
+                  width={16}
+                  height={16}
+                  className="size-4 shrink-0 object-contain"
+                  aria-hidden
+                />
+              ))}
+            </div>
+          ) : isMaster && onMasterAdd ? (
+            <div className="flex shrink-0 flex-col justify-end gap-0.5 self-end pb-px">
+              <button
+                type="button"
+                aria-label="Weeklijstje van favoriet toevoegen"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMasterAdd();
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-action-primary transition-colors hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              >
+                <PlusCircleIcon />
+              </button>
+            </div>
+          ) : null
         ) : null}
         {(!isMaster || isEditable) && (
           <EditableSection
@@ -311,7 +485,7 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
               aria-label="Delete list"
               onClick={onDelete}
               onPointerDown={(e) => e.stopPropagation()}
-              className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-1 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
             >
               <TrashIcon />
             </button>

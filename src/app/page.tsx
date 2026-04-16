@@ -3,31 +3,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  useDndContext,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { CSS } from "@dnd-kit/utilities";
 import { id as iid } from "@instantdb/react";
 import { ListCard } from "@/components/ui/list_card";
-import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { MiniButton } from "@/components/ui/mini_button";
-import { Snackbar } from "@/components/ui/snackbar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
@@ -44,7 +22,7 @@ import {
 } from "@/lib/master-stores";
 import { db } from "@/lib/db";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
-import { APP_FAB_BOTTOM_CLASS, APP_SNACKBAR_FIXTURE_CLASS } from "@/lib/app-layout";
+import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
 import {
   EMPTY_HOME_LIST_ILLUSTRATION_SRC,
   homeListCardIconSrc,
@@ -52,6 +30,7 @@ import {
   planOwnerListDecorIconUpdates,
 } from "@/lib/list-product-icons";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
+import { ListSectionHeader } from "@/components/list_section_header";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -124,81 +103,103 @@ type HomeList = {
 };
 
 function itemCountLabel(count: number): string {
-  return count === 1 ? "1 item" : `${count} items`;
+  return count === 1 ? "1 product" : `${count} producten`;
 }
 
-/** Renders the sortable list; must be inside DndContext to use useDndContext for drag state */
-function SortableListItems({
+/** Telling op favorietenmastertegels (Figma 1148:8298). */
+function favoriteCountLabel(count: number): string {
+  return count === 1 ? "1 favoriet" : `${count} favorieten`;
+}
+
+/** Startpagina: alleen tikken om te openen; volgorde/verwijderen op `/lijstjes-beheren/lijstjes` of `/lijstjes-beheren/favorieten`. */
+function HomeStaticListSections({
   lists,
-  isEditMode,
-  removingId,
   addingId,
   addingIdExpanded,
-  onDelete,
   onStartFromMaster,
 }: {
   lists: HomeList[];
-  isEditMode: boolean;
-  removingId: string | null;
   addingId: string | null;
   addingIdExpanded: boolean;
-  onDelete: (id: string) => void;
   onStartFromMaster: (id: string) => void;
 }) {
-  const { active } = useDndContext();
-  const isDndActive = active != null;
-  const [showAllNormal, setShowAllNormal] = React.useState(false);
-  const [showAllMaster, setShowAllMaster] = React.useState(false);
+  const router = useRouter();
 
   const normalLists = lists.filter((l) => l.displayVariant !== "master");
   const masterLists = lists.filter((l) => l.displayVariant === "master");
-  const visibleNormalLists = showAllNormal ? normalLists : normalLists.slice(0, 3);
-  const visibleMasterLists = showAllMaster ? masterLists : masterLists.slice(0, 3);
+  const visibleNormalLists = normalLists.slice(0, 3);
+  const visibleMasterLists = masterLists.slice(0, 3);
+
+  const rowWrapperClass = (isAddingCollapsed: boolean, index: number, len: number) =>
+    cn(
+      "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+      isAddingCollapsed
+        ? "mb-0 max-h-0 opacity-0"
+        : "max-h-[200px] opacity-100",
+      !isAddingCollapsed && (index < len - 1 ? "mb-3" : "mb-0"),
+    );
+
+  const cardFor = (list: HomeList) => (
+    <ListCard
+      listName={list.name}
+      itemCount={
+        list.displayVariant === "master"
+          ? favoriteCountLabel(list.items?.length ?? 0)
+          : itemCountLabel(list.items?.length ?? 0)
+      }
+      displayVariant={list.displayVariant}
+      storeLogos={list.storeLogos}
+      sharedWithFirstName={list.sharedWithFirstName ?? undefined}
+      icon={
+        // eslint-disable-next-line @next/next/no-img-element -- lokale webp
+        <img
+          src={homeListCardIconSrc(list)}
+          alt=""
+          width={48}
+          height={48}
+          decoding="async"
+          className="object-contain"
+        />
+      }
+      state="default"
+      onMasterAdd={
+        list.displayVariant === "master"
+          ? () => onStartFromMaster(list.id)
+          : undefined
+      }
+      className="cursor-pointer"
+    />
+  );
 
   return (
     <div className="flex flex-col">
       {normalLists.length > 0 ? (
         <div className="flex flex-col">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
-              Lijstjes
-            </h2>
-            {normalLists.length > 3 ? (
-              <button
-                type="button"
-                onClick={() => setShowAllNormal((prev) => !prev)}
-                className="text-sm font-medium leading-20 tracking-normal text-[var(--blue-500)] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-              >
-                {showAllNormal ? "Toon minder" : "Toon meer"}
-              </button>
-            ) : null}
-          </div>
+          <ListSectionHeader
+            icon="list"
+            label="Lijstjes"
+            showNaarOverzicht={normalLists.length > 3}
+            naarOverzichtHref="/lijstjes-beheren/lijstjes"
+          />
           <div className="mt-4 flex flex-col">
             {visibleNormalLists.map((list, index) => {
-              const isRemoving = removingId === list.id;
               const isAdding = addingId === list.id;
               const isAddingCollapsed = isAdding && !addingIdExpanded;
-              const isAnimating = isRemoving || isAddingCollapsed;
-
-              const wrapperClass = isDndActive
-                ? cn(index < visibleNormalLists.length - 1 ? "mb-3" : "mb-0")
-                : cn(
-                    "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-                    isAnimating
-                      ? "max-h-0 opacity-0 mb-0"
-                      : "max-h-[200px] opacity-100",
-                    !isAnimating &&
-                      (index < visibleNormalLists.length - 1 ? "mb-3" : "mb-0")
-                  );
-
               return (
-                <div key={list.id} className={wrapperClass}>
-                  <SortableListCard
-                    list={list}
-                    isEditMode={isEditMode}
-                    onDelete={() => onDelete(list.id)}
-                    onStartFromMaster={() => onStartFromMaster(list.id)}
-                  />
+                <div
+                  key={list.id}
+                  className={rowWrapperClass(
+                    isAddingCollapsed,
+                    index,
+                    visibleNormalLists.length,
+                  )}
+                >
+                  <Link
+                    href={`/lijstje/${list.id}`}
+                    className="block no-underline"
+                  >
+                    {cardFor(list)}
+                  </Link>
                 </div>
               );
             })}
@@ -210,150 +211,52 @@ function SortableListItems({
         <div
           className={cn(
             "flex flex-col",
-            normalLists.length > 0 ? "mt-8" : undefined,
+            normalLists.length > 0 ? "mt-10" : undefined,
           )}
         >
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
-              Master lijstjes
-            </h2>
-            {masterLists.length > 3 ? (
-              <button
-                type="button"
-                onClick={() => setShowAllMaster((prev) => !prev)}
-                className="text-sm font-medium leading-20 tracking-normal text-[var(--blue-500)] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-              >
-                {showAllMaster ? "Toon minder" : "Toon meer"}
-              </button>
-            ) : null}
-          </div>
+          <ListSectionHeader
+            icon="heart"
+            label="Favorieten lijstjes"
+            showNaarOverzicht
+            naarOverzichtHref="/lijstjes-beheren/favorieten"
+          />
           <div className="mt-4 flex flex-col">
             {visibleMasterLists.map((list, index) => {
-              const isRemoving = removingId === list.id;
               const isAdding = addingId === list.id;
               const isAddingCollapsed = isAdding && !addingIdExpanded;
-              const isAnimating = isRemoving || isAddingCollapsed;
-
-              const wrapperClass = isDndActive
-                ? cn(index < visibleMasterLists.length - 1 ? "mb-3" : "mb-0")
-                : cn(
-                    "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-                    isAnimating
-                      ? "max-h-0 opacity-0 mb-0"
-                      : "max-h-[200px] opacity-100",
-                    !isAnimating &&
-                      (index < visibleMasterLists.length - 1 ? "mb-3" : "mb-0")
-                  );
-
               return (
-                <div key={list.id} className={wrapperClass}>
-                  <SortableListCard
-                    list={list}
-                    isEditMode={isEditMode}
-                    onDelete={() => onDelete(list.id)}
-                    onStartFromMaster={() => onStartFromMaster(list.id)}
-                  />
+                <div
+                  key={list.id}
+                  className={rowWrapperClass(
+                    isAddingCollapsed,
+                    index,
+                    visibleMasterLists.length,
+                  )}
+                >
+                  <div
+                    role="link"
+                    tabIndex={0}
+                    className="block cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest("button")) return;
+                      router.push(`/lijstje/${list.id}`);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        if ((e.target as HTMLElement).closest("button")) return;
+                        e.preventDefault();
+                        router.push(`/lijstje/${list.id}`);
+                      }
+                    }}
+                  >
+                    {cardFor(list)}
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function SortableListCard({
-  list,
-  isEditMode,
-  onDelete,
-  onStartFromMaster,
-}: {
-  list: HomeList;
-  isEditMode: boolean;
-  onDelete: () => void;
-  onStartFromMaster: () => void;
-}) {
-  const router = useRouter();
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: list.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  const card = (
-    <ListCard
-      listName={list.name}
-      date={list.date}
-      itemCount={itemCountLabel(list.items?.length ?? 0)}
-      displayVariant={list.displayVariant}
-      storeLogos={list.storeLogos}
-      sharedWithFirstName={
-        list.sharedWithFirstName ?? undefined
-      }
-      icon={
-        // eslint-disable-next-line @next/next/no-img-element -- lokale webp: Next/Image optimizer faalt op sommige iOS-builds
-        <img
-          src={homeListCardIconSrc(list)}
-          alt=""
-          width={48}
-          height={48}
-          decoding="async"
-          className="object-contain"
-        />
-      }
-      state={isEditMode ? "editable" : "default"}
-      onDelete={isEditMode && list.isOwner ? onDelete : undefined}
-      onReorder={undefined}
-      onMasterAdd={
-        !isEditMode && list.displayVariant === "master"
-          ? onStartFromMaster
-          : undefined
-      }
-      dragHandleProps={isEditMode ? { ...attributes, ...listeners } : undefined}
-      className={cn(!isEditMode && "cursor-pointer")}
-    />
-  );
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        isDragging &&
-          "z-10 cursor-grabbing opacity-90 shadow-[var(--shadow-drop)]"
-      )}
-    >
-      <SwipeToDelete
-        onDelete={!isEditMode && list.isOwner ? onDelete : undefined}
-        deleteActionLabel="Lijstje verwijderen"
-      >
-        {isEditMode ? (
-          card
-        ) : list.displayVariant === "master" ? (
-          <div
-            role="link"
-            tabIndex={0}
-            className="cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 rounded-md"
-            onClick={() => router.push(`/lijstje/${list.id}`)}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push(`/lijstje/${list.id}`); }}
-          >
-            {card}
-          </div>
-        ) : (
-          <Link href={`/lijstje/${list.id}`} className="block no-underline">
-            {card}
-          </Link>
-        )}
-      </SwipeToDelete>
     </div>
   );
 }
@@ -588,7 +491,6 @@ export default function Home() {
     );
   }, [user?.id, authLoading, isLoading, data?.lists]);
 
-  const [isEditMode, setIsEditMode] = React.useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newListName, setNewListName] = React.useState("");
   const [quickMasterListName, setQuickMasterListName] = React.useState("");
@@ -596,31 +498,12 @@ export default function Home() {
   const [isQuickMasterModalOpen, setIsQuickMasterModalOpen] = React.useState(false);
   /** Nieuwe key bij elke modal-open: remount van het formulier zodat radio’s terug naar default staan. */
   const [newListFormKey, setNewListFormKey] = React.useState(0);
-  const [lastDeleted, setLastDeleted] = React.useState<{
-    listId: string;
-    listName: string;
-    order: number;
-    icon: string;
-    isMasterTemplate: boolean;
-  } | null>(null);
-  const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
-    null,
-  );
-  const [removingId, setRemovingId] = React.useState<string | null>(null);
   const [addingId, setAddingId] = React.useState<string | null>(null);
   const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
-  const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
 
   const hasLists = lists.length > 0;
 
-  const DELETE_ANIMATION_MS = 300;
   const ADD_ANIMATION_MS = 300;
-
-  React.useEffect(() => {
-    return () => {
-      if (removeTimeoutRef.current) clearTimeout(removeTimeoutRef.current);
-    };
-  }, []);
 
   React.useEffect(() => {
     if (!addingId) return;
@@ -637,68 +520,6 @@ export default function Home() {
       clearTimeout(timeoutId);
     };
   }, [addingId]);
-
-  React.useEffect(() => {
-    if (!snackbarMessage) return;
-    const timeout = window.setTimeout(() => {
-      setSnackbarMessage(null);
-      setLastDeleted(null);
-    }, 4500);
-    return () => window.clearTimeout(timeout);
-  }, [snackbarMessage]);
-
-  const handleToggleEdit = () => {
-    setIsEditMode((prev) => !prev);
-  };
-
-  const handleDeleteList = React.useCallback(
-    (listId: string) => {
-      if (removeTimeoutRef.current) {
-        clearTimeout(removeTimeoutRef.current);
-        removeTimeoutRef.current = null;
-      }
-      setRemovingId(listId);
-      removeTimeoutRef.current = window.setTimeout(() => {
-        removeTimeoutRef.current = null;
-        const list = lists.find((l) => l.id === listId);
-        if (!list || !list.isOwner) return;
-        const itemIds = (list.items ?? []).map((i) => i.id);
-        const membershipIds = list.membershipIds ?? [];
-        db.transact([
-          ...itemIds.map((itemId) => db.tx.items[itemId].delete()),
-          ...membershipIds.map((mid) => db.tx.listMembers[mid].delete()),
-          db.tx.lists[listId].delete(),
-        ] as Parameters<typeof db.transact>[0]);
-        setLastDeleted({
-          listId,
-          listName: list.name,
-          order: list.order,
-          icon: list.icon,
-          isMasterTemplate: list.isMasterTemplate,
-        });
-        setSnackbarMessage(`'${list.name}' verwijderd`);
-        setRemovingId(null);
-      }, DELETE_ANIMATION_MS);
-    },
-    [lists],
-  );
-
-  const handleUndoDelete = React.useCallback(() => {
-    if (!lastDeleted || !user) return;
-    db.transact(
-      db.tx.lists[lastDeleted.listId].update({
-        name: lastDeleted.listName,
-        date: new Date().toLocaleDateString("nl-NL"),
-        icon: lastDeleted.icon,
-        order: lastDeleted.order,
-        ownerId: user.id,
-        isMasterTemplate: lastDeleted.isMasterTemplate,
-      }),
-    );
-    setLastDeleted(null);
-    setSnackbarMessage(null);
-    setAddingId(lastDeleted.listId);
-  }, [lastDeleted, user]);
 
   const handleCloseCreateModal = React.useCallback(() => {
     setIsCreateModalOpen(false);
@@ -790,34 +611,6 @@ export default function Home() {
     [user, lists, router, handleCloseCreateModal],
   );
 
-  const handleReorderLists = React.useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (over == null || active.id === over.id) return;
-      const oldIndex = lists.findIndex((l) => l.id === active.id);
-      const newIndex = lists.findIndex((l) => l.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return;
-      const reordered = arrayMove(lists, oldIndex, newIndex);
-      const txns = reordered.map((l, i) =>
-        db.tx.lists[l.id].update({ order: i }),
-      );
-      db.transact(txns);
-    },
-    [lists],
-  );
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 3 },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 100, tolerance: 8 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
   if (authLoading || !user || isLoading) {
     return <PageSpinner />;
   }
@@ -833,44 +626,13 @@ export default function Home() {
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
-      {/* Content area */}
-      <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
+    <div className="relative flex min-h-dvh w-full flex-col px-[var(--space-4)]">
+      <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
-          {hasLists && (
-            <div className="mb-6 flex min-h-9 items-center gap-3">
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <h1 className="text-page-title font-bold leading-32 tracking-normal text-text-primary">
-                  Mijn lijstjes
-                </h1>
-                <button
-                  type="button"
-                  aria-label={isEditMode ? "Stop bewerken" : "Bewerken"}
-                  onClick={handleToggleEdit}
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <path d="M3.17663 19.8235C3.03379 19.6807 2.97224 19.4751 3.01172 19.2777L3.94074 14.633C3.96397 14.5157 4.02087 14.4089 4.10564 14.323L15.2539 3.17679C15.4896 2.94107 15.8728 2.94107 16.1086 3.17679L19.8246 6.89257C19.9361 7.00637 20 7.15965 20 7.31989C20 7.48013 19.9361 7.63341 19.8246 7.7472L17.0376 10.534L8.67642 18.8934C8.59048 18.9782 8.48365 19.0362 8.36636 19.0594L3.72126 19.9884C3.68178 19.9965 3.6423 20 3.60281 20C3.44488 19.9988 3.29043 19.9361 3.17663 19.8235ZM13.7465 6.39094L16.6091 9.25326L18.5426 7.31989L15.6801 4.45757L13.7465 6.39094ZM4.37274 18.6263L7.95062 17.911L15.7544 10.1079L12.893 7.24557L5.08808 15.0499L4.37274 18.6263Z" fill="currentColor"/>
-                  </svg>
-                </button>
-              </div>
-              {isEditMode ? (
-                <button
-                  type="button"
-                  onClick={handleToggleEdit}
-                  className="h-9 shrink-0 rounded-pill bg-[var(--blue-500)] px-4 text-sm font-medium leading-20 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  Gereed
-                </button>
-              ) : null}
-            </div>
-          )}
-
-          {/* Empty state */}
           {!hasLists ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-6">
               <div className="relative size-24 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp: Next/Image optimizer faalt op sommige iOS-builds */}
+                {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp */}
                 <img
                   src={EMPTY_HOME_LIST_ILLUSTRATION_SRC}
                   alt=""
@@ -880,7 +642,7 @@ export default function Home() {
                   className="object-contain"
                 />
               </div>
-              <p className="text-center text-base font-medium leading-24 tracking-normal text-gray-500">
+              <p className="text-center text-base font-medium leading-24 text-[var(--text-secondary)]">
                 Je hebt nog geen lijstjes
               </p>
               <MiniButton variant="primary" onClick={handleOpenCreateModal}>
@@ -888,28 +650,12 @@ export default function Home() {
               </MiniButton>
             </div>
           ) : (
-            /* List cards – sortable in edit mode */
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleReorderLists}
-              modifiers={[restrictToVerticalAxis]}
-            >
-              <SortableContext
-                items={lists.map((l) => l.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <SortableListItems
-                  lists={lists}
-                  isEditMode={isEditMode}
-                  removingId={removingId}
-                  addingId={addingId}
-                  addingIdExpanded={addingIdExpanded}
-                  onDelete={handleDeleteList}
-                  onStartFromMaster={handleStartFromMaster}
-                />
-              </SortableContext>
-            </DndContext>
+            <HomeStaticListSections
+              lists={lists}
+              addingId={addingId}
+              addingIdExpanded={addingIdExpanded}
+              onStartFromMaster={handleStartFromMaster}
+            />
           )}
         </div>
       </div>
@@ -958,13 +704,13 @@ export default function Home() {
             />
             <NewListKindFormOption
               value="from_master"
-              title="Lijstje van master lijstje"
-              subtitle="Vertrek van bestaand master lijstje (geen winkel kiezen)"
+              title="Lijstje van favoriet"
+              subtitle="Vertrek van een favorietenlijst (geen winkel kiezen)"
               icon={<IconPrimaryMask src="/icons/list-from-master-list.svg" />}
             />
             <NewListKindFormOption
               value="master"
-              title="Master lijstje"
+              title="Favorieten lijstje"
               subtitle="Nieuwe template: eerst winkel kiezen"
               icon={<IconPrimaryMask src="/icons/master-list.svg" />}
             />
@@ -1004,35 +750,22 @@ export default function Home() {
         </form>
       </SlideInModal>
 
-      {/* Snackbar – positioned above bottom nav */}
-      {snackbarMessage && (
-        <div className={APP_SNACKBAR_FIXTURE_CLASS}>
-          <Snackbar
-            message={snackbarMessage}
-            actionLabel="Zet terug"
-            onAction={handleUndoDelete}
-          />
-        </div>
-      )}
-
-      {!snackbarMessage ? (
-        <div
-          className={cn(
-            "pointer-events-none fixed inset-x-0 z-20",
-            APP_FAB_BOTTOM_CLASS,
-          )}
-        >
-          <div className="px-[16px]">
-            <div className="mx-auto flex w-full max-w-[956px] justify-end">
-              <FloatingActionButton
-                aria-label="Nieuw lijstje"
-                className="pointer-events-auto"
-                onClick={handleOpenCreateModal}
-              />
-            </div>
+      <div
+        className={cn(
+          "pointer-events-none fixed inset-x-0 z-20",
+          APP_FAB_BOTTOM_CLASS,
+        )}
+      >
+        <div className="px-[var(--space-4)]">
+          <div className="mx-auto flex w-full max-w-[956px] justify-end">
+            <FloatingActionButton
+              aria-label="Nieuw lijstje"
+              className="pointer-events-auto"
+              onClick={handleOpenCreateModal}
+            />
           </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

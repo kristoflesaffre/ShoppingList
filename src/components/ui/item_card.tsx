@@ -610,7 +610,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
           <ItemDivider />
           <button
             type="button"
-            aria-label="Item van masterlijst toevoegen"
+            aria-label="Item van favorietenlijst toevoegen"
             onClick={(e) => {
               e.stopPropagation();
               onMasterAdd?.();

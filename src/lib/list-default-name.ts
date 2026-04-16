@@ -34,6 +34,34 @@ export function defaultNewListName(date: Date = new Date()): string {
   return `${month} week ${week}`;
 }
 
+/**
+ * Herkent de automatische kalender-naam (`defaultNewListName`) voor weergave als in Figma:
+ * maand als titel + weeknummer in een bol (bv. "April" + badge "3").
+ * Alleen exact het patroon `{Nederlandse maand} week {n}` (na trim) wordt gesplitst.
+ */
+export function parseCalendarWeekListTitle(name: string): {
+  displayName: string;
+  weekBadge: string | null;
+} {
+  const trimmed = name.trim();
+  const m = /^(.+?)\s+week\s+(\d+)\s*$/i.exec(trimmed);
+  if (!m) {
+    return { displayName: name, weekBadge: null };
+  }
+  const monthToken = m[1].trim().toLowerCase();
+  if (
+    !(DUTCH_MONTHS as readonly string[]).includes(
+      monthToken as (typeof DUTCH_MONTHS)[number],
+    )
+  ) {
+    return { displayName: name, weekBadge: null };
+  }
+  return {
+    displayName: capitalizeDutchMonth(monthToken),
+    weekBadge: m[2],
+  };
+}
+
 /** Selecteert de volledige inhoud bij focus (snel vervangen door eigen naam). */
 export function selectListNameInputOnFocus(
   e: FocusEvent<HTMLInputElement>,

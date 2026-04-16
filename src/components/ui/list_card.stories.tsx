@@ -49,10 +49,6 @@ const meta: Meta<typeof ListCard> = {
       control: "text",
       description: "List title",
     },
-    date: {
-      control: "text",
-      description: "Optional date string",
-    },
     itemCount: {
       control: "text",
       description: "Optional item count label",
@@ -66,7 +62,7 @@ const meta: Meta<typeof ListCard> = {
       control: "select",
       options: ["default", "shared", "master"],
       description:
-        "shared = (gedeeld met …) — 762:3452; master = plus-circle — 773:4183",
+        "shared = grijze subtitel “n producten - met …” — 762:3452; master = plus-circle — 773:4183",
     },
     sharedWithFirstName: {
       control: "text",
@@ -92,7 +88,6 @@ type Story = StoryObj<typeof ListCard>;
 export const Default: Story = {
   args: {
     listName: "List name",
-    date: "25-04-2026",
     itemCount: "6 items",
     icon: defaultIcon,
     state: "default",
@@ -103,7 +98,6 @@ export const Default: Story = {
 export const Editable: Story = {
   args: {
     listName: "List name",
-    date: "25-04-2026",
     itemCount: "6 items",
     icon: defaultIcon,
     state: "editable",
@@ -121,11 +115,11 @@ const masterListIcon = (
   />
 );
 
-/** Masterlijst-tegel – Figma 773:4183 (`public/icons/plus-circle.svg` in de kaart) */
+/** Favorietenlijst-tegel – Figma 1148:8292 (`public/icons/plus-circle.svg` rechts) */
 export const Master: Story = {
   args: {
-    listName: "Master list name",
-    itemCount: "6 items",
+    listName: "Delhaize",
+    itemCount: "96 favorieten",
     icon: masterListIcon,
     state: "default",
     displayVariant: "master",
@@ -137,12 +131,11 @@ export const Master: Story = {
 export const FromMaster: Story = {
   args: {
     listName: "List name",
-    date: "25-04-2026",
     itemCount: "6 items",
     icon: defaultIcon,
     state: "default",
     displayVariant: "from-master",
-    storeLogos: ["/logos/logos-delhaize.svg", "/logos/logos-lidl.svg"],
+    storeLogos: ["/logos/logos-lidl-delhaize.svg"],
   },
 };
 
@@ -150,7 +143,6 @@ export const FromMaster: Story = {
 export const FromMasterSingleStore: Story = {
   args: {
     listName: "Lidl weekboodschappen",
-    date: "25-04-2026",
     itemCount: "12 items",
     icon: defaultIcon,
     state: "default",
@@ -159,11 +151,20 @@ export const FromMasterSingleStore: Story = {
   },
 };
 
+/** Automatische kalendernaam: maand + weekbadge (Figma 1148:9010). */
+export const CalendarWeekTitle: Story = {
+  args: {
+    listName: "April week 3",
+    itemCount: "6 producten",
+    icon: defaultIcon,
+    state: "default",
+  },
+};
+
 /** Gedeelde lijst – Figma 762:3452 */
 export const Shared: Story = {
   args: {
     listName: "List name",
-    date: "25-04-2026",
     itemCount: "6 items",
     icon: defaultIcon,
     state: "default",
@@ -178,21 +179,18 @@ export const AllVariants: Story = {
     <div className="flex w-[358px] flex-col gap-4">
       <ListCard
         listName="List name"
-        date="25-04-2026"
         itemCount="6 items"
         icon={defaultIcon}
         state="default"
       />
       <ListCard
         listName="List name"
-        date="25-04-2026"
         itemCount="6 items"
         icon={defaultIcon}
         state="editable"
       />
       <ListCard
         listName="List name"
-        date="25-04-2026"
         itemCount="6 items"
         icon={defaultIcon}
         state="default"
@@ -200,8 +198,8 @@ export const AllVariants: Story = {
         sharedWithFirstName="Chloé"
       />
       <ListCard
-        listName="Master list name"
-        itemCount="6 items"
+        listName="Lidl"
+        itemCount="96 favorieten"
         icon={masterListIcon}
         state="default"
         displayVariant="master"
@@ -209,12 +207,11 @@ export const AllVariants: Story = {
       />
       <ListCard
         listName="Weekboodschappen"
-        date="25-04-2026"
         itemCount="6 items"
         icon={defaultIcon}
         state="default"
         displayVariant="from-master"
-        storeLogos={["/logos/logos-delhaize.svg", "/logos/logos-lidl.svg"]}
+        storeLogos={["/logos/logos-lidl-delhaize.svg"]}
       />
     </div>
   ),
@@ -224,7 +221,6 @@ export const AllVariants: Story = {
 export const WithoutIcon: Story = {
   args: {
     listName: "Boodschappen",
-    date: "14-03-2026",
     itemCount: "12 items",
     state: "default",
   },
@@ -234,7 +230,6 @@ export const WithoutIcon: Story = {
 export const LongListName: Story = {
   args: {
     listName: "Een heel lange boodschappenlijstnaam die niet op één regel past",
-    date: "25-04-2026",
     itemCount: "6 items",
     icon: defaultIcon,
     state: "default",

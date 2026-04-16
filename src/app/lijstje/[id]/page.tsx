@@ -71,7 +71,7 @@ import {
   type RecipeIngredient,
   type SavedRecipe,
 } from "@/lib/recipe_library";
-import { cn, isIPhoneDevice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { ListItem } from "./new_item_modal";
 
 const RecipeIngredientSortableList = dynamic(
@@ -109,11 +109,6 @@ const CameraBarcodeScannerSlideIn = dynamic(
     ),
   { ssr: false },
 );
-const ShareListModal = dynamic(
-  () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
-  { ssr: false },
-);
-
 /** Profiel van een andere claimer: avatar + voornaam op itemkaart. */
 type ClaimerProfileInfo = { avatarUrl?: string; firstName?: string };
 
@@ -222,26 +217,6 @@ function BackArrowIcon({ className }: { className?: string }) {
     >
       <path
         d="M3.59377 12.31C3.60777 12.329 3.61477 12.351 3.63177 12.368L9.23178 17.968C9.33378 18.069 9.46678 18.119 9.59978 18.119C9.73278 18.119 9.86678 18.068 9.96778 17.968C10.1698 17.765 10.1698 17.435 9.96778 17.232L5.25578 12.521L19.9998 12.521C20.2868 12.521 20.5198 12.288 20.5198 12.001C20.5198 11.714 20.2868 11.48 19.9998 11.48L5.25477 11.48L9.96678 6.768C10.1688 6.565 10.1688 6.236 9.96577 6.033C9.76477 5.83 9.43378 5.83 9.23078 6.033L3.63078 11.633C3.61378 11.65 3.60577 11.673 3.59177 11.692C3.56477 11.727 3.53678 11.76 3.51978 11.801C3.46678 11.929 3.46678 12.072 3.51978 12.2C3.53778 12.241 3.56677 12.275 3.59377 12.31Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-/** public/icons/add_person.svg */
-function PersonAddIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M19.4 17.5C19.4 17.7205 19.221 17.9 19 17.9H17.9V19C17.9 19.2205 17.721 19.4 17.5 19.4C17.279 19.4 17.1 19.221 17.1 19V17.9H16C15.7795 17.9 15.6 17.721 15.6 17.5C15.6 17.279 15.779 17.1 16 17.1H17.1V16C17.1 15.7795 17.279 15.6 17.5 15.6C17.721 15.6 17.9 15.779 17.9 16V17.1H19C19.2205 17.1 19.4 17.2795 19.4 17.5ZM21.9 17.5C21.9 19.9265 19.9265 21.9 17.5 21.9C15.0735 21.9 13.1 19.9265 13.1 17.5C13.1 15.0735 15.0735 13.1 17.5 13.1C19.9265 13.1 21.9 15.0735 21.9 17.5ZM21.1 17.5C21.1 15.515 19.485 13.9 17.5 13.9C15.515 13.9 13.9 15.515 13.9 17.5C13.9 19.485 15.515 21.1 17.5 21.1C19.485 21.1 21.1 19.485 21.1 17.5ZM8.01199 10.878C7.10749 9.9775 6.60599 8.7785 6.59999 7.502V6.58C6.68349 5.334 7.21999 4.204 8.11199 3.37C9.00399 2.536 10.168 2.0765 11.3895 2.0765C12.611 2.0765 13.775 2.5355 14.667 3.37C15.56 4.2045 16.0965 5.335 16.178 6.553L16.179 7.47C16.1625 8.746 15.6595 9.942 14.763 10.843C13.8655 11.7435 12.6715 12.252 11.4015 12.275C11.3995 12.275 11.397 12.275 11.3945 12.275C10.118 12.275 8.91649 11.779 8.01199 10.878ZM7.39999 7.5C7.40499 8.562 7.82299 9.561 8.57649 10.3115C9.32949 11.061 10.329 11.4745 11.3915 11.4755C12.4515 11.4555 13.4475 11.0305 14.1965 10.279C14.9455 9.5265 15.3655 8.527 15.3795 7.4655V6.5805C15.312 5.592 14.865 4.6505 14.121 3.955C13.377 3.2595 12.407 2.877 11.3895 2.877C10.372 2.877 9.40149 3.26 8.65849 3.955C7.91499 4.65 7.46749 5.5915 7.39899 6.6075L7.39999 7.5ZM3.52399 16.773C3.86699 16.3175 4.35649 15.9785 4.90349 15.819C6.96549 15.209 9.09949 14.9 11.2495 14.9C11.283 14.9 11.325 14.911 11.35 14.9C11.57 14.9 11.749 14.7225 11.75 14.502C11.751 14.281 11.573 14.101 11.352 14.1C9.08849 14.0655 6.84449 14.41 4.67799 15.051C3.96799 15.2585 3.33099 15.699 2.88499 16.2915C2.43999 16.884 2.19299 17.6175 2.19049 18.3595V21.5C2.19049 21.7205 2.36949 21.9 2.59049 21.9H11.35C11.571 21.9 11.75 21.721 11.75 21.5C11.75 21.279 11.571 21.1 11.35 21.1H2.98999V18.361C2.99199 17.792 3.18199 17.228 3.52399 16.773Z"
         fill="currentColor"
       />
     </svg>
@@ -1237,7 +1212,6 @@ export default function ListDetailPage({
   >(null);
   const [addingId, setAddingId] = React.useState<string | null>(null);
   const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
-  const [shareModalOpen, setShareModalOpen] = React.useState(false);
   const [loyaltyCardSlideOpen, setLoyaltyCardSlideOpen] = React.useState(false);
   const [loyaltyCardViewSlideOpen, setLoyaltyCardViewSlideOpen] = React.useState(false);
   const [loyaltyCardScanResultOpen, setLoyaltyCardScanResultOpen] = React.useState(false);
@@ -1345,56 +1319,6 @@ export default function ListDetailPage({
     setInitialItemCategory(null);
     setIsNewItemOpen(true);
   }, []);
-
-  /** Eerste keer delen (slide-in): genereer unieke shareToken op de lijst. */
-  React.useEffect(() => {
-    if (!shareModalOpen || !isListOwner || !listId || !user) return;
-    if (listData?.shareToken) return;
-    const t = crypto.randomUUID();
-    void db.transact(db.tx.lists[listId].update({ shareToken: t }));
-  }, [shareModalOpen, isListOwner, listId, user, listData?.shareToken]);
-
-  const handleShareInvitePress = React.useCallback(async () => {
-    if (!isListOwner || !listId || !user) return;
-
-    const canNativeShare =
-      isIPhoneDevice() &&
-      typeof navigator !== "undefined" &&
-      typeof navigator.share === "function";
-
-    const ensureShareToken = async (): Promise<string | null> => {
-      if (listData?.shareToken) return listData.shareToken;
-      const t = crypto.randomUUID();
-      await db.transact(db.tx.lists[listId].update({ shareToken: t }));
-      return t;
-    };
-
-    if (canNativeShare) {
-      try {
-        const token = await ensureShareToken();
-        if (!token || typeof window === "undefined") return;
-        const url = `${window.location.origin}/deel/${encodeURIComponent(token)}`;
-        await navigator.share({
-          title: "Lijstje delen",
-          text: "Schrijf mee op dit lijstje:",
-          url,
-        });
-      } catch (e) {
-        const err = e as { name?: string };
-        if (err?.name === "AbortError") return;
-        setShareModalOpen(true);
-      }
-      return;
-    }
-
-    setShareModalOpen(true);
-  }, [isListOwner, listId, user, listData?.shareToken]);
-
-  const shareUrl = React.useMemo(() => {
-    const tok = listData?.shareToken;
-    if (!tok || typeof window === "undefined") return "";
-    return `${window.location.origin}/deel/${encodeURIComponent(tok)}`;
-  }, [listData?.shareToken]);
 
   const handleSaveRecipeToLibrary = React.useCallback(
     (recipe: SavedRecipe) => {
@@ -2046,34 +1970,15 @@ export default function ListDetailPage({
           </h1>
           <div className="flex-1" />
           {!isMasterCategoryOrderMode ? (
-            <>
-              {isListOwner ? (
-                <button
-                  type="button"
-                  aria-label="Lijstje delen"
-                  onClick={() => void handleShareInvitePress()}
-                  className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  <PersonAddIcon />
-                </button>
-              ) : (
-                <span className="size-6 shrink-0" aria-hidden />
-              )}
-              <div className="w-4 shrink-0" aria-hidden />
-              <button
-                type="button"
-                aria-label="Meer opties"
-                className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <MoreDotsIcon />
-              </button>
-            </>
+            <Link
+              href={`/lijstje/${encodeURIComponent(listId)}/instellingen`}
+              aria-label="Instellingen"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              <MoreDotsIcon className="size-6" />
+            </Link>
           ) : (
-            <>
-              <span className="size-6 shrink-0" aria-hidden />
-              <div className="w-4 shrink-0" aria-hidden />
-              <span className="size-6 shrink-0" aria-hidden />
-            </>
+            <span className="size-10 shrink-0" aria-hidden />
           )}
         </header>
       </div>
@@ -2419,7 +2324,7 @@ export default function ListDetailPage({
             >
               <p className="text-sm font-normal leading-20 tracking-normal text-[var(--text-tertiary)]">
                 Sleep een categorie omhoog of omlaag. De volgorde bepaalt hoe secties op je
-                masterlijst verschijnen.
+                favorietenlijst verschijnen.
               </p>
               <MasterCategoryOrderPanel
                 categories={masterCategorySnapshotTitles}
@@ -2430,7 +2335,7 @@ export default function ListDetailPage({
             isMasterEmpty ? (
               <section
                 className="flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-col items-center justify-center gap-6 px-0 pb-8"
-                aria-label="Lege masterlijst"
+                aria-label="Lege favorietenlijst"
               >
                 <div className="flex w-full max-w-[358px] flex-col items-center gap-6">
                   <div className="relative size-24 shrink-0 overflow-hidden">
@@ -2595,13 +2500,6 @@ export default function ListDetailPage({
         onSaveRecipeToLibrary={handleSaveRecipeToLibrary}
         onApplyRecipeToList={handleAddItemsFromRecipe}
         isMasterList={isMasterList}
-      />
-
-      <ShareListModal
-        open={shareModalOpen}
-        onClose={() => setShareModalOpen(false)}
-        shareUrl={shareUrl}
-        urlReady={Boolean(listData?.shareToken && shareUrl)}
       />
 
       <input

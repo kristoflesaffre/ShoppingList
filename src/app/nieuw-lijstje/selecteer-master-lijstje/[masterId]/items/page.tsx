@@ -339,7 +339,7 @@ export default function SelecteerMasterItemsPage() {
         cardName:
           typeof lc.cardName === "string" && lc.cardName.trim().length > 0
             ? lc.cardName
-            : String(found.name ?? "Master lijstje"),
+            : String(found.name ?? "Favorieten lijstje"),
       };
     }
 
@@ -359,13 +359,13 @@ export default function SelecteerMasterItemsPage() {
         cardName:
           typeof lc2.cardName === "string" && lc2.cardName.trim().length > 0
             ? lc2.cardName
-            : String(found.name ?? "Master lijstje"),
+            : String(found.name ?? "Favorieten lijstje"),
       };
     }
 
     return {
       id: String(found.id),
-      name: String(found.name ?? "Master lijstje"),
+      name: String(found.name ?? "Favorieten lijstje"),
       icon: String(found.icon),
       items,
       order: typeof found.order === "number" ? found.order : 0,
@@ -655,7 +655,7 @@ export default function SelecteerMasterItemsPage() {
     return (
       <div className="flex min-h-dvh items-center justify-center px-4">
         <p className="text-base text-text-secondary">
-          Masterlijst niet gevonden.
+          Favorietenlijst niet gevonden.
         </p>
       </div>
     );
@@ -667,7 +667,7 @@ export default function SelecteerMasterItemsPage() {
         <div className="mx-auto flex w-full max-w-[956px] items-center gap-4">
           <Link
             href={`/nieuw-lijstje/selecteer-master-lijstje?naam=${encodeURIComponent(listName)}`}
-            aria-label="Terug naar masterlijsten"
+            aria-label="Terug naar favorietenlijsten"
             className="relative z-[1] flex !min-w-0 !w-10 size-10 shrink-0 items-center justify-center p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus rounded-md"
           >
             <BackArrowIcon className="size-6 shrink-0" />
@@ -710,7 +710,7 @@ export default function SelecteerMasterItemsPage() {
           </div>
 
           <p className="text-base font-light leading-24 tracking-normal text-text-primary">
-            Selecteer hieronder de items uit het master lijstje die je wil
+            Selecteer hieronder de items uit je favorietenlijst die je wil
             toevoegen aan je weeklijstje.
           </p>
 
