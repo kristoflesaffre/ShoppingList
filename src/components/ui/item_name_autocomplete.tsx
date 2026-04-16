@@ -291,13 +291,15 @@ function SmallScreenAutocomplete({
         {value ? (
           <>
             {photoUrl && (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp: Next/Image optimizer faalt op sommige iOS-builds
+              <img
                 src={photoUrl}
                 alt=""
                 width={32}
                 height={32}
                 className="size-8 shrink-0 object-cover"
                 aria-hidden
+                decoding="async"
               />
             )}
             <span className="min-w-0 truncate text-[var(--text-primary)]">{value}</span>

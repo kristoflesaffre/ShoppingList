@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -301,12 +300,13 @@ function SortableListCard({
         list.sharedWithFirstName ?? undefined
       }
       icon={
-        <Image
+        // eslint-disable-next-line @next/next/no-img-element -- lokale webp: Next/Image optimizer faalt op sommige iOS-builds
+        <img
           src={homeListCardIconSrc(list)}
           alt=""
           width={48}
           height={48}
-          unoptimized
+          decoding="async"
           className="object-contain"
         />
       }
@@ -870,12 +870,13 @@ export default function Home() {
           {!hasLists ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-6">
               <div className="relative size-24 overflow-hidden">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp: Next/Image optimizer faalt op sommige iOS-builds */}
+                <img
                   src={EMPTY_HOME_LIST_ILLUSTRATION_SRC}
                   alt=""
                   width={96}
                   height={96}
-                  unoptimized
+                  decoding="async"
                   className="object-contain"
                 />
               </div>

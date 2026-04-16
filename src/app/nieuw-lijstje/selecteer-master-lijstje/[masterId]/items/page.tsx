@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
@@ -150,13 +149,15 @@ function TrashIcon({ className }: { className?: string }) {
 
 function StoreLogoSmall({ src }: { src: string }) {
   return (
-    <Image
+    // eslint-disable-next-line @next/next/no-img-element -- winkel-SVG/PNG uit /public: stabiel op iOS
+    <img
       src={src}
       alt=""
       width={16}
       height={16}
       className="size-4 object-contain"
       aria-hidden
+      decoding="async"
     />
   );
 }
@@ -234,13 +235,15 @@ function SelectableItemCard({
       ) : (
         <>
           {photoUrl && (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp: Next/Image optimizer faalt op sommige iOS-builds
+            <img
               src={photoUrl}
               alt=""
               width={44}
               height={44}
               className="size-11 shrink-0 rounded-[4px] object-contain"
               aria-hidden
+              decoding="async"
             />
           )}
           <div className="min-w-0 flex-1">

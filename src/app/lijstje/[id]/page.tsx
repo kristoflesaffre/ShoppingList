@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
@@ -847,13 +846,14 @@ function SortableItemCard({
             );
             if (!photoUrl) return undefined;
             return (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp: Next/Image optimizer faalt op sommige iOS-builds
+              <img
                 src={photoUrl}
                 alt=""
                 width={listViewMode === "grid" ? 64 : 44}
                 height={listViewMode === "grid" ? 64 : 44}
-                unoptimized
                 className="size-full object-cover"
+                decoding="async"
               />
             );
           })()}

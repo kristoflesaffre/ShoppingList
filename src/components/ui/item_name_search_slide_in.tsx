@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import ReactDOM from "react-dom";
 import {
   useItemSlugs,
@@ -291,7 +290,8 @@ export function ItemNameSearchSlideIn({
                 onClick={() => handleSelect(slug)}
                 className="flex w-full items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
               >
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp: Next/Image optimizer faalt op sommige iOS-builds */}
+                <img
                   src={
                     photoCatalog === "ingredients"
                       ? `/images/ingredients/${slug}_160.webp`
@@ -300,9 +300,9 @@ export function ItemNameSearchSlideIn({
                   alt=""
                   width={32}
                   height={32}
-                  unoptimized
                   className="size-8 shrink-0 object-contain"
                   aria-hidden
+                  decoding="async"
                 />
                 <HighlightedName slug={slug} norm={norm} />
               </button>

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Suspense } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -37,13 +36,15 @@ function BackArrowIcon({ className }: { className?: string }) {
 
 function StoreLogoImg({ src }: { src: string }) {
   return (
-    <Image
+    // eslint-disable-next-line @next/next/no-img-element -- winkel-SVG/PNG uit /public: stabiel op iOS
+    <img
       src={src}
       alt=""
       width={48}
       height={48}
       className="size-12 max-h-full max-w-full object-contain"
       aria-hidden
+      decoding="async"
     />
   );
 }

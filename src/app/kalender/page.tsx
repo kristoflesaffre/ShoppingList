@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -165,13 +164,13 @@ function LooseIngredientPhotoGrid({
             <div key={i} className="flex min-w-0 flex-col items-center gap-2">
               <div className="relative aspect-square w-full overflow-hidden rounded-sm">
                 {photoUrl ? (
-                  <Image
+                  // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediënt-webp: Next/Image optimizer faalt op sommige iOS-builds
+                  <img
                     src={photoUrl}
                     alt=""
-                    fill
-                    sizes="100px"
-                    className="object-contain"
+                    className="absolute inset-0 h-full w-full object-contain"
                     aria-hidden
+                    decoding="async"
                   />
                 ) : null}
               </div>
