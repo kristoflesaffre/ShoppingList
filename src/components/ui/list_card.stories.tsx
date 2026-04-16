@@ -1,28 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
+import { ALL_LIST_PRODUCT_ICON_URLS } from "@/lib/list-product-icon-urls";
 import { ListCard } from "./list_card";
 
-const FOOD_ICONS = [
-  "/images/ui/food/icon_apple.png",
-  "/images/ui/food/icon_aubergine.png",
-  "/images/ui/food/icon_banana.png",
-  "/images/ui/food/icon_blueberries.png",
-  "/images/ui/food/icon_bread.png",
-  "/images/ui/food/icon_carrot.png",
-  "/images/ui/food/icon_cheese.png",
-  "/images/ui/food/icon_milk.png",
-  "/images/ui/food/icon_nutella.png",
-  "/images/ui/food/icon_strawberry.png",
-  "/images/ui/food/icon_tangerine.png",
-];
-
-function randomFoodIcon() {
-  return FOOD_ICONS[Math.floor(Math.random() * FOOD_ICONS.length)];
+function randomListProductIcon() {
+  const pool = [...ALL_LIST_PRODUCT_ICON_URLS];
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 const defaultIcon = (
   <img
-    src={randomFoodIcon()}
+    src={randomListProductIcon()}
     alt=""
     width={48}
     height={48}

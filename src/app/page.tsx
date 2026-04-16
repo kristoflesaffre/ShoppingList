@@ -46,6 +46,12 @@ import {
 import { db } from "@/lib/db";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { APP_FAB_BOTTOM_CLASS, APP_SNACKBAR_FIXTURE_CLASS } from "@/lib/app-layout";
+import {
+  EMPTY_HOME_LIST_ILLUSTRATION_SRC,
+  homeListCardIconSrc,
+  pickListProductIconForNewList,
+  planOwnerListDecorIconUpdates,
+} from "@/lib/list-product-icons";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
@@ -117,43 +123,6 @@ type HomeList = {
   /** Master-template (niet: weeklijst met winkel-logo). */
   isMasterTemplate: boolean;
 };
-
-const FOOD_ICONS = [
-  "/images/ui/food/icon_apple.png",
-  "/images/ui/food/icon_aubergine.png",
-  "/images/ui/food/icon_banana.png",
-  "/images/ui/food/icon_blueberries.png",
-  "/images/ui/food/icon_bread.png",
-  "/images/ui/food/icon_carrot.png",
-  "/images/ui/food/icon_cheese.png",
-  "/images/ui/food/icon_milk.png",
-  "/images/ui/food/icon_nutella.png",
-  "/images/ui/food/icon_strawberry.png",
-  "/images/ui/food/icon_tangerine.png",
-] as const;
-
-/**
- * Returns an icon for a new list. Prefers icons not yet used by existing lists.
- * Only when all icons are used may an icon be reused.
- */
-function getIconForNewList(existingLists: HomeList[]): string {
-  const usedIcons = new Set(existingLists.map((l) => l.icon));
-  const unusedIcons = FOOD_ICONS.filter((icon) => !usedIcons.has(icon));
-  const pool = unusedIcons.length > 0 ? unusedIcons : [...FOOD_ICONS];
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-/**
- * Deterministische food icon voor een from-master lijst op basis van de lijst-ID.
- * Geeft altijd hetzelfde icoon terug voor hetzelfde ID (ook voor legacy DB-items met store logo).
- */
-function foodIconFromId(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) {
-    h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
-  }
-  return FOOD_ICONS[Math.abs(h) % FOOD_ICONS.length];
-}
 
 function itemCountLabel(count: number): string {
   return count === 1 ? "1 item" : `${count} items`;
@@ -333,14 +302,11 @@ function SortableListCard({
       }
       icon={
         <Image
-          src={
-            list.displayVariant === "from-master" && list.icon.startsWith("/logos/")
-              ? foodIconFromId(list.id)
-              : list.icon
-          }
+          src={homeListCardIconSrc(list)}
           alt=""
           width={48}
           height={48}
+          unoptimized
           className="object-contain"
         />
       }
@@ -598,6 +564,30 @@ export default function Home() {
     );
   }, [data, user?.id, shareFirstNameByUserId]);
 
+  /** Eénmalige herberekening van lijst-decor-iconen: min duplicaten binnen de product-icon-pool. */
+  React.useEffect(() => {
+    if (!user?.id || authLoading || isLoading) return;
+    const rows = (data?.lists ?? []) as Record<string, unknown>[];
+    const mine = rows.filter(
+      (l) =>
+        l &&
+        typeof l === "object" &&
+        String((l as { ownerId?: string }).ownerId ?? "") === user.id,
+    ) as { id: string; icon?: string }[];
+    if (mine.length === 0) return;
+    const plans = planOwnerListDecorIconUpdates(
+      mine.map((l) => ({
+        id: String(l.id),
+        icon: typeof l.icon === "string" ? l.icon : "",
+        isMasterTemplate: listIsMasterTemplate(l),
+      })),
+    );
+    if (plans.length === 0) return;
+    void db.transact(
+      plans.map((p) => db.tx.lists[p.listId].update({ icon: p.nextIcon })),
+    );
+  }, [user?.id, authLoading, isLoading, data?.lists]);
+
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newListName, setNewListName] = React.useState("");
@@ -780,7 +770,7 @@ export default function Home() {
       }
 
       const listName = name;
-      const icon = getIconForNewList(lists);
+      const icon = pickListProductIconForNewList(lists);
       const now = new Date();
       const newId = iid();
       db.transact(
@@ -881,10 +871,11 @@ export default function Home() {
             <div className="flex flex-1 flex-col items-center justify-center gap-6">
               <div className="relative size-24 overflow-hidden">
                 <Image
-                  src="/images/ui/food/icon_apple.png"
+                  src={EMPTY_HOME_LIST_ILLUSTRATION_SRC}
                   alt=""
                   width={96}
                   height={96}
+                  unoptimized
                   className="object-contain"
                 />
               </div>
