@@ -131,6 +131,27 @@ function CheckmarkIcon({ className }: { className?: string }) {
   );
 }
 
+function GereedEditButton({
+  onPress,
+  ariaLabel,
+}: {
+  onPress: () => void;
+  /** Onderscheid voor screenreaders bij dubbele knop (boven + onder). */
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      aria-label={ariaLabel}
+      className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--blue-500)] px-2 py-1 text-sm font-normal leading-20 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+    >
+      <CheckmarkIcon className="size-6 shrink-0" />
+      Gereed
+    </button>
+  );
+}
+
 function inSectionList(
   section: LijstjesBeherenSection,
   l: HomeOverviewList,
@@ -518,6 +539,10 @@ export function LijstjesBeherenClient({
     router.push("/nieuw-lijstje/selecteer-winkel");
   }, [router]);
 
+  const exitCardsEditMode = React.useCallback(() => {
+    setIsCardsEditMode(false);
+  }, []);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 3 },
@@ -658,14 +683,10 @@ export function LijstjesBeherenClient({
                   ) : null}
                 </div>
                 {isCardsEditMode ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsCardsEditMode(false)}
-                    className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--blue-500)] px-2 py-1 text-sm font-normal leading-20 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-                  >
-                    <CheckmarkIcon className="size-6 shrink-0" />
-                    Gereed
-                  </button>
+                  <GereedEditButton
+                    onPress={exitCardsEditMode}
+                    ariaLabel="Gereed met bewerken"
+                  />
                 ) : null}
               </div>
               {isCardsEditMode ? (
@@ -690,6 +711,12 @@ export function LijstjesBeherenClient({
                       beherenSingleSection={section}
                     />
                   </SortableContext>
+                  <div className="mt-6 flex w-full justify-end">
+                    <GereedEditButton
+                      onPress={exitCardsEditMode}
+                      ariaLabel="Gereed met bewerken — onderaan de lijst"
+                    />
+                  </div>
                 </DndContext>
               ) : (
                 <StaticStackedHomeListSections
