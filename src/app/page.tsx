@@ -36,6 +36,12 @@ import {
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { ListSectionHeader } from "@/components/list_section_header";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
+import {
+  buildCalendarEntries,
+  toIsoDate,
+  dayEntryHasContent,
+  type DayEntry,
+} from "@/lib/calendar-utils";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -239,6 +245,95 @@ function HomeLoyaltyCardsSwimlane({ cards }: { cards: HomeLoyaltyCard[] }) {
   );
 }
 
+/** Figma 1142:7467 — kalender-dagkaart op startpagina. */
+function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry }) {
+  const date = entry.date;
+  const monthAbbr = date
+    .toLocaleDateString("nl-NL", { month: "short" })
+    .replace(".", "")
+    .slice(0, 3)
+    .toUpperCase();
+  const dayNum = date.getDate();
+
+  const firstMeal = entry.meals[0] ?? null;
+  const title = firstMeal?.recipeName ?? "Ingrediënten";
+  const ingredientCount = firstMeal
+    ? firstMeal.ingredientCount
+    : entry.looseIngredients.length;
+  const countLabel =
+    ingredientCount === 1 ? "1 ingrediënt" : `${ingredientCount} ingrediënten`;
+  const photoUrl = firstMeal?.photoUrl ?? null;
+  const href =
+    firstMeal?.recipeId != null
+      ? `/recepten/${firstMeal.recipeId}`
+      : `/kalender?date=${isoDate}`;
+
+  return (
+    <Link
+      href={href}
+      className="block rounded-md no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+    >
+      <div className="flex w-full items-center gap-3 rounded-md bg-[var(--white)] px-4 py-3 shadow-drop">
+        {/* Datumwidget */}
+        <div className="flex size-10 shrink-0 flex-col items-center justify-center gap-px rounded-[4px] bg-[var(--blue-25)] px-2 py-1">
+          <p className="text-[8px] font-semibold leading-none text-[var(--blue-500)]">
+            {monthAbbr}
+          </p>
+          <p className="text-[18px] font-bold leading-none text-[var(--gray-900)]">
+            {dayNum}
+          </p>
+        </div>
+        {/* Tekst */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <p className="truncate text-base font-medium leading-6 text-[var(--gray-900)]">
+            {title}
+          </p>
+          <p className="text-xs leading-5 text-[var(--gray-400)]">{countLabel}</p>
+        </div>
+        {/* Receptfoto */}
+        {photoUrl ? (
+          <div className="relative size-10 shrink-0 overflow-hidden rounded-full">
+            {/* eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto */}
+            <img
+              src={photoUrl}
+              alt=""
+              width={40}
+              height={40}
+              decoding="async"
+              loading="lazy"
+              className="size-full object-cover"
+              aria-hidden
+            />
+          </div>
+        ) : null}
+      </div>
+    </Link>
+  );
+}
+
+/** Figma 1142:7467 — kalender-sectie op startpagina (alleen bij content vandaag of toekomst). */
+function HomeCalendarSection({
+  entries,
+}: {
+  entries: Array<{ isoDate: string; entry: DayEntry }>;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <ListSectionHeader
+        icon="calendar"
+        label="Kalender"
+        showNaarOverzicht
+        naarOverzichtHref="/kalender"
+      />
+      <div className="flex flex-col gap-3">
+        {entries.map(({ isoDate, entry }) => (
+          <HomeCalendarCard key={isoDate} isoDate={isoDate} entry={entry} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Startpagina: alleen tikken om te openen; volgorde/verwijderen op `/lijstjes-beheren/lijstjes` of `/lijstjes-beheren/favorieten`. */
 function HomeStaticListSections({
   lists,
@@ -434,6 +529,7 @@ export default function Home() {
     loyaltyCards: {
       $: { where: { ownerId } },
     },
+    recipes: {},
   });
 
   const shareRelatedUserIds = React.useMemo(() => {
@@ -659,6 +755,28 @@ export default function Home() {
     });
   }, [data]);
 
+  /** Kalenderdagen op de startpagina: vandaag én toekomst, alleen met inhoud. */
+  const homeCalendarEntries = React.useMemo(() => {
+    if (!data) return [] as Array<{ isoDate: string; entry: DayEntry }>;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayIso = toIsoDate(today);
+
+    const calMap = buildCalendarEntries(
+      (data.lists ?? []) as Parameters<typeof buildCalendarEntries>[0],
+      ((data as Record<string, unknown>).recipes ?? []) as Parameters<typeof buildCalendarEntries>[1],
+    );
+
+    const result: Array<{ isoDate: string; entry: DayEntry }> = [];
+    for (const [iso, entry] of Array.from(calMap.entries())) {
+      if (iso >= todayIso && dayEntryHasContent(entry)) {
+        result.push({ isoDate: iso, entry });
+      }
+    }
+    result.sort((a, b) => a.isoDate.localeCompare(b.isoDate));
+    return result;
+  }, [data]);
+
   /** Eénmalige herberekening van lijst-decor-iconen: min duplicaten binnen de product-icon-pool. */
   React.useEffect(() => {
     if (!user?.id || authLoading || isLoading) return;
@@ -849,6 +967,11 @@ export default function Home() {
               onStartFromMaster={handleStartFromMaster}
             />
           )}
+          {homeCalendarEntries.length > 0 ? (
+            <div className="mt-10">
+              <HomeCalendarSection entries={homeCalendarEntries} />
+            </div>
+          ) : null}
           {homeLoyaltyCards.length > 0 ? (
             <div className="mt-10">
               <HomeLoyaltyCardsSwimlane cards={homeLoyaltyCards} />

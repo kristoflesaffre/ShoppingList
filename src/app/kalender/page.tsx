@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
@@ -309,10 +309,21 @@ export default function KalenderPage() {
   /** Initieel ~4 weken terug; verder verleden via bovenste sentinel. */
   const [startOffset, setStartOffset] = React.useState(-28);
 
+  const searchParams = useSearchParams();
+  const targetDateIso = searchParams.get("date") ?? null;
+  const targetWeekMondayIso = React.useMemo(() => {
+    if (!targetDateIso) return null;
+    const [yy, mm, dd] = targetDateIso.split("-").map((x) => parseInt(x, 10));
+    if (isNaN(yy) || isNaN(mm) || isNaN(dd)) return null;
+    return toIsoDate(getMondayOfWeek(new Date(yy, mm - 1, dd)));
+  }, [targetDateIso]);
+
   const topSentinelRef = React.useRef<HTMLDivElement>(null);
   const prependRef = React.useRef<{ scrollHeight: number } | null>(null);
   const todayRowRef = React.useRef<HTMLDivElement | null>(null);
   const hasCenteredTodayRef = React.useRef(false);
+  const targetDayRef = React.useRef<HTMLDivElement | null>(null);
+  const hasCenteredTargetRef = React.useRef(false);
   const [weekExpanded, setWeekExpanded] = React.useState<
     Record<string, boolean>
   >({});
@@ -405,8 +416,9 @@ export default function KalenderPage() {
 
   const getWeekIsOpen = React.useCallback(
     (mondayIso: string) =>
-      weekExpanded[mondayIso] ?? mondayIso >= currentWeekMondayIso,
-    [weekExpanded, currentWeekMondayIso],
+      weekExpanded[mondayIso] ??
+      (mondayIso >= currentWeekMondayIso || mondayIso === targetWeekMondayIso),
+    [weekExpanded, currentWeekMondayIso, targetWeekMondayIso],
   );
 
   const toggleWeek = React.useCallback(
@@ -423,9 +435,10 @@ export default function KalenderPage() {
   const getDayBodyOpen = React.useCallback(
     (iso: string, collapsible: boolean) => {
       if (!collapsible) return true;
+      if (iso === targetDateIso) return true;
       return dayBodyOpen[iso] ?? false;
     },
-    [dayBodyOpen],
+    [dayBodyOpen, targetDateIso],
   );
 
   const toggleDayBody = React.useCallback((iso: string) => {
@@ -437,6 +450,8 @@ export default function KalenderPage() {
 
   /** Eén keer: vandaag in het midden van het zichtbare gebied (t.o.v. bottom nav). */
   React.useLayoutEffect(() => {
+    // Als er een target-datum is, scrol daarheen i.p.v. naar vandaag.
+    if (targetDateIso) return;
     if (hasCenteredTodayRef.current || prependRef.current) return;
     if (!todayRowRef.current) return;
     let cancelled = false;
@@ -451,7 +466,26 @@ export default function KalenderPage() {
       cancelled = true;
       window.cancelAnimationFrame(id);
     };
-  }, [displayDays]);
+  }, [displayDays, targetDateIso]);
+
+  /** Eén keer: scroll naar de gelinkte dag als ?date= aanwezig is. */
+  React.useLayoutEffect(() => {
+    if (!targetDateIso) return;
+    if (hasCenteredTargetRef.current || prependRef.current) return;
+    if (!targetDayRef.current) return;
+    let cancelled = false;
+    const id = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (cancelled || !targetDayRef.current) return;
+        scrollElementToComfortableCenter(targetDayRef.current);
+        hasCenteredTargetRef.current = true;
+      });
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(id);
+    };
+  }, [displayDays, targetDateIso]);
 
   if (authLoading || !user || dataLoading) return <PageSpinner />;
 
@@ -519,11 +553,18 @@ export default function KalenderPage() {
                           const collapsible =
                             isOlderWeek || (isCurrentWeek && iso < todayKey);
                           const isLast = dayIdx === days.length - 1;
+                          const isTarget = iso === targetDateIso;
                           return (
                             <div
                               key={iso}
-                              ref={isToday ? todayRowRef : undefined}
-                              className={cn(isToday && "scroll-mt-4")}
+                              ref={
+                                isTarget
+                                  ? targetDayRef
+                                  : isToday
+                                    ? todayRowRef
+                                    : undefined
+                              }
+                              className={cn((isToday || isTarget) && "scroll-mt-4")}
                             >
                               <DayCard
                                 date={day}
