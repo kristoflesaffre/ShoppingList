@@ -397,13 +397,20 @@ export default function ReceptDetailPage() {
     <div className="relative min-h-dvh w-full bg-[var(--white)]">
       <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
         <header className="mx-auto flex h-16 max-w-[956px] items-center gap-4 px-4">
-          <Link
-            href="/recepten"
-            aria-label="Terug naar mijn recepten"
+          <button
+            type="button"
+            aria-label="Terug"
+            onClick={() => {
+              if (window.history.length > 1) {
+                router.back();
+              } else {
+                router.replace("/recepten");
+              }
+            }}
             className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
             <BackArrowIcon />
-          </Link>
+          </button>
           <p className="min-w-0 flex-1 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)] truncate">
             {navTitle}
           </p>
