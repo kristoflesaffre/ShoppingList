@@ -42,6 +42,7 @@ import {
   dayEntryHasContent,
   type DayEntry,
 } from "@/lib/calendar-utils";
+import { useItemPhotoUrl } from "@/lib/item-photos";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -245,7 +246,69 @@ function HomeLoyaltyCardsSwimlane({ cards }: { cards: HomeLoyaltyCard[] }) {
   );
 }
 
-/** Figma 1142:7467 — kalender-dagkaart op startpagina. */
+/** Figma 1135:7448 — ingrediëntenfoto's variant (geen recept, enkel losse ingrediënten).
+ *  Vult de beschikbare breedte op via ResizeObserver: meer slots op grotere schermen. */
+function HomeCalendarIngredientPhotos({
+  ingredients,
+}: {
+  ingredients: { name: string; quantity: string }[];
+}) {
+  const getPhotoUrl = useItemPhotoUrl(320);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  // Beginwaarde 4 (mobile); ResizeObserver corrigeert na mount.
+  const [maxPhotos, setMaxPhotos] = React.useState(4);
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(([entry]) => {
+      // Elke fotocel is 40px breed; minimale spatie tussen cellen = 6px → slotbreedte ≈ 46px.
+      const slots = Math.max(1, Math.floor((entry.contentRect.width + 6) / 46));
+      setMaxPhotos(slots);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const visiblePhotos = ingredients
+    .slice(0, maxPhotos)
+    .map((ing) => ({ name: ing.name, url: getPhotoUrl(ing.name) }));
+
+  const overflowCount = Math.max(0, ingredients.length - maxPhotos);
+
+  if (ingredients.length === 0) return null;
+
+  return (
+    <div ref={containerRef} className="flex min-w-0 flex-1 items-center justify-between">
+      {visiblePhotos.map((photo, i) => (
+        <div key={i} className="relative size-10 shrink-0 overflow-hidden rounded-sm">
+          {photo.url ? (
+            // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
+            <img
+              src={photo.url}
+              alt=""
+              width={40}
+              height={40}
+              decoding="async"
+              loading="lazy"
+              className="absolute inset-0 size-full object-cover"
+              aria-hidden
+            />
+          ) : null}
+        </div>
+      ))}
+      {overflowCount > 0 ? (
+        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[4px]">
+          <span className="text-[14px] font-light leading-none text-[var(--gray-300)]">
+            +{overflowCount}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Figma 1142:7467 / 1134:12682 — kalender-dagkaart op startpagina. */
 function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry }) {
   const date = entry.date;
   const monthAbbr = date
@@ -256,13 +319,8 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
   const dayNum = date.getDate();
 
   const firstMeal = entry.meals[0] ?? null;
-  const title = firstMeal?.recipeName ?? "Ingrediënten";
-  const ingredientCount = firstMeal
-    ? firstMeal.ingredientCount
-    : entry.looseIngredients.length;
-  const countLabel =
-    ingredientCount === 1 ? "1 ingrediënt" : `${ingredientCount} ingrediënten`;
-  const photoUrl = firstMeal?.photoUrl ?? null;
+  const hasOnlyLooseIngredients = firstMeal === null && entry.looseIngredients.length > 0;
+
   const href =
     firstMeal?.recipeId != null
       ? `/recepten/${firstMeal.recipeId}`
@@ -271,9 +329,9 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
   return (
     <Link
       href={href}
-      className="block rounded-md no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+      className="block rounded-md no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 lg:max-w-[50%]"
     >
-      <div className="flex w-full items-center gap-3 rounded-md bg-[var(--white)] px-4 py-3 shadow-drop">
+      <div className="flex w-full items-end gap-3 rounded-md bg-[var(--white)] px-3 py-3 shadow-drop">
         {/* Datumwidget */}
         <div className="flex size-10 shrink-0 flex-col items-center justify-center gap-px rounded-[4px] bg-[var(--blue-25)] px-2 py-1">
           <p className="text-[8px] font-semibold leading-none text-[var(--blue-500)]">
@@ -283,29 +341,40 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
             {dayNum}
           </p>
         </div>
-        {/* Tekst */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          <p className="truncate text-base font-medium leading-6 text-[var(--gray-900)]">
-            {title}
-          </p>
-          <p className="text-xs leading-5 text-[var(--gray-400)]">{countLabel}</p>
-        </div>
-        {/* Receptfoto */}
-        {photoUrl ? (
-          <div className="relative size-10 shrink-0 overflow-hidden rounded-full">
-            {/* eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto */}
-            <img
-              src={photoUrl}
-              alt=""
-              width={40}
-              height={40}
-              decoding="async"
-              loading="lazy"
-              className="size-full object-cover"
-              aria-hidden
-            />
-          </div>
-        ) : null}
+
+        {hasOnlyLooseIngredients ? (
+          /* Figma 1135:7448: rij van ingrediëntenfoto's met overflow */
+          <HomeCalendarIngredientPhotos ingredients={entry.looseIngredients} />
+        ) : (
+          /* Recept: naam + aantal + foto */
+          <>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <p className="truncate text-base font-medium leading-6 text-[var(--gray-900)]">
+                {firstMeal?.recipeName ?? ""}
+              </p>
+              <p className="text-xs leading-5 text-[var(--gray-400)]">
+                {firstMeal?.ingredientCount === 1
+                  ? "1 ingrediënt"
+                  : `${firstMeal?.ingredientCount ?? 0} ingrediënten`}
+              </p>
+            </div>
+            {firstMeal?.photoUrl ? (
+              <div className="relative size-10 shrink-0 overflow-hidden rounded-full">
+                {/* eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto */}
+                <img
+                  src={firstMeal.photoUrl}
+                  alt=""
+                  width={40}
+                  height={40}
+                  decoding="async"
+                  loading="lazy"
+                  className="size-full object-cover"
+                  aria-hidden
+                />
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
     </Link>
   );

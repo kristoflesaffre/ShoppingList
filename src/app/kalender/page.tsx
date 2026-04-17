@@ -16,7 +16,7 @@ import {
   type DayEntry,
 
 } from "@/lib/calendar-utils";
-import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
+import { useItemPhotoUrl } from "@/lib/item-photos";
 
 /** Ruimte boven/onder inhoud (matcht padding op kalender-container). */
 const CAL_SCROLL_TOP_RESERVE_PX = 52;
@@ -153,13 +153,13 @@ function LooseIngredientPhotoGrid({
 }: {
   ingredients: { name: string; quantity: string }[];
 }) {
-  const getPhotoUrl = useIngredientPhotoUrl();
+  const getPhotoUrl = useItemPhotoUrl();
   if (ingredients.length === 0) return null;
   return (
     <div className="py-3">
       <div className="grid w-full grid-cols-3 gap-x-4 gap-y-6 lg:grid-cols-6">
         {ingredients.map((ing, i) => {
-          const photoUrl = getPhotoUrl(ing.name, ing.quantity);
+          const photoUrl = getPhotoUrl(ing.name);
           return (
             <div key={i} className="flex min-w-0 flex-col items-center gap-2">
               <div className="relative aspect-square w-full overflow-hidden rounded-sm">
