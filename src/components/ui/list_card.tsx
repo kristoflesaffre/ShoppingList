@@ -191,7 +191,7 @@ const sizeStyles: Record<ListCardSize, string> = {
 function EditableDivider() {
   return (
     <span
-      className="relative flex h-10 w-0 min-w-0 shrink-0 items-center justify-center"
+      className="relative flex h-10 w-0 min-w-0 shrink-0 self-center items-center justify-center"
       aria-hidden="true"
     >
       <span
@@ -468,7 +468,7 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
                   onMasterAdd();
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-action-primary transition-colors hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                className="flex size-8 shrink-0 self-center items-center justify-center rounded-pill p-1 text-action-primary transition-colors hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
               >
                 <PlusCircleIcon />
               </button>
