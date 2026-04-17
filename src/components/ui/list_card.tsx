@@ -458,7 +458,8 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
               ))}
             </div>
           ) : isMaster && onMasterAdd ? (
-            <div className="flex shrink-0 flex-col justify-end gap-0.5 self-end pb-px">
+            <>
+              <EditableDivider />
               <button
                 type="button"
                 aria-label="Weeklijstje van favoriet toevoegen"
@@ -471,7 +472,7 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
               >
                 <PlusCircleIcon />
               </button>
-            </div>
+            </>
           ) : null
         ) : null}
         {(!isMaster || isEditable) && (

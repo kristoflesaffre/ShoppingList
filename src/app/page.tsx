@@ -329,7 +329,7 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
   return (
     <Link
       href={href}
-      className="block rounded-md no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 lg:max-w-[50%]"
+      className="block rounded-md no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
     >
       <div className="flex w-full items-end gap-3 rounded-md bg-[var(--white)] px-3 py-3 shadow-drop">
         {/* Datumwidget */}
@@ -380,7 +380,19 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
   );
 }
 
-/** Figma 1142:7467 — kalender-sectie op startpagina (alleen bij content vandaag of toekomst). */
+/** Groepeert een array in blokken van `size`. */
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) result.push(arr.slice(i, i + size));
+  return result;
+}
+
+const SWIMLANE_CLASSES =
+  "-mx-[var(--space-4)] flex gap-3 overflow-x-auto px-[var(--space-4)] pb-1";
+
+/** Figma 1142:7467 — kalender-sectie op startpagina (alleen bij content vandaag of toekomst).
+ *  Mobile: swimlane (1 kaart per kolom, 300 px breed) als > 3 items; anders verticaal.
+ *  Desktop: 3-kolommen grid. */
 function HomeCalendarSection({
   entries,
 }: {
@@ -394,7 +406,27 @@ function HomeCalendarSection({
         showNaarOverzicht
         naarOverzichtHref="/kalender"
       />
-      <div className="flex flex-col gap-3">
+      {/* Mobile layout */}
+      {entries.length > 3 ? (
+        <div
+          className={cn(SWIMLANE_CLASSES, "lg:hidden")}
+          style={{ scrollbarWidth: "none" } as React.CSSProperties}
+        >
+          {entries.map(({ isoDate, entry }) => (
+            <div key={isoDate} className="w-[300px] shrink-0">
+              <HomeCalendarCard isoDate={isoDate} entry={entry} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 lg:hidden">
+          {entries.map(({ isoDate, entry }) => (
+            <HomeCalendarCard key={isoDate} isoDate={isoDate} entry={entry} />
+          ))}
+        </div>
+      )}
+      {/* Desktop: 3-kolommen grid */}
+      <div className="hidden lg:grid lg:grid-cols-3 lg:gap-3">
         {entries.map(({ isoDate, entry }) => (
           <HomeCalendarCard key={isoDate} isoDate={isoDate} entry={entry} />
         ))}
@@ -419,15 +451,12 @@ function HomeStaticListSections({
 
   const normalLists = lists.filter((l) => l.displayVariant !== "master");
   const masterLists = lists.filter((l) => l.displayVariant === "master");
-  const visibleNormalLists = normalLists.slice(0, 3);
-  const visibleMasterLists = masterLists.slice(0, 3);
 
+  /** Instap-animatie wrapper voor verticale lijst op mobile (≤3 items). */
   const rowWrapperClass = (isAddingCollapsed: boolean, index: number, len: number) =>
     cn(
       "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-      isAddingCollapsed
-        ? "mb-0 max-h-0 opacity-0"
-        : "max-h-[200px] opacity-100",
+      isAddingCollapsed ? "mb-0 max-h-0 opacity-0" : "max-h-[200px] opacity-100",
       !isAddingCollapsed && (index < len - 1 ? "mb-3" : "mb-0"),
     );
 
@@ -465,87 +494,117 @@ function HomeStaticListSections({
 
   return (
     <div className="flex flex-col">
+      {/* ── Lijstjes ─────────────────────────────────────────────────────── */}
       {normalLists.length > 0 ? (
         <div className="flex flex-col">
           <ListSectionHeader
             icon="list"
             label="Lijstjes"
-            showNaarOverzicht={normalLists.length > 3}
+            showNaarOverzicht
             naarOverzichtHref="/lijstjes-beheren/lijstjes"
           />
-          <div className="mt-4 flex flex-col">
-            {visibleNormalLists.map((list, index) => {
-              const isAdding = addingId === list.id;
-              const isAddingCollapsed = isAdding && !addingIdExpanded;
-              return (
-                <div
-                  key={list.id}
-                  className={rowWrapperClass(
-                    isAddingCollapsed,
-                    index,
-                    visibleNormalLists.length,
-                  )}
-                >
-                  <Link
-                    href={`/lijstje/${list.id}`}
-                    className="block no-underline"
-                  >
-                    {cardFor(list)}
-                  </Link>
+          {/* Mobile: swimlane met groepen van 3 kaarten per kolom (Figma 1127:10010) */}
+          {normalLists.length > 3 ? (
+            <div
+              className={cn("mt-4 lg:hidden", SWIMLANE_CLASSES)}
+              style={{ scrollbarWidth: "none" } as React.CSSProperties}
+            >
+              {chunkArray(normalLists, 3).map((chunk, i) => (
+                <div key={i} className="flex w-[300px] shrink-0 flex-col gap-3">
+                  {chunk.map((list) => (
+                    <Link key={list.id} href={`/lijstje/${list.id}`} className="block no-underline">
+                      {cardFor(list)}
+                    </Link>
+                  ))}
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          ) : (
+            /* Mobile: verticale lijst (≤3) met instap-animatie */
+            <div className="mt-4 lg:hidden">
+              {normalLists.map((list, index) => {
+                const isAddingCollapsed = addingId === list.id && !addingIdExpanded;
+                return (
+                  <div key={list.id} className={rowWrapperClass(isAddingCollapsed, index, normalLists.length)}>
+                    <Link href={`/lijstje/${list.id}`} className="block no-underline">
+                      {cardFor(list)}
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {/* Desktop: 3-kolommen grid, max 3 rijen (9 items) */}
+          <div className="mt-4 hidden lg:grid lg:grid-cols-3 lg:gap-3">
+            {normalLists.slice(0, 9).map((list) => (
+              <Link key={list.id} href={`/lijstje/${list.id}`} className="block no-underline">
+                {cardFor(list)}
+              </Link>
+            ))}
           </div>
         </div>
       ) : null}
 
+      {/* ── Favorieten lijstjes ───────────────────────────────────────────── */}
       {masterLists.length > 0 ? (
-        <div
-          className={cn(
-            "flex flex-col",
-            normalLists.length > 0 ? "mt-10" : undefined,
-          )}
-        >
+        <div className={cn("flex flex-col", normalLists.length > 0 ? "mt-10" : undefined)}>
           <ListSectionHeader
             icon="heart"
             label="Favorieten lijstjes"
             showNaarOverzicht
             naarOverzichtHref="/lijstjes-beheren/favorieten"
           />
-          <div className="mt-4 flex flex-col">
-            {visibleMasterLists.map((list, index) => {
-              const isAdding = addingId === list.id;
-              const isAddingCollapsed = isAdding && !addingIdExpanded;
-              return (
+          {/* Mobile: swimlane met 1 kaart per kolom */}
+          <div
+            className={cn("mt-4 lg:hidden", SWIMLANE_CLASSES)}
+            style={{ scrollbarWidth: "none" } as React.CSSProperties}
+          >
+            {masterLists.map((list) => (
+              <div key={list.id} className="w-[300px] shrink-0">
                 <div
-                  key={list.id}
-                  className={rowWrapperClass(
-                    isAddingCollapsed,
-                    index,
-                    visibleMasterLists.length,
-                  )}
-                >
-                  <div
-                    role="link"
-                    tabIndex={0}
-                    className="block cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-                    onClick={(e) => {
+                  role="link"
+                  tabIndex={0}
+                  className="block cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest("button")) return;
+                    router.push(`/lijstje/${list.id}`);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
                       if ((e.target as HTMLElement).closest("button")) return;
+                      e.preventDefault();
                       router.push(`/lijstje/${list.id}`);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        if ((e.target as HTMLElement).closest("button")) return;
-                        e.preventDefault();
-                        router.push(`/lijstje/${list.id}`);
-                      }
-                    }}
-                  >
-                    {cardFor(list)}
-                  </div>
+                    }
+                  }}
+                >
+                  {cardFor(list)}
                 </div>
-              );
-            })}
+              </div>
+            ))}
+          </div>
+          {/* Desktop: 3-kolommen grid */}
+          <div className="mt-4 hidden lg:grid lg:grid-cols-3 lg:gap-3">
+            {masterLists.map((list) => (
+              <div
+                key={list.id}
+                role="link"
+                tabIndex={0}
+                className="block cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest("button")) return;
+                  router.push(`/lijstje/${list.id}`);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    if ((e.target as HTMLElement).closest("button")) return;
+                    e.preventDefault();
+                    router.push(`/lijstje/${list.id}`);
+                  }
+                }}
+              >
+                {cardFor(list)}
+              </div>
+            ))}
           </div>
         </div>
       ) : null}
