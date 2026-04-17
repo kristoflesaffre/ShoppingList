@@ -4,7 +4,13 @@ import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
-import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
+import {
+  MASTER_STORE_OPTIONS,
+  masterStoreLabelFromListIcon,
+  listIconIsLidlDelhaizeCombo,
+  LOYALTY_COMBO_PRIMARY_LOGO_SRC,
+  LOYALTY_COMBO_SECONDARY_LOGO_SRC,
+} from "@/lib/master-stores";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 import { MiniButton } from "@/components/ui/mini_button";
@@ -25,12 +31,11 @@ type LoyaltyCardRow = {
   codeFormat: string;
   rawValue: string;
   cardName: string;
+  /** Logo-URL om in de tegel te tonen — afgeleid van de winkel, niet van de kaart-entity zelf. */
+  logoSrc: string;
   createdAtIso: string;
 };
 
-function logoSrcForCardName(cardName: string): string {
-  return MASTER_STORE_OPTIONS.find((s) => s.label === cardName)?.logoSrc ?? "";
-}
 
 /** Figma 1096:7436 EditButton — alert-func-check 24×24 + label */
 function CheckmarkIcon({ className }: { className?: string }) {
@@ -173,7 +178,7 @@ function LoyaltyCardGridTile({
     };
   }, [isEditMode, prefersReducedMotion]);
 
-  const logoSrc = logoSrcForCardName(card.cardName);
+  const logoSrc = card.logoSrc;
 
   const logoBlock = (
     <div className="relative size-12 shrink-0 overflow-hidden">
@@ -296,6 +301,107 @@ function LoyaltyCardGridTile({
   );
 }
 
+/**
+ * Bevestigingsdialoog voor het verwijderen van een klantenkaart die nog aan een lijstje gelinkt is.
+ * Gecentreerd over een donker overlay, twee acties: annuleren en rood verwijderen.
+ */
+function ConfirmDeleteDialog({
+  cardName,
+  listName,
+  deleting,
+  onConfirm,
+  onCancel,
+}: {
+  cardName: string;
+  listName: string;
+  deleting: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  // Sluit op Escape
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !deleting) onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel, deleting]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-[2px]"
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !deleting) onCancel();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-delete-title"
+        aria-describedby="confirm-delete-desc"
+        className="w-full max-w-[358px] rounded-[20px] bg-[var(--white)] p-6 shadow-[0px_8px_32px_0px_rgba(0,0,0,0.24)] flex flex-col gap-5"
+      >
+        <div className="flex flex-col gap-2">
+          <h2
+            id="confirm-delete-title"
+            className="text-base font-semibold leading-24 tracking-normal text-[var(--text-primary)]"
+          >
+            Klantenkaart verwijderen?
+          </h2>
+          <p
+            id="confirm-delete-desc"
+            className="text-sm font-normal leading-20 tracking-normal text-[var(--gray-600)]"
+          >
+            De{" "}
+            <span className="font-medium text-[var(--text-primary)]">
+              {cardName}
+            </span>{" "}
+            klantenkaart wordt nog gebruikt op het favorieten lijstje{" "}
+            <span className="font-medium text-[var(--text-primary)]">
+              &ldquo;{listName}&rdquo;
+            </span>
+            . Ben je zeker dat je deze wil verwijderen?
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={onConfirm}
+            className={cn(
+              "w-full rounded-[var(--radius-pill)] py-2 px-4",
+              "text-base font-medium leading-24 text-white",
+              "bg-[var(--error-400)] transition-colors",
+              "[@media(hover:hover)]:hover:bg-[var(--error-600)]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+              "disabled:opacity-50 disabled:pointer-events-none",
+            )}
+          >
+            {deleting ? "Verwijderen…" : "Verwijderen"}
+          </button>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={onCancel}
+            className={cn(
+              "w-full rounded-[var(--radius-pill)] py-2 px-4",
+              "text-base font-medium leading-24 text-[var(--action-primary)]",
+              "border border-[var(--action-primary)] bg-transparent transition-colors",
+              "[@media(hover:hover)]:hover:bg-[var(--blue-25)]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+              "disabled:opacity-50 disabled:pointer-events-none",
+            )}
+          >
+            Annuleren
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function KlantenKaartenPage() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
@@ -303,7 +409,14 @@ export default function KlantenKaartenPage() {
 
   const { isLoading, data } = db.useQuery(
     user
-      ? { loyaltyCards: { $: { where: { ownerId } } } }
+      ? {
+          loyaltyCards: { $: { where: { ownerId } } },
+          lists: {
+            $: { where: { ownerId } },
+            loyaltyCard: {},
+            loyaltyCardSecondary: {},
+          },
+        }
       : null,
   );
 
@@ -317,6 +430,7 @@ export default function KlantenKaartenPage() {
     null,
   );
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [confirmDeleteCard, setConfirmDeleteCard] = React.useState<LoyaltyCardRow | null>(null);
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [lastDeletedCard, setLastDeletedCard] =
     React.useState<LoyaltyCardRow | null>(null);
@@ -334,22 +448,89 @@ export default function KlantenKaartenPage() {
   }, []);
 
   const cards: LoyaltyCardRow[] = React.useMemo(() => {
-    if (!data?.loyaltyCards) return [];
-    return [...data.loyaltyCards]
-      .sort(
-        (a, b) =>
-          new Date(b.createdAtIso).getTime() -
-          new Date(a.createdAtIso).getTime(),
-      )
-      .map((c) => ({
+    const seenId = new Set<string>();
+    const raw: LoyaltyCardRow[] = [];
+
+    type RawCard = {
+      id: string;
+      codeType?: string | null;
+      codeFormat?: string | null;
+      rawValue?: string | null;
+      cardName?: string | null;
+      createdAtIso?: string | null;
+    };
+
+    const pushResolved = (c: RawCard, resolvedName: string, resolvedLogoSrc: string) => {
+      if (!resolvedName || !resolvedLogoSrc) return; // sla niet-herkende winkels over
+      if (seenId.has(c.id)) return;
+      seenId.add(c.id);
+      raw.push({
         id: c.id,
         codeType: String(c.codeType ?? ""),
         codeFormat: String(c.codeFormat ?? ""),
         rawValue: String(c.rawValue ?? ""),
-        cardName: String(c.cardName ?? ""),
+        cardName: resolvedName,
+        logoSrc: resolvedLogoSrc,
         createdAtIso: String(c.createdAtIso ?? ""),
-      }));
+      });
+    };
+
+    // 1. Kaarten gekoppeld aan eigen lijsten: afgeleid van de winkel-icon van het lijstje.
+    //    Dit corrigeert ook oude kaarten die de lijstnaam als cardName hebben.
+    for (const list of data?.lists ?? []) {
+      const listRow = list as Record<string, unknown>;
+      const listIcon = String(listRow.icon ?? "");
+      const masterIcon = String(listRow.masterIcon ?? "") || listIcon;
+      const effectiveIcon = masterIcon || listIcon;
+
+      if (list.loyaltyCard) {
+        if (listIconIsLidlDelhaizeCombo(effectiveIcon)) {
+          pushResolved(list.loyaltyCard, "Delhaize", LOYALTY_COMBO_PRIMARY_LOGO_SRC);
+        } else {
+          const label = masterStoreLabelFromListIcon(effectiveIcon);
+          if (label) pushResolved(list.loyaltyCard, label, effectiveIcon);
+        }
+      }
+
+      if (list.loyaltyCardSecondary && listIconIsLidlDelhaizeCombo(effectiveIcon)) {
+        pushResolved(list.loyaltyCardSecondary, "Lidl", LOYALTY_COMBO_SECONDARY_LOGO_SRC);
+      }
+    }
+
+    // 2. Standalone kaarten (alleen ownerId, geen lijstkoppeling): gebruik cardName voor logo.
+    for (const c of data?.loyaltyCards ?? []) {
+      if (seenId.has(c.id)) continue; // al verwerkt via lijstkoppeling
+      const store = MASTER_STORE_OPTIONS.find((s) => s.label === String(c.cardName ?? ""));
+      if (store) pushResolved(c, store.label, store.logoSrc);
+    }
+
+    // Sorteer op nieuwste eerst
+    raw.sort(
+      (a, b) =>
+        new Date(b.createdAtIso).getTime() - new Date(a.createdAtIso).getTime(),
+    );
+
+    // Dedupliceer per winkel — toon per winkel maar één kaart (meest recent)
+    const seenName = new Set<string>();
+    return raw.filter((c) => {
+      const key = c.cardName.trim().toLowerCase();
+      if (seenName.has(key)) return false;
+      seenName.add(key);
+      return true;
+    });
   }, [data]);
+
+  /** Kaarten die nog gelinkt zijn aan een (favorieten) lijstje: cardId → lijstnaam. */
+  const cardListMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const list of data?.lists ?? []) {
+      const listRow = list as Record<string, unknown>;
+      const listName = String(listRow.name ?? "");
+      if (list.loyaltyCard) map.set(String(list.loyaltyCard.id), listName);
+      if (list.loyaltyCardSecondary) map.set(String(list.loyaltyCardSecondary.id), listName);
+    }
+    return map;
+  }, [data?.lists]);
 
   React.useEffect(() => {
     if (!snackbarMessage) return;
@@ -398,7 +579,7 @@ export default function KlantenKaartenPage() {
     return <PageSpinner />;
   }
 
-  const viewLogoSrc = viewCard ? logoSrcForCardName(viewCard.cardName) : "";
+  const viewLogoSrc = viewCard?.logoSrc ?? "";
 
   const empty = cards.length === 0;
   const fabVisible = !empty && !isEditMode && !snackbarMessage;
@@ -471,7 +652,13 @@ export default function KlantenKaartenPage() {
                       setViewOpen(true);
                     }}
                     onRequestEdit={() => setEditorCard(card)}
-                    onRequestDelete={() => void handleDeleteCard(card)}
+                    onRequestDelete={() => {
+                      if (cardListMap.has(card.id)) {
+                        setConfirmDeleteCard(card);
+                      } else {
+                        void handleDeleteCard(card);
+                      }
+                    }}
                   />
                 ))}
               </div>
@@ -535,7 +722,7 @@ export default function KlantenKaartenPage() {
         card={editorCard}
         onClose={() => setEditorCard(null)}
         logoSrc={
-          editorCard ? logoSrcForCardName(editorCard.cardName) : ""
+          editorCard?.logoSrc ?? ""
         }
         onSaveDecoded={async (result) => {
           if (!editorCard || !user) return;
@@ -611,6 +798,20 @@ export default function KlantenKaartenPage() {
             onAction={handleUndoDeleteCard}
           />
         </div>
+      ) : null}
+
+      {confirmDeleteCard ? (
+        <ConfirmDeleteDialog
+          cardName={confirmDeleteCard.cardName}
+          listName={cardListMap.get(confirmDeleteCard.id) ?? ""}
+          deleting={deletingId === confirmDeleteCard.id}
+          onConfirm={() => {
+            const card = confirmDeleteCard;
+            setConfirmDeleteCard(null);
+            void handleDeleteCard(card);
+          }}
+          onCancel={() => setConfirmDeleteCard(null)}
+        />
       ) : null}
     </div>
   );

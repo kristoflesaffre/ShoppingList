@@ -2709,6 +2709,16 @@ export default function ListDetailPage({
             const existingForSlot = linkSecondary
               ? existingLoyaltyCardSecondary
               : existingLoyaltyCard;
+            // Sla de winkelnaam op, niet de lijstnaam.
+            // Bij Lidl/Delhaize-combi: primary slot = "Delhaize", secondary = "Lidl".
+            const cardStoreName = isLidlDelhaizeList
+              ? linkSecondary
+                ? "Lidl"
+                : "Delhaize"
+              : masterStoreLabelFromListIcon(masterIcon) ||
+                masterStoreLabelFromListIcon(listIcon) ||
+                listData?.name ||
+                "";
             await db.transact([
               ...(existingForSlot
                 ? [db.tx.loyaltyCards[existingForSlot.id].delete()]
@@ -2717,8 +2727,9 @@ export default function ListDetailPage({
                 codeType: loyaltyDecodeResult.codeType,
                 codeFormat: loyaltyDecodeResult.codeFormat,
                 rawValue: loyaltyDecodeResult.rawValue,
-                cardName: listData?.name ?? "",
+                cardName: cardStoreName,
                 createdAtIso: new Date().toISOString(),
+                ...(user ? { ownerId: user.id } : {}),
               }),
               linkSecondary
                 ? db.tx.lists[listId].link({ loyaltyCardSecondary: cardId })
