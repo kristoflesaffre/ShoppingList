@@ -196,7 +196,7 @@ function HomeLoyaltyCardTile({ card }: { card: HomeLoyaltyCard }) {
       href="/klantenkaarten"
       className="block rounded-[8px] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
     >
-      <div className="flex w-[120px] shrink-0 items-center rounded-[8px] border border-[var(--gray-100)] bg-[var(--white)] p-3 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)] transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)]">
+      <div className="flex w-[120px] shrink-0 items-center rounded-[8px] border border-[var(--gray-100)] bg-[var(--white)] p-3 transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)]">
         <div className="flex w-full flex-col gap-2">
           <div className="flex items-start">
             {/* winkellogo */}
@@ -329,9 +329,9 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
   return (
     <Link
       href={href}
-      className="block rounded-md no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+      className="block h-full rounded-md no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
     >
-      <div className="flex w-full items-end gap-3 rounded-md bg-[var(--white)] px-3 py-3 shadow-drop">
+      <div className="flex h-full w-full items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
         {/* Datumwidget */}
         <div className="flex size-10 shrink-0 flex-col items-center justify-center gap-px rounded-[4px] bg-[var(--blue-25)] px-2 py-1">
           <p className="text-[8px] font-semibold leading-none text-[var(--blue-500)]">
@@ -406,25 +406,17 @@ function HomeCalendarSection({
         showNaarOverzicht
         naarOverzichtHref="/kalender"
       />
-      {/* Mobile layout */}
-      {entries.length > 3 ? (
-        <div
-          className={cn(SWIMLANE_CLASSES, "lg:hidden")}
-          style={{ scrollbarWidth: "none" } as React.CSSProperties}
-        >
-          {entries.map(({ isoDate, entry }) => (
-            <div key={isoDate} className="w-[300px] shrink-0">
-              <HomeCalendarCard isoDate={isoDate} entry={entry} />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3 lg:hidden">
-          {entries.map(({ isoDate, entry }) => (
-            <HomeCalendarCard key={isoDate} isoDate={isoDate} entry={entry} />
-          ))}
-        </div>
-      )}
+      {/* Mobile: swimlane met 1 kaart per kolom */}
+      <div
+        className={cn(SWIMLANE_CLASSES, "lg:hidden")}
+        style={{ scrollbarWidth: "none" } as React.CSSProperties}
+      >
+        {entries.map(({ isoDate, entry }) => (
+          <div key={isoDate} className="w-[300px] shrink-0 self-stretch">
+            <HomeCalendarCard isoDate={isoDate} entry={entry} />
+          </div>
+        ))}
+      </div>
       {/* Desktop: 3-kolommen grid */}
       <div className="hidden lg:grid lg:grid-cols-3 lg:gap-3">
         {entries.map(({ isoDate, entry }) => (
