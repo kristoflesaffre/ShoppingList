@@ -1288,6 +1288,7 @@ export default function ListDetailPage({
         persons: r.persons,
         photoUrl: r.photoUrl ?? null,
         category: ((r as Record<string, unknown>).category as import("@/lib/recipe_library").RecipeCategory | undefined) ?? null,
+        canBeFrozen: ((r as Record<string, unknown>).canBeFrozen as boolean | undefined) ?? false,
         ingredients: [...(r.ingredients ?? [])]
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .map((ing) => ({

@@ -50,6 +50,7 @@ export function RecipeEditorSlideIn({
   const [recipeStepsArray, setRecipeStepsArray] = React.useState<string[]>(["", ""]);
   const [recipePersons, setRecipePersons] = React.useState(2);
   const [recipeCategory, setRecipeCategory] = React.useState<RecipeCategory | null>(null);
+  const [canBeFrozen, setCanBeFrozen] = React.useState(false);
   const [ingredients, setIngredients] = React.useState<RecipeIngredient[]>([]);
   const normalizeIngredientName = useNormalizeIngredientName();
   const [ingredientSlideOpen, setIngredientSlideOpen] = React.useState(false);
@@ -78,6 +79,7 @@ export function RecipeEditorSlideIn({
       setRecipeStepsArray(parsed.length >= 2 ? parsed : [...parsed, ...Array(2 - parsed.length).fill("")]);
       setRecipePersons(recipeToEdit.persons);
       setRecipeCategory(recipeToEdit.category ?? null);
+      setCanBeFrozen(recipeToEdit.canBeFrozen ?? false);
       setIngredients(recipeToEdit.ingredients);
     } else {
       setRecipeName("");
@@ -85,6 +87,7 @@ export function RecipeEditorSlideIn({
       setRecipeStepsArray(["", ""]);
       setRecipePersons(2);
       setRecipeCategory(null);
+      setCanBeFrozen(false);
       setIngredients([]);
     }
   }, [open, recipeToEdit]);
@@ -140,6 +143,7 @@ export function RecipeEditorSlideIn({
           persons: recipePersons,
           order: isNew ? newOrder : existingOrder,
           ...(recipeCategory != null ? { category: recipeCategory } : {}),
+          canBeFrozen,
           ...photoPatch,
         }),
         ...builtIngredients.map((ing, i) =>
@@ -164,6 +168,7 @@ export function RecipeEditorSlideIn({
       recipeStepsArray,
       recipePersons,
       recipeCategory,
+      canBeFrozen,
       ingredients,
       recipeToEdit,
       recipeData?.recipes,
@@ -535,6 +540,33 @@ export function RecipeEditorSlideIn({
             <PlusCircleIcon className="size-[19px] shrink-0" />
           </button>
         </div>
+
+        <label className="flex cursor-pointer items-start gap-2">
+          <div
+            className={cn(
+              "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
+              canBeFrozen
+                ? "border-[var(--blue-500)] bg-[var(--blue-500)]"
+                : "border-[var(--blue-300,#9599f7)] bg-white",
+            )}
+            aria-hidden="true"
+          >
+            {canBeFrozen && (
+              <svg width="14" height="11" viewBox="0 0 14 11" fill="none">
+                <path d="M1.5 5.5L5.5 9.5L12.5 1.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </div>
+          <input
+            type="checkbox"
+            checked={canBeFrozen}
+            onChange={(e) => setCanBeFrozen(e.target.checked)}
+            className="sr-only"
+          />
+          <span className="text-base font-medium leading-6 tracking-normal text-[var(--text-primary)]">
+            Ik maak van dit recept meerdere porties om in te vriezen
+          </span>
+        </label>
           </form>
         )}
       </div>

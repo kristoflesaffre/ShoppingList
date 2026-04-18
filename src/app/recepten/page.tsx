@@ -239,6 +239,7 @@ export default function ReceptenPage() {
         persons: r.persons,
         photoUrl: r.photoUrl ?? null,
         category: ((r as Record<string, unknown>).category as RecipeCategory | undefined) ?? null,
+        canBeFrozen: ((r as Record<string, unknown>).canBeFrozen as boolean | undefined) ?? false,
         ingredients: [...(r.ingredients ?? [])]
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .map((ing) => ({

@@ -243,21 +243,18 @@ export function AppBottomNav({
 
         <div className="flex justify-center">
           <Link
-            href="/recepten"
-            aria-current={active === "recepten" ? "page" : undefined}
+            href="/klantenkaarten"
+            aria-current={active === "klantenkaarten" ? "page" : undefined}
             className={cn(
               tabClass,
-              active === "recepten"
+              active === "klantenkaarten"
                 ? "text-[var(--blue-500)]"
                 : "text-[var(--gray-500)]",
             )}
           >
-            <ReceptenIcon
-              className="size-6"
-              filled={active === "recepten"}
-            />
+            <KaartenIcon className="size-6" filled={active === "klantenkaarten"} />
             <span className="text-xs font-normal leading-4 tracking-normal">
-              Recepten
+              Kaarten
             </span>
           </Link>
         </div>
@@ -282,18 +279,21 @@ export function AppBottomNav({
 
         <div className="flex justify-center">
           <Link
-            href="/klantenkaarten"
-            aria-current={active === "klantenkaarten" ? "page" : undefined}
+            href="/recepten"
+            aria-current={active === "recepten" ? "page" : undefined}
             className={cn(
               tabClass,
-              active === "klantenkaarten"
+              active === "recepten"
                 ? "text-[var(--blue-500)]"
                 : "text-[var(--gray-500)]",
             )}
           >
-            <KaartenIcon className="size-6" filled={active === "klantenkaarten"} />
+            <ReceptenIcon
+              className="size-6"
+              filled={active === "recepten"}
+            />
             <span className="text-xs font-normal leading-4 tracking-normal">
-              Kaarten
+              Recepten
             </span>
           </Link>
         </div>

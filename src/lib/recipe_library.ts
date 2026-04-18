@@ -49,5 +49,6 @@ export type SavedRecipe = {
   /** Optionele receptfoto (data-URL). */
   photoUrl?: string | null;
   category?: RecipeCategory | null;
+  canBeFrozen?: boolean | null;
   ingredients: RecipeIngredient[];
 };
