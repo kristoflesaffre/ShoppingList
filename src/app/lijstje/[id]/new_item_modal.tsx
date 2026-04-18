@@ -15,7 +15,8 @@ import { MiniButton } from "@/components/ui/mini_button";
 import { cn } from "@/lib/utils";
 import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
 import { parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
-import type { RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
+import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
+import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
 
 const RecipeIngredientSortableList = dynamic(
@@ -168,6 +169,7 @@ export function NewItemModal({
   const [stepperValue, setStepperValue] = React.useState(1);
   const [quantityDesc, setQuantityDesc] = React.useState("stuk");
   const [recipeSearch, setRecipeSearch] = React.useState("");
+  const [activeCategory, setActiveCategory] = React.useState<RecipeCategory | null>(null);
   const [showRecipeForm, setShowRecipeForm] = React.useState(false);
   const [editingLibraryRecipeId, setEditingLibraryRecipeId] = React.useState<
     string | null
@@ -188,12 +190,18 @@ export function NewItemModal({
   const masterItemFormOnly = isMasterList && !showRecipeForm;
 
   const filteredRecipes = React.useMemo(() => {
+    let result = storedRecipes;
     const q = recipeSearch.trim().toLowerCase();
-    if (!q) return storedRecipes;
-    return storedRecipes.filter((r) =>
-      r.name.toLowerCase().includes(q),
-    );
-  }, [storedRecipes, recipeSearch]);
+    if (q) result = result.filter((r) => r.name.toLowerCase().includes(q));
+    if (activeCategory) result = result.filter((r) => r.category === activeCategory);
+    return result;
+  }, [storedRecipes, recipeSearch, activeCategory]);
+
+  const usedCategoryIds = React.useMemo(
+    () => new Set(storedRecipes.map((r) => r.category).filter(Boolean)),
+    [storedRecipes],
+  );
+  const visibleCategories = RECIPE_CATEGORIES.filter((c) => usedCategoryIds.has(c.id));
 
   React.useEffect(() => {
     if (!open) {
@@ -203,6 +211,7 @@ export function NewItemModal({
       setStepperValue(1);
       setQuantityDesc("stuk");
       setRecipeSearch("");
+      setActiveCategory(null);
       setShowRecipeForm(false);
       setEditingLibraryRecipeId(null);
       setRecipeName("");
@@ -231,6 +240,14 @@ export function NewItemModal({
       setActiveTab("first");
     }
   }, [open, editingItem, initialSection, initialItemCategory]);
+
+  // Default to "hoofdgerecht" filter when opening, only if recipes with that category exist
+  React.useEffect(() => {
+    if (open) {
+      const hasHoofdgerecht = storedRecipes.some((r) => r.category === "hoofdgerecht");
+      setActiveCategory(hasHoofdgerecht ? "hoofdgerecht" : null);
+    }
+  }, [open, storedRecipes]);
 
   const handleAdd = () => {
     if (!canAdd && !isEditMode) return;
@@ -527,6 +544,48 @@ export function NewItemModal({
                       value={recipeSearch}
                       onValueChange={setRecipeSearch}
                     />
+                  ) : null}
+                  {storedRecipes.length > 0 && visibleCategories.length > 0 ? (
+                    <div className="-mx-4 min-w-0 overflow-x-auto px-4">
+                      <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveCategory(null)}
+                          className={cn(
+                            "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                            activeCategory === null
+                              ? "bg-[#4f55f1] font-medium text-white"
+                              : "bg-[var(--neutrals-100,#f0f1f9)] font-normal text-[#707784]",
+                          )}
+                        >
+                          Alle
+                        </button>
+                        {visibleCategories.map((cat) => {
+                          const isActive = activeCategory === cat.id;
+                          return (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => setActiveCategory(isActive ? null : cat.id)}
+                              className={cn(
+                                "flex shrink-0 items-center gap-1.5 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                                isActive
+                                  ? "bg-[#4f55f1] font-medium text-white"
+                                  : "bg-[var(--neutrals-100,#f0f1f9)] font-normal text-[#707784]",
+                              )}
+                            >
+                              {isActive && (
+                                <span
+                                  className="size-2 shrink-0 rounded-full"
+                                  style={{ backgroundColor: cat.dot }}
+                                />
+                              )}
+                              {cat.labelPlural}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ) : null}
                   {storedRecipes.length === 0 ? (
                     <div className="flex flex-col items-center gap-4 py-8">
