@@ -146,6 +146,7 @@ export default function ReceptDetailPage() {
   const [aiFoodImageSlideOpen, setAiFoodImageSlideOpen] =
     React.useState(false);
   const [aiFoodImageSlideKey, setAiFoodImageSlideKey] = React.useState(0);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const photoInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -185,6 +186,19 @@ export default function ReceptDetailPage() {
   const closeEditor = React.useCallback(() => {
     setRecipeEditorOpen(false);
   }, []);
+
+  const handleDeleteRecipe = React.useCallback(async () => {
+    if (!recipeId || !savedRecipe) return;
+    const ingredients = savedRecipe.ingredients ?? [];
+    await db.transact(
+      [
+        ...ingredients.map((ing) => db.tx.recipeIngredients[ing.id].delete()),
+        db.tx.recipes[recipeId].delete(),
+      ] as Parameters<typeof db.transact>[0],
+    );
+    setDeleteConfirmOpen(false);
+    router.replace("/recepten");
+  }, [recipeId, savedRecipe, router]);
 
   const handleLijstjeIngredientReorder = React.useCallback(
     async (reordered: RecipeIngredient[]) => {
@@ -509,13 +523,13 @@ export default function ReceptDetailPage() {
                 />
               )}
               {detailPhotoEditMode ? (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4">
                   <MiniButton
                     type="button"
                     variant="secondary"
                     disabled={photoSaving}
                     onClick={openPhotoSourceSlide}
-                    className="pointer-events-auto"
+                    className="pointer-events-auto w-[118px]"
                   >
                     {photoSaving
                       ? "Bezig…"
@@ -523,6 +537,21 @@ export default function ReceptDetailPage() {
                         ? "Foto wijzigen"
                         : "Foto toevoegen"}
                   </MiniButton>
+                  <MiniButton
+                    type="button"
+                    variant="secondary"
+                    onClick={openEditor}
+                    className="pointer-events-auto w-[118px]"
+                  >
+                    Recept wijzigen
+                  </MiniButton>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmOpen(true)}
+                    className="pointer-events-auto text-[12px] font-medium leading-4 text-[var(--color-error,#ef4444)] underline underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  >
+                    Recept verwijderen
+                  </button>
                 </div>
               ) : null}
             </div>
@@ -791,6 +820,40 @@ export default function ReceptDetailPage() {
         initialDishName={savedRecipe.name}
         onGenerationComplete={handleAiFoodImageApplied}
       />
+
+      {/* Bevestiging verwijderen */}
+      {deleteConfirmOpen ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setDeleteConfirmOpen(false)}
+          />
+          <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-base font-bold leading-6 text-[var(--text-primary)]">
+              Ben je zeker?
+            </h2>
+            <p className="mt-2 text-sm font-normal leading-5 text-[var(--text-secondary)]">
+              Het recept &ldquo;{savedRecipe.name}&rdquo; wordt permanent verwijderd. Dit kan niet ongedaan worden gemaakt.
+            </p>
+            <div className="mt-6 flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => void handleDeleteRecipe()}
+                className="w-full rounded-pill bg-[var(--color-error,#ef4444)] py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                Verwijderen
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="w-full rounded-pill border border-[var(--gray-200)] py-3 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                Annuleren
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
