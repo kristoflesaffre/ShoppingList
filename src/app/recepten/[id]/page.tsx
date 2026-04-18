@@ -504,7 +504,7 @@ export default function ReceptDetailPage() {
                   height={124}
                   className={cn(
                     "size-[124px] object-cover transition-opacity duration-150",
-                    detailPhotoEditMode ? "opacity-10" : "opacity-25",
+                    detailPhotoEditMode ? "opacity-10" : "opacity-100",
                   )}
                 />
               )}

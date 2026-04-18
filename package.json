@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "sync:ingredient-categories": "node scripts/sync-ingredient-categories.mjs",
+    "export:recipe-photos": "node scripts/export-recipe-photos.mjs",
     "storybook": "sh scripts/run-storybook.sh",
     "build-storybook": "node -r ./scripts/patch-os-network.cjs ./node_modules/storybook/bin/index.cjs build"
   },

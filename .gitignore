@@ -40,3 +40,6 @@ yarn-error.log*
 # Misc
 *.log
 .cache/
+
+# Lokaal export-script (receptfoto's uit Instant)
+exported-recipe-photos/
