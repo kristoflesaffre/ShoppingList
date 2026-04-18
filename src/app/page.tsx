@@ -7,6 +7,7 @@ import { id as iid } from "@instantdb/react";
 import { ListCard } from "@/components/ui/list_card";
 import { MiniButton } from "@/components/ui/mini_button";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
 import { SelectTile } from "@/components/ui/select_tile";
@@ -128,6 +129,8 @@ type HomeLoyaltyCard = {
   cardName: string;
   logoSrc: string;
   codeType: LoyaltyCardCodeType;
+  codeFormat: string | null;
+  rawValue: string | null;
 };
 
 function normalizeLoyaltyCodeType(codeType: unknown): LoyaltyCardCodeType | null {
@@ -190,11 +193,12 @@ function HomeLoyaltyCodeIcon({
 }
 
 /** Figma 1156:10464 — klantenkaart-tegel in horizontale swimlane. */
-function HomeLoyaltyCardTile({ card }: { card: HomeLoyaltyCard }) {
+function HomeLoyaltyCardTile({ card, onClick }: { card: HomeLoyaltyCard; onClick: () => void }) {
   return (
-    <Link
-      href="/klantenkaarten"
-      className="block rounded-[8px] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+    <button
+      type="button"
+      onClick={onClick}
+      className="block rounded-[8px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
     >
       <div className="flex w-[120px] shrink-0 items-center rounded-[8px] border border-[var(--gray-100)] bg-[var(--white)] p-3 transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)]">
         <div className="flex w-full flex-col gap-2">
@@ -218,12 +222,14 @@ function HomeLoyaltyCardTile({ card }: { card: HomeLoyaltyCard }) {
           </p>
         </div>
       </div>
-    </Link>
+    </button>
   );
 }
 
 /** Figma 1156:10457 — sectie klantenkaarten op startpagina (swimlane). */
 function HomeLoyaltyCardsSwimlane({ cards }: { cards: HomeLoyaltyCard[] }) {
+  const [viewCard, setViewCard] = React.useState<HomeLoyaltyCard | null>(null);
+
   return (
     <div className="flex flex-col gap-4">
       <ListSectionHeader
@@ -239,9 +245,35 @@ function HomeLoyaltyCardsSwimlane({ cards }: { cards: HomeLoyaltyCard[] }) {
         style={{ scrollbarWidth: "none" } as React.CSSProperties}
       >
         {cards.map((card) => (
-          <HomeLoyaltyCardTile key={card.id} card={card} />
+          <HomeLoyaltyCardTile key={card.id} card={card} onClick={() => setViewCard(card)} />
         ))}
       </div>
+
+      <SlideInModal
+        open={viewCard !== null}
+        onClose={() => setViewCard(null)}
+        title={viewCard?.cardName ?? "Klantenkaart"}
+        titleId="home-view-card-slide-title"
+      >
+        {viewCard ? (
+          <div className="flex flex-col items-center gap-6 px-4">
+            <div className="flex items-center justify-center rounded-xl bg-white p-4 shadow-sm">
+              <LoyaltyCardDisplay
+                codeType={viewCard.codeType as "qr" | "barcode"}
+                codeFormat={viewCard.codeFormat ?? ""}
+                rawValue={viewCard.rawValue ?? ""}
+              />
+            </div>
+            <img
+              src={viewCard.logoSrc}
+              alt=""
+              width={64}
+              height={64}
+              className="pointer-events-none size-16 shrink-0 object-contain"
+            />
+          </div>
+        ) : null}
+      </SlideInModal>
     </div>
   );
 }
@@ -822,7 +854,7 @@ export default function Home() {
     const raw: HomeLoyaltyCard[] = [];
 
     const push = (
-      c: { id: string; codeType?: unknown },
+      c: { id: string; codeType?: unknown; codeFormat?: unknown; rawValue?: unknown },
       resolvedName: string,
       resolvedLogoSrc: string,
     ) => {
@@ -835,6 +867,8 @@ export default function Home() {
         cardName: resolvedName,
         logoSrc: resolvedLogoSrc,
         codeType: resolvedCodeType,
+        codeFormat: typeof c.codeFormat === "string" ? c.codeFormat : null,
+        rawValue: typeof c.rawValue === "string" ? c.rawValue : null,
       });
     };
 
@@ -1080,12 +1114,14 @@ export default function Home() {
               </MiniButton>
             </div>
           ) : (
-            <HomeStaticListSections
-              lists={lists}
-              addingId={addingId}
-              addingIdExpanded={addingIdExpanded}
-              onStartFromMaster={handleStartFromMaster}
-            />
+            <div className="pt-4">
+              <HomeStaticListSections
+                lists={lists}
+                addingId={addingId}
+                addingIdExpanded={addingIdExpanded}
+                onStartFromMaster={handleStartFromMaster}
+              />
+            </div>
           )}
           {homeCalendarEntries.length > 0 ? (
             <div className="mt-10">
