@@ -252,6 +252,15 @@ export function NewItemModal({
     setEditingIngredientId(null);
   }, []);
 
+  // Auto-pluralize "stuk" ↔ "stuks" based on quantity
+  React.useEffect(() => {
+    setQuantityDesc((prev) => {
+      if (prev === "stuk" && stepperValue >= 2) return "stuks";
+      if (prev === "stuks" && stepperValue === 1) return "stuk";
+      return prev;
+    });
+  }, [stepperValue]);
+
   const openNewRecipeForm = React.useCallback(() => {
     setEditingLibraryRecipeId(null);
     setRecipeName("");
