@@ -276,8 +276,8 @@ function DayCard({
             expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
           )}
         >
-          <div className="-mr-3 overflow-hidden pr-3">
-            <div className="pb-3">{body}</div>
+          <div className="-mx-3 overflow-hidden px-3">
+            <div className="pb-3 pt-1">{body}</div>
           </div>
         </div>
         {!isLast && <div className="h-px bg-[var(--gray-100)]" aria-hidden />}
@@ -433,20 +433,20 @@ export default function KalenderPage() {
   );
 
   const getDayBodyOpen = React.useCallback(
-    (iso: string, collapsible: boolean) => {
-      if (!collapsible) return true;
+    (iso: string, isToday: boolean) => {
       if (iso === targetDateIso) return true;
-      return dayBodyOpen[iso] ?? false;
+      return dayBodyOpen[iso] ?? isToday;
     },
     [dayBodyOpen, targetDateIso],
   );
 
   const toggleDayBody = React.useCallback((iso: string) => {
+    const isToday = iso === todayKey;
     setDayBodyOpen((prev) => ({
       ...prev,
-      [iso]: !(prev[iso] ?? false),
+      [iso]: !(prev[iso] ?? isToday),
     }));
-  }, []);
+  }, [todayKey]);
 
   /** Eén keer: vandaag in het midden van het zichtbare gebied (t.o.v. bottom nav). */
   React.useLayoutEffect(() => {
@@ -542,7 +542,7 @@ export default function KalenderPage() {
                         wkOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
                       )}
                     >
-                      <div className="-mr-3 overflow-hidden pr-3">
+                      <div className="-mx-3 overflow-hidden px-3">
                         <div className="flex flex-col gap-3 pl-4 pt-3">
                           {/* Separator bovenaan eerste dag */}
                           <div className="h-px bg-[var(--gray-100)]" aria-hidden />
@@ -550,8 +550,6 @@ export default function KalenderPage() {
                           const iso = toIsoDate(day);
                           const isToday = iso === todayKey;
                           const isOlderWeek = mondayIso < currentWeekMondayIso;
-                          const collapsible =
-                            isOlderWeek || (isCurrentWeek && iso < todayKey);
                           const isLast = dayIdx === days.length - 1;
                           const isTarget = iso === targetDateIso;
                           return (
@@ -570,13 +568,9 @@ export default function KalenderPage() {
                                 date={day}
                                 entry={calendarMap.get(iso)}
                                 isToday={isToday}
-                                collapsible={collapsible}
-                                bodyOpen={getDayBodyOpen(iso, collapsible)}
-                                onToggleBody={
-                                  collapsible
-                                    ? () => toggleDayBody(iso)
-                                    : undefined
-                                }
+                                collapsible
+                                bodyOpen={getDayBodyOpen(iso, isToday)}
+                                onToggleBody={() => toggleDayBody(iso)}
                                 isLast={isLast}
                               />
                             </div>

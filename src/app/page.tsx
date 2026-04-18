@@ -302,16 +302,16 @@ function HomeCalendarIngredientPhotos({
     return () => obs.disconnect();
   }, []);
 
-  const visiblePhotos = ingredients
-    .slice(0, maxPhotos)
-    .map((ing) => ({ name: ing.name, url: getPhotoUrl(ing.name) }));
-
-  const overflowCount = Math.max(0, ingredients.length - maxPhotos);
+  const photosWithUrl = ingredients
+    .map((ing) => ({ name: ing.name, url: getPhotoUrl(ing.name) }))
+    .filter((p) => p.url != null);
+  const visiblePhotos = photosWithUrl.slice(0, maxPhotos);
+  const overflowCount = Math.max(0, photosWithUrl.length - maxPhotos);
 
   if (ingredients.length === 0) return null;
 
   return (
-    <div ref={containerRef} className="flex min-w-0 flex-1 items-center justify-between">
+    <div ref={containerRef} className="flex min-w-0 flex-1 items-center gap-[6px]">
       {visiblePhotos.map((photo, i) => (
         <div key={i} className="relative size-10 shrink-0 overflow-hidden rounded-sm">
           {photo.url ? (
@@ -378,18 +378,8 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
           /* Figma 1135:7448: rij van ingrediëntenfoto's met overflow */
           <HomeCalendarIngredientPhotos ingredients={entry.looseIngredients} />
         ) : (
-          /* Recept: naam + aantal + foto */
+          /* Recept: foto + naam + aantal */
           <>
-            <div className="flex min-w-0 flex-1 flex-col">
-              <p className="truncate text-base font-medium leading-6 text-[var(--gray-900)]">
-                {firstMeal?.recipeName ?? ""}
-              </p>
-              <p className="text-xs leading-5 text-[var(--gray-400)]">
-                {firstMeal?.ingredientCount === 1
-                  ? "1 ingrediënt"
-                  : `${firstMeal?.ingredientCount ?? 0} ingrediënten`}
-              </p>
-            </div>
             {firstMeal?.photoUrl ? (
               <div className="relative size-10 shrink-0 overflow-hidden rounded-full">
                 {/* eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto */}
@@ -405,6 +395,16 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
                 />
               </div>
             ) : null}
+            <div className="flex min-w-0 flex-1 flex-col">
+              <p className="truncate text-base font-medium leading-6 text-[var(--gray-900)]">
+                {firstMeal?.recipeName ?? ""}
+              </p>
+              <p className="text-xs leading-5 text-[var(--gray-400)]">
+                {firstMeal?.ingredientCount === 1
+                  ? "1 ingrediënt"
+                  : `${firstMeal?.ingredientCount ?? 0} ingrediënten`}
+              </p>
+            </div>
           </>
         )}
       </div>

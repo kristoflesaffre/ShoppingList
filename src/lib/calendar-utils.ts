@@ -125,7 +125,19 @@ export function buildCalendarEntries(
       const offset = dutchDayToOffset(item.section ?? "");
       if (offset === null) continue;
 
-      const itemDate = addDays(monday, offset);
+      let itemDate = addDays(monday, offset);
+      // Nooit in het verleden plannen voor de HUIDIGE week: als de user vandaag
+      // items toevoegt aan "Woensdag" maar woensdag al voorbij is, verschuif naar
+      // volgende week. Items uit VORIGE weken blijven op hun originele datum.
+      const todayMidnight = new Date();
+      todayMidnight.setHours(0, 0, 0, 0);
+      const currentMonday = getMondayOfWeek(todayMidnight);
+      if (
+        monday.getTime() === currentMonday.getTime() &&
+        itemDate < todayMidnight
+      ) {
+        itemDate = addDays(itemDate, 7);
+      }
       const iso = toIsoDate(itemDate);
 
       if (!result.has(iso)) {

@@ -59,6 +59,12 @@ import {
 } from "@/lib/master-stores";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import {
+  parseDutchDate,
+  getMondayOfWeek,
+  dutchDayToOffset,
+  addDays,
+} from "@/lib/calendar-utils";
+import {
   categoryHeadingDisplay,
   effectiveItemCategory,
   orderedCategorySectionTitlesWithMasterOverride,
@@ -451,6 +457,32 @@ function RecipeGroupHeader({
   );
 }
 
+/**
+ * Geeft de volledige sectietitel voor een dag-sectie, bv. "Woensdag 22 april".
+ * Zelfde "nooit in het verleden" logica als buildCalendarEntries.
+ * Bij onbekende dag of ontbrekende lijstdatum: geeft `sectionTitle` terug.
+ */
+function dayTitleWithDate(sectionTitle: string, listDateStr: string): string {
+  const offset = dutchDayToOffset(sectionTitle);
+  if (offset === null) return sectionTitle;
+  const listDate = parseDutchDate(listDateStr);
+  if (!listDate) return sectionTitle;
+  const monday = getMondayOfWeek(listDate);
+  let itemDate = addDays(monday, offset);
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+  const currentMonday = getMondayOfWeek(todayMidnight);
+  if (
+    monday.getTime() === currentMonday.getTime() &&
+    itemDate < todayMidnight
+  ) {
+    itemDate = addDays(itemDate, 7);
+  }
+  const day = itemDate.getDate();
+  const month = itemDate.toLocaleDateString("nl-NL", { month: "long" });
+  return `${sectionTitle} ${day} ${month}`;
+}
+
 /** Renders sortable item cards; must be inside DndContext for drag state. */
 function SortableItemItems({
   sections,
@@ -475,6 +507,7 @@ function SortableItemItems({
   onOpenMasterCategoryReorder,
   currentUserId,
   claimProfileByUserId,
+  listDateStr,
 }: {
   sections: { title: string; items: ListItem[] }[];
   /** Alleen gewone lijstjes: `category` = Figma-koppen per supermarkt-categorie. */
@@ -500,6 +533,8 @@ function SortableItemItems({
   onOpenMasterCategoryReorder?: () => void;
   currentUserId: string;
   claimProfileByUserId: Map<string, ClaimerProfileInfo>;
+  /** Datum van het lijstje (formaat "D-M-YYYY") voor weergave van volledige dagtitels. */
+  listDateStr?: string;
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
@@ -511,7 +546,7 @@ function SortableItemItems({
         const isSectionRemoving = removingSectionTitle === section.title;
         const sectionHeading = isCategoryGrouping
           ? categoryHeadingDisplay(section.title)
-          : section.title;
+          : dayTitleWithDate(section.title, listDateStr ?? "");
         return (
         <section
           key={section.title}
@@ -546,7 +581,7 @@ function SortableItemItems({
               </p>
             ) : (
               <h3 className="flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
-                {section.title}
+                {sectionHeading}
               </h3>
             )}
             {isEditMode ? (
@@ -1039,6 +1074,7 @@ export default function ListDetailPage({
   }, [authLoading, user, isLoading, listData, canAccess, router]);
   const listName = listData?.name ?? "Lijstje";
   const listIcon = listData?.icon ?? "";
+  const listDateStr = String((listData as Record<string, unknown>)?.date ?? "");
   /** Logo van de master-winkel (opgeslagen bij aanmaken vanuit master; fallback = listIcon voor oude lijstjes). */
   const masterIcon: string = (listData as Record<string, unknown>)?.masterIcon as string || listIcon;
   const isMasterList = listIsMasterTemplate(
@@ -2431,6 +2467,7 @@ export default function ListDetailPage({
                   }}
                   currentUserId={user.id}
                   claimProfileByUserId={claimProfileByUserId}
+                  listDateStr={listDateStr}
                   showMasterCategoryReorderLink={
                     isMasterList && isListOwner && isEditMode
                   }
