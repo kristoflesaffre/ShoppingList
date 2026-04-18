@@ -493,7 +493,7 @@ export function NewItemModal({
                     />
                   ) : null}
                   {storedRecipes.length > 0 && visibleCategories.length > 0 ? (
-                    <div className="-mx-4 min-w-0 overflow-x-auto px-4">
+                    <div className="-mx-4 min-w-0 overflow-x-auto px-4" style={{ scrollbarWidth: "none" } as React.CSSProperties}>
                       <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
                         <button
                           type="button"
@@ -556,7 +556,7 @@ export function NewItemModal({
                         filteredRecipes.map((r) => {
                           const n = r.ingredients.length;
                           const itemCount =
-                            n === 1 ? "1 item" : `${n} items`;
+                            n === 1 ? "1 ingrediënt" : `${n} ingrediënten`;
                           return (
                             <RecipeTile
                               key={r.id}

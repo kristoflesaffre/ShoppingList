@@ -12,6 +12,7 @@ export type RecipeIngredient = {
 export type RecipeCategory =
   | "voorgerecht"
   | "hoofdgerecht"
+  | "bijgerecht"
   | "dessert"
   | "cocktail"
   | "ontbijt"
@@ -30,6 +31,7 @@ export type RecipeCategoryMeta = {
 export const RECIPE_CATEGORIES: RecipeCategoryMeta[] = [
   { id: "voorgerecht",  label: "Voorgerecht",  labelPlural: "Voorgerechten",  dot: "#34C759" },
   { id: "hoofdgerecht", label: "Hoofdgerecht", labelPlural: "Hoofdgerechten", dot: "#FF6B35" },
+  { id: "bijgerecht",   label: "Bijgerecht",   labelPlural: "Bijgerechten",   dot: "#5AC8FA" },
   { id: "dessert",      label: "Dessert",      labelPlural: "Desserts",       dot: "#FF3B8B" },
   { id: "cocktail",     label: "Cocktail",     labelPlural: "Cocktails",      dot: "#AF52DE" },
   { id: "ontbijt",      label: "Ontbijt",      labelPlural: "Ontbijt",        dot: "#FFCC00" },

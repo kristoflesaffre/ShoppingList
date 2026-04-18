@@ -116,7 +116,7 @@ function SortableRecipeRow({
   };
 
   const n = recipe.ingredients.length;
-  const itemCount = n === 1 ? "1 item" : `${n} items`;
+  const itemCount = n === 1 ? "1 ingrediënt" : `${n} ingrediënten`;
 
   const tile = (
     <RecipeTile
@@ -177,7 +177,7 @@ function SectionHeader({ section }: { section: { meta: typeof RECIPE_CATEGORIES[
 
 function RecipeGridCard({ recipe }: { recipe: SavedRecipe }) {
   const n = recipe.ingredients.length;
-  const itemCount = n === 1 ? "1 item" : `${n} items`;
+  const itemCount = n === 1 ? "1 ingrediënt" : `${n} ingrediënten`;
   const hasPhoto =
     typeof recipe.photoUrl === "string" && recipe.photoUrl.trim().length > 0;
 
@@ -517,7 +517,7 @@ export default function ReceptenPage() {
 
               {/* Category filter chips */}
               {visibleCategories.length > 0 ? (
-                <div className="order-2 -mx-4 min-w-0 overflow-x-auto px-4 lg:order-1 lg:mx-0 lg:flex-1 lg:px-0">
+                <div className="order-2 -mx-4 min-w-0 overflow-x-auto px-4 lg:order-1 lg:mx-0 lg:flex-1 lg:px-0" style={{ scrollbarWidth: "none" } as React.CSSProperties}>
                   <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
                     <button
                       type="button"
