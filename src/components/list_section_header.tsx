@@ -5,7 +5,7 @@ function ListSectionHeaderIcon({
   variant,
   className,
 }: {
-  variant: "list" | "heart" | "card" | "calendar";
+  variant: "list" | "heart" | "card" | "calendar" | "freeze";
   className?: string;
 }) {
   const src =
@@ -15,7 +15,9 @@ function ListSectionHeaderIcon({
         ? "/icons/card.svg"
         : variant === "calendar"
           ? "/icons/calendar.svg"
-          : "/icons/heart.svg";
+          : variant === "freeze"
+            ? "/icons/freeze.svg"
+            : "/icons/heart.svg";
   return (
     <span
       className={cn("inline-block size-4 shrink-0 bg-[var(--blue-900)]", className)}
@@ -43,7 +45,7 @@ export function ListSectionHeader({
   showNaarOverzicht,
   naarOverzichtHref = "/lijstjes-beheren/lijstjes",
 }: {
-  icon: "list" | "heart" | "card" | "calendar";
+  icon: "list" | "heart" | "card" | "calendar" | "freeze";
   /** Zichtbare naam; wordt in hoofdletters getoond (`uppercase`). */
   label: string;
   showNaarOverzicht: boolean;

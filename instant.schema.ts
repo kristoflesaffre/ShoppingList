@@ -103,6 +103,28 @@ const schema = i.schema({
       passwordSalt: i.string().optional(),
       avatarUrl: i.string().optional(),
     }),
+    /** Diepvriesitem (product of gerecht) opgeslagen door een gebruiker. */
+    freezerItems: i.entity({
+      /** "product" of "gerecht" */
+      type: i.string(),
+      name: i.string(),
+      /** Hoeveelheid per pakket (products) of aantal porties (gerechten). */
+      quantityPerPackage: i.number(),
+      /** Eenheid bij product (bijv. "stuk", "gram"); "portie" voor gerechten. */
+      unit: i.string(),
+      /** Aantal pakketten / porties in de diepvries. */
+      packages: i.number(),
+      /** Eigenaar (Instant auth user id). */
+      ownerId: i.string().optional().indexed(),
+      /** Koppeling met een recept (gerecht-type). */
+      recipeId: i.string().optional().indexed(),
+      /** Foto URL van het recept (gedenormaliseerd voor snelle weergave). */
+      recipePhotoUrl: i.string().optional(),
+      /** Aantal personen van het recept (gedenormaliseerd). */
+      recipePersons: i.number().optional(),
+      /** Volgorde in de lijst. */
+      order: i.number().optional(),
+    }),
     /** Gedecodeerde klantenkaart (QR of barcode) — gekoppeld aan een lijst én/of rechtstreeks aan een gebruiker. */
     loyaltyCards: i.entity({
       /** “qr” of “barcode” */

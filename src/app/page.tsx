@@ -132,6 +132,15 @@ type HomeLoyaltyCard = {
   rawValue: string | null;
 };
 
+type HomeFreezerRow = {
+  id: string;
+  ownerId?: string;
+  order?: number;
+  name: string;
+  recipePhotoUrl?: string;
+  packages: number;
+};
+
 function normalizeLoyaltyCodeType(codeType: unknown): LoyaltyCardCodeType | null {
   return codeType === "qr" || codeType === "barcode" ? codeType : null;
 }
@@ -411,6 +420,84 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
   );
 }
 
+/** Startpagina: diepvriesvoorraad — altijd zichtbaar (ook bij bestaande lijsten). */
+function HomeDiepvriesSection({
+  itemCount,
+  previewItems,
+}: {
+  itemCount: number;
+  previewItems: Pick<HomeFreezerRow, "id" | "name" | "recipePhotoUrl">[];
+}) {
+  const router = useRouter();
+  const summary =
+    itemCount === 0
+      ? "Houd je gerechten en producten bij zodat je snel ziet wat je hebt."
+      : itemCount === 1
+        ? "1 item in je diepvriesvoorraad."
+        : `${itemCount} items in je diepvriesvoorraad.`;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <ListSectionHeader
+        icon="freeze"
+        label="Voorraad diepvries"
+        showNaarOverzicht={itemCount > 0}
+        naarOverzichtHref="/diepvriesvoorraad"
+      />
+      <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
+        <div className="flex shrink-0 items-center gap-2">
+          {previewItems.length === 0 ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/images/ui/empty_state_diepvries.png"
+              alt=""
+              width={72}
+              height={72}
+              className="size-[72px] shrink-0 object-cover opacity-70"
+            />
+          ) : (
+            previewItems.map((it) => (
+              <div
+                key={it.id}
+                className="relative size-12 shrink-0 overflow-hidden rounded-full bg-[var(--gray-50)]"
+              >
+                {it.recipePhotoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={it.recipePhotoUrl}
+                    alt=""
+                    className="absolute inset-0 size-full object-cover"
+                    decoding="async"
+                    loading="lazy"
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src="/images/ui/empty_state_diepvries.png"
+                    alt=""
+                    className="absolute inset-0 size-full object-contain p-2 opacity-60"
+                  />
+                )}
+              </div>
+            ))
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col items-end gap-4">
+          <p className="w-full text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">
+            {summary}
+          </p>
+          <MiniButton
+            variant="primary"
+            onClick={() => router.push("/diepvriesvoorraad")}
+          >
+            Beheer voorraad
+          </MiniButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Groepeert een array in blokken van `size`. */
 function chunkArray<T>(arr: T[], size: number): T[][] {
   const result: T[][] = [];
@@ -681,6 +768,7 @@ export default function Home() {
       $: { where: { ownerId } },
     },
     recipes: {},
+    freezerItems: {},
   });
 
   const shareRelatedUserIds = React.useMemo(() => {
@@ -909,6 +997,23 @@ export default function Home() {
   }, [data]);
 
   /** Kalenderdagen op de startpagina: vandaag én toekomst, alleen met inhoud. */
+  /** Diepvriesitems voor startpagina-sectie (zelfde filter als /diepvriesvoorraad). */
+  const homeFreezerItems = React.useMemo((): HomeFreezerRow[] => {
+    if (!user?.id) return [];
+    const raw = (data as { freezerItems?: unknown[] } | undefined)?.freezerItems;
+    if (!Array.isArray(raw)) return [];
+    const out: HomeFreezerRow[] = [];
+    for (const x of raw) {
+      if (!x || typeof x !== "object") continue;
+      const r = x as HomeFreezerRow;
+      if (!r.id || typeof r.name !== "string") continue;
+      if (r.ownerId != null && r.ownerId !== user.id) continue;
+      out.push(r);
+    }
+    out.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    return out;
+  }, [data, user?.id]);
+
   const homeCalendarEntries = React.useMemo(() => {
     if (!data) return [] as Array<{ isoDate: string; entry: DayEntry }>;
     const today = new Date();
@@ -1211,6 +1316,16 @@ export default function Home() {
               <HomeLoyaltyCardsSwimlane cards={homeLoyaltyCards} />
             </div>
           ) : null}
+          <div className="mt-10">
+            <HomeDiepvriesSection
+              itemCount={homeFreezerItems.length}
+              previewItems={homeFreezerItems.slice(0, 4).map((it) => ({
+                id: it.id,
+                name: it.name,
+                recipePhotoUrl: it.recipePhotoUrl,
+              }))}
+            />
+          </div>
         </div>
       </div>
 

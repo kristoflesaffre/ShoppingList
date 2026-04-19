@@ -14,6 +14,7 @@ import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 export interface NewFreezerItemModalProps {
   open: boolean;
   onClose: () => void;
+  initialTab?: "first" | "second";
   onAdd?: (item: {
     name: string;
     quantityPerPackage: number;
@@ -21,6 +22,8 @@ export interface NewFreezerItemModalProps {
     packages: number;
     type: "product" | "gerecht";
     recipeId?: string;
+    recipePhotoUrl?: string;
+    recipePersons?: number;
   }) => void;
 }
 
@@ -97,14 +100,25 @@ function RecipeCard({
 export function NewFreezerItemModal({
   open,
   onClose,
+  initialTab = "first",
   onAdd,
 }: NewFreezerItemModalProps) {
-  const [tab, setTab] = React.useState<"first" | "second">("first");
+  const [tab, setTab] = React.useState<"first" | "second">(initialTab);
 
   // Product tab state
   const [productName, setProductName] = React.useState("");
   const [quantityPerPackage, setQuantityPerPackage] = React.useState(1);
   const [packages, setPackages] = React.useState(1);
+  const [unit, setUnit] = React.useState("stuk");
+
+  // Auto-pluralize stuk/stuks when stepper changes, but don't override custom values
+  React.useEffect(() => {
+    setUnit((prev) => {
+      if (prev === "stuk" && quantityPerPackage >= 2) return "stuks";
+      if (prev === "stuks" && quantityPerPackage === 1) return "stuk";
+      return prev;
+    });
+  }, [quantityPerPackage]);
 
   // Gerecht tab state
   const [recipeSearch, setRecipeSearch] = React.useState("");
@@ -144,15 +158,16 @@ export function NewFreezerItemModal({
   // Reset form when modal opens
   React.useEffect(() => {
     if (open) {
-      setTab("first");
+      setTab(initialTab);
       setProductName("");
       setQuantityPerPackage(1);
       setPackages(1);
+      setUnit("stuk");
       setRecipeSearch("");
       setSelectedRecipeId(null);
       setPortions(1);
     }
-  }, [open]);
+  }, [open, initialTab]);
 
   // Reset recipe selection when switching to gerecht tab
   function handleTabChange(value: "first" | "second") {
@@ -176,7 +191,6 @@ export function NewFreezerItemModal({
   }
 
   const isProductTab = tab === "first";
-  const unit = quantityPerPackage === 1 ? "stuk" : "stuks";
 
   const canSubmit = isProductTab
     ? productName.trim().length > 0
@@ -193,6 +207,8 @@ export function NewFreezerItemModal({
       packages: isProductTab ? packages : portions,
       type: isProductTab ? "product" : "gerecht",
       recipeId: selectedRecipeId ?? undefined,
+      recipePhotoUrl: selectedRecipe?.photoUrl ?? undefined,
+      recipePersons: selectedRecipe?.persons ?? undefined,
     });
     onClose();
   }
@@ -245,10 +261,14 @@ export function NewFreezerItemModal({
                 min={1}
                 onValueChange={setQuantityPerPackage}
               />
-              {/* Unit display */}
-              <div className="flex h-12 w-full items-center rounded-md border border-[var(--border-default)] px-4 text-base leading-6 tracking-normal text-[var(--text-primary)]">
-                {unit}
-              </div>
+              {/* Editable unit field — auto-selects all text on focus */}
+              <input
+                type="text"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                className="flex h-12 w-full items-center rounded-md border border-[var(--border-default)] bg-white px-4 text-center text-base leading-6 tracking-normal text-[var(--text-primary)] outline-none transition-colors focus:border-[var(--border-focus)]"
+              />
             </div>
 
             <Stepper
