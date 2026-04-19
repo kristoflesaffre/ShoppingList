@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { MiniButton } from "@/components/ui/mini_button";
 import { db } from "@/lib/db";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
+import { NewFreezerItemModal } from "./new_freezer_item_modal";
 
 export default function DiepvriesvoorraadPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = db.useAuth();
+  const [addModalOpen, setAddModalOpen] = React.useState(false);
 
   if (authLoading) return <PageSpinner />;
   if (!user) {
@@ -70,10 +72,15 @@ export default function DiepvriesvoorraadPage() {
         <p className="text-center text-base font-medium leading-6 text-[var(--text-tertiary)]">
           Je hebt geen items in je diepvriesvoorraad
         </p>
-        <MiniButton variant="primary" onClick={() => {}}>
+        <MiniButton variant="primary" onClick={() => setAddModalOpen(true)}>
           Voeg item toe
         </MiniButton>
       </div>
+
+      <NewFreezerItemModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+      />
     </div>
   );
 }
