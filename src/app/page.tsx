@@ -29,7 +29,6 @@ import { db } from "@/lib/db";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
 import {
-  EMPTY_HOME_LIST_ILLUSTRATION_SRC,
   homeListCardIconSrc,
   pickListProductIconForNewList,
   planOwnerListDecorIconUpdates,
@@ -1090,28 +1089,107 @@ export default function Home() {
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col px-[var(--space-4)]">
+    <div className={cn("relative flex min-h-dvh w-full flex-col px-[var(--space-4)]", !hasLists && "bg-gradient-to-b from-[#dcddfc] to-white")}>
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
           {!hasLists ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-6">
-              <div className="relative size-24 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp */}
-                <img
-                  src={EMPTY_HOME_LIST_ILLUSTRATION_SRC}
-                  alt=""
-                  width={96}
-                  height={96}
-                  decoding="async"
-                  className="object-contain"
-                />
+            <div className="flex flex-col gap-8 py-2">
+              {/* LIJSTJES */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="inline-block size-4 shrink-0 bg-[var(--text-primary)]" style={{ WebkitMaskImage: "url(/icons/list.svg)", maskImage: "url(/icons/list.svg)", WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" }} aria-hidden />
+                  <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">LIJSTJES</p>
+                </div>
+                <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/images/ui/lijstje_160.webp" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
+                  <div className="flex flex-1 flex-col items-end gap-4">
+                    <p className="w-full text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Maak hier je wekelijkse boodschappenlijstjes voor de supermarkt of andere winkels.</p>
+                    <MiniButton variant="primary" onClick={handleOpenCreateModal}>Voeg lijstje toe</MiniButton>
+                  </div>
+                </div>
               </div>
-              <p className="text-center text-base font-medium leading-24 text-[var(--text-secondary)]">
-                Je hebt nog geen lijstjes
-              </p>
-              <MiniButton variant="primary" onClick={handleOpenCreateModal}>
-                Voeg lijstje toe
-              </MiniButton>
+
+              {/* FAVORIETEN LIJSTJES */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="size-4 shrink-0 text-[var(--text-primary)]" aria-hidden><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                  <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">FAVORIETEN LIJSTJES</p>
+                </div>
+                <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
+                  <div className="flex flex-1 flex-col gap-4">
+                    <p className="text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Maak per winkel favorieten met vaak gekochte producten voor snelle lijstjes.</p>
+                    <div className="flex items-center gap-3">
+                      <MiniButton variant="primary" onClick={handleOpenCreateModal}>Voeg lijstje toe</MiniButton>
+                      <button type="button" className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none">Meer info</button>
+                    </div>
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/images/ui/hart_160.webp" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
+                </div>
+              </div>
+
+              {/* KALENDER */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="inline-block size-4 shrink-0 bg-[var(--text-primary)]" style={{ WebkitMaskImage: "url(/icons/calendar.svg)", maskImage: "url(/icons/calendar.svg)", WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" }} aria-hidden />
+                  <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">KALENDER</p>
+                </div>
+                <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/images/ui/kalender_160.webp" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
+                  <div className="flex flex-1 flex-col items-end gap-4">
+                    <p className="w-full text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Wat eten we vandaag is nooit nog een probleem met deze handige agenda!</p>
+                    <MiniButton asChild variant="primary"><Link href="/kalender">Ga naar kalender</Link></MiniButton>
+                  </div>
+                </div>
+              </div>
+
+              {/* KLANTENKAARTEN */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="inline-block size-4 shrink-0 bg-[var(--text-primary)]" style={{ WebkitMaskImage: "url(/icons/card.svg)", maskImage: "url(/icons/card.svg)", WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" }} aria-hidden />
+                  <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">KLANTENKAARTEN</p>
+                </div>
+                <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
+                  <div className="flex flex-1 flex-col items-start gap-4">
+                    <p className="text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Voeg al je klantenkaarten hier toe, zodat je ze altijd bij de hand hebt.</p>
+                    <MiniButton asChild variant="primary"><Link href="/klantenkaarten">Voeg klantenkaart toe</Link></MiniButton>
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/images/ui/klantenkaart_160.webp" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
+                </div>
+              </div>
+
+              {/* VOORRAAD DIEPVRIES */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-block size-4 shrink-0 bg-[var(--text-primary)]"
+                    style={{
+                      WebkitMaskImage: "url(/icons/freeze.svg)",
+                      maskImage: "url(/icons/freeze.svg)",
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                    }}
+                    aria-hidden
+                  />
+                  <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">VOORRAAD DIEPVRIES</p>
+                </div>
+                <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/images/ui/empty_state_diepvries.png" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
+                  <div className="flex flex-1 flex-col items-end gap-4">
+                    <p className="w-full text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Weet altijd welke gerechten en ingrediënten je in voorraad hebt.</p>
+                    <div className="flex items-center gap-3">
+                      <button type="button" className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none">Meer info</button>
+                      <MiniButton variant="primary" onClick={() => router.push("/diepvriesvoorraad")}>Beheer voorraad</MiniButton>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="pt-4">
