@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -414,6 +415,8 @@ export default function KalenderPage() {
     [displayDays],
   );
 
+  const calendarIsEmpty = displayDays.length === 0;
+
   const getWeekIsOpen = React.useCallback(
     (mondayIso: string) =>
       weekExpanded[mondayIso] ??
@@ -498,92 +501,118 @@ export default function KalenderPage() {
             Kalender
           </h1>
 
-          {/* Bovenste sentinel voor infinite scroll omhoog */}
-          <div ref={topSentinelRef} className="h-px" aria-hidden />
+          {calendarIsEmpty ? (
+            <section
+              className="flex min-h-[min(520px,calc(100dvh-12rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] flex-1 flex-col items-center justify-center"
+              aria-label="Lege kalender"
+            >
+              <div className="flex w-full max-w-[358px] flex-col items-center gap-0 text-center">
+                <div className="relative size-24 shrink-0 overflow-hidden">
+                  <Image
+                    src="/images/ui/kalender_320.webp"
+                    alt=""
+                    width={320}
+                    height={320}
+                    className="size-full object-contain"
+                    priority
+                  />
+                </div>
+                <p className="mt-6 w-full text-base font-medium leading-6 tracking-normal text-[var(--gray-500)]">
+                  Voeg gerechten toe aan je kalender via je boodschappenlijstje: plan daar een recept op een
+                  weekdag (of noteer losse ingrediënten) en je planning verschijnt hier.
+                </p>
+              </div>
+            </section>
+          ) : (
+            <>
+              {/* Bovenste sentinel voor infinite scroll omhoog */}
+              <div ref={topSentinelRef} className="h-px" aria-hidden />
 
-          {/* Weken (inklapbaar); binnen huidige week zijn eerdere dagen ingeklapt. */}
-          <div className="flex flex-col gap-3">
-            {weekGroups.map(({ mondayIso, monday, days }) => {
-              const wkOpen = getWeekIsOpen(mondayIso);
-              const panelId = `kalender-week-${mondayIso}`;
-              const isCurrentWeek = mondayIso === currentWeekMondayIso;
-              const weekNumber = getISOWeekNumber(monday);
-              return (
-                <section key={mondayIso}>
-                  <div className="flex flex-col rounded-[8px] border border-[var(--gray-100)] bg-[var(--white)] p-3">
-                    <button
-                      type="button"
-                      id={`${panelId}-toggle`}
-                      aria-expanded={wkOpen}
-                      aria-controls={panelId}
-                      onClick={() => toggleWeek(mondayIso)}
-                      className="flex w-full items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                    >
-                      {/* WEEK-badge */}
-                      <div className="flex shrink-0 flex-col items-center gap-px rounded-[4px] bg-[var(--blue-25)] px-2 py-1">
-                        <span className="text-[8px] font-semibold leading-[8px] text-[var(--blue-500)]">
-                          WEEK
-                        </span>
-                        <span className="text-[18px] font-bold leading-[18px] text-text-primary">
-                          {weekNumber}
-                        </span>
-                      </div>
-                      <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium leading-6 text-text-primary">
-                        {formatWeekSectionTitle(monday)}
-                      </span>
-                      <ChevronDownIcon expanded={wkOpen} />
-                    </button>
-                    <div
-                      id={panelId}
-                      role="region"
-                      aria-labelledby={`${panelId}-toggle`}
-                      className={cn(
-                        "grid transition-[grid-template-rows] duration-300 ease-in-out",
-                        wkOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-                      )}
-                    >
-                      <div className="-mx-3 overflow-hidden px-3">
-                        <div className="flex flex-col gap-3 pl-4 pt-3">
-                          {/* Separator bovenaan eerste dag */}
-                          <div className="h-px bg-[var(--gray-100)]" aria-hidden />
-                          {days.map((day, dayIdx) => {
-                          const iso = toIsoDate(day);
-                          const isToday = iso === todayKey;
-                          const isOlderWeek = mondayIso < currentWeekMondayIso;
-                          const isLast = dayIdx === days.length - 1;
-                          const isTarget = iso === targetDateIso;
-                          return (
-                            <div
-                              key={iso}
-                              ref={
-                                isTarget
-                                  ? targetDayRef
-                                  : isToday
-                                    ? todayRowRef
-                                    : undefined
-                              }
-                              className={cn((isToday || isTarget) && "scroll-mt-4")}
-                            >
-                              <DayCard
-                                date={day}
-                                entry={calendarMap.get(iso)}
-                                isToday={isToday}
-                                collapsible
-                                bodyOpen={getDayBodyOpen(iso, isToday)}
-                                onToggleBody={() => toggleDayBody(iso)}
-                                isLast={isLast}
-                              />
+              {/* Weken (inklapbaar); binnen huidige week zijn eerdere dagen ingeklapt. */}
+              <div className="flex flex-col gap-3">
+                {weekGroups.map(({ mondayIso, monday, days }) => {
+                  const wkOpen = getWeekIsOpen(mondayIso);
+                  const panelId = `kalender-week-${mondayIso}`;
+                  const isCurrentWeek = mondayIso === currentWeekMondayIso;
+                  const weekNumber = getISOWeekNumber(monday);
+                  return (
+                    <section key={mondayIso}>
+                      <div className="flex flex-col rounded-[8px] border border-[var(--gray-100)] bg-[var(--white)] p-3">
+                        <button
+                          type="button"
+                          id={`${panelId}-toggle`}
+                          aria-expanded={wkOpen}
+                          aria-controls={panelId}
+                          onClick={() => toggleWeek(mondayIso)}
+                          className="flex w-full items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                        >
+                          {/* WEEK-badge */}
+                          <div className="flex shrink-0 flex-col items-center gap-px rounded-[4px] bg-[var(--blue-25)] px-2 py-1">
+                            <span className="text-[8px] font-semibold leading-[8px] text-[var(--blue-500)]">
+                              WEEK
+                            </span>
+                            <span className="text-[18px] font-bold leading-[18px] text-text-primary">
+                              {weekNumber}
+                            </span>
+                          </div>
+                          <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium leading-6 text-text-primary">
+                            {formatWeekSectionTitle(monday)}
+                          </span>
+                          <ChevronDownIcon expanded={wkOpen} />
+                        </button>
+                        <div
+                          id={panelId}
+                          role="region"
+                          aria-labelledby={`${panelId}-toggle`}
+                          className={cn(
+                            "grid transition-[grid-template-rows] duration-300 ease-in-out",
+                            wkOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                          )}
+                        >
+                          <div className="-mx-3 overflow-hidden px-3">
+                            <div className="flex flex-col gap-3 pl-4 pt-3">
+                              {/* Separator bovenaan eerste dag */}
+                              <div className="h-px bg-[var(--gray-100)]" aria-hidden />
+                              {days.map((day, dayIdx) => {
+                                const iso = toIsoDate(day);
+                                const isToday = iso === todayKey;
+                                const isOlderWeek = mondayIso < currentWeekMondayIso;
+                                const isLast = dayIdx === days.length - 1;
+                                const isTarget = iso === targetDateIso;
+                                return (
+                                  <div
+                                    key={iso}
+                                    ref={
+                                      isTarget
+                                        ? targetDayRef
+                                        : isToday
+                                          ? todayRowRef
+                                          : undefined
+                                    }
+                                    className={cn((isToday || isTarget) && "scroll-mt-4")}
+                                  >
+                                    <DayCard
+                                      date={day}
+                                      entry={calendarMap.get(iso)}
+                                      isToday={isToday}
+                                      collapsible
+                                      bodyOpen={getDayBodyOpen(iso, isToday)}
+                                      onToggleBody={() => toggleDayBody(iso)}
+                                      isLast={isLast}
+                                    />
+                                  </div>
+                                );
+                              })}
                             </div>
-                          );
-                        })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                </section>
-              );
-            })}
-          </div>
+                    </section>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
