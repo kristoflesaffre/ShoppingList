@@ -673,10 +673,10 @@ export default function KlantenKaartenPage() {
               <div className="flex w-full max-w-[358px] flex-col items-center gap-0 text-center">
                 <div className="relative size-24 shrink-0 overflow-hidden">
                   <Image
-                    src="/images/ui/klantenkaart.png"
+                    src="/images/ui/klantenkaart_320.webp"
                     alt=""
-                    width={96}
-                    height={96}
+                    width={320}
+                    height={320}
                     className="size-full object-contain"
                     priority
                   />
