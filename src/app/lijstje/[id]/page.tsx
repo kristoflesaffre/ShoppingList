@@ -939,12 +939,12 @@ function NormalListEmptyState({ onAddItem }: { onAddItem: () => void }) {
 
   return (
     <section
-      className="relative flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-col items-center justify-center gap-6 bg-transparent px-0 pb-8"
+      className="relative flex flex-1 flex-col items-center justify-center gap-6 bg-transparent px-0 pb-8"
       aria-label="Lege staat"
     >
       <div className="flex w-full max-w-[358px] flex-col items-center gap-6">
         <div className="relative size-24 shrink-0 overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element — pool uit /images/ui/product_icons */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={productIconSrc}
             alt=""
@@ -2021,7 +2021,7 @@ export default function ListDetailPage({
   }
 
   const mainSurfaceClassName = cn(
-    "pb-[calc(243px+env(safe-area-inset-bottom,0px))]",
+    "flex flex-col min-h-dvh pb-[calc(243px+env(safe-area-inset-bottom,0px))]",
     !showLoyaltySwipe &&
       "mt-[calc(56px+env(safe-area-inset-top,0px))]",
     isMasterList ? "pt-8" : "pt-4",
@@ -2072,7 +2072,7 @@ export default function ListDetailPage({
         className={mainSurfaceClassName}
       >
         {/* Geen extra gradient: zelfde principe als gewone lijstdetail — alleen body::before (globals.css). */}
-        <div className="mx-auto flex w-full max-w-[956px] flex-col gap-6 px-4">
+        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4">
           {showListDetailHeader && !isMasterCategoryOrderMode ? (
             <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1 flex flex-col gap-0">
@@ -2402,7 +2402,7 @@ export default function ListDetailPage({
           isMasterList &&
           masterCategorySnapshotTitles.length > 0 ? (
             <section
-              className="flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-col gap-4 pb-8"
+              className="flex flex-1 flex-col gap-4 pb-8"
               aria-label="Volgorde van categorieën wijzigen"
             >
               <p className="text-sm font-normal leading-20 tracking-normal text-[var(--text-tertiary)]">
@@ -2417,7 +2417,7 @@ export default function ListDetailPage({
           ) : !hasItems ? (
             isMasterEmpty ? (
               <section
-                className="flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-col items-center justify-center gap-6 px-0 pb-8"
+                className="flex flex-1 flex-col items-center justify-center gap-6 px-0 pb-8"
                 aria-label="Lege favorietenlijst"
               >
                 <div className="flex w-full max-w-[358px] flex-col items-center gap-6">

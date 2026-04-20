@@ -252,7 +252,7 @@ export default function ReceptenPage() {
             quantity: ing.quantity,
           })),
       }));
-  }, [recipeData]);
+  }, [recipeData, ownerId]);
 
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [recipeSearch, setRecipeSearch] = React.useState("");
