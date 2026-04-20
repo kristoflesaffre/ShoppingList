@@ -706,7 +706,7 @@ export default function ReceptenPage() {
         </div>
       )}
 
-      {!snackbarMessage ? (
+      {!snackbarMessage && hasRecipes ? (
         <div
           className={cn(
             "pointer-events-none fixed inset-x-0 z-20",

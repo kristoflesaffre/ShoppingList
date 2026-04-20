@@ -22,6 +22,7 @@ import {
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
+import { MiniButton } from "@/components/ui/mini_button";
 import { Snackbar } from "@/components/ui/snackbar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import {
@@ -591,8 +592,10 @@ export function LijstjesBeherenClient({
     );
   }
 
+  const isFavorietenEmpty = section === "favorieten" && !hasSectionLists;
+
   return (
-    <div className="relative flex min-h-dvh w-full flex-col">
+    <div className={cn("relative flex min-h-dvh w-full flex-col", isFavorietenEmpty && "bg-gradient-to-b from-[#e3e4ff] to-white")}>
       {/*
         Figma 1148:8955 — top app bar: back + gecentreerde titel (medium 16) + three-dots.
         Grid met 2.5rem / 1fr / 2.5rem zodat het midden altijd echt gecentreerd is.
@@ -635,11 +638,28 @@ export function LijstjesBeherenClient({
               </Link>
             </div>
           ) : !hasSectionLists ? (
+            section === "favorieten" ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-6">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/ui/hart_160.webp"
+                  alt=""
+                  width={96}
+                  height={96}
+                  className="size-24 shrink-0 object-cover"
+                  decoding="async"
+                />
+                <p className="text-center text-base font-medium leading-6 tracking-normal text-[var(--gray-500,#707784)]">
+                  Je hebt geen favorieten lijstjes
+                </p>
+                <MiniButton variant="primary" onClick={handleFabNewList}>
+                  Voeg lijstje toe
+                </MiniButton>
+              </div>
+            ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 py-12">
               <p className="text-center text-base font-medium leading-24 text-[var(--text-secondary)]">
-                {section === "lijstjes"
-                  ? "Je hebt hier nog geen lijstjes om te rangschikken."
-                  : "Je hebt hier nog geen favorietenlijsten."}
+                Je hebt hier nog geen lijstjes om te rangschikken.
               </p>
               <Link
                 href={sisterHref}
@@ -654,6 +674,7 @@ export function LijstjesBeherenClient({
                 Terug naar home
               </Link>
             </div>
+            )
           ) : (
             <>
               {/* Figma 1148:9003 / 1148:9665 — titel + potlood of titel + Gereed. */}

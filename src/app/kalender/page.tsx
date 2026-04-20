@@ -522,8 +522,7 @@ export default function KalenderPage() {
                   />
                 </div>
                 <p className="mt-6 w-full text-base font-medium leading-6 tracking-normal text-[var(--gray-500)]">
-                  Voeg gerechten toe aan je kalender via je boodschappenlijstje: plan daar een recept op een
-                  weekdag (of noteer losse ingrediënten) en je planning verschijnt hier.
+                  Voeg items toe in je boodschappenlijstje op een weekdag en ze verschijnen hier in je kalender.
                 </p>
               </div>
             </section>
