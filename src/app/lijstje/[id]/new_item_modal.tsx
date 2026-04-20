@@ -540,25 +540,18 @@ export function NewItemModal({
               {!isMasterList && !isEditMode && activeTab === "third" && (
                 <div className="flex flex-col gap-4">
                   {allFreezerItems.length === 0 ? (
-                    <div className="flex flex-col gap-16">
-                      <SearchBar
-                        placeholder="Zoek gerecht of product"
-                        value={freezerSearch}
-                        onValueChange={setFreezerSearch}
+                    <div className="mt-10 flex flex-col items-center gap-6">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/images/ui/empty_state_diepvries.png"
+                        alt=""
+                        width={96}
+                        height={96}
+                        className="size-24 object-contain"
                       />
-                      <div className="flex flex-col items-center gap-6">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src="/images/ui/empty_state_diepvries.png"
-                          alt=""
-                          width={96}
-                          height={96}
-                          className="size-24 object-contain"
-                        />
-                        <p className="text-center text-base font-medium leading-6 text-[#707784]">
-                          Je hebt geen items in je diepvriesvoorraad
-                        </p>
-                      </div>
+                      <p className="text-center text-base font-medium leading-6 text-[#707784]">
+                        Je hebt geen items in je diepvriesvoorraad
+                      </p>
                     </div>
                   ) : (
                   <>

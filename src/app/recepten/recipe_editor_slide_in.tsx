@@ -39,11 +39,13 @@ export function RecipeEditorSlideIn({
   onClose,
   recipeToEdit,
   recipeData,
+  ownerId,
 }: {
   open: boolean;
   onClose: () => void;
   recipeToEdit: SavedRecipe | null;
   recipeData: { recipes?: RecipeRow[] } | undefined;
+  ownerId?: string;
 }) {
   const [recipeName, setRecipeName] = React.useState("");
   const [recipeLink, setRecipeLink] = React.useState("");
@@ -145,6 +147,7 @@ export function RecipeEditorSlideIn({
           ...(recipeCategory != null ? { category: recipeCategory } : {}),
           canBeFrozen,
           ...photoPatch,
+          ...(isNew && ownerId ? { ownerId } : {}),
         }),
         ...builtIngredients.map((ing, i) =>
           db.tx.recipeIngredients[ing.id]
@@ -173,6 +176,7 @@ export function RecipeEditorSlideIn({
       recipeToEdit,
       recipeData?.recipes,
       onClose,
+      ownerId,
     ],
   );
 

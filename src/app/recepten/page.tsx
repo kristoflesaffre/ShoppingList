@@ -230,6 +230,10 @@ export default function ReceptenPage() {
   const savedRecipes: SavedRecipe[] = React.useMemo(() => {
     if (!recipeData?.recipes) return [];
     return [...recipeData.recipes]
+      .filter((r) => {
+        const rid = (r as Record<string, unknown>).ownerId;
+        return rid == null || rid === ownerId;
+      })
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .map((r) => ({
         id: r.id,
@@ -437,16 +441,21 @@ export default function ReceptenPage() {
   const hasRecipes = savedRecipes.length > 0;
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
+    <div
+      className={cn(
+        "relative flex min-h-dvh w-full flex-col px-[16px]",
+        !hasRecipes && "bg-gradient-to-b from-[#dcddfc] to-white",
+      )}
+    >
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6">
-          <div className="flex items-center gap-3">
-            {/* Titel + potlood */}
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <h1 className="text-page-title font-bold leading-32 tracking-normal text-text-primary">
-                Mijn recepten
-              </h1>
-              {hasRecipes ? (
+          {hasRecipes ? (
+            <div className="flex items-center gap-3">
+              {/* Titel + potlood */}
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <h1 className="text-page-title font-bold leading-32 tracking-normal text-text-primary">
+                  Mijn recepten
+                </h1>
                 <button
                   type="button"
                   aria-label={isEditMode ? "Stop bewerken" : "Bewerken"}
@@ -457,11 +466,9 @@ export default function ReceptenPage() {
                     <path d="M3.17663 19.8235C3.03379 19.6807 2.97224 19.4751 3.01172 19.2777L3.94074 14.633C3.96397 14.5157 4.02087 14.4089 4.10564 14.323L15.2539 3.17679C15.4896 2.94107 15.8728 2.94107 16.1086 3.17679L19.8246 6.89257C19.9361 7.00637 20 7.15965 20 7.31989C20 7.48013 19.9361 7.63341 19.8246 7.7472L17.0376 10.534L8.67642 18.8934C8.59048 18.9782 8.48365 19.0362 8.36636 19.0594L3.72126 19.9884C3.68178 19.9965 3.6423 20 3.60281 20C3.44488 19.9988 3.29043 19.9361 3.17663 19.8235ZM13.7465 6.39094L16.6091 9.25326L18.5426 7.31989L15.6801 4.45757L13.7465 6.39094ZM4.37274 18.6263L7.95062 17.911L15.7544 10.1079L12.893 7.24557L5.08808 15.0499L4.37274 18.6263Z" fill="currentColor"/>
                   </svg>
                 </button>
-              ) : null}
-            </div>
-            {/* Rechts: toggle (normaal) of Gereed-knop (edit mode) */}
-            {hasRecipes ? (
-              isEditMode ? (
+              </div>
+              {/* Rechts: toggle (normaal) of Gereed-knop (edit mode) */}
+              {isEditMode ? (
                 <button
                   type="button"
                   onClick={() => setIsEditMode(false)}
@@ -501,9 +508,9 @@ export default function ReceptenPage() {
                     <ToggleViewIcon src="/icons/toggle_grid.svg" active={viewMode === "grid"} />
                   </button>
                 </div>
-              )
-            ) : null}
-          </div>
+              )}
+            </div>
+          ) : null}
 
           {hasRecipes ? (
             <>
@@ -659,9 +666,19 @@ export default function ReceptenPage() {
               )}
             </>
           ) : (
+            /* Figma 1199:11239 — Mijn recepten empty state */
             <div className="flex flex-1 flex-col items-center justify-center gap-6 py-12">
-              <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
-                Je hebt nog geen recepten toegevoegd
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/ui/recept_320.webp"
+                alt=""
+                width={96}
+                height={96}
+                className="size-24 shrink-0 object-cover"
+                decoding="async"
+              />
+              <p className="max-w-[358px] text-center text-base font-medium leading-6 tracking-normal text-[var(--text-tertiary)]">
+                Je hebt nog geen recepten
               </p>
               <MiniButton variant="primary" onClick={openNew}>
                 Voeg recept toe
@@ -676,6 +693,7 @@ export default function ReceptenPage() {
         onClose={closeRecipeEditor}
         recipeToEdit={recipeEditorTarget}
         recipeData={recipeData}
+        ownerId={ownerId}
       />
 
       {snackbarMessage && (

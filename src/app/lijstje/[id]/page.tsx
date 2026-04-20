@@ -1279,6 +1279,10 @@ export default function ListDetailPage({
   const savedRecipes: SavedRecipe[] = React.useMemo(() => {
     if (!recipeData?.recipes) return [];
     return [...recipeData.recipes]
+      .filter((r) => {
+        const rid = (r as Record<string, unknown>).ownerId;
+        return rid == null || rid === user?.id;
+      })
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .map((r) => ({
         id: r.id,
