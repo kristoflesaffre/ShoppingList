@@ -78,6 +78,7 @@ import {
   type SavedRecipe,
 } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
+import { ALL_LIST_PRODUCT_ICON_URLS } from "@/lib/list-product-icon-urls";
 import type { ListItem } from "./new_item_modal";
 
 const RecipeIngredientSortableList = dynamic(
@@ -927,6 +928,46 @@ function resolvedRouteListId(
   }
   if (typeof propsId === "string" && propsId.length > 0) return propsId;
   return null;
+}
+
+/** Figma 134:813 — leeg gewoon lijstje: 96px producticoon (willekeurig uit zelfde pool als list cards); geen eigen gradient (alleen body::before in globals.css). */
+function NormalListEmptyState({ onAddItem }: { onAddItem: () => void }) {
+  const [productIconSrc] = React.useState(() => {
+    const pool = ALL_LIST_PRODUCT_ICON_URLS;
+    return pool[Math.floor(Math.random() * pool.length)] ?? pool[0];
+  });
+
+  return (
+    <section
+      className="relative flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-col items-center justify-center gap-6 bg-transparent px-0 pb-8"
+      aria-label="Lege staat"
+    >
+      <div className="flex w-full max-w-[358px] flex-col items-center gap-6">
+        <div className="relative size-24 shrink-0 overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element — pool uit /images/ui/product_icons */}
+          <img
+            src={productIconSrc}
+            alt=""
+            width={96}
+            height={96}
+            className="size-full object-cover"
+            decoding="async"
+          />
+        </div>
+        <p className="w-full text-center text-base font-medium leading-6 tracking-normal text-[var(--gray-500)]">
+          Geen items in je lijstje
+        </p>
+        <MiniButton
+          type="button"
+          variant="primary"
+          aria-label="Item toevoegen"
+          onClick={onAddItem}
+        >
+          Voeg item toe
+        </MiniButton>
+      </div>
+    </section>
+  );
 }
 
 export default function ListDetailPage({
@@ -2404,25 +2445,10 @@ export default function ListDetailPage({
                 </div>
               </section>
             ) : (
-              <section
-                className={cn(
-                  "flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-col items-center justify-center gap-6",
-                  showListDetailHeader ? "pt-8" : "pt-32",
-                )}
-                aria-label="Lege staat"
-              >
-                <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
-                  Geen items in je lijstje
-                </p>
-                <MiniButton
-                  type="button"
-                  variant="primary"
-                  aria-label="Item toevoegen"
-                  onClick={handleOpenNewItemModal}
-                >
-                  Voeg item toe
-                </MiniButton>
-              </section>
+              <NormalListEmptyState
+                key={listId}
+                onAddItem={handleOpenNewItemModal}
+              />
             )
           ) : (
             <DndContext
