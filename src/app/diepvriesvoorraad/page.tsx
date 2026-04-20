@@ -277,6 +277,9 @@ function FreezerItemListRow({
     /* Figma 1170:9545 — elk item eigen “List card”, gap 12px tussen kaarten. */
     return (
       <article className="flex min-h-[56px] w-full min-w-0 items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
+        <p className="w-6 shrink-0 text-center tabular-nums text-[32px] font-semibold leading-6 text-[var(--blue-900)]">
+          {item.packages}
+        </p>
         {thumb}
         <div className="flex min-h-11 min-w-0 flex-1 flex-col justify-center">
           <p className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
@@ -286,9 +289,6 @@ function FreezerItemListRow({
             {subtitle}
           </p>
         </div>
-        <p className="shrink-0 tabular-nums text-[32px] font-semibold leading-6 text-[var(--blue-900)]">
-          {item.packages}
-        </p>
       </article>
     );
   }
@@ -318,6 +318,9 @@ function FreezerItemListRow({
         className="h-10 w-px shrink-0 bg-[var(--gray-100)]"
         aria-hidden
       />
+      <span className="w-6 shrink-0 text-center tabular-nums text-[32px] font-semibold leading-6 text-[var(--blue-900)]">
+        {item.packages}
+      </span>
       {thumb}
       <div className="flex min-h-11 min-w-0 flex-1 flex-col justify-center">
         <p className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
@@ -326,11 +329,6 @@ function FreezerItemListRow({
         <p className="truncate text-sm font-normal leading-5 text-[var(--gray-400)]">
           {subtitle}
         </p>
-      </div>
-      <div className="flex min-w-10 shrink-0 flex-col items-center justify-center">
-        <span className="tabular-nums text-[32px] font-semibold leading-6 text-[var(--blue-900)]">
-          {item.packages}
-        </span>
       </div>
       <div
         className="h-10 w-px shrink-0 bg-[var(--gray-100)]"

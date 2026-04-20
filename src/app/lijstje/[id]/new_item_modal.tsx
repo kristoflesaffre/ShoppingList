@@ -579,6 +579,11 @@ export function NewItemModal({
                             key={it.id}
                             className="relative flex w-full items-center gap-3 rounded-lg bg-white py-3 pl-4 pr-3 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)]"
                           >
+                            {/* Package count */}
+                            <span className="shrink-0 w-6 text-center text-[32px] font-semibold leading-6 text-[var(--blue-900,#101130)]">
+                              {it.packages ?? 1}
+                            </span>
+
                             {/* Photo with freeze badge */}
                             <div className="relative shrink-0 size-12">
                               <div
@@ -633,11 +638,6 @@ export function NewItemModal({
                                 {subtitle}
                               </p>
                             </div>
-
-                            {/* Package count */}
-                            <span className="shrink-0 min-w-[24px] text-center text-[32px] font-semibold leading-6 text-[var(--blue-900,#101130)]">
-                              {it.packages ?? 1}
-                            </span>
                           </div>
                         );
                       })}
