@@ -700,8 +700,18 @@ export function NewItemModal({
                     </div>
                   ) : null}
                   {storedRecipes.length === 0 ? (
-                    <div className="flex flex-col items-center gap-4 py-8">
-                      <p className="text-center text-base font-medium leading-24 tracking-normal text-[var(--text-tertiary)]">
+                    <div className="flex flex-col items-center gap-6 py-8">
+                      {/* Zelfde illustratie als /recepten lege staat (Figma 1199:11239). */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/images/ui/recept_320.webp"
+                        alt=""
+                        width={96}
+                        height={96}
+                        className="size-24 shrink-0 object-cover"
+                        decoding="async"
+                      />
+                      <p className="max-w-[358px] text-center text-base font-medium leading-6 tracking-normal text-[var(--text-tertiary)]">
                         Je hebt nog geen recepten toegevoegd
                       </p>
                       <MiniButton
