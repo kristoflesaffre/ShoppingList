@@ -538,25 +538,27 @@ export default function DiepvriesvoorraadPage() {
         aria-hidden
       />
 
-      {/* Fixed header — zelfde rij als Figma 1178:8402 (geen weergave-toggle hier) */}
+      {/* Fixed header — zelfde horizontale kolom als body: px-4 buiten, max-w binnen (geen dubbele inspringing). */}
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <header className="mx-auto flex h-16 max-w-[956px] items-center gap-4 px-4">
-          <button
-            type="button"
-            aria-label="Terug"
-            onClick={() => router.push("/")}
-            className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-          >
-            <MaskIcon
-              src="/icons/arrow.svg"
-              className="size-6 bg-[var(--blue-500)]"
-            />
-          </button>
-          <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
-            Diepvriesvoorraad
-          </p>
-          <div className="size-6 shrink-0" aria-hidden />
-        </header>
+        <div className="flex justify-center px-4">
+          <header className="flex h-16 w-full max-w-[956px] items-center gap-4">
+            <button
+              type="button"
+              aria-label="Terug"
+              onClick={() => router.push("/")}
+              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              <MaskIcon
+                src="/icons/arrow.svg"
+                className="size-6 bg-[var(--blue-500)]"
+              />
+            </button>
+            <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
+              Diepvriesvoorraad
+            </p>
+            <div className="size-6 shrink-0" aria-hidden />
+          </header>
+        </div>
       </div>
 
       {hasItems ? (

@@ -4,16 +4,16 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
-export type PillTabVariant = "first" | "second";
+export type PillTabVariant = "first" | "second" | "third";
 export type PillTabSize = "default";
 
 /**
- * Pill tab: two-segment pill (Figma 474-2712). One tab is active; clicking a tab activates it.
+ * Pill tab: two- or three-segment pill (Figma 474-2712). One tab is active; clicking a tab activates it.
  * Container: gray-25 bg, gray-100 border. Active tab: white bg, primary blue text. Inactive: no bg, gray-300 text.
  * @param asChild - When true, merges container props onto the single child (Radix Slot)
  */
 export interface PillTabProps {
-  /** "first" = left tab active; "second" = right tab active. Controlled when provided. */
+  /** "first" = left tab active; "second" = middle/right tab active; "third" = right tab active. Controlled when provided. */
   value?: PillTabVariant;
   /** Initial active tab when uncontrolled */
   defaultValue?: PillTabVariant;
@@ -23,8 +23,10 @@ export interface PillTabProps {
   size?: PillTabSize;
   /** Label for the first (left) tab */
   labelFirst?: React.ReactNode;
-  /** Label for the second (right) tab */
+  /** Label for the second tab */
   labelSecond?: React.ReactNode;
+  /** Label for the optional third (right) tab — when provided, renders a 3-tab pill */
+  labelThird?: React.ReactNode;
   /** When true, the single child replaces the default pill and receives merged container props */
   asChild?: boolean;
   /** When asChild, the single child element to merge onto */
@@ -54,39 +56,61 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
       size = "default",
       labelFirst = "Tab 1",
       labelSecond = "Tab 2",
+      labelThird,
       asChild = false,
       children,
       ...props
     },
     ref
   ) => {
+    const hasThird = labelThird !== undefined;
+
     const [uncontrolledValue, setUncontrolledValue] =
       React.useState<PillTabVariant>(defaultValue);
     const isControlled = valueProp !== undefined;
     const activeValue = isControlled ? valueProp : uncontrolledValue;
-    const firstActive = activeValue === "first";
 
-    const handleSelectFirst = () => {
-      if (firstActive) return;
-      if (!isControlled) setUncontrolledValue("first");
-      onValueChange?.("first");
+    const handleSelect = (tab: PillTabVariant) => {
+      if (activeValue === tab) return;
+      if (!isControlled) setUncontrolledValue(tab);
+      onValueChange?.(tab);
     };
 
-    const handleSelectSecond = () => {
-      if (!firstActive) return;
-      if (!isControlled) setUncontrolledValue("second");
-      onValueChange?.("second");
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, tab: "first" | "second") => {
-      if (e.key === "ArrowLeft" && tab === "second") {
+    const handleKeyDown = (
+      e: React.KeyboardEvent<HTMLButtonElement>,
+      tab: PillTabVariant,
+      tabs: PillTabVariant[],
+    ) => {
+      const idx = tabs.indexOf(tab);
+      if (e.key === "ArrowLeft" && idx > 0) {
         e.preventDefault();
-        handleSelectFirst();
-      } else if (e.key === "ArrowRight" && tab === "first") {
+        handleSelect(tabs[idx - 1]);
+      } else if (e.key === "ArrowRight" && idx < tabs.length - 1) {
         e.preventDefault();
-        handleSelectSecond();
+        handleSelect(tabs[idx + 1]);
       }
     };
+
+    const tabs: PillTabVariant[] = hasThird
+      ? ["first", "second", "third"]
+      : ["first", "second"];
+
+    // Sliding indicator
+    const indicatorWidth = hasThird ? "w-1/3" : "w-1/2";
+    const indicatorTranslate =
+      activeValue === "first"
+        ? "translate-x-0"
+        : activeValue === "second"
+          ? hasThird
+            ? "translate-x-full"
+            : "translate-x-full"
+          : "translate-x-[200%]";
+
+    const tabDefs: { tab: PillTabVariant; label: React.ReactNode }[] = [
+      { tab: "first", label: labelFirst },
+      { tab: "second", label: labelSecond },
+      ...(hasThird ? [{ tab: "third" as const, label: labelThird }] : []),
+    ];
 
     const containerClassName = cn(containerBase, className);
     const containerProps = {
@@ -104,46 +128,35 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
         <div
           aria-hidden="true"
           className={cn(
-            "absolute inset-y-0 left-0 w-1/2 rounded-pill bg-[var(--white)] transition-transform duration-200 ease-out",
-            firstActive ? "translate-x-0" : "translate-x-full"
+            "absolute inset-y-0 left-0 rounded-pill bg-[var(--white)] transition-transform duration-200 ease-out",
+            indicatorWidth,
+            indicatorTranslate,
           )}
         />
-        <button
-          type="button"
-          role="tab"
-          aria-selected={firstActive}
-          tabIndex={firstActive ? 0 : -1}
-          onClick={handleSelectFirst}
-          onKeyDown={(e) => handleKeyDown(e, "first")}
-          className={cn(
-            tabBase,
-            sizeStyles[size],
-            "relative z-10 rounded-pill bg-transparent",
-            firstActive
-              ? "font-semibold text-[var(--blue-500)]"
-              : "font-normal text-[var(--gray-300)] hover:text-[var(--gray-400)]"
-          )}
-        >
-          {labelFirst}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={!firstActive}
-          tabIndex={!firstActive ? 0 : -1}
-          onClick={handleSelectSecond}
-          onKeyDown={(e) => handleKeyDown(e, "second")}
-          className={cn(
-            tabBase,
-            sizeStyles[size],
-            "relative z-10 rounded-pill bg-transparent",
-            !firstActive
-              ? "font-semibold text-[var(--blue-500)]"
-              : "font-normal text-[var(--gray-300)] hover:text-[var(--gray-400)]"
-          )}
-        >
-          {labelSecond}
-        </button>
+        {tabDefs.map(({ tab, label }) => {
+          const isActive = activeValue === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              tabIndex={isActive ? 0 : -1}
+              onClick={() => handleSelect(tab)}
+              onKeyDown={(e) => handleKeyDown(e, tab, tabs)}
+              className={cn(
+                tabBase,
+                sizeStyles[size],
+                "relative z-10 rounded-pill bg-transparent",
+                isActive
+                  ? "font-semibold text-[var(--blue-500)]"
+                  : "font-normal text-[var(--gray-300)] hover:text-[var(--gray-400)]",
+              )}
+            >
+              {label}
+            </button>
+          );
+        })}
       </>
     );
 

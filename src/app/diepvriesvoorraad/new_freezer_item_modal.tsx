@@ -170,7 +170,8 @@ export function NewFreezerItemModal({
   }, [open, initialTab]);
 
   // Reset recipe selection when switching to gerecht tab
-  function handleTabChange(value: "first" | "second") {
+  function handleTabChange(value: "first" | "second" | "third") {
+    if (value === "third") return; // derde tab niet gebruikt in diepvriesmodal
     setTab(value);
     if (value === "second") {
       setSelectedRecipeId(null);

@@ -13,6 +13,7 @@ import { SearchBar } from "@/components/ui/search_bar";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { MiniButton } from "@/components/ui/mini_button";
 import { cn } from "@/lib/utils";
+import { db } from "@/lib/db";
 import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
 import { parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
@@ -129,7 +130,8 @@ export function NewItemModal({
 }) {
   const isEditMode = editingItem != null;
   const [selectedDay, setSelectedDay] = React.useState("Geen");
-  const [activeTab, setActiveTab] = React.useState<"first" | "second">("first");
+  const [activeTab, setActiveTab] = React.useState<"first" | "second" | "third">("first");
+  const [freezerSearch, setFreezerSearch] = React.useState("");
   const [itemName, setItemName] = React.useState("");
   const [stepperValue, setStepperValue] = React.useState(1);
   const [quantityDesc, setQuantityDesc] = React.useState("stuk");
@@ -153,6 +155,42 @@ export function NewItemModal({
   const canAdd = itemName.trim().length > 0;
   const canSaveRecipe = recipeName.trim().length > 0;
   const masterItemFormOnly = isMasterList && !showRecipeForm;
+  const daySelected = selectedDay !== "Geen";
+
+  // Diepvriesvoorraad — only query when a day is selected and we're not in edit/master mode
+  const { data: freezerData } = db.useQuery(
+    open && daySelected && !isEditMode && !isMasterList
+      ? { freezerItems: {} }
+      : null,
+  );
+  const { user: authUser } = db.useAuth();
+
+  const allFreezerItems = React.useMemo(() => {
+    if (!freezerData?.freezerItems) return [];
+    const userId = authUser?.id;
+    return (freezerData.freezerItems as Array<{
+      id: string;
+      type?: string;
+      name?: string;
+      quantityPerPackage?: number;
+      unit?: string;
+      packages?: number;
+      ownerId?: string;
+      recipePhotoUrl?: string;
+      recipePersons?: number;
+      order?: number;
+    }>)
+      .filter((it) => it.name && (!it.ownerId || it.ownerId === userId))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [freezerData, authUser?.id]);
+
+  const filteredFreezerItems = React.useMemo(() => {
+    const q = freezerSearch.trim().toLowerCase();
+    if (!q) return allFreezerItems;
+    return allFreezerItems.filter((it) =>
+      (it.name ?? "").toLowerCase().includes(q),
+    );
+  }, [allFreezerItems, freezerSearch]);
 
   const filteredRecipes = React.useMemo(() => {
     let result = storedRecipes;
@@ -176,6 +214,7 @@ export function NewItemModal({
       setStepperValue(1);
       setQuantityDesc("stuk");
       setRecipeSearch("");
+      setFreezerSearch("");
       setActiveCategory(null);
       setShowRecipeForm(false);
       setEditingLibraryRecipeId(null);
@@ -382,7 +421,7 @@ export function NewItemModal({
       >
         {isEditMode ? "Bewaren" : "Toevoegen"}
       </Button>
-    ) : undefined;
+    ) : activeTab === "third" ? undefined : undefined;
 
   const recipeFooter = (
     <Button
@@ -439,7 +478,12 @@ export function NewItemModal({
                           className="w-full"
                           onClick={() => {
                             setSelectedDay(day.value);
-                            if (day.value === "Geen") setActiveTab("first");
+                            if (day.value === "Geen") {
+                              // Reset uit "third" tab als dag gewist wordt
+                              setActiveTab((prev) =>
+                                prev === "third" ? "first" : prev,
+                              );
+                            }
                           }}
                         >
                           {day.label}
@@ -454,12 +498,13 @@ export function NewItemModal({
                       onValueChange={setActiveTab}
                       labelFirst="item"
                       labelSecond="recept"
+                      labelThird={daySelected ? "voorraad" : undefined}
                     />
                   )}
                 </>
               ) : null}
 
-              {(isEditMode || activeTab === "first" || isMasterList) && (
+              {(isEditMode || activeTab === "first" || isMasterList) && activeTab !== "third" && (
                 <div
                   className={cn(
                     "flex flex-col",
@@ -489,6 +534,124 @@ export function NewItemModal({
                       onChange={(e) => setQuantityDesc(e.target.value)}
                     />
                   </div>
+                </div>
+              )}
+
+              {!isMasterList && !isEditMode && activeTab === "third" && (
+                <div className="flex flex-col gap-4">
+                  {allFreezerItems.length === 0 ? (
+                    <div className="flex flex-col gap-16">
+                      <SearchBar
+                        placeholder="Zoek gerecht of product"
+                        value={freezerSearch}
+                        onValueChange={setFreezerSearch}
+                      />
+                      <div className="flex flex-col items-center gap-6">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/images/ui/empty_state_diepvries.png"
+                          alt=""
+                          width={96}
+                          height={96}
+                          className="size-24 object-contain"
+                        />
+                        <p className="text-center text-base font-medium leading-6 text-[#707784]">
+                          Je hebt geen items in je diepvriesvoorraad
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                  <>
+                  <SearchBar
+                    placeholder="Zoek gerecht of product"
+                    value={freezerSearch}
+                    onValueChange={setFreezerSearch}
+                  />
+                  {filteredFreezerItems.length === 0 ? (
+                    <p className="py-4 text-center text-base font-medium leading-6 text-[var(--text-tertiary)]">
+                      Geen items gevonden
+                    </p>
+                  ) : (
+                    <div className="-mx-4 flex flex-col gap-4 px-4 pb-2">
+                      {filteredFreezerItems.map((it) => {
+                        const isGerecht = it.type === "gerecht";
+                        const personsCount = it.recipePersons ?? it.quantityPerPackage ?? 1;
+                        const subtitle = isGerecht
+                          ? personsCount === 1
+                            ? "1 persoon"
+                            : `${personsCount} personen`
+                          : `${it.quantityPerPackage ?? 1} ${it.unit ?? "stuk"}`;
+                        return (
+                          <div
+                            key={it.id}
+                            className="relative flex w-full items-center gap-3 rounded-lg bg-white py-3 pl-4 pr-3 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)]"
+                          >
+                            {/* Photo with freeze badge */}
+                            <div className="relative shrink-0 size-12">
+                              <div
+                                className={cn(
+                                  "size-12 overflow-hidden bg-[var(--gray-50)]",
+                                  isGerecht ? "rounded-full" : "rounded-md",
+                                )}
+                              >
+                                {it.recipePhotoUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={it.recipePhotoUrl}
+                                    alt=""
+                                    className="size-full object-cover"
+                                    decoding="async"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src="/images/ui/empty_state_diepvries.png"
+                                    alt=""
+                                    className="size-full object-contain p-1 opacity-60"
+                                  />
+                                )}
+                              </div>
+                              {/* Freeze snowflake badge — top-right of photo */}
+                              <div className="absolute -right-1 -top-1 flex size-[18px] items-center justify-center rounded-full bg-white">
+                                <span
+                                  className="inline-block size-4 shrink-0 bg-[var(--blue-500)]"
+                                  style={{
+                                    WebkitMaskImage: "url(/icons/freeze.svg)",
+                                    maskImage: "url(/icons/freeze.svg)",
+                                    WebkitMaskSize: "contain",
+                                    maskSize: "contain",
+                                    WebkitMaskRepeat: "no-repeat",
+                                    maskRepeat: "no-repeat",
+                                    WebkitMaskPosition: "center",
+                                    maskPosition: "center",
+                                  }}
+                                  aria-hidden
+                                />
+                              </div>
+                            </div>
+
+                            {/* Name + subtitle */}
+                            <div className="min-w-0 flex-1 flex flex-col">
+                              <p className="truncate text-base font-medium leading-6 tracking-normal text-[var(--text-primary)]">
+                                {it.name}
+                              </p>
+                              <p className="truncate text-sm leading-5 tracking-normal text-[var(--gray-400,#8c929d)]">
+                                {subtitle}
+                              </p>
+                            </div>
+
+                            {/* Package count */}
+                            <span className="shrink-0 min-w-[24px] text-center text-[32px] font-semibold leading-6 text-[var(--blue-900,#101130)]">
+                              {it.packages ?? 1}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  </>
+                  )}
                 </div>
               )}
 
