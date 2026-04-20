@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-function ListSectionHeaderIcon({
+export function ListSectionHeaderIcon({
   variant,
   className,
 }: {
