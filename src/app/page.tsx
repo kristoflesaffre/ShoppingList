@@ -1156,8 +1156,8 @@ export default function Home() {
     return out;
   }, [data, user?.id]);
 
-  const homeCalendarEntries = React.useMemo(() => {
-    if (!data) return [] as Array<{ isoDate: string; entry: DayEntry }>;
+  const { homeCalendarEntries, hasEverUsedCalendar } = React.useMemo(() => {
+    if (!data) return { homeCalendarEntries: [] as Array<{ isoDate: string; entry: DayEntry }>, hasEverUsedCalendar: false };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayIso = toIsoDate(today);
@@ -1167,6 +1167,9 @@ export default function Home() {
       ((data as Record<string, unknown>).recipes ?? []) as Parameters<typeof buildCalendarEntries>[1],
     );
 
+    // Check if the calendar has ever been used (any date, past or future)
+    const hasEverUsedCalendar = Array.from(calMap.values()).some((entry) => dayEntryHasContent(entry));
+
     const result: Array<{ isoDate: string; entry: DayEntry }> = [];
     for (const [iso, entry] of Array.from(calMap.entries())) {
       if (iso >= todayIso && dayEntryHasContent(entry)) {
@@ -1174,7 +1177,7 @@ export default function Home() {
       }
     }
     result.sort((a, b) => a.isoDate.localeCompare(b.isoDate));
-    return result;
+    return { homeCalendarEntries: result, hasEverUsedCalendar };
   }, [data]);
 
   /** Eénmalige herberekening van lijst-decor-iconen: min duplicaten binnen de product-icon-pool. */
@@ -1424,7 +1427,7 @@ export default function Home() {
             <div className="mt-10">
               <HomeCalendarSection entries={homeCalendarEntries} />
             </div>
-          ) : (
+          ) : !hasEverUsedCalendar ? (
             <div className="mt-10 flex flex-col gap-4">
               <div className="flex items-center gap-2">
                 <span className="inline-block size-4 shrink-0 bg-[var(--text-primary)]" style={{ WebkitMaskImage: "url(/icons/calendar.svg)", maskImage: "url(/icons/calendar.svg)", WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" }} aria-hidden />
@@ -1439,7 +1442,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
           {homeLoyaltyCards.length > 0 ? (
             <div className="mt-10">
               <HomeLoyaltyCardsSwimlane cards={homeLoyaltyCards} />
