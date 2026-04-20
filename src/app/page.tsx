@@ -137,6 +137,7 @@ type HomeFreezerRow = {
   ownerId?: string;
   order?: number;
   name: string;
+  type?: string;
   recipePhotoUrl?: string;
   packages: number;
 };
@@ -420,78 +421,197 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
   );
 }
 
+type FreezerPreviewItem = Pick<HomeFreezerRow, "id" | "name" | "type" | "recipePhotoUrl" | "packages">;
+
+const THUMB_SIZE = 48; // px
+const MAX_GAP = 24; // px
+
+/** Rij thumbnails: justify-between als gap ≤ 24px, anders justify-start gap-6. */
+function FreezerThumbnailsRow({ items }: { items: FreezerPreviewItem[] }) {
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  const [useAutoSpacing, setUseAutoSpacing] = React.useState(true);
+
+  React.useEffect(() => {
+    const el = rowRef.current;
+    if (!el || items.length <= 1) {
+      setUseAutoSpacing(false);
+      return;
+    }
+    const check = () => {
+      const w = el.offsetWidth;
+      const gap = (w - items.length * THUMB_SIZE) / (items.length - 1);
+      setUseAutoSpacing(gap <= MAX_GAP);
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [items.length]);
+
+  return (
+    <div
+      ref={rowRef}
+      className={cn(
+        "flex items-center",
+        useAutoSpacing ? "justify-between" : "justify-start gap-6",
+      )}
+    >
+      {items.map((it) => {
+        const isGerecht = it.type === "gerecht";
+        return (
+          <div key={it.id} className="relative size-12 shrink-0">
+            {/* Photo */}
+            <div
+              className={cn(
+                "size-12 overflow-hidden bg-[var(--gray-50)]",
+                isGerecht ? "rounded-full" : "rounded-md",
+              )}
+            >
+              {it.recipePhotoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={it.recipePhotoUrl}
+                  alt={it.name}
+                  className="size-full object-cover"
+                  decoding="async"
+                  loading="lazy"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/images/ui/empty_state_diepvries.png"
+                  alt=""
+                  className="size-full object-contain p-1 opacity-60"
+                />
+              )}
+            </div>
+
+            {/* Top-right: freeze snowflake badge */}
+            <div className="absolute -right-1 -top-1 flex size-[18px] items-center justify-center rounded-full bg-white">
+              <span
+                className="inline-block size-4 shrink-0 bg-[var(--blue-500)]"
+                style={{
+                  WebkitMaskImage: "url(/icons/freeze.svg)",
+                  maskImage: "url(/icons/freeze.svg)",
+                  WebkitMaskSize: "contain",
+                  maskSize: "contain",
+                  WebkitMaskRepeat: "no-repeat",
+                  maskRepeat: "no-repeat",
+                }}
+                aria-hidden
+              />
+            </div>
+
+            {/* Bottom-left: package count badge */}
+            <div className="absolute -bottom-1 -left-1 flex size-[18px] items-center justify-center rounded-full bg-white">
+              <p className="text-[12px] font-semibold leading-3 text-[var(--blue-900,#101130)]">
+                {it.packages}
+              </p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Startpagina: diepvriesvoorraad — altijd zichtbaar (ook bij bestaande lijsten). */
 function HomeDiepvriesSection({
   itemCount,
   previewItems,
 }: {
   itemCount: number;
-  previewItems: Pick<HomeFreezerRow, "id" | "name" | "recipePhotoUrl">[];
+  previewItems: FreezerPreviewItem[];
 }) {
   const router = useRouter();
-  const summary =
-    itemCount === 0
-      ? "Houd je gerechten en producten bij zodat je snel ziet wat je hebt."
-      : itemCount === 1
-        ? "1 item in je diepvriesvoorraad."
-        : `${itemCount} items in je diepvriesvoorraad.`;
 
+  if (itemCount > 0) {
+    /* ── Content state (Figma 1195:10075) ────────────────────────────── */
+    return (
+      <div className="flex flex-col gap-4">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="flex flex-1 items-center gap-2">
+            <span
+              className="inline-block size-4 shrink-0 bg-[var(--text-primary)]"
+              style={{
+                WebkitMaskImage: "url(/icons/freeze.svg)",
+                maskImage: "url(/icons/freeze.svg)",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+              }}
+              aria-hidden
+            />
+            <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">
+              VOORRAAD DIEPVRIES
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push("/diepvriesvoorraad")}
+            className="shrink-0 text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
+          >
+            Naar overzicht
+          </button>
+        </div>
+
+        {/* Thumbnails card */}
+        <div className="rounded-lg border border-[var(--gray-100)] bg-white p-3">
+          <FreezerThumbnailsRow items={previewItems} />
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Empty state ──────────────────────────────────────────────────── */
   return (
     <div className="flex flex-col gap-4">
-      <ListSectionHeader
-        icon="freeze"
-        label="Voorraad diepvries"
-        showNaarOverzicht={itemCount > 0}
-        naarOverzichtHref="/diepvriesvoorraad"
-      />
+      <div className="flex items-center gap-2">
+        <span
+          className="inline-block size-4 shrink-0 bg-[var(--text-primary)]"
+          style={{
+            WebkitMaskImage: "url(/icons/freeze.svg)",
+            maskImage: "url(/icons/freeze.svg)",
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+          }}
+          aria-hidden
+        />
+        <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">
+          VOORRAAD DIEPVRIES
+        </p>
+      </div>
       <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
-        <div className="flex shrink-0 items-center gap-2">
-          {previewItems.length === 0 ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src="/images/ui/empty_state_diepvries.png"
-              alt=""
-              width={72}
-              height={72}
-              className="size-[72px] shrink-0 object-cover opacity-70"
-            />
-          ) : (
-            previewItems.map((it) => (
-              <div
-                key={it.id}
-                className="relative size-12 shrink-0 overflow-hidden rounded-full bg-[var(--gray-50)]"
-              >
-                {it.recipePhotoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={it.recipePhotoUrl}
-                    alt=""
-                    className="absolute inset-0 size-full object-cover"
-                    decoding="async"
-                    loading="lazy"
-                  />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src="/images/ui/empty_state_diepvries.png"
-                    alt=""
-                    className="absolute inset-0 size-full object-contain p-2 opacity-60"
-                  />
-                )}
-              </div>
-            ))
-          )}
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col items-end gap-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/ui/empty_state_diepvries.png"
+          alt=""
+          width={72}
+          height={72}
+          className="size-[72px] shrink-0 object-cover opacity-70"
+        />
+        <div className="flex flex-1 flex-col items-end gap-4">
           <p className="w-full text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">
-            {summary}
+            Weet altijd welke gerechten en ingrediënten je in voorraad hebt.
           </p>
-          <MiniButton
-            variant="primary"
-            onClick={() => router.push("/diepvriesvoorraad")}
-          >
-            Beheer voorraad
-          </MiniButton>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
+            >
+              Meer info
+            </button>
+            <MiniButton
+              variant="primary"
+              onClick={() => router.push("/diepvriesvoorraad")}
+            >
+              Beheer voorraad
+            </MiniButton>
+          </div>
         </div>
       </div>
     </div>
@@ -1266,35 +1386,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* VOORRAAD DIEPVRIES */}
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="inline-block size-4 shrink-0 bg-[var(--text-primary)]"
-                    style={{
-                      WebkitMaskImage: "url(/icons/freeze.svg)",
-                      maskImage: "url(/icons/freeze.svg)",
-                      WebkitMaskSize: "contain",
-                      maskSize: "contain",
-                      WebkitMaskRepeat: "no-repeat",
-                      maskRepeat: "no-repeat",
-                    }}
-                    aria-hidden
-                  />
-                  <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">VOORRAAD DIEPVRIES</p>
-                </div>
-                <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/images/ui/empty_state_diepvries.png" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
-                  <div className="flex flex-1 flex-col items-end gap-4">
-                    <p className="w-full text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Weet altijd welke gerechten en ingrediënten je in voorraad hebt.</p>
-                    <div className="flex items-center gap-3">
-                      <button type="button" className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none">Meer info</button>
-                      <MiniButton variant="primary" onClick={() => router.push("/diepvriesvoorraad")}>Beheer voorraad</MiniButton>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           ) : (
             <div className="pt-4">
@@ -1319,10 +1410,12 @@ export default function Home() {
           <div className="mt-10">
             <HomeDiepvriesSection
               itemCount={homeFreezerItems.length}
-              previewItems={homeFreezerItems.slice(0, 4).map((it) => ({
+              previewItems={homeFreezerItems.slice(0, 5).map((it) => ({
                 id: it.id,
                 name: it.name,
+                type: it.type,
                 recipePhotoUrl: it.recipePhotoUrl,
+                packages: it.packages,
               }))}
             />
           </div>

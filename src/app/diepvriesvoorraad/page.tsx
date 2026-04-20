@@ -8,6 +8,7 @@ import { id as instantId } from "@instantdb/react";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { NewFreezerItemModal } from "./new_freezer_item_modal";
 import { cn } from "@/lib/utils";
+import { useItemPhotoUrl } from "@/lib/item-photos";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -104,6 +105,14 @@ function FreezerItemGridCard({
   onDecrement: () => void;
   onDelete: () => void;
 }) {
+  const getItemPhoto = useItemPhotoUrl(240);
+  const imageSrc = React.useMemo(
+    () => item.recipePhotoUrl ?? getItemPhoto(item.name),
+    [item.recipePhotoUrl, item.name, getItemPhoto],
+  );
+  const thumbShape =
+    item.type === "gerecht" ? "rounded-full" : "rounded-md";
+
   const personsCount = item.recipePersons ?? item.quantityPerPackage;
   const subtitle =
     item.type === "gerecht"
@@ -123,15 +132,21 @@ function FreezerItemGridCard({
     </div>
   );
 
+  /* Vaste min-h: 12 + 64 + 8 + 44 + 8 + 44 + 12 = 192px — voorkomt springen bij edit. */
   return (
-    <article className="flex min-w-0 w-full flex-col rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-[12px]">
-      <div className="flex min-w-0 flex-1 flex-col items-center gap-2">
-        {/* 1178:8654 — 64×64 */}
-        <div className="relative size-16 shrink-0 overflow-hidden rounded-full bg-[var(--gray-50)]">
-          {item.recipePhotoUrl ? (
+    <article className="flex min-h-[192px] min-w-0 w-full flex-col rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-[12px]">
+      <div className="flex min-w-0 w-full flex-col items-center gap-2">
+        {/* 1178:8654 — 64×64; gerecht rond, product vierkant (Figma list/grid). */}
+        <div
+          className={cn(
+            "relative size-16 shrink-0 overflow-hidden bg-[var(--gray-50)]",
+            thumbShape,
+          )}
+        >
+          {imageSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={item.recipePhotoUrl}
+              src={imageSrc}
               alt=""
               className="absolute inset-0 size-full object-cover"
               decoding="async"
@@ -147,10 +162,15 @@ function FreezerItemGridCard({
           )}
         </div>
 
-        {isEditing ? (
-          <>
-            {/* 1178:8811 — bin/min (24) | telling (32px primary/900) | plus (24), gap 16 */}
-            <div className="flex w-full shrink-0 items-center justify-center gap-4">
+        {/* h-11 (44px): past bij 32px-cijfer + telling; zelfde in beide modi. */}
+        <div
+          className={cn(
+            "flex h-11 w-full shrink-0 items-center justify-center",
+            isEditing && "gap-4",
+          )}
+        >
+          {isEditing ? (
+            <>
               <button
                 type="button"
                 onClick={item.packages <= 1 ? onDelete : onDecrement}
@@ -183,17 +203,14 @@ function FreezerItemGridCard({
                   className="size-6 bg-[var(--blue-500)]"
                 />
               </button>
-            </div>
-            {textBlock}
-          </>
-        ) : (
-          <>
-            <p className="w-full shrink-0 text-center tabular-nums text-[32px] font-semibold leading-6 tracking-normal text-[var(--blue-900)]">
+            </>
+          ) : (
+            <p className="text-center tabular-nums text-[32px] font-semibold leading-6 tracking-normal text-[var(--blue-900)]">
               {item.packages}
             </p>
-            {textBlock}
-          </>
-        )}
+          )}
+        </div>
+        {textBlock}
       </div>
     </article>
   );
@@ -212,6 +229,12 @@ function FreezerItemListRow({
   onDecrement: () => void;
   onDelete: () => void;
 }) {
+  const getItemPhoto = useItemPhotoUrl(160);
+  const imageSrc = React.useMemo(
+    () => item.recipePhotoUrl ?? getItemPhoto(item.name),
+    [item.recipePhotoUrl, item.name, getItemPhoto],
+  );
+
   const personsCount = item.recipePersons ?? item.quantityPerPackage;
   const subtitle =
     item.type === "gerecht"
@@ -230,10 +253,10 @@ function FreezerItemListRow({
         thumbShape,
       )}
     >
-      {item.recipePhotoUrl ? (
+      {imageSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={item.recipePhotoUrl}
+          src={imageSrc}
           alt=""
           className="absolute inset-0 size-full object-cover"
           decoding="async"
@@ -251,10 +274,11 @@ function FreezerItemListRow({
   );
 
   if (!isEditing) {
+    /* Figma 1170:9545 — elk item eigen “List card”, gap 12px tussen kaarten. */
     return (
-      <article className="flex w-full min-w-0 items-center gap-3 border-b border-[var(--gray-100)] py-3 last:border-b-0">
+      <article className="flex min-h-[56px] w-full min-w-0 items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
         {thumb}
-        <div className="min-w-0 flex-1">
+        <div className="flex min-h-11 min-w-0 flex-1 flex-col justify-center">
           <p className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
             {item.name}
           </p>
@@ -271,7 +295,7 @@ function FreezerItemListRow({
 
   // Figma 1176:7747 “List card” — bin/minus | divider | 40px thumb | tekst | 32px count | divider | plus
   return (
-    <article className="flex w-full min-w-0 items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
+    <article className="flex min-h-[56px] w-full min-w-0 items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
       <button
         type="button"
         onClick={item.packages <= 1 ? onDelete : onDecrement}
@@ -295,11 +319,11 @@ function FreezerItemListRow({
         aria-hidden
       />
       {thumb}
-      <div className="min-w-0 flex-1">
+      <div className="flex min-h-11 min-w-0 flex-1 flex-col justify-center">
         <p className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
           {item.name}
         </p>
-        <p className="truncate text-xs font-normal leading-4 text-[var(--gray-400)]">
+        <p className="truncate text-sm font-normal leading-5 text-[var(--gray-400)]">
           {subtitle}
         </p>
       </div>
@@ -382,14 +406,7 @@ function FreezerSection({
           ))}
         </div>
       ) : (
-        <div
-          className={cn(
-            "flex w-full flex-col",
-            isEditing
-              ? "gap-3"
-              : "rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3",
-          )}
-        >
+        <div className="flex w-full flex-col gap-3">
           {items.map((item) => (
             <FreezerItemListRow
               key={item.id}
@@ -546,14 +563,15 @@ export default function DiepvriesvoorraadPage() {
         /* ── Items list state ─────────────────────────────────────────────── */
         <div
           className={cn(
-            "relative z-10 flex flex-1 flex-col gap-6 px-4",
+            "relative z-10 flex flex-1 justify-center px-4",
             "pb-[calc(88px+env(safe-area-inset-bottom,0px))]",
             "pt-[calc(64px+32px+env(safe-area-inset-top,0px))]",
           )}
         >
-          {/* Figma 1178:8410 bekijkmodus — titel + potlood | toggle. Figma 1176:7892 bewerkmodus — titel | Gereed (geen toggle). */}
-          <div className="flex w-full min-w-0 items-center justify-between gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+        <div className="flex w-full max-w-[956px] flex-col gap-6">
+          {/* Figma 1178:8410 / 1176:7892 — vaste rijhoogte (h-9) links/rechts voorkomt layoutverspringing bij edit. */}
+          <div className="flex min-h-9 w-full min-w-0 items-center justify-between gap-4">
+            <div className="flex min-h-9 min-w-0 flex-1 items-center gap-2 overflow-hidden">
               <h1 className="min-w-0 truncate text-2xl font-bold leading-8 tracking-normal text-[var(--text-primary)]">
                 Diepvriesvoorraad
               </h1>
@@ -562,75 +580,79 @@ export default function DiepvriesvoorraadPage() {
                   type="button"
                   aria-label="Bewerken"
                   onClick={() => setIsEditing(true)}
-                  className="flex size-6 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                 >
                   <MaskIcon
                     src="/icons/pencil.svg"
                     className="size-6 bg-[var(--blue-500)]"
                   />
                 </button>
-              ) : null}
+              ) : (
+                <span className="size-9 shrink-0" aria-hidden />
+              )}
             </div>
-            {isEditing ? (
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--blue-500)] px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <MaskIcon
-                  src="/icons/checkmark.svg"
-                  className="size-5 bg-white"
-                />
-                <span className="text-sm font-normal leading-5 tracking-normal text-white">
-                  Gereed
-                </span>
-              </button>
-            ) : (
-              <div
-                className="box-border flex shrink-0 items-stretch overflow-hidden rounded border border-[var(--gray-100)] bg-[var(--white)]"
-                role="group"
-                aria-label="Weergave"
-              >
+            <div className="flex h-9 shrink-0 items-stretch">
+              {isEditing ? (
                 <button
                   type="button"
-                  aria-label="Lijstweergave"
-                  aria-pressed={viewMode === "list"}
-                  onClick={() => setViewMode("list")}
-                  className={cn(
-                    "flex items-center justify-center p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
-                    viewMode === "list"
-                      ? "bg-[var(--blue-25)]"
-                      : "bg-[var(--white)]",
-                  )}
+                  onClick={() => setIsEditing(false)}
+                  className="flex h-full items-center gap-1 rounded-full bg-[var(--blue-500)] px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                 >
-                  <ToggleViewIcon
-                    src="/icons/toggle_list.svg"
-                    active={viewMode === "list"}
+                  <MaskIcon
+                    src="/icons/checkmark.svg"
+                    className="size-5 bg-white"
                   />
+                  <span className="text-sm font-normal leading-5 tracking-normal text-white">
+                    Gereed
+                  </span>
                 </button>
+              ) : (
                 <div
-                  className="w-px shrink-0 self-stretch bg-[var(--gray-100)]"
-                  aria-hidden
-                />
-                <button
-                  type="button"
-                  aria-label="Tegelweergave"
-                  aria-pressed={viewMode === "grid"}
-                  onClick={() => setViewMode("grid")}
-                  className={cn(
-                    "flex items-center justify-center p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
-                    viewMode === "grid"
-                      ? "bg-[var(--blue-25)]"
-                      : "bg-[var(--white)]",
-                  )}
+                  className="box-border flex h-9 items-stretch overflow-hidden rounded border border-[var(--gray-100)] bg-[var(--white)]"
+                  role="group"
+                  aria-label="Weergave"
                 >
-                  <ToggleViewIcon
-                    src="/icons/toggle_grid.svg"
-                    active={viewMode === "grid"}
+                  <button
+                    type="button"
+                    aria-label="Lijstweergave"
+                    aria-pressed={viewMode === "list"}
+                    onClick={() => setViewMode("list")}
+                    className={cn(
+                      "flex h-full w-9 items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      viewMode === "list"
+                        ? "bg-[var(--blue-25)]"
+                        : "bg-[var(--white)]",
+                    )}
+                  >
+                    <ToggleViewIcon
+                      src="/icons/toggle_list.svg"
+                      active={viewMode === "list"}
+                    />
+                  </button>
+                  <div
+                    className="w-px shrink-0 self-stretch bg-[var(--gray-100)]"
+                    aria-hidden
                   />
-                </button>
-              </div>
-            )}
+                  <button
+                    type="button"
+                    aria-label="Tegelweergave"
+                    aria-pressed={viewMode === "grid"}
+                    onClick={() => setViewMode("grid")}
+                    className={cn(
+                      "flex h-full w-9 items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      viewMode === "grid"
+                        ? "bg-[var(--blue-25)]"
+                        : "bg-[var(--white)]",
+                    )}
+                  >
+                    <ToggleViewIcon
+                      src="/icons/toggle_grid.svg"
+                      active={viewMode === "grid"}
+                    />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Gerechten section */}
@@ -661,6 +683,7 @@ export default function DiepvriesvoorraadPage() {
             />
           )}
         </div>
+        </div>
       ) : (
         /* ── Empty state ──────────────────────────────────────────────────── */
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-[env(safe-area-inset-bottom,0px)] pt-[calc(64px+env(safe-area-inset-top,0px))]">
@@ -682,7 +705,7 @@ export default function DiepvriesvoorraadPage() {
       )}
 
       {/* FAB — only visible when items exist and not editing */}
-      {hasItems && (
+      {hasItems && !isEditing && (
         <button
           type="button"
           aria-label="Item toevoegen"
@@ -690,7 +713,8 @@ export default function DiepvriesvoorraadPage() {
           className="fixed z-20 flex size-14 shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           style={{
             bottom: "calc(45px + env(safe-area-inset-bottom, 0px))",
-            right: "24px",
+            // 24px from the right edge of the max-w-[956px] content column
+            right: "calc(max(0px, (100vw - 956px) / 2) + 24px)",
           }}
         >
           <MaskIcon src="/icons/plus.svg" className="size-6 bg-white" />

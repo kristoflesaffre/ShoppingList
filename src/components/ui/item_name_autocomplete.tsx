@@ -51,6 +51,8 @@ export type ItemNameAutocompleteProps = {
   className?: string;
   /** `ingredients` = suggesties en thumbnails uit /images/ingredients (webp); default = items jpg. */
   photoCatalog?: "items" | "ingredients";
+  /** Alleen desktop-dropdown: focus op het invoerveld bij mount (bijv. modaal opent). */
+  autoFocus?: boolean;
 };
 
 // ─── Large-screen dropdown ────────────────────────────────────────────────────
@@ -62,6 +64,7 @@ function LargeScreenAutocomplete({
   placeholder,
   className,
   photoCatalog = "items",
+  autoFocus,
 }: ItemNameAutocompleteProps) {
   const itemSlugs = useItemSlugs();
   const ingredientSlugs = useIngredientSlugs();
@@ -247,6 +250,7 @@ function LargeScreenAutocomplete({
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={handleKeyDown}
         autoComplete="off"
+        autoFocus={autoFocus}
         role="combobox"
         aria-expanded={showDropdown}
         aria-autocomplete="list"

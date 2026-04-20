@@ -3,7 +3,7 @@
 import * as React from "react";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { PillTab } from "@/components/ui/pill_tab";
-import { InputField } from "@/components/ui/input_field";
+import { ItemNameAutocomplete } from "@/components/ui/item_name_autocomplete";
 import { Stepper } from "@/components/ui/stepper";
 import { SearchBar } from "@/components/ui/search_bar";
 import { Button } from "@/components/ui/button";
@@ -245,12 +245,11 @@ export function NewFreezerItemModal({
 
         {isProductTab ? (
           <>
-            <InputField
+            <ItemNameAutocomplete
               label="Naam product"
               placeholder="Naam item"
               value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              autoComplete="off"
+              onChange={setProductName}
               autoFocus
             />
 
