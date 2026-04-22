@@ -500,9 +500,9 @@ export function LijstjesBeherenClient({
 
   const handleStartFromMaster = React.useCallback((masterId: string) => {
     setQuickMasterId(masterId);
-    setQuickMasterListName(defaultNewListName());
+    setQuickMasterListName(defaultNewListName(new Date(), lists.map((l) => l.name)));
     setIsQuickMasterModalOpen(true);
-  }, []);
+  }, [lists]);
 
   const handleCloseQuickMasterModal = React.useCallback(() => {
     setIsQuickMasterModalOpen(false);

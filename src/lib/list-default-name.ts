@@ -27,11 +27,32 @@ function capitalizeDutchMonth(month: string): string {
   return month.charAt(0).toUpperCase() + month.slice(1);
 }
 
-/** Standaardnaam voor een nieuw lijstje, bv. "Maart week 4". */
-export function defaultNewListName(date: Date = new Date()): string {
+/**
+ * Standaardnaam voor een nieuw lijstje, bv. "Maart week 4".
+ * Als `existingNames` opgegeven is, wordt een uniek volgnummer gekozen:
+ * het aantal bestaande kalender-lijstjes van dezelfde maand + 1.
+ */
+export function defaultNewListName(
+  date: Date = new Date(),
+  existingNames: string[] = [],
+): string {
   const month = capitalizeDutchMonth(DUTCH_MONTHS[date.getMonth()]);
-  const week = weekWithinCalendarMonth(date);
-  return `${month} week ${week}`;
+
+  if (existingNames.length === 0) {
+    const week = weekWithinCalendarMonth(date);
+    return `${month} week ${week}`;
+  }
+
+  // Tel bestaande kalender-lijstjes van deze maand (elk patroon "{maand} week {n}").
+  const monthPattern = new RegExp(
+    `^${month}\\s+week\\s+\\d+\\s*$`,
+    "i",
+  );
+  const existingCount = existingNames.filter((n) =>
+    monthPattern.test(n.trim()),
+  ).length;
+
+  return `${month} week ${existingCount + 1}`;
 }
 
 /**

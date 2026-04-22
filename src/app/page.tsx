@@ -1240,7 +1240,7 @@ export default function Home() {
   }, []);
 
   const handleOpenCreateModal = () => {
-    setNewListName(defaultNewListName());
+    setNewListName(defaultNewListName(new Date(), lists.map((l) => l.name)));
     setNewListFormKey((k) => k + 1);
     setIsCreateModalOpen(true);
   };
@@ -1253,9 +1253,9 @@ export default function Home() {
 
   const handleStartFromMaster = React.useCallback((masterId: string) => {
     setQuickMasterId(masterId);
-    setQuickMasterListName(defaultNewListName());
+    setQuickMasterListName(defaultNewListName(new Date(), lists.map((l) => l.name)));
     setIsQuickMasterModalOpen(true);
-  }, []);
+  }, [lists]);
 
   const handleQuickMasterSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
