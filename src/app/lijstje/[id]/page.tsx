@@ -2030,7 +2030,10 @@ export default function ListDetailPage({
   }
 
   const mainSurfaceClassName = cn(
-    "flex flex-col min-h-dvh pb-[calc(243px+env(safe-area-inset-bottom,0px))]",
+    // Geen pb hier: met border-box + min-h-dvh zou de padding deel uitmaken van 100dvh,
+    // waardoor de flex-1 content ingeklemd wordt en de body niet scrollt.
+    // De scroll-ruimte onder de FAB wordt via een expliciete spacer in de contentdiv geboden.
+    "flex flex-col min-h-dvh",
     !showLoyaltySwipe &&
       "mt-[calc(56px+env(safe-area-inset-top,0px))]",
     isMasterList ? "pt-8" : "pt-4",
@@ -2517,6 +2520,13 @@ export default function ListDetailPage({
               </SortableContext>
             </DndContext>
           )}
+          {/* Scroll-spacer: zorgt dat de content daadwerkelijk langer is dan de viewport,
+              zodat de body scrollt en het laatste item boven de FAB uitkomt.
+              Hoogte = FAB (56px) + FAB bottom (24px) + extra ademruimte (24px) + safe-area. */}
+          <div
+            className="shrink-0 h-[calc(104px+env(safe-area-inset-bottom,0px))]"
+            aria-hidden="true"
+          />
         </div>
       </main>
   );
