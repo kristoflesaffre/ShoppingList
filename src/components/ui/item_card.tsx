@@ -86,6 +86,31 @@ export interface ItemCardProps extends Omit<
   itemThumbnail?: React.ReactNode;
   density?: ItemCardDensity;
   className?: string;
+  /**
+   * Toegevoegd vanuit diepvriesvoorraad (Figma 1195:10755).
+   * Niet-klikbaar: sneeuwvlok-icoon links, foto op 20% opacity, doorgestreepte grijze tekst, geen acties.
+   */
+  isFromStock?: boolean;
+}
+
+/** Sneeuwvlok-icoon voor "uit voorraad"-items (Figma icons/freeze, 24×24). */
+function FreezeIcon({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn("inline-block shrink-0 size-6 bg-[var(--blue-500)]", className)}
+      style={{
+        WebkitMaskImage: "url(/icons/freeze.svg)",
+        maskImage: "url(/icons/freeze.svg)",
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+      }}
+      aria-hidden
+    />
+  );
 }
 
 /** Claim icon – public/icons/hand.svg, 24×24, uses currentColor for default (blue-300) and gotten-by-you (white). */
@@ -384,6 +409,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       onAddedIncrement,
       itemThumbnail,
       density = "default",
+      isFromStock = false,
       style: incomingStyle,
       ...restProps
     },
@@ -1117,6 +1143,43 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
         </AnimatedRightSection>
       </>
     );
+
+    // "Uit voorraad"-weergave (Figma 1195:10755): niet-klikbaar, sneeuwvlok links,
+    // foto op 20% opacity, doorgestreepte grijze tekst, geen acties rechts.
+    if (isFromStock) {
+      return (
+        <div
+          ref={ref}
+          data-variant="from-stock"
+          className={cn(containerBase, "border border-[var(--gray-100)] bg-[var(--white)]", className)}
+          style={incomingStyle}
+          aria-label={typeof itemName === "string" ? itemName : undefined}
+          {...restProps}
+        >
+          {/* Sneeuwvlok i.p.v. checkbox */}
+          <FreezeIcon className="shrink-0" />
+
+          {/* Thumbnail – 44×44, 20% opacity */}
+          {itemThumbnail != null && (
+            <div className="relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] opacity-20 [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover">
+              {itemThumbnail}
+            </div>
+          )}
+
+          {/* Tekst – doorgestreept, grijs */}
+          <div className="min-w-0 flex flex-1 flex-col gap-0">
+            <span className="truncate font-medium text-base leading-24 tracking-normal w-full line-through text-[var(--gray-400)]">
+              {itemName}
+            </span>
+            {quantity != null && (
+              <span className="font-normal text-sm leading-20 tracking-normal text-[var(--gray-400)] w-full line-through">
+                {quantity}
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
 
     if (asChild) {
       return <Slot {...containerProps}>{children}</Slot>;

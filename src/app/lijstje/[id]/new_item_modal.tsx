@@ -42,6 +42,10 @@ export type ListItem = {
   recipeGroupId?: string;
   recipeName?: string;
   recipeLink?: string;
+  /** Toegevoegd vanuit diepvriesvoorraad — niet-klikbaar, doorgestreept weergegeven. */
+  fromStock?: boolean;
+  /** Foto-URL van het diepvriesitem (recipePhotoUrl), voor weergave in de lijst. */
+  stockPhotoUrl?: string;
 };
 
 type Ingredient = RecipeIngredient;
@@ -117,6 +121,8 @@ export function NewItemModal({
     quantity: string;
     section: string;
     itemCategory?: string;
+    fromStock?: boolean;
+    stockPhotoUrl?: string;
   }) => void;
   editingItem?: ListItem | null;
   onSave?: (item: ListItem) => void;
@@ -575,9 +581,20 @@ export function NewItemModal({
                             : `${personsCount} personen`
                           : `${it.quantityPerPackage ?? 1} ${it.unit ?? "stuk"}`;
                         return (
-                          <div
+                          <button
                             key={it.id}
-                            className="relative flex w-full items-center gap-3 rounded-lg bg-white py-3 pl-4 pr-3 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)]"
+                            type="button"
+                            className="relative flex w-full items-center gap-3 rounded-lg bg-white py-3 pl-4 pr-3 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)] text-left transition-colors active:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                            onClick={() => {
+                              onAdd({
+                                name: it.name ?? "",
+                                quantity: subtitle,
+                                section: selectedDay,
+                                fromStock: true,
+                                stockPhotoUrl: it.recipePhotoUrl || undefined,
+                              });
+                              onClose();
+                            }}
                           >
                             {/* Package count */}
                             <span className="shrink-0 w-6 text-center text-[32px] font-semibold leading-6 text-[var(--blue-900,#101130)]">
@@ -638,7 +655,7 @@ export function NewItemModal({
                                 {subtitle}
                               </p>
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>

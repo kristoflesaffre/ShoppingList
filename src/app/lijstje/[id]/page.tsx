@@ -850,11 +850,12 @@ function SortableItemCard({
           presentation={isMasterList && !isEditMode ? "bare" : "default"}
           state={isEditMode ? "editable" : (isSharedList ? "shared" : "default")}
           density={listViewMode === "grid" ? "grid" : "default"}
+          isFromStock={item.fromStock === true}
           itemThumbnail={(() => {
-            const photoUrl = getPhotoUrl?.(
-              item.name,
-              listViewMode === "grid" ? 240 : 160,
-            );
+            // Voor "uit voorraad"-items: gebruik de opgeslagen recipePhotoUrl.
+            const photoUrl = item.fromStock && item.stockPhotoUrl
+              ? item.stockPhotoUrl
+              : getPhotoUrl?.(item.name, listViewMode === "grid" ? 240 : 160);
             if (!photoUrl) return undefined;
             return (
               // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp: Next/Image optimizer faalt op sommige iOS-builds
@@ -1165,6 +1166,8 @@ export default function ListDetailPage({
           recipeGroupId: it.recipeGroupId || undefined,
           recipeName: it.recipeName || undefined,
           recipeLink: it.recipeLink || undefined,
+          fromStock: row.fromStock === true || undefined,
+          stockPhotoUrl: typeof row.stockPhotoUrl === "string" ? row.stockPhotoUrl : undefined,
         };
       });
   }, [listData]);
@@ -1698,6 +1701,8 @@ export default function ListDetailPage({
       quantity: string;
       section: string;
       itemCategory?: string;
+      fromStock?: boolean;
+      stockPhotoUrl?: string;
     }) => {
       const newId = iid();
       const itemCategory =
@@ -1709,6 +1714,8 @@ export default function ListDetailPage({
         checked: false,
         section: newItem.section,
         itemCategory,
+        fromStock: newItem.fromStock,
+        stockPhotoUrl: newItem.stockPhotoUrl,
       };
 
       let newArray: ListItem[];
@@ -1755,6 +1762,8 @@ export default function ListDetailPage({
             section: newItem.section,
             itemCategory,
             order: idx,
+            ...(newItem.fromStock ? { fromStock: true } : {}),
+            ...(newItem.stockPhotoUrl ? { stockPhotoUrl: newItem.stockPhotoUrl } : {}),
           })
           .link({ list: listId }),
         ...newArray

@@ -59,6 +59,16 @@ const schema = i.schema({
        * Ontbreekt op oude items → afgeleid uit naam bij sync / weergave.
        */
       itemCategory: i.string().optional(),
+      /**
+       * Toegevoegd vanuit diepvriesvoorraad ("voorraad"-tab).
+       * Weergegeven als niet-klikbaar item met doorstreepte tekst en sneeuwvlok-icoon.
+       */
+      fromStock: i.boolean().optional(),
+      /**
+       * Foto-URL voor "uit voorraad"-items (recipePhotoUrl van het diepvriesitem).
+       * Ontbreekt voor producten zonder foto.
+       */
+      stockPhotoUrl: i.string().optional(),
     }),
     recipes: i.entity({
       name: i.string(),
