@@ -1144,9 +1144,68 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       </>
     );
 
-    // "Uit voorraad"-weergave (Figma 1195:10755): niet-klikbaar, sneeuwvlok links,
-    // foto op 20% opacity, doorgestreepte grijze tekst, geen acties rechts.
+    // "Uit voorraad"-weergave (Figma 1195:10755 / 1197:10909): niet-klikbaar, sneeuwvlok links,
+    // foto op 20% opacity, doorgestreepte grijze tekst, geen acties.
     if (isFromStock) {
+      if (gridDensity) {
+        return (
+          <div
+            ref={ref}
+            data-variant="from-stock"
+            className={cn(
+              "flex w-full min-w-0 !min-h-0 h-[140px] justify-center p-3 rounded-[var(--radius-md)] bg-[var(--white)] border border-[var(--gray-100)] items-center",
+              className,
+            )}
+            style={incomingStyle}
+            aria-label={typeof itemName === "string" ? itemName : undefined}
+            {...restProps}
+          >
+            <div className="relative flex min-h-[116px] min-w-0 flex-1 flex-col items-center gap-2">
+              {/* Sneeuwvlok linksboven i.p.v. checkbox */}
+              <div className="absolute inset-x-0 top-0 z-[1] flex items-start justify-between">
+                <div className="flex h-8 w-8 items-start justify-start">
+                  <FreezeIcon />
+                </div>
+                <span className="size-8" aria-hidden />
+              </div>
+
+              {itemThumbnail != null ? (
+                <div className={cn(gridTileThumbClass, "opacity-20")}>
+                  {itemThumbnail}
+                </div>
+              ) : (
+                <div className={gridTileFallbackClass} aria-hidden>
+                  <span
+                    className="pointer-events-none inline-block size-12 bg-[var(--gray-200)]"
+                    style={{
+                      WebkitMaskImage: 'url("/icons/shopping_bag.svg")',
+                      maskImage: 'url("/icons/shopping_bag.svg")',
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                      WebkitMaskPosition: "center",
+                      maskPosition: "center",
+                    }}
+                  />
+                </div>
+              )}
+
+              <div className="flex h-[44px] w-full flex-col items-center text-center">
+                <span className="w-full truncate text-base font-medium leading-24 tracking-normal line-through text-[var(--gray-400)]">
+                  {itemName}
+                </span>
+                {quantity != null && (
+                  <span className="w-full text-sm font-normal leading-20 tracking-normal line-through text-[var(--gray-400)]">
+                    {quantity}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div
           ref={ref}
