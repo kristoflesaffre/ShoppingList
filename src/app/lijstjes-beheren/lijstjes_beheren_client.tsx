@@ -296,6 +296,9 @@ export function LijstjesBeherenClient({
             ? sharedName
             : null,
         isMasterTemplate: isMaster,
+        customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
+          ? (l as Record<string, unknown>).customIconUrl as string
+          : null,
       };
     });
 
@@ -342,6 +345,9 @@ export function LijstjesBeherenClient({
             ? storeLogosFromListIcon(effectiveStoreIcon2)
             : [],
           isMasterTemplate: isMaster,
+          customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
+            ? (l as Record<string, unknown>).customIconUrl as string
+            : null,
         };
       });
 

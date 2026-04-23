@@ -25,6 +25,7 @@ export type HomeOverviewList = {
   sharedWithFirstName: string | null;
   storeLogos: string[];
   isMasterTemplate: boolean;
+  customIconUrl?: string | null;
 };
 
 function itemCountLabel(count: number): string {
@@ -80,12 +81,12 @@ function SortableListCard({
       icon={
         // eslint-disable-next-line @next/next/no-img-element -- lokale webp
         <img
-          src={homeListCardIconSrc(list)}
+          src={list.customIconUrl ?? homeListCardIconSrc(list)}
           alt=""
           width={48}
           height={48}
           decoding="async"
-          className="object-contain"
+          className={list.customIconUrl ? "size-full rounded-[var(--radius-md)] object-cover" : "object-contain"}
         />
       }
       state={isEditableChrome ? "editable" : "default"}
@@ -186,12 +187,12 @@ function StaticDisplayListRow({
       icon={
         // eslint-disable-next-line @next/next/no-img-element -- lokale webp
         <img
-          src={homeListCardIconSrc(list)}
+          src={list.customIconUrl ?? homeListCardIconSrc(list)}
           alt=""
           width={48}
           height={48}
           decoding="async"
-          className="object-contain"
+          className={list.customIconUrl ? "size-full rounded-[var(--radius-md)] object-cover" : "object-contain"}
         />
       }
       state="default"

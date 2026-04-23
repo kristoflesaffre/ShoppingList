@@ -152,7 +152,7 @@ function ChevronDownIcon({ expanded }: { expanded: boolean }) {
 function LooseIngredientPhotoGrid({
   ingredients,
 }: {
-  ingredients: { name: string; quantity: string }[];
+  ingredients: { name: string; quantity: string; photoUrl?: string | null }[];
 }) {
   const getPhotoUrl = useItemPhotoUrl();
   if (ingredients.length === 0) return null;
@@ -160,7 +160,7 @@ function LooseIngredientPhotoGrid({
     <div className="py-3">
       <div className="grid w-full grid-cols-3 gap-x-4 gap-y-6 lg:grid-cols-6">
         {ingredients.map((ing, i) => {
-          const photoUrl = getPhotoUrl(ing.name);
+          const photoUrl = ing.photoUrl ?? getPhotoUrl(ing.name);
           return (
             <div key={i} className="flex min-w-0 flex-col items-center gap-2">
               <div className="relative aspect-square w-full overflow-hidden rounded-sm">

@@ -46,6 +46,7 @@ import {
   type DayEntry,
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
+import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -115,6 +116,8 @@ type HomeList = {
   storeLogos: string[];
   /** Master-template (niet: weeklijst met winkel-logo). */
   isMasterTemplate: boolean;
+  /** Eigen geüploade foto als lijstjedicoon. */
+  customIconUrl?: string | null;
 };
 
 function itemCountLabel(count: number): string {
@@ -295,7 +298,7 @@ function HomeLoyaltyCardsSwimlane({ cards }: { cards: HomeLoyaltyCard[] }) {
 function HomeCalendarIngredientPhotos({
   ingredients,
 }: {
-  ingredients: { name: string; quantity: string }[];
+  ingredients: { name: string; quantity: string; photoUrl?: string | null }[];
 }) {
   const getPhotoUrl = useItemPhotoUrl(320);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -315,7 +318,7 @@ function HomeCalendarIngredientPhotos({
   }, []);
 
   const photosWithUrl = ingredients
-    .map((ing) => ({ name: ing.name, url: getPhotoUrl(ing.name) }))
+    .map((ing) => ({ name: ing.name, url: ing.photoUrl ?? getPhotoUrl(ing.name) }))
     .filter((p) => p.url != null);
   const visiblePhotos = photosWithUrl.slice(0, maxPhotos);
   const overflowCount = Math.max(0, photosWithUrl.length - maxPhotos);
@@ -364,6 +367,9 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
 
   const firstMeal = entry.meals[0] ?? null;
   const hasOnlyLooseIngredients = firstMeal === null && entry.looseIngredients.length > 0;
+  const firstStockItem = hasOnlyLooseIngredients
+    ? (entry.looseIngredients.find((i) => i.fromStock && i.photoUrl) ?? null)
+    : null;
 
   const href =
     firstMeal?.recipeId != null
@@ -386,7 +392,51 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
           </p>
         </div>
 
-        {hasOnlyLooseIngredients ? (
+        {firstStockItem ? (
+          /* Figma 1216:11859: diepvries-item — foto met sneeuwvlok-badge + naam + hoeveelheid */
+          <>
+            <div className="relative shrink-0 size-10">
+              {/* eslint-disable-next-line @next/next/no-img-element -- stockPhotoUrl */}
+              <img
+                src={firstStockItem.photoUrl!}
+                alt=""
+                width={40}
+                height={40}
+                decoding="async"
+                loading="lazy"
+                className="size-full rounded-full object-cover"
+                aria-hidden
+              />
+              {/* Sneeuwvlok-badge rechtsboven (Figma 1216:12097) */}
+              <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-[var(--white)] shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
+                <span
+                  className="inline-block size-[11px] bg-[var(--blue-500)]"
+                  style={{
+                    WebkitMaskImage: "url(/icons/freeze.svg)",
+                    maskImage: "url(/icons/freeze.svg)",
+                    WebkitMaskSize: "contain",
+                    maskSize: "contain",
+                    WebkitMaskRepeat: "no-repeat",
+                    maskRepeat: "no-repeat",
+                    WebkitMaskPosition: "center",
+                    maskPosition: "center",
+                  }}
+                  aria-hidden
+                />
+              </span>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <p className="truncate text-base font-medium leading-6 text-[var(--gray-900)]">
+                {firstStockItem.name}
+              </p>
+              {firstStockItem.quantity ? (
+                <p className="truncate text-xs leading-5 text-[var(--gray-400)]">
+                  {firstStockItem.quantity}
+                </p>
+              ) : null}
+            </div>
+          </>
+        ) : hasOnlyLooseIngredients ? (
           /* Figma 1135:7448: rij van ingrediëntenfoto's met overflow */
           <HomeCalendarIngredientPhotos ingredients={entry.looseIngredients} />
         ) : (
@@ -709,12 +759,12 @@ function HomeStaticListSections({
       icon={
         // eslint-disable-next-line @next/next/no-img-element -- lokale webp
         <img
-          src={homeListCardIconSrc(list)}
+          src={list.customIconUrl ?? homeListCardIconSrc(list)}
           alt=""
           width={48}
           height={48}
           decoding="async"
-          className="object-contain"
+          className={list.customIconUrl ? "size-full rounded-[var(--radius-md)] object-cover" : "object-contain"}
         />
       }
       state="default"
@@ -1018,6 +1068,9 @@ export default function Home() {
         storeLogos: isFromMaster ? storeLogosFromListIcon(effectiveStoreIcon) : [],
         sharedWithFirstName: isMaster ? null : hasOtherMembers ? sharedName : null,
         isMasterTemplate: isMaster,
+        customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
+          ? (l as Record<string, unknown>).customIconUrl as string
+          : null,
       };
     });
 
@@ -1060,6 +1113,9 @@ export default function Home() {
           sharedWithFirstName: isMaster || isFromMaster ? null : ownerFirst,
           storeLogos: isFromMaster ? storeLogosFromListIcon(effectiveStoreIcon2) : [],
           isMasterTemplate: isMaster,
+          customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
+            ? (l as Record<string, unknown>).customIconUrl as string
+            : null,
         };
       });
 
@@ -1206,6 +1262,8 @@ export default function Home() {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newListName, setNewListName] = React.useState("");
+  const [newListCustomIcon, setNewListCustomIcon] = React.useState<string | null>(null);
+  const newListPhotoInputRef = React.useRef<HTMLInputElement>(null);
   const [quickMasterListName, setQuickMasterListName] = React.useState("");
   const [quickMasterId, setQuickMasterId] = React.useState<string | null>(null);
   const [isQuickMasterModalOpen, setIsQuickMasterModalOpen] = React.useState(false);
@@ -1237,13 +1295,30 @@ export default function Home() {
   const handleCloseCreateModal = React.useCallback(() => {
     setIsCreateModalOpen(false);
     setNewListName("");
+    setNewListCustomIcon(null);
   }, []);
 
   const handleOpenCreateModal = () => {
     setNewListName(defaultNewListName(new Date(), lists.map((l) => l.name)));
     setNewListFormKey((k) => k + 1);
+    setNewListCustomIcon(null);
     setIsCreateModalOpen(true);
   };
+
+  const handleNewListPhotoChange = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file?.type.startsWith("image/")) return;
+      try {
+        const dataUrl = await fileToAvatarDataUrl(file);
+        setNewListCustomIcon(dataUrl);
+      } catch {
+        // negeer compressiefouten stilzwijgend
+      }
+    },
+    [],
+  );
 
   const handleCloseQuickMasterModal = React.useCallback(() => {
     setIsQuickMasterModalOpen(false);
@@ -1316,12 +1391,13 @@ export default function Home() {
             lists.length > 0 ? Math.min(...lists.map((l) => l.order)) - 1 : 0,
           ownerId: user.id,
           isMasterTemplate: false,
+          ...(newListCustomIcon ? { customIconUrl: newListCustomIcon } : {}),
         }),
       );
       setAddingId(newId);
       handleCloseCreateModal();
     },
-    [user, lists, router, handleCloseCreateModal],
+    [user, lists, router, handleCloseCreateModal, newListCustomIcon],
   );
 
   if (authLoading || !user || isLoading) {
@@ -1500,15 +1576,67 @@ export default function Home() {
           onSubmit={handleNewListFormSubmit}
           className="flex w-full flex-col items-center gap-8"
         >
-          <InputField
-            label="Naam lijstje"
-            placeholder="Naam lijstje"
-            name="newListName"
-            value={newListName}
-            autoComplete="off"
-            onChange={(e) => setNewListName(e.target.value)}
-            onFocus={selectListNameInputOnFocus}
-          />
+          <div className="flex w-full flex-col gap-2">
+            <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">Naam lijstje</label>
+            <div className="flex w-full items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  name="newListName"
+                  value={newListName}
+                  autoComplete="off"
+                  onChange={(e) => setNewListName(e.target.value)}
+                  onFocus={selectListNameInputOnFocus}
+                  placeholder="Naam lijstje"
+                  className={cn(
+                    "flex h-12 w-full rounded-md border border-[var(--border-default)] bg-[var(--white)] px-4 text-base leading-24 tracking-normal text-[var(--text-primary)] transition-colors placeholder:text-[var(--text-placeholder)] focus-visible:outline-none focus-visible:border-[var(--border-focus)]",
+                    !newListCustomIcon && "pr-12",
+                  )}
+                />
+                {!newListCustomIcon ? (
+                  <button
+                    type="button"
+                    aria-label="Foto kiezen voor icoon"
+                    onClick={() => newListPhotoInputRef.current?.click()}
+                    className="absolute right-3 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center"
+                  >
+                    <span
+                      aria-hidden
+                      className="inline-block size-6 bg-[var(--blue-500)]"
+                      style={{
+                        WebkitMaskImage: "url(/icons/camera.svg)",
+                        maskImage: "url(/icons/camera.svg)",
+                        WebkitMaskSize: "contain",
+                        maskSize: "contain",
+                        WebkitMaskRepeat: "no-repeat",
+                        maskRepeat: "no-repeat",
+                        WebkitMaskPosition: "center",
+                        maskPosition: "center",
+                      }}
+                    />
+                  </button>
+                ) : null}
+              </div>
+              {newListCustomIcon ? (
+                <button
+                  type="button"
+                  aria-label="Icoon verwijderen"
+                  onClick={() => setNewListCustomIcon(null)}
+                  className="relative shrink-0 size-12 overflow-hidden rounded-[var(--radius-md)]"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={newListCustomIcon} alt="" className="size-full object-cover" />
+                </button>
+              ) : null}
+            </div>
+            <input
+              ref={newListPhotoInputRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              tabIndex={-1}
+              onChange={handleNewListPhotoChange}
+            />
+          </div>
           <div
             role="radiogroup"
             aria-label="Soort lijstje"

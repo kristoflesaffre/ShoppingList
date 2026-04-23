@@ -16,7 +16,7 @@ export type DayEntry = {
   date: Date;
   meals: CalendarMeal[];
   /** Items in een dagnaam-sectie zonder recipeGroupId. */
-  looseIngredients: { name: string; quantity: string }[];
+  looseIngredients: { name: string; quantity: string; photoUrl?: string | null; fromStock?: boolean }[];
 };
 
 export function dayEntryHasContent(entry: DayEntry | undefined): boolean {
@@ -90,6 +90,8 @@ type AnyItem = {
   section?: string | null;
   recipeGroupId?: string | null;
   recipeName?: string | null;
+  fromStock?: boolean | null;
+  stockPhotoUrl?: string | null;
 };
 
 type AnyList = {
@@ -164,6 +166,8 @@ export function buildCalendarEntries(
         entry.looseIngredients.push({
           name: item.name,
           quantity: item.quantity,
+          photoUrl: item.fromStock && item.stockPhotoUrl ? item.stockPhotoUrl : null,
+          fromStock: item.fromStock === true || undefined,
         });
       }
     }

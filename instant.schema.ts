@@ -28,6 +28,8 @@ const schema = i.schema({
        * Ontbreekt → standaordvolgorde uit ingredient_categories.json.
        */
       masterCategoryOrderJson: i.string().optional(),
+      /** Eigen geüploade foto als lijstjedicoon (base64 JPEG data-URL). */
+      customIconUrl: i.string().optional(),
       /**
        * Week-/boodschappenlijst vanuit een master: id van die master-template.
        * Gebruikt o.a. om `masterCategoryOrderJson` van de master te volgen bij groepering per categorie.

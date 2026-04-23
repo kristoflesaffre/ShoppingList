@@ -87,7 +87,8 @@ export function parseCalendarWeekListTitle(name: string): {
 export function selectListNameInputOnFocus(
   e: FocusEvent<HTMLInputElement>,
 ): void {
+  const el = e.currentTarget;
   requestAnimationFrame(() => {
-    e.currentTarget.select();
+    el?.select();
   });
 }

@@ -5,9 +5,13 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
+import { InputField } from "@/components/ui/input_field";
+import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import { isIPhoneDevice } from "@/lib/utils";
+import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
+import { selectListNameInputOnFocus } from "@/lib/list-default-name";
 
 const ShareListModal = dynamic(
   () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
@@ -83,6 +87,15 @@ export default function LijstInstellingenPage() {
 
   const [shareModalOpen, setShareModalOpen] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
+
+  // Naam wijzigen
+  const [nameEditMode, setNameEditMode] = React.useState(false);
+  const [nameInput, setNameInput] = React.useState("");
+  const [nameSaving, setNameSaving] = React.useState(false);
+
+  // Foto wijzigen
+  const photoInputRef = React.useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = React.useState(false);
 
   React.useEffect(() => {
     if (!shareModalOpen || !isListOwner || !listId || !user) return;
@@ -160,6 +173,41 @@ export default function LijstInstellingenPage() {
     }
   }, [listData, isListOwner, listId, user, router]);
 
+  const handleOpenNameEdit = React.useCallback(() => {
+    setNameInput(String(listData?.name ?? "").trim());
+    setNameEditMode(true);
+  }, [listData?.name]);
+
+  const handleSaveName = React.useCallback(async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed || !listId) return;
+    setNameSaving(true);
+    try {
+      await db.transact(db.tx.lists[listId].update({ name: trimmed }));
+      setNameEditMode(false);
+    } finally {
+      setNameSaving(false);
+    }
+  }, [nameInput, listId]);
+
+  const handlePhotoChange = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file?.type.startsWith("image/") || !listId) return;
+      setPhotoUploading(true);
+      try {
+        const dataUrl = await fileToAvatarDataUrl(file);
+        await db.transact(
+          db.tx.lists[listId].update({ customIconUrl: dataUrl }),
+        );
+      } finally {
+        setPhotoUploading(false);
+      }
+    },
+    [listId],
+  );
+
   if (authLoading || !user || isLoading) {
     return <PageSpinner surface="white" />;
   }
@@ -198,6 +246,10 @@ export default function LijstInstellingenPage() {
 
   const listName = String(listData.name ?? "Lijstje");
   const isMaster = listIsMasterTemplate(listData);
+  const customIconUrl =
+    typeof (listData as Record<string, unknown>).customIconUrl === "string"
+      ? ((listData as Record<string, unknown>).customIconUrl as string)
+      : null;
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col">
@@ -217,9 +269,43 @@ export default function LijstInstellingenPage() {
       </div>
 
       <main className="mx-auto w-full max-w-[956px] flex-1 px-[var(--space-4)] pb-[calc(48px+env(safe-area-inset-bottom,0px))] pt-[calc(72px+env(safe-area-inset-top,0px))]">
-        <p className="text-base font-medium leading-24 text-text-primary">
-          {listName}
-        </p>
+        {nameEditMode ? (
+          <div className="flex flex-col gap-3">
+            <InputField
+              label="Naam lijstje"
+              value={nameInput}
+              autoComplete="off"
+              autoFocus
+              onChange={(e) => setNameInput(e.target.value)}
+              onFocus={selectListNameInputOnFocus}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleSaveName();
+                if (e.key === "Escape") setNameEditMode(false);
+              }}
+            />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="primary"
+                disabled={!nameInput.trim() || nameSaving}
+                onClick={() => void handleSaveName()}
+              >
+                {nameSaving ? "Bewaren…" : "Bewaren"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setNameEditMode(false)}
+              >
+                Annuleren
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-base font-medium leading-24 text-text-primary">
+            {listName}
+          </p>
+        )}
         {isMaster ? (
           <p className="mt-1 text-sm leading-20 text-[var(--text-tertiary)]">
             Favorietenlijst — items hier zijn templates voor nieuwe weeklijstjes.
@@ -227,6 +313,63 @@ export default function LijstInstellingenPage() {
         ) : null}
 
         <ul className="mt-10 flex flex-col gap-3">
+          {isListOwner ? (
+            <li>
+              <button
+                type="button"
+                onClick={handleOpenNameEdit}
+                className="flex w-full items-center justify-between gap-4 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-4 py-4 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+              >
+                <span className="text-base font-medium leading-24 text-text-primary">
+                  Naam wijzigen
+                </span>
+                <span className="text-sm text-text-link" aria-hidden>
+                  ›
+                </span>
+              </button>
+            </li>
+          ) : null}
+          {isListOwner ? (
+            <li>
+              <button
+                type="button"
+                disabled={photoUploading}
+                onClick={() => photoInputRef.current?.click()}
+                className="flex w-full items-center justify-between gap-4 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-4 py-4 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {customIconUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={customIconUrl}
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="size-10 shrink-0 rounded-[var(--radius-md)] object-cover"
+                    />
+                  ) : null}
+                  <span className="text-base font-medium leading-24 text-text-primary">
+                    {photoUploading
+                      ? "Uploaden…"
+                      : customIconUrl
+                        ? "Foto wijzigen"
+                        : "Foto toevoegen"}
+                  </span>
+                </div>
+                <span className="text-sm text-text-link" aria-hidden>
+                  ›
+                </span>
+              </button>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                tabIndex={-1}
+                onChange={handlePhotoChange}
+              />
+            </li>
+          ) : null}
           {isListOwner ? (
             <li>
               <button
