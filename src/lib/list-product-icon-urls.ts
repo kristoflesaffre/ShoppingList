@@ -32,6 +32,7 @@ export const ALL_LIST_PRODUCT_ICON_URLS = [
   "/images/ui/product_icons/ei_240.webp",
   "/images/ui/product_icons/energiedrank_240.webp",
   "/images/ui/product_icons/framboos_240.webp",
+  "/images/ui/product_icons/frieten_240.webp",
   "/images/ui/product_icons/glasreiniger_240.webp",
   "/images/ui/product_icons/handzeep_240.webp",
   "/images/ui/product_icons/ijsje_240.webp",

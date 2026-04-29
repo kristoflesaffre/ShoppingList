@@ -1308,6 +1308,7 @@ export default function Home() {
       mine.map((l) => ({
         id: String(l.id),
         icon: typeof l.icon === "string" ? l.icon : "",
+        name: String((l as Record<string, unknown>).name ?? ""),
         isMasterTemplate: listIsMasterTemplate(l),
       })),
     );
@@ -1430,7 +1431,7 @@ export default function Home() {
         return;
       }
       const listName = name;
-      const icon = pickListProductIconForNewList(lists);
+      const icon = pickListProductIconForNewList(lists, name);
       const now = new Date();
       const nowIso = now.toISOString();
       const newId = iid();

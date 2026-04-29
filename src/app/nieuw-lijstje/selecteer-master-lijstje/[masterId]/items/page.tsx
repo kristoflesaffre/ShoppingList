@@ -554,7 +554,7 @@ export default function SelecteerMasterItemsPage() {
     const myLists = (data?.lists ?? []) as any[];
     const now = new Date();
     const newId = iid();
-    const icon = pickListProductIconForNewList(myLists);
+    const icon = pickListProductIconForNewList(myLists, listName);
     const order =
       myLists.length > 0
         ? Math.min(

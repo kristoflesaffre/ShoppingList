@@ -10,6 +10,24 @@ const POOL = [...ALL_LIST_PRODUCT_ICON_URLS] as readonly string[];
 
 export const LIST_PRODUCT_ICON_URL_SET = new Set<string>(POOL);
 
+/** Lijstnaam → vast product-icoon (pool-URL, _240). */
+export const FRIETEN_LIST_PRODUCT_ICON_URL =
+  "/images/ui/product_icons/frieten_240.webp" as const;
+
+/**
+ * Bepaalt of een lijstnaam een vast decor-icoon verdient (los van willekeurige pool-keuze).
+ * Alleen exacte match op trim + lowercase.
+ */
+export function listProductIconUrlFromListName(
+  name: string | null | undefined,
+): string | null {
+  const key = name?.trim().toLowerCase() ?? "";
+  if (key === "frieten" || key === "frietjes") {
+    return FRIETEN_LIST_PRODUCT_ICON_URL;
+  }
+  return null;
+}
+
 export function isLegacyFoodListDecorIcon(src: string | null | undefined): boolean {
   if (!src) return false;
   return src.includes("/images/ui/food/");
@@ -91,7 +109,10 @@ export function pickLeastUsedListProductIconFromPeers(
 /** Nieuw lijstje: minst gebruikte icoon t.o.v. bestaande lijsten (incl. gedeelde pool). */
 export function pickListProductIconForNewList<T extends { id: string; icon?: string | null }>(
   existingLists: readonly T[],
+  listName?: string | null,
 ): string {
+  const fromName = listProductIconUrlFromListName(listName);
+  if (fromName) return fromName;
   return pickLeastUsedListProductIconFromPeers(existingLists);
 }
 
@@ -119,6 +140,7 @@ export function planOwnerListDecorIconUpdates(
     id: string;
     icon?: string | null;
     isMasterTemplate: boolean;
+    name?: string | null;
   }[],
 ): Array<{ listId: string; nextIcon: string }> {
   const eligible = ownedLists.filter((l) =>
@@ -132,6 +154,12 @@ export function planOwnerListDecorIconUpdates(
 
   const assigned = new Map<string, string>();
   for (const l of sorted) {
+    const named = listProductIconUrlFromListName(l.name);
+    if (named) {
+      assigned.set(l.id, named);
+      counts.set(named, (counts.get(named) ?? 0) + 1);
+      continue;
+    }
     let best = POOL[0] as string;
     let bestC = counts.get(best) ?? 0;
     for (const u of POOL) {
@@ -161,7 +189,10 @@ export function homeListCardIconSrc(list: {
   id: string;
   icon: string;
   displayVariant: string;
+  name?: string | null;
 }): string {
+  const named = listProductIconUrlFromListName(list.name);
+  if (named) return named;
   const raw = list.icon?.trim() ?? "";
   const poolHit = canonicalListProductIcon240(raw);
   if (poolHit) return poolHit;

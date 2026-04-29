@@ -379,6 +379,7 @@ export function LijstjesBeherenClient({
       mine.map((l) => ({
         id: String(l.id),
         icon: typeof l.icon === "string" ? l.icon : "",
+        name: String((l as Record<string, unknown>).name ?? ""),
         isMasterTemplate: listIsMasterTemplate(l),
       })),
     );
