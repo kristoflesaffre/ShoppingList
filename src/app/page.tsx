@@ -70,7 +70,7 @@ function NewListKindFormOption({
   icon?: React.ReactNode;
 }) {
   return (
-    <label className="flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md focus-within:outline-none focus-within:ring-2 focus-within:ring-border-focus focus-within:ring-offset-2">
+    <label className="flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md">
       <input
         type="radio"
         name="newListKind"
@@ -80,7 +80,7 @@ function NewListKindFormOption({
       />
       <span
         className={cn(
-          "inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--blue-200)] bg-[var(--white)] transition-colors",
+          "inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--blue-200)] bg-[var(--white)] transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-border-focus",
           "peer-checked:border-action-primary peer-checked:[&>span]:opacity-100",
         )}
         aria-hidden
@@ -118,6 +118,13 @@ type HomeList = {
   isMasterTemplate: boolean;
   /** Eigen geüploade foto als lijstjedicoon. */
   customIconUrl?: string | null;
+};
+
+type SavedListIconImage = {
+  id: string | null;
+  imageDataUrl: string;
+  createdAtIso: string;
+  lastUsedAtIso: string;
 };
 
 function itemCountLabel(count: number): string {
@@ -959,6 +966,9 @@ export default function Home() {
     loyaltyCards: {
       $: { where: { ownerId } },
     },
+    listIconImages: {
+      $: { where: { ownerId } },
+    },
     recipes: {},
     freezerItems: {},
   });
@@ -1133,6 +1143,53 @@ export default function Home() {
     );
   }, [data, user?.id, shareFirstNameByUserId]);
 
+  const savedListIconImages = React.useMemo((): SavedListIconImage[] => {
+    const byDataUrl = new Map<string, SavedListIconImage>();
+    const rawLibrary = (data as { listIconImages?: unknown[] } | undefined)
+      ?.listIconImages;
+
+    if (Array.isArray(rawLibrary)) {
+      for (const row of rawLibrary) {
+        if (!row || typeof row !== "object") continue;
+        const r = row as {
+          id?: unknown;
+          imageDataUrl?: unknown;
+          createdAtIso?: unknown;
+          lastUsedAtIso?: unknown;
+        };
+        if (typeof r.imageDataUrl !== "string" || r.imageDataUrl.length === 0) {
+          continue;
+        }
+        byDataUrl.set(r.imageDataUrl, {
+          id: typeof r.id === "string" ? r.id : null,
+          imageDataUrl: r.imageDataUrl,
+          createdAtIso:
+            typeof r.createdAtIso === "string" ? r.createdAtIso : "",
+          lastUsedAtIso:
+            typeof r.lastUsedAtIso === "string" ? r.lastUsedAtIso : "",
+        });
+      }
+    }
+
+    // Backfill-achtig: ook oude lijstjes zonder bibliotheekrecord blijven herbruikbaar.
+    for (const list of lists) {
+      const imageDataUrl = list.customIconUrl;
+      if (!imageDataUrl || byDataUrl.has(imageDataUrl)) continue;
+      byDataUrl.set(imageDataUrl, {
+        id: null,
+        imageDataUrl,
+        createdAtIso: "",
+        lastUsedAtIso: "",
+      });
+    }
+
+    return Array.from(byDataUrl.values()).sort((a, b) =>
+      (b.lastUsedAtIso || b.createdAtIso).localeCompare(
+        a.lastUsedAtIso || a.createdAtIso,
+      ),
+    );
+  }, [data, lists]);
+
   /** Klantenkaarten voor de swimlane op de startpagina: afgeleid van winkelicons (zelfde logica als /klantenkaarten). */
   const homeLoyaltyCards: HomeLoyaltyCard[] = React.useMemo(() => {
     const seenId = new Set<string>();
@@ -1263,6 +1320,7 @@ export default function Home() {
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newListName, setNewListName] = React.useState("");
   const [newListCustomIcon, setNewListCustomIcon] = React.useState<string | null>(null);
+  const [newListIconPickerOpen, setNewListIconPickerOpen] = React.useState(false);
   const newListPhotoInputRef = React.useRef<HTMLInputElement>(null);
   const [quickMasterListName, setQuickMasterListName] = React.useState("");
   const [quickMasterId, setQuickMasterId] = React.useState<string | null>(null);
@@ -1296,12 +1354,14 @@ export default function Home() {
     setIsCreateModalOpen(false);
     setNewListName("");
     setNewListCustomIcon(null);
+    setNewListIconPickerOpen(false);
   }, []);
 
   const handleOpenCreateModal = () => {
     setNewListName(defaultNewListName(new Date(), lists.map((l) => l.name)));
     setNewListFormKey((k) => k + 1);
     setNewListCustomIcon(null);
+    setNewListIconPickerOpen(false);
     setIsCreateModalOpen(true);
   };
 
@@ -1313,6 +1373,7 @@ export default function Home() {
       try {
         const dataUrl = await fileToAvatarDataUrl(file);
         setNewListCustomIcon(dataUrl);
+        setNewListIconPickerOpen(false);
       } catch {
         // negeer compressiefouten stilzwijgend
       }
@@ -1371,8 +1432,9 @@ export default function Home() {
       const listName = name;
       const icon = pickListProductIconForNewList(lists);
       const now = new Date();
+      const nowIso = now.toISOString();
       const newId = iid();
-      db.transact(
+      const txs: Parameters<typeof db.transact>[0] = [
         db.tx.lists[newId].update({
           name: listName,
           date: now.toLocaleDateString("nl-NL"),
@@ -1383,11 +1445,40 @@ export default function Home() {
           isMasterTemplate: false,
           ...(newListCustomIcon ? { customIconUrl: newListCustomIcon } : {}),
         }),
-      );
+      ];
+      if (newListCustomIcon) {
+        const existingIcon = savedListIconImages.find(
+          (img) => img.imageDataUrl === newListCustomIcon && img.id,
+        );
+        if (existingIcon?.id) {
+          txs.push(
+            db.tx.listIconImages[existingIcon.id].update({
+              lastUsedAtIso: nowIso,
+            }),
+          );
+        } else {
+          txs.push(
+            db.tx.listIconImages[iid()].update({
+              ownerId: user.id,
+              imageDataUrl: newListCustomIcon,
+              createdAtIso: nowIso,
+              lastUsedAtIso: nowIso,
+            }),
+          );
+        }
+      }
+      db.transact(txs as Parameters<typeof db.transact>[0]);
       setAddingId(newId);
       handleCloseCreateModal();
     },
-    [user, lists, router, handleCloseCreateModal, newListCustomIcon],
+    [
+      user,
+      lists,
+      router,
+      handleCloseCreateModal,
+      newListCustomIcon,
+      savedListIconImages,
+    ],
   );
 
   if (authLoading || !user || isLoading) {
@@ -1549,6 +1640,7 @@ export default function Home() {
         open={isCreateModalOpen}
         onClose={handleCloseCreateModal}
         title="Nieuw lijstje"
+        disableEscapeClose={newListIconPickerOpen}
         footer={
           <Button
             type="submit"
@@ -1585,8 +1677,9 @@ export default function Home() {
                 {!newListCustomIcon ? (
                   <button
                     type="button"
-                    aria-label="Foto kiezen voor icoon"
-                    onClick={() => newListPhotoInputRef.current?.click()}
+                    aria-label="Afbeeldingopties openen"
+                    aria-expanded={newListIconPickerOpen}
+                    onClick={() => setNewListIconPickerOpen((open) => !open)}
                     className="absolute right-3 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center"
                   >
                     <span
@@ -1609,8 +1702,9 @@ export default function Home() {
               {newListCustomIcon ? (
                 <button
                   type="button"
-                  aria-label="Icoon wijzigen"
-                  onClick={() => newListPhotoInputRef.current?.click()}
+                  aria-label="Afbeeldingopties openen"
+                  aria-expanded={newListIconPickerOpen}
+                  onClick={() => setNewListIconPickerOpen((open) => !open)}
                   className="relative shrink-0 size-12 overflow-hidden rounded-[var(--radius-md)]"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1647,6 +1741,86 @@ export default function Home() {
             />
           </div>
         </form>
+      </SlideInModal>
+
+      <SlideInModal
+        open={newListIconPickerOpen}
+        onClose={() => setNewListIconPickerOpen(false)}
+        title="Afbeelding kiezen"
+        titleId="new-list-icon-picker-slide-title"
+        containerClassName="z-[60]"
+        className="pb-0"
+      >
+        <div className="flex w-full flex-col gap-6">
+          <button
+            type="button"
+            onClick={() => newListPhotoInputRef.current?.click()}
+            className="w-full bg-transparent p-0 text-left"
+          >
+            <SelectTile
+              title="Nieuwe foto"
+              subtitle="Maak een foto of kies uit je galerij"
+              icon={<IconPrimaryMask src="/icons/camera.svg" />}
+            />
+          </button>
+
+          {savedListIconImages.length > 0 ? (
+            <section className="flex w-full flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+                  Eerder gebruikt
+                </h3>
+                <p className="text-sm font-normal leading-20 tracking-normal text-[var(--text-secondary)]">
+                  Kies snel een afbeelding die je al eens hebt gebruikt.
+                </p>
+              </div>
+              <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
+                {savedListIconImages.map((image) => {
+                  const isSelected = newListCustomIcon === image.imageDataUrl;
+                  return (
+                    <button
+                      key={image.id ?? image.imageDataUrl}
+                      type="button"
+                      aria-label="Eerder gebruikte afbeelding kiezen"
+                      aria-pressed={isSelected}
+                      onClick={() => {
+                        setNewListCustomIcon(image.imageDataUrl);
+                        setNewListIconPickerOpen(false);
+                      }}
+                      className={cn(
+                        "relative aspect-square w-full overflow-hidden rounded-[var(--radius-md)] border bg-[var(--white)] shadow-drop transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
+                        isSelected
+                          ? "border-action-primary ring-2 ring-action-primary"
+                          : "border-[var(--border-default)]",
+                      )}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={image.imageDataUrl}
+                        alt=""
+                        className="size-full object-cover"
+                        loading="lazy"
+                      />
+                      {isSelected ? (
+                        <span
+                          aria-hidden
+                          className="absolute right-1 top-1 size-4 rounded-full bg-action-primary ring-2 ring-[var(--white)]"
+                        />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ) : (
+            <div className="rounded-[var(--radius-md)] bg-[var(--blue-25)] px-4 py-3">
+              <p className="text-sm font-normal leading-20 tracking-normal text-[var(--text-secondary)]">
+                Je hebt nog geen eerder gebruikte afbeeldingen. Voeg eerst een
+                nieuwe foto toe.
+              </p>
+            </div>
+          )}
+        </div>
       </SlideInModal>
 
       <SlideInModal

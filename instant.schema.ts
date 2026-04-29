@@ -115,6 +115,15 @@ const schema = i.schema({
       passwordSalt: i.string().optional(),
       avatarUrl: i.string().optional(),
     }),
+    /** Persoonlijke bibliotheek van eerder gebruikte lijst-afbeeldingen. */
+    listIconImages: i.entity({
+      /** Eigenaar (Instant auth user id). */
+      ownerId: i.string().indexed(),
+      /** Gecomprimeerde JPEG data-URL, zelfde formaat als `lists.customIconUrl`. */
+      imageDataUrl: i.string(),
+      createdAtIso: i.string().indexed(),
+      lastUsedAtIso: i.string().indexed(),
+    }),
     /** Diepvriesitem (product of gerecht) opgeslagen door een gebruiker. */
     freezerItems: i.entity({
       /** "product" of "gerecht" */
