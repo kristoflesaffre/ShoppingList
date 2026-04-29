@@ -37,6 +37,25 @@ function BackArrowIcon({ className }: { className?: string }) {
   );
 }
 
+function ChevronRightIcon() {
+  return (
+    <span
+      aria-hidden
+      className="inline-block size-6 shrink-0 bg-[var(--action-primary)]"
+      style={{
+        WebkitMaskImage: "url(/icons/chevron.svg)",
+        maskImage: "url(/icons/chevron.svg)",
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+      }}
+    />
+  );
+}
+
 const LIJSTJE_QUERY_PLACEHOLDER_ID = "__lijst_instellingen_missing__";
 
 export default function LijstInstellingenPage() {
@@ -218,10 +237,7 @@ export default function LijstInstellingenPage() {
         <p className="text-base text-[var(--error-600)]">
           {error?.message ?? "Lijstje niet gevonden."}
         </p>
-        <Link
-          href="/"
-          className="mt-4 text-sm font-medium text-text-link underline"
-        >
+        <Link href="/" className="mt-4 text-sm font-medium text-text-link underline">
           Naar overzicht
         </Link>
       </div>
@@ -234,10 +250,7 @@ export default function LijstInstellingenPage() {
         <p className="text-center text-base text-[var(--text-secondary)]">
           Je hebt geen toegang tot dit lijstje.
         </p>
-        <Link
-          href="/"
-          className="mt-4 text-sm font-medium text-text-link underline"
-        >
+        <Link href="/" className="mt-4 text-sm font-medium text-text-link underline">
           Naar overzicht
         </Link>
       </div>
@@ -252,9 +265,10 @@ export default function LijstInstellingenPage() {
       : null;
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col">
-      <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)] shadow-[0_1px_0_var(--gray-100)]">
-        <header className="relative mx-auto flex h-14 max-w-[956px] items-center gap-3 px-[var(--space-4)]">
+    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--white)]">
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
+        <header className="relative mx-auto flex h-16 max-w-[956px] items-center px-4">
           <Link
             href={`/lijstje/${encodeURIComponent(listId)}`}
             aria-label="Terug naar lijstje"
@@ -262,148 +276,148 @@ export default function LijstInstellingenPage() {
           >
             <BackArrowIcon className="size-6" />
           </Link>
-          <h1 className="min-w-0 flex-1 truncate text-section-title font-bold leading-24 text-[var(--blue-900)]">
+          <p className="flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
             Instellingen
-          </h1>
+          </p>
+          {/* Balans-spacer */}
+          <span className="size-10 shrink-0" aria-hidden />
         </header>
       </div>
 
-      <main className="mx-auto w-full max-w-[956px] flex-1 px-[var(--space-4)] pb-[calc(48px+env(safe-area-inset-bottom,0px))] pt-[calc(72px+env(safe-area-inset-top,0px))]">
-        {nameEditMode ? (
-          <div className="flex flex-col gap-3">
-            <InputField
-              label="Naam lijstje"
-              value={nameInput}
-              autoComplete="off"
-              autoFocus
-              onChange={(e) => setNameInput(e.target.value)}
-              onFocus={selectListNameInputOnFocus}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void handleSaveName();
-                if (e.key === "Escape") setNameEditMode(false);
-              }}
-            />
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="primary"
-                disabled={!nameInput.trim() || nameSaving}
-                onClick={() => void handleSaveName()}
-              >
-                {nameSaving ? "Bewaren…" : "Bewaren"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setNameEditMode(false)}
-              >
-                Annuleren
-              </Button>
+      <main className="mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(80px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+env(safe-area-inset-top,0px))]">
+        {/* Lijstnaam */}
+        <div className="pt-8">
+          {nameEditMode ? (
+            <div className="flex flex-col gap-3">
+              <InputField
+                label="Naam lijstje"
+                value={nameInput}
+                autoComplete="off"
+                autoFocus
+                onChange={(e) => setNameInput(e.target.value)}
+                onFocus={selectListNameInputOnFocus}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleSaveName();
+                  if (e.key === "Escape") setNameEditMode(false);
+                }}
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={!nameInput.trim() || nameSaving}
+                  onClick={() => void handleSaveName()}
+                >
+                  {nameSaving ? "Bewaren…" : "Bewaren"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setNameEditMode(false)}
+                >
+                  Annuleren
+                </Button>
+              </div>
             </div>
+          ) : (
+            <h1 className="text-[24px] font-bold leading-8 tracking-normal text-[var(--text-primary)]">
+              {listName}
+            </h1>
+          )}
+          {isMaster && !nameEditMode ? (
+            <p className="mt-1 text-sm leading-5 text-[var(--text-tertiary)]">
+              Favorietenlijst — items hier zijn templates voor nieuwe weeklijstjes.
+            </p>
+          ) : null}
+        </div>
+
+        {/* Acties */}
+        {isListOwner ? (
+          <div className="mt-6 flex flex-col divide-y divide-[var(--gray-100)]">
+            {/* Naam wijzigen */}
+            <button
+              type="button"
+              onClick={handleOpenNameEdit}
+              className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            >
+              <span className="flex-1 text-base font-medium leading-6 text-[var(--text-primary)]">
+                Naam wijzigen
+              </span>
+              <ChevronRightIcon />
+            </button>
+
+            {/* Foto toevoegen / wijzigen */}
+            <button
+              type="button"
+              disabled={photoUploading}
+              onClick={() => photoInputRef.current?.click()}
+              className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus disabled:opacity-50"
+            >
+              <span className="flex flex-1 items-center gap-3 min-w-0">
+                {customIconUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={customIconUrl}
+                    alt=""
+                    width={40}
+                    height={40}
+                    className="size-10 shrink-0 rounded-[var(--radius-md)] object-cover"
+                  />
+                ) : null}
+                <span className="text-base font-medium leading-6 text-[var(--text-primary)]">
+                  {photoUploading
+                    ? "Uploaden…"
+                    : customIconUrl
+                      ? "Foto wijzigen"
+                      : "Foto toevoegen"}
+                </span>
+              </span>
+              <ChevronRightIcon />
+            </button>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              tabIndex={-1}
+              onChange={handlePhotoChange}
+            />
+
+            {/* Lijstje delen */}
+            <button
+              type="button"
+              onClick={() => void handleShareInvitePress()}
+              className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            >
+              <span className="flex-1 text-base font-medium leading-6 text-[var(--text-primary)]">
+                Lijstje delen
+              </span>
+              <ChevronRightIcon />
+            </button>
           </div>
         ) : (
-          <p className="text-base font-medium leading-24 text-text-primary">
-            {listName}
+          <p className="mt-6 text-sm leading-5 text-[var(--text-secondary)]">
+            Alleen de eigenaar kan dit lijstje aanpassen of delen.
           </p>
         )}
-        {isMaster ? (
-          <p className="mt-1 text-sm leading-20 text-[var(--text-tertiary)]">
-            Favorietenlijst — items hier zijn templates voor nieuwe weeklijstjes.
-          </p>
-        ) : null}
 
-        <ul className="mt-10 flex flex-col gap-3">
-          {isListOwner ? (
-            <li>
-              <button
-                type="button"
-                onClick={handleOpenNameEdit}
-                className="flex w-full items-center justify-between gap-4 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-4 py-4 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-              >
-                <span className="text-base font-medium leading-24 text-text-primary">
-                  Naam wijzigen
-                </span>
-                <span className="text-sm text-text-link" aria-hidden>
-                  ›
-                </span>
-              </button>
-            </li>
-          ) : null}
-          {isListOwner ? (
-            <li>
-              <button
-                type="button"
-                disabled={photoUploading}
-                onClick={() => photoInputRef.current?.click()}
-                className="flex w-full items-center justify-between gap-4 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-4 py-4 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus disabled:opacity-50"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {customIconUrl ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={customIconUrl}
-                      alt=""
-                      width={40}
-                      height={40}
-                      className="size-10 shrink-0 rounded-[var(--radius-md)] object-cover"
-                    />
-                  ) : null}
-                  <span className="text-base font-medium leading-24 text-text-primary">
-                    {photoUploading
-                      ? "Uploaden…"
-                      : customIconUrl
-                        ? "Foto wijzigen"
-                        : "Foto toevoegen"}
-                  </span>
-                </div>
-                <span className="text-sm text-text-link" aria-hidden>
-                  ›
-                </span>
-              </button>
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                tabIndex={-1}
-                onChange={handlePhotoChange}
-              />
-            </li>
-          ) : null}
-          {isListOwner ? (
-            <li>
-              <button
-                type="button"
-                onClick={() => void handleShareInvitePress()}
-                className="flex w-full items-center justify-between gap-4 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-4 py-4 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-              >
-                <span className="text-base font-medium leading-24 text-text-primary">
-                  Lijstje delen
-                </span>
-                <span className="text-sm text-text-link" aria-hidden>
-                  ›
-                </span>
-              </button>
-            </li>
-          ) : null}
-          {isListOwner ? (
-            <li>
-              <button
-                type="button"
-                disabled={deleteBusy}
-                onClick={handleDeleteList}
-                className="w-full rounded-pill border border-[var(--error-300)] bg-[var(--white)] px-4 py-3 text-base font-medium leading-24 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus disabled:opacity-50"
-              >
-                {deleteBusy ? "Bezig…" : "Lijstje verwijderen"}
-              </button>
-            </li>
-          ) : (
-            <li className="rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-4 py-4 text-sm leading-20 text-[var(--text-secondary)]">
-              Alleen de eigenaar kan dit lijstje delen of verwijderen.
-            </li>
-          )}
-        </ul>
+        {/* Spacer naar onderkant */}
+        <div className="flex-1" />
       </main>
+
+      {/* Verwijder-knop onderaan */}
+      {isListOwner ? (
+        <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-[calc(24px+env(safe-area-inset-bottom,0px))] pt-4">
+          <button
+            type="button"
+            disabled={deleteBusy}
+            onClick={handleDeleteList}
+            className="w-[320px] rounded-[256px] border border-[var(--error-300)] bg-[var(--white)] px-4 py-[10px] text-base font-medium leading-6 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus disabled:opacity-50"
+          >
+            {deleteBusy ? "Bezig…" : "Lijstje verwijderen"}
+          </button>
+        </div>
+      ) : null}
 
       <ShareListModal
         open={shareModalOpen}

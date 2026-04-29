@@ -154,7 +154,7 @@ export const FromMasterSingleStore: Story = {
 /** Automatische kalendernaam: maand + weekbadge (Figma 1148:9010). */
 export const CalendarWeekTitle: Story = {
   args: {
-    listName: "April week 3",
+    listName: "April 3",
     itemCount: "6 producten",
     icon: defaultIcon,
     state: "default",

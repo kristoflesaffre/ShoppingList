@@ -50,8 +50,8 @@ import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
-/** Soort nieuw lijstje in create-modal (Figma 772:3065); bewaren gebruikt nu alleen `blank` in de DB. */
-type NewListKind = "blank" | "from_master" | "master";
+/** Soort nieuw lijstje in create-modal. */
+type NewListKind = "blank" | "from_master";
 
 const HOME_NEW_LIST_FORM_ID = "home-new-list-form";
 
@@ -1357,9 +1357,7 @@ export default function Home() {
       if (!name) return;
       const rawKind = fd.get("newListKind");
       const kind: NewListKind =
-        rawKind === "from_master" || rawKind === "master" || rawKind === "blank"
-          ? rawKind
-          : "blank";
+        rawKind === "from_master" || rawKind === "blank" ? rawKind : "blank";
 
       if (kind === "from_master") {
         router.push(
@@ -1370,14 +1368,6 @@ export default function Home() {
         handleCloseCreateModal();
         return;
       }
-      if (kind === "master") {
-        router.push(
-          `/nieuw-lijstje/selecteer-winkel?naam=${encodeURIComponent(name)}`,
-        );
-        handleCloseCreateModal();
-        return;
-      }
-
       const listName = name;
       const icon = pickListProductIconForNewList(lists);
       const now = new Date();
@@ -1554,7 +1544,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Slide-in: Nieuw lijstje (472:2235, 772:3065); master → fullscreen winkelkeuze (794:3317) */}
+      {/* Slide-in: Nieuw lijstje */}
       <SlideInModal
         open={isCreateModalOpen}
         onClose={handleCloseCreateModal}
@@ -1619,8 +1609,8 @@ export default function Home() {
               {newListCustomIcon ? (
                 <button
                   type="button"
-                  aria-label="Icoon verwijderen"
-                  onClick={() => setNewListCustomIcon(null)}
+                  aria-label="Icoon wijzigen"
+                  onClick={() => newListPhotoInputRef.current?.click()}
                   className="relative shrink-0 size-12 overflow-hidden rounded-[var(--radius-md)]"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1645,20 +1635,15 @@ export default function Home() {
             <NewListKindFormOption
               value="blank"
               defaultChecked
-              title="Lijstje"
+              title="Custom lijstje"
               subtitle="Nieuw blanco lijstje"
+              icon={<IconPrimaryMask src="/icons/list.svg" />}
             />
             <NewListKindFormOption
               value="from_master"
-              title="Lijstje van favoriet"
-              subtitle="Vertrek van een favorietenlijst (geen winkel kiezen)"
-              icon={<IconPrimaryMask src="/icons/list-from-master-list.svg" />}
-            />
-            <NewListKindFormOption
-              value="master"
-              title="Favorieten lijstje"
-              subtitle="Nieuwe template: eerst winkel kiezen"
-              icon={<IconPrimaryMask src="/icons/master-list.svg" />}
+              title="Lijstje vanuit favorieten"
+              subtitle="Vertrek van een favorietenlijstje"
+              icon={<IconPrimaryMask src="/icons/heart.svg" />}
             />
           </div>
         </form>

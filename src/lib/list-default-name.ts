@@ -17,7 +17,7 @@ const DUTCH_MONTHS = [
 
 /**
  * Week binnen de kalendermaand: dagen 1–7 = week 1, 8–14 = week 2, enz.
- * (zoals “April week 1” op 2 april.)
+ * (zoals "April 1" op 2 april.)
  */
 export function weekWithinCalendarMonth(date: Date): number {
   return Math.ceil(date.getDate() / 7);
@@ -28,7 +28,7 @@ function capitalizeDutchMonth(month: string): string {
 }
 
 /**
- * Standaardnaam voor een nieuw lijstje, bv. "Maart week 4".
+ * Standaardnaam voor een nieuw lijstje, bv. "Maart 4".
  * Als `existingNames` opgegeven is, wordt een uniek volgnummer gekozen:
  * het aantal bestaande kalender-lijstjes van dezelfde maand + 1.
  */
@@ -40,32 +40,32 @@ export function defaultNewListName(
 
   if (existingNames.length === 0) {
     const week = weekWithinCalendarMonth(date);
-    return `${month} week ${week}`;
+    return `${month} ${week}`;
   }
 
-  // Tel bestaande kalender-lijstjes van deze maand (elk patroon "{maand} week {n}").
+  // Tel bestaande kalender-lijstjes van deze maand, inclusief oude "{maand} week {n}" namen.
   const monthPattern = new RegExp(
-    `^${month}\\s+week\\s+\\d+\\s*$`,
+    `^${month}\\s+(?:week\\s+)?\\d+\\s*$`,
     "i",
   );
   const existingCount = existingNames.filter((n) =>
     monthPattern.test(n.trim()),
   ).length;
 
-  return `${month} week ${existingCount + 1}`;
+  return `${month} ${existingCount + 1}`;
 }
 
 /**
  * Herkent de automatische kalender-naam (`defaultNewListName`) voor weergave als in Figma:
  * maand als titel + weeknummer in een bol (bv. "April" + badge "3").
- * Alleen exact het patroon `{Nederlandse maand} week {n}` (na trim) wordt gesplitst.
+ * Herkent ook legacy `{Nederlandse maand} week {n}` namen.
  */
 export function parseCalendarWeekListTitle(name: string): {
   displayName: string;
   weekBadge: string | null;
 } {
   const trimmed = name.trim();
-  const m = /^(.+?)\s+week\s+(\d+)\s*$/i.exec(trimmed);
+  const m = /^(.+?)\s+(?:week\s+)?(\d+)\s*$/i.exec(trimmed);
   if (!m) {
     return { displayName: name, weekBadge: null };
   }
