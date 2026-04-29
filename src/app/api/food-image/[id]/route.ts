@@ -42,15 +42,23 @@ export async function GET(
 
     const queryResult = await adminDb.query({
       foodImages: {
-        $: { where: { ownerId } },
+        $: { where: { id: generationId } },
       },
     });
 
-    const rows = queryResult.foodImages ?? [];
-    const row = rows.find((x) => x.id === generationId);
+    const row = queryResult.foodImages?.[0];
 
-    if (!row) {
+    if (!row || row.ownerId !== ownerId) {
       return NextResponse.json({ error: "Afbeelding niet gevonden." }, { status: 404 });
+    }
+
+    const imageUrl = asString((row as Record<string, unknown>).imageUrl);
+    if (imageUrl) {
+      return NextResponse.redirect(imageUrl, {
+        headers: {
+          "Cache-Control": "private, max-age=3600",
+        },
+      });
     }
 
     const imageBase64 = asString(row.imageBase64);

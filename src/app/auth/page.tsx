@@ -19,6 +19,7 @@ function getPostAuthDestination(): string {
 }
 import { db } from "@/lib/db";
 import { fileToAvatarDataUrl, hashPasswordForProfile } from "@/lib/profile_crypto";
+import { uploadUserImageDataUrl } from "@/lib/image-storage";
 
 type AuthStep =
   | "landing"
@@ -388,11 +389,18 @@ export default function AuthPage() {
     try {
       const pid = existingProfile?.id ?? profileIdRef.current ?? iid();
       profileIdRef.current = pid;
+      const storedAvatar = avatarPreview
+        ? await uploadUserImageDataUrl({
+            dataUrl: avatarPreview,
+            ownerId: user.id,
+            kind: "profile-avatar",
+          })
+        : null;
       await db.transact(
         db.tx.profiles[pid].update({
           instantUserId: user.id,
           firstName: name,
-          ...(avatarPreview ? { avatarUrl: avatarPreview } : {}),
+          ...(storedAvatar ? { avatarUrl: storedAvatar.url } : {}),
         }),
       );
       router.replace(getPostAuthDestination());

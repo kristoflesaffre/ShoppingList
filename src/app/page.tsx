@@ -46,7 +46,7 @@ import {
   type DayEntry,
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
-import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
+import { uploadUserImageFile } from "@/lib/image-storage";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -1371,15 +1371,20 @@ export default function Home() {
       const file = e.target.files?.[0];
       e.target.value = "";
       if (!file?.type.startsWith("image/")) return;
+      if (!user?.id) return;
       try {
-        const dataUrl = await fileToAvatarDataUrl(file);
-        setNewListCustomIcon(dataUrl);
+        const image = await uploadUserImageFile({
+          file,
+          ownerId: user.id,
+          kind: "list-icon",
+        });
+        setNewListCustomIcon(image.url);
         setNewListIconPickerOpen(false);
       } catch {
         // negeer compressiefouten stilzwijgend
       }
     },
-    [],
+    [user?.id],
   );
 
   const handleCloseQuickMasterModal = React.useCallback(() => {

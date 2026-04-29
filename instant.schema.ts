@@ -28,7 +28,7 @@ const schema = i.schema({
        * Ontbreekt → standaordvolgorde uit ingredient_categories.json.
        */
       masterCategoryOrderJson: i.string().optional(),
-      /** Eigen geüploade foto als lijstjedicoon (base64 JPEG data-URL). */
+      /** Eigen geüploade foto als lijstjedicoon (legacy data-URL of blob-URL). */
       customIconUrl: i.string().optional(),
       /**
        * Week-/boodschappenlijst vanuit een master: id van die master-template.
@@ -93,7 +93,7 @@ const schema = i.schema({
       quantity: i.string(),
       order: i.number(),
     }),
-    /** Server-side gegenereerde food images; image payload wordt als base64 opgeslagen. */
+    /** Server-side gegenereerde food images; legacy base64 of blob-URL metadata. */
     foodImages: i.entity({
       ownerId: i.string().indexed(),
       dishName: i.string(),
@@ -104,6 +104,19 @@ const schema = i.schema({
       estimatedCost: i.number(),
       imageBase64: i.string(),
       imageMimeType: i.string(),
+      imageUrl: i.string().optional(),
+      storageKey: i.string().optional().indexed(),
+      imageSize: i.number().optional(),
+      createdAtIso: i.string().indexed(),
+    }),
+    /** Metadata voor user-generated afbeeldingen die buiten InstantDB staan. */
+    imageAssets: i.entity({
+      ownerId: i.string().indexed(),
+      kind: i.string().indexed(),
+      url: i.string(),
+      storageKey: i.string().optional().indexed(),
+      mimeType: i.string(),
+      size: i.number(),
       createdAtIso: i.string().indexed(),
     }),
     /** Eén profiel per Instant-auth user: optioneel wachtwoord-hash + avatar (data-URL). */
@@ -119,7 +132,7 @@ const schema = i.schema({
     listIconImages: i.entity({
       /** Eigenaar (Instant auth user id). */
       ownerId: i.string().indexed(),
-      /** Gecomprimeerde JPEG data-URL, zelfde formaat als `lists.customIconUrl`. */
+      /** Legacy naam: bevat een data-URL of blob-URL, zelfde formaat als `lists.customIconUrl`. */
       imageDataUrl: i.string(),
       createdAtIso: i.string().indexed(),
       lastUsedAtIso: i.string().indexed(),

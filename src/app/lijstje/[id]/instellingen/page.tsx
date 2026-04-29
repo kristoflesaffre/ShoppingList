@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import { isIPhoneDevice } from "@/lib/utils";
-import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
+import { uploadUserImageFile } from "@/lib/image-storage";
 import { selectListNameInputOnFocus } from "@/lib/list-default-name";
 
 const ShareListModal = dynamic(
@@ -213,18 +213,22 @@ export default function LijstInstellingenPage() {
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       e.target.value = "";
-      if (!file?.type.startsWith("image/") || !listId) return;
+      if (!file?.type.startsWith("image/") || !listId || !user?.id) return;
       setPhotoUploading(true);
       try {
-        const dataUrl = await fileToAvatarDataUrl(file);
+        const image = await uploadUserImageFile({
+          file,
+          ownerId: user.id,
+          kind: "list-icon",
+        });
         await db.transact(
-          db.tx.lists[listId].update({ customIconUrl: dataUrl }),
+          db.tx.lists[listId].update({ customIconUrl: image.url }),
         );
       } finally {
         setPhotoUploading(false);
       }
     },
-    [listId],
+    [listId, user?.id],
   );
 
   if (authLoading || !user || isLoading) {

@@ -6,7 +6,7 @@ import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { MiniButton } from "@/components/ui/mini_button";
-import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
+import { uploadUserImageFile } from "@/lib/image-storage";
 import { cn } from "@/lib/utils";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
@@ -56,15 +56,19 @@ export default function ProfielPage() {
     if (!user?.id) return;
     setLocalError(null);
     try {
-      const dataUrl = await fileToAvatarDataUrl(file);
-      setPreviewUrl(dataUrl);
       setIsSaving(true);
+      const image = await uploadUserImageFile({
+        file,
+        ownerId: user.id,
+        kind: "profile-avatar",
+      });
+      setPreviewUrl(image.url);
       const pid = existingProfile?.id ?? profileIdRef.current ?? iid();
       profileIdRef.current = pid;
       await db.transact(
         db.tx.profiles[pid].update({
           instantUserId: user.id,
-          avatarUrl: dataUrl,
+          avatarUrl: image.url,
         }),
       );
       setPreviewUrl(null);

@@ -36,7 +36,7 @@ const RecipeShareSlideIn = dynamic(
   () => import("@/components/recipe_share_slide_in").then((m) => m.RecipeShareSlideIn),
   { ssr: false },
 );
-import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
+import { uploadUserImageFile } from "@/lib/image-storage";
 import {
   APP_FAB_BOTTOM_NO_NAV_CLASS,
   APP_FAB_INNER_PX4_CLASS,
@@ -334,9 +334,16 @@ export default function ReceptDetailPage() {
         const file = new File([blob], "generated-food.png", {
           type: blob.type || "image/png",
         });
-        const dataUrl = await fileToAvatarDataUrl(file);
+        if (!user?.id) {
+          throw new Error("Je moet ingelogd zijn om een foto op te slaan.");
+        }
+        const image = await uploadUserImageFile({
+          file,
+          ownerId: user.id,
+          kind: "generated-recipe-photo",
+        });
         await db.transact(
-          db.tx.recipes[savedRecipe.id].update({ photoUrl: dataUrl }),
+          db.tx.recipes[savedRecipe.id].update({ photoUrl: image.url }),
         );
         setDetailPhotoEditMode(false);
         setAiFoodImageSlideOpen(false);
@@ -349,7 +356,7 @@ export default function ReceptDetailPage() {
         setPhotoSaving(false);
       }
     },
-    [savedRecipe],
+    [savedRecipe, user?.id],
   );
 
   const handleRecipePhotoChange = React.useCallback(
@@ -364,9 +371,14 @@ export default function ReceptDetailPage() {
       setPhotoError(null);
       setPhotoSaving(true);
       try {
-        const dataUrl = await fileToAvatarDataUrl(file);
+        if (!user?.id) return;
+        const image = await uploadUserImageFile({
+          file,
+          ownerId: user.id,
+          kind: "recipe-photo",
+        });
         await db.transact(
-          db.tx.recipes[savedRecipe.id].update({ photoUrl: dataUrl }),
+          db.tx.recipes[savedRecipe.id].update({ photoUrl: image.url }),
         );
       } catch (err) {
         setPhotoError(
@@ -376,7 +388,7 @@ export default function ReceptDetailPage() {
         setPhotoSaving(false);
       }
     },
-    [savedRecipe],
+    [savedRecipe, user?.id],
   );
 
   if (authLoading || !user || recipesLoading) {

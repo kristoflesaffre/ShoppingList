@@ -5,6 +5,10 @@
 
 # Cursor (uncomment onderstaande regel als je .cursor niet wilt committen)
 # .cursor/
+.cursor/settings.json
+
+# Local MCP/tooling output
+.playwright-mcp/
 
 # Dependencies
 node_modules/
@@ -40,6 +44,7 @@ yarn-error.log*
 # Misc
 *.log
 .cache/
+*.tsbuildinfo
 
 # Lokaal export-script (receptfoto's uit Instant)
 exported-recipe-photos/

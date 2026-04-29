@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { init } from "@instantdb/admin";
+import { put } from "@vercel/blob";
 import schema from "../../../../instant.schema";
 import { INSTANT_APP_ID } from "@/lib/instant_app_id";
 import type {
@@ -57,6 +58,28 @@ function toPayload(input: unknown): FoodImageGenerationInput {
 
 function toImageUrl(generationId: string, ownerId: string): string {
   return `/api/food-image/${encodeURIComponent(generationId)}?ownerId=${encodeURIComponent(ownerId)}`;
+}
+
+async function persistGeneratedImageToBlob({
+  generationId,
+  ownerId,
+  imageBase64,
+  mimeType,
+}: {
+  generationId: string;
+  ownerId: string;
+  imageBase64: string;
+  mimeType: string;
+}): Promise<{ url: string; storageKey: string; size: number } | null> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  const bytes = Buffer.from(imageBase64, "base64");
+  const extension = mimeType === "image/png" ? "png" : "jpg";
+  const storageKey = `user-images/${ownerId}/generated-recipe-photo/${generationId}.${extension}`;
+  const blob = await put(storageKey, bytes, {
+    access: "public",
+    contentType: mimeType,
+  });
+  return { url: blob.url, storageKey, size: bytes.length };
 }
 
 export async function POST(req: Request) {
@@ -136,6 +159,12 @@ export async function POST(req: Request) {
 
     const generationId = crypto.randomUUID();
     const createdAtIso = new Date().toISOString();
+    const blobImage = await persistGeneratedImageToBlob({
+      generationId,
+      ownerId: input.ownerId,
+      imageBase64: providerResult.imageBase64,
+      mimeType: providerResult.mimeType,
+    });
 
     const record: FoodImageGenerationStoredRecord = {
       id: generationId,
@@ -146,8 +175,15 @@ export async function POST(req: Request) {
       model: providerResult.model,
       referenceImageCount: references.length,
       estimatedCost,
-      imageBase64: providerResult.imageBase64,
+      imageBase64: blobImage ? "" : providerResult.imageBase64,
       imageMimeType: providerResult.mimeType,
+      ...(blobImage
+        ? {
+            imageUrl: blobImage.url,
+            storageKey: blobImage.storageKey,
+            imageSize: blobImage.size,
+          }
+        : {}),
       createdAtIso,
     };
 
@@ -157,7 +193,7 @@ export async function POST(req: Request) {
 
     const response: FoodImageGenerationResult = {
       generationId,
-      imageUrl: toImageUrl(generationId, input.ownerId),
+      imageUrl: blobImage?.url ?? toImageUrl(generationId, input.ownerId),
       estimatedCost,
       provider: providerResult.provider,
       model: providerResult.model,

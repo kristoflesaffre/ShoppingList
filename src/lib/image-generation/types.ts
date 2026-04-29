@@ -59,5 +59,8 @@ export type FoodImageGenerationStoredRecord = {
   estimatedCost: number;
   imageBase64: string;
   imageMimeType: string;
+  imageUrl?: string;
+  storageKey?: string;
+  imageSize?: number;
   createdAtIso: string;
 };
