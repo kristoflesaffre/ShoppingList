@@ -52,6 +52,7 @@ import { useItemPhotoUrl } from "@/lib/item-photos";
 import type { DecodeResult } from "@/lib/loyalty_card";
 import {
   MASTER_STORE_OPTIONS,
+  findMasterStoreByListName,
   LOYALTY_COMBO_PRIMARY_LOGO_SRC,
   LOYALTY_COMBO_SECONDARY_LOGO_SRC,
   listIconIsLidlDelhaizeCombo,
@@ -1003,6 +1004,20 @@ export default function ListDetailPage({
 
   const { isLoading, error, data } = db.useQuery(listDetailQuery);
 
+  const ownerLoyaltyCardsQueryId = user?.id ?? "__loyalty_cards_none__";
+  const { data: ownerLoyaltyCardsData } = db.useQuery({
+    loyaltyCards: {
+      $: { where: { ownerId: ownerLoyaltyCardsQueryId } },
+    },
+  });
+  const { data: ownerLinkedLoyaltyCardsData } = db.useQuery({
+    lists: {
+      loyaltyCard: {},
+      loyaltyCardSecondary: {},
+      $: { where: { ownerId: ownerLoyaltyCardsQueryId } },
+    },
+  });
+
   const categoryOrderMasterListQueryId = React.useMemo(() => {
     const row = data?.lists?.[0] as
       | {
@@ -1311,8 +1326,54 @@ export default function ListDetailPage({
   const existingLoyaltyCard = data?.lists?.[0]?.loyaltyCard ?? null;
   const existingLoyaltyCardSecondary =
     data?.lists?.[0]?.loyaltyCardSecondary ?? null;
+  const storeFromListName = React.useMemo(
+    () => findMasterStoreByListName(listName),
+    [listName],
+  );
+  const effectiveStoreIcon = React.useMemo(() => {
+    if (masterStoreLabelFromListIcon(masterIcon)) return masterIcon;
+    if (masterStoreLabelFromListIcon(listIcon)) return listIcon;
+    return storeFromListName?.logoSrc ?? "";
+  }, [listIcon, masterIcon, storeFromListName?.logoSrc]);
+  const ownerLoyaltyCardByStoreLabel = React.useMemo(() => {
+    const standaloneCards = ownerLoyaltyCardsData?.loyaltyCards ?? [];
+    const map = new Map<string, (typeof standaloneCards)[number]>();
+    const setIfCard = (
+      label: string,
+      card: (typeof standaloneCards)[number] | null | undefined,
+    ) => {
+      const key = label.trim().toLowerCase();
+      if (key && card && !map.has(key)) map.set(key, card);
+    };
+
+    for (const list of ownerLinkedLoyaltyCardsData?.lists ?? []) {
+      const row = list as Record<string, unknown>;
+      const icon = String(row.masterIcon ?? "") || String(row.icon ?? "");
+      if (listIconIsLidlDelhaizeCombo(icon)) {
+        setIfCard("Delhaize", list.loyaltyCard);
+        setIfCard("Lidl", list.loyaltyCardSecondary);
+        continue;
+      }
+      const label = masterStoreLabelFromListIcon(icon);
+      if (label) setIfCard(label, list.loyaltyCard);
+    }
+
+    for (const card of standaloneCards) {
+      const key = String(card.cardName ?? "").trim().toLowerCase();
+      if (key && !map.has(key)) map.set(key, card);
+    }
+    return map;
+  }, [ownerLinkedLoyaltyCardsData?.lists, ownerLoyaltyCardsData?.loyaltyCards]);
+  const loyaltyCardFromStoreName = React.useMemo(() => {
+    const label = storeFromListName?.label.trim().toLowerCase();
+    return label ? ownerLoyaltyCardByStoreLabel.get(label) ?? null : null;
+  }, [ownerLoyaltyCardByStoreLabel, storeFromListName?.label]);
+  const delhaizeLoyaltyCardFromStoreName =
+    ownerLoyaltyCardByStoreLabel.get("delhaize") ?? null;
+  const lidlLoyaltyCardFromStoreName =
+    ownerLoyaltyCardByStoreLabel.get("lidl") ?? null;
   const isLidlDelhaizeList =
-    listIconIsLidlDelhaizeCombo(masterIcon) ||
+    listIconIsLidlDelhaizeCombo(effectiveStoreIcon) ||
     // Retroactieve detectie voor lijstjes aangemaakt vóór masterIcon werd opgeslagen:
     // een secondary loyalty card kan alleen bestaan op een Lidl/Delhaize-combinatielijst.
     (!isMasterList && existingLoyaltyCardSecondary !== null);
@@ -1957,57 +2018,67 @@ export default function ListDetailPage({
   const loyaltySwipePanes = React.useMemo((): LoyaltySwipePane[] => {
     const panes: LoyaltySwipePane[] = [];
     if (isLidlDelhaizeList) {
+      const delhaizeCard = existingLoyaltyCard ?? delhaizeLoyaltyCardFromStoreName;
       if (
-        existingLoyaltyCard &&
-        typeof existingLoyaltyCard.rawValue === "string" &&
-        existingLoyaltyCard.rawValue.length > 0
+        delhaizeCard &&
+        typeof delhaizeCard.rawValue === "string" &&
+        delhaizeCard.rawValue.length > 0
       ) {
         panes.push({
           heading: "Klantenkaart Delhaize",
-          codeType: existingLoyaltyCard.codeType as "qr" | "barcode",
-          codeFormat: String(existingLoyaltyCard.codeFormat ?? ""),
-          rawValue: existingLoyaltyCard.rawValue,
+          codeType: delhaizeCard.codeType as "qr" | "barcode",
+          codeFormat: String(delhaizeCard.codeFormat ?? ""),
+          rawValue: delhaizeCard.rawValue,
           footerLogoSrc: LOYALTY_COMBO_PRIMARY_LOGO_SRC,
           pillTabLabel: "Delhaize",
         });
       }
+      const lidlCard = existingLoyaltyCardSecondary ?? lidlLoyaltyCardFromStoreName;
       if (
-        existingLoyaltyCardSecondary &&
-        typeof existingLoyaltyCardSecondary.rawValue === "string" &&
-        existingLoyaltyCardSecondary.rawValue.length > 0
+        lidlCard &&
+        typeof lidlCard.rawValue === "string" &&
+        lidlCard.rawValue.length > 0
       ) {
         panes.push({
           heading: "Klantenkaart Lidl",
-          codeType: existingLoyaltyCardSecondary.codeType as "qr" | "barcode",
-          codeFormat: String(existingLoyaltyCardSecondary.codeFormat ?? ""),
-          rawValue: existingLoyaltyCardSecondary.rawValue,
+          codeType: lidlCard.codeType as "qr" | "barcode",
+          codeFormat: String(lidlCard.codeFormat ?? ""),
+          rawValue: lidlCard.rawValue,
           footerLogoSrc: LOYALTY_COMBO_SECONDARY_LOGO_SRC,
           pillTabLabel: "Lidl",
         });
       }
-    } else if (
-      existingLoyaltyCard &&
-      typeof existingLoyaltyCard.rawValue === "string" &&
-      existingLoyaltyCard.rawValue.length > 0
-    ) {
-      // masterIcon bevat het winkellogo (nieuwe lijstjes) of valt terug op listIcon (oude lijstjes).
-      // Gebruik enkel als het een erkend winkellogo is — nooit een voedselpictogram tonen.
-      const storeLogoSrc = masterStoreLabelFromListIcon(masterIcon) ? masterIcon : "";
-      const label = masterStoreLabelFromListIcon(masterIcon) || masterStoreLabelFromListIcon(listIcon);
+    } else {
+      const card = existingLoyaltyCard ?? loyaltyCardFromStoreName;
+      if (!card || typeof card.rawValue !== "string" || card.rawValue.length === 0) {
+        return panes;
+      }
+      const label =
+        masterStoreLabelFromListIcon(effectiveStoreIcon) ||
+        masterStoreLabelFromListIcon(masterIcon) ||
+        masterStoreLabelFromListIcon(listIcon) ||
+        storeFromListName?.label ||
+        "";
       panes.push({
         heading: label ? `Klantenkaart ${label}` : "Klantenkaart",
-        codeType: existingLoyaltyCard.codeType as "qr" | "barcode",
-        codeFormat: String(existingLoyaltyCard.codeFormat ?? ""),
-        rawValue: existingLoyaltyCard.rawValue,
-        footerLogoSrc: storeLogoSrc,
+        codeType: card.codeType as "qr" | "barcode",
+        codeFormat: String(card.codeFormat ?? ""),
+        rawValue: card.rawValue,
+        footerLogoSrc: effectiveStoreIcon,
       });
     }
     return panes;
   }, [
+    delhaizeLoyaltyCardFromStoreName,
+    effectiveStoreIcon,
     isLidlDelhaizeList,
     listIcon,
+    loyaltyCardFromStoreName,
+    masterIcon,
+    storeFromListName?.label,
     existingLoyaltyCard,
     existingLoyaltyCardSecondary,
+    lidlLoyaltyCardFromStoreName,
   ]);
 
   const showLoyaltySwipe = !isMasterList && loyaltySwipePanes.length > 0;

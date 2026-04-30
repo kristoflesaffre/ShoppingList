@@ -47,6 +47,27 @@ export function findMasterStoreBySlug(
   return MASTER_STORE_OPTIONS.find((s) => s.slug === slug);
 }
 
+function normalizeStoreName(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s*\/\s*/g, " / ")
+    .replace(/\s+/g, " ");
+}
+
+/** Exacte winkelnaam-herkenning voor handmatig aangemaakte lijstjes. */
+export function findMasterStoreByListName(
+  name: string | null | undefined,
+): (typeof MASTER_STORE_OPTIONS)[number] | undefined {
+  const key = normalizeStoreName(name ?? "");
+  if (!key) return undefined;
+  return MASTER_STORE_OPTIONS.find((store) => {
+    const label = normalizeStoreName(store.label);
+    const slug = normalizeStoreName(store.slug.replace(/-/g, " "));
+    return key === label || key === slug;
+  });
+}
+
 /** Zelfde logo-bestandsnaam als op het lijstje → winkelnaam voor o.a. klantenkaart-titel. */
 export function masterStoreLabelFromListIcon(iconPath: string): string {
   const logoFile = iconPath.split("/").pop() ?? "";

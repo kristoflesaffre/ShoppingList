@@ -36,6 +36,7 @@ import {
 } from "@/lib/list-default-name";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import {
+  findMasterStoreByListName,
   masterStoreLabelFromListIcon,
   storeLogosFromListIcon,
 } from "@/lib/master-stores";
@@ -270,7 +271,12 @@ export function LijstjesBeherenClient({
         : typeof l.icon === "string" && l.icon.startsWith("/logos/")
           ? l.icon
           : "";
-      const isFromMaster = !isMaster && effectiveStoreIcon.length > 0;
+      const nameStoreIcon =
+        !isMaster && !effectiveStoreIcon
+          ? findMasterStoreByListName(l.name)?.logoSrc ?? ""
+          : "";
+      const effectiveBadgeIcon = effectiveStoreIcon || nameStoreIcon;
+      const isFromMaster = !isMaster && effectiveBadgeIcon.length > 0;
       return {
         id: l.id,
         name: l.name,
@@ -288,7 +294,7 @@ export function LijstjesBeherenClient({
               ? "from-master"
               : "default",
         storeLogos: isFromMaster
-          ? storeLogosFromListIcon(effectiveStoreIcon)
+          ? storeLogosFromListIcon(effectiveBadgeIcon)
           : [],
         sharedWithFirstName: isMaster
           ? null
@@ -325,7 +331,12 @@ export function LijstjesBeherenClient({
           : typeof l.icon === "string" && l.icon.startsWith("/logos/")
             ? l.icon
             : "";
-        const isFromMaster = !isMaster && effectiveStoreIcon2.length > 0;
+        const nameStoreIcon2 =
+          !isMaster && !effectiveStoreIcon2
+            ? findMasterStoreByListName(l.name)?.logoSrc ?? ""
+            : "";
+        const effectiveBadgeIcon2 = effectiveStoreIcon2 || nameStoreIcon2;
+        const isFromMaster = !isMaster && effectiveBadgeIcon2.length > 0;
         return {
           id: l.id,
           name: l.name,
@@ -342,7 +353,7 @@ export function LijstjesBeherenClient({
           sharedWithFirstName:
             isMaster || isFromMaster ? null : ownerFirst,
           storeLogos: isFromMaster
-            ? storeLogosFromListIcon(effectiveStoreIcon2)
+            ? storeLogosFromListIcon(effectiveBadgeIcon2)
             : [],
           isMasterTemplate: isMaster,
           customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"

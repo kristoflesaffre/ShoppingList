@@ -19,6 +19,7 @@ import {
 import { listIsMasterTemplate } from "@/lib/list-master";
 import {
   MASTER_STORE_OPTIONS,
+  findMasterStoreByListName,
   masterStoreLabelFromListIcon,
   storeLogosFromListIcon,
   listIconIsLidlDelhaizeCombo,
@@ -1025,7 +1026,12 @@ export default function Home() {
         : typeof l.icon === "string" && l.icon.startsWith("/logos/")
           ? l.icon
           : "";
-      const isFromMaster = !isMaster && effectiveStoreIcon.length > 0;
+      const nameStoreIcon =
+        !isMaster && !effectiveStoreIcon
+          ? findMasterStoreByListName(l.name)?.logoSrc ?? ""
+          : "";
+      const effectiveBadgeIcon = effectiveStoreIcon || nameStoreIcon;
+      const isFromMaster = !isMaster && effectiveBadgeIcon.length > 0;
       return {
         id: l.id,
         name: l.name,
@@ -1042,7 +1048,7 @@ export default function Home() {
             : isFromMaster
               ? "from-master"
               : "default",
-        storeLogos: isFromMaster ? storeLogosFromListIcon(effectiveStoreIcon) : [],
+        storeLogos: isFromMaster ? storeLogosFromListIcon(effectiveBadgeIcon) : [],
         sharedWithFirstName: isMaster ? null : hasOtherMembers ? sharedName : null,
         isMasterTemplate: isMaster,
         customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
@@ -1073,7 +1079,12 @@ export default function Home() {
           : typeof l.icon === "string" && l.icon.startsWith("/logos/")
             ? l.icon
             : "";
-        const isFromMaster = !isMaster && effectiveStoreIcon2.length > 0;
+        const nameStoreIcon2 =
+          !isMaster && !effectiveStoreIcon2
+            ? findMasterStoreByListName(l.name)?.logoSrc ?? ""
+            : "";
+        const effectiveBadgeIcon2 = effectiveStoreIcon2 || nameStoreIcon2;
+        const isFromMaster = !isMaster && effectiveBadgeIcon2.length > 0;
         return {
           id: l.id,
           name: l.name,
@@ -1088,7 +1099,7 @@ export default function Home() {
               ? ("from-master" as const)
               : ("shared" as const),
           sharedWithFirstName: isMaster || isFromMaster ? null : ownerFirst,
-          storeLogos: isFromMaster ? storeLogosFromListIcon(effectiveStoreIcon2) : [],
+          storeLogos: isFromMaster ? storeLogosFromListIcon(effectiveBadgeIcon2) : [],
           isMasterTemplate: isMaster,
           customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
             ? (l as Record<string, unknown>).customIconUrl as string
@@ -1404,6 +1415,7 @@ export default function Home() {
       }
       const listName = name;
       const icon = pickListProductIconForNewList(lists, name);
+      const storeFromName = findMasterStoreByListName(name);
       const now = new Date();
       const nowIso = now.toISOString();
       const newId = iid();
@@ -1416,6 +1428,7 @@ export default function Home() {
             lists.length > 0 ? Math.min(...lists.map((l) => l.order)) - 1 : 0,
           ownerId: user.id,
           isMasterTemplate: false,
+          ...(storeFromName ? { masterIcon: storeFromName.logoSrc } : {}),
           ...(newListCustomIcon ? { customIconUrl: newListCustomIcon } : {}),
         }),
       ];
