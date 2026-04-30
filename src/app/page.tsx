@@ -1858,7 +1858,7 @@ export default function Home() {
             <SelectTile
               title="Vertrek van vorige lijstje"
               subtitle="Je bestelt bijna hetzelfde dan vorige keer"
-              icon={<IconPrimaryMask src="/icons/link.svg" />}
+              icon={<IconPrimaryMask src="/icons/list.svg" />}
             />
           </button>
           <button
@@ -1876,7 +1876,7 @@ export default function Home() {
             <SelectTile
               title="Nieuw lijstje"
               subtitle="Je doet een totaal andere bestelling"
-              icon={<IconPrimaryMask src="/icons/pdf.svg" />}
+              icon={<IconPrimaryMask src="/icons/plus-circle.svg" />}
             />
           </button>
         </div>
