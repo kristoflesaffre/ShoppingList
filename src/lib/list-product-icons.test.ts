@@ -8,11 +8,14 @@ import {
 } from "@/lib/list-product-icons";
 
 describe("list-product-icons", () => {
-  it("kiest frieten-icoon voor exacte frieten/frietjes namen", () => {
+  it("kiest frieten-icoon voor exacte frieten/frietjes/frituur namen", () => {
     expect(listProductIconUrlFromListName("frieten")).toBe(
       FRIETEN_LIST_PRODUCT_ICON_URL,
     );
     expect(listProductIconUrlFromListName(" Frietjes ")).toBe(
+      FRIETEN_LIST_PRODUCT_ICON_URL,
+    );
+    expect(listProductIconUrlFromListName("Frituur")).toBe(
       FRIETEN_LIST_PRODUCT_ICON_URL,
     );
     expect(listProductIconUrlFromListName("frieten avond")).toBeNull();

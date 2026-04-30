@@ -14,6 +14,12 @@ export const LIST_PRODUCT_ICON_URL_SET = new Set<string>(POOL);
 export const FRIETEN_LIST_PRODUCT_ICON_URL =
   "/images/ui/product_icons/frieten_240.webp" as const;
 
+const FRIETEN_LIST_NAME_KEYS = new Set<string>([
+  "frieten",
+  "frietjes",
+  "frituur",
+]);
+
 /**
  * Bepaalt of een lijstnaam een vast decor-icoon verdient (los van willekeurige pool-keuze).
  * Alleen exacte match op trim + lowercase.
@@ -22,7 +28,7 @@ export function listProductIconUrlFromListName(
   name: string | null | undefined,
 ): string | null {
   const key = name?.trim().toLowerCase() ?? "";
-  if (key === "frieten" || key === "frietjes") {
+  if (FRIETEN_LIST_NAME_KEYS.has(key)) {
     return FRIETEN_LIST_PRODUCT_ICON_URL;
   }
   return null;
