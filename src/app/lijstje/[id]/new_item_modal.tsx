@@ -461,7 +461,12 @@ export function NewItemModal({
         >
           {/* Panel 1: Item form */}
           <div className="relative z-[1] w-full shrink-0">
-            <div className="mx-auto w-full max-w-[768px] px-4">
+            <div
+              className={cn(
+                "mx-auto w-full max-w-[768px]",
+                !masterItemFormOnly && "px-4",
+              )}
+            >
               <div
                 className={cn(
                   "flex flex-col",

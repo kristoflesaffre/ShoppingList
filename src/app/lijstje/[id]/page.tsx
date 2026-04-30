@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   DndContext,
   closestCenter,
@@ -719,6 +719,198 @@ function SortableItemItems({
   );
 }
 
+function FrituurListItems({
+  items,
+  isEditMode,
+  onAddToSection,
+  onEdit,
+  onIncrement,
+  onDecrementOrDelete,
+  onSauceSizeChange,
+}: {
+  items: ListItem[];
+  isEditMode: boolean;
+  onAddToSection: (sectionTitle: string) => void;
+  onEdit: (item: ListItem) => void;
+  onIncrement: (item: ListItem) => void;
+  onDecrementOrDelete: (item: ListItem) => void;
+  onSauceSizeChange: (item: ListItem, size: FrituurWizardSauceSize) => void;
+}) {
+  const sections = React.useMemo(() => {
+    const grouped = new Map<"Frieten" | "Sauzen" | "Snacks", ListItem[]>();
+    for (const item of items) {
+      const section = frituurCategoryFromItem(item);
+      const existing = grouped.get(section) ?? [];
+      existing.push(item);
+      grouped.set(section, existing);
+    }
+    return (["Frieten", "Sauzen", "Snacks"] as const)
+      .filter((title) => (grouped.get(title)?.length ?? 0) > 0)
+      .map((title) => ({ title, items: grouped.get(title)! }));
+  }, [items]);
+
+  return (
+    <div className="flex flex-col gap-6">
+      {sections.map((section) => (
+        <section key={section.title} className="flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <h3 className="min-w-0 flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
+              {section.title}
+            </h3>
+            {!isEditMode ? (
+              <button
+                type="button"
+                aria-label={`Item toevoegen aan ${section.title}`}
+                onClick={() => onAddToSection(section.title)}
+                className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                <PlusCircleIcon />
+              </button>
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-3">
+            {section.items.map((item) => (
+              <FrituurListItemRow
+                key={item.id}
+                item={item}
+                isEditMode={isEditMode}
+                onEdit={onEdit}
+                onIncrement={onIncrement}
+                onDecrementOrDelete={onDecrementOrDelete}
+                onSauceSizeChange={onSauceSizeChange}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function FrituurListItemRow({
+  item,
+  isEditMode,
+  onEdit,
+  onIncrement,
+  onDecrementOrDelete,
+  onSauceSizeChange,
+}: {
+  item: ListItem;
+  isEditMode: boolean;
+  onEdit: (item: ListItem) => void;
+  onIncrement: (item: ListItem) => void;
+  onDecrementOrDelete: (item: ListItem) => void;
+  onSauceSizeChange: (item: ListItem, size: FrituurWizardSauceSize) => void;
+}) {
+  const quantity = parseFrituurQuantity(item.quantity);
+  const iconSrc = frituurItemIconSrc(item.name);
+  const countValue = Number.parseInt(quantity.count, 10);
+  const effectiveCount = Number.isFinite(countValue) ? countValue : 1;
+  const showSauceToggle = isEditMode && frituurCategoryFromItem(item) === "Sauzen";
+  const selectedSauceSize: FrituurWizardSauceSize =
+    quantity.subtitle?.toLowerCase() === "groot" ? "groot" : "klein";
+
+  const rowContent = (
+    <>
+      <span className="relative size-10 shrink-0 overflow-hidden rounded-md">
+        {/* eslint-disable-next-line @next/next/no-img-element -- lokale productafbeeldingen uit /public */}
+        <img
+          src={iconSrc}
+          alt=""
+          width={40}
+          height={40}
+          className="size-full object-contain"
+          aria-hidden="true"
+        />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col justify-center">
+        <span className="truncate text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+          {item.name}
+        </span>
+        {showSauceToggle ? (
+          <span
+            className="mt-0.5 flex h-[14px] w-fit items-center rounded-pill bg-[var(--gray-50)]"
+            aria-label="Sausformaat"
+          >
+            {(["klein", "groot"] as const).map((size) => {
+              const active = selectedSauceSize === size;
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => onSauceSizeChange(item, size)}
+                  className={cn(
+                    "flex h-full items-center justify-center rounded-pill px-2 text-[10px] font-normal leading-12 tracking-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                    active
+                      ? "bg-[var(--blue-500)] text-[var(--white)]"
+                      : "text-[var(--text-tertiary)]",
+                  )}
+                >
+                  {size === "klein" ? "Klein" : "Groot"}
+                </button>
+              );
+            })}
+          </span>
+        ) : quantity.subtitle ? (
+          <span className="text-xs font-normal leading-16 tracking-normal text-[var(--text-tertiary)]">
+            {quantity.subtitle}
+          </span>
+        ) : null}
+      </span>
+      <span className="flex min-w-8 shrink-0 justify-end text-[32px] font-semibold leading-24 tracking-normal text-[var(--blue-900)]">
+        {quantity.count}
+      </span>
+    </>
+  );
+
+  if (!isEditMode) {
+    return (
+      <button
+        type="button"
+        onClick={() => onEdit(item)}
+        className="flex min-h-[64px] w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        {rowContent}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3 text-left">
+      <button
+        type="button"
+        aria-label={
+          effectiveCount > 1 ? `${item.name} verminderen` : `${item.name} verwijderen`
+        }
+        onClick={() => onDecrementOrDelete(item)}
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-pill p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+          effectiveCount > 1
+            ? "text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--blue-25)]"
+            : "text-[var(--error-600)] [@media(hover:hover)]:hover:bg-[var(--error-25)]",
+        )}
+      >
+        {effectiveCount > 1 ? (
+          <MinusCircleOutlineIcon className="size-6" />
+        ) : (
+          <RecycleBinIcon className="size-6" />
+        )}
+      </button>
+      <div className="h-10 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+      {rowContent}
+      <div className="h-10 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+      <button
+        type="button"
+        aria-label={`${item.name} verhogen`}
+        onClick={() => onIncrement(item)}
+        className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        <PlusCircleIcon className="size-6" />
+      </button>
+    </div>
+  );
+}
+
 function SortableItemRow({
   item,
   isEditMode,
@@ -934,6 +1126,692 @@ function resolvedRouteListId(
 }
 
 const FRIETEN_EMPTY_STATE_ICON_URL = "/images/ui/product_icons/frieten_320.webp";
+const FRITUUR_WIZARD_PLACEHOLDER_ICON_URL = "/images/ui/product_icons/frieten_160.webp";
+
+type FrituurWizardCategory = "frieten" | "snacks" | "sauzen";
+type FrituurWizardSauceSize = "klein" | "groot";
+
+type FrituurWizardItem = {
+  id: string;
+  name: string;
+  category: FrituurWizardCategory;
+  defaultCount: number;
+  defaultSize?: FrituurWizardSauceSize;
+  iconSrc?: string;
+};
+
+const FRITUUR_WIZARD_ITEMS: readonly FrituurWizardItem[] = [
+  {
+    id: "mini-friet",
+    name: "Mini friet",
+    category: "frieten",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/frieten_mini_160.webp",
+  },
+  {
+    id: "kleine-friet",
+    name: "Kleine friet",
+    category: "frieten",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/frieten_klein_160.webp",
+  },
+  {
+    id: "grote-friet",
+    name: "Grote friet",
+    category: "frieten",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/frieten_groot_160.webp",
+  },
+  {
+    id: "maxi-friet",
+    name: "Maxi friet",
+    category: "frieten",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/frieten_maxi_160.webp",
+  },
+  {
+    id: "bami",
+    name: "Bami",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/bami_160.webp",
+  },
+  {
+    id: "berepoot",
+    name: "Berepoot",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/berepoot_160.webp",
+  },
+  {
+    id: "bicky-burger",
+    name: "Bicky burger",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/bicky_burger_160.webp",
+  },
+  {
+    id: "bicky-rib",
+    name: "Bicky rib",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/bicky_rib_160.webp",
+  },
+  {
+    id: "bitterballen",
+    name: "Bitterballen",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/bitterballen_160.webp",
+  },
+  {
+    id: "cervela",
+    name: "Cervela",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/cervela_160.webp",
+  },
+  {
+    id: "cervela-speciaal",
+    name: "Cervela speciaal",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/cervela_speciaal_160.webp",
+  },
+  {
+    id: "chicken-fingers",
+    name: "Chicken fingers",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/chicken_fingers_160.webp",
+  },
+  {
+    id: "curryworst",
+    name: "Curryworst",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/curryworst_160.webp",
+  },
+  {
+    id: "curryworst-speciaal",
+    name: "Curryworst speciaal",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/curryworst_speciaal_160.webp",
+  },
+  {
+    id: "kipcorn",
+    name: "Kipcorn",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/kipcorn_160.webp",
+  },
+  {
+    id: "kipnuggets",
+    name: "Kipnuggets",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/kipnuggets_160.webp",
+  },
+  {
+    id: "kippenboutjes",
+    name: "Kippenboutjes",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/kippenboutjes_160.webp",
+  },
+  {
+    id: "loempia",
+    name: "Loempia",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/loempia_160.webp",
+  },
+  {
+    id: "lucifer",
+    name: "Lucifer",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/lucifer_160.webp",
+  },
+  {
+    id: "mexicano",
+    name: "Mexicano",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/mexicano_160.webp",
+  },
+  {
+    id: "mini-lucifers",
+    name: "Mini lucifers",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/mini_lucifers_160.webp",
+  },
+  {
+    id: "saté",
+    name: "Saté",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/saté_160.webp",
+  },
+  {
+    id: "viandel",
+    name: "Viandel",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/viandel_160.webp",
+  },
+  {
+    id: "vlammetjes",
+    name: "Vlammetjes",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/vlammetjes_160.webp",
+  },
+  {
+    id: "vuurvreter",
+    name: "Vuurvreter",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/vuurvreter_160.webp",
+  },
+  {
+    id: "andalouse",
+    name: "Andalouse",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/andalouse_saus_160.webp",
+  },
+  {
+    id: "cocktail",
+    name: "Cocktail",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/cocktail_saus_160.webp",
+  },
+  {
+    id: "curry-koud",
+    name: "Curry koud",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/curry_saus_koud_160.webp",
+  },
+  {
+    id: "curry-warm",
+    name: "Curry warm",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/curry_saus_warm_160.webp",
+  },
+  {
+    id: "curryketchup",
+    name: "Curryketchup",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/curryketchup_saus_160.webp",
+  },
+  {
+    id: "joppie",
+    name: "Joppie",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/joppie_saus_160.webp",
+  },
+  {
+    id: "mammouth",
+    name: "Mammouth",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/mammouth_saus_160.webp",
+  },
+  {
+    id: "mayonaise",
+    name: "Mayonaise",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/mayonaise_saus_160.webp",
+  },
+  {
+    id: "samoerai",
+    name: "Samoerai",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/samoerai_saus_160.webp",
+  },
+  {
+    id: "satékruiden",
+    name: "Satékruiden",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/satékruiden_160.webp",
+  },
+  {
+    id: "stoofvleessaus",
+    name: "Stoofvleessaus",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/stoofvleessaus_saus_160.webp",
+  },
+  {
+    id: "tartaar",
+    name: "Tartaar",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/tartaar_saus_160.webp",
+  },
+  {
+    id: "tomatenketchup",
+    name: "Tomatenketchup",
+    category: "sauzen",
+    defaultCount: 0,
+    defaultSize: "klein",
+    iconSrc: "/images/frituur/tomatenketchup_saus_160.webp",
+  },
+] as const;
+
+const FRITUUR_WIZARD_CATEGORY_LABELS: Record<FrituurWizardCategory, string> = {
+  frieten: "Frieten",
+  snacks: "Snacks",
+  sauzen: "Sauzen",
+};
+
+type FrituurWizardSelectedItem = {
+  name: string;
+  count: number;
+  category: FrituurWizardCategory;
+  sauceSize?: FrituurWizardSauceSize;
+};
+
+function normalizeFrituurChoiceName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function frituurItemIconSrc(name: string): string {
+  const normalized = normalizeFrituurChoiceName(name);
+  const match = FRITUUR_WIZARD_ITEMS.find(
+    (item) => normalizeFrituurChoiceName(item.name) === normalized,
+  );
+  return match?.iconSrc ?? FRITUUR_WIZARD_PLACEHOLDER_ICON_URL;
+}
+
+function frituurCategoryFromItem(item: ListItem): "Frieten" | "Sauzen" | "Snacks" {
+  if (item.section === "Sauzen" || item.section === "Snacks" || item.section === "Frieten") {
+    return item.section;
+  }
+  const match = FRITUUR_WIZARD_ITEMS.find(
+    (wizardItem) =>
+      normalizeFrituurChoiceName(wizardItem.name) ===
+      normalizeFrituurChoiceName(item.name),
+  );
+  if (match?.category === "sauzen") return "Sauzen";
+  if (match?.category === "snacks") return "Snacks";
+  return "Frieten";
+}
+
+function parseFrituurQuantity(quantity: string): {
+  count: string;
+  subtitle?: string;
+} {
+  const trimmed = quantity.trim();
+  const match = trimmed.match(/^(\d+)\s+(klein|groot)$/i);
+  if (!match) return { count: trimmed || "1" };
+  return {
+    count: match[1] ?? "1",
+    subtitle: match[2]?.toLowerCase() === "groot" ? "Groot" : "Klein",
+  };
+}
+
+function frituurQuantityCount(quantity: string): number {
+  const parsed = Number.parseInt(parseFrituurQuantity(quantity).count, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function formatFrituurQuantity(
+  item: ListItem,
+  count: number,
+  size?: FrituurWizardSauceSize,
+): string {
+  const isSauce = frituurCategoryFromItem(item) === "Sauzen";
+  if (!isSauce) return String(count);
+  const current = parseFrituurQuantity(item.quantity);
+  const nextSize =
+    size ??
+    (current.subtitle?.toLowerCase() === "groot" ? "groot" : "klein");
+  return `${count} ${nextSize}`;
+}
+
+function MinusCircleOutlineIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M12 21.53A9.53 9.53 0 1 1 12 2.47a9.53 9.53 0 0 1 0 19.06Zm0-1.04A8.49 8.49 0 1 0 12 3.51a8.49 8.49 0 0 0 0 16.98Zm-3.08-9.01h6.16a.52.52 0 1 1 0 1.04H8.92a.52.52 0 1 1 0-1.04Z"
+      />
+    </svg>
+  );
+}
+
+function FrituurWizardItemRow({
+  item,
+  count,
+  sauceSize,
+  onChange,
+  onSizeChange,
+}: {
+  item: FrituurWizardItem;
+  count: number;
+  sauceSize?: FrituurWizardSauceSize;
+  onChange: (next: number) => void;
+  onSizeChange?: (next: FrituurWizardSauceSize) => void;
+}) {
+  const hasCount = count > 0;
+  const showSizeToggle = item.category === "sauzen" && hasCount && onSizeChange;
+  return (
+    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
+      <button
+        type="button"
+        aria-label={`${item.name} verminderen`}
+        onClick={() => onChange(Math.max(0, count - 1))}
+        disabled={!hasCount}
+        className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:text-[var(--blue-200)]"
+      >
+        <MinusCircleOutlineIcon className="size-6" />
+      </button>
+      <span className="h-10 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+      <div
+        className={cn(
+          "relative size-10 shrink-0 overflow-hidden rounded-[var(--radius-md)] transition-opacity",
+          hasCount ? "opacity-100" : "opacity-60",
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- tijdelijke bestaande placeholder */}
+        <img
+          src={item.iconSrc ?? FRITUUR_WIZARD_PLACEHOLDER_ICON_URL}
+          alt=""
+          width={40}
+          height={40}
+          className="size-full object-cover"
+          decoding="async"
+        />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5">
+        <p
+          className={cn(
+            "min-w-0 max-w-full truncate text-base leading-24 tracking-normal",
+            hasCount
+              ? "font-medium text-[var(--text-primary)]"
+              : "font-normal text-[var(--gray-500)]",
+          )}
+        >
+          {item.name}
+        </p>
+        {showSizeToggle ? (
+          <div className="flex h-3.5 items-center rounded-full bg-[var(--gray-50)]">
+            {(["klein", "groot"] as const).map((size) => {
+              const active = (sauceSize ?? "klein") === size;
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => onSizeChange(size)}
+                  className={cn(
+                    "flex h-3.5 items-center justify-center rounded-full px-2 text-[10px] font-normal leading-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                    active
+                      ? "bg-[var(--blue-500)] text-[var(--white)]"
+                      : "text-[var(--gray-400)]",
+                  )}
+                >
+                  {size === "klein" ? "Klein" : "Groot"}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+      {hasCount ? (
+        <span className="w-8 shrink-0 text-center text-[32px] font-semibold leading-8 text-[var(--blue-900)]">
+          {count}
+        </span>
+      ) : null}
+      <span className="h-10 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+      <button
+        type="button"
+        aria-label={`${item.name} toevoegen`}
+        onClick={() => onChange(count + 1)}
+        className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        <PlusCircleIcon className="size-6" />
+      </button>
+    </div>
+  );
+}
+
+function frituurWizardCategoryFromSection(
+  value: string | null | undefined,
+): FrituurWizardCategory {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "sauzen") return "sauzen";
+  if (normalized === "snacks") return "snacks";
+  return "frieten";
+}
+
+function buildFrituurWizardInitialState(existingItems: ListItem[]): {
+  counts: Record<string, number>;
+  sauceSizes: Record<string, FrituurWizardSauceSize>;
+} {
+  const counts = Object.fromEntries(
+    FRITUUR_WIZARD_ITEMS.map((item) => [item.id, item.defaultCount]),
+  ) as Record<string, number>;
+  const sauceSizes = Object.fromEntries(
+    FRITUUR_WIZARD_ITEMS.filter((item) => item.defaultSize).map((item) => [
+      item.id,
+      item.defaultSize as FrituurWizardSauceSize,
+    ]),
+  ) as Record<string, FrituurWizardSauceSize>;
+  const wizardItemByName = new Map(
+    FRITUUR_WIZARD_ITEMS.map((item) => [
+      normalizeFrituurChoiceName(item.name),
+      item,
+    ]),
+  );
+
+  for (const existingItem of existingItems) {
+    const wizardItem = wizardItemByName.get(
+      normalizeFrituurChoiceName(existingItem.name),
+    );
+    if (!wizardItem) continue;
+    counts[wizardItem.id] =
+      (counts[wizardItem.id] ?? 0) + frituurQuantityCount(existingItem.quantity);
+    if (wizardItem.category === "sauzen") {
+      const parsed = parseFrituurQuantity(existingItem.quantity);
+      sauceSizes[wizardItem.id] =
+        parsed.subtitle?.toLowerCase() === "groot" ? "groot" : "klein";
+    }
+  }
+
+  return { counts, sauceSizes };
+}
+
+function FrituurListWizard({
+  listName,
+  initialCategory,
+  existingItems,
+  itemSelectionCounts,
+  onBack,
+  onDone,
+}: {
+  listName: string;
+  initialCategory: FrituurWizardCategory;
+  existingItems: ListItem[];
+  itemSelectionCounts: Map<string, number>;
+  onBack: () => void;
+  onDone: (items: FrituurWizardSelectedItem[]) => void;
+}) {
+  const [query, setQuery] = React.useState("");
+  const [category, setCategory] =
+    React.useState<FrituurWizardCategory>(initialCategory);
+  const initialState = React.useMemo(
+    () => buildFrituurWizardInitialState(existingItems),
+    [existingItems],
+  );
+  const [counts, setCounts] = React.useState<Record<string, number>>(
+    () => initialState.counts,
+  );
+  const [sauceSizes, setSauceSizes] = React.useState<
+    Record<string, FrituurWizardSauceSize>
+  >(
+    () => initialState.sauceSizes,
+  );
+
+  const visibleItems = React.useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const filtered = FRITUUR_WIZARD_ITEMS.filter((item) => {
+      if (item.category !== category) return false;
+      if (!normalizedQuery) return true;
+      return item.name.toLowerCase().includes(normalizedQuery);
+    });
+    if (category === "frieten") return filtered;
+    return filtered
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => {
+        const aCount =
+          itemSelectionCounts.get(normalizeFrituurChoiceName(a.item.name)) ?? 0;
+        const bCount =
+          itemSelectionCounts.get(normalizeFrituurChoiceName(b.item.name)) ?? 0;
+        if (aCount !== bCount) return bCount - aCount;
+        return a.index - b.index;
+      })
+      .map(({ item }) => item);
+  }, [category, itemSelectionCounts, query]);
+
+  const handleDone = React.useCallback(() => {
+    onDone(
+      FRITUUR_WIZARD_ITEMS.map((item) => ({
+        name: item.name,
+        count: counts[item.id] ?? 0,
+        category: item.category,
+        sauceSize: item.category === "sauzen" ? sauceSizes[item.id] ?? "klein" : undefined,
+      })).filter((item) => item.count > 0),
+    );
+  }, [counts, onDone, sauceSizes]);
+
+  return (
+    <div className="flex min-h-dvh w-full flex-col bg-[var(--white)]">
+      <div className="fixed left-0 right-0 top-0 z-10 bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
+        <header className="relative mx-auto flex h-14 max-w-[956px] items-center px-4">
+          <button
+            type="button"
+            aria-label="Terug naar lijstjes"
+            onClick={onBack}
+            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <BackArrowIcon />
+          </button>
+          <h1 className="pointer-events-none absolute inset-x-0 truncate px-24 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+            {listName}
+          </h1>
+          <div className="flex-1" />
+          <span className="size-6 shrink-0" aria-hidden />
+        </header>
+      </div>
+
+      <main className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-[calc(88px+env(safe-area-inset-top,0px))]">
+        <div className="flex items-center gap-4">
+          <h2 className="min-w-0 flex-1 truncate text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
+            {listName}
+          </h2>
+          <MiniButton type="button" variant="primary" onClick={handleDone}>
+            Gereed
+          </MiniButton>
+        </div>
+
+        <SearchBar
+          value={query}
+          onValueChange={setQuery}
+          placeholder="Search"
+        />
+
+        <div className="flex w-full gap-6 border-b border-[var(--gray-100)]">
+          {(Object.keys(FRITUUR_WIZARD_CATEGORY_LABELS) as FrituurWizardCategory[]).map((key) => {
+            const active = key === category;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setCategory(key)}
+                className={cn(
+                  "flex flex-col gap-2 pb-0 text-base leading-24 tracking-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                  active
+                    ? "font-medium text-[var(--text-primary)]"
+                    : "font-normal text-[var(--gray-400)]",
+                )}
+              >
+                <span>{FRITUUR_WIZARD_CATEGORY_LABELS[key]}</span>
+                <span
+                  className={cn(
+                    "h-0.5 w-full bg-[var(--blue-500)]",
+                    !active && "opacity-0",
+                  )}
+                  aria-hidden
+                />
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {visibleItems.length > 0 ? (
+            visibleItems.map((item) => (
+              <FrituurWizardItemRow
+                key={item.id}
+                item={item}
+                count={counts[item.id] ?? 0}
+                sauceSize={sauceSizes[item.id] ?? item.defaultSize}
+                onChange={(next) =>
+                  setCounts((current) => ({ ...current, [item.id]: next }))
+                }
+                onSizeChange={
+                  item.category === "sauzen"
+                    ? (next) =>
+                        setSauceSizes((current) => ({
+                          ...current,
+                          [item.id]: next,
+                        }))
+                    : undefined
+                }
+              />
+            ))
+          ) : (
+            <div className="rounded-md border border-[var(--gray-100)] bg-[var(--white)] p-4 text-center text-sm leading-20 text-[var(--gray-500)]">
+              Nog geen items in deze categorie.
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
 
 /** Figma 134:813 / 1307:20368 — leeg gewoon lijstje: 96px producticoon; frituur gebruikt vaste frietzak met gezichtje. */
 function NormalListEmptyState({
@@ -992,6 +1870,7 @@ export default function ListDetailPage({
 }) {
   const router = useRouter();
   const routeParams = useParams();
+  const searchParams = useSearchParams();
   const getPhotoUrl = useItemPhotoUrl();
   const { isLoading: authLoading, user } = db.useAuth();
   const routeListId = resolvedRouteListId(params.id, routeParams?.id);
@@ -1027,6 +1906,12 @@ export default function ListDetailPage({
     lists: {
       loyaltyCard: {},
       loyaltyCardSecondary: {},
+      $: { where: { ownerId: ownerLoyaltyCardsQueryId } },
+    },
+  });
+  const { data: ownerFrituurHistoryData } = db.useQuery({
+    lists: {
+      items: {},
       $: { where: { ownerId: ownerLoyaltyCardsQueryId } },
     },
   });
@@ -1143,6 +2028,7 @@ export default function ListDetailPage({
     if (!listData || !canAccess) router.replace("/");
   }, [authLoading, user, isLoading, listData, canAccess, router]);
   const listName = listData?.name ?? "Lijstje";
+  const isFrietenList = listProductIconUrlFromListName(listName) != null;
   const listIcon = listData?.icon ?? "";
   const listDateStr = String((listData as Record<string, unknown>)?.date ?? "");
   /** Logo van de master-winkel (opgeslagen bij aanmaken vanuit master; fallback = listIcon voor oude lijstjes). */
@@ -1150,6 +2036,34 @@ export default function ListDetailPage({
   const isMasterList = listIsMasterTemplate(
     listData as { isMasterTemplate?: boolean; icon?: string; name?: string },
   );
+  const showFrituurWizard =
+    searchParams.get("frituurWizard") === "1" && !isMasterList && isFrietenList;
+  const frituurWizardSelectionCounts = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    const wizardItemByName = new Map(
+      FRITUUR_WIZARD_ITEMS.map((item) => [
+        normalizeFrituurChoiceName(item.name),
+        item,
+      ]),
+    );
+    for (const list of ownerFrituurHistoryData?.lists ?? []) {
+      const row = list as {
+        name?: string | null;
+        isMasterTemplate?: boolean | null;
+        items?: Array<{ name?: string | null }>;
+      };
+      if (row.isMasterTemplate) continue;
+      if (listProductIconUrlFromListName(row.name ?? "") == null) continue;
+      for (const item of row.items ?? []) {
+        const key = normalizeFrituurChoiceName(item.name ?? "");
+        const wizardItem = wizardItemByName.get(key);
+        if (!wizardItem) continue;
+        if (wizardItem.category === "frieten") continue;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [ownerFrituurHistoryData?.lists]);
   const masterStoreLabel = React.useMemo(() => {
     if (!isMasterList) return "";
     const logoFile = listIcon.split("/").pop() ?? "";
@@ -1480,6 +2394,14 @@ export default function ListDetailPage({
     setIsNewItemOpen(true);
   }, []);
 
+  const handleOpenFrituurWizard = React.useCallback((sectionTitle?: string) => {
+    if (!listId) return;
+    const category = frituurWizardCategoryFromSection(sectionTitle);
+    router.push(
+      `/lijstje/${encodeURIComponent(listId)}?frituurWizard=1&frituurTab=${category}`,
+    );
+  }, [listId, router]);
+
   const handleSaveRecipeToLibrary = React.useCallback(
     (recipe: SavedRecipe) => {
       const isNew = !savedRecipes.some((r) => r.id === recipe.id);
@@ -1685,6 +2607,46 @@ export default function ListDetailPage({
       }, DELETE_ANIMATION_MS);
     },
     [items],
+  );
+
+  const handleIncrementFrituurItem = React.useCallback((item: ListItem) => {
+    const nextCount = frituurQuantityCount(item.quantity) + 1;
+    db.transact(
+      db.tx.items[item.id].update({
+        quantity: formatFrituurQuantity(item, nextCount),
+      }),
+    );
+  }, []);
+
+  const handleDecrementOrDeleteFrituurItem = React.useCallback(
+    (item: ListItem) => {
+      const currentCount = frituurQuantityCount(item.quantity);
+      if (currentCount <= 1) {
+        handleDeleteItem(item.id);
+        return;
+      }
+      db.transact(
+        db.tx.items[item.id].update({
+          quantity: formatFrituurQuantity(item, currentCount - 1),
+        }),
+      );
+    },
+    [handleDeleteItem],
+  );
+
+  const handleFrituurSauceSizeChange = React.useCallback(
+    (item: ListItem, size: FrituurWizardSauceSize) => {
+      db.transact(
+        db.tx.items[item.id].update({
+          quantity: formatFrituurQuantity(
+            item,
+            frituurQuantityCount(item.quantity),
+            size,
+          ),
+        }),
+      );
+    },
+    [],
   );
 
   const SECTION_DELETE_ANIMATION_MS = 200;
@@ -1928,6 +2890,69 @@ export default function ListDetailPage({
   const showListDetailHeader =
     hasItems || showSharedDetailRow || isMasterEmpty;
 
+  const handleCompleteFrituurWizard = React.useCallback(
+    (selectedItems: FrituurWizardSelectedItem[]) => {
+      if (!listId) return;
+      const wizardNames = new Set(
+        FRITUUR_WIZARD_ITEMS.map((item) =>
+          normalizeFrituurChoiceName(item.name),
+        ),
+      );
+      const existingByName = new Map<string, ListItem[]>();
+      for (const item of items) {
+        const key = normalizeFrituurChoiceName(item.name);
+        if (!wizardNames.has(key)) continue;
+        const existing = existingByName.get(key) ?? [];
+        existing.push(item);
+        existingByName.set(key, existing);
+      }
+
+      const selectedKeys = new Set<string>();
+      const txs: Parameters<typeof db.transact>[0] = [];
+      selectedItems.forEach((item, index) => {
+        const key = normalizeFrituurChoiceName(item.name);
+        selectedKeys.add(key);
+        const existingItems = existingByName.get(key) ?? [];
+        const existingItem = existingItems[0];
+        const payload = {
+          name: item.name,
+          quantity: item.sauceSize
+            ? `${item.count} ${item.sauceSize}`
+            : String(item.count),
+          checked: false,
+          section: FRITUUR_WIZARD_CATEGORY_LABELS[item.category],
+          itemCategory: resolveItemCategoryFromName(item.name),
+          order: index,
+        };
+        if (existingItem) {
+          txs.push(db.tx.items[existingItem.id].update(payload));
+          for (const duplicate of existingItems.slice(1)) {
+            txs.push(db.tx.items[duplicate.id].delete());
+          }
+          return;
+        }
+        txs.push(
+          db.tx.items[iid()]
+            .update(payload)
+            .link({ list: listId }),
+        );
+      });
+
+      for (const [key, existingItems] of Array.from(existingByName.entries())) {
+        if (selectedKeys.has(key)) continue;
+        for (const existingItem of existingItems) {
+          txs.push(db.tx.items[existingItem.id].delete());
+        }
+      }
+
+      if (txs.length > 0) {
+        db.transact(txs as Parameters<typeof db.transact>[0]);
+      }
+      router.replace(`/lijstje/${encodeURIComponent(listId)}`);
+    },
+    [items, listId, router],
+  );
+
   const handleOpenMasterCategoryReorder = React.useCallback(() => {
     const titles = sections.map((s) => s.title);
     if (titles.length === 0) return;
@@ -2145,7 +3170,11 @@ export default function ListDetailPage({
             </Link>
           )}
           <h1 className="pointer-events-none absolute inset-x-0 truncate px-24 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
-            {isMasterCategoryOrderMode ? "Volgorde categorieën" : listName}
+            {isMasterCategoryOrderMode
+              ? "Volgorde categorieën"
+              : isFrietenList && !isMasterList
+                ? "Weeklijstje"
+                : listName}
           </h1>
           <div className="flex-1" />
           {!isMasterCategoryOrderMode ? (
@@ -2163,6 +3192,21 @@ export default function ListDetailPage({
       </div>
   );
 
+  if (showFrituurWizard) {
+    return (
+      <FrituurListWizard
+        listName={listName}
+        initialCategory={frituurWizardCategoryFromSection(
+          searchParams.get("frituurTab"),
+        )}
+        existingItems={items}
+        itemSelectionCounts={frituurWizardSelectionCounts}
+        onBack={() => router.replace(`/lijstje/${encodeURIComponent(listId)}`)}
+        onDone={handleCompleteFrituurWizard}
+      />
+    );
+  }
+
   const listMain = (
       <main
         className={mainSurfaceClassName}
@@ -2176,7 +3220,7 @@ export default function ListDetailPage({
                   <h2 className="text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
                     {listName}
                   </h2>
-                  {!isMasterEmpty ? (
+                  {!isMasterEmpty && !(isFrietenList && !isMasterList && isEditMode) ? (
                     <button
                       type="button"
                       aria-label={isEditMode ? "Stop bewerken" : "Bewerken"}
@@ -2234,11 +3278,32 @@ export default function ListDetailPage({
                 <button
                   type="button"
                   onClick={() => setIsEditMode(false)}
-                  className="h-9 shrink-0 rounded-pill bg-[var(--blue-500)] px-4 text-sm font-medium leading-20 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  className={cn(
+                    "shrink-0 rounded-pill bg-[var(--blue-500)] text-sm font-medium leading-20 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                    isFrietenList && !isMasterList
+                      ? "flex h-8 items-center gap-1 px-2"
+                      : "h-9 px-4",
+                  )}
                 >
+                  {isFrietenList && !isMasterList ? (
+                    <svg
+                      className="size-6 shrink-0"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M4.75 12.75L9.25 17.25L19.25 6.75"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : null}
                   Gereed
                 </button>
-              ) : hasItems ? (
+              ) : hasItems && !(isFrietenList && !isMasterList) ? (
                 <div
                   className="box-border flex h-9 shrink-0 items-stretch overflow-hidden rounded-[4px] border border-[var(--gray-100)] bg-[var(--white)]"
                   role="group"
@@ -2290,7 +3355,7 @@ export default function ListDetailPage({
           !isMasterList &&
           hasItems &&
           isListGroupingHydrated &&
-          !isMasterEmpty ? (
+          !isMasterEmpty && !(isFrietenList && !isMasterList) ? (
             <PillTab
               className="w-full min-w-0"
               aria-label="Groepering lijst"
@@ -2544,9 +3609,25 @@ export default function ListDetailPage({
               <NormalListEmptyState
                 key={listId}
                 listName={listName}
-                onAddItem={handleOpenNewItemModal}
+                onAddItem={
+                  isFrietenList && !isMasterList
+                    ? () => handleOpenFrituurWizard()
+                    : handleOpenNewItemModal
+                }
               />
             )
+          ) : isFrietenList && !isMasterList ? (
+            <FrituurListItems
+              items={items}
+              isEditMode={isEditMode}
+              onEdit={(item) => {
+                setEditingItem(item);
+              }}
+              onAddToSection={handleOpenFrituurWizard}
+              onIncrement={handleIncrementFrituurItem}
+              onDecrementOrDelete={handleDecrementOrDeleteFrituurItem}
+              onSauceSizeChange={handleFrituurSauceSizeChange}
+            />
           ) : (
             <DndContext
               sensors={sensors}
@@ -2635,6 +3716,7 @@ export default function ListDetailPage({
       {!isMasterEmpty &&
       !hideFabOnLoyaltyPanel &&
       !isMasterCategoryOrderMode &&
+      !(isFrietenList && !isMasterList && isEditMode) &&
       !snackbarMessage ? (
         <div
           className={cn(
@@ -2646,7 +3728,11 @@ export default function ListDetailPage({
             <FloatingActionButton
               aria-label="Item toevoegen"
               className="pointer-events-auto"
-              onClick={handleOpenNewItemModal}
+              onClick={
+                isFrietenList && !isMasterList
+                  ? () => handleOpenFrituurWizard()
+                  : handleOpenNewItemModal
+              }
             />
           </div>
         </div>

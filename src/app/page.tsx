@@ -31,6 +31,7 @@ import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
 import {
   homeListCardIconSrc,
+  listProductIconUrlFromListName,
   pickListProductIconForNewList,
   planOwnerListDecorIconUpdates,
 } from "@/lib/list-product-icons";
@@ -126,6 +127,18 @@ type SavedListIconImage = {
   imageDataUrl: string;
   createdAtIso: string;
   lastUsedAtIso: string;
+};
+
+type FrituurPreviousList = {
+  id: string;
+  name: string;
+  items: Array<{
+    name?: string;
+    quantity?: string;
+    section?: string;
+    order?: number;
+    itemCategory?: string;
+  }>;
 };
 
 function itemCountLabel(count: number): string {
@@ -1168,6 +1181,24 @@ export default function Home() {
     );
   }, [data, lists]);
 
+  const latestFrituurList = React.useMemo((): FrituurPreviousList | null => {
+    const candidates = (data?.lists ?? [])
+      .filter((list) => {
+        if (listIsMasterTemplate(list)) return false;
+        return listProductIconUrlFromListName(String(list.name ?? "")) != null;
+      })
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const latest = candidates[0];
+    if (!latest?.id) return null;
+    return {
+      id: String(latest.id),
+      name: String(latest.name ?? "Frituur"),
+      items: ((latest.items ?? []) as FrituurPreviousList["items"])
+        .slice()
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    };
+  }, [data?.lists]);
+
   /** Klantenkaarten voor de swimlane op de startpagina: afgeleid van winkelicons (zelfde logica als /klantenkaarten). */
   const homeLoyaltyCards: HomeLoyaltyCard[] = React.useMemo(() => {
     const seenId = new Set<string>();
@@ -1300,6 +1331,7 @@ export default function Home() {
   const [newListName, setNewListName] = React.useState("");
   const [newListCustomIcon, setNewListCustomIcon] = React.useState<string | null>(null);
   const [newListIconPickerOpen, setNewListIconPickerOpen] = React.useState(false);
+  const [pendingFrituurListName, setPendingFrituurListName] = React.useState<string | null>(null);
   const newListPhotoInputRef = React.useRef<HTMLInputElement>(null);
   const [quickMasterListName, setQuickMasterListName] = React.useState("");
   const [quickMasterId, setQuickMasterId] = React.useState<string | null>(null);
@@ -1334,6 +1366,7 @@ export default function Home() {
     setNewListName("");
     setNewListCustomIcon(null);
     setNewListIconPickerOpen(false);
+    setPendingFrituurListName(null);
   }, []);
 
   const handleOpenCreateModal = () => {
@@ -1341,6 +1374,7 @@ export default function Home() {
     setNewListFormKey((k) => k + 1);
     setNewListCustomIcon(null);
     setNewListIconPickerOpen(false);
+    setPendingFrituurListName(null);
     setIsCreateModalOpen(true);
   };
 
@@ -1393,29 +1427,19 @@ export default function Home() {
     [handleCloseQuickMasterModal, quickMasterId, quickMasterListName, router],
   );
 
-  const handleNewListFormSubmit = React.useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+  const createBlankList = React.useCallback(
+    ({
+      listName,
+      duplicateFrom,
+      startFrituurWizard,
+    }: {
+      listName: string;
+      duplicateFrom?: FrituurPreviousList | null;
+      startFrituurWizard: boolean;
+    }) => {
       if (!user) return;
-      const fd = new FormData(event.currentTarget);
-      const name = String(fd.get("newListName") ?? "").trim();
-      if (!name) return;
-      const rawKind = fd.get("newListKind");
-      const kind: NewListKind =
-        rawKind === "from_master" || rawKind === "blank" ? rawKind : "blank";
-
-      if (kind === "from_master") {
-        router.push(
-          `/nieuw-lijstje/selecteer-master-lijstje?naam=${encodeURIComponent(
-            name,
-          )}`,
-        );
-        handleCloseCreateModal();
-        return;
-      }
-      const listName = name;
-      const icon = pickListProductIconForNewList(lists, name);
-      const storeFromName = findMasterStoreByListName(name);
+      const icon = pickListProductIconForNewList(lists, listName);
+      const storeFromName = findMasterStoreByListName(listName);
       const now = new Date();
       const nowIso = now.toISOString();
       const newId = iid();
@@ -1432,6 +1456,27 @@ export default function Home() {
           ...(newListCustomIcon ? { customIconUrl: newListCustomIcon } : {}),
         }),
       ];
+
+      const duplicateItems = duplicateFrom?.items ?? [];
+      for (let index = 0; index < duplicateItems.length; index += 1) {
+        const item = duplicateItems[index];
+        if (!item) continue;
+        const itemName = String(item.name ?? "").trim();
+        if (!itemName) continue;
+        txs.push(
+          db.tx.items[iid()]
+            .update({
+              name: itemName,
+              quantity: String(item.quantity ?? "1"),
+              checked: false,
+              section: String(item.section ?? "Algemeen"),
+              order: index,
+              ...(item.itemCategory ? { itemCategory: item.itemCategory } : {}),
+            })
+            .link({ list: newId }),
+        );
+      }
+
       if (newListCustomIcon) {
         const existingIcon = savedListIconImages.find(
           (img) => img.imageDataUrl === newListCustomIcon && img.id,
@@ -1453,17 +1498,74 @@ export default function Home() {
           );
         }
       }
+
       db.transact(txs as Parameters<typeof db.transact>[0]);
-      setAddingId(newId);
       handleCloseCreateModal();
+      if (startFrituurWizard) {
+        router.push(`/lijstje/${newId}?frituurWizard=1`);
+        return;
+      }
+      if (duplicateFrom) {
+        router.push(`/lijstje/${newId}`);
+        return;
+      }
+      setAddingId(newId);
     },
     [
-      user,
-      lists,
-      router,
       handleCloseCreateModal,
+      lists,
       newListCustomIcon,
+      router,
       savedListIconImages,
+      user,
+    ],
+  );
+
+  const handleNewListFormSubmit = React.useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!user) return;
+      const fd = new FormData(event.currentTarget);
+      const name = String(fd.get("newListName") ?? "").trim();
+      if (!name) return;
+      const rawKind = fd.get("newListKind");
+      const kind: NewListKind =
+        rawKind === "from_master" || rawKind === "blank" ? rawKind : "blank";
+
+      if (kind === "from_master") {
+        router.push(
+          `/nieuw-lijstje/selecteer-master-lijstje?naam=${encodeURIComponent(
+            name,
+          )}`,
+        );
+        handleCloseCreateModal();
+        return;
+      }
+      const listName = name;
+      if (listProductIconUrlFromListName(listName)) {
+        if (latestFrituurList) {
+          setPendingFrituurListName(listName);
+          return;
+        }
+        createBlankList({
+          listName,
+          duplicateFrom: null,
+          startFrituurWizard: true,
+        });
+        return;
+      }
+      createBlankList({
+        listName,
+        duplicateFrom: null,
+        startFrituurWizard: false,
+      });
+    },
+    [
+      createBlankList,
+      handleCloseCreateModal,
+      latestFrituurList,
+      router,
+      user,
     ],
   );
 
@@ -1626,7 +1728,9 @@ export default function Home() {
         open={isCreateModalOpen}
         onClose={handleCloseCreateModal}
         title="Nieuw lijstje"
-        disableEscapeClose={newListIconPickerOpen}
+        disableEscapeClose={
+          newListIconPickerOpen || pendingFrituurListName != null
+        }
         footer={
           <Button
             type="submit"
@@ -1727,6 +1831,55 @@ export default function Home() {
             />
           </div>
         </form>
+      </SlideInModal>
+
+      <SlideInModal
+        open={pendingFrituurListName != null}
+        onClose={() => setPendingFrituurListName(null)}
+        title="Nieuw frituur lijstje"
+        titleId="new-frituur-choice-slide-title"
+        containerClassName="z-[60]"
+        className="pb-0"
+        bodyClassName="pb-[45px]"
+      >
+        <div className="flex w-full flex-col gap-4">
+          <button
+            type="button"
+            onClick={() => {
+              if (!pendingFrituurListName || !latestFrituurList) return;
+              createBlankList({
+                listName: pendingFrituurListName,
+                duplicateFrom: latestFrituurList,
+                startFrituurWizard: false,
+              });
+            }}
+            className="w-full bg-transparent p-0 text-left"
+          >
+            <SelectTile
+              title="Vertrek van vorige lijstje"
+              subtitle="Je bestelt bijna hetzelfde dan vorige keer"
+              icon={<IconPrimaryMask src="/icons/link.svg" />}
+            />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!pendingFrituurListName) return;
+              createBlankList({
+                listName: pendingFrituurListName,
+                duplicateFrom: null,
+                startFrituurWizard: true,
+              });
+            }}
+            className="w-full bg-transparent p-0 text-left"
+          >
+            <SelectTile
+              title="Nieuw lijstje"
+              subtitle="Je doet een totaal andere bestelling"
+              icon={<IconPrimaryMask src="/icons/pdf.svg" />}
+            />
+          </button>
+        </div>
       </SlideInModal>
 
       <SlideInModal
