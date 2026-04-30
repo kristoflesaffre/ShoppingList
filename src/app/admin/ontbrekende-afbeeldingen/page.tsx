@@ -55,6 +55,25 @@ const SOURCE_TYPE_LABELS: Record<MissingImageReport["sourceType"], string> = {
   "recipe-photo": "Recept",
 };
 
+function BackArrowIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M3.59377 12.31C3.60777 12.329 3.61477 12.351 3.63177 12.368L9.23178 17.968C9.33378 18.069 9.46678 18.119 9.59978 18.119C9.73278 18.119 9.86678 18.068 9.96778 17.968C10.1698 17.765 10.1698 17.435 9.96778 17.232L5.25578 12.521L19.9998 12.521C20.2868 12.521 20.5198 12.288 20.5198 12.001C20.5198 11.714 20.2868 11.48 19.9998 11.48L5.25477 11.48L9.96678 6.768C10.1688 6.565 10.1688 6.236 9.96577 6.033C9.76477 5.83 9.43378 5.83 9.23078 6.033L3.63078 11.633C3.61378 11.65 3.60577 11.673 3.59177 11.692C3.56477 11.727 3.53678 11.76 3.51978 11.801C3.46677 11.929 3.46677 12.072 3.51978 12.2C3.53778 12.241 3.56677 12.275 3.59377 12.31Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function formatDateTime(value?: string): string {
   if (!value) return "Onbekend";
   const date = new Date(value);
@@ -298,6 +317,14 @@ export default function MissingImagesAdminPage() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-[960px] flex-col gap-6 bg-[var(--bg-default)] px-4 pb-28 pt-[calc(24px+env(safe-area-inset-top,0px))]">
       <header className="flex flex-col gap-4 rounded-xl bg-[var(--white)] p-5 shadow-sm">
+        <Link
+          href="/profiel"
+          aria-label="Admin verlaten en terug naar mijn profiel"
+          className="inline-flex w-fit items-center gap-2 rounded-full py-1 pr-3 text-sm font-medium leading-5 text-[var(--action-primary)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          <BackArrowIcon className="size-5 shrink-0" />
+          <span>Terug naar profiel</span>
+        </Link>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-medium leading-5 text-[var(--text-secondary)]">

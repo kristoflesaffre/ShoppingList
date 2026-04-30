@@ -589,33 +589,12 @@ function HomeDiepvriesSection({
     /* ── Content state (Figma 1195:10075) ────────────────────────────── */
     return (
       <div className="flex flex-col gap-4">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="flex flex-1 items-center gap-2">
-            <span
-              className="inline-block size-4 shrink-0 bg-[var(--text-primary)]"
-              style={{
-                WebkitMaskImage: "url(/icons/freeze.svg)",
-                maskImage: "url(/icons/freeze.svg)",
-                WebkitMaskSize: "contain",
-                maskSize: "contain",
-                WebkitMaskRepeat: "no-repeat",
-                maskRepeat: "no-repeat",
-              }}
-              aria-hidden
-            />
-            <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">
-              VOORRAAD DIEPVRIES
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => router.push("/diepvriesvoorraad")}
-            className="shrink-0 text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
-          >
-            Naar overzicht
-          </button>
-        </div>
+        <ListSectionHeader
+          icon="freeze"
+          label="Voorraad diepvries"
+          showNaarOverzicht
+          naarOverzichtHref="/diepvriesvoorraad"
+        />
 
         {/* Thumbnails card */}
         <div className="rounded-lg border border-[var(--gray-100)] bg-white p-3">
@@ -628,23 +607,11 @@ function HomeDiepvriesSection({
   /* ── Empty state ──────────────────────────────────────────────────── */
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <span
-          className="inline-block size-4 shrink-0 bg-[var(--text-primary)]"
-          style={{
-            WebkitMaskImage: "url(/icons/freeze.svg)",
-            maskImage: "url(/icons/freeze.svg)",
-            WebkitMaskSize: "contain",
-            maskSize: "contain",
-            WebkitMaskRepeat: "no-repeat",
-            maskRepeat: "no-repeat",
-          }}
-          aria-hidden
-        />
-        <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">
-          VOORRAAD DIEPVRIES
-        </p>
-      </div>
+      <ListSectionHeader
+        icon="freeze"
+        label="Voorraad diepvries"
+        showNaarOverzicht={false}
+      />
       <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
