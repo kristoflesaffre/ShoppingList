@@ -80,6 +80,7 @@ import {
 } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { ALL_LIST_PRODUCT_ICON_URLS } from "@/lib/list-product-icon-urls";
+import { listProductIconUrlFromListName } from "@/lib/list-product-icons";
 import type { ListItem } from "./new_item_modal";
 
 const RecipeIngredientSortableList = dynamic(
@@ -932,12 +933,24 @@ function resolvedRouteListId(
   return null;
 }
 
-/** Figma 134:813 — leeg gewoon lijstje: 96px producticoon (willekeurig uit zelfde pool als list cards); geen eigen gradient (alleen body::before in globals.css). */
-function NormalListEmptyState({ onAddItem }: { onAddItem: () => void }) {
-  const [productIconSrc] = React.useState(() => {
+const FRIETEN_EMPTY_STATE_ICON_URL = "/images/ui/product_icons/frieten_320.webp";
+
+/** Figma 134:813 / 1307:20368 — leeg gewoon lijstje: 96px producticoon; frituur gebruikt vaste frietzak met gezichtje. */
+function NormalListEmptyState({
+  listName,
+  onAddItem,
+}: {
+  listName: string;
+  onAddItem: () => void;
+}) {
+  const isFrietenList = listProductIconUrlFromListName(listName) != null;
+  const [randomProductIconSrc] = React.useState(() => {
     const pool = ALL_LIST_PRODUCT_ICON_URLS;
     return pool[Math.floor(Math.random() * pool.length)] ?? pool[0];
   });
+  const productIconSrc = isFrietenList
+    ? FRIETEN_EMPTY_STATE_ICON_URL
+    : randomProductIconSrc;
 
   return (
     <section
@@ -2530,6 +2543,7 @@ export default function ListDetailPage({
             ) : (
               <NormalListEmptyState
                 key={listId}
+                listName={listName}
                 onAddItem={handleOpenNewItemModal}
               />
             )
