@@ -79,6 +79,8 @@ const schema = i.schema({
       steps: i.string().optional(),
       persons: i.number(),
       order: i.number(),
+      /** Instant auth user id; recepten zijn persoonlijk per gebruiker. */
+      ownerId: i.string().optional().indexed(),
       /** Data-URL of gecodeerde receptfoto (zelfde patroon als profiel-avatar). */
       photoUrl: i.string().optional(),
       /** Unieke token voor deellink (/deel/recept/[token]); alleen gezet bij expliciete deling. */
@@ -118,6 +120,30 @@ const schema = i.schema({
       mimeType: i.string(),
       size: i.number(),
       createdAtIso: i.string().indexed(),
+    }),
+    /** Centrale admin-rapportage voor items/recepten waarvoor nog geen afbeelding beschikbaar is. */
+    missingImageReports: i.entity({
+      /** Deterministische sleutel zodat scanners idempotent kunnen upserten. */
+      reportKey: i.string().unique().indexed(),
+      /** Eigenaar van de brondata; leeg op legacy records zonder ownerId. */
+      ownerId: i.string().optional().indexed(),
+      /** list-item | recipe-ingredient | recipe-photo */
+      sourceType: i.string().indexed(),
+      sourceId: i.string().indexed(),
+      sourceName: i.string(),
+      /** Voor lijst-items: list | master-list; voor recepten optioneel recipe. */
+      sourceKind: i.string().optional().indexed(),
+      /** Naam van het product/ingredient/recept waarvoor beeld ontbreekt. */
+      itemName: i.string(),
+      normalizedName: i.string().indexed(),
+      /** product | ingredient | recipe */
+      imageKind: i.string().indexed(),
+      sourcePath: i.string().optional(),
+      occurrenceCount: i.number(),
+      active: i.boolean().indexed(),
+      firstSeenAtIso: i.string().indexed(),
+      lastSeenAtIso: i.string().indexed(),
+      resolvedAtIso: i.string().optional().indexed(),
     }),
     /** Eén profiel per Instant-auth user: optioneel wachtwoord-hash + avatar (data-URL). */
     profiles: i.entity({

@@ -1,6 +1,13 @@
 "use client";
 
 import * as React from "react";
+import {
+  itemPhotoUrlFromSlug as itemPhotoUrlFromSlugBase,
+  matchItemPhotoUrl as matchItemPhotoUrlBase,
+  normalizeForMatch,
+  normalizeItemPhotoSize,
+  type ItemPhotoSize,
+} from "@/lib/item-photo-matching";
 
 // Module-level cache so the fetch happens at most once per page load.
 let cachedSlugs: string[] | null = null;
@@ -8,19 +15,10 @@ let cachedSlugs: string[] | null = null;
 let slugToFileBase: Map<string, string> = new Map();
 let fetchPromise: Promise<string[]> | null = null;
 
-export type ItemPhotoSize = 160 | 240 | 320;
-
-function normalizeItemPhotoSize(size?: number): ItemPhotoSize {
-  if (!size || Number.isNaN(size)) return 240;
-  if (size <= 160) return 160;
-  if (size <= 240) return 240;
-  return 320;
-}
+export type { ItemPhotoSize };
 
 export function itemPhotoUrlFromSlug(slug: string, size?: number): string {
-  const normalizedSize = normalizeItemPhotoSize(size);
-  const fileBase = slugToFileBase.get(slug) ?? slug;
-  return `/images/items/${fileBase}_${normalizedSize}.webp`;
+  return itemPhotoUrlFromSlugBase(slug, size, slugToFileBase);
 }
 
 /**
@@ -58,15 +56,7 @@ function fetchSlugs(): Promise<string[]> {
   return fetchPromise;
 }
 
-export function normalizeForMatch(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
+export { normalizeForMatch };
 
 /**
  * Returns the URL for the best-matching item photo from a list of slugs,
@@ -77,56 +67,7 @@ export function matchItemPhotoUrl(
   slugs: string[],
   size?: number,
 ): string | null {
-  const normalized = normalizeForMatch(itemName);
-  if (!normalized || slugs.length === 0) return null;
-  const slugSet = new Set(slugs);
-
-  const candidates = new Set<string>([normalized]);
-  // Tolerantie voor simpele enkelvoud/meervoud-varianten:
-  // kippenworsten -> kippenworst, tomaats -> tomaat, etc.
-  if (normalized.endsWith("en") && normalized.length > 4) {
-    candidates.add(normalized.slice(0, -2));
-  }
-  if (normalized.endsWith("s") && normalized.length > 3) {
-    candidates.add(normalized.slice(0, -1));
-  }
-  if (normalized.endsWith("es") && normalized.length > 4) {
-    candidates.add(normalized.slice(0, -2));
-  }
-  const candidateList = Array.from(candidates);
-
-  // 1. Exact match
-  for (const c of candidateList) {
-    if (slugSet.has(c)) return itemPhotoUrlFromSlug(c, size);
-  }
-
-  // 2. Slug starts with query (e.g. "brood" -> "brood_kristof")
-  for (const c of candidateList) {
-    const startsWith = slugs.find(
-      (slug) => slug.startsWith(c + "_") || slug === c,
-    );
-    if (startsWith) return itemPhotoUrlFromSlug(startsWith, size);
-  }
-
-  // 3. Query starts with slug (e.g. "aardappelen_gekookt" -> "aardappelen")
-  for (const c of candidateList) {
-    const prefixMatch = slugs.find(
-      (slug) => c.startsWith(slug + "_") || c.startsWith(slug),
-    );
-    if (prefixMatch) return itemPhotoUrlFromSlug(prefixMatch, size);
-  }
-
-  // 4. Word-level: any word in the normalized name exactly matches a slug
-  const words = normalized.split("_").filter((w) => w.length > 3);
-  for (const word of words) {
-    const wordCandidates = [word];
-    if (word.endsWith("en") && word.length > 4) wordCandidates.push(word.slice(0, -2));
-    if (word.endsWith("s") && word.length > 3) wordCandidates.push(word.slice(0, -1));
-    const wordMatch = slugs.find((slug) => wordCandidates.includes(slug));
-    if (wordMatch) return itemPhotoUrlFromSlug(wordMatch, size);
-  }
-
-  return null;
+  return matchItemPhotoUrlBase(itemName, slugs, size, slugToFileBase);
 }
 
 /**

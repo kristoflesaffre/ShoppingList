@@ -10,12 +10,18 @@ import { uploadUserImageFile } from "@/lib/image-storage";
 import { cn } from "@/lib/utils";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
+type AuthUserWithEmail = {
+  id: string;
+  email?: string | null;
+};
+
 /**
  * Mijn profiel – Figma 760:3043: grote foto, wijzigen, uitloggen.
  */
 export default function ProfielPage() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
+  const adminUser = user as AuthUserWithEmail | null;
   const ownerId = user?.id ?? "__no_user__";
 
   const { isLoading, error, data } = db.useQuery({
@@ -36,11 +42,36 @@ export default function ProfielPage() {
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
+
+  React.useEffect(() => {
+    if (!adminUser?.id) {
+      setIsAdmin(false);
+      return;
+    }
+    let cancelled = false;
+    void fetch("/api/admin/me", {
+      headers: {
+        "x-admin-user-id": adminUser.id,
+        "x-admin-email": adminUser.email ?? "",
+      },
+    })
+      .then((response) => response.json() as Promise<{ isAdmin?: boolean }>)
+      .then((data) => {
+        if (!cancelled) setIsAdmin(data.isAdmin === true);
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [adminUser?.email, adminUser?.id]);
 
   const displayUrl = previewUrl ?? profileAvatarUrl;
 
@@ -172,7 +203,18 @@ export default function ProfielPage() {
               ) : null}
             </div>
 
-            <div className="mt-auto flex w-full max-w-[320px] flex-col pt-12">
+            <div className="mt-auto flex w-full max-w-[320px] flex-col gap-4 pt-12">
+              {isAdmin ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => router.push("/admin/ontbrekende-afbeeldingen")}
+                  className="w-full max-w-none"
+                >
+                  Ontbrekende afbeeldingen beheren
+                </Button>
+              ) : null}
+
               <Button
                 type="button"
                 variant="tertiary"
