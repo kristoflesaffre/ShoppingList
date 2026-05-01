@@ -8,6 +8,18 @@ import {
 } from "@/lib/list-product-icons";
 
 describe("list-product-icons", () => {
+  it("kiest café-icoon voor Café / Cafe met volgnummer", () => {
+    expect(listProductIconUrlFromListName("Café")).toBe(
+      "/images/ui/cafe_240.webp",
+    );
+    expect(listProductIconUrlFromListName("cafe")).toBe(
+      "/images/ui/cafe_240.webp",
+    );
+    expect(listProductIconUrlFromListName("Café 2")).toBe(
+      "/images/ui/cafe_240.webp",
+    );
+  });
+
   it("kiest frieten-icoon voor exacte frieten/frietjes/frituur namen", () => {
     expect(listProductIconUrlFromListName("frieten")).toBe(
       FRIETEN_LIST_PRODUCT_ICON_URL,

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { SelectTile } from "@/components/ui/select_tile";
 import { cn } from "@/lib/utils";
 import {
+  defaultCafeListName,
   defaultFrituurListName,
   defaultNewListName,
   selectListNameInputOnFocus,
@@ -33,6 +34,7 @@ import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
 import {
   homeListCardIconSrc,
+  listIsFrituurVenueList,
   listProductIconUrlFromListName,
   pickListProductIconForNewList,
   planOwnerListDecorIconUpdates,
@@ -1245,7 +1247,7 @@ export default function Home() {
     const candidates = (data?.lists ?? [])
       .filter((list) => {
         if (listIsMasterTemplate(list)) return false;
-        return listProductIconUrlFromListName(String(list.name ?? "")) != null;
+        return listIsFrituurVenueList(String(list.name ?? ""));
       })
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const latest = candidates[0];
@@ -1526,6 +1528,7 @@ export default function Home() {
       listName,
       duplicateFrom,
       startFrituurWizard,
+      startCafeWizard = false,
       customIconForCreate,
       pickerMasterStore,
       loyaltyCardIdToLink,
@@ -1533,6 +1536,7 @@ export default function Home() {
       listName: string;
       duplicateFrom?: FrituurPreviousList | null;
       startFrituurWizard: boolean;
+      startCafeWizard?: boolean;
       /** Override i.p.v. `newListCustomIcon` (modal kan al gesloten zijn). */
       customIconForCreate?: string | null;
       /** Gekozen winkeltegel (Figma swimlane); `masterIcon` ook als lijstnaam geen winkel is. */
@@ -1647,6 +1651,10 @@ export default function Home() {
         router.push(`/lijstje/${newId}?frituurWizard=1`);
         return;
       }
+      if (startCafeWizard) {
+        router.push(`/lijstje/${newId}?cafeWizard=1`);
+        return;
+      }
       if (duplicateFrom) {
         router.push(`/lijstje/${newId}`);
         return;
@@ -1687,6 +1695,7 @@ export default function Home() {
       listName: name,
       duplicateFrom: null,
       startFrituurWizard: false,
+      startCafeWizard: false,
       customIconForCreate: newListCustomIcon,
       pickerMasterStore: store ?? null,
       loyaltyCardIdToLink,
@@ -1703,7 +1712,7 @@ export default function Home() {
   const handleBlankVenuePickFrituur = React.useCallback(() => {
     setBlankVenueSlideOpen(false);
     const listName = defaultFrituurListName(lists.map((l) => l.name));
-    if (listProductIconUrlFromListName(listName) && latestFrituurList) {
+    if (listIsFrituurVenueList(listName) && latestFrituurList) {
       setPendingFrituurChoice({ listName, customIconUrl: null });
       return;
     }
@@ -1711,9 +1720,22 @@ export default function Home() {
       listName,
       duplicateFrom: null,
       startFrituurWizard: true,
+      startCafeWizard: false,
       customIconForCreate: null,
     });
   }, [createBlankList, latestFrituurList, lists]);
+
+  const handleBlankVenuePickCafe = React.useCallback(() => {
+    setBlankVenueSlideOpen(false);
+    const listName = defaultCafeListName(lists.map((l) => l.name));
+    createBlankList({
+      listName,
+      duplicateFrom: null,
+      startFrituurWizard: false,
+      startCafeWizard: true,
+      customIconForCreate: null,
+    });
+  }, [createBlankList, lists]);
 
   if (authLoading || !user || isLoading) {
     return <PageSpinner />;
@@ -2097,12 +2119,16 @@ export default function Home() {
               Frituur
             </p>
           </button>
-          <div
-            className="flex min-w-0 flex-1 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--gray-25)] p-[var(--space-3)] text-center opacity-60 shadow-[0px_2px_4px_rgba(0,0,0,0.08)]"
-            aria-disabled
-            title="Binnenkort beschikbaar"
+          <button
+            type="button"
+            onClick={handleBlankVenuePickCafe}
+            className={cn(
+              "flex min-w-0 flex-1 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+            )}
           >
-            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)] grayscale">
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={VENUE_TILE_ICON_CAFE}
@@ -2112,10 +2138,10 @@ export default function Home() {
                 className="size-full object-cover"
               />
             </div>
-            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-disabled)]">
+            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
               Café
             </p>
-          </div>
+          </button>
         </div>
       </SlideInModal>
 

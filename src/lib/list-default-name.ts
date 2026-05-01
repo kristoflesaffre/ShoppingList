@@ -73,6 +73,23 @@ export function defaultFrituurListName(existingNames: string[]): string {
   return `Frituur ${n}`;
 }
 
+const CAFE_BASE_NAMES = ["Café", "Cafe"] as const;
+
+/**
+ * Unieke standaardnaam voor een nieuw cafélijstje (wizard op `/lijstje/…?cafeWizard=1`).
+ */
+export function defaultCafeListName(existingNames: string[]): string {
+  const lower = new Set(
+    existingNames.map((n) => n.trim().toLowerCase()).filter(Boolean),
+  );
+  for (const base of CAFE_BASE_NAMES) {
+    if (!lower.has(base.toLowerCase())) return base;
+  }
+  let n = 2;
+  while (lower.has(`café ${n}`) || lower.has(`cafe ${n}`)) n += 1;
+  return `Café ${n}`;
+}
+
 /**
  * Herkent de automatische kalender-naam (`defaultNewListName`) voor weergave als in Figma:
  * maand als titel + weeknummer in een bol (bv. "April" + badge "3").

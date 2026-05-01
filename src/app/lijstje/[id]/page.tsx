@@ -80,7 +80,24 @@ import {
 } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { ALL_LIST_PRODUCT_ICON_URLS } from "@/lib/list-product-icon-urls";
-import { listProductIconUrlFromListName } from "@/lib/list-product-icons";
+import {
+  CAFE_ROUND_SECTION_TITLE,
+  CAFE_WIZARD_CATEGORY_LABELS,
+  CAFE_WIZARD_ITEMS,
+  type CafeWizardCategory,
+  type CafeWizardItem,
+  type CafeWizardSelectedItem,
+  buildCafeWizardInitialState,
+  cafeItemIconSrc,
+  cafeWizardCategoryFromQueryParam,
+  cafeWizardCategoryFromSectionTitle,
+  normalizeCafeChoiceName,
+  parseCafeQuantityCount,
+} from "@/lib/cafe-venue-wizard";
+import {
+  listIsCafeVenueList,
+  listIsFrituurVenueList,
+} from "@/lib/list-product-icons";
 import type { ListItem } from "./new_item_modal";
 
 const RecipeIngredientSortableList = dynamic(
@@ -907,6 +924,289 @@ function FrituurListItemRow({
       >
         <PlusCircleIcon className="size-6" />
       </button>
+    </div>
+  );
+}
+
+function CafeListItems({
+  items,
+  isEditMode,
+  listViewMode,
+  onAddToSection,
+  onEdit,
+  onIncrement,
+  onDecrementOrDelete,
+}: {
+  items: ListItem[];
+  isEditMode: boolean;
+  listViewMode: "list" | "grid";
+  onAddToSection: (sectionTitle: string) => void;
+  onEdit: (item: ListItem) => void;
+  onIncrement: (item: ListItem) => void;
+  onDecrementOrDelete: (item: ListItem) => void;
+}) {
+  /** `items` is al gesorteerd op `order` in de parent-`useMemo`. */
+  const orderedItems = items;
+  if (orderedItems.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <section className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <h3 className="min-w-0 flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
+            {CAFE_ROUND_SECTION_TITLE}
+          </h3>
+          <button
+            type="button"
+            aria-label={`Item toevoegen aan ${CAFE_ROUND_SECTION_TITLE}`}
+            onClick={() => onAddToSection(CAFE_ROUND_SECTION_TITLE)}
+            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <PlusCircleIcon />
+          </button>
+        </div>
+        <div
+          className={cn(
+            listViewMode === "grid"
+              ? /* Figma 1323:23864 / 1323:24195 — 358px raster, gap 16, 2 kolommen */
+                "mx-auto grid w-full max-w-[358px] grid-cols-2 gap-4"
+              : "flex flex-col gap-3",
+          )}
+        >
+          {orderedItems.map((item) => (
+            <CafeListItemRow
+              key={item.id}
+              item={item}
+              isEditMode={isEditMode}
+              listViewMode={listViewMode}
+              onEdit={onEdit}
+              onIncrement={onIncrement}
+              onDecrementOrDelete={onDecrementOrDelete}
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function CafeListItemRow({
+  item,
+  isEditMode,
+  listViewMode,
+  onEdit,
+  onIncrement,
+  onDecrementOrDelete,
+}: {
+  item: ListItem;
+  isEditMode: boolean;
+  listViewMode: "list" | "grid";
+  onEdit: (item: ListItem) => void;
+  onIncrement: (item: ListItem) => void;
+  onDecrementOrDelete: (item: ListItem) => void;
+}) {
+  const iconSrc = cafeItemIconSrc(item.name);
+  const effectiveCount = parseCafeQuantityCount(item.quantity);
+  const hasCount = effectiveCount > 0;
+  const isGrid = listViewMode === "grid";
+  /** Figma 1323:24354 — bewerkrij: 40px cover. Lijstweergave: 40px contain. */
+  const thumbClassName = cn(
+    "relative shrink-0 overflow-hidden rounded-md",
+    "size-10",
+  );
+  const imgClassName = cn(
+    "size-full",
+    isEditMode ? "object-cover" : "object-contain",
+    !isEditMode && !hasCount ? "opacity-60" : "opacity-100",
+  );
+
+  const rowContent = (
+    <>
+      <span className={thumbClassName}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- lokale productafbeeldingen uit /public */}
+        <img
+          src={iconSrc}
+          alt=""
+          width={40}
+          height={40}
+          className={imgClassName}
+          aria-hidden="true"
+        />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col justify-center">
+        <span
+          className={cn(
+            "truncate text-base leading-24 tracking-normal",
+            hasCount
+              ? "font-medium text-[var(--text-primary)]"
+              : "font-normal text-[var(--gray-500)]",
+          )}
+        >
+          {item.name}
+        </span>
+      </span>
+      {hasCount ? (
+        <span className="min-w-6 shrink-0 px-2.5 text-center text-[32px] font-semibold leading-8 text-[var(--blue-900)]">
+          {effectiveCount}
+        </span>
+      ) : null}
+    </>
+  );
+
+  if (!isEditMode && isGrid) {
+    return (
+      <button
+        type="button"
+        onClick={() => onEdit(item)}
+        className="flex w-full flex-col items-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        <span className="relative size-16 shrink-0 overflow-hidden rounded-md">
+          {/* eslint-disable-next-line @next/next/no-img-element -- lokale productafbeeldingen uit /public */}
+          <img
+            src={iconSrc}
+            alt=""
+            width={64}
+            height={64}
+            className={cn(
+              "size-full object-cover",
+              !hasCount ? "opacity-60" : "opacity-100",
+            )}
+            aria-hidden="true"
+          />
+        </span>
+        {hasCount ? (
+          <span className="shrink-0 text-center text-[32px] font-semibold leading-6 tracking-normal text-[var(--blue-900)]">
+            {effectiveCount}
+          </span>
+        ) : null}
+        <span
+          className={cn(
+            "w-full min-w-0 max-w-full truncate text-center text-base font-medium leading-6 tracking-normal",
+            hasCount ? "text-[var(--text-primary)]" : "text-[var(--gray-500)]",
+          )}
+        >
+          {item.name}
+        </span>
+      </button>
+    );
+  }
+
+  /** Figma 1323:24195 — bewerkmodus in raster: tegel + middenrij −/prullenbak, getal, +, dan naam. */
+  if (isEditMode && isGrid) {
+    return (
+      <div className="flex w-full flex-col items-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center">
+        <span className="relative size-16 shrink-0 overflow-hidden rounded-md">
+          {/* eslint-disable-next-line @next/next/no-img-element -- lokale productafbeeldingen uit /public */}
+          <img
+            src={iconSrc}
+            alt=""
+            width={64}
+            height={64}
+            className={cn(
+              "size-full object-cover",
+              !hasCount ? "opacity-60" : "opacity-100",
+            )}
+            aria-hidden="true"
+          />
+        </span>
+        <div className="flex shrink-0 items-center gap-4">
+          <button
+            type="button"
+            aria-label={
+              effectiveCount > 1 ? `${item.name} verminderen` : `${item.name} verwijderen`
+            }
+            onClick={() => onDecrementOrDelete(item)}
+            className={cn(
+              "flex size-6 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+              effectiveCount > 1
+                ? "text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--blue-25)]"
+                : "text-[var(--error-600)] [@media(hover:hover)]:hover:bg-[var(--error-25)]",
+            )}
+          >
+            {effectiveCount > 1 ? (
+              <MinusCircleOutlineIcon className="size-6" />
+            ) : (
+              <RecycleBinIcon className="size-6" />
+            )}
+          </button>
+          <span className="min-w-6 shrink-0 px-0.5 text-center text-[32px] font-semibold leading-6 tracking-normal tabular-nums text-[var(--blue-900)]">
+            {hasCount ? effectiveCount : 0}
+          </span>
+          <button
+            type="button"
+            aria-label={`${item.name} verhogen`}
+            onClick={() => onIncrement(item)}
+            className="flex size-6 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <PlusCircleIcon className="size-6" />
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={() => onEdit(item)}
+          className="w-full min-w-0 max-w-full truncate text-center text-base font-medium leading-6 tracking-normal text-[var(--text-primary)] transition-colors [@media(hover:hover)]:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          {item.name}
+        </button>
+      </div>
+    );
+  }
+
+  if (!isEditMode) {
+    return (
+      <button
+        type="button"
+        onClick={() => onEdit(item)}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+          "min-h-[64px] px-3 py-3",
+        )}
+      >
+        {rowContent}
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex min-h-[64px] w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3 text-left",
+      )}
+    >
+      <div className="flex shrink-0 rounded-pill p-1">
+        <button
+          type="button"
+          aria-label={
+            effectiveCount > 1 ? `${item.name} verminderen` : `${item.name} verwijderen`
+          }
+          onClick={() => onDecrementOrDelete(item)}
+          className={cn(
+            "flex size-8 items-center justify-center rounded-pill transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+            effectiveCount > 1
+              ? "text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--blue-25)]"
+              : "text-[var(--error-600)] [@media(hover:hover)]:hover:bg-[var(--error-25)]",
+          )}
+        >
+          {effectiveCount > 1 ? (
+            <MinusCircleOutlineIcon className="size-6" />
+          ) : (
+            <RecycleBinIcon className="size-6" />
+          )}
+        </button>
+      </div>
+      <div className="h-10 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+      {rowContent}
+      <div className="h-10 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+      <div className="flex shrink-0 rounded-pill p-1">
+        <button
+          type="button"
+          aria-label={`${item.name} verhogen`}
+          onClick={() => onIncrement(item)}
+          className="flex size-8 items-center justify-center rounded-pill text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          <PlusCircleIcon className="size-6" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -1752,25 +2052,33 @@ function FrituurListWizard({
           placeholder="Search"
         />
 
-        <div className="flex w-full gap-6 border-b border-[var(--gray-100)]">
+        {/* Zelfde tabgroep als Figma 1321:23575 / TabGroup */}
+        <div
+          role="tablist"
+          aria-label="Categorie"
+          className="flex w-full items-start gap-[var(--space-6)] border-b border-solid border-[var(--gray-100)]"
+        >
           {(Object.keys(FRITUUR_WIZARD_CATEGORY_LABELS) as FrituurWizardCategory[]).map((key) => {
             const active = key === category;
             return (
               <button
                 key={key}
                 type="button"
+                role="tab"
+                aria-selected={active}
+                tabIndex={active ? 0 : -1}
                 onClick={() => setCategory(key)}
                 className={cn(
-                  "flex flex-col gap-2 pb-0 text-base leading-24 tracking-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                  "flex shrink-0 flex-col items-start gap-[var(--space-2)] text-base leading-24 tracking-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                   active
                     ? "font-medium text-[var(--text-primary)]"
                     : "font-normal text-[var(--gray-400)]",
                 )}
               >
-                <span>{FRITUUR_WIZARD_CATEGORY_LABELS[key]}</span>
+                <span className="whitespace-nowrap">{FRITUUR_WIZARD_CATEGORY_LABELS[key]}</span>
                 <span
                   className={cn(
-                    "h-0.5 w-full bg-[var(--blue-500)]",
+                    "h-[2px] w-full shrink-0 bg-[var(--blue-500)]",
                     !active && "opacity-0",
                   )}
                   aria-hidden
@@ -1813,6 +2121,321 @@ function FrituurListWizard({
   );
 }
 
+/** Figma 1326:24726 — eigen item (niet in catalogus): − | naam | +, zonder thumbnail. */
+function CafeWizardCustomAddRow({
+  name,
+  count,
+  onChange,
+}: {
+  name: string;
+  count: number;
+  onChange: (next: number) => void;
+}) {
+  const hasCount = count > 0;
+  return (
+    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
+      <div className="flex shrink-0 rounded-pill p-1">
+        <button
+          type="button"
+          disabled={!hasCount}
+          aria-label={`${name} verminderen`}
+          onClick={() => onChange(Math.max(0, count - 1))}
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-pill transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+            hasCount
+              ? "text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--blue-25)]"
+              : "text-[var(--gray-300)]",
+          )}
+        >
+          <MinusCircleOutlineIcon className="size-6" />
+        </button>
+      </div>
+      <span className="h-10 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+      <p
+        className={cn(
+          "min-w-0 flex-1 truncate text-base leading-24 tracking-normal",
+          hasCount
+            ? "font-medium text-[var(--text-primary)]"
+            : "font-normal text-[var(--gray-500)]",
+        )}
+      >
+        {name}
+      </p>
+      <span className="h-10 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+      <div className="flex shrink-0 rounded-pill p-1">
+        <button
+          type="button"
+          aria-label={`${name} toevoegen`}
+          onClick={() => onChange(count + 1)}
+          className="flex size-8 shrink-0 items-center justify-center rounded-pill text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          <PlusCircleIcon className="size-6" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CafeWizardItemRow({
+  item,
+  count,
+  onChange,
+}: {
+  item: CafeWizardItem;
+  count: number;
+  onChange: (next: number) => void;
+}) {
+  const hasCount = count > 0;
+  return (
+    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
+      <button
+        type="button"
+        aria-label={`${item.name} verminderen`}
+        onClick={() => onChange(Math.max(0, count - 1))}
+        disabled={!hasCount}
+        className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:text-[var(--blue-200)]"
+      >
+        <MinusCircleOutlineIcon className="size-6" />
+      </button>
+      <span className="h-10 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+      <div
+        className={cn(
+          "relative size-10 shrink-0 overflow-hidden rounded-[var(--radius-md)] transition-opacity",
+          hasCount ? "opacity-100" : "opacity-60",
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={item.iconSrc}
+          alt=""
+          width={40}
+          height={40}
+          className="size-full object-cover"
+          decoding="async"
+        />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5">
+        <p
+          className={cn(
+            "min-w-0 max-w-full truncate text-base leading-24 tracking-normal",
+            hasCount
+              ? "font-medium text-[var(--text-primary)]"
+              : "font-normal text-[var(--gray-500)]",
+          )}
+        >
+          {item.name}
+        </p>
+      </div>
+      {hasCount ? (
+        <span className="w-8 shrink-0 text-center text-[32px] font-semibold leading-8 text-[var(--blue-900)]">
+          {count}
+        </span>
+      ) : null}
+      <span className="h-10 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
+      <button
+        type="button"
+        aria-label={`${item.name} toevoegen`}
+        onClick={() => onChange(count + 1)}
+        className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        <PlusCircleIcon className="size-6" />
+      </button>
+    </div>
+  );
+}
+
+function CafeListWizard({
+  listName,
+  initialCategory,
+  existingItems,
+  itemSelectionCounts,
+  onBack,
+  onDone,
+}: {
+  listName: string;
+  initialCategory: CafeWizardCategory;
+  existingItems: ListItem[];
+  itemSelectionCounts: Map<string, number>;
+  onBack: () => void;
+  onDone: (items: CafeWizardSelectedItem[]) => void;
+}) {
+  const [query, setQuery] = React.useState("");
+  const [category, setCategory] =
+    React.useState<CafeWizardCategory>(initialCategory);
+  const initialState = React.useMemo(
+    () => buildCafeWizardInitialState(existingItems),
+    [existingItems],
+  );
+  const [counts, setCounts] = React.useState<Record<string, number>>(
+    () => initialState.counts,
+  );
+  const [customLineCount, setCustomLineCount] = React.useState(0);
+
+  const visibleItems = React.useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const filtered = CAFE_WIZARD_ITEMS.filter((item) => {
+      if (item.category !== category) return false;
+      if (!normalizedQuery) return true;
+      return item.name.toLowerCase().includes(normalizedQuery);
+    });
+    return filtered
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => {
+        const aCount =
+          itemSelectionCounts.get(normalizeCafeChoiceName(a.item.name)) ?? 0;
+        const bCount =
+          itemSelectionCounts.get(normalizeCafeChoiceName(b.item.name)) ?? 0;
+        if (aCount !== bCount) return bCount - aCount;
+        return a.index - b.index;
+      })
+      .map(({ item }) => item);
+  }, [category, itemSelectionCounts, query]);
+
+  const qTrim = query.trim();
+  const exactWizardMatchInCategory = React.useMemo(() => {
+    if (!qTrim) return false;
+    const n = normalizeCafeChoiceName(qTrim);
+    return CAFE_WIZARD_ITEMS.some(
+      (i) => i.category === category && normalizeCafeChoiceName(i.name) === n,
+    );
+  }, [qTrim, category]);
+
+  const showCustomAddRow = qTrim.length > 0 && !exactWizardMatchInCategory;
+
+  const customDraftKey = `${category}:${normalizeCafeChoiceName(qTrim)}`;
+  React.useEffect(() => {
+    setCustomLineCount(0);
+  }, [customDraftKey]);
+
+  const handleDone = React.useCallback(() => {
+    const catalogItems = CAFE_WIZARD_ITEMS.map((item) => ({
+      name: item.name,
+      count: counts[item.id] ?? 0,
+      category: item.category,
+    })).filter((item) => item.count > 0);
+    const customItems: CafeWizardSelectedItem[] =
+      showCustomAddRow && customLineCount > 0
+        ? [{ name: qTrim, count: customLineCount, category }]
+        : [];
+    onDone([...customItems, ...catalogItems]);
+  }, [category, counts, customLineCount, onDone, qTrim, showCustomAddRow]);
+
+  return (
+    <div className="flex min-h-dvh w-full flex-col bg-[var(--white)]">
+      <div className="fixed left-0 right-0 top-0 z-10 bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
+        <header className="relative mx-auto flex h-14 max-w-[956px] items-center px-4">
+          <button
+            type="button"
+            aria-label="Terug naar lijstjes"
+            onClick={onBack}
+            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <BackArrowIcon />
+          </button>
+          <h1 className="pointer-events-none absolute inset-x-0 truncate px-24 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+            Café
+          </h1>
+          <div className="flex-1" />
+          <span className="size-6 shrink-0" aria-hidden />
+        </header>
+      </div>
+
+      <main className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-[calc(88px+env(safe-area-inset-top,0px))]">
+        <div className="flex items-center gap-4">
+          <div className="relative size-8 shrink-0 overflow-hidden rounded-md">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/ui/cafe_160.webp"
+              alt=""
+              width={32}
+              height={32}
+              className="size-full object-cover"
+            />
+          </div>
+          <h2 className="min-w-0 flex-1 truncate text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
+            {listName}
+          </h2>
+          <MiniButton type="button" variant="primary" onClick={handleDone}>
+            Gereed
+          </MiniButton>
+        </div>
+
+        <SearchBar
+          value={query}
+          onValueChange={setQuery}
+          placeholder="Zoek of typ een item"
+        />
+
+        {/* Figma 1321:23575 — Tab group: border-b neutraal, gap 24px, tabkolom gap 8px, indicator 2px primary */}
+        <div
+          role="tablist"
+          aria-label="Categorie"
+          className="flex w-full min-w-0 items-start gap-[var(--space-6)] overflow-x-auto border-b border-solid border-[var(--gray-100)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {(Object.keys(CAFE_WIZARD_CATEGORY_LABELS) as CafeWizardCategory[]).map(
+            (key) => {
+              const active = key === category;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  tabIndex={active ? 0 : -1}
+                  onClick={() => setCategory(key)}
+                  className={cn(
+                    "flex shrink-0 flex-col items-start gap-[var(--space-2)] text-base leading-24 tracking-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                    active
+                      ? "font-medium text-[var(--text-primary)]"
+                      : "font-normal text-[var(--gray-400)]",
+                  )}
+                >
+                  <span className="whitespace-nowrap">
+                    {CAFE_WIZARD_CATEGORY_LABELS[key]}
+                  </span>
+                  <span
+                    className={cn(
+                      "h-[2px] w-full shrink-0 bg-[var(--blue-500)]",
+                      !active && "opacity-0",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+              );
+            },
+          )}
+        </div>
+
+        <div className="mx-auto flex w-full max-w-[358px] flex-col gap-3">
+          {showCustomAddRow ? (
+            <CafeWizardCustomAddRow
+              name={qTrim}
+              count={customLineCount}
+              onChange={setCustomLineCount}
+            />
+          ) : null}
+          {visibleItems.length > 0 ? (
+            visibleItems.map((item) => (
+              <CafeWizardItemRow
+                key={item.id}
+                item={item}
+                count={counts[item.id] ?? 0}
+                onChange={(next) =>
+                  setCounts((current) => ({ ...current, [item.id]: next }))
+                }
+              />
+            ))
+          ) : !showCustomAddRow ? (
+            <div className="rounded-md border border-[var(--gray-100)] bg-[var(--white)] p-4 text-center text-sm leading-20 text-[var(--gray-500)]">
+              Nog geen items in deze categorie.
+            </div>
+          ) : null}
+        </div>
+      </main>
+    </div>
+  );
+}
+
 /** Figma 134:813 / 1307:20368 — leeg gewoon lijstje: 96px producticoon; frituur gebruikt vaste frietzak met gezichtje. */
 function NormalListEmptyState({
   listName,
@@ -1821,14 +2444,17 @@ function NormalListEmptyState({
   listName: string;
   onAddItem: () => void;
 }) {
-  const isFrietenList = listProductIconUrlFromListName(listName) != null;
+  const isFrietenList = listIsFrituurVenueList(listName);
+  const isCafeList = listIsCafeVenueList(listName);
   const [randomProductIconSrc] = React.useState(() => {
     const pool = ALL_LIST_PRODUCT_ICON_URLS;
     return pool[Math.floor(Math.random() * pool.length)] ?? pool[0];
   });
   const productIconSrc = isFrietenList
     ? FRIETEN_EMPTY_STATE_ICON_URL
-    : randomProductIconSrc;
+    : isCafeList
+      ? "/images/ui/cafe_320.webp"
+      : randomProductIconSrc;
 
   return (
     <section
@@ -1909,7 +2535,7 @@ export default function ListDetailPage({
       $: { where: { ownerId: ownerLoyaltyCardsQueryId } },
     },
   });
-  const { data: ownerFrituurHistoryData } = db.useQuery({
+  const { data: ownerVenueHistoryData } = db.useQuery({
     lists: {
       items: {},
       $: { where: { ownerId: ownerLoyaltyCardsQueryId } },
@@ -2028,7 +2654,8 @@ export default function ListDetailPage({
     if (!listData || !canAccess) router.replace("/");
   }, [authLoading, user, isLoading, listData, canAccess, router]);
   const listName = listData?.name ?? "Lijstje";
-  const isFrietenList = listProductIconUrlFromListName(listName) != null;
+  const isFrietenList = listIsFrituurVenueList(listName);
+  const isCafeList = listIsCafeVenueList(listName);
   const listIcon = listData?.icon ?? "";
   const listDateStr = String((listData as Record<string, unknown>)?.date ?? "");
   /** Logo van de master-winkel (opgeslagen bij aanmaken vanuit master; fallback = listIcon voor oude lijstjes). */
@@ -2036,8 +2663,11 @@ export default function ListDetailPage({
   const isMasterList = listIsMasterTemplate(
     listData as { isMasterTemplate?: boolean; icon?: string; name?: string },
   );
+  const isVenueCounterList = (isFrietenList || isCafeList) && !isMasterList;
   const showFrituurWizard =
     searchParams.get("frituurWizard") === "1" && !isMasterList && isFrietenList;
+  const showCafeWizard =
+    searchParams.get("cafeWizard") === "1" && !isMasterList && isCafeList;
   const frituurWizardSelectionCounts = React.useMemo(() => {
     const counts = new Map<string, number>();
     const wizardItemByName = new Map(
@@ -2046,14 +2676,14 @@ export default function ListDetailPage({
         item,
       ]),
     );
-    for (const list of ownerFrituurHistoryData?.lists ?? []) {
+    for (const list of ownerVenueHistoryData?.lists ?? []) {
       const row = list as {
         name?: string | null;
         isMasterTemplate?: boolean | null;
         items?: Array<{ name?: string | null }>;
       };
       if (row.isMasterTemplate) continue;
-      if (listProductIconUrlFromListName(row.name ?? "") == null) continue;
+      if (!listIsFrituurVenueList(row.name ?? "")) continue;
       for (const item of row.items ?? []) {
         const key = normalizeFrituurChoiceName(item.name ?? "");
         const wizardItem = wizardItemByName.get(key);
@@ -2063,7 +2693,31 @@ export default function ListDetailPage({
       }
     }
     return counts;
-  }, [ownerFrituurHistoryData?.lists]);
+  }, [ownerVenueHistoryData?.lists]);
+  const cafeWizardSelectionCounts = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    const wizardItemByName = new Map(
+      CAFE_WIZARD_ITEMS.map((item) => [
+        normalizeCafeChoiceName(item.name),
+        item,
+      ]),
+    );
+    for (const list of ownerVenueHistoryData?.lists ?? []) {
+      const row = list as {
+        name?: string | null;
+        isMasterTemplate?: boolean | null;
+        items?: Array<{ name?: string | null }>;
+      };
+      if (row.isMasterTemplate) continue;
+      if (!listIsCafeVenueList(row.name ?? "")) continue;
+      for (const item of row.items ?? []) {
+        const key = normalizeCafeChoiceName(item.name ?? "");
+        if (!wizardItemByName.has(key)) continue;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [ownerVenueHistoryData?.lists]);
   const masterStoreLabel = React.useMemo(() => {
     if (!isMasterList) return "";
     const logoFile = listIcon.split("/").pop() ?? "";
@@ -2402,6 +3056,14 @@ export default function ListDetailPage({
     );
   }, [listId, router]);
 
+  const handleOpenCafeWizard = React.useCallback((sectionTitle?: string) => {
+    if (!listId) return;
+    const category = cafeWizardCategoryFromSectionTitle(sectionTitle);
+    router.push(
+      `/lijstje/${encodeURIComponent(listId)}?cafeWizard=1&cafeTab=${category}`,
+    );
+  }, [listId, router]);
+
   const handleSaveRecipeToLibrary = React.useCallback(
     (recipe: SavedRecipe) => {
       const isNew = !savedRecipes.some((r) => r.id === recipe.id);
@@ -2647,6 +3309,31 @@ export default function ListDetailPage({
       );
     },
     [],
+  );
+
+  const handleIncrementCafeItem = React.useCallback((item: ListItem) => {
+    const nextCount = parseCafeQuantityCount(item.quantity) + 1;
+    db.transact(
+      db.tx.items[item.id].update({
+        quantity: String(nextCount),
+      }),
+    );
+  }, []);
+
+  const handleDecrementOrDeleteCafeItem = React.useCallback(
+    (item: ListItem) => {
+      const currentCount = parseCafeQuantityCount(item.quantity);
+      if (currentCount <= 1) {
+        handleDeleteItem(item.id);
+        return;
+      }
+      db.transact(
+        db.tx.items[item.id].update({
+          quantity: String(currentCount - 1),
+        }),
+      );
+    },
+    [handleDeleteItem],
   );
 
   const SECTION_DELETE_ANIMATION_MS = 200;
@@ -2939,6 +3626,67 @@ export default function ListDetailPage({
       });
 
       for (const [key, existingItems] of Array.from(existingByName.entries())) {
+        if (!wizardNames.has(key)) continue;
+        if (selectedKeys.has(key)) continue;
+        for (const existingItem of existingItems) {
+          txs.push(db.tx.items[existingItem.id].delete());
+        }
+      }
+
+      if (txs.length > 0) {
+        db.transact(txs as Parameters<typeof db.transact>[0]);
+      }
+      router.replace(`/lijstje/${encodeURIComponent(listId)}`);
+    },
+    [items, listId, router],
+  );
+
+  const handleCompleteCafeWizard = React.useCallback(
+    (selectedItems: CafeWizardSelectedItem[]) => {
+      if (!listId) return;
+      const wizardNames = new Set(
+        CAFE_WIZARD_ITEMS.map((item) => normalizeCafeChoiceName(item.name)),
+      );
+      const existingByName = new Map<string, ListItem[]>();
+      for (const item of items) {
+        if (item.section !== CAFE_ROUND_SECTION_TITLE) continue;
+        const key = normalizeCafeChoiceName(item.name);
+        const existing = existingByName.get(key) ?? [];
+        existing.push(item);
+        existingByName.set(key, existing);
+      }
+
+      const selectedKeys = new Set<string>();
+      const txs: Parameters<typeof db.transact>[0] = [];
+      selectedItems.forEach((item, index) => {
+        const key = normalizeCafeChoiceName(item.name);
+        selectedKeys.add(key);
+        const existingItems = existingByName.get(key) ?? [];
+        const existingItem = existingItems[0];
+        const payload = {
+          name: item.name,
+          quantity: String(item.count),
+          checked: false,
+          section: CAFE_ROUND_SECTION_TITLE,
+          itemCategory: resolveItemCategoryFromName(item.name),
+          order: index,
+        };
+        if (existingItem) {
+          txs.push(db.tx.items[existingItem.id].update(payload));
+          for (const duplicate of existingItems.slice(1)) {
+            txs.push(db.tx.items[duplicate.id].delete());
+          }
+          return;
+        }
+        txs.push(
+          db.tx.items[iid()]
+            .update(payload)
+            .link({ list: listId }),
+        );
+      });
+
+      for (const [key, existingItems] of Array.from(existingByName.entries())) {
+        if (!wizardNames.has(key)) continue;
         if (selectedKeys.has(key)) continue;
         for (const existingItem of existingItems) {
           txs.push(db.tx.items[existingItem.id].delete());
@@ -3172,9 +3920,11 @@ export default function ListDetailPage({
           <h1 className="pointer-events-none absolute inset-x-0 truncate px-24 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
             {isMasterCategoryOrderMode
               ? "Volgorde categorieën"
-              : isFrietenList && !isMasterList
-                ? "Weeklijstje"
-                : listName}
+              : isCafeList && !isMasterList
+                ? "Café"
+                : isFrietenList && !isMasterList
+                  ? "Weeklijstje"
+                  : listName}
           </h1>
           <div className="flex-1" />
           {!isMasterCategoryOrderMode ? (
@@ -3207,6 +3957,21 @@ export default function ListDetailPage({
     );
   }
 
+  if (showCafeWizard) {
+    return (
+      <CafeListWizard
+        listName={listName}
+        initialCategory={cafeWizardCategoryFromQueryParam(
+          searchParams.get("cafeTab"),
+        )}
+        existingItems={items}
+        itemSelectionCounts={cafeWizardSelectionCounts}
+        onBack={() => router.replace(`/lijstje/${encodeURIComponent(listId)}`)}
+        onDone={handleCompleteCafeWizard}
+      />
+    );
+  }
+
   const listMain = (
       <main
         className={mainSurfaceClassName}
@@ -3216,22 +3981,41 @@ export default function ListDetailPage({
           {showListDetailHeader && !isMasterCategoryOrderMode ? (
             <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1 flex flex-col gap-0">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
-                    {listName}
-                  </h2>
-                  {!isMasterEmpty && !(isFrietenList && !isMasterList && isEditMode) ? (
-                    <button
-                      type="button"
-                      aria-label={isEditMode ? "Stop bewerken" : "Bewerken"}
-                      onClick={() => setIsEditMode((p) => !p)}
-                      className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-                        <path d="M3.17663 19.8235C3.03379 19.6807 2.97224 19.4751 3.01172 19.2777L3.94074 14.633C3.96397 14.5157 4.02087 14.4089 4.10564 14.323L15.2539 3.17679C15.4896 2.94107 15.8728 2.94107 16.1086 3.17679L19.8246 6.89257C19.9361 7.00637 20 7.15965 20 7.31989C20 7.48013 19.9361 7.63341 19.8246 7.7472L17.0376 10.534L8.67642 18.8934C8.59048 18.9782 8.48365 19.0362 8.36636 19.0594L3.72126 19.9884C3.68178 19.9965 3.6423 20 3.60281 20C3.44488 19.9988 3.29043 19.9361 3.17663 19.8235ZM13.7465 6.39094L16.6091 9.25326L18.5426 7.31989L15.6801 4.45757L13.7465 6.39094ZM4.37274 18.6263L7.95062 17.911L15.7544 10.1079L12.893 7.24557L5.08808 15.0499L4.37274 18.6263Z" fill="currentColor"/>
-                      </svg>
-                    </button>
+                <div
+                  className={cn(
+                    "flex items-center",
+                    isCafeList && !isMasterList ? "gap-4" : "gap-2",
+                  )}
+                >
+                  {isCafeList && !isMasterList ? (
+                    <span className="relative size-8 shrink-0 overflow-hidden rounded-md">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/images/ui/cafe_160.webp"
+                        alt=""
+                        width={32}
+                        height={32}
+                        className="size-full object-cover"
+                      />
+                    </span>
                   ) : null}
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h2 className="min-w-0 truncate text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
+                      {listName}
+                    </h2>
+                    {!isMasterEmpty && !(isVenueCounterList && isEditMode) ? (
+                      <button
+                        type="button"
+                        aria-label={isEditMode ? "Stop bewerken" : "Bewerken"}
+                        onClick={() => setIsEditMode((p) => !p)}
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+                          <path d="M3.17663 19.8235C3.03379 19.6807 2.97224 19.4751 3.01172 19.2777L3.94074 14.633C3.96397 14.5157 4.02087 14.4089 4.10564 14.323L15.2539 3.17679C15.4896 2.94107 15.8728 2.94107 16.1086 3.17679L19.8246 6.89257C19.9361 7.00637 20 7.15965 20 7.31989C20 7.48013 19.9361 7.63341 19.8246 7.7472L17.0376 10.534L8.67642 18.8934C8.59048 18.9782 8.48365 19.0362 8.36636 19.0594L3.72126 19.9884C3.68178 19.9965 3.6423 20 3.60281 20C3.44488 19.9988 3.29043 19.9361 3.17663 19.8235ZM13.7465 6.39094L16.6091 9.25326L18.5426 7.31989L15.6801 4.45757L13.7465 6.39094ZM4.37274 18.6263L7.95062 17.911L15.7544 10.1079L12.893 7.24557L5.08808 15.0499L4.37274 18.6263Z" fill="currentColor"/>
+                        </svg>
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
                 {isMasterList && masterStoreLabel ? (
                   <div className="mt-0 flex w-full items-center justify-start gap-2">
@@ -3280,12 +4064,12 @@ export default function ListDetailPage({
                   onClick={() => setIsEditMode(false)}
                   className={cn(
                     "shrink-0 rounded-pill bg-[var(--blue-500)] text-sm font-medium leading-20 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                    isFrietenList && !isMasterList
+                    isVenueCounterList
                       ? "flex h-8 items-center gap-1 px-2"
                       : "h-9 px-4",
                   )}
                 >
-                  {isFrietenList && !isMasterList ? (
+                  {isVenueCounterList ? (
                     <svg
                       className="size-6 shrink-0"
                       viewBox="0 0 24 24"
@@ -3303,7 +4087,9 @@ export default function ListDetailPage({
                   ) : null}
                   Gereed
                 </button>
-              ) : hasItems && !(isFrietenList && !isMasterList) ? (
+              ) : hasItems &&
+                (!isVenueCounterList ||
+                  (isCafeList && !isMasterList && !isEditMode)) ? (
                 <div
                   className="box-border flex h-9 shrink-0 items-stretch overflow-hidden rounded-[4px] border border-[var(--gray-100)] bg-[var(--white)]"
                   role="group"
@@ -3355,7 +4141,7 @@ export default function ListDetailPage({
           !isMasterList &&
           hasItems &&
           isListGroupingHydrated &&
-          !isMasterEmpty && !(isFrietenList && !isMasterList) ? (
+          !isMasterEmpty && !isVenueCounterList ? (
             <PillTab
               className="w-full min-w-0"
               aria-label="Groepering lijst"
@@ -3610,12 +4396,26 @@ export default function ListDetailPage({
                 key={listId}
                 listName={listName}
                 onAddItem={
-                  isFrietenList && !isMasterList
-                    ? () => handleOpenFrituurWizard()
-                    : handleOpenNewItemModal
+                  isCafeList && !isMasterList
+                    ? () => handleOpenCafeWizard()
+                    : isFrietenList && !isMasterList
+                      ? () => handleOpenFrituurWizard()
+                      : handleOpenNewItemModal
                 }
               />
             )
+          ) : isCafeList && !isMasterList ? (
+            <CafeListItems
+              items={items}
+              isEditMode={isEditMode}
+              listViewMode={listViewMode}
+              onEdit={(item) => {
+                setEditingItem(item);
+              }}
+              onAddToSection={handleOpenCafeWizard}
+              onIncrement={handleIncrementCafeItem}
+              onDecrementOrDelete={handleDecrementOrDeleteCafeItem}
+            />
           ) : isFrietenList && !isMasterList ? (
             <FrituurListItems
               items={items}
@@ -3716,7 +4516,11 @@ export default function ListDetailPage({
       {!isMasterEmpty &&
       !hideFabOnLoyaltyPanel &&
       !isMasterCategoryOrderMode &&
-      !(isFrietenList && !isMasterList && isEditMode) &&
+      !(
+        isVenueCounterList &&
+        isEditMode &&
+        !(isCafeList && listLayoutMode === "grid")
+      ) &&
       !snackbarMessage ? (
         <div
           className={cn(
@@ -3729,9 +4533,11 @@ export default function ListDetailPage({
               aria-label="Item toevoegen"
               className="pointer-events-auto"
               onClick={
-                isFrietenList && !isMasterList
-                  ? () => handleOpenFrituurWizard()
-                  : handleOpenNewItemModal
+                isCafeList && !isMasterList
+                  ? () => handleOpenCafeWizard()
+                  : isFrietenList && !isMasterList
+                    ? () => handleOpenFrituurWizard()
+                    : handleOpenNewItemModal
               }
             />
           </div>

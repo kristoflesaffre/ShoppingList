@@ -14,6 +14,10 @@ export const LIST_PRODUCT_ICON_URL_SET = new Set<string>(POOL);
 export const FRIETEN_LIST_PRODUCT_ICON_URL =
   "/images/ui/product_icons/frieten_240.webp" as const;
 
+/** Café-lijstjes (Figma 1321:23139): decor uit `/images/ui/cafe_240.webp`. */
+export const CAFE_LIST_PRODUCT_ICON_URL =
+  "/images/ui/cafe_240.webp" as const;
+
 const FRIETEN_LIST_NAME_KEYS = new Set<string>([
   "frieten",
   "frietjes",
@@ -23,6 +27,11 @@ const FRIETEN_LIST_NAME_KEYS = new Set<string>([
 /** bv. "Frituur 2" — zelfde frituur-decor als de basistrefwoorden. */
 const FRITUUR_LIST_NAME_WITH_SUFFIX_RE =
   /^(frituur|frieten|frietjes)(\s+\d+)?$/i;
+
+const CAFE_LIST_NAME_KEYS = new Set<string>(["café", "cafe"]);
+
+/** bv. "Café 2" — zelfde café-decor. */
+const CAFE_LIST_NAME_WITH_SUFFIX_RE = /^(café|cafe)(\s+\d+)?$/i;
 
 /**
  * Bepaalt of een lijstnaam een vast decor-icoon verdient (los van willekeurige pool-keuze).
@@ -40,7 +49,25 @@ export function listProductIconUrlFromListName(
   if (FRITUUR_LIST_NAME_WITH_SUFFIX_RE.test(trimmed)) {
     return FRIETEN_LIST_PRODUCT_ICON_URL;
   }
+  if (CAFE_LIST_NAME_KEYS.has(key)) {
+    return CAFE_LIST_PRODUCT_ICON_URL;
+  }
+  if (CAFE_LIST_NAME_WITH_SUFFIX_RE.test(trimmed)) {
+    return CAFE_LIST_PRODUCT_ICON_URL;
+  }
   return null;
+}
+
+/** Frituur-/frietenlijst (wizard + secties Frieten/Sauzen/Snacks). */
+export function listIsFrituurVenueList(
+  name: string | null | undefined,
+): boolean {
+  return listProductIconUrlFromListName(name) === FRIETEN_LIST_PRODUCT_ICON_URL;
+}
+
+/** Café-lijst (Figma: tabs Koude dranken, …, wizard `?cafeWizard=1`). */
+export function listIsCafeVenueList(name: string | null | undefined): boolean {
+  return listProductIconUrlFromListName(name) === CAFE_LIST_PRODUCT_ICON_URL;
 }
 
 export function isLegacyFoodListDecorIcon(src: string | null | undefined): boolean {
