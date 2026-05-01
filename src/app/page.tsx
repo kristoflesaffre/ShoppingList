@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { SelectTile } from "@/components/ui/select_tile";
 import { cn } from "@/lib/utils";
 import {
+  defaultFrituurListName,
   defaultNewListName,
   selectListNameInputOnFocus,
 } from "@/lib/list-default-name";
@@ -20,6 +21,7 @@ import { listIsMasterTemplate } from "@/lib/list-master";
 import {
   MASTER_STORE_OPTIONS,
   findMasterStoreByListName,
+  findMasterStoreBySlug,
   masterStoreLabelFromListIcon,
   storeLogosFromListIcon,
   listIconIsLidlDelhaizeCombo,
@@ -41,6 +43,7 @@ import {
   ListSectionHeaderIcon,
 } from "@/components/list_section_header";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
+import type { MasterStoreSlug } from "@/lib/master-stores";
 import {
   buildCalendarEntries,
   toIsoDate,
@@ -52,52 +55,105 @@ import { uploadUserImageFile } from "@/lib/image-storage";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
-/** Soort nieuw lijstje in create-modal. */
-type NewListKind = "blank" | "from_master";
+/** Figma 1320:22790 — volgorde swimlane supermarktlogos. */
+const SUPERMARKT_SWIMLANE_SLUG_ORDER: readonly MasterStoreSlug[] = [
+  "colruyt",
+  "delhaize",
+  "lidl",
+  "aldi",
+  "carrefour",
+  "bio-planet",
+  "spar",
+  "match",
+  "albert-heijn",
+  "jumbo",
+  "okay",
+  "lidl-delhaize",
+  "action",
+  "zeeman",
+  "wibra",
+  "kruidvat",
+] as const;
 
-const HOME_NEW_LIST_FORM_ID = "home-new-list-form";
-
-/** Native radio + SelectTile zodat FormData bij "Bewaren" altijd de echte tegelkeuze wéérgeeft (geen React-state drift). */
-function NewListKindFormOption({
-  value,
-  defaultChecked,
-  title,
-  subtitle,
-  icon,
-}: {
-  value: NewListKind;
-  defaultChecked?: boolean;
-  title: string;
-  subtitle: string;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <label className="flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md">
-      <input
-        type="radio"
-        name="newListKind"
-        value={value}
-        defaultChecked={defaultChecked}
-        className="peer sr-only"
-      />
-      <span
-        className={cn(
-          "inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--blue-200)] bg-[var(--white)] transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-border-focus",
-          "peer-checked:border-action-primary peer-checked:[&>span]:opacity-100",
-        )}
-        aria-hidden
-      >
-        <span className="size-4 rounded-full border border-[var(--blue-100)] bg-action-primary opacity-0 transition-opacity" />
-      </span>
-      <SelectTile
-        className="min-w-0 flex-1"
-        title={title}
-        subtitle={subtitle}
-        icon={icon}
-      />
-    </label>
-  );
+function masterStoresForSupermarktSwimlane(): (typeof MASTER_STORE_OPTIONS)[number][] {
+  const bySlug = new Map(MASTER_STORE_OPTIONS.map((s) => [s.slug, s]));
+  const out: (typeof MASTER_STORE_OPTIONS)[number][] = [];
+  for (const slug of SUPERMARKT_SWIMLANE_SLUG_ORDER) {
+    const s = bySlug.get(slug);
+    if (s) out.push(s);
+  }
+  return out;
 }
+
+/** Meest gekozen winkels eerst; bij gelijke telling recentst gekozen eerst; anders vaste Figma-volgorde. */
+function sortSupermarktStoresByPickerUsage(
+  stores: (typeof MASTER_STORE_OPTIONS)[number][],
+  statsRows: ReadonlyArray<{
+    storeSlug?: string | null;
+    pickCount?: number | null;
+    lastPickedAtIso?: string | null;
+  }>,
+): (typeof MASTER_STORE_OPTIONS)[number][] {
+  const bySlug = new Map<string, { count: number; last: string }>();
+  for (const r of statsRows) {
+    const slug = String(r.storeSlug ?? "").trim();
+    if (!slug) continue;
+    const n =
+      typeof r.pickCount === "number" && !Number.isNaN(r.pickCount)
+        ? r.pickCount
+        : 0;
+    const last = String(r.lastPickedAtIso ?? "");
+    const prev = bySlug.get(slug);
+    if (!prev) {
+      bySlug.set(slug, { count: n, last });
+    } else {
+      bySlug.set(slug, {
+        count: Math.max(prev.count, n),
+        last: last > prev.last ? last : prev.last,
+      });
+    }
+  }
+  const defaultIdx = new Map(
+    SUPERMARKT_SWIMLANE_SLUG_ORDER.map((slug, i) => [slug, i]),
+  );
+  return [...stores].sort((a, b) => {
+    const sa = bySlug.get(a.slug) ?? { count: 0, last: "" };
+    const sb = bySlug.get(b.slug) ?? { count: 0, last: "" };
+    if (sb.count !== sa.count) return sb.count - sa.count;
+    if (sb.last !== sa.last) return sb.last.localeCompare(sa.last);
+    return (
+      (defaultIdx.get(a.slug as MasterStoreSlug) ?? 999) -
+      (defaultIdx.get(b.slug as MasterStoreSlug) ?? 999)
+    );
+  });
+}
+
+/** Koppel klantenkaart aan nieuw lijstje wanneer winkel past (Figma 1320:22753). */
+function findLoyaltyCardIdForStore(
+  store: (typeof MASTER_STORE_OPTIONS)[number],
+  loyaltyCards: ReadonlyArray<{
+    id: string;
+    cardName?: string | null;
+    list?: { id?: string } | null;
+  }>,
+): string | null {
+  const want = store.label.trim().toLowerCase();
+  const matches = loyaltyCards.filter(
+    (c) => String(c.cardName ?? "").trim().toLowerCase() === want,
+  );
+  const unlinked = matches.find((c) => !c.list?.id);
+  return (unlinked ?? matches[0])?.id ?? null;
+}
+
+/** Venue-slide na FAB: supermarkt/café-illustraties; frituur nog placeholder. */
+const VENUE_TILE_ICON_SUPERMARKT = "/images/ui/supermarkt_160.webp";
+const VENUE_TILE_ICON_FRITUUR = "/images/ui/product_icons/frieten_160.webp";
+const VENUE_TILE_ICON_CAFE = "/images/ui/cafe_160.webp";
+
+type PendingFrituurChoice = {
+  listName: string;
+  customIconUrl: string | null;
+};
 
 type HomeList = {
   id: string;
@@ -945,9 +1001,13 @@ export default function Home() {
       $: { where: { instantUserId: ownerId } },
     },
     loyaltyCards: {
+      list: {},
       $: { where: { ownerId } },
     },
     listIconImages: {
+      $: { where: { ownerId } },
+    },
+    supermarktPickerStats: {
       $: { where: { ownerId } },
     },
     recipes: {},
@@ -1327,11 +1387,16 @@ export default function Home() {
     );
   }, [user?.id, authLoading, isLoading, data?.lists]);
 
-  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newListName, setNewListName] = React.useState("");
   const [newListCustomIcon, setNewListCustomIcon] = React.useState<string | null>(null);
   const [newListIconPickerOpen, setNewListIconPickerOpen] = React.useState(false);
-  const [pendingFrituurListName, setPendingFrituurListName] = React.useState<string | null>(null);
+  const [pendingFrituurChoice, setPendingFrituurChoice] =
+    React.useState<PendingFrituurChoice | null>(null);
+  const [blankVenueSlideOpen, setBlankVenueSlideOpen] = React.useState(false);
+  const [supermarktNewListSlideOpen, setSupermarktNewListSlideOpen] =
+    React.useState(false);
+  const [selectedSupermarktStoreSlug, setSelectedSupermarktStoreSlug] =
+    React.useState<MasterStoreSlug | null>(null);
   const newListPhotoInputRef = React.useRef<HTMLInputElement>(null);
   const [quickMasterListName, setQuickMasterListName] = React.useState("");
   const [quickMasterId, setQuickMasterId] = React.useState<string | null>(null);
@@ -1361,22 +1426,32 @@ export default function Home() {
     };
   }, [addingId]);
 
-  const handleCloseCreateModal = React.useCallback(() => {
-    setIsCreateModalOpen(false);
+  const handleCloseNewListFormState = React.useCallback(() => {
+    setSupermarktNewListSlideOpen(false);
+    setSelectedSupermarktStoreSlug(null);
     setNewListName("");
     setNewListCustomIcon(null);
     setNewListIconPickerOpen(false);
-    setPendingFrituurListName(null);
+    setPendingFrituurChoice(null);
   }, []);
 
-  const handleOpenCreateModal = () => {
+  /** Figma: eerst venue-slide; daarna pas naam/soort-modal. */
+  const handleOpenCreateModal = React.useCallback(() => {
+    setPendingFrituurChoice(null);
+    setBlankVenueSlideOpen(true);
+  }, []);
+
+  /** Figma 1320:22753 — supermarkt: naam + swimlane + Volgende. */
+  const openSupermarktNewListSlide = React.useCallback(() => {
+    setBlankVenueSlideOpen(false);
+    setSupermarktNewListSlideOpen(true);
+    setSelectedSupermarktStoreSlug(null);
     setNewListName(defaultNewListName(new Date(), lists.map((l) => l.name)));
     setNewListFormKey((k) => k + 1);
     setNewListCustomIcon(null);
     setNewListIconPickerOpen(false);
-    setPendingFrituurListName(null);
-    setIsCreateModalOpen(true);
-  };
+    setPendingFrituurChoice(null);
+  }, [lists]);
 
   const handleNewListPhotoChange = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1427,19 +1502,51 @@ export default function Home() {
     [handleCloseQuickMasterModal, quickMasterId, quickMasterListName, router],
   );
 
+  const loyaltyCardsForLinking = React.useMemo(() => {
+    const raw = (data?.loyaltyCards ?? []) as Array<{
+      id: string;
+      cardName?: string | null;
+      list?: { id?: string } | null;
+    }>;
+    return raw.filter((c) => typeof c.id === "string");
+  }, [data?.loyaltyCards]);
+
+  const supermarktSwimlaneStoresOrdered = React.useMemo(() => {
+    const base = masterStoresForSupermarktSwimlane();
+    const stats = (data?.supermarktPickerStats ?? []) as Array<{
+      storeSlug?: string | null;
+      pickCount?: number | null;
+      lastPickedAtIso?: string | null;
+    }>;
+    return sortSupermarktStoresByPickerUsage(base, stats);
+  }, [data?.supermarktPickerStats]);
+
   const createBlankList = React.useCallback(
     ({
       listName,
       duplicateFrom,
       startFrituurWizard,
+      customIconForCreate,
+      pickerMasterStore,
+      loyaltyCardIdToLink,
     }: {
       listName: string;
       duplicateFrom?: FrituurPreviousList | null;
       startFrituurWizard: boolean;
+      /** Override i.p.v. `newListCustomIcon` (modal kan al gesloten zijn). */
+      customIconForCreate?: string | null;
+      /** Gekozen winkeltegel (Figma swimlane); `masterIcon` ook als lijstnaam geen winkel is. */
+      pickerMasterStore?: (typeof MASTER_STORE_OPTIONS)[number] | null;
+      /** Optioneel: bestaande klantenkaart koppelen indien match met winkel. */
+      loyaltyCardIdToLink?: string | null;
     }) => {
       if (!user) return;
+      setBlankVenueSlideOpen(false);
+      const customIcon =
+        customIconForCreate !== undefined ? customIconForCreate : newListCustomIcon;
       const icon = pickListProductIconForNewList(lists, listName);
       const storeFromName = findMasterStoreByListName(listName);
+      const storeForMasterIcon = pickerMasterStore ?? storeFromName;
       const now = new Date();
       const nowIso = now.toISOString();
       const newId = iid();
@@ -1452,8 +1559,8 @@ export default function Home() {
             lists.length > 0 ? Math.min(...lists.map((l) => l.order)) - 1 : 0,
           ownerId: user.id,
           isMasterTemplate: false,
-          ...(storeFromName ? { masterIcon: storeFromName.logoSrc } : {}),
-          ...(newListCustomIcon ? { customIconUrl: newListCustomIcon } : {}),
+          ...(storeForMasterIcon ? { masterIcon: storeForMasterIcon.logoSrc } : {}),
+          ...(customIcon ? { customIconUrl: customIcon } : {}),
         }),
       ];
 
@@ -1477,9 +1584,9 @@ export default function Home() {
         );
       }
 
-      if (newListCustomIcon) {
+      if (customIcon) {
         const existingIcon = savedListIconImages.find(
-          (img) => img.imageDataUrl === newListCustomIcon && img.id,
+          (img) => img.imageDataUrl === customIcon && img.id,
         );
         if (existingIcon?.id) {
           txs.push(
@@ -1491,7 +1598,7 @@ export default function Home() {
           txs.push(
             db.tx.listIconImages[iid()].update({
               ownerId: user.id,
-              imageDataUrl: newListCustomIcon,
+              imageDataUrl: customIcon,
               createdAtIso: nowIso,
               lastUsedAtIso: nowIso,
             }),
@@ -1499,8 +1606,43 @@ export default function Home() {
         }
       }
 
+      if (loyaltyCardIdToLink) {
+        txs.push(db.tx.lists[newId].link({ loyaltyCard: loyaltyCardIdToLink }));
+      }
+
+      if (pickerMasterStore) {
+        const slug = pickerMasterStore.slug;
+        const statRows = (data?.supermarktPickerStats ?? []) as Array<{
+          id: string;
+          storeSlug?: string | null;
+          pickCount?: number | null;
+        }>;
+        const statRow = statRows.find(
+          (r) => r.storeSlug === slug && typeof r.id === "string",
+        );
+        if (statRow?.id) {
+          txs.push(
+            db.tx.supermarktPickerStats[statRow.id].update({
+              pickCount:
+                (typeof statRow.pickCount === "number" ? statRow.pickCount : 0) +
+                1,
+              lastPickedAtIso: nowIso,
+            }),
+          );
+        } else {
+          txs.push(
+            db.tx.supermarktPickerStats[iid()].update({
+              ownerId: user.id,
+              storeSlug: slug,
+              pickCount: 1,
+              lastPickedAtIso: nowIso,
+            }),
+          );
+        }
+      }
+
       db.transact(txs as Parameters<typeof db.transact>[0]);
-      handleCloseCreateModal();
+      handleCloseNewListFormState();
       if (startFrituurWizard) {
         router.push(`/lijstje/${newId}?frituurWizard=1`);
         return;
@@ -1512,7 +1654,8 @@ export default function Home() {
       setAddingId(newId);
     },
     [
-      handleCloseCreateModal,
+      data?.supermarktPickerStats,
+      handleCloseNewListFormState,
       lists,
       newListCustomIcon,
       router,
@@ -1521,53 +1664,56 @@ export default function Home() {
     ],
   );
 
-  const handleNewListFormSubmit = React.useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      if (!user) return;
-      const fd = new FormData(event.currentTarget);
-      const name = String(fd.get("newListName") ?? "").trim();
-      if (!name) return;
-      const rawKind = fd.get("newListKind");
-      const kind: NewListKind =
-        rawKind === "from_master" || rawKind === "blank" ? rawKind : "blank";
+  const handleCloseBlankVenueStep = React.useCallback(() => {
+    setBlankVenueSlideOpen(false);
+  }, []);
 
-      if (kind === "from_master") {
-        router.push(
-          `/nieuw-lijstje/selecteer-master-lijstje?naam=${encodeURIComponent(
-            name,
-          )}`,
-        );
-        handleCloseCreateModal();
-        return;
-      }
-      const listName = name;
-      if (listProductIconUrlFromListName(listName)) {
-        if (latestFrituurList) {
-          setPendingFrituurListName(listName);
-          return;
-        }
-        createBlankList({
-          listName,
-          duplicateFrom: null,
-          startFrituurWizard: true,
-        });
-        return;
-      }
-      createBlankList({
-        listName,
-        duplicateFrom: null,
-        startFrituurWizard: false,
-      });
-    },
-    [
-      createBlankList,
-      handleCloseCreateModal,
-      latestFrituurList,
-      router,
-      user,
-    ],
-  );
+  const handleBlankVenuePickSupermarkt = React.useCallback(() => {
+    openSupermarktNewListSlide();
+  }, [openSupermarktNewListSlide]);
+
+  const handleSupermarktSlideVolgende = React.useCallback(() => {
+    if (!user) return;
+    const name = newListName.trim();
+    if (!name) return;
+    const store = selectedSupermarktStoreSlug
+      ? findMasterStoreBySlug(selectedSupermarktStoreSlug)
+      : undefined;
+    const loyaltyCardIdToLink =
+      store != null
+        ? findLoyaltyCardIdForStore(store, loyaltyCardsForLinking)
+        : null;
+    createBlankList({
+      listName: name,
+      duplicateFrom: null,
+      startFrituurWizard: false,
+      customIconForCreate: newListCustomIcon,
+      pickerMasterStore: store ?? null,
+      loyaltyCardIdToLink,
+    });
+  }, [
+    createBlankList,
+    loyaltyCardsForLinking,
+    newListCustomIcon,
+    newListName,
+    selectedSupermarktStoreSlug,
+    user,
+  ]);
+
+  const handleBlankVenuePickFrituur = React.useCallback(() => {
+    setBlankVenueSlideOpen(false);
+    const listName = defaultFrituurListName(lists.map((l) => l.name));
+    if (listProductIconUrlFromListName(listName) && latestFrituurList) {
+      setPendingFrituurChoice({ listName, customIconUrl: null });
+      return;
+    }
+    createBlankList({
+      listName,
+      duplicateFrom: null,
+      startFrituurWizard: true,
+      customIconForCreate: null,
+    });
+  }, [createBlankList, latestFrituurList, lists]);
 
   if (authLoading || !user || isLoading) {
     return <PageSpinner />;
@@ -1723,44 +1869,50 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Slide-in: Nieuw lijstje */}
+      {/* Figma 1320:22753 — Nieuw lijstje supermarkt (swimlane + optionele klantenkaart-koppeling) */}
       <SlideInModal
-        open={isCreateModalOpen}
-        onClose={handleCloseCreateModal}
-        title="Nieuw lijstje"
+        open={supermarktNewListSlideOpen}
+        onClose={handleCloseNewListFormState}
+        title="Nieuw lijstje supermarkt"
+        titleId="supermarkt-new-list-slide-title"
+        className="pb-0"
+        bodyClassName="pb-[var(--space-2)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:h-0"
         disableEscapeClose={
-          newListIconPickerOpen || pendingFrituurListName != null
+          newListIconPickerOpen || pendingFrituurChoice != null
         }
         footer={
           <Button
-            type="submit"
-            form={HOME_NEW_LIST_FORM_ID}
+            type="button"
             variant="primary"
             disabled={!newListName.trim()}
+            onClick={handleSupermarktSlideVolgende}
           >
-            Bewaren
+            Volgende
           </Button>
         }
       >
-        <form
-          id={HOME_NEW_LIST_FORM_ID}
+        <div
           key={newListFormKey}
-          onSubmit={handleNewListFormSubmit}
-          className="flex w-full flex-col items-center gap-8"
+          className="flex w-full flex-col items-center gap-[var(--space-8)]"
         >
-          <div className="flex w-full flex-col gap-2">
-            <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">Naam lijstje</label>
+          <div className="flex w-full flex-col gap-[var(--space-2)]">
+            <label
+              htmlFor="supermarkt-new-list-name"
+              className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]"
+            >
+              Naam lijstje
+            </label>
             <div className="flex w-full items-center gap-2">
               <div className="relative flex-1">
                 <input
-                  name="newListName"
+                  id="supermarkt-new-list-name"
                   value={newListName}
                   autoComplete="off"
                   onChange={(e) => setNewListName(e.target.value)}
                   onFocus={selectListNameInputOnFocus}
                   placeholder="Naam lijstje"
                   className={cn(
-                    "flex h-12 w-full rounded-md border border-[var(--border-default)] bg-[var(--white)] px-4 text-base leading-24 tracking-normal text-[var(--text-primary)] transition-colors placeholder:text-[var(--text-placeholder)] focus-visible:outline-none focus-visible:border-[var(--border-focus)]",
+                    "flex h-12 w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--white)] px-4 text-base leading-24 tracking-normal text-[var(--text-primary)] transition-colors placeholder:text-[var(--text-placeholder)] focus-visible:outline-none focus-visible:border-[var(--border-focus)]",
                     !newListCustomIcon && "pr-12",
                   )}
                 />
@@ -1811,31 +1963,165 @@ export default function Home() {
               onChange={handleNewListPhotoChange}
             />
           </div>
-          <div
-            role="radiogroup"
-            aria-label="Soort lijstje"
-            className="flex w-full flex-col gap-4"
-          >
-            <NewListKindFormOption
-              value="blank"
-              defaultChecked
-              title="Custom lijstje"
-              subtitle="Nieuw blanco lijstje"
-              icon={<IconPrimaryMask src="/icons/list.svg" />}
-            />
-            <NewListKindFormOption
-              value="from_master"
-              title="Lijstje vanuit favorieten"
-              subtitle="Vertrek van een favorietenlijstje"
-              icon={<IconPrimaryMask src="/icons/heart.svg" />}
-            />
+
+          <div className="w-full min-w-0">
+            <p className="sr-only">Supermarkt (optioneel)</p>
+            <div
+              role="radiogroup"
+              aria-label="Supermarkt, optioneel"
+              className="-mx-1 flex gap-[var(--space-3)] overflow-x-auto px-1 pb-1 pt-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {supermarktSwimlaneStoresOrdered.map((store) => {
+                const selected = selectedSupermarktStoreSlug === store.slug;
+                return (
+                  <button
+                    key={store.slug}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() =>
+                      setSelectedSupermarktStoreSlug((prev) =>
+                        prev === store.slug ? null : store.slug,
+                      )
+                    }
+                    className={cn(
+                      "relative flex w-[100px] shrink-0 flex-col items-center gap-[var(--space-2)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+                      selected
+                        ? "border border-action-primary"
+                        : "border border-[var(--gray-100)]",
+                      !selected &&
+                        "[@media(hover:hover)]:hover:border-[var(--gray-200)]",
+                    )}
+                  >
+                    <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={store.logoSrc}
+                        alt=""
+                        width={48}
+                        height={48}
+                        className="size-full object-contain object-center"
+                      />
+                    </div>
+                    <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
+                      {store.label}
+                    </p>
+                    {selected ? (
+                      <span
+                        className="pointer-events-none absolute right-0 top-0 size-[36px]"
+                        aria-hidden
+                      >
+                        <span
+                          className="absolute inset-0 bg-action-primary"
+                          style={{
+                            clipPath: "polygon(100% 0, 100% 100%, 0 0)",
+                          }}
+                        />
+                        <span
+                          className="absolute right-[5px] top-[5px] inline-block size-[14px] bg-[var(--white)]"
+                          style={{
+                            WebkitMaskImage: "url(/icons/checkmark.svg)",
+                            maskImage: "url(/icons/checkmark.svg)",
+                            WebkitMaskSize: "contain",
+                            maskSize: "contain",
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskPosition: "center",
+                            maskPosition: "center",
+                          }}
+                        />
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </form>
+        </div>
       </SlideInModal>
 
       <SlideInModal
-        open={pendingFrituurListName != null}
-        onClose={() => setPendingFrituurListName(null)}
+        open={blankVenueSlideOpen}
+        onClose={handleCloseBlankVenueStep}
+        title="Nieuw lijstje"
+        titleId="blank-list-venue-slide-title"
+        containerClassName="z-[60]"
+        className="pb-0"
+        bodyClassName="px-[var(--space-4)] pb-[45px] pt-[var(--space-6)]"
+      >
+        <div className="flex w-full min-w-0 gap-[var(--space-4)]">
+          <button
+            type="button"
+            onClick={handleBlankVenuePickSupermarkt}
+            className={cn(
+              "flex min-w-0 flex-1 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+            )}
+          >
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={VENUE_TILE_ICON_SUPERMARKT}
+                alt=""
+                width={48}
+                height={48}
+                className="size-full object-cover"
+              />
+            </div>
+            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
+              Supermarkt
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={handleBlankVenuePickFrituur}
+            className={cn(
+              "flex min-w-0 flex-1 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+            )}
+          >
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={VENUE_TILE_ICON_FRITUUR}
+                alt=""
+                width={48}
+                height={48}
+                className="size-full object-cover"
+              />
+            </div>
+            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
+              Frituur
+            </p>
+          </button>
+          <div
+            className="flex min-w-0 flex-1 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--gray-25)] p-[var(--space-3)] text-center opacity-60 shadow-[0px_2px_4px_rgba(0,0,0,0.08)]"
+            aria-disabled
+            title="Binnenkort beschikbaar"
+          >
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)] grayscale">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={VENUE_TILE_ICON_CAFE}
+                alt=""
+                width={48}
+                height={48}
+                className="size-full object-cover"
+              />
+            </div>
+            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-disabled)]">
+              Café
+            </p>
+          </div>
+        </div>
+      </SlideInModal>
+
+      <SlideInModal
+        open={pendingFrituurChoice != null}
+        onClose={() => setPendingFrituurChoice(null)}
         title="Nieuw frituur lijstje"
         titleId="new-frituur-choice-slide-title"
         containerClassName="z-[60]"
@@ -1846,11 +2132,12 @@ export default function Home() {
           <button
             type="button"
             onClick={() => {
-              if (!pendingFrituurListName || !latestFrituurList) return;
+              if (!pendingFrituurChoice || !latestFrituurList) return;
               createBlankList({
-                listName: pendingFrituurListName,
+                listName: pendingFrituurChoice.listName,
                 duplicateFrom: latestFrituurList,
                 startFrituurWizard: false,
+                customIconForCreate: pendingFrituurChoice.customIconUrl,
               });
             }}
             className="w-full bg-transparent p-0 text-left"
@@ -1864,11 +2151,12 @@ export default function Home() {
           <button
             type="button"
             onClick={() => {
-              if (!pendingFrituurListName) return;
+              if (!pendingFrituurChoice) return;
               createBlankList({
-                listName: pendingFrituurListName,
+                listName: pendingFrituurChoice.listName,
                 duplicateFrom: null,
                 startFrituurWizard: true,
+                customIconForCreate: pendingFrituurChoice.customIconUrl,
               });
             }}
             className="w-full bg-transparent p-0 text-left"

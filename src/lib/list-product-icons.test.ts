@@ -18,6 +18,9 @@ describe("list-product-icons", () => {
     expect(listProductIconUrlFromListName("Frituur")).toBe(
       FRIETEN_LIST_PRODUCT_ICON_URL,
     );
+    expect(listProductIconUrlFromListName("Frituur 2")).toBe(
+      FRIETEN_LIST_PRODUCT_ICON_URL,
+    );
     expect(listProductIconUrlFromListName("frieten avond")).toBeNull();
   });
 

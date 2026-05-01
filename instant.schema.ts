@@ -163,6 +163,17 @@ const schema = i.schema({
       createdAtIso: i.string().indexed(),
       lastUsedAtIso: i.string().indexed(),
     }),
+    /**
+     * Hoe vaak de gebruiker een winkel kiest in de supermarkt–nieuw-lijstje–swimlane;
+     * bepaalt sorteer-volgorde (meest links = vaakst gekozen).
+     */
+    supermarktPickerStats: i.entity({
+      ownerId: i.string().indexed(),
+      /** Zelfde waarde als `MasterStoreSlug` in de app, bv. `delhaize`. */
+      storeSlug: i.string().indexed(),
+      pickCount: i.number(),
+      lastPickedAtIso: i.string(),
+    }),
     /** Diepvriesitem (product of gerecht) opgeslagen door een gebruiker. */
     freezerItems: i.entity({
       /** "product" of "gerecht" */

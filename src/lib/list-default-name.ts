@@ -55,6 +55,24 @@ export function defaultNewListName(
   return `${month} ${existingCount + 1}`;
 }
 
+const FRITUUR_BASE_NAMES = ["Frituur", "Frieten", "Frietjes"] as const;
+
+/**
+ * Unieke standaardnaam voor een nieuw frituurlijstje (wizard op `/lijstje/…?frituurWizard=1`).
+ * Gebruikt eerst vrije basistrefwoorden, daarna "Frituur 2", "Frituur 3", …
+ */
+export function defaultFrituurListName(existingNames: string[]): string {
+  const lower = new Set(
+    existingNames.map((n) => n.trim().toLowerCase()).filter(Boolean),
+  );
+  for (const base of FRITUUR_BASE_NAMES) {
+    if (!lower.has(base.toLowerCase())) return base;
+  }
+  let n = 2;
+  while (lower.has(`frituur ${n}`)) n += 1;
+  return `Frituur ${n}`;
+}
+
 /**
  * Herkent de automatische kalender-naam (`defaultNewListName`) voor weergave als in Figma:
  * maand als titel + weeknummer in een bol (bv. "April" + badge "3").

@@ -20,15 +20,24 @@ const FRIETEN_LIST_NAME_KEYS = new Set<string>([
   "frituur",
 ]);
 
+/** bv. "Frituur 2" — zelfde frituur-decor als de basistrefwoorden. */
+const FRITUUR_LIST_NAME_WITH_SUFFIX_RE =
+  /^(frituur|frieten|frietjes)(\s+\d+)?$/i;
+
 /**
  * Bepaalt of een lijstnaam een vast decor-icoon verdient (los van willekeurige pool-keuze).
- * Alleen exacte match op trim + lowercase.
+ * Exacte match op trim + lowercase, of basistrefwoord + optioneel volgnummer.
  */
 export function listProductIconUrlFromListName(
   name: string | null | undefined,
 ): string | null {
-  const key = name?.trim().toLowerCase() ?? "";
+  const trimmed = name?.trim() ?? "";
+  if (!trimmed) return null;
+  const key = trimmed.toLowerCase();
   if (FRIETEN_LIST_NAME_KEYS.has(key)) {
+    return FRIETEN_LIST_PRODUCT_ICON_URL;
+  }
+  if (FRITUUR_LIST_NAME_WITH_SUFFIX_RE.test(trimmed)) {
     return FRIETEN_LIST_PRODUCT_ICON_URL;
   }
   return null;
