@@ -93,6 +93,7 @@ import {
   cafeWizardCategoryFromQueryParam,
   cafeWizardCategoryFromSectionTitle,
   cafeWizardTabOrder,
+  compareCafeWizardItemsByPopularity,
   normalizeCafeChoiceName,
   parseCafeQuantityCount,
 } from "@/lib/cafe-venue-wizard";
@@ -2301,23 +2302,18 @@ function CafeListWizard({
             itemSelectionCounts.get(normalizeCafeChoiceName(item.name)) ?? 0,
         }))
         .filter((x) => x.pop > 0)
-        .sort((a, b) => {
-          if (b.pop !== a.pop) return b.pop - a.pop;
-          return a.item.name.localeCompare(b.item.name, "nl");
-        })
+        .sort((a, b) =>
+          compareCafeWizardItemsByPopularity(
+            a.item,
+            b.item,
+            itemSelectionCounts,
+          ),
+        )
         .map(({ item }) => item);
     }
-    return filtered
-      .map((item, index) => ({ item, index }))
-      .sort((a, b) => {
-        const aCount =
-          itemSelectionCounts.get(normalizeCafeChoiceName(a.item.name)) ?? 0;
-        const bCount =
-          itemSelectionCounts.get(normalizeCafeChoiceName(b.item.name)) ?? 0;
-        if (aCount !== bCount) return bCount - aCount;
-        return a.index - b.index;
-      })
-      .map(({ item }) => item);
+    return [...filtered].sort((a, b) =>
+      compareCafeWizardItemsByPopularity(a, b, itemSelectionCounts),
+    );
   }, [category, itemSelectionCounts, query]);
 
   const qTrim = query.trim();

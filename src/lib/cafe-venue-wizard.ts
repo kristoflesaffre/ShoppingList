@@ -224,6 +224,16 @@ export function normalizeCafeChoiceName(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/** Sorteer op totaal gekozen (alle café-lijsten van de gebruiker), hoog → laag; gelijk → naam A–Z (nl). */
+export function compareCafeWizardItemsByPopularity<
+  T extends { name: string },
+>(a: T, b: T, counts: ReadonlyMap<string, number>): number {
+  const pa = counts.get(normalizeCafeChoiceName(a.name)) ?? 0;
+  const pb = counts.get(normalizeCafeChoiceName(b.name)) ?? 0;
+  if (pb !== pa) return pb - pa;
+  return a.name.localeCompare(b.name, "nl", { sensitivity: "base" });
+}
+
 export function cafeItemIconSrc(name: string): string {
   const normalized = normalizeCafeChoiceName(name);
   const hit = CAFE_WIZARD_ITEMS.find(
