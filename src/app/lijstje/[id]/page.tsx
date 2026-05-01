@@ -94,7 +94,11 @@ import {
   cafeWizardCategoryFromSectionTitle,
   cafeWizardTabOrder,
   compareCafeWizardItemsByPopularity,
+  isCafeVenueRoundSection,
+  latestCafeRoundSectionTitle,
+  nextCafeRoundSectionTitle,
   normalizeCafeChoiceName,
+  parseCafeRoundIndex,
   parseCafeQuantityCount,
 } from "@/lib/cafe-venue-wizard";
 import {
@@ -931,64 +935,257 @@ function FrituurListItemRow({
   );
 }
 
+/** Figma 1327:24966 (lijst), 1327:24950 (raster-tegel naast producten). */
+function CafeListAddItemRow({
+  listViewMode,
+  roundTitle,
+  onAdd,
+}: {
+  listViewMode: "list" | "grid";
+  /** Actief rondje (voor a11y). */
+  roundTitle: string;
+  onAdd: () => void;
+}) {
+  if (listViewMode === "grid") {
+    return (
+      <button
+        type="button"
+        onClick={onAdd}
+        aria-label={`Item toevoegen aan ${roundTitle}`}
+        className="flex w-full min-w-0 flex-col items-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        <span className="relative size-16 shrink-0 overflow-hidden rounded-md bg-[var(--gray-50)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/ui/cafe_160.webp"
+            alt=""
+            width={64}
+            height={64}
+            className="size-full object-cover opacity-40"
+            aria-hidden="true"
+          />
+        </span>
+        <span className="flex shrink-0 items-center justify-center text-[var(--blue-500)]">
+          <PlusCircleIcon className="size-6" />
+        </span>
+        <span className="w-full min-w-0 max-w-full truncate text-center text-base font-normal leading-24 tracking-normal text-[var(--blue-500)]">
+          Item toevoegen
+        </span>
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      aria-label={`Item toevoegen aan ${roundTitle}`}
+      className="flex min-h-[64px] w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+    >
+      <span className="relative size-10 shrink-0 overflow-hidden rounded-md bg-[var(--gray-50)]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/ui/cafe_160.webp"
+          alt=""
+          width={40}
+          height={40}
+          className="size-full object-cover opacity-40"
+          aria-hidden="true"
+        />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-base font-normal leading-24 tracking-normal text-[var(--blue-500)]">
+        Item toevoegen
+      </span>
+      <span className="flex shrink-0 items-center rounded-pill p-1 text-[var(--blue-500)]">
+        <PlusCircleIcon className="size-6" />
+      </span>
+    </button>
+  );
+}
+
 function CafeListItems({
   items,
   isEditMode,
   listViewMode,
-  onAddToSection,
-  onEdit,
+  onAddToActiveRound,
   onIncrement,
   onDecrementOrDelete,
 }: {
   items: ListItem[];
   isEditMode: boolean;
   listViewMode: "list" | "grid";
-  onAddToSection: (sectionTitle: string) => void;
-  onEdit: (item: ListItem) => void;
+  /** Opent wizard voor het actuele (hoogste) rondje — niet voor een nieuw rondje. */
+  onAddToActiveRound: () => void;
   onIncrement: (item: ListItem) => void;
   onDecrementOrDelete: (item: ListItem) => void;
 }) {
-  /** `items` is al gesorteerd op `order` in de parent-`useMemo`. */
-  const orderedItems = items;
-  if (orderedItems.length === 0) return null;
+  const [expandedPastTitles, setExpandedPastTitles] = React.useState<
+    Set<string>
+  >(() => new Set());
+
+  const rounds = React.useMemo(() => {
+    const bySection = new Map<string, ListItem[]>();
+    for (const it of items) {
+      const s = String(it.section ?? "").trim();
+      if (!isCafeVenueRoundSection(s)) continue;
+      const arr = bySection.get(s) ?? [];
+      arr.push(it);
+      bySection.set(s, arr);
+    }
+    const titles = Array.from(bySection.keys()).sort(
+      (a, b) => (parseCafeRoundIndex(b) ?? 0) - (parseCafeRoundIndex(a) ?? 0),
+    );
+    return titles.map((title) => ({
+      title,
+      items: [...(bySection.get(title) ?? [])].sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0),
+      ),
+    }));
+  }, [items]);
+
+  if (rounds.length === 0) return null;
+
+  const latestTitle = rounds[0]?.title ?? CAFE_ROUND_SECTION_TITLE;
+
+  /** Nieuw bovenste rondje (FAB): eerdere handmatig geopende rondjes weer dichtklappen. */
+  const latestTitleRef = React.useRef(latestTitle);
+  React.useEffect(() => {
+    if (latestTitleRef.current !== latestTitle) {
+      latestTitleRef.current = latestTitle;
+      setExpandedPastTitles(new Set());
+    }
+  }, [latestTitle]);
+
+  const chevronMaskStyle: React.CSSProperties = {
+    WebkitMaskImage: "url(/icons/chevron.svg)",
+    maskImage: "url(/icons/chevron.svg)",
+    WebkitMaskRepeat: "no-repeat",
+    maskRepeat: "no-repeat",
+    WebkitMaskSize: "contain",
+    maskSize: "contain",
+    WebkitMaskPosition: "center",
+    maskPosition: "center",
+  };
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="flex flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <h3 className="min-w-0 flex-1 text-section-title font-bold leading-24 tracking-normal text-[var(--blue-900)]">
-            {CAFE_ROUND_SECTION_TITLE}
-          </h3>
-          <button
-            type="button"
-            aria-label={`Item toevoegen aan ${CAFE_ROUND_SECTION_TITLE}`}
-            onClick={() => onAddToSection(CAFE_ROUND_SECTION_TITLE)}
-            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      {rounds.map((round, roundIdx) => {
+        const isLatest = roundIdx === 0;
+        const blockExpanded = isLatest || expandedPastTitles.has(round.title);
+        const headerClass = cn(
+          "flex w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3",
+          listViewMode === "grid" && "mx-auto max-w-[358px]",
+        );
+        /** Langzame, zachte rotatie (loopt mee met paneel). */
+        const chevronClass = cn(
+          "inline-block size-6 shrink-0 bg-[var(--blue-500)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0",
+          !isLatest && !blockExpanded && "rotate-180",
+        );
+
+        const headerInner = (
+          <>
+            <h3 className="min-w-0 flex-1 truncate text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+              {round.title}
+            </h3>
+            <span aria-hidden="true" className={chevronClass} style={chevronMaskStyle} />
+          </>
+        );
+
+        return (
+          <section
+            key={round.title}
+            className={cn(
+              "flex flex-col",
+              listViewMode === "grid" ? "gap-4" : "gap-3",
+            )}
           >
-            <PlusCircleIcon />
-          </button>
-        </div>
-        <div
-          className={cn(
-            listViewMode === "grid"
-              ? /* Figma 1323:23864 / 1323:24195 — 358px raster, gap 16, 2 kolommen */
-                "mx-auto grid w-full max-w-[358px] grid-cols-2 gap-4"
-              : "flex flex-col gap-3",
-          )}
-        >
-          {orderedItems.map((item) => (
-            <CafeListItemRow
-              key={item.id}
-              item={item}
-              isEditMode={isEditMode}
-              listViewMode={listViewMode}
-              onEdit={onEdit}
-              onIncrement={onIncrement}
-              onDecrementOrDelete={onDecrementOrDelete}
-            />
-          ))}
-        </div>
-      </section>
+            {!isLatest ? (
+              <button
+                type="button"
+                aria-expanded={blockExpanded}
+                aria-controls={`cafe-round-${round.title.replace(/\s/g, "-")}`}
+                id={`cafe-round-h-${round.title.replace(/\s/g, "-")}`}
+                onClick={() =>
+                  setExpandedPastTitles((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(round.title)) next.delete(round.title);
+                    else next.add(round.title);
+                    return next;
+                  })
+                }
+                className={cn(headerClass, "text-left")}
+              >
+                {headerInner}
+              </button>
+            ) : (
+              <div className={headerClass}>{headerInner}</div>
+            )}
+            {isLatest ? (
+              <div
+                id={`cafe-round-${round.title.replace(/\s/g, "-")}`}
+                role="region"
+                aria-label={round.title}
+                className={cn(
+                  listViewMode === "grid"
+                    ? "mx-auto grid w-full max-w-[358px] grid-cols-2 gap-4"
+                    : "flex flex-col gap-3",
+                )}
+              >
+                {round.items.map((item) => (
+                  <CafeListItemRow
+                    key={item.id}
+                    item={item}
+                    isEditMode={isEditMode}
+                    listViewMode={listViewMode}
+                    onIncrement={onIncrement}
+                    onDecrementOrDelete={onDecrementOrDelete}
+                  />
+                ))}
+                <CafeListAddItemRow
+                  listViewMode={listViewMode}
+                  roundTitle={latestTitle}
+                  onAdd={onAddToActiveRound}
+                />
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  "grid overflow-hidden transition-[grid-template-rows] duration-[680ms] ease-[cubic-bezier(0.22,1,0.4,1)] motion-reduce:duration-0 motion-reduce:transition-none",
+                  blockExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                )}
+              >
+                <div className="min-h-0 overflow-hidden" inert={!blockExpanded}>
+                  <div
+                    id={`cafe-round-${round.title.replace(/\s/g, "-")}`}
+                    role="region"
+                    aria-label={round.title}
+                    className={cn(
+                      "transform-gpu will-change-[opacity,transform]",
+                      "transition-[opacity,transform] duration-[600ms] ease-[cubic-bezier(0.22,1,0.38,1)] motion-reduce:duration-0 motion-reduce:transition-none",
+                      blockExpanded
+                        ? "translate-y-0 opacity-100"
+                        : "pointer-events-none -translate-y-2 opacity-0",
+                      listViewMode === "grid"
+                        ? "mx-auto grid w-full max-w-[358px] grid-cols-2 gap-4"
+                        : "flex flex-col gap-3",
+                    )}
+                  >
+                    {round.items.map((item) => (
+                      <CafeListItemRow
+                        key={item.id}
+                        item={item}
+                        isEditMode={isEditMode}
+                        listViewMode={listViewMode}
+                        onIncrement={onIncrement}
+                        onDecrementOrDelete={onDecrementOrDelete}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -997,14 +1194,12 @@ function CafeListItemRow({
   item,
   isEditMode,
   listViewMode,
-  onEdit,
   onIncrement,
   onDecrementOrDelete,
 }: {
   item: ListItem;
   isEditMode: boolean;
   listViewMode: "list" | "grid";
-  onEdit: (item: ListItem) => void;
   onIncrement: (item: ListItem) => void;
   onDecrementOrDelete: (item: ListItem) => void;
 }) {
@@ -1058,11 +1253,8 @@ function CafeListItemRow({
 
   if (!isEditMode && isGrid) {
     return (
-      <button
-        type="button"
-        onClick={() => onEdit(item)}
-        className="flex w-full flex-col items-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-      >
+      <div className="flex w-full min-w-0 flex-col items-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center">
+        {/* Figma 1323:23977 — Logo tile: 64px afbeelding, sp-8 tussen kolommen, daarna getal, dan naam. */}
         <span className="relative size-16 shrink-0 overflow-hidden rounded-md">
           {/* eslint-disable-next-line @next/next/no-img-element -- lokale productafbeeldingen uit /public */}
           <img
@@ -1078,26 +1270,26 @@ function CafeListItemRow({
           />
         </span>
         {hasCount ? (
-          <span className="shrink-0 text-center text-[32px] font-semibold leading-6 tracking-normal text-[var(--blue-900)]">
+          <span className="w-6 shrink-0 px-2.5 text-center text-[32px] font-semibold leading-24 tracking-normal text-[var(--blue-900)] tabular-nums">
             {effectiveCount}
           </span>
         ) : null}
         <span
           className={cn(
-            "w-full min-w-0 max-w-full truncate text-center text-base font-medium leading-6 tracking-normal",
+            "w-full min-w-0 max-w-full truncate px-0.5 text-center text-base font-medium leading-24 tracking-normal",
             hasCount ? "text-[var(--text-primary)]" : "text-[var(--gray-500)]",
           )}
         >
           {item.name}
         </span>
-      </button>
+      </div>
     );
   }
 
-  /** Figma 1323:24195 — bewerkmodus in raster: tegel + middenrij −/prullenbak, getal, +, dan naam. */
+  /** Figma 1323:24195 — bewerkmodus in raster: tegel + middenrij −/getal/+, dan naam (zelfde sp-8 als view). */
   if (isEditMode && isGrid) {
     return (
-      <div className="flex w-full flex-col items-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center">
+      <div className="flex w-full min-w-0 flex-col items-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center">
         <span className="relative size-16 shrink-0 overflow-hidden rounded-md">
           {/* eslint-disable-next-line @next/next/no-img-element -- lokale productafbeeldingen uit /public */}
           <img
@@ -1132,7 +1324,7 @@ function CafeListItemRow({
               <RecycleBinIcon className="size-6" />
             )}
           </button>
-          <span className="min-w-6 shrink-0 px-0.5 text-center text-[32px] font-semibold leading-6 tracking-normal tabular-nums text-[var(--blue-900)]">
+          <span className="min-w-6 shrink-0 px-0.5 text-center text-[32px] font-semibold leading-24 tracking-normal tabular-nums text-[var(--blue-900)]">
             {hasCount ? effectiveCount : 0}
           </span>
           <button
@@ -1144,29 +1336,23 @@ function CafeListItemRow({
             <PlusCircleIcon className="size-6" />
           </button>
         </div>
-        <button
-          type="button"
-          onClick={() => onEdit(item)}
-          className="w-full min-w-0 max-w-full truncate text-center text-base font-medium leading-6 tracking-normal text-[var(--text-primary)] transition-colors [@media(hover:hover)]:text-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-        >
+        <span className="w-full min-w-0 max-w-full truncate px-0.5 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
           {item.name}
-        </button>
+        </span>
       </div>
     );
   }
 
   if (!isEditMode) {
     return (
-      <button
-        type="button"
-        onClick={() => onEdit(item)}
+      <div
         className={cn(
-          "flex w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+          "flex w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] text-left",
           "min-h-[64px] px-3 py-3",
         )}
       >
         {rowContent}
-      </button>
+      </div>
     );
   }
 
@@ -2801,6 +2987,7 @@ export default function ListDetailPage({
           quantity: it.quantity,
           checked: it.checked,
           section: it.section,
+          order: typeof it.order === "number" ? it.order : undefined,
           itemCategory,
           claimedByInstantUserId: it.claimedByInstantUserId || undefined,
           claimedByDisplayName: readClaimedByDisplayNameFromInstantRow(row),
@@ -2812,6 +2999,13 @@ export default function ListDetailPage({
         };
       });
   }, [listData]);
+
+  /** Alleen items van het rondje waarvoor de wizard geopend is (`cafeRound` in URL). */
+  const cafeWizardRoundItems = React.useMemo(() => {
+    const target =
+      searchParams.get("cafeRound")?.trim() || CAFE_ROUND_SECTION_TITLE;
+    return items.filter((i) => (i.section ?? "").trim() === target);
+  }, [items, searchParams]);
 
   /** Zet / ververs `itemCategory` op items (Excel-mapping); ook master (groepering per inhoud). */
   React.useEffect(() => {
@@ -3102,17 +3296,22 @@ export default function ListDetailPage({
   }, [listId, router]);
 
   const handleOpenCafeWizard = React.useCallback(
-    (sectionTitle?: string) => {
+    (targetRoundTitle?: string) => {
       if (!listId) return;
+      const round =
+        (targetRoundTitle ?? "").trim() ||
+        (items.length === 0
+          ? CAFE_ROUND_SECTION_TITLE
+          : latestCafeRoundSectionTitle(items));
       const category = cafeWizardCategoryFromSectionTitle(
-        sectionTitle,
+        round,
         cafeWizardHasPopularHistory,
       );
       router.push(
-        `/lijstje/${encodeURIComponent(listId)}?cafeWizard=1&cafeTab=${category}`,
+        `/lijstje/${encodeURIComponent(listId)}?cafeWizard=1&cafeTab=${category}&cafeRound=${encodeURIComponent(round)}`,
       );
     },
-    [cafeWizardHasPopularHistory, listId, router],
+    [cafeWizardHasPopularHistory, items, listId, router],
   );
 
   const handleSaveRecipeToLibrary = React.useCallback(
@@ -3695,17 +3894,26 @@ export default function ListDetailPage({
   const handleCompleteCafeWizard = React.useCallback(
     (selectedItems: CafeWizardSelectedItem[]) => {
       if (!listId) return;
+      const targetSection =
+        searchParams.get("cafeRound")?.trim() || CAFE_ROUND_SECTION_TITLE;
+
       const wizardNames = new Set(
         CAFE_WIZARD_ITEMS.map((item) => normalizeCafeChoiceName(item.name)),
       );
       const existingByName = new Map<string, ListItem[]>();
       for (const item of items) {
-        if (item.section !== CAFE_ROUND_SECTION_TITLE) continue;
+        if ((item.section ?? "").trim() !== targetSection) continue;
         const key = normalizeCafeChoiceName(item.name);
         const existing = existingByName.get(key) ?? [];
         existing.push(item);
         existingByName.set(key, existing);
       }
+
+      const minOrder =
+        items.length === 0
+          ? 0
+          : Math.min(...items.map((i) => i.order ?? 0));
+      const batchBase = minOrder - selectedItems.length;
 
       const selectedKeys = new Set<string>();
       const txs: Parameters<typeof db.transact>[0] = [];
@@ -3718,9 +3926,9 @@ export default function ListDetailPage({
           name: item.name,
           quantity: String(item.count),
           checked: false,
-          section: CAFE_ROUND_SECTION_TITLE,
+          section: targetSection,
           itemCategory: resolveItemCategoryFromName(item.name),
-          order: index,
+          order: existingItem ? (existingItem.order ?? 0) : batchBase + index,
         };
         if (existingItem) {
           txs.push(db.tx.items[existingItem.id].update(payload));
@@ -3749,7 +3957,7 @@ export default function ListDetailPage({
       }
       router.replace(`/lijstje/${encodeURIComponent(listId)}`);
     },
-    [items, listId, router],
+    [items, listId, router, searchParams],
   );
 
   const handleOpenMasterCategoryReorder = React.useCallback(() => {
@@ -4017,7 +4225,7 @@ export default function ListDetailPage({
           cafeWizardHasPopularHistory,
         )}
         showMeestTab={cafeWizardHasPopularHistory}
-        existingItems={items}
+        existingItems={cafeWizardRoundItems}
         itemSelectionCounts={cafeWizardSelectionCounts}
         onBack={() => router.replace(`/lijstje/${encodeURIComponent(listId)}`)}
         onDone={handleCompleteCafeWizard}
@@ -4155,9 +4363,10 @@ export default function ListDetailPage({
                     onClick={() => setListLayoutMode("list")}
                     className={cn(
                       "flex w-9 items-center justify-center p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      /* Figma 1323:23881 — actieve weergave op primary-25 */
                       listLayoutMode === "list"
-                        ? "bg-[var(--white)]"
-                        : "bg-[var(--blue-25)]",
+                        ? "bg-[var(--blue-25)]"
+                        : "bg-[var(--white)]",
                     )}
                   >
                     <ToggleViewIcon
@@ -4462,10 +4671,9 @@ export default function ListDetailPage({
               items={items}
               isEditMode={isEditMode}
               listViewMode={listViewMode}
-              onEdit={(item) => {
-                setEditingItem(item);
-              }}
-              onAddToSection={handleOpenCafeWizard}
+              onAddToActiveRound={() =>
+                handleOpenCafeWizard(latestCafeRoundSectionTitle(items))
+              }
               onIncrement={handleIncrementCafeItem}
               onDecrementOrDelete={handleDecrementOrDeleteCafeItem}
             />
@@ -4583,11 +4791,15 @@ export default function ListDetailPage({
         >
           <div className={APP_FAB_INNER_PX4_CLASS}>
             <FloatingActionButton
-              aria-label="Item toevoegen"
+              aria-label={
+                isCafeList && !isMasterList
+                  ? "Nieuw rondje starten"
+                  : "Item toevoegen"
+              }
               className="pointer-events-auto"
               onClick={
                 isCafeList && !isMasterList
-                  ? () => handleOpenCafeWizard()
+                  ? () => handleOpenCafeWizard(nextCafeRoundSectionTitle(items))
                   : isFrietenList && !isMasterList
                     ? () => handleOpenFrituurWizard()
                     : handleOpenNewItemModal

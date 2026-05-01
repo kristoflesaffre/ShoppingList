@@ -35,6 +35,8 @@ export type ListItem = {
   quantity: string;
   checked: boolean;
   section: string;
+  /** Sorteervolgorde binnen de lijst (InstantDB). */
+  order?: number;
   /** Supermarkt-categorie; ontbreekt → afgeleid uit naam. */
   itemCategory?: string;
   claimedByInstantUserId?: string;

@@ -44,8 +44,48 @@ export function cafeWizardTabOrder(
     : CAFE_WIZARD_TAB_ORDER.filter((k) => k !== "meest");
 }
 
-/** Na «Gereed» in de wizard: alle regels onder één kop (Figma 1321:22930). */
+/** Standaard eerste rondje; vervolg: `Rondje 2`, `Rondje 3`, … (Figma 1327:25155). */
 export const CAFE_ROUND_SECTION_TITLE = "Rondje 1";
+
+const CAFE_ROUND_SECTION_RE = /^Rondje (\d+)$/;
+
+export function isCafeVenueRoundSection(title: string | null | undefined): boolean {
+  return CAFE_ROUND_SECTION_RE.test(String(title ?? "").trim());
+}
+
+export function parseCafeRoundIndex(title: string | null | undefined): number | null {
+  const m = CAFE_ROUND_SECTION_RE.exec(String(title ?? "").trim());
+  if (!m) return null;
+  const n = Number.parseInt(m[1], 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Hoogste `Rondje N` in de lijst; zonder rondjes → `Rondje 1`. */
+export function latestCafeRoundSectionTitle(
+  items: readonly { section?: string | null }[],
+): string {
+  let maxN = 0;
+  let maxTitle = CAFE_ROUND_SECTION_TITLE;
+  for (const it of items) {
+    const s = String(it.section ?? "").trim();
+    if (!isCafeVenueRoundSection(s)) continue;
+    const n = parseCafeRoundIndex(s);
+    if (n != null && n > maxN) {
+      maxN = n;
+      maxTitle = s;
+    }
+  }
+  return maxTitle;
+}
+
+/** Volgend rondje voor een nieuwe bestelling (FAB). */
+export function nextCafeRoundSectionTitle(
+  items: readonly { section?: string | null }[],
+): string {
+  const latest = latestCafeRoundSectionTitle(items);
+  const n = parseCafeRoundIndex(latest) ?? 1;
+  return `Rondje ${n + 1}`;
+}
 
 export const CAFE_WIZARD_ITEMS: readonly CafeWizardItem[] = [
   {
@@ -247,8 +287,8 @@ export function cafeCategorySectionFromItem(item: {
   section?: string | null;
 }): string {
   const fromSection = (item.section ?? "").trim();
-  if (fromSection === CAFE_ROUND_SECTION_TITLE) {
-    return CAFE_ROUND_SECTION_TITLE;
+  if (isCafeVenueRoundSection(fromSection)) {
+    return fromSection;
   }
   if (
     fromSection &&
@@ -307,7 +347,7 @@ export function cafeWizardCategoryFromSectionTitle(
   showMeestTab: boolean,
 ): CafeWizardCategory {
   const t = (sectionTitle ?? "").trim();
-  if (t === CAFE_ROUND_SECTION_TITLE) return showMeestTab ? "meest" : "koude";
+  if (isCafeVenueRoundSection(t)) return showMeestTab ? "meest" : "koude";
   const entry = (
     Object.entries(CAFE_WIZARD_CATEGORY_LABELS) as [
       CafeWizardCategory,
