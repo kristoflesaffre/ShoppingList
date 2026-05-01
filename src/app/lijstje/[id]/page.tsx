@@ -1042,8 +1042,6 @@ function CafeListItems({
     }));
   }, [items]);
 
-  if (rounds.length === 0) return null;
-
   const latestTitle = rounds[0]?.title ?? CAFE_ROUND_SECTION_TITLE;
 
   /** Nieuw bovenste rondje (FAB): eerdere handmatig geopende rondjes weer dichtklappen. */
@@ -1054,6 +1052,8 @@ function CafeListItems({
       setExpandedPastTitles(new Set());
     }
   }, [latestTitle]);
+
+  if (rounds.length === 0) return null;
 
   const chevronMaskStyle: React.CSSProperties = {
     WebkitMaskImage: "url(/icons/chevron.svg)",
