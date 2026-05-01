@@ -1,5 +1,5 @@
 # server
 
-stop all current running servers and restart server.
+Stop all running servers and restart the dev server.
 
 This command will be available in chat with /server
