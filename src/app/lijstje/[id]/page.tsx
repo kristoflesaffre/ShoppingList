@@ -84,6 +84,7 @@ import {
   CAFE_ROUND_SECTION_TITLE,
   CAFE_WIZARD_CATEGORY_LABELS,
   CAFE_WIZARD_ITEMS,
+  type CafeWizardCatalogCategory,
   type CafeWizardCategory,
   type CafeWizardItem,
   type CafeWizardSelectedItem,
@@ -91,6 +92,7 @@ import {
   cafeItemIconSrc,
   cafeWizardCategoryFromQueryParam,
   cafeWizardCategoryFromSectionTitle,
+  cafeWizardTabOrder,
   normalizeCafeChoiceName,
   parseCafeQuantityCount,
 } from "@/lib/cafe-venue-wizard";
@@ -2247,6 +2249,7 @@ function CafeWizardItemRow({
 function CafeListWizard({
   listName,
   initialCategory,
+  showMeestTab,
   existingItems,
   itemSelectionCounts,
   onBack,
@@ -2254,6 +2257,8 @@ function CafeListWizard({
 }: {
   listName: string;
   initialCategory: CafeWizardCategory;
+  /** Minstens één catalogusdrank ooit gekozen op een café-lijst van deze gebruiker. */
+  showMeestTab: boolean;
   existingItems: ListItem[];
   itemSelectionCounts: Map<string, number>;
   onBack: () => void;
@@ -2262,6 +2267,16 @@ function CafeListWizard({
   const [query, setQuery] = React.useState("");
   const [category, setCategory] =
     React.useState<CafeWizardCategory>(initialCategory);
+
+  React.useEffect(() => {
+    setCategory(initialCategory);
+  }, [initialCategory]);
+
+  React.useEffect(() => {
+    if (!showMeestTab && category === "meest") {
+      setCategory("koude");
+    }
+  }, [showMeestTab, category]);
   const initialState = React.useMemo(
     () => buildCafeWizardInitialState(existingItems),
     [existingItems],
@@ -2274,10 +2289,24 @@ function CafeListWizard({
   const visibleItems = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     const filtered = CAFE_WIZARD_ITEMS.filter((item) => {
-      if (item.category !== category) return false;
+      if (category !== "meest" && item.category !== category) return false;
       if (!normalizedQuery) return true;
       return item.name.toLowerCase().includes(normalizedQuery);
     });
+    if (category === "meest") {
+      return filtered
+        .map((item) => ({
+          item,
+          pop:
+            itemSelectionCounts.get(normalizeCafeChoiceName(item.name)) ?? 0,
+        }))
+        .filter((x) => x.pop > 0)
+        .sort((a, b) => {
+          if (b.pop !== a.pop) return b.pop - a.pop;
+          return a.item.name.localeCompare(b.item.name, "nl");
+        })
+        .map(({ item }) => item);
+    }
     return filtered
       .map((item, index) => ({ item, index }))
       .sort((a, b) => {
@@ -2295,6 +2324,11 @@ function CafeListWizard({
   const exactWizardMatchInCategory = React.useMemo(() => {
     if (!qTrim) return false;
     const n = normalizeCafeChoiceName(qTrim);
+    if (category === "meest") {
+      return CAFE_WIZARD_ITEMS.some(
+        (i) => normalizeCafeChoiceName(i.name) === n,
+      );
+    }
     return CAFE_WIZARD_ITEMS.some(
       (i) => i.category === category && normalizeCafeChoiceName(i.name) === n,
     );
@@ -2313,9 +2347,17 @@ function CafeListWizard({
       count: counts[item.id] ?? 0,
       category: item.category,
     })).filter((item) => item.count > 0);
+    const customCatalogCategory: CafeWizardCatalogCategory =
+      category === "meest" ? "koude" : category;
     const customItems: CafeWizardSelectedItem[] =
       showCustomAddRow && customLineCount > 0
-        ? [{ name: qTrim, count: customLineCount, category }]
+        ? [
+            {
+              name: qTrim,
+              count: customLineCount,
+              category: customCatalogCategory,
+            },
+          ]
         : [];
     onDone([...customItems, ...catalogItems]);
   }, [category, counts, customLineCount, onDone, qTrim, showCustomAddRow]);
@@ -2372,8 +2414,7 @@ function CafeListWizard({
           aria-label="Categorie"
           className="flex w-full min-w-0 items-start gap-[var(--space-6)] overflow-x-auto border-b border-solid border-[var(--gray-100)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
-          {(Object.keys(CAFE_WIZARD_CATEGORY_LABELS) as CafeWizardCategory[]).map(
-            (key) => {
+          {cafeWizardTabOrder(showMeestTab).map((key) => {
               const active = key === category;
               return (
                 <button
@@ -2402,8 +2443,7 @@ function CafeListWizard({
                   />
                 </button>
               );
-            },
-          )}
+          })}
         </div>
 
         <div className="mx-auto flex w-full max-w-[358px] flex-col gap-3">
@@ -2427,7 +2467,9 @@ function CafeListWizard({
             ))
           ) : !showCustomAddRow ? (
             <div className="rounded-md border border-[var(--gray-100)] bg-[var(--white)] p-4 text-center text-sm leading-20 text-[var(--gray-500)]">
-              Nog geen items in deze categorie.
+              {category === "meest"
+                ? "Nog geen eerdere keuzes in je café-lijsten voor deze zoekterm."
+                : "Nog geen items in deze categorie."}
             </div>
           ) : null}
         </div>
@@ -2706,18 +2748,25 @@ export default function ListDetailPage({
       const row = list as {
         name?: string | null;
         isMasterTemplate?: boolean | null;
-        items?: Array<{ name?: string | null }>;
+        items?: Array<{ name?: string | null; quantity?: string | null }>;
       };
       if (row.isMasterTemplate) continue;
       if (!listIsCafeVenueList(row.name ?? "")) continue;
       for (const item of row.items ?? []) {
         const key = normalizeCafeChoiceName(item.name ?? "");
         if (!wizardItemByName.has(key)) continue;
-        counts.set(key, (counts.get(key) ?? 0) + 1);
+        const qty = parseCafeQuantityCount(String(item.quantity ?? ""));
+        counts.set(key, (counts.get(key) ?? 0) + (qty > 0 ? qty : 1));
       }
     }
     return counts;
   }, [ownerVenueHistoryData?.lists]);
+  const cafeWizardHasPopularHistory = React.useMemo(() => {
+    for (const v of Array.from(cafeWizardSelectionCounts.values())) {
+      if (v > 0) return true;
+    }
+    return false;
+  }, [cafeWizardSelectionCounts]);
   const masterStoreLabel = React.useMemo(() => {
     if (!isMasterList) return "";
     const logoFile = listIcon.split("/").pop() ?? "";
@@ -3056,13 +3105,19 @@ export default function ListDetailPage({
     );
   }, [listId, router]);
 
-  const handleOpenCafeWizard = React.useCallback((sectionTitle?: string) => {
-    if (!listId) return;
-    const category = cafeWizardCategoryFromSectionTitle(sectionTitle);
-    router.push(
-      `/lijstje/${encodeURIComponent(listId)}?cafeWizard=1&cafeTab=${category}`,
-    );
-  }, [listId, router]);
+  const handleOpenCafeWizard = React.useCallback(
+    (sectionTitle?: string) => {
+      if (!listId) return;
+      const category = cafeWizardCategoryFromSectionTitle(
+        sectionTitle,
+        cafeWizardHasPopularHistory,
+      );
+      router.push(
+        `/lijstje/${encodeURIComponent(listId)}?cafeWizard=1&cafeTab=${category}`,
+      );
+    },
+    [cafeWizardHasPopularHistory, listId, router],
+  );
 
   const handleSaveRecipeToLibrary = React.useCallback(
     (recipe: SavedRecipe) => {
@@ -3963,7 +4018,9 @@ export default function ListDetailPage({
         listName={listName}
         initialCategory={cafeWizardCategoryFromQueryParam(
           searchParams.get("cafeTab"),
+          cafeWizardHasPopularHistory,
         )}
+        showMeestTab={cafeWizardHasPopularHistory}
         existingItems={items}
         itemSelectionCounts={cafeWizardSelectionCounts}
         onBack={() => router.replace(`/lijstje/${encodeURIComponent(listId)}`)}

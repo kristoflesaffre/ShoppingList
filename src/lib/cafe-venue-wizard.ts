@@ -2,23 +2,47 @@
  * Café-venue catalogus en hulpfuncties (Figma 1321:23139 — tabs + tellerijen).
  */
 
-export type CafeWizardCategory = "koude" | "warme" | "bieren" | "wijn" | "sauzen";
+/** Catalogus-tab (drank staat in één vaste categorie). */
+export type CafeWizardCatalogCategory = "koude" | "warme" | "bieren" | "wijn" | "sauzen";
+
+/** Wizard-tabblad: catalogus + aggregaat «Meest gekozen». */
+export type CafeWizardCategory = CafeWizardCatalogCategory | "meest";
 
 export type CafeWizardItem = {
   id: string;
   name: string;
-  category: CafeWizardCategory;
+  category: CafeWizardCatalogCategory;
   defaultCount: number;
   iconSrc: string;
 };
 
 export const CAFE_WIZARD_CATEGORY_LABELS: Record<CafeWizardCategory, string> = {
+  meest: "Meest gekozen",
   koude: "Koude dranken",
   warme: "Warme dranken",
   bieren: "Bieren",
   wijn: "Wijn",
   sauzen: "Sauzen",
 };
+
+/** Tabvolgorde in de UI: «Meest gekozen» eerst, daarna catalogus. */
+export const CAFE_WIZARD_TAB_ORDER: readonly CafeWizardCategory[] = [
+  "meest",
+  "koude",
+  "warme",
+  "bieren",
+  "wijn",
+  "sauzen",
+] as const;
+
+/** Tabs voor de wizard: zonder «Meest gekozen» als de gebruiker nog nooit een catalogusdrank koos. */
+export function cafeWizardTabOrder(
+  showMeestTab: boolean,
+): readonly CafeWizardCategory[] {
+  return showMeestTab
+    ? CAFE_WIZARD_TAB_ORDER
+    : CAFE_WIZARD_TAB_ORDER.filter((k) => k !== "meest");
+}
 
 /** Na «Gereed» in de wizard: alle regels onder één kop (Figma 1321:22930). */
 export const CAFE_ROUND_SECTION_TITLE = "Rondje 1";
@@ -218,7 +242,10 @@ export function cafeCategorySectionFromItem(item: {
   }
   if (
     fromSection &&
-    Object.values(CAFE_WIZARD_CATEGORY_LABELS).includes(fromSection)
+    (Object.values(CAFE_WIZARD_CATEGORY_LABELS) as string[]).includes(
+      fromSection,
+    ) &&
+    fromSection !== CAFE_WIZARD_CATEGORY_LABELS.meest
   ) {
     return fromSection;
   }
@@ -239,31 +266,45 @@ export function parseCafeQuantityCount(quantity: string): number {
 export type CafeWizardSelectedItem = {
   name: string;
   count: number;
-  category: CafeWizardCategory;
+  category: CafeWizardCatalogCategory;
 };
 
 export function cafeWizardCategoryFromQueryParam(
   value: string | null | undefined,
+  showMeestTab: boolean,
 ): CafeWizardCategory {
   const v = (value ?? "").trim().toLowerCase();
-  if (v === "warme" || v === "bieren" || v === "wijn" || v === "sauzen") {
+  if (
+    showMeestTab &&
+    (v === "meest" || v === "meestgekozen" || v === "favoriet")
+  ) {
+    return "meest";
+  }
+  if (
+    v === "koude" ||
+    v === "warme" ||
+    v === "bieren" ||
+    v === "wijn" ||
+    v === "sauzen"
+  ) {
     return v;
   }
-  return "koude";
+  return showMeestTab ? "meest" : "koude";
 }
 
 export function cafeWizardCategoryFromSectionTitle(
   sectionTitle: string | null | undefined,
+  showMeestTab: boolean,
 ): CafeWizardCategory {
   const t = (sectionTitle ?? "").trim();
-  if (t === CAFE_ROUND_SECTION_TITLE) return "koude";
+  if (t === CAFE_ROUND_SECTION_TITLE) return showMeestTab ? "meest" : "koude";
   const entry = (
     Object.entries(CAFE_WIZARD_CATEGORY_LABELS) as [
       CafeWizardCategory,
       string,
     ][]
-  ).find(([, label]) => label === t);
-  return entry?.[0] ?? "koude";
+  ).find(([key, label]) => key !== "meest" && label === t);
+  return entry?.[0] ?? (showMeestTab ? "meest" : "koude");
 }
 
 export function buildCafeWizardInitialState(
