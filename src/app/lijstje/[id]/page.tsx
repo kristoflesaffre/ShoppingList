@@ -2465,7 +2465,7 @@ function CafeListWizard({
 }) {
   const [query, setQuery] = React.useState("");
   const [category, setCategory] =
-    React.useState<CafeWizardCategory>(initialCategory);
+    React.useState<CafeWizardCategory | null>(initialCategory);
 
   React.useEffect(() => {
     setCategory(initialCategory);
@@ -2488,7 +2488,8 @@ function CafeListWizard({
   const visibleItems = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     const filtered = CAFE_WIZARD_ITEMS.filter((item) => {
-      if (category !== "meest" && item.category !== category) return false;
+      // null = "Alle": geen categoriefilter; "meest" = alle catalogusitems voor populairheidsfilter
+      if (category !== null && category !== "meest" && item.category !== category) return false;
       if (!normalizedQuery) return true;
       return item.name.toLowerCase().includes(normalizedQuery);
     });
@@ -2516,7 +2517,7 @@ function CafeListWizard({
   const exactWizardMatchInCategory = React.useMemo(() => {
     if (!qTrim) return false;
     const n = normalizeCafeChoiceName(qTrim);
-    if (category === "meest") {
+    if (category === "meest" || category === null) {
       return CAFE_WIZARD_ITEMS.some(
         (i) => normalizeCafeChoiceName(i.name) === n,
       );
@@ -2540,7 +2541,7 @@ function CafeListWizard({
       category: item.category,
     })).filter((item) => item.count > 0);
     const customCatalogCategory: CafeWizardCatalogCategory =
-      category === "meest" ? "frisdranken" : category;
+      category === "meest" || category === null ? "frisdranken" : category;
     const customItems: CafeWizardSelectedItem[] =
       showCustomAddRow && customLineCount > 0
         ? [
@@ -2601,41 +2602,42 @@ function CafeListWizard({
         />
 
         {/* Figma 1321:23575 — Tab group: border-b neutraal, gap 24px, tabkolom gap 8px, indicator 2px primary */}
-        <div
-          role="tablist"
-          aria-label="Categorie"
-          className="flex w-full min-w-0 items-start gap-[var(--space-6)] overflow-x-auto border-b border-solid border-[var(--gray-100)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {cafeWizardTabOrder(showMeestTab).map((key) => {
+        <div className="-mx-4 min-w-0 overflow-x-auto px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+            {/* "Alle" pill */}
+            <button
+              type="button"
+              aria-pressed={category === null}
+              onClick={() => setCategory(null)}
+              className={cn(
+                "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                category === null
+                  ? "bg-[var(--blue-500)] font-medium text-white"
+                  : "bg-[var(--gray-50)] font-normal text-[var(--gray-500)]",
+              )}
+            >
+              Alle
+            </button>
+            {cafeWizardTabOrder(showMeestTab).map((key) => {
               const active = key === category;
               return (
                 <button
                   key={key}
                   type="button"
-                  role="tab"
-                  aria-selected={active}
-                  tabIndex={active ? 0 : -1}
-                  onClick={() => setCategory(key)}
+                  aria-pressed={active}
+                  onClick={() => setCategory(active ? null : key)}
                   className={cn(
-                    "flex shrink-0 flex-col items-start gap-[var(--space-2)] text-base leading-24 tracking-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                    "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                     active
-                      ? "font-medium text-[var(--text-primary)]"
-                      : "font-normal text-[var(--gray-400)]",
+                      ? "bg-[var(--blue-500)] font-medium text-white"
+                      : "bg-[var(--gray-50)] font-normal text-[var(--gray-500)]",
                   )}
                 >
-                  <span className="whitespace-nowrap">
-                    {CAFE_WIZARD_CATEGORY_LABELS[key]}
-                  </span>
-                  <span
-                    className={cn(
-                      "h-[2px] w-full shrink-0 bg-[var(--blue-500)]",
-                      !active && "opacity-0",
-                    )}
-                    aria-hidden
-                  />
+                  {CAFE_WIZARD_CATEGORY_LABELS[key]}
                 </button>
               );
-          })}
+            })}
+          </div>
         </div>
 
         <div className="mx-auto flex w-full max-w-[358px] flex-col gap-3 lg:max-w-none">
@@ -2690,7 +2692,9 @@ function CafeListWizard({
             <div className="rounded-md border border-[var(--gray-100)] bg-[var(--white)] p-4 text-center text-sm leading-20 text-[var(--gray-500)]">
               {category === "meest"
                 ? "Nog geen eerdere keuzes in je café-lijsten voor deze zoekterm."
-                : "Nog geen items in deze categorie."}
+                : category === null
+                  ? "Geen items gevonden."
+                  : "Nog geen items in deze categorie."}
             </div>
           ) : null}
         </div>
