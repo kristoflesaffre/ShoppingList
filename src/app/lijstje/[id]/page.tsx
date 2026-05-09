@@ -963,7 +963,7 @@ function CafeListAddItemRow({
         type="button"
         onClick={onAdd}
         aria-label={`Item toevoegen aan ${roundTitle}`}
-        className="flex w-full min-w-0 flex-col items-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        className="flex w-full min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
         <span className="relative size-16 shrink-0 overflow-hidden rounded-md bg-[var(--gray-50)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1264,7 +1264,7 @@ function CafeListItemRow({
 
   if (!isEditMode && isGrid) {
     return (
-      <div className="flex w-full min-w-0 flex-col items-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center">
+      <div className="flex w-full min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center">
         {/* Figma 1323:23977 — Logo tile: 64px afbeelding, sp-8 tussen kolommen, daarna getal, dan naam. */}
         <span className="relative size-16 shrink-0 overflow-hidden rounded-md">
           {/* eslint-disable-next-line @next/next/no-img-element -- lokale productafbeeldingen uit /public */}
@@ -1281,7 +1281,7 @@ function CafeListItemRow({
           />
         </span>
         {hasCount ? (
-          <span className="w-6 shrink-0 px-2.5 text-center text-[32px] font-semibold leading-24 tracking-normal text-[var(--blue-900)] tabular-nums">
+          <span className="w-full text-center text-[32px] font-semibold leading-8 tracking-normal text-[var(--blue-900)] tabular-nums">
             {effectiveCount}
           </span>
         ) : null}
@@ -1300,7 +1300,7 @@ function CafeListItemRow({
   /** Figma 1323:24195 — bewerkmodus in raster: tegel + middenrij −/getal/+, dan naam (zelfde sp-8 als view). */
   if (isEditMode && isGrid) {
     return (
-      <div className="flex w-full min-w-0 flex-col items-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center">
+      <div className="flex w-full min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center">
         <span className="relative size-16 shrink-0 overflow-hidden rounded-md">
           {/* eslint-disable-next-line @next/next/no-img-element -- lokale productafbeeldingen uit /public */}
           <img
@@ -2639,7 +2639,7 @@ function CafeListWizard({
           })}
         </div>
 
-        <div className="mx-auto flex w-full max-w-[358px] flex-col gap-3">
+        <div className="mx-auto flex w-full max-w-[358px] flex-col gap-3 lg:max-w-none">
           {showCustomAddRow ? (
             <CafeWizardCustomAddRow
               name={qTrim}
