@@ -2648,16 +2648,45 @@ function CafeListWizard({
             />
           ) : null}
           {visibleItems.length > 0 ? (
-            visibleItems.map((item) => (
-              <CafeWizardItemRow
-                key={item.id}
-                item={item}
-                count={counts[item.id] ?? 0}
-                onChange={(next) =>
-                  setCounts((current) => ({ ...current, [item.id]: next }))
+            category === "sterk" && !qTrim ? (
+              (() => {
+                const ORDER = ["Whisky", "Gin", "Vodka", "Rum", "Tequila", "Cognac", "Divers"] as const;
+                const groups = new Map<string, typeof visibleItems>();
+                for (const item of visibleItems) {
+                  const sec = item.subCategory ?? "Divers";
+                  if (!groups.has(sec)) groups.set(sec, []);
+                  groups.get(sec)!.push(item);
                 }
-              />
-            ))
+                return ORDER.flatMap((sec) => {
+                  const g = groups.get(sec);
+                  if (!g?.length) return [];
+                  return [
+                    <p key={`hdr-${sec}`} className="mt-3 text-sm font-semibold leading-5 text-[var(--gray-400)] first:mt-0">{sec}</p>,
+                    ...g.map((item) => (
+                      <CafeWizardItemRow
+                        key={item.id}
+                        item={item}
+                        count={counts[item.id] ?? 0}
+                        onChange={(next) =>
+                          setCounts((current) => ({ ...current, [item.id]: next }))
+                        }
+                      />
+                    )),
+                  ];
+                });
+              })()
+            ) : (
+              visibleItems.map((item) => (
+                <CafeWizardItemRow
+                  key={item.id}
+                  item={item}
+                  count={counts[item.id] ?? 0}
+                  onChange={(next) =>
+                    setCounts((current) => ({ ...current, [item.id]: next }))
+                  }
+                />
+              ))
+            )
           ) : !showCustomAddRow ? (
             <div className="rounded-md border border-[var(--gray-100)] bg-[var(--white)] p-4 text-center text-sm leading-20 text-[var(--gray-500)]">
               {category === "meest"
