@@ -2472,7 +2472,7 @@ function CafeListWizard({
 
   React.useEffect(() => {
     if (!showMeestTab && category === "meest") {
-      setCategory("koude");
+      setCategory("frisdranken");
     }
   }, [showMeestTab, category]);
   const initialState = React.useMemo(
@@ -2541,7 +2541,7 @@ function CafeListWizard({
       category: item.category,
     })).filter((item) => item.count > 0);
     const customCatalogCategory: CafeWizardCatalogCategory =
-      category === "meest" ? "koude" : category;
+      category === "meest" ? "frisdranken" : category;
     const customItems: CafeWizardSelectedItem[] =
       showCustomAddRow && customLineCount > 0
         ? [
@@ -2886,8 +2886,10 @@ export default function ListDetailPage({
 
   React.useEffect(() => {
     if (authLoading || !user || isLoading) return;
+    // Wizard-flow: lijst wordt aangemaakt net voor de navigatie, even wachten op sync
+    if (searchParams.get("cafeWizard") === "1" || searchParams.get("frituurWizard") === "1") return;
     if (!listData || !canAccess) router.replace("/");
-  }, [authLoading, user, isLoading, listData, canAccess, router]);
+  }, [authLoading, user, isLoading, listData, canAccess, router, searchParams]);
   const listName = listData?.name ?? "Lijstje";
   const isFrietenList = listIsFrituurVenueList(listName);
   const isCafeList = listIsCafeVenueList(listName);
