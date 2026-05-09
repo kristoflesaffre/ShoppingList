@@ -31,6 +31,7 @@ import {
   type LoyaltySwipePane,
 } from "@/components/loyalty_card_swipe_shell";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { InputField } from "@/components/ui/input_field";
 import { ItemCard } from "@/components/ui/item_card";
@@ -536,7 +537,7 @@ function SortableItemItems({
   claimProfileByUserId,
   listDateStr,
 }: {
-  sections: { title: string; items: ListItem[] }[];
+  sections: { title: string; displayTitle?: string; items: ListItem[]; isGroupHeader?: boolean }[];
   /** Alleen gewone lijstjes: `category` = Figma-koppen per supermarkt-categorie. */
   groupingMode: "day" | "category";
   isEditMode: boolean;
@@ -570,9 +571,19 @@ function SortableItemItems({
   return (
     <div className="flex flex-col gap-6">
       {sections.map((section) => {
+        if (section.isGroupHeader) {
+          return (
+            <div key={section.title} className="flex items-center gap-3 pt-2 first:pt-0">
+              <p className="shrink-0 text-sm font-semibold leading-20 tracking-normal text-[var(--blue-900)]">
+                {section.displayTitle ?? section.title}
+              </p>
+              <div className="h-px flex-1 bg-[var(--gray-100)]" aria-hidden />
+            </div>
+          );
+        }
         const isSectionRemoving = removingSectionTitle === section.title;
         const sectionHeading = isCategoryGrouping
-          ? categoryHeadingDisplay(section.title)
+          ? categoryHeadingDisplay(section.displayTitle ?? section.title)
           : dayTitleWithDate(section.title, listDateStr ?? "");
         return (
         <section
@@ -3114,6 +3125,9 @@ export default function ListDetailPage({
   >("day");
   const [isListGroupingHydrated, setIsListGroupingHydrated] =
     React.useState(false);
+  const [showUncheckedFirst, setShowUncheckedFirst] = React.useState(false);
+  const [isShowUncheckedFirstHydrated, setIsShowUncheckedFirstHydrated] =
+    React.useState(false);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
     null
   );
@@ -3810,15 +3824,35 @@ export default function ListDetailPage({
       keys,
       categoryOrderForSort,
     );
-    return titles
+    const normalSections = titles
       .filter((t) => grouped.has(t))
-      .map((t) => ({ title: t, items: grouped.get(t)! }));
+      .map((t) => ({ title: t, displayTitle: undefined as string | undefined, items: grouped.get(t)!, isGroupHeader: false as boolean | undefined }));
+
+    if (!showUncheckedFirst || isEditMode) {
+      return normalSections;
+    }
+
+    // Twee-niveau weergave: "Niet afgevinkt" en "Afgevinkt" als top-level groepen
+    const result: { title: string; displayTitle?: string; items: ListItem[]; isGroupHeader?: boolean }[] = [];
+    result.push({ title: "__group_unchecked", displayTitle: "Niet afgevinkt", items: [], isGroupHeader: true });
+    for (const s of normalSections) {
+      const unchecked = s.items.filter((i) => !i.checked);
+      if (unchecked.length > 0) result.push({ title: `${s.title}|unchecked`, displayTitle: s.title, items: unchecked });
+    }
+    result.push({ title: "__group_checked", displayTitle: "Afgevinkt", items: [], isGroupHeader: true });
+    for (const s of normalSections) {
+      const checked = s.items.filter((i) => i.checked);
+      if (checked.length > 0) result.push({ title: `${s.title}|checked`, displayTitle: s.title, items: checked });
+    }
+    return result;
   }, [
     items,
     effectiveListGroupingMode,
     isMasterList,
     parsedMasterCategoryOrder,
     parsedInheritedMasterCategoryOrder,
+    showUncheckedFirst,
+    isEditMode,
   ]);
 
   const hasItems = items.length > 0;
@@ -4023,6 +4057,28 @@ export default function ListDetailPage({
       // no-op
     }
   }, [listId, listGroupingMode, isListGroupingHydrated]);
+
+  React.useEffect(() => {
+    if (!listId) return;
+    setIsShowUncheckedFirstHydrated(false);
+    try {
+      const raw = window.localStorage.getItem(`list-unchecked-first:${listId}`);
+      setShowUncheckedFirst(raw === "true");
+    } catch {
+      setShowUncheckedFirst(false);
+    } finally {
+      setIsShowUncheckedFirstHydrated(true);
+    }
+  }, [listId]);
+
+  React.useEffect(() => {
+    if (!listId || !isShowUncheckedFirstHydrated) return;
+    try {
+      window.localStorage.setItem(`list-unchecked-first:${listId}`, String(showUncheckedFirst));
+    } catch {
+      // no-op
+    }
+  }, [listId, showUncheckedFirst, isShowUncheckedFirstHydrated]);
 
   const handleReorderItems = React.useCallback(
     (event: DragEndEvent) => {
@@ -4690,6 +4746,24 @@ export default function ListDetailPage({
               onSauceSizeChange={handleFrituurSauceSizeChange}
             />
           ) : (
+            <>
+            {effectiveListGroupingMode === "category" && !isMasterList && hasItems && !isEditMode && isShowUncheckedFirstHydrated ? (
+              <div className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
+                <Checkbox
+                  id="unchecked-first-toggle"
+                  checked={showUncheckedFirst}
+                  onCheckedChange={(v) => setShowUncheckedFirst(v === true)}
+                  className="border-[1.3px]"
+                  aria-label="Toon niet afgevinkte items bovenaan"
+                />
+                <label
+                  htmlFor="unchecked-first-toggle"
+                  className="min-w-0 flex-1 cursor-pointer select-none text-base font-normal leading-6 tracking-normal text-[var(--gray-700)]"
+                >
+                  Toon niet afgevinkte items bovenaan
+                </label>
+              </div>
+            ) : null}
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -4746,6 +4820,7 @@ export default function ListDetailPage({
                 />
               </SortableContext>
             </DndContext>
+            </>
           )}
           {/* Scroll-spacer: zorgt dat de content daadwerkelijk langer is dan de viewport,
               zodat de body scrollt en het laatste item boven de FAB uitkomt.
