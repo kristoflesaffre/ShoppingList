@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { ListCard } from "@/components/ui/list_card";
+import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { MiniButton } from "@/components/ui/mini_button";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
@@ -764,17 +765,20 @@ function HomeCalendarSection({
   );
 }
 
-/** Startpagina: alleen tikken om te openen; volgorde/verwijderen op `/lijstjes-beheren/lijstjes` of `/lijstjes-beheren/favorieten`. */
 function HomeStaticListSections({
   lists,
   addingId,
   addingIdExpanded,
+  removingId,
+  onDelete,
   onStartFromMaster,
   onOpenCreateModal,
 }: {
   lists: HomeList[];
   addingId: string | null;
   addingIdExpanded: boolean;
+  removingId: string | null;
+  onDelete: (id: string) => void;
   onStartFromMaster: (id: string) => void;
   onOpenCreateModal: () => void;
 }) {
@@ -855,11 +859,18 @@ function HomeStaticListSections({
             <div className="mt-4 lg:hidden">
               {normalLists.map((list, index) => {
                 const isAddingCollapsed = addingId === list.id && !addingIdExpanded;
+                const isRemoving = removingId === list.id;
+                const isAnimating = isAddingCollapsed || isRemoving;
                 return (
-                  <div key={list.id} className={rowWrapperClass(isAddingCollapsed, index, normalLists.length)}>
-                    <Link href={`/lijstje/${list.id}`} className="block no-underline">
-                      {cardFor(list)}
-                    </Link>
+                  <div key={list.id} className={rowWrapperClass(isAnimating, index, normalLists.length)}>
+                    <SwipeToDelete
+                      onDelete={list.isOwner ? () => onDelete(list.id) : undefined}
+                      deleteActionLabel="Lijstje verwijderen"
+                    >
+                      <Link href={`/lijstje/${list.id}`} className="block no-underline">
+                        {cardFor(list)}
+                      </Link>
+                    </SwipeToDelete>
                   </div>
                 );
               })}
@@ -1407,8 +1418,36 @@ export default function Home() {
   const [newListFormKey, setNewListFormKey] = React.useState(0);
   const [addingId, setAddingId] = React.useState<string | null>(null);
   const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
+  const [removingId, setRemovingId] = React.useState<string | null>(null);
+  const removeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hasLists = lists.length > 0;
+
+  const DELETE_ANIMATION_MS = 300;
+
+  const handleDeleteList = React.useCallback(
+    (listId: string) => {
+      if (removeTimeoutRef.current) {
+        clearTimeout(removeTimeoutRef.current);
+        removeTimeoutRef.current = null;
+      }
+      setRemovingId(listId);
+      removeTimeoutRef.current = setTimeout(() => {
+        removeTimeoutRef.current = null;
+        const list = lists.find((l) => l.id === listId);
+        if (!list || !list.isOwner) return;
+        const itemIds = (list.items ?? []).map((i) => i.id);
+        const membershipIds = list.membershipIds ?? [];
+        db.transact([
+          ...itemIds.map((itemId) => db.tx.items[itemId].delete()),
+          ...membershipIds.map((mid) => db.tx.listMembers[mid].delete()),
+          db.tx.lists[listId].delete(),
+        ] as Parameters<typeof db.transact>[0]);
+        setRemovingId(null);
+      }, DELETE_ANIMATION_MS);
+    },
+    [lists],
+  );
 
   const ADD_ANIMATION_MS = 300;
 
@@ -1831,6 +1870,8 @@ export default function Home() {
                 lists={lists}
                 addingId={addingId}
                 addingIdExpanded={addingIdExpanded}
+                removingId={removingId}
+                onDelete={handleDeleteList}
                 onStartFromMaster={handleStartFromMaster}
                 onOpenCreateModal={handleOpenCreateModal}
               />

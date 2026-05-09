@@ -128,13 +128,15 @@ export function buildCalendarEntries(
       if (offset === null) continue;
 
       let itemDate = addDays(monday, offset);
-      // Nooit in het verleden plannen voor de HUIDIGE week: als de user vandaag
-      // items toevoegt aan "Woensdag" maar woensdag al voorbij is, verschuif naar
-      // volgende week. Items uit VORIGE weken blijven op hun originele datum.
+      // Nooit in het verleden plannen voor de HUIDIGE week: als de user VANDAAG
+      // een nieuwe lijst aanmaakt en een dag kiest die al voorbij is, verschuif naar
+      // volgende week. Lijsten van eerder deze week blijven op hun originele datum.
       const todayMidnight = new Date();
       todayMidnight.setHours(0, 0, 0, 0);
       const currentMonday = getMondayOfWeek(todayMidnight);
+      const listCreatedToday = listDate.getTime() === todayMidnight.getTime();
       if (
+        listCreatedToday &&
         monday.getTime() === currentMonday.getTime() &&
         itemDate < todayMidnight
       ) {
