@@ -95,6 +95,7 @@ import {
   cafeWizardCategoryFromSectionTitle,
   cafeWizardTabOrder,
   compareCafeWizardItemsByPopularity,
+  sortCafeWizardItemsBrandGrouped,
   isCafeVenueRoundSection,
   latestCafeRoundSectionTitle,
   nextCafeRoundSectionTitle,
@@ -2508,9 +2509,7 @@ function CafeListWizard({
         )
         .map(({ item }) => item);
     }
-    return [...filtered].sort((a, b) =>
-      compareCafeWizardItemsByPopularity(a, b, itemSelectionCounts),
-    );
+    return sortCafeWizardItemsBrandGrouped(filtered, itemSelectionCounts);
   }, [category, itemSelectionCounts, query]);
 
   const qTrim = query.trim();
