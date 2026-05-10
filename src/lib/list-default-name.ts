@@ -90,6 +90,17 @@ export function defaultCafeListName(existingNames: string[]): string {
   return `Café ${n}`;
 }
 
+/** Unieke standaardnaam voor een nieuw Vakantie-lijstje. */
+export function defaultVakantieListName(existingNames: string[]): string {
+  const lower = new Set(
+    existingNames.map((n) => n.trim().toLowerCase()).filter(Boolean),
+  );
+  if (!lower.has("vakantie")) return "Vakantie";
+  let n = 2;
+  while (lower.has(`vakantie ${n}`)) n += 1;
+  return `Vakantie ${n}`;
+}
+
 /** Unieke standaardnaam voor een nieuw Landal-lijstje. */
 export function defaultLandalListName(existingNames: string[]): string {
   const lower = new Set(

@@ -17,6 +17,7 @@ import {
   defaultCafeListName,
   defaultFrituurListName,
   defaultLandalListName,
+  defaultVakantieListName,
   defaultNewListName,
   selectListNameInputOnFocus,
 } from "@/lib/list-default-name";
@@ -154,6 +155,7 @@ const VENUE_TILE_ICON_SUPERMARKT = "/images/ui/supermarkt_160.webp";
 const VENUE_TILE_ICON_FRITUUR = "/images/ui/product_icons/frieten_160.webp";
 const VENUE_TILE_ICON_CAFE = "/images/ui/cafe_160.webp";
 const VENUE_TILE_ICON_LANDAL = "/images/ui/landal_160.webp";
+const VENUE_TILE_ICON_VAKANTIE = "/images/ui/vakantie_160.webp";
 
 type PendingFrituurChoice = {
   listName: string;
@@ -1790,6 +1792,18 @@ export default function Home() {
     });
   }, [createBlankList, lists]);
 
+  const handleBlankVenuePickVakantie = React.useCallback(() => {
+    setBlankVenueSlideOpen(false);
+    const listName = defaultVakantieListName(lists.map((l) => l.name));
+    createBlankList({
+      listName,
+      duplicateFrom: null,
+      startFrituurWizard: false,
+      startCafeWizard: false,
+      customIconForCreate: VENUE_TILE_ICON_VAKANTIE,
+    });
+  }, [createBlankList, lists]);
+
   if (authLoading || !user || isLoading) {
     return <PageSpinner />;
   }
@@ -2218,6 +2232,29 @@ export default function Home() {
             </div>
             <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
               Landal
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={handleBlankVenuePickVakantie}
+            className={cn(
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+            )}
+          >
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={VENUE_TILE_ICON_VAKANTIE}
+                alt=""
+                width={48}
+                height={48}
+                className="size-full object-cover"
+              />
+            </div>
+            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
+              Vakantie
             </p>
           </button>
         </div>
