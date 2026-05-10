@@ -2932,6 +2932,9 @@ export default function ListDetailPage({
     listData as { isMasterTemplate?: boolean; icon?: string; name?: string },
   );
   const isVenueCounterList = (isFrietenList || isCafeList) && !isMasterList;
+  const customIconUrl = String((listData as Record<string, unknown>)?.customIconUrl ?? "");
+  const isLandalOrVakantieList =
+    customIconUrl.includes("landal") || customIconUrl.includes("vakantie");
   const showFrituurWizard =
     searchParams.get("frituurWizard") === "1" && !isMasterList && isFrietenList;
   const showCafeWizard =
@@ -3052,9 +3055,10 @@ export default function ListDetailPage({
     return items.filter((i) => (i.section ?? "").trim() === target);
   }, [items, searchParams]);
 
-  /** Zet / ververs `itemCategory` op items (Excel-mapping); ook master (groepering per inhoud). */
+  /** Zet / ververs `itemCategory` op items (Excel-mapping); ook master (groepering per inhoud).
+   * Overgeslagen voor Landal/Vakantie-lijstjes: categorie wordt daar handmatig gezet. */
   React.useEffect(() => {
-    if (!listId || !user) return;
+    if (!listId || !user || isLandalOrVakantieList) return;
     const txs = items
       .map((it) => {
         const resolved = resolveItemCategoryFromName(it.name);
@@ -3067,7 +3071,7 @@ export default function ListDetailPage({
     if (txs.length > 0) {
       void db.transact(txs);
     }
-  }, [listId, user, items]);
+  }, [listId, user, items, isLandalOrVakantieList]);
 
   /**
    * Items die jij claimt: `claimedByDisplayName` gelijk houden aan profiel-voornaam.
@@ -3816,7 +3820,7 @@ export default function ListDetailPage({
   );
 
   const handleSaveEditedItem = React.useCallback((updatedItem: ListItem) => {
-    const itemCategory = resolveItemCategoryFromName(updatedItem.name);
+    const itemCategory = updatedItem.itemCategory ?? resolveItemCategoryFromName(updatedItem.name);
     const computedItemDate = computeSectionAbsoluteDate(updatedItem.section);
     db.transact(
       db.tx.items[updatedItem.id].update({
@@ -4080,14 +4084,14 @@ export default function ListDetailPage({
       if (raw === "category" || raw === "day") {
         setListGroupingMode(raw);
       } else {
-        setListGroupingMode("day");
+        setListGroupingMode(isLandalOrVakantieList ? "category" : "day");
       }
     } catch {
-      setListGroupingMode("day");
+      setListGroupingMode(isLandalOrVakantieList ? "category" : "day");
     } finally {
       setIsListGroupingHydrated(true);
     }
-  }, [listId]);
+  }, [listId, isLandalOrVakantieList]);
 
   React.useEffect(() => {
     if (!listId || !isListGroupingHydrated) return;
@@ -4502,7 +4506,7 @@ export default function ListDetailPage({
           !isMasterList &&
           hasItems &&
           isListGroupingHydrated &&
-          !isMasterEmpty && !isVenueCounterList ? (
+          !isMasterEmpty && !isVenueCounterList && !isLandalOrVakantieList ? (
             <PillTab
               className="w-full min-w-0"
               aria-label="Groepering lijst"
@@ -4948,6 +4952,7 @@ export default function ListDetailPage({
         onSaveRecipeToLibrary={handleSaveRecipeToLibrary}
         onApplyRecipeToList={handleAddItemsFromRecipe}
         isMasterList={isMasterList}
+        isVacationList={isLandalOrVakantieList}
       />
 
       <input

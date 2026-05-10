@@ -67,6 +67,19 @@ const DAY_OPTIONS = [
 
 const SLIDE_TRANSITION = "transform 350ms cubic-bezier(0.16, 1, 0.3, 1)";
 
+const VACATION_CATEGORIES = [
+  "Toiletartikelen",
+  "Kleding",
+  "Eten & drinken",
+  "Elektronica",
+  "Medicijnen",
+  "Documenten",
+  "Slaapspullen",
+  "Activiteiten",
+  "Schoonmaak",
+  "Andere",
+] as const;
+
 function PlusCircleIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -117,6 +130,7 @@ export function NewItemModal({
   onSaveRecipeToLibrary,
   onApplyRecipeToList,
   isMasterList = false,
+  isVacationList = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -137,9 +151,12 @@ export function NewItemModal({
   onSaveRecipeToLibrary: (recipe: SavedRecipe) => void;
   onApplyRecipeToList: (items: ListItem[]) => void;
   isMasterList?: boolean;
+  /** Landal/Vakantie-lijstje: verbergt dag + recept, toont vakantiecategorie-dropdown. */
+  isVacationList?: boolean;
 }) {
   const isEditMode = editingItem != null;
   const [selectedDay, setSelectedDay] = React.useState("Geen");
+  const [vacationCategory, setVacationCategory] = React.useState<string>("Andere");
   const [activeTab, setActiveTab] = React.useState<"first" | "second" | "third">("first");
   const [freezerSearch, setFreezerSearch] = React.useState("");
   const [itemName, setItemName] = React.useState("");
@@ -219,6 +236,7 @@ export function NewItemModal({
   React.useEffect(() => {
     if (!open) {
       setSelectedDay("Geen");
+      setVacationCategory("Andere");
       setActiveTab("first");
       setItemName("");
       setStepperValue(1);
@@ -244,6 +262,13 @@ export function NewItemModal({
         editingItem.section === "Algemeen" ? "Geen" : editingItem.section
       );
       setActiveTab("first");
+      if (isVacationList && editingItem.itemCategory) {
+        setVacationCategory(
+          (VACATION_CATEGORIES as readonly string[]).includes(editingItem.itemCategory)
+            ? editingItem.itemCategory
+            : "Andere",
+        );
+      }
     } else if (initialSection) {
       setSelectedDay(
         initialSection === "Algemeen" ? "Geen" : initialSection
@@ -267,8 +292,9 @@ export function NewItemModal({
     if (!canAdd && !isEditMode) return;
     const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
     const qty = `${stepperValue} ${quantityDesc}`;
-    const itemCategory =
-      initialItemCategory && initialItemCategory.trim().length > 0
+    const itemCategory = isVacationList
+      ? vacationCategory
+      : initialItemCategory && initialItemCategory.trim().length > 0
         ? initialItemCategory.trim()
         : resolveItemCategoryFromName(itemName.trim());
     if (isEditMode && editingItem && onSave) {
@@ -276,14 +302,14 @@ export function NewItemModal({
         ...editingItem,
         name: itemName.trim(),
         quantity: qty,
-        section,
-        itemCategory: resolveItemCategoryFromName(itemName.trim()),
+        section: isVacationList ? "Algemeen" : section,
+        itemCategory: isVacationList ? vacationCategory : resolveItemCategoryFromName(itemName.trim()),
       });
     } else {
       onAdd({
         name: itemName.trim(),
         quantity: qty,
-        section,
+        section: isVacationList ? "Algemeen" : section,
         itemCategory,
       });
     }
@@ -477,7 +503,7 @@ export function NewItemModal({
                   masterItemFormOnly ? "gap-4" : "gap-6",
                 )}
               >
-              {!isMasterList ? (
+              {!isMasterList && !isVacationList ? (
                 <>
                   <div className="flex flex-col gap-2">
                     <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
@@ -532,6 +558,38 @@ export function NewItemModal({
                     value={itemName}
                     onChange={setItemName}
                   />
+                  {isVacationList && (
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+                        Categorie
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={vacationCategory}
+                          onChange={(e) => setVacationCategory(e.target.value)}
+                          className="h-12 w-full appearance-none rounded-md border border-[var(--border-default)] bg-[var(--white)] px-4 pr-10 text-base leading-6 text-[var(--text-primary)] transition-colors focus:outline-none focus:border-[var(--border-focus)]"
+                        >
+                          {VACATION_CATEGORIES.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute right-3 top-1/2 size-6 -translate-y-1/2 bg-[var(--text-secondary)]"
+                          style={{
+                            WebkitMaskImage: "url(/icons/chevron.svg)",
+                            maskImage: "url(/icons/chevron.svg)",
+                            WebkitMaskSize: "contain",
+                            maskSize: "contain",
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskPosition: "center",
+                            maskPosition: "center",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div className="flex flex-col gap-2">
                     <Stepper
                       label="Hoeveelheid"
