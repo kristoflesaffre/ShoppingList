@@ -504,44 +504,46 @@ export default function ReceptDetailPage() {
 
           <div className="relative z-[1] flex flex-col items-center gap-3">
             {/* Zonder foto: 124×124 placeholder. Met foto: 256×256. Bewerkmodus: 10% opacity + overlay (Figma 863:5339). */}
-            <div
-              className={cn(
-                "relative shrink-0 overflow-hidden rounded-full",
-                savedRecipe.photoUrl ? "size-[256px]" : "size-[124px]",
-              )}
-            >
-              {savedRecipe.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB
-                <img
-                  src={savedRecipe.photoUrl}
-                  alt=""
-                  width={256}
-                  height={256}
-                  className={cn(
-                    "size-[256px] object-cover transition-opacity duration-150",
-                    detailPhotoEditMode ? "opacity-10" : "opacity-100",
-                  )}
-                />
-              ) : (
-                <Image
-                  src="/images/ui/recipe_plate.png"
-                  alt=""
-                  width={124}
-                  height={124}
-                  className={cn(
-                    "size-[124px] object-cover transition-opacity duration-150",
-                    detailPhotoEditMode ? "opacity-10" : "opacity-100",
-                  )}
-                />
-              )}
+            <div className="relative">
+              <div
+                className={cn(
+                  "shrink-0 overflow-hidden rounded-full",
+                  savedRecipe.photoUrl ? "size-[256px]" : "size-[124px]",
+                )}
+              >
+                {savedRecipe.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB
+                  <img
+                    src={savedRecipe.photoUrl}
+                    alt=""
+                    width={256}
+                    height={256}
+                    className={cn(
+                      "size-[256px] object-cover transition-opacity duration-150",
+                      detailPhotoEditMode ? "opacity-10" : "opacity-100",
+                    )}
+                  />
+                ) : (
+                  <Image
+                    src="/images/ui/recipe_plate.png"
+                    alt=""
+                    width={124}
+                    height={124}
+                    className={cn(
+                      "size-[124px] object-cover transition-opacity duration-150",
+                      detailPhotoEditMode ? "opacity-10" : "opacity-100",
+                    )}
+                  />
+                )}
+              </div>
               {detailPhotoEditMode ? (
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
                   <MiniButton
                     type="button"
                     variant="secondary"
                     disabled={photoSaving}
                     onClick={openPhotoSourceSlide}
-                    className="pointer-events-auto w-[118px]"
+                    className="w-[118px]"
                   >
                     {photoSaving
                       ? "Bezig…"
@@ -553,14 +555,14 @@ export default function ReceptDetailPage() {
                     type="button"
                     variant="secondary"
                     onClick={openEditor}
-                    className="pointer-events-auto w-[118px]"
+                    className="w-[118px]"
                   >
                     Recept wijzigen
                   </MiniButton>
                   <button
                     type="button"
                     onClick={() => setDeleteConfirmOpen(true)}
-                    className="pointer-events-auto text-[12px] font-medium leading-4 text-[var(--color-error,#ef4444)] underline underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    className="text-[12px] font-medium leading-4 text-[var(--color-error,#ef4444)] underline underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                   >
                     Recept verwijderen
                   </button>
