@@ -90,6 +90,17 @@ export function defaultCafeListName(existingNames: string[]): string {
   return `Café ${n}`;
 }
 
+/** Unieke standaardnaam voor een nieuw Landal-lijstje. */
+export function defaultLandalListName(existingNames: string[]): string {
+  const lower = new Set(
+    existingNames.map((n) => n.trim().toLowerCase()).filter(Boolean),
+  );
+  if (!lower.has("landal")) return "Landal";
+  let n = 2;
+  while (lower.has(`landal ${n}`)) n += 1;
+  return `Landal ${n}`;
+}
+
 /**
  * Herkent de automatische kalender-naam (`defaultNewListName`) voor weergave als in Figma:
  * maand als titel + weeknummer in een bol (bv. "April" + badge "3").
