@@ -87,7 +87,17 @@ export default function LijstInstellingenPage() {
     [listQueryId],
   );
 
+  const allListsOrderQuery = React.useMemo(
+    () => ({
+      lists: {
+        $: { where: { ownerId: user?.id ?? LIJSTJE_QUERY_PLACEHOLDER_ID } },
+      },
+    }),
+    [user?.id],
+  );
+
   const { isLoading, error, data } = db.useQuery(listDetailQuery);
+  const { data: allListsData } = db.useQuery(allListsOrderQuery);
 
   const listData = data?.lists?.[0];
 
@@ -106,6 +116,7 @@ export default function LijstInstellingenPage() {
 
   const [shareModalOpen, setShareModalOpen] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
+  const [duplicateBusy, setDuplicateBusy] = React.useState(false);
 
   // Naam wijzigen
   const [nameEditMode, setNameEditMode] = React.useState(false);
@@ -191,6 +202,62 @@ export default function LijstInstellingenPage() {
       setDeleteBusy(false);
     }
   }, [listData, isListOwner, listId, user, router]);
+
+  const handleDuplicateList = React.useCallback(async () => {
+    if (!listData || !user?.id || !listId) return;
+    setDuplicateBusy(true);
+    try {
+      const newListId = crypto.randomUUID();
+      const newName = `${String(listData.name ?? "Lijstje").trim()} - duplicaat`;
+
+      const allOrders = (allListsData?.lists ?? []).map(
+        (l: { order?: number }) => l.order ?? 0,
+      );
+      const minOrder = allOrders.length > 0 ? Math.min(...allOrders) : 0;
+
+      const listFields: Record<string, unknown> = {
+        name: newName,
+        date: listData.date ?? "",
+        icon: listData.icon ?? "🛒",
+        order: minOrder - 1,
+        ownerId: user.id,
+      };
+      const src = listData as Record<string, unknown>;
+      if (src.masterIcon) listFields.masterIcon = src.masterIcon;
+      if (src.customIconUrl) listFields.customIconUrl = src.customIconUrl;
+      if (src.sourceMasterListId) listFields.sourceMasterListId = src.sourceMasterListId;
+      if (src.masterCategoryOrderJson) listFields.masterCategoryOrderJson = src.masterCategoryOrderJson;
+
+      type RawItem = Record<string, unknown> & { id: string };
+      const itemTxs = (listData.items ?? []).map((item: RawItem) => {
+        const newItemId = crypto.randomUUID();
+        const fields: Record<string, unknown> = {
+          name: item.name,
+          quantity: item.quantity,
+          checked: item.checked,
+          section: item.section,
+          order: item.order,
+        };
+        if (item.recipeGroupId) fields.recipeGroupId = item.recipeGroupId;
+        if (item.recipeName) fields.recipeName = item.recipeName;
+        if (item.recipeLink) fields.recipeLink = item.recipeLink;
+        if (item.itemCategory) fields.itemCategory = item.itemCategory;
+        if (item.fromStock) fields.fromStock = item.fromStock;
+        if (item.stockPhotoUrl) fields.stockPhotoUrl = item.stockPhotoUrl;
+        if (item.itemDate) fields.itemDate = item.itemDate;
+        return db.tx.items[newItemId].update(fields).link({ list: newListId });
+      });
+
+      await db.transact([
+        db.tx.lists[newListId].update(listFields),
+        ...itemTxs,
+      ] as Parameters<typeof db.transact>[0]);
+
+      router.push(`/lijstje/${encodeURIComponent(newListId)}`);
+    } finally {
+      setDuplicateBusy(false);
+    }
+  }, [listData, allListsData, user?.id, listId, router]);
 
   const handleOpenNameEdit = React.useCallback(() => {
     setNameInput(String(listData?.name ?? "").trim());
@@ -398,6 +465,21 @@ export default function LijstInstellingenPage() {
               </span>
               <ChevronRightIcon />
             </button>
+
+            {/* Lijstje dupliceren */}
+            {!isMaster ? (
+              <button
+                type="button"
+                disabled={duplicateBusy}
+                onClick={() => void handleDuplicateList()}
+                className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus disabled:opacity-50"
+              >
+                <span className="flex-1 text-base font-medium leading-6 text-[var(--text-primary)]">
+                  {duplicateBusy ? "Dupliceren…" : "Lijstje dupliceren"}
+                </span>
+                <ChevronRightIcon />
+              </button>
+            ) : null}
           </div>
         ) : (
           <p className="mt-6 text-sm leading-5 text-[var(--text-secondary)]">
