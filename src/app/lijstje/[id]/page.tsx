@@ -40,6 +40,8 @@ import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loadin
 import { SearchBar } from "@/components/ui/search_bar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { SelectTile } from "@/components/ui/select_tile";
+import { TabGroup } from "@/components/ui/tab_group";
+import { TabElement } from "@/components/ui/tab_element";
 import { Snackbar } from "@/components/ui/snackbar";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { decodeLoyaltyCard } from "@/lib/decode_loyalty_card";
@@ -74,6 +76,12 @@ import {
   parseMasterCategoryOrderJson,
   resolveItemCategoryFromName,
 } from "@/lib/item-ingredient-category";
+import {
+  DEFAULT_TRIP_PERSON_TAB,
+  TRIP_PERSON_TABS,
+  normalizeTripPerson,
+  type TripPersonTab,
+} from "@/lib/trip-person";
 import { MasterCategoryOrderPanel } from "@/app/lijstje/[id]/master_category_order_panel";
 import { PillTab } from "@/components/ui/pill_tab";
 import {
@@ -519,6 +527,7 @@ function SortableItemItems({
   listViewMode,
   isMasterList,
   isSharedList,
+  isVacationList = false,
   getPhotoUrl,
   removingId,
   removingSectionTitle,
@@ -536,6 +545,7 @@ function SortableItemItems({
   currentUserId,
   claimProfileByUserId,
   listDateStr,
+  disableSortable = false,
 }: {
   sections: { title: string; displayTitle?: string; items: ListItem[]; isGroupHeader?: boolean }[];
   /** Alleen gewone lijstjes: `category` = Figma-koppen per supermarkt-categorie. */
@@ -563,6 +573,10 @@ function SortableItemItems({
   claimProfileByUserId: Map<string, ClaimerProfileInfo>;
   /** Datum van het lijstje (formaat "D-M-YYYY") voor weergave van volledige dagtitels. */
   listDateStr?: string;
+  /** Landal/vakantie: gesplitste tab-weergave — herschikken uit voorzorg uit. */
+  disableSortable?: boolean;
+  /** Landal/vakantie: toon "+" knop ook bij categorie-secties. */
+  isVacationList?: boolean;
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
@@ -603,10 +617,10 @@ function SortableItemItems({
           <div
             className={cn(
               "flex w-full min-w-0 items-center justify-between gap-3 pr-3",
-              isCategoryGrouping ? "mb-3" : "mb-4",
+              isCategoryGrouping && !isVacationList ? "mb-3" : "mb-4",
             )}
           >
-            {isCategoryGrouping ? (
+            {isCategoryGrouping && !isVacationList ? (
               <p
                 className={cn(
                   "m-0 min-w-0 flex-1 text-xs font-medium uppercase tracking-normal text-[var(--blue-900)]",
@@ -642,7 +656,7 @@ function SortableItemItems({
                   <RecycleBinIcon />
                 </button>
               )
-            ) : isCategoryGrouping ? null : (
+            ) : isCategoryGrouping && !isVacationList ? null : (
               <button
                 type="button"
                 aria-label={`Item toevoegen aan ${section.title}`}
@@ -689,6 +703,7 @@ function SortableItemItems({
                         onEdit={onEdit}
                         currentUserId={currentUserId}
                         claimProfileByUserId={claimProfileByUserId}
+                        disableSortable={disableSortable}
                       />
                     ))}
                   </div>
@@ -740,6 +755,7 @@ function SortableItemItems({
                         onEdit={onEdit}
                         currentUserId={currentUserId}
                         claimProfileByUserId={claimProfileByUserId}
+                        disableSortable={disableSortable}
                       />
                     ))}
                   </div>
@@ -1428,6 +1444,7 @@ function SortableItemRow({
   onEdit,
   currentUserId,
   claimProfileByUserId,
+  disableSortable = false,
 }: {
   item: ListItem;
   isEditMode: boolean;
@@ -1445,6 +1462,7 @@ function SortableItemRow({
   onEdit: (item: ListItem) => void;
   currentUserId: string;
   claimProfileByUserId: Map<string, ClaimerProfileInfo>;
+  disableSortable?: boolean;
 }) {
   const isRemoving = removingId === item.id;
   const isAdding = addingId === item.id;
@@ -1477,6 +1495,7 @@ function SortableItemRow({
         onEdit={() => onEdit(item)}
         currentUserId={currentUserId}
         claimProfileByUserId={claimProfileByUserId}
+        disableSortable={disableSortable}
       />
     </div>
   );
@@ -1495,6 +1514,7 @@ function SortableItemCard({
   onEdit,
   currentUserId,
   claimProfileByUserId,
+  disableSortable = false,
 }: {
   item: ListItem;
   isEditMode: boolean;
@@ -1508,6 +1528,7 @@ function SortableItemCard({
   onEdit: () => void;
   currentUserId: string;
   claimProfileByUserId: Map<string, ClaimerProfileInfo>;
+  disableSortable?: boolean;
 }) {
   const {
     attributes,
@@ -1516,7 +1537,7 @@ function SortableItemCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id });
+  } = useSortable({ id: item.id, disabled: disableSortable });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -1566,7 +1587,7 @@ function SortableItemCard({
           onDelete={isEditMode ? onDelete : undefined}
           onEdit={isEditMode ? onEdit : undefined}
           dragHandleProps={
-            isEditMode
+            isEditMode && !disableSortable
               ? { ...attributes, ...listeners }
               : undefined
           }
@@ -2935,6 +2956,11 @@ export default function ListDetailPage({
   const customIconUrl = String((listData as Record<string, unknown>)?.customIconUrl ?? "");
   const isLandalOrVakantieList =
     customIconUrl.includes("landal") || customIconUrl.includes("vakantie");
+  const [tripPersonTab, setTripPersonTab] =
+    React.useState<TripPersonTab>(DEFAULT_TRIP_PERSON_TAB);
+  React.useEffect(() => {
+    setTripPersonTab(DEFAULT_TRIP_PERSON_TAB);
+  }, [listId]);
   const showFrituurWizard =
     searchParams.get("frituurWizard") === "1" && !isMasterList && isFrietenList;
   const showCafeWizard =
@@ -3044,9 +3070,23 @@ export default function ListDetailPage({
           fromStock: row.fromStock === true || undefined,
           stockPhotoUrl: typeof row.stockPhotoUrl === "string" ? row.stockPhotoUrl : undefined,
           itemDate: typeof row.itemDate === "string" && row.itemDate ? row.itemDate : undefined,
+          tripPerson: (() => {
+            const rawTp = row.tripPerson ?? row.trip_person;
+            if (typeof rawTp !== "string" || rawTp.trim().length === 0) {
+              return undefined;
+            }
+            return normalizeTripPerson(rawTp);
+          })(),
         };
       });
   }, [listData]);
+
+  const itemsForListSections = React.useMemo(() => {
+    if (!isLandalOrVakantieList) return items;
+    return items.filter(
+      (i) => normalizeTripPerson(i.tripPerson) === tripPersonTab,
+    );
+  }, [items, isLandalOrVakantieList, tripPersonTab]);
 
   /** Alleen items van het rondje waarvoor de wizard geopend is (`cafeRound` in URL). */
   const cafeWizardRoundItems = React.useMemo(() => {
@@ -3649,8 +3689,20 @@ export default function ListDetailPage({
         const mode = isMasterList ? "category" : listGroupingMode;
         const toDelete =
           mode === "category"
-            ? items.filter((i) => effectiveItemCategory(i) === sectionTitle)
-            : items.filter((i) => i.section === sectionTitle);
+            ? items.filter((i) => {
+                if (effectiveItemCategory(i) !== sectionTitle) return false;
+                if (isLandalOrVakantieList) {
+                  return normalizeTripPerson(i.tripPerson) === tripPersonTab;
+                }
+                return true;
+              })
+            : items.filter((i) => {
+                if (i.section !== sectionTitle) return false;
+                if (isLandalOrVakantieList) {
+                  return normalizeTripPerson(i.tripPerson) === tripPersonTab;
+                }
+                return true;
+              });
         if (toDelete.length > 0) {
           db.transact(
             toDelete.map((i) => db.tx.items[i.id].delete()) as Parameters<
@@ -3661,7 +3713,7 @@ export default function ListDetailPage({
         setRemovingSectionTitle(null);
       }, SECTION_DELETE_ANIMATION_MS);
     },
-    [items, isMasterList, listGroupingMode],
+    [items, isMasterList, listGroupingMode, isLandalOrVakantieList, tripPersonTab],
   );
 
   const handleDeleteRecipeGroup = React.useCallback(
@@ -3699,6 +3751,9 @@ export default function ListDetailPage({
           recipeGroupId: restoredItem.recipeGroupId ?? "",
           recipeName: restoredItem.recipeName ?? "",
           recipeLink: restoredItem.recipeLink ?? "",
+          ...(restoredItem.tripPerson !== undefined
+            ? { tripPerson: normalizeTripPerson(restoredItem.tripPerson) }
+            : {}),
           ...(restoredItem.claimedByInstantUserId
             ? {
                 claimedByInstantUserId: restoredItem.claimedByInstantUserId,
@@ -3730,6 +3785,7 @@ export default function ListDetailPage({
       itemCategory?: string;
       fromStock?: boolean;
       stockPhotoUrl?: string;
+      tripPerson?: TripPersonTab;
     }) => {
       const newId = iid();
       const itemCategory =
@@ -3743,6 +3799,9 @@ export default function ListDetailPage({
         itemCategory,
         fromStock: newItem.fromStock,
         stockPhotoUrl: newItem.stockPhotoUrl,
+        ...(isLandalOrVakantieList
+          ? { tripPerson: normalizeTripPerson(newItem.tripPerson) }
+          : {}),
       };
 
       let newArray: ListItem[];
@@ -3794,6 +3853,9 @@ export default function ListDetailPage({
             ...(computeSectionAbsoluteDate(newItem.section) != null
               ? { itemDate: computeSectionAbsoluteDate(newItem.section)! }
               : {}),
+            ...(isLandalOrVakantieList
+              ? { tripPerson: normalizeTripPerson(newItem.tripPerson) }
+              : {}),
           })
           .link({ list: listId }),
         ...newArray
@@ -3816,6 +3878,7 @@ export default function ListDetailPage({
       listId,
       isMasterList,
       listGroupingMode,
+      isLandalOrVakantieList,
     ],
   );
 
@@ -3829,10 +3892,13 @@ export default function ListDetailPage({
         section: updatedItem.section,
         itemCategory,
         ...(computedItemDate != null ? { itemDate: computedItemDate } : {}),
+        ...(isLandalOrVakantieList
+          ? { tripPerson: normalizeTripPerson(updatedItem.tripPerson) }
+          : {}),
       }),
     );
     setEditingItem(null);
-  }, []);
+  }, [isLandalOrVakantieList]);
 
   const effectiveListGroupingMode: "day" | "category" = isMasterList
     ? "day"
@@ -3843,7 +3909,7 @@ export default function ListDetailPage({
       !isMasterList && effectiveListGroupingMode === "day";
     if (useDaySections) {
       const grouped = new Map<string, ListItem[]>();
-      for (const item of items) {
+      for (const item of itemsForListSections) {
         const existing = grouped.get(item.section) ?? [];
         existing.push(item);
         grouped.set(item.section, existing);
@@ -3855,7 +3921,7 @@ export default function ListDetailPage({
       }));
     }
     const grouped = new Map<string, ListItem[]>();
-    for (const item of items) {
+    for (const item of itemsForListSections) {
       const cat = effectiveItemCategory(item);
       const existing = grouped.get(cat) ?? [];
       existing.push(item);
@@ -3891,7 +3957,7 @@ export default function ListDetailPage({
     }
     return result;
   }, [
-    items,
+    itemsForListSections,
     effectiveListGroupingMode,
     isMasterList,
     parsedMasterCategoryOrder,
@@ -4381,6 +4447,22 @@ export default function ListDetailPage({
                     ) : null}
                   </div>
                 </div>
+                {isLandalOrVakantieList && !isMasterList ? (
+                  <TabGroup
+                    value={tripPersonTab}
+                    onValueChange={(v) =>
+                      setTripPersonTab(normalizeTripPerson(v))
+                    }
+                    aria-label="Filter op persoon"
+                    className="mt-3"
+                  >
+                    {TRIP_PERSON_TABS.map((tab) => (
+                      <TabElement key={tab} value={tab}>
+                        {tab}
+                      </TabElement>
+                    ))}
+                  </TabGroup>
+                ) : null}
                 {isMasterList && masterStoreLabel ? (
                   <div className="mt-0 flex w-full items-center justify-start gap-2">
                     {/* eslint-disable-next-line @next/next/no-img-element -- store-SVG uit /public/logos */}
@@ -4811,6 +4893,19 @@ export default function ListDetailPage({
                 </label>
               </div>
             ) : null}
+            {isLandalOrVakantieList &&
+            !isMasterList &&
+            hasItems &&
+            !sections.some(
+              (s) =>
+                s.items.length > 0 &&
+                !("isGroupHeader" in s && s.isGroupHeader === true),
+            ) ? (
+              <p className="rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] px-4 py-6 text-center text-base font-normal leading-6 text-[var(--text-tertiary)]">
+                Geen items voor {tripPersonTab}. Kies een andere tab, of stel
+                «Wie» in via toevoegen of bewerken van een item.
+              </p>
+            ) : null}
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -4818,7 +4913,7 @@ export default function ListDetailPage({
               modifiers={listViewMode === "grid" ? [] : [restrictToVerticalAxis]}
             >
               <SortableContext
-                items={items.map((i) => i.id)}
+                items={itemsForListSections.map((i) => i.id)}
                 strategy={listViewMode === "grid" ? rectSortingStrategy : verticalListSortingStrategy}
               >
                 <SortableItemItems
@@ -4830,6 +4925,7 @@ export default function ListDetailPage({
                   listViewMode={listViewMode}
                   isMasterList={isMasterList}
                   isSharedList={showSharedDetailRow}
+                  isVacationList={isLandalOrVakantieList && !isMasterList}
                   getPhotoUrl={getPhotoUrl}
                   removingId={removingId}
                   removingSectionTitle={removingSectionTitle}
@@ -4864,6 +4960,7 @@ export default function ListDetailPage({
                     isMasterList && isListOwner && isEditMode
                   }
                   onOpenMasterCategoryReorder={handleOpenMasterCategoryReorder}
+                  disableSortable={false}
                 />
               </SortableContext>
             </DndContext>
@@ -4953,6 +5050,7 @@ export default function ListDetailPage({
         onApplyRecipeToList={handleAddItemsFromRecipe}
         isMasterList={isMasterList}
         isVacationList={isLandalOrVakantieList}
+        initialTripPerson={isLandalOrVakantieList ? tripPersonTab : undefined}
       />
 
       <input

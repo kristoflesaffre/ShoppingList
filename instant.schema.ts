@@ -82,6 +82,10 @@ const schema = i.schema({
        * Gebruik deze waarde in de kalenderweergave zodat datums nooit verschuiven.
        */
       itemDate: i.string().optional(),
+      /**
+       * Landal/vakantie: «Samen» | «Kristof» | «Chloé» | «Noë». Ontbreekt → UI toont «Samen».
+       */
+      tripPerson: i.string().optional(),
     }),
     recipes: i.entity({
       name: i.string(),

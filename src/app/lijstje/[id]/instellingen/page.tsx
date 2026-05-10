@@ -261,6 +261,10 @@ export default function LijstInstellingenPage() {
         if (item.fromStock) fields.fromStock = item.fromStock;
         if (item.stockPhotoUrl) fields.stockPhotoUrl = item.stockPhotoUrl;
         if (item.itemDate) fields.itemDate = item.itemDate;
+        const tripP = (item as Record<string, unknown>).tripPerson;
+        if (typeof tripP === "string" && tripP.trim()) {
+          fields.tripPerson = tripP.trim();
+        }
         return db.tx.items[newItemId].update(fields).link({ list: newListId });
       });
 

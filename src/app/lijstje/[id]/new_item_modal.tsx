@@ -16,6 +16,12 @@ import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
 import { parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
+import {
+  DEFAULT_TRIP_PERSON_TAB,
+  TRIP_PERSON_TABS,
+  normalizeTripPerson,
+  type TripPersonTab,
+} from "@/lib/trip-person";
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
@@ -50,6 +56,8 @@ export type ListItem = {
   stockPhotoUrl?: string;
   /** Absolute datum "YYYY-MM-DD" waarop dit item gepland staat (alleen voor dagnaam-secties). */
   itemDate?: string;
+  /** Landal/vakantie: wie het item betreft. */
+  tripPerson?: TripPersonTab;
 };
 
 type Ingredient = RecipeIngredient;
@@ -69,8 +77,10 @@ const SLIDE_TRANSITION = "transform 350ms cubic-bezier(0.16, 1, 0.3, 1)";
 
 const VACATION_CATEGORIES = [
   "Toiletartikelen",
+  "Toiletgerief",
   "Kleding",
   "Eten & drinken",
+  "Gekoelde eten en drank",
   "Elektronica",
   "Medicijnen",
   "Documenten",
@@ -131,6 +141,7 @@ export function NewItemModal({
   onApplyRecipeToList,
   isMasterList = false,
   isVacationList = false,
+  initialTripPerson,
 }: {
   open: boolean;
   onClose: () => void;
@@ -141,6 +152,7 @@ export function NewItemModal({
     itemCategory?: string;
     fromStock?: boolean;
     stockPhotoUrl?: string;
+    tripPerson?: TripPersonTab;
   }) => void;
   editingItem?: ListItem | null;
   onSave?: (item: ListItem) => void;
@@ -153,10 +165,14 @@ export function NewItemModal({
   isMasterList?: boolean;
   /** Landal/Vakantie-lijstje: verbergt dag + recept, toont vakantiecategorie-dropdown. */
   isVacationList?: boolean;
+  /** Vooringestelde “Wie”-waarde op basis van de actieve persoonstab. */
+  initialTripPerson?: TripPersonTab;
 }) {
   const isEditMode = editingItem != null;
   const [selectedDay, setSelectedDay] = React.useState("Geen");
   const [vacationCategory, setVacationCategory] = React.useState<string>("Andere");
+  const [tripPerson, setTripPerson] =
+    React.useState<TripPersonTab>(DEFAULT_TRIP_PERSON_TAB);
   const [activeTab, setActiveTab] = React.useState<"first" | "second" | "third">("first");
   const [freezerSearch, setFreezerSearch] = React.useState("");
   const [itemName, setItemName] = React.useState("");
@@ -237,6 +253,7 @@ export function NewItemModal({
     if (!open) {
       setSelectedDay("Geen");
       setVacationCategory("Andere");
+      setTripPerson(DEFAULT_TRIP_PERSON_TAB);
       setActiveTab("first");
       setItemName("");
       setStepperValue(1);
@@ -269,16 +286,43 @@ export function NewItemModal({
             : "Andere",
         );
       }
+      if (isVacationList) {
+        setTripPerson(normalizeTripPerson(editingItem.tripPerson));
+      }
     } else if (initialSection) {
       setSelectedDay(
         initialSection === "Algemeen" ? "Geen" : initialSection
       );
       setActiveTab("first");
+      if (isVacationList) {
+        if (initialItemCategory) {
+          setVacationCategory(
+            (VACATION_CATEGORIES as readonly string[]).includes(initialItemCategory)
+              ? initialItemCategory
+              : "Andere",
+          );
+        }
+        if (initialTripPerson) {
+          setTripPerson(initialTripPerson);
+        }
+      }
     } else if (initialItemCategory) {
       setSelectedDay("Geen");
       setActiveTab("first");
+      if (isVacationList) {
+        setVacationCategory(
+          (VACATION_CATEGORIES as readonly string[]).includes(initialItemCategory)
+            ? initialItemCategory
+            : "Andere",
+        );
+        if (initialTripPerson) {
+          setTripPerson(initialTripPerson);
+        }
+      }
+    } else if (open && isVacationList && initialTripPerson) {
+      setTripPerson(initialTripPerson);
     }
-  }, [open, editingItem, initialSection, initialItemCategory]);
+  }, [open, editingItem, initialSection, initialItemCategory, isVacationList, initialTripPerson]);
 
   // Default to "hoofdgerecht" filter when opening, only if recipes with that category exist
   React.useEffect(() => {
@@ -304,6 +348,7 @@ export function NewItemModal({
         quantity: qty,
         section: isVacationList ? "Algemeen" : section,
         itemCategory: isVacationList ? vacationCategory : resolveItemCategoryFromName(itemName.trim()),
+        ...(isVacationList ? { tripPerson: normalizeTripPerson(tripPerson) } : {}),
       });
     } else {
       onAdd({
@@ -311,6 +356,7 @@ export function NewItemModal({
         quantity: qty,
         section: isVacationList ? "Algemeen" : section,
         itemCategory,
+        ...(isVacationList ? { tripPerson: normalizeTripPerson(tripPerson) } : {}),
       });
     }
     onClose();
@@ -559,36 +605,78 @@ export function NewItemModal({
                     onChange={setItemName}
                   />
                   {isVacationList && (
-                    <div className="flex flex-col gap-2">
-                      <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-                        Categorie
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={vacationCategory}
-                          onChange={(e) => setVacationCategory(e.target.value)}
-                          className="h-12 w-full appearance-none rounded-md border border-[var(--border-default)] bg-[var(--white)] px-4 pr-10 text-base leading-6 text-[var(--text-primary)] transition-colors focus:outline-none focus:border-[var(--border-focus)]"
-                        >
-                          {VACATION_CATEGORIES.map((cat) => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
-                        </select>
-                        <span
-                          aria-hidden
-                          className="pointer-events-none absolute right-3 top-1/2 size-6 -translate-y-1/2 bg-[var(--text-secondary)]"
-                          style={{
-                            WebkitMaskImage: "url(/icons/chevron.svg)",
-                            maskImage: "url(/icons/chevron.svg)",
-                            WebkitMaskSize: "contain",
-                            maskSize: "contain",
-                            WebkitMaskRepeat: "no-repeat",
-                            maskRepeat: "no-repeat",
-                            WebkitMaskPosition: "center",
-                            maskPosition: "center",
-                          }}
-                        />
+                    <>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+                          Categorie
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={vacationCategory}
+                            onChange={(e) => setVacationCategory(e.target.value)}
+                            className="h-12 w-full appearance-none rounded-md border border-[var(--border-default)] bg-[var(--white)] px-4 pr-10 text-base leading-6 text-[var(--text-primary)] transition-colors focus:outline-none focus:border-[var(--border-focus)]"
+                          >
+                            {VACATION_CATEGORIES.map((cat) => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                          </select>
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute right-3 top-1/2 size-6 -translate-y-1/2 bg-[var(--text-secondary)]"
+                            style={{
+                              WebkitMaskImage: "url(/icons/chevron.svg)",
+                              maskImage: "url(/icons/chevron.svg)",
+                              WebkitMaskSize: "contain",
+                              maskSize: "contain",
+                              WebkitMaskRepeat: "no-repeat",
+                              maskRepeat: "no-repeat",
+                              WebkitMaskPosition: "center",
+                              maskPosition: "center",
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
+                      <div className="flex flex-col gap-2">
+                        <label
+                          htmlFor="new-item-trip-person"
+                          className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]"
+                        >
+                          Wie
+                        </label>
+                        <div className="relative">
+                          <select
+                            id="new-item-trip-person"
+                            value={tripPerson}
+                            onChange={(e) =>
+                              setTripPerson(
+                                normalizeTripPerson(e.target.value),
+                              )
+                            }
+                            className="h-12 w-full appearance-none rounded-md border border-[var(--border-default)] bg-[var(--white)] px-4 pr-10 text-base leading-6 text-[var(--text-primary)] transition-colors focus:outline-none focus:border-[var(--border-focus)]"
+                          >
+                            {TRIP_PERSON_TABS.map((tab) => (
+                              <option key={tab} value={tab}>
+                                {tab}
+                              </option>
+                            ))}
+                          </select>
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute right-3 top-1/2 size-6 -translate-y-1/2 bg-[var(--text-secondary)]"
+                            style={{
+                              WebkitMaskImage: "url(/icons/chevron.svg)",
+                              maskImage: "url(/icons/chevron.svg)",
+                              WebkitMaskSize: "contain",
+                              maskSize: "contain",
+                              WebkitMaskRepeat: "no-repeat",
+                              maskRepeat: "no-repeat",
+                              WebkitMaskPosition: "center",
+                              maskPosition: "center",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </>
                   )}
                   <div className="flex flex-col gap-2">
                     <Stepper
