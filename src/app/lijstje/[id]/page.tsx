@@ -76,6 +76,7 @@ import {
   parseMasterCategoryOrderJson,
   resolveItemCategoryFromName,
 } from "@/lib/item-ingredient-category";
+import { orderVacationCategorySections } from "@/lib/vacation-categories";
 import {
   DEFAULT_TRIP_PERSON_TAB,
   TRIP_PERSON_TABS,
@@ -529,6 +530,7 @@ function SortableItemItems({
   isSharedList,
   isVacationList = false,
   getPhotoUrl,
+  savedRecipes,
   removingId,
   removingSectionTitle,
   addingId,
@@ -577,6 +579,7 @@ function SortableItemItems({
   disableSortable?: boolean;
   /** Landal/vakantie: toon "+" knop ook bij categorie-secties. */
   isVacationList?: boolean;
+  savedRecipes?: SavedRecipe[];
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
@@ -596,8 +599,10 @@ function SortableItemItems({
           );
         }
         const isSectionRemoving = removingSectionTitle === section.title;
-        const sectionHeading = isCategoryGrouping
+        const sectionHeading = isCategoryGrouping && !isVacationList
           ? categoryHeadingDisplay(section.displayTitle ?? section.title)
+          : isCategoryGrouping
+          ? (section.displayTitle ?? section.title)
           : dayTitleWithDate(section.title, listDateStr ?? "", section.items[0]?.itemDate);
         return (
         <section
@@ -694,6 +699,7 @@ function SortableItemItems({
                         isMasterList={isMasterList}
                         isSharedList={isSharedList}
                         getPhotoUrl={getPhotoUrl}
+                        savedRecipes={savedRecipes}
                         removingId={removingId}
                         addingId={addingId}
                         addingIdExpanded={addingIdExpanded}
@@ -746,6 +752,7 @@ function SortableItemItems({
                         isMasterList={isMasterList}
                         isSharedList={isSharedList}
                         getPhotoUrl={getPhotoUrl}
+                        savedRecipes={savedRecipes}
                         removingId={removingId}
                         addingId={addingId}
                         addingIdExpanded={addingIdExpanded}
@@ -1435,6 +1442,7 @@ function SortableItemRow({
   isMasterList,
   isSharedList,
   getPhotoUrl,
+  savedRecipes,
   removingId,
   addingId,
   addingIdExpanded,
@@ -1453,6 +1461,7 @@ function SortableItemRow({
   isMasterList: boolean;
   isSharedList: boolean;
   getPhotoUrl?: (name: string, size?: number) => string | null;
+  savedRecipes?: SavedRecipe[];
   removingId: string | null;
   addingId: string | null;
   addingIdExpanded: boolean;
@@ -1487,6 +1496,7 @@ function SortableItemRow({
         isMasterList={isMasterList}
         isSharedList={isSharedList}
         getPhotoUrl={getPhotoUrl}
+        savedRecipes={savedRecipes}
         onCheckedChange={(checked) => onCheckedChange(item.id, checked)}
         onRemoteClaimChange={(claimUserId) =>
           onRemoteClaimChange(item.id, claimUserId)
@@ -1508,6 +1518,7 @@ function SortableItemCard({
   isMasterList,
   isSharedList,
   getPhotoUrl,
+  savedRecipes,
   onCheckedChange,
   onRemoteClaimChange,
   onDelete,
@@ -1522,6 +1533,7 @@ function SortableItemCard({
   isMasterList: boolean;
   isSharedList: boolean;
   getPhotoUrl?: (name: string, size?: number) => string | null;
+  savedRecipes?: SavedRecipe[];
   onCheckedChange: (checked: boolean) => void;
   onRemoteClaimChange: (claimUserId: string | null) => void;
   onDelete: () => void;
@@ -1568,9 +1580,19 @@ function SortableItemCard({
           isFromStock={item.fromStock === true}
           itemThumbnail={(() => {
             // Voor "uit voorraad"-items: gebruik de opgeslagen recipePhotoUrl.
-            const photoUrl = item.fromStock && item.stockPhotoUrl
-              ? item.stockPhotoUrl
-              : getPhotoUrl?.(item.name, listViewMode === "grid" ? 240 : 160);
+            // Items eindigend op " (diepvries)": gebruik recept-foto uit bibliotheek.
+            let photoUrl: string | null | undefined;
+            if (item.fromStock && item.stockPhotoUrl) {
+              photoUrl = item.stockPhotoUrl;
+            } else if (item.name.endsWith(" (diepvries)") && savedRecipes) {
+              const baseName = item.name.slice(0, -" (diepvries)".length);
+              const recipe = savedRecipes.find(
+                (r) => r.name.trim().toLowerCase() === baseName.trim().toLowerCase(),
+              );
+              photoUrl = recipe?.photoUrl ?? getPhotoUrl?.(baseName, listViewMode === "grid" ? 240 : 160);
+            } else {
+              photoUrl = getPhotoUrl?.(item.name, listViewMode === "grid" ? 240 : 160);
+            }
             if (!photoUrl) return undefined;
             return (
               // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp: Next/Image optimizer faalt op sommige iOS-builds
@@ -3928,13 +3950,12 @@ export default function ListDetailPage({
       grouped.set(cat, existing);
     }
     const keys = Array.from(grouped.keys());
-    const categoryOrderForSort = isMasterList
-      ? parsedMasterCategoryOrder
-      : parsedInheritedMasterCategoryOrder;
-    const titles = orderedCategorySectionTitlesWithMasterOverride(
-      keys,
-      categoryOrderForSort,
-    );
+    const titles = isLandalOrVakantieList && !isMasterList
+      ? orderVacationCategorySections(keys)
+      : orderedCategorySectionTitlesWithMasterOverride(
+          keys,
+          isMasterList ? parsedMasterCategoryOrder : parsedInheritedMasterCategoryOrder,
+        );
     const normalSections = titles
       .filter((t) => grouped.has(t))
       .map((t) => ({ title: t, displayTitle: undefined as string | undefined, items: grouped.get(t)!, isGroupHeader: false as boolean | undefined }));
@@ -3960,6 +3981,7 @@ export default function ListDetailPage({
     itemsForListSections,
     effectiveListGroupingMode,
     isMasterList,
+    isLandalOrVakantieList,
     parsedMasterCategoryOrder,
     parsedInheritedMasterCategoryOrder,
     showUncheckedFirst,
@@ -4927,6 +4949,7 @@ export default function ListDetailPage({
                   isSharedList={showSharedDetailRow}
                   isVacationList={isLandalOrVakantieList && !isMasterList}
                   getPhotoUrl={getPhotoUrl}
+                  savedRecipes={savedRecipes}
                   removingId={removingId}
                   removingSectionTitle={removingSectionTitle}
                   addingId={addingId}

@@ -164,6 +164,8 @@ function normalizeIngredientKey(name: string): string {
 const SYNONYM_TO_CANONICAL_INGREDIENT: Record<string, string> = {
   "pot pastasaus": "passata",
   pastasaus: "passata",
+  /** Engels «Vodka» → zelfde Excel-sleutel als «Wodka». */
+  vodka: "wodka",
 };
 
 function excelLookupKeysForName(name: string): string[] {

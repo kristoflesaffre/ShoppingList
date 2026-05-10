@@ -22,8 +22,13 @@ async function listImageBases(dir: string): Promise<string[]> {
 }
 
 export async function loadItemImageSlugs(): Promise<string[]> {
-  const rawBases = await listImageBases(join(process.cwd(), "public/images/items"));
-  return Array.from(new Set(rawBases.map(normalizeForMatch).filter(Boolean))).sort();
+  const [items, landal] = await Promise.all([
+    listImageBases(join(process.cwd(), "public/images/items")),
+    listImageBases(join(process.cwd(), "public/images/landal")),
+  ]);
+  return Array.from(
+    new Set([...items, ...landal].map(normalizeForMatch).filter(Boolean)),
+  ).sort();
 }
 
 export async function loadIngredientImageSlugs(): Promise<string[]> {

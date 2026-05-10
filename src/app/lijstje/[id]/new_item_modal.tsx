@@ -25,6 +25,7 @@ import {
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
+import { VACATION_CATEGORIES } from "@/lib/vacation-categories";
 
 const RecipeIngredientSortableList = dynamic(
   () => import("@/app/recepten/recipe_ingredient_sortable_list").then((m) => m.RecipeIngredientSortableList),
@@ -75,20 +76,6 @@ const DAY_OPTIONS = [
 
 const SLIDE_TRANSITION = "transform 350ms cubic-bezier(0.16, 1, 0.3, 1)";
 
-const VACATION_CATEGORIES = [
-  "Toiletartikelen",
-  "Toiletgerief",
-  "Kleding",
-  "Eten & drinken",
-  "Gekoelde eten en drank",
-  "Elektronica",
-  "Medicijnen",
-  "Documenten",
-  "Slaapspullen",
-  "Activiteiten",
-  "Schoonmaak",
-  "Andere",
-] as const;
 
 function PlusCircleIcon({ className }: { className?: string }) {
   return (

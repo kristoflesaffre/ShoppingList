@@ -22,16 +22,22 @@ export function itemPhotoUrlFromSlug(slug: string, size?: number): string {
 }
 
 /**
- * Normaliseert ruwe slugs (bestandsnamen) en bouwt tegelijk een mapping op van
- * genormaliseerde slug → originele bestandsnaam (bijv. `t_light_suiker` → `t-light_suiker`).
+ * Normaliseert ruwe slugs en bouwt een mapping: genormaliseerde naam → padprefix/bestandsnaam.
+ * Input kan "items/foo_160" of "landal/bar_160" zijn (met subdir) of legacy "foo_160" (zonder).
+ * Landal-items (later in de lijst) overschrijven reguliere items met dezelfde naam.
  */
 function buildSlugIndex(raw: string[]): string[] {
   const map = new Map<string, string>();
   for (const rawSlug of raw) {
-    const fileBase = String(rawSlug).replace(/_(160|240|320)$/i, "");
-    const normalized = normalizeForMatch(fileBase);
-    if (normalized && !map.has(normalized)) {
-      map.set(normalized, fileBase);
+    const withoutSize = String(rawSlug).replace(/_(160|240|320)$/i, "");
+    // justName = alleen de bestandsnaam (zonder subdir), voor normalisatie als slug-sleutel
+    const justName = withoutSize.includes("/")
+      ? withoutSize.split("/").pop()!
+      : withoutSize;
+    const normalized = normalizeForMatch(justName);
+    if (normalized) {
+      // Landal-items overschrijven reguliere items voor dezelfde naam
+      map.set(normalized, withoutSize);
     }
   }
   slugToFileBase = map;

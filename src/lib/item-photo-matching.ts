@@ -24,7 +24,9 @@ export function itemPhotoUrlFromSlug(
 ): string {
   const normalizedSize = normalizeItemPhotoSize(size);
   const fileBase = fileBaseBySlug?.get(slug) ?? slug;
-  return `/images/items/${fileBase}_${normalizedSize}.webp`;
+  // fileBase kan "items/foo" of "landal/bar" zijn (met subdir) of legacy "foo" (zonder)
+  const path = fileBase.includes("/") ? fileBase : `items/${fileBase}`;
+  return `/images/${path}_${normalizedSize}.webp`;
 }
 
 /**
