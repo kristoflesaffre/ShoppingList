@@ -234,7 +234,7 @@ export default function LijstInstellingenPage() {
         const fields: Record<string, unknown> = {
           name: item.name,
           quantity: item.quantity,
-          checked: item.checked,
+          checked: false,
           section: item.section,
           order: item.order,
         };
