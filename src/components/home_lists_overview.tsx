@@ -11,6 +11,7 @@ import { ListCard } from "@/components/ui/list_card";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { cn } from "@/lib/utils";
 import { homeListCardIconSrc } from "@/lib/list-product-icons";
+import { homeListCardItemCountLine } from "@/lib/landal-list-card";
 
 export type HomeOverviewList = {
   id: string;
@@ -26,15 +27,8 @@ export type HomeOverviewList = {
   storeLogos: string[];
   isMasterTemplate: boolean;
   customIconUrl?: string | null;
+  landalTripLabel?: string | null;
 };
-
-function itemCountLabel(count: number): string {
-  return count === 1 ? "1 product" : `${count} producten`;
-}
-
-function favoriteCountLabel(count: number): string {
-  return count === 1 ? "1 favoriet" : `${count} favorieten`;
-}
 
 /** `edit`: geen navigatie op de kaart (alleen slepen/verwijderen). `manage`: zelfde chrome + tap opent lijst. */
 export type HomeListCardInteractionMode = "edit" | "manage";
@@ -70,11 +64,7 @@ function SortableListCard({
   const card = (
     <ListCard
       listName={list.name}
-      itemCount={
-        list.displayVariant === "master"
-          ? favoriteCountLabel(list.items?.length ?? 0)
-          : itemCountLabel(list.items?.length ?? 0)
-      }
+      itemCount={homeListCardItemCountLine(list)}
       displayVariant={list.displayVariant}
       storeLogos={list.storeLogos}
       sharedWithFirstName={list.sharedWithFirstName ?? undefined}
@@ -176,11 +166,7 @@ function StaticDisplayListRow({
   const card = (
     <ListCard
       listName={list.name}
-      itemCount={
-        list.displayVariant === "master"
-          ? favoriteCountLabel(list.items?.length ?? 0)
-          : itemCountLabel(list.items?.length ?? 0)
-      }
+      itemCount={homeListCardItemCountLine(list)}
       displayVariant={list.displayVariant}
       storeLogos={list.storeLogos}
       sharedWithFirstName={list.sharedWithFirstName ?? undefined}

@@ -5,13 +5,21 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
+import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import { isIPhoneDevice } from "@/lib/utils";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { selectListNameInputOnFocus } from "@/lib/list-default-name";
+import {
+  type LandalTripChoice,
+  LANDAL_LIST_CARD_ICON_URL,
+  inferLandalTripLabel,
+  isLandalListCard,
+} from "@/lib/landal-list-card";
 
 const ShareListModal = dynamic(
   () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
@@ -51,12 +59,17 @@ function ChevronRightIcon() {
         maskRepeat: "no-repeat",
         WebkitMaskPosition: "center",
         maskPosition: "center",
+        transform: "rotate(-90deg)",
       }}
     />
   );
 }
 
 const LIJSTJE_QUERY_PLACEHOLDER_ID = "__lijst_instellingen_missing__";
+
+/** Tegel-illustraties in slide (zelfde als Landal-aanmaak op de startpagina). */
+const LANDAL_SLIDE_ICON_GEZIN = "/images/ui/gezin_160.webp";
+const LANDAL_SLIDE_ICON_VRIENDEN = "/images/ui/vrienden_160.webp";
 
 export default function LijstInstellingenPage() {
   const router = useRouter();
@@ -117,6 +130,8 @@ export default function LijstInstellingenPage() {
   const [shareModalOpen, setShareModalOpen] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
   const [duplicateBusy, setDuplicateBusy] = React.useState(false);
+  const [landalTripSlideOpen, setLandalTripSlideOpen] = React.useState(false);
+  const [landalTripSaving, setLandalTripSaving] = React.useState(false);
 
   // Naam wijzigen
   const [nameEditMode, setNameEditMode] = React.useState(false);
@@ -225,6 +240,7 @@ export default function LijstInstellingenPage() {
       const src = listData as Record<string, unknown>;
       if (src.masterIcon) listFields.masterIcon = src.masterIcon;
       if (src.customIconUrl) listFields.customIconUrl = src.customIconUrl;
+      if (src.landalTripLabel) listFields.landalTripLabel = src.landalTripLabel;
       if (src.sourceMasterListId) listFields.sourceMasterListId = src.sourceMasterListId;
       if (src.masterCategoryOrderJson) listFields.masterCategoryOrderJson = src.masterCategoryOrderJson;
 
@@ -298,6 +314,55 @@ export default function LijstInstellingenPage() {
     [listId, user?.id],
   );
 
+  const handleLandalTripChange = React.useCallback(
+    async (choice: LandalTripChoice) => {
+      if (!listId || !isListOwner || !listData) return;
+      const name = String(listData.name ?? "Lijstje");
+      const iconUrl =
+        typeof (listData as Record<string, unknown>).customIconUrl === "string"
+          ? String((listData as Record<string, unknown>).customIconUrl)
+          : null;
+      const rawTrip =
+        typeof (listData as Record<string, unknown>).landalTripLabel === "string"
+          ? String((listData as Record<string, unknown>).landalTripLabel).trim()
+          : "";
+      const inferred = inferLandalTripLabel({
+        name,
+        customIconUrl: iconUrl,
+        landalTripLabel: null,
+      });
+      const currentTrip: LandalTripChoice =
+        rawTrip.toLowerCase() === "gezin"
+          ? "Gezin"
+          : rawTrip.toLowerCase() === "vrienden"
+            ? "Vrienden"
+            : inferred === "Gezin"
+              ? "Gezin"
+              : "Vrienden";
+      const u = (iconUrl ?? "").toLowerCase();
+      const iconIsGenericLandal =
+        iconUrl === LANDAL_LIST_CARD_ICON_URL ||
+        (Boolean(iconUrl) && u.includes("landal_160"));
+      if (choice === currentTrip && iconIsGenericLandal) {
+        setLandalTripSlideOpen(false);
+        return;
+      }
+      setLandalTripSaving(true);
+      try {
+        await db.transact(
+          db.tx.lists[listId].update({
+            landalTripLabel: choice,
+            customIconUrl: LANDAL_LIST_CARD_ICON_URL,
+          }),
+        );
+        setLandalTripSlideOpen(false);
+      } finally {
+        setLandalTripSaving(false);
+      }
+    },
+    [listId, isListOwner, listData],
+  );
+
   if (authLoading || !user || isLoading) {
     return <PageSpinner surface="white" />;
   }
@@ -334,6 +399,25 @@ export default function LijstInstellingenPage() {
     typeof (listData as Record<string, unknown>).customIconUrl === "string"
       ? ((listData as Record<string, unknown>).customIconUrl as string)
       : null;
+
+  const rawLandalTripLabel =
+    typeof (listData as Record<string, unknown>).landalTripLabel === "string"
+      ? String((listData as Record<string, unknown>).landalTripLabel).trim()
+      : "";
+  const inferredTrip = inferLandalTripLabel({
+    name: listName,
+    customIconUrl,
+    landalTripLabel: null,
+  });
+  const currentLandalTrip: LandalTripChoice =
+    rawLandalTripLabel.toLowerCase() === "gezin"
+      ? "Gezin"
+      : rawLandalTripLabel.toLowerCase() === "vrienden"
+        ? "Vrienden"
+        : inferredTrip === "Gezin"
+          ? "Gezin"
+          : "Vrienden";
+  const isLandalSettingsList = !isMaster && isLandalListCard(customIconUrl);
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-[var(--white)]">
@@ -454,6 +538,25 @@ export default function LijstInstellingenPage() {
               onChange={handlePhotoChange}
             />
 
+            {/* Landal: soort reis — zelfde slide-in als bij aanmaak */}
+            {isLandalSettingsList ? (
+              <button
+                type="button"
+                onClick={() => setLandalTripSlideOpen(true)}
+                className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+              >
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="text-base font-medium leading-6 text-[var(--text-primary)]">
+                    Soort reis wijzigen
+                  </span>
+                  <span className="text-sm font-normal leading-5 text-[var(--text-secondary)]">
+                    Nu: {currentLandalTrip === "Gezin" ? "Gezin" : "Vrienden"}
+                  </span>
+                </span>
+                <ChevronRightIcon />
+              </button>
+            ) : null}
+
             {/* Lijstje delen */}
             <button
               type="button"
@@ -511,6 +614,69 @@ export default function LijstInstellingenPage() {
         shareUrl={shareUrl}
         urlReady={Boolean(shareUrl)}
       />
+
+      <SlideInModal
+        open={landalTripSlideOpen}
+        onClose={() => !landalTripSaving && setLandalTripSlideOpen(false)}
+        title="Landal lijstje"
+        titleId="instellingen-landal-trip-slide-title"
+        containerClassName="z-[60]"
+        className="pb-0"
+        bodyClassName="px-[var(--space-4)] pb-[45px] pt-[var(--space-6)]"
+      >
+        <div className="grid w-full grid-cols-2 gap-[var(--space-4)]">
+          <button
+            type="button"
+            disabled={landalTripSaving}
+            onClick={() => void handleLandalTripChange("Gezin")}
+            className={cn(
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+              landalTripSaving && "pointer-events-none opacity-60",
+            )}
+          >
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={LANDAL_SLIDE_ICON_GEZIN}
+                alt=""
+                width={48}
+                height={48}
+                className="size-full object-cover"
+              />
+            </div>
+            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
+              Gezin
+            </p>
+          </button>
+          <button
+            type="button"
+            disabled={landalTripSaving}
+            onClick={() => void handleLandalTripChange("Vrienden")}
+            className={cn(
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+              landalTripSaving && "pointer-events-none opacity-60",
+            )}
+          >
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={LANDAL_SLIDE_ICON_VRIENDEN}
+                alt=""
+                width={48}
+                height={48}
+                className="size-full object-cover"
+              />
+            </div>
+            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
+              Vrienden
+            </p>
+          </button>
+        </div>
+      </SlideInModal>
     </div>
   );
 }

@@ -305,6 +305,10 @@ export function LijstjesBeherenClient({
         customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
           ? (l as Record<string, unknown>).customIconUrl as string
           : null,
+        landalTripLabel: (() => {
+          const v = (l as Record<string, unknown>).landalTripLabel;
+          return typeof v === "string" && v.trim() ? v : null;
+        })(),
       };
     });
 
@@ -359,6 +363,10 @@ export function LijstjesBeherenClient({
           customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
             ? (l as Record<string, unknown>).customIconUrl as string
             : null,
+          landalTripLabel: (() => {
+            const v = (l as Record<string, unknown>).landalTripLabel;
+            return typeof v === "string" && v.trim() ? v : null;
+          })(),
         };
       });
 

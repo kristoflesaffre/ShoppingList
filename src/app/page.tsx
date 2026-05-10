@@ -21,6 +21,11 @@ import {
   defaultNewListName,
   selectListNameInputOnFocus,
 } from "@/lib/list-default-name";
+import {
+  homeListCardItemCountLine,
+  inferLandalTripLabel,
+  isLandalListCard,
+} from "@/lib/landal-list-card";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import {
   MASTER_STORE_OPTIONS,
@@ -156,6 +161,10 @@ const VENUE_TILE_ICON_FRITUUR = "/images/ui/product_icons/frieten_160.webp";
 const VENUE_TILE_ICON_CAFE = "/images/ui/cafe_160.webp";
 const VENUE_TILE_ICON_LANDAL = "/images/ui/landal_160.webp";
 const VENUE_TILE_ICON_VAKANTIE = "/images/ui/vakantie_160.webp";
+const VENUE_TILE_ICON_GEZIN = "/images/ui/gezin_160.webp";
+const VENUE_TILE_ICON_VRIENDEN = "/images/ui/vrienden_160.webp";
+
+type PendingLandalChoice = { listName: string };
 
 type PendingFrituurChoice = {
   listName: string;
@@ -183,6 +192,8 @@ type HomeList = {
   isMasterTemplate: boolean;
   /** Eigen geüploade foto als lijstjedicoon. */
   customIconUrl?: string | null;
+  /** Landal-trip (Gezin/Vrienden) voor kaartondertitel. */
+  landalTripLabel?: string | null;
 };
 
 type SavedListIconImage = {
@@ -203,15 +214,6 @@ type FrituurPreviousList = {
     itemCategory?: string;
   }>;
 };
-
-function itemCountLabel(count: number): string {
-  return count === 1 ? "1 product" : `${count} producten`;
-}
-
-/** Telling op favorietenmastertegels (Figma 1148:8298). */
-function favoriteCountLabel(count: number): string {
-  return count === 1 ? "1 favoriet" : `${count} favorieten`;
-}
 
 type HomeLoyaltyCard = {
   id: string;
@@ -802,11 +804,7 @@ function HomeStaticListSections({
   const cardFor = (list: HomeList) => (
     <ListCard
       listName={list.name}
-      itemCount={
-        list.displayVariant === "master"
-          ? favoriteCountLabel(list.items?.length ?? 0)
-          : itemCountLabel(list.items?.length ?? 0)
-      }
+      itemCount={homeListCardItemCountLine(list)}
       displayVariant={list.displayVariant}
       storeLogos={list.storeLogos}
       sharedWithFirstName={list.sharedWithFirstName ?? undefined}
@@ -1144,6 +1142,10 @@ export default function Home() {
         customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
           ? (l as Record<string, unknown>).customIconUrl as string
           : null,
+        landalTripLabel: (() => {
+          const v = (l as Record<string, unknown>).landalTripLabel;
+          return typeof v === "string" && v.trim() ? v : null;
+        })(),
       };
     });
 
@@ -1194,6 +1196,10 @@ export default function Home() {
           customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
             ? (l as Record<string, unknown>).customIconUrl as string
             : null,
+          landalTripLabel: (() => {
+            const v = (l as Record<string, unknown>).landalTripLabel;
+            return typeof v === "string" && v.trim() ? v : null;
+          })(),
         };
       });
 
@@ -1210,6 +1216,31 @@ export default function Home() {
       (a, b) => (a.order ?? 0) - (b.order ?? 0),
     );
   }, [data, user?.id, shareFirstNameByUserId]);
+
+  /** `landalTripLabel` vullen op Landal-lijsten zonder veld (standaard Vrienden; Gezin alleen als naam/icoon dat zegt). */
+  React.useEffect(() => {
+    if (!user?.id || authLoading || isLoading) return;
+    const rows = (data?.lists ?? []) as Record<string, unknown>[];
+    const txs: Parameters<typeof db.transact>[0] = [];
+    for (const row of rows) {
+      if (String((row as { ownerId?: string }).ownerId ?? "") !== user.id) continue;
+      const id = row.id;
+      if (typeof id !== "string") continue;
+      const customIconUrl =
+        typeof row.customIconUrl === "string" ? row.customIconUrl : null;
+      if (!isLandalListCard(customIconUrl)) continue;
+      const existing =
+        typeof row.landalTripLabel === "string" ? row.landalTripLabel.trim() : "";
+      if (existing) continue;
+      const inferred = inferLandalTripLabel({
+        name: String(row.name ?? ""),
+        customIconUrl,
+        landalTripLabel: null,
+      });
+      txs.push(db.tx.lists[id].update({ landalTripLabel: inferred }));
+    }
+    if (txs.length > 0) void db.transact(txs);
+  }, [user?.id, authLoading, isLoading, data?.lists]);
 
   const savedListIconImages = React.useMemo((): SavedListIconImage[] => {
     const byDataUrl = new Map<string, SavedListIconImage>();
@@ -1409,6 +1440,8 @@ export default function Home() {
   const [newListIconPickerOpen, setNewListIconPickerOpen] = React.useState(false);
   const [pendingFrituurChoice, setPendingFrituurChoice] =
     React.useState<PendingFrituurChoice | null>(null);
+  const [pendingLandalChoice, setPendingLandalChoice] =
+    React.useState<PendingLandalChoice | null>(null);
   const [blankVenueSlideOpen, setBlankVenueSlideOpen] = React.useState(false);
   const [supermarktNewListSlideOpen, setSupermarktNewListSlideOpen] =
     React.useState(false);
@@ -1575,6 +1608,7 @@ export default function Home() {
       customIconForCreate,
       pickerMasterStore,
       loyaltyCardIdToLink,
+      landalTripLabel,
     }: {
       listName: string;
       duplicateFrom?: FrituurPreviousList | null;
@@ -1586,6 +1620,8 @@ export default function Home() {
       pickerMasterStore?: (typeof MASTER_STORE_OPTIONS)[number] | null;
       /** Optioneel: bestaande klantenkaart koppelen indien match met winkel. */
       loyaltyCardIdToLink?: string | null;
+      /** Alleen Landal-flow: «Gezin» / «Vrienden» voor kaartondertitel. */
+      landalTripLabel?: string | null;
     }) => {
       if (!user) return;
       setBlankVenueSlideOpen(false);
@@ -1608,6 +1644,9 @@ export default function Home() {
           isMasterTemplate: false,
           ...(storeForMasterIcon ? { masterIcon: storeForMasterIcon.logoSrc } : {}),
           ...(customIcon ? { customIconUrl: customIcon } : {}),
+          ...(landalTripLabel != null && landalTripLabel !== ""
+            ? { landalTripLabel }
+            : {}),
         }),
       ];
 
@@ -1783,14 +1822,22 @@ export default function Home() {
   const handleBlankVenuePickLandal = React.useCallback(() => {
     setBlankVenueSlideOpen(false);
     const listName = defaultLandalListName(lists.map((l) => l.name));
+    setPendingLandalChoice({ listName });
+  }, [lists]);
+
+  const handleLandalSubPick = React.useCallback((subSuffix: "Gezin" | "Vrienden") => {
+    setPendingLandalChoice(null);
+    const baseName = pendingLandalChoice?.listName ?? defaultLandalListName(lists.map((l) => l.name));
+    const listName = `${baseName} ${subSuffix}`;
     createBlankList({
       listName,
       duplicateFrom: null,
       startFrituurWizard: false,
       startCafeWizard: false,
       customIconForCreate: VENUE_TILE_ICON_LANDAL,
+      landalTripLabel: subSuffix,
     });
-  }, [createBlankList, lists]);
+  }, [createBlankList, lists, pendingLandalChoice]);
 
   const handleBlankVenuePickVakantie = React.useCallback(() => {
     setBlankVenueSlideOpen(false);
@@ -1969,7 +2016,7 @@ export default function Home() {
         className="pb-0"
         bodyClassName="pb-[var(--space-2)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:h-0"
         disableEscapeClose={
-          newListIconPickerOpen || pendingFrituurChoice != null
+          newListIconPickerOpen || pendingFrituurChoice != null || pendingLandalChoice != null
         }
         footer={
           <Button
@@ -2307,6 +2354,53 @@ export default function Home() {
               subtitle="Je doet een totaal andere bestelling"
               icon={<IconPrimaryMask src="/icons/plus-circle.svg" />}
             />
+          </button>
+        </div>
+      </SlideInModal>
+
+      <SlideInModal
+        open={pendingLandalChoice != null}
+        onClose={() => setPendingLandalChoice(null)}
+        title="Landal lijstje"
+        titleId="new-landal-choice-slide-title"
+        containerClassName="z-[60]"
+        className="pb-0"
+        bodyClassName="px-[var(--space-4)] pb-[45px] pt-[var(--space-6)]"
+      >
+        <div className="grid w-full grid-cols-2 gap-[var(--space-4)]">
+          <button
+            type="button"
+            onClick={() => handleLandalSubPick("Gezin")}
+            className={cn(
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+            )}
+          >
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={VENUE_TILE_ICON_GEZIN} alt="" width={48} height={48} className="size-full object-cover" />
+            </div>
+            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
+              Gezin
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleLandalSubPick("Vrienden")}
+            className={cn(
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+            )}
+          >
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={VENUE_TILE_ICON_VRIENDEN} alt="" width={48} height={48} className="size-full object-cover" />
+            </div>
+            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
+              Vrienden
+            </p>
           </button>
         </div>
       </SlideInModal>
