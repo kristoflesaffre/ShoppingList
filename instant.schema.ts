@@ -71,6 +71,12 @@ const schema = i.schema({
        * Ontbreekt voor producten zonder foto.
        */
       stockPhotoUrl: i.string().optional(),
+      /**
+       * Absolute datum (ISO "YYYY-MM-DD") berekend op het moment dat een item aan een
+       * dagnaam-sectie (Maandag…Zondag) wordt toegewezen. Ontbreekt op oudere items.
+       * Gebruik deze waarde in de kalenderweergave zodat datums nooit verschuiven.
+       */
+      itemDate: i.string().optional(),
     }),
     recipes: i.entity({
       name: i.string(),

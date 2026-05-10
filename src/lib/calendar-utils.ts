@@ -70,6 +70,23 @@ export function addDays(date: Date, days: number): Date {
   return d;
 }
 
+/**
+ * Berekent de absolute datum voor een dagnaam-sectie op het moment van aanroep.
+ * Startend van de maandag van de huidige week + offset; als die dag al voorbij is,
+ * wordt volgende week gebruikt. Retourneert null voor "Algemeen" e.d.
+ * Gebruik deze functie bij het OPSLAAN van een item, niet bij weergave.
+ */
+export function computeSectionAbsoluteDate(sectionTitle: string): string | null {
+  const offset = dutchDayToOffset(sectionTitle);
+  if (offset === null) return null;
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+  const monday = getMondayOfWeek(todayMidnight);
+  let date = addDays(monday, offset);
+  if (date < todayMidnight) date = addDays(date, 7);
+  return toIsoDate(date);
+}
+
 /** ISO-datumstring "YYYY-MM-DD" (lokale tijd, zonder UTC-shift). */
 export function toIsoDate(date: Date): string {
   const y = date.getFullYear();
@@ -88,6 +105,8 @@ type AnyItem = {
   name: string;
   quantity: string;
   section?: string | null;
+  /** Absolute datum "YYYY-MM-DD", opgeslagen bij aanmaken. Ontbreekt op oudere items. */
+  itemDate?: string | null;
   recipeGroupId?: string | null;
   recipeName?: string | null;
   fromStock?: boolean | null;
@@ -127,22 +146,20 @@ export function buildCalendarEntries(
       const offset = dutchDayToOffset(item.section ?? "");
       if (offset === null) continue;
 
-      let itemDate = addDays(monday, offset);
-      // Nooit in het verleden plannen voor de HUIDIGE week: als de user VANDAAG
-      // een nieuwe lijst aanmaakt en een dag kiest die al voorbij is, verschuif naar
-      // volgende week. Lijsten van eerder deze week blijven op hun originele datum.
-      const todayMidnight = new Date();
-      todayMidnight.setHours(0, 0, 0, 0);
-      const currentMonday = getMondayOfWeek(todayMidnight);
-      const listCreatedToday = listDate.getTime() === todayMidnight.getTime();
-      if (
-        listCreatedToday &&
-        monday.getTime() === currentMonday.getTime() &&
-        itemDate < todayMidnight
-      ) {
-        itemDate = addDays(itemDate, 7);
+      let iso: string;
+      let itemDate: Date;
+      if (item.itemDate) {
+        // Absolute datum opgeslagen bij aanmaken — nooit herschikken.
+        iso = item.itemDate;
+        const [y, m, d] = item.itemDate.split("-").map(Number);
+        itemDate = new Date(y, m - 1, d);
+      } else {
+        // Legacy-items: bereken vanuit lijstdatum. Als de berekende dag vóór de
+        // aanmaakdatum van de lijst valt, schuif dan één week op (stabiel anker).
+        itemDate = addDays(monday, offset);
+        if (itemDate < listDate) itemDate = addDays(itemDate, 7);
+        iso = toIsoDate(itemDate);
       }
-      const iso = toIsoDate(itemDate);
 
       if (!result.has(iso)) {
         result.set(iso, { date: itemDate, meals: [], looseIngredients: [] });

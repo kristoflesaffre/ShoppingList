@@ -65,6 +65,7 @@ import {
   getMondayOfWeek,
   dutchDayToOffset,
   addDays,
+  computeSectionAbsoluteDate,
 } from "@/lib/calendar-utils";
 import {
   categoryHeadingDisplay,
@@ -491,25 +492,23 @@ function RecipeGroupHeader({
  * Zelfde "nooit in het verleden" logica als buildCalendarEntries.
  * Bij onbekende dag of ontbrekende lijstdatum: geeft `sectionTitle` terug.
  */
-function dayTitleWithDate(sectionTitle: string, listDateStr: string): string {
+function dayTitleWithDate(sectionTitle: string, listDateStr: string, storedIsoDate?: string): string {
+  if (storedIsoDate) {
+    // Absolute datum opgeslagen bij aanmaken — nooit herschikken.
+    const [y, m, d] = storedIsoDate.split("-").map(Number);
+    const date = new Date(y, m - 1, d);
+    return `${sectionTitle} ${date.getDate()} ${date.toLocaleDateString("nl-NL", { month: "long" })}`;
+  }
+  // Legacy: bereken vanuit lijstdatum.
   const offset = dutchDayToOffset(sectionTitle);
   if (offset === null) return sectionTitle;
   const listDate = parseDutchDate(listDateStr);
   if (!listDate) return sectionTitle;
   const monday = getMondayOfWeek(listDate);
   let itemDate = addDays(monday, offset);
-  const todayMidnight = new Date();
-  todayMidnight.setHours(0, 0, 0, 0);
-  const currentMonday = getMondayOfWeek(todayMidnight);
-  if (
-    monday.getTime() === currentMonday.getTime() &&
-    itemDate < todayMidnight
-  ) {
-    itemDate = addDays(itemDate, 7);
-  }
-  const day = itemDate.getDate();
-  const month = itemDate.toLocaleDateString("nl-NL", { month: "long" });
-  return `${sectionTitle} ${day} ${month}`;
+  // Als de berekende dag vóór de aanmaakdatum valt, schuif één week op (zelfde logica als calendar-utils).
+  if (itemDate < listDate) itemDate = addDays(itemDate, 7);
+  return `${sectionTitle} ${itemDate.getDate()} ${itemDate.toLocaleDateString("nl-NL", { month: "long" })}`;
 }
 
 /** Renders sortable item cards; must be inside DndContext for drag state. */
@@ -585,7 +584,7 @@ function SortableItemItems({
         const isSectionRemoving = removingSectionTitle === section.title;
         const sectionHeading = isCategoryGrouping
           ? categoryHeadingDisplay(section.displayTitle ?? section.title)
-          : dayTitleWithDate(section.title, listDateStr ?? "");
+          : dayTitleWithDate(section.title, listDateStr ?? "", section.items[0]?.itemDate);
         return (
         <section
           key={section.title}
@@ -3041,6 +3040,7 @@ export default function ListDetailPage({
           recipeLink: it.recipeLink || undefined,
           fromStock: row.fromStock === true || undefined,
           stockPhotoUrl: typeof row.stockPhotoUrl === "string" ? row.stockPhotoUrl : undefined,
+          itemDate: typeof row.itemDate === "string" && row.itemDate ? row.itemDate : undefined,
         };
       });
   }, [listData]);
@@ -3444,8 +3444,9 @@ export default function ListDetailPage({
 
         const newIds = new Set(newItems.map((n) => n.id));
         const txns = [
-          ...newItems.map((item, _i) =>
-            db.tx.items[item.id]
+          ...newItems.map((item, _i) => {
+            const computedItemDate = computeSectionAbsoluteDate(item.section);
+            return db.tx.items[item.id]
               .update({
                 name: item.name,
                 quantity: item.quantity,
@@ -3456,9 +3457,10 @@ export default function ListDetailPage({
                 recipeGroupId: item.recipeGroupId ?? "",
                 recipeName: item.recipeName ?? "",
                 recipeLink: item.recipeLink ?? "",
+                ...(computedItemDate != null ? { itemDate: computedItemDate } : {}),
               })
-              .link({ list: listId }),
-          ),
+              .link({ list: listId });
+          }),
           ...newArray
             .filter((a) => !newIds.has(a.id))
             .map((a) =>
@@ -3785,6 +3787,9 @@ export default function ListDetailPage({
             order: idx,
             ...(newItem.fromStock ? { fromStock: true } : {}),
             ...(newItem.stockPhotoUrl ? { stockPhotoUrl: newItem.stockPhotoUrl } : {}),
+            ...(computeSectionAbsoluteDate(newItem.section) != null
+              ? { itemDate: computeSectionAbsoluteDate(newItem.section)! }
+              : {}),
           })
           .link({ list: listId }),
         ...newArray
@@ -3812,12 +3817,14 @@ export default function ListDetailPage({
 
   const handleSaveEditedItem = React.useCallback((updatedItem: ListItem) => {
     const itemCategory = resolveItemCategoryFromName(updatedItem.name);
+    const computedItemDate = computeSectionAbsoluteDate(updatedItem.section);
     db.transact(
       db.tx.items[updatedItem.id].update({
         name: updatedItem.name,
         quantity: updatedItem.quantity,
         section: updatedItem.section,
         itemCategory,
+        ...(computedItemDate != null ? { itemDate: computedItemDate } : {}),
       }),
     );
     setEditingItem(null);
@@ -3990,6 +3997,7 @@ export default function ListDetailPage({
         selectedKeys.add(key);
         const existingItems = existingByName.get(key) ?? [];
         const existingItem = existingItems[0];
+        const computedItemDate = computeSectionAbsoluteDate(targetSection);
         const payload = {
           name: item.name,
           quantity: String(item.count),
@@ -3997,6 +4005,7 @@ export default function ListDetailPage({
           section: targetSection,
           itemCategory: resolveItemCategoryFromName(item.name),
           order: existingItem ? (existingItem.order ?? 0) : batchBase + index,
+          ...(computedItemDate != null ? { itemDate: computedItemDate } : {}),
         };
         if (existingItem) {
           txs.push(db.tx.items[existingItem.id].update(payload));

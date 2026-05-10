@@ -48,6 +48,8 @@ export type ListItem = {
   fromStock?: boolean;
   /** Foto-URL van het diepvriesitem (recipePhotoUrl), voor weergave in de lijst. */
   stockPhotoUrl?: string;
+  /** Absolute datum "YYYY-MM-DD" waarop dit item gepland staat (alleen voor dagnaam-secties). */
+  itemDate?: string;
 };
 
 type Ingredient = RecipeIngredient;
