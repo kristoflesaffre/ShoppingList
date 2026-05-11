@@ -1,15 +1,10 @@
 export const VACATION_CATEGORIES = [
   "Toiletartikelen",
-  "Toiletgerief",
   "Kleding",
   "Eten & drinken",
   "Gekoelde eten en drank",
   "Elektronica",
-  "Medicijnen",
-  "Documenten",
   "Slaapspullen",
-  "Activiteiten",
-  "Schoonmaak",
   "Andere",
 ] as const;
 
