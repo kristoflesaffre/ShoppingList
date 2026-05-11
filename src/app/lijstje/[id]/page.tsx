@@ -3051,6 +3051,15 @@ export default function ListDetailPage({
   const customIconUrl = String((listData as Record<string, unknown>)?.customIconUrl ?? "");
   const isLandalOrVakantieList =
     customIconUrl.includes("landal") || customIconUrl.includes("vakantie");
+  const isLandalGezinTrip = isLandalGezinList({
+    name: listData?.name,
+    customIconUrl: customIconUrl || null,
+    landalTripLabel:
+      typeof (listData as { landalTripLabel?: string }).landalTripLabel ===
+      "string"
+        ? (listData as { landalTripLabel?: string }).landalTripLabel
+        : null,
+  });
   const [tripPersonTab, setTripPersonTab] =
     React.useState<TripPersonTab>(DEFAULT_TRIP_PERSON_TAB);
   React.useEffect(() => {
@@ -4572,7 +4581,7 @@ export default function ListDetailPage({
                     </p>
                   </div>
                 ) : null}
-                {isLandalOrVakantieList && !isMasterList ? (
+                {isLandalOrVakantieList && isLandalGezinTrip && !isMasterList ? (
                   <TabGroup
                     value={tripPersonTab}
                     onValueChange={(v) =>
