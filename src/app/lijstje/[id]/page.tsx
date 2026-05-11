@@ -3990,6 +3990,11 @@ export default function ListDetailPage({
 
   const hasItems = items.length > 0;
   const isMasterEmpty = isMasterList && !hasItems;
+  const showUncheckedFirstToggle =
+    !isMasterList &&
+    hasItems &&
+    !isEditMode &&
+    (effectiveListGroupingMode === "category" || isLandalOrVakantieList);
 
   const showListDetailHeader =
     hasItems || showSharedDetailRow || isMasterEmpty;
@@ -4170,7 +4175,7 @@ export default function ListDetailPage({
     try {
       const raw = window.localStorage.getItem(`list-grouping-mode:${listId}`);
       if (raw === "category" || raw === "day") {
-        setListGroupingMode(raw);
+        setListGroupingMode(isLandalOrVakantieList ? "category" : raw);
       } else {
         setListGroupingMode(isLandalOrVakantieList ? "category" : "day");
       }
@@ -4898,7 +4903,7 @@ export default function ListDetailPage({
             />
           ) : (
             <>
-            {effectiveListGroupingMode === "category" && !isMasterList && hasItems && !isEditMode && isShowUncheckedFirstHydrated ? (
+            {showUncheckedFirstToggle ? (
               <div className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
                 <Checkbox
                   id="unchecked-first-toggle"
