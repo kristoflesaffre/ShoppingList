@@ -26,6 +26,10 @@ import {
   inferLandalTripLabel,
   isLandalListCard,
 } from "@/lib/landal-list-card";
+import {
+  isLandalGezinList,
+  landalGezinHouseholdMembershipTransactions,
+} from "@/lib/landal-gezin-household";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import {
   MASTER_STORE_OPTIONS,
@@ -1242,6 +1246,40 @@ export default function Home() {
     if (txs.length > 0) void db.transact(txs);
   }, [user?.id, authLoading, isLoading, data?.lists]);
 
+  /** Landal-gezin: beide vaste gezinsleden zien het lijstje zonder expliciete deellink. */
+  React.useEffect(() => {
+    if (!user?.id || authLoading || isLoading) return;
+    const txs: Parameters<typeof db.transact>[0] = [];
+    for (const row of data?.lists ?? []) {
+      if (String((row as { ownerId?: string }).ownerId ?? "") !== user.id) continue;
+      if (
+        !isLandalGezinList({
+          name: String((row as { name?: string }).name ?? ""),
+          customIconUrl:
+            typeof (row as { customIconUrl?: string }).customIconUrl === "string"
+              ? (row as { customIconUrl?: string }).customIconUrl
+              : null,
+          landalTripLabel:
+            typeof (row as { landalTripLabel?: string }).landalTripLabel ===
+            "string"
+              ? (row as { landalTripLabel?: string }).landalTripLabel
+              : null,
+        })
+      ) {
+        continue;
+      }
+      txs.push(
+        ...landalGezinHouseholdMembershipTransactions(
+          String(row.id),
+          user.id,
+          (row as { memberships?: { instantUserId?: string | null }[] })
+            .memberships,
+        ),
+      );
+    }
+    if (txs.length > 0) void db.transact(txs);
+  }, [user?.id, authLoading, isLoading, data?.lists]);
+
   const savedListIconImages = React.useMemo((): SavedListIconImage[] => {
     const byDataUrl = new Map<string, SavedListIconImage>();
     const rawLibrary = (data as { listIconImages?: unknown[] } | undefined)
@@ -1694,6 +1732,18 @@ export default function Home() {
 
       if (loyaltyCardIdToLink) {
         txs.push(db.tx.lists[newId].link({ loyaltyCard: loyaltyCardIdToLink }));
+      }
+
+      if (
+        isLandalGezinList({
+          name: listName,
+          customIconUrl: customIcon,
+          landalTripLabel: landalTripLabel ?? null,
+        })
+      ) {
+        txs.push(
+          ...landalGezinHouseholdMembershipTransactions(newId, user.id, []),
+        );
       }
 
       if (pickerMasterStore) {

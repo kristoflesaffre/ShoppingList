@@ -47,6 +47,10 @@ import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { decodeLoyaltyCard } from "@/lib/decode_loyalty_card";
 import { db } from "@/lib/db";
 import {
+  isLandalGezinList,
+  landalGezinHouseholdMembershipTransactions,
+} from "@/lib/landal-gezin-household";
+import {
   APP_FAB_BOTTOM_NO_NAV_CLASS,
   APP_FAB_INNER_PX4_CLASS,
   APP_SNACKBAR_NO_NAV_FIXTURE_CLASS,
@@ -2953,6 +2957,33 @@ export default function ListDetailPage({
     () => !!(listData && user && listData.ownerId === user.id),
     [listData, user],
   );
+
+  React.useEffect(() => {
+    if (!user?.id || !listData || !isListOwner) return;
+    if (
+      !isLandalGezinList({
+        name: listData.name,
+        customIconUrl:
+          typeof (listData as { customIconUrl?: string }).customIconUrl ===
+          "string"
+            ? (listData as { customIconUrl?: string }).customIconUrl
+            : null,
+        landalTripLabel:
+          typeof (listData as { landalTripLabel?: string }).landalTripLabel ===
+          "string"
+            ? (listData as { landalTripLabel?: string }).landalTripLabel
+            : null,
+      })
+    ) {
+      return;
+    }
+    const txs = landalGezinHouseholdMembershipTransactions(
+      listId,
+      user.id,
+      listData.memberships,
+    );
+    if (txs.length > 0) void db.transact(txs);
+  }, [user?.id, listData, isListOwner, listId]);
 
   /** Andere partij op dit lijstje: eigenaar (als jij deelnemer bent) of eerste deelnemer (als jij eigenaar bent). Figma 762:3479. */
   const shareDetailOtherUserId = React.useMemo(() => {
