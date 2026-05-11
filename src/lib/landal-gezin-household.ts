@@ -27,12 +27,15 @@ export function isLandalGezinList(list: LandalListCardInput): boolean {
   return inferLandalTripLabel(list) === "Gezin";
 }
 
+/** Array-variant van het transact-argument (nooit een losse chunk). */
+type DbTxArray = Extract<Parameters<typeof db.transact>[0], unknown[]>;
+
 /** Deelnemers toevoegen voor het andere gezin-lid (eigenaar hoeft geen membership). */
 export function landalGezinHouseholdMembershipTransactions(
   listId: string,
   ownerId: string,
   memberships?: LandalGezinListMembershipRow[] | null,
-): Parameters<typeof db.transact>[0] {
+): DbTxArray {
   if (!isLandalGezinHouseholdMember(ownerId)) return [];
 
   const memberIds = new Set(
@@ -41,7 +44,7 @@ export function landalGezinHouseholdMembershipTransactions(
       .filter((id): id is string => typeof id === "string" && id.length > 0),
   );
 
-  const txs: Parameters<typeof db.transact>[0] = [];
+  const txs: DbTxArray = [];
   for (const householdUserId of LANDAL_GEZIN_HOUSEHOLD_INSTANT_USER_IDS) {
     if (householdUserId === ownerId) continue;
     if (memberIds.has(householdUserId)) continue;
