@@ -6,6 +6,16 @@ export type TripPersonTab = (typeof TRIP_PERSON_TABS)[number];
 
 export const DEFAULT_TRIP_PERSON_TAB: TripPersonTab = "Samen";
 
+/** Landal-assets: `jas_man`, `jas_vrouw`, `jas_kind`, … */
+export const TRIP_PERSON_IMAGE_SUFFIX = {
+  Kristof: "man",
+  "Chloé": "vrouw",
+  "Noë": "kind",
+} as const satisfies Partial<Record<TripPersonTab, string>>;
+
+export type TripPersonImageSuffix =
+  (typeof TRIP_PERSON_IMAGE_SUFFIX)[keyof typeof TRIP_PERSON_IMAGE_SUFFIX];
+
 const TAB_SET = new Set<string>(TRIP_PERSON_TABS);
 
 /** Bekende varianten (typfouten / ASCII) → canonieke waarde. */
@@ -23,4 +33,18 @@ export function normalizeTripPerson(
   const mapped = ALIASES[v];
   if (mapped) return mapped;
   return DEFAULT_TRIP_PERSON_TAB;
+}
+
+/** `null` voor «Samen» of onbekend — dan neutrale / generieke asset. */
+export function tripPersonImageSuffix(
+  person: TripPersonTab | string | null | undefined,
+): TripPersonImageSuffix | null {
+  const normalized = normalizeTripPerson(person);
+  if (normalized === DEFAULT_TRIP_PERSON_TAB) return null;
+  if (normalized in TRIP_PERSON_IMAGE_SUFFIX) {
+    return TRIP_PERSON_IMAGE_SUFFIX[
+      normalized as keyof typeof TRIP_PERSON_IMAGE_SUFFIX
+    ];
+  }
+  return null;
 }

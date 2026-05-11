@@ -19,6 +19,27 @@ export type VacationCategory = (typeof VACATION_CATEGORIES)[number];
  * Sorteert categorie-sectietitels in de vaste VACATION_CATEGORIES volgorde.
  * Onbekende categorieën komen vóór "Andere", "Andere" altijd als laatste.
  */
+/** Sectiesleutel of weergavetitel → vakantiecategorie voor het nieuwe-itemformulier. */
+export function resolveVacationItemCategoryFromSection(
+  sectionTitle: string,
+  displayTitle?: string,
+): VacationCategory {
+  const candidates = [displayTitle, sectionTitle].filter(
+    (value): value is string =>
+      typeof value === "string" && value.trim().length > 0,
+  );
+  for (const candidate of candidates) {
+    const normalized = candidate.split("|")[0]?.trim();
+    if (
+      normalized &&
+      (VACATION_CATEGORIES as readonly string[]).includes(normalized)
+    ) {
+      return normalized as VacationCategory;
+    }
+  }
+  return "Andere";
+}
+
 export function orderVacationCategorySections(keys: string[]): string[] {
   const order = VACATION_CATEGORIES as readonly string[];
   const andereIndex = order.indexOf("Andere");

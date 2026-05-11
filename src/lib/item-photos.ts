@@ -7,7 +7,9 @@ import {
   normalizeForMatch,
   normalizeItemPhotoSize,
   type ItemPhotoSize,
+  type MatchItemPhotoUrlOptions,
 } from "@/lib/item-photo-matching";
+import { tripPersonImageSuffix, type TripPersonTab } from "@/lib/trip-person";
 
 // Module-level cache so the fetch happens at most once per page load.
 let cachedSlugs: string[] | null = null;
@@ -68,12 +70,26 @@ export { normalizeForMatch };
  * Returns the URL for the best-matching item photo from a list of slugs,
  * or null if no match is found.
  */
+export type ItemPhotoLookupOptions = {
+  tripPerson?: TripPersonTab | string | null;
+};
+
 export function matchItemPhotoUrl(
   itemName: string,
   slugs: string[],
   size?: number,
+  options?: ItemPhotoLookupOptions,
 ): string | null {
-  return matchItemPhotoUrlBase(itemName, slugs, size, slugToFileBase);
+  const matchOptions: MatchItemPhotoUrlOptions | undefined = options?.tripPerson
+    ? { personImageSuffix: tripPersonImageSuffix(options.tripPerson) }
+    : undefined;
+  return matchItemPhotoUrlBase(
+    itemName,
+    slugs,
+    size,
+    slugToFileBase,
+    matchOptions,
+  );
 }
 
 /**
@@ -107,7 +123,11 @@ export function useItemSlugs(): string[] {
  */
 export function useItemPhotoUrl(
   size?: number,
-): (itemName: string, overrideSize?: number) => string | null {
+): (
+  itemName: string,
+  overrideSize?: number,
+  options?: ItemPhotoLookupOptions,
+) => string | null {
   const [slugs, setSlugs] = React.useState<string[]>(cachedSlugs ?? []);
   const normalizedSize = normalizeItemPhotoSize(size);
 
@@ -126,8 +146,13 @@ export function useItemPhotoUrl(
   }, []);
 
   return React.useCallback(
-    (itemName: string, overrideSize?: number) =>
-      matchItemPhotoUrl(itemName, slugs, overrideSize ?? normalizedSize),
+    (itemName: string, overrideSize?: number, options?: ItemPhotoLookupOptions) =>
+      matchItemPhotoUrl(
+        itemName,
+        slugs,
+        overrideSize ?? normalizedSize,
+        options,
+      ),
     [slugs, normalizedSize],
   );
 }

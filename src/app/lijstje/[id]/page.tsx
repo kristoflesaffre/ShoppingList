@@ -51,7 +51,7 @@ import {
   APP_FAB_INNER_PX4_CLASS,
   APP_SNACKBAR_NO_NAV_FIXTURE_CLASS,
 } from "@/lib/app-layout";
-import { useItemPhotoUrl } from "@/lib/item-photos";
+import { useItemPhotoUrl, type ItemPhotoLookupOptions } from "@/lib/item-photos";
 import type { DecodeResult } from "@/lib/loyalty_card";
 import {
   MASTER_STORE_OPTIONS,
@@ -76,7 +76,10 @@ import {
   parseMasterCategoryOrderJson,
   resolveItemCategoryFromName,
 } from "@/lib/item-ingredient-category";
-import { orderVacationCategorySections } from "@/lib/vacation-categories";
+import {
+  orderVacationCategorySections,
+  resolveVacationItemCategoryFromSection,
+} from "@/lib/vacation-categories";
 import {
   DEFAULT_TRIP_PERSON_TAB,
   TRIP_PERSON_TABS,
@@ -556,7 +559,11 @@ function SortableItemItems({
   listViewMode: "list" | "grid";
   isMasterList: boolean;
   isSharedList: boolean;
-  getPhotoUrl?: (name: string, size?: number) => string | null;
+  getPhotoUrl?: (
+    name: string,
+    size?: number,
+    options?: ItemPhotoLookupOptions,
+  ) => string | null;
   removingId: string | null;
   removingSectionTitle: string | null;
   addingId: string | null;
@@ -664,8 +671,17 @@ function SortableItemItems({
             ) : isCategoryGrouping && !isVacationList ? null : (
               <button
                 type="button"
-                aria-label={`Item toevoegen aan ${section.title}`}
-                onClick={() => onAddToSection(section.title)}
+                aria-label={`Item toevoegen aan ${sectionHeading}`}
+                onClick={() =>
+                  onAddToSection(
+                    isVacationList
+                      ? resolveVacationItemCategoryFromSection(
+                          section.title,
+                          section.displayTitle,
+                        )
+                      : section.title,
+                  )
+                }
                 className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
               >
                 <PlusCircleIcon />
@@ -700,6 +716,7 @@ function SortableItemItems({
                         isSharedList={isSharedList}
                         getPhotoUrl={getPhotoUrl}
                         savedRecipes={savedRecipes}
+                        isVacationList={isVacationList}
                         removingId={removingId}
                         addingId={addingId}
                         addingIdExpanded={addingIdExpanded}
@@ -753,6 +770,7 @@ function SortableItemItems({
                         isSharedList={isSharedList}
                         getPhotoUrl={getPhotoUrl}
                         savedRecipes={savedRecipes}
+                        isVacationList={isVacationList}
                         removingId={removingId}
                         addingId={addingId}
                         addingIdExpanded={addingIdExpanded}
@@ -1443,6 +1461,7 @@ function SortableItemRow({
   isSharedList,
   getPhotoUrl,
   savedRecipes,
+  isVacationList = false,
   removingId,
   addingId,
   addingIdExpanded,
@@ -1460,8 +1479,13 @@ function SortableItemRow({
   isDndActive: boolean;
   isMasterList: boolean;
   isSharedList: boolean;
-  getPhotoUrl?: (name: string, size?: number) => string | null;
+  getPhotoUrl?: (
+    name: string,
+    size?: number,
+    options?: ItemPhotoLookupOptions,
+  ) => string | null;
   savedRecipes?: SavedRecipe[];
+  isVacationList?: boolean;
   removingId: string | null;
   addingId: string | null;
   addingIdExpanded: boolean;
@@ -1497,6 +1521,7 @@ function SortableItemRow({
         isSharedList={isSharedList}
         getPhotoUrl={getPhotoUrl}
         savedRecipes={savedRecipes}
+        isVacationList={isVacationList}
         onCheckedChange={(checked) => onCheckedChange(item.id, checked)}
         onRemoteClaimChange={(claimUserId) =>
           onRemoteClaimChange(item.id, claimUserId)
@@ -1519,6 +1544,7 @@ function SortableItemCard({
   isSharedList,
   getPhotoUrl,
   savedRecipes,
+  isVacationList = false,
   onCheckedChange,
   onRemoteClaimChange,
   onDelete,
@@ -1532,8 +1558,13 @@ function SortableItemCard({
   listViewMode: "list" | "grid";
   isMasterList: boolean;
   isSharedList: boolean;
-  getPhotoUrl?: (name: string, size?: number) => string | null;
+  getPhotoUrl?: (
+    name: string,
+    size?: number,
+    options?: ItemPhotoLookupOptions,
+  ) => string | null;
   savedRecipes?: SavedRecipe[];
+  isVacationList?: boolean;
   onCheckedChange: (checked: boolean) => void;
   onRemoteClaimChange: (claimUserId: string | null) => void;
   onDelete: () => void;
@@ -1581,6 +1612,11 @@ function SortableItemCard({
           itemThumbnail={(() => {
             // Voor "uit voorraad"-items: gebruik de opgeslagen recipePhotoUrl.
             // Items eindigend op " (diepvries)": gebruik recept-foto uit bibliotheek.
+            const thumbSize = listViewMode === "grid" ? 240 : 160;
+            const photoLookupOptions: ItemPhotoLookupOptions | undefined =
+              isVacationList
+                ? { tripPerson: normalizeTripPerson(item.tripPerson) }
+                : undefined;
             let photoUrl: string | null | undefined;
             if (item.fromStock && item.stockPhotoUrl) {
               photoUrl = item.stockPhotoUrl;
@@ -1589,9 +1625,15 @@ function SortableItemCard({
               const recipe = savedRecipes.find(
                 (r) => r.name.trim().toLowerCase() === baseName.trim().toLowerCase(),
               );
-              photoUrl = recipe?.photoUrl ?? getPhotoUrl?.(baseName, listViewMode === "grid" ? 240 : 160);
+              photoUrl =
+                recipe?.photoUrl ??
+                getPhotoUrl?.(baseName, thumbSize, photoLookupOptions);
             } else {
-              photoUrl = getPhotoUrl?.(item.name, listViewMode === "grid" ? 240 : 160);
+              photoUrl = getPhotoUrl?.(
+                item.name,
+                thumbSize,
+                photoLookupOptions,
+              );
             }
             if (!photoUrl) return undefined;
             return (
@@ -4970,9 +5012,14 @@ export default function ListDetailPage({
                   onAddToSection={(sectionTitle) => {
                     if (
                       effectiveListGroupingMode === "category" ||
-                      isMasterList
+                      isMasterList ||
+                      isLandalOrVakantieList
                     ) {
-                      setInitialItemCategory(sectionTitle);
+                      setInitialItemCategory(
+                        isLandalOrVakantieList
+                          ? resolveVacationItemCategoryFromSection(sectionTitle)
+                          : sectionTitle,
+                      );
                       setInitialSection("Algemeen");
                     } else {
                       setInitialSection(sectionTitle);

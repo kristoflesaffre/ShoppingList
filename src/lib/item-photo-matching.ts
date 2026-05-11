@@ -7,6 +7,13 @@ export function normalizeItemPhotoSize(size?: number): ItemPhotoSize {
   return 320;
 }
 
+const LANDAL_GENDER_IMAGE_SUFFIXES = new Set(["man", "vrouw", "kind"]);
+
+function slugEndsWithGenderSuffix(slug: string): boolean {
+  const last = slug.split("_").pop();
+  return last != null && LANDAL_GENDER_IMAGE_SUFFIXES.has(last);
+}
+
 export function normalizeForMatch(name: string): string {
   return name
     .toLowerCase()
@@ -33,15 +40,22 @@ export function itemPhotoUrlFromSlug(
  * Returns the URL for the best-matching item photo from a list of normalized slugs,
  * or null if no match is found.
  */
+export type MatchItemPhotoUrlOptions = {
+  /** Landal/vakantie: `man` | `vrouw` | `kind` — kiest `jas_man` i.p.v. `jas_vrouw`. */
+  personImageSuffix?: string | null;
+};
+
 export function matchItemPhotoUrl(
   itemName: string,
   slugs: string[],
   size?: number,
   fileBaseBySlug?: Map<string, string>,
+  options?: MatchItemPhotoUrlOptions,
 ): string | null {
   const normalized = normalizeForMatch(itemName);
   if (!normalized || slugs.length === 0) return null;
   const slugSet = new Set(slugs);
+  const personImageSuffix = options?.personImageSuffix?.trim() || null;
 
   const candidates = new Set<string>([normalized]);
   if (normalized.endsWith("en") && normalized.length > 4) {
@@ -55,8 +69,25 @@ export function matchItemPhotoUrl(
   }
   const candidateList = Array.from(candidates);
 
+  if (personImageSuffix) {
+    for (const c of candidateList) {
+      const gendered = `${c}_${personImageSuffix}`;
+      if (slugSet.has(gendered)) {
+        return itemPhotoUrlFromSlug(gendered, size, fileBaseBySlug);
+      }
+    }
+  }
+
   for (const c of candidateList) {
     if (slugSet.has(c)) return itemPhotoUrlFromSlug(c, size, fileBaseBySlug);
+  }
+
+  for (const c of candidateList) {
+    const neutral = slugs.find(
+      (slug) =>
+        (slug.startsWith(c + "_") || slug === c) && !slugEndsWithGenderSuffix(slug),
+    );
+    if (neutral) return itemPhotoUrlFromSlug(neutral, size, fileBaseBySlug);
   }
 
   for (const c of candidateList) {
