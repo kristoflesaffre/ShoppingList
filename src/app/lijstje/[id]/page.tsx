@@ -4547,6 +4547,31 @@ export default function ListDetailPage({
                     ) : null}
                   </div>
                 </div>
+                {showSharedDetailRow ? (
+                  <div className="mt-1 flex min-w-0 items-center gap-1">
+                    <span className="relative size-4 shrink-0 overflow-hidden rounded-full bg-[var(--gray-100)] ring-1 ring-[var(--gray-100)]">
+                      {sharePartyAvatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- data-URL uit profiel
+                        <img
+                          src={sharePartyAvatarUrl}
+                          alt=""
+                          width={16}
+                          height={16}
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex size-full items-center justify-center">
+                          <SharePartyAvatarPlaceholder className="text-[var(--blue-300)]" />
+                        </span>
+                      )}
+                    </span>
+                    <p className="min-w-0 flex-1 truncate text-xs font-normal leading-4 tracking-normal text-[var(--gray-400)]">
+                      {shareDetailLabelKind === "with"
+                        ? `Gedeeld met ${sharePartyFirstName || "deelnemer"}`
+                        : `Gedeeld door ${sharePartyFirstName || "eigenaar"}`}
+                    </p>
+                  </div>
+                ) : null}
                 {isLandalOrVakantieList && !isMasterList ? (
                   <TabGroup
                     value={tripPersonTab}
@@ -4575,31 +4600,6 @@ export default function ListDetailPage({
                     />
                     <p className="text-sm font-normal leading-20 tracking-normal text-[var(--text-tertiary)]">
                       {masterStoreLabel}
-                    </p>
-                  </div>
-                ) : null}
-                {showSharedDetailRow ? (
-                  <div className="mt-1 flex min-w-0 items-center gap-1">
-                    <span className="relative size-4 shrink-0 overflow-hidden rounded-full bg-[var(--gray-100)] ring-1 ring-[var(--gray-100)]">
-                      {sharePartyAvatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- data-URL uit profiel
-                        <img
-                          src={sharePartyAvatarUrl}
-                          alt=""
-                          width={16}
-                          height={16}
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        <span className="flex size-full items-center justify-center">
-                          <SharePartyAvatarPlaceholder className="text-[var(--blue-300)]" />
-                        </span>
-                      )}
-                    </span>
-                    <p className="min-w-0 flex-1 truncate text-xs font-normal leading-4 tracking-normal text-[var(--gray-400)]">
-                      {shareDetailLabelKind === "with"
-                        ? `Gedeeld met ${sharePartyFirstName || "deelnemer"}`
-                        : `Gedeeld door ${sharePartyFirstName || "eigenaar"}`}
                     </p>
                   </div>
                 ) : null}
