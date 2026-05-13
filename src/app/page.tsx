@@ -68,6 +68,7 @@ import { useItemPhotoUrl } from "@/lib/item-photos";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
 import { loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
+import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import {
   type HomeSectionConfig,
   type HomeSectionId,
@@ -747,6 +748,8 @@ type HomeShoppingItem = {
   quantity: string;
   store?: string | null;
   order: number;
+  ownerId?: string | null;
+  addedByLabel?: string | null;
 };
 
 function HomeTeKopenItemCard({ item }: { item: HomeShoppingItem }) {
@@ -769,7 +772,11 @@ function HomeTeKopenItemCard({ item }: { item: HomeShoppingItem }) {
           {item.name}
         </span>
         <div className="flex items-center gap-2 w-full">
-          <span className="min-w-0 flex-1 truncate text-xs leading-4 text-[#8c929d]">{item.quantity}</span>
+          <span className="min-w-0 flex-1 truncate text-xs leading-4 text-[#8c929d]">
+            {item.addedByLabel
+              ? `${item.quantity} - ${item.addedByLabel}`
+              : item.quantity}
+          </span>
           {storeInfo && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={storeInfo.logoSrc} alt="" width={16} height={16} className="size-4 shrink-0 object-contain" aria-hidden />
@@ -1293,8 +1300,14 @@ export default function Home() {
     },
     recipes: {},
     freezerItems: {},
-    shoppingItems: {
+    shoppingItems: {},
+    shoppingShares: {
+      memberships: {},
       $: { where: { ownerId } },
+    },
+    shoppingShareMembers: {
+      shoppingShare: { memberships: {} },
+      $: { where: { instantUserId: ownerId } },
     },
   });
 
@@ -1310,6 +1323,29 @@ export default function Home() {
     for (const row of data.listMembers ?? []) {
       const list = row.list as { ownerId?: string } | null | undefined;
       if (list?.ownerId) ids.add(list.ownerId);
+    }
+    for (const share of (data as { shoppingShares?: unknown[] }).shoppingShares ?? []) {
+      const memberships = (share as { memberships?: { instantUserId?: string | null }[] })
+        .memberships ?? [];
+      for (const member of memberships) {
+        if (member.instantUserId && member.instantUserId !== user.id) {
+          ids.add(member.instantUserId);
+        }
+      }
+    }
+    for (const row of (data as { shoppingShareMembers?: unknown[] }).shoppingShareMembers ?? []) {
+      const share = (row as {
+        shoppingShare?: {
+          ownerId?: string | null;
+          memberships?: { instantUserId?: string | null }[];
+        } | null;
+      }).shoppingShare;
+      if (share?.ownerId && share.ownerId !== user.id) ids.add(share.ownerId);
+      for (const member of share?.memberships ?? []) {
+        if (member.instantUserId && member.instantUserId !== user.id) {
+          ids.add(member.instantUserId);
+        }
+      }
     }
     return Array.from(ids);
   }, [data, user?.id]);
@@ -1729,6 +1765,13 @@ export default function Home() {
 
   const homeShoppingItems = React.useMemo((): HomeShoppingItem[] => {
     if (!user?.id) return [];
+    const visibleShoppingOwnerIds = getVisibleShoppingOwnerIds({
+      userId: user.id,
+      ownedShares: (data as { shoppingShares?: unknown[] } | undefined)
+        ?.shoppingShares as Parameters<typeof getVisibleShoppingOwnerIds>[0]["ownedShares"],
+      joinedMemberships: (data as { shoppingShareMembers?: unknown[] } | undefined)
+        ?.shoppingShareMembers as Parameters<typeof getVisibleShoppingOwnerIds>[0]["joinedMemberships"],
+    });
     const raw = (data?.shoppingItems ?? []) as Array<{
       id: string;
       name?: unknown;
@@ -1738,13 +1781,23 @@ export default function Home() {
       ownerId?: unknown;
     }>;
     const items = raw
-      .filter((i) => i.ownerId === user.id && typeof i.name === "string")
+      .filter(
+        (i) =>
+          typeof i.ownerId === "string" &&
+          visibleShoppingOwnerIds.has(i.ownerId) &&
+          typeof i.name === "string",
+      )
       .map((i) => ({
         id: String(i.id),
         name: String(i.name),
         quantity: typeof i.quantity === "string" ? i.quantity : "",
         store: typeof i.store === "string" ? i.store : null,
         order: typeof i.order === "number" ? i.order : 0,
+        ownerId: typeof i.ownerId === "string" ? i.ownerId : null,
+        addedByLabel:
+          typeof i.ownerId === "string" && i.ownerId !== user.id
+            ? `toegevoegd door ${shareFirstNameByUserId.get(i.ownerId) ?? "deelnemer"}`
+            : null,
       }));
 
     // Group by store, apply saved order, then flatten (items within group keep original order)
@@ -1754,7 +1807,7 @@ export default function Home() {
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(item);
     }
-    for (const group of Array.from(groups.values())) group.sort((a, b) => a.order - b.order);
+    for (const group of Array.from(groups.values())) group.sort((a, b) => b.order - a.order);
 
     const defaultOrder = Array.from(groups.keys()).sort((a, b) => {
       if (a === "") return 1;
@@ -1768,7 +1821,7 @@ export default function Home() {
     });
     const orderedKeys = applySavedStoreOrder(defaultOrder, homeStoreOrder);
     return orderedKeys.flatMap((key) => groups.get(key) ?? []);
-  }, [data?.shoppingItems, user?.id, homeStoreOrder]);
+  }, [data, user?.id, homeStoreOrder, shareFirstNameByUserId]);
 
   const [hasUsedTeKopen, setHasUsedTeKopen] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -1836,8 +1889,20 @@ export default function Home() {
   const handleAddShoppingItem = React.useCallback(
     async (name: string, quantity: string, store: string | null) => {
       if (!user) return;
-      const allShoppingItems = (data?.shoppingItems ?? []) as Array<{ order?: number }>;
-      const maxOrder = allShoppingItems.reduce((max, i) => Math.max(max, i.order ?? 0), 0);
+      const visibleShoppingOwnerIds = getVisibleShoppingOwnerIds({
+        userId: user.id,
+        ownedShares: (data as { shoppingShares?: unknown[] } | undefined)
+          ?.shoppingShares as Parameters<typeof getVisibleShoppingOwnerIds>[0]["ownedShares"],
+        joinedMemberships: (data as { shoppingShareMembers?: unknown[] } | undefined)
+          ?.shoppingShareMembers as Parameters<typeof getVisibleShoppingOwnerIds>[0]["joinedMemberships"],
+      });
+      const allShoppingItems = (data?.shoppingItems ?? []) as Array<{
+        order?: number;
+        ownerId?: string;
+      }>;
+      const maxOrder = allShoppingItems
+        .filter((i) => i.ownerId != null && visibleShoppingOwnerIds.has(i.ownerId))
+        .reduce((max, i) => Math.max(max, i.order ?? 0), 0);
       await db.transact(
         db.tx.shoppingItems[iid()].update({
           name,
@@ -1850,7 +1915,7 @@ export default function Home() {
       );
       router.push("/te-kopen");
     },
-    [user, data?.shoppingItems, router],
+    [user, data, router],
   );
 
   const [newListName, setNewListName] = React.useState("");

@@ -65,6 +65,7 @@ import {
   listIconIsLidlDelhaizeCombo,
   masterStoreLabelFromListIcon,
 } from "@/lib/master-stores";
+import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import {
   parseDutchDate,
@@ -3353,6 +3354,185 @@ export default function ListDetailPage({
     if (masterStoreLabelFromListIcon(listIcon)) return listIcon;
     return storeFromListName?.logoSrc ?? "";
   }, [listIcon, masterIcon, storeFromListName?.logoSrc]);
+
+  const teKopenStoreLabel = React.useMemo((): string | null => {
+    if (isMasterList) return null;
+    const label = masterStoreLabelFromListIcon(effectiveStoreIcon);
+    return label || null;
+  }, [isMasterList, effectiveStoreIcon]);
+
+  const { data: teKopenRawData } = db.useQuery(
+    !isMasterList && !!user
+      ? {
+          shoppingItems: {},
+          shoppingShares: {
+            memberships: {},
+            $: { where: { ownerId: user.id } },
+          },
+          shoppingShareMembers: {
+            shoppingShare: { memberships: {} },
+            $: { where: { instantUserId: user.id } },
+          },
+        }
+      : null,
+  );
+
+  const teKopenVisibleShoppingOwnerIds = React.useMemo(() => {
+    if (!user?.id) return new Set<string>();
+    return getVisibleShoppingOwnerIds({
+      userId: user.id,
+      ownedShares: (teKopenRawData as { shoppingShares?: unknown[] } | undefined)
+        ?.shoppingShares as Parameters<typeof getVisibleShoppingOwnerIds>[0]["ownedShares"],
+      joinedMemberships: (teKopenRawData as { shoppingShareMembers?: unknown[] } | undefined)
+        ?.shoppingShareMembers as Parameters<typeof getVisibleShoppingOwnerIds>[0]["joinedMemberships"],
+    });
+  }, [user?.id, teKopenRawData]);
+
+  const teKopenOtherShoppingOwnerIds = React.useMemo(() => {
+    if (!user?.id) return [] as string[];
+    return Array.from(teKopenVisibleShoppingOwnerIds).filter((id) => id !== user.id);
+  }, [user?.id, teKopenVisibleShoppingOwnerIds]);
+
+  const teKopenShoppingProfilesQuery = React.useMemo(
+    () => ({
+      profiles: {
+        $: {
+          where:
+            teKopenOtherShoppingOwnerIds.length > 0
+              ? {
+                  or: teKopenOtherShoppingOwnerIds.map((id) => ({
+                    instantUserId: id,
+                  })),
+                }
+              : { instantUserId: "__te_kopen_profiles_none__" },
+        },
+      },
+    }),
+    [teKopenOtherShoppingOwnerIds],
+  );
+
+  const { data: teKopenShoppingProfilesData } = db.useQuery(
+    !isMasterList && !!user
+      ? (teKopenShoppingProfilesQuery as unknown as Parameters<typeof db.useQuery>[0])
+      : null,
+  );
+
+  type TeKopenProfileRow = {
+    instantUserId?: string | null;
+    firstName?: string | null;
+    avatarUrl?: string | null;
+  };
+
+  const teKopenFirstNameByUserId = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of (teKopenShoppingProfilesData?.profiles ?? []) as TeKopenProfileRow[]) {
+      const uid = p.instantUserId;
+      const firstName = p.firstName?.trim();
+      if (uid && firstName) m.set(uid, firstName);
+    }
+    return m;
+  }, [teKopenShoppingProfilesData?.profiles]);
+
+  const teKopenAvatarByUserId = React.useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const p of (teKopenShoppingProfilesData?.profiles ?? []) as TeKopenProfileRow[]) {
+      const uid = p.instantUserId;
+      if (!uid) continue;
+      const url = p.avatarUrl?.trim();
+      m.set(uid, url && url.length > 0 ? url : null);
+    }
+    return m;
+  }, [teKopenShoppingProfilesData?.profiles]);
+
+  const teKopenItems = React.useMemo((): Array<{
+    id: string;
+    name: string;
+    quantity: string;
+    ownerId: string;
+    addedBy: { firstName: string; avatarUrl: string | null } | null;
+  }> => {
+    if (!teKopenStoreLabel || !user?.id) return [];
+    const raw = (teKopenRawData?.shoppingItems ?? []) as Array<{
+      id: string;
+      name?: unknown;
+      quantity?: unknown;
+      store?: unknown;
+      ownerId?: unknown;
+      order?: unknown;
+    }>;
+    return raw
+      .filter(
+        (i) =>
+          typeof i.name === "string" &&
+          typeof i.ownerId === "string" &&
+          teKopenVisibleShoppingOwnerIds.has(i.ownerId) &&
+          i.store === teKopenStoreLabel,
+      )
+      .sort((a, b) => {
+        const ao = typeof a.order === "number" ? a.order : 0;
+        const bo = typeof b.order === "number" ? b.order : 0;
+        return bo - ao;
+      })
+      .map((i) => {
+        const ownerId = String(i.ownerId);
+        return {
+          id: String(i.id),
+          name: String(i.name),
+          quantity: typeof i.quantity === "string" ? i.quantity : "",
+          ownerId,
+          addedBy:
+            ownerId !== user.id
+              ? {
+                  firstName: teKopenFirstNameByUserId.get(ownerId) ?? "deelnemer",
+                  avatarUrl: teKopenAvatarByUserId.get(ownerId) ?? null,
+                }
+              : null,
+        };
+      });
+  }, [
+    teKopenRawData?.shoppingItems,
+    teKopenStoreLabel,
+    user?.id,
+    teKopenVisibleShoppingOwnerIds,
+    teKopenFirstNameByUserId,
+    teKopenAvatarByUserId,
+  ]);
+
+  const handleAddTeKopenItem = React.useCallback(
+    (shoppingItemId: string, name: string, quantity: string) => {
+      if (!listId) return;
+      const newId = iid();
+      const itemCategory = resolveItemCategoryFromName(name);
+      const maxOrder = items.length > 0 ? Math.max(...items.map((i) => i.order ?? 0)) : -1;
+      db.transact([
+        db.tx.items[newId]
+          .update({ name, quantity, checked: false, section: "Algemeen", itemCategory, order: maxOrder + 1 })
+          .link({ list: listId }),
+        db.tx.shoppingItems[shoppingItemId].delete(),
+      ] as Parameters<typeof db.transact>[0]);
+    },
+    [items, listId],
+  );
+
+  const handleAddAllTeKopenItems = React.useCallback(
+    (pending: Array<{ id: string; name: string; quantity: string }>) => {
+      if (!listId || pending.length === 0) return;
+      const maxOrder = items.length > 0 ? Math.max(...items.map((i) => i.order ?? 0)) : -1;
+      const txns = pending.flatMap((item, idx) => {
+        const newId = iid();
+        const itemCategory = resolveItemCategoryFromName(item.name);
+        return [
+          db.tx.items[newId]
+            .update({ name: item.name, quantity: item.quantity, checked: false, section: "Algemeen", itemCategory, order: maxOrder + 1 + idx })
+            .link({ list: listId }),
+          db.tx.shoppingItems[item.id].delete(),
+        ];
+      });
+      db.transact(txns as Parameters<typeof db.transact>[0]);
+    },
+    [items, listId],
+  );
+
   const ownerLoyaltyCardByStoreLabel = React.useMemo(() => {
     const standaloneCards = ownerLoyaltyCardsData?.loyaltyCards ?? [];
     const map = new Map<string, (typeof standaloneCards)[number]>();
@@ -4081,7 +4261,7 @@ export default function ListDetailPage({
     (effectiveListGroupingMode === "category" || isLandalOrVakantieList);
 
   const showListDetailHeader =
-    hasItems || showSharedDetailRow || isMasterEmpty;
+    hasItems || showSharedDetailRow || isMasterEmpty || teKopenItems.length > 0;
 
   const handleCompleteFrituurWizard = React.useCallback(
     (selectedItems: FrituurWizardSelectedItem[]) => {
@@ -4903,6 +5083,93 @@ export default function ListDetailPage({
             ) : null
           ) : null}
 
+          {teKopenItems.length > 0 && !isMasterList && !isVenueCounterList && !isCafeList && !isFrietenList ? (
+            <section className="flex flex-col gap-4" aria-label="Vanuit te kopen">
+              <div className="flex items-center gap-3">
+                <p className="min-w-0 flex-1 text-[18px] font-bold leading-6 tracking-normal text-[var(--blue-900)]">
+                  Vanuit te kopen
+                </p>
+                <MiniButton
+                  variant="primary"
+                  onClick={() => handleAddAllTeKopenItems(teKopenItems)}
+                >
+                  Allemaal toevoegen
+                </MiniButton>
+              </div>
+              <p className="text-base font-light leading-6 tracking-normal text-[var(--text-primary)]">
+                {"Deze items stonden klaar in je 'te kopen' lijst."}
+              </p>
+              <div className="flex flex-col gap-3">
+                {teKopenItems.map((item) => {
+                  const photoUrl = getPhotoUrl(item.name, 44);
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 rounded-[var(--radius-lg,8px)] border border-dashed border-[var(--blue-200)] bg-[var(--blue-25)] pl-4 pr-3 py-3"
+                    >
+                      {/* Product photo */}
+                      <div className="relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
+                        {photoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={photoUrl} alt="" width={44} height={44} className="size-full object-cover" />
+                        ) : (
+                          <div className="size-full bg-[var(--gray-50)]" />
+                        )}
+                      </div>
+                      {/* Name + quantity (+ door … + avatar) */}
+                      <div className="min-w-0 flex-1 flex flex-col">
+                        <p className="truncate text-base font-medium leading-6 tracking-normal text-[var(--text-primary)]">
+                          {item.name}
+                        </p>
+                        <div className="flex min-w-0 items-center gap-1">
+                          <p className="min-w-0 truncate text-sm font-normal leading-5 tracking-normal text-[var(--gray-400)]">
+                            {item.addedBy
+                              ? `${item.quantity} - door ${item.addedBy.firstName}`
+                              : item.quantity}
+                          </p>
+                          {item.addedBy?.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- profiel-data-URL
+                            <img
+                              src={item.addedBy.avatarUrl}
+                              alt=""
+                              width={16}
+                              height={16}
+                              className="size-4 shrink-0 rounded-full object-cover"
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                      {/* Divider */}
+                      <span className="h-11 w-px shrink-0 bg-[var(--blue-200)]" aria-hidden />
+                      {/* Add button */}
+                      <button
+                        type="button"
+                        aria-label={`${item.name} toevoegen aan lijstje`}
+                        onClick={() => handleAddTeKopenItem(item.id, item.name, item.quantity)}
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full text-action-primary transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="inline-block size-6 bg-action-primary"
+                          style={{
+                            WebkitMaskImage: 'url("/icons/plus-circle.svg")',
+                            maskImage: 'url("/icons/plus-circle.svg")',
+                            WebkitMaskSize: "contain",
+                            maskSize: "contain",
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskPosition: "center",
+                            maskPosition: "center",
+                          }}
+                        />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
           {isMasterCategoryOrderMode &&
           isMasterList &&
           masterCategorySnapshotTitles.length > 0 ? (
@@ -4919,7 +5186,7 @@ export default function ListDetailPage({
                 listId={listId}
               />
             </section>
-          ) : !hasItems ? (
+          ) : !hasItems && teKopenItems.length === 0 ? (
             isMasterEmpty ? (
               <section
                 className="flex flex-1 flex-col items-center justify-center gap-6 px-0 pb-8"

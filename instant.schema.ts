@@ -212,6 +212,16 @@ const schema = i.schema({
       order: i.number().optional(),
     }),
     /** Persoonlijke "te kopen"-items: producten onafhankelijk van een lijstje. */
+    shoppingShares: i.entity({
+      /** Instant auth user id van de gebruiker die zijn/haar "te kopen"-sectie deelt. */
+      ownerId: i.string().indexed(),
+      /** Unieke token voor uitnodigingslink (/deel/te-kopen/[token]); alleen gezet bij expliciete deling. */
+      shareToken: i.string().optional().unique().indexed(),
+    }),
+    /** Koppeling: gebruiker is deelnemer aan een gedeelde "te kopen"-sectie. */
+    shoppingShareMembers: i.entity({
+      instantUserId: i.string().indexed(),
+    }),
     shoppingItems: i.entity({
       name: i.string(),
       quantity: i.string(),
@@ -251,6 +261,10 @@ const schema = i.schema({
     listMemberships: {
       forward: { on: "lists", has: "many", label: "memberships" },
       reverse: { on: "listMembers", has: "one", label: "list" },
+    },
+    shoppingShareMemberships: {
+      forward: { on: "shoppingShares", has: "many", label: "memberships" },
+      reverse: { on: "shoppingShareMembers", has: "one", label: "shoppingShare" },
     },
     listLoyaltyCard: {
       forward: { on: "lists", has: "one", label: "loyaltyCard" },

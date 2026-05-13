@@ -1,19 +1,27 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { id as instantId } from "@instantdb/react";
 import { db } from "@/lib/db";
-import { cn } from "@/lib/utils";
+import { cn, isIPhoneDevice } from "@/lib/utils";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { Snackbar } from "@/components/ui/snackbar";
+import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { APP_FAB_BOTTOM_NO_NAV_CLASS, APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { MiniButton } from "@/components/ui/mini_button";
 import { StoreOrderPanel, loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
+import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
+
+const ShareListModal = dynamic(
+  () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
+  { ssr: false },
+);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,6 +32,20 @@ type ShoppingItem = {
   store?: string | null;
   checked: boolean;
   order: number;
+  ownerId?: string | null;
+};
+
+type ShoppingShare = {
+  id: string;
+  ownerId?: string | null;
+  shareToken?: string | null;
+  memberships?: { id?: string; instantUserId?: string | null }[] | null;
+};
+
+type ProfileRow = {
+  instantUserId?: string | null;
+  firstName?: string | null;
+  avatarUrl?: string | null;
 };
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -67,22 +89,45 @@ function PencilIcon({ className }: { className?: string }) {
   );
 }
 
+function ChevronRightIcon() {
+  return (
+    <span
+      aria-hidden
+      className="inline-block size-6 shrink-0 bg-[var(--action-primary)]"
+      style={{
+        WebkitMaskImage: "url(/icons/chevron.svg)",
+        maskImage: "url(/icons/chevron.svg)",
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+        transform: "rotate(-90deg)",
+      }}
+    />
+  );
+}
+
 // ─── Item card ────────────────────────────────────────────────────────────────
 
 function ShoppingItemCard({
   item,
   isEditing,
+  addedBy,
   onDelete,
 }: {
   item: ShoppingItem;
   isEditing: boolean;
+  /** Figma 1477:11019 — «1 stuk - door Chloé» + 16px avatar, alles neutraal 400. */
+  addedBy?: { firstName: string; avatarUrl?: string | null } | null;
   onDelete: (id: string) => void;
 }) {
   const getPhoto = useItemPhotoUrl(160);
   const photoSrc = getPhoto(item.name);
 
   return (
-    <div className="flex h-16 w-full items-end gap-3 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-white px-3 py-3">
+    <div className="flex h-16 w-full items-end gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-white px-3 py-3">
       {photoSrc ? (
         <img
           src={photoSrc}
@@ -98,9 +143,23 @@ function ShoppingItemCard({
         <span className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
           {item.name}
         </span>
-        <span className="text-xs leading-4 text-[var(--text-tertiary)]">
-          {item.quantity}
-        </span>
+        <div className="flex min-w-0 items-center gap-1">
+          <span className="min-w-0 truncate text-xs font-normal leading-4 tracking-normal text-[var(--gray-400)]">
+            {addedBy
+              ? `${item.quantity} - door ${addedBy.firstName}`
+              : item.quantity}
+          </span>
+          {addedBy?.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- profiel-data-URL
+            <img
+              src={addedBy.avatarUrl}
+              alt=""
+              width={16}
+              height={16}
+              className="size-4 shrink-0 rounded-full object-cover"
+            />
+          ) : null}
+        </div>
       </div>
       {isEditing && (
         <button
@@ -187,9 +246,24 @@ export default function TeKopenPage() {
   const [storeOrder, setStoreOrder] = React.useState<string[] | null>(() => loadStoreOrder());
   const [lastDeletedItem, setLastDeletedItem] = React.useState<ShoppingItem | null>(null);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [shareModalOpen, setShareModalOpen] = React.useState(false);
+  const [localShareToken, setLocalShareToken] = React.useState<string | null>(null);
 
   const { data, isLoading: dataLoading } = db.useQuery(
-    user ? { shoppingItems: {} } : null,
+    user
+      ? {
+          shoppingItems: {},
+          shoppingShares: {
+            memberships: {},
+            $: { where: { ownerId: user.id } },
+          },
+          shoppingShareMembers: {
+            shoppingShare: { memberships: {} },
+            $: { where: { instantUserId: user.id } },
+          },
+        }
+      : null,
   );
 
   React.useEffect(() => {
@@ -201,15 +275,62 @@ export default function TeKopenPage() {
     return () => window.clearTimeout(timeout);
   }, [snackbarMessage]);
 
-  if (authLoading || dataLoading) return <PageSpinner />;
-  if (!user) {
-    router.replace("/auth");
-    return null;
-  }
+  const ownedShoppingShare = ((data?.shoppingShares ?? []) as ShoppingShare[])[0] ?? null;
+  const visibleShoppingOwnerIds = getVisibleShoppingOwnerIds({
+    userId: user?.id,
+    ownedShares: data?.shoppingShares as ShoppingShare[] | undefined,
+    joinedMemberships: data?.shoppingShareMembers as
+      | { shoppingShare?: ShoppingShare | null }[]
+      | undefined,
+  });
+  const otherShoppingOwnerIds = React.useMemo(() => {
+    if (!user?.id) return [];
+    return Array.from(visibleShoppingOwnerIds).filter((id) => id !== user.id);
+  }, [user?.id, visibleShoppingOwnerIds]);
+  const shoppingProfilesQuery = React.useMemo(
+    () => ({
+      profiles: {
+        $: {
+          where:
+            otherShoppingOwnerIds.length > 0
+              ? {
+                  or: otherShoppingOwnerIds.map((id) => ({
+                    instantUserId: id,
+                  })),
+                }
+              : { instantUserId: "__te_kopen_profiles_none__" },
+        },
+      },
+    }),
+    [otherShoppingOwnerIds],
+  );
+  const { data: shoppingProfilesData } = db.useQuery(
+    shoppingProfilesQuery as unknown as Parameters<typeof db.useQuery>[0],
+  );
+  const shoppingFirstNameByUserId = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of (shoppingProfilesData?.profiles ?? []) as ProfileRow[]) {
+      const uid = p.instantUserId;
+      const firstName = p.firstName?.trim();
+      if (uid && firstName) m.set(uid, firstName);
+    }
+    return m;
+  }, [shoppingProfilesData?.profiles]);
+
+  const shoppingAvatarByUserId = React.useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const p of (shoppingProfilesData?.profiles ?? []) as ProfileRow[]) {
+      const uid = p.instantUserId;
+      if (!uid) continue;
+      const url = p.avatarUrl?.trim();
+      m.set(uid, url && url.length > 0 ? url : null);
+    }
+    return m;
+  }, [shoppingProfilesData?.profiles]);
 
   const allItems: ShoppingItem[] = ((data?.shoppingItems ?? []) as ShoppingItem[])
-    .filter((item) => (item as unknown as { ownerId?: string }).ownerId === user.id)
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    .filter((item) => item.ownerId != null && visibleShoppingOwnerIds.has(item.ownerId))
+    .sort((a, b) => (b.order ?? 0) - (a.order ?? 0));
 
   // Group by store (null = geen winkel, represented as "" in storeOrder)
   const storeGroups = new Map<string | null, ShoppingItem[]>();
@@ -271,7 +392,7 @@ export default function TeKopenPage() {
         ...(item.store ? { store: item.store } : {}),
         checked: item.checked,
         order: item.order,
-        ownerId: user.id,
+        ownerId: item.ownerId ?? user.id,
       }),
     );
     setLastDeletedItem(null);
@@ -281,6 +402,69 @@ export default function TeKopenPage() {
   function openAddForStore(store: string | null) {
     setPreselectedStore(store);
     setAddOpen(true);
+  }
+
+  const ensureShareToken = React.useCallback(async () => {
+    if (!user) return null;
+    const existingToken = ownedShoppingShare?.shareToken ?? localShareToken;
+    if (existingToken) return existingToken;
+
+    const token = crypto.randomUUID();
+    if (ownedShoppingShare?.id) {
+      await db.transact(db.tx.shoppingShares[ownedShoppingShare.id].update({ shareToken: token }));
+    } else {
+      await db.transact(
+        db.tx.shoppingShares[instantId()].update({
+          ownerId: user.id,
+          shareToken: token,
+        }),
+      );
+    }
+    setLocalShareToken(token);
+    return token;
+  }, [user, ownedShoppingShare?.id, ownedShoppingShare?.shareToken, localShareToken]);
+
+  const handleShareInvitePress = React.useCallback(async () => {
+    if (!user) return;
+
+    const canNativeShare =
+      isIPhoneDevice() &&
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function";
+
+    if (canNativeShare) {
+      try {
+        const token = await ensureShareToken();
+        if (!token || typeof window === "undefined") return;
+        const url = `${window.location.origin}/deel/te-kopen/${encodeURIComponent(token)}`;
+        await navigator.share({
+          title: "Lijstje delen",
+          text: "Schrijf mee op dit lijstje:",
+          url,
+        });
+        setSettingsOpen(false);
+      } catch (e) {
+        const err = e as { name?: string };
+        if (err?.name === "AbortError") return;
+        setShareModalOpen(true);
+      }
+      return;
+    }
+
+    await ensureShareToken();
+    setShareModalOpen(true);
+  }, [user, ensureShareToken]);
+
+  const shareUrl = React.useMemo(() => {
+    const tok = ownedShoppingShare?.shareToken ?? localShareToken;
+    if (!tok || typeof window === "undefined") return "";
+    return `${window.location.origin}/deel/te-kopen/${encodeURIComponent(tok)}`;
+  }, [ownedShoppingShare?.shareToken, localShareToken]);
+
+  if (authLoading || dataLoading) return <PageSpinner />;
+  if (!user) {
+    router.replace("/auth");
+    return null;
   }
 
   return (
@@ -307,7 +491,14 @@ export default function TeKopenPage() {
             <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
               Te kopen
             </p>
-            <div className="size-6 shrink-0" aria-hidden />
+            <button
+              type="button"
+              aria-label="Instellingen"
+              onClick={() => setSettingsOpen(true)}
+              className="flex size-6 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              <MaskIcon src="/icons/dots.svg" className="size-6 bg-current" />
+            </button>
           </header>
         </div>
       </div>
@@ -400,6 +591,18 @@ export default function TeKopenPage() {
                         key={item.id}
                         item={item}
                         isEditing={isEditing}
+                        addedBy={
+                          item.ownerId && item.ownerId !== user.id
+                            ? {
+                                firstName:
+                                  shoppingFirstNameByUserId.get(item.ownerId) ??
+                                  "deelnemer",
+                                avatarUrl: shoppingAvatarByUserId.get(
+                                  item.ownerId,
+                                ),
+                              }
+                            : null
+                        }
                         onDelete={handleDelete}
                       />
                     ))}
@@ -442,6 +645,33 @@ export default function TeKopenPage() {
         onClose={() => setAddOpen(false)}
         onAdd={handleAdd}
         initialStore={preselectedStore}
+      />
+
+      <SlideInModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title="Instellingen"
+        titleId="te-kopen-settings-title"
+        containerClassName="z-[55]"
+        bodyClassName="px-[var(--space-4)] pb-[45px] pt-[var(--space-6)]"
+      >
+        <button
+          type="button"
+          onClick={() => void handleShareInvitePress()}
+          className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+        >
+          <span className="flex-1 text-base font-medium leading-6 text-[var(--text-primary)]">
+            Lijstje delen
+          </span>
+          <ChevronRightIcon />
+        </button>
+      </SlideInModal>
+
+      <ShareListModal
+        open={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        shareUrl={shareUrl}
+        urlReady={Boolean(shareUrl)}
       />
     </div>
   );
