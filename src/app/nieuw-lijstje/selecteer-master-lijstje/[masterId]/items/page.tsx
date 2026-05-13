@@ -8,12 +8,17 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
-import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
+import {
+  MASTER_STORE_OPTIONS,
+  listIconIsLidlDelhaizeCombo,
+  masterStoreLabelFromListIcon,
+} from "@/lib/master-stores";
 import { defaultNewListName } from "@/lib/list-default-name";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import { SwipeToAdd } from "@/components/ui/swipe_to_add";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { useItemPhotoUrl } from "@/lib/item-photos";
+import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import {
   categoryHeadingDisplay,
   orderedCategorySectionTitles,
@@ -48,6 +53,21 @@ type MasterList = {
   loyaltyCard: MasterLoyaltySnapshot | null;
   /** Tweede slot (Lidl) bij combi Lidl/Delhaize-master. */
   loyaltyCardSecondary: MasterLoyaltySnapshot | null;
+};
+
+type ShoppingItem = {
+  id: string;
+  name: string;
+  quantity: string;
+  store?: string | null;
+  ownerId?: string | null;
+  order?: number | null;
+};
+
+type ProfileRow = {
+  instantUserId?: string | null;
+  firstName?: string | null;
+  avatarUrl?: string | null;
 };
 
 function BackArrowIcon({ className }: { className?: string }) {
@@ -271,6 +291,70 @@ function SelectableItemCard({
   );
 }
 
+function TeKopenSuggestionCard({
+  item,
+  photoUrl,
+  addedBy,
+  onAdd,
+}: {
+  item: ShoppingItem;
+  photoUrl?: string | null;
+  addedBy?: { firstName: string; avatarUrl: string | null } | null;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="flex w-full min-w-0 items-center gap-3 rounded-md border border-dashed border-[var(--blue-200)] bg-[var(--blue-25)] py-3 pl-4 pr-3 text-left">
+      {photoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
+        <img
+          src={photoUrl}
+          alt=""
+          width={44}
+          height={44}
+          className="size-11 shrink-0 rounded-[4px] object-contain"
+          aria-hidden
+          decoding="async"
+        />
+      ) : (
+        <div className="size-11 shrink-0 rounded-[4px] bg-[var(--gray-50)]" aria-hidden />
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-base font-medium leading-24 tracking-normal text-text-primary">
+          {item.name}
+        </p>
+        <div className="flex min-w-0 items-center gap-1">
+          <p className="min-w-0 truncate text-sm font-normal leading-20 tracking-normal text-[var(--gray-400)]">
+            {addedBy
+              ? `${item.quantity} - door ${addedBy.firstName}`
+              : item.quantity}
+          </p>
+          {addedBy?.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- profiel-data-URL
+            <img
+              src={addedBy.avatarUrl}
+              alt=""
+              width={16}
+              height={16}
+              className="size-4 shrink-0 rounded-full object-cover"
+            />
+          ) : null}
+        </div>
+      </div>
+      <span className="relative flex h-11 w-0 shrink-0 items-center justify-center">
+        <span className="absolute left-1/2 top-0 h-11 w-px -translate-x-1/2 bg-[var(--blue-200)]" />
+      </span>
+      <button
+        type="button"
+        onClick={onAdd}
+        className="flex shrink-0 items-center rounded-pill p-1 text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+        aria-label={`Voeg "${item.name}" toe vanuit te kopen`}
+      >
+        <PlusCircleIcon className="size-6 shrink-0" />
+      </button>
+    </div>
+  );
+}
+
 export default function SelecteerMasterItemsPage() {
   const router = useRouter();
   const params = useParams<{ masterId: string }>();
@@ -289,6 +373,15 @@ export default function SelecteerMasterItemsPage() {
       loyaltyCard: {},
       loyaltyCardSecondary: {},
       $: { where: { ownerId } },
+    },
+    shoppingItems: {},
+    shoppingShares: {
+      memberships: {},
+      $: { where: { ownerId } },
+    },
+    shoppingShareMembers: {
+      shoppingShare: { memberships: {} },
+      $: { where: { instantUserId: ownerId } },
     },
   });
 
@@ -377,13 +470,23 @@ export default function SelecteerMasterItemsPage() {
   const [selectedQuantitiesById, setSelectedQuantitiesById] = React.useState<
     Record<string, number>
   >({});
+  const [selectedTeKopenItemIds, setSelectedTeKopenItemIds] = React.useState<
+    Set<string>
+  >(() => new Set());
   const [hiddenItemIds, setHiddenItemIds] = React.useState<Set<string>>(
+    () => new Set(),
+  );
+  const [hiddenTeKopenItemIds, setHiddenTeKopenItemIds] = React.useState<Set<string>>(
     () => new Set(),
   );
   const [removingItemIds, setRemovingItemIds] = React.useState<Set<string>>(
     () => new Set(),
   );
+  const [removingTeKopenItemIds, setRemovingTeKopenItemIds] = React.useState<Set<string>>(
+    () => new Set(),
+  );
   const hideTimeoutRef = React.useRef<Record<string, number>>({});
+  const teKopenHideTimeoutRef = React.useRef<Record<string, number>>({});
   const REMOVE_ANIM_MS = 300;
   const ADDED_STATE_MS = 1000;
 
@@ -399,6 +502,8 @@ export default function SelecteerMasterItemsPage() {
     return () => {
       Object.values(hideTimeoutRef.current).forEach((t) => window.clearTimeout(t));
       hideTimeoutRef.current = {};
+      Object.values(teKopenHideTimeoutRef.current).forEach((t) => window.clearTimeout(t));
+      teKopenHideTimeoutRef.current = {};
     };
   }, []);
 
@@ -456,6 +561,30 @@ export default function SelecteerMasterItemsPage() {
     [clearHideTimer],
   );
 
+  const scheduleTeKopenHide = React.useCallback((itemId: string) => {
+    const existing = teKopenHideTimeoutRef.current[itemId];
+    if (existing) window.clearTimeout(existing);
+    teKopenHideTimeoutRef.current[itemId] = window.setTimeout(() => {
+      setRemovingTeKopenItemIds((prev) => {
+        const next = new Set(prev);
+        next.add(itemId);
+        return next;
+      });
+      window.setTimeout(() => {
+        setHiddenTeKopenItemIds((prev) => {
+          const next = new Set(prev);
+          next.add(itemId);
+          return next;
+        });
+        setRemovingTeKopenItemIds((prev) => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      }, REMOVE_ANIM_MS);
+    }, ADDED_STATE_MS);
+  }, []);
+
   const restoreOriginalState = React.useCallback(
     (itemId: string) => {
       clearHideTimer(itemId);
@@ -488,6 +617,94 @@ export default function SelecteerMasterItemsPage() {
     return store?.label ?? "Winkel";
   }, [masterList]);
 
+  const teKopenStoreLabels = React.useMemo(() => {
+    if (!masterList) return [] as string[];
+    if (listIconIsLidlDelhaizeCombo(masterList.icon)) {
+      return ["Lidl", "Delhaize", "Lidl / Delhaize"];
+    }
+    const label = masterStoreLabelFromListIcon(masterList.icon);
+    return label ? [label] : [];
+  }, [masterList]);
+
+  const visibleShoppingOwnerIds = React.useMemo(() => {
+    if (!user?.id) return new Set<string>();
+    return getVisibleShoppingOwnerIds({
+      userId: user.id,
+      ownedShares: (data as { shoppingShares?: unknown[] } | undefined)
+        ?.shoppingShares as Parameters<typeof getVisibleShoppingOwnerIds>[0]["ownedShares"],
+      joinedMemberships: (data as { shoppingShareMembers?: unknown[] } | undefined)
+        ?.shoppingShareMembers as Parameters<typeof getVisibleShoppingOwnerIds>[0]["joinedMemberships"],
+    });
+  }, [data, user?.id]);
+
+  const otherShoppingOwnerIds = React.useMemo(() => {
+    if (!user?.id) return [] as string[];
+    return Array.from(visibleShoppingOwnerIds).filter((id) => id !== user.id);
+  }, [user?.id, visibleShoppingOwnerIds]);
+
+  const { data: shoppingProfilesData } = db.useQuery(
+    !authLoading && user
+      ? {
+          profiles: {
+            $: {
+              where:
+                otherShoppingOwnerIds.length > 0
+                  ? {
+                      or: otherShoppingOwnerIds.map((id) => ({
+                        instantUserId: id,
+                      })),
+                    }
+                  : { instantUserId: "__master_te_kopen_profiles_none__" },
+            },
+          },
+        }
+      : null,
+  );
+
+  const shoppingFirstNameByUserId = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of (shoppingProfilesData?.profiles ?? []) as ProfileRow[]) {
+      const uid = p.instantUserId;
+      const firstName = p.firstName?.trim();
+      if (uid && firstName) m.set(uid, firstName);
+    }
+    return m;
+  }, [shoppingProfilesData?.profiles]);
+
+  const shoppingAvatarByUserId = React.useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const p of (shoppingProfilesData?.profiles ?? []) as ProfileRow[]) {
+      const uid = p.instantUserId;
+      if (!uid) continue;
+      const url = p.avatarUrl?.trim();
+      m.set(uid, url && url.length > 0 ? url : null);
+    }
+    return m;
+  }, [shoppingProfilesData?.profiles]);
+
+  const teKopenItems = React.useMemo(() => {
+    if (teKopenStoreLabels.length === 0) return [] as ShoppingItem[];
+    const allowedStores = new Set(teKopenStoreLabels);
+    return ((data?.shoppingItems ?? []) as ShoppingItem[])
+      .filter(
+        (item) =>
+          typeof item.id === "string" &&
+          typeof item.name === "string" &&
+          typeof item.quantity === "string" &&
+          typeof item.ownerId === "string" &&
+          visibleShoppingOwnerIds.has(item.ownerId) &&
+          typeof item.store === "string" &&
+          allowedStores.has(item.store) &&
+          !hiddenTeKopenItemIds.has(item.id),
+      )
+      .sort((a, b) => (b.order ?? 0) - (a.order ?? 0));
+  }, [
+    data?.shoppingItems,
+    hiddenTeKopenItemIds,
+    teKopenStoreLabels,
+    visibleShoppingOwnerIds,
+  ]);
+
   const visibleSections = React.useMemo(() => {
     if (!masterList) return [] as { title: string; items: TemplateItem[] }[];
     const grouped = new Map<string, TemplateItem[]>();
@@ -505,6 +722,9 @@ export default function SelecteerMasterItemsPage() {
     }));
   }, [masterList, hiddenItemIds]);
 
+  const selectedItemCount =
+    Object.keys(selectedQuantitiesById).length + selectedTeKopenItemIds.size;
+
   const handleAdd = React.useCallback(
     (item: TemplateItem) => {
       if (hiddenItemIds.has(item.id) || removingItemIds.has(item.id)) return;
@@ -517,6 +737,29 @@ export default function SelecteerMasterItemsPage() {
     },
     [hiddenItemIds, parseQuantity, removingItemIds, scheduleHide],
   );
+
+  const handleAddTeKopenItem = React.useCallback(
+    (item: ShoppingItem) => {
+      if (hiddenTeKopenItemIds.has(item.id) || removingTeKopenItemIds.has(item.id)) return;
+      setSelectedTeKopenItemIds((prev) => {
+        const next = new Set(prev);
+        next.add(item.id);
+        return next;
+      });
+      scheduleTeKopenHide(item.id);
+    },
+    [hiddenTeKopenItemIds, removingTeKopenItemIds, scheduleTeKopenHide],
+  );
+
+  const handleAddAllTeKopenItems = React.useCallback(() => {
+    if (teKopenItems.length === 0) return;
+    setSelectedTeKopenItemIds((prev) => {
+      const next = new Set(prev);
+      for (const item of teKopenItems) next.add(item.id);
+      return next;
+    });
+    for (const item of teKopenItems) scheduleTeKopenHide(item.id);
+  }, [scheduleTeKopenHide, teKopenItems]);
 
   const handleIncrement = React.useCallback(
     (item: TemplateItem) => {
@@ -543,13 +786,15 @@ export default function SelecteerMasterItemsPage() {
 
   const handleDone = React.useCallback(() => {
     if (!user || !masterList) return;
+    const selectedTeKopenItems = ((data?.shoppingItems ?? []) as ShoppingItem[])
+      .filter((i) => selectedTeKopenItemIds.has(i.id));
     const selectedItems = masterList.items
       .map((i) => ({
         ...i,
         selectedAmount: selectedQuantitiesById[i.id] ?? null,
       }))
       .filter((i) => i.selectedAmount != null);
-    if (selectedItems.length === 0) return;
+    if (selectedItems.length === 0 && selectedTeKopenItems.length === 0) return;
 
     const myLists = (data?.lists ?? []) as any[];
     const now = new Date();
@@ -574,6 +819,18 @@ export default function SelecteerMasterItemsPage() {
         ownerId: user.id,
         isMasterTemplate: false,
       }),
+      ...selectedTeKopenItems.map((item, index) =>
+        db.tx.items[iid()]
+          .update({
+            name: item.name,
+            quantity: item.quantity,
+            checked: false,
+            section: "Algemeen",
+            itemCategory: resolveItemCategoryFromName(item.name),
+            order: index,
+          })
+          .link({ list: newId }),
+      ),
       ...selectedItems.map((item, index) =>
         db.tx.items[iid()]
           .update({
@@ -585,13 +842,14 @@ export default function SelecteerMasterItemsPage() {
             checked: false,
             section: item.section,
             itemCategory: resolveItemCategoryFromName(item.name),
-            order: index,
+            order: selectedTeKopenItems.length + index,
             recipeGroupId: item.recipeGroupId ?? "",
             recipeName: item.recipeName ?? "",
             recipeLink: item.recipeLink ?? "",
           })
           .link({ list: newId }),
       ),
+      ...selectedTeKopenItems.map((item) => db.tx.shoppingItems[item.id].delete()),
     ];
 
     if (masterList.loyaltyCard) {
@@ -628,12 +886,14 @@ export default function SelecteerMasterItemsPage() {
     router.push(`/lijstje/${newId}`);
   }, [
     data?.lists,
+    data?.shoppingItems,
     formatQuantity,
     listName,
     masterList,
     parseQuantity,
     router,
     selectedQuantitiesById,
+    selectedTeKopenItemIds,
     user,
   ]);
 
@@ -696,10 +956,10 @@ export default function SelecteerMasterItemsPage() {
             <button
               type="button"
               onClick={handleDone}
-              disabled={Object.keys(selectedQuantitiesById).length === 0}
+              disabled={selectedItemCount === 0}
               className={cn(
                 "inline-flex items-center gap-1 rounded-pill px-2 py-1 text-sm leading-20 tracking-normal",
-                Object.keys(selectedQuantitiesById).length > 0
+                selectedItemCount > 0
                   ? "bg-action-primary text-[var(--white)]"
                   : "bg-[var(--blue-25)] text-[var(--blue-300)]",
               )}
@@ -709,10 +969,69 @@ export default function SelecteerMasterItemsPage() {
             </button>
           </div>
 
-          <p className="text-base font-light leading-24 tracking-normal text-text-primary">
-            Selecteer hieronder de items uit je favorietenlijst die je wil
-            toevoegen aan je weeklijstje.
-          </p>
+          {teKopenItems.length > 0 ? (
+            <section className="flex flex-col gap-4" aria-label="Vanuit te kopen">
+              <div className="flex items-center gap-3">
+                <h3 className="min-w-0 flex-1 text-[18px] font-bold leading-6 tracking-normal text-[var(--blue-900)]">
+                  Vanuit te kopen
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleAddAllTeKopenItems}
+                  className="inline-flex h-6 shrink-0 items-center justify-center rounded-pill bg-action-primary px-4 text-xs font-medium leading-16 tracking-normal text-white transition-colors hover:bg-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                >
+                  Allemaal toevoegen
+                </button>
+              </div>
+              <p className="text-base font-light leading-24 tracking-normal text-text-primary">
+                {"Deze items stonden klaar in je 'te kopen' lijst."}
+              </p>
+              <div className="flex w-full flex-col gap-3">
+                {teKopenItems.map((item) => {
+                  const isRemoving = removingTeKopenItemIds.has(item.id);
+                  const ownerId = item.ownerId ?? "";
+                  const addedBy =
+                    user?.id && ownerId && ownerId !== user.id
+                      ? {
+                          firstName:
+                            shoppingFirstNameByUserId.get(ownerId) ??
+                            "deelnemer",
+                          avatarUrl:
+                            shoppingAvatarByUserId.get(ownerId) ?? null,
+                        }
+                      : null;
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+                        isRemoving
+                          ? "max-h-0 opacity-0 mb-0"
+                          : "max-h-[200px] opacity-100",
+                      )}
+                    >
+                      <TeKopenSuggestionCard
+                        item={item}
+                        photoUrl={getPhotoUrl(item.name)}
+                        addedBy={addedBy}
+                        onAdd={() => handleAddTeKopenItem(item)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
+          <section className="flex flex-col gap-4" aria-label="Items favorieten lijstje">
+            <h3 className="text-[18px] font-bold leading-6 tracking-normal text-[var(--blue-900)]">
+              Items favorieten lijstje
+            </h3>
+            <p className="text-base font-light leading-24 tracking-normal text-text-primary">
+              Selecteer hieronder de items uit je favorietenlijst die je wil
+              toevoegen aan je weeklijstje.
+            </p>
+          </section>
 
           <div className="flex w-full flex-col gap-6">
             {visibleSections.map((section) => (
@@ -772,7 +1091,7 @@ export default function SelecteerMasterItemsPage() {
               type="button"
               variant="primary"
               onClick={handleDone}
-              disabled={Object.keys(selectedQuantitiesById).length === 0}
+              disabled={selectedItemCount === 0}
             >
               Gereed
             </Button>
