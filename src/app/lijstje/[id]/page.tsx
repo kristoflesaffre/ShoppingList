@@ -3356,11 +3356,14 @@ export default function ListDetailPage({
     return storeFromListName?.logoSrc ?? "";
   }, [listIcon, masterIcon, storeFromListName?.logoSrc]);
 
-  const teKopenStoreLabel = React.useMemo((): string | null => {
-    if (isMasterList) return null;
-    if (isLandalListCard(customIconUrl)) return "Landal";
+  const teKopenStoreLabels = React.useMemo((): string[] => {
+    if (isMasterList) return [];
+    if (isLandalListCard(customIconUrl)) return ["Landal"];
+    if (listIconIsLidlDelhaizeCombo(effectiveStoreIcon)) {
+      return ["Lidl", "Delhaize", "Lidl / Delhaize"];
+    }
     const label = masterStoreLabelFromListIcon(effectiveStoreIcon);
-    return label || null;
+    return label ? [label] : [];
   }, [isMasterList, customIconUrl, effectiveStoreIcon]);
 
   const { data: teKopenRawData } = db.useQuery(
@@ -3453,7 +3456,8 @@ export default function ListDetailPage({
     ownerId: string;
     addedBy: { firstName: string; avatarUrl: string | null } | null;
   }> => {
-    if (!teKopenStoreLabel || !user?.id) return [];
+    if (teKopenStoreLabels.length === 0 || !user?.id) return [];
+    const allowedStores = new Set(teKopenStoreLabels);
     const raw = (teKopenRawData?.shoppingItems ?? []) as Array<{
       id: string;
       name?: unknown;
@@ -3468,7 +3472,8 @@ export default function ListDetailPage({
           typeof i.name === "string" &&
           typeof i.ownerId === "string" &&
           teKopenVisibleShoppingOwnerIds.has(i.ownerId) &&
-          i.store === teKopenStoreLabel,
+          typeof i.store === "string" &&
+          allowedStores.has(i.store),
       )
       .sort((a, b) => {
         const ao = typeof a.order === "number" ? a.order : 0;
@@ -3493,7 +3498,7 @@ export default function ListDetailPage({
       });
   }, [
     teKopenRawData?.shoppingItems,
-    teKopenStoreLabel,
+    teKopenStoreLabels,
     user?.id,
     teKopenVisibleShoppingOwnerIds,
     teKopenFirstNameByUserId,
