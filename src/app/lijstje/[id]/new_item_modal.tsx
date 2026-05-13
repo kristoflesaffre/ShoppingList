@@ -26,6 +26,7 @@ import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
 import { VACATION_CATEGORIES } from "@/lib/vacation-categories";
+import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 
 const RecipeIngredientSortableList = dynamic(
   () => import("@/app/recepten/recipe_ingredient_sortable_list").then((m) => m.RecipeIngredientSortableList),
@@ -129,6 +130,7 @@ export function NewItemModal({
   isMasterList = false,
   isVacationList = false,
   initialTripPerson,
+  groupingMode = "day",
 }: {
   open: boolean;
   onClose: () => void;
@@ -144,7 +146,7 @@ export function NewItemModal({
   editingItem?: ListItem | null;
   onSave?: (item: ListItem) => void;
   initialSection?: string | null;
-  /** Bij groepering “per categorie”: vooringestelde winkel-categorie voor het nieuwe item. */
+  /** Bij groepering "per categorie": vooringestelde winkel-categorie voor het nieuwe item. */
   initialItemCategory?: string | null;
   storedRecipes: SavedRecipe[];
   onSaveRecipeToLibrary: (recipe: SavedRecipe) => void;
@@ -152,8 +154,10 @@ export function NewItemModal({
   isMasterList?: boolean;
   /** Landal/Vakantie-lijstje: verbergt dag + recept, toont vakantiecategorie-dropdown. */
   isVacationList?: boolean;
-  /** Vooringestelde “Wie”-waarde op basis van de actieve persoonstab. */
+  /** Vooringestelde "Wie"-waarde op basis van de actieve persoonstab. */
   initialTripPerson?: TripPersonTab;
+  /** Groeperingsmodus van het lijstje: bepaalt of dag- of winkel-selector getoond wordt. */
+  groupingMode?: "day" | "category";
 }) {
   const isEditMode = editingItem != null;
   const [selectedDay, setSelectedDay] = React.useState("Geen");
@@ -161,6 +165,7 @@ export function NewItemModal({
   const [tripPerson, setTripPerson] =
     React.useState<TripPersonTab>(DEFAULT_TRIP_PERSON_TAB);
   const [activeTab, setActiveTab] = React.useState<"first" | "second" | "third">("first");
+  const [selectedStore, setSelectedStore] = React.useState<string | null>(null);
   const [freezerSearch, setFreezerSearch] = React.useState("");
   const [itemName, setItemName] = React.useState("");
   const [stepperValue, setStepperValue] = React.useState(1);
@@ -241,6 +246,7 @@ export function NewItemModal({
       setSelectedDay("Geen");
       setVacationCategory("Andere");
       setTripPerson(DEFAULT_TRIP_PERSON_TAB);
+      setSelectedStore(null);
       setActiveTab("first");
       setItemName("");
       setStepperValue(1);
@@ -321,7 +327,9 @@ export function NewItemModal({
 
   const handleAdd = () => {
     if (!canAdd && !isEditMode) return;
-    const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
+    const section = selectedStore
+      ? selectedStore
+      : selectedDay === "Geen" ? "Algemeen" : selectedDay;
     const qty = `${stepperValue} ${quantityDesc}`;
     const itemCategory = isVacationList
       ? vacationCategory
@@ -538,35 +546,79 @@ export function NewItemModal({
               >
               {!isMasterList && !isVacationList ? (
                 <>
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-                      Dag
-                    </span>
-                    <div className="grid grid-cols-4 gap-2">
-                      {DAY_OPTIONS.map((day) => (
-                        <ToggleButton
-                          key={day.value}
-                          variant={
-                            selectedDay === day.value ? "active" : "inactive"
-                          }
-                          className="w-full"
-                          onClick={() => {
-                            setSelectedDay(day.value);
-                            if (day.value === "Geen") {
-                              // Reset uit "third" tab als dag gewist wordt
-                              setActiveTab((prev) =>
-                                prev === "third" ? "first" : prev,
-                              );
-                            }
-                          }}
-                        >
-                          {day.label}
-                        </ToggleButton>
-                      ))}
+                  {groupingMode === "category" ? (
+                    /* Figma 1480:13565 — winkel-selector voor "per categorie" modus */
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+                          Winkel
+                        </span>
+                      </div>
+                      <div className="-mx-4 overflow-x-auto px-4">
+                        <div className="flex gap-3 pb-1" style={{ width: "max-content" }}>
+                          {MASTER_STORE_OPTIONS.map((store) => (
+                            <button
+                              key={store.slug}
+                              type="button"
+                              onClick={() =>
+                                setSelectedStore((prev) =>
+                                  prev === store.label ? null : store.label,
+                                )
+                              }
+                              className={cn(
+                                "flex w-[88px] shrink-0 flex-col items-center gap-2 rounded-[var(--radius-md)] border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                                selectedStore === store.label
+                                  ? "border-[var(--border-focus)] bg-[var(--blue-25)]"
+                                  : "border-[var(--border-default)] bg-[var(--white)]",
+                              )}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={store.logoSrc}
+                                alt=""
+                                width={48}
+                                height={48}
+                                className="size-12 object-contain"
+                              />
+                              <span className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-sm font-medium leading-20 text-[var(--text-primary)]">
+                                {store.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* Per dag modus: dag-selector */
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+                        Dag
+                      </span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {DAY_OPTIONS.map((day) => (
+                          <ToggleButton
+                            key={day.value}
+                            variant={
+                              selectedDay === day.value ? "active" : "inactive"
+                            }
+                            className="w-full"
+                            onClick={() => {
+                              setSelectedDay(day.value);
+                              if (day.value === "Geen") {
+                                setActiveTab((prev) =>
+                                  prev === "third" ? "first" : prev,
+                                );
+                              }
+                            }}
+                          >
+                            {day.label}
+                          </ToggleButton>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                  {!isEditMode && (
+                  {!isEditMode && groupingMode !== "category" && (
                     <PillTab
                       value={activeTab}
                       onValueChange={setActiveTab}

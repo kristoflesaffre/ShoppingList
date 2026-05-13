@@ -121,6 +121,7 @@ type AnyList = {
 
 type AnyRecipe = {
   id: string;
+  name?: string;
   photoUrl?: string | null;
 };
 
@@ -133,6 +134,10 @@ export function buildCalendarEntries(
   recipes: AnyRecipe[],
 ): Map<string, DayEntry> {
   const recipeMap = new Map<string, AnyRecipe>(recipes.map((r) => [r.id, r]));
+  const recipeByName = new Map<string, AnyRecipe>();
+  for (const r of recipes) {
+    if (r.name) recipeByName.set(r.name.trim().toLowerCase(), r);
+  }
   const result = new Map<string, DayEntry>();
 
   for (const list of lists) {
@@ -182,10 +187,17 @@ export function buildCalendarEntries(
         }
         meal.ingredientCount++;
       } else {
+        let loosePhotoUrl: string | null = null;
+        if (item.fromStock && item.stockPhotoUrl) {
+          loosePhotoUrl = item.stockPhotoUrl;
+        } else if (item.name.endsWith(" (diepvries)")) {
+          const baseName = item.name.slice(0, -" (diepvries)".length).trim().toLowerCase();
+          loosePhotoUrl = recipeByName.get(baseName)?.photoUrl ?? null;
+        }
         entry.looseIngredients.push({
           name: item.name,
           quantity: item.quantity,
-          photoUrl: item.fromStock && item.stockPhotoUrl ? item.stockPhotoUrl : null,
+          photoUrl: loosePhotoUrl,
           fromStock: item.fromStock === true || undefined,
         });
       }

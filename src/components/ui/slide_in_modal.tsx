@@ -131,7 +131,7 @@ export function SlideInModal({
 
   return (
     <div
-      className={cn("fixed inset-0 z-50 flex items-end", containerClassName)}
+      className={cn("fixed inset-0 z-50 flex items-end justify-center", containerClassName)}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -150,7 +150,7 @@ export function SlideInModal({
       {/* Panel: hoogte tot inhoud, max. viewport minus 48px; body scrollt bij overflow */}
       <div
         className={cn(
-          "relative z-10 flex max-h-[calc(100dvh-48px)] w-full flex-col overflow-hidden rounded-t-[var(--radius-md)] bg-[var(--white)] shadow-[0px_1px_4px_0px_rgba(0,0,0,0.13)] transition-transform duration-500 ease-out",
+          "relative z-10 flex max-h-[calc(100dvh-48px)] w-full max-w-[956px] flex-col overflow-hidden rounded-t-[var(--radius-md)] bg-[var(--white)] shadow-[0px_1px_4px_0px_rgba(0,0,0,0.13)] transition-transform duration-500 ease-out",
           isAnimatingIn && !isClosing ? "translate-y-0" : "translate-y-full",
           className
         )}

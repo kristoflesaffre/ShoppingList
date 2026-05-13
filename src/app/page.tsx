@@ -54,8 +54,8 @@ import {
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import {
   ListSectionHeader,
-  ListSectionHeaderIcon,
 } from "@/components/list_section_header";
+import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
 import type { MasterStoreSlug } from "@/lib/master-stores";
 import {
@@ -66,6 +66,7 @@ import {
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { uploadUserImageFile } from "@/lib/image-storage";
+import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -695,34 +696,175 @@ function HomeDiepvriesSection({
         label="Voorraad diepvries"
         showNaarOverzicht={false}
       />
-      <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/ui/empty_state_diepvries.png"
-          alt=""
-          width={72}
-          height={72}
-          className="size-[72px] shrink-0 object-cover opacity-70"
-        />
-        <div className="flex flex-1 flex-col items-end gap-4">
-          <p className="w-full text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">
-            Weet altijd welke gerechten en ingrediënten je in voorraad hebt.
-          </p>
+      <HomeOnboardingEmptyCard
+        illustrationSrc="/images/ui/empty_state_diepvries.png"
+        illustrationSide="end"
+        contentAlign="start"
+        text="Weet altijd welke gerechten en ingrediënten je in voorraad hebt."
+        actions={
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
-            >
-              Meer info
-            </button>
             <MiniButton
               variant="primary"
               onClick={() => router.push("/diepvriesvoorraad")}
             >
               Beheer voorraad
             </MiniButton>
+            <button
+              type="button"
+              className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
+            >
+              Meer info
+            </button>
           </div>
+        }
+      />
+    </div>
+  );
+}
+
+const HOME_ONBOARDING_ILLUSTRATIONS = {
+  lijstjes: "/images/ui/lijstje_160.webp",
+  teKopen: "/images/ui/kopen_320.webp",
+  favorieten: "/images/ui/hart_160.webp",
+  kalender: "/images/ui/kalender_160.webp",
+  klantenkaarten: "/images/ui/klantenkaart_160.webp",
+} as const;
+
+type HomeShoppingItem = {
+  id: string;
+  name: string;
+  quantity: string;
+  store?: string | null;
+  order: number;
+};
+
+function HomeTeKopenItemCard({ item }: { item: HomeShoppingItem }) {
+  const getPhotoUrl = useItemPhotoUrl(160);
+  const photoSrc = getPhotoUrl(item.name);
+  const storeInfo = item.store
+    ? MASTER_STORE_OPTIONS.find((s) => s.label === item.store || s.slug === item.store)
+    : null;
+
+  return (
+    <div className="flex h-16 w-[170px] shrink-0 items-end gap-3 rounded-[8px] border border-[#e2e4e6] bg-white px-3 py-3">
+      {photoSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photoSrc} alt="" width={40} height={40} className="size-10 shrink-0 object-cover" aria-hidden />
+      ) : (
+        <div className="size-10 shrink-0 rounded bg-[var(--gray-50)]" aria-hidden />
+      )}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
+          {item.name}
+        </span>
+        <div className="flex items-center gap-2 w-full">
+          <span className="min-w-0 flex-1 truncate text-xs leading-4 text-[#8c929d]">{item.quantity}</span>
+          {storeInfo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={storeInfo.logoSrc} alt="" width={16} height={16} className="size-4 shrink-0 object-contain" aria-hidden />
+          )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Figma 1473:10662 / 1477:11210 / 1480:12999 — sectie «Te kopen» op de startpagina. */
+function HomeTeKopenSection({
+  shoppingItems,
+  hasUsedBefore,
+  onAddProduct,
+}: {
+  shoppingItems: HomeShoppingItem[];
+  hasUsedBefore: boolean;
+  onAddProduct?: () => void;
+}) {
+  if (shoppingItems.length === 0) {
+    if (hasUsedBefore) {
+      // Figma 1480:12999 — eerder gebruikt, maar momenteel leeg
+      return (
+        <div className="flex flex-col gap-4">
+          <ListSectionHeader
+            icon="shopping-bag"
+            label="Te kopen"
+            showNaarOverzicht={false}
+          />
+          <button
+            type="button"
+            onClick={onAddProduct}
+            className="flex h-12 w-full items-center gap-3 rounded-[8px] border border-dashed border-[var(--primary-200,#b9bbf9)] bg-white p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={HOME_ONBOARDING_ILLUSTRATIONS.teKopen}
+              alt=""
+              width={32}
+              height={32}
+              className="size-8 shrink-0 object-contain opacity-70"
+              aria-hidden
+            />
+            <span className="min-w-0 flex-1 text-sm font-normal leading-5 text-[#9599f7]">
+              Product toevoegen
+            </span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="shrink-0" aria-hidden>
+              <circle cx="12" cy="12" r="9.5" stroke="#9599f7" strokeWidth="1.25" />
+              <path d="M12 8V16M8 12H16" stroke="#9599f7" strokeWidth="1.25" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-4">
+        <ListSectionHeader
+          icon="shopping-bag"
+          label="Te kopen"
+          showNaarOverzicht={false}
+        />
+        <HomeOnboardingEmptyCard
+          illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.teKopen}
+          illustrationSide="end"
+          contentAlign="start"
+          text="Mag je niet vergeten bepaalde producten te kopen? Voeg ze hier toe!"
+          actions={
+            <MiniButton variant="primary" onClick={onAddProduct}>
+              Voeg product toe
+            </MiniButton>
+          }
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <ListSectionHeader
+        icon="shopping-bag"
+        label="Te kopen"
+        showNaarOverzicht
+        naarOverzichtHref="/te-kopen"
+      />
+      <div
+        className={cn(SWIMLANE_CLASSES)}
+        style={{ scrollbarWidth: "none" } as React.CSSProperties}
+      >
+        {shoppingItems.map((item) => (
+          <Link key={item.id} href="/te-kopen" className="shrink-0 no-underline">
+            <HomeTeKopenItemCard item={item} />
+          </Link>
+        ))}
+        <button
+          type="button"
+          onClick={onAddProduct}
+          aria-label="Product toevoegen"
+          className="flex size-16 shrink-0 items-center justify-center rounded-[8px] border border-dashed border-[#e2e4e6] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <circle cx="12" cy="12" r="9.5" stroke="var(--blue-500)" strokeWidth="1.25" />
+            <path d="M12 8V16M8 12H16" stroke="var(--blue-500)" strokeWidth="1.25" strokeLinecap="round" />
+          </svg>
+        </button>
       </div>
     </div>
   );
@@ -783,6 +925,9 @@ function HomeStaticListSections({
   onDelete,
   onStartFromMaster,
   onOpenCreateModal,
+  onOpenTeKopen,
+  shoppingItems,
+  hasUsedTeKopen,
 }: {
   lists: HomeList[];
   addingId: string | null;
@@ -791,6 +936,9 @@ function HomeStaticListSections({
   onDelete: (id: string) => void;
   onStartFromMaster: (id: string) => void;
   onOpenCreateModal: () => void;
+  onOpenTeKopen: () => void;
+  shoppingItems: HomeShoppingItem[];
+  hasUsedTeKopen: boolean;
 }) {
   const router = useRouter();
 
@@ -893,6 +1041,10 @@ function HomeStaticListSections({
         </div>
       ) : null}
 
+      <div className={cn(normalLists.length > 0 && "mt-8")}>
+        <HomeTeKopenSection shoppingItems={shoppingItems} hasUsedBefore={hasUsedTeKopen} onAddProduct={onOpenTeKopen} />
+      </div>
+
       {/* ── Favorieten lijstjes ───────────────────────────────────────────── */}
       {masterLists.length > 0 ? (
         <div className={cn("flex flex-col", normalLists.length > 0 ? "mt-10" : undefined)}>
@@ -956,21 +1108,31 @@ function HomeStaticListSections({
           </div>
         </div>
       ) : (
-        <div className={cn("flex flex-col", normalLists.length > 0 ? "mt-10" : undefined)}>
-          <div className="flex items-center gap-2">
-            <ListSectionHeaderIcon variant="heart" />
-            <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">FAVORIETEN LIJSTJES</p>
-          </div>
-          <div className="mt-4 flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
-            <div className="flex flex-1 flex-col gap-4">
-              <p className="text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Maak per winkel favorieten met vaak gekochte producten voor snelle lijstjes.</p>
+        <div className={cn("flex flex-col gap-4", normalLists.length > 0 ? "mt-10" : undefined)}>
+          <ListSectionHeader
+            icon="heart"
+            label="Favorieten lijstjes"
+            showNaarOverzicht={false}
+          />
+          <HomeOnboardingEmptyCard
+            illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.favorieten}
+            illustrationSide="start"
+            contentAlign="end"
+            text="Maak per winkel favorieten met vaak gekochte producten voor snelle lijstjes."
+            actions={
               <div className="flex items-center gap-3">
-                <MiniButton variant="primary" onClick={onOpenCreateModal}>Voeg lijstje toe</MiniButton>
+                <button
+                  type="button"
+                  className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
+                >
+                  Meer info
+                </button>
+                <MiniButton variant="primary" onClick={onOpenCreateModal}>
+                  Voeg lijstje toe
+                </MiniButton>
               </div>
-            </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/ui/hart_160.webp" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
-          </div>
+            }
+          />
         </div>
       )}
     </div>
@@ -1031,6 +1193,9 @@ export default function Home() {
     },
     recipes: {},
     freezerItems: {},
+    shoppingItems: {
+      $: { where: { ownerId } },
+    },
   });
 
   const shareRelatedUserIds = React.useMemo(() => {
@@ -1424,6 +1589,40 @@ export default function Home() {
     return out;
   }, [data, user?.id]);
 
+  const homeShoppingItems = React.useMemo((): HomeShoppingItem[] => {
+    if (!user?.id) return [];
+    const raw = (data?.shoppingItems ?? []) as Array<{
+      id: string;
+      name?: unknown;
+      quantity?: unknown;
+      store?: unknown;
+      order?: unknown;
+      ownerId?: unknown;
+    }>;
+    return raw
+      .filter((i) => i.ownerId === user.id && typeof i.name === "string")
+      .map((i) => ({
+        id: String(i.id),
+        name: String(i.name),
+        quantity: typeof i.quantity === "string" ? i.quantity : "",
+        store: typeof i.store === "string" ? i.store : null,
+        order: typeof i.order === "number" ? i.order : 0,
+      }))
+      .sort((a, b) => a.order - b.order);
+  }, [data?.shoppingItems, user?.id]);
+
+  const [hasUsedTeKopen, setHasUsedTeKopen] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("te-kopen-used") === "1";
+  });
+
+  React.useEffect(() => {
+    if (homeShoppingItems.length > 0) {
+      localStorage.setItem("te-kopen-used", "1");
+      setHasUsedTeKopen(true);
+    }
+  }, [homeShoppingItems.length]);
+
   const { homeCalendarEntries, hasEverUsedCalendar } = React.useMemo(() => {
     if (!data) return { homeCalendarEntries: [] as Array<{ isoDate: string; entry: DayEntry }>, hasEverUsedCalendar: false };
     const today = new Date();
@@ -1472,6 +1671,28 @@ export default function Home() {
       plans.map((p) => db.tx.lists[p.listId].update({ icon: p.nextIcon })),
     );
   }, [user?.id, authLoading, isLoading, data?.lists]);
+
+  const [teKopenSlideOpen, setTeKopenSlideOpen] = React.useState(false);
+
+  const handleAddShoppingItem = React.useCallback(
+    async (name: string, quantity: string, store: string | null) => {
+      if (!user) return;
+      const allShoppingItems = (data?.shoppingItems ?? []) as Array<{ order?: number }>;
+      const maxOrder = allShoppingItems.reduce((max, i) => Math.max(max, i.order ?? 0), 0);
+      await db.transact(
+        db.tx.shoppingItems[iid()].update({
+          name,
+          quantity,
+          ...(store ? { store } : {}),
+          checked: false,
+          order: maxOrder + 1,
+          ownerId: user.id,
+        }),
+      );
+      router.push("/te-kopen");
+    },
+    [user, data?.shoppingItems, router],
+  );
 
   const [newListName, setNewListName] = React.useState("");
   const [newListCustomIcon, setNewListCustomIcon] = React.useState<string | null>(null);
@@ -1921,73 +2142,91 @@ export default function Home() {
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
           {!hasLists ? (
             <div className="flex flex-col gap-8 py-2">
-              {/* LIJSTJES */}
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block size-4 shrink-0 bg-[var(--text-primary)]" style={{ WebkitMaskImage: "url(/icons/list.svg)", maskImage: "url(/icons/list.svg)", WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" }} aria-hidden />
-                  <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">LIJSTJES</p>
-                </div>
-                <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/images/ui/lijstje_160.webp" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
-                  <div className="flex flex-1 flex-col items-end gap-4">
-                    <p className="w-full text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Maak hier je wekelijkse boodschappenlijstjes voor de supermarkt of andere winkels.</p>
-                    <MiniButton variant="primary" onClick={handleOpenCreateModal}>Voeg lijstje toe</MiniButton>
-                  </div>
-                </div>
+                <ListSectionHeader
+                  icon="list"
+                  label="Lijstjes"
+                  showNaarOverzicht={false}
+                />
+                <HomeOnboardingEmptyCard
+                  illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.lijstjes}
+                  illustrationSide="start"
+                  contentAlign="end"
+                  text="Maak hier je wekelijkse lijstjes voor de supermarkt of andere winkels."
+                  actions={
+                    <MiniButton variant="primary" onClick={handleOpenCreateModal}>
+                      Voeg lijstje toe
+                    </MiniButton>
+                  }
+                />
               </div>
 
-              {/* FAVORIETEN LIJSTJES */}
+              <HomeTeKopenSection shoppingItems={homeShoppingItems} hasUsedBefore={hasUsedTeKopen} onAddProduct={() => setTeKopenSlideOpen(true)} />
+
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <ListSectionHeaderIcon variant="heart" />
-                  <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">FAVORIETEN LIJSTJES</p>
-                </div>
-                <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
-                  <div className="flex flex-1 flex-col gap-4">
-                    <p className="text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Maak per winkel favorieten met vaak gekochte producten voor snelle lijstjes.</p>
+                <ListSectionHeader
+                  icon="heart"
+                  label="Favorieten lijstjes"
+                  showNaarOverzicht={false}
+                />
+                <HomeOnboardingEmptyCard
+                  illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.favorieten}
+                  illustrationSide="start"
+                  contentAlign="end"
+                  text="Maak per winkel favorieten met vaak gekochte producten voor snelle lijstjes."
+                  actions={
                     <div className="flex items-center gap-3">
-                      <MiniButton variant="primary" onClick={handleOpenCreateModal}>Voeg lijstje toe</MiniButton>
-                      <button type="button" className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none">Meer info</button>
+                      <button
+                        type="button"
+                        className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
+                      >
+                        Meer info
+                      </button>
+                      <MiniButton variant="primary" onClick={handleOpenCreateModal}>
+                        Voeg lijstje toe
+                      </MiniButton>
                     </div>
-                  </div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/images/ui/hart_160.webp" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
-                </div>
+                  }
+                />
               </div>
 
-              {/* KALENDER */}
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block size-4 shrink-0 bg-[var(--text-primary)]" style={{ WebkitMaskImage: "url(/icons/calendar.svg)", maskImage: "url(/icons/calendar.svg)", WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" }} aria-hidden />
-                  <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">KALENDER</p>
-                </div>
-                <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/images/ui/kalender_160.webp" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
-                  <div className="flex flex-1 flex-col items-end gap-4">
-                    <p className="w-full text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Wat eten we vandaag is nooit nog een probleem met deze handige agenda!</p>
-                    <MiniButton asChild variant="primary"><Link href="/kalender">Ga naar kalender</Link></MiniButton>
-                  </div>
-                </div>
+                <ListSectionHeader
+                  icon="calendar"
+                  label="Kalender"
+                  showNaarOverzicht={false}
+                />
+                <HomeOnboardingEmptyCard
+                  illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.kalender}
+                  illustrationSide="end"
+                  contentAlign="start"
+                  text="Wat eten we vandaag is nooit nog een probleem met deze handige agenda!"
+                  actions={
+                    <MiniButton asChild variant="primary">
+                      <Link href="/kalender">Naar kalender</Link>
+                    </MiniButton>
+                  }
+                />
               </div>
 
-              {/* KLANTENKAARTEN */}
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block size-4 shrink-0 bg-[var(--text-primary)]" style={{ WebkitMaskImage: "url(/icons/card.svg)", maskImage: "url(/icons/card.svg)", WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" }} aria-hidden />
-                  <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">KLANTENKAARTEN</p>
-                </div>
-                <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
-                  <div className="flex flex-1 flex-col items-start gap-4">
-                    <p className="text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Voeg al je klantenkaarten hier toe, zodat je ze altijd bij de hand hebt.</p>
-                    <MiniButton asChild variant="primary"><Link href="/klantenkaarten">Voeg klantenkaart toe</Link></MiniButton>
-                  </div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/images/ui/klantenkaart_160.webp" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
-                </div>
+                <ListSectionHeader
+                  icon="card"
+                  label="Klantenkaarten"
+                  showNaarOverzicht={false}
+                />
+                <HomeOnboardingEmptyCard
+                  illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.klantenkaarten}
+                  illustrationSide="start"
+                  contentAlign="end"
+                  text="Voeg al je klantenkaarten hier toe, zodat je ze altijd bij de hand hebt."
+                  actions={
+                    <MiniButton asChild variant="primary">
+                      <Link href="/klantenkaarten">Voeg klantenkaart toe</Link>
+                    </MiniButton>
+                  }
+                />
               </div>
-
             </div>
           ) : (
             <div className="pt-4">
@@ -1999,49 +2238,60 @@ export default function Home() {
                 onDelete={handleDeleteList}
                 onStartFromMaster={handleStartFromMaster}
                 onOpenCreateModal={handleOpenCreateModal}
+                onOpenTeKopen={() => setTeKopenSlideOpen(true)}
+                shoppingItems={homeShoppingItems}
+                hasUsedTeKopen={hasUsedTeKopen}
               />
             </div>
           )}
-          {homeCalendarEntries.length > 0 ? (
+          {hasLists && homeCalendarEntries.length > 0 ? (
             <div className="mt-10">
               <HomeCalendarSection entries={homeCalendarEntries} />
             </div>
-          ) : !hasEverUsedCalendar ? (
+          ) : hasLists && !hasEverUsedCalendar ? (
             <div className="mt-10 flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <span className="inline-block size-4 shrink-0 bg-[var(--text-primary)]" style={{ WebkitMaskImage: "url(/icons/calendar.svg)", maskImage: "url(/icons/calendar.svg)", WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" }} aria-hidden />
-                <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">KALENDER</p>
-              </div>
-              <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/ui/kalender_160.webp" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
-                <div className="flex flex-1 flex-col items-end gap-4">
-                  <p className="w-full text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Wat eten we vandaag is nooit nog een probleem met deze handige agenda!</p>
-                  <MiniButton asChild variant="primary"><Link href="/kalender">Ga naar kalender</Link></MiniButton>
-                </div>
-              </div>
+              <ListSectionHeader
+                icon="calendar"
+                label="Kalender"
+                showNaarOverzicht={false}
+              />
+              <HomeOnboardingEmptyCard
+                illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.kalender}
+                illustrationSide="end"
+                contentAlign="start"
+                text="Wat eten we vandaag is nooit nog een probleem met deze handige agenda!"
+                actions={
+                  <MiniButton asChild variant="primary">
+                    <Link href="/kalender">Naar kalender</Link>
+                  </MiniButton>
+                }
+              />
             </div>
           ) : null}
-          {homeLoyaltyCards.length > 0 ? (
+          {hasLists && homeLoyaltyCards.length > 0 ? (
             <div className="mt-10">
               <HomeLoyaltyCardsSwimlane cards={homeLoyaltyCards} />
             </div>
-          ) : (
+          ) : hasLists ? (
             <div className="mt-10 flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <span className="inline-block size-4 shrink-0 bg-[var(--text-primary)]" style={{ WebkitMaskImage: "url(/icons/card.svg)", maskImage: "url(/icons/card.svg)", WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" }} aria-hidden />
-                <p className="text-[13px] font-semibold leading-4 tracking-normal text-[var(--blue-900,#101130)]">KLANTENKAARTEN</p>
-              </div>
-              <div className="flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3">
-                <div className="flex flex-1 flex-col items-start gap-4">
-                  <p className="text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">Voeg al je klantenkaarten hier toe, zodat je ze altijd bij de hand hebt.</p>
-                  <MiniButton asChild variant="primary"><Link href="/klantenkaarten">Voeg klantenkaart toe</Link></MiniButton>
-                </div>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/ui/klantenkaart_160.webp" alt="" width={72} height={72} className="size-[72px] shrink-0 object-cover opacity-70" />
-              </div>
+              <ListSectionHeader
+                icon="card"
+                label="Klantenkaarten"
+                showNaarOverzicht={false}
+              />
+              <HomeOnboardingEmptyCard
+                illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.klantenkaarten}
+                illustrationSide="start"
+                contentAlign="end"
+                text="Voeg al je klantenkaarten hier toe, zodat je ze altijd bij de hand hebt."
+                actions={
+                  <MiniButton asChild variant="primary">
+                    <Link href="/klantenkaarten">Voeg klantenkaart toe</Link>
+                  </MiniButton>
+                }
+              />
             </div>
-          )}
+          ) : null}
           <div className="mt-10">
             <HomeDiepvriesSection
               itemCount={homeFreezerItems.length}
@@ -2583,6 +2833,12 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <AddShoppingItemSlideIn
+        open={teKopenSlideOpen}
+        onClose={() => setTeKopenSlideOpen(false)}
+        onAdd={handleAddShoppingItem}
+      />
     </div>
   );
 }

@@ -211,6 +211,16 @@ const schema = i.schema({
       /** Volgorde in de lijst. */
       order: i.number().optional(),
     }),
+    /** Persoonlijke "te kopen"-items: producten onafhankelijk van een lijstje. */
+    shoppingItems: i.entity({
+      name: i.string(),
+      quantity: i.string(),
+      /** Winkel-label (bv. "Lidl", "Colruyt"); ontbreekt = geen specifieke winkel. */
+      store: i.string().optional(),
+      checked: i.boolean(),
+      order: i.number(),
+      ownerId: i.string().optional().indexed(),
+    }),
     /** Gedecodeerde klantenkaart (QR of barcode) — gekoppeld aan een lijst én/of rechtstreeks aan een gebruiker. */
     loyaltyCards: i.entity({
       /** “qr” of “barcode” */

@@ -227,7 +227,7 @@ export function ItemNameSearchSlideIn({
 
       {/* Paneel: bottom vast op layout-viewport; keyboard legt zich erover (geen omhoogschuiven). */}
       <div
-        className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-tl-[8px] rounded-tr-[8px] bg-white"
+        className="absolute bottom-0 left-1/2 w-full max-w-[956px] -translate-x-1/2 flex flex-col overflow-hidden rounded-tl-[8px] rounded-tr-[8px] bg-white"
         style={{ top: TOP_OFFSET }}
       >
         {/* Header — 64px */}

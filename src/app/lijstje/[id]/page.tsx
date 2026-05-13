@@ -5168,6 +5168,7 @@ export default function ListDetailPage({
         isMasterList={isMasterList}
         isVacationList={isLandalOrVakantieList}
         initialTripPerson={isLandalOrVakantieList ? tripPersonTab : undefined}
+        groupingMode={effectiveListGroupingMode}
       />
 
       <input
