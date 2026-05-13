@@ -870,11 +870,6 @@ function HomeTeKopenSection({
         className={cn(SWIMLANE_CLASSES)}
         style={{ scrollbarWidth: "none" } as React.CSSProperties}
       >
-        {shoppingItems.map((item) => (
-          <Link key={item.id} href="/te-kopen" className="shrink-0 no-underline">
-            <HomeTeKopenItemCard item={item} />
-          </Link>
-        ))}
         <button
           type="button"
           onClick={onAddProduct}
@@ -886,6 +881,11 @@ function HomeTeKopenSection({
             <path d="M12 8V16M8 12H16" stroke="var(--blue-500)" strokeWidth="1.25" strokeLinecap="round" />
           </svg>
         </button>
+        {shoppingItems.map((item) => (
+          <Link key={item.id} href="/te-kopen" className="shrink-0 no-underline">
+            <HomeTeKopenItemCard item={item} />
+          </Link>
+        ))}
       </div>
     </div>
   );
