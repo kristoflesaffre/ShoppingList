@@ -749,7 +749,6 @@ type HomeShoppingItem = {
   store?: string | null;
   order: number;
   ownerId?: string | null;
-  addedByLabel?: string | null;
 };
 
 function HomeTeKopenItemCard({ item }: { item: HomeShoppingItem }) {
@@ -772,10 +771,8 @@ function HomeTeKopenItemCard({ item }: { item: HomeShoppingItem }) {
           {item.name}
         </span>
         <div className="flex items-center gap-2 w-full">
-          <span className="min-w-0 flex-1 truncate text-xs leading-4 text-[#8c929d]">
-            {item.addedByLabel
-              ? `${item.quantity} - ${item.addedByLabel}`
-              : item.quantity}
+          <span className="min-w-0 flex-1 truncate text-xs leading-4 text-[var(--gray-400)]">
+            {item.quantity}
           </span>
           {storeInfo && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -1794,10 +1791,6 @@ export default function Home() {
         store: typeof i.store === "string" ? i.store : null,
         order: typeof i.order === "number" ? i.order : 0,
         ownerId: typeof i.ownerId === "string" ? i.ownerId : null,
-        addedByLabel:
-          typeof i.ownerId === "string" && i.ownerId !== user.id
-            ? `toegevoegd door ${shareFirstNameByUserId.get(i.ownerId) ?? "deelnemer"}`
-            : null,
       }));
 
     // Group by store, apply saved order, then flatten (items within group keep original order)
@@ -1821,7 +1814,7 @@ export default function Home() {
     });
     const orderedKeys = applySavedStoreOrder(defaultOrder, homeStoreOrder);
     return orderedKeys.flatMap((key) => groups.get(key) ?? []);
-  }, [data, user?.id, homeStoreOrder, shareFirstNameByUserId]);
+  }, [data, user?.id, homeStoreOrder]);
 
   const [hasUsedTeKopen, setHasUsedTeKopen] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return false;
