@@ -13,6 +13,7 @@ import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in"
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { MiniButton } from "@/components/ui/mini_button";
+import { StoreOrderPanel, loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -166,6 +167,8 @@ export default function TeKopenPage() {
   const [addOpen, setAddOpen] = React.useState(false);
   const [preselectedStore, setPreselectedStore] = React.useState<string | null>(null);
   const [isEditing, setIsEditing] = React.useState(false);
+  const [isStoreOrderMode, setIsStoreOrderMode] = React.useState(false);
+  const [storeOrder, setStoreOrder] = React.useState<string[] | null>(() => loadStoreOrder());
   const [lastDeletedItem, setLastDeletedItem] = React.useState<ShoppingItem | null>(null);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(null);
 
@@ -192,7 +195,7 @@ export default function TeKopenPage() {
     .filter((item) => (item as unknown as { ownerId?: string }).ownerId === user.id)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-  // Group by store (null = geen winkel)
+  // Group by store (null = geen winkel, represented as "" in storeOrder)
   const storeGroups = new Map<string | null, ShoppingItem[]>();
   for (const item of allItems) {
     const key = item.store ?? null;
@@ -200,17 +203,23 @@ export default function TeKopenPage() {
     storeGroups.get(key)!.push(item);
   }
 
-  // Sort groups: known stores in MASTER_STORE_OPTIONS order, then null last
-  const sortedGroups = Array.from(storeGroups.entries()).sort(([a], [b]) => {
-    if (a === null) return 1;
-    if (b === null) return -1;
+  // Build the ordered list of store keys ("" for null/Algemeen), applying custom order if saved
+  const rawStoreKeys = Array.from(storeGroups.keys()).map((k) => k ?? "");
+  const defaultOrder = rawStoreKeys.slice().sort((a, b) => {
+    if (a === "") return 1;
+    if (b === "") return -1;
     const ia = MASTER_STORE_OPTIONS.findIndex((s) => s.label === a);
     const ib = MASTER_STORE_OPTIONS.findIndex((s) => s.label === b);
-    if (ia === -1 && ib === -1) return (a ?? "").localeCompare(b ?? "", "nl");
+    if (ia === -1 && ib === -1) return a.localeCompare(b, "nl");
     if (ia === -1) return 1;
     if (ib === -1) return -1;
     return ia - ib;
   });
+  const orderedStoreKeys = applySavedStoreOrder(defaultOrder, storeOrder);
+  const sortedGroups: [string | null, ShoppingItem[]][] = orderedStoreKeys.map((key) => [
+    key === "" ? null : key,
+    storeGroups.get(key === "" ? null : key) ?? [],
+  ]);
 
   async function handleAdd(name: string, quantity: string, store: string | null) {
     if (!user) return;
@@ -300,9 +309,9 @@ export default function TeKopenPage() {
           <div className="flex min-h-9 w-full min-w-0 items-center justify-between gap-4">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <h1 className="min-w-0 truncate text-2xl font-bold leading-8 tracking-normal text-[var(--text-primary)]">
-                Te kopen
+                {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
               </h1>
-              {!isEditing && allItems.length > 0 && (
+              {!isEditing && !isStoreOrderMode && allItems.length > 0 && (
                 <button
                   type="button"
                   aria-label="Bewerken"
@@ -313,7 +322,17 @@ export default function TeKopenPage() {
                 </button>
               )}
             </div>
-            {isEditing && (
+            {isStoreOrderMode && (
+              <button
+                type="button"
+                onClick={() => setIsStoreOrderMode(false)}
+                className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--blue-500)] px-2 py-1 text-sm font-normal leading-5 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                <MaskIcon src="/icons/checkmark.svg" className="size-5 bg-white" />
+                Gereed
+              </button>
+            )}
+            {isEditing && !isStoreOrderMode && (
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
@@ -325,7 +344,12 @@ export default function TeKopenPage() {
             )}
           </div>
 
-          {allItems.length === 0 ? (
+          {isStoreOrderMode ? (
+            <StoreOrderPanel
+              storeKeys={orderedStoreKeys}
+              onChange={(next) => setStoreOrder(next)}
+            />
+          ) : allItems.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-6 py-12 text-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -363,6 +387,15 @@ export default function TeKopenPage() {
                   </div>
                 </div>
               ))}
+              {isEditing && sortedGroups.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setIsStoreOrderMode(true)}
+                  className="self-start text-sm font-normal leading-5 text-[var(--blue-500)] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                >
+                  Volgorde winkels wijzigen
+                </button>
+              )}
             </div>
           )}
         </div>

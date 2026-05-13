@@ -67,6 +67,7 @@ import {
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
+import { loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -1589,6 +1590,17 @@ export default function Home() {
     return out;
   }, [data, user?.id]);
 
+  const [homeStoreOrder, setHomeStoreOrder] = React.useState<string[] | null>(() =>
+    loadStoreOrder(),
+  );
+
+  // Re-read store order when the window gains focus (user may have reordered on te-kopen page)
+  React.useEffect(() => {
+    const handler = () => setHomeStoreOrder(loadStoreOrder());
+    window.addEventListener("focus", handler);
+    return () => window.removeEventListener("focus", handler);
+  }, []);
+
   const homeShoppingItems = React.useMemo((): HomeShoppingItem[] => {
     if (!user?.id) return [];
     const raw = (data?.shoppingItems ?? []) as Array<{
@@ -1599,7 +1611,7 @@ export default function Home() {
       order?: unknown;
       ownerId?: unknown;
     }>;
-    return raw
+    const items = raw
       .filter((i) => i.ownerId === user.id && typeof i.name === "string")
       .map((i) => ({
         id: String(i.id),
@@ -1607,9 +1619,30 @@ export default function Home() {
         quantity: typeof i.quantity === "string" ? i.quantity : "",
         store: typeof i.store === "string" ? i.store : null,
         order: typeof i.order === "number" ? i.order : 0,
-      }))
-      .sort((a, b) => a.order - b.order);
-  }, [data?.shoppingItems, user?.id]);
+      }));
+
+    // Group by store, apply saved order, then flatten (items within group keep original order)
+    const groups = new Map<string, typeof items>();
+    for (const item of items) {
+      const key = item.store ?? "";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(item);
+    }
+    for (const group of Array.from(groups.values())) group.sort((a, b) => a.order - b.order);
+
+    const defaultOrder = Array.from(groups.keys()).sort((a, b) => {
+      if (a === "") return 1;
+      if (b === "") return -1;
+      const ia = MASTER_STORE_OPTIONS.findIndex((s) => s.label === a);
+      const ib = MASTER_STORE_OPTIONS.findIndex((s) => s.label === b);
+      if (ia === -1 && ib === -1) return a.localeCompare(b, "nl");
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+    const orderedKeys = applySavedStoreOrder(defaultOrder, homeStoreOrder);
+    return orderedKeys.flatMap((key) => groups.get(key) ?? []);
+  }, [data?.shoppingItems, user?.id, homeStoreOrder]);
 
   const [hasUsedTeKopen, setHasUsedTeKopen] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return false;
