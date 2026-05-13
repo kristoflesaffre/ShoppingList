@@ -121,9 +121,15 @@ function ShoppingItemCard({
 function StoreSectionHeader({
   store,
   onAdd,
+  isEditing,
+  showReorder,
+  onReorder,
 }: {
   store: string | null;
   onAdd: () => void;
+  isEditing: boolean;
+  showReorder: boolean;
+  onReorder: () => void;
 }) {
   const storeInfo = store
     ? MASTER_STORE_OPTIONS.find(
@@ -132,7 +138,7 @@ function StoreSectionHeader({
     : null;
 
   return (
-    <div className="flex items-center gap-3 pr-4">
+    <div className="flex items-center gap-3">
       {storeInfo ? (
         <img
           src={storeInfo.logoSrc}
@@ -147,14 +153,24 @@ function StoreSectionHeader({
       <p className="min-w-0 flex-1 text-lg font-bold leading-6 text-[var(--primary-900)]">
         {store ?? "Algemeen"}
       </p>
-      <button
-        type="button"
-        onClick={onAdd}
-        aria-label={`Product toevoegen aan ${store ?? "Algemeen"}`}
-        className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-      >
-        <PlusCircleIcon />
-      </button>
+      {isEditing && showReorder ? (
+        <button
+          type="button"
+          onClick={onReorder}
+          className="shrink-0 text-sm font-normal leading-5 text-[var(--blue-500)] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          Volgorde wijzigen
+        </button>
+      ) : !isEditing ? (
+        <button
+          type="button"
+          onClick={onAdd}
+          aria-label={`Product toevoegen aan ${store ?? "Algemeen"}`}
+          className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          <PlusCircleIcon />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -374,6 +390,9 @@ export default function TeKopenPage() {
                   <StoreSectionHeader
                     store={store}
                     onAdd={() => openAddForStore(store)}
+                    isEditing={isEditing}
+                    showReorder={sortedGroups.length > 1}
+                    onReorder={() => setIsStoreOrderMode(true)}
                   />
                   <div className="flex flex-col gap-3">
                     {items.map((item: ShoppingItem) => (
@@ -387,15 +406,6 @@ export default function TeKopenPage() {
                   </div>
                 </div>
               ))}
-              {isEditing && sortedGroups.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => setIsStoreOrderMode(true)}
-                  className="self-start text-sm font-normal leading-5 text-[var(--blue-500)] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  Volgorde winkels wijzigen
-                </button>
-              )}
             </div>
           )}
         </div>
