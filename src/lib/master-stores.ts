@@ -41,6 +41,23 @@ export const MASTER_STORE_OPTIONS = [
 
 export type MasterStoreSlug = (typeof MASTER_STORE_OPTIONS)[number]["slug"];
 
+export const TE_KOPEN_LANDAL_STORE_OPTION = {
+  slug: "landal",
+  label: "Landal",
+  logoSrc: "/images/ui/landal_160.webp",
+} as const;
+
+/**
+ * Winkelkeuzes voor de persoonlijke "Te kopen"-lijst.
+ * Landal hoort hier wel bij, maar niet bij de gewone supermarkt/masterlijst-flow.
+ */
+export const TE_KOPEN_STORE_OPTIONS = [
+  ...MASTER_STORE_OPTIONS,
+  TE_KOPEN_LANDAL_STORE_OPTION,
+] as const;
+
+export type TeKopenStoreSlug = (typeof TE_KOPEN_STORE_OPTIONS)[number]["slug"];
+
 export function findMasterStoreBySlug(
   slug: string,
 ): (typeof MASTER_STORE_OPTIONS)[number] | undefined {
@@ -76,6 +93,14 @@ export function masterStoreLabelFromListIcon(iconPath: string): string {
     (s) => (s.logoSrc.split("/").pop() ?? "") === logoFile,
   );
   return match?.label ?? "";
+}
+
+export function findTeKopenStoreByLabelOrSlug(
+  value: string | null | undefined,
+): (typeof TE_KOPEN_STORE_OPTIONS)[number] | undefined {
+  const key = String(value ?? "").trim();
+  if (!key) return undefined;
+  return TE_KOPEN_STORE_OPTIONS.find((s) => s.label === key || s.slug === key);
 }
 
 /** Combi Lidl+Delhaize (Figma 913:5842): twee loyalty-slots op één lijst. */

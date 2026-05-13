@@ -4,7 +4,7 @@ import * as React from "react";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
+import { TE_KOPEN_STORE_OPTIONS } from "@/lib/master-stores";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
 
 const STORE_FREQ_KEY = "te-kopen-store-freq";
@@ -57,6 +57,7 @@ export function AddShoppingItemSlideIn({
   const [searchOpen, setSearchOpen] = React.useState(false);
   // Tracks whether onSelect fired before onClose so we don't close the whole flow
   const didSelectRef = React.useRef(false);
+  const storeTileRefs = React.useRef(new Map<string, HTMLButtonElement>());
 
   // When the slide-in opens: reset state and show autocomplete first
   React.useEffect(() => {
@@ -93,7 +94,7 @@ export function AddShoppingItemSlideIn({
   const [storeFreq] = React.useState<Record<string, number>>(() => loadStoreFreq());
 
   const sortedStoreOptions = React.useMemo(() => {
-    return [...MASTER_STORE_OPTIONS].sort(
+    return [...TE_KOPEN_STORE_OPTIONS].sort(
       (a, b) => (storeFreq[b.label] ?? 0) - (storeFreq[a.label] ?? 0),
     );
   }, [storeFreq]);
@@ -103,6 +104,9 @@ export function AddShoppingItemSlideIn({
         s.label.toLowerCase().includes(storeSearch.toLowerCase()),
       )
     : sortedStoreOptions;
+  const selectedStoreVisible = selectedStore
+    ? filteredStores.some((s) => s.label === selectedStore)
+    : false;
 
   const handleAdd = () => {
     const trimmed = name.trim();
@@ -115,6 +119,20 @@ export function AddShoppingItemSlideIn({
 
   // Main slide-in is visible once a name is chosen (searchOpen = false but open = true)
   const mainSlideOpen = open && !searchOpen;
+
+  React.useEffect(() => {
+    if (!mainSlideOpen || !selectedStore || !selectedStoreVisible) return;
+    const tile = storeTileRefs.current.get(selectedStore);
+    if (!tile) return;
+    const frameId = requestAnimationFrame(() => {
+      tile.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [mainSlideOpen, selectedStore, selectedStoreVisible]);
 
   return (
     <>
@@ -260,6 +278,13 @@ export function AddShoppingItemSlideIn({
                 return (
                   <button
                     key={store.slug}
+                    ref={(node) => {
+                      if (node) {
+                        storeTileRefs.current.set(store.label, node);
+                      } else {
+                        storeTileRefs.current.delete(store.label);
+                      }
+                    }}
                     type="button"
                     role="radio"
                     aria-checked={selected}

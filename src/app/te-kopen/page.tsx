@@ -12,7 +12,10 @@ import { Snackbar } from "@/components/ui/snackbar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { APP_FAB_BOTTOM_NO_NAV_CLASS, APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
-import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
+import {
+  TE_KOPEN_STORE_OPTIONS,
+  findTeKopenStoreByLabelOrSlug,
+} from "@/lib/master-stores";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { MiniButton } from "@/components/ui/mini_button";
 import { StoreOrderPanel, loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
@@ -191,9 +194,7 @@ function StoreSectionHeader({
   onReorder: () => void;
 }) {
   const storeInfo = store
-    ? MASTER_STORE_OPTIONS.find(
-        (s) => s.label === store || s.slug === store,
-      )
+    ? findTeKopenStoreByLabelOrSlug(store)
     : null;
 
   return (
@@ -345,8 +346,8 @@ export default function TeKopenPage() {
   const defaultOrder = rawStoreKeys.slice().sort((a, b) => {
     if (a === "") return 1;
     if (b === "") return -1;
-    const ia = MASTER_STORE_OPTIONS.findIndex((s) => s.label === a);
-    const ib = MASTER_STORE_OPTIONS.findIndex((s) => s.label === b);
+    const ia = TE_KOPEN_STORE_OPTIONS.findIndex((s) => s.label === a);
+    const ib = TE_KOPEN_STORE_OPTIONS.findIndex((s) => s.label === b);
     if (ia === -1 && ib === -1) return a.localeCompare(b, "nl");
     if (ia === -1) return 1;
     if (ib === -1) return -1;

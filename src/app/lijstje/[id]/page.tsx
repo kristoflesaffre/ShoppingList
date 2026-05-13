@@ -50,6 +50,7 @@ import {
   isLandalGezinList,
   landalGezinHouseholdMembershipTransactions,
 } from "@/lib/landal-gezin-household";
+import { isLandalListCard } from "@/lib/landal-list-card";
 import {
   APP_FAB_BOTTOM_NO_NAV_CLASS,
   APP_FAB_INNER_PX4_CLASS,
@@ -3357,9 +3358,10 @@ export default function ListDetailPage({
 
   const teKopenStoreLabel = React.useMemo((): string | null => {
     if (isMasterList) return null;
+    if (isLandalListCard(customIconUrl)) return "Landal";
     const label = masterStoreLabelFromListIcon(effectiveStoreIcon);
     return label || null;
-  }, [isMasterList, effectiveStoreIcon]);
+  }, [isMasterList, customIconUrl, effectiveStoreIcon]);
 
   const { data: teKopenRawData } = db.useQuery(
     !isMasterList && !!user

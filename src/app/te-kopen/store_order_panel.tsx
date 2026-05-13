@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
-import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
+import { findTeKopenStoreByLabelOrSlug } from "@/lib/master-stores";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "te-kopen-store-order";
@@ -105,7 +105,7 @@ function SortableStoreRow({ storeKey }: { storeKey: string }) {
 
   const label = storeKey === "" ? "Algemeen" : storeKey;
   const storeInfo = storeKey !== ""
-    ? MASTER_STORE_OPTIONS.find((s) => s.label === storeKey)
+    ? findTeKopenStoreByLabelOrSlug(storeKey)
     : null;
 
   return (

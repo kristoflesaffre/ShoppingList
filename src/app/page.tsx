@@ -33,8 +33,10 @@ import {
 import { listIsMasterTemplate } from "@/lib/list-master";
 import {
   MASTER_STORE_OPTIONS,
+  TE_KOPEN_STORE_OPTIONS,
   findMasterStoreByListName,
   findMasterStoreBySlug,
+  findTeKopenStoreByLabelOrSlug,
   masterStoreLabelFromListIcon,
   storeLogosFromListIcon,
   listIconIsLidlDelhaizeCombo,
@@ -755,7 +757,7 @@ function HomeTeKopenItemCard({ item }: { item: HomeShoppingItem }) {
   const getPhotoUrl = useItemPhotoUrl(160);
   const photoSrc = getPhotoUrl(item.name);
   const storeInfo = item.store
-    ? MASTER_STORE_OPTIONS.find((s) => s.label === item.store || s.slug === item.store)
+    ? findTeKopenStoreByLabelOrSlug(item.store)
     : null;
 
   return (
@@ -1062,10 +1064,12 @@ function HomeLijstjesSection({
 
 function HomeFavorietenSection({
   masterLists,
+  onStartFromMaster,
   onOpenCreateModal,
   onHide,
 }: {
   masterLists: HomeList[];
+  onStartFromMaster: (id: string) => void;
   onOpenCreateModal: () => void;
   onHide?: () => void;
 }) {
@@ -1090,6 +1094,11 @@ function HomeFavorietenSection({
         />
       }
       state="default"
+      onMasterAdd={
+        list.displayVariant === "master"
+          ? () => onStartFromMaster(list.id)
+          : undefined
+      }
       className="cursor-pointer"
     />
   );
@@ -1805,8 +1814,8 @@ export default function Home() {
     const defaultOrder = Array.from(groups.keys()).sort((a, b) => {
       if (a === "") return 1;
       if (b === "") return -1;
-      const ia = MASTER_STORE_OPTIONS.findIndex((s) => s.label === a);
-      const ib = MASTER_STORE_OPTIONS.findIndex((s) => s.label === b);
+      const ia = TE_KOPEN_STORE_OPTIONS.findIndex((s) => s.label === a);
+      const ib = TE_KOPEN_STORE_OPTIONS.findIndex((s) => s.label === b);
       if (ia === -1 && ib === -1) return a.localeCompare(b, "nl");
       if (ia === -1) return 1;
       if (ib === -1) return -1;
@@ -2390,6 +2399,7 @@ export default function Home() {
                     <HomeFavorietenSection
                       key="favorieten"
                       masterLists={masterLists}
+                      onStartFromMaster={handleStartFromMaster}
                       onOpenCreateModal={handleOpenCreateModal}
                       onHide={onHide}
                     />
