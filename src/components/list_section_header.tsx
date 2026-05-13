@@ -46,12 +46,15 @@ export function ListSectionHeader({
   label,
   showNaarOverzicht,
   naarOverzichtHref = "/lijstjes-beheren/lijstjes",
+  onHide,
 }: {
   icon: "list" | "heart" | "card" | "calendar" | "freeze" | "shopping-bag";
   /** Zichtbare naam; wordt in hoofdletters getoond (`uppercase`). */
   label: string;
   showNaarOverzicht: boolean;
   naarOverzichtHref?: string;
+  /** When provided, renders "Sectie verbergen" instead of "Naar overzicht". */
+  onHide?: () => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -59,7 +62,15 @@ export function ListSectionHeader({
         <ListSectionHeaderIcon variant={icon} />
         <span className="min-w-0 truncate">{label}</span>
       </h2>
-      {showNaarOverzicht ? (
+      {onHide ? (
+        <button
+          type="button"
+          onClick={onHide}
+          className="shrink-0 text-xs font-medium leading-4 text-action-primary transition-colors [@media(hover:hover)]:hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+        >
+          Sectie verbergen
+        </button>
+      ) : showNaarOverzicht ? (
         <Link
           href={naarOverzichtHref}
           className="shrink-0 text-sm font-medium leading-20 text-action-primary no-underline transition-colors [@media(hover:hover)]:hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"

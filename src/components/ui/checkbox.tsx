@@ -77,8 +77,8 @@ const Checkbox = React.forwardRef<
           "data-[disabled]:border-[var(--blue-100)] data-[disabled]:bg-[var(--blue-25)] disabled:border-[var(--blue-100)] disabled:bg-[var(--blue-25)]",
           /* Selected default */
           "data-[state=checked]:border-[var(--action-primary)] data-[state=checked]:bg-[var(--action-primary)] data-[state=checked]:text-[var(--action-primary-foreground)]",
-          /* Selected disabled */
-          "data-[state=checked][data-disabled]:border-[var(--blue-100)] data-[state=checked][data-disabled]:bg-[var(--blue-100)] data-[state=checked][data-disabled]:text-[var(--blue-300)] data-[state=checked]:disabled:border-[var(--blue-100)] data-[state=checked]:disabled:bg-[var(--blue-100)] data-[state=checked]:disabled:text-[var(--blue-300)]",
+          /* Selected disabled — primary/100 bg, white checkmark (Figma 3:424) */
+          "data-[state=checked][data-disabled]:border-[var(--blue-100)] data-[state=checked][data-disabled]:bg-[var(--blue-100)] data-[state=checked][data-disabled]:text-white data-[state=checked]:disabled:border-[var(--blue-100)] data-[state=checked]:disabled:bg-[var(--blue-100)] data-[state=checked]:disabled:text-white",
           className
         )}
         disabled={disabled}

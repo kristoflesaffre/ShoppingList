@@ -68,6 +68,13 @@ import { useItemPhotoUrl } from "@/lib/item-photos";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
 import { loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
+import {
+  type HomeSectionConfig,
+  type HomeSectionId,
+  loadHomeSectionConfig,
+  saveHomeSectionConfig,
+  DEFAULT_SECTION_ORDER,
+} from "@/lib/home-section-config";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -664,9 +671,11 @@ function FreezerThumbnailsRow({ items }: { items: FreezerPreviewItem[] }) {
 function HomeDiepvriesSection({
   itemCount,
   previewItems,
+  onHide,
 }: {
   itemCount: number;
   previewItems: FreezerPreviewItem[];
+  onHide?: () => void;
 }) {
   const router = useRouter();
 
@@ -696,6 +705,7 @@ function HomeDiepvriesSection({
         icon="freeze"
         label="Voorraad diepvries"
         showNaarOverzicht={false}
+        onHide={onHide}
       />
       <HomeOnboardingEmptyCard
         illustrationSrc="/images/ui/empty_state_diepvries.png"
@@ -775,10 +785,12 @@ function HomeTeKopenSection({
   shoppingItems,
   hasUsedBefore,
   onAddProduct,
+  onHide,
 }: {
   shoppingItems: HomeShoppingItem[];
   hasUsedBefore: boolean;
   onAddProduct?: () => void;
+  onHide?: () => void;
 }) {
   if (shoppingItems.length === 0) {
     if (hasUsedBefore) {
@@ -789,6 +801,7 @@ function HomeTeKopenSection({
             icon="shopping-bag"
             label="Te kopen"
             showNaarOverzicht={false}
+            onHide={onHide}
           />
           <button
             type="button"
@@ -822,6 +835,7 @@ function HomeTeKopenSection({
           icon="shopping-bag"
           label="Te kopen"
           showNaarOverzicht={false}
+          onHide={onHide}
         />
         <HomeOnboardingEmptyCard
           illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.teKopen}
@@ -918,40 +932,28 @@ function HomeCalendarSection({
   );
 }
 
-function HomeStaticListSections({
-  lists,
+function HomeLijstjesSection({
+  normalLists,
   addingId,
   addingIdExpanded,
   removingId,
   onDelete,
   onStartFromMaster,
   onOpenCreateModal,
-  onOpenTeKopen,
-  shoppingItems,
-  hasUsedTeKopen,
 }: {
-  lists: HomeList[];
+  normalLists: HomeList[];
   addingId: string | null;
   addingIdExpanded: boolean;
   removingId: string | null;
   onDelete: (id: string) => void;
   onStartFromMaster: (id: string) => void;
   onOpenCreateModal: () => void;
-  onOpenTeKopen: () => void;
-  shoppingItems: HomeShoppingItem[];
-  hasUsedTeKopen: boolean;
 }) {
-  const router = useRouter();
-
-  const normalLists = lists.filter((l) => l.displayVariant !== "master");
-  const masterLists = lists.filter((l) => l.displayVariant === "master");
-
-  /** Instap-animatie wrapper voor verticale lijst op mobile (≤3 items). */
-  const rowWrapperClass = (isAddingCollapsed: boolean, index: number, len: number) =>
+  const rowWrapperClass = (isAnimating: boolean, index: number, len: number) =>
     cn(
       "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-      isAddingCollapsed ? "mb-0 max-h-0 opacity-0" : "max-h-[200px] opacity-100",
-      !isAddingCollapsed && (index < len - 1 ? "mb-3" : "mb-0"),
+      isAnimating ? "mb-0 max-h-0 opacity-0" : "max-h-[200px] opacity-100",
+      !isAnimating && (index < len - 1 ? "mb-3" : "mb-0"),
     );
 
   const cardFor = (list: HomeList) => (
@@ -982,160 +984,257 @@ function HomeStaticListSections({
     />
   );
 
+  if (normalLists.length === 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        <ListSectionHeader icon="list" label="Lijstjes" showNaarOverzicht={false} />
+        <HomeOnboardingEmptyCard
+          illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.lijstjes}
+          illustrationSide="start"
+          contentAlign="end"
+          text="Maak hier je wekelijkse lijstjes voor de supermarkt of andere winkels."
+          actions={
+            <MiniButton variant="primary" onClick={onOpenCreateModal}>
+              Voeg lijstje toe
+            </MiniButton>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col">
-      {/* ── Lijstjes ─────────────────────────────────────────────────────── */}
-      {normalLists.length > 0 ? (
-        <div className="flex flex-col">
-          <ListSectionHeader
-            icon="list"
-            label="Lijstjes"
-            showNaarOverzicht
-            naarOverzichtHref="/lijstjes-beheren/lijstjes"
-          />
-          {/* Mobile: swimlane met groepen van 3 kaarten per kolom (Figma 1127:10010) */}
-          {normalLists.length > 3 ? (
-            <div
-              className={cn("mt-4 lg:hidden", SWIMLANE_CLASSES)}
-              style={{ scrollbarWidth: "none" } as React.CSSProperties}
-            >
-              {chunkArray(normalLists, 3).map((chunk, i) => (
-                <div key={i} className="flex w-[300px] shrink-0 flex-col gap-3">
-                  {chunk.map((list) => (
-                    <Link key={list.id} href={`/lijstje/${list.id}`} className="block no-underline">
-                      {cardFor(list)}
-                    </Link>
-                  ))}
-                </div>
+      <ListSectionHeader
+        icon="list"
+        label="Lijstjes"
+        showNaarOverzicht
+        naarOverzichtHref="/lijstjes-beheren/lijstjes"
+      />
+      {normalLists.length > 3 ? (
+        <div
+          className={cn("mt-4 lg:hidden", SWIMLANE_CLASSES)}
+          style={{ scrollbarWidth: "none" } as React.CSSProperties}
+        >
+          {chunkArray(normalLists, 3).map((chunk, i) => (
+            <div key={i} className="flex w-[300px] shrink-0 flex-col gap-3">
+              {chunk.map((list) => (
+                <Link key={list.id} href={`/lijstje/${list.id}`} className="block no-underline">
+                  {cardFor(list)}
+                </Link>
               ))}
             </div>
-          ) : (
-            /* Mobile: verticale lijst (≤3) met instap-animatie */
-            <div className="mt-4 lg:hidden">
-              {normalLists.map((list, index) => {
-                const isAddingCollapsed = addingId === list.id && !addingIdExpanded;
-                const isRemoving = removingId === list.id;
-                const isAnimating = isAddingCollapsed || isRemoving;
-                return (
-                  <div key={list.id} className={rowWrapperClass(isAnimating, index, normalLists.length)}>
-                    <SwipeToDelete
-                      onDelete={list.isOwner ? () => onDelete(list.id) : undefined}
-                      deleteActionLabel="Lijstje verwijderen"
-                    >
-                      <Link href={`/lijstje/${list.id}`} className="block no-underline">
-                        {cardFor(list)}
-                      </Link>
-                    </SwipeToDelete>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {/* Desktop: 3-kolommen grid, max 3 rijen (9 items) */}
-          <div className="mt-4 hidden lg:grid lg:grid-cols-3 lg:gap-3">
-            {normalLists.slice(0, 9).map((list) => (
-              <Link key={list.id} href={`/lijstje/${list.id}`} className="block no-underline">
-                {cardFor(list)}
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div className={cn(normalLists.length > 0 && "mt-8")}>
-        <HomeTeKopenSection shoppingItems={shoppingItems} hasUsedBefore={hasUsedTeKopen} onAddProduct={onOpenTeKopen} />
-      </div>
-
-      {/* ── Favorieten lijstjes ───────────────────────────────────────────── */}
-      {masterLists.length > 0 ? (
-        <div className={cn("flex flex-col", normalLists.length > 0 ? "mt-10" : undefined)}>
-          <ListSectionHeader
-            icon="heart"
-            label="Favorieten lijstjes"
-            showNaarOverzicht
-            naarOverzichtHref="/lijstjes-beheren/favorieten"
-          />
-          {/* Mobile: swimlane met 1 kaart per kolom */}
-          <div
-            className={cn("mt-4 lg:hidden", SWIMLANE_CLASSES)}
-            style={{ scrollbarWidth: "none" } as React.CSSProperties}
-          >
-            {masterLists.map((list) => (
-              <div key={list.id} className="w-[300px] shrink-0">
-                <div
-                  role="link"
-                  tabIndex={0}
-                  className="block cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-                  onClick={(e) => {
-                    if ((e.target as HTMLElement).closest("button")) return;
-                    router.push(`/lijstje/${list.id}`);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      if ((e.target as HTMLElement).closest("button")) return;
-                      e.preventDefault();
-                      router.push(`/lijstje/${list.id}`);
-                    }
-                  }}
-                >
-                  {cardFor(list)}
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* Desktop: 3-kolommen grid */}
-          <div className="mt-4 hidden lg:grid lg:grid-cols-3 lg:gap-3">
-            {masterLists.map((list) => (
-              <div
-                key={list.id}
-                role="link"
-                tabIndex={0}
-                className="block cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-                onClick={(e) => {
-                  if ((e.target as HTMLElement).closest("button")) return;
-                  router.push(`/lijstje/${list.id}`);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    if ((e.target as HTMLElement).closest("button")) return;
-                    e.preventDefault();
-                    router.push(`/lijstje/${list.id}`);
-                  }
-                }}
-              >
-                {cardFor(list)}
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
       ) : (
-        <div className={cn("flex flex-col gap-4", normalLists.length > 0 ? "mt-10" : undefined)}>
-          <ListSectionHeader
-            icon="heart"
-            label="Favorieten lijstjes"
-            showNaarOverzicht={false}
-          />
-          <HomeOnboardingEmptyCard
-            illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.favorieten}
-            illustrationSide="start"
-            contentAlign="end"
-            text="Maak per winkel favorieten met vaak gekochte producten voor snelle lijstjes."
-            actions={
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
+        <div className="mt-4 lg:hidden">
+          {normalLists.map((list, index) => {
+            const isAnimating = (addingId === list.id && !addingIdExpanded) || removingId === list.id;
+            return (
+              <div key={list.id} className={rowWrapperClass(isAnimating, index, normalLists.length)}>
+                <SwipeToDelete
+                  onDelete={list.isOwner ? () => onDelete(list.id) : undefined}
+                  deleteActionLabel="Lijstje verwijderen"
                 >
-                  Meer info
-                </button>
-                <MiniButton variant="primary" onClick={onOpenCreateModal}>
-                  Voeg lijstje toe
-                </MiniButton>
+                  <Link href={`/lijstje/${list.id}`} className="block no-underline">
+                    {cardFor(list)}
+                  </Link>
+                </SwipeToDelete>
               </div>
-            }
-          />
+            );
+          })}
         </div>
       )}
+      <div className="mt-4 hidden lg:grid lg:grid-cols-3 lg:gap-3">
+        {normalLists.slice(0, 9).map((list) => (
+          <Link key={list.id} href={`/lijstje/${list.id}`} className="block no-underline">
+            {cardFor(list)}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HomeFavorietenSection({
+  masterLists,
+  onOpenCreateModal,
+  onHide,
+}: {
+  masterLists: HomeList[];
+  onOpenCreateModal: () => void;
+  onHide?: () => void;
+}) {
+  const router = useRouter();
+
+  const cardFor = (list: HomeList) => (
+    <ListCard
+      listName={list.name}
+      itemCount={homeListCardItemCountLine(list)}
+      displayVariant={list.displayVariant}
+      storeLogos={list.storeLogos}
+      sharedWithFirstName={list.sharedWithFirstName ?? undefined}
+      icon={
+        // eslint-disable-next-line @next/next/no-img-element -- lokale webp
+        <img
+          src={list.customIconUrl ?? homeListCardIconSrc(list)}
+          alt=""
+          width={48}
+          height={48}
+          decoding="async"
+          className={list.customIconUrl ? "size-full rounded-[var(--radius-md)] object-cover" : "object-contain"}
+        />
+      }
+      state="default"
+      className="cursor-pointer"
+    />
+  );
+
+  if (masterLists.length === 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        <ListSectionHeader
+          icon="heart"
+          label="Favorieten lijstjes"
+          showNaarOverzicht={false}
+          onHide={onHide}
+        />
+        <HomeOnboardingEmptyCard
+          illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.favorieten}
+          illustrationSide="start"
+          contentAlign="end"
+          text="Maak per winkel favorieten met vaak gekochte producten voor snelle lijstjes."
+          actions={
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
+              >
+                Meer info
+              </button>
+              <MiniButton variant="primary" onClick={onOpenCreateModal}>
+                Voeg lijstje toe
+              </MiniButton>
+            </div>
+          }
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col">
+      <ListSectionHeader
+        icon="heart"
+        label="Favorieten lijstjes"
+        showNaarOverzicht
+        naarOverzichtHref="/lijstjes-beheren/favorieten"
+      />
+      <div
+        className={cn("mt-4 lg:hidden", SWIMLANE_CLASSES)}
+        style={{ scrollbarWidth: "none" } as React.CSSProperties}
+      >
+        {masterLists.map((list) => (
+          <div key={list.id} className="w-[300px] shrink-0">
+            <div
+              role="link"
+              tabIndex={0}
+              className="block cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("button")) return;
+                router.push(`/lijstje/${list.id}`);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  if ((e.target as HTMLElement).closest("button")) return;
+                  e.preventDefault();
+                  router.push(`/lijstje/${list.id}`);
+                }
+              }}
+            >
+              {cardFor(list)}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 hidden lg:grid lg:grid-cols-3 lg:gap-3">
+        {masterLists.map((list) => (
+          <div
+            key={list.id}
+            role="link"
+            tabIndex={0}
+            className="block cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest("button")) return;
+              router.push(`/lijstje/${list.id}`);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                if ((e.target as HTMLElement).closest("button")) return;
+                e.preventDefault();
+                router.push(`/lijstje/${list.id}`);
+              }
+            }}
+          >
+            {cardFor(list)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HomeKalenderSection({
+  entries,
+  hasEverUsedCalendar,
+  onHide,
+}: {
+  entries: Array<{ isoDate: string; entry: DayEntry }>;
+  hasEverUsedCalendar: boolean;
+  onHide?: () => void;
+}) {
+  if (entries.length > 0) return <HomeCalendarSection entries={entries} />;
+  if (hasEverUsedCalendar) return null;
+  return (
+    <div className="flex flex-col gap-4">
+      <ListSectionHeader icon="calendar" label="Kalender" showNaarOverzicht={false} onHide={onHide} />
+      <HomeOnboardingEmptyCard
+        illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.kalender}
+        illustrationSide="end"
+        contentAlign="start"
+        text="Wat eten we vandaag is nooit nog een probleem met deze handige agenda!"
+        actions={
+          <MiniButton asChild variant="primary">
+            <Link href="/kalender">Naar kalender</Link>
+          </MiniButton>
+        }
+      />
+    </div>
+  );
+}
+
+function HomeKlantenkaartSection({
+  cards,
+  onHide,
+}: {
+  cards: HomeLoyaltyCard[];
+  onHide?: () => void;
+}) {
+  if (cards.length > 0) return <HomeLoyaltyCardsSwimlane cards={cards} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <ListSectionHeader icon="card" label="Klantenkaarten" showNaarOverzicht={false} onHide={onHide} />
+      <HomeOnboardingEmptyCard
+        illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.klantenkaarten}
+        illustrationSide="start"
+        contentAlign="end"
+        text="Voeg al je klantenkaarten hier toe, zodat je ze altijd bij de hand hebt."
+        actions={
+          <MiniButton asChild variant="primary">
+            <Link href="/klantenkaarten">Voeg klantenkaart toe</Link>
+          </MiniButton>
+        }
+      />
     </div>
   );
 }
@@ -1386,6 +1485,33 @@ export default function Home() {
       (a, b) => (a.order ?? 0) - (b.order ?? 0),
     );
   }, [data, user?.id, shareFirstNameByUserId]);
+
+  const normalLists = React.useMemo(
+    () => lists.filter((l) => !l.isMasterTemplate),
+    [lists],
+  );
+  const masterLists = React.useMemo(
+    () => lists.filter((l) => l.isMasterTemplate),
+    [lists],
+  );
+
+  const [homeSectionConfig, setHomeSectionConfig] = React.useState<HomeSectionConfig>(
+    () => loadHomeSectionConfig(),
+  );
+
+  React.useEffect(() => {
+    const handler = () => setHomeSectionConfig(loadHomeSectionConfig());
+    window.addEventListener("focus", handler);
+    return () => window.removeEventListener("focus", handler);
+  }, []);
+
+  const hideSection = React.useCallback((id: HomeSectionId) => {
+    setHomeSectionConfig((prev) => {
+      const next = { ...prev, hidden: [...prev.hidden, id] };
+      saveHomeSectionConfig(next);
+      return next;
+    });
+  }, []);
 
   /** `landalTripLabel` vullen op Landal-lijsten zonder veld (standaard Vrienden; Gezin alleen als naam/icoon dat zegt). */
   React.useEffect(() => {
@@ -2173,169 +2299,87 @@ export default function Home() {
     <div className={cn("relative flex min-h-dvh w-full flex-col px-[var(--space-4)]", !hasLists && "bg-gradient-to-b from-[#dcddfc] to-white")}>
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
-          {!hasLists ? (
-            <div className="flex flex-col gap-8 py-2">
-              <div className="flex flex-col gap-4">
-                <ListSectionHeader
-                  icon="list"
-                  label="Lijstjes"
-                  showNaarOverzicht={false}
-                />
-                <HomeOnboardingEmptyCard
-                  illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.lijstjes}
-                  illustrationSide="start"
-                  contentAlign="end"
-                  text="Maak hier je wekelijkse lijstjes voor de supermarkt of andere winkels."
-                  actions={
-                    <MiniButton variant="primary" onClick={handleOpenCreateModal}>
-                      Voeg lijstje toe
-                    </MiniButton>
-                  }
-                />
-              </div>
-
-              <HomeTeKopenSection shoppingItems={homeShoppingItems} hasUsedBefore={hasUsedTeKopen} onAddProduct={() => setTeKopenSlideOpen(true)} />
-
-              <div className="flex flex-col gap-4">
-                <ListSectionHeader
-                  icon="heart"
-                  label="Favorieten lijstjes"
-                  showNaarOverzicht={false}
-                />
-                <HomeOnboardingEmptyCard
-                  illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.favorieten}
-                  illustrationSide="start"
-                  contentAlign="end"
-                  text="Maak per winkel favorieten met vaak gekochte producten voor snelle lijstjes."
-                  actions={
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
-                      >
-                        Meer info
-                      </button>
-                      <MiniButton variant="primary" onClick={handleOpenCreateModal}>
-                        Voeg lijstje toe
-                      </MiniButton>
-                    </div>
-                  }
-                />
-              </div>
-
-              <div className="flex flex-col gap-4">
-                <ListSectionHeader
-                  icon="calendar"
-                  label="Kalender"
-                  showNaarOverzicht={false}
-                />
-                <HomeOnboardingEmptyCard
-                  illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.kalender}
-                  illustrationSide="end"
-                  contentAlign="start"
-                  text="Wat eten we vandaag is nooit nog een probleem met deze handige agenda!"
-                  actions={
-                    <MiniButton asChild variant="primary">
-                      <Link href="/kalender">Naar kalender</Link>
-                    </MiniButton>
-                  }
-                />
-              </div>
-
-              <div className="flex flex-col gap-4">
-                <ListSectionHeader
-                  icon="card"
-                  label="Klantenkaarten"
-                  showNaarOverzicht={false}
-                />
-                <HomeOnboardingEmptyCard
-                  illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.klantenkaarten}
-                  illustrationSide="start"
-                  contentAlign="end"
-                  text="Voeg al je klantenkaarten hier toe, zodat je ze altijd bij de hand hebt."
-                  actions={
-                    <MiniButton asChild variant="primary">
-                      <Link href="/klantenkaarten">Voeg klantenkaart toe</Link>
-                    </MiniButton>
-                  }
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="pt-4">
-              <HomeStaticListSections
-                lists={lists}
-                addingId={addingId}
-                addingIdExpanded={addingIdExpanded}
-                removingId={removingId}
-                onDelete={handleDeleteList}
-                onStartFromMaster={handleStartFromMaster}
-                onOpenCreateModal={handleOpenCreateModal}
-                onOpenTeKopen={() => setTeKopenSlideOpen(true)}
-                shoppingItems={homeShoppingItems}
-                hasUsedTeKopen={hasUsedTeKopen}
-              />
-            </div>
-          )}
-          {hasLists && homeCalendarEntries.length > 0 ? (
-            <div className="mt-10">
-              <HomeCalendarSection entries={homeCalendarEntries} />
-            </div>
-          ) : hasLists && !hasEverUsedCalendar ? (
-            <div className="mt-10 flex flex-col gap-4">
-              <ListSectionHeader
-                icon="calendar"
-                label="Kalender"
-                showNaarOverzicht={false}
-              />
-              <HomeOnboardingEmptyCard
-                illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.kalender}
-                illustrationSide="end"
-                contentAlign="start"
-                text="Wat eten we vandaag is nooit nog een probleem met deze handige agenda!"
-                actions={
-                  <MiniButton asChild variant="primary">
-                    <Link href="/kalender">Naar kalender</Link>
-                  </MiniButton>
-                }
-              />
-            </div>
-          ) : null}
-          {hasLists && homeLoyaltyCards.length > 0 ? (
-            <div className="mt-10">
-              <HomeLoyaltyCardsSwimlane cards={homeLoyaltyCards} />
-            </div>
-          ) : hasLists ? (
-            <div className="mt-10 flex flex-col gap-4">
-              <ListSectionHeader
-                icon="card"
-                label="Klantenkaarten"
-                showNaarOverzicht={false}
-              />
-              <HomeOnboardingEmptyCard
-                illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.klantenkaarten}
-                illustrationSide="start"
-                contentAlign="end"
-                text="Voeg al je klantenkaarten hier toe, zodat je ze altijd bij de hand hebt."
-                actions={
-                  <MiniButton asChild variant="primary">
-                    <Link href="/klantenkaarten">Voeg klantenkaart toe</Link>
-                  </MiniButton>
-                }
-              />
-            </div>
-          ) : null}
-          <div className="mt-10">
-            <HomeDiepvriesSection
-              itemCount={homeFreezerItems.length}
-              previewItems={homeFreezerItems.slice(0, 5).map((it) => ({
-                id: it.id,
-                name: it.name,
-                type: it.type,
-                recipePhotoUrl: it.recipePhotoUrl,
-                packages: it.packages,
-              }))}
-            />
+          <div className={cn("flex flex-col", !hasLists ? "gap-8 py-2" : "gap-10 pt-4")}>
+            {homeSectionConfig.order.map((sectionId) => {
+              if (homeSectionConfig.hidden.includes(sectionId)) return null;
+              const onHide = sectionId !== "lijstjes" ? () => hideSection(sectionId) : undefined;
+              switch (sectionId) {
+                case "lijstjes":
+                  return (
+                    <HomeLijstjesSection
+                      key="lijstjes"
+                      normalLists={normalLists}
+                      addingId={addingId}
+                      addingIdExpanded={addingIdExpanded}
+                      removingId={removingId}
+                      onDelete={handleDeleteList}
+                      onStartFromMaster={handleStartFromMaster}
+                      onOpenCreateModal={handleOpenCreateModal}
+                    />
+                  );
+                case "te-kopen":
+                  return (
+                    <HomeTeKopenSection
+                      key="te-kopen"
+                      shoppingItems={homeShoppingItems}
+                      hasUsedBefore={hasUsedTeKopen}
+                      onAddProduct={() => setTeKopenSlideOpen(true)}
+                      onHide={onHide}
+                    />
+                  );
+                case "favorieten":
+                  return (
+                    <HomeFavorietenSection
+                      key="favorieten"
+                      masterLists={masterLists}
+                      onOpenCreateModal={handleOpenCreateModal}
+                      onHide={onHide}
+                    />
+                  );
+                case "kalender":
+                  return (
+                    <HomeKalenderSection
+                      key="kalender"
+                      entries={homeCalendarEntries}
+                      hasEverUsedCalendar={hasEverUsedCalendar}
+                      onHide={onHide}
+                    />
+                  );
+                case "klantenkaarten":
+                  return (
+                    <HomeKlantenkaartSection
+                      key="klantenkaarten"
+                      cards={homeLoyaltyCards}
+                      onHide={onHide}
+                    />
+                  );
+                case "diepvries":
+                  return (
+                    <HomeDiepvriesSection
+                      key="diepvries"
+                      itemCount={homeFreezerItems.length}
+                      previewItems={homeFreezerItems.slice(0, 5).map((it) => ({
+                        id: it.id,
+                        name: it.name,
+                        type: it.type,
+                        recipePhotoUrl: it.recipePhotoUrl,
+                        packages: it.packages,
+                      }))}
+                      onHide={onHide}
+                    />
+                  );
+                default:
+                  return null;
+              }
+            })}
+          </div>
+          <div className="mt-10 flex justify-center pb-4">
+            <Link
+              href="/beheer-homepagina"
+              className="text-sm font-medium leading-5 text-action-primary underline underline-offset-2 transition-colors [@media(hover:hover)]:hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+            >
+              Homepagina beheren
+            </Link>
           </div>
         </div>
       </div>

@@ -7,6 +7,24 @@ import { cn } from "@/lib/utils";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
 
+const STORE_FREQ_KEY = "te-kopen-store-freq";
+
+function loadStoreFreq(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(STORE_FREQ_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, number>;
+  } catch { /* ignore */ }
+  return {};
+}
+
+function incrementStoreFreq(store: string | null): void {
+  if (typeof window === "undefined" || !store) return;
+  const freq = loadStoreFreq();
+  freq[store] = (freq[store] ?? 0) + 1;
+  localStorage.setItem(STORE_FREQ_KEY, JSON.stringify(freq));
+}
+
 function SearchIcon({ className }: { className?: string }) {
   return (
     <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -72,16 +90,25 @@ export function AddShoppingItemSlideIn({
     onClose();
   }, [onClose]);
 
-  const filteredStores = (searchMode && storeSearch.trim()
-    ? MASTER_STORE_OPTIONS.filter((s) =>
+  const [storeFreq] = React.useState<Record<string, number>>(() => loadStoreFreq());
+
+  const sortedStoreOptions = React.useMemo(() => {
+    return [...MASTER_STORE_OPTIONS].sort(
+      (a, b) => (storeFreq[b.label] ?? 0) - (storeFreq[a.label] ?? 0),
+    );
+  }, [storeFreq]);
+
+  const filteredStores = searchMode && storeSearch.trim()
+    ? sortedStoreOptions.filter((s) =>
         s.label.toLowerCase().includes(storeSearch.toLowerCase()),
       )
-    : MASTER_STORE_OPTIONS) as typeof MASTER_STORE_OPTIONS;
+    : sortedStoreOptions;
 
   const handleAdd = () => {
     const trimmed = name.trim();
     if (!trimmed) return;
     const qty = `${quantity.trim() || "1"} ${unit.trim() || "stuk"}`.trim();
+    incrementStoreFreq(selectedStore);
     onAdd(trimmed, qty, selectedStore);
     onClose();
   };
