@@ -31,10 +31,9 @@ const schema = i.schema({
       /** Eigen geüploade foto als lijstjedicoon (legacy data-URL of blob-URL). */
       customIconUrl: i.string().optional(),
       /**
-       * Landal-trip (bv. «Gezin», «Vrienden») voor subtitel op de homekaart.
-       * Ontbreekt op oudere lijsten → afgeleid uit naam/icoon waar mogelijk.
+       * Landal: vrije tekst wie Puddy eten geeft (bv. «Oma en opa»). Leeg = nog niet gekozen.
        */
-      landalTripLabel: i.string().optional(),
+      landalPuddyFedBy: i.string().optional(),
       /**
        * Week-/boodschappenlijst vanuit een master: id van die master-template.
        * Gebruikt o.a. om `masterCategoryOrderJson` van de master te volgen bij groepering per categorie.

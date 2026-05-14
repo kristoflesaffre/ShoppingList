@@ -43,6 +43,11 @@ const meta: Meta<typeof Button> = {
       control: "boolean",
       description: "Render as child component (Radix Slot)",
     },
+    tertiaryTone: {
+      control: "select",
+      options: ["default", "danger"],
+      description: "Alleen bij tertiary: linkkleur of error-kleur",
+    },
   },
 };
 
@@ -95,6 +100,23 @@ export const TertiaryDisabled: Story = {
   },
 };
 
+export const TertiaryDanger: Story = {
+  args: {
+    variant: "tertiary",
+    tertiaryTone: "danger",
+    children: "Naam verwijderen",
+  },
+};
+
+export const TertiaryDangerDisabled: Story = {
+  args: {
+    variant: "tertiary",
+    tertiaryTone: "danger",
+    disabled: true,
+    children: "Naam verwijderen",
+  },
+};
+
 export const AllVariants: Story = {
   render: () => (
     <div className="flex flex-col gap-3">
@@ -109,6 +131,12 @@ export const AllVariants: Story = {
       <Button variant="tertiary">Tertiary</Button>
       <Button variant="tertiary" disabled>
         Tertiary disabled
+      </Button>
+      <Button variant="tertiary" tertiaryTone="danger">
+        Tertiary danger
+      </Button>
+      <Button variant="tertiary" tertiaryTone="danger" disabled>
+        Tertiary danger disabled
       </Button>
     </div>
   ),

@@ -25,6 +25,7 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
+import { InstantError } from "@instantdb/core";
 import { id as iid } from "@instantdb/react";
 import {
   LoyaltyCardSwipeShell,
@@ -51,6 +52,10 @@ import {
   landalGezinHouseholdMembershipTransactions,
 } from "@/lib/landal-gezin-household";
 import { isLandalListCard } from "@/lib/landal-list-card";
+import {
+  LandalPuddyFeedingCard,
+  LandalPuddyFeedSlideIn,
+} from "@/components/landal_puddy_feeding";
 import {
   APP_FAB_BOTTOM_NO_NAV_CLASS,
   APP_FAB_INNER_PX4_CLASS,
@@ -3064,6 +3069,9 @@ export default function ListDetailPage({
             : null,
       })
     : false;
+  const landalPuddyFedBy = String(
+    (listData as Record<string, unknown>)?.landalPuddyFedBy ?? "",
+  ).trim();
   const [tripPersonTab, setTripPersonTab] =
     React.useState<TripPersonTab>(DEFAULT_TRIP_PERSON_TAB);
   React.useEffect(() => {
@@ -3334,6 +3342,9 @@ export default function ListDetailPage({
   const [loyaltyDecodeResult, setLoyaltyDecodeResult] = React.useState<Extract<DecodeResult, { ok: true }> | null>(null);
   const [loyaltyDecodeError, setLoyaltyDecodeError] = React.useState<string | null>(null);
   const [loyaltySaving, setLoyaltySaving] = React.useState(false);
+  const [landalPuddySlideOpen, setLandalPuddySlideOpen] = React.useState(false);
+  const [landalPuddyDraftName, setLandalPuddyDraftName] = React.useState("");
+  const [landalPuddySaving, setLandalPuddySaving] = React.useState(false);
   const [loyaltyPanel, setLoyaltyPanel] = React.useState<"list" | "loyalty">("list");
   /** Bij combi Lidl/Delhaize: welk slot koppelen/hernieuwen (primary = Delhaize). */
   const [loyaltySlot, setLoyaltySlot] = React.useState<"delhaize" | "lidl">(
@@ -3346,6 +3357,72 @@ export default function ListDetailPage({
   const existingLoyaltyCard = data?.lists?.[0]?.loyaltyCard ?? null;
   const existingLoyaltyCardSecondary =
     data?.lists?.[0]?.loyaltyCardSecondary ?? null;
+
+  const openLandalPuddySlide = React.useCallback(() => {
+    setLandalPuddyDraftName(landalPuddyFedBy);
+    setLandalPuddySlideOpen(true);
+  }, [landalPuddyFedBy]);
+
+  const persistLandalPuddyFedBy = React.useCallback(async () => {
+    const targetListId =
+      typeof listData?.id === "string" && listData.id.length > 0
+        ? listData.id
+        : listId;
+    if (!targetListId) return;
+    const trimmed = landalPuddyDraftName.trim();
+    if (!trimmed) {
+      setSnackbarMessage("Vul een naam in.");
+      return;
+    }
+    setLandalPuddySaving(true);
+    try {
+      await db.transact(
+        db.tx.lists[targetListId].update({
+          landalPuddyFedBy: trimmed,
+        }),
+      );
+      setLandalPuddySlideOpen(false);
+    } catch (e) {
+      const msg =
+        e instanceof InstantError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Bewaren mislukt. Probeer opnieuw.";
+      setSnackbarMessage(msg);
+    } finally {
+      setLandalPuddySaving(false);
+    }
+  }, [listData?.id, listId, landalPuddyDraftName]);
+
+  const clearLandalPuddyFedBy = React.useCallback(async () => {
+    const targetListId =
+      typeof listData?.id === "string" && listData.id.length > 0
+        ? listData.id
+        : listId;
+    if (!targetListId) return;
+    setLandalPuddySaving(true);
+    try {
+      await db.transact(
+        db.tx.lists[targetListId].update({
+          landalPuddyFedBy: "",
+        }),
+      );
+      setLandalPuddyDraftName("");
+      setLandalPuddySlideOpen(false);
+    } catch (e) {
+      const msg =
+        e instanceof InstantError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Verwijderen mislukt. Probeer opnieuw.";
+      setSnackbarMessage(msg);
+    } finally {
+      setLandalPuddySaving(false);
+    }
+  }, [listData?.id, listId]);
+
   const storeFromListName = React.useMemo(
     () => findMasterStoreByListName(listName),
     [listName],
@@ -4881,6 +4958,15 @@ export default function ListDetailPage({
                 </div>
               ) : null}
             </div>
+            {isLandalListCard(customIconUrl) && !isMasterList ? (
+              <div className="mt-3 w-full min-w-0 self-stretch">
+                <LandalPuddyFeedingCard
+                  fedBy={landalPuddyFedBy}
+                  onChoosePerson={openLandalPuddySlide}
+                  onEdit={openLandalPuddySlide}
+                />
+              </div>
+            ) : null}
             {showUncheckedFirstToggle &&
             isLandalOrVakantieList &&
             isLandalGezinTrip &&
@@ -5466,6 +5552,17 @@ export default function ListDetailPage({
         isVacationList={isLandalOrVakantieList}
         initialTripPerson={isLandalOrVakantieList ? tripPersonTab : undefined}
         groupingMode={effectiveListGroupingMode}
+      />
+
+      <LandalPuddyFeedSlideIn
+        open={landalPuddySlideOpen}
+        onClose={() => setLandalPuddySlideOpen(false)}
+        name={landalPuddyDraftName}
+        onNameChange={setLandalPuddyDraftName}
+        onSave={persistLandalPuddyFedBy}
+        savedFedBy={landalPuddyFedBy}
+        onRemoveSavedName={clearLandalPuddyFedBy}
+        saving={landalPuddySaving}
       />
 
       <input

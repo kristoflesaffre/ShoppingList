@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
 export type ButtonVariant = "primary" | "secondary" | "tertiary";
 export type ButtonSize = "default";
 
+/** Alleen bij `variant="tertiary"`: standaard linkblauw of foutkleur (Figma destructive link). */
+export type ButtonTertiaryTone = "default" | "danger";
+
 /**
  * Button props. Extends native button attributes.
  * @param asChild - When true, merges props onto the single child (Radix Slot); use e.g. <Button asChild><a href="...">Link</a></Button>
@@ -16,6 +19,10 @@ export interface ButtonProps
   variant?: ButtonVariant;
   size?: ButtonSize;
   disabled?: boolean;
+  /**
+   * Alleen bij `variant="tertiary"`: `default` = linkkleur; `danger` = `--error-400` tekst + underline.
+   */
+  tertiaryTone?: ButtonTertiaryTone;
   /** Render as child element (Radix Slot); child receives merged props and styles */
   asChild?: boolean;
 }
@@ -27,6 +34,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       variant = "primary",
       size = "default",
       disabled = false,
+      tertiaryTone = "default",
       asChild = false,
       ...props
     },
@@ -39,6 +47,22 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const sizeStyles = {
       default: "py-2 px-4 rounded-[var(--radius-pill)]",
+    };
+
+    const tertiaryToneStyles: Record<
+      ButtonTertiaryTone,
+      { default: string; disabled: string }
+    > = {
+      default: {
+        default:
+          "bg-transparent text-[var(--text-link)] underline hover:text-[var(--action-primary-hover)]",
+        disabled: "text-[var(--blue-300)] no-underline bg-transparent",
+      },
+      danger: {
+        default:
+          "bg-transparent text-[var(--error-400)] underline decoration-[var(--error-400)] hover:text-[var(--error-600)] hover:decoration-[var(--error-600)]",
+        disabled: "text-[var(--blue-300)] no-underline bg-transparent decoration-transparent",
+      },
     };
 
     const variantStyles: Record<
@@ -56,11 +80,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled:
           "border border-[var(--blue-200)] text-[var(--blue-300)] bg-[var(--action-secondary-bg)]",
       },
-      tertiary: {
-        default:
-          "bg-transparent text-[var(--text-link)] underline hover:text-[var(--action-primary-hover)]",
-        disabled: "text-[var(--blue-300)] no-underline bg-transparent",
-      },
+      tertiary: tertiaryToneStyles[tertiaryTone],
     };
 
     const state = disabled ? "disabled" : "default";
