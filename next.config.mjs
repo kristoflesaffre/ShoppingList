@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/images/landal/:path*",
+        destination: "/images/vakantie/:path*",
+        permanent: true,
+      },
+    ];
+  },
   experimental: {
     // Next 14: externe Instant-packages niet door webpack voor server (minder crash → HTML 500).
     serverComponentsExternalPackages: ["@instantdb/admin", "@instantdb/core"],

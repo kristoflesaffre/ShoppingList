@@ -18,10 +18,10 @@ async function listDir(dir: string, prefix: string): Promise<string[]> {
 }
 
 export async function GET() {
-  const [items, landal] = await Promise.all([
+  const [items, vakantie] = await Promise.all([
     listDir(join(process.cwd(), "public/images/items"), "items"),
-    listDir(join(process.cwd(), "public/images/landal"), "landal"),
+    listDir(join(process.cwd(), "public/images/vakantie"), "vakantie"),
   ]);
-  // Landal achteraan zodat het reguliere items kan overschrijven bij zelfde naam
-  return NextResponse.json([...items, ...landal]);
+  // Vakantie-/Landal-assets achteraan zodat ze reguliere items kunnen overschrijven bij zelfde naam
+  return NextResponse.json([...items, ...vakantie]);
 }

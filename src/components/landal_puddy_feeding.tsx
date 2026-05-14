@@ -7,8 +7,8 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
 
-/** Figma 1498:13664 / asset in repo onder `public/images/landal/`. */
-export const LANDAL_PUDDY_IMAGE_SRC = "/images/landal/puddy_320.webp";
+/** Figma 1498:13664 / asset in repo onder `public/images/vakantie/`. */
+export const LANDAL_PUDDY_IMAGE_SRC = "/images/vakantie/puddy_320.webp";
 
 /** Checkmark – zelfde vorm als `public/icons/checkmark.svg`, kleur via `currentColor`. */
 function PuddyCheckIcon({ className }: { className?: string }) {

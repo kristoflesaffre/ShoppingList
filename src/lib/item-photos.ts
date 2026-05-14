@@ -25,8 +25,8 @@ export function itemPhotoUrlFromSlug(slug: string, size?: number): string {
 
 /**
  * Normaliseert ruwe slugs en bouwt een mapping: genormaliseerde naam → padprefix/bestandsnaam.
- * Input kan "items/foo_160" of "landal/bar_160" zijn (met subdir) of legacy "foo_160" (zonder).
- * Landal-items (later in de lijst) overschrijven reguliere items met dezelfde naam.
+ * Input kan "items/foo_160" of "vakantie/bar_160" zijn (met subdir) of legacy "foo_160" (zonder).
+ * Vakantie-assets (later in de lijst) overschrijven reguliere items met dezelfde naam.
  */
 function buildSlugIndex(raw: string[]): string[] {
   const map = new Map<string, string>();
@@ -38,7 +38,7 @@ function buildSlugIndex(raw: string[]): string[] {
       : withoutSize;
     const normalized = normalizeForMatch(justName);
     if (normalized) {
-      // Landal-items overschrijven reguliere items voor dezelfde naam
+      // Vakantie-assets overschrijven reguliere items voor dezelfde naam
       map.set(normalized, withoutSize);
     }
   }

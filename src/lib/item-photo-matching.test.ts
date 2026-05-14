@@ -14,24 +14,24 @@ describe("tripPersonImageSuffix", () => {
 describe("matchItemPhotoUrl", () => {
   const slugs = ["jas_man", "jas_vrouw", "jas_kind", "headphones"];
   const fileBaseBySlug = new Map(
-    slugs.map((slug) => [slug, `landal/${slug}`]),
+    slugs.map((slug) => [slug, `vakantie/${slug}`]),
   );
 
-  it("kiest gendered landal-variant op basis van tripPerson", () => {
+  it("kiest gendered vakantie-variant op basis van tripPerson", () => {
     expect(
       matchItemPhotoUrl("Jas", slugs, 160, fileBaseBySlug, {
         personImageSuffix: "man",
       }),
-    ).toBe("/images/landal/jas_man_160.webp");
+    ).toBe("/images/vakantie/jas_man_160.webp");
     expect(
       matchItemPhotoUrl("Jas", slugs, 160, fileBaseBySlug, {
         personImageSuffix: "vrouw",
       }),
-    ).toBe("/images/landal/jas_vrouw_160.webp");
+    ).toBe("/images/vakantie/jas_vrouw_160.webp");
     expect(
       matchItemPhotoUrl("Jas", slugs, 160, fileBaseBySlug, {
         personImageSuffix: "kind",
       }),
-    ).toBe("/images/landal/jas_kind_160.webp");
+    ).toBe("/images/vakantie/jas_kind_160.webp");
   });
 });

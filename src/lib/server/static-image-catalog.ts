@@ -22,12 +22,12 @@ async function listImageBases(dir: string): Promise<string[]> {
 }
 
 export async function loadItemImageSlugs(): Promise<string[]> {
-  const [items, landal] = await Promise.all([
+  const [items, vakantie] = await Promise.all([
     listImageBases(join(process.cwd(), "public/images/items")),
-    listImageBases(join(process.cwd(), "public/images/landal")),
+    listImageBases(join(process.cwd(), "public/images/vakantie")),
   ]);
   return Array.from(
-    new Set([...items, ...landal].map(normalizeForMatch).filter(Boolean)),
+    new Set([...items, ...vakantie].map(normalizeForMatch).filter(Boolean)),
   ).sort();
 }
 
