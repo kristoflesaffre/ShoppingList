@@ -5211,7 +5211,7 @@ export default function ListDetailPage({
                   variant="primary"
                   onClick={() => handleAddAllTeKopenItems(teKopenItems)}
                 >
-                  Allemaal toevoegen
+                  Alles toevoegen
                 </MiniButton>
               </div>
               <p className="text-base font-light leading-6 tracking-normal text-[var(--text-primary)]">

@@ -965,7 +965,7 @@ export default function SelecteerMasterItemsPage() {
                   onClick={handleAddAllTeKopenItems}
                   className="inline-flex h-6 shrink-0 items-center justify-center rounded-pill bg-action-primary px-4 text-xs font-medium leading-16 tracking-normal text-white transition-colors hover:bg-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
                 >
-                  Allemaal toevoegen
+                  Alles toevoegen
                 </button>
               </div>
               <p className="text-base font-light leading-24 tracking-normal text-text-primary">
