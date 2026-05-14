@@ -4707,7 +4707,8 @@ export default function ListDetailPage({
         {/* Geen extra gradient: zelfde principe als gewone lijstdetail — alleen body::before (globals.css). */}
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4">
           {showListDetailHeader && !isMasterCategoryOrderMode ? (
-            <div className="flex items-start gap-3">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1 flex flex-col gap-0">
                 <div
                   className={cn(
@@ -4879,6 +4880,27 @@ export default function ListDetailPage({
                   </button>
                 </div>
               ) : null}
+            </div>
+            {showUncheckedFirstToggle &&
+            isLandalOrVakantieList &&
+            isLandalGezinTrip &&
+            !isMasterList ? (
+              <div className="flex w-full min-w-0 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
+                <Checkbox
+                  id="unchecked-first-toggle"
+                  checked={showUncheckedFirst}
+                  onCheckedChange={(v) => setShowUncheckedFirst(v === true)}
+                  className="border-[1.3px]"
+                  aria-label="Toon niet afgevinkte items bovenaan"
+                />
+                <label
+                  htmlFor="unchecked-first-toggle"
+                  className="min-w-0 flex-1 cursor-pointer select-none text-base font-normal leading-6 tracking-normal text-[var(--gray-700)]"
+                >
+                  Toon niet afgevinkte items bovenaan
+                </label>
+              </div>
+            ) : null}
             </div>
           ) : null}
 
@@ -5261,7 +5283,8 @@ export default function ListDetailPage({
             />
           ) : (
             <>
-            {showUncheckedFirstToggle ? (
+            {showUncheckedFirstToggle &&
+            !(isLandalOrVakantieList && isLandalGezinTrip) ? (
               <div className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
                 <Checkbox
                   id="unchecked-first-toggle"
