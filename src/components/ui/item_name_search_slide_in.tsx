@@ -13,6 +13,7 @@ import {
   matchIngredientSlugsForAutocomplete,
 } from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
+import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 
 /** Max treffers in slide-in; synoniemen kunnen de lijst verlengen. */
 const SLIDE_IN_MAX_SUGGESTIONS = 400;
@@ -88,16 +89,6 @@ function ClearIcon() {
         </svg>
       </span>
     </span>
-  );
-}
-
-/** icons/plus_circle — circle with a + inside (inset ~10.3% of 24px) */
-function PlusCircleIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="shrink-0" aria-hidden>
-      <circle cx="12" cy="12" r="9.5" stroke="var(--blue-500)" strokeWidth="1.25" />
-      <path d="M12 8V16M8 12H16" stroke="var(--blue-500)" strokeWidth="1.25" strokeLinecap="round" />
-    </svg>
   );
 }
 
@@ -319,7 +310,7 @@ export function ItemNameSearchSlideIn({
                 className="flex w-full items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
               >
                 <span className="flex size-8 shrink-0 items-center justify-center">
-                  <PlusCircleIcon />
+                  <PlusCircleMaskIcon />
                 </span>
                 <span className="min-w-0 truncate text-base leading-6 tracking-normal text-[#16181a]">
                   <span className="font-medium">&ldquo;{query.trim()}&rdquo; </span>

@@ -7,6 +7,7 @@ import { id as iid } from "@instantdb/react";
 import { ListCard } from "@/components/ui/list_card";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { MiniButton } from "@/components/ui/mini_button";
+import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
 import { InputField } from "@/components/ui/input_field";
@@ -826,10 +827,10 @@ function HomeTeKopenSection({
             <span className="min-w-0 flex-1 text-sm font-normal leading-5 text-[#9599f7]">
               Product toevoegen
             </span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="shrink-0" aria-hidden>
-              <circle cx="12" cy="12" r="9.5" stroke="#9599f7" strokeWidth="1.25" />
-              <path d="M12 8V16M8 12H16" stroke="#9599f7" strokeWidth="1.25" strokeLinecap="round" />
-            </svg>
+            <PlusCircleMaskIcon
+              className="size-6 shrink-0"
+              colorClassName="bg-[#9599f7]"
+            />
           </button>
         </div>
       );
@@ -876,10 +877,7 @@ function HomeTeKopenSection({
           aria-label="Product toevoegen"
           className="flex size-16 shrink-0 items-center justify-center rounded-[8px] border border-dashed border-[#e2e4e6] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <circle cx="12" cy="12" r="9.5" stroke="var(--blue-500)" strokeWidth="1.25" />
-            <path d="M12 8V16M8 12H16" stroke="var(--blue-500)" strokeWidth="1.25" strokeLinecap="round" />
-          </svg>
+          <PlusCircleMaskIcon />
         </button>
         {shoppingItems.map((item) => (
           <Link key={item.id} href="/te-kopen" className="shrink-0 no-underline">

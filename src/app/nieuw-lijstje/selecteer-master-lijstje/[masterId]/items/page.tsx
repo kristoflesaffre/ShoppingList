@@ -7,6 +7,7 @@ import { id as iid } from "@instantdb/react";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import {
   MASTER_STORE_OPTIONS,
@@ -102,25 +103,6 @@ function CheckIcon({ className }: { className?: string }) {
     >
       <path
         d="M20.13 6.43411C20.321 6.62511 20.321 6.94211 20.13 7.13311L9.14999 18.1161C9.05399 18.2111 8.92799 18.2591 8.80299 18.2591C8.67599 18.2591 8.54999 18.2111 8.45399 18.1161L3.86999 13.5301C3.67899 13.3401 3.67899 13.0231 3.86999 12.8321C4.06099 12.6411 4.37699 12.6411 4.56799 12.8321L8.80299 17.0671L19.432 6.43411C19.623 6.24211 19.939 6.24211 20.13 6.43411Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function PlusCircleIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M15.079 11.9997C15.079 12.2867 14.847 12.5197 14.559 12.5197H12.519V14.5607C12.519 14.8477 12.286 15.0807 11.999 15.0807C11.712 15.0807 11.479 14.8487 11.479 14.5607V12.5197H9.43997C9.15297 12.5197 8.91997 12.2867 8.91997 11.9997C8.91997 11.7127 9.15297 11.4797 9.43997 11.4797H11.48V9.43973C11.48 9.15273 11.713 8.91973 12 8.91973C12.287 8.91973 12.52 9.15273 12.52 9.43973V11.4797H14.56C14.847 11.4797 15.079 11.7127 15.079 11.9997ZM21.529 11.9997C21.529 17.2547 17.255 21.5287 12 21.5287C6.74497 21.5287 2.46997 17.2547 2.46997 11.9997C2.46997 6.74473 6.74497 2.46973 12 2.46973C17.255 2.46973 21.529 6.74473 21.529 11.9997ZM20.49 11.9997C20.49 7.31873 16.681 3.50973 12 3.50973C7.31897 3.50973 3.50997 7.31873 3.50997 11.9997C3.50997 16.6817 7.31897 20.4897 12 20.4897C16.681 20.4897 20.49 16.6817 20.49 11.9997Z"
         fill="currentColor"
       />
     </svg>
@@ -249,7 +231,10 @@ function SelectableItemCard({
             className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--white)] transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)]"
             aria-label={`Verhoog hoeveelheid voor "${item.name}"`}
           >
-            <PlusCircleIcon className="size-6 shrink-0" />
+            <PlusCircleMaskIcon
+              className="size-6 shrink-0"
+              colorClassName="bg-[var(--white)]"
+            />
           </button>
         </>
       ) : (
@@ -283,7 +268,7 @@ function SelectableItemCard({
             className="flex shrink-0 items-center rounded-pill p-1 text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
             aria-label={`Voeg "${item.name}" toe`}
           >
-            <PlusCircleIcon className="size-6 shrink-0" />
+            <PlusCircleMaskIcon className="size-6 shrink-0" />
           </button>
         </>
       )}
@@ -349,7 +334,7 @@ function TeKopenSuggestionCard({
         className="flex shrink-0 items-center rounded-pill p-1 text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
         aria-label={`Voeg "${item.name}" toe vanuit te kopen`}
       >
-        <PlusCircleIcon className="size-6 shrink-0" />
+        <PlusCircleMaskIcon className="size-6 shrink-0" />
       </button>
     </div>
   );

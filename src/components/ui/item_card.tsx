@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
+import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { Checkbox } from "./checkbox";
 
 export type ItemCardVariant =
@@ -193,7 +194,7 @@ function PencilIcon({ className }: { className?: string }) {
 
 /**
  * Zelfde pad als `public/icons/minus-circle.svg`, gecentreerd in 24×24 zoals plus
- * (19.06→24 inset ≈ 2.47), anders oogt de cirkel groter dan `PlusCircleIcon`.
+ * (19.06→24 inset ≈ 2.47), anders oogt de cirkel groter dan `PlusCircleMaskIcon`.
  */
 function MinusCircleIcon({ className }: { className?: string }) {
   return (
@@ -212,26 +213,6 @@ function MinusCircleIcon({ className }: { className?: string }) {
           d="M10.05,10.05h-3.08c-.29,0-.52-.23-.52-.52s.23-.52.52-.52h3.08M10.05,9.01h2.04c.29,0,.52.23.52.52s-.23.52-.52.52h-2.04M19.06,9.53c0,5.26-4.27,9.53-9.53,9.53S0,14.78,0,9.53,4.27,0,9.53,0s9.53,4.28,9.53,9.53ZM18.02,9.53c0-4.68-3.81-8.49-8.49-8.49S1.04,4.85,1.04,9.53s3.81,8.49,8.49,8.49,8.49-3.81,8.49-8.49Z"
         />
       </g>
-    </svg>
-  );
-}
-
-/** Zelfde geometry als `public/icons/plus-circle.svg` – 24×24, `currentColor`. */
-function PlusCircleIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cn("size-6 shrink-0", className)}
-      width={24}
-      height={24}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M15.079 11.9997C15.079 12.2867 14.847 12.5197 14.559 12.5197H12.519V14.5607C12.519 14.8477 12.286 15.0807 11.999 15.0807C11.712 15.0807 11.479 14.8487 11.479 14.5607V12.5197H9.43997C9.15297 12.5197 8.91997 12.2867 8.91997 11.9997C8.91997 11.7127 9.15297 11.4797 9.43997 11.4797H11.48V9.43973C11.48 9.15273 11.713 8.91973 12 8.91973C12.287 8.91973 12.52 9.15273 12.52 9.43973V11.4797H14.56C14.847 11.4797 15.079 11.7127 15.079 11.9997ZM21.529 11.9997C21.529 17.2547 17.255 21.5287 12 21.5287C6.74497 21.5287 2.46997 17.2547 2.46997 11.9997C2.46997 6.74473 6.74497 2.46973 12 2.46973C17.255 2.46973 21.529 6.74473 21.529 11.9997ZM20.49 11.9997C20.49 7.31873 16.681 3.50973 12 3.50973C7.31897 3.50973 3.50997 7.31873 3.50997 11.9997C3.50997 16.6817 7.31897 20.4897 12 20.4897C16.681 20.4897 20.49 16.6817 20.49 11.9997Z"
-        fill="currentColor"
-      />
     </svg>
   );
 }
@@ -645,7 +626,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-action-primary transition-colors hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
             disabled={!onMasterAdd}
           >
-            <PlusCircleIcon />
+            <PlusCircleMaskIcon />
           </button>
         </div>
       </>
@@ -684,7 +665,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
           className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--text-inverse)] transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)] disabled:pointer-events-none disabled:opacity-50"
           disabled={!onAddedIncrement}
         >
-          <PlusCircleIcon />
+          <PlusCircleMaskIcon colorClassName="bg-[var(--text-inverse)]" />
         </button>
       </>
     ) : gridDensity ? (

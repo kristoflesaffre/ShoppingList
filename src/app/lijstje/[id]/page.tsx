@@ -37,6 +37,7 @@ import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { InputField } from "@/components/ui/input_field";
 import { ItemCard } from "@/components/ui/item_card";
 import { MiniButton } from "@/components/ui/mini_button";
+import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { SearchBar } from "@/components/ui/search_bar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
@@ -338,26 +339,6 @@ function RecycleBinIcon({ className }: { className?: string }) {
     >
       <path
         d="M18.938 9.5933V19.2223C18.938 19.7893 18.717 20.3243 18.317 20.7253C17.916 21.1253 17.381 21.3463 16.814 21.3463H7.18595C6.61795 21.3463 6.08395 21.1253 5.68395 20.7253C5.28295 20.3233 5.06095 19.7893 5.06095 19.2223V9.5933C5.06095 9.3063 5.29395 9.0733 5.58095 9.0733C5.86795 9.0733 6.10095 9.3063 6.10095 9.5933V19.2223C6.10095 19.5073 6.21695 19.7873 6.41895 19.9893C6.62395 20.1943 6.89595 20.3073 7.18595 20.3073H16.815C17.105 20.3073 17.377 20.1943 17.582 19.9893C17.787 19.7853 17.9 19.5123 17.9 19.2223V9.5933C17.9 9.3063 18.132 9.0733 18.42 9.0733C18.708 9.0733 18.938 9.3063 18.938 9.5933ZM21.346 6.3843C21.346 6.6713 21.114 6.9043 20.826 6.9043H3.17295C2.88595 6.9043 2.65295 6.6713 2.65295 6.3843C2.65295 6.0973 2.88595 5.8643 3.17295 5.8643H8.26995V3.1743C8.26995 2.8873 8.50295 2.6543 8.78995 2.6543H15.209C15.496 2.6543 15.729 2.8873 15.729 3.1743V5.8643H20.826C21.113 5.8643 21.346 6.0973 21.346 6.3843ZM9.31095 5.8643H14.691V3.6943H9.31095V5.8643ZM14.659 16.8143V12.0003C14.659 11.7133 14.427 11.4803 14.139 11.4803C13.851 11.4803 13.619 11.7133 13.619 12.0003V16.8143C13.619 17.1013 14.427 17.3343 14.139 17.3343C14.427 17.3343 14.659 17.1023 14.659 16.8143ZM10.38 16.8143V12.0003C10.38 11.7133 10.147 11.4803 9.85995 11.4803C9.57295 11.4803 9.33995 11.7133 9.33995 12.0003V16.8143C9.33995 17.1013 9.57295 17.3343 9.85995 17.3343C10.147 17.3343 10.38 17.1023 10.38 16.8143Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-/** public/icons/plus-circle.svg */
-function PlusCircleIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M15.079 11.9997C15.079 12.2867 14.847 12.5197 14.559 12.5197H12.519V14.5607C12.519 14.8477 12.286 15.0807 11.999 15.0807C11.712 15.0807 11.479 14.8487 11.479 14.5607V12.5197H9.43997C9.15297 12.5197 8.91997 12.2867 8.91997 11.9997C8.91997 11.7127 9.15297 11.4797 9.43997 11.4797H11.48V9.43973C11.48 9.15273 11.713 8.91973 12 8.91973C12.287 8.91973 12.52 9.15273 12.52 9.43973V11.4797H14.56C14.847 11.4797 15.079 11.7127 15.079 11.9997ZM21.529 11.9997C21.529 17.2547 17.255 21.5287 12 21.5287C6.74497 21.5287 2.46997 17.2547 2.46997 11.9997C2.46997 6.74473 6.74497 2.46973 12 2.46973C17.255 2.46973 21.529 6.74473 21.529 11.9997ZM20.49 11.9997C20.49 7.31873 16.681 3.50973 12 3.50973C7.31897 3.50973 3.50997 7.31873 3.50997 11.9997C3.50997 16.6817 7.31897 20.4897 12 20.4897C16.681 20.4897 20.49 16.6817 20.49 11.9997Z"
         fill="currentColor"
       />
     </svg>
@@ -696,7 +677,7 @@ function SortableItemItems({
                 }
                 className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
               >
-                <PlusCircleIcon />
+                <PlusCircleMaskIcon />
               </button>
             )}
           </div>
@@ -852,7 +833,7 @@ function FrituurListItems({
                 onClick={() => onAddToSection(section.title)}
                 className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
               >
-                <PlusCircleIcon />
+                <PlusCircleMaskIcon />
               </button>
             ) : null}
           </div>
@@ -993,7 +974,7 @@ function FrituurListItemRow({
         onClick={() => onIncrement(item)}
         className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
-        <PlusCircleIcon className="size-6" />
+        <PlusCircleMaskIcon className="size-6" />
       </button>
     </div>
   );
@@ -1030,7 +1011,7 @@ function CafeListAddItemRow({
           />
         </span>
         <span className="flex shrink-0 items-center justify-center text-[var(--blue-500)]">
-          <PlusCircleIcon className="size-6" />
+          <PlusCircleMaskIcon className="size-6" />
         </span>
         <span className="w-full min-w-0 max-w-full truncate text-center text-base font-normal leading-24 tracking-normal text-[var(--blue-500)]">
           Item toevoegen
@@ -1060,7 +1041,7 @@ function CafeListAddItemRow({
         Item toevoegen
       </span>
       <span className="flex shrink-0 items-center rounded-pill p-1 text-[var(--blue-500)]">
-        <PlusCircleIcon className="size-6" />
+        <PlusCircleMaskIcon className="size-6" />
       </span>
     </button>
   );
@@ -1397,7 +1378,7 @@ function CafeListItemRow({
             onClick={() => onIncrement(item)}
             className="flex size-6 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
-            <PlusCircleIcon className="size-6" />
+            <PlusCircleMaskIcon className="size-6" />
           </button>
         </div>
         <span className="w-full min-w-0 max-w-full truncate px-0.5 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
@@ -1457,7 +1438,7 @@ function CafeListItemRow({
           onClick={() => onIncrement(item)}
           className="flex size-8 items-center justify-center rounded-pill text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
-          <PlusCircleIcon className="size-6" />
+          <PlusCircleMaskIcon className="size-6" />
         </button>
       </div>
     </div>
@@ -2198,7 +2179,7 @@ function FrituurWizardItemRow({
         onClick={() => onChange(count + 1)}
         className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
-        <PlusCircleIcon className="size-6" />
+        <PlusCircleMaskIcon className="size-6" />
       </button>
     </div>
   );
@@ -2466,7 +2447,7 @@ function CafeWizardCustomAddRow({
           onClick={() => onChange(count + 1)}
           className="flex size-8 shrink-0 items-center justify-center rounded-pill text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
-          <PlusCircleIcon className="size-6" />
+          <PlusCircleMaskIcon className="size-6" />
         </button>
       </div>
     </div>
@@ -2535,7 +2516,7 @@ function CafeWizardItemRow({
         onClick={() => onChange(count + 1)}
         className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
-        <PlusCircleIcon className="size-6" />
+        <PlusCircleMaskIcon className="size-6" />
       </button>
     </div>
   );
@@ -5285,20 +5266,7 @@ export default function ListDetailPage({
                         onClick={() => handleAddTeKopenItem(item.id, item.name, item.quantity)}
                         className="flex size-8 shrink-0 items-center justify-center rounded-full text-action-primary transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                       >
-                        <span
-                          aria-hidden="true"
-                          className="inline-block size-6 bg-action-primary"
-                          style={{
-                            WebkitMaskImage: 'url("/icons/plus-circle.svg")',
-                            maskImage: 'url("/icons/plus-circle.svg")',
-                            WebkitMaskSize: "contain",
-                            maskSize: "contain",
-                            WebkitMaskRepeat: "no-repeat",
-                            maskRepeat: "no-repeat",
-                            WebkitMaskPosition: "center",
-                            maskPosition: "center",
-                          }}
-                        />
+                        <PlusCircleMaskIcon />
                       </button>
                     </div>
                   );

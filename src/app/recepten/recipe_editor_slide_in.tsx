@@ -21,6 +21,7 @@ import { RecipePhotoUploadSlideIn, type ExtractedRecipeData } from "@/components
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
+import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { useNormalizeIngredientName } from "@/lib/ingredient-photos";
 import { normalizeQuantity } from "@/lib/recipe_ingredient_quantity";
 
@@ -516,7 +517,10 @@ export function RecipeEditorSlideIn({
               <span className="text-base font-normal leading-24 tracking-normal">
                 Stap toevoegen
               </span>
-              <PlusCircleIcon className="size-[19px] shrink-0" />
+              <PlusCircleMaskIcon
+                className="size-[19px] shrink-0"
+                colorClassName="bg-[var(--blue-300,#9599f7)]"
+              />
             </button>
           </div>
         </div>
@@ -541,7 +545,10 @@ export function RecipeEditorSlideIn({
             <span className="text-base font-normal leading-24 tracking-normal">
               Ingrediënt toevoegen
             </span>
-            <PlusCircleIcon className="size-[19px] shrink-0" />
+            <PlusCircleMaskIcon
+              className="size-[19px] shrink-0"
+              colorClassName="bg-[var(--blue-300,#9599f7)]"
+            />
           </button>
         </div>
 
@@ -619,32 +626,6 @@ function AiOptionIcon({ maskUrl, ariaLabel }: { maskUrl: string; ariaLabel: stri
     />
   );
 }
-
-function PlusCircleIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={cn("size-6", className)}
-      aria-hidden="true"
-    >
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M12 1.5C6.20101 1.5 1.5 6.20101 1.5 12C1.5 17.799 6.20101 22.5 12 22.5C17.799 22.5 22.5 17.799 22.5 12C22.5 6.20101 17.799 1.5 12 1.5ZM12 2.5C17.2368 2.5 21.5 6.76315 21.5 12C21.5 17.2368 17.2368 21.5 12 21.5C6.76315 21.5 2.5 17.2368 2.5 12C2.5 6.76315 6.76315 2.5 12 2.5Z"
-        fill="currentColor"
-      />
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M12 7.38C12.2761 7.38 12.5 7.60386 12.5 7.88V11.5H16.12C16.3961 11.5 16.62 11.7239 16.62 12C16.62 12.2761 16.3961 12.5 16.12 12.5H12.5V16.12C12.5 16.3961 12.2761 16.62 12 16.62C11.7239 16.62 11.5 16.3961 11.5 16.12V12.5H7.88C7.60386 12.5 7.38 12.2761 7.38 12C7.38 11.7239 7.60386 11.5 7.88 11.5H11.5V7.88C11.5 7.60386 11.7239 7.38 12 7.38Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
 
 function BinIcon() {
   return (
