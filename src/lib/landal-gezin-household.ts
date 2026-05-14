@@ -6,15 +6,41 @@ import {
   type LandalListCardInput,
 } from "@/lib/landal-list-card";
 
-/** Vaste gezinshuishouding voor Landal-gezinlijstjes (Kristof + Chloé). */
-export const LANDAL_GEZIN_HOUSEHOLD_INSTANT_USER_IDS = [
-  "710067f6-47a8-4417-9ae6-01cafc6f249f",
-  "cee61167-6af6-4eba-a713-752106b069f0",
+/**
+ * Vaste gezinshuishouding voor Landal-gezinlijstjes.
+ * E-mails worden in Instant Auth hoofdletterongevoelig behandeld; de app werkt
+ * op client-side met Instant user ids, dus de ids hieronder horen bij deze
+ * genormaliseerde e-mailadressen.
+ */
+export const LANDAL_GEZIN_HOUSEHOLD_USERS = [
+  {
+    email: "lesaffrekristof@gmail.com",
+    instantUserId: "710067f6-47a8-4417-9ae6-01cafc6f249f",
+  },
+  {
+    email: "claes_cc@live.be",
+    instantUserId: "cee61167-6af6-4eba-a713-752106b069f0",
+  },
 ] as const;
+
+export const LANDAL_GEZIN_HOUSEHOLD_EMAILS: readonly string[] =
+  LANDAL_GEZIN_HOUSEHOLD_USERS.map((user) => user.email);
+
+export const LANDAL_GEZIN_HOUSEHOLD_INSTANT_USER_IDS: readonly string[] =
+  LANDAL_GEZIN_HOUSEHOLD_USERS.map((user) => user.instantUserId);
 
 export type LandalGezinListMembershipRow = {
   instantUserId?: string | null;
 };
+
+export function normalizeLandalGezinHouseholdEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export function isLandalGezinHouseholdEmail(email: string): boolean {
+  const normalized = normalizeLandalGezinHouseholdEmail(email);
+  return LANDAL_GEZIN_HOUSEHOLD_EMAILS.includes(normalized);
+}
 
 export function isLandalGezinHouseholdMember(userId: string): boolean {
   return (LANDAL_GEZIN_HOUSEHOLD_INSTANT_USER_IDS as readonly string[]).includes(

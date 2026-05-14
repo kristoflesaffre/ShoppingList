@@ -170,6 +170,7 @@ const CameraBarcodeScannerSlideIn = dynamic(
 );
 /** Profiel van een andere claimer: avatar + voornaam op itemkaart. */
 type ClaimerProfileInfo = { avatarUrl?: string; firstName?: string };
+type LandalDetailTab = TripPersonTab | "Puddy";
 
 function otherClaimerDisplayLabel(
   claimerUserId: string | null | undefined,
@@ -3072,11 +3073,21 @@ export default function ListDetailPage({
   const landalPuddyFedBy = String(
     (listData as Record<string, unknown>)?.landalPuddyFedBy ?? "",
   ).trim();
+  const landalPuddyHasFedBy = landalPuddyFedBy.length > 0;
+  const landalDetailTabs: readonly LandalDetailTab[] = landalPuddyHasFedBy
+    ? [...TRIP_PERSON_TABS, "Puddy"]
+    : TRIP_PERSON_TABS;
   const [tripPersonTab, setTripPersonTab] =
-    React.useState<TripPersonTab>(DEFAULT_TRIP_PERSON_TAB);
+    React.useState<LandalDetailTab>(DEFAULT_TRIP_PERSON_TAB);
   React.useEffect(() => {
     setTripPersonTab(DEFAULT_TRIP_PERSON_TAB);
   }, [listId]);
+  React.useEffect(() => {
+    if (!landalPuddyHasFedBy && tripPersonTab === "Puddy") {
+      setTripPersonTab(DEFAULT_TRIP_PERSON_TAB);
+    }
+  }, [landalPuddyHasFedBy, tripPersonTab]);
+  const isPuddyTabSelected = tripPersonTab === "Puddy";
   const showFrituurWizard =
     searchParams.get("frituurWizard") === "1" && !isMasterList && isFrietenList;
   const showCafeWizard =
@@ -3199,10 +3210,11 @@ export default function ListDetailPage({
 
   const itemsForListSections = React.useMemo(() => {
     if (!isLandalOrVakantieList) return items;
+    if (isPuddyTabSelected) return [];
     return items.filter(
       (i) => normalizeTripPerson(i.tripPerson) === tripPersonTab,
     );
-  }, [items, isLandalOrVakantieList, tripPersonTab]);
+  }, [items, isLandalOrVakantieList, isPuddyTabSelected, tripPersonTab]);
 
   /** Alleen items van het rondje waarvoor de wizard geopend is (`cafeRound` in URL). */
   const cafeWizardRoundItems = React.useMemo(() => {
@@ -4848,22 +4860,6 @@ export default function ListDetailPage({
                     </p>
                   </div>
                 ) : null}
-                {isLandalOrVakantieList && isLandalGezinTrip && !isMasterList ? (
-                  <TabGroup
-                    value={tripPersonTab}
-                    onValueChange={(v) =>
-                      setTripPersonTab(normalizeTripPerson(v))
-                    }
-                    aria-label="Filter op persoon"
-                    className="mt-3"
-                  >
-                    {TRIP_PERSON_TABS.map((tab) => (
-                      <TabElement key={tab} value={tab}>
-                        {tab}
-                      </TabElement>
-                    ))}
-                  </TabGroup>
-                ) : null}
                 {isMasterList && masterStoreLabel ? (
                   <div className="mt-0 flex w-full items-center justify-start gap-2">
                     {/* eslint-disable-next-line @next/next/no-img-element -- store-SVG uit /public/logos */}
@@ -4958,18 +4954,39 @@ export default function ListDetailPage({
                 </div>
               ) : null}
             </div>
-            {isLandalListCard(customIconUrl) && !isMasterList ? (
-              <div className="mt-3 w-full min-w-0 self-stretch">
-                <LandalPuddyFeedingCard
-                  fedBy={landalPuddyFedBy}
-                  onChoosePerson={openLandalPuddySlide}
-                  onEdit={openLandalPuddySlide}
-                />
-              </div>
+            {isLandalOrVakantieList && isLandalGezinTrip && !isMasterList ? (
+              <>
+                {!landalPuddyHasFedBy ? (
+                  <div className="mt-3 w-full min-w-0 self-stretch">
+                    <LandalPuddyFeedingCard
+                      fedBy={landalPuddyFedBy}
+                      onChoosePerson={openLandalPuddySlide}
+                      onEdit={openLandalPuddySlide}
+                    />
+                  </div>
+                ) : null}
+                <TabGroup
+                  value={tripPersonTab}
+                  onValueChange={(v) =>
+                    setTripPersonTab(
+                      v === "Puddy" ? "Puddy" : normalizeTripPerson(v),
+                    )
+                  }
+                  aria-label="Filter op persoon"
+                  className="mt-3 w-full min-w-0"
+                >
+                  {landalDetailTabs.map((tab) => (
+                    <TabElement key={tab} value={tab}>
+                      {tab}
+                    </TabElement>
+                  ))}
+                </TabGroup>
+              </>
             ) : null}
             {showUncheckedFirstToggle &&
             isLandalOrVakantieList &&
             isLandalGezinTrip &&
+            !isPuddyTabSelected &&
             !isMasterList ? (
               <div className="flex w-full min-w-0 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
                 <Checkbox
@@ -5198,7 +5215,12 @@ export default function ListDetailPage({
             ) : null
           ) : null}
 
-          {teKopenItems.length > 0 && !isMasterList && !isVenueCounterList && !isCafeList && !isFrietenList ? (
+          {teKopenItems.length > 0 &&
+          !isMasterList &&
+          !isVenueCounterList &&
+          !isCafeList &&
+          !isFrietenList &&
+          !isPuddyTabSelected ? (
             <section className="flex flex-col gap-4" aria-label="Vanuit te kopen">
               <div className="flex items-center gap-3">
                 <p className="min-w-0 flex-1 text-[18px] font-bold leading-6 tracking-normal text-[var(--blue-900)]">
@@ -5369,7 +5391,21 @@ export default function ListDetailPage({
             />
           ) : (
             <>
+            {isLandalOrVakantieList &&
+            isLandalGezinTrip &&
+            !isMasterList &&
+            isPuddyTabSelected &&
+            landalPuddyHasFedBy ? (
+              <div className="w-full min-w-0">
+                <LandalPuddyFeedingCard
+                  fedBy={landalPuddyFedBy}
+                  onChoosePerson={openLandalPuddySlide}
+                  onEdit={openLandalPuddySlide}
+                />
+              </div>
+            ) : null}
             {showUncheckedFirstToggle &&
+            !isPuddyTabSelected &&
             !(isLandalOrVakantieList && isLandalGezinTrip) ? (
               <div className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
                 <Checkbox
@@ -5389,6 +5425,7 @@ export default function ListDetailPage({
             ) : null}
             {isLandalOrVakantieList &&
             !isMasterList &&
+            !isPuddyTabSelected &&
             hasItems &&
             !sections.some(
               (s) =>
@@ -5400,29 +5437,30 @@ export default function ListDetailPage({
                 «Wie» in via toevoegen of bewerken van een item.
               </p>
             ) : null}
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleReorderItems}
-              modifiers={listViewMode === "grid" ? [] : [restrictToVerticalAxis]}
-            >
-              <SortableContext
-                items={itemsForListSections.map((i) => i.id)}
-                strategy={listViewMode === "grid" ? rectSortingStrategy : verticalListSortingStrategy}
+            {!isPuddyTabSelected ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleReorderItems}
+                modifiers={listViewMode === "grid" ? [] : [restrictToVerticalAxis]}
               >
-                <SortableItemItems
-                  sections={sections}
-                  groupingMode={
-                    isMasterList ? "category" : effectiveListGroupingMode
-                  }
-                  isEditMode={isEditMode}
-                  listViewMode={listViewMode}
-                  isMasterList={isMasterList}
-                  isSharedList={showSharedDetailRow}
-                  isVacationList={isLandalOrVakantieList && !isMasterList}
-                  getPhotoUrl={getPhotoUrl}
-                  savedRecipes={savedRecipes}
-                  removingId={removingId}
+                <SortableContext
+                  items={itemsForListSections.map((i) => i.id)}
+                  strategy={listViewMode === "grid" ? rectSortingStrategy : verticalListSortingStrategy}
+                >
+                  <SortableItemItems
+                    sections={sections}
+                    groupingMode={
+                      isMasterList ? "category" : effectiveListGroupingMode
+                    }
+                    isEditMode={isEditMode}
+                    listViewMode={listViewMode}
+                    isMasterList={isMasterList}
+                    isSharedList={showSharedDetailRow}
+                    isVacationList={isLandalOrVakantieList && !isMasterList}
+                    getPhotoUrl={getPhotoUrl}
+                    savedRecipes={savedRecipes}
+                    removingId={removingId}
                   removingSectionTitle={removingSectionTitle}
                   addingId={addingId}
                   addingIdExpanded={addingIdExpanded}
@@ -5464,6 +5502,7 @@ export default function ListDetailPage({
                 />
               </SortableContext>
             </DndContext>
+            ) : null}
             </>
           )}
           {/* Scroll-spacer: zorgt dat de content daadwerkelijk langer is dan de viewport,
@@ -5494,6 +5533,7 @@ export default function ListDetailPage({
       )}
 
       {!isMasterEmpty &&
+      !isPuddyTabSelected &&
       !hideFabOnLoyaltyPanel &&
       !isMasterCategoryOrderMode &&
       !(
@@ -5550,7 +5590,11 @@ export default function ListDetailPage({
         onApplyRecipeToList={handleAddItemsFromRecipe}
         isMasterList={isMasterList}
         isVacationList={isLandalOrVakantieList}
-        initialTripPerson={isLandalOrVakantieList ? tripPersonTab : undefined}
+        initialTripPerson={
+          isLandalOrVakantieList && tripPersonTab !== "Puddy"
+            ? tripPersonTab
+            : undefined
+        }
         groupingMode={effectiveListGroupingMode}
       />
 

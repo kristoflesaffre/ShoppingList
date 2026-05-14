@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  isLandalGezinHouseholdEmail,
   isLandalGezinHouseholdMember,
   isLandalGezinList,
   landalGezinHouseholdMembershipTransactions,
+  LANDAL_GEZIN_HOUSEHOLD_EMAILS,
   LANDAL_GEZIN_HOUSEHOLD_INSTANT_USER_IDS,
 } from "@/lib/landal-gezin-household";
 
@@ -50,5 +52,20 @@ describe("landalGezinHouseholdMembershipTransactions", () => {
       landalGezinHouseholdMembershipTransactions("list-1", "other-user", []),
     ).toEqual([]);
     expect(isLandalGezinHouseholdMember("other-user")).toBe(false);
+  });
+});
+
+describe("isLandalGezinHouseholdEmail", () => {
+  it("herkent de twee vaste accounts hoofdletterongevoelig", () => {
+    expect(LANDAL_GEZIN_HOUSEHOLD_EMAILS).toEqual([
+      "lesaffrekristof@gmail.com",
+      "claes_cc@live.be",
+    ]);
+    expect(isLandalGezinHouseholdEmail("lesaffrekristof@gmaiL.com")).toBe(true);
+    expect(isLandalGezinHouseholdEmail(" CLAES_CC@LIVE.BE ")).toBe(true);
+  });
+
+  it("weigert andere accounts", () => {
+    expect(isLandalGezinHouseholdEmail("vriend@example.com")).toBe(false);
   });
 });
