@@ -31,6 +31,10 @@ const schema = i.schema({
       /** Eigen geüploade foto als lijstjedicoon (legacy data-URL of blob-URL). */
       customIconUrl: i.string().optional(),
       /**
+       * Landal-trip subtitel: «Gezin» of «Vrienden» (los van vast lijsticoon).
+       */
+      landalTripLabel: i.string().optional(),
+      /**
        * Landal: vrije tekst wie Puddy eten geeft (bv. «Oma en opa»). Leeg = nog niet gekozen.
        */
       landalPuddyFedBy: i.string().optional(),
