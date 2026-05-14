@@ -859,7 +859,7 @@ function HomeTeKopenSection({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-4">
       <ListSectionHeader
         icon="shopping-bag"
         label="Te kopen"
@@ -867,7 +867,7 @@ function HomeTeKopenSection({
         naarOverzichtHref="/te-kopen"
       />
       <div
-        className={cn(SWIMLANE_CLASSES)}
+        className={cn(HOME_TE_KOPEN_SWIMLANE_CLASSES)}
         style={{ scrollbarWidth: "none" } as React.CSSProperties}
       >
         <button
@@ -900,6 +900,12 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 
 const SWIMLANE_CLASSES =
   "-mx-[var(--space-4)] flex gap-3 overflow-x-auto px-[var(--space-4)] pb-1";
+
+/** Alleen voor Te kopen: op lg geen negatieve marge zodat de swimlane binnen max-w-[956px] blijft. */
+const HOME_TE_KOPEN_SWIMLANE_CLASSES = cn(
+  SWIMLANE_CLASSES,
+  "lg:mx-0 lg:px-0 lg:min-w-0 lg:w-full lg:max-w-full",
+);
 
 /** Figma 1142:7467 — kalender-sectie op startpagina (alleen bij content vandaag of toekomst).
  *  Mobile: swimlane (1 kaart per kolom, 300 px breed) als > 3 items; anders verticaal.
