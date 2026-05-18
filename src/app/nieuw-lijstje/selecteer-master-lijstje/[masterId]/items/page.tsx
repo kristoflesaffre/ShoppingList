@@ -65,6 +65,13 @@ type ShoppingItem = {
   order?: number | null;
 };
 
+type PrevListItem = {
+  id: string;
+  name: string;
+  quantity: string;
+  section: string;
+};
+
 type ProfileRow = {
   instantUserId?: string | null;
   firstName?: string | null;
@@ -470,8 +477,18 @@ export default function SelecteerMasterItemsPage() {
   const [removingTeKopenItemIds, setRemovingTeKopenItemIds] = React.useState<Set<string>>(
     () => new Set(),
   );
+  const [selectedPrevItemIds, setSelectedPrevItemIds] = React.useState<Set<string>>(
+    () => new Set(),
+  );
+  const [hiddenPrevItemIds, setHiddenPrevItemIds] = React.useState<Set<string>>(
+    () => new Set(),
+  );
+  const [removingPrevItemIds, setRemovingPrevItemIds] = React.useState<Set<string>>(
+    () => new Set(),
+  );
   const hideTimeoutRef = React.useRef<Record<string, number>>({});
   const teKopenHideTimeoutRef = React.useRef<Record<string, number>>({});
+  const prevHideTimeoutRef = React.useRef<Record<string, number>>({});
   const REMOVE_ANIM_MS = 300;
   const ADDED_STATE_MS = 1000;
 
@@ -489,6 +506,8 @@ export default function SelecteerMasterItemsPage() {
       hideTimeoutRef.current = {};
       Object.values(teKopenHideTimeoutRef.current).forEach((t) => window.clearTimeout(t));
       teKopenHideTimeoutRef.current = {};
+      Object.values(prevHideTimeoutRef.current).forEach((t) => window.clearTimeout(t));
+      prevHideTimeoutRef.current = {};
     };
   }, []);
 
@@ -562,6 +581,30 @@ export default function SelecteerMasterItemsPage() {
           return next;
         });
         setRemovingTeKopenItemIds((prev) => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      }, REMOVE_ANIM_MS);
+    }, ADDED_STATE_MS);
+  }, []);
+
+  const schedulePrevHide = React.useCallback((itemId: string) => {
+    const existing = prevHideTimeoutRef.current[itemId];
+    if (existing) window.clearTimeout(existing);
+    prevHideTimeoutRef.current[itemId] = window.setTimeout(() => {
+      setRemovingPrevItemIds((prev) => {
+        const next = new Set(prev);
+        next.add(itemId);
+        return next;
+      });
+      window.setTimeout(() => {
+        setHiddenPrevItemIds((prev) => {
+          const next = new Set(prev);
+          next.add(itemId);
+          return next;
+        });
+        setRemovingPrevItemIds((prev) => {
           const next = new Set(prev);
           next.delete(itemId);
           return next;
@@ -690,6 +733,58 @@ export default function SelecteerMasterItemsPage() {
     visibleShoppingOwnerIds,
   ]);
 
+  const prevList = React.useMemo(() => {
+    if (!masterId) return null;
+    const rawLists = (data?.lists ?? []) as any[];
+    const candidates = rawLists.filter(
+      (l: any) =>
+        String(l?.sourceMasterListId ?? "") === masterId &&
+        !listIsMasterTemplate(l as any),
+    );
+    if (candidates.length === 0) return null;
+    candidates.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+    return candidates[0] as any;
+  }, [data?.lists, masterId]);
+
+  const prevListItems = React.useMemo((): PrevListItem[] => {
+    if (!prevList) return [];
+    const teKopenNames = new Set(teKopenItems.map((i) => i.name.trim().toLowerCase()));
+    const raw = (prevList.items ?? []) as any[];
+    return raw
+      .filter(
+        (i: any) =>
+          typeof i?.id === "string" &&
+          typeof i?.name === "string" &&
+          typeof i?.quantity === "string" &&
+          i?.checked === false &&
+          !hiddenPrevItemIds.has(String(i.id)) &&
+          !teKopenNames.has(String(i.name).trim().toLowerCase()),
+      )
+      .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+      .map((i: any) => ({
+        id: String(i.id),
+        name: String(i.name),
+        quantity: String(i.quantity),
+        section: typeof i.section === "string" ? i.section : "Algemeen",
+      }));
+  }, [prevList, hiddenPrevItemIds, teKopenItems]);
+
+  const addedPrevNames = React.useMemo(() => {
+    if (!prevList || selectedPrevItemIds.size === 0) return new Set<string>();
+    const raw = (prevList.items ?? []) as any[];
+    const names = new Set<string>();
+    for (const i of raw) {
+      if (
+        typeof i?.id === "string" &&
+        selectedPrevItemIds.has(String(i.id)) &&
+        typeof i?.name === "string"
+      ) {
+        names.add(String(i.name).trim().toLowerCase());
+      }
+    }
+    return names;
+  }, [prevList, selectedPrevItemIds]);
+
   const visibleSections = React.useMemo(() => {
     if (!masterList) return [] as { title: string; items: TemplateItem[] }[];
     const teKopenNames = new Set(
@@ -699,6 +794,7 @@ export default function SelecteerMasterItemsPage() {
     for (const item of masterList.items) {
       if (hiddenItemIds.has(item.id)) continue;
       if (teKopenNames.has(item.name.trim().toLowerCase())) continue;
+      if (addedPrevNames.has(item.name.trim().toLowerCase())) continue;
       const category = resolveItemCategoryFromName(item.name);
       const existing = grouped.get(category) ?? [];
       existing.push(item);
@@ -709,10 +805,12 @@ export default function SelecteerMasterItemsPage() {
       title,
       items: grouped.get(title) ?? [],
     }));
-  }, [masterList, hiddenItemIds, teKopenItems]);
+  }, [masterList, hiddenItemIds, teKopenItems, addedPrevNames]);
 
   const selectedItemCount =
-    Object.keys(selectedQuantitiesById).length + selectedTeKopenItemIds.size;
+    Object.keys(selectedQuantitiesById).length +
+    selectedTeKopenItemIds.size +
+    selectedPrevItemIds.size;
 
   const handleAdd = React.useCallback(
     (item: TemplateItem) => {
@@ -750,6 +848,29 @@ export default function SelecteerMasterItemsPage() {
     for (const item of teKopenItems) scheduleTeKopenHide(item.id);
   }, [scheduleTeKopenHide, teKopenItems]);
 
+  const handleAddPrevItem = React.useCallback(
+    (item: PrevListItem) => {
+      if (hiddenPrevItemIds.has(item.id) || removingPrevItemIds.has(item.id)) return;
+      setSelectedPrevItemIds((prev) => {
+        const next = new Set(prev);
+        next.add(item.id);
+        return next;
+      });
+      schedulePrevHide(item.id);
+    },
+    [hiddenPrevItemIds, removingPrevItemIds, schedulePrevHide],
+  );
+
+  const handleAddAllPrevItems = React.useCallback(() => {
+    if (prevListItems.length === 0) return;
+    setSelectedPrevItemIds((prev) => {
+      const next = new Set(prev);
+      for (const item of prevListItems) next.add(item.id);
+      return next;
+    });
+    for (const item of prevListItems) schedulePrevHide(item.id);
+  }, [schedulePrevHide, prevListItems]);
+
   const handleIncrement = React.useCallback(
     (item: TemplateItem) => {
       const current = selectedQuantitiesById[item.id];
@@ -783,7 +904,20 @@ export default function SelecteerMasterItemsPage() {
         selectedAmount: selectedQuantitiesById[i.id] ?? null,
       }))
       .filter((i) => i.selectedAmount != null);
-    if (selectedItems.length === 0 && selectedTeKopenItems.length === 0) return;
+    const selectedPrevItems = prevList
+      ? ((prevList.items ?? []) as any[])
+          .filter((i: any) => typeof i?.id === "string" && selectedPrevItemIds.has(String(i.id)))
+          .map((i: any) => ({
+            name: String(i.name),
+            quantity: String(i.quantity),
+            section: typeof i.section === "string" ? i.section : "Algemeen",
+          }))
+      : [];
+    if (
+      selectedItems.length === 0 &&
+      selectedTeKopenItems.length === 0 &&
+      selectedPrevItems.length === 0
+    ) return;
 
     const myLists = (data?.lists ?? []) as any[];
     const now = new Date();
@@ -820,6 +954,18 @@ export default function SelecteerMasterItemsPage() {
           })
           .link({ list: newId }),
       ),
+      ...selectedPrevItems.map((item, index) =>
+        db.tx.items[iid()]
+          .update({
+            name: item.name,
+            quantity: item.quantity,
+            checked: false,
+            section: item.section,
+            itemCategory: resolveItemCategoryFromName(item.name),
+            order: selectedTeKopenItems.length + index,
+          })
+          .link({ list: newId }),
+      ),
       ...selectedItems.map((item, index) =>
         db.tx.items[iid()]
           .update({
@@ -831,7 +977,7 @@ export default function SelecteerMasterItemsPage() {
             checked: false,
             section: item.section,
             itemCategory: resolveItemCategoryFromName(item.name),
-            order: selectedTeKopenItems.length + index,
+            order: selectedTeKopenItems.length + selectedPrevItems.length + index,
             recipeGroupId: item.recipeGroupId ?? "",
             recipeName: item.recipeName ?? "",
             recipeLink: item.recipeLink ?? "",
@@ -880,7 +1026,9 @@ export default function SelecteerMasterItemsPage() {
     listName,
     masterList,
     parseQuantity,
+    prevList,
     router,
+    selectedPrevItemIds,
     selectedQuantitiesById,
     selectedTeKopenItemIds,
     user,
@@ -1004,6 +1152,48 @@ export default function SelecteerMasterItemsPage() {
                         photoUrl={getPhotoUrl(item.name)}
                         addedBy={addedBy}
                         onAdd={() => handleAddTeKopenItem(item)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
+          {prevListItems.length > 0 ? (
+            <section className="flex flex-col gap-4" aria-label="Niet gevonden vorige keer">
+              <div className="flex items-center gap-3">
+                <h3 className="min-w-0 flex-1 text-[18px] font-bold leading-6 tracking-normal text-[var(--blue-900)]">
+                  Niet gevonden vorige keer
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleAddAllPrevItems}
+                  className="inline-flex h-6 shrink-0 items-center justify-center rounded-pill bg-action-primary px-4 text-xs font-medium leading-16 tracking-normal text-white transition-colors hover:bg-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                >
+                  Alles toevoegen
+                </button>
+              </div>
+              <p className="text-base font-light leading-24 tracking-normal text-text-primary">
+                Deze items stonden op je vorige lijstje maar werden niet aangevinkt.
+              </p>
+              <div className="flex w-full flex-col gap-3">
+                {prevListItems.map((item) => {
+                  const isRemoving = removingPrevItemIds.has(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+                        isRemoving
+                          ? "max-h-0 opacity-0 mb-0"
+                          : "max-h-[200px] opacity-100",
+                      )}
+                    >
+                      <TeKopenSuggestionCard
+                        item={item}
+                        photoUrl={getPhotoUrl(item.name)}
+                        onAdd={() => handleAddPrevItem(item)}
                       />
                     </div>
                   );
