@@ -13,6 +13,7 @@ import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
 import { SelectTile } from "@/components/ui/select_tile";
+import { StoreTileSelectionBadge } from "@/components/ui/store_tile_selection_badge";
 import { cn } from "@/lib/utils";
 import {
   defaultCafeListName,
@@ -2708,32 +2709,7 @@ export default function Home() {
                     <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
                       {store.label}
                     </p>
-                    {selected ? (
-                      <span
-                        className="pointer-events-none absolute right-0 top-0 size-[36px]"
-                        aria-hidden
-                      >
-                        <span
-                          className="absolute inset-0 bg-action-primary"
-                          style={{
-                            clipPath: "polygon(100% 0, 100% 100%, 0 0)",
-                          }}
-                        />
-                        <span
-                          className="absolute right-[5px] top-[5px] inline-block size-[14px] bg-[var(--white)]"
-                          style={{
-                            WebkitMaskImage: "url(/icons/checkmark.svg)",
-                            maskImage: "url(/icons/checkmark.svg)",
-                            WebkitMaskSize: "contain",
-                            maskSize: "contain",
-                            WebkitMaskRepeat: "no-repeat",
-                            maskRepeat: "no-repeat",
-                            WebkitMaskPosition: "center",
-                            maskPosition: "center",
-                          }}
-                        />
-                      </span>
-                    ) : null}
+                    {selected ? <StoreTileSelectionBadge /> : null}
                   </button>
                 );
               })}

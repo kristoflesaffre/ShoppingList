@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { StoreTileSelectionBadge } from "@/components/ui/store_tile_selection_badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TE_KOPEN_STORE_OPTIONS } from "@/lib/master-stores";
@@ -316,24 +317,7 @@ export function AddShoppingItemSlideIn({
                     <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
                       {store.label}
                     </p>
-                    {selected ? (
-                      <span
-                        className="pointer-events-none absolute right-0 top-0 size-[36px]"
-                        aria-hidden
-                      >
-                        <span
-                          className="absolute inset-0 bg-action-primary"
-                          style={{ clipPath: "polygon(100% 0, 100% 100%, 0 0)" }}
-                        />
-                        <svg
-                          className="absolute right-[7px] top-[7px]"
-                          width="10" height="10" viewBox="0 0 10 10"
-                          fill="none" aria-hidden
-                        >
-                          <path d="M1 5.80002L3.3999 8.1999L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </span>
-                    ) : null}
+                    {selected ? <StoreTileSelectionBadge /> : null}
                   </button>
                 );
               })}
