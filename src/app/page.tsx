@@ -79,6 +79,7 @@ import {
   saveHomeSectionConfig,
   DEFAULT_SECTION_ORDER,
 } from "@/lib/home-section-config";
+import { normalizeTripPerson } from "@/lib/trip-person";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -223,14 +224,67 @@ type SavedListIconImage = {
 type FrituurPreviousList = {
   id: string;
   name: string;
-  items: Array<{
-    name?: string;
-    quantity?: string;
-    section?: string;
-    order?: number;
-    itemCategory?: string;
-  }>;
+  items: CopyableListItem[];
 };
+
+type CopyableListItem = {
+  name?: unknown;
+  quantity?: unknown;
+  section?: unknown;
+  order?: unknown;
+  itemCategory?: unknown;
+  recipeGroupId?: unknown;
+  recipeName?: unknown;
+  recipeLink?: unknown;
+  fromStock?: unknown;
+  stockPhotoUrl?: unknown;
+  itemDate?: unknown;
+  tripPerson?: unknown;
+  trip_person?: unknown;
+};
+
+type CopyableListTemplate = {
+  items?: CopyableListItem[] | null;
+};
+
+function nonEmptyString(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  return text ? text : null;
+}
+
+function copiedItemUpdate(item: CopyableListItem, order: number) {
+  const itemName = nonEmptyString(item.name);
+  if (!itemName) return null;
+
+  const update: Record<string, string | number | boolean> = {
+    name: itemName,
+    quantity: String(item.quantity ?? "1"),
+    checked: false,
+    section: String(item.section ?? "Algemeen"),
+    order,
+  };
+
+  const optionalStringFields = [
+    "itemCategory",
+    "recipeGroupId",
+    "recipeName",
+    "recipeLink",
+    "stockPhotoUrl",
+    "itemDate",
+  ] as const;
+
+  for (const field of optionalStringFields) {
+    const value = nonEmptyString(item[field]);
+    if (value) update[field] = value;
+  }
+
+  if (item.fromStock === true) update.fromStock = true;
+
+  const tripPerson = nonEmptyString(item.tripPerson ?? item.trip_person);
+  if (tripPerson) update.tripPerson = normalizeTripPerson(tripPerson);
+
+  return update;
+}
 
 type HomeLoyaltyCard = {
   id: string;
@@ -1679,7 +1733,11 @@ export default function Home() {
       name: String(latest.name ?? "Frituur"),
       items: ((latest.items ?? []) as FrituurPreviousList["items"])
         .slice()
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+        .sort((a, b) => {
+          const orderA = typeof a.order === "number" ? a.order : 0;
+          const orderB = typeof b.order === "number" ? b.order : 0;
+          return orderA - orderB;
+        }),
     };
   }, [data?.lists]);
 
@@ -2098,9 +2156,11 @@ export default function Home() {
       pickerMasterStore,
       loyaltyCardIdToLink,
       landalTripLabel,
+      copyItemsFrom,
     }: {
       listName: string;
       duplicateFrom?: FrituurPreviousList | null;
+      copyItemsFrom?: CopyableListTemplate | null;
       startFrituurWizard: boolean;
       startCafeWizard?: boolean;
       /** Override i.p.v. `newListCustomIcon` (modal kan al gesloten zijn). */
@@ -2139,22 +2199,15 @@ export default function Home() {
         }),
       ];
 
-      const duplicateItems = duplicateFrom?.items ?? [];
+      const duplicateItems = copyItemsFrom?.items ?? duplicateFrom?.items ?? [];
       for (let index = 0; index < duplicateItems.length; index += 1) {
         const item = duplicateItems[index];
         if (!item) continue;
-        const itemName = String(item.name ?? "").trim();
-        if (!itemName) continue;
+        const copiedItem = copiedItemUpdate(item, index);
+        if (!copiedItem) continue;
         txs.push(
           db.tx.items[iid()]
-            .update({
-              name: itemName,
-              quantity: String(item.quantity ?? "1"),
-              checked: false,
-              section: String(item.section ?? "Algemeen"),
-              order: index,
-              ...(item.itemCategory ? { itemCategory: item.itemCategory } : {}),
-            })
+            .update(copiedItem)
             .link({ list: newId }),
         );
       }
@@ -2326,19 +2379,80 @@ export default function Home() {
     setPendingLandalChoice({ listName });
   }, [lists]);
 
+  const latestLandalTemplateForTrip = React.useCallback(
+    (tripLabel: "Gezin" | "Vrienden"): CopyableListTemplate | null => {
+      const candidates: Array<Record<string, unknown> & CopyableListTemplate> = [];
+
+      for (const list of data?.lists ?? []) {
+        candidates.push(list as Record<string, unknown> & CopyableListTemplate);
+      }
+      for (const row of data?.listMembers ?? []) {
+        const list = (row as { list?: unknown }).list;
+        if (list && typeof list === "object") {
+          candidates.push(list as Record<string, unknown> & CopyableListTemplate);
+        }
+      }
+
+      const byId = new Map<string, Record<string, unknown> & CopyableListTemplate>();
+      for (const list of candidates) {
+        const id = typeof list.id === "string" ? list.id : "";
+        if (
+          !id ||
+          byId.has(id) ||
+          listIsMasterTemplate({
+            isMasterTemplate:
+              typeof list.isMasterTemplate === "boolean"
+                ? list.isMasterTemplate
+                : null,
+            icon: typeof list.icon === "string" ? list.icon : null,
+            name: typeof list.name === "string" ? list.name : null,
+          })
+        ) {
+          continue;
+        }
+        const customIconUrl =
+          typeof list.customIconUrl === "string" ? list.customIconUrl : null;
+        if (!isLandalListCard(customIconUrl)) continue;
+        const inferredTripLabel = inferLandalTripLabel({
+          name: typeof list.name === "string" ? list.name : "",
+          customIconUrl,
+          landalTripLabel:
+            typeof list.landalTripLabel === "string" ? list.landalTripLabel : null,
+        });
+        if (inferredTripLabel !== tripLabel) continue;
+        byId.set(id, list);
+      }
+
+      return (
+        Array.from(byId.values()).sort((a, b) => {
+          const orderA =
+            typeof a.order === "number" ? a.order : Number.MAX_SAFE_INTEGER;
+          const orderB =
+            typeof b.order === "number" ? b.order : Number.MAX_SAFE_INTEGER;
+          return orderA - orderB;
+        })[0] ?? null
+      );
+    },
+    [data?.listMembers, data?.lists],
+  );
+
   const handleLandalSubPick = React.useCallback((subSuffix: "Gezin" | "Vrienden") => {
     setPendingLandalChoice(null);
-    const baseName = pendingLandalChoice?.listName ?? defaultLandalListName(lists.map((l) => l.name));
+    const baseName =
+      pendingLandalChoice?.listName ??
+      defaultLandalListName(lists.map((l) => l.name));
     const listName = `${baseName} ${subSuffix}`;
+    const previousLandalList = latestLandalTemplateForTrip(subSuffix);
     createBlankList({
       listName,
       duplicateFrom: null,
+      copyItemsFrom: previousLandalList,
       startFrituurWizard: false,
       startCafeWizard: false,
       customIconForCreate: VENUE_TILE_ICON_LANDAL,
       landalTripLabel: subSuffix,
     });
-  }, [createBlankList, lists, pendingLandalChoice]);
+  }, [createBlankList, latestLandalTemplateForTrip, lists, pendingLandalChoice]);
 
   const handleBlankVenuePickVakantie = React.useCallback(() => {
     setBlankVenueSlideOpen(false);

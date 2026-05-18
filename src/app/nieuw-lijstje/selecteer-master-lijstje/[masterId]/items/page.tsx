@@ -692,9 +692,13 @@ export default function SelecteerMasterItemsPage() {
 
   const visibleSections = React.useMemo(() => {
     if (!masterList) return [] as { title: string; items: TemplateItem[] }[];
+    const teKopenNames = new Set(
+      teKopenItems.map((i) => i.name.trim().toLowerCase()),
+    );
     const grouped = new Map<string, TemplateItem[]>();
     for (const item of masterList.items) {
       if (hiddenItemIds.has(item.id)) continue;
+      if (teKopenNames.has(item.name.trim().toLowerCase())) continue;
       const category = resolveItemCategoryFromName(item.name);
       const existing = grouped.get(category) ?? [];
       existing.push(item);
@@ -705,7 +709,7 @@ export default function SelecteerMasterItemsPage() {
       title,
       items: grouped.get(title) ?? [],
     }));
-  }, [masterList, hiddenItemIds]);
+  }, [masterList, hiddenItemIds, teKopenItems]);
 
   const selectedItemCount =
     Object.keys(selectedQuantitiesById).length + selectedTeKopenItemIds.size;
