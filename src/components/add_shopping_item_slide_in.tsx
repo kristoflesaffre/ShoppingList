@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
-import { StoreTileSelectionBadge } from "@/components/ui/store_tile_selection_badge";
+import { StoreSelectionTile } from "@/components/ui/store_selection_tile";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TE_KOPEN_STORE_OPTIONS } from "@/lib/master-stores";
@@ -277,7 +277,7 @@ export function AddShoppingItemSlideIn({
               {filteredStores.map((store) => {
                 const selected = selectedStore === store.label;
                 return (
-                  <button
+                  <StoreSelectionTile
                     key={store.slug}
                     ref={(node) => {
                       if (node) {
@@ -286,39 +286,17 @@ export function AddShoppingItemSlideIn({
                         storeTileRefs.current.delete(store.label);
                       }
                     }}
-                    type="button"
                     role="radio"
                     aria-checked={selected}
+                    label={store.label}
+                    logoSrc={store.logoSrc}
+                    selected={selected}
                     onClick={() =>
                       setSelectedStore((prev) =>
                         prev === store.label ? null : store.label,
                       )
                     }
-                    className={cn(
-                      "relative flex w-[100px] shrink-0 flex-col items-center gap-[var(--space-2)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                      selected
-                        ? "border border-action-primary"
-                        : "border border-[var(--gray-100)]",
-                      !selected &&
-                        "[@media(hover:hover)]:hover:border-[var(--gray-200)]",
-                    )}
-                  >
-                    <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={store.logoSrc}
-                        alt=""
-                        width={48}
-                        height={48}
-                        className="size-full object-contain object-center"
-                      />
-                    </div>
-                    <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
-                      {store.label}
-                    </p>
-                    {selected ? <StoreTileSelectionBadge /> : null}
-                  </button>
+                  />
                 );
               })}
             </div>

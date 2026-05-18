@@ -13,7 +13,7 @@ import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
 import { SelectTile } from "@/components/ui/select_tile";
-import { StoreTileSelectionBadge } from "@/components/ui/store_tile_selection_badge";
+import { StoreSelectionTile } from "@/components/ui/store_selection_tile";
 import { cn } from "@/lib/utils";
 import {
   defaultCafeListName,
@@ -2676,41 +2676,19 @@ export default function Home() {
               {supermarktSwimlaneStoresOrdered.map((store) => {
                 const selected = selectedSupermarktStoreSlug === store.slug;
                 return (
-                  <button
+                  <StoreSelectionTile
                     key={store.slug}
-                    type="button"
                     role="radio"
                     aria-checked={selected}
+                    label={store.label}
+                    logoSrc={store.logoSrc}
+                    selected={selected}
                     onClick={() =>
                       setSelectedSupermarktStoreSlug((prev) =>
                         prev === store.slug ? null : store.slug,
                       )
                     }
-                    className={cn(
-                      "relative flex w-[100px] shrink-0 flex-col items-center gap-[var(--space-2)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                      selected
-                        ? "border border-action-primary"
-                        : "border border-[var(--gray-100)]",
-                      !selected &&
-                        "[@media(hover:hover)]:hover:border-[var(--gray-200)]",
-                    )}
-                  >
-                    <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={store.logoSrc}
-                        alt=""
-                        width={48}
-                        height={48}
-                        className="size-full object-contain object-center"
-                      />
-                    </div>
-                    <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
-                      {store.label}
-                    </p>
-                    {selected ? <StoreTileSelectionBadge /> : null}
-                  </button>
+                  />
                 );
               })}
             </div>
