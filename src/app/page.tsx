@@ -19,7 +19,6 @@ import {
   defaultCafeListName,
   defaultFrituurListName,
   defaultLandalListName,
-  defaultVakantieListName,
   defaultNewListName,
   selectListNameInputOnFocus,
 } from "@/lib/list-default-name";
@@ -2457,15 +2456,8 @@ export default function Home() {
 
   const handleBlankVenuePickVakantie = React.useCallback(() => {
     setBlankVenueSlideOpen(false);
-    const listName = defaultVakantieListName(lists.map((l) => l.name));
-    createBlankList({
-      listName,
-      duplicateFrom: null,
-      startFrituurWizard: false,
-      startCafeWizard: false,
-      customIconForCreate: VENUE_TILE_ICON_VAKANTIE,
-    });
-  }, [createBlankList, lists]);
+    router.push("/nieuw-lijstje/vakantie");
+  }, [router]);
 
   if (authLoading || !user || isLoading) {
     return <PageSpinner />;

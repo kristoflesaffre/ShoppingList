@@ -89,7 +89,9 @@ import {
   resolveItemCategoryFromName,
 } from "@/lib/item-ingredient-category";
 import {
+  effectiveVacationItemCategory,
   orderVacationCategorySections,
+  resolveVacationCategoryFromName,
   resolveVacationItemCategoryFromSection,
 } from "@/lib/vacation-categories";
 import {
@@ -171,7 +173,26 @@ const CameraBarcodeScannerSlideIn = dynamic(
 );
 /** Profiel van een andere claimer: avatar + voornaam op itemkaart. */
 type ClaimerProfileInfo = { avatarUrl?: string; firstName?: string };
-type LandalDetailTab = TripPersonTab | "Puddy";
+type LandalDetailTab = TripPersonTab | "Voor vertrek" | "Puddy";
+
+const VACATION_LEGACY_PUDDY_NAME = "Kat verzorgen";
+const VACATION_PUDDY_NAME = "Puddy verzorgen";
+const VACATION_CLAIM_ITEM_NAMES = new Set([
+  VACATION_LEGACY_PUDDY_NAME,
+  VACATION_PUDDY_NAME,
+  "Planten water geven",
+]);
+
+function vacationDisplayItemName(name: string): string {
+  return name === VACATION_LEGACY_PUDDY_NAME ? VACATION_PUDDY_NAME : name;
+}
+
+function isVacationPreDepartureItem(item: {
+  section?: string | null;
+  itemCategory?: string | null;
+}): boolean {
+  return item.section === "Voor vertrek" || item.itemCategory === "Te regelen";
+}
 
 function otherClaimerDisplayLabel(
   claimerUserId: string | null | undefined,
@@ -1579,6 +1600,15 @@ function SortableItemCard({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+  const displayItemName = isVacationList
+    ? vacationDisplayItemName(item.name)
+    : item.name;
+  const isVacationClaimItem =
+    isVacationList &&
+    !isEditMode &&
+    listViewMode !== "grid" &&
+    isVacationPreDepartureItem(item) &&
+    VACATION_CLAIM_ITEM_NAMES.has(displayItemName);
 
   return (
     <div
@@ -1589,12 +1619,22 @@ function SortableItemCard({
           "z-10 cursor-grabbing opacity-90 shadow-[var(--shadow-drop)]"
       )}
     >
+      {isVacationClaimItem ? (
+        <VacationClaimableDetailItem
+          item={item}
+          displayName={displayItemName}
+          getPhotoUrl={getPhotoUrl}
+          currentUserId={currentUserId}
+          claimProfileByUserId={claimProfileByUserId}
+          onRemoteClaimChange={onRemoteClaimChange}
+        />
+      ) : (
       <SwipeToDelete
         onDelete={!isEditMode && !isMasterList && listViewMode !== "grid" ? onDelete : undefined}
         deleteActionLabel="Item verwijderen"
       >
         <ItemCard
-          itemName={item.name}
+          itemName={displayItemName}
           quantity={item.quantity}
           checked={item.checked}
           onCheckedChange={onCheckedChange}
@@ -1614,7 +1654,7 @@ function SortableItemCard({
             if (item.fromStock && item.stockPhotoUrl) {
               photoUrl = item.stockPhotoUrl;
             } else if (item.name.endsWith(" (diepvries)") && savedRecipes) {
-              const baseName = item.name.slice(0, -" (diepvries)".length);
+              const baseName = displayItemName.slice(0, -" (diepvries)".length);
               const recipe = savedRecipes.find(
                 (r) => r.name.trim().toLowerCase() === baseName.trim().toLowerCase(),
               );
@@ -1623,7 +1663,7 @@ function SortableItemCard({
                 getPhotoUrl?.(baseName, thumbSize, photoLookupOptions);
             } else {
               photoUrl = getPhotoUrl?.(
-                item.name,
+                displayItemName,
                 thumbSize,
                 photoLookupOptions,
               );
@@ -1676,6 +1716,74 @@ function SortableItemCard({
           }}
         />
       </SwipeToDelete>
+      )}
+    </div>
+  );
+}
+
+function VacationClaimableDetailItem({
+  item,
+  displayName,
+  getPhotoUrl,
+  currentUserId,
+  claimProfileByUserId,
+  onRemoteClaimChange,
+}: {
+  item: ListItem;
+  displayName: string;
+  getPhotoUrl?: (
+    name: string,
+    size?: number,
+    options?: ItemPhotoLookupOptions,
+  ) => string | null;
+  currentUserId: string;
+  claimProfileByUserId: Map<string, ClaimerProfileInfo>;
+  onRemoteClaimChange: (claimUserId: string | null) => void;
+}) {
+  const photoUrl = getPhotoUrl?.(displayName, 160, {
+    tripPerson: normalizeTripPerson(item.tripPerson),
+  });
+  const claimedByUserId = item.claimedByInstantUserId ?? null;
+  const claimedByMe = claimedByUserId === currentUserId;
+  const claimedLabel = claimedByUserId
+    ? claimedByMe
+      ? "Jij gekozen"
+      : `${otherClaimerDisplayLabel(
+          claimedByUserId,
+          item.claimedByDisplayName ?? null,
+          claimProfileByUserId,
+        )} gekozen`
+    : "Niemand gekozen";
+
+  return (
+    <div className="flex min-h-[68px] w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white py-3 pl-4 pr-3">
+      <div className="relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--gray-25)]">
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- lokale vakantie-webp
+          <img
+            src={photoUrl}
+            alt=""
+            width={44}
+            height={44}
+            className="size-full object-cover"
+            decoding="async"
+          />
+        ) : null}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="w-full truncate text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+          {displayName}
+        </p>
+        <p className="w-full truncate text-sm font-normal leading-20 tracking-normal text-[var(--gray-400)]">
+          {claimedLabel}
+        </p>
+      </div>
+      <MiniButton
+        type="button"
+        onClick={() => onRemoteClaimChange(claimedByMe ? null : currentUserId)}
+      >
+        {claimedByMe ? "Wis" : "Kies"}
+      </MiniButton>
     </div>
   );
 }
@@ -3038,8 +3146,23 @@ export default function ListDetailPage({
   );
   const isVenueCounterList = (isFrietenList || isCafeList) && !isMasterList;
   const customIconUrl = String((listData as Record<string, unknown>)?.customIconUrl ?? "");
+  const isVakantieList = customIconUrl.includes("vakantie");
   const isLandalOrVakantieList =
-    customIconUrl.includes("landal") || customIconUrl.includes("vakantie");
+    customIconUrl.includes("landal") || isVakantieList;
+  const resolveListItemCategory = React.useCallback(
+    (name: string) =>
+      isLandalOrVakantieList
+        ? resolveVacationCategoryFromName(name)
+        : resolveItemCategoryFromName(name),
+    [isLandalOrVakantieList],
+  );
+  const effectiveListItemCategory = React.useCallback(
+    (item: { name: string; itemCategory?: string | null }) =>
+      isLandalOrVakantieList
+        ? effectiveVacationItemCategory(item)
+        : effectiveItemCategory(item),
+    [isLandalOrVakantieList],
+  );
   const isLandalGezinTrip = listData
     ? isLandalGezinList({
         name: listData.name,
@@ -3055,14 +3178,18 @@ export default function ListDetailPage({
     (listData as Record<string, unknown>)?.landalPuddyFedBy ?? "",
   ).trim();
   const landalPuddyHasFedBy = landalPuddyFedBy.length > 0;
-  const landalDetailTabs: readonly LandalDetailTab[] = landalPuddyHasFedBy
-    ? [...TRIP_PERSON_TABS, "Puddy"]
-    : TRIP_PERSON_TABS;
+  const landalDetailTabs: readonly LandalDetailTab[] = isVakantieList
+    ? ["Voor vertrek", ...TRIP_PERSON_TABS]
+    : landalPuddyHasFedBy
+      ? [...TRIP_PERSON_TABS, "Puddy"]
+      : TRIP_PERSON_TABS;
   const [tripPersonTab, setTripPersonTab] =
-    React.useState<LandalDetailTab>(DEFAULT_TRIP_PERSON_TAB);
+    React.useState<LandalDetailTab>(
+      isVakantieList ? "Voor vertrek" : DEFAULT_TRIP_PERSON_TAB,
+    );
   React.useEffect(() => {
-    setTripPersonTab(DEFAULT_TRIP_PERSON_TAB);
-  }, [listId]);
+    setTripPersonTab(isVakantieList ? "Voor vertrek" : DEFAULT_TRIP_PERSON_TAB);
+  }, [listId, isVakantieList]);
   React.useEffect(() => {
     if (!landalPuddyHasFedBy && tripPersonTab === "Puddy") {
       setTripPersonTab(DEFAULT_TRIP_PERSON_TAB);
@@ -3189,13 +3316,38 @@ export default function ListDetailPage({
       });
   }, [listData]);
 
+  React.useEffect(() => {
+    if (!isVakantieList || !isListOwner || !listData?.items?.length) return;
+    const legacyPuddyItems = listData.items.filter((item) => {
+      const row = item as unknown as Record<string, unknown>;
+      return (
+        item.name === VACATION_LEGACY_PUDDY_NAME &&
+        (row.section === "Voor vertrek" || row.itemCategory === "Te regelen")
+      );
+    });
+    if (legacyPuddyItems.length === 0) return;
+    void db.transact(
+      legacyPuddyItems.map((item) =>
+        db.tx.items[item.id].update({ name: VACATION_PUDDY_NAME }),
+      ),
+    );
+  }, [isListOwner, isVakantieList, listData?.items]);
+
   const itemsForListSections = React.useMemo(() => {
     if (!isLandalOrVakantieList) return items;
     if (isPuddyTabSelected) return [];
+    if (isVakantieList && tripPersonTab === "Voor vertrek") {
+      return items.filter(
+        (i) =>
+          i.section === "Voor vertrek" ||
+          i.itemCategory === "Te regelen",
+      );
+    }
+    if (tripPersonTab === "Voor vertrek") return [];
     return items.filter(
       (i) => normalizeTripPerson(i.tripPerson) === tripPersonTab,
     );
-  }, [items, isLandalOrVakantieList, isPuddyTabSelected, tripPersonTab]);
+  }, [items, isLandalOrVakantieList, isPuddyTabSelected, isVakantieList, tripPersonTab]);
 
   /** Alleen items van het rondje waarvoor de wizard geopend is (`cafeRound` in URL). */
   const cafeWizardRoundItems = React.useMemo(() => {
@@ -3204,13 +3356,12 @@ export default function ListDetailPage({
     return items.filter((i) => (i.section ?? "").trim() === target);
   }, [items, searchParams]);
 
-  /** Zet / ververs `itemCategory` op items (Excel-mapping); ook master (groepering per inhoud).
-   * Overgeslagen voor Landal/Vakantie-lijstjes: categorie wordt daar handmatig gezet. */
+  /** Zet / ververs `itemCategory` op items (Excel-mapping); ook master (groepering per inhoud). */
   React.useEffect(() => {
-    if (!listId || !user || isLandalOrVakantieList) return;
+    if (!listId || !user) return;
     const txs = items
       .map((it) => {
-        const resolved = resolveItemCategoryFromName(it.name);
+        const resolved = resolveListItemCategory(it.name);
         const stored =
           typeof it.itemCategory === "string" ? it.itemCategory.trim() : "";
         if (stored === resolved) return null;
@@ -3220,7 +3371,7 @@ export default function ListDetailPage({
     if (txs.length > 0) {
       void db.transact(txs);
     }
-  }, [listId, user, items, isLandalOrVakantieList]);
+  }, [listId, user, items, resolveListItemCategory]);
 
   /**
    * Items die jij claimt: `claimedByDisplayName` gelijk houden aan profiel-voornaam.
@@ -3836,7 +3987,7 @@ export default function ListDetailPage({
         const newItems = templateItems.map((t) => ({
           ...t,
           id: iid(),
-          itemCategory: resolveItemCategoryFromName(t.name),
+          itemCategory: resolveListItemCategory(t.name),
         }));
         let newArray: ListItem[];
         if (sectionStart === -1) {
@@ -3859,7 +4010,7 @@ export default function ListDetailPage({
                 quantity: item.quantity,
                 checked: false,
                 section: item.section,
-                itemCategory: item.itemCategory ?? resolveItemCategoryFromName(item.name),
+                itemCategory: item.itemCategory ?? resolveListItemCategory(item.name),
                 order: newArray.findIndex((a) => a.id === item.id),
                 recipeGroupId: item.recipeGroupId ?? "",
                 recipeName: item.recipeName ?? "",
@@ -3884,7 +4035,7 @@ export default function ListDetailPage({
       setInitialSection(null);
       setInitialItemCategory(null);
     },
-    [items, listId],
+    [items, listId, resolveListItemCategory],
   );
 
   React.useEffect(() => {
@@ -4053,7 +4204,7 @@ export default function ListDetailPage({
         const toDelete =
           mode === "category"
             ? items.filter((i) => {
-                if (effectiveItemCategory(i) !== sectionTitle) return false;
+                if (effectiveListItemCategory(i) !== sectionTitle) return false;
                 if (isLandalOrVakantieList) {
                   return normalizeTripPerson(i.tripPerson) === tripPersonTab;
                 }
@@ -4076,7 +4227,7 @@ export default function ListDetailPage({
         setRemovingSectionTitle(null);
       }, SECTION_DELETE_ANIMATION_MS);
     },
-    [items, isMasterList, listGroupingMode, isLandalOrVakantieList, tripPersonTab],
+    [items, isMasterList, listGroupingMode, isLandalOrVakantieList, tripPersonTab, effectiveListItemCategory],
   );
 
   const handleDeleteRecipeGroup = React.useCallback(
@@ -4109,7 +4260,7 @@ export default function ListDetailPage({
           section: restoredItem.section,
           itemCategory:
             restoredItem.itemCategory ??
-            resolveItemCategoryFromName(restoredItem.name),
+            resolveListItemCategory(restoredItem.name),
           order: index,
           recipeGroupId: restoredItem.recipeGroupId ?? "",
           recipeName: restoredItem.recipeName ?? "",
@@ -4138,7 +4289,7 @@ export default function ListDetailPage({
     db.transact(txns as Parameters<typeof db.transact>[0]);
     setLastDeleted(null);
     setSnackbarMessage(null);
-  }, [lastDeleted, items, listId]);
+  }, [lastDeleted, items, listId, resolveListItemCategory]);
 
   const handleAddNewItem = React.useCallback(
     (newItem: {
@@ -4152,7 +4303,7 @@ export default function ListDetailPage({
     }) => {
       const newId = iid();
       const itemCategory =
-        newItem.itemCategory ?? resolveItemCategoryFromName(newItem.name);
+        newItem.itemCategory ?? resolveListItemCategory(newItem.name);
       const item: ListItem = {
         id: newId,
         name: newItem.name,
@@ -4173,7 +4324,7 @@ export default function ListDetailPage({
         (isMasterList || listGroupingMode === "category")
       ) {
         const firstIndex = items.findIndex(
-          (i) => effectiveItemCategory(i) === initialItemCategory,
+          (i) => effectiveListItemCategory(i) === initialItemCategory,
         );
         if (firstIndex === -1) {
           newArray = [...items, item];
@@ -4242,11 +4393,13 @@ export default function ListDetailPage({
       isMasterList,
       listGroupingMode,
       isLandalOrVakantieList,
+      resolveListItemCategory,
+      effectiveListItemCategory,
     ],
   );
 
   const handleSaveEditedItem = React.useCallback((updatedItem: ListItem) => {
-    const itemCategory = updatedItem.itemCategory ?? resolveItemCategoryFromName(updatedItem.name);
+    const itemCategory = updatedItem.itemCategory ?? resolveListItemCategory(updatedItem.name);
     const computedItemDate = computeSectionAbsoluteDate(updatedItem.section);
     db.transact(
       db.tx.items[updatedItem.id].update({
@@ -4261,13 +4414,26 @@ export default function ListDetailPage({
       }),
     );
     setEditingItem(null);
-  }, [isLandalOrVakantieList]);
+  }, [isLandalOrVakantieList, resolveListItemCategory]);
 
   const effectiveListGroupingMode: "day" | "category" = isMasterList
     ? "day"
     : listGroupingMode;
 
   const sections = React.useMemo(() => {
+    if (isVakantieList && tripPersonTab === "Voor vertrek") {
+      return itemsForListSections.length > 0
+        ? [
+            {
+              title: "Te regelen",
+              displayTitle: undefined as string | undefined,
+              items: itemsForListSections,
+              isGroupHeader: false as boolean | undefined,
+            },
+          ]
+        : [];
+    }
+
     const useDaySections =
       !isMasterList && effectiveListGroupingMode === "day";
     if (useDaySections) {
@@ -4285,7 +4451,7 @@ export default function ListDetailPage({
     }
     const grouped = new Map<string, ListItem[]>();
     for (const item of itemsForListSections) {
-      const cat = effectiveItemCategory(item);
+      const cat = effectiveListItemCategory(item);
       const existing = grouped.get(cat) ?? [];
       existing.push(item);
       grouped.set(cat, existing);
@@ -4323,6 +4489,9 @@ export default function ListDetailPage({
     effectiveListGroupingMode,
     isMasterList,
     isLandalOrVakantieList,
+    isVakantieList,
+    tripPersonTab,
+    effectiveListItemCategory,
     parsedMasterCategoryOrder,
     parsedInheritedMasterCategoryOrder,
     showUncheckedFirst,
@@ -4935,9 +5104,11 @@ export default function ListDetailPage({
                 </div>
               ) : null}
             </div>
-            {isLandalOrVakantieList && isLandalGezinTrip && !isMasterList ? (
+            {isLandalOrVakantieList &&
+            (isLandalGezinTrip || isVakantieList) &&
+            !isMasterList ? (
               <>
-                {!landalPuddyHasFedBy ? (
+                {!isVakantieList && !landalPuddyHasFedBy ? (
                   <div className="mt-3 w-full min-w-0 self-stretch">
                     <LandalPuddyFeedingCard
                       fedBy={landalPuddyFedBy}
@@ -4950,7 +5121,9 @@ export default function ListDetailPage({
                   value={tripPersonTab}
                   onValueChange={(v) =>
                     setTripPersonTab(
-                      v === "Puddy" ? "Puddy" : normalizeTripPerson(v),
+                      v === "Puddy" || v === "Voor vertrek"
+                        ? v
+                        : normalizeTripPerson(v),
                     )
                   }
                   aria-label="Filter op persoon"
@@ -4967,6 +5140,7 @@ export default function ListDetailPage({
             {showUncheckedFirstToggle &&
             isLandalOrVakantieList &&
             isLandalGezinTrip &&
+            !isVakantieList &&
             !isPuddyTabSelected &&
             !isMasterList ? (
               <div className="flex w-full min-w-0 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
@@ -5374,7 +5548,7 @@ export default function ListDetailPage({
             ) : null}
             {showUncheckedFirstToggle &&
             !isPuddyTabSelected &&
-            !(isLandalOrVakantieList && isLandalGezinTrip) ? (
+            !isLandalOrVakantieList ? (
               <div className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
                 <Checkbox
                   id="unchecked-first-toggle"
@@ -5559,7 +5733,9 @@ export default function ListDetailPage({
         isMasterList={isMasterList}
         isVacationList={isLandalOrVakantieList}
         initialTripPerson={
-          isLandalOrVakantieList && tripPersonTab !== "Puddy"
+          isLandalOrVakantieList &&
+          tripPersonTab !== "Puddy" &&
+          tripPersonTab !== "Voor vertrek"
             ? tripPersonTab
             : undefined
         }

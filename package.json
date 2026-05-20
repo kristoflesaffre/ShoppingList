@@ -14,6 +14,7 @@
     "test": "vitest run",
     "ci": "npm run lint && npm run typecheck && npm test && npm run build",
     "sync:ingredient-categories": "node scripts/sync-ingredient-categories.mjs",
+    "sync:vacation-categories": "node scripts/sync-vacation-categories.mjs",
     "export:recipe-photos": "node scripts/export-recipe-photos.mjs",
     "storybook": "sh scripts/run-storybook.sh",
     "build-storybook": "node -r ./scripts/patch-os-network.cjs ./node_modules/storybook/bin/index.cjs build"

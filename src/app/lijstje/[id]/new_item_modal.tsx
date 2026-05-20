@@ -26,7 +26,10 @@ import {
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
-import { VACATION_CATEGORIES } from "@/lib/vacation-categories";
+import {
+  resolveVacationCategoryFromName,
+  VACATION_CATEGORIES,
+} from "@/lib/vacation-categories";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 
 const RecipeIngredientSortableList = dynamic(
@@ -305,6 +308,13 @@ export function NewItemModal({
       setActiveCategory(hasHoofdgerecht ? "hoofdgerecht" : null);
     }
   }, [open, storedRecipes]);
+
+  React.useEffect(() => {
+    if (!open || !isVacationList || isEditMode) return;
+    const trimmed = itemName.trim();
+    if (!trimmed) return;
+    setVacationCategory(resolveVacationCategoryFromName(trimmed));
+  }, [open, isVacationList, isEditMode, itemName]);
 
   const handleAdd = () => {
     if (!canAdd && !isEditMode) return;

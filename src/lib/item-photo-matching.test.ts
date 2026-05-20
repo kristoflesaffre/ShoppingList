@@ -12,7 +12,15 @@ describe("tripPersonImageSuffix", () => {
 });
 
 describe("matchItemPhotoUrl", () => {
-  const slugs = ["jas_man", "jas_vrouw", "jas_kind", "headphones"];
+  const slugs = [
+    "jas_man",
+    "jas_vrouw",
+    "jas_kind",
+    "headphones",
+    "puddy",
+    "laadpaal",
+    "identiteitskaart_kind",
+  ];
   const fileBaseBySlug = new Map(
     slugs.map((slug) => [slug, `vakantie/${slug}`]),
   );
@@ -33,5 +41,20 @@ describe("matchItemPhotoUrl", () => {
         personImageSuffix: "kind",
       }),
     ).toBe("/images/vakantie/jas_kind_160.webp");
+  });
+
+  it("kiest expliciete vakantie-afbeeldingen voor voorbereidingsitems", () => {
+    expect(matchItemPhotoUrl("Puddy verzorgen", slugs, 160, fileBaseBySlug)).toBe(
+      "/images/vakantie/puddy_160.webp",
+    );
+    expect(matchItemPhotoUrl("Kat verzorgen", slugs, 160, fileBaseBySlug)).toBe(
+      "/images/vakantie/puddy_160.webp",
+    );
+    expect(matchItemPhotoUrl("EV-route plannen", slugs, 160, fileBaseBySlug)).toBe(
+      "/images/vakantie/laadpaal_160.webp",
+    );
+    expect(matchItemPhotoUrl("Kids ID regelen", slugs, 160, fileBaseBySlug)).toBe(
+      "/images/vakantie/identiteitskaart_kind_160.webp",
+    );
   });
 });

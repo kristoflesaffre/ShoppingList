@@ -9,6 +9,26 @@ export function normalizeItemPhotoSize(size?: number): ItemPhotoSize {
 
 const LANDAL_GENDER_IMAGE_SUFFIXES = new Set(["man", "vrouw", "kind"]);
 
+const ITEM_PHOTO_ALIASES: Record<string, string> = {
+  kat_verzorgen: "puddy",
+  puddy_verzorgen: "puddy",
+  planten_water_geven: "plant",
+  vaccinatie_regelen: "vaccin",
+  paspoort_regelen: "paspoort",
+  kids_id_regelen: "identiteitskaart_kind",
+  autovignet_aanvragen: "autovignet",
+  auto_opladen_voltanken: "auto",
+  bandenspanning_controleren: "band",
+  ev_route_plannen: "laadpaal",
+  laadpas_regelen: "laadpas",
+  medicatievoorraad_aanvullen: "medicatie",
+  huissleutel_afgeven: "huissleutel",
+  tablet_opladen: "tablet",
+  medicatie_reisziekte_innemen: "medicatie_reisziekte",
+  boardingpassen_downloaden: "boarding_pass",
+  vervoer_luchthaven_regelen: "luchthavenvervoer",
+};
+
 function slugEndsWithGenderSuffix(slug: string): boolean {
   const last = slug.split("_").pop();
   return last != null && LANDAL_GENDER_IMAGE_SUFFIXES.has(last);
@@ -56,6 +76,10 @@ export function matchItemPhotoUrl(
   if (!normalized || slugs.length === 0) return null;
   const slugSet = new Set(slugs);
   const personImageSuffix = options?.personImageSuffix?.trim() || null;
+  const alias = ITEM_PHOTO_ALIASES[normalized];
+  if (alias && slugSet.has(alias)) {
+    return itemPhotoUrlFromSlug(alias, size, fileBaseBySlug);
+  }
 
   const candidates = new Set<string>([normalized]);
   if (normalized.endsWith("en") && normalized.length > 4) {
