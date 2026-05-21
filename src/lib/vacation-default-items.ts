@@ -6,6 +6,11 @@ export type HouseholdValue = "man" | "vrouw" | "jongens" | "meisjes";
 export type TransportValue = "auto" | "vliegtuig";
 export type AccommodationValue = "hotel" | "appartement";
 
+const PRIVATE_EMAILS: ReadonlyArray<string> = [
+  "lesaffrekristof@gmail.com",
+  "claes_cc@live.be",
+];
+
 type RawItem = {
   slug: string;
   name: string;
@@ -16,6 +21,8 @@ type RawItem = {
   accommodations?: ReadonlyArray<AccommodationValue>;
   /** Toon item alleen als minstens één van deze gezinsleden geselecteerd is. */
   households?: ReadonlyArray<HouseholdValue>;
+  /** Toon item alleen voor deze e-mailadressen. */
+  emails?: ReadonlyArray<string>;
 };
 
 export type VacationDefaultItem = {
@@ -57,7 +64,7 @@ const ITEMS: RawItem[] = [
   { slug: "e-reader", name: "E-reader", section: "Kristof", category: "Elektronica", households: ["man"] },
   { slug: "e-reader", name: "E-reader", section: "Chloé", category: "Elektronica", households: ["vrouw"] },
   { slug: "ehbo_kit", name: "Ehbo-kit", section: "Samen", category: "Toiletartikelen" },
-  { slug: "glijmiddel", name: "Glijmiddel", section: "Samen", category: "Toiletartikelen" },
+  { slug: "glijmiddel", name: "Glijmiddel", section: "Samen", category: "Toiletartikelen", emails: PRIVATE_EMAILS },
   { slug: "haarborstel", name: "Haarborstel", section: "Samen", category: "Toiletartikelen" },
   { slug: "haardroger", name: "Haardroger", section: "Samen", category: "Toiletartikelen", accommodations: ["appartement"] },
   { slug: "haarelastiekjes", name: "Haarelastiekjes", section: "Chloé", category: "Accessoires", households: ["vrouw"] },
@@ -93,7 +100,7 @@ const ITEMS: RawItem[] = [
   { slug: "lenzenpotje", name: "Lenzenpotje", section: "Kristof", category: "Toiletartikelen", households: ["man"] },
   { slug: "lenzenpotje", name: "Lenzenpotje", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
   { slug: "lippenbalsem", name: "Lippenbalsem", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
-  { slug: "maca", name: "Maca", section: "Kristof", category: "Medicijnen", households: ["man"] },
+  { slug: "maca", name: "Maca", section: "Kristof", category: "Medicijnen", households: ["man"], emails: PRIVATE_EMAILS },
   { slug: "macbook", name: "MacBook", section: "Kristof", category: "Elektronica", households: ["man"] },
   { slug: "macbook", name: "MacBook", section: "Chloé", category: "Elektronica", households: ["vrouw"] },
   { slug: "makeup", name: "Makeup", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
@@ -141,8 +148,8 @@ const ITEMS: RawItem[] = [
   { slug: "scheermesje", name: "Scheermesje", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
   { slug: "scheerschuim", name: "Scheerschuim", section: "Kristof", category: "Toiletartikelen", households: ["man"] },
   { slug: "schuurspons", name: "Schuurspons", section: "Samen", category: "Huishouden", accommodations: ["appartement"] },
-  { slug: "sexy_kousen", name: "Sexy kousen", section: "Chloé", category: "Kleding", households: ["vrouw"] },
-  { slug: "sexy_outfit", name: "Sexy outfit", section: "Chloé", category: "Kleding", households: ["vrouw"] },
+  { slug: "sexy_kousen", name: "Sexy kousen", section: "Chloé", category: "Kleding", households: ["vrouw"], emails: PRIVATE_EMAILS },
+  { slug: "sexy_outfit", name: "Sexy outfit", section: "Chloé", category: "Kleding", households: ["vrouw"], emails: PRIVATE_EMAILS },
   { slug: "shampoo", name: "Shampoo", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
   { slug: "sjaal_kind", name: "Sjaal", section: "Noë", category: "Kleding", households: ["jongens", "meisjes"], seasons: ["winter"] },
   { slug: "sjaal_man", name: "Sjaal", section: "Kristof", category: "Kleding", households: ["man"], seasons: ["winter"] },
@@ -164,6 +171,9 @@ const ITEMS: RawItem[] = [
   { slug: "tandenborstel", name: "Tandenborstel", section: "Kristof", category: "Toiletartikelen", households: ["man"] },
   { slug: "tandenborstel", name: "Tandenborstel", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
   { slug: "thee", name: "Thee", section: "Samen", category: "Eten & drinken" },
+  { slug: "wodka", name: "Wodka", section: "Samen", category: "Eten & drinken", emails: PRIVATE_EMAILS },
+  { slug: "red_bull", name: "Red bull", section: "Samen", category: "Eten & drinken", emails: PRIVATE_EMAILS },
+  { slug: "rode_wijn", name: "Rode wijn", section: "Samen", category: "Eten & drinken", emails: PRIVATE_EMAILS },
   { slug: "thermometer", name: "Thermometer", section: "Samen", category: "Toiletartikelen" },
   { slug: "topje_vrouw", name: "Topje", section: "Chloé", category: "Kleding", households: ["vrouw"] },
   { slug: "trui_kind", name: "Trui", section: "Noë", category: "Kleding", households: ["jongens", "meisjes"] },
@@ -187,7 +197,7 @@ const ITEMS: RawItem[] = [
   { slug: "zonnecreme_gezicht", name: "Zonnecreme gezicht", section: "Samen", category: "Toiletartikelen", seasons: ["zomer"] },
   { slug: "zonnecreme", name: "Zonnecreme", section: "Samen", category: "Toiletartikelen", seasons: ["zomer"] },
   { slug: "zonnehoed", name: "Zonnehoed", section: "Chloé", category: "Accessoires", households: ["vrouw"], seasons: ["zomer"] },
-  { slug: "zwangerschapskussen", name: "Zwangerschapskussen", section: "Kristof", category: "Slaapspullen", households: ["man"] },
+  { slug: "zwangerschapskussen", name: "Zwangerschapskussen", section: "Kristof", category: "Slaapspullen", households: ["man"], emails: PRIVATE_EMAILS },
   { slug: "zwembad_oplaasbaar_speelgoed", name: "Opblaasbaar zwembadspeelgoed", section: "Noë", category: "Strand", households: ["jongens", "meisjes"], seasons: ["zomer"] },
   { slug: "zwembril", name: "Zwembril", section: "Noë", category: "Strand", households: ["jongens", "meisjes"], seasons: ["zomer"] },
   { slug: "zwemshort", name: "Zwemshort", section: "Kristof", category: "Kleding", households: ["man"], seasons: ["zomer"] },
@@ -202,6 +212,7 @@ export function buildVacationDefaultItems(options: {
   transport: TransportValue;
   accommodation: AccommodationValue;
   household: Pick<Set<string>, "has">;
+  userEmail?: string;
 }): VacationDefaultItem[] {
   return ITEMS.filter((item) => {
     if (item.seasons && !item.seasons.includes(options.season)) return false;
@@ -212,6 +223,8 @@ export function buildVacationDefaultItems(options: {
     )
       return false;
     if (item.households && !item.households.some((h) => options.household.has(h)))
+      return false;
+    if (item.emails && !item.emails.includes(options.userEmail ?? ""))
       return false;
     return true;
   }).map((item) => ({

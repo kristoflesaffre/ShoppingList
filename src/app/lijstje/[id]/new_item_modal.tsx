@@ -310,7 +310,7 @@ export function NewItemModal({
   }, [open, storedRecipes]);
 
   React.useEffect(() => {
-    if (!open || !isVacationList || isEditMode || initialItemCategory === "Te regelen") return;
+    if (!open || !isVacationList || isEditMode || initialItemCategory != null) return;
     const trimmed = itemName.trim();
     if (!trimmed) return;
     setVacationCategory(resolveVacationCategoryFromName(trimmed));

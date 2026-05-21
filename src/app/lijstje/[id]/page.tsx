@@ -553,6 +553,8 @@ function SortableItemItems({
   isVacationList = false,
   getPhotoUrl,
   savedRecipes,
+  onVacationPuddyKies,
+  vacationPuddyFedBy,
   removingId,
   removingSectionTitle,
   addingId,
@@ -606,6 +608,10 @@ function SortableItemItems({
   /** Landal/vakantie: toon "+" knop ook bij categorie-secties. */
   isVacationList?: boolean;
   savedRecipes?: SavedRecipe[];
+  /** Vakantie: opent puddy-slide voor «Puddy verzorgen»-item. */
+  onVacationPuddyKies?: () => void;
+  /** Vakantie: opgeslagen naam in landalPuddyFedBy voor weergave op «Puddy verzorgen»-card. */
+  vacationPuddyFedBy?: string;
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
@@ -746,6 +752,8 @@ function SortableItemItems({
                         currentUserId={currentUserId}
                         claimProfileByUserId={claimProfileByUserId}
                         disableSortable={disableSortable}
+                        onVacationPuddyKies={onVacationPuddyKies}
+                        vacationPuddyFedBy={vacationPuddyFedBy}
                       />
                     ))}
                   </div>
@@ -800,6 +808,8 @@ function SortableItemItems({
                         currentUserId={currentUserId}
                         claimProfileByUserId={claimProfileByUserId}
                         disableSortable={disableSortable}
+                        onVacationPuddyKies={onVacationPuddyKies}
+                        vacationPuddyFedBy={vacationPuddyFedBy}
                       />
                     ))}
                   </div>
@@ -1491,6 +1501,8 @@ function SortableItemRow({
   currentUserId,
   claimProfileByUserId,
   disableSortable = false,
+  onVacationPuddyKies,
+  vacationPuddyFedBy,
 }: {
   item: ListItem;
   isEditMode: boolean;
@@ -1515,6 +1527,8 @@ function SortableItemRow({
   currentUserId: string;
   claimProfileByUserId: Map<string, ClaimerProfileInfo>;
   disableSortable?: boolean;
+  onVacationPuddyKies?: () => void;
+  vacationPuddyFedBy?: string;
 }) {
   const isRemoving = removingId === item.id;
   const isAdding = addingId === item.id;
@@ -1550,6 +1564,8 @@ function SortableItemRow({
         currentUserId={currentUserId}
         claimProfileByUserId={claimProfileByUserId}
         disableSortable={disableSortable}
+        onVacationPuddyKies={onVacationPuddyKies}
+        vacationPuddyFedBy={vacationPuddyFedBy}
       />
     </div>
   );
@@ -1571,6 +1587,8 @@ function SortableItemCard({
   currentUserId,
   claimProfileByUserId,
   disableSortable = false,
+  onVacationPuddyKies,
+  vacationPuddyFedBy,
 }: {
   item: ListItem;
   isEditMode: boolean;
@@ -1591,6 +1609,8 @@ function SortableItemCard({
   currentUserId: string;
   claimProfileByUserId: Map<string, ClaimerProfileInfo>;
   disableSortable?: boolean;
+  onVacationPuddyKies?: () => void;
+  vacationPuddyFedBy?: string;
 }) {
   const {
     attributes,
@@ -1632,6 +1652,8 @@ function SortableItemCard({
           currentUserId={currentUserId}
           claimProfileByUserId={claimProfileByUserId}
           onRemoteClaimChange={onRemoteClaimChange}
+          onVacationPuddyKies={displayItemName === VACATION_PUDDY_NAME ? onVacationPuddyKies : undefined}
+          vacationPuddyFedBy={vacationPuddyFedBy}
         />
       ) : (
       <SwipeToDelete
@@ -1733,6 +1755,8 @@ function VacationClaimableDetailItem({
   currentUserId,
   claimProfileByUserId,
   onRemoteClaimChange,
+  onVacationPuddyKies,
+  vacationPuddyFedBy,
 }: {
   item: ListItem;
   displayName: string;
@@ -1744,6 +1768,8 @@ function VacationClaimableDetailItem({
   currentUserId: string;
   claimProfileByUserId: Map<string, ClaimerProfileInfo>;
   onRemoteClaimChange: (claimUserId: string | null) => void;
+  onVacationPuddyKies?: () => void;
+  vacationPuddyFedBy?: string;
 }) {
   const photoUrl = getPhotoUrl?.(displayName, 160, {
     tripPerson: normalizeTripPerson(item.tripPerson),
@@ -1759,6 +1785,12 @@ function VacationClaimableDetailItem({
           claimProfileByUserId,
         )} gekozen`
     : "Niemand gekozen";
+
+  const isPuddySlideIn = onVacationPuddyKies != null;
+  const puddyHasFedBy = isPuddySlideIn && (vacationPuddyFedBy ?? "").trim().length > 0;
+  const subtitle = isPuddySlideIn
+    ? (puddyHasFedBy ? vacationPuddyFedBy : "Niemand gekozen")
+    : claimedLabel;
 
   return (
     <div className="flex min-h-[68px] w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white py-3 pl-4 pr-3">
@@ -1780,15 +1812,24 @@ function VacationClaimableDetailItem({
           {displayName}
         </p>
         <p className="w-full truncate text-sm font-normal leading-20 tracking-normal text-[var(--gray-400)]">
-          {claimedLabel}
+          {subtitle}
         </p>
       </div>
+      {isPuddySlideIn ? (
+        <MiniButton
+          type="button"
+          onClick={onVacationPuddyKies}
+        >
+          {puddyHasFedBy ? "Wijzigen" : "Kies"}
+        </MiniButton>
+      ) : (
       <MiniButton
         type="button"
         onClick={() => onRemoteClaimChange(claimedByMe ? null : currentUserId)}
       >
         {claimedByMe ? "Wis" : "Kies"}
       </MiniButton>
+      )}
     </div>
   );
 }
@@ -5699,6 +5740,8 @@ export default function ListDetailPage({
                   }
                   onOpenMasterCategoryReorder={handleOpenMasterCategoryReorder}
                   disableSortable={false}
+                  onVacationPuddyKies={isLandalOrVakantieList && !isMasterList ? openLandalPuddySlide : undefined}
+                  vacationPuddyFedBy={isLandalOrVakantieList && !isMasterList ? landalPuddyFedBy : undefined}
                 />
               </SortableContext>
             </DndContext>

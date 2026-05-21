@@ -552,6 +552,7 @@ export default function NieuwVakantielijstjePage() {
         transport,
         accommodation,
         household,
+        userEmail: user?.email ?? undefined,
       });
 
       const txs: Parameters<typeof db.transact>[0] = [
