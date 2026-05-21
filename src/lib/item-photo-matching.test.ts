@@ -43,6 +43,18 @@ describe("matchItemPhotoUrl", () => {
     ).toBe("/images/vakantie/jas_kind_160.webp");
   });
 
+  it("mapt Make-up naar makeup-bestand", () => {
+    const slugsWithMakeup = [...slugs, "makeup"];
+    const fileBase = new Map(fileBaseBySlug);
+    fileBase.set("makeup", "vakantie/makeup");
+    expect(
+      matchItemPhotoUrl("Make-up", slugsWithMakeup, 160, fileBase),
+    ).toBe("/images/vakantie/makeup_160.webp");
+    expect(
+      matchItemPhotoUrl("Makeup", slugsWithMakeup, 160, fileBase),
+    ).toBe("/images/vakantie/makeup_160.webp");
+  });
+
   it("mapt Imodium naar immodium-bestand", () => {
     const slugsWithImmodium = [...slugs, "immodium"];
     const fileBase = new Map(fileBaseBySlug);

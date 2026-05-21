@@ -708,6 +708,7 @@ export function NewItemModal({
                       </div>
                     </>
                   )}
+                  {!isVacationList && (
                   <div className="flex flex-col gap-2">
                     <Stepper
                       label="Hoeveelheid"
@@ -725,6 +726,7 @@ export function NewItemModal({
                       onChange={(e) => setQuantityDesc(e.target.value)}
                     />
                   </div>
+                  )}
                 </div>
               )}
 

@@ -180,6 +180,8 @@ const VACATION_LEGACY_PUDDY_NAME = "Kat verzorgen";
 const VACATION_PUDDY_NAME = "Puddy verzorgen";
 const VACATION_LEGACY_IMODIUM_NAME = "Imodium";
 const VACATION_IMMODIUM_NAME = "Immodium";
+const VACATION_LEGACY_MAKEUP_NAME = "Make-up";
+const VACATION_MAKEUP_NAME = "Makeup";
 const VACATION_CLAIM_ITEM_NAMES = new Set([
   VACATION_LEGACY_PUDDY_NAME,
   VACATION_PUDDY_NAME,
@@ -3349,6 +3351,19 @@ export default function ListDetailPage({
     );
   }, [isListOwner, isVakantieList, listData?.items]);
 
+  React.useEffect(() => {
+    if (!isVakantieList || !isListOwner || !listData?.items?.length) return;
+    const legacyMakeupItems = listData.items.filter(
+      (item) => item.name === VACATION_LEGACY_MAKEUP_NAME,
+    );
+    if (legacyMakeupItems.length === 0) return;
+    void db.transact(
+      legacyMakeupItems.map((item) =>
+        db.tx.items[item.id].update({ name: VACATION_MAKEUP_NAME }),
+      ),
+    );
+  }, [isListOwner, isVakantieList, listData?.items]);
+
   const itemsForListSections = React.useMemo(() => {
     if (!isLandalOrVakantieList) return items;
     if (isPuddyTabSelected) return [];
@@ -3374,7 +3389,7 @@ export default function ListDetailPage({
 
   /** Zet / ververs `itemCategory` via Excel-mapping. */
   React.useEffect(() => {
-    if (!listId || !user) return;
+    if (!listId || !user || isLandalOrVakantieList) return;
     const txs = items
       .map((it) => {
         const resolvedCategory = resolveListItemCategory(it.name);
@@ -3387,7 +3402,7 @@ export default function ListDetailPage({
     if (txs.length > 0) {
       void db.transact(txs);
     }
-  }, [listId, user, items, resolveListItemCategory]);
+  }, [listId, user, items, resolveListItemCategory, isLandalOrVakantieList]);
 
   /** Vul lege `tripPerson` vanuit `section` (geen Excel-fallback naar Samen). */
   React.useEffect(() => {

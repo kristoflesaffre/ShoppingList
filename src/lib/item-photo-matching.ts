@@ -29,6 +29,8 @@ const ITEM_PHOTO_ALIASES: Record<string, string> = {
   vervoer_luchthaven_regelen: "luchthavenvervoer",
   /** Bestandsnaam `immodium`; oude lijstjes gebruikten «Imodium». */
   imodium: "immodium",
+  /** Bestand `makeup`; «Make-up» normaliseert naar `make_up`. */
+  make_up: "makeup",
 };
 
 function slugEndsWithGenderSuffix(slug: string): boolean {

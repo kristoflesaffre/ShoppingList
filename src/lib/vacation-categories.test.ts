@@ -44,7 +44,8 @@ describe("resolveVacationTripPersonFromDefaultItems", () => {
 
   it("kent persoonlijke standaarditems toe aan de juiste tab", () => {
     expect(resolveVacationTripPersonFromDefaultItems("Zwemshort")).toBe("Kristof");
-    expect(resolveVacationTripPersonFromDefaultItems("Make-up")).toBe("Chloé");
+    expect(resolveVacationTripPersonFromDefaultItems("Makeup")).toBe("Chloé");
+    expect(resolveVacationCategoryFromName("Oordopjes")).toBe("Accessoires");
     expect(resolveVacationTripPersonFromDefaultItems("Pluchen knuffel")).toBe(
       "Noë",
     );

@@ -96,7 +96,7 @@ const ITEMS: RawItem[] = [
   { slug: "maca", name: "Maca", section: "Kristof", category: "Medicijnen", households: ["man"] },
   { slug: "macbook", name: "MacBook", section: "Kristof", category: "Elektronica", households: ["man"] },
   { slug: "macbook", name: "MacBook", section: "Chloé", category: "Elektronica", households: ["vrouw"] },
-  { slug: "makeup", name: "Make-up", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
+  { slug: "makeup", name: "Makeup", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
   { slug: "medicatie_reisziekte", name: "Medicatie reisziekte", section: "Samen", category: "Medicijnen" },
   { slug: "medicatie", name: "Medicatie", section: "Kristof", category: "Medicijnen", households: ["man"] },
   { slug: "medicatie", name: "Medicatie", section: "Chloé", category: "Medicijnen", households: ["vrouw"] },
@@ -109,7 +109,7 @@ const ITEMS: RawItem[] = [
   { slug: "nutella", name: "Nutella", section: "Samen", category: "Eten & drinken" },
   { slug: "onderbroek_kind", name: "Onderbroek", section: "Noë", category: "Kleding", households: ["jongens", "meisjes"] },
   { slug: "onderhemd_kind", name: "Onderhemd", section: "Noë", category: "Kleding", households: ["jongens", "meisjes"] },
-  { slug: "oordopjes", name: "Oordopjes", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
+  { slug: "oordopjes", name: "Oordopjes", section: "Chloé", category: "Accessoires", households: ["vrouw"] },
   { slug: "oplader_smartphone", name: "Oplader smartphone", section: "Samen", category: "Elektronica" },
   { slug: "papieren_zakdoekjes", name: "Papieren zakdoekjes", section: "Samen", category: "Toiletartikelen" },
   { slug: "paracetamol_kind", name: "Paracetamol", section: "Noë", category: "Medicijnen", households: ["jongens", "meisjes"] },
@@ -258,6 +258,7 @@ export function vacationDefaultItemTripPersonLookup(): Record<
     registerDefaultItemTripPerson(map, item.slug, person);
     registerDefaultItemTripPerson(map, item.name, person);
   }
+  registerDefaultItemTripPerson(map, "make-up", "Chloé");
   defaultItemTripPersonLookup = map;
   return map;
 }
@@ -300,6 +301,7 @@ export function vacationDefaultItemCategoryLookup(): Record<
     registerDefaultItemCategory(map, item.name, item.category);
   }
   registerDefaultItemCategory(map, "imodium", "Medicijnen");
+  registerDefaultItemCategory(map, "make-up", "Toiletartikelen");
   defaultItemCategoryLookup = map;
   return map;
 }
