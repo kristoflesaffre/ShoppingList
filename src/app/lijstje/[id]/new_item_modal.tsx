@@ -310,11 +310,11 @@ export function NewItemModal({
   }, [open, storedRecipes]);
 
   React.useEffect(() => {
-    if (!open || !isVacationList || isEditMode) return;
+    if (!open || !isVacationList || isEditMode || initialItemCategory === "Te regelen") return;
     const trimmed = itemName.trim();
     if (!trimmed) return;
     setVacationCategory(resolveVacationCategoryFromName(trimmed));
-  }, [open, isVacationList, isEditMode, itemName]);
+  }, [open, isVacationList, isEditMode, itemName, initialItemCategory]);
 
   const handleAdd = () => {
     if (!canAdd && !isEditMode) return;
@@ -327,22 +327,24 @@ export function NewItemModal({
       : initialItemCategory && initialItemCategory.trim().length > 0
         ? initialItemCategory.trim()
         : resolveItemCategoryFromName(itemName.trim());
+    const isPreDeparture = isVacationList && vacationCategory === "Te regelen";
+    const vacationSection = isPreDeparture ? "Voor vertrek" : "Algemeen";
     if (isEditMode && editingItem && onSave) {
       onSave({
         ...editingItem,
         name: itemName.trim(),
         quantity: qty,
-        section: isVacationList ? "Algemeen" : section,
+        section: isVacationList ? vacationSection : section,
         itemCategory: isVacationList ? vacationCategory : resolveItemCategoryFromName(itemName.trim()),
-        ...(isVacationList ? { tripPerson: normalizeTripPerson(tripPerson) } : {}),
+        ...(isVacationList && !isPreDeparture ? { tripPerson: normalizeTripPerson(tripPerson) } : {}),
       });
     } else {
       onAdd({
         name: itemName.trim(),
         quantity: qty,
-        section: isVacationList ? "Algemeen" : section,
+        section: isVacationList ? vacationSection : section,
         itemCategory,
-        ...(isVacationList ? { tripPerson: normalizeTripPerson(tripPerson) } : {}),
+        ...(isVacationList && !isPreDeparture ? { tripPerson: normalizeTripPerson(tripPerson) } : {}),
       });
     }
     onClose();
@@ -636,6 +638,7 @@ export function NewItemModal({
                   />
                   {isVacationList && (
                     <>
+                      {(isEditMode || initialItemCategory !== "Te regelen") && (
                       <div className="flex flex-col gap-2">
                         <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
                           Categorie
@@ -666,6 +669,8 @@ export function NewItemModal({
                           />
                         </div>
                       </div>
+                      )}
+                      {(isEditMode || initialItemCategory !== "Te regelen") && (
                       <div className="flex flex-col gap-2">
                         <label
                           htmlFor="new-item-trip-person"
@@ -706,6 +711,7 @@ export function NewItemModal({
                           />
                         </div>
                       </div>
+                      )}
                     </>
                   )}
                   {!isVacationList && (

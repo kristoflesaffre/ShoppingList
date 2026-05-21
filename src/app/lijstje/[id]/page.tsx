@@ -3938,10 +3938,15 @@ export default function ListDetailPage({
 
   const handleOpenNewItemModal = React.useCallback(() => {
     setEditingItem(null);
-    setInitialSection(null);
-    setInitialItemCategory(null);
+    if (isVakantieList && tripPersonTab === "Voor vertrek") {
+      setInitialSection("Algemeen");
+      setInitialItemCategory("Te regelen");
+    } else {
+      setInitialSection(null);
+      setInitialItemCategory(null);
+    }
     setIsNewItemOpen(true);
-  }, []);
+  }, [isVakantieList, tripPersonTab]);
 
   const handleOpenFrituurWizard = React.useCallback((sectionTitle?: string) => {
     if (!listId) return;
@@ -4354,6 +4359,7 @@ export default function ListDetailPage({
       const newId = iid();
       const itemCategory =
         newItem.itemCategory ?? resolveListItemCategory(newItem.name);
+      const isPreDepartureItem = isLandalOrVakantieList && itemCategory === "Te regelen";
       const item: ListItem = {
         id: newId,
         name: newItem.name,
@@ -4363,7 +4369,7 @@ export default function ListDetailPage({
         itemCategory,
         fromStock: newItem.fromStock,
         stockPhotoUrl: newItem.stockPhotoUrl,
-        ...(isLandalOrVakantieList
+        ...(isLandalOrVakantieList && !isPreDepartureItem
           ? { tripPerson: normalizeTripPerson(newItem.tripPerson) }
           : {}),
       };
@@ -4417,7 +4423,7 @@ export default function ListDetailPage({
             ...(computeSectionAbsoluteDate(newItem.section) != null
               ? { itemDate: computeSectionAbsoluteDate(newItem.section)! }
               : {}),
-            ...(isLandalOrVakantieList
+            ...(isLandalOrVakantieList && !isPreDepartureItem
               ? { tripPerson: normalizeTripPerson(newItem.tripPerson) }
               : {}),
           })
@@ -4450,15 +4456,17 @@ export default function ListDetailPage({
 
   const handleSaveEditedItem = React.useCallback((updatedItem: ListItem) => {
     const itemCategory = updatedItem.itemCategory ?? resolveListItemCategory(updatedItem.name);
-    const computedItemDate = computeSectionAbsoluteDate(updatedItem.section);
+    const isPreDepartureItem = isLandalOrVakantieList && itemCategory === "Te regelen";
+    const effectiveSection = isPreDepartureItem ? "Voor vertrek" : updatedItem.section;
+    const computedItemDate = computeSectionAbsoluteDate(effectiveSection);
     db.transact(
       db.tx.items[updatedItem.id].update({
         name: updatedItem.name,
         quantity: updatedItem.quantity,
-        section: updatedItem.section,
+        section: effectiveSection,
         itemCategory,
         ...(computedItemDate != null ? { itemDate: computedItemDate } : {}),
-        ...(isLandalOrVakantieList
+        ...(isLandalOrVakantieList && !isPreDepartureItem
           ? { tripPerson: normalizeTripPerson(updatedItem.tripPerson) }
           : {}),
       }),
