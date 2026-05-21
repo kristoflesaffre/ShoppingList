@@ -1,4 +1,5 @@
 import vacationItemCategories from "@/lib/data/vacation_item_categories.json";
+import { resolveVacationCategoryFromDefaultItems } from "@/lib/vacation-default-items";
 
 export const VACATION_CATEGORIES = [
   "Te regelen",
@@ -8,6 +9,12 @@ export const VACATION_CATEGORIES = [
   "Gekoelde eten en drank",
   "Elektronica",
   "Slaapspullen",
+  "Documenten",
+  "Medicijnen",
+  "Huishouden",
+  "Strand",
+  "Speelgoed",
+  "Accessoires",
   "Andere",
 ] as const;
 
@@ -69,6 +76,15 @@ function lookupKeysForName(name: string): string[] {
   if (n) {
     keys.add(n);
     keys.add(n.replace(/\s/g, "_"));
+    const parenthetical = n.match(/^(.+?)\s+\((.+?)\)$/);
+    if (parenthetical) {
+      const base = parenthetical[1]?.trim();
+      const suffix = parenthetical[2]?.trim();
+      if (base && suffix) {
+        keys.add(`${base} ${suffix}`);
+        keys.add(`${base}_${suffix}`.replace(/\s+/g, "_"));
+      }
+    }
   }
   const slug = slugKeyFromName(name);
   if (slug) keys.add(slug);
@@ -92,6 +108,8 @@ export function resolveVacationCategoryFromName(name: string): VacationCategory 
   if (VACATION_PRE_DEPARTURE_NAMES.has(normalizeVacationItemKey(name))) {
     return VACATION_PRE_DEPARTURE;
   }
+  const fromDefaultItems = resolveVacationCategoryFromDefaultItems(name);
+  if (fromDefaultItems) return fromDefaultItems;
   return categoryFromJsonMaps(name) ?? VACATION_ANDERE;
 }
 

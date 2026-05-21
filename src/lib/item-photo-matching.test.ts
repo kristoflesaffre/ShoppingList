@@ -43,6 +43,18 @@ describe("matchItemPhotoUrl", () => {
     ).toBe("/images/vakantie/jas_kind_160.webp");
   });
 
+  it("mapt Imodium naar immodium-bestand", () => {
+    const slugsWithImmodium = [...slugs, "immodium"];
+    const fileBase = new Map(fileBaseBySlug);
+    fileBase.set("immodium", "vakantie/immodium");
+    expect(
+      matchItemPhotoUrl("Imodium", slugsWithImmodium, 160, fileBase),
+    ).toBe("/images/vakantie/immodium_160.webp");
+    expect(
+      matchItemPhotoUrl("Immodium", slugsWithImmodium, 160, fileBase),
+    ).toBe("/images/vakantie/immodium_160.webp");
+  });
+
   it("kiest expliciete vakantie-afbeeldingen voor voorbereidingsitems", () => {
     expect(matchItemPhotoUrl("Puddy verzorgen", slugs, 160, fileBaseBySlug)).toBe(
       "/images/vakantie/puddy_160.webp",

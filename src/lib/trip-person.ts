@@ -48,3 +48,24 @@ export function tripPersonImageSuffix(
   }
   return null;
 }
+
+/**
+ * Bepaalt op welke persoonstab een vakantie-item hoort.
+ * Geen fallback naar «Samen»: alleen expliciet `tripPerson`, anders `section` als tabnaam.
+ */
+export function tripPersonTabForVacationItem(item: {
+  tripPerson?: string | null;
+  section?: string | null;
+}): TripPersonTab | null {
+  const rawTripPerson = String(item.tripPerson ?? "").trim();
+  if (TAB_SET.has(rawTripPerson)) return rawTripPerson as TripPersonTab;
+  const mappedTripPerson = ALIASES[rawTripPerson];
+  if (mappedTripPerson) return mappedTripPerson;
+
+  const rawSection = String(item.section ?? "").trim();
+  if (TAB_SET.has(rawSection)) return rawSection as TripPersonTab;
+  const mappedSection = ALIASES[rawSection];
+  if (mappedSection) return mappedSection;
+
+  return null;
+}

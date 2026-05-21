@@ -27,6 +27,8 @@ const ITEM_PHOTO_ALIASES: Record<string, string> = {
   medicatie_reisziekte_innemen: "medicatie_reisziekte",
   boardingpassen_downloaden: "boarding_pass",
   vervoer_luchthaven_regelen: "luchthavenvervoer",
+  /** Bestandsnaam `immodium`; oude lijstjes gebruikten «Imodium». */
+  imodium: "immodium",
 };
 
 function slugEndsWithGenderSuffix(slug: string): boolean {

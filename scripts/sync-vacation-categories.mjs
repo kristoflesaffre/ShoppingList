@@ -22,12 +22,19 @@ const outPath = path.join(root, "src/lib/data/vacation_item_categories.json");
 
 /** App-categorieën (zelfde volgorde als `VACATION_CATEGORIES` in vacation-categories.ts). */
 const APP_CATEGORY_ORDER = [
+  "Te regelen",
   "Toiletartikelen",
   "Kleding",
   "Eten & drinken",
   "Gekoelde eten en drank",
   "Elektronica",
   "Slaapspullen",
+  "Documenten",
+  "Medicijnen",
+  "Huishouden",
+  "Strand",
+  "Speelgoed",
+  "Accessoires",
   "Andere",
 ];
 
@@ -43,14 +50,14 @@ const EXCEL_CATEGORY_TO_APP = {
   Voeding: "Eten & drinken",
   Elektronica: "Elektronica",
   Slapen: "Slaapspullen",
-  Accessoires: ANDERE,
-  Documenten: ANDERE,
-  "Medicatie/EHBO": ANDERE,
-  Reisspullen: ANDERE,
-  Zwemmen: ANDERE,
-  Speelgoed: ANDERE,
-  Huishouden: ANDERE,
-  Intiem: ANDERE,
+  Accessoires: "Accessoires",
+  Documenten: "Documenten",
+  "Medicatie/EHBO": "Medicijnen",
+  Reisspullen: "Andere",
+  Zwemmen: "Strand",
+  Speelgoed: "Speelgoed",
+  Huishouden: "Huishouden",
+  Intiem: "Andere",
 };
 
 function normalizeItemKey(name) {

@@ -98,6 +98,7 @@ import {
   DEFAULT_TRIP_PERSON_TAB,
   TRIP_PERSON_TABS,
   normalizeTripPerson,
+  tripPersonTabForVacationItem,
   type TripPersonTab,
 } from "@/lib/trip-person";
 import { MasterCategoryOrderPanel } from "@/app/lijstje/[id]/master_category_order_panel";
@@ -177,6 +178,8 @@ type LandalDetailTab = TripPersonTab | "Voor vertrek" | "Puddy";
 
 const VACATION_LEGACY_PUDDY_NAME = "Kat verzorgen";
 const VACATION_PUDDY_NAME = "Puddy verzorgen";
+const VACATION_LEGACY_IMODIUM_NAME = "Imodium";
+const VACATION_IMMODIUM_NAME = "Immodium";
 const VACATION_CLAIM_ITEM_NAMES = new Set([
   VACATION_LEGACY_PUDDY_NAME,
   VACATION_PUDDY_NAME,
@@ -3333,6 +3336,19 @@ export default function ListDetailPage({
     );
   }, [isListOwner, isVakantieList, listData?.items]);
 
+  React.useEffect(() => {
+    if (!isVakantieList || !isListOwner || !listData?.items?.length) return;
+    const legacyImodiumItems = listData.items.filter(
+      (item) => item.name === VACATION_LEGACY_IMODIUM_NAME,
+    );
+    if (legacyImodiumItems.length === 0) return;
+    void db.transact(
+      legacyImodiumItems.map((item) =>
+        db.tx.items[item.id].update({ name: VACATION_IMMODIUM_NAME }),
+      ),
+    );
+  }, [isListOwner, isVakantieList, listData?.items]);
+
   const itemsForListSections = React.useMemo(() => {
     if (!isLandalOrVakantieList) return items;
     if (isPuddyTabSelected) return [];
@@ -3345,7 +3361,7 @@ export default function ListDetailPage({
     }
     if (tripPersonTab === "Voor vertrek") return [];
     return items.filter(
-      (i) => normalizeTripPerson(i.tripPerson) === tripPersonTab,
+      (i) => tripPersonTabForVacationItem(i) === tripPersonTab,
     );
   }, [items, isLandalOrVakantieList, isPuddyTabSelected, isVakantieList, tripPersonTab]);
 
@@ -3356,22 +3372,41 @@ export default function ListDetailPage({
     return items.filter((i) => (i.section ?? "").trim() === target);
   }, [items, searchParams]);
 
-  /** Zet / ververs `itemCategory` op items (Excel-mapping); ook master (groepering per inhoud). */
+  /** Zet / ververs `itemCategory` via Excel-mapping. */
   React.useEffect(() => {
     if (!listId || !user) return;
     const txs = items
       .map((it) => {
-        const resolved = resolveListItemCategory(it.name);
-        const stored =
+        const resolvedCategory = resolveListItemCategory(it.name);
+        const storedCategory =
           typeof it.itemCategory === "string" ? it.itemCategory.trim() : "";
-        if (stored === resolved) return null;
-        return db.tx.items[it.id].update({ itemCategory: resolved });
+        if (storedCategory === resolvedCategory) return null;
+        return db.tx.items[it.id].update({ itemCategory: resolvedCategory });
       })
       .filter((tx): tx is NonNullable<typeof tx> => tx != null);
     if (txs.length > 0) {
       void db.transact(txs);
     }
   }, [listId, user, items, resolveListItemCategory]);
+
+  /** Vul lege `tripPerson` vanuit `section` (geen Excel-fallback naar Samen). */
+  React.useEffect(() => {
+    if (!listId || !user || !isLandalOrVakantieList) return;
+    const txs = items
+      .map((it) => {
+        if (String(it.tripPerson ?? "").trim().length > 0) return null;
+        const fromSection = tripPersonTabForVacationItem(it);
+        if (!fromSection) return null;
+        return db.tx.items[it.id].update({
+          tripPerson: fromSection,
+          section: fromSection,
+        });
+      })
+      .filter((tx): tx is NonNullable<typeof tx> => tx != null);
+    if (txs.length > 0) {
+      void db.transact(txs);
+    }
+  }, [listId, user, items, isLandalOrVakantieList]);
 
   /**
    * Items die jij claimt: `claimedByDisplayName` gelijk houden aan profiel-voornaam.
@@ -4206,14 +4241,14 @@ export default function ListDetailPage({
             ? items.filter((i) => {
                 if (effectiveListItemCategory(i) !== sectionTitle) return false;
                 if (isLandalOrVakantieList) {
-                  return normalizeTripPerson(i.tripPerson) === tripPersonTab;
+                  return tripPersonTabForVacationItem(i) === tripPersonTab;
                 }
                 return true;
               })
             : items.filter((i) => {
                 if (i.section !== sectionTitle) return false;
                 if (isLandalOrVakantieList) {
-                  return normalizeTripPerson(i.tripPerson) === tripPersonTab;
+                  return tripPersonTabForVacationItem(i) === tripPersonTab;
                 }
                 return true;
               });
