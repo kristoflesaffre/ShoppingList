@@ -22,6 +22,7 @@ const ITEM_PHOTO_ALIASES: Record<string, string> = {
   ev_route_plannen: "laadpaal",
   laadpas_regelen: "laadpas",
   medicatievoorraad_aanvullen: "medicatie",
+  kattenkorrels_aanvullen: "kattekorrels",
   huissleutel_afgeven: "huissleutel",
   tablet_opladen: "tablet",
   medicatie_reisziekte_innemen: "medicatie_reisziekte",
