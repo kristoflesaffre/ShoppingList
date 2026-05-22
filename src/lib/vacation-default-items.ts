@@ -161,6 +161,7 @@ const ITEMS: RawItem[] = [
   { slug: "smartphone", name: "Smartphone", section: "Kristof", category: "Elektronica", households: ["man"] },
   { slug: "smartphone", name: "Smartphone", section: "Chloé", category: "Elektronica", households: ["vrouw"] },
   { slug: "sokken_kind", name: "Sokken", section: "Noë", category: "Kleding", households: ["jongens", "meisjes"] },
+  { slug: "sokken_man", name: "Sokken", section: "Kristof", category: "Kleding", households: ["man"] },
   { slug: "strandlaken", name: "Strandlaken", section: "Samen", category: "Strand", seasons: ["zomer"] },
   { slug: "strandtas", name: "Strandtas", section: "Samen", category: "Strand", seasons: ["zomer"] },
   { slug: "t-shirt_kind", name: "T-shirt", section: "Noë", category: "Kleding", households: ["jongens", "meisjes"] },
