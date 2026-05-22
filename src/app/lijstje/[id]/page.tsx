@@ -5717,7 +5717,7 @@ export default function ListDetailPage({
                     isEditMode={isEditMode}
                     listViewMode={listViewMode}
                     isMasterList={isMasterList}
-                    isSharedList={showSharedDetailRow}
+                    isSharedList={showSharedDetailRow && !isLandalOrVakantieList}
                     isVacationList={isLandalOrVakantieList && !isMasterList}
                     getPhotoUrl={getPhotoUrl}
                     savedRecipes={savedRecipes}

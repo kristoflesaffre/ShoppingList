@@ -177,6 +177,8 @@ export function NewItemModal({
   >(null);
 
   const canAdd = itemName.trim().length > 0;
+  // ItemNameSearchSlideIn calls onClose after onSelect — guard with ref to avoid closing the main modal.
+  const nameSearchSelectedRef = React.useRef(false);
   const canSaveRecipe = recipeName.trim().length > 0;
   const masterItemFormOnly = isMasterList && !showRecipeForm;
   const daySelected = selectedDay !== "Geen";
@@ -530,11 +532,16 @@ export function NewItemModal({
     <ItemNameSearchSlideIn
       open={nameSearchOpen}
       onClose={() => {
+        if (nameSearchSelectedRef.current) {
+          nameSearchSelectedRef.current = false;
+          return;
+        }
         setNameSearchOpen(false);
-        if (!itemName.trim()) onClose();
+        onClose();
       }}
       initialValue={itemName}
       onSelect={(name) => {
+        nameSearchSelectedRef.current = true;
         setItemName(name);
         setNameSearchOpen(false);
       }}
