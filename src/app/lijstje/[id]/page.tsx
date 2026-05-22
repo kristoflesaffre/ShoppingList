@@ -573,7 +573,7 @@ function SortableItemItems({
   listDateStr,
   disableSortable = false,
 }: {
-  sections: { title: string; displayTitle?: string; items: ListItem[]; isGroupHeader?: boolean }[];
+  sections: { title: string; displayTitle?: string; items: ListItem[]; isGroupHeader?: boolean; noAddButton?: boolean }[];
   /** Alleen gewone lijstjes: `category` = Figma-koppen per supermarkt-categorie. */
   groupingMode: "day" | "category";
   isEditMode: boolean;
@@ -693,7 +693,7 @@ function SortableItemItems({
                   <RecycleBinIcon />
                 </button>
               )
-            ) : isCategoryGrouping && !isVacationList ? null : (
+            ) : isCategoryGrouping && !isVacationList || section.noAddButton ? null : (
               <button
                 type="button"
                 aria-label={`Item toevoegen aan ${sectionHeading}`}
@@ -4521,16 +4521,16 @@ export default function ListDetailPage({
 
   const sections = React.useMemo(() => {
     if (isVakantieList && tripPersonTab === "Voor vertrek") {
-      return itemsForListSections.length > 0
-        ? [
-            {
-              title: "Te regelen",
-              displayTitle: undefined as string | undefined,
-              items: itemsForListSections,
-              isGroupHeader: false as boolean | undefined,
-            },
-          ]
-        : [];
+      const unchecked = itemsForListSections.filter((i) => !i.checked);
+      const checked = itemsForListSections.filter((i) => i.checked);
+      const result: { title: string; displayTitle?: string; items: ListItem[]; isGroupHeader?: boolean; noAddButton?: boolean }[] = [];
+      if (unchecked.length > 0) {
+        result.push({ title: "Te regelen", displayTitle: undefined, items: unchecked, isGroupHeader: false });
+      }
+      if (checked.length > 0) {
+        result.push({ title: "Geregeld", displayTitle: undefined, items: checked, isGroupHeader: false, noAddButton: true });
+      }
+      return result;
     }
 
     const useDaySections =
@@ -4571,7 +4571,7 @@ export default function ListDetailPage({
     }
 
     // Twee-niveau weergave: "Niet afgevinkt" en "Afgevinkt" als top-level groepen
-    const result: { title: string; displayTitle?: string; items: ListItem[]; isGroupHeader?: boolean }[] = [];
+    const result: { title: string; displayTitle?: string; items: ListItem[]; isGroupHeader?: boolean; noAddButton?: boolean }[] = [];
     result.push({ title: "__group_unchecked", displayTitle: "Niet afgevinkt", items: [], isGroupHeader: true });
     for (const s of normalSections) {
       const unchecked = s.items.filter((i) => !i.checked);
@@ -5648,6 +5648,26 @@ export default function ListDetailPage({
             {showUncheckedFirstToggle &&
             !isPuddyTabSelected &&
             !isLandalOrVakantieList ? (
+              <div className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
+                <Checkbox
+                  id="unchecked-first-toggle"
+                  checked={showUncheckedFirst}
+                  onCheckedChange={(v) => setShowUncheckedFirst(v === true)}
+                  className="border-[1.3px]"
+                  aria-label="Toon niet afgevinkte items bovenaan"
+                />
+                <label
+                  htmlFor="unchecked-first-toggle"
+                  className="min-w-0 flex-1 cursor-pointer select-none text-base font-normal leading-6 tracking-normal text-[var(--gray-700)]"
+                >
+                  Toon niet afgevinkte items bovenaan
+                </label>
+              </div>
+            ) : null}
+            {showUncheckedFirstToggle &&
+            isVakantieList &&
+            !isPuddyTabSelected &&
+            tripPersonTab !== "Voor vertrek" ? (
               <div className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
                 <Checkbox
                   id="unchecked-first-toggle"

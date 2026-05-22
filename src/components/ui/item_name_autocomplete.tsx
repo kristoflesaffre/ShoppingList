@@ -31,7 +31,7 @@ const MAX_SUGGESTIONS = 6;
 const ROW_HEIGHT = 56;
 
 /** True wanneer de viewport smaller is dan 768px (md breakpoint). */
-function useIsSmallScreen(): boolean {
+export function useIsSmallScreen(): boolean {
   const [isSmall, setIsSmall] = React.useState(false);
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -53,6 +53,8 @@ export type ItemNameAutocompleteProps = {
   photoCatalog?: "items" | "ingredients";
   /** Alleen desktop-dropdown: focus op het invoerveld bij mount (bijv. modaal opent). */
   autoFocus?: boolean;
+  /** Titel van de mobiele zoek-slide-in. Default: "Item toevoegen". */
+  slideInTitle?: string;
 };
 
 // ─── Large-screen dropdown ────────────────────────────────────────────────────
@@ -270,6 +272,7 @@ function SmallScreenAutocomplete({
   placeholder,
   className,
   photoCatalog = "items",
+  slideInTitle = "Item toevoegen",
 }: ItemNameAutocompleteProps) {
   const [slideInOpen, setSlideInOpen] = React.useState(false);
   const getItemPhotoUrl = useItemPhotoUrl();
@@ -319,6 +322,7 @@ function SmallScreenAutocomplete({
         initialValue={value}
         onSelect={(name) => onChange(name)}
         photoCatalog={photoCatalog}
+        title={slideInTitle}
       />
     </div>
   );

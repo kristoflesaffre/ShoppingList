@@ -6,7 +6,8 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { ToggleButton } from "@/components/ui/toggle_button";
 import { PillTab } from "@/components/ui/pill_tab";
 import { InputField } from "@/components/ui/input_field";
-import { ItemNameAutocomplete } from "@/components/ui/item_name_autocomplete";
+import { ItemNameAutocomplete, useIsSmallScreen } from "@/components/ui/item_name_autocomplete";
+import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
 import { Stepper } from "@/components/ui/stepper";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search_bar";
@@ -30,6 +31,8 @@ import {
   resolveVacationCategoryFromName,
   VACATION_CATEGORIES,
 } from "@/lib/vacation-categories";
+import { isVacationSlugAllowedForEmail, getVacationDefaultSlugsForPerson } from "@/lib/vacation-default-items";
+import { useVacationItemSlugs } from "@/lib/item-photos";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 
 const RecipeIngredientSortableList = dynamic(
@@ -144,6 +147,8 @@ export function NewItemModal({
   groupingMode?: "day" | "category";
 }) {
   const isEditMode = editingItem != null;
+  const isSmall = useIsSmallScreen();
+  const [nameSearchOpen, setNameSearchOpen] = React.useState(false);
   const [selectedDay, setSelectedDay] = React.useState("Geen");
   const [vacationCategory, setVacationCategory] = React.useState<string>("Andere");
   const [tripPerson, setTripPerson] =
@@ -183,6 +188,15 @@ export function NewItemModal({
       : null,
   );
   const { user: authUser } = db.useAuth();
+  const allVacationSlugs = useVacationItemSlugs();
+  const vacationSearchSlugs = React.useMemo((): string[] | undefined => {
+    if (!isVacationList) return undefined;
+    const email = authUser?.email ?? undefined;
+    if (tripPerson === "Samen") {
+      return allVacationSlugs.filter((slug) => isVacationSlugAllowedForEmail(slug, email));
+    }
+    return getVacationDefaultSlugsForPerson(tripPerson, email) ?? undefined;
+  }, [isVacationList, tripPerson, allVacationSlugs, authUser?.email]);
 
   const allFreezerItems = React.useMemo(() => {
     if (!freezerData?.freezerItems) return [];
@@ -315,6 +329,14 @@ export function NewItemModal({
     if (!trimmed) return;
     setVacationCategory(resolveVacationCategoryFromName(trimmed));
   }, [open, isVacationList, isEditMode, itemName, initialItemCategory]);
+
+  React.useEffect(() => {
+    if (open && isVacationList && !isEditMode && isSmall) {
+      setNameSearchOpen(true);
+    } else if (!open) {
+      setNameSearchOpen(false);
+    }
+  }, [open, isVacationList, isEditMode, isSmall]);
 
   const handleAdd = () => {
     if (!canAdd && !isEditMode) return;
@@ -505,6 +527,20 @@ export function NewItemModal({
 
   return (
     <>
+    <ItemNameSearchSlideIn
+      open={nameSearchOpen}
+      onClose={() => {
+        setNameSearchOpen(false);
+        if (!itemName.trim()) onClose();
+      }}
+      initialValue={itemName}
+      onSelect={(name) => {
+        setItemName(name);
+        setNameSearchOpen(false);
+      }}
+      title="Item toevoegen"
+      defaultSlugs={vacationSearchSlugs}
+    />
     <SlideInModal
       open={open}
       onClose={onClose}

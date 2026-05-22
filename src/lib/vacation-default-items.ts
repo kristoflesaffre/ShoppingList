@@ -1,5 +1,6 @@
 import type { VacationCategory } from "./vacation-categories";
 import type { TripPersonTab } from "./trip-person";
+import { normalizeForMatch } from "./item-photo-matching";
 
 export type SeasonValue = "zomer" | "winter";
 export type HouseholdValue = "man" | "vrouw" | "jongens" | "meisjes";
@@ -202,6 +203,49 @@ const ITEMS: RawItem[] = [
   { slug: "zwembril", name: "Zwembril", section: "Noë", category: "Strand", households: ["jongens", "meisjes"], seasons: ["zomer"] },
   { slug: "zwemshort", name: "Zwemshort", section: "Kristof", category: "Kleding", households: ["man"], seasons: ["zomer"] },
 ];
+
+/** Slug → e-mailadressen die het item mogen zien (enkel voor items met `emails` restrictie). */
+const RESTRICTED_BY_SLUG: ReadonlyMap<string, ReadonlyArray<string>> = new Map(
+  ITEMS.filter((item) => item.emails).map((item) => [
+    normalizeForMatch(item.slug),
+    item.emails!,
+  ]),
+);
+
+/**
+ * Returns true als het vakantie-item (slug) zichtbaar mag zijn voor de gegeven gebruiker.
+ * Items zonder e-mailrestrictie zijn altijd zichtbaar.
+ */
+export function isVacationSlugAllowedForEmail(slug: string, userEmail?: string): boolean {
+  const allowed = RESTRICTED_BY_SLUG.get(normalizeForMatch(slug));
+  if (!allowed) return true;
+  return allowed.includes(userEmail ?? "");
+}
+
+/**
+ * Vacation-zoek-slide-in: welke slugs standaard getoond worden (lege zoekbalk).
+ * - "Samen" → null (= alle vakantie-slugs; caller filtert op e-mail)
+ * - Persoons-tab → Samen-items + persoons-specifieke items, gefilterd op e-mail.
+ */
+export function getVacationDefaultSlugsForPerson(
+  tripPerson: TripPersonTab,
+  userEmail?: string,
+): string[] | null {
+  if (tripPerson === "Samen") return null;
+  const allowedSections = new Set<string>(["Samen", tripPerson]);
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of ITEMS) {
+    if (!allowedSections.has(item.section)) continue;
+    if (item.emails && !item.emails.includes(userEmail ?? "")) continue;
+    const normalized = normalizeForMatch(item.slug);
+    if (normalized && !seen.has(normalized)) {
+      seen.add(normalized);
+      result.push(normalized);
+    }
+  }
+  return result.sort();
+}
 
 /**
  * Geeft de gefilterde lijst van standaarditems op basis van seizoen en gezinssamenstelling.

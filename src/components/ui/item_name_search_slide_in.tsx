@@ -100,6 +100,8 @@ export type ItemNameSearchSlideInProps = {
   title?: string;
   /** `ingredients` = webp onder /images/ingredients; default = item jpg’s. */
   photoCatalog?: "items" | "ingredients";
+  /** Getoond wanneer de zoekbalk leeg is (bijv. alle vakantie-items). */
+  defaultSlugs?: string[];
 };
 
 export function ItemNameSearchSlideIn({
@@ -107,8 +109,9 @@ export function ItemNameSearchSlideIn({
   onClose,
   initialValue,
   onSelect,
-  title = "Ingrediënt",
+  title = "Item toevoegen",
   photoCatalog = "items",
+  defaultSlugs,
 }: ItemNameSearchSlideInProps) {
   const itemSlugs = useItemSlugs();
   const ingredientSlugs = useIngredientSlugs();
@@ -166,7 +169,8 @@ export function ItemNameSearchSlideIn({
   }, [query]);
 
   const suggestions = React.useMemo(() => {
-    if (!norm || !slugs.length) return [];
+    if (!norm) return defaultSlugs ?? [];
+    if (!slugs.length) return [];
     if (photoCatalog === "ingredients") {
       return matchIngredientSlugsForAutocomplete(
         norm,
@@ -182,7 +186,7 @@ export function ItemNameSearchSlideIn({
       (a, b) => (a.startsWith(norm) ? 0 : 1) - (b.startsWith(norm) ? 0 : 1),
     );
     return matching.slice(0, SLIDE_IN_MAX_SUGGESTIONS);
-  }, [slugs, norm, photoCatalog, synonyms]);
+  }, [slugs, norm, photoCatalog, synonyms, defaultSlugs]);
 
   const handleSelect = React.useCallback(
     (slug: string) => {

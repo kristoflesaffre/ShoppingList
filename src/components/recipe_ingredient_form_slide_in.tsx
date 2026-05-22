@@ -106,6 +106,7 @@ export function RecipeIngredientFormSlideIn({
           value={ingName}
           onChange={setIngName}
           photoCatalog="ingredients"
+          slideInTitle="Ingrediënt"
         />
         <div className="flex flex-col gap-2">
           <Stepper

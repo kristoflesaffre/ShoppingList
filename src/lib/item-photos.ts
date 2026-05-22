@@ -117,6 +117,18 @@ export function useItemSlugs(): string[] {
 }
 
 /**
+ * Hook that returns only the slugs from the /images/vakantie folder.
+ * Reactive: updates once the /api/item-images fetch resolves.
+ */
+export function useVacationItemSlugs(): string[] {
+  const allSlugs = useItemSlugs();
+  return React.useMemo(
+    () => allSlugs.filter((slug) => slugToFileBase.get(slug)?.startsWith("vakantie/") ?? false),
+    [allSlugs],
+  );
+}
+
+/**
  * Hook that fetches the available item image slugs once and returns a stable
  * `getPhotoUrl(itemName)` function. Returns null for each item until the fetch
  * resolves (typically <50 ms on localhost).
