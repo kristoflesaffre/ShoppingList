@@ -94,6 +94,10 @@ const COMMON_PRE_DEPARTURE_ITEMS: VacationChecklistItem[] = [
     imageSrc: "/images/vakantie/plant_160.webp",
     kind: "claim",
   },
+  {
+    name: "Kattenkorrels aanvullen",
+    imageSrc: "/images/vakantie/kattekorrels_160.webp",
+  },
   { name: "Vaccinatie regelen", imageSrc: "/images/vakantie/vaccin_160.webp" },
   { name: "Paspoort regelen", imageSrc: "/images/vakantie/paspoort_160.webp" },
   {

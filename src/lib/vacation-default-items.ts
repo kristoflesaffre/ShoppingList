@@ -66,6 +66,7 @@ const ITEMS: RawItem[] = [
   { slug: "e-reader", name: "E-reader", section: "Kristof", category: "Elektronica", households: ["man"] },
   { slug: "e-reader", name: "E-reader", section: "Chloé", category: "Elektronica", households: ["vrouw"] },
   { slug: "ehbo_kit", name: "Ehbo-kit", section: "Samen", category: "Toiletartikelen" },
+  { slug: "fluitje_kind", name: "Fluitje", section: "Noë", category: "Andere", households: ["jongens", "meisjes"] },
   { slug: "glijmiddel", name: "Glijmiddel", section: "Samen", category: "Toiletartikelen", emails: PRIVATE_EMAILS },
   { slug: "haarborstel", name: "Haarborstel", section: "Samen", category: "Toiletartikelen" },
   { slug: "haardroger", name: "Haardroger", section: "Samen", category: "Toiletartikelen", accommodations: ["appartement"] },
