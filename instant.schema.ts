@@ -39,6 +39,10 @@ const schema = i.schema({
        */
       landalPuddyFedBy: i.string().optional(),
       /**
+       * Vakantie: vrije tekst wie de planten water geeft. Leeg = nog niet gekozen.
+       */
+      landalPlantWateredBy: i.string().optional(),
+      /**
        * Week-/boodschappenlijst vanuit een master: id van die master-template.
        * Gebruikt o.a. om `masterCategoryOrderJson` van de master te volgen bij groepering per categorie.
        */

@@ -56,6 +56,8 @@ import { isLandalListCard } from "@/lib/landal-list-card";
 import {
   LandalPuddyFeedingCard,
   LandalPuddyFeedSlideIn,
+  VacationPlantWateringSlideIn,
+  PuddyCheckIcon,
 } from "@/components/landal_puddy_feeding";
 import {
   APP_FAB_BOTTOM_NO_NAV_CLASS,
@@ -555,6 +557,8 @@ function SortableItemItems({
   savedRecipes,
   onVacationPuddyKies,
   vacationPuddyFedBy,
+  onVacationPlantKies,
+  vacationPlantWateredBy,
   removingId,
   removingSectionTitle,
   addingId,
@@ -612,6 +616,10 @@ function SortableItemItems({
   onVacationPuddyKies?: () => void;
   /** Vakantie: opgeslagen naam in landalPuddyFedBy voor weergave op «Puddy verzorgen»-card. */
   vacationPuddyFedBy?: string;
+  /** Vakantie: opent planten-slide voor «Planten water geven»-item. */
+  onVacationPlantKies?: () => void;
+  /** Vakantie: opgeslagen naam in landalPlantWateredBy voor weergave op «Planten water geven»-card. */
+  vacationPlantWateredBy?: string;
 }) {
   const { active } = useDndContext();
   const isDndActive = active != null;
@@ -754,6 +762,8 @@ function SortableItemItems({
                         disableSortable={disableSortable}
                         onVacationPuddyKies={onVacationPuddyKies}
                         vacationPuddyFedBy={vacationPuddyFedBy}
+                        onVacationPlantKies={onVacationPlantKies}
+                        vacationPlantWateredBy={vacationPlantWateredBy}
                       />
                     ))}
                   </div>
@@ -1503,6 +1513,8 @@ function SortableItemRow({
   disableSortable = false,
   onVacationPuddyKies,
   vacationPuddyFedBy,
+  onVacationPlantKies,
+  vacationPlantWateredBy,
 }: {
   item: ListItem;
   isEditMode: boolean;
@@ -1529,6 +1541,8 @@ function SortableItemRow({
   disableSortable?: boolean;
   onVacationPuddyKies?: () => void;
   vacationPuddyFedBy?: string;
+  onVacationPlantKies?: () => void;
+  vacationPlantWateredBy?: string;
 }) {
   const isRemoving = removingId === item.id;
   const isAdding = addingId === item.id;
@@ -1566,6 +1580,8 @@ function SortableItemRow({
         disableSortable={disableSortable}
         onVacationPuddyKies={onVacationPuddyKies}
         vacationPuddyFedBy={vacationPuddyFedBy}
+        onVacationPlantKies={onVacationPlantKies}
+        vacationPlantWateredBy={vacationPlantWateredBy}
       />
     </div>
   );
@@ -1589,6 +1605,8 @@ function SortableItemCard({
   disableSortable = false,
   onVacationPuddyKies,
   vacationPuddyFedBy,
+  onVacationPlantKies,
+  vacationPlantWateredBy,
 }: {
   item: ListItem;
   isEditMode: boolean;
@@ -1611,6 +1629,8 @@ function SortableItemCard({
   disableSortable?: boolean;
   onVacationPuddyKies?: () => void;
   vacationPuddyFedBy?: string;
+  onVacationPlantKies?: () => void;
+  vacationPlantWateredBy?: string;
 }) {
   const {
     attributes,
@@ -1654,6 +1674,8 @@ function SortableItemCard({
           onRemoteClaimChange={onRemoteClaimChange}
           onVacationPuddyKies={displayItemName === VACATION_PUDDY_NAME ? onVacationPuddyKies : undefined}
           vacationPuddyFedBy={vacationPuddyFedBy}
+          onVacationPlantKies={displayItemName === "Planten water geven" ? onVacationPlantKies : undefined}
+          vacationPlantWateredBy={vacationPlantWateredBy}
         />
       ) : (
       <SwipeToDelete
@@ -1757,6 +1779,8 @@ function VacationClaimableDetailItem({
   onRemoteClaimChange,
   onVacationPuddyKies,
   vacationPuddyFedBy,
+  onVacationPlantKies,
+  vacationPlantWateredBy,
 }: {
   item: ListItem;
   displayName: string;
@@ -1770,6 +1794,8 @@ function VacationClaimableDetailItem({
   onRemoteClaimChange: (claimUserId: string | null) => void;
   onVacationPuddyKies?: () => void;
   vacationPuddyFedBy?: string;
+  onVacationPlantKies?: () => void;
+  vacationPlantWateredBy?: string;
 }) {
   const photoUrl = getPhotoUrl?.(displayName, 160, {
     tripPerson: normalizeTripPerson(item.tripPerson),
@@ -1787,10 +1813,17 @@ function VacationClaimableDetailItem({
     : "Niemand gekozen";
 
   const isPuddySlideIn = onVacationPuddyKies != null;
+  const isPlantSlideIn = onVacationPlantKies != null;
   const puddyHasFedBy = isPuddySlideIn && (vacationPuddyFedBy ?? "").trim().length > 0;
+  const plantHasWateredBy = isPlantSlideIn && (vacationPlantWateredBy ?? "").trim().length > 0;
+  const isAssigned = puddyHasFedBy || plantHasWateredBy;
+  const assignedName = puddyHasFedBy ? vacationPuddyFedBy : plantHasWateredBy ? vacationPlantWateredBy : undefined;
   const subtitle = isPuddySlideIn
     ? (puddyHasFedBy ? vacationPuddyFedBy : "Niemand gekozen")
-    : claimedLabel;
+    : isPlantSlideIn
+      ? (plantHasWateredBy ? vacationPlantWateredBy : "Niemand gekozen")
+      : claimedLabel;
+  const onSlideInOpen = isPuddySlideIn ? onVacationPuddyKies : isPlantSlideIn ? onVacationPlantKies : undefined;
 
   return (
     <div className="flex min-h-[68px] w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white py-3 pl-4 pr-3">
@@ -1802,33 +1835,56 @@ function VacationClaimableDetailItem({
             alt=""
             width={44}
             height={44}
-            className="size-full object-cover"
+            className={cn("size-full object-cover", isAssigned && "opacity-60")}
             decoding="async"
           />
         ) : null}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="w-full truncate text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
-          {displayName}
-        </p>
-        <p className="w-full truncate text-sm font-normal leading-20 tracking-normal text-[var(--gray-400)]">
-          {subtitle}
-        </p>
+        {isAssigned ? (
+          <>
+            <div className="flex min-w-0 items-center gap-1">
+              <p className="truncate text-base font-medium leading-6 tracking-normal text-[var(--text-primary)]">
+                {displayName}
+              </p>
+              <PuddyCheckIcon className="size-6 shrink-0 text-[var(--landal-puddy-check)]" />
+            </div>
+            <p className="truncate text-sm font-normal leading-5 tracking-normal text-[var(--gray-400)]">
+              {assignedName}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="w-full truncate text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+              {displayName}
+            </p>
+            <p className="w-full truncate text-sm font-normal leading-20 tracking-normal text-[var(--gray-400)]">
+              {subtitle}
+            </p>
+          </>
+        )}
       </div>
-      {isPuddySlideIn ? (
+      {onSlideInOpen != null ? (
+        isAssigned ? (
+          <button
+            type="button"
+            onClick={onSlideInOpen}
+            className="shrink-0 text-xs font-medium leading-4 tracking-normal text-action-primary no-underline transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+          >
+            Wijzigen
+          </button>
+        ) : (
+          <MiniButton type="button" onClick={onSlideInOpen}>
+            Kies
+          </MiniButton>
+        )
+      ) : (
         <MiniButton
           type="button"
-          onClick={onVacationPuddyKies}
+          onClick={() => onRemoteClaimChange(claimedByMe ? null : currentUserId)}
         >
-          {puddyHasFedBy ? "Wijzigen" : "Kies"}
+          {claimedByMe ? "Wis" : "Kies"}
         </MiniButton>
-      ) : (
-      <MiniButton
-        type="button"
-        onClick={() => onRemoteClaimChange(claimedByMe ? null : currentUserId)}
-      >
-        {claimedByMe ? "Wis" : "Kies"}
-      </MiniButton>
       )}
     </div>
   );
@@ -3224,6 +3280,9 @@ export default function ListDetailPage({
     (listData as Record<string, unknown>)?.landalPuddyFedBy ?? "",
   ).trim();
   const landalPuddyHasFedBy = landalPuddyFedBy.length > 0;
+  const landalPlantWateredBy = String(
+    (listData as Record<string, unknown>)?.landalPlantWateredBy ?? "",
+  ).trim();
   const landalDetailTabs: readonly LandalDetailTab[] = isVakantieList
     ? ["Voor vertrek", ...TRIP_PERSON_TABS]
     : landalPuddyHasFedBy
@@ -3580,6 +3639,9 @@ export default function ListDetailPage({
   const [landalPuddySlideOpen, setLandalPuddySlideOpen] = React.useState(false);
   const [landalPuddyDraftName, setLandalPuddyDraftName] = React.useState("");
   const [landalPuddySaving, setLandalPuddySaving] = React.useState(false);
+  const [landalPlantSlideOpen, setLandalPlantSlideOpen] = React.useState(false);
+  const [landalPlantDraftName, setLandalPlantDraftName] = React.useState("");
+  const [landalPlantSaving, setLandalPlantSaving] = React.useState(false);
   const [loyaltyPanel, setLoyaltyPanel] = React.useState<"list" | "loyalty">("list");
   /** Bij combi Lidl/Delhaize: welk slot koppelen/hernieuwen (primary = Delhaize). */
   const [loyaltySlot, setLoyaltySlot] = React.useState<"delhaize" | "lidl">(
@@ -3657,6 +3719,129 @@ export default function ListDetailPage({
       setLandalPuddySaving(false);
     }
   }, [listData?.id, listId]);
+
+  const deleteLandalPuddyCard = React.useCallback(async () => {
+    const targetListId =
+      typeof listData?.id === "string" && listData.id.length > 0
+        ? listData.id
+        : listId;
+    if (!targetListId) return;
+    setLandalPuddySaving(true);
+    try {
+      const puddyItem = items.find((i) => i.name === VACATION_PUDDY_NAME);
+      const txs: Parameters<typeof db.transact>[0] = [
+        db.tx.lists[targetListId].update({ landalPuddyFedBy: "" }),
+        ...(puddyItem ? [db.tx.items[puddyItem.id].delete()] : []),
+      ];
+      await db.transact(txs);
+      setLandalPuddyDraftName("");
+      setLandalPuddySlideOpen(false);
+    } catch (e) {
+      const msg =
+        e instanceof InstantError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Verwijderen mislukt. Probeer opnieuw.";
+      setSnackbarMessage(msg);
+    } finally {
+      setLandalPuddySaving(false);
+    }
+  }, [listData?.id, listId, items]);
+
+  const openLandalPlantSlide = React.useCallback(() => {
+    setLandalPlantDraftName(landalPlantWateredBy);
+    setLandalPlantSlideOpen(true);
+  }, [landalPlantWateredBy]);
+
+  const persistLandalPlantWateredBy = React.useCallback(async () => {
+    const targetListId =
+      typeof listData?.id === "string" && listData.id.length > 0
+        ? listData.id
+        : listId;
+    if (!targetListId) return;
+    const trimmed = landalPlantDraftName.trim();
+    if (!trimmed) {
+      setSnackbarMessage("Vul een naam in.");
+      return;
+    }
+    setLandalPlantSaving(true);
+    try {
+      await db.transact(
+        db.tx.lists[targetListId].update({
+          landalPlantWateredBy: trimmed,
+        }),
+      );
+      setLandalPlantSlideOpen(false);
+    } catch (e) {
+      const msg =
+        e instanceof InstantError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Bewaren mislukt. Probeer opnieuw.";
+      setSnackbarMessage(msg);
+    } finally {
+      setLandalPlantSaving(false);
+    }
+  }, [listData?.id, listId, landalPlantDraftName]);
+
+  const clearLandalPlantWateredBy = React.useCallback(async () => {
+    const targetListId =
+      typeof listData?.id === "string" && listData.id.length > 0
+        ? listData.id
+        : listId;
+    if (!targetListId) return;
+    setLandalPlantSaving(true);
+    try {
+      await db.transact(
+        db.tx.lists[targetListId].update({
+          landalPlantWateredBy: "",
+        }),
+      );
+      setLandalPlantDraftName("");
+      setLandalPlantSlideOpen(false);
+    } catch (e) {
+      const msg =
+        e instanceof InstantError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Verwijderen mislukt. Probeer opnieuw.";
+      setSnackbarMessage(msg);
+    } finally {
+      setLandalPlantSaving(false);
+    }
+  }, [listData?.id, listId]);
+
+  const deleteLandalPlantCard = React.useCallback(async () => {
+    const targetListId =
+      typeof listData?.id === "string" && listData.id.length > 0
+        ? listData.id
+        : listId;
+    if (!targetListId) return;
+    setLandalPlantSaving(true);
+    try {
+      const plantItem = items.find((i) => i.name === "Planten water geven");
+      const txs: Parameters<typeof db.transact>[0] = [
+        db.tx.lists[targetListId].update({ landalPlantWateredBy: "" }),
+        ...(plantItem ? [db.tx.items[plantItem.id].delete()] : []),
+      ];
+      await db.transact(txs);
+      setLandalPlantDraftName("");
+      setLandalPlantSlideOpen(false);
+    } catch (e) {
+      const msg =
+        e instanceof InstantError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Verwijderen mislukt. Probeer opnieuw.";
+      setSnackbarMessage(msg);
+    } finally {
+      setLandalPlantSaving(false);
+    }
+  }, [listData?.id, listId, items]);
 
   const storeFromListName = React.useMemo(
     () => findMasterStoreByListName(listName),
@@ -5762,6 +5947,8 @@ export default function ListDetailPage({
                   disableSortable={false}
                   onVacationPuddyKies={isLandalOrVakantieList && !isMasterList ? openLandalPuddySlide : undefined}
                   vacationPuddyFedBy={isLandalOrVakantieList && !isMasterList ? landalPuddyFedBy : undefined}
+                  onVacationPlantKies={isVakantieList && !isMasterList ? openLandalPlantSlide : undefined}
+                  vacationPlantWateredBy={isVakantieList && !isMasterList ? landalPlantWateredBy : undefined}
                 />
               </SortableContext>
             </DndContext>
@@ -5871,7 +6058,20 @@ export default function ListDetailPage({
         onSave={persistLandalPuddyFedBy}
         savedFedBy={landalPuddyFedBy}
         onRemoveSavedName={clearLandalPuddyFedBy}
+        onDelete={deleteLandalPuddyCard}
         saving={landalPuddySaving}
+      />
+
+      <VacationPlantWateringSlideIn
+        open={landalPlantSlideOpen}
+        onClose={() => setLandalPlantSlideOpen(false)}
+        name={landalPlantDraftName}
+        onNameChange={setLandalPlantDraftName}
+        onSave={persistLandalPlantWateredBy}
+        savedWateredBy={landalPlantWateredBy}
+        onRemoveSavedName={clearLandalPlantWateredBy}
+        onDelete={deleteLandalPlantCard}
+        saving={landalPlantSaving}
       />
 
       <input

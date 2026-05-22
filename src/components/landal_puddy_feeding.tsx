@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 
 /** Figma 1498:13664 / asset in repo onder `public/images/vakantie/`. */
 export const LANDAL_PUDDY_IMAGE_SRC = "/images/vakantie/puddy_320.webp";
+export const VACATION_PLANT_IMAGE_SRC = "/images/vakantie/plant_160.webp";
 
 /** Checkmark – zelfde vorm als `public/icons/checkmark.svg`, kleur via `currentColor`. */
-function PuddyCheckIcon({ className }: { className?: string }) {
+export function PuddyCheckIcon({ className }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -105,6 +106,7 @@ export function LandalPuddyFeedSlideIn({
   onNameChange,
   onSave,
   onRemoveSavedName,
+  onDelete,
   savedFedBy,
   saving,
 }: {
@@ -116,6 +118,8 @@ export function LandalPuddyFeedSlideIn({
   /** Opgeslagen naam op de lijst; bepaalt of «Naam verwijderen» getoond wordt (Figma 1499:10606). */
   savedFedBy: string;
   onRemoveSavedName: () => void | Promise<void>;
+  /** Verwijdert de volledige Puddy-card (item + veld). */
+  onDelete: () => void | Promise<void>;
   saving: boolean;
 }) {
   const showRemoveSaved = savedFedBy.trim().length > 0;
@@ -154,7 +158,7 @@ export function LandalPuddyFeedSlideIn({
             decoding="async"
           />
         </div>
-        <div className="flex w-full flex-col gap-4">
+        <div className="flex w-full flex-col gap-3">
           <InputField
             id="landal-puddy-fed-by"
             label="Wie geeft Puddy eten?"
@@ -177,6 +181,185 @@ export function LandalPuddyFeedSlideIn({
               Naam verwijderen
             </Button>
           ) : null}
+          <Button
+            type="button"
+            variant="tertiary"
+            tertiaryTone="danger"
+            disabled={saving}
+            className="max-w-none"
+            onClick={() => {
+              void Promise.resolve(onDelete());
+            }}
+          >
+            Verwijderen
+          </Button>
+        </div>
+      </div>
+    </SlideInModal>
+  );
+}
+
+export function VacationPlantWateringCard({
+  wateredBy,
+  onChoosePerson,
+  onEdit,
+}: {
+  wateredBy: string;
+  onChoosePerson: () => void;
+  onEdit: () => void;
+}) {
+  const hasWateredBy = wateredBy.length > 0;
+
+  return (
+    <section
+      className="flex w-full min-w-0 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3"
+      aria-label="Planten water geven"
+    >
+      <div className="relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
+        {/* eslint-disable-next-line @next/next/no-img-element -- statische webp in /public */}
+        <img
+          src={VACATION_PLANT_IMAGE_SRC}
+          alt=""
+          width={44}
+          height={44}
+          className={cn("size-full object-cover", hasWateredBy && "opacity-60")}
+          decoding="async"
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        {hasWateredBy ? (
+          <>
+            <div className="flex min-w-0 items-center gap-1">
+              <p className="truncate text-base font-medium leading-6 tracking-normal text-[var(--text-primary)]">
+                Planten water
+              </p>
+              <PuddyCheckIcon className="size-6 shrink-0 text-[var(--landal-puddy-check)]" />
+            </div>
+            <p className="truncate text-sm font-normal leading-5 tracking-normal text-[var(--gray-400)]">
+              {wateredBy}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="truncate text-base font-medium leading-6 tracking-normal text-[var(--text-primary)]">
+              Planten water geven?
+            </p>
+            <p className="truncate text-sm font-normal leading-5 tracking-normal text-[var(--gray-400)]">
+              Niemand gekozen
+            </p>
+          </>
+        )}
+      </div>
+      {hasWateredBy ? (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="shrink-0 text-xs font-medium leading-4 tracking-normal text-action-primary no-underline transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+        >
+          Wijzigen
+        </button>
+      ) : (
+        <MiniButton type="button" variant="primary" onClick={onChoosePerson}>
+          Kies persoon
+        </MiniButton>
+      )}
+    </section>
+  );
+}
+
+export function VacationPlantWateringSlideIn({
+  open,
+  onClose,
+  name,
+  onNameChange,
+  onSave,
+  onRemoveSavedName,
+  onDelete,
+  savedWateredBy,
+  saving,
+}: {
+  open: boolean;
+  onClose: () => void;
+  name: string;
+  onNameChange: (v: string) => void;
+  onSave: () => void | Promise<void>;
+  savedWateredBy: string;
+  onRemoveSavedName: () => void | Promise<void>;
+  /** Verwijdert de volledige planten-card (item + veld). */
+  onDelete: () => void | Promise<void>;
+  saving: boolean;
+}) {
+  const showRemoveSaved = savedWateredBy.trim().length > 0;
+  return (
+    <SlideInModal
+      open={open}
+      onClose={() => {
+        if (!saving) onClose();
+      }}
+      title="Planten water geven"
+      titleId="vacation-plant-watering-slide-title"
+      disableEscapeClose={saving}
+      footer={
+        <Button
+          type="button"
+          variant="primary"
+          disabled={saving}
+          className="max-w-none"
+          onClick={() => {
+            void Promise.resolve(onSave());
+          }}
+        >
+          Bewaren
+        </Button>
+      }
+    >
+      <div className="flex flex-col items-center gap-6">
+        <div className="relative mx-auto aspect-square w-full max-w-[200px] overflow-hidden rounded-[var(--radius-md)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={VACATION_PLANT_IMAGE_SRC}
+            alt=""
+            width={160}
+            height={160}
+            className="size-full object-cover"
+            decoding="async"
+          />
+        </div>
+        <div className="flex w-full flex-col gap-3">
+          <InputField
+            id="vacation-plant-watered-by"
+            label="Wie geeft de planten water?"
+            placeholder="Naam"
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            disabled={saving}
+          />
+          {showRemoveSaved ? (
+            <Button
+              type="button"
+              variant="tertiary"
+              tertiaryTone="danger"
+              disabled={saving}
+              className="max-w-none"
+              onClick={() => {
+                void Promise.resolve(onRemoveSavedName());
+              }}
+            >
+              Naam verwijderen
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="tertiary"
+            tertiaryTone="danger"
+            disabled={saving}
+            className="max-w-none"
+            onClick={() => {
+              void Promise.resolve(onDelete());
+            }}
+          >
+            Verwijderen
+          </Button>
         </div>
       </div>
     </SlideInModal>
