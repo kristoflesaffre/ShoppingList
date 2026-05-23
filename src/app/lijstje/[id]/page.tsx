@@ -187,7 +187,6 @@ const VACATION_MAKEUP_NAME = "Makeup";
 const VACATION_CLAIM_ITEM_NAMES = new Set([
   VACATION_LEGACY_PUDDY_NAME,
   VACATION_PUDDY_NAME,
-  "Planten water geven",
 ]);
 
 function vacationDisplayItemName(name: string): string {

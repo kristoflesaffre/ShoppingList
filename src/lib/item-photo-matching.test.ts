@@ -18,6 +18,9 @@ describe("matchItemPhotoUrl", () => {
     "jas_kind",
     "headphones",
     "puddy",
+    "planten_water_geven",
+    "waterbak",
+    "kattenbak",
     "laadpaal",
     "identiteitskaart_kind",
   ];
@@ -79,6 +82,15 @@ describe("matchItemPhotoUrl", () => {
   it("kiest expliciete vakantie-afbeeldingen voor voorbereidingsitems", () => {
     expect(matchItemPhotoUrl("Puddy verzorgen", slugs, 160, fileBaseBySlug)).toBe(
       "/images/vakantie/puddy_160.webp",
+    );
+    expect(matchItemPhotoUrl("Planten water geven", slugs, 160, fileBaseBySlug)).toBe(
+      "/images/vakantie/planten_water_geven_160.webp",
+    );
+    expect(matchItemPhotoUrl("Waterbak Puddy bijvullen", slugs, 160, fileBaseBySlug)).toBe(
+      "/images/vakantie/waterbak_160.webp",
+    );
+    expect(matchItemPhotoUrl("Kattenbak leegscheppen", slugs, 160, fileBaseBySlug)).toBe(
+      "/images/vakantie/kattenbak_160.webp",
     );
     expect(matchItemPhotoUrl("Kat verzorgen", slugs, 160, fileBaseBySlug)).toBe(
       "/images/vakantie/puddy_160.webp",

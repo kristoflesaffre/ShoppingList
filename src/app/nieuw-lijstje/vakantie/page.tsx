@@ -91,8 +91,15 @@ const COMMON_PRE_DEPARTURE_ITEMS: VacationChecklistItem[] = [
   },
   {
     name: "Planten water geven",
-    imageSrc: "/images/vakantie/plant_160.webp",
-    kind: "claim",
+    imageSrc: "/images/vakantie/planten_water_geven_160.webp",
+  },
+  {
+    name: "Waterbak Puddy bijvullen",
+    imageSrc: "/images/vakantie/waterbak_160.webp",
+  },
+  {
+    name: "Kattenbak leegscheppen",
+    imageSrc: "/images/vakantie/kattenbak_160.webp",
   },
   {
     name: "Kattenkorrels aanvullen",

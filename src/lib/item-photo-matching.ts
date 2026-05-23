@@ -12,7 +12,7 @@ const LANDAL_GENDER_IMAGE_SUFFIXES = new Set(["man", "vrouw", "kind"]);
 const ITEM_PHOTO_ALIASES: Record<string, string> = {
   kat_verzorgen: "puddy",
   puddy_verzorgen: "puddy",
-  planten_water_geven: "plant",
+  planten_water_geven: "planten_water_geven",
   vaccinatie_regelen: "vaccin",
   paspoort_regelen: "paspoort",
   kids_id_regelen: "identiteitskaart_kind",

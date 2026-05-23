@@ -32,6 +32,9 @@ describe("resolveVacationCategoryFromName", () => {
   it("houdt voorbereidingsitems in Te regelen", () => {
     expect(resolveVacationCategoryFromName("Puddy verzorgen")).toBe("Te regelen");
     expect(resolveVacationCategoryFromName("Kat verzorgen")).toBe("Te regelen");
+    expect(resolveVacationCategoryFromName("Planten water geven")).toBe("Te regelen");
+    expect(resolveVacationCategoryFromName("Waterbak Puddy bijvullen")).toBe("Te regelen");
+    expect(resolveVacationCategoryFromName("Kattenbak leegscheppen")).toBe("Te regelen");
     expect(resolveVacationCategoryFromName("EV-route plannen")).toBe("Te regelen");
   });
 });

@@ -27,6 +27,8 @@ const VACATION_PRE_DEPARTURE_NAMES = new Set([
   "kat verzorgen",
   "puddy verzorgen",
   "planten water geven",
+  "waterbak puddy bijvullen",
+  "kattenbak leegscheppen",
   "vaccinatie regelen",
   "paspoort regelen",
   "kids id regelen",
