@@ -32,6 +32,7 @@ const ITEM_PHOTO_ALIASES: Record<string, string> = {
   imodium: "immodium",
   /** Bestand `makeup`; «Make-up» normaliseert naar `make_up`. */
   make_up: "makeup",
+  snack_onderweg: "suikerwafel",
 };
 
 function slugEndsWithGenderSuffix(slug: string): boolean {

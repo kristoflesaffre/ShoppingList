@@ -75,4 +75,52 @@ describe("buildVacationDefaultItems", () => {
     expect(vliegtuigHotel.some((item) => item.name === "Afwasmiddel")).toBe(false);
     expect(vliegtuigHotel.some((item) => item.name === "Bagageweegschaal")).toBe(true);
   });
+
+  it("voegt de nieuwe persoonsgebonden vakantie-items toe voor elk type vakantie", () => {
+    const household = new Set(["man", "vrouw", "meisjes"] as const);
+    const items = buildVacationDefaultItems({
+      season: "winter",
+      transport: "vliegtuig",
+      accommodation: "hotel",
+      household,
+    });
+
+    const handtassen = items.filter((item) => item.name === "Handtas");
+    expect(handtassen).toHaveLength(2);
+    expect(handtassen.map((item) => item.tripPerson).sort()).toEqual(["Chloé", "Noë"]);
+    expect(handtassen.every((item) => item.itemCategory === "Accessoires")).toBe(true);
+
+    expect(items.find((item) => item.name === "Portefeuille")).toEqual({
+      name: "Portefeuille",
+      imageSrc: "/images/vakantie/portefeuille_vrouw_160.webp",
+      tripPerson: "Chloé",
+      itemCategory: "Accessoires",
+    });
+
+    const tandpasta = items.filter((item) => item.name === "Tandpasta");
+    expect(tandpasta).toHaveLength(2);
+    expect(tandpasta.map((item) => item.tripPerson).sort()).toEqual(["Chloé", "Kristof"]);
+    expect(tandpasta.every((item) => item.itemCategory === "Toiletartikelen")).toBe(true);
+
+    expect(items.find((item) => item.name === "Tekentablet")).toEqual({
+      name: "Tekentablet",
+      imageSrc: "/images/vakantie/tekentablet_kind_160.webp",
+      tripPerson: "Noë",
+      itemCategory: "Speelgoed",
+    });
+
+    expect(items.find((item) => item.name === "Thermos koffie")).toEqual({
+      name: "Thermos koffie",
+      imageSrc: "/images/vakantie/thermos_160.webp",
+      tripPerson: "Chloé",
+      itemCategory: "Eten & drinken",
+    });
+
+    expect(items.find((item) => item.name === "Snack onderweg")).toEqual({
+      name: "Snack onderweg",
+      imageSrc: "/images/items/suikerwafel_160.webp",
+      tripPerson: "Samen",
+      itemCategory: "Eten & drinken",
+    });
+  });
 });

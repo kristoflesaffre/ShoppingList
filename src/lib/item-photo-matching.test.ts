@@ -67,6 +67,15 @@ describe("matchItemPhotoUrl", () => {
     ).toBe("/images/vakantie/immodium_160.webp");
   });
 
+  it("mapt Snack onderweg naar suikerwafel uit items", () => {
+    const slugsWithSuikerwafel = [...slugs, "suikerwafel"];
+    const fileBase = new Map(fileBaseBySlug);
+    fileBase.set("suikerwafel", "items/suikerwafel");
+    expect(
+      matchItemPhotoUrl("Snack onderweg", slugsWithSuikerwafel, 160, fileBase),
+    ).toBe("/images/items/suikerwafel_160.webp");
+  });
+
   it("kiest expliciete vakantie-afbeeldingen voor voorbereidingsitems", () => {
     expect(matchItemPhotoUrl("Puddy verzorgen", slugs, 160, fileBaseBySlug)).toBe(
       "/images/vakantie/puddy_160.webp",

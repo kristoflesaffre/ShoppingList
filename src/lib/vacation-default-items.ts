@@ -15,6 +15,7 @@ const PRIVATE_EMAILS: ReadonlyArray<string> = [
 type RawItem = {
   slug: string;
   name: string;
+  imageSrc?: string;
   section: string;
   category: VacationCategory;
   seasons?: ReadonlyArray<SeasonValue>;
@@ -75,6 +76,8 @@ const ITEMS: RawItem[] = [
   { slug: "haarspelden", name: "Haarspelden", section: "Chloé", category: "Accessoires", households: ["vrouw"] },
   { slug: "haarspelden", name: "Haarspelden", section: "Noë", category: "Accessoires", households: ["jongens", "meisjes"] },
   { slug: "handdoeken", name: "Handdoeken", section: "Samen", category: "Toiletartikelen", accommodations: ["appartement"] },
+  { slug: "handtas_kind", name: "Handtas", section: "Noë", category: "Accessoires", households: ["jongens", "meisjes"] },
+  { slug: "handtas_vrouw", name: "Handtas", section: "Chloé", category: "Accessoires", households: ["vrouw"] },
   { slug: "handschoenen_kind", name: "Handschoenen", section: "Noë", category: "Kleding", households: ["jongens", "meisjes"], seasons: ["winter"] },
   { slug: "handschoenen_man", name: "Handschoenen", section: "Kristof", category: "Kleding", households: ["man"], seasons: ["winter"] },
   { slug: "handschoenen_vrouw", name: "Handschoenen", section: "Chloé", category: "Kleding", households: ["vrouw"], seasons: ["winter"] },
@@ -136,6 +139,7 @@ const ITEMS: RawItem[] = [
   { slug: "plastic_wijnglazen", name: "Plastic wijnglazen", section: "Samen", category: "Eten & drinken" },
   { slug: "pleisters", name: "Pleisters", section: "Samen", category: "Toiletartikelen" },
   { slug: "pluchen_knuffel", name: "Pluchen knuffel", section: "Noë", category: "Slaapspullen", households: ["jongens", "meisjes"] },
+  { slug: "portefeuille_vrouw", name: "Portefeuille", section: "Chloé", category: "Accessoires", households: ["vrouw"] },
   { slug: "powerbank", name: "Powerbank", section: "Samen", category: "Elektronica" },
   { slug: "projector", name: "Projector", section: "Samen", category: "Elektronica" },
   { slug: "pyjama_man", name: "Pyjama", section: "Kristof", category: "Kleding", households: ["man"] },
@@ -163,12 +167,16 @@ const ITEMS: RawItem[] = [
   { slug: "slipje", name: "Slipje", section: "Chloé", category: "Kleding", households: ["vrouw"] },
   { slug: "smartphone", name: "Smartphone", section: "Kristof", category: "Elektronica", households: ["man"] },
   { slug: "smartphone", name: "Smartphone", section: "Chloé", category: "Elektronica", households: ["vrouw"] },
+  { slug: "suikerwafel", name: "Snack onderweg", imageSrc: "/images/items/suikerwafel_160.webp", section: "Samen", category: "Eten & drinken" },
   { slug: "sokken_kind", name: "Sokken", section: "Noë", category: "Kleding", households: ["jongens", "meisjes"] },
   { slug: "sokken_man", name: "Sokken", section: "Kristof", category: "Kleding", households: ["man"] },
   { slug: "sokken_vrouw", name: "Sokken", section: "Chloé", category: "Kleding", households: ["vrouw"] },
   { slug: "strandlaken", name: "Strandlaken", section: "Samen", category: "Strand", seasons: ["zomer"] },
   { slug: "strandtas", name: "Strandtas", section: "Samen", category: "Strand", seasons: ["zomer"] },
   { slug: "t-shirt_kind", name: "T-shirt", section: "Noë", category: "Kleding", households: ["jongens", "meisjes"] },
+  { slug: "tandpasta", name: "Tandpasta", section: "Kristof", category: "Toiletartikelen", households: ["man"] },
+  { slug: "tandpasta", name: "Tandpasta", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
+  { slug: "tekentablet_kind", name: "Tekentablet", section: "Noë", category: "Speelgoed", households: ["jongens", "meisjes"] },
   { slug: "tekenspullen_kind", name: "Tekenspullen", section: "Noë", category: "Speelgoed", households: ["jongens", "meisjes"] },
   { slug: "t-shirt", name: "T-shirt", section: "Kristof", category: "Kleding", households: ["man"] },
   { slug: "tablet_kind", name: "Tablet", section: "Noë", category: "Elektronica", households: ["jongens", "meisjes"] },
@@ -178,6 +186,7 @@ const ITEMS: RawItem[] = [
   { slug: "tandenborstel", name: "Tandenborstel", section: "Kristof", category: "Toiletartikelen", households: ["man"] },
   { slug: "tandenborstel", name: "Tandenborstel", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
   { slug: "thee", name: "Thee", section: "Samen", category: "Eten & drinken" },
+  { slug: "thermos", name: "Thermos koffie", section: "Chloé", category: "Eten & drinken", households: ["vrouw"] },
   { slug: "tijgerbalsem", name: "Tijgerbalsem", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
   { slug: "wodka", name: "Wodka", section: "Samen", category: "Eten & drinken", emails: PRIVATE_EMAILS },
   { slug: "red_bull", name: "Red bull", section: "Samen", category: "Eten & drinken", emails: PRIVATE_EMAILS },
@@ -280,7 +289,7 @@ export function buildVacationDefaultItems(options: {
     return true;
   }).map((item) => ({
     name: item.name,
-    imageSrc: `/images/vakantie/${item.slug}_160.webp`,
+    imageSrc: item.imageSrc ?? `/images/vakantie/${item.slug}_160.webp`,
     tripPerson: item.section,
     itemCategory: item.category,
   }));
