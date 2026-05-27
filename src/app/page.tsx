@@ -1310,6 +1310,32 @@ function HomeKlantenkaartSection({
   );
 }
 
+/** Startpagina: films en series — altijd empty state (nog geen content state). */
+function HomeFilmsSeriesSection({ onHide }: { onHide?: () => void }) {
+  const router = useRouter();
+  return (
+    <div className="flex flex-col gap-4">
+      <ListSectionHeader
+        icon="films"
+        label="Films en series"
+        showNaarOverzicht={false}
+        onHide={onHide}
+      />
+      <HomeOnboardingEmptyCard
+        illustrationSrc="/images/ui/films_160.webp"
+        illustrationSide="end"
+        contentAlign="start"
+        text="Wat zijn we nu weer aan het kijken of wat willen we nog kijken?"
+        actions={
+          <MiniButton variant="primary" onClick={() => router.push("/films-series")}>
+            Voeg te kijken item toe
+          </MiniButton>
+        }
+      />
+    </div>
+  );
+}
+
 /** SVG als externe img kan geen currentColor; mask + action-primary (= primary 500) voor monochrome iconen. */
 function IconPrimaryMask({ src, className }: { src: string; className?: string }) {
   return (
@@ -2544,6 +2570,13 @@ export default function Home() {
                         recipePhotoUrl: it.recipePhotoUrl,
                         packages: it.packages,
                       }))}
+                      onHide={onHide}
+                    />
+                  );
+                case "films-series":
+                  return (
+                    <HomeFilmsSeriesSection
+                      key="films-series"
                       onHide={onHide}
                     />
                   );

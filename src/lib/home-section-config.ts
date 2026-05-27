@@ -4,7 +4,8 @@ export type HomeSectionId =
   | "favorieten"
   | "kalender"
   | "klantenkaarten"
-  | "diepvries";
+  | "diepvries"
+  | "films-series";
 
 export type HomeSectionConfig = {
   order: HomeSectionId[];
@@ -23,6 +24,7 @@ export const HOME_SECTIONS_META: {
   { id: "kalender", label: "Kalender", illustration: "/images/ui/kalender_320.webp", hideable: true },
   { id: "klantenkaarten", label: "Klantenkaarten", illustration: "/images/ui/klantenkaart_320.webp", hideable: true },
   { id: "diepvries", label: "Voorraad diepvries", illustration: "/images/ui/empty_state_diepvries.png", hideable: true },
+  { id: "films-series", label: "Films en series", illustration: "/images/ui/films_320.webp", hideable: true },
 ];
 
 export const DEFAULT_SECTION_ORDER: HomeSectionId[] = [
@@ -32,6 +34,7 @@ export const DEFAULT_SECTION_ORDER: HomeSectionId[] = [
   "kalender",
   "klantenkaarten",
   "diepvries",
+  "films-series",
 ];
 
 const STORAGE_KEY = "home-section-config";
@@ -42,9 +45,14 @@ export function loadHomeSectionConfig(): HomeSectionConfig {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<HomeSectionConfig>;
+      const savedOrder = (parsed.order ?? DEFAULT_SECTION_ORDER) as HomeSectionId[];
+      // Filter verwijderde secties eruit; voeg nieuwe secties toe aan het einde.
+      const validSaved = savedOrder.filter((id) => (DEFAULT_SECTION_ORDER as string[]).includes(id));
+      const savedSet = new Set(validSaved);
+      const newSections = DEFAULT_SECTION_ORDER.filter((id) => !savedSet.has(id));
       return {
-        order: parsed.order ?? DEFAULT_SECTION_ORDER,
-        hidden: parsed.hidden ?? [],
+        order: [...validSaved, ...newSections],
+        hidden: (parsed.hidden ?? []) as HomeSectionId[],
       };
     }
   } catch { /* ignore */ }
