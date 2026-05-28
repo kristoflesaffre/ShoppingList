@@ -195,8 +195,8 @@ export default function FilmDetailPage() {
 
       {/* Vaste header */}
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <div className="flex justify-center px-4">
-          <header className="flex h-16 w-full max-w-[956px] items-center gap-4">
+        <div className="flex justify-center">
+          <header className="flex h-16 w-full max-w-[956px] items-center gap-4 px-4">
             <button
               type="button"
               aria-label="Terug"
