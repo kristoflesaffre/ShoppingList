@@ -22,9 +22,20 @@ type FilmDetail = {
   posterUrl: string | null;
   backdropUrl: string | null;
   score: number | null;
+  imdbId: string | null;
+  genres: string[];
   cast: CastMember[];
   trailerKey: string | null;
 };
+
+function imdbUrl(title: string, imdbId: string | null): string {
+  if (imdbId) return `https://www.imdb.com/title/${imdbId}/`;
+  return `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`;
+}
+
+function youtubeTrailerSearchUrl(title: string): string {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} trailer`)}`;
+}
 
 function MaskIcon({ src, className }: { src: string; className?: string }) {
   return (
@@ -123,9 +134,11 @@ export default function FilmDetailPage() {
     setOverviewNeedsTruncation(overviewRef.current.scrollHeight > 191 + 24);
   }, [detail?.overview]);
 
-  const metaLine = [detail?.year, detail?.certification, detail?.runtime]
-    .filter(Boolean)
-    .join("  ");
+  const metaParts = [detail?.year, detail?.certification, detail?.runtime].filter(Boolean);
+  const genrePart = detail?.genres?.join(" - ") ?? "";
+  const metaLine = genrePart
+    ? `${metaParts.join("  ")}  /  ${genrePart}`
+    : metaParts.join("  ");
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-white">
@@ -173,33 +186,69 @@ export default function FilmDetailPage() {
           <p className="py-8 text-center text-sm text-[var(--gray-400)]">Kan details niet laden.</p>
         ) : (
           <>
-            {/* Titel + score */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <h1 className="min-w-0 flex-1 truncate text-2xl font-bold leading-8 text-[var(--text-primary)]">
-                  {detail.title}
-                </h1>
-                {detail.score !== null && (
-                  <div className="flex shrink-0 items-center gap-1">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden className="size-6 shrink-0">
-                      <path
-                        d="M12 2l2.75 5.57 6.15.9-4.45 4.33 1.05 6.11L12 15.9l-5.5 2.89 1.05-6.11L3.1 8.47l6.15-.9L12 2z"
-                        fill="#FBBF24"
-                        stroke="#F59E0B"
-                        strokeWidth="0.5"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <p className="font-medium text-[var(--text-primary)]">
-                      <span className="text-base leading-6">{detail.score.toFixed(1)}</span>
-                      <span className="text-xs font-normal leading-none">/10</span>
-                    </p>
+            {/* Titel + score + externe links */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <h1 className="min-w-0 flex-1 truncate text-2xl font-bold leading-8 text-[var(--text-primary)]">
+                    {detail.title}
+                  </h1>
+                  {detail.score !== null && (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden className="size-6 shrink-0">
+                        <path
+                          d="M12 2l2.75 5.57 6.15.9-4.45 4.33 1.05 6.11L12 15.9l-5.5 2.89 1.05-6.11L3.1 8.47l6.15-.9L12 2z"
+                          fill="#FBBF24"
+                          stroke="#F59E0B"
+                          strokeWidth="0.5"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <p className="font-medium text-[var(--text-primary)]">
+                        <span className="text-base leading-6">{detail.score.toFixed(1)}</span>
+                        <span className="text-xs font-normal leading-none">/10</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {metaLine && (
+                  <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                    <p className="whitespace-nowrap text-sm leading-5 text-[var(--gray-400)]">{metaLine}</p>
                   </div>
                 )}
               </div>
-              {metaLine && (
-                <p className="text-sm leading-5 text-[var(--gray-400)]">{metaLine}</p>
-              )}
+
+              {/* Figma 1673:72827 — IMDb + YouTube */}
+              <div className="flex items-start gap-6">
+                <a
+                  href={imdbUrl(detail.title, detail.imdbId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${detail.title} bekijken op IMDb`}
+                  className="flex h-6 w-12 shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logos/logos-imdb.svg"
+                    alt=""
+                    className="h-6 w-auto max-w-full object-contain"
+                  />
+                </a>
+                <a
+                  href={youtubeTrailerSearchUrl(detail.title)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Trailer van ${detail.title} zoeken op YouTube`}
+                  className="flex h-6 w-[108px] shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logos/logos-youtube.svg"
+                    alt=""
+                    className="h-6 w-auto max-w-full object-contain"
+                  />
+                </a>
+              </div>
             </div>
 
             {/* Op large: trailer links naast poster+beschrijving; op mobile: trailer boven */}
@@ -306,7 +355,11 @@ export default function FilmDetailPage() {
               <div className="flex w-full flex-col gap-4">
                 <div className="flex items-center gap-6">
                   <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Cast</h2>
-                  <button type="button" className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none">
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/films-series/${rawId}/cast`)}
+                    className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none"
+                  >
                     Toon alle
                   </button>
                 </div>

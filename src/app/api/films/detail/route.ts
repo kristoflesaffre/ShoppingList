@@ -23,17 +23,27 @@ export async function GET(request: NextRequest) {
 
   const appendToResponse =
     type === "movie"
-      ? "videos,credits,release_dates,external_ids"
-      : "videos,credits,content_ratings,external_ids";
+      ? "videos,release_dates,external_ids"
+      : "videos,content_ratings,external_ids";
 
   // include_video_language=en: trailers zijn vrijwel altijd Engelstalig; nl-NL filtert ze anders weg
-  const detailRes = await fetch(
-    `${TMDB_BASE}/${type}/${id}?append_to_response=${appendToResponse}&language=nl-NL&include_video_language=en`,
-    { headers: tmdbHeaders, next: { revalidate: 3600 } },
-  );
+  // Credits apart ophalen met nl-NL zodat karakternamen gelokaliseerd zijn
+  const [detailRes, creditsRes] = await Promise.all([
+    fetch(
+      `${TMDB_BASE}/${type}/${id}?append_to_response=${appendToResponse}&language=nl-NL&include_video_language=en`,
+      { headers: tmdbHeaders, next: { revalidate: 3600 } },
+    ),
+    fetch(
+      `${TMDB_BASE}/${type}/${id}/credits?language=nl-NL`,
+      { headers: tmdbHeaders, next: { revalidate: 3600 } },
+    ),
+  ]);
   if (!detailRes.ok) return NextResponse.json({ error: "not found" }, { status: 502 });
 
   const data = (await detailRes.json()) as Record<string, unknown>;
+  const creditsData = creditsRes.ok
+    ? ((await creditsRes.json()) as { cast?: unknown[] })
+    : { cast: [] };
 
   // Trailer (YouTube preferred)
   const videos = (
@@ -107,14 +117,15 @@ export async function GET(request: NextRequest) {
       ? (data.release_date as string | undefined)
       : (data.first_air_date as string | undefined);
 
+  const genres = ((data.genres as { name: string }[] | undefined) ?? []).map((g) => g.name);
+
   const cast = (
-    ((data.credits as { cast?: unknown[] } | undefined)?.cast ?? []) as {
+    (creditsData.cast ?? []) as {
       name: string;
       character: string;
       profile_path?: string | null;
     }[]
   )
-    .slice(0, 10)
     .map((c) => ({
       name: c.name,
       character: c.character,
@@ -129,10 +140,12 @@ export async function GET(request: NextRequest) {
     year: (date ?? "").slice(0, 4),
     certification,
     runtime,
+    genres,
     overview: (data.overview as string | undefined) ?? "",
     posterUrl: data.poster_path ? `${TMDB_IMG_POSTER}${data.poster_path as string}` : null,
     backdropUrl: data.backdrop_path ? `${TMDB_IMG_BACKDROP}${data.backdrop_path as string}` : null,
     score,
+    imdbId,
     cast,
     trailerKey: (trailer?.key as string | undefined) ?? null,
   });
