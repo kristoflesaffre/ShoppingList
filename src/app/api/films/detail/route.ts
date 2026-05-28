@@ -119,6 +119,23 @@ export async function GET(request: NextRequest) {
 
   const genres = ((data.genres as { name: string }[] | undefined) ?? []).map((g) => g.name);
 
+  const seasons =
+    type === "tv"
+      ? ((data.seasons as {
+          season_number: number;
+          name: string;
+          episode_count: number;
+          poster_path?: string | null;
+        }[]) ?? [])
+          .filter((s) => s.season_number > 0)
+          .map((s) => ({
+            seasonNumber: s.season_number,
+            name: s.name,
+            episodeCount: s.episode_count,
+            posterUrl: s.poster_path ? `${TMDB_IMG_POSTER}${s.poster_path}` : null,
+          }))
+      : [];
+
   const cast = (
     (creditsData.cast ?? []) as {
       name: string;
@@ -141,6 +158,7 @@ export async function GET(request: NextRequest) {
     certification,
     runtime,
     genres,
+    seasons,
     overview: (data.overview as string | undefined) ?? "",
     posterUrl: data.poster_path ? `${TMDB_IMG_POSTER}${data.poster_path as string}` : null,
     backdropUrl: data.backdrop_path ? `${TMDB_IMG_BACKDROP}${data.backdrop_path as string}` : null,

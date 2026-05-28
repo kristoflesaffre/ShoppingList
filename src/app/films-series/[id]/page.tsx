@@ -10,6 +10,19 @@ type CastMember = {
   profileUrl: string | null;
 };
 
+type Season = {
+  seasonNumber: number;
+  name: string;
+  episodeCount: number;
+  posterUrl: string | null;
+};
+
+type SeasonData = {
+  overview: string;
+  trailerKey: string | null;
+  posterUrl: string | null;
+};
+
 type FilmDetail = {
   id: string;
   tmdbId: number;
@@ -24,6 +37,7 @@ type FilmDetail = {
   score: number | null;
   imdbId: string | null;
   genres: string[];
+  seasons: Season[];
   cast: CastMember[];
   trailerKey: string | null;
 };
@@ -33,8 +47,9 @@ function imdbUrl(title: string, imdbId: string | null): string {
   return `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`;
 }
 
-function youtubeTrailerSearchUrl(title: string): string {
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} trailer`)}`;
+function youtubeTrailerSearchUrl(title: string, season?: number): string {
+  const q = season ? `${title} seizoen ${season} trailer` : `${title} trailer`;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
 }
 
 function MaskIcon({ src, className }: { src: string; className?: string }) {
@@ -110,6 +125,8 @@ export default function FilmDetailPage() {
   const [overviewExpanded, setOverviewExpanded] = React.useState(false);
   const [overviewNeedsTruncation, setOverviewNeedsTruncation] = React.useState(false);
   const overviewRef = React.useRef<HTMLParagraphElement>(null);
+  const [selectedSeason, setSelectedSeason] = React.useState(1);
+  const [seasonData, setSeasonData] = React.useState<SeasonData | null>(null);
 
   React.useEffect(() => {
     if (!rawId) return;
@@ -128,11 +145,38 @@ export default function FilmDetailPage() {
       .catch(() => setLoading(false));
   }, [rawId]);
 
+  // Initialiseer selectedSeason op het eerste seizoen zodra detail geladen is
+  React.useEffect(() => {
+    if (!detail || detail.type !== "tv" || detail.seasons.length === 0) return;
+    setSelectedSeason(detail.seasons[0].seasonNumber);
+  }, [detail?.id]);
+
+  // Haal seizoenspecifieke data op zodra seizoen of show verandert
+  React.useEffect(() => {
+    if (!detail || detail.type !== "tv") return;
+    const dashIdx = rawId.indexOf("-");
+    const tmdbId = rawId.slice(dashIdx + 1);
+    setSeasonData(null);
+    setOverviewExpanded(false);
+    fetch(`/api/films/season?id=${tmdbId}&season=${selectedSeason}`)
+      .then((r) => r.json())
+      .then((d: SeasonData) => setSeasonData(d))
+      .catch(() => {});
+  }, [detail?.id, selectedSeason]);
+
   // Meet of de overview-tekst de posterhoogte overschrijdt met minstens één volledige regel (24px)
   React.useEffect(() => {
     if (!overviewRef.current) return;
     setOverviewNeedsTruncation(overviewRef.current.scrollHeight > 191 + 24);
-  }, [detail?.overview]);
+  }, [detail?.overview, seasonData?.overview]);
+
+  const isTV = detail?.type === "tv";
+  const activeTrailerKey = isTV
+    ? (seasonData?.trailerKey ?? detail?.trailerKey ?? null)
+    : (detail?.trailerKey ?? null);
+  const activeOverview = isTV
+    ? (seasonData?.overview || detail?.overview || "")
+    : (detail?.overview || "");
 
   const metaParts = [detail?.year, detail?.certification, detail?.runtime].filter(Boolean);
   const genrePart = detail?.genres?.join(" - ") ?? "";
@@ -235,7 +279,7 @@ export default function FilmDetailPage() {
                   />
                 </a>
                 <a
-                  href={youtubeTrailerSearchUrl(detail.title)}
+                  href={youtubeTrailerSearchUrl(detail.title, isTV ? selectedSeason : undefined)}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`Trailer van ${detail.title} zoeken op YouTube`}
@@ -250,6 +294,36 @@ export default function FilmDetailPage() {
                 </a>
               </div>
             </div>
+
+            {/* Seizoentabs — alleen voor TV-series */}
+            {isTV && detail.seasons.length > 0 && (
+              <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                <div className="flex gap-6 border-b border-[#e2e4e6]" style={{ width: "max-content" }}>
+                  {detail.seasons.map((s) => {
+                    const active = s.seasonNumber === selectedSeason;
+                    return (
+                      <button
+                        key={s.seasonNumber}
+                        type="button"
+                        onClick={() => setSelectedSeason(s.seasonNumber)}
+                        className={cn(
+                          "flex shrink-0 flex-col gap-2 pb-0 focus-visible:outline-none",
+                          active
+                            ? "font-medium text-[#16181a]"
+                            : "font-normal text-[#8c929d]",
+                        )}
+                      >
+                        <span className="whitespace-nowrap text-base leading-6">{s.name}</span>
+                        <div
+                          className="h-[2px] w-full rounded-full bg-[#4f55f1]"
+                          style={{ opacity: active ? 1 : 0 }}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Op large: trailer links naast poster+beschrijving; op mobile: trailer boven */}
             <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
@@ -266,7 +340,7 @@ export default function FilmDetailPage() {
                   />
                 )}
                 <div className="absolute inset-0 bg-black/20" aria-hidden />
-                {detail.trailerKey && (
+                {activeTrailerKey && (
                   <button
                     type="button"
                     aria-label="Trailer afspelen"
@@ -314,7 +388,7 @@ export default function FilmDetailPage() {
                     )}
                   >
                     <p ref={overviewRef} className="text-base font-medium leading-6 text-[var(--text-primary)]">
-                      {detail.overview || "Geen beschrijving beschikbaar."}
+                      {activeOverview || "Geen beschrijving beschikbaar."}
                     </p>
                   </div>
                   {!overviewExpanded && overviewNeedsTruncation && (
@@ -405,7 +479,7 @@ export default function FilmDetailPage() {
       </div>
 
       {/* Trailer modal */}
-      {showTrailer && detail?.trailerKey && (
+      {showTrailer && activeTrailerKey && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black"
           onClick={() => setShowTrailer(false)}
@@ -421,7 +495,7 @@ export default function FilmDetailPage() {
           {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
           <div className="aspect-video w-full" onClick={(e) => e.stopPropagation()}>
             <iframe
-              src={`https://www.youtube.com/embed/${detail.trailerKey}?autoplay=1`}
+              src={`https://www.youtube.com/embed/${activeTrailerKey}?autoplay=1`}
               className="size-full"
               allow="autoplay; encrypted-media; fullscreen"
               allowFullScreen
