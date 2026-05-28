@@ -119,6 +119,9 @@ export async function GET(request: NextRequest) {
 
   const genres = ((data.genres as { name: string }[] | undefined) ?? []).map((g) => g.name);
 
+  const totalEpisodes =
+    type === "tv" ? ((data.number_of_episodes as number | undefined) ?? null) : null;
+
   const seasons =
     type === "tv"
       ? ((data.seasons as {
@@ -164,6 +167,7 @@ export async function GET(request: NextRequest) {
     backdropUrl: data.backdrop_path ? `${TMDB_IMG_BACKDROP}${data.backdrop_path as string}` : null,
     score,
     imdbId,
+    totalEpisodes,
     cast,
     trailerKey: (trailer?.key as string | undefined) ?? null,
   });

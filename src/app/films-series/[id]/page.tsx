@@ -5,6 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from "@/lib/watchlist";
 import { isWatched, markWatched, unmarkWatched } from "@/lib/watched";
+import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { Button } from "@/components/ui/button";
 
 type CastMember = {
   name: string;
@@ -38,6 +40,7 @@ type FilmDetail = {
   backdropUrl: string | null;
   score: number | null;
   imdbId: string | null;
+  totalEpisodes: number | null;
   genres: string[];
   seasons: Season[];
   cast: CastMember[];
@@ -131,6 +134,12 @@ export default function FilmDetailPage() {
   const [seasonData, setSeasonData] = React.useState<SeasonData | null>(null);
   const [inWatchlist, setInWatchlist] = React.useState(false);
   const [watched, setWatched] = React.useState(false);
+  const [showBekendenModal, setShowBekendenModal] = React.useState(false);
+
+  const tmdbId = React.useMemo(() => {
+    const dashIdx = rawId?.indexOf("-") ?? -1;
+    return dashIdx >= 0 ? rawId.slice(dashIdx + 1) : "";
+  }, [rawId]);
 
   React.useEffect(() => {
     if (!rawId) return;
@@ -268,36 +277,42 @@ export default function FilmDetailPage() {
                 )}
               </div>
 
-              {/* Figma 1673:72827 — IMDb + YouTube */}
-              <div className="flex items-start gap-6">
-                <a
-                  href={imdbUrl(detail.title, detail.imdbId)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`${detail.title} bekijken op IMDb`}
-                  className="flex h-6 w-12 shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/logos/logos-imdb.svg"
-                    alt=""
-                    className="h-6 w-auto max-w-full object-contain"
-                  />
-                </a>
-                <a
-                  href={youtubeTrailerSearchUrl(detail.title, isTV ? selectedSeason : undefined)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Trailer van ${detail.title} zoeken op YouTube`}
-                  className="flex h-6 w-[108px] shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/logos/logos-youtube.svg"
-                    alt=""
-                    className="h-6 w-auto max-w-full object-contain"
-                  />
-                </a>
+              {/* Figma 1675:73093 — IMDb + YouTube links (links) + afleveringen (rechts) */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-6">
+                  <a
+                    href={imdbUrl(detail.title, detail.imdbId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${detail.title} bekijken op IMDb`}
+                    className="flex h-6 w-12 shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logos/logos-imdb.svg" alt="" className="h-6 w-auto max-w-full object-contain" />
+                  </a>
+                  <a
+                    href={youtubeTrailerSearchUrl(detail.title, isTV ? selectedSeason : undefined)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Trailer van ${detail.title} zoeken op YouTube`}
+                    className="flex h-6 w-[108px] shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logos/logos-youtube.svg" alt="" className="h-6 w-auto max-w-full object-contain" />
+                  </a>
+                </div>
+                {isTV && detail.totalEpisodes !== null && (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/films-series/${rawId}/episodes`)}
+                    className="flex shrink-0 items-center gap-1 focus-visible:outline-none"
+                  >
+                    <span className="text-sm font-normal leading-5 text-[#4f55f1]">
+                      {detail.totalEpisodes} afleveringen
+                    </span>
+                    <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[#4f55f1]" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -420,7 +435,9 @@ export default function FilmDetailPage() {
                 type="button"
                 onClick={() => {
                   if (!detail) return;
-                  if (watched) {
+                  if (isTV) {
+                    setShowBekendenModal(true);
+                  } else if (watched) {
                     unmarkWatched(detail.id);
                     setWatched(false);
                   } else {
@@ -580,6 +597,42 @@ export default function FilmDetailPage() {
           />
         </div>
       )}
+
+      {/* Slide-in: kies hoe je bekeken wil markeren (alleen TV) */}
+      <SlideInModal
+        open={showBekendenModal}
+        onClose={() => setShowBekendenModal(false)}
+        title="Bekeken"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (!detail) return;
+                const firstSeason = detail.seasons[0]?.seasonNumber ?? 1;
+                const epId = `ep-${tmdbId}-s${firstSeason}e1`;
+                markWatched(epId);
+                markWatched(detail.id);
+                setWatched(true);
+                setShowBekendenModal(false);
+              }}
+            >
+              Eerste aflevering
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowBekendenModal(false);
+                router.push(`/films-series/${rawId}/episodes/select`);
+              }}
+            >
+              Kies een aflevering
+            </Button>
+          </>
+        }
+      >
+        <></>
+      </SlideInModal>
     </div>
   );
 }
