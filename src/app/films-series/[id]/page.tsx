@@ -411,7 +411,7 @@ export default function FilmDetailPage() {
             <button
               type="button"
               onClick={() => console.log("toevoegen aan watchlist:", detail)}
-              className="flex h-12 w-full items-center gap-3 rounded-[8px] bg-[#4f55f1] p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              className="flex h-12 w-full items-center gap-3 rounded-[8px] bg-[#4f55f1] p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:max-w-[358px] lg:self-end"
             >
               <div className="flex min-w-0 flex-1 flex-col">
                 <p className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-base font-medium text-white">
@@ -499,7 +499,7 @@ export default function FilmDetailPage() {
               className="size-full"
               allow="autoplay; encrypted-media; fullscreen"
               allowFullScreen
-              title={`Trailer: ${detail.title}`}
+              title={`Trailer: ${detail?.title ?? ""}`}
             />
           </div>
         </div>
