@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { addToWatchlist, removeFromWatchlist, isInWatchlist } from "@/lib/watchlist";
+import { isWatched, markWatched, unmarkWatched } from "@/lib/watched";
 
 type CastMember = {
   name: string;
@@ -127,6 +129,8 @@ export default function FilmDetailPage() {
   const overviewRef = React.useRef<HTMLParagraphElement>(null);
   const [selectedSeason, setSelectedSeason] = React.useState(1);
   const [seasonData, setSeasonData] = React.useState<SeasonData | null>(null);
+  const [inWatchlist, setInWatchlist] = React.useState(false);
+  const [watched, setWatched] = React.useState(false);
 
   React.useEffect(() => {
     if (!rawId) return;
@@ -140,6 +144,8 @@ export default function FilmDetailPage() {
       .then((r) => r.json())
       .then((data: FilmDetail) => {
         setDetail(data);
+        setInWatchlist(isInWatchlist(data.id));
+        setWatched(isWatched(data.id));
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -407,22 +413,68 @@ export default function FilmDetailPage() {
               </div>
             </div>
 
-            {/* Toevoegen aan watchlist */}
-            <button
-              type="button"
-              onClick={() => console.log("toevoegen aan watchlist:", detail)}
-              className="flex h-12 w-full items-center gap-3 rounded-[8px] bg-[#4f55f1] p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:max-w-[358px] lg:self-end"
-            >
-              <div className="flex min-w-0 flex-1 flex-col">
-                <p className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-base font-medium text-white">
-                  Toevoegen aan watchlist
+            {/* Watchlist + bekeken knoppen */}
+            <div className="flex w-full gap-3 lg:max-w-[358px] lg:self-end">
+              {/* Bekeken — links */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!detail) return;
+                  if (watched) {
+                    unmarkWatched(detail.id);
+                    setWatched(false);
+                  } else {
+                    markWatched(detail.id);
+                    setWatched(true);
+                  }
+                }}
+                className={cn(
+                  "flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[8px] p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+                  watched ? "border border-[#595f6a] bg-transparent" : "border border-[#4f55f1] bg-transparent",
+                )}
+              >
+                <p className={cn(
+                  "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-center text-base font-medium",
+                  watched ? "text-[#595f6a]" : "text-[#4f55f1]",
+                )}>
+                  {watched ? "Bekeken" : "Bekeken"}
                 </p>
-              </div>
-              <div className="h-[24px] w-px shrink-0 bg-white/40" aria-hidden />
-              <div className="flex shrink-0 items-center justify-center rounded-full p-[4px]">
-                <MaskIcon src="/icons/plus-circle.svg" className="size-6 bg-white" />
-              </div>
-            </button>
+                <MaskIcon
+                  src={watched ? "/icons/checkmark.svg" : "/icons/visible.svg"}
+                  className={cn("size-6 shrink-0", watched ? "bg-[#595f6a]" : "bg-[#4f55f1]")}
+                />
+              </button>
+
+              {/* Watchlist — rechts */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!detail) return;
+                  if (inWatchlist) {
+                    removeFromWatchlist(detail.id);
+                    setInWatchlist(false);
+                  } else {
+                    addToWatchlist({ id: detail.id, type: detail.type, title: detail.title, year: detail.year, posterUrl: detail.posterUrl });
+                    setInWatchlist(true);
+                  }
+                }}
+                className={cn(
+                  "flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[8px] p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+                  inWatchlist ? "border border-[#595f6a] bg-transparent" : "bg-[#4f55f1]",
+                )}
+              >
+                <p className={cn(
+                  "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-center text-base font-medium",
+                  inWatchlist ? "text-[#595f6a]" : "text-white",
+                )}>
+                  {inWatchlist ? "Toegevoegd" : "Watchlist"}
+                </p>
+                <MaskIcon
+                  src={inWatchlist ? "/icons/checkmark.svg" : "/icons/plus-circle.svg"}
+                  className={cn("size-6 shrink-0", inWatchlist ? "bg-[#595f6a]" : "bg-white")}
+                />
+              </button>
+            </div>
 
             {/* Cast */}
             {detail.cast.length > 0 && (

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
 import { MiniButton } from "@/components/ui/mini_button";
 import { cn } from "@/lib/utils";
+import { type WatchlistItem, getWatchlist, addToWatchlist, removeFromWatchlist } from "@/lib/watchlist";
 
 type SearchResult = {
   id: string;
@@ -179,6 +180,12 @@ export default function FilmsSeriesPage() {
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [filter, setFilter] = React.useState<FilterOption>("all");
+  const [watchlist, setWatchlist] = React.useState<WatchlistItem[]>([]);
+
+  // Laad watchlist uit localStorage bij mount
+  React.useEffect(() => {
+    setWatchlist(getWatchlist());
+  }, []);
 
   // Debounce: 300ms na laatste toetsaanslag zoeken
   React.useEffect(() => {
@@ -205,9 +212,21 @@ export default function FilmsSeriesPage() {
   const hasQuery = query.trim().length >= 2;
   const filteredResults = filter === "all" ? results : results.filter((r) => r.type === filter);
 
+  const watchlistFilms = watchlist.filter((r) => r.type === "movie");
+  const watchlistSeries = watchlist.filter((r) => r.type === "tv");
+  const hasWatchlistItems = watchlist.length > 0;
+
   function handleAdd(result: SearchResult) {
-    // TODO: item opslaan in de database
-    console.log("toevoegen:", result);
+    const item: WatchlistItem = {
+      id: result.id,
+      type: result.type,
+      title: result.title,
+      year: result.year,
+      posterUrl: result.posterUrl,
+    };
+    const already = watchlist.some((r) => r.id === result.id);
+    const next = already ? removeFromWatchlist(result.id) : addToWatchlist(item);
+    setWatchlist(next);
   }
 
   function handleViewDetail(id: string) {
@@ -300,10 +319,93 @@ export default function FilmsSeriesPage() {
             )}
           </div>
         )}
+
+        {/* Niet-lege staat: watchlist secties */}
+        {!hasQuery && hasWatchlistItems && (
+          <div className="mt-6 flex flex-col gap-6 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]">
+            {/* Watchlist films */}
+            {watchlistFilms.length > 0 && (
+              <section className="flex flex-col gap-4">
+                <div className="flex items-center gap-6">
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Watchlist films</h2>
+                  <button type="button" className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none">
+                    Toon alle
+                  </button>
+                </div>
+                <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+                    {watchlistFilms.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleViewDetail(item.id)}
+                        className="flex w-[87px] flex-col gap-2 text-left focus-visible:outline-none"
+                      >
+                        <div className="relative w-full overflow-hidden rounded bg-[var(--gray-50)]" style={{ aspectRatio: "2/3" }}>
+                          {item.posterUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={item.posterUrl} alt={item.title} className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
+                          ) : (
+                            <div className="flex size-full items-center justify-center">
+                              <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[#16181a]">{item.title}</p>
+                          <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Watchlist series */}
+            {watchlistSeries.length > 0 && (
+              <section className="flex flex-col gap-4">
+                <div className="flex items-center gap-6">
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Watchlist series</h2>
+                  <button type="button" className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none">
+                    Toon alle
+                  </button>
+                </div>
+                <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+                    {watchlistSeries.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleViewDetail(item.id)}
+                        className="flex w-[87px] flex-col gap-2 text-left focus-visible:outline-none"
+                      >
+                        <div className="relative w-full overflow-hidden rounded bg-[var(--gray-50)]" style={{ aspectRatio: "2/3" }}>
+                          {item.posterUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={item.posterUrl} alt={item.title} className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
+                          ) : (
+                            <div className="flex size-full items-center justify-center">
+                              <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[#16181a]">{item.title}</p>
+                          <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Empty state — alleen zichtbaar zonder zoekterm, Figma 1652:46634 */}
-      {!hasQuery && (
+      {/* Empty state — alleen zichtbaar zonder zoekterm en zonder watchlist items */}
+      {!hasQuery && !hasWatchlistItems && (
         <div className="absolute inset-x-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
