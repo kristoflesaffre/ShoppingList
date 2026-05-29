@@ -6,6 +6,8 @@ import { SearchBar } from "@/components/ui/search_bar";
 import { MiniButton } from "@/components/ui/mini_button";
 import { cn } from "@/lib/utils";
 import { type WatchlistItem, getWatchlist, addToWatchlist, removeFromWatchlist } from "@/lib/watchlist";
+import { getWatchedIds, getAllSeriesMeta } from "@/lib/watched";
+import { updateWatchlistScore } from "@/lib/watchlist";
 
 type SearchResult = {
   id: string;
@@ -181,10 +183,78 @@ export default function FilmsSeriesPage() {
   const [loading, setLoading] = React.useState(false);
   const [filter, setFilter] = React.useState<FilterOption>("all");
   const [watchlist, setWatchlist] = React.useState<WatchlistItem[]>([]);
+  const [watchingItems, setWatchingItems] = React.useState<{ id: string; title: string; posterUrl: string | null; year: string; season: number; episode: number }[]>([]);
 
-  // Laad watchlist uit localStorage bij mount
+  // Laad watchlist en "aan het kijken" staat uit localStorage
+  function refreshFromStorage() {
+    const wl = getWatchlist();
+    setWatchlist(wl);
+
+    const epPattern = /^ep-(\d+)-s(\d+)e(\d+)$/;
+    const progressMap = new Map<string, { season: number; episode: number }>();
+    for (const id of getWatchedIds()) {
+      const m = id.match(epPattern);
+      if (!m) continue;
+      const [, tmdbId, sStr, eStr] = m;
+      const season = parseInt(sStr);
+      const episode = parseInt(eStr);
+      const existing = progressMap.get(tmdbId);
+      if (!existing || season > existing.season || (season === existing.season && episode > existing.episode)) {
+        progressMap.set(tmdbId, { season, episode });
+      }
+    }
+
+    const seriesMeta = getAllSeriesMeta();
+    const watchlistById = new Map(
+      wl.filter((i) => i.type === "tv").map((i) => [i.id.replace(/^tv-/, ""), i]),
+    );
+
+    setWatchingItems(
+      Array.from(progressMap.entries()).flatMap(([tmdbId, progress]) => {
+        const wlItem = watchlistById.get(tmdbId);
+        const meta = seriesMeta[tmdbId];
+        if (!wlItem && !meta) return [];
+        return [{
+          id: `tv-${tmdbId}`,
+          title: wlItem?.title ?? meta?.title ?? "",
+          posterUrl: wlItem?.posterUrl ?? meta?.posterUrl ?? null,
+          year: wlItem?.year ?? meta?.year ?? "",
+          season: progress.season,
+          episode: progress.episode,
+        }];
+      }),
+    );
+  }
+
   React.useEffect(() => {
-    setWatchlist(getWatchlist());
+    refreshFromStorage();
+
+    // Backfill scores for items added before score was stored
+    const needsScore = getWatchlist().filter((i) => i.score == null);
+    if (needsScore.length > 0) {
+      Promise.all(
+        needsScore.map((item) => {
+          const tmdbId = item.id.replace(/^(movie|tv)-/, "");
+          return fetch(`/api/films/detail?type=${item.type}&id=${tmdbId}`)
+            .then((r) => r.json())
+            .then((data: { score: number | null }) => ({ id: item.id, score: data.score }))
+            .catch(() => ({ id: item.id, score: null }));
+        }),
+      ).then((results) => {
+        let updated = false;
+        results.forEach(({ id, score }) => {
+          if (score != null) { updateWatchlistScore(id, score); updated = true; }
+        });
+        if (updated) setWatchlist(getWatchlist());
+      });
+    }
+
+    function onVisible() {
+      if (document.visibilityState === "visible") refreshFromStorage();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Debounce: 300ms na laatste toetsaanslag zoeken
@@ -223,6 +293,7 @@ export default function FilmsSeriesPage() {
       title: result.title,
       year: result.year,
       posterUrl: result.posterUrl,
+      score: result.score,
     };
     const already = watchlist.some((r) => r.id === result.id);
     const next = already ? removeFromWatchlist(result.id) : addToWatchlist(item);
@@ -321,8 +392,50 @@ export default function FilmsSeriesPage() {
         )}
 
         {/* Niet-lege staat: watchlist secties */}
-        {!hasQuery && hasWatchlistItems && (
+        {!hasQuery && (hasWatchlistItems || watchingItems.length > 0) && (
           <div className="mt-6 flex flex-col gap-6 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]">
+            {/* Aan het kijken */}
+            {watchingItems.length > 0 && (
+              <section className="flex flex-col gap-4">
+                <div className="flex items-center gap-6">
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Aan het kijken</h2>
+                  <button type="button" className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none">
+                    Toon alle
+                  </button>
+                </div>
+                <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex gap-3 pb-1" style={{ width: "max-content" }}>
+                    {watchingItems.map(({ id, title, posterUrl, year, season, episode }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => handleViewDetail(id)}
+                        className="flex w-[300px] shrink-0 items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      >
+                        <div className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
+                          {posterUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={posterUrl} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
+                          ) : (
+                            <div className="flex size-full items-center justify-center">
+                              <MaskIcon src="/icons/films.svg" className="size-6 bg-[var(--gray-200)]" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <p className="truncate text-base font-medium leading-6 text-[#16181a]">{title}</p>
+                          <p className="text-sm leading-5 text-[#8c929d]">{year} TV Serie</p>
+                          <p className="whitespace-nowrap text-sm leading-5 text-[#8c929d]">
+                            Seizoen {season}, aflevering {episode}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
             {/* Watchlist films */}
             {watchlistFilms.length > 0 && (
               <section className="flex flex-col gap-4">
@@ -341,7 +454,7 @@ export default function FilmsSeriesPage() {
                         onClick={() => handleViewDetail(item.id)}
                         className="flex w-[87px] flex-col gap-2 text-left focus-visible:outline-none"
                       >
-                        <div className="relative w-full overflow-hidden rounded bg-[var(--gray-50)]" style={{ aspectRatio: "2/3" }}>
+                        <div className="relative w-full overflow-hidden rounded-[4px] bg-[var(--gray-50)]" style={{ aspectRatio: "2/3" }}>
                           {item.posterUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={item.posterUrl} alt={item.title} className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
@@ -351,9 +464,17 @@ export default function FilmsSeriesPage() {
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col gap-0">
                           <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[#16181a]">{item.title}</p>
-                          <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
+                            {item.score != null && (
+                              <div className="flex items-center gap-1">
+                                <StarIcon />
+                                <span className="text-[12px] font-medium leading-4 text-[#16181a]">{item.score.toFixed(1)}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </button>
                     ))}
@@ -380,7 +501,7 @@ export default function FilmsSeriesPage() {
                         onClick={() => handleViewDetail(item.id)}
                         className="flex w-[87px] flex-col gap-2 text-left focus-visible:outline-none"
                       >
-                        <div className="relative w-full overflow-hidden rounded bg-[var(--gray-50)]" style={{ aspectRatio: "2/3" }}>
+                        <div className="relative w-full overflow-hidden rounded-[4px] bg-[var(--gray-50)]" style={{ aspectRatio: "2/3" }}>
                           {item.posterUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={item.posterUrl} alt={item.title} className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
@@ -390,9 +511,17 @@ export default function FilmsSeriesPage() {
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col gap-0">
                           <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[#16181a]">{item.title}</p>
-                          <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
+                            {item.score != null && (
+                              <div className="flex items-center gap-1">
+                                <StarIcon />
+                                <span className="text-[12px] font-medium leading-4 text-[#16181a]">{item.score.toFixed(1)}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </button>
                     ))}
@@ -404,8 +533,8 @@ export default function FilmsSeriesPage() {
         )}
       </div>
 
-      {/* Empty state — alleen zichtbaar zonder zoekterm en zonder watchlist items */}
-      {!hasQuery && !hasWatchlistItems && (
+      {/* Empty state — alleen zichtbaar zonder zoekterm en zonder watchlist items en zonder watching items */}
+      {!hasQuery && !hasWatchlistItems && watchingItems.length === 0 && (
         <div className="absolute inset-x-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

@@ -4,7 +4,8 @@ import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from "@/lib/watchlist";
-import { isWatched, markWatched, unmarkWatched } from "@/lib/watched";
+import { isWatched, markWatched, unmarkWatched, saveSeriesMeta } from "@/lib/watched";
+import { updateWatchlistScore } from "@/lib/watchlist";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 
@@ -153,8 +154,13 @@ export default function FilmDetailPage() {
       .then((r) => r.json())
       .then((data: FilmDetail) => {
         setDetail(data);
-        setInWatchlist(isInWatchlist(data.id));
+        const inWl = isInWatchlist(data.id);
+        setInWatchlist(inWl);
         setWatched(isWatched(data.id));
+        if (data.type === "tv") {
+          saveSeriesMeta(String(data.tmdbId), { title: data.title, posterUrl: data.posterUrl, year: data.year });
+        }
+        if (inWl && data.score != null) updateWatchlistScore(data.id, data.score);
         setLoading(false);
       })
       .catch(() => setLoading(false));

@@ -6,6 +6,7 @@ export type WatchlistItem = {
   title: string;
   year: string;
   posterUrl: string | null;
+  score?: number | null;
 };
 
 export function getWatchlist(): WatchlistItem[] {
@@ -37,4 +38,10 @@ export function removeFromWatchlist(id: string): WatchlistItem[] {
 
 export function isInWatchlist(id: string): boolean {
   return getWatchlist().some((i) => i.id === id);
+}
+
+export function updateWatchlistScore(id: string, score: number): void {
+  const current = getWatchlist();
+  const next = current.map((i) => (i.id === id ? { ...i, score } : i));
+  save(next);
 }

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { isWatched, markWatched } from "@/lib/watched";
+import { isWatched, markWatched, saveSeriesMeta } from "@/lib/watched";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 
@@ -114,11 +114,12 @@ export default function SelectEpisodePage() {
     if (!tmdbId) return;
     fetch(`/api/films/detail?type=tv&id=${tmdbId}`)
       .then((r) => r.json())
-      .then((data: { title: string; seasons: Season[] }) => {
+      .then((data: { title: string; seasons: Season[]; posterUrl: string | null; year: string }) => {
         setSeriesInfo({ title: data.title, seasons: data.seasons ?? [] });
         if (data.seasons?.length > 0) {
           setSelectedSeason(data.seasons[0].seasonNumber);
         }
+        saveSeriesMeta(tmdbId, { title: data.title, posterUrl: data.posterUrl, year: data.year });
       })
       .catch(() => {});
   }, [tmdbId]);

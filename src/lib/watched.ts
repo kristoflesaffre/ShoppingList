@@ -25,3 +25,27 @@ export function markWatched(id: string): void {
 export function unmarkWatched(id: string): void {
   saveIds(getIds().filter((i) => i !== id));
 }
+
+export function getWatchedIds(): string[] {
+  return getIds();
+}
+
+const META_KEY = "watchlist_series_meta";
+
+export type SeriesMeta = { title: string; posterUrl: string | null; year: string };
+
+export function saveSeriesMeta(tmdbId: string, meta: SeriesMeta): void {
+  if (typeof window === "undefined") return;
+  try {
+    const map = JSON.parse(localStorage.getItem(META_KEY) ?? "{}") as Record<string, SeriesMeta>;
+    map[tmdbId] = meta;
+    localStorage.setItem(META_KEY, JSON.stringify(map));
+  } catch { /* ignore */ }
+}
+
+export function getAllSeriesMeta(): Record<string, SeriesMeta> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(META_KEY) ?? "{}") as Record<string, SeriesMeta>;
+  } catch { return {}; }
+}
