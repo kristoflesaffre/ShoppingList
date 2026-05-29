@@ -3,9 +3,7 @@
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { addToWatchlist, removeFromWatchlist, isInWatchlist } from "@/lib/watchlist";
-import { isWatched, markWatched, unmarkWatched, saveSeriesMeta } from "@/lib/watched";
-import { updateWatchlistScore } from "@/lib/watchlist";
+import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 
@@ -123,6 +121,16 @@ export default function FilmDetailPage() {
   const router = useRouter();
   const params = useParams();
   const rawId = params.id as string;
+  const {
+    isInWatchlist,
+    isWatched,
+    addToWatchlist,
+    removeFromWatchlist,
+    updateWatchlistScore,
+    markWatched,
+    unmarkWatched,
+    saveSeriesMeta,
+  } = useFilmsLibrary();
 
   const [detail, setDetail] = React.useState<FilmDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -133,8 +141,6 @@ export default function FilmDetailPage() {
   const overviewRef = React.useRef<HTMLParagraphElement>(null);
   const [selectedSeason, setSelectedSeason] = React.useState(1);
   const [seasonData, setSeasonData] = React.useState<SeasonData | null>(null);
-  const [inWatchlist, setInWatchlist] = React.useState(false);
-  const [watched, setWatched] = React.useState(false);
   const [showBekendenModal, setShowBekendenModal] = React.useState(false);
 
   const tmdbId = React.useMemo(() => {
@@ -154,17 +160,22 @@ export default function FilmDetailPage() {
       .then((r) => r.json())
       .then((data: FilmDetail) => {
         setDetail(data);
-        const inWl = isInWatchlist(data.id);
-        setInWatchlist(inWl);
-        setWatched(isWatched(data.id));
         if (data.type === "tv") {
-          saveSeriesMeta(String(data.tmdbId), { title: data.title, posterUrl: data.posterUrl, year: data.year });
+          void saveSeriesMeta(String(data.tmdbId), {
+            title: data.title,
+            posterUrl: data.posterUrl,
+            year: data.year,
+          });
         }
-        if (inWl && data.score != null) updateWatchlistScore(data.id, data.score);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, [rawId]);
+
+  React.useEffect(() => {
+    if (!detail?.id || detail.score == null) return;
+    if (isInWatchlist(detail.id)) void updateWatchlistScore(detail.id, detail.score);
+  }, [detail?.id, detail?.score, isInWatchlist, updateWatchlistScore]);
 
   // Initialiseer selectedSeason op het eerste seizoen zodra detail geladen is
   React.useEffect(() => {
@@ -199,6 +210,9 @@ export default function FilmDetailPage() {
     ? (seasonData?.overview || detail?.overview || "")
     : (detail?.overview || "");
 
+  const inWatchlist = detail ? isInWatchlist(detail.id) : false;
+  const watched = detail ? isWatched(detail.id) : false;
+
   const metaParts = [detail?.year, detail?.certification, detail?.runtime].filter(Boolean);
   const genrePart = detail?.genres?.join(" - ") ?? "";
   const metaLine = genrePart
@@ -231,7 +245,8 @@ export default function FilmDetailPage() {
             </p>
             <button
               type="button"
-              aria-label="Meer opties"
+              aria-label="Instellingen"
+              onClick={() => router.push("/films-series/instellingen")}
               className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
             >
               <ThreeDotsIcon />
@@ -444,11 +459,9 @@ export default function FilmDetailPage() {
                   if (isTV) {
                     setShowBekendenModal(true);
                   } else if (watched) {
-                    unmarkWatched(detail.id);
-                    setWatched(false);
+                    void unmarkWatched(detail.id);
                   } else {
-                    markWatched(detail.id);
-                    setWatched(true);
+                    void markWatched(detail.id);
                   }
                 }}
                 className={cn(
@@ -474,11 +487,16 @@ export default function FilmDetailPage() {
                 onClick={() => {
                   if (!detail) return;
                   if (inWatchlist) {
-                    removeFromWatchlist(detail.id);
-                    setInWatchlist(false);
+                    void removeFromWatchlist(detail.id);
                   } else {
-                    addToWatchlist({ id: detail.id, type: detail.type, title: detail.title, year: detail.year, posterUrl: detail.posterUrl });
-                    setInWatchlist(true);
+                    void addToWatchlist({
+                      id: detail.id,
+                      type: detail.type,
+                      title: detail.title,
+                      year: detail.year,
+                      posterUrl: detail.posterUrl,
+                      score: detail.score,
+                    });
                   }
                 }}
                 className={cn(
@@ -617,9 +635,8 @@ export default function FilmDetailPage() {
                 if (!detail) return;
                 const firstSeason = detail.seasons[0]?.seasonNumber ?? 1;
                 const epId = `ep-${tmdbId}-s${firstSeason}e1`;
-                markWatched(epId);
-                markWatched(detail.id);
-                setWatched(true);
+                void markWatched(epId);
+                void markWatched(detail.id);
                 setShowBekendenModal(false);
               }}
             >

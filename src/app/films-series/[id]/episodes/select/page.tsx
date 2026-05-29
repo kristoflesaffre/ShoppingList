@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { isWatched, markWatched, saveSeriesMeta } from "@/lib/watched";
+import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 
@@ -93,6 +93,7 @@ function EpisodeSkeleton() {
 }
 
 export default function SelectEpisodePage() {
+  const { markWatched, saveSeriesMeta, watchedSet } = useFilmsLibrary();
   const router = useRouter();
   const params = useParams();
   const rawId = params.id as string;
@@ -102,13 +103,21 @@ export default function SelectEpisodePage() {
   const [episodes, setEpisodes] = React.useState<Episode[]>([]);
   const [year, setYear] = React.useState("");
   const [loading, setLoading] = React.useState(true);
-  const [watchedEpisodes, setWatchedEpisodes] = React.useState<Set<string>>(new Set());
   const [pendingEp, setPendingEp] = React.useState<{ id: string; number: number } | null>(null);
 
   const tmdbId = React.useMemo(() => {
     const dashIdx = rawId?.indexOf("-") ?? -1;
     return dashIdx >= 0 ? rawId.slice(dashIdx + 1) : "";
   }, [rawId]);
+
+  const watchedEpisodes = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const e of episodes) {
+      const id = `ep-${tmdbId}-s${selectedSeason}e${e.episodeNumber}`;
+      if (watchedSet.has(id)) set.add(id);
+    }
+    return set;
+  }, [episodes, tmdbId, selectedSeason, watchedSet]);
 
   React.useEffect(() => {
     if (!tmdbId) return;
@@ -119,7 +128,7 @@ export default function SelectEpisodePage() {
         if (data.seasons?.length > 0) {
           setSelectedSeason(data.seasons[0].seasonNumber);
         }
-        saveSeriesMeta(tmdbId, { title: data.title, posterUrl: data.posterUrl, year: data.year });
+        void saveSeriesMeta(tmdbId, { title: data.title, posterUrl: data.posterUrl, year: data.year });
       })
       .catch(() => {});
   }, [tmdbId]);
@@ -134,12 +143,6 @@ export default function SelectEpisodePage() {
         const eps = data.episodes ?? [];
         setEpisodes(eps);
         setYear(data.year ?? "");
-        const watched = new Set(
-          eps
-            .map((e) => `ep-${tmdbId}-s${selectedSeason}e${e.episodeNumber}`)
-            .filter((id) => isWatched(id)),
-        );
-        setWatchedEpisodes(watched);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -153,7 +156,7 @@ export default function SelectEpisodePage() {
     if (hasPreviousUnwatched) {
       setPendingEp({ id: epId, number: epNumber });
     } else {
-      markWatched(epId);
+      void markWatched(epId);
       router.back();
     }
   }
@@ -325,7 +328,7 @@ export default function SelectEpisodePage() {
               variant="secondary"
               onClick={() => {
                 if (!pendingEp) return;
-                markWatched(pendingEp.id);
+                void markWatched(pendingEp.id);
                 setPendingEp(null);
                 router.back();
               }}
@@ -338,7 +341,7 @@ export default function SelectEpisodePage() {
                 if (!pendingEp) return;
                 episodes
                   .filter((e) => e.episodeNumber <= pendingEp.number)
-                  .forEach((e) => markWatched(`ep-${tmdbId}-s${selectedSeason}e${e.episodeNumber}`));
+                  .forEach((e) => void markWatched(`ep-${tmdbId}-s${selectedSeason}e${e.episodeNumber}`));
                 setPendingEp(null);
                 router.back();
               }}

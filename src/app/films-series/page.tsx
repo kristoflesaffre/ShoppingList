@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
 import { MiniButton } from "@/components/ui/mini_button";
 import { cn } from "@/lib/utils";
-import { type WatchlistItem, getWatchlist, addToWatchlist, removeFromWatchlist } from "@/lib/watchlist";
-import { getWatchedIds, getAllSeriesMeta } from "@/lib/watched";
-import { updateWatchlistScore } from "@/lib/watchlist";
+import type { WatchlistItem } from "@/lib/watchlist";
+import { useFilmsLibrary } from "@/hooks/use_films_library";
+import { Snackbar } from "@/components/ui/snackbar";
+import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 
 type SearchResult = {
   id: string;
@@ -177,22 +178,29 @@ const FILTER_CHIPS: { id: FilterOption; label: string }[] = [
 
 export default function FilmsSeriesPage() {
   const router = useRouter();
+  const {
+    watchlist,
+    watchedIds,
+    seriesMeta,
+    isInWatchlist,
+    addToWatchlist,
+    removeFromWatchlist,
+    updateWatchlistScore,
+    markWatched,
+    unmarkWatched,
+  } = useFilmsLibrary();
   const [query, setQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [filter, setFilter] = React.useState<FilterOption>("all");
-  const [watchlist, setWatchlist] = React.useState<WatchlistItem[]>([]);
-  const [watchingItems, setWatchingItems] = React.useState<{ id: string; title: string; posterUrl: string | null; year: string; season: number; episode: number }[]>([]);
+  const [snackbar, setSnackbar] = React.useState<{ message: string; undoId: string } | null>(null);
+  const snackbarTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Laad watchlist en "aan het kijken" staat uit localStorage
-  function refreshFromStorage() {
-    const wl = getWatchlist();
-    setWatchlist(wl);
-
+  const watchingItems = React.useMemo(() => {
     const epPattern = /^ep-(\d+)-s(\d+)e(\d+)$/;
     const progressMap = new Map<string, { season: number; episode: number }>();
-    for (const id of getWatchedIds()) {
+    for (const id of watchedIds) {
       const m = id.match(epPattern);
       if (!m) continue;
       const [, tmdbId, sStr, eStr] = m;
@@ -204,58 +212,42 @@ export default function FilmsSeriesPage() {
       }
     }
 
-    const seriesMeta = getAllSeriesMeta();
     const watchlistById = new Map(
-      wl.filter((i) => i.type === "tv").map((i) => [i.id.replace(/^tv-/, ""), i]),
+      watchlist.filter((i) => i.type === "tv").map((i) => [i.id.replace(/^tv-/, ""), i]),
     );
 
-    setWatchingItems(
-      Array.from(progressMap.entries()).flatMap(([tmdbId, progress]) => {
-        const wlItem = watchlistById.get(tmdbId);
-        const meta = seriesMeta[tmdbId];
-        if (!wlItem && !meta) return [];
-        return [{
-          id: `tv-${tmdbId}`,
-          title: wlItem?.title ?? meta?.title ?? "",
-          posterUrl: wlItem?.posterUrl ?? meta?.posterUrl ?? null,
-          year: wlItem?.year ?? meta?.year ?? "",
-          season: progress.season,
-          episode: progress.episode,
-        }];
-      }),
-    );
-  }
+    return Array.from(progressMap.entries()).flatMap(([tmdbId, progress]) => {
+      const wlItem = watchlistById.get(tmdbId);
+      const meta = seriesMeta[tmdbId];
+      if (!wlItem && !meta) return [];
+      return [{
+        id: `tv-${tmdbId}`,
+        title: wlItem?.title ?? meta?.title ?? "",
+        posterUrl: wlItem?.posterUrl ?? meta?.posterUrl ?? null,
+        year: wlItem?.year ?? meta?.year ?? "",
+        season: progress.season,
+        episode: progress.episode,
+      }];
+    });
+  }, [watchedIds, watchlist, seriesMeta]);
 
   React.useEffect(() => {
-    refreshFromStorage();
-
-    // Backfill scores for items added before score was stored
-    const needsScore = getWatchlist().filter((i) => i.score == null);
-    if (needsScore.length > 0) {
-      Promise.all(
-        needsScore.map((item) => {
-          const tmdbId = item.id.replace(/^(movie|tv)-/, "");
-          return fetch(`/api/films/detail?type=${item.type}&id=${tmdbId}`)
-            .then((r) => r.json())
-            .then((data: { score: number | null }) => ({ id: item.id, score: data.score }))
-            .catch(() => ({ id: item.id, score: null }));
-        }),
-      ).then((results) => {
-        let updated = false;
-        results.forEach(({ id, score }) => {
-          if (score != null) { updateWatchlistScore(id, score); updated = true; }
-        });
-        if (updated) setWatchlist(getWatchlist());
+    const needsScore = watchlist.filter((i) => i.score == null);
+    if (needsScore.length === 0) return;
+    void Promise.all(
+      needsScore.map((item) => {
+        const tmdbId = item.id.replace(/^(movie|tv)-/, "");
+        return fetch(`/api/films/detail?type=${item.type}&id=${tmdbId}`)
+          .then((r) => r.json())
+          .then((data: { score: number | null }) => ({ id: item.id, score: data.score }))
+          .catch(() => ({ id: item.id, score: null }));
+      }),
+    ).then((scoreResults) => {
+      scoreResults.forEach(({ id, score }) => {
+        if (score != null) void updateWatchlistScore(id, score);
       });
-    }
-
-    function onVisible() {
-      if (document.visibilityState === "visible") refreshFromStorage();
-    }
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    });
+  }, [watchlist, updateWatchlistScore]);
 
   // Debounce: 300ms na laatste toetsaanslag zoeken
   React.useEffect(() => {
@@ -295,13 +287,29 @@ export default function FilmsSeriesPage() {
       posterUrl: result.posterUrl,
       score: result.score,
     };
-    const already = watchlist.some((r) => r.id === result.id);
-    const next = already ? removeFromWatchlist(result.id) : addToWatchlist(item);
-    setWatchlist(next);
+    if (isInWatchlist(result.id)) void removeFromWatchlist(result.id);
+    else void addToWatchlist(item);
   }
 
   function handleViewDetail(id: string) {
     router.push(`/films-series/${id}`);
+  }
+
+  function handleMarkNextEpisode(e: React.MouseEvent, item: { id: string; season: number; episode: number }) {
+    e.stopPropagation();
+    const tmdbId = item.id.replace(/^tv-/, "");
+    const nextEpId = `ep-${tmdbId}-s${item.season}e${item.episode + 1}`;
+    void markWatched(nextEpId);
+    if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
+    setSnackbar({ message: `Aflevering ${item.episode + 1} als bekeken gemarkeerd`, undoId: nextEpId });
+    snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+  }
+
+  function handleSnackbarUndo() {
+    if (!snackbar) return;
+    void unmarkWatched(snackbar.undoId);
+    if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
+    setSnackbar(null);
   }
 
   return (
@@ -330,7 +338,8 @@ export default function FilmsSeriesPage() {
             </p>
             <button
               type="button"
-              aria-label="Meer opties"
+              aria-label="Instellingen"
+              onClick={() => router.push("/films-series/instellingen")}
               className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
             >
               <ThreeDotsIcon />
@@ -399,38 +408,67 @@ export default function FilmsSeriesPage() {
               <section className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
                   <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Aan het kijken</h2>
-                  <button type="button" className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none">
+                  <button type="button" className="shrink-0 text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none">
                     Toon alle
                   </button>
                 </div>
                 <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-3 pb-1" style={{ width: "max-content" }}>
-                    {watchingItems.map(({ id, title, posterUrl, year, season, episode }) => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => handleViewDetail(id)}
-                        className="flex w-[300px] shrink-0 items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                      >
-                        <div className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
-                          {posterUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={posterUrl} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
-                          ) : (
-                            <div className="flex size-full items-center justify-center">
-                              <MaskIcon src="/icons/films.svg" className="size-6 bg-[var(--gray-200)]" />
+                    {watchingItems.map((item) => {
+                      const { id, title, posterUrl, year, season, episode } = item;
+                      const nextEpisode = episode + 1;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => router.push(`/films-series/${id}/episodes/s${season}e${nextEpisode}`)}
+                          className="flex w-[300px] shrink-0 items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                        >
+                          <div className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
+                            {posterUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={posterUrl} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
+                            ) : (
+                              <div className="flex size-full items-center justify-center">
+                                <MaskIcon src="/icons/films.svg" className="size-6 bg-[var(--gray-200)]" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex min-w-0 flex-1 flex-col gap-1">
+                            <div className="flex w-full flex-col">
+                              <div className="flex w-full items-start">
+                                <p className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[#16181a]">{title}</p>
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  aria-label="Markeer volgende aflevering als bekeken"
+                                  onClick={(e) => handleMarkNextEpisode(e, item)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleMarkNextEpisode(e as unknown as React.MouseEvent, item);
+                                    }
+                                  }}
+                                  className="shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
+                                >
+                                  <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
+                                </span>
+                              </div>
+                              <p className="text-sm leading-5 text-[#8c929d]">{year} TV Serie</p>
                             </div>
-                          )}
-                        </div>
-                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                          <p className="truncate text-base font-medium leading-6 text-[#16181a]">{title}</p>
-                          <p className="text-sm leading-5 text-[#8c929d]">{year} TV Serie</p>
-                          <p className="whitespace-nowrap text-sm leading-5 text-[#8c929d]">
-                            Seizoen {season}, aflevering {episode}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
+                            <div className="flex flex-nowrap items-center gap-2">
+                              <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[#edeefe] px-2 py-1 text-xs leading-4 text-[#4f55f1]">
+                                Seizoen {season}
+                              </span>
+                              <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[#edeefe] px-2 py-1 text-xs leading-4 text-[#4f55f1]">
+                                Aflevering {nextEpisode}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </section>
@@ -532,6 +570,17 @@ export default function FilmsSeriesPage() {
           </div>
         )}
       </div>
+
+      {/* Snackbar */}
+      {snackbar && (
+        <div className={APP_SNACKBAR_NO_NAV_FIXTURE_CLASS} role="region" aria-label="Melding">
+          <Snackbar
+            message={snackbar.message}
+            actionLabel="Zet terug"
+            onAction={handleSnackbarUndo}
+          />
+        </div>
+      )}
 
       {/* Empty state — alleen zichtbaar zonder zoekterm en zonder watchlist items en zonder watching items */}
       {!hasQuery && !hasWatchlistItems && watchingItems.length === 0 && (

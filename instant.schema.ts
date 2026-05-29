@@ -238,6 +238,38 @@ const schema = i.schema({
       order: i.number(),
       ownerId: i.string().optional().indexed(),
     }),
+    /** Gedeeld films-en-series-lijstje per gebruiker (eigenaar). */
+    filmsShares: i.entity({
+      ownerId: i.string().indexed(),
+      shareToken: i.string().optional().unique().indexed(),
+    }),
+    filmsShareMembers: i.entity({
+      instantUserId: i.string().indexed(),
+    }),
+    filmsWatchlistItems: i.entity({
+      /** Samengestelde TMDB-id, bv. `movie-123` of `tv-456`. */
+      mediaId: i.string().indexed(),
+      type: i.string(),
+      title: i.string(),
+      year: i.string(),
+      posterUrl: i.string().optional(),
+      score: i.number().optional(),
+      order: i.number(),
+      /** Eigenaar van het gedeelde lijstje; alle leden lezen/schrijven tegen deze id. */
+      groupOwnerId: i.string().indexed(),
+    }),
+    filmsWatchedMarks: i.entity({
+      /** Detail-id, serie-id of aflevering-id (`ep-…`). */
+      contentId: i.string().indexed(),
+      groupOwnerId: i.string().indexed(),
+    }),
+    filmsSeriesMeta: i.entity({
+      tmdbId: i.string().indexed(),
+      title: i.string(),
+      year: i.string(),
+      posterUrl: i.string().optional(),
+      groupOwnerId: i.string().indexed(),
+    }),
     /** Gedecodeerde klantenkaart (QR of barcode) — gekoppeld aan een lijst én/of rechtstreeks aan een gebruiker. */
     loyaltyCards: i.entity({
       /** “qr” of “barcode” */
@@ -272,6 +304,10 @@ const schema = i.schema({
     shoppingShareMemberships: {
       forward: { on: "shoppingShares", has: "many", label: "memberships" },
       reverse: { on: "shoppingShareMembers", has: "one", label: "shoppingShare" },
+    },
+    filmsShareMemberships: {
+      forward: { on: "filmsShares", has: "many", label: "memberships" },
+      reverse: { on: "filmsShareMembers", has: "one", label: "filmsShare" },
     },
     listLoyaltyCard: {
       forward: { on: "lists", has: "one", label: "loyaltyCard" },

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { isWatched, markWatched, unmarkWatched, saveSeriesMeta } from "@/lib/watched";
+import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 
@@ -93,6 +93,7 @@ function EpisodeSkeleton() {
 }
 
 export default function EpisodesPage() {
+  const { markWatched, unmarkWatched, saveSeriesMeta, watchedSet } = useFilmsLibrary();
   const router = useRouter();
   const params = useParams();
   const rawId = params.id as string;
@@ -102,7 +103,6 @@ export default function EpisodesPage() {
   const [episodes, setEpisodes] = React.useState<Episode[]>([]);
   const [year, setYear] = React.useState("");
   const [loading, setLoading] = React.useState(true);
-  const [watchedEpisodes, setWatchedEpisodes] = React.useState<Set<string>>(new Set());
   const [pendingEp, setPendingEp] = React.useState<{ id: string; number: number } | null>(null);
 
   // Parse tmdbId uit rawId (bijv. "tv-1234" → "1234")
@@ -110,6 +110,15 @@ export default function EpisodesPage() {
     const dashIdx = rawId?.indexOf("-") ?? -1;
     return dashIdx >= 0 ? rawId.slice(dashIdx + 1) : "";
   }, [rawId]);
+
+  const watchedEpisodes = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const e of episodes) {
+      const id = `ep-${tmdbId}-s${selectedSeason}e${e.episodeNumber}`;
+      if (watchedSet.has(id)) set.add(id);
+    }
+    return set;
+  }, [episodes, tmdbId, selectedSeason, watchedSet]);
 
   // Laad seriedetails voor de seizoentabs en titel
   React.useEffect(() => {
@@ -121,7 +130,7 @@ export default function EpisodesPage() {
         if (data.seasons?.length > 0) {
           setSelectedSeason(data.seasons[0].seasonNumber);
         }
-        saveSeriesMeta(tmdbId, { title: data.title, posterUrl: data.posterUrl, year: data.year });
+        void saveSeriesMeta(tmdbId, { title: data.title, posterUrl: data.posterUrl, year: data.year });
       })
       .catch(() => {});
   }, [tmdbId]);
@@ -137,12 +146,6 @@ export default function EpisodesPage() {
         const eps = data.episodes ?? [];
         setEpisodes(eps);
         setYear(data.year ?? "");
-        const watched = new Set(
-          eps
-            .map((e) => `ep-${tmdbId}-s${selectedSeason}e${e.episodeNumber}`)
-            .filter((id) => isWatched(id)),
-        );
-        setWatchedEpisodes(watched);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -275,12 +278,7 @@ export default function EpisodesPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (epWatched) {
-                                unmarkWatched(epId);
-                                setWatchedEpisodes((prev) => {
-                                  const next = new Set(prev);
-                                  next.delete(epId);
-                                  return next;
-                                });
+                                void unmarkWatched(epId);
                               } else {
                                 const hasPreviousUnwatched = episodes
                                   .filter((e) => e.episodeNumber < ep.episodeNumber)
@@ -288,8 +286,7 @@ export default function EpisodesPage() {
                                 if (hasPreviousUnwatched) {
                                   setPendingEp({ id: epId, number: ep.episodeNumber });
                                 } else {
-                                  markWatched(epId);
-                                  setWatchedEpisodes((prev) => new Set(prev).add(epId));
+                                  void markWatched(epId);
                                 }
                               }
                             }}
@@ -338,8 +335,7 @@ export default function EpisodesPage() {
               variant="secondary"
               onClick={() => {
                 if (!pendingEp) return;
-                markWatched(pendingEp.id);
-                setWatchedEpisodes((prev) => new Set(prev).add(pendingEp.id));
+                void markWatched(pendingEp.id);
                 setPendingEp(null);
               }}
             >
@@ -352,12 +348,7 @@ export default function EpisodesPage() {
                 const toMark = episodes
                   .filter((e) => e.episodeNumber <= pendingEp.number)
                   .map((e) => `ep-${tmdbId}-s${selectedSeason}e${e.episodeNumber}`);
-                toMark.forEach(markWatched);
-                setWatchedEpisodes((prev) => {
-                  const next = new Set(prev);
-                  toMark.forEach((id) => next.add(id));
-                  return next;
-                });
+                toMark.forEach((id) => void markWatched(id));
                 setPendingEp(null);
               }}
             >
