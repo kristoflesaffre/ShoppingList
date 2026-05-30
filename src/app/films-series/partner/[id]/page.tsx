@@ -340,13 +340,18 @@ export default function PartnerFilmDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overviewFull, overviewExpanded]);
 
-  async function handleReact(reaction: "up" | "down" | "seen") {
-    const next = nextItem;
-    const prev = prevItem;
-    await reactToPartnerItem(currentId, reaction);
-    if (next) router.replace(`/films-series/partner/${next.id}`);
-    else if (prev) router.replace(`/films-series/partner/${prev.id}`);
-    else router.back();
+  function handleReact(reaction: "up" | "down" | "seen") {
+    // Animate immediately — don't wait for the DB write, which would remove the item
+    // from partnerWatchlist mid-render and cause a flash.
+    if (nextItem) {
+      commitNavigationRef.current?.("next");
+    } else if (prevItem) {
+      commitNavigationRef.current?.("prev");
+    } else {
+      router.push("/films-series");
+    }
+    // Fire DB write in the background after animation has started
+    void reactToPartnerItem(currentId, reaction);
   }
 
   const metaParts = [detail?.year, detail?.certification, detail?.runtime].filter(Boolean);
