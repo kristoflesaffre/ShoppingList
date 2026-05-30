@@ -683,6 +683,51 @@ export function useFilmsLibrary() {
     [user, groupOwnerId, libraryData?.filmsSeriesMeta, bumpLocal],
   );
 
+  /** Heeft de huidige gebruiker dit item aan de gedeelde watchlist toegevoegd? */
+  const isMediaAddedByCurrentUser = React.useCallback(
+    (mediaId: string): boolean => {
+      if (!user || !groupOwnerId) return false;
+      const isOwner = groupOwnerId === user.id;
+      const rows = ((libraryData?.filmsWatchlistItems ?? []) as DbWatchlistRow[]).filter(
+        (r) =>
+          r.mediaId === mediaId &&
+          (r.addedByUserId === user.id || (isOwner && !r.addedByUserId)),
+      );
+      if (rows.length > 0) return true;
+      const personalRows = ((personalData?.filmsWatchlistItems ?? []) as DbWatchlistRow[]).filter(
+        (r) => r.mediaId === mediaId && r.addedByUserId === user.id,
+      );
+      return personalRows.length > 0;
+    },
+    [user, groupOwnerId, libraryData?.filmsWatchlistItems, personalData?.filmsWatchlistItems],
+  );
+
+  /**
+   * Verwijdert de reactie van de partner (down/seen) zodat het item opnieuw in
+   * Watchlist {partner} verschijnt ter goedkeuring.
+   */
+  const askPartnerToReviewAgain = React.useCallback(
+    async (mediaId: string) => {
+      if (!user || !groupOwnerId || !partnerUserId) return;
+      if (!isMediaAddedByCurrentUser(mediaId)) return;
+
+      const txs: Parameters<typeof db.transact>[0] = [];
+      for (const r of (reactionsData?.filmsPartnerReactions ?? []) as DbPartnerReactionRow[]) {
+        if (r.mediaId === mediaId && r.reactingUserId === partnerUserId && r.id) {
+          txs.push(db.tx.filmsPartnerReactions[r.id].delete());
+        }
+      }
+      if (txs.length > 0) await db.transact(txs);
+    },
+    [
+      user,
+      groupOwnerId,
+      partnerUserId,
+      isMediaAddedByCurrentUser,
+      reactionsData?.filmsPartnerReactions,
+    ],
+  );
+
   // React to a partner watchlist item: "up" = add to own list, "down" = dismiss, "seen" = already watched
   const reactToPartnerItem = React.useCallback(
     async (mediaId: string, reaction: "up" | "down" | "seen") => {
@@ -732,5 +777,7 @@ export function useFilmsLibrary() {
     unmarkWatched,
     saveSeriesMeta,
     reactToPartnerItem,
+    isMediaAddedByCurrentUser,
+    askPartnerToReviewAgain,
   };
 }

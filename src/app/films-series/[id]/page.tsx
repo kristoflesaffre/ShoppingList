@@ -138,17 +138,20 @@ function PartnerFeedbackBanner({
   partnerName,
   userAvatar,
   partnerAvatar,
+  onClick,
 }: {
   reaction: PartnerFeedback;
   mediaType: "movie" | "tv";
   partnerName: string | null;
   userAvatar: FeedbackAvatar;
   partnerAvatar: FeedbackAvatar;
+  onClick?: () => void;
 }) {
   const showTogetherAvatars = reaction === "up";
+  const interactive = Boolean(onClick);
 
-  return (
-    <div className="flex w-full items-center gap-4 rounded-[8px] bg-[#edeefe] p-3">
+  const content = (
+    <>
       {showTogetherAvatars ? (
         <div className="flex isolate shrink-0 items-start">
           <AvatarCircle person={userAvatar} className="z-[2] -mr-3" />
@@ -157,11 +160,31 @@ function PartnerFeedbackBanner({
       ) : (
         <AvatarCircle person={partnerAvatar} />
       )}
-      <p className="min-w-0 flex-1 text-xs font-normal leading-4 text-[#4f55f1]">
+      <p className="min-w-0 flex-1 text-left text-xs font-normal leading-4 text-[#4f55f1]">
         {feedbackText({ reaction, mediaType, partnerName })}
       </p>
-      <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[#4f55f1]" />
-    </div>
+      {interactive ? (
+        <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[#4f55f1]" aria-hidden />
+      ) : null}
+    </>
+  );
+
+  if (!interactive) {
+    return (
+      <div className="flex w-full items-center gap-4 rounded-[8px] bg-[#edeefe] p-3">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-4 rounded-[8px] bg-[#edeefe] p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+    >
+      {content}
+    </button>
   );
 }
 
@@ -207,6 +230,9 @@ export default function FilmDetailPage() {
     userName,
     userAvatarUrl,
     partnerFeedbackByMediaId,
+    isMediaAddedByCurrentUser,
+    askPartnerToReviewAgain,
+    isFilmsListShared,
   } = useFilmsLibrary();
 
   const [detail, setDetail] = React.useState<FilmDetail | null>(null);
@@ -219,6 +245,8 @@ export default function FilmDetailPage() {
   const [selectedSeason, setSelectedSeason] = React.useState(1);
   const [seasonData, setSeasonData] = React.useState<SeasonData | null>(null);
   const [showBekendenModal, setShowBekendenModal] = React.useState(false);
+  const [showAskAgainSlideIn, setShowAskAgainSlideIn] = React.useState(false);
+  const [askAgainLoading, setAskAgainLoading] = React.useState(false);
 
   const tmdbId = React.useMemo(() => {
     const dashIdx = rawId?.indexOf("-") ?? -1;
@@ -290,6 +318,22 @@ export default function FilmDetailPage() {
   const inWatchlist = detail ? isInWatchlist(detail.id) : false;
   const watched = detail ? isWatched(detail.id) : false;
   const partnerFeedback = detail ? partnerFeedbackByMediaId[detail.id] : undefined;
+  const canAskPartnerAgain =
+    Boolean(detail) &&
+    isFilmsListShared &&
+    isMediaAddedByCurrentUser(detail?.id ?? "") &&
+    (partnerFeedback === "down" || partnerFeedback === "seen");
+
+  async function handleAskPartnerAgain() {
+    if (!detail || askAgainLoading) return;
+    setAskAgainLoading(true);
+    try {
+      await askPartnerToReviewAgain(detail.id);
+      setShowAskAgainSlideIn(false);
+    } finally {
+      setAskAgainLoading(false);
+    }
+  }
   const userAvatar = React.useMemo(
     (): FeedbackAvatar => ({ url: userAvatarUrl, name: userName }),
     [userAvatarUrl, userName],
@@ -352,6 +396,9 @@ export default function FilmDetailPage() {
                 partnerName={partnerName}
                 userAvatar={userAvatar}
                 partnerAvatar={partnerAvatar}
+                onClick={
+                  canAskPartnerAgain ? () => setShowAskAgainSlideIn(true) : undefined
+                }
               />
             )}
 
@@ -708,6 +755,31 @@ export default function FilmDetailPage() {
           />
         </div>
       )}
+
+      {/* Slide-in: opnieuw vragen aan partner (Figma 1715:77430) */}
+      <SlideInModal
+        open={showAskAgainSlideIn}
+        onClose={() => setShowAskAgainSlideIn(false)}
+        title="Watchlist"
+        bodyClassName="pt-6 pb-0"
+        footer={
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={askAgainLoading}
+            onClick={() => void handleAskPartnerAgain()}
+            className={cn(
+              "mx-auto max-w-none min-w-0 w-full max-w-[320px] rounded-full py-2.5",
+              "border border-[var(--action-primary)] bg-[var(--white)]",
+              "text-[var(--action-primary)] hover:bg-[var(--blue-25)]",
+            )}
+          >
+            Opnieuw vragen aan {partnerName ?? "je partner"}
+          </Button>
+        }
+      >
+        <></>
+      </SlideInModal>
 
       {/* Slide-in: kies hoe je bekeken wil markeren (alleen TV) */}
       <SlideInModal
