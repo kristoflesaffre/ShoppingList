@@ -563,7 +563,7 @@ export default function FilmsSeriesPage() {
                     {partnerWatchlist.map((item) => (
                       <div
                         key={item.id}
-                        className="flex w-[300px] shrink-0 items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3"
+                        className="flex w-[300px] shrink-0 gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3"
                       >
                         {/* Poster */}
                         <button
@@ -582,7 +582,7 @@ export default function FilmsSeriesPage() {
                         </button>
 
                         {/* Info + acties */}
-                        <div className="flex min-w-0 flex-1 flex-col gap-3">
+                        <div className="flex min-w-0 flex-1 flex-col justify-between">
                           {/* Tekst-blok: titel/avatar + ondertitel + beschrijving */}
                           <div className="flex flex-col gap-1">
                             <div className="flex flex-col">
