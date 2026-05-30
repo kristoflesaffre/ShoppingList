@@ -153,12 +153,6 @@ export default function EpisodesPage() {
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-white">
-      {/* Gradient */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[300px]"
-        style={{ background: "linear-gradient(to bottom, #e3e4ff, white)" }}
-        aria-hidden
-      />
 
       {/* Vaste header */}
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">

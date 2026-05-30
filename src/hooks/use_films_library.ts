@@ -45,6 +45,8 @@ type DbPartnerReactionRow = {
   groupOwnerId: string;
 };
 
+type PartnerFeedback = "up" | "down" | "seen";
+
 function rowToWatchlistItem(row: DbWatchlistRow): WatchlistItem {
   return {
     id: row.mediaId,
@@ -243,6 +245,17 @@ export function useFilmsLibrary() {
         .filter((r) => r.reactingUserId === partnerUserId && r.reaction === "up")
         .map((r) => r.mediaId),
     );
+  }, [user, groupOwnerId, partnerUserId, reactionsData?.filmsPartnerReactions]);
+
+  const partnerFeedbackByMediaId = React.useMemo((): Record<string, PartnerFeedback> => {
+    if (!user || !groupOwnerId || !partnerUserId) return {};
+    const feedback: Record<string, PartnerFeedback> = {};
+    for (const row of (reactionsData?.filmsPartnerReactions ?? []) as DbPartnerReactionRow[]) {
+      if (row.reactingUserId !== partnerUserId) continue;
+      if (row.reaction !== "up" && row.reaction !== "down" && row.reaction !== "seen") continue;
+      feedback[row.mediaId] = row.reaction;
+    }
+    return feedback;
   }, [user, groupOwnerId, partnerUserId, reactionsData?.filmsPartnerReactions]);
 
   // Full group watchlist (shared items + personal historical items merged) — used for isInWatchlist, addToWatchlist, watchingItems
@@ -701,6 +714,7 @@ export function useFilmsLibrary() {
     userName,
     userAvatarUrl,
     isFilmsListShared,
+    partnerFeedbackByMediaId,
     watchlist,
     ownWatchlist,
     aloneWatchlist,

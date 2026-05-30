@@ -46,6 +46,9 @@ type FilmDetail = {
   trailerKey: string | null;
 };
 
+type PartnerFeedback = "up" | "down" | "seen";
+type FeedbackAvatar = { url: string | null; name: string | null };
+
 function imdbUrl(title: string, imdbId: string | null): string {
   if (imdbId) return `https://www.imdb.com/title/${imdbId}/`;
   return `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`;
@@ -93,6 +96,75 @@ function CloseIcon() {
   );
 }
 
+function AvatarCircle({ person, className }: { person: FeedbackAvatar; className?: string }) {
+  return (
+    <div
+      className={cn(
+        "size-6 shrink-0 overflow-hidden rounded-full border border-[#edeefe] bg-white",
+        className,
+      )}
+    >
+      {person.url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={person.url} alt={person.name ?? ""} className="size-full object-cover" />
+      ) : (
+        <div className="flex size-full items-center justify-center">
+          <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[#4f55f1]" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function feedbackText({
+  reaction,
+  mediaType,
+  partnerName,
+}: {
+  reaction: PartnerFeedback;
+  mediaType: "movie" | "tv";
+  partnerName: string | null;
+}): string {
+  const name = partnerName ?? "Je partner";
+  const label = mediaType === "tv" ? "serie" : "film";
+  if (reaction === "up") return `Je kijkt deze ${label} samen met ${name}`;
+  if (reaction === "down") return `${name} wil deze ${label} niet zien`;
+  return `${name} heeft deze ${label} al gezien`;
+}
+
+function PartnerFeedbackBanner({
+  reaction,
+  mediaType,
+  partnerName,
+  userAvatar,
+  partnerAvatar,
+}: {
+  reaction: PartnerFeedback;
+  mediaType: "movie" | "tv";
+  partnerName: string | null;
+  userAvatar: FeedbackAvatar;
+  partnerAvatar: FeedbackAvatar;
+}) {
+  const showTogetherAvatars = reaction === "up";
+
+  return (
+    <div className="flex w-full items-center gap-4 rounded-[8px] bg-[#edeefe] p-3">
+      {showTogetherAvatars ? (
+        <div className="flex isolate shrink-0 items-start">
+          <AvatarCircle person={userAvatar} className="z-[2] -mr-3" />
+          <AvatarCircle person={partnerAvatar} className="z-[1]" />
+        </div>
+      ) : (
+        <AvatarCircle person={partnerAvatar} />
+      )}
+      <p className="min-w-0 flex-1 text-xs font-normal leading-4 text-[#4f55f1]">
+        {feedbackText({ reaction, mediaType, partnerName })}
+      </p>
+      <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[#4f55f1]" />
+    </div>
+  );
+}
+
 function DetailSkeleton() {
   return (
     <div className="flex animate-pulse flex-col gap-6">
@@ -130,6 +202,11 @@ export default function FilmDetailPage() {
     markWatched,
     unmarkWatched,
     saveSeriesMeta,
+    partnerName,
+    partnerAvatarUrl,
+    userName,
+    userAvatarUrl,
+    partnerFeedbackByMediaId,
   } = useFilmsLibrary();
 
   const [detail, setDetail] = React.useState<FilmDetail | null>(null);
@@ -212,6 +289,15 @@ export default function FilmDetailPage() {
 
   const inWatchlist = detail ? isInWatchlist(detail.id) : false;
   const watched = detail ? isWatched(detail.id) : false;
+  const partnerFeedback = detail ? partnerFeedbackByMediaId[detail.id] : undefined;
+  const userAvatar = React.useMemo(
+    (): FeedbackAvatar => ({ url: userAvatarUrl, name: userName }),
+    [userAvatarUrl, userName],
+  );
+  const partnerAvatar = React.useMemo(
+    (): FeedbackAvatar => ({ url: partnerAvatarUrl, name: partnerName }),
+    [partnerAvatarUrl, partnerName],
+  );
 
   const metaParts = [detail?.year, detail?.certification, detail?.runtime].filter(Boolean);
   const genrePart = detail?.genres?.join(" - ") ?? "";
@@ -221,13 +307,6 @@ export default function FilmDetailPage() {
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-white">
-      {/* Gradient achtergrond */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[478px]"
-        style={{ background: "linear-gradient(to bottom, #e3e4ff, white)" }}
-        aria-hidden
-      />
-
       {/* Vaste header */}
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
         <div className="flex justify-center">
@@ -266,6 +345,16 @@ export default function FilmDetailPage() {
           <p className="py-8 text-center text-sm text-[var(--gray-400)]">Kan details niet laden.</p>
         ) : (
           <>
+            {partnerFeedback && (
+              <PartnerFeedbackBanner
+                reaction={partnerFeedback}
+                mediaType={detail.type}
+                partnerName={partnerName}
+                userAvatar={userAvatar}
+                partnerAvatar={partnerAvatar}
+              />
+            )}
+
             {/* Titel + score + externe links */}
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
