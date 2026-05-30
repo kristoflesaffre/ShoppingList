@@ -168,6 +168,46 @@ function ResultsSkeleton() {
   );
 }
 
+// --- Scroll animation helpers ---
+
+function easeOutBack(t: number): number {
+  const c1 = 1.4;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function animateSwimlaneScroll(el: HTMLElement, targetLeft: number, duration: number, onDone?: () => void) {
+  const startLeft = el.scrollLeft;
+  const delta = targetLeft - startLeft;
+  if (Math.abs(delta) < 1) { onDone?.(); return; }
+  const t0 = performance.now();
+  function step(now: number) {
+    const t = Math.min((now - t0) / duration, 1);
+    el.scrollLeft = startLeft + delta * easeOutBack(t);
+    if (t < 1) requestAnimationFrame(step);
+    else onDone?.();
+  }
+  requestAnimationFrame(step);
+}
+
+function animatePageScroll(targetY: number, duration: number, onDone?: () => void) {
+  const startY = window.scrollY;
+  const delta = targetY - startY;
+  if (Math.abs(delta) < 1) { onDone?.(); return; }
+  const t0 = performance.now();
+  function step(now: number) {
+    const t = Math.min((now - t0) / duration, 1);
+    window.scrollTo(0, startY + delta * easeInOutCubic(t));
+    if (t < 1) requestAnimationFrame(step);
+    else onDone?.();
+  }
+  requestAnimationFrame(step);
+}
+
 type FilterOption = "all" | "movie" | "tv";
 
 const FILTER_CHIPS: { id: FilterOption; label: string }[] = [
@@ -202,6 +242,13 @@ export default function FilmsSeriesPage() {
   const [filter, setFilter] = React.useState<FilterOption>("all");
   const [snackbar, setSnackbar] = React.useState<{ message: string; undoId: string } | null>(null);
   const snackbarTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [lastAddedId, setLastAddedId] = React.useState<string | null>(null);
+  const filmsSectionRef = React.useRef<HTMLElement>(null);
+  const seriesSectionRef = React.useRef<HTMLElement>(null);
+  const filmsScrollRef = React.useRef<HTMLDivElement>(null);
+  const seriesScrollRef = React.useRef<HTMLDivElement>(null);
+  const lastAddedItemRef = React.useRef<HTMLButtonElement | null>(null);
+  const scrollPendingRef = React.useRef(false);
   // Overviews voor partner-items die nog geen overview in de DB hebben (legacy items)
   const [partnerOverviews, setPartnerOverviews] = React.useState<Record<string, string>>({});
 
@@ -321,8 +368,13 @@ export default function FilmsSeriesPage() {
       posterUrl: result.posterUrl,
       score: result.score,
     };
-    if (isInWatchlist(result.id)) void removeFromWatchlist(result.id);
-    else void addToWatchlist(item);
+    if (isInWatchlist(result.id)) {
+      void removeFromWatchlist(result.id);
+    } else {
+      void addToWatchlist(item);
+      setQuery("");
+      setLastAddedId(result.id);
+    }
   }
 
   function handleViewDetail(id: string) {
@@ -345,6 +397,64 @@ export default function FilmsSeriesPage() {
     if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
     setSnackbar(null);
   }
+
+  // Scroll to newly added item after DB write lands in ownWatchlist
+  React.useEffect(() => {
+    if (!lastAddedId || scrollPendingRef.current) return;
+    const isMovie = lastAddedId.startsWith("movie-");
+    const items = isMovie ? watchlistFilms : watchlistSeries;
+    if (!items.some((i) => i.id === lastAddedId)) return;
+
+    scrollPendingRef.current = true;
+    let cancelled = false;
+
+    const raf = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const sectionEl = (isMovie ? filmsSectionRef : seriesSectionRef).current;
+      const scrollEl = (isMovie ? filmsScrollRef : seriesScrollRef).current;
+      if (!sectionEl || !scrollEl) { scrollPendingRef.current = false; return; }
+
+      const doSwimlane = () => {
+        if (cancelled) return;
+        const maxLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
+        animateSwimlaneScroll(scrollEl, maxLeft, 680, () => {
+          if (!cancelled) {
+            lastAddedItemRef.current?.animate(
+              [
+                { transform: "scale(1)" },
+                { transform: "scale(1.1)", offset: 0.4 },
+                { transform: "scale(0.94)", offset: 0.7 },
+                { transform: "scale(1.04)", offset: 0.86 },
+                { transform: "scale(1)" },
+              ],
+              { duration: 500, easing: "ease-out" },
+            );
+          }
+          setTimeout(() => {
+            if (!cancelled) { setLastAddedId(null); scrollPendingRef.current = false; }
+          }, 580);
+        });
+      };
+
+      const rect = sectionEl.getBoundingClientRect();
+      const HEADER_H = 72;
+      const needsPageScroll = rect.top < HEADER_H || rect.top > window.innerHeight - 80;
+
+      if (needsPageScroll) {
+        animatePageScroll(Math.max(0, window.scrollY + rect.top - HEADER_H - 12), 420, () => {
+          setTimeout(doSwimlane, 60);
+        });
+      } else {
+        doSwimlane();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      scrollPendingRef.current = false;
+    };
+  }, [lastAddedId, watchlistFilms, watchlistSeries]);
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-white">
@@ -616,19 +726,20 @@ export default function FilmsSeriesPage() {
 
             {/* Watchlist films */}
             {watchlistFilms.length > 0 && (
-              <section className="flex flex-col gap-4">
+              <section ref={filmsSectionRef} className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
                   <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Watchlist films</h2>
                   <button type="button" className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none">
                     Toon alle
                   </button>
                 </div>
-                <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                <div ref={filmsScrollRef} className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
                     {watchlistFilms.map((item) => (
                       <button
                         key={item.id}
                         type="button"
+                        ref={(el) => { if (item.id === lastAddedId) lastAddedItemRef.current = el; }}
                         onClick={() => handleViewDetail(item.id)}
                         className="flex w-[87px] flex-col gap-2 text-left focus-visible:outline-none"
                       >
@@ -663,19 +774,20 @@ export default function FilmsSeriesPage() {
 
             {/* Watchlist series */}
             {watchlistSeries.length > 0 && (
-              <section className="flex flex-col gap-4">
+              <section ref={seriesSectionRef} className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
                   <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Watchlist series</h2>
                   <button type="button" className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none">
                     Toon alle
                   </button>
                 </div>
-                <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                <div ref={seriesScrollRef} className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
                     {watchlistSeries.map((item) => (
                       <button
                         key={item.id}
                         type="button"
+                        ref={(el) => { if (item.id === lastAddedId) lastAddedItemRef.current = el; }}
                         onClick={() => handleViewDetail(item.id)}
                         className="flex w-[87px] flex-col gap-2 text-left focus-visible:outline-none"
                       >
