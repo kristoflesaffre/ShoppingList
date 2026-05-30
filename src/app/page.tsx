@@ -80,6 +80,7 @@ import {
   DEFAULT_SECTION_ORDER,
 } from "@/lib/home-section-config";
 import { normalizeTripPerson } from "@/lib/trip-person";
+import { useFilmsLibrary } from "@/hooks/use_films_library";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -1310,28 +1311,126 @@ function HomeKlantenkaartSection({
   );
 }
 
-/** Startpagina: films en series — altijd empty state (nog geen content state). */
+/** Startpagina: films en series — poster strip wanneer items aanwezig, anders empty state. */
 function HomeFilmsSeriesSection({ onHide }: { onHide?: () => void }) {
   const router = useRouter();
+  const { ownWatchlist, watchedIds, seriesMeta, watchlist } = useFilmsLibrary();
+
+  const watchingItems = React.useMemo(() => {
+    const epPattern = /^ep-(\d+)-s(\d+)e(\d+)$/;
+    const progressMap = new Map<string, { season: number; episode: number }>();
+    for (const id of watchedIds) {
+      const m = id.match(epPattern);
+      if (!m) continue;
+      const [, tmdbId, sStr, eStr] = m;
+      const season = parseInt(sStr, 10);
+      const episode = parseInt(eStr, 10);
+      const existing = progressMap.get(tmdbId);
+      if (
+        !existing ||
+        season > existing.season ||
+        (season === existing.season && episode > existing.episode)
+      ) {
+        progressMap.set(tmdbId, { season, episode });
+      }
+    }
+    const watchlistById = new Map(
+      watchlist.filter((i) => i.type === "tv").map((i) => [i.id.replace(/^tv-/, ""), i]),
+    );
+    return Array.from(progressMap.entries()).flatMap(([tmdbId, progress]) => {
+      const wlItem = watchlistById.get(tmdbId);
+      const meta = seriesMeta[tmdbId];
+      if (!wlItem && !meta) return [];
+      return [{
+        id: `tv-${tmdbId}`,
+        title: wlItem?.title ?? meta?.title ?? "",
+        posterUrl: wlItem?.posterUrl ?? meta?.posterUrl ?? null,
+        season: progress.season,
+        episode: progress.episode,
+      }];
+    });
+  }, [watchedIds, watchlist, seriesMeta]);
+
+  const posterItems = React.useMemo(() => {
+    const watchingIds = new Set(watchingItems.map((i) => i.id));
+    const remaining = ownWatchlist.filter((i) => !watchingIds.has(i.id));
+    return [
+      ...watchingItems.map((i) => ({
+        id: i.id,
+        title: i.title,
+        posterUrl: i.posterUrl,
+        href: `/films-series/${i.id}/episodes/s${i.season}e${i.episode + 1}`,
+      })),
+      ...remaining.map((i) => ({
+        id: i.id,
+        title: i.title,
+        posterUrl: i.posterUrl,
+        href: `/films-series/${i.id}`,
+      })),
+    ];
+  }, [watchingItems, ownWatchlist]);
+
+  if (posterItems.length === 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        <ListSectionHeader
+          icon="films"
+          label="Films en series"
+          showNaarOverzicht={false}
+          onHide={onHide}
+        />
+        <HomeOnboardingEmptyCard
+          illustrationSrc="/images/ui/films_160.webp"
+          illustrationSide="end"
+          contentAlign="start"
+          text="Wat zijn we nu weer aan het kijken of wat willen we nog kijken?"
+          actions={
+            <MiniButton variant="primary" onClick={() => router.push("/films-series")}>
+              Voeg te kijken item toe
+            </MiniButton>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <ListSectionHeader
         icon="films"
         label="Films en series"
-        showNaarOverzicht={false}
-        onHide={onHide}
+        showNaarOverzicht
+        naarOverzichtHref="/films-series"
       />
-      <HomeOnboardingEmptyCard
-        illustrationSrc="/images/ui/films_160.webp"
-        illustrationSide="end"
-        contentAlign="start"
-        text="Wat zijn we nu weer aan het kijken of wat willen we nog kijken?"
-        actions={
-          <MiniButton variant="primary" onClick={() => router.push("/films-series")}>
-            Voeg te kijken item toe
-          </MiniButton>
-        }
-      />
+      <div
+        className={SWIMLANE_CLASSES}
+        style={{ scrollbarWidth: "none" } as React.CSSProperties}
+      >
+        {posterItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => router.push(item.href)}
+            aria-label={item.title}
+            className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            {item.posterUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.posterUrl}
+                alt=""
+                className="absolute inset-0 size-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <div className="flex size-full items-center justify-center">
+                <IconPrimaryMask src="/icons/films.svg" className="size-6 bg-[var(--gray-200)]" />
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

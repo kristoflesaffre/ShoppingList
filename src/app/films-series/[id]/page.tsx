@@ -502,18 +502,15 @@ export default function FilmDetailPage() {
                 }}
                 className={cn(
                   "flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[8px] p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                  inWatchlist ? "border border-[#595f6a] bg-transparent" : "bg-[#4f55f1]",
+                  inWatchlist ? "bg-[#d64040]" : "bg-[#4f55f1]",
                 )}
               >
-                <p className={cn(
-                  "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-center text-base font-medium",
-                  inWatchlist ? "text-[#595f6a]" : "text-white",
-                )}>
-                  {inWatchlist ? "Toegevoegd" : "Watchlist"}
+                <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-center text-base font-medium text-white">
+                  {inWatchlist ? "Verwijderen" : "Watchlist"}
                 </p>
                 <MaskIcon
-                  src={inWatchlist ? "/icons/checkmark.svg" : "/icons/plus-circle.svg"}
-                  className={cn("size-6 shrink-0", inWatchlist ? "bg-[#595f6a]" : "bg-white")}
+                  src={inWatchlist ? "/icons/recycle_bin.svg" : "/icons/plus-circle.svg"}
+                  className="size-6 shrink-0 bg-white"
                 />
               </button>
             </div>
