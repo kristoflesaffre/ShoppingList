@@ -54,6 +54,7 @@ function rowToWatchlistItem(row: DbWatchlistRow): WatchlistItem {
     posterUrl: row.posterUrl ?? null,
     score: row.score ?? null,
     overview: row.overview ?? null,
+    order: row.order,
   };
 }
 
@@ -126,6 +127,22 @@ export function useFilmsLibrary() {
   const partnerName = partnerProfile?.firstName ?? null;
   const partnerAvatarUrl = partnerProfile?.avatarUrl ?? null;
 
+  const selfProfileQuery = React.useMemo(
+    () =>
+      user
+        ? ({
+            profiles: { $: { where: { instantUserId: user.id } } },
+          } as unknown as Parameters<typeof db.useQuery>[0])
+        : null,
+    [user],
+  );
+  const { data: selfProfileData } = db.useQuery(selfProfileQuery);
+  const selfProfile = ((selfProfileData?.profiles ?? []) as { firstName?: string | null; avatarUrl?: string | null }[])[0] ?? null;
+  const userName = selfProfile?.firstName ?? null;
+  const userAvatarUrl = selfProfile?.avatarUrl ?? null;
+
+  const isFilmsListShared = Boolean(user && partnerUserId);
+
   const dataQuery = React.useMemo(
     () =>
       user && groupOwnerId
@@ -158,13 +175,13 @@ export function useFilmsLibrary() {
     user ? dataQuery : null,
   );
 
-  // Separate query so a missing/failing table doesn't break the main library data
+  // Alle reacties in de groep (eigen + partner) — nodig voor tab Samen en partner-goedkeuringen
   const reactionsQuery = React.useMemo(
     () =>
       user && groupOwnerId
         ? ({
             filmsPartnerReactions: {
-              $: { where: { reactingUserId: user.id, groupOwnerId } },
+              $: { where: { groupOwnerId } },
             },
           } as unknown as Parameters<typeof db.useQuery>[0])
         : null,
@@ -198,23 +215,35 @@ export function useFilmsLibrary() {
     null;
   const isShareOwner = Boolean(user && groupOwnerId === user.id);
 
-  // Set of mediaIds that the current user has already reacted to (any reaction)
+  // mediaIds waar de huidige gebruiker al op heeft gereageerd (elke reactie)
   const partnerReactedIds = React.useMemo(() => {
     if (!user || !groupOwnerId) return new Set<string>();
     return new Set(
-      ((reactionsData?.filmsPartnerReactions ?? []) as DbPartnerReactionRow[]).map((r) => r.mediaId),
+      ((reactionsData?.filmsPartnerReactions ?? []) as DbPartnerReactionRow[])
+        .filter((r) => r.reactingUserId === user.id)
+        .map((r) => r.mediaId),
     );
   }, [user, groupOwnerId, reactionsData?.filmsPartnerReactions]);
 
-  // Set of mediaIds where reaction = "up" (item added to own watchlist)
+  // Set of mediaIds where current user reacted "up" (accepted partner item)
   const partnerReactedUpIds = React.useMemo(() => {
     if (!user || !groupOwnerId) return new Set<string>();
     return new Set(
       ((reactionsData?.filmsPartnerReactions ?? []) as DbPartnerReactionRow[])
-        .filter((r) => r.reaction === "up")
+        .filter((r) => r.reactingUserId === user.id && r.reaction === "up")
         .map((r) => r.mediaId),
     );
   }, [user, groupOwnerId, reactionsData?.filmsPartnerReactions]);
+
+  /** Partner heeft met duim omhoog geaccepteerd (jouw items). */
+  const partnerAcceptedUpIds = React.useMemo(() => {
+    if (!user || !groupOwnerId || !partnerUserId) return new Set<string>();
+    return new Set(
+      ((reactionsData?.filmsPartnerReactions ?? []) as DbPartnerReactionRow[])
+        .filter((r) => r.reactingUserId === partnerUserId && r.reaction === "up")
+        .map((r) => r.mediaId),
+    );
+  }, [user, groupOwnerId, partnerUserId, reactionsData?.filmsPartnerReactions]);
 
   // Full group watchlist (shared items + personal historical items merged) — used for isInWatchlist, addToWatchlist, watchingItems
   const watchlist = React.useMemo((): WatchlistItem[] => {
@@ -253,6 +282,58 @@ export function useFilmsLibrary() {
     merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     return merged.map(rowToWatchlistItem);
   }, [user, groupOwnerId, libraryData?.filmsWatchlistItems, personalData?.filmsWatchlistItems, partnerReactedUpIds, localTick]);
+
+  /**
+   * Tab “Samen”: alleen items die door beide partijen zijn geaccepteerd (duim omhoog).
+   * - Jij hebt toegevoegd → partner moet “up” hebben gereageerd.
+   * - Partner heeft toegevoegd → jij moet “up” hebben gereageerd.
+   */
+  const togetherWatchlist = React.useMemo((): WatchlistItem[] => {
+    if (!user || !groupOwnerId || !partnerUserId) return [];
+    const isOwner = groupOwnerId === user.id;
+    const rows = ((libraryData?.filmsWatchlistItems ?? []) as DbWatchlistRow[]).slice();
+    const isMyRow = (r: DbWatchlistRow) =>
+      r.addedByUserId === user.id || (isOwner && !r.addedByUserId);
+    const isPartnerRow = (r: DbWatchlistRow) => r.addedByUserId === partnerUserId;
+
+    const byMediaId = new Map<string, DbWatchlistRow[]>();
+    for (const row of rows) {
+      const list = byMediaId.get(row.mediaId) ?? [];
+      list.push(row);
+      byMediaId.set(row.mediaId, list);
+    }
+
+    const together: DbWatchlistRow[] = [];
+    byMediaId.forEach((mediaRows, mediaId) => {
+      const iAdded = mediaRows.some(isMyRow);
+      const partnerAdded = mediaRows.some(isPartnerRow);
+      const onSamen =
+        (iAdded && partnerAcceptedUpIds.has(mediaId)) ||
+        (partnerAdded && partnerReactedUpIds.has(mediaId));
+      if (!onSamen) return;
+      const row =
+        mediaRows.find(isMyRow) ?? mediaRows.find(isPartnerRow) ?? mediaRows[0];
+      together.push(row);
+    });
+
+    together.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    return together.map(rowToWatchlistItem);
+  }, [
+    user,
+    groupOwnerId,
+    partnerUserId,
+    libraryData?.filmsWatchlistItems,
+    partnerAcceptedUpIds,
+    partnerReactedUpIds,
+    localTick,
+  ]);
+
+  /** Tab “Alleen”: eigen lijst zonder items die al op Samen staan. */
+  const aloneWatchlist = React.useMemo((): WatchlistItem[] => {
+    if (!partnerUserId) return ownWatchlist;
+    const togetherIds = new Set(togetherWatchlist.map((i) => i.id));
+    return ownWatchlist.filter((i) => !togetherIds.has(i.id));
+  }, [ownWatchlist, togetherWatchlist, partnerUserId]);
 
   // Partner's watchlist: items added by partner that the current user hasn't reacted to yet
   const partnerWatchlist = React.useMemo((): WatchlistItem[] => {
@@ -372,8 +453,68 @@ export function useFilmsLibrary() {
         bumpLocal();
         return;
       }
-      if (watchlist.some((i) => i.id === item.id)) return;
-      const maxOrder = watchlist.reduce((max, _, idx) => Math.max(max, idx), -1);
+      const allRows = (libraryData?.filmsWatchlistItems ?? []) as DbWatchlistRow[];
+      const personalRows = (personalData?.filmsWatchlistItems ?? []) as DbWatchlistRow[];
+      // Only check the user's own rows — partner rows in the same group must not block re-add.
+      // Also check personalData (items added before joining a group).
+      const ownRow =
+        allRows.find((r) => r.mediaId === item.id && r.addedByUserId === user.id) ??
+        personalRows.find((r) => r.mediaId === item.id && r.addedByUserId === user.id);
+      if (ownRow) return;
+
+      if (typeof item.restoreIndex === "number" && Number.isFinite(item.restoreIndex)) {
+        const isOwner = groupOwnerId === user.id;
+        const targetIndex = Math.max(0, Math.floor(item.restoreIndex));
+        const writableRowsByMediaId = new Map(
+          [...allRows, ...personalRows]
+            .filter((r) =>
+              r.id &&
+              r.type === item.type &&
+              r.mediaId !== item.id &&
+              (r.addedByUserId === user.id || (isOwner && !r.addedByUserId)),
+            )
+            .map((r) => [r.mediaId, r]),
+        );
+        const currentLaneItems = ownWatchlist.filter((i) => i.type === item.type && i.id !== item.id);
+        const insertIndex = Math.min(targetIndex, currentLaneItems.length);
+        const restoredLaneItems = [
+          ...currentLaneItems.slice(0, insertIndex),
+          item,
+          ...currentLaneItems.slice(insertIndex),
+        ];
+        const newRowId = instantId();
+        const txs: Parameters<typeof db.transact>[0] = [];
+
+        restoredLaneItems.forEach((laneItem, index) => {
+          if (laneItem.id === item.id) {
+            txs.push(
+              db.tx.filmsWatchlistItems[newRowId].update({
+                mediaId: item.id,
+                type: item.type,
+                title: item.title,
+                year: item.year,
+                posterUrl: item.posterUrl ?? undefined,
+                score: item.score ?? undefined,
+                overview: item.overview ?? undefined,
+                order: index,
+                groupOwnerId,
+                addedByUserId: user.id,
+              }),
+            );
+            return;
+          }
+
+          const row = writableRowsByMediaId.get(laneItem.id);
+          if (row?.id && row.order !== index) {
+            txs.push(db.tx.filmsWatchlistItems[row.id].update({ order: index }));
+          }
+        });
+
+        await db.transact(txs);
+        return;
+      }
+
+      const maxOrder = [...allRows, ...personalRows].reduce((max, r) => Math.max(max, r.order ?? 0), -1);
       await db.transact(
         db.tx.filmsWatchlistItems[instantId()].update({
           mediaId: item.id,
@@ -383,29 +524,68 @@ export function useFilmsLibrary() {
           posterUrl: item.posterUrl ?? undefined,
           score: item.score ?? undefined,
           overview: item.overview ?? undefined,
-          order: maxOrder + 1,
+          order: item.order ?? maxOrder + 1,
           groupOwnerId,
           addedByUserId: user.id,
         }),
       );
     },
-    [user, groupOwnerId, watchlist, bumpLocal],
+    [user, groupOwnerId, libraryData?.filmsWatchlistItems, personalData?.filmsWatchlistItems, ownWatchlist, bumpLocal],
   );
 
   const removeFromWatchlist = React.useCallback(
     async (mediaId: string) => {
+      const { removeFromWatchlist: removeLocal } = await import("@/lib/watchlist");
+      removeLocal(mediaId);
+
       if (!user || !groupOwnerId) {
-        const { removeFromWatchlist: removeLocal } = await import("@/lib/watchlist");
-        removeLocal(mediaId);
         bumpLocal();
         return;
       }
-      const row = ((libraryData?.filmsWatchlistItems ?? []) as DbWatchlistRow[]).find(
-        (r) => r.mediaId === mediaId,
-      );
-      if (row?.id) await db.transact(db.tx.filmsWatchlistItems[row.id].delete());
+
+      const allRows = (libraryData?.filmsWatchlistItems ?? []) as DbWatchlistRow[];
+      const personalRows = (personalData?.filmsWatchlistItems ?? []) as DbWatchlistRow[];
+      const isOwner = groupOwnerId === user.id;
+      const watchlistDeletes = new Set<string>();
+
+      for (const r of allRows) {
+        if (r.mediaId !== mediaId || !r.id) continue;
+        if (r.addedByUserId === user.id) watchlistDeletes.add(r.id);
+        else if (isOwner && !r.addedByUserId) watchlistDeletes.add(r.id);
+      }
+      for (const r of personalRows) {
+        if (r.mediaId === mediaId && r.id) watchlistDeletes.add(r.id);
+      }
+
+      const txs: Parameters<typeof db.transact>[0] = [
+        ...Array.from(watchlistDeletes).map((id) => db.tx.filmsWatchlistItems[id].delete()),
+      ];
+
+      // Item staat alleen op eigen lijst via partner-reactie "up" — verwijder reactie, niet partner-rij.
+      if (watchlistDeletes.size === 0 && partnerReactedUpIds.has(mediaId)) {
+        for (const r of (reactionsData?.filmsPartnerReactions ?? []) as DbPartnerReactionRow[]) {
+          if (
+            r.mediaId === mediaId &&
+            r.reactingUserId === user.id &&
+            r.reaction === "up" &&
+            r.id
+          ) {
+            txs.push(db.tx.filmsPartnerReactions[r.id].delete());
+          }
+        }
+      }
+
+      if (txs.length > 0) await db.transact(txs);
     },
-    [user, groupOwnerId, libraryData?.filmsWatchlistItems, bumpLocal],
+    [
+      user,
+      groupOwnerId,
+      libraryData?.filmsWatchlistItems,
+      personalData?.filmsWatchlistItems,
+      partnerReactedUpIds,
+      reactionsData?.filmsPartnerReactions,
+      bumpLocal,
+    ],
   );
 
   const updateWatchlistScore = React.useCallback(
@@ -518,8 +698,13 @@ export function useFilmsLibrary() {
     partnerUserId,
     partnerName,
     partnerAvatarUrl,
+    userName,
+    userAvatarUrl,
+    isFilmsListShared,
     watchlist,
     ownWatchlist,
+    aloneWatchlist,
+    togetherWatchlist,
     partnerWatchlist,
     watchedIds,
     watchedSet,

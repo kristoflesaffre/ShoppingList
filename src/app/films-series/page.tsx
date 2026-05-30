@@ -240,7 +240,9 @@ export default function FilmsSeriesPage() {
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [filter, setFilter] = React.useState<FilterOption>("all");
-  const [snackbar, setSnackbar] = React.useState<{ message: string; undoId: string } | null>(null);
+  const [snackbar, setSnackbar] = React.useState<{ message: string; undoFn: () => void; undoItem?: WatchlistItem } | null>(null);
+  const [removingFilmId, setRemovingFilmId] = React.useState<string | null>(null);
+  const [restoringFilmId, setRestoringFilmId] = React.useState<string | null>(null);
   const snackbarTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lastAddedId, setLastAddedId] = React.useState<string | null>(null);
   const filmsSectionRef = React.useRef<HTMLElement>(null);
@@ -387,15 +389,54 @@ export default function FilmsSeriesPage() {
     const nextEpId = `ep-${tmdbId}-s${item.season}e${item.episode + 1}`;
     void markWatched(nextEpId);
     if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
-    setSnackbar({ message: `Aflevering ${item.episode + 1} als bekeken gemarkeerd`, undoId: nextEpId });
+    setSnackbar({ message: `Aflevering ${item.episode + 1} als bekeken gemarkeerd`, undoFn: () => void unmarkWatched(nextEpId) });
     snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
   }
 
   function handleSnackbarUndo() {
     if (!snackbar) return;
-    void unmarkWatched(snackbar.undoId);
+    if (snackbar.undoItem) {
+      setRestoringFilmId(snackbar.undoItem.id);
+      setRemovingFilmId(null);
+      void addToWatchlist(snackbar.undoItem);
+    } else {
+      snackbar.undoFn();
+    }
     if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
     setSnackbar(null);
+  }
+
+  function handleRemoveFilm(e: React.MouseEvent, item: WatchlistItem) {
+    e.stopPropagation();
+
+    // Snapshot a reliable order value before deletion so undo can re-insert at the exact same position.
+    // Some legacy DB rows don't have an order field, so fall back to a midpoint between neighbours.
+    const itemToRestore: WatchlistItem = (() => {
+      const laneItems = item.type === "movie" ? watchlistFilms : watchlistSeries;
+      const idx = laneItems.findIndex((f) => f.id === item.id);
+      if (idx < 0) return item;
+      if (item.order !== undefined) return { ...item, restoreIndex: idx };
+      const prev = laneItems[idx - 1];
+      const next = laneItems[idx + 1];
+      const order =
+        prev?.order !== undefined && next?.order !== undefined ? (prev.order + next.order) / 2
+        : prev?.order !== undefined ? prev.order + 0.5
+        : next?.order !== undefined ? next.order - 0.5
+        : idx;
+      return { ...item, order, restoreIndex: idx };
+    })();
+
+    setRemovingFilmId(item.id);
+    setTimeout(() => {
+      void removeFromWatchlist(item.id);
+      if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
+      setSnackbar({
+        message: `${item.title} verwijderd`,
+        undoFn: () => setRemovingFilmId(null),
+        undoItem: itemToRestore,
+      });
+      snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+    }, 420);
   }
 
   // Scroll to newly added item after DB write lands in ownWatchlist
@@ -455,6 +496,14 @@ export default function FilmsSeriesPage() {
       scrollPendingRef.current = false;
     };
   }, [lastAddedId, watchlistFilms, watchlistSeries]);
+
+  // Slide-in animation after undo: wait for the DB item to appear, then expand from width 0
+  React.useEffect(() => {
+    if (!restoringFilmId) return;
+    if (!watchlistFilms.some((i) => i.id === restoringFilmId)) return;
+    const raf = requestAnimationFrame(() => setRestoringFilmId(null));
+    return () => cancelAnimationFrame(raf);
+  }, [restoringFilmId, watchlistFilms]);
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-white">
@@ -729,15 +778,30 @@ export default function FilmsSeriesPage() {
               <section ref={filmsSectionRef} className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
                   <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Watchlist films</h2>
-                  <button type="button" className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/films-series/watchlist/films")}
+                    className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  >
                     Toon alle
                   </button>
                 </div>
                 <div ref={filmsScrollRef} className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-                    {watchlistFilms.map((item) => (
-                      <button
+                  <div className="flex pb-1" style={{ width: "max-content" }}>
+                    {watchlistFilms.map((item) => {
+                      const isCollapsed = removingFilmId === item.id || restoringFilmId === item.id;
+                      return (
+                      <div
                         key={item.id}
+                        className="shrink-0 overflow-hidden"
+                        style={{
+                          width: isCollapsed ? 0 : 95,
+                          opacity: isCollapsed ? 0 : 1,
+                          paddingRight: 8,
+                          transition: "width 420ms cubic-bezier(0.4, 0, 0.2, 1), opacity 260ms ease-out",
+                        }}
+                      >
+                      <button
                         type="button"
                         ref={(el) => { if (item.id === lastAddedId) lastAddedItemRef.current = el; }}
                         onClick={() => handleViewDetail(item.id)}
@@ -752,6 +816,16 @@ export default function FilmsSeriesPage() {
                               <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
                             </div>
                           )}
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Markeer ${item.title} als bekeken`}
+                            className="absolute right-[4px] top-[4px] size-4 cursor-pointer focus-visible:outline-none"
+                            onClick={(e) => handleRemoveFilm(e, item)}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRemoveFilm(e as unknown as React.MouseEvent, item); } }}
+                          >
+                            <MaskIcon src="/icons/visible.svg" className="size-4 bg-white" />
+                          </span>
                         </div>
                         <div className="flex flex-col gap-0">
                           <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[#16181a]">{item.title}</p>
@@ -766,7 +840,9 @@ export default function FilmsSeriesPage() {
                           </div>
                         </div>
                       </button>
-                    ))}
+                      </div>
+                      );
+                    })}
                   </div>
                 </div>
               </section>
@@ -777,7 +853,11 @@ export default function FilmsSeriesPage() {
               <section ref={seriesSectionRef} className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
                   <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Watchlist series</h2>
-                  <button type="button" className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/films-series/watchlist/series")}
+                    className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  >
                     Toon alle
                   </button>
                 </div>
