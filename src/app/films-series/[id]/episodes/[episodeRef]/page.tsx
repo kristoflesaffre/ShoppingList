@@ -426,7 +426,7 @@ export default function EpisodeDetailPage() {
         setOverviewNeedsTruncation(false);
       });
 
-      router.replace(`/films-series/${rawId}/episodes/s${nextSeason}e${nextEp}`);
+      window.history.replaceState(null, "", `/films-series/${rawId}/episodes/s${nextSeason}e${nextEp}`);
 
       // Instant swap: current snaps to center (same content as ghost), ghost moves away
       // Both changes happen before next paint → seamless
