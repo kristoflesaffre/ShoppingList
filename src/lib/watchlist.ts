@@ -7,6 +7,7 @@ export type WatchlistItem = {
   year: string;
   posterUrl: string | null;
   score?: number | null;
+  overview?: string | null;
 };
 
 export function getWatchlist(): WatchlistItem[] {

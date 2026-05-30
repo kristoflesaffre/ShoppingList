@@ -496,6 +496,7 @@ export default function FilmDetailPage() {
                       year: detail.year,
                       posterUrl: detail.posterUrl,
                       score: detail.score,
+                      overview: detail.overview ?? null,
                     });
                   }
                 }}

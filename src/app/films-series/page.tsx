@@ -202,8 +202,33 @@ export default function FilmsSeriesPage() {
   const [filter, setFilter] = React.useState<FilterOption>("all");
   const [snackbar, setSnackbar] = React.useState<{ message: string; undoId: string } | null>(null);
   const snackbarTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Overviews voor partner-items die nog geen overview in de DB hebben (legacy items)
+  const [partnerOverviews, setPartnerOverviews] = React.useState<Record<string, string>>({});
 
   React.useEffect(() => setMounted(true), []);
+
+  React.useEffect(() => {
+    const missing = partnerWatchlist.filter((item) => !item.overview);
+    if (missing.length === 0) return;
+    void Promise.all(
+      missing.map(async (item) => {
+        const dash = item.id.indexOf("-");
+        const type = item.id.slice(0, dash);
+        const tmdbId = item.id.slice(dash + 1);
+        try {
+          const res = await fetch(`/api/films/detail?type=${type}&id=${tmdbId}`);
+          const data = (await res.json()) as { overview?: string | null };
+          return { id: item.id, overview: data.overview ?? "" };
+        } catch {
+          return { id: item.id, overview: "" };
+        }
+      }),
+    ).then((results) => {
+      const map: Record<string, string> = {};
+      for (const r of results) if (r.overview) map[r.id] = r.overview;
+      if (Object.keys(map).length > 0) setPartnerOverviews((prev) => ({ ...prev, ...map }));
+    });
+  }, [partnerWatchlist]);
 
   const watchingItems = React.useMemo(() => {
     const epPattern = /^ep-(\d+)-s(\d+)e(\d+)$/;
@@ -433,7 +458,7 @@ export default function FilmsSeriesPage() {
                         {/* Poster */}
                         <button
                           type="button"
-                          onClick={() => handleViewDetail(item.id)}
+                          onClick={() => router.push(`/films-series/partner/${item.id}`)}
                           className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                         >
                           {item.posterUrl ? (
@@ -448,58 +473,66 @@ export default function FilmsSeriesPage() {
 
                         {/* Info + acties */}
                         <div className="flex min-w-0 flex-1 flex-col gap-3">
+                          {/* Tekst-blok: titel/avatar + ondertitel + beschrijving */}
                           <div className="flex flex-col gap-1">
-                            {/* Titel + partner avatar */}
-                            <div className="flex w-full items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleViewDetail(item.id)}
-                                className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[#16181a] focus-visible:outline-none"
-                              >
-                                {item.title}
-                              </button>
-                              {/* Partner avatar */}
-                              <div className="size-6 shrink-0 overflow-hidden rounded-full border border-white bg-[#edeefe]">
-                                {partnerAvatarUrl ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={partnerAvatarUrl} alt={partnerName ?? ""} className="size-full object-cover" />
-                                ) : (
-                                  <div className="flex size-full items-center justify-center">
-                                    <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[#4f55f1]" />
-                                  </div>
-                                )}
+                            <div className="flex flex-col">
+                              {/* Titel + partner avatar */}
+                              <div className="flex w-full items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => router.push(`/films-series/partner/${item.id}`)}
+                                  className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[#16181a] focus-visible:outline-none"
+                                >
+                                  {item.title}
+                                </button>
+                                {/* Partner avatar */}
+                                <div className="size-6 shrink-0 overflow-hidden rounded-full border border-white bg-[#edeefe]">
+                                  {partnerAvatarUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={partnerAvatarUrl} alt={partnerName ?? ""} className="size-full object-cover" />
+                                  ) : (
+                                    <div className="flex size-full items-center justify-center">
+                                      <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[#4f55f1]" />
+                                    </div>
+                                  )}
+                                </div>
                               </div>
+                              <p className="text-[14px] font-normal leading-5 text-[#8c929d]">
+                                {item.year} {item.type === "movie" ? "Film" : "TV Serie"}
+                              </p>
                             </div>
-                            <p className="text-sm leading-5 text-[#8c929d]">
-                              {item.year} {item.type === "movie" ? "Film" : "TV Serie"}
-                            </p>
+                            {(item.overview ?? partnerOverviews[item.id]) && (
+                              <p className="line-clamp-2 text-[10px] font-normal leading-3 text-[#595f6a]">
+                                {item.overview ?? partnerOverviews[item.id]}
+                              </p>
+                            )}
                           </div>
 
                           {/* Actie-knoppen */}
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-start justify-end gap-2">
                             <button
                               type="button"
                               aria-label="Toevoegen aan mijn watchlist"
                               onClick={() => void reactToPartnerItem(item.id, "up")}
-                              className="flex size-6 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
+                              className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                             >
-                              <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-[#16181a]" />
+                              <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-[#4f55f1]" />
                             </button>
                             <button
                               type="button"
                               aria-label="Niet interessant"
                               onClick={() => void reactToPartnerItem(item.id, "down")}
-                              className="flex size-6 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
+                              className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                             >
-                              <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-[#16181a]" />
+                              <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-[#4f55f1]" />
                             </button>
                             <button
                               type="button"
                               aria-label="Al gezien"
                               onClick={() => void reactToPartnerItem(item.id, "seen")}
-                              className="flex size-6 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
+                              className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                             >
-                              <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#16181a]" />
+                              <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
                             </button>
                           </div>
                         </div>

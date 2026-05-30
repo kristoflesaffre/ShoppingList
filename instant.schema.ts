@@ -259,6 +259,8 @@ const schema = i.schema({
       groupOwnerId: i.string().indexed(),
       /** Instant user id van wie dit item heeft toegevoegd (voor partner-watchlist logica). */
       addedByUserId: i.string().optional().indexed(),
+      /** Korte samenvatting van de film/serie (TMDB overview), gedenormaliseerd voor preview in partner-watchlist. */
+      overview: i.string().optional(),
     }),
     filmsWatchedMarks: i.entity({
       /** Detail-id, serie-id of aflevering-id (`ep-…`). */

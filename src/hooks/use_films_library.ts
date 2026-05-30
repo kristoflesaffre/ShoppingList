@@ -26,6 +26,7 @@ type DbWatchlistRow = {
   score?: number | null;
   order?: number;
   addedByUserId?: string | null;
+  overview?: string | null;
 };
 
 type DbWatchedRow = { id: string; contentId: string };
@@ -52,6 +53,7 @@ function rowToWatchlistItem(row: DbWatchlistRow): WatchlistItem {
     year: row.year,
     posterUrl: row.posterUrl ?? null,
     score: row.score ?? null,
+    overview: row.overview ?? null,
   };
 }
 
@@ -380,6 +382,7 @@ export function useFilmsLibrary() {
           year: item.year,
           posterUrl: item.posterUrl ?? undefined,
           score: item.score ?? undefined,
+          overview: item.overview ?? undefined,
           order: maxOrder + 1,
           groupOwnerId,
           addedByUserId: user.id,
