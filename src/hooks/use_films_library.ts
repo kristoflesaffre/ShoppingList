@@ -25,6 +25,7 @@ type DbWatchlistRow = {
   posterUrl?: string | null;
   score?: number | null;
   order?: number;
+  addedByUserId?: string | null;
 };
 
 type DbWatchedRow = { id: string; contentId: string };
@@ -34,6 +35,13 @@ type DbSeriesMetaRow = {
   title: string;
   year: string;
   posterUrl?: string | null;
+};
+type DbPartnerReactionRow = {
+  id: string;
+  reactingUserId: string;
+  mediaId: string;
+  reaction: string;
+  groupOwnerId: string;
 };
 
 function rowToWatchlistItem(row: DbWatchlistRow): WatchlistItem {
@@ -87,6 +95,35 @@ export function useFilmsLibrary() {
     [user, joinedRows],
   );
 
+  // Determine who the partner is:
+  // - If I'm a member → partner is the group owner (groupOwnerId !== user.id)
+  // - If I'm the owner → partner is the first member
+  const partnerUserId = React.useMemo(() => {
+    if (!user) return null;
+    if (groupOwnerId && groupOwnerId !== user.id) return groupOwnerId;
+    const ownedMemberships = (
+      (shareData?.filmsShares ?? []) as {
+        memberships?: { instantUserId?: string | null }[] | null;
+      }[]
+    )[0]?.memberships ?? [];
+    return ownedMemberships[0]?.instantUserId ?? null;
+  }, [user, groupOwnerId, shareData?.filmsShares]);
+
+  // Query partner's profile for display name + avatar
+  const partnerProfileQuery = React.useMemo(
+    () =>
+      partnerUserId
+        ? ({
+            profiles: { $: { where: { instantUserId: partnerUserId } } },
+          } as unknown as Parameters<typeof db.useQuery>[0])
+        : null,
+    [partnerUserId],
+  );
+  const { data: partnerProfileData } = db.useQuery(partnerProfileQuery);
+  const partnerProfile = ((partnerProfileData?.profiles ?? []) as { firstName?: string | null; avatarUrl?: string | null }[])[0] ?? null;
+  const partnerName = partnerProfile?.firstName ?? null;
+  const partnerAvatarUrl = partnerProfile?.avatarUrl ?? null;
+
   const dataQuery = React.useMemo(
     () =>
       user && groupOwnerId
@@ -119,37 +156,143 @@ export function useFilmsLibrary() {
     user ? dataQuery : null,
   );
 
+  // Separate query so a missing/failing table doesn't break the main library data
+  const reactionsQuery = React.useMemo(
+    () =>
+      user && groupOwnerId
+        ? ({
+            filmsPartnerReactions: {
+              $: { where: { reactingUserId: user.id, groupOwnerId } },
+            },
+          } as unknown as Parameters<typeof db.useQuery>[0])
+        : null,
+    [user, groupOwnerId],
+  );
+  const { data: reactionsData } = db.useQuery(reactionsQuery);
+
+  // When the current user is a *member* (not owner) of someone else's group, their own historical
+  // data (added before joining) is stored under groupOwnerId = user.id. Fetch it separately and merge.
+  const personalDataQuery = React.useMemo(
+    () =>
+      user && groupOwnerId && groupOwnerId !== user.id
+        ? ({
+            filmsWatchlistItems: {
+              $: { where: { groupOwnerId: user.id } },
+            },
+            filmsWatchedMarks: {
+              $: { where: { groupOwnerId: user.id } },
+            },
+            filmsSeriesMeta: {
+              $: { where: { groupOwnerId: user.id } },
+            },
+          } as unknown as Parameters<typeof db.useQuery>[0])
+        : null,
+    [user, groupOwnerId],
+  );
+  const { data: personalData, isLoading: personalLoading } = db.useQuery(personalDataQuery);
+
   const ownedShare =
     ((shareData?.filmsShares ?? []) as { id?: string; ownerId?: string; shareToken?: string }[])[0] ??
     null;
   const isShareOwner = Boolean(user && groupOwnerId === user.id);
 
+  // Set of mediaIds that the current user has already reacted to (any reaction)
+  const partnerReactedIds = React.useMemo(() => {
+    if (!user || !groupOwnerId) return new Set<string>();
+    return new Set(
+      ((reactionsData?.filmsPartnerReactions ?? []) as DbPartnerReactionRow[]).map((r) => r.mediaId),
+    );
+  }, [user, groupOwnerId, reactionsData?.filmsPartnerReactions]);
+
+  // Set of mediaIds where reaction = "up" (item added to own watchlist)
+  const partnerReactedUpIds = React.useMemo(() => {
+    if (!user || !groupOwnerId) return new Set<string>();
+    return new Set(
+      ((reactionsData?.filmsPartnerReactions ?? []) as DbPartnerReactionRow[])
+        .filter((r) => r.reaction === "up")
+        .map((r) => r.mediaId),
+    );
+  }, [user, groupOwnerId, reactionsData?.filmsPartnerReactions]);
+
+  // Full group watchlist (shared items + personal historical items merged) — used for isInWatchlist, addToWatchlist, watchingItems
   const watchlist = React.useMemo((): WatchlistItem[] => {
     if (!user || !groupOwnerId) return getLocalWatchlist();
+    const isMember = groupOwnerId !== user.id;
+    const sharedRows = ((libraryData?.filmsWatchlistItems ?? []) as DbWatchlistRow[]).slice();
+    const personalRows = isMember ? ((personalData?.filmsWatchlistItems ?? []) as DbWatchlistRow[]) : [];
+    const sharedIds = new Set(sharedRows.map((r) => r.mediaId));
+    const merged = [...sharedRows, ...personalRows.filter((r) => !sharedIds.has(r.mediaId))];
+    merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    return merged.map(rowToWatchlistItem);
+  }, [user, groupOwnerId, libraryData?.filmsWatchlistItems, personalData?.filmsWatchlistItems, localTick]);
+
+  // Own watchlist: what to show in the user's personal sections
+  // - Own items added to the shared group (addedByUserId === user.id)
+  // - Partner items the user reacted "up" to (promoted to own list)
+  // - Legacy items without addedByUserId (only when owner — null items in a shared group could be the partner's old items)
+  // - Personal historical items from before joining the share (fetched via personalDataQuery)
+  const ownWatchlist = React.useMemo((): WatchlistItem[] => {
+    if (!user || !groupOwnerId) return getLocalWatchlist();
+    const isMember = groupOwnerId !== user.id;
+
+    const sharedRows = ((libraryData?.filmsWatchlistItems ?? []) as DbWatchlistRow[]).filter(
+      (row) =>
+        row.addedByUserId === user.id ||
+        partnerReactedUpIds.has(row.mediaId) ||
+        (!isMember && !row.addedByUserId), // legacy own items only when owner
+    );
+
+    const personalRows = isMember
+      ? ((personalData?.filmsWatchlistItems ?? []) as DbWatchlistRow[])
+      : [];
+
+    const sharedIds = new Set(sharedRows.map((r) => r.mediaId));
+    const merged = [...sharedRows, ...personalRows.filter((r) => !sharedIds.has(r.mediaId))];
+    merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    return merged.map(rowToWatchlistItem);
+  }, [user, groupOwnerId, libraryData?.filmsWatchlistItems, personalData?.filmsWatchlistItems, partnerReactedUpIds, localTick]);
+
+  // Partner's watchlist: items added by partner that the current user hasn't reacted to yet
+  const partnerWatchlist = React.useMemo((): WatchlistItem[] => {
+    if (!user || !groupOwnerId || !partnerUserId) return [];
     const rows = ((libraryData?.filmsWatchlistItems ?? []) as DbWatchlistRow[]).slice();
     rows.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    return rows.map(rowToWatchlistItem);
-  }, [user, groupOwnerId, libraryData?.filmsWatchlistItems, localTick]);
+    return rows
+      .filter((row) => row.addedByUserId === partnerUserId && !partnerReactedIds.has(row.mediaId))
+      .map(rowToWatchlistItem);
+  }, [user, groupOwnerId, partnerUserId, libraryData?.filmsWatchlistItems, partnerReactedIds, localTick]);
 
   const watchedIds = React.useMemo((): string[] => {
     if (!user || !groupOwnerId) return getLocalWatchedIds();
-    return ((libraryData?.filmsWatchedMarks ?? []) as DbWatchedRow[]).map((r) => r.contentId);
-  }, [user, groupOwnerId, libraryData?.filmsWatchedMarks, localTick]);
+    const sharedMarks = ((libraryData?.filmsWatchedMarks ?? []) as DbWatchedRow[]).map((r) => r.contentId);
+    const isMember = groupOwnerId !== user.id;
+    const personalMarks = isMember
+      ? ((personalData?.filmsWatchedMarks ?? []) as DbWatchedRow[]).map((r) => r.contentId)
+      : [];
+    const seen = new Set<string>();
+    return [...sharedMarks, ...personalMarks].filter((id) => {
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }, [user, groupOwnerId, libraryData?.filmsWatchedMarks, personalData?.filmsWatchedMarks, localTick]);
 
   const watchedSet = React.useMemo(() => new Set(watchedIds), [watchedIds]);
 
   const seriesMeta = React.useMemo((): Record<string, SeriesMeta> => {
     if (!user || !groupOwnerId) return getLocalSeriesMeta();
     const map: Record<string, SeriesMeta> = {};
+    const isMember = groupOwnerId !== user.id;
+    if (isMember) {
+      for (const row of (personalData?.filmsSeriesMeta ?? []) as DbSeriesMetaRow[]) {
+        map[row.tmdbId] = { title: row.title, year: row.year, posterUrl: row.posterUrl ?? null };
+      }
+    }
     for (const row of (libraryData?.filmsSeriesMeta ?? []) as DbSeriesMetaRow[]) {
-      map[row.tmdbId] = {
-        title: row.title,
-        year: row.year,
-        posterUrl: row.posterUrl ?? null,
-      };
+      map[row.tmdbId] = { title: row.title, year: row.year, posterUrl: row.posterUrl ?? null };
     }
     return map;
-  }, [user, groupOwnerId, libraryData?.filmsSeriesMeta, localTick]);
+  }, [user, groupOwnerId, libraryData?.filmsSeriesMeta, personalData?.filmsSeriesMeta, localTick]);
 
   React.useEffect(() => {
     if (!user || !groupOwnerId || groupOwnerId !== user.id) return;
@@ -183,6 +326,7 @@ export function useFilmsLibrary() {
           score: item.score ?? undefined,
           order: index,
           groupOwnerId: user.id,
+          addedByUserId: user.id,
         }),
       );
     });
@@ -238,6 +382,7 @@ export function useFilmsLibrary() {
           score: item.score ?? undefined,
           order: maxOrder + 1,
           groupOwnerId,
+          addedByUserId: user.id,
         }),
       );
     },
@@ -342,14 +487,37 @@ export function useFilmsLibrary() {
     [user, groupOwnerId, libraryData?.filmsSeriesMeta, bumpLocal],
   );
 
+  // React to a partner watchlist item: "up" = add to own list, "down" = dismiss, "seen" = already watched
+  const reactToPartnerItem = React.useCallback(
+    async (mediaId: string, reaction: "up" | "down" | "seen") => {
+      if (!user || !groupOwnerId) return;
+      // Avoid duplicate reactions
+      if (partnerReactedIds.has(mediaId)) return;
+      await db.transact(
+        db.tx.filmsPartnerReactions[instantId()].update({
+          reactingUserId: user.id,
+          mediaId,
+          reaction,
+          groupOwnerId,
+        }),
+      );
+    },
+    [user, groupOwnerId, partnerReactedIds],
+  );
+
   return {
     user,
     authLoading,
-    dataLoading: authLoading || shareLoading || (user ? libraryLoading : false),
+    dataLoading: authLoading || shareLoading || (user ? (libraryLoading || (groupOwnerId !== user?.id ? personalLoading : false)) : false),
     groupOwnerId,
     ownedShare,
     isShareOwner,
+    partnerUserId,
+    partnerName,
+    partnerAvatarUrl,
     watchlist,
+    ownWatchlist,
+    partnerWatchlist,
     watchedIds,
     watchedSet,
     seriesMeta,
@@ -361,5 +529,6 @@ export function useFilmsLibrary() {
     markWatched,
     unmarkWatched,
     saveSeriesMeta,
+    reactToPartnerItem,
   };
 }

@@ -180,6 +180,10 @@ export default function FilmsSeriesPage() {
   const router = useRouter();
   const {
     watchlist,
+    ownWatchlist,
+    partnerWatchlist,
+    partnerName,
+    partnerAvatarUrl,
     watchedIds,
     seriesMeta,
     isInWatchlist,
@@ -188,7 +192,9 @@ export default function FilmsSeriesPage() {
     updateWatchlistScore,
     markWatched,
     unmarkWatched,
+    reactToPartnerItem,
   } = useFilmsLibrary();
+  const [mounted, setMounted] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [results, setResults] = React.useState<SearchResult[]>([]);
@@ -196,6 +202,8 @@ export default function FilmsSeriesPage() {
   const [filter, setFilter] = React.useState<FilterOption>("all");
   const [snackbar, setSnackbar] = React.useState<{ message: string; undoId: string } | null>(null);
   const snackbarTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => setMounted(true), []);
 
   const watchingItems = React.useMemo(() => {
     const epPattern = /^ep-(\d+)-s(\d+)e(\d+)$/;
@@ -274,9 +282,10 @@ export default function FilmsSeriesPage() {
   const hasQuery = query.trim().length >= 2;
   const filteredResults = filter === "all" ? results : results.filter((r) => r.type === filter);
 
-  const watchlistFilms = watchlist.filter((r) => r.type === "movie");
-  const watchlistSeries = watchlist.filter((r) => r.type === "tv");
-  const hasWatchlistItems = watchlist.length > 0;
+  const watchlistFilms = ownWatchlist.filter((r) => r.type === "movie");
+  const watchlistSeries = ownWatchlist.filter((r) => r.type === "tv");
+  const hasWatchlistItems = ownWatchlist.length > 0;
+  const hasPartnerItems = partnerWatchlist.length > 0;
 
   function handleAdd(result: SearchResult) {
     const item: WatchlistItem = {
@@ -401,8 +410,106 @@ export default function FilmsSeriesPage() {
         )}
 
         {/* Niet-lege staat: watchlist secties */}
-        {!hasQuery && (hasWatchlistItems || watchingItems.length > 0) && (
+        {mounted && !hasQuery && (hasWatchlistItems || hasPartnerItems || watchingItems.length > 0) && (
           <div className="mt-6 flex flex-col gap-6 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]">
+            {/* Watchlist partner — bovenaan getoond wanneer er items zijn */}
+            {hasPartnerItems && (
+              <section className="flex flex-col gap-4">
+                <div className="flex items-center gap-6">
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">
+                    Watchlist {partnerName ?? "Partner"}
+                  </h2>
+                  <button type="button" className="shrink-0 text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none">
+                    Toon alle
+                  </button>
+                </div>
+                <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex gap-3 pb-1" style={{ width: "max-content" }}>
+                    {partnerWatchlist.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex w-[300px] shrink-0 items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3"
+                      >
+                        {/* Poster */}
+                        <button
+                          type="button"
+                          onClick={() => handleViewDetail(item.id)}
+                          className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                        >
+                          {item.posterUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={item.posterUrl} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
+                          ) : (
+                            <div className="flex size-full items-center justify-center">
+                              <MaskIcon src="/icons/films.svg" className="size-6 bg-[var(--gray-200)]" />
+                            </div>
+                          )}
+                        </button>
+
+                        {/* Info + acties */}
+                        <div className="flex min-w-0 flex-1 flex-col gap-3">
+                          <div className="flex flex-col gap-1">
+                            {/* Titel + partner avatar */}
+                            <div className="flex w-full items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleViewDetail(item.id)}
+                                className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[#16181a] focus-visible:outline-none"
+                              >
+                                {item.title}
+                              </button>
+                              {/* Partner avatar */}
+                              <div className="size-6 shrink-0 overflow-hidden rounded-full border border-white bg-[#edeefe]">
+                                {partnerAvatarUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={partnerAvatarUrl} alt={partnerName ?? ""} className="size-full object-cover" />
+                                ) : (
+                                  <div className="flex size-full items-center justify-center">
+                                    <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[#4f55f1]" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-sm leading-5 text-[#8c929d]">
+                              {item.year} {item.type === "movie" ? "Film" : "TV Serie"}
+                            </p>
+                          </div>
+
+                          {/* Actie-knoppen */}
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              aria-label="Toevoegen aan mijn watchlist"
+                              onClick={() => void reactToPartnerItem(item.id, "up")}
+                              className="flex size-6 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
+                            >
+                              <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-[#16181a]" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Niet interessant"
+                              onClick={() => void reactToPartnerItem(item.id, "down")}
+                              className="flex size-6 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
+                            >
+                              <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-[#16181a]" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Al gezien"
+                              onClick={() => void reactToPartnerItem(item.id, "seen")}
+                              className="flex size-6 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
+                            >
+                              <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#16181a]" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
             {/* Aan het kijken */}
             {watchingItems.length > 0 && (
               <section className="flex flex-col gap-4">
@@ -583,7 +690,7 @@ export default function FilmsSeriesPage() {
       )}
 
       {/* Empty state — alleen zichtbaar zonder zoekterm en zonder watchlist items en zonder watching items */}
-      {!hasQuery && !hasWatchlistItems && watchingItems.length === 0 && (
+      {mounted && !hasQuery && !hasWatchlistItems && !hasPartnerItems && watchingItems.length === 0 && (
         <div className="absolute inset-x-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

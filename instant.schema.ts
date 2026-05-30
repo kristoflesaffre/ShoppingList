@@ -257,10 +257,22 @@ const schema = i.schema({
       order: i.number(),
       /** Eigenaar van het gedeelde lijstje; alle leden lezen/schrijven tegen deze id. */
       groupOwnerId: i.string().indexed(),
+      /** Instant user id van wie dit item heeft toegevoegd (voor partner-watchlist logica). */
+      addedByUserId: i.string().optional().indexed(),
     }),
     filmsWatchedMarks: i.entity({
       /** Detail-id, serie-id of aflevering-id (`ep-…`). */
       contentId: i.string().indexed(),
+      groupOwnerId: i.string().indexed(),
+    }),
+    /** Reactie van een gebruiker op een item uit de partner-watchlist. */
+    filmsPartnerReactions: i.entity({
+      /** Instant user id van de reagerende gebruiker. */
+      reactingUserId: i.string().indexed(),
+      /** Samengestelde TMDB-id van het item waarop gereageerd wordt. */
+      mediaId: i.string().indexed(),
+      /** "up" | "down" | "seen" */
+      reaction: i.string(),
       groupOwnerId: i.string().indexed(),
     }),
     filmsSeriesMeta: i.entity({
