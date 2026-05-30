@@ -131,26 +131,18 @@ function GhostContent({ episode, season, ep }: { episode: EpisodeDetail | null; 
         <h1 className="text-2xl font-bold leading-8 text-[#16181a]">{episode.title}</h1>
         <p className="text-sm leading-5 text-[var(--gray-400)]">Seizoen {season} aflevering {ep}</p>
       </div>
-      <div className="-mx-4 h-[172px] overflow-hidden bg-[var(--gray-100)]">
-        {episode.stillUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={episode.stillUrl} alt="" className="size-full object-cover object-center" aria-hidden />
-        )}
-      </div>
-      <div className="flex items-start gap-6">
-        <div className="relative h-[191px] w-[128px] shrink-0 overflow-hidden rounded bg-[var(--gray-50)]">
-          {episode.stillUrl ? (
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
+        <div className="-mx-4 h-[172px] shrink-0 overflow-hidden bg-[var(--gray-100)] lg:mx-0 lg:h-[191px] lg:w-auto lg:rounded-lg lg:[aspect-ratio:16/9]">
+          {episode.stillUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={episode.stillUrl} alt="" className="absolute inset-0 size-full object-cover object-center" aria-hidden />
-          ) : (
-            <div className="flex size-full items-center justify-center">
-              <MaskIcon src="/icons/films.svg" className="size-10 bg-[var(--gray-200)]" />
-            </div>
+            <img src={episode.stillUrl} alt="" className="size-full object-cover object-center" aria-hidden />
           )}
         </div>
-        <p className="flex-1 text-base font-medium leading-6 text-[var(--text-primary)] line-clamp-6">
-          {episode.overview || "Geen beschrijving beschikbaar."}
-        </p>
+        <div className="min-w-0 lg:flex-1">
+          <p className="text-base font-medium leading-6 text-[var(--text-primary)] line-clamp-6">
+            {episode.overview || "Geen beschrijving beschikbaar."}
+          </p>
+        </div>
       </div>
       <div className="flex gap-3">
         <div className="h-12 flex-1 rounded-[8px] border border-[#4f55f1]" />
@@ -613,7 +605,7 @@ export default function EpisodeDetailPage() {
         style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
       >
         {/* Episode navigator */}
-        <div className="flex shrink-0 items-center gap-4">
+        <div className="flex shrink-0 items-center gap-4 lg:justify-center lg:gap-4">
           <button
             type="button"
             aria-label="Vorige aflevering"
@@ -626,7 +618,7 @@ export default function EpisodeDetailPage() {
           >
             <MaskIcon src="/icons/chevron.svg" className="size-6 bg-[#4f55f1] rotate-90" />
           </button>
-          <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[#16181a]">
+          <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[#16181a] lg:flex-none">
             Seizoen {currentSeason} aflevering {currentEp}
           </p>
           <button
@@ -702,23 +694,10 @@ export default function EpisodeDetailPage() {
                   )}
                 </div>
 
-                {/* Still — full-width hero */}
-                <div className="-mx-4 relative h-[172px] overflow-hidden bg-[var(--gray-100)]">
-                  {episode.stillUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={episode.stillUrl}
-                      alt=""
-                      className="absolute inset-0 size-full object-cover object-center"
-                      aria-hidden
-                    />
-                  ) : null}
-                  <div className="absolute inset-0 bg-black/10" aria-hidden />
-                </div>
-
-                {/* Series poster + overview */}
-                <div className="flex items-start gap-6">
-                  <div className="relative h-[191px] w-[128px] shrink-0 overflow-hidden rounded bg-[var(--gray-50)]">
+                {/* Still + poster+overview: side by side on lg (matches film detail layout) */}
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
+                  {/* Still — full width on mobile, 16:9 on lg */}
+                  <div className="-mx-4 relative h-[172px] shrink-0 overflow-hidden bg-[var(--gray-100)] lg:mx-0 lg:h-[191px] lg:w-auto lg:rounded-lg lg:[aspect-ratio:16/9]">
                     {episode.stillUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -727,14 +706,12 @@ export default function EpisodeDetailPage() {
                         className="absolute inset-0 size-full object-cover object-center"
                         aria-hidden
                       />
-                    ) : (
-                      <div className="flex size-full items-center justify-center">
-                        <MaskIcon src="/icons/films.svg" className="size-10 bg-[var(--gray-200)]" />
-                      </div>
-                    )}
+                    ) : null}
+                    <div className="absolute inset-0 bg-black/10" aria-hidden />
                   </div>
 
-                  <div className="relative min-w-0 flex-1">
+                  {/* Overview */}
+                  <div className="relative min-w-0 lg:flex-1">
                     <div
                       className={cn(
                         "overflow-hidden",
@@ -761,7 +738,7 @@ export default function EpisodeDetailPage() {
                 </div>
 
                 {/* Two action buttons */}
-                <div className="flex gap-3">
+                <div className="flex gap-3 lg:max-w-[358px] lg:self-end">
                   {/* Bekeken — outline */}
                   <button
                     type="button"
@@ -792,15 +769,15 @@ export default function EpisodeDetailPage() {
                     onClick={() => router.push(`/films-series/${rawId}/episodes`)}
                     className="flex h-12 flex-1 items-center justify-center rounded-[8px] bg-[#4f55f1] px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
                   >
-                    <span className="text-base font-medium text-white">Naar overzicht</span>
+                    <span className="whitespace-nowrap text-base font-medium text-white">Naar overzicht</span>
                   </button>
                 </div>
 
                 {/* Cast */}
                 {episode.cast.length > 0 && (
                   <div className="flex w-full flex-col gap-4">
-                    <div className="flex items-center gap-6">
-                      <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Cast</h2>
+                    <div className="flex items-center gap-6 lg:gap-4">
+                      <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130] lg:flex-none">Cast</h2>
                       <button
                         type="button"
                         onClick={() => router.push(`/films-series/${rawId}/cast`)}

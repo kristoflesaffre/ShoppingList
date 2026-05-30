@@ -555,36 +555,38 @@ export default function PartnerFilmDetailPage() {
 
       {/* Vaste header */}
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <header className="flex h-16 items-center gap-4 px-4">
-          <button
-            type="button"
-            aria-label="Terug"
-            onClick={() => router.push("/films-series")}
-            className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-          >
-            <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
-          </button>
-          <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[#16181a]">
-            Watchlist {partnerName ?? "Partner"}
-          </p>
-          <button
-            type="button"
-            aria-label="Opties"
-            className="flex size-6 shrink-0 items-center justify-center text-[#16181a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-          >
-            <ThreeDotsIcon />
-          </button>
-        </header>
+        <div className="flex justify-center">
+          <header className="flex h-16 w-full max-w-[956px] items-center gap-4 px-4">
+            <button
+              type="button"
+              aria-label="Terug"
+              onClick={() => router.push("/films-series")}
+              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
+            </button>
+            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[#16181a]">
+              Watchlist {partnerName ?? "Partner"}
+            </p>
+            <button
+              type="button"
+              aria-label="Opties"
+              className="flex size-6 shrink-0 items-center justify-center text-[#16181a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              <ThreeDotsIcon />
+            </button>
+          </header>
+        </div>
       </div>
 
       {/* Scrollbare inhoud */}
       <div
-        className="relative z-10 flex flex-1 flex-col gap-6 px-4 pt-8 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]"
+        className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4 pt-8 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]"
         style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
       >
         {/* Navigatie "X van Y" */}
         {totalCount > 0 && (
-          <div className="flex shrink-0 items-center gap-4">
+          <div className="flex shrink-0 items-center gap-4 lg:justify-center lg:gap-4">
             <button
               type="button"
               aria-label="Vorig item"
@@ -597,7 +599,7 @@ export default function PartnerFilmDetailPage() {
             >
               <MaskIcon src="/icons/chevron.svg" className="size-6 rotate-90 bg-[#16181a]" />
             </button>
-            <p className="flex-1 text-center text-base font-medium leading-6 text-[#16181a]">
+            <p className="flex-1 text-center text-base font-medium leading-6 text-[#16181a] lg:flex-none">
               {currentIndex >= 0 ? `${currentIndex + 1} van ${totalCount}` : `van ${totalCount}`}
             </p>
             <button
@@ -692,9 +694,9 @@ export default function PartnerFilmDetailPage() {
                   </div>
                 </div>
 
-                {/* Overview */}
+                {/* Overview — mobile only (on lg it appears in the flex-row beside the poster) */}
                 {overviewFull && (
-                  <div className="relative">
+                  <div className="relative lg:hidden">
                     <p
                       ref={overviewRef}
                       className="text-base font-medium leading-6 text-[#16181a]"
@@ -728,9 +730,9 @@ export default function PartnerFilmDetailPage() {
                   </div>
                 )}
 
-                {/* Actie-knoppen — verborgen als al gereageerd */}
+                {/* Actie-knoppen — mobile only */}
                 {!hasReacted && (
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 lg:hidden">
                     <button
                       type="button"
                       aria-label="Al gezien"
@@ -758,9 +760,78 @@ export default function PartnerFilmDetailPage() {
                   </div>
                 )}
 
-                {/* Poster */}
+                {/* Media row: trailer + [poster + overview] side by side on lg */}
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
+                  {/* Trailer: full 16:9 on mobile, 191px tall on lg */}
+                  <div
+                    className="relative shrink-0 overflow-hidden rounded-lg bg-[var(--gray-100)] lg:h-[191px] lg:w-auto lg:[aspect-ratio:16/9]"
+                    style={{ aspectRatio: "16/9" }}
+                  >
+                    {detail.backdropUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={detail.backdropUrl}
+                        alt=""
+                        className="absolute inset-0 size-full object-cover"
+                        aria-hidden
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-black/20" aria-hidden />
+                    {detail.trailerKey && (
+                      <button
+                        type="button"
+                        aria-label="Trailer afspelen"
+                        onClick={() => setShowTrailer(true)}
+                        className="absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-black/20 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+                          <path d="M8 5v14l11-7L8 5z" fill="white" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Poster + overview — lg only */}
+                  <div className="hidden items-start gap-6 lg:flex lg:flex-1">
+                    <div className="relative h-[191px] w-[128px] shrink-0 overflow-hidden rounded bg-[var(--gray-50)]">
+                      {detail.posterUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={detail.posterUrl}
+                          alt={`Poster van ${detail.title}`}
+                          className="absolute inset-0 size-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex size-full items-center justify-center">
+                          <MaskIcon src="/icons/films.svg" className="size-12 bg-[var(--gray-200)]" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative min-w-0 flex-1">
+                      <div className={cn("overflow-hidden", !overviewExpanded && "h-[191px]")}>
+                        <p className="text-base font-medium leading-6 text-[#16181a]">
+                          {overviewFull || "Geen beschrijving beschikbaar."}
+                        </p>
+                      </div>
+                      {!overviewExpanded && overviewFull && (
+                        <div className="absolute bottom-0 right-0 flex items-baseline gap-1 bg-white">
+                          <span className="text-base font-medium leading-6 text-[#16181a]">…</span>
+                          <button
+                            type="button"
+                            onClick={() => setOverviewExpanded(true)}
+                            className="text-base font-medium leading-6 text-[#4f55f1] underline decoration-solid underline-offset-2 focus-visible:outline-none"
+                          >
+                            toon meer
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Poster — mobile only (full 2:3) */}
                 <div
-                  className="relative w-full overflow-hidden rounded bg-[var(--gray-50)]"
+                  className="relative w-full overflow-hidden rounded bg-[var(--gray-50)] lg:hidden"
                   style={{ aspectRatio: "2/3" }}
                 >
                   {detail.posterUrl ? (
@@ -777,40 +848,44 @@ export default function PartnerFilmDetailPage() {
                   )}
                 </div>
 
-                {/* Trailer thumbnail */}
-                <div
-                  className="relative w-full overflow-hidden rounded-lg bg-[var(--gray-100)]"
-                  style={{ aspectRatio: "16/9" }}
-                >
-                  {detail.backdropUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={detail.backdropUrl}
-                      alt=""
-                      className="absolute inset-0 size-full object-cover"
-                      aria-hidden
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-black/20" aria-hidden />
-                  {detail.trailerKey && (
+                {/* Actie-knoppen — lg only, right-aligned */}
+                {!hasReacted && (
+                  <div className="hidden gap-3 lg:flex lg:self-end">
                     <button
                       type="button"
-                      aria-label="Trailer afspelen"
-                      onClick={() => setShowTrailer(true)}
-                      className="absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-black/20 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                      aria-label="Al gezien"
+                      onClick={() => void handleReact("seen")}
+                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] border border-[#4f55f1] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                     >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-                        <path d="M8 5v14l11-7L8 5z" fill="white" />
-                      </svg>
+                      <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
+                      <span className="text-base font-medium text-[#4f55f1]">Gezien</span>
                     </button>
-                  )}
-                </div>
+                    <button
+                      type="button"
+                      aria-label="Toevoegen aan mijn watchlist"
+                      onClick={() => void handleReact("up")}
+                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] bg-[#4f55f1] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    >
+                      <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-white" />
+                      <span className="text-base font-medium text-white">Toevoegen</span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Niet interessant"
+                      onClick={() => void handleReact("down")}
+                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] bg-[#d64040] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    >
+                      <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />
+                      <span className="text-base font-medium text-white">Overslaan</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Cast */}
                 {detail.cast.length > 0 && (
                   <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-6">
-                      <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Cast</h2>
+                    <div className="flex items-center gap-6 lg:gap-4">
+                      <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130] lg:flex-none">Cast</h2>
                       <button
                         type="button"
                         onClick={() => router.push(`/films-series/${currentId}/cast`)}

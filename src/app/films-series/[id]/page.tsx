@@ -521,8 +521,8 @@ export default function FilmDetailPage() {
             {/* Cast */}
             {detail.cast.length > 0 && (
               <div className="flex w-full flex-col gap-4">
-                <div className="flex items-center gap-6">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Cast</h2>
+                <div className="flex items-center gap-6 lg:gap-4">
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130] lg:flex-none">Cast</h2>
                   <button
                     type="button"
                     onClick={() => router.push(`/films-series/${rawId}/cast`)}
