@@ -358,7 +358,15 @@ export default function FilmDetailPage() {
             <button
               type="button"
               aria-label="Terug"
-              onClick={() => router.back()}
+              onClick={() => {
+                const returnUrl = sessionStorage.getItem("films-watchlist-return");
+                if (returnUrl) {
+                  sessionStorage.removeItem("films-watchlist-return");
+                  router.push(returnUrl, { scroll: false });
+                } else {
+                  router.back();
+                }
+              }}
               className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
             >
               <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />

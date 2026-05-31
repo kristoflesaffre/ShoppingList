@@ -65,6 +65,8 @@ export function useFilmsLibrary() {
   const migratedRef = React.useRef(false);
   const [localTick, setLocalTick] = React.useState(0);
   const bumpLocal = React.useCallback(() => setLocalTick((t) => t + 1), []);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
 
   const shareQuery = React.useMemo(
     () =>
@@ -260,7 +262,7 @@ export function useFilmsLibrary() {
 
   // Full group watchlist (shared items + personal historical items merged) — used for isInWatchlist, addToWatchlist, watchingItems
   const watchlist = React.useMemo((): WatchlistItem[] => {
-    if (!user || !groupOwnerId) return getLocalWatchlist();
+    if (!user || !groupOwnerId) return mounted ? getLocalWatchlist() : [];
     const isMember = groupOwnerId !== user.id;
     const sharedRows = ((libraryData?.filmsWatchlistItems ?? []) as DbWatchlistRow[]).slice();
     const personalRows = isMember ? ((personalData?.filmsWatchlistItems ?? []) as DbWatchlistRow[]) : [];
@@ -268,7 +270,7 @@ export function useFilmsLibrary() {
     const merged = [...sharedRows, ...personalRows.filter((r) => !sharedIds.has(r.mediaId))];
     merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     return merged.map(rowToWatchlistItem);
-  }, [user, groupOwnerId, libraryData?.filmsWatchlistItems, personalData?.filmsWatchlistItems, localTick]);
+  }, [user, groupOwnerId, libraryData?.filmsWatchlistItems, personalData?.filmsWatchlistItems, localTick, mounted]);
 
   // Own watchlist: what to show in the user's personal sections
   // - Own items added to the shared group (addedByUserId === user.id)
@@ -276,7 +278,7 @@ export function useFilmsLibrary() {
   // - Legacy items without addedByUserId (only when owner — null items in a shared group could be the partner's old items)
   // - Personal historical items from before joining the share (fetched via personalDataQuery)
   const ownWatchlist = React.useMemo((): WatchlistItem[] => {
-    if (!user || !groupOwnerId) return getLocalWatchlist();
+    if (!user || !groupOwnerId) return mounted ? getLocalWatchlist() : [];
     const isMember = groupOwnerId !== user.id;
 
     const sharedRows = ((libraryData?.filmsWatchlistItems ?? []) as DbWatchlistRow[]).filter(
@@ -294,7 +296,7 @@ export function useFilmsLibrary() {
     const merged = [...sharedRows, ...personalRows.filter((r) => !sharedIds.has(r.mediaId))];
     merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     return merged.map(rowToWatchlistItem);
-  }, [user, groupOwnerId, libraryData?.filmsWatchlistItems, personalData?.filmsWatchlistItems, partnerReactedUpIds, localTick]);
+  }, [user, groupOwnerId, libraryData?.filmsWatchlistItems, personalData?.filmsWatchlistItems, partnerReactedUpIds, localTick, mounted]);
 
   /**
    * Tab “Samen”: alleen items die door beide partijen zijn geaccepteerd (duim omhoog).
@@ -359,7 +361,7 @@ export function useFilmsLibrary() {
   }, [user, groupOwnerId, partnerUserId, libraryData?.filmsWatchlistItems, partnerReactedIds, localTick]);
 
   const watchedIds = React.useMemo((): string[] => {
-    if (!user || !groupOwnerId) return getLocalWatchedIds();
+    if (!user || !groupOwnerId) return mounted ? getLocalWatchedIds() : [];
     const sharedMarks = ((libraryData?.filmsWatchedMarks ?? []) as DbWatchedRow[]).map((r) => r.contentId);
     const isMember = groupOwnerId !== user.id;
     const personalMarks = isMember
@@ -371,12 +373,12 @@ export function useFilmsLibrary() {
       seen.add(id);
       return true;
     });
-  }, [user, groupOwnerId, libraryData?.filmsWatchedMarks, personalData?.filmsWatchedMarks, localTick]);
+  }, [user, groupOwnerId, libraryData?.filmsWatchedMarks, personalData?.filmsWatchedMarks, localTick, mounted]);
 
   const watchedSet = React.useMemo(() => new Set(watchedIds), [watchedIds]);
 
   const seriesMeta = React.useMemo((): Record<string, SeriesMeta> => {
-    if (!user || !groupOwnerId) return getLocalSeriesMeta();
+    if (!user || !groupOwnerId) return mounted ? getLocalSeriesMeta() : {};
     const map: Record<string, SeriesMeta> = {};
     const isMember = groupOwnerId !== user.id;
     if (isMember) {
@@ -388,7 +390,7 @@ export function useFilmsLibrary() {
       map[row.tmdbId] = { title: row.title, year: row.year, posterUrl: row.posterUrl ?? null };
     }
     return map;
-  }, [user, groupOwnerId, libraryData?.filmsSeriesMeta, personalData?.filmsSeriesMeta, localTick]);
+  }, [user, groupOwnerId, libraryData?.filmsSeriesMeta, personalData?.filmsSeriesMeta, localTick, mounted]);
 
   React.useEffect(() => {
     if (!user || !groupOwnerId || groupOwnerId !== user.id) return;

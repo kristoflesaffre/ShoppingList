@@ -516,8 +516,8 @@ export default function FilmsSeriesPage() {
 
       {/* Vaste header */}
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <div className="flex justify-center px-4">
-          <header className="flex h-16 w-full max-w-[956px] items-center gap-4">
+        <div className="mx-auto w-full max-w-[956px] px-4">
+          <header className="flex h-16 w-full items-center gap-4">
             <button
               type="button"
               aria-label="Terug"
@@ -603,7 +603,11 @@ export default function FilmsSeriesPage() {
                   <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">
                     Watchlist {partnerName ?? "Partner"}
                   </h2>
-                  <button type="button" className="shrink-0 text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/films-series/partner-watchlist")}
+                    className="shrink-0 text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  >
                     Toon alle
                   </button>
                 </div>
@@ -675,7 +679,7 @@ export default function FilmsSeriesPage() {
                               onClick={() => void reactToPartnerItem(item.id, "up")}
                               className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                             >
-                              <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-[#4f55f1]" />
+                              <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-[#22c55e]" />
                             </button>
                             <button
                               type="button"
@@ -683,7 +687,7 @@ export default function FilmsSeriesPage() {
                               onClick={() => void reactToPartnerItem(item.id, "down")}
                               className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                             >
-                              <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-[#4f55f1]" />
+                              <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-[#eb5552]" />
                             </button>
                             <button
                               type="button"

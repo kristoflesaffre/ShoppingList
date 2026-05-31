@@ -200,12 +200,14 @@ function WatchlistItemCard({
   partnerAvatar: AvatarPerson;
 }) {
   return (
-    <div className="flex w-full items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="relative h-[130px] w-[87px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-      >
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(); }}
+      className="flex w-full cursor-pointer items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+    >
+      <div className="relative h-[130px] w-[87px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
         {item.posterUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -220,22 +222,18 @@ function WatchlistItemCard({
             <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
           </div>
         )}
-      </button>
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex w-full flex-col">
           <div className="flex w-full items-center gap-1">
-            <button
-              type="button"
-              onClick={onOpen}
-              className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[#16181a] focus-visible:outline-none"
-            >
+            <span className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[#16181a]">
               {item.title}
-            </button>
+            </span>
             <button
               type="button"
               aria-label={`Markeer ${item.title} als bekeken`}
-              onClick={onMarkSeen}
+              onClick={(e) => { e.stopPropagation(); onMarkSeen(e); }}
               className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
             >
               <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
@@ -295,6 +293,36 @@ export default function WatchlistKindPage() {
   const [query, setQuery] = React.useState("");
   const [listTab, setListTab] = React.useState<ListTab>("samen");
   const [genreFilter, setGenreFilter] = React.useState<string>("Alles");
+
+  const hasScrolledRef = React.useRef(false);
+
+  // Restore tab and scroll anchor on mount
+  React.useEffect(() => {
+    const savedTab = sessionStorage.getItem(`watchlist-${kindParam}-tab`);
+    if (savedTab === "alleen" || savedTab === "samen") setListTab(savedTab);
+
+    // Keep anchor in sessionStorage until scroll succeeds (StrictMode fires effects twice;
+    // first run gets cleaned up before scroll can happen, second run still finds the anchor).
+    const anchor = sessionStorage.getItem(`watchlist-${kindParam}-anchor`);
+    if (!anchor || hasScrolledRef.current) return;
+
+    let stopped = false;
+    let attempts = 0;
+    const tryScroll = () => {
+      if (stopped) return;
+      const el = document.getElementById(`watchlist-item-${anchor}`);
+      if (el) {
+        hasScrolledRef.current = true;
+        sessionStorage.removeItem(`watchlist-${kindParam}-anchor`);
+        el.scrollIntoView({ behavior: "instant", block: "center" });
+        return;
+      }
+      if (++attempts < 40) setTimeout(tryScroll, 100);
+    };
+    requestAnimationFrame(tryScroll);
+    return () => { stopped = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [enriched, setEnriched] = React.useState<Record<string, EnrichedItem>>({});
   const [loadingDetails, setLoadingDetails] = React.useState(true);
   const [removingIds, setRemovingIds] = React.useState<Set<string>>(() => new Set());
@@ -564,15 +592,9 @@ export default function WatchlistKindPage() {
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-white">
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[478px]"
-        style={{ background: "linear-gradient(to bottom, #e3e4ff, white)" }}
-        aria-hidden
-      />
-
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <div className="flex justify-center px-4">
-          <header className="flex h-16 w-full max-w-[956px] items-center gap-4">
+        <div className="mx-auto w-full max-w-[956px] px-4">
+          <header className="flex h-16 w-full items-center gap-4">
             <button
               type="button"
               aria-label="Terug"
@@ -608,7 +630,11 @@ export default function WatchlistKindPage() {
           {isFilmsListShared && (
             <TabGroup
               value={listTab}
-              onValueChange={(v) => setListTab(v as ListTab)}
+              onValueChange={(v) => {
+                const tab = v as ListTab;
+                setListTab(tab);
+                sessionStorage.setItem(`watchlist-${kindParam}-tab`, tab);
+              }}
               aria-label="Watchlist weergave"
             >
               <TabElement value="alleen">Alleen</TabElement>
@@ -656,6 +682,7 @@ export default function WatchlistKindPage() {
                 const isRemoving = removingIds.has(item.id);
                 return (
                   <div
+                    id={`watchlist-item-${item.id}`}
                     key={item.id}
                     className="grid transition-[grid-template-rows,opacity,margin] duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
                     style={{
@@ -667,7 +694,11 @@ export default function WatchlistKindPage() {
                     <div className="min-h-0 overflow-hidden">
                       <WatchlistItemCard
                         item={item}
-                        onOpen={() => router.push(`/films-series/${item.id}`)}
+                        onOpen={() => {
+                          sessionStorage.setItem(`watchlist-${kindParam}-anchor`, item.id);
+                          sessionStorage.setItem("films-watchlist-return", `/films-series/watchlist/${kindParam}`);
+                          router.push(`/films-series/${item.id}`);
+                        }}
                         onMarkSeen={(e) => handleMarkSeen(e, item)}
                         showAvatars={isFilmsListShared}
                         avatarMode={listTab === "samen" ? "together" : "solo"}
