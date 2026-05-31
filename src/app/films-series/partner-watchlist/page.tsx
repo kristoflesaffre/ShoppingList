@@ -254,8 +254,8 @@ function StarIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className="size-4 shrink-0">
       <path
         d="M8 1.5l1.545 3.13 3.455.503-2.5 2.437.59 3.44L8 9.387l-3.09 1.623.59-3.44L3 5.133l3.455-.503L8 1.5z"
-        fill="#FBBF24"
-        stroke="#F59E0B"
+        fill="#4f55f1"
+        stroke="#4f55f1"
         strokeWidth="0.5"
         strokeLinejoin="round"
       />

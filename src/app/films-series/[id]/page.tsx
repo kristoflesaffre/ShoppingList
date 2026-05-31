@@ -38,6 +38,7 @@ type FilmDetail = {
   posterUrl: string | null;
   backdropUrl: string | null;
   score: number | null;
+  scoreSource: "imdb" | "tmdb";
   imdbId: string | null;
   totalEpisodes: number | null;
   genres: string[];
@@ -422,8 +423,8 @@ export default function FilmDetailPage() {
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden className="size-6 shrink-0">
                         <path
                           d="M12 2l2.75 5.57 6.15.9-4.45 4.33 1.05 6.11L12 15.9l-5.5 2.89 1.05-6.11L3.1 8.47l6.15-.9L12 2z"
-                          fill="#FBBF24"
-                          stroke="#F59E0B"
+                          fill={detail.scoreSource === "imdb" ? "#FBBF24" : "#4f55f1"}
+                          stroke={detail.scoreSource === "imdb" ? "#F59E0B" : "#4f55f1"}
                           strokeWidth="0.5"
                           strokeLinejoin="round"
                         />

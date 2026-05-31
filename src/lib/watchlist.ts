@@ -7,6 +7,7 @@ export type WatchlistItem = {
   year: string;
   posterUrl: string | null;
   score?: number | null;
+  scoreSource?: "imdb" | "tmdb" | null;
   overview?: string | null;
   order?: number;
   restoreIndex?: number;

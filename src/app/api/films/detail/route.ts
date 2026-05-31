@@ -90,32 +90,48 @@ export async function GET(request: NextRequest) {
     if (seasons) runtime = `${seasons} seizoen${seasons > 1 ? "en" : ""}`;
   }
 
-  // OMDB / fallback score
-  const imdbId = (data.external_ids as { imdb_id?: string } | undefined)?.imdb_id ?? null;
-  let score: number | null = null;
-  if (OMDB_KEY && imdbId) {
-    try {
-      const omdbRes = await fetch(
-        `https://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_KEY}`,
-        { next: { revalidate: 3600 } },
-      );
-      if (omdbRes.ok) {
-        const omdb = (await omdbRes.json()) as { imdbRating?: string };
-        const rating = parseFloat(omdb.imdbRating ?? "");
-        if (!isNaN(rating)) score = rating;
-      }
-    } catch { /* ignore */ }
-  }
-  if (score === null) {
-    const avg = data.vote_average as number | undefined;
-    if (avg && avg > 0) score = Math.round(avg * 10) / 10;
-  }
-
   const title = type === "movie" ? (data.title as string) : (data.name as string);
   const date =
     type === "movie"
       ? (data.release_date as string | undefined)
       : (data.first_air_date as string | undefined);
+  const year = (date ?? "").slice(0, 4);
+
+  // Score: IMDb via OMDB API, met TMDb vote_average als fallback
+  const imdbId = (data.external_ids as { imdb_id?: string } | undefined)?.imdb_id ?? null;
+  let score: number | null = null;
+  let scoreSource: "imdb" | "tmdb" = "tmdb";
+
+  async function tryOmdb(url: string): Promise<number | null> {
+    try {
+      const res = await fetch(url, { next: { revalidate: 3600 } });
+      if (!res.ok) return null;
+      const json = (await res.json()) as { imdbRating?: string; Response?: string };
+      if (json.Response === "False") return null;
+      const rating = parseFloat(json.imdbRating ?? "");
+      return isNaN(rating) ? null : rating;
+    } catch { return null; }
+  }
+
+  if (OMDB_KEY) {
+    // 1. Lookup via IMDb ID (meest precies)
+    if (imdbId) {
+      const r = await tryOmdb(`https://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_KEY}`);
+      if (r !== null) { score = r; scoreSource = "imdb"; }
+    }
+    // 2. Fallback: lookup via titel + jaar (als IMDb ID ontbreekt of geen score geeft)
+    if (score === null) {
+      const r = await tryOmdb(
+        `https://www.omdbapi.com/?t=${encodeURIComponent(title)}&y=${year}&type=${type === "movie" ? "movie" : "series"}&apikey=${OMDB_KEY}`,
+      );
+      if (r !== null) { score = r; scoreSource = "imdb"; }
+    }
+  }
+
+  if (score === null) {
+    const avg = data.vote_average as number | undefined;
+    if (avg && avg > 0) score = Math.round(avg * 10) / 10;
+  }
 
   const genres = ((data.genres as { name: string }[] | undefined) ?? []).map((g) => g.name);
 
@@ -157,7 +173,7 @@ export async function GET(request: NextRequest) {
     tmdbId: parseInt(id),
     type,
     title,
-    year: (date ?? "").slice(0, 4),
+    year,
     certification,
     runtime,
     genres,
@@ -166,6 +182,7 @@ export async function GET(request: NextRequest) {
     posterUrl: data.poster_path ? `${TMDB_IMG_POSTER}${data.poster_path as string}` : null,
     backdropUrl: data.backdrop_path ? `${TMDB_IMG_BACKDROP}${data.backdrop_path as string}` : null,
     score,
+    scoreSource,
     imdbId,
     totalEpisodes,
     cast,

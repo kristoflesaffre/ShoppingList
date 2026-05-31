@@ -26,6 +26,9 @@ type CastMember = {
   profileUrl: string | null;
 };
 
+const REFILL_BATCH = 8;
+const LOW_WATERMARK = 5;
+
 type FilmDetail = {
   id: string;
   tmdbId: number;
@@ -38,6 +41,7 @@ type FilmDetail = {
   posterUrl: string | null;
   backdropUrl: string | null;
   score: number | null;
+  scoreSource: "imdb" | "tmdb";
   imdbId: string | null;
   genres: string[];
   cast: CastMember[];
@@ -73,13 +77,15 @@ function ThreeDotsIcon() {
   );
 }
 
-function StarIcon() {
+function StarIcon({ source = "tmdb" }: { source?: "imdb" | "tmdb" }) {
+  const fill = source === "imdb" ? "#FBBF24" : "#4f55f1";
+  const stroke = source === "imdb" ? "#F59E0B" : "#4f55f1";
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden className="size-6 shrink-0">
       <path
         d="M12 2l2.75 5.57 6.15.9-4.45 4.33 1.05 6.11L12 15.9l-5.5 2.89 1.05-6.11L3.1 8.47l6.15-.9L12 2z"
-        fill="#FBBF24"
-        stroke="#F59E0B"
+        fill={fill}
+        stroke={stroke}
         strokeWidth="0.5"
         strokeLinejoin="round"
       />
@@ -164,7 +170,14 @@ function GhostContent({
 
 export default function DiscoverCarouselPage() {
   const router = useRouter();
-  const { addToWatchlist } = useFilmsLibrary();
+  const {
+    addToWatchlist,
+    markWatched,
+    watchlist,
+    watchedIds,
+    discoverDismissedIds,
+    dismissDiscoverItem,
+  } = useFilmsLibrary();
 
   const [items, setItems] = React.useState<DiscoverItem[]>([]);
   const [listLoading, setListLoading] = React.useState(true);
@@ -179,6 +192,9 @@ export default function DiscoverCarouselPage() {
   const detailCacheRef = React.useRef<Map<string, FilmDetail>>(new Map());
   const [snackbar, setSnackbar] = React.useState<{ message: string } | null>(null);
   const snackbarTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refillInFlightRef = React.useRef(false);
+  const hasMoreRef = React.useRef(true);
+  const processedIdsRef = React.useRef<Set<string>>(new Set());
 
   // Adjacent item detail for ghost panels
   const [prevGhost, setPrevGhost] = React.useState<FilmDetail | null>(null);
@@ -213,15 +229,96 @@ export default function DiscoverCarouselPage() {
     if (nextPanelRef.current) nextPanelRef.current.style.transform = `translateX(${w}px)`;
   }, [listLoading]);
 
+  const discoverExcludeIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of watchlist) ids.add(item.id);
+    for (const id of watchedIds) {
+      if (id.startsWith("movie-") || id.startsWith("tv-")) ids.add(id);
+    }
+    for (const id of discoverDismissedIds) ids.add(id);
+    return ids;
+  }, [watchlist, watchedIds, discoverDismissedIds]);
+
+  const discoverExcludeIdsRef = React.useRef(discoverExcludeIds);
+  React.useEffect(() => {
+    discoverExcludeIdsRef.current = discoverExcludeIds;
+  }, [discoverExcludeIds]);
+
+  const buildExcludeSet = React.useCallback((extraIds: string[] = []) => {
+    const exclude = new Set(discoverExcludeIdsRef.current);
+    for (const item of itemsRef.current) exclude.add(item.id);
+    for (const id of Array.from(processedIdsRef.current)) exclude.add(id);
+    for (const id of extraIds) exclude.add(id);
+    return exclude;
+  }, []);
+
+  const refillDiscover = React.useCallback(async (extraExclude: string[] = []) => {
+    if (refillInFlightRef.current || !hasMoreRef.current) return;
+
+    refillInFlightRef.current = true;
+    try {
+      const exclude = buildExcludeSet(extraExclude);
+      const params = new URLSearchParams({
+        limit: String(REFILL_BATCH),
+        exclude: Array.from(exclude).join(","),
+      });
+      const res = await fetch(`/api/films/discover?${params}`);
+      if (!res.ok) return;
+
+      const data = (await res.json()) as { results?: DiscoverItem[]; hasMore?: boolean };
+      const newItems = (data.results ?? []).filter(
+        (item) => !discoverExcludeIdsRef.current.has(item.id),
+      );
+
+      if (newItems.length === 0) {
+        hasMoreRef.current = false;
+        return;
+      }
+
+      hasMoreRef.current = data.hasMore ?? true;
+      setItems((prev) => {
+        const existing = new Set(prev.map((item) => item.id));
+        const merged = [...prev];
+        for (const item of newItems) {
+          if (!existing.has(item.id)) merged.push(item);
+        }
+        return merged;
+      });
+    } catch {
+      // stil falen — gebruiker kan terug navigeren
+    } finally {
+      refillInFlightRef.current = false;
+    }
+  }, [buildExcludeSet]);
+
   React.useEffect(() => {
     fetch("/api/films/discover")
       .then((r) => r.json())
-      .then((data: { results: DiscoverItem[] }) => {
-        setItems(data.results ?? []);
+      .then((data: { results: DiscoverItem[]; hasMore?: boolean }) => {
+        hasMoreRef.current = data.hasMore ?? true;
+        setItems((data.results ?? []).filter((item) => !discoverExcludeIdsRef.current.has(item.id)));
         setListLoading(false);
       })
       .catch(() => setListLoading(false));
   }, []);
+
+  React.useEffect(() => {
+    if (listLoading || refillInFlightRef.current || !hasMoreRef.current) return;
+    if (items.length > 0 && items.length <= LOW_WATERMARK) {
+      void refillDiscover();
+    }
+  }, [items.length, listLoading, refillDiscover]);
+
+  React.useEffect(() => {
+    setItems((currentItems) => {
+      const visibleItems = currentItems.filter((item) => !discoverExcludeIds.has(item.id));
+      return visibleItems.length === currentItems.length ? currentItems : visibleItems;
+    });
+  }, [discoverExcludeIds]);
+
+  React.useEffect(() => {
+    setCurrentIndex((index) => (items.length === 0 ? 0 : Math.min(index, items.length - 1)));
+  }, [items.length]);
 
   function fetchDetail(id: string): Promise<FilmDetail | null> {
     const cached = detailCacheRef.current.get(id);
@@ -492,6 +589,15 @@ export default function DiscoverCarouselPage() {
     snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
   }
 
+  function removeFromCarousel(mediaId: string) {
+    processedIdsRef.current.add(mediaId);
+    setItems((currentItems) => currentItems.filter((item) => item.id !== mediaId));
+    setDetail(null);
+    setDetailLoading(true);
+    setOverviewExpanded(false);
+    setOverviewNeedsTruncation(false);
+  }
+
   function handleLike() {
     if (!currentItem) return;
     const item: WatchlistItem = {
@@ -504,7 +610,21 @@ export default function DiscoverCarouselPage() {
     };
     void addToWatchlist(item);
     showSnackbar(`${currentItem.title} toegevoegd aan watchlist`);
-    navigateTo("next");
+    removeFromCarousel(currentItem.id);
+  }
+
+  function handleSeen() {
+    if (!currentItem) return;
+    void markWatched(currentItem.id);
+    showSnackbar(`${currentItem.title} als gezien gemarkeerd`);
+    removeFromCarousel(currentItem.id);
+  }
+
+  function handleDislike() {
+    if (!currentItem) return;
+    void dismissDiscoverItem(currentItem.id);
+    showSnackbar(`${currentItem.title} gedisliket`);
+    removeFromCarousel(currentItem.id);
   }
 
   function handlePlay() {
@@ -679,7 +799,7 @@ export default function DiscoverCarouselPage() {
                         </h1>
                         {detail.score !== null && (
                           <div className="flex shrink-0 items-center gap-1 pt-1">
-                            <StarIcon />
+                            <StarIcon source={detail.scoreSource} />
                             <p className="font-medium text-[var(--text-primary)]">
                               <span className="text-base leading-6">{detail.score.toFixed(1)}</span>
                               <span className="text-xs font-normal leading-none">/10</span>
@@ -747,7 +867,7 @@ export default function DiscoverCarouselPage() {
                       <button
                         type="button"
                         aria-label="Als gezien markeren"
-                        onClick={() => navigateTo("next")}
+                        onClick={handleSeen}
                         className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-[#4f55f1] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                       >
                         <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
@@ -765,7 +885,7 @@ export default function DiscoverCarouselPage() {
                       <button
                         type="button"
                         aria-label="Disliken"
-                        onClick={() => navigateTo("next")}
+                        onClick={handleDislike}
                         className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg bg-[#d64040] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                       >
                         <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />

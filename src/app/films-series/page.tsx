@@ -9,6 +9,7 @@ import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { Snackbar } from "@/components/ui/snackbar";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
+import { getScoreSourceCache, setScoreSource } from "@/lib/score_source_cache";
 
 type SearchResult = {
   id: string;
@@ -19,6 +20,7 @@ type SearchResult = {
   typeLabel: string;
   posterUrl: string | null;
   score: number | null;
+  scoreSource?: "imdb" | "tmdb";
   cast: string;
 };
 
@@ -54,13 +56,15 @@ function ThreeDotsIcon({ className }: { className?: string }) {
   );
 }
 
-function StarIcon() {
+function StarIcon({ source }: { source?: "imdb" | "tmdb" | null }) {
+  const color = source === "imdb" ? "#FBBF24" : "#4f55f1";
+  const strokeColor = source === "imdb" ? "#F59E0B" : "#4f55f1";
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className="size-4 shrink-0">
       <path
         d="M8 1.5l1.545 3.13 3.455.503-2.5 2.437.59 3.44L8 9.387l-3.09 1.623.59-3.44L3 5.133l3.455-.503L8 1.5z"
-        fill="#FBBF24"
-        stroke="#F59E0B"
+        fill={color}
+        stroke={strokeColor}
         strokeWidth="0.5"
         strokeLinejoin="round"
       />
@@ -72,10 +76,12 @@ function StarIcon() {
 /** Figma 1652:47625 — zoekresultaat-kaart */
 function FilmResultCard({
   result,
+  scoreSource,
   onAdd,
   onViewDetail,
 }: {
   result: SearchResult;
+  scoreSource?: "imdb" | "tmdb";
   onAdd: (result: SearchResult) => void;
   onViewDetail: (id: string) => void;
 }) {
@@ -113,13 +119,10 @@ function FilmResultCard({
             {result.title}
           </p>
           {result.score !== null && (
-            <>
-              <StarIcon />
-              <p className="shrink-0 whitespace-nowrap font-medium leading-none text-[var(--text-primary)]">
-                <span className="text-[14px]">{result.score.toFixed(1)}</span>
-                <span className="text-[10px] font-normal">/10</span>
-              </p>
-            </>
+            <div className="flex shrink-0 items-center gap-[4px]">
+              <StarIcon source={result.scoreSource ?? scoreSource} />
+              <span className="text-[12px] font-medium leading-4 text-[#16181a]">{result.score.toFixed(1)}</span>
+            </div>
           )}
         </div>
         {/* Jaar + type */}
@@ -228,6 +231,7 @@ export default function FilmsSeriesPage() {
     partnerName,
     partnerAvatarUrl,
     watchedIds,
+    discoverDismissedIds,
     seriesMeta,
     isInWatchlist,
     addToWatchlist,
@@ -258,8 +262,12 @@ export default function FilmsSeriesPage() {
   const [partnerOverviews, setPartnerOverviews] = React.useState<Record<string, string>>({});
   const [discoverItems, setDiscoverItems] = React.useState<SearchResult[]>([]);
   const [discoverLoading, setDiscoverLoading] = React.useState(true);
+  const [scoreSourceMap, setScoreSourceMap] = React.useState<Record<string, "imdb" | "tmdb">>({});
 
-  React.useEffect(() => setMounted(true), []);
+  React.useEffect(() => {
+    setMounted(true);
+    setScoreSourceMap(getScoreSourceCache());
+  }, []);
 
   React.useEffect(() => {
     if (!mounted) return;
@@ -331,20 +339,29 @@ export default function FilmsSeriesPage() {
   }, [watchedIds, watchlist, seriesMeta]);
 
   React.useEffect(() => {
-    const needsScore = watchlist.filter((i) => i.score == null);
+    const cache = getScoreSourceCache();
+    const needsScore = watchlist.filter((i) => i.score == null || !cache[i.id]);
     if (needsScore.length === 0) return;
     void Promise.all(
       needsScore.map((item) => {
         const tmdbId = item.id.replace(/^(movie|tv)-/, "");
         return fetch(`/api/films/detail?type=${item.type}&id=${tmdbId}`)
           .then((r) => r.json())
-          .then((data: { score: number | null }) => ({ id: item.id, score: data.score }))
-          .catch(() => ({ id: item.id, score: null }));
+          .then((data: { score: number | null; scoreSource?: "imdb" | "tmdb" }) => ({ id: item.id, score: data.score, scoreSource: data.scoreSource }))
+          .catch(() => ({ id: item.id, score: null, scoreSource: undefined }));
       }),
     ).then((scoreResults) => {
-      scoreResults.forEach(({ id, score }) => {
+      const updates: Record<string, "imdb" | "tmdb"> = {};
+      scoreResults.forEach(({ id, score, scoreSource }) => {
         if (score != null) void updateWatchlistScore(id, score);
+        if (scoreSource) {
+          setScoreSource(id, scoreSource);
+          updates[id] = scoreSource;
+        }
       });
+      if (Object.keys(updates).length > 0) {
+        setScoreSourceMap((prev) => ({ ...prev, ...updates }));
+      }
     });
   }, [watchlist, updateWatchlistScore]);
 
@@ -384,8 +401,9 @@ export default function FilmsSeriesPage() {
     for (const id of watchedIds) {
       if (id.startsWith("movie-") || id.startsWith("tv-")) ids.add(id);
     }
+    for (const id of discoverDismissedIds) ids.add(id);
     return ids;
-  }, [watchlist, watchedIds]);
+  }, [watchlist, watchedIds, discoverDismissedIds]);
 
   const discoverVisible = React.useMemo(
     () => discoverItems.filter((item) => !discoverExcludeIds.has(item.id)),
@@ -620,7 +638,7 @@ export default function FilmsSeriesPage() {
               </p>
             ) : (
               filteredResults.map((result) => (
-                <FilmResultCard key={result.id} result={result} onAdd={handleAdd} onViewDetail={handleViewDetail} />
+                <FilmResultCard key={result.id} result={result} scoreSource={result.scoreSource ?? scoreSourceMap[result.id]} onAdd={handleAdd} onViewDetail={handleViewDetail} />
               ))
             )}
           </div>
@@ -870,7 +888,7 @@ export default function FilmsSeriesPage() {
                             <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
                             {item.score != null && (
                               <div className="flex items-center gap-1">
-                                <StarIcon />
+                                <StarIcon source={scoreSourceMap[item.id]} />
                                 <span className="text-[12px] font-medium leading-4 text-[#16181a]">{item.score.toFixed(1)}</span>
                               </div>
                             )}
@@ -924,7 +942,7 @@ export default function FilmsSeriesPage() {
                             <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
                             {item.score != null && (
                               <div className="flex items-center gap-1">
-                                <StarIcon />
+                                <StarIcon source={scoreSourceMap[item.id]} />
                                 <span className="text-[12px] font-medium leading-4 text-[#16181a]">{item.score.toFixed(1)}</span>
                               </div>
                             )}

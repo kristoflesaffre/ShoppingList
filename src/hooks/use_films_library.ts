@@ -13,6 +13,11 @@ import {
   getWatchedIds as getLocalWatchedIds,
   getAllSeriesMeta as getLocalSeriesMeta,
 } from "@/lib/watched";
+import {
+  dismissDiscoverItem as dismissLocalDiscoverItem,
+  getDismissedDiscoverIds as getLocalDismissedDiscoverIds,
+  restoreDiscoverItem as restoreLocalDiscoverItem,
+} from "@/lib/discover-feedback";
 
 const PLACEHOLDER = "__films_library_none__";
 
@@ -24,6 +29,7 @@ type DbWatchlistRow = {
   year: string;
   posterUrl?: string | null;
   score?: number | null;
+  scoreSource?: "imdb" | "tmdb" | null;
   order?: number;
   addedByUserId?: string | null;
   overview?: string | null;
@@ -55,6 +61,7 @@ function rowToWatchlistItem(row: DbWatchlistRow): WatchlistItem {
     year: row.year,
     posterUrl: row.posterUrl ?? null,
     score: row.score ?? null,
+    scoreSource: row.scoreSource ?? null,
     overview: row.overview ?? null,
     order: row.order,
   };
@@ -376,6 +383,27 @@ export function useFilmsLibrary() {
   }, [user, groupOwnerId, libraryData?.filmsWatchedMarks, personalData?.filmsWatchedMarks, localTick, mounted]);
 
   const watchedSet = React.useMemo(() => new Set(watchedIds), [watchedIds]);
+
+  const discoverDismissedIds = React.useMemo(
+    () => (mounted ? getLocalDismissedDiscoverIds() : []),
+    [mounted, localTick],
+  );
+
+  const dismissDiscoverItem = React.useCallback(
+    async (mediaId: string) => {
+      dismissLocalDiscoverItem(mediaId);
+      bumpLocal();
+    },
+    [bumpLocal],
+  );
+
+  const restoreDiscoverItem = React.useCallback(
+    async (mediaId: string) => {
+      restoreLocalDiscoverItem(mediaId);
+      bumpLocal();
+    },
+    [bumpLocal],
+  );
 
   const seriesMeta = React.useMemo((): Record<string, SeriesMeta> => {
     if (!user || !groupOwnerId) return mounted ? getLocalSeriesMeta() : {};
@@ -769,6 +797,7 @@ export function useFilmsLibrary() {
     partnerWatchlist,
     watchedIds,
     watchedSet,
+    discoverDismissedIds,
     seriesMeta,
     isInWatchlist,
     isWatched,
@@ -777,6 +806,8 @@ export function useFilmsLibrary() {
     updateWatchlistScore,
     markWatched,
     unmarkWatched,
+    dismissDiscoverItem,
+    restoreDiscoverItem,
     saveSeriesMeta,
     reactToPartnerItem,
     isMediaAddedByCurrentUser,

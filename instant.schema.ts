@@ -254,6 +254,7 @@ const schema = i.schema({
       year: i.string(),
       posterUrl: i.string().optional(),
       score: i.number().optional(),
+      scoreSource: i.string().optional(),
       order: i.number(),
       /** Eigenaar van het gedeelde lijstje; alle leden lezen/schrijven tegen deze id. */
       groupOwnerId: i.string().indexed(),

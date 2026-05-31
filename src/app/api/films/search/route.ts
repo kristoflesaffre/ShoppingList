@@ -55,20 +55,38 @@ export async function GET(request: NextRequest) {
         }
       } catch { /* negeer netfouten */ }
 
+      const title = type === "movie" ? (item.title as string) : (item.name as string);
+      const date =
+        type === "movie"
+          ? (item.release_date as string | undefined)
+          : (item.first_air_date as string | undefined);
+      const year = (date ?? "").slice(0, 4);
+
       // 3. IMDb-score via OMDB (als API-key beschikbaar)
-      let score: number | null = null;
-      if (OMDB_KEY && imdbId) {
+      async function tryOmdb(url: string): Promise<number | null> {
         try {
-          const omdbRes = await fetch(
-            `https://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_KEY}`,
-            { next: { revalidate: 3600 } },
+          const res = await fetch(url, { next: { revalidate: 3600 } });
+          if (!res.ok) return null;
+          const json = (await res.json()) as { imdbRating?: string; Response?: string };
+          if (json.Response === "False") return null;
+          const rating = parseFloat(json.imdbRating ?? "");
+          return isNaN(rating) ? null : rating;
+        } catch { return null; }
+      }
+
+      let score: number | null = null;
+      let scoreSource: "imdb" | "tmdb" = "tmdb";
+      if (OMDB_KEY) {
+        if (imdbId) {
+          const r = await tryOmdb(`https://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_KEY}`);
+          if (r !== null) { score = r; scoreSource = "imdb"; }
+        }
+        if (score === null) {
+          const r = await tryOmdb(
+            `https://www.omdbapi.com/?t=${encodeURIComponent(title)}&y=${year}&type=${type === "movie" ? "movie" : "series"}&apikey=${OMDB_KEY}`,
           );
-          if (omdbRes.ok) {
-            const omdb = (await omdbRes.json()) as { imdbRating?: string };
-            const rating = parseFloat(omdb.imdbRating ?? "");
-            if (!isNaN(rating)) score = rating;
-          }
-        } catch { /* negeer */ }
+          if (r !== null) { score = r; scoreSource = "imdb"; }
+        }
       }
 
       // Fallback: TMDB-stemgemiddelde
@@ -76,19 +94,12 @@ export async function GET(request: NextRequest) {
         const avg = item.vote_average as number | undefined;
         if (avg && avg > 0) score = Math.round(avg * 10) / 10;
       }
-
-      const title = type === "movie" ? (item.title as string) : (item.name as string);
-      const date =
-        type === "movie"
-          ? (item.release_date as string | undefined)
-          : (item.first_air_date as string | undefined);
-      const year = (date ?? "").slice(0, 4);
       const typeLabel = type === "movie" ? "Film" : "TV Serie";
       const posterUrl = item.poster_path
         ? `${TMDB_IMG}${item.poster_path as string}`
         : null;
 
-      return { id: `${type}-${id}`, tmdbId: id, type, title, year, typeLabel, posterUrl, score, cast };
+      return { id: `${type}-${id}`, tmdbId: id, type, title, year, typeLabel, posterUrl, score, scoreSource, cast };
     }),
   );
 
