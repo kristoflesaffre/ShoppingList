@@ -256,8 +256,22 @@ export default function FilmsSeriesPage() {
   const scrollPendingRef = React.useRef(false);
   // Overviews voor partner-items die nog geen overview in de DB hebben (legacy items)
   const [partnerOverviews, setPartnerOverviews] = React.useState<Record<string, string>>({});
+  const [discoverItems, setDiscoverItems] = React.useState<SearchResult[]>([]);
+  const [discoverLoading, setDiscoverLoading] = React.useState(true);
 
   React.useEffect(() => setMounted(true), []);
+
+  React.useEffect(() => {
+    if (!mounted) return;
+    setDiscoverLoading(true);
+    fetch("/api/films/discover")
+      .then((r) => r.json())
+      .then((data: { results: SearchResult[] }) => {
+        setDiscoverItems(data.results ?? []);
+        setDiscoverLoading(false);
+      })
+      .catch(() => setDiscoverLoading(false));
+  }, [mounted]);
 
   React.useEffect(() => {
     const missing = partnerWatchlist.filter((item) => !item.overview);
@@ -363,6 +377,22 @@ export default function FilmsSeriesPage() {
   const watchlistSeries = ownWatchlist.filter((r) => r.type === "tv");
   const hasWatchlistItems = ownWatchlist.length > 0;
   const hasPartnerItems = partnerWatchlist.length > 0;
+
+  const discoverExcludeIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of watchlist) ids.add(item.id);
+    for (const id of watchedIds) {
+      if (id.startsWith("movie-") || id.startsWith("tv-")) ids.add(id);
+    }
+    return ids;
+  }, [watchlist, watchedIds]);
+
+  const discoverVisible = React.useMemo(
+    () => discoverItems.filter((item) => !discoverExcludeIds.has(item.id)),
+    [discoverItems, discoverExcludeIds],
+  );
+
+  const hasDiscoverSection = discoverLoading || discoverVisible.length > 0;
 
   function handleAdd(result: SearchResult) {
     const item: WatchlistItem = {
@@ -597,7 +627,7 @@ export default function FilmsSeriesPage() {
         )}
 
         {/* Niet-lege staat: watchlist secties */}
-        {mounted && !hasQuery && (hasWatchlistItems || hasPartnerItems || watchingItems.length > 0) && (
+        {mounted && !hasQuery && (hasWatchlistItems || hasPartnerItems || watchingItems.length > 0 || hasDiscoverSection) && (
           <div className="mt-6 flex flex-col gap-6 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]">
             {/* Watchlist partner — bovenaan getoond wanneer er items zijn */}
             {hasPartnerItems && (
@@ -906,6 +936,97 @@ export default function FilmsSeriesPage() {
                 </div>
               </section>
             )}
+
+            {/* Te ontdekken */}
+            {hasDiscoverSection && (
+              <section className="flex flex-col gap-4">
+                <div className="flex items-center gap-6">
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Te ontdekken</h2>
+                  {discoverVisible.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => router.push("/films-series/discover")}
+                      className="shrink-0 text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    >
+                      Toon carousel
+                    </button>
+                  )}
+                </div>
+                <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+                    {discoverLoading ? (
+                      [1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className="h-[130px] w-[87px] shrink-0 animate-pulse rounded-[4px] bg-[var(--gray-100)]"
+                        />
+                      ))
+                    ) : (
+                      discoverVisible.slice(0, 14).map((item) => (
+                        <div key={item.id} className="flex w-[87px] shrink-0 flex-col gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleViewDetail(item.id)}
+                            className="relative w-full overflow-hidden rounded-[4px] bg-[var(--gray-50)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                            style={{ aspectRatio: "2/3" }}
+                          >
+                            {item.posterUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={item.posterUrl}
+                                alt=""
+                                className="absolute inset-0 size-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            ) : (
+                              <div className="flex size-full items-center justify-center">
+                                <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
+                              </div>
+                            )}
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              aria-label={`${item.title} toevoegen aan watchlist`}
+                              className="absolute right-[4px] top-[4px] size-4 cursor-pointer focus-visible:outline-none"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAdd(item);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleAdd(item);
+                                }
+                              }}
+                            >
+                              <MaskIcon src="/icons/plus-circle.svg" className="size-4 bg-white" />
+                            </span>
+                          </button>
+                          <div className="flex flex-col gap-0">
+                            <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[#16181a]">
+                              {item.title}
+                            </p>
+                            <div className="flex items-center justify-between gap-1">
+                              <p className="truncate text-[12px] leading-4 text-[#8c929d]">{item.year}</p>
+                              {item.score != null && (
+                                <div className="flex shrink-0 items-center gap-0.5">
+                                  <StarIcon />
+                                  <span className="text-[10px] font-medium leading-4 text-[#16181a]">
+                                    {item.score.toFixed(1)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>
@@ -922,7 +1043,7 @@ export default function FilmsSeriesPage() {
       )}
 
       {/* Empty state — alleen zichtbaar zonder zoekterm en zonder watchlist items en zonder watching items */}
-      {mounted && !hasQuery && !hasWatchlistItems && !hasPartnerItems && watchingItems.length === 0 && (
+      {mounted && !hasQuery && !hasWatchlistItems && !hasPartnerItems && watchingItems.length === 0 && !hasDiscoverSection && (
         <div className="absolute inset-x-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

@@ -3,9 +3,13 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
+import { Snackbar } from "@/components/ui/snackbar";
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
+import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
+
+const SNACKBAR_MS = 4500;
 
 const COMMIT_RATIO = 0.36;
 const MAX_REVEAL_RATIO = 0.5;
@@ -555,6 +559,10 @@ export default function PartnerWatchlistPage() {
   const [loadingDetails, setLoadingDetails] = React.useState(true);
   const [removingIds, setRemovingIds] = React.useState<Set<string>>(() => new Set());
   const [trailerKey, setTrailerKey] = React.useState<string | null>(null);
+  const [snackbar, setSnackbar] = React.useState<{ message: string; undoFn: () => void } | null>(null);
+  const snackbarTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const removalTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const removalSnapshotsRef = React.useRef<Map<string, EnrichedItem>>(new Map());
 
   const partnerAvatar = React.useMemo(
     (): AvatarPerson => ({ url: partnerAvatarUrl, name: partnerName }),
@@ -646,8 +654,7 @@ export default function PartnerWatchlistPage() {
   const displayItems = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     return baseItems
-      .filter((item) => !removingIds.has(item.id))
-      .map((item) => enriched[item.id] ?? toEnriched(item, null))
+      .map((item) => removalSnapshotsRef.current.get(item.id) ?? enriched[item.id] ?? toEnriched(item, null))
       .filter((item) => {
         if (!q) return true;
         return (
@@ -657,11 +664,51 @@ export default function PartnerWatchlistPage() {
           item.overview.toLowerCase().includes(q)
         );
       });
-  }, [baseItems, enriched, query, removingIds]);
+  }, [baseItems, enriched, query]);
+
+  function cancelRemoval(itemId: string) {
+    const timer = removalTimersRef.current.get(itemId);
+    if (timer) clearTimeout(timer);
+    removalTimersRef.current.delete(itemId);
+    removalSnapshotsRef.current.delete(itemId);
+    setRemovingIds((prev) => {
+      if (!prev.has(itemId)) return prev;
+      const next = new Set(prev);
+      next.delete(itemId);
+      return next;
+    });
+  }
 
   function handleReact(itemId: string, reaction: "up" | "down" | "seen") {
+    if (removingIds.has(itemId)) return;
+
+    const item = displayItems.find((i) => i.id === itemId);
+    if (!item) return;
+
+    removalSnapshotsRef.current.set(itemId, item);
     setRemovingIds((prev) => new Set(prev).add(itemId));
-    void reactToPartnerItem(itemId, reaction);
+
+    const label =
+      reaction === "up" ? "geliket" : reaction === "down" ? "gedisliket" : "als gezien gemarkeerd";
+    const message = `${item.title} ${label}`;
+
+    const timer = setTimeout(() => {
+      removalTimersRef.current.delete(itemId);
+      removalSnapshotsRef.current.delete(itemId);
+      void reactToPartnerItem(itemId, reaction);
+      snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 400);
+    }, SNACKBAR_MS);
+    removalTimersRef.current.set(itemId, timer);
+
+    if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
+    setSnackbar({
+      message,
+      undoFn: () => {
+        cancelRemoval(itemId);
+        if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
+        setSnackbar(null);
+      },
+    });
   }
 
   async function handlePlay(item: EnrichedItem) {
@@ -742,13 +789,13 @@ export default function PartnerWatchlistPage() {
 
           <SearchBar placeholder="Zoek" value={query} onValueChange={setQuery} />
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
             {loadingDetails && baseItems.length > 0 && Object.keys(enriched).length === 0 ? (
-              <>
+              <div className="flex flex-col gap-3">
                 <CardSkeleton />
                 <CardSkeleton />
                 <CardSkeleton />
-              </>
+              </div>
             ) : displayItems.length === 0 ? (
               <p className="py-8 text-center text-sm text-[var(--gray-400)]">
                 {baseItems.length === 0
@@ -761,26 +808,40 @@ export default function PartnerWatchlistPage() {
                 return (
                   <div
                     key={item.id}
-                    className="grid transition-[grid-template-rows,opacity] duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    className="grid"
                     style={{
                       gridTemplateRows: isRemoving ? "0fr" : "1fr",
-                      opacity: isRemoving ? 0 : 1,
+                      transition: isRemoving
+                        ? "grid-template-rows 420ms cubic-bezier(0.4,0,0.2,1)"
+                        : "grid-template-rows 300ms cubic-bezier(0.4,0,0.2,1)",
                     }}
                   >
                     <div className="min-h-0 overflow-hidden">
-                      <SwipeToReact
-                        onLeft={() => handleReact(item.id, "down")}
-                        onRight={() => handleReact(item.id, "up")}
+                      <div
+                        className="pb-3"
+                        style={{
+                          opacity: isRemoving ? 0 : 1,
+                          transform: isRemoving ? "scaleY(0.7)" : "scaleY(1)",
+                          transformOrigin: "top",
+                          transition: isRemoving
+                            ? "opacity 300ms cubic-bezier(0.4,0,0.2,1), transform 350ms cubic-bezier(0.4,0,0.2,1)"
+                            : "opacity 250ms ease-in, transform 250ms cubic-bezier(0.4,0,0.2,1)",
+                        }}
                       >
-                        <PartnerWatchlistItemCard
-                          item={item}
-                          partnerAvatar={partnerAvatar}
-                          partnerName={partnerName}
-                          onOpen={() => router.push(`/films-series/partner/${item.id}`)}
-                          onReact={(reaction) => handleReact(item.id, reaction)}
-                          onPlay={() => void handlePlay(item)}
-                        />
-                      </SwipeToReact>
+                        <SwipeToReact
+                          onLeft={() => handleReact(item.id, "down")}
+                          onRight={() => handleReact(item.id, "up")}
+                        >
+                          <PartnerWatchlistItemCard
+                            item={item}
+                            partnerAvatar={partnerAvatar}
+                            partnerName={partnerName}
+                            onOpen={() => router.push(`/films-series/partner/${item.id}`)}
+                            onReact={(reaction) => handleReact(item.id, reaction)}
+                            onPlay={() => void handlePlay(item)}
+                          />
+                        </SwipeToReact>
+                      </div>
                     </div>
                   </div>
                 );
@@ -793,6 +854,17 @@ export default function PartnerWatchlistPage() {
 
     {trailerKey && (
       <TrailerModal trailerKey={trailerKey} onClose={() => setTrailerKey(null)} />
+    )}
+
+    {snackbar && (
+      <div className={APP_SNACKBAR_NO_NAV_FIXTURE_CLASS}>
+        <Snackbar
+          message={snackbar.message}
+          actionLabel="Zet terug"
+          onAction={snackbar.undoFn}
+          className="w-full max-w-[956px]"
+        />
+      </div>
     )}
   </>
   );
