@@ -615,7 +615,12 @@ export default function DiscoverCarouselPage() {
 
   function handleSeen() {
     if (!currentItem) return;
-    void markWatched(currentItem.id);
+    if (currentItem.type === "movie") {
+      void markWatched(currentItem.id);
+    } else {
+      // Voor series: enkel uit de carousel verwijderen, niet de hele serie als gezien markeren
+      void dismissDiscoverItem(currentItem.id);
+    }
     showSnackbar(`${currentItem.title} als gezien gemarkeerd`);
     removeFromCarousel(currentItem.id);
   }
@@ -624,6 +629,23 @@ export default function DiscoverCarouselPage() {
     if (!currentItem) return;
     void dismissDiscoverItem(currentItem.id);
     showSnackbar(`${currentItem.title} gedisliket`);
+    removeFromCarousel(currentItem.id);
+  }
+
+  function handleWatching() {
+    if (!currentItem) return;
+    const tmdbId = currentItem.id.replace(/^tv-/, "");
+    // ep-{tmdbId}-s1e0 → watchingItems toont dit als "volgende: s1e1"
+    void markWatched(`ep-${tmdbId}-s1e0`);
+    void addToWatchlist({
+      id: currentItem.id,
+      type: "tv",
+      title: currentItem.title,
+      year: currentItem.year,
+      posterUrl: detail?.posterUrl ?? currentItem.posterUrl ?? null,
+      score: detail?.score ?? currentItem.score ?? null,
+    });
+    showSnackbar(`${currentItem.title} toegevoegd aan 'Aan het kijken'`);
     removeFromCarousel(currentItem.id);
   }
 
@@ -863,34 +885,46 @@ export default function DiscoverCarouselPage() {
                     ) : null}
 
                     {/* Actieknoppen */}
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        aria-label="Als gezien markeren"
-                        onClick={handleSeen}
-                        className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-[#4f55f1] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                      >
-                        <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
-                        <span className="text-xs font-medium leading-4 text-[#4f55f1]">Gezien</span>
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Liken en toevoegen aan watchlist"
-                        onClick={handleLike}
-                        className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg bg-[#4f55f1] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                      >
-                        <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-white" />
-                        <span className="text-xs font-medium leading-4 text-white">Like</span>
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Disliken"
-                        onClick={handleDislike}
-                        className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg bg-[#d64040] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                      >
-                        <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />
-                        <span className="text-xs font-medium leading-4 text-white">Dislike</span>
-                      </button>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          aria-label="Als gezien markeren"
+                          onClick={handleSeen}
+                          className="flex flex-1 items-center justify-center rounded-lg border border-[#4f55f1] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                        >
+                          <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Liken en toevoegen aan watchlist"
+                          onClick={handleLike}
+                          className="flex flex-1 items-center justify-center rounded-lg bg-[#4f55f1] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                        >
+                          <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-white" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Disliken"
+                          onClick={handleDislike}
+                          className="flex flex-1 items-center justify-center rounded-lg bg-[#d64040] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                        >
+                          <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />
+                        </button>
+                      </div>
+                      {currentItem?.type === "tv" && (
+                        <button
+                          type="button"
+                          aria-label="Ik ben dit nu aan het kijken"
+                          onClick={handleWatching}
+                          className="flex w-full items-center gap-3 rounded-lg border border-[#4f55f1] p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                        >
+                          <span className="flex-1 text-left text-base font-medium leading-6 text-[#4f55f1]">
+                            Ik ben dit nu aan het kijken
+                          </span>
+                          <MaskIcon src="/icons/visible.svg" className="size-6 shrink-0 bg-[#4f55f1]" />
+                        </button>
+                      )}
                     </div>
 
                     {/* Backdrop met playknop */}

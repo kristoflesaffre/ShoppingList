@@ -10,6 +10,9 @@ import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
+import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { Button } from "@/components/ui/button";
+import { Stepper } from "@/components/ui/stepper";
 
 type Kind = "films" | "series";
 
@@ -182,10 +185,127 @@ function CardSkeleton() {
 }
 
 /** Figma 1715:76243 — watchlist item card */
+function SwipeableCard({
+  mediaType,
+  onDelete,
+  onWatching,
+  children,
+}: {
+  mediaType: "movie" | "tv";
+  onDelete: () => void;
+  onWatching: () => void;
+  children: React.ReactNode;
+}) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const cardRef = React.useRef<HTMLDivElement>(null);
+  const bgRef = React.useRef<HTMLDivElement>(null);
+  const iconDeleteRef = React.useRef<HTMLDivElement>(null);
+  const iconWatchRef = React.useRef<HTMLDivElement>(null);
+  const drag = React.useRef({ startX: 0, startY: 0, axis: null as "x" | "y" | null, active: false, currentX: 0 });
+
+  React.useEffect(() => {
+    const card = cardRef.current!;
+    if (!card) return;
+
+    function setBg(dir: "left" | "right" | null) {
+      const bg = bgRef.current;
+      if (!bg) return;
+      if (dir === "left") {
+        bg.style.background = "#d64040";
+        if (iconDeleteRef.current) iconDeleteRef.current.style.display = "flex";
+        if (iconWatchRef.current) iconWatchRef.current.style.display = "none";
+      } else if (dir === "right") {
+        bg.style.background = "#4f55f1";
+        if (iconDeleteRef.current) iconDeleteRef.current.style.display = "none";
+        if (iconWatchRef.current) iconWatchRef.current.style.display = "flex";
+      } else {
+        bg.style.background = "transparent";
+        if (iconDeleteRef.current) iconDeleteRef.current.style.display = "none";
+        if (iconWatchRef.current) iconWatchRef.current.style.display = "none";
+      }
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      const t = e.touches[0];
+      drag.current = { startX: t.clientX, startY: t.clientY, axis: null, active: true, currentX: 0 };
+      setBg(null);
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (!drag.current.active) return;
+      const t = e.touches[0];
+      const dx = t.clientX - drag.current.startX;
+      const dy = t.clientY - drag.current.startY;
+      if (!drag.current.axis) {
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8)
+          drag.current.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+        return;
+      }
+      if (drag.current.axis !== "x") return;
+      e.preventDefault();
+      const MAX = 110;
+      let clamped = Math.max(-MAX, Math.min(MAX, dx));
+      if (clamped > 0 && mediaType !== "tv") clamped = 0;
+      drag.current.currentX = clamped;
+      card.style.transform = `translateX(${clamped}px)`;
+      if (clamped < -10) setBg("left");
+      else if (clamped > 10 && mediaType === "tv") setBg("right");
+      else setBg(null);
+    }
+
+    function onTouchEnd() {
+      if (!drag.current.active) return;
+      drag.current.active = false;
+      const cardWidth = containerRef.current?.offsetWidth ?? 300;
+      const x = drag.current.currentX;
+      const threshold = cardWidth * 0.3;
+      card.style.transition = "transform 0.2s ease";
+      if (x < -threshold) {
+        card.style.transform = `translateX(-${cardWidth}px)`;
+        setTimeout(() => { card.style.transition = ""; card.style.transform = ""; setBg(null); onDelete(); }, 220);
+      } else if (x > threshold && mediaType === "tv") {
+        card.style.transform = `translateX(${cardWidth}px)`;
+        setTimeout(() => { card.style.transition = ""; card.style.transform = ""; setBg(null); onWatching(); }, 220);
+      } else {
+        card.style.transform = "translateX(0)";
+        setTimeout(() => { card.style.transition = ""; setBg(null); }, 220);
+      }
+      drag.current.currentX = 0;
+    }
+
+    card.addEventListener("touchstart", onTouchStart, { passive: true });
+    card.addEventListener("touchmove", onTouchMove, { passive: false });
+    card.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      card.removeEventListener("touchstart", onTouchStart);
+      card.removeEventListener("touchmove", onTouchMove);
+      card.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [mediaType, onDelete, onWatching]);
+
+  return (
+    <div ref={containerRef} className="relative overflow-hidden rounded-[8px]">
+      {/* Enkele achtergrond — kleur en icoon worden imperatief geupdate */}
+      <div ref={bgRef} className="absolute inset-0 rounded-[8px]" style={{ background: "transparent" }}>
+        <div ref={iconWatchRef} className="absolute inset-y-0 left-0 hidden items-center px-5">
+          <MaskIcon src="/icons/visible.svg" className="size-7 bg-white" />
+        </div>
+        <div ref={iconDeleteRef} className="absolute inset-y-0 right-0 hidden items-center px-5">
+          <MaskIcon src="/icons/recycle_bin.svg" className="size-7 bg-white" />
+        </div>
+      </div>
+      <div ref={cardRef} className="relative">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function WatchlistItemCard({
   item,
   onOpen,
   onMarkSeen,
+  onStartWatching,
   showAvatars,
   avatarMode,
   userAvatar,
@@ -194,6 +314,7 @@ function WatchlistItemCard({
   item: EnrichedItem;
   onOpen: () => void;
   onMarkSeen: (e: React.MouseEvent) => void;
+  onStartWatching?: () => void;
   showAvatars: boolean;
   avatarMode: "solo" | "together";
   userAvatar: AvatarPerson;
@@ -233,7 +354,14 @@ function WatchlistItemCard({
             <button
               type="button"
               aria-label={`Markeer ${item.title} als bekeken`}
-              onClick={(e) => { e.stopPropagation(); onMarkSeen(e); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (item.type === "tv" && onStartWatching) {
+                  onStartWatching();
+                } else {
+                  onMarkSeen(e);
+                }
+              }}
               className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
             >
               <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
@@ -288,11 +416,18 @@ export default function WatchlistKindPage() {
     removeFromWatchlist,
     addToWatchlist,
     updateWatchlistScore,
+    markWatched,
   } = useFilmsLibrary();
 
   const [query, setQuery] = React.useState("");
   const [listTab, setListTab] = React.useState<ListTab>("samen");
   const [genreFilter, setGenreFilter] = React.useState<string>("Alles");
+  const [watchingSlide, setWatchingSlide] = React.useState<{
+    item: EnrichedItem;
+    seasons: { seasonNumber: number; name: string; episodeCount: number }[];
+    selectedSeason: number;
+    selectedEpisode: number;
+  } | null>(null);
 
   const hasScrolledRef = React.useRef(false);
 
@@ -533,6 +668,56 @@ export default function WatchlistKindPage() {
     [removeFromWatchlist],
   );
 
+  function handleSwipeDelete(item: EnrichedItem) {
+    if (removingIds.has(item.id)) return;
+    removalSnapshotsRef.current.set(item.id, item);
+    setRemovingIds((prev) => new Set(prev).add(item.id));
+    const timer = setTimeout(() => {
+      commitRemoval(item.id);
+      setSnackbar({
+        message: `${item.title} verwijderd`,
+        undoItem: { ...item },
+        undoEnriched: item,
+        undoFn: () => {},
+      });
+      snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+    }, REMOVE_ANIM_MS);
+    removalTimersRef.current.set(item.id, timer);
+  }
+
+  function handleSwipeWatching(item: EnrichedItem) {
+    const tmdbId = item.id.replace(/^tv-/, "");
+    fetch(`/api/films/detail?type=tv&id=${tmdbId}`)
+      .then((r) => r.json())
+      .then((data: { seasons?: { seasonNumber: number; name: string; episodeCount: number }[] }) => {
+        const seasons = (data.seasons ?? []).filter((s) => s.seasonNumber > 0);
+        if (seasons.length === 0) {
+          // Geen seizoeninfo — direct starten bij s1e1
+          void markWatched(`ep-${tmdbId}-s1e0`);
+          void addToWatchlist({ id: item.id, type: "tv", title: item.title, year: item.year, posterUrl: item.posterUrl ?? null, score: item.score });
+          setSnackbar({ message: `${item.title} toegevoegd aan 'Aan het kijken'`, undoFn: () => {} });
+          snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+          return;
+        }
+        setWatchingSlide({ item, seasons, selectedSeason: seasons[0].seasonNumber, selectedEpisode: 1 });
+      })
+      .catch(() => {
+        void markWatched(`ep-${tmdbId}-s1e0`);
+        void addToWatchlist({ id: item.id, type: "tv", title: item.title, year: item.year, posterUrl: item.posterUrl ?? null, score: item.score });
+      });
+  }
+
+  function handleWatchingConfirm() {
+    if (!watchingSlide) return;
+    const { item, selectedSeason, selectedEpisode } = watchingSlide;
+    const tmdbId = item.id.replace(/^tv-/, "");
+    void markWatched(`ep-${tmdbId}-s${selectedSeason}e${selectedEpisode - 1}`);
+    void addToWatchlist({ id: item.id, type: "tv", title: item.title, year: item.year, posterUrl: item.posterUrl ?? null, score: item.score });
+    setSnackbar({ message: `${item.title} toegevoegd aan 'Aan het kijken'`, undoFn: () => {} });
+    snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+    setWatchingSlide(null);
+  }
+
   function handleMarkSeen(e: React.MouseEvent, item: EnrichedItem) {
     e.stopPropagation();
     if (removingIds.has(item.id)) return;
@@ -591,8 +776,13 @@ export default function WatchlistKindPage() {
   if (!kind || !config) return null;
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-white">
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
+    <div className="relative flex min-h-dvh w-full flex-col">
+      {/* Blauwe gradient achtergrond */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{ background: "linear-gradient(to bottom, #e3e4ff 0%, white 40%)" }}
+      />
+      <div className="fixed left-0 right-0 top-0 z-20 pt-[env(safe-area-inset-top,0px)]" style={{ background: "linear-gradient(to bottom, #e3e4ff, #e3e4ff)" }}>
         <div className="mx-auto w-full max-w-[956px] px-4">
           <header className="flex h-16 w-full items-center gap-4">
             <button
@@ -643,24 +833,27 @@ export default function WatchlistKindPage() {
           )}
 
           {genreChips.length > 1 && (
-            <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-              <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-                {genreChips.map((chip) => (
-                  <button
-                    key={chip}
-                    type="button"
-                    onClick={() => setGenreFilter(chip)}
-                    className={cn(
-                      "h-8 shrink-0 rounded-full px-3 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                      genreFilter === chip
-                        ? "bg-[#4f55f1] font-semibold text-white"
-                        : "bg-white font-normal text-[#707784] shadow-[0px_1px_2px_rgba(0,0,0,0.04)]",
-                    )}
-                  >
-                    {chip}
-                  </button>
-                ))}
+            <div className="relative -mx-4">
+              <div className="overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+                  {genreChips.map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setGenreFilter(chip)}
+                      className={cn(
+                        "h-8 shrink-0 rounded-full px-3 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                        genreFilter === chip
+                          ? "bg-[#4f55f1] font-semibold text-white"
+                          : "bg-white font-normal text-[#707784] shadow-[0px_1px_2px_rgba(0,0,0,0.04)]",
+                      )}
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
               </div>
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent" />
             </div>
           )}
 
@@ -692,19 +885,26 @@ export default function WatchlistKindPage() {
                     }}
                   >
                     <div className="min-h-0 overflow-hidden">
-                      <WatchlistItemCard
-                        item={item}
-                        onOpen={() => {
-                          sessionStorage.setItem(`watchlist-${kindParam}-anchor`, item.id);
-                          sessionStorage.setItem("films-watchlist-return", `/films-series/watchlist/${kindParam}`);
-                          router.push(`/films-series/${item.id}`);
-                        }}
-                        onMarkSeen={(e) => handleMarkSeen(e, item)}
-                        showAvatars={isFilmsListShared}
-                        avatarMode={listTab === "samen" ? "together" : "solo"}
-                        userAvatar={userAvatar}
-                        partnerAvatar={partnerAvatar}
-                      />
+                      <SwipeableCard
+                        mediaType={config.mediaType}
+                        onDelete={() => handleSwipeDelete(item)}
+                        onWatching={() => handleSwipeWatching(item)}
+                      >
+                        <WatchlistItemCard
+                          item={item}
+                          onOpen={() => {
+                            sessionStorage.setItem(`watchlist-${kindParam}-anchor`, item.id);
+                            sessionStorage.setItem("films-watchlist-return", `/films-series/watchlist/${kindParam}`);
+                            router.push(`/films-series/${item.id}`);
+                          }}
+                          onMarkSeen={(e) => handleMarkSeen(e, item)}
+                          onStartWatching={config.mediaType === "tv" ? () => handleSwipeWatching(item) : undefined}
+                          showAvatars={isFilmsListShared}
+                          avatarMode={listTab === "samen" ? "together" : "solo"}
+                          userAvatar={userAvatar}
+                          partnerAvatar={partnerAvatar}
+                        />
+                      </SwipeableCard>
                     </div>
                   </div>
                 );
@@ -729,6 +929,54 @@ export default function WatchlistKindPage() {
           />
         </div>
       )}
+
+      {/* Slide-in: episode selectie voor 'Aan het kijken' */}
+      <SlideInModal
+        open={watchingSlide !== null}
+        onClose={() => setWatchingSlide(null)}
+        title="Starten bij…"
+        bodyFullWidth
+        footer={
+          <Button variant="primary" onClick={handleWatchingConfirm}>
+            Bevestigen
+          </Button>
+        }
+      >
+        {watchingSlide && (
+          <>
+            {watchingSlide.seasons.length > 1 && (
+              <div className="overflow-x-auto pb-4 pl-4" style={{ scrollbarWidth: "none" }}>
+                <div className="flex gap-2 pr-4" style={{ width: "max-content" }}>
+                  {watchingSlide.seasons.map((s) => (
+                    <button
+                      key={s.seasonNumber}
+                      type="button"
+                      onClick={() => setWatchingSlide((prev) => prev ? { ...prev, selectedSeason: s.seasonNumber, selectedEpisode: 1 } : prev)}
+                      className={cn(
+                        "h-8 shrink-0 rounded-full px-3 text-[13px] leading-[18px] transition-colors focus-visible:outline-none",
+                        watchingSlide.selectedSeason === s.seasonNumber
+                          ? "bg-[#4f55f1] font-semibold text-white"
+                          : "bg-[var(--gray-100)] font-normal text-[#707784]",
+                      )}
+                    >
+                      {s.name.startsWith("Seizoen") || s.name.startsWith("Season") ? s.name : `Seizoen ${s.seasonNumber}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="px-4">
+              <Stepper
+                label="Aflevering waarmee je begint"
+                value={watchingSlide.selectedEpisode}
+                min={1}
+                max={watchingSlide.seasons.find((s) => s.seasonNumber === watchingSlide.selectedSeason)?.episodeCount ?? 50}
+                onValueChange={(v) => setWatchingSlide((prev) => prev ? { ...prev, selectedEpisode: v } : prev)}
+              />
+            </div>
+          </>
+        )}
+      </SlideInModal>
     </div>
   );
 }
