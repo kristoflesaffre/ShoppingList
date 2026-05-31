@@ -22,6 +22,9 @@ type SearchResult = {
   cast: string;
 };
 
+/** Klikbare actie-iconen in watchlist-kaarten (Figma primary 200). */
+const CARD_ACTION_ICON = "bg-[var(--blue-200)]";
+
 function MaskIcon({ src, className }: { src: string; className?: string }) {
   return (
     <span
@@ -679,7 +682,7 @@ export default function FilmsSeriesPage() {
                               onClick={() => void reactToPartnerItem(item.id, "up")}
                               className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                             >
-                              <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-[#22c55e]" />
+                              <MaskIcon src="/icons/thumb_up.svg" className={cn("size-6", CARD_ACTION_ICON)} />
                             </button>
                             <button
                               type="button"
@@ -687,7 +690,7 @@ export default function FilmsSeriesPage() {
                               onClick={() => void reactToPartnerItem(item.id, "down")}
                               className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                             >
-                              <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-[#eb5552]" />
+                              <MaskIcon src="/icons/thumb_down.svg" className={cn("size-6", CARD_ACTION_ICON)} />
                             </button>
                             <button
                               type="button"
@@ -695,7 +698,7 @@ export default function FilmsSeriesPage() {
                               onClick={() => void reactToPartnerItem(item.id, "seen")}
                               className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                             >
-                              <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
+                              <MaskIcon src="/icons/visible.svg" className={cn("size-6", CARD_ACTION_ICON)} />
                             </button>
                           </div>
                         </div>
@@ -755,7 +758,7 @@ export default function FilmsSeriesPage() {
                                   }}
                                   className="shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
                                 >
-                                  <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
+                                  <MaskIcon src="/icons/visible.svg" className={cn("size-6", CARD_ACTION_ICON)} />
                                 </span>
                               </div>
                               <p className="text-sm leading-5 text-[#8c929d]">{year} TV Serie</p>
@@ -828,11 +831,11 @@ export default function FilmsSeriesPage() {
                             onClick={(e) => handleRemoveFilm(e, item)}
                             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRemoveFilm(e as unknown as React.MouseEvent, item); } }}
                           >
-                            <MaskIcon src="/icons/visible.svg" className="size-4 bg-white" />
+                            <MaskIcon src="/icons/visible.svg" className={cn("size-4", CARD_ACTION_ICON)} />
                           </span>
                         </div>
                         <div className="flex flex-col gap-0">
-                          <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[#16181a]">{item.title}</p>
+                          <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[#16181a]">{item.title}</p>
                           <div className="flex items-center justify-between">
                             <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
                             {item.score != null && (
@@ -886,7 +889,7 @@ export default function FilmsSeriesPage() {
                           )}
                         </div>
                         <div className="flex flex-col gap-0">
-                          <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[#16181a]">{item.title}</p>
+                          <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[#16181a]">{item.title}</p>
                           <div className="flex items-center justify-between">
                             <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
                             {item.score != null && (

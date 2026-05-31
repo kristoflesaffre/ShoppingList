@@ -348,7 +348,7 @@ export default function PartnerFilmDetailPage() {
     } else if (prevItem) {
       commitNavigationRef.current?.("prev");
     } else {
-      router.push("/films-series");
+      router.push("/films-series/partner-watchlist");
     }
     // Fire DB write in the background after animation has started
     void reactToPartnerItem(currentId, reaction);
@@ -553,7 +553,7 @@ export default function PartnerFilmDetailPage() {
             <button
               type="button"
               aria-label="Terug"
-              onClick={() => router.push("/films-series")}
+              onClick={() => router.push("/films-series/partner-watchlist")}
               className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
             >
               <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />

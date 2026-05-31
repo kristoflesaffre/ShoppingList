@@ -203,6 +203,7 @@ type DetailPayload = {
   cast: { name: string }[];
   overview: string;
   score: number | null;
+  trailerKey: string | null;
 };
 
 type EnrichedItem = WatchlistItem & {
@@ -210,6 +211,7 @@ type EnrichedItem = WatchlistItem & {
   castNames: string;
   overview: string;
   metaLine: string;
+  trailerKey: string | null;
 };
 
 type AvatarPerson = { url: string | null; name: string | null };
@@ -283,7 +285,103 @@ function toEnriched(item: WatchlistItem, data: DetailPayload | null): EnrichedIt
     castNames,
     overview,
     metaLine: buildMetaLine(item.year, item.type, genres),
+    trailerKey: data?.trailerKey ?? null,
   };
+}
+
+function PlayIcon() {
+  return (
+    <svg width="10" height="12" viewBox="0 0 10 12" fill="white" aria-hidden>
+      <path d="M1 0.5L9.5 6L1 11.5V0.5Z" />
+    </svg>
+  );
+}
+
+function TrailerModal({ trailerKey, onClose }: { trailerKey: string; onClose: () => void }) {
+  const iframeWrapperRef = React.useRef<HTMLDivElement>(null);
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  // Detect video end via YouTube postMessage API
+  React.useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        if (data?.event === "onStateChange" && data?.info === 0) {
+          onCloseRef.current();
+        }
+      } catch { /* ignore non-JSON messages */ }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
+  // Fullscreen when landscape, exit when portrait
+  React.useEffect(() => {
+    const handleOrientation = () => {
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const wrapper = iframeWrapperRef.current;
+      if (isLandscape && wrapper && !document.fullscreenElement) {
+        wrapper.requestFullscreen?.().catch(() => {});
+      } else if (!isLandscape && document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    };
+    window.addEventListener("orientationchange", handleOrientation);
+    window.addEventListener("resize", handleOrientation);
+    // Check immediately in case already landscape when modal opens
+    handleOrientation();
+    return () => {
+      window.removeEventListener("orientationchange", handleOrientation);
+      window.removeEventListener("resize", handleOrientation);
+    };
+  }, []);
+
+  // Close modal when fullscreen is exited (e.g. user presses back on Android)
+  React.useEffect(() => {
+    const handler = () => {
+      if (!document.fullscreenElement) {
+        // Only close if landscape — portrait exit is normal
+        if (window.innerWidth > window.innerHeight) onCloseRef.current();
+      }
+    };
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const src = `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=0&enablejsapi=1&rel=0&playsinline=1&modestbranding=1`;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black"
+      onClick={onClose}
+    >
+      <div
+        ref={iframeWrapperRef}
+        className="relative w-full bg-black"
+        style={{ maxHeight: "100%", aspectRatio: "16/9" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <iframe
+          src={src}
+          className="absolute inset-0 size-full"
+          allow="autoplay; fullscreen"
+          allowFullScreen
+          title="Trailer"
+        />
+      </div>
+      <button
+        type="button"
+        aria-label="Sluit trailer"
+        onClick={onClose}
+        className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full bg-black/60 text-white focus-visible:outline-none"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="white" aria-hidden>
+          <path d="M1 1l12 12M13 1L1 13" stroke="white" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
+  );
 }
 
 function CardSkeleton() {
@@ -308,12 +406,14 @@ function PartnerWatchlistItemCard({
   partnerName,
   onOpen,
   onReact,
+  onPlay,
 }: {
   item: EnrichedItem;
   partnerAvatar: AvatarPerson;
   partnerName: string | null;
   onOpen: () => void;
   onReact: (reaction: "up" | "down" | "seen") => void;
+  onPlay: () => void;
 }) {
   return (
     <div
@@ -323,22 +423,49 @@ function PartnerWatchlistItemCard({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(); }}
       className="flex w-full cursor-pointer items-stretch gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
     >
-      <div className="relative h-[160px] w-[107px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
-        {item.posterUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.posterUrl}
-            alt=""
-            className="absolute inset-0 size-full object-cover"
-            loading="lazy"
-            decoding="async"
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center">
-            <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
+      {item.trailerKey ? (
+        <button
+          type="button"
+          aria-label={`Trailer afspelen voor ${item.title}`}
+          onClick={(e) => { e.stopPropagation(); onPlay(); }}
+          className="relative h-[160px] w-[107px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          {item.posterUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.posterUrl}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
+            </div>
+          )}
+          <div className="absolute left-1/2 top-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-black/40">
+            <PlayIcon />
           </div>
-        )}
-      </div>
+        </button>
+      ) : (
+        <div className="relative h-[160px] w-[107px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
+          {item.posterUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.posterUrl}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col justify-between gap-1.5">
         <div className="flex w-full flex-col items-start">
@@ -427,6 +554,7 @@ export default function PartnerWatchlistPage() {
   const [enriched, setEnriched] = React.useState<Record<string, EnrichedItem>>({});
   const [loadingDetails, setLoadingDetails] = React.useState(true);
   const [removingIds, setRemovingIds] = React.useState<Set<string>>(() => new Set());
+  const [trailerKey, setTrailerKey] = React.useState<string | null>(null);
 
   const partnerAvatar = React.useMemo(
     (): AvatarPerson => ({ url: partnerAvatarUrl, name: partnerName }),
@@ -536,7 +664,24 @@ export default function PartnerWatchlistPage() {
     void reactToPartnerItem(itemId, reaction);
   }
 
+  async function handlePlay(item: EnrichedItem) {
+    if (item.trailerKey) {
+      setTrailerKey(item.trailerKey);
+      return;
+    }
+    // Fetch on-demand if not yet enriched
+    const dashIdx = item.id.indexOf("-");
+    const tmdbId = item.id.slice(dashIdx + 1);
+    try {
+      const res = await fetch(`/api/films/detail?type=${item.type}&id=${tmdbId}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as { trailerKey?: string | null };
+      if (data.trailerKey) setTrailerKey(data.trailerKey);
+    } catch { /* ignore */ }
+  }
+
   return (
+    <>
     <div className="relative flex min-h-dvh w-full flex-col bg-white">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[478px]"
@@ -633,6 +778,7 @@ export default function PartnerWatchlistPage() {
                           partnerName={partnerName}
                           onOpen={() => router.push(`/films-series/partner/${item.id}`)}
                           onReact={(reaction) => handleReact(item.id, reaction)}
+                          onPlay={() => void handlePlay(item)}
                         />
                       </SwipeToReact>
                     </div>
@@ -644,5 +790,10 @@ export default function PartnerWatchlistPage() {
         </div>
       </div>
     </div>
+
+    {trailerKey && (
+      <TrailerModal trailerKey={trailerKey} onClose={() => setTrailerKey(null)} />
+    )}
+  </>
   );
 }
