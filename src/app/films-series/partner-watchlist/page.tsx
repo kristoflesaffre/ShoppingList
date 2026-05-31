@@ -7,6 +7,197 @@ import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 
+const COMMIT_RATIO = 0.36;
+const MAX_REVEAL_RATIO = 0.5;
+const RUBBER = 0.22;
+const PREVENT_DEFAULT_DX = 18;
+const SPRING_MS = 320;
+const SPRING_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+const SWIPE_OUT_MS = 260;
+const SWIPE_OUT_EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
+
+function clampBiOffset(offsetPx: number, maxReveal: number): number {
+  if (offsetPx < 0) {
+    if (offsetPx >= -maxReveal) return offsetPx;
+    return -maxReveal + (offsetPx + maxReveal) * RUBBER;
+  }
+  if (offsetPx <= maxReveal) return offsetPx;
+  return maxReveal + (offsetPx - maxReveal) * RUBBER;
+}
+
+function isSwipeInteractive(target: EventTarget | null) {
+  if (!(target instanceof Element)) return true;
+  return !!target.closest('button, a, input, textarea, select, [role="checkbox"], [data-swipe-ignore]');
+}
+
+function SwipeToReact({
+  children,
+  onLeft,
+  onRight,
+  className,
+}: {
+  children: React.ReactNode;
+  onLeft: () => void;
+  onRight: () => void;
+  className?: string;
+}) {
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const surfaceRef = React.useRef<HTMLDivElement>(null);
+  const [offset, setOffset] = React.useState(0);
+  const [transition, setTransition] = React.useState<string | undefined>(undefined);
+
+  const offsetLiveRef = React.useRef(0);
+  React.useEffect(() => { offsetLiveRef.current = offset; }, [offset]);
+
+  const onLeftRef = React.useRef(onLeft);
+  const onRightRef = React.useRef(onRight);
+  React.useEffect(() => { onLeftRef.current = onLeft; }, [onLeft]);
+  React.useEffect(() => { onRightRef.current = onRight; }, [onRight]);
+
+  const draggingRef = React.useRef(false);
+  const pointerIdRef = React.useRef<number | null>(null);
+  const startClientXRef = React.useRef(0);
+  const startClientYRef = React.useRef(0);
+  const startOffsetRef = React.useRef(0);
+  const axisLockedRef = React.useRef<"h" | "v" | null>(null);
+  const maxRevealRef = React.useRef(96);
+  const widthRef = React.useRef(0);
+  const suppressClickRef = React.useRef(false);
+  const committingRef = React.useRef(false);
+
+  const springBack = React.useCallback(() => {
+    setTransition(`transform ${SPRING_MS}ms ${SPRING_EASE}`);
+    offsetLiveRef.current = 0;
+    setOffset(0);
+    window.setTimeout(() => setTransition(undefined), SPRING_MS + 40);
+  }, []);
+
+  const finishCommit = React.useCallback((direction: "left" | "right") => {
+    const w = surfaceRef.current?.getBoundingClientRect().width ?? widthRef.current;
+    committingRef.current = true;
+    setTransition(`transform ${SWIPE_OUT_MS}ms ${SWIPE_OUT_EASE}`);
+    setOffset(direction === "left" ? -Math.max(w, widthRef.current) : Math.max(w, widthRef.current));
+    window.setTimeout(() => {
+      if (direction === "left") onLeftRef.current(); else onRightRef.current();
+      committingRef.current = false;
+      setOffset(0);
+      setTransition(undefined);
+      offsetLiveRef.current = 0;
+    }, SWIPE_OUT_MS + 16);
+  }, []);
+
+  const onPointerDownInner = React.useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0 || isSwipeInteractive(e.target)) return;
+    const root = rootRef.current;
+    if (!root) return;
+    widthRef.current = root.getBoundingClientRect().width;
+    maxRevealRef.current = Math.min(120, widthRef.current * MAX_REVEAL_RATIO);
+    draggingRef.current = true;
+    pointerIdRef.current = e.pointerId;
+    startClientXRef.current = e.clientX;
+    startClientYRef.current = e.clientY;
+    startOffsetRef.current = offsetLiveRef.current;
+    axisLockedRef.current = null;
+    suppressClickRef.current = false;
+    setTransition(undefined);
+  }, []);
+
+  const onPointerMoveInner = React.useCallback((e: React.PointerEvent) => {
+    if (!draggingRef.current || pointerIdRef.current !== e.pointerId) return;
+    const dx = e.clientX - startClientXRef.current;
+    const dy = e.clientY - startClientYRef.current;
+
+    if (axisLockedRef.current === null) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dy) > Math.abs(dx) * 1.1) {
+        axisLockedRef.current = "v";
+        draggingRef.current = false;
+        pointerIdRef.current = null;
+        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+        return;
+      }
+      axisLockedRef.current = "h";
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    }
+
+    if (axisLockedRef.current !== "h") return;
+    if (Math.abs(dx) > 14) suppressClickRef.current = true;
+
+    const next = clampBiOffset(startOffsetRef.current + dx, maxRevealRef.current);
+    if (e.cancelable && Math.abs(dx) > PREVENT_DEFAULT_DX) e.preventDefault();
+    offsetLiveRef.current = next;
+    setOffset(next);
+  }, []);
+
+  const onPointerUp = React.useCallback((e: React.PointerEvent) => {
+    if (pointerIdRef.current !== e.pointerId) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    draggingRef.current = false;
+    pointerIdRef.current = null;
+    axisLockedRef.current = null;
+    if (committingRef.current) return;
+
+    const threshold = (widthRef.current || 1) * COMMIT_RATIO;
+    const current = offsetLiveRef.current;
+
+    if (current < -threshold) { finishCommit("left"); return; }
+    if (current > threshold) { finishCommit("right"); return; }
+    springBack();
+  }, [finishCommit, springBack]);
+
+  const onPointerCancel = React.useCallback((e: React.PointerEvent) => {
+    if (pointerIdRef.current !== e.pointerId) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    draggingRef.current = false;
+    pointerIdRef.current = null;
+    axisLockedRef.current = null;
+    springBack();
+  }, [springBack]);
+
+  const onClickCapture = React.useCallback((e: React.MouseEvent) => {
+    if (suppressClickRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      suppressClickRef.current = false;
+    }
+  }, []);
+
+  return (
+    <div ref={rootRef} className={cn("relative w-full min-w-0 overflow-hidden rounded-[8px]", className)}>
+      {offset < 0 && (
+        <div className="pointer-events-none absolute inset-0 rounded-[8px] bg-[#d64040]" aria-hidden>
+          <div className="absolute right-6 top-1/2 -translate-y-1/2">
+            <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />
+          </div>
+        </div>
+      )}
+      {offset > 0 && (
+        <div className="pointer-events-none absolute inset-0 rounded-[8px] bg-[#22c55e]" aria-hidden>
+          <div className="absolute left-6 top-1/2 -translate-y-1/2">
+            <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-white" />
+          </div>
+        </div>
+      )}
+      <div
+        ref={surfaceRef}
+        className="relative z-[1] touch-pan-y rounded-[8px]"
+        style={{
+          transform: `translate3d(${offset}px, 0, 0)`,
+          transition,
+          willChange: transition ? "transform" : undefined,
+        }}
+        onPointerDown={onPointerDownInner}
+        onPointerMove={onPointerMoveInner}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        onClickCapture={onClickCapture}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 type DetailPayload = {
   genres: string[];
   cast: { name: string }[];
@@ -432,13 +623,18 @@ export default function PartnerWatchlistPage() {
                     }}
                   >
                     <div className="min-h-0 overflow-hidden">
-                      <PartnerWatchlistItemCard
-                        item={item}
-                        partnerAvatar={partnerAvatar}
-                        partnerName={partnerName}
-                        onOpen={() => router.push(`/films-series/partner/${item.id}`)}
-                        onReact={(reaction) => handleReact(item.id, reaction)}
-                      />
+                      <SwipeToReact
+                        onLeft={() => handleReact(item.id, "down")}
+                        onRight={() => handleReact(item.id, "up")}
+                      >
+                        <PartnerWatchlistItemCard
+                          item={item}
+                          partnerAvatar={partnerAvatar}
+                          partnerName={partnerName}
+                          onOpen={() => router.push(`/films-series/partner/${item.id}`)}
+                          onReact={(reaction) => handleReact(item.id, reaction)}
+                        />
+                      </SwipeToReact>
                     </div>
                   </div>
                 );
