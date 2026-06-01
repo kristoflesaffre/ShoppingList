@@ -550,7 +550,7 @@ export default function WatchlistKindPage() {
   }, [watchedIds]);
 
   const [query, setQuery] = React.useState("");
-  const [listTab, setListTab] = React.useState<ListTab>("samen");
+  const [listTab, setListTab] = React.useState<ListTab>("alleen");
   const [genreFilter, setGenreFilter] = React.useState<string>("Alles");
   const [trailerKey, setTrailerKey] = React.useState<string | null>(null);
   const [watchingSlide, setWatchingSlide] = React.useState<{
