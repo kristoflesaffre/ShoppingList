@@ -333,12 +333,11 @@ function SwipeableCard({
       if (drag.current.axis !== "x") return;
       e.preventDefault();
       const MAX = 110;
-      let clamped = Math.max(-MAX, Math.min(MAX, dx));
-      if (clamped > 0 && mediaType !== "tv") clamped = 0;
+      const clamped = Math.max(-MAX, Math.min(MAX, dx));
       drag.current.currentX = clamped;
       card.style.transform = `translateX(${clamped}px)`;
       if (clamped < -10) setBg("left");
-      else if (clamped > 10 && mediaType === "tv") setBg("right");
+      else if (clamped > 10) setBg("right");
       else setBg(null);
     }
 
@@ -352,7 +351,7 @@ function SwipeableCard({
       if (x < -threshold) {
         card.style.transform = `translateX(-${cardWidth}px)`;
         setTimeout(() => { card.style.transition = ""; card.style.transform = ""; setBg(null); onDelete(); }, 220);
-      } else if (x > threshold && mediaType === "tv") {
+      } else if (x > threshold) {
         card.style.transform = `translateX(${cardWidth}px)`;
         setTimeout(() => { card.style.transition = ""; card.style.transform = ""; setBg(null); onWatching(); }, 220);
       } else {
@@ -856,6 +855,24 @@ export default function WatchlistKindPage() {
       });
   }
 
+  function handleSwipeMarkSeen(item: EnrichedItem) {
+    if (removingIds.has(item.id)) return;
+    removalSnapshotsRef.current.set(item.id, item);
+    setRemovingIds((prev) => new Set(prev).add(item.id));
+    const timer = setTimeout(() => {
+      commitRemoval(item.id);
+      if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
+      setSnackbar({
+        message: `${item.title} als gezien gemarkeerd`,
+        undoItem: { ...item },
+        undoEnriched: item,
+        undoFn: () => {},
+      });
+      snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+    }, REMOVE_ANIM_MS);
+    removalTimersRef.current.set(item.id, timer);
+  }
+
   function handleWatchingConfirm() {
     if (!watchingSlide) return;
     const { item, selectedSeason, selectedEpisode } = watchingSlide;
@@ -1053,7 +1070,7 @@ export default function WatchlistKindPage() {
                       <SwipeableCard
                         mediaType={config.mediaType}
                         onDelete={() => handleSwipeDelete(item)}
-                        onWatching={() => handleSwipeWatching(item)}
+                        onWatching={config.mediaType === "tv" ? () => handleSwipeWatching(item) : () => handleSwipeMarkSeen(item)}
                       >
                         <WatchlistItemCard
                           item={item}
