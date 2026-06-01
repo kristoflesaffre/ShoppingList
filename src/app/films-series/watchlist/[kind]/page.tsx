@@ -40,6 +40,7 @@ type DetailPayload = {
   overview: string;
   score: number | null;
   releaseDate?: string | null;
+  trailerKey?: string | null;
 };
 
 type EnrichedItem = WatchlistItem & {
@@ -48,6 +49,7 @@ type EnrichedItem = WatchlistItem & {
   overview: string;
   metaLine: string;
   releaseDate?: string | null;
+  trailerKey?: string | null;
 };
 
 type ListTab = "alleen" | "samen";
@@ -142,6 +144,89 @@ function StarIcon() {
   );
 }
 
+function PlayIcon() {
+  return (
+    <svg width="10" height="12" viewBox="0 0 10 12" fill="white" aria-hidden>
+      <path d="M1 0.5L9.5 6L1 11.5V0.5Z" />
+    </svg>
+  );
+}
+
+function TrailerModal({ trailerKey, onClose }: { trailerKey: string; onClose: () => void }) {
+  const iframeWrapperRef = React.useRef<HTMLDivElement>(null);
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  React.useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        if (data?.event === "onStateChange" && data?.info === 0) onCloseRef.current();
+      } catch { /* ignore */ }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
+  React.useEffect(() => {
+    const handleOrientation = () => {
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const wrapper = iframeWrapperRef.current;
+      if (isLandscape && wrapper && !document.fullscreenElement) {
+        wrapper.requestFullscreen?.().catch(() => {});
+      } else if (!isLandscape && document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    };
+    window.addEventListener("orientationchange", handleOrientation);
+    window.addEventListener("resize", handleOrientation);
+    handleOrientation();
+    return () => {
+      window.removeEventListener("orientationchange", handleOrientation);
+      window.removeEventListener("resize", handleOrientation);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const handler = () => {
+      if (!document.fullscreenElement && window.innerWidth > window.innerHeight) onCloseRef.current();
+    };
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const src = `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=0&enablejsapi=1&rel=0&playsinline=1&modestbranding=1`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black" onClick={onClose}>
+      <div
+        ref={iframeWrapperRef}
+        className="relative w-full bg-black"
+        style={{ maxHeight: "100%", aspectRatio: "16/9" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <iframe
+          src={src}
+          className="absolute inset-0 size-full"
+          allow="autoplay; fullscreen"
+          allowFullScreen
+          title="Trailer"
+        />
+      </div>
+      <button
+        type="button"
+        aria-label="Sluit trailer"
+        onClick={onClose}
+        className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full bg-black/60 text-white focus-visible:outline-none"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="white" aria-hidden>
+          <path d="M1 1l12 12M13 1L1 13" stroke="white" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 function buildMetaLine(year: string, genres: string[]): string {
   const genrePart = genres.join(" - ");
   if (year && genrePart) return `${year} / ${genrePart}`;
@@ -170,6 +255,7 @@ function toEnriched(
     overview,
     metaLine: buildMetaLine(item.year, genres),
     releaseDate: data?.releaseDate ?? null,
+    trailerKey: data?.trailerKey ?? null,
   };
 }
 
@@ -309,6 +395,7 @@ function WatchlistItemCard({
   onOpen,
   onMarkSeen,
   onStartWatching,
+  onPlay,
   showAvatars,
   avatarMode,
   userAvatar,
@@ -318,6 +405,7 @@ function WatchlistItemCard({
   onOpen: () => void;
   onMarkSeen: (e: React.MouseEvent) => void;
   onStartWatching?: () => void;
+  onPlay?: () => void;
   showAvatars: boolean;
   avatarMode: "solo" | "together";
   userAvatar: AvatarPerson;
@@ -331,22 +419,49 @@ function WatchlistItemCard({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(); }}
       className="flex w-full cursor-pointer items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
     >
-      <div className="relative h-[130px] w-[87px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
-        {item.posterUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.posterUrl}
-            alt=""
-            className="absolute inset-0 size-full object-cover"
-            loading="lazy"
-            decoding="async"
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center">
-            <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
+      {item.trailerKey && onPlay ? (
+        <button
+          type="button"
+          aria-label={`Trailer afspelen voor ${item.title}`}
+          onClick={(e) => { e.stopPropagation(); onPlay(); }}
+          className="relative h-[130px] w-[87px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          {item.posterUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.posterUrl}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
+            </div>
+          )}
+          <div className="absolute left-1/2 top-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-black/40">
+            <PlayIcon />
           </div>
-        )}
-      </div>
+        </button>
+      ) : (
+        <div className="relative h-[130px] w-[87px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
+          {item.posterUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.posterUrl}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex w-full flex-col">
@@ -420,11 +535,24 @@ export default function WatchlistKindPage() {
     addToWatchlist,
     updateWatchlistScore,
     markWatched,
+    watchedIds,
   } = useFilmsLibrary();
+
+  // tmdbIds van series die al "aan het kijken" zijn — die horen niet in de watchlist
+  const watchingTmdbIds = React.useMemo(() => {
+    const epPattern = /^ep-(\d+)-/;
+    const ids = new Set<string>();
+    for (const id of watchedIds) {
+      const m = id.match(epPattern);
+      if (m) ids.add(m[1]);
+    }
+    return ids;
+  }, [watchedIds]);
 
   const [query, setQuery] = React.useState("");
   const [listTab, setListTab] = React.useState<ListTab>("samen");
   const [genreFilter, setGenreFilter] = React.useState<string>("Alles");
+  const [trailerKey, setTrailerKey] = React.useState<string | null>(null);
   const [watchingSlide, setWatchingSlide] = React.useState<{
     item: EnrichedItem;
     seasons: { seasonNumber: number; name: string; episodeCount: number }[];
@@ -492,11 +620,19 @@ export default function WatchlistKindPage() {
 
   const listSourceItems = React.useMemo(() => {
     if (!config) return [];
-    const byType = (items: WatchlistItem[]) => items.filter((i) => i.type === config.mediaType);
+    const byType = (items: WatchlistItem[]) =>
+      items.filter((i) => {
+        if (i.type !== config.mediaType) return false;
+        if (i.type === "tv") {
+          const tmdbId = i.id.replace(/^tv-/, "");
+          if (watchingTmdbIds.has(tmdbId)) return false;
+        }
+        return true;
+      });
     if (isFilmsListShared && listTab === "samen") return byType(togetherWatchlist);
     if (isFilmsListShared && listTab === "alleen") return byType(aloneWatchlist);
     return byType(ownWatchlist);
-  }, [config, isFilmsListShared, listTab, togetherWatchlist, aloneWatchlist, ownWatchlist]);
+  }, [config, isFilmsListShared, listTab, togetherWatchlist, aloneWatchlist, ownWatchlist, watchingTmdbIds]);
 
   const baseItems = React.useMemo(() => {
     return listSourceItems.filter((i) => !dismissedIds.has(i.id));
@@ -753,6 +889,21 @@ export default function WatchlistKindPage() {
     removalTimersRef.current.set(item.id, timer);
   }
 
+  async function handlePlay(item: EnrichedItem) {
+    if (item.trailerKey) {
+      setTrailerKey(item.trailerKey);
+      return;
+    }
+    const dashIdx = item.id.indexOf("-");
+    const tmdbId = item.id.slice(dashIdx + 1);
+    try {
+      const res = await fetch(`/api/films/detail?type=${item.type}&id=${tmdbId}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as { trailerKey?: string | null };
+      if (data.trailerKey) setTrailerKey(data.trailerKey);
+    } catch { /* ignore */ }
+  }
+
   function handleSnackbarUndo() {
     if (!snackbar) return;
     if (snackbar.undoItem) {
@@ -789,13 +940,14 @@ export default function WatchlistKindPage() {
   if (!kind || !config) return null;
 
   return (
+    <>
     <div className="relative flex min-h-dvh w-full flex-col">
       {/* Blauwe gradient achtergrond */}
       <div
         className="pointer-events-none fixed inset-0 z-0"
         style={{ background: "linear-gradient(to bottom, #e3e4ff 0%, white 40%)" }}
       />
-      <div className="fixed left-0 right-0 top-0 z-20 pt-[env(safe-area-inset-top,0px)]" style={{ background: "linear-gradient(to bottom, #e3e4ff, #e3e4ff)" }}>
+      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
         <div className="mx-auto w-full max-w-[956px] px-4">
           <header className="flex h-16 w-full items-center gap-4">
             <button
@@ -912,6 +1064,7 @@ export default function WatchlistKindPage() {
                           }}
                           onMarkSeen={(e) => handleMarkSeen(e, item)}
                           onStartWatching={config.mediaType === "tv" ? () => handleSwipeWatching(item) : undefined}
+                          onPlay={item.trailerKey ? () => void handlePlay(item) : undefined}
                           showAvatars={isFilmsListShared}
                           avatarMode={listTab === "samen" ? "together" : "solo"}
                           userAvatar={userAvatar}
@@ -991,5 +1144,10 @@ export default function WatchlistKindPage() {
         )}
       </SlideInModal>
     </div>
+
+    {trailerKey && (
+      <TrailerModal trailerKey={trailerKey} onClose={() => setTrailerKey(null)} />
+    )}
+    </>
   );
 }
