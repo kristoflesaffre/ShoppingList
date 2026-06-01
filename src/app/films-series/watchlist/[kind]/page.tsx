@@ -39,6 +39,7 @@ type DetailPayload = {
   cast: { name: string }[];
   overview: string;
   score: number | null;
+  releaseDate?: string | null;
 };
 
 type EnrichedItem = WatchlistItem & {
@@ -46,6 +47,7 @@ type EnrichedItem = WatchlistItem & {
   castNames: string;
   overview: string;
   metaLine: string;
+  releaseDate?: string | null;
 };
 
 type ListTab = "alleen" | "samen";
@@ -167,6 +169,7 @@ function toEnriched(
     castNames,
     overview,
     metaLine: buildMetaLine(item.year, genres),
+    releaseDate: data?.releaseDate ?? null,
   };
 }
 
@@ -622,8 +625,16 @@ export default function WatchlistKindPage() {
   }, [genreChips, genreFilter]);
 
   const displayItems = React.useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const isFuture = (item: EnrichedItem) => {
+      const d = item.releaseDate;
+      if (d) return d > today;
+      // Fallback: year alone — treat unknown-date items with year > today's year as future
+      return item.year > today.slice(0, 4);
+    };
+
     const q = query.trim().toLowerCase();
-    return allEnrichedItems.filter((item) => {
+    const filtered = allEnrichedItems.filter((item) => {
       if (genreFilter !== "Alles" && !item.genres.includes(genreFilter)) return false;
       if (!q) return true;
       return (
@@ -633,6 +644,8 @@ export default function WatchlistKindPage() {
         item.metaLine.toLowerCase().includes(q)
       );
     });
+
+    return [...filtered].sort((a, b) => (isFuture(a) ? 1 : 0) - (isFuture(b) ? 1 : 0));
   }, [allEnrichedItems, query, genreFilter]);
 
   const cancelRemoval = React.useCallback((id: string) => {

@@ -282,7 +282,8 @@ export default function FilmsSeriesPage() {
   }, [mounted]);
 
   React.useEffect(() => {
-    const missing = partnerWatchlist.filter((item) => !item.overview);
+    const cache = getScoreSourceCache();
+    const missing = partnerWatchlist.filter((item) => !item.overview || !cache[item.id]);
     if (missing.length === 0) return;
     void Promise.all(
       missing.map(async (item) => {
@@ -291,16 +292,24 @@ export default function FilmsSeriesPage() {
         const tmdbId = item.id.slice(dash + 1);
         try {
           const res = await fetch(`/api/films/detail?type=${type}&id=${tmdbId}`);
-          const data = (await res.json()) as { overview?: string | null };
-          return { id: item.id, overview: data.overview ?? "" };
+          const data = (await res.json()) as { overview?: string | null; scoreSource?: "imdb" | "tmdb" };
+          return { id: item.id, overview: data.overview ?? "", scoreSource: data.scoreSource };
         } catch {
-          return { id: item.id, overview: "" };
+          return { id: item.id, overview: "", scoreSource: undefined };
         }
       }),
     ).then((results) => {
-      const map: Record<string, string> = {};
-      for (const r of results) if (r.overview) map[r.id] = r.overview;
-      if (Object.keys(map).length > 0) setPartnerOverviews((prev) => ({ ...prev, ...map }));
+      const overviewMap: Record<string, string> = {};
+      const sourceUpdates: Record<string, "imdb" | "tmdb"> = {};
+      for (const r of results) {
+        if (r.overview) overviewMap[r.id] = r.overview;
+        if (r.scoreSource) {
+          setScoreSource(r.id, r.scoreSource);
+          sourceUpdates[r.id] = r.scoreSource;
+        }
+      }
+      if (Object.keys(overviewMap).length > 0) setPartnerOverviews((prev) => ({ ...prev, ...overviewMap }));
+      if (Object.keys(sourceUpdates).length > 0) setScoreSourceMap((prev) => ({ ...prev, ...sourceUpdates }));
     });
   }, [partnerWatchlist]);
 
@@ -340,7 +349,9 @@ export default function FilmsSeriesPage() {
 
   React.useEffect(() => {
     const cache = getScoreSourceCache();
-    const needsScore = watchlist.filter((i) => i.score == null || !cache[i.id]);
+    const needsScore = watchlist.filter(
+      (i) => i.score == null || !cache[i.id],
+    );
     if (needsScore.length === 0) return;
     void Promise.all(
       needsScore.map((item) => {
@@ -409,6 +420,33 @@ export default function FilmsSeriesPage() {
     () => discoverItems.filter((item) => !discoverExcludeIds.has(item.id)),
     [discoverItems, discoverExcludeIds],
   );
+
+  React.useEffect(() => {
+    if (discoverVisible.length === 0) return;
+    const cache = getScoreSourceCache();
+    const missing = discoverVisible.filter((item) => item.score != null && !cache[item.id]);
+    if (missing.length === 0) return;
+    void Promise.all(
+      missing.map((item) => {
+        const tmdbId = item.id.replace(/^(movie|tv)-/, "");
+        return fetch(`/api/films/detail?type=${item.type}&id=${tmdbId}`)
+          .then((r) => r.json())
+          .then((data: { scoreSource?: "imdb" | "tmdb" }) => ({ id: item.id, scoreSource: data.scoreSource }))
+          .catch(() => ({ id: item.id, scoreSource: undefined }));
+      }),
+    ).then((results) => {
+      const updates: Record<string, "imdb" | "tmdb"> = {};
+      for (const r of results) {
+        if (r.scoreSource) {
+          setScoreSource(r.id, r.scoreSource);
+          updates[r.id] = r.scoreSource;
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        setScoreSourceMap((prev) => ({ ...prev, ...updates }));
+      }
+    });
+  }, [discoverVisible]);
 
   const hasDiscoverSection = discoverLoading || discoverVisible.length > 0;
 
@@ -722,32 +760,42 @@ export default function FilmsSeriesPage() {
                             )}
                           </div>
 
-                          {/* Actie-knoppen */}
-                          <div className="flex items-start justify-end gap-2">
-                            <button
-                              type="button"
-                              aria-label="Toevoegen aan mijn watchlist"
-                              onClick={() => void reactToPartnerItem(item.id, "up")}
-                              className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                            >
-                              <MaskIcon src="/icons/thumb_up.svg" className={cn("size-6", CARD_ACTION_ICON)} />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Niet interessant"
-                              onClick={() => void reactToPartnerItem(item.id, "down")}
-                              className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                            >
-                              <MaskIcon src="/icons/thumb_down.svg" className={cn("size-6", CARD_ACTION_ICON)} />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Al gezien"
-                              onClick={() => void reactToPartnerItem(item.id, "seen")}
-                              className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                            >
-                              <MaskIcon src="/icons/visible.svg" className={cn("size-6", CARD_ACTION_ICON)} />
-                            </button>
+                          {/* Score + actie-knoppen */}
+                          <div className="flex w-full items-center justify-between">
+                            {item.score != null ? (
+                              <div className="flex shrink-0 items-center gap-[4px]">
+                                <StarIcon source={scoreSourceMap[item.id]} />
+                                <span className="text-[12px] font-medium leading-4 text-[#16181a]">{item.score.toFixed(1)}</span>
+                              </div>
+                            ) : (
+                              <div />
+                            )}
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                aria-label="Toevoegen aan mijn watchlist"
+                                onClick={() => void reactToPartnerItem(item.id, "up")}
+                                className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                              >
+                                <MaskIcon src="/icons/thumb_up.svg" className={cn("size-6", CARD_ACTION_ICON)} />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Niet interessant"
+                                onClick={() => void reactToPartnerItem(item.id, "down")}
+                                className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                              >
+                                <MaskIcon src="/icons/thumb_down.svg" className={cn("size-6", CARD_ACTION_ICON)} />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Al gezien"
+                                onClick={() => void reactToPartnerItem(item.id, "seen")}
+                                className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                              >
+                                <MaskIcon src="/icons/visible.svg" className={cn("size-6", CARD_ACTION_ICON)} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1030,7 +1078,7 @@ export default function FilmsSeriesPage() {
                               <p className="truncate text-[12px] leading-4 text-[#8c929d]">{item.year}</p>
                               {item.score != null && (
                                 <div className="flex shrink-0 items-center gap-0.5">
-                                  <StarIcon />
+                                  <StarIcon source={scoreSourceMap[item.id] ?? item.scoreSource} />
                                   <span className="text-[10px] font-medium leading-4 text-[#16181a]">
                                     {item.score.toFixed(1)}
                                   </span>

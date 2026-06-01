@@ -207,6 +207,7 @@ type DetailPayload = {
   cast: { name: string }[];
   overview: string;
   score: number | null;
+  scoreSource?: "imdb" | "tmdb" | null;
   trailerKey: string | null;
 };
 
@@ -216,6 +217,7 @@ type EnrichedItem = WatchlistItem & {
   overview: string;
   metaLine: string;
   trailerKey: string | null;
+  scoreSource?: "imdb" | "tmdb" | null;
 };
 
 type AvatarPerson = { url: string | null; name: string | null };
@@ -249,13 +251,15 @@ function ThreeDotsIcon() {
   );
 }
 
-function StarIcon() {
+function StarIcon({ source }: { source?: "imdb" | "tmdb" | null }) {
+  const color = source === "imdb" ? "#FBBF24" : "#4f55f1";
+  const strokeColor = source === "imdb" ? "#F59E0B" : "#4f55f1";
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className="size-4 shrink-0">
       <path
         d="M8 1.5l1.545 3.13 3.455.503-2.5 2.437.59 3.44L8 9.387l-3.09 1.623.59-3.44L3 5.133l3.455-.503L8 1.5z"
-        fill="#4f55f1"
-        stroke="#4f55f1"
+        fill={color}
+        stroke={strokeColor}
         strokeWidth="0.5"
         strokeLinejoin="round"
       />
@@ -285,6 +289,7 @@ function toEnriched(item: WatchlistItem, data: DetailPayload | null): EnrichedIt
   return {
     ...item,
     score,
+    scoreSource: data?.scoreSource ?? null,
     genres,
     castNames,
     overview,
@@ -494,7 +499,7 @@ function PartnerWatchlistItemCard({
             </div>
             {item.score != null && (
               <div className="flex shrink-0 items-center gap-1">
-                <StarIcon />
+                <StarIcon source={item.scoreSource} />
                 <span className="text-xs font-medium leading-4 text-[#16181a]">
                   {item.score.toFixed(1)}
                 </span>

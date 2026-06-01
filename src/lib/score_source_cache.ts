@@ -1,4 +1,4 @@
-const KEY = "films_score_sources_v2";
+const KEY = "films_score_sources_v3";
 
 export function getScoreSourceCache(): Record<string, "imdb" | "tmdb"> {
   if (typeof window === "undefined") return {};

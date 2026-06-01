@@ -18,6 +18,7 @@ type DiscoverItem = {
   typeLabel: string;
   posterUrl: string | null;
   score: number | null;
+  scoreSource?: "imdb" | "tmdb";
 };
 
 type CastMember = {
@@ -135,7 +136,7 @@ function GhostContent({
         </h1>
         {(detail?.score ?? item.score) !== null && (
           <div className="flex shrink-0 items-center gap-1 pt-1">
-            <StarIcon />
+            <StarIcon source={detail?.scoreSource ?? item.scoreSource ?? "tmdb"} />
             <p className="font-medium text-[var(--text-primary)]">
               <span className="text-base leading-6">{((detail?.score ?? item.score)!).toFixed(1)}</span>
               <span className="text-xs font-normal leading-none">/10</span>
@@ -821,7 +822,7 @@ export default function DiscoverCarouselPage() {
                         </h1>
                         {detail.score !== null && (
                           <div className="flex shrink-0 items-center gap-1 pt-1">
-                            <StarIcon source={detail.scoreSource} />
+                            <StarIcon source={detail.scoreSource ?? currentItem.scoreSource} />
                             <p className="font-medium text-[var(--text-primary)]">
                               <span className="text-base leading-6">{detail.score.toFixed(1)}</span>
                               <span className="text-xs font-normal leading-none">/10</span>

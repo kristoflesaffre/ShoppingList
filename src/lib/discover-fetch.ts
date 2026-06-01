@@ -7,6 +7,9 @@ import {
   type TmdbDiscoverItem,
   type TmdbMediaType,
 } from "@/lib/tmdb";
+import { hasOmdbKey, resolveImdbScore } from "@/lib/omdb";
+
+const OMDB_CONCURRENCY = 5;
 
 const REVALIDATE_SEC = 3600;
 const VOTE_COUNT_MIN = 200;
@@ -49,10 +52,58 @@ export type FetchDiscoverOptions = {
   diversifyGenres?: boolean;
 };
 
+export type DiscoverApiItem = Omit<TmdbDiscoverItem, "popularity" | "genreIds"> & {
+  scoreSource: "imdb" | "tmdb";
+};
+
 export type FetchDiscoverResult = {
-  results: Omit<TmdbDiscoverItem, "popularity" | "genreIds">[];
+  results: DiscoverApiItem[];
   hasMore: boolean;
 };
+
+async function fetchTmdbImdbId(type: TmdbMediaType, tmdbId: number): Promise<string | null> {
+  try {
+    const res = await fetch(`${TMDB_BASE}/${type}/${tmdbId}/external_ids`, {
+      headers: tmdbHeaders,
+      next: { revalidate: REVALIDATE_SEC },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { imdb_id?: string | null };
+    return data.imdb_id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Vervangt TMDB-score door IMDb waar OMDB een rating heeft. */
+export async function enrichDiscoverWithOmdb(items: DiscoverApiItem[]): Promise<DiscoverApiItem[]> {
+  if (!hasOmdbKey() || items.length === 0) {
+    return items.map((item) => ({ ...item, scoreSource: item.scoreSource ?? "tmdb" }));
+  }
+
+  const enriched: DiscoverApiItem[] = items.map((item) => ({ ...item, scoreSource: "tmdb" }));
+
+  for (let i = 0; i < enriched.length; i += OMDB_CONCURRENCY) {
+    const batch = enriched.slice(i, i + OMDB_CONCURRENCY);
+    await Promise.all(
+      batch.map(async (item, batchIndex) => {
+        const idx = i + batchIndex;
+        const imdbId = await fetchTmdbImdbId(item.type, item.tmdbId);
+        const omdb = await resolveImdbScore({
+          imdbId,
+          title: item.title,
+          year: item.year,
+          type: item.type,
+        });
+        if (omdb.score !== null) {
+          enriched[idx] = { ...item, score: omdb.score, scoreSource: "imdb" };
+        }
+      }),
+    );
+  }
+
+  return enriched;
+}
 
 export async function fetchDiscoverItems(options: FetchDiscoverOptions): Promise<FetchDiscoverResult> {
   const { limit, excludeIds = new Set(), diversifyGenres = true } = options;
@@ -110,11 +161,15 @@ export async function fetchDiscoverItems(options: FetchDiscoverOptions): Promise
     if (page > 1 && pageAdded === 0) break;
   }
 
-  const results = Array.from(map.values())
+  const raw = Array.from(map.values())
     .sort((a, b) => b.popularity - a.popularity)
     .slice(0, limit)
-    .map(({ popularity: _p, genreIds: _g, ...rest }) => rest);
+    .map(({ popularity: _p, genreIds: _g, ...rest }) => ({
+      ...rest,
+      scoreSource: "tmdb" as const,
+    }));
 
+  const results = await enrichDiscoverWithOmdb(raw);
   const hasMore = results.length >= limit;
 
   return { results, hasMore };
