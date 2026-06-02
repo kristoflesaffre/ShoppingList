@@ -558,7 +558,7 @@ export function NewItemModal({
       bodyFullWidth={!masterItemFormOnly}
       className={!masterItemFormOnly ? "h-[calc(100dvh-48px)]" : undefined}
     >
-      <div className="overflow-hidden">
+      <div className="overflow-hidden pb-2">
         <div
           className="relative flex w-full"
           style={{

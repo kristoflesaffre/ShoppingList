@@ -838,7 +838,7 @@ export default function FilmsSeriesPage() {
                           </div>
                           <div className="flex min-w-0 flex-1 flex-col gap-1">
                             <div className="flex w-full flex-col">
-                              <div className="flex w-full items-start">
+                              <div className="flex w-full items-center gap-3">
                                 <p className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[#16181a]">{title}</p>
                                 <span
                                   role="button"

@@ -590,7 +590,7 @@ export default function PartnerFilmDetailPage() {
                 !prevItem && "pointer-events-none opacity-30",
               )}
             >
-              <MaskIcon src="/icons/chevron.svg" className="size-6 rotate-90 bg-[#16181a]" />
+              <MaskIcon src="/icons/chevron.svg" className="size-6 rotate-90 bg-[#4f55f1]" />
             </button>
             <p className="flex-1 text-center text-base font-medium leading-6 text-[#16181a] lg:flex-none">
               {currentIndex >= 0 ? `${currentIndex + 1} van ${totalCount}` : `van ${totalCount}`}
@@ -605,7 +605,7 @@ export default function PartnerFilmDetailPage() {
                 !nextItem && "pointer-events-none opacity-30",
               )}
             >
-              <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[#16181a]" />
+              <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[#4f55f1]" />
             </button>
           </div>
         )}
