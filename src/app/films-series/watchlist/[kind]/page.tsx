@@ -670,17 +670,20 @@ export default function WatchlistKindPage() {
       return;
     }
 
-    const currentIds = new Set(baseItems.map((i) => i.id));
     const needsFetch = baseItems.filter((item) => {
       if (dismissedIds.has(item.id)) return false;
       const e = enriched[item.id];
       return !e || (e.genres.length === 0 && !e.overview);
     });
 
+    // Prune alleen items die echt verwijderd zijn (dismissed), niet items van een andere tab —
+    // anders verdwijnen de genres bij elke tab-wissel en springt de layout.
     setEnriched((prev) => {
+      const dismissed = dismissedIdsRef.current;
+      if (dismissed.size === 0) return prev;
       const pruned: Record<string, EnrichedItem> = {};
       for (const id of Object.keys(prev)) {
-        if (currentIds.has(id)) pruned[id] = prev[id];
+        if (!dismissed.has(id)) pruned[id] = prev[id];
       }
       return pruned;
     });
@@ -752,6 +755,25 @@ export default function WatchlistKindPage() {
       .map(([g]) => g);
     return ["Alles", ...sorted];
   }, [allEnrichedItems]);
+
+  // Cache genre chips in sessionStorage to avoid layout shift on re-visit
+  const genreCacheKey = `watchlist-${kindParam}-genres`;
+  const [cachedGenreChips] = React.useState<string[]>(() => {
+    try {
+      const raw = sessionStorage.getItem(genreCacheKey);
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch { return []; }
+  });
+  React.useEffect(() => {
+    if (genreChips.length > 1) {
+      try { sessionStorage.setItem(genreCacheKey, JSON.stringify(genreChips)); } catch { /* ignore */ }
+    }
+  }, [genreChips, genreCacheKey]);
+
+  // Show cached chips while enrichment is still running, fall back to live chips once ready
+  const visibleGenreChips = genreChips.length > 1 ? genreChips : cachedGenreChips;
+  // Show skeleton row to reserve space on first-ever load (no cache, items exist but genres not yet loaded)
+  const showGenreSkeleton = loadingDetails && visibleGenreChips.length <= 1 && baseItems.length > 0;
 
   React.useEffect(() => {
     if (genreFilter !== "Alles" && !genreChips.includes(genreFilter)) {
@@ -1014,27 +1036,35 @@ export default function WatchlistKindPage() {
             </TabGroup>
           )}
 
-          {genreChips.length > 1 && (
+          {(visibleGenreChips.length > 1 || showGenreSkeleton) && (
             <div className="relative -mx-4">
-              <div className="overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-                  {genreChips.map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => setGenreFilter(chip)}
-                      className={cn(
-                        "h-8 shrink-0 rounded-full px-3 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                        genreFilter === chip
-                          ? "bg-[#4f55f1] font-semibold text-white"
-                          : "bg-white font-normal text-[#707784] shadow-[0px_1px_2px_rgba(0,0,0,0.04)]",
-                      )}
-                    >
-                      {chip}
-                    </button>
+              {visibleGenreChips.length > 1 ? (
+                <div className="overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+                    {visibleGenreChips.map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() => setGenreFilter(chip)}
+                        className={cn(
+                          "h-8 shrink-0 rounded-full px-3 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                          genreFilter === chip
+                            ? "bg-[#4f55f1] font-semibold text-white"
+                            : "bg-white font-normal text-[#707784] shadow-[0px_1px_2px_rgba(0,0,0,0.04)]",
+                        )}
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2 px-4 pb-1">
+                  {[72, 80, 88, 76].map((w) => (
+                    <div key={w} className="h-8 animate-pulse rounded-full bg-[var(--gray-100)]" style={{ width: w }} />
                   ))}
                 </div>
-              </div>
+              )}
               <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent" />
             </div>
           )}
