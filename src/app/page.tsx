@@ -483,6 +483,21 @@ function HomeCalendarIngredientPhotos({
 
   if (ingredients.length === 0) return null;
 
+  if (visiblePhotos.length === 0) {
+    return (
+      <div className="flex min-w-0 flex-1 flex-col">
+        <p className="truncate text-base font-medium leading-6 text-[var(--gray-900)]">
+          {ingredients[0].name}
+        </p>
+        {ingredients.length > 1 && (
+          <p className="truncate text-xs leading-5 text-[var(--gray-400)]">
+            +{ingredients.length - 1} item{ingredients.length - 1 > 1 ? "s" : ""}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} className="flex min-w-0 flex-1 items-center gap-[6px]">
       {visiblePhotos.map((photo, i) => (
