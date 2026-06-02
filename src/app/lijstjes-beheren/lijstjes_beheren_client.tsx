@@ -163,8 +163,10 @@ function inSectionList(
 
 export function LijstjesBeherenClient({
   section,
+  defaultEditMode = false,
 }: {
   section: LijstjesBeherenSection;
+  defaultEditMode?: boolean;
 }) {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
@@ -431,11 +433,22 @@ export function LijstjesBeherenClient({
   const [addingId, setAddingId] = React.useState<string | null>(null);
   const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
   /** Figma 1148:9665 — potlood: sorteer- en verwijder-chrome op de kaarten. */
-  const [isCardsEditMode, setIsCardsEditMode] = React.useState(false);
+  const [isCardsEditMode, setIsCardsEditMode] = React.useState(defaultEditMode);
   const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
+  const prevSectionRef = React.useRef<LijstjesBeherenSection | null>(null);
 
+  // Activate edit mode when defaultEditMode resolves after client hydration
+  // (useSearchParams returns empty during SSR, so useState initial value is false)
   React.useEffect(() => {
-    setIsCardsEditMode(false);
+    if (defaultEditMode) setIsCardsEditMode(true);
+  }, [defaultEditMode]);
+
+  // Reset edit mode only when section actually changes, not on mount
+  React.useEffect(() => {
+    if (prevSectionRef.current !== null && prevSectionRef.current !== section) {
+      setIsCardsEditMode(false);
+    }
+    prevSectionRef.current = section;
   }, [section]);
 
   const hasAnyLists = lists.length > 0;

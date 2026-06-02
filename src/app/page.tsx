@@ -1074,7 +1074,7 @@ function HomeLijstjesSection({
         icon="list"
         label="Lijstjes"
         showNaarOverzicht
-        naarOverzichtHref="/lijstjes-beheren/lijstjes"
+        naarOverzichtHref="/lijstjes-beheren/lijstjes?edit=1"
       />
       {normalLists.length > 3 ? (
         <div
