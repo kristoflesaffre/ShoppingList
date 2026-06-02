@@ -41,6 +41,7 @@ type DetailPayload = {
   score: number | null;
   releaseDate?: string | null;
   trailerKey?: string | null;
+  imdbId?: string | null;
 };
 
 type EnrichedItem = WatchlistItem & {
@@ -50,6 +51,7 @@ type EnrichedItem = WatchlistItem & {
   metaLine: string;
   releaseDate?: string | null;
   trailerKey?: string | null;
+  imdbId?: string | null;
 };
 
 type ListTab = "alleen" | "samen";
@@ -141,6 +143,19 @@ function StarIcon() {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+function ImdbLogo() {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/logos/logos-imdb.svg"
+      alt="IMDb"
+      width={32}
+      height={16}
+      className="h-[16px] w-[32px] shrink-0 object-contain"
+    />
   );
 }
 
@@ -256,6 +271,7 @@ function toEnriched(
     metaLine: buildMetaLine(item.year, genres),
     releaseDate: data?.releaseDate ?? null,
     trailerKey: data?.trailerKey ?? null,
+    imdbId: data?.imdbId ?? null,
   };
 }
 
@@ -464,25 +480,39 @@ function WatchlistItemCard({
 
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex w-full flex-col">
-          <div className="flex w-full items-center gap-1">
+          <div className="flex w-full items-center gap-2">
             <span className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[#16181a]">
               {item.title}
             </span>
-            <button
-              type="button"
-              aria-label={`Markeer ${item.title} als bekeken`}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (item.type === "tv" && onStartWatching) {
-                  onStartWatching();
-                } else {
-                  onMarkSeen(e);
-                }
-              }}
-              className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
-            >
-              <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
-            </button>
+            <div className="flex shrink-0 items-center gap-3">
+              {/* IMDb logo: altijd zichtbaar, opent IMDb pagina */}
+              <a
+                href={item.imdbId ? `https://www.imdb.com/title/${item.imdbId}/` : `https://www.imdb.com/find?q=${encodeURIComponent(item.title)}&s=tt`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Bekijk ${item.title} op IMDb`}
+                onClick={(e) => e.stopPropagation()}
+                className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded-sm"
+              >
+                <ImdbLogo />
+              </a>
+              {/* Eye icon: alleen op grote schermen, rechts van IMDb */}
+              <button
+                type="button"
+                aria-label={`Markeer ${item.title} als bekeken`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (item.type === "tv" && onStartWatching) {
+                    onStartWatching();
+                  } else {
+                    onMarkSeen(e);
+                  }
+                }}
+                className="hidden sm:flex items-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
+              >
+                <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
+              </button>
+            </div>
           </div>
 
           <div className="flex w-full items-center gap-2">
