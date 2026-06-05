@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-06-05T17:03:29.021Z",
+  "generatedAt": "2026-06-05T17:06:39.627Z",
   "source": "public/images/items/ingredienten_categorieen.xlsx",
   "categoryOrder": [
     "Groenten & Fruit",
@@ -355,5 +355,10 @@
     "zure room": "Zuivel, Kaas & Eieren",
     "zusto": "Droogwaren & Bakproducten",
     "zwarte peperbollen": "Conserven, Sauzen, Olie & Kruiden"
+  },
+  "synonymToCanonical": {
+    "pot pastasaus": "passata",
+    "pastasaus": "passata",
+    "vodka": "wodka"
   }
 }

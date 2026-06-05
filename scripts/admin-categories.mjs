@@ -63,11 +63,7 @@ const HTML = `<!DOCTYPE html>
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
 
-    header h1 {
-      font-size: 1.2rem;
-      font-weight: 600;
-      flex: 1;
-    }
+    header h1 { font-size: 1.2rem; font-weight: 600; flex: 1; }
 
     #search {
       padding: 8px 14px;
@@ -94,11 +90,7 @@ const HTML = `<!DOCTYPE html>
     }
     #cat-filter option { color: #1a1a2e; background: white; }
 
-    #count {
-      font-size: 0.85rem;
-      color: rgba(255,255,255,0.6);
-      white-space: nowrap;
-    }
+    #count { font-size: 0.85rem; color: rgba(255,255,255,0.6); white-space: nowrap; }
 
     #save-btn {
       padding: 8px 20px;
@@ -133,15 +125,9 @@ const HTML = `<!DOCTYPE html>
     #toast.success { background: #4ade80; color: #1a1a2e; }
     #toast.error { background: #f87171; color: white; }
 
-    main {
-      padding: 20px 24px;
-      max-width: 1600px;
-      margin: 0 auto;
-    }
+    main { padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
 
-    .category-section {
-      margin-bottom: 32px;
-    }
+    .category-section { margin-bottom: 32px; }
 
     .category-header {
       font-size: 0.8rem;
@@ -167,7 +153,7 @@ const HTML = `<!DOCTYPE html>
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 12px;
     }
 
@@ -180,11 +166,6 @@ const HTML = `<!DOCTYPE html>
       position: relative;
     }
     .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
-
-    .card.deleted {
-      opacity: 0.3;
-      pointer-events: none;
-    }
 
     .card img {
       width: 100%;
@@ -204,9 +185,7 @@ const HTML = `<!DOCTYPE html>
       font-size: 2rem;
     }
 
-    .card-body {
-      padding: 10px;
-    }
+    .card-body { padding: 10px; }
 
     .card-name {
       font-size: 0.8rem;
@@ -235,6 +214,89 @@ const HTML = `<!DOCTYPE html>
     }
     .card select:focus { border-color: #6366f1; background-color: white; }
     .card select.changed { border-color: #f59e0b; background-color: #fffbeb; }
+
+    /* Synoniemen sectie */
+    .synonyms-section {
+      margin-top: 8px;
+      border-top: 1px solid #f3f4f6;
+      padding-top: 8px;
+    }
+
+    .synonyms-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #9ca3af;
+      margin-bottom: 5px;
+    }
+
+    .synonyms-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 5px;
+    }
+
+    .synonym-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: #ede9fe;
+      color: #5b21b6;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    .synonym-chip.new { background: #d1fae5; color: #065f46; }
+
+    .synonym-remove {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: 0.7rem;
+      padding: 0;
+      opacity: 0.6;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+    }
+    .synonym-remove:hover { opacity: 1; }
+
+    .synonym-add-row {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .synonym-input {
+      flex: 1;
+      min-width: 0;
+      padding: 3px 6px;
+      border-radius: 5px;
+      border: 1px solid #e5e7eb;
+      font-size: 0.72rem;
+      outline: none;
+      color: #1a1a2e;
+    }
+    .synonym-input:focus { border-color: #6366f1; }
+
+    .synonym-add-btn {
+      padding: 3px 7px;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+    .synonym-add-btn:hover { background: #4f46e5; }
 
     .delete-btn {
       position: absolute;
@@ -271,7 +333,7 @@ const HTML = `<!DOCTYPE html>
 
 <header>
   <h1>🛒 Item Categorieën</h1>
-  <input id="search" type="search" placeholder="Zoeken…" autocomplete="off">
+  <input id="search" type="search" placeholder="Zoeken op naam of synoniem…" autocomplete="off">
   <select id="cat-filter"><option value="">Alle categorieën</option></select>
   <span id="count"></span>
   <button id="save-btn">💾 Bewaren</button>
@@ -288,41 +350,43 @@ const HTML = `<!DOCTYPE html>
 let data = null;
 let deletedKeys = new Set();
 let changedCategories = {};
+// canonical → Set of synonym strings (live state)
+let synonymsByCanonical = {};
 
 async function load() {
   const res = await fetch('/api/data');
   data = await res.json();
+
+  // Build inverted synonym map: canonical → [synonyms]
+  synonymsByCanonical = {};
+  for (const [syn, canonical] of Object.entries(data.synonymToCanonical ?? {})) {
+    if (!synonymsByCanonical[canonical]) synonymsByCanonical[canonical] = new Set();
+    synonymsByCanonical[canonical].add(syn);
+  }
+
   render();
 }
 
 function categoryEmoji(cat) {
   const map = {
-    'Groenten & Fruit': '🥦',
-    'Vlees & Charcuterie': '🥩',
-    'Vis & Zeevruchten': '🐟',
-    'Zuivel, Kaas & Eieren': '🧀',
-    'Brood': '🍞',
-    'Beleg': '🍯',
-    'Droogwaren & Bakproducten': '🌾',
-    'Conserven, Sauzen, Olie & Kruiden': '🫙',
-    'Zoute Snacks': '🍿',
-    'Snoep & Chocolade': '🍫',
-    'Warme Dranken': '☕',
-    'Koude Dranken': '🥤',
-    'Diepvries': '❄️',
-    'Huishouden & Schoonmaak': '🧹',
-    'Persoonlijke Verzorging': '🧴',
-    'Dierenvoeding': '🐾',
-    'Overig': '📦',
+    'Groenten & Fruit': '🥦', 'Vlees & Charcuterie': '🥩', 'Vis & Zeevruchten': '🐟',
+    'Zuivel, Kaas & Eieren': '🧀', 'Brood': '🍞', 'Beleg': '🍯',
+    'Droogwaren & Bakproducten': '🌾', 'Conserven, Sauzen, Olie & Kruiden': '🫙',
+    'Zoute Snacks': '🍿', 'Snoep & Chocolade': '🍫', 'Warme Dranken': '☕',
+    'Koude Dranken': '🥤', 'Diepvries': '❄️', 'Huishouden & Schoonmaak': '🧹',
+    'Persoonlijke Verzorging': '🧴', 'Dierenvoeding': '🐾', 'Overig': '📦',
   };
   return map[cat] || '📦';
 }
 
+function getSynonyms(name) {
+  return synonymsByCanonical[name] ?? new Set();
+}
+
 function render() {
-  const search = document.getElementById('search').value.toLowerCase();
+  const search = document.getElementById('search').value.toLowerCase().trim();
   const catFilter = document.getElementById('cat-filter').value;
 
-  // Populate category filter dropdown (once)
   const catFilterEl = document.getElementById('cat-filter');
   if (catFilterEl.options.length === 1) {
     for (const cat of data.categoryOrder) {
@@ -333,7 +397,6 @@ function render() {
     }
   }
 
-  // Group items by effective category
   const grouped = {};
   for (const cat of data.categoryOrder) grouped[cat] = [];
 
@@ -343,7 +406,10 @@ function render() {
     if (deletedKeys.has(name)) continue;
     const effectiveCat = changedCategories[name] ?? origCat;
 
-    const matchesSearch = !search || name.includes(search);
+    const synonyms = getSynonyms(name);
+    const matchesSearch = !search
+      || name.includes(search)
+      || [...synonyms].some(s => s.includes(search));
     const matchesCat = !catFilter || effectiveCat === catFilter;
     if (!matchesSearch || !matchesCat) continue;
 
@@ -368,7 +434,6 @@ function render() {
     const section = document.createElement('div');
     section.className = 'category-section';
     section.dataset.cat = cat;
-
     section.innerHTML = \`
       <div class="category-header">
         \${categoryEmoji(cat)} \${cat}
@@ -378,10 +443,7 @@ function render() {
     \`;
 
     const grid = section.querySelector('.grid');
-    for (const item of items) {
-      grid.appendChild(makeCard(item));
-    }
-
+    for (const item of items) grid.appendChild(makeCard(item));
     content.appendChild(section);
   }
 
@@ -410,24 +472,73 @@ function makeCard({ name, cat, origCat }) {
     <div class="card-body">
       <div class="card-name">\${name}</div>
       <select class="\${isChanged ? 'changed' : ''}">\${options}</select>
+      <div class="synonyms-section">
+        <div class="synonyms-label">Synoniemen</div>
+        <div class="synonyms-chips"></div>
+        <div class="synonym-add-row">
+          <input class="synonym-input" type="text" placeholder="Nieuw synoniem…">
+          <button class="synonym-add-btn">+</button>
+        </div>
+      </div>
     </div>
   \`;
+
+  // Render synonym chips
+  renderChips(card, name);
 
   card.querySelector('select').addEventListener('change', (e) => {
     changedCategories[name] = e.target.value;
     e.target.classList.add('changed');
-    // Re-render to move card to correct category section
     setTimeout(render, 0);
   });
 
   card.querySelector('.delete-btn').addEventListener('click', () => {
     if (confirm(\`"\${name}" verwijderen?\`)) {
       deletedKeys.add(name);
+      delete synonymsByCanonical[name];
       render();
     }
   });
 
+  const input = card.querySelector('.synonym-input');
+  const addBtn = card.querySelector('.synonym-add-btn');
+
+  function addSynonym() {
+    const val = input.value.trim().toLowerCase();
+    if (!val) return;
+    if (!synonymsByCanonical[name]) synonymsByCanonical[name] = new Set();
+    synonymsByCanonical[name].add(val);
+    input.value = '';
+    renderChips(card, name);
+  }
+
+  addBtn.addEventListener('click', addSynonym);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addSynonym(); } });
+
   return card;
+}
+
+function renderChips(card, name) {
+  const chipsEl = card.querySelector('.synonyms-chips');
+  chipsEl.innerHTML = '';
+  const synonyms = getSynonyms(name);
+  const originalSyns = new Set(
+    Object.entries(data.synonymToCanonical ?? {})
+      .filter(([, c]) => c === name)
+      .map(([s]) => s)
+  );
+
+  for (const syn of [...synonyms].sort()) {
+    const isNew = !originalSyns.has(syn);
+    const chip = document.createElement('span');
+    chip.className = 'synonym-chip' + (isNew ? ' new' : '');
+    chip.innerHTML = \`\${syn}<button class="synonym-remove" title="Verwijder synoniem">✕</button>\`;
+    chip.querySelector('.synonym-remove').addEventListener('click', () => {
+      synonymsByCanonical[name]?.delete(syn);
+      renderChips(card, name);
+    });
+    chipsEl.appendChild(chip);
+  }
 }
 
 async function save() {
@@ -435,24 +546,38 @@ async function save() {
   btn.disabled = true;
   btn.textContent = '⏳ Bezig…';
 
-  // Build final ingredientToCategory
-  const result = {};
+  const ingredientToCategory = {};
   for (const [name, cat] of Object.entries(data.ingredientToCategory)) {
     if (deletedKeys.has(name)) continue;
-    result[name] = changedCategories[name] ?? cat;
+    ingredientToCategory[name] = changedCategories[name] ?? cat;
+  }
+
+  // Rebuild synonymToCanonical from live state
+  const synonymToCanonical = {};
+  for (const [canonical, syns] of Object.entries(synonymsByCanonical)) {
+    if (deletedKeys.has(canonical)) continue;
+    for (const syn of syns) {
+      synonymToCanonical[syn] = canonical;
+    }
   }
 
   try {
     const res = await fetch('/api/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ingredientToCategory: result }),
+      body: JSON.stringify({ ingredientToCategory, synonymToCanonical }),
     });
     const json = await res.json();
     if (json.ok) {
-      // Update local data
-      data.ingredientToCategory = result;
+      data.ingredientToCategory = ingredientToCategory;
+      data.synonymToCanonical = synonymToCanonical;
       changedCategories = {};
+      // Rebuild live synonym state from saved data
+      synonymsByCanonical = {};
+      for (const [syn, canonical] of Object.entries(synonymToCanonical)) {
+        if (!synonymsByCanonical[canonical]) synonymsByCanonical[canonical] = new Set();
+        synonymsByCanonical[canonical].add(syn);
+      }
       showToast('Opgeslagen!', 'success');
       render();
     } else {
@@ -524,12 +649,13 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk; });
     req.on('end', () => {
       try {
-        const { ingredientToCategory } = JSON.parse(body);
+        const { ingredientToCategory, synonymToCanonical } = JSON.parse(body);
         const existing = JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));
         const updated = {
           ...existing,
           generatedAt: new Date().toISOString(),
           ingredientToCategory,
+          synonymToCanonical,
         };
         fs.writeFileSync(JSON_PATH, JSON.stringify(updated, null, 2) + '\n');
         res.writeHead(200, { 'Content-Type': 'application/json' });

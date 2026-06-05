@@ -3,6 +3,7 @@ import ingredientCategories from "@/lib/data/ingredient_categories.json";
 type IngredientCategoriesFile = {
   categoryOrder: string[];
   ingredientToCategory: Record<string, string>;
+  synonymToCanonical: Record<string, string>;
 };
 
 const data = ingredientCategories as IngredientCategoriesFile;
@@ -160,13 +161,9 @@ function normalizeIngredientKey(name: string): string {
     .replace(/\s+/g, " ");
 }
 
-/** Zinnen in de app die in de Excel onder een andere sleutel staan. */
-const SYNONYM_TO_CANONICAL_INGREDIENT: Record<string, string> = {
-  "pot pastasaus": "passata",
-  pastasaus: "passata",
-  /** Engels «Vodka» → zelfde Excel-sleutel als «Wodka». */
-  vodka: "wodka",
-};
+/** Zinnen in de app die naar een canonieke sleutel verwijzen (beheerd via admin tool). */
+const SYNONYM_TO_CANONICAL_INGREDIENT: Record<string, string> =
+  data.synonymToCanonical ?? {};
 
 function excelLookupKeysForName(name: string): string[] {
   const n = normalizeIngredientKey(name);
