@@ -16,19 +16,23 @@ const JSON_PATH = path.join(ROOT, 'src/lib/data/ingredient_categories.json');
 const IMAGES_DIR = path.join(ROOT, 'public/images/items');
 const PORT = 3456;
 
-// Build case-insensitive image lookup: normalized_name -> actual filename
+function normalizeDiacritics(str) {
+  return str.normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+// Build case-insensitive, diacritic-insensitive image lookup
 function buildImageLookup() {
   const files = fs.readdirSync(IMAGES_DIR).filter(f => f.endsWith('_240.webp'));
   const lookup = new Map();
   for (const file of files) {
-    const key = file.replace('_240.webp', '').toLowerCase();
-    lookup.set(key, file);
+    const key = normalizeDiacritics(file.replace('_240.webp', '').toLowerCase());
+    if (!lookup.has(key)) lookup.set(key, file);
   }
   return lookup;
 }
 
 function ingredientToImageKey(name) {
-  return name.toLowerCase().replace(/ /g, '_');
+  return normalizeDiacritics(name.toLowerCase().replace(/ /g, '_'));
 }
 
 const HTML = `<!DOCTYPE html>
