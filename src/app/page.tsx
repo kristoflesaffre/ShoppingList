@@ -81,6 +81,7 @@ import {
 } from "@/lib/home-section-config";
 import { normalizeTripPerson } from "@/lib/trip-person";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
+import { useWatchingTvItems } from "@/hooks/use_watching_tv_items";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -1329,42 +1330,8 @@ function HomeKlantenkaartSection({
 /** Startpagina: films en series — poster strip wanneer items aanwezig, anders empty state. */
 function HomeFilmsSeriesSection({ onHide }: { onHide?: () => void }) {
   const router = useRouter();
-  const { ownWatchlist, watchedIds, seriesMeta, watchlist } = useFilmsLibrary();
-
-  const watchingItems = React.useMemo(() => {
-    const epPattern = /^ep-(\d+)-s(\d+)e(\d+)$/;
-    const progressMap = new Map<string, { season: number; episode: number }>();
-    for (const id of watchedIds) {
-      const m = id.match(epPattern);
-      if (!m) continue;
-      const [, tmdbId, sStr, eStr] = m;
-      const season = parseInt(sStr, 10);
-      const episode = parseInt(eStr, 10);
-      const existing = progressMap.get(tmdbId);
-      if (
-        !existing ||
-        season > existing.season ||
-        (season === existing.season && episode > existing.episode)
-      ) {
-        progressMap.set(tmdbId, { season, episode });
-      }
-    }
-    const watchlistById = new Map(
-      watchlist.filter((i) => i.type === "tv").map((i) => [i.id.replace(/^tv-/, ""), i]),
-    );
-    return Array.from(progressMap.entries()).flatMap(([tmdbId, progress]) => {
-      const wlItem = watchlistById.get(tmdbId);
-      const meta = seriesMeta[tmdbId];
-      if (!wlItem && !meta) return [];
-      return [{
-        id: `tv-${tmdbId}`,
-        title: wlItem?.title ?? meta?.title ?? "",
-        posterUrl: wlItem?.posterUrl ?? meta?.posterUrl ?? null,
-        season: progress.season,
-        episode: progress.episode,
-      }];
-    });
-  }, [watchedIds, watchlist, seriesMeta]);
+  const { ownWatchlist } = useFilmsLibrary();
+  const { watchingItems } = useWatchingTvItems();
 
   const posterItems = React.useMemo(() => {
     const watchingIds = new Set(watchingItems.map((i) => i.id));
@@ -1374,7 +1341,7 @@ function HomeFilmsSeriesSection({ onHide }: { onHide?: () => void }) {
         id: i.id,
         title: i.title,
         posterUrl: i.posterUrl,
-        href: `/films-series/${i.id}/episodes/s${i.season}e${i.episode + 1}`,
+        href: `/films-series/${i.id}/episodes/s${i.nextSeason}e${i.nextEpisode}`,
       })),
       ...remaining.map((i) => ({
         id: i.id,

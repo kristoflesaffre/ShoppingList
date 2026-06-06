@@ -32,7 +32,18 @@ export function getWatchedIds(): string[] {
 
 const META_KEY = "watchlist_series_meta";
 
-export type SeriesMeta = { title: string; posterUrl: string | null; year: string };
+export type SeriesSeasonMeta = {
+  seasonNumber: number;
+  episodeCount: number;
+  name?: string;
+};
+
+export type SeriesMeta = {
+  title: string;
+  posterUrl: string | null;
+  year: string;
+  seasons?: SeriesSeasonMeta[];
+};
 
 export function saveSeriesMeta(tmdbId: string, meta: SeriesMeta): void {
   if (typeof window === "undefined") return;

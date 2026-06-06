@@ -128,7 +128,18 @@ export default function SelectEpisodePage() {
         if (data.seasons?.length > 0) {
           setSelectedSeason(data.seasons[0].seasonNumber);
         }
-        void saveSeriesMeta(tmdbId, { title: data.title, posterUrl: data.posterUrl, year: data.year });
+        void saveSeriesMeta(tmdbId, {
+          title: data.title,
+          posterUrl: data.posterUrl,
+          year: data.year,
+          seasons: (data.seasons ?? [])
+            .filter((s) => s.seasonNumber > 0)
+            .map((s) => ({
+              seasonNumber: s.seasonNumber,
+              episodeCount: s.episodeCount,
+              name: s.name,
+            })),
+        });
       })
       .catch(() => {});
   }, [tmdbId]);

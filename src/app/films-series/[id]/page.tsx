@@ -271,6 +271,13 @@ export default function FilmDetailPage() {
             title: data.title,
             posterUrl: data.posterUrl,
             year: data.year,
+            seasons: (data.seasons ?? [])
+              .filter((s) => s.seasonNumber > 0)
+              .map((s) => ({
+                seasonNumber: s.seasonNumber,
+                episodeCount: s.episodeCount,
+                name: s.name,
+              })),
           });
         }
         setLoading(false);

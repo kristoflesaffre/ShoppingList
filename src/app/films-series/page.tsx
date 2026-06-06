@@ -7,6 +7,7 @@ import { MiniButton } from "@/components/ui/mini_button";
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
+import { useWatchingTvItems, type WatchingTvItem } from "@/hooks/use_watching_tv_items";
 import { Snackbar } from "@/components/ui/snackbar";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 import { getScoreSourceCache, setScoreSource } from "@/lib/score_source_cache";
@@ -232,15 +233,14 @@ export default function FilmsSeriesPage() {
     partnerAvatarUrl,
     watchedIds,
     discoverDismissedIds,
-    seriesMeta,
     isInWatchlist,
     addToWatchlist,
     removeFromWatchlist,
     updateWatchlistScore,
-    markWatched,
     unmarkWatched,
     reactToPartnerItem,
   } = useFilmsLibrary();
+  const { watchingItems, markNextEpisode } = useWatchingTvItems();
   const [mounted, setMounted] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
@@ -312,40 +312,6 @@ export default function FilmsSeriesPage() {
       if (Object.keys(sourceUpdates).length > 0) setScoreSourceMap((prev) => ({ ...prev, ...sourceUpdates }));
     });
   }, [partnerWatchlist]);
-
-  const watchingItems = React.useMemo(() => {
-    const epPattern = /^ep-(\d+)-s(\d+)e(\d+)$/;
-    const progressMap = new Map<string, { season: number; episode: number }>();
-    for (const id of watchedIds) {
-      const m = id.match(epPattern);
-      if (!m) continue;
-      const [, tmdbId, sStr, eStr] = m;
-      const season = parseInt(sStr);
-      const episode = parseInt(eStr);
-      const existing = progressMap.get(tmdbId);
-      if (!existing || season > existing.season || (season === existing.season && episode > existing.episode)) {
-        progressMap.set(tmdbId, { season, episode });
-      }
-    }
-
-    const watchlistById = new Map(
-      watchlist.filter((i) => i.type === "tv").map((i) => [i.id.replace(/^tv-/, ""), i]),
-    );
-
-    return Array.from(progressMap.entries()).flatMap(([tmdbId, progress]) => {
-      const wlItem = watchlistById.get(tmdbId);
-      const meta = seriesMeta[tmdbId];
-      if (!wlItem && !meta) return [];
-      return [{
-        id: `tv-${tmdbId}`,
-        title: wlItem?.title ?? meta?.title ?? "",
-        posterUrl: wlItem?.posterUrl ?? meta?.posterUrl ?? null,
-        year: wlItem?.year ?? meta?.year ?? "",
-        season: progress.season,
-        episode: progress.episode,
-      }];
-    });
-  }, [watchedIds, watchlist, seriesMeta]);
 
   React.useEffect(() => {
     const cache = getScoreSourceCache();
@@ -472,14 +438,23 @@ export default function FilmsSeriesPage() {
     router.push(`/films-series/${id}`);
   }
 
-  function handleMarkNextEpisode(e: React.MouseEvent, item: { id: string; season: number; episode: number }) {
+  function handleMarkNextEpisode(e: React.MouseEvent, item: WatchingTvItem) {
     e.stopPropagation();
-    const tmdbId = item.id.replace(/^tv-/, "");
-    const nextEpId = `ep-${tmdbId}-s${item.season}e${item.episode + 1}`;
-    void markWatched(nextEpId);
-    if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
-    setSnackbar({ message: `Aflevering ${item.episode + 1} als bekeken gemarkeerd`, undoFn: () => void unmarkWatched(nextEpId) });
-    snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+    void markNextEpisode(item).then((result) => {
+      if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
+      if (result.completed) {
+        setSnackbar({
+          message: "Serie volledig bekeken en uit watchlist verwijderd",
+          undoFn: () => {},
+        });
+      } else if (result.epId && result.episode != null) {
+        setSnackbar({
+          message: `Aflevering ${result.episode} als bekeken gemarkeerd`,
+          undoFn: () => void unmarkWatched(result.epId!),
+        });
+      }
+      snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+    });
   }
 
   function handleSnackbarUndo() {
@@ -817,13 +792,12 @@ export default function FilmsSeriesPage() {
                 <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-3 pb-1" style={{ width: "max-content" }}>
                     {watchingItems.map((item) => {
-                      const { id, title, posterUrl, year, season, episode } = item;
-                      const nextEpisode = episode + 1;
+                      const { id, title, posterUrl, year, nextSeason, nextEpisode } = item;
                       return (
                         <button
                           key={id}
                           type="button"
-                          onClick={() => router.push(`/films-series/${id}/episodes/s${season}e${nextEpisode}`)}
+                          onClick={() => router.push(`/films-series/${id}/episodes/s${nextSeason}e${nextEpisode}`)}
                           className="flex w-[300px] shrink-0 items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                         >
                           <div className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
@@ -861,7 +835,7 @@ export default function FilmsSeriesPage() {
                             </div>
                             <div className="flex flex-nowrap items-center gap-2">
                               <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[#edeefe] px-2 py-1 text-xs leading-4 text-[#4f55f1]">
-                                Seizoen {season}
+                                Seizoen {nextSeason}
                               </span>
                               <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[#edeefe] px-2 py-1 text-xs leading-4 text-[#4f55f1]">
                                 Aflevering {nextEpisode}

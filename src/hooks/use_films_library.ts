@@ -406,7 +406,8 @@ export function useFilmsLibrary() {
   );
 
   const seriesMeta = React.useMemo((): Record<string, SeriesMeta> => {
-    if (!user || !groupOwnerId) return mounted ? getLocalSeriesMeta() : {};
+    const localMeta = mounted ? getLocalSeriesMeta() : {};
+    if (!user || !groupOwnerId) return localMeta;
     const map: Record<string, SeriesMeta> = {};
     const isMember = groupOwnerId !== user.id;
     if (isMember) {
@@ -416,6 +417,15 @@ export function useFilmsLibrary() {
     }
     for (const row of (libraryData?.filmsSeriesMeta ?? []) as DbSeriesMetaRow[]) {
       map[row.tmdbId] = { title: row.title, year: row.year, posterUrl: row.posterUrl ?? null };
+    }
+    for (const [tmdbId, local] of Object.entries(localMeta)) {
+      if (map[tmdbId]) {
+        if (local.seasons?.length) {
+          map[tmdbId] = { ...map[tmdbId], seasons: local.seasons };
+        }
+      } else {
+        map[tmdbId] = local;
+      }
     }
     return map;
   }, [user, groupOwnerId, libraryData?.filmsSeriesMeta, personalData?.filmsSeriesMeta, localTick, mounted]);
@@ -681,9 +691,13 @@ export function useFilmsLibrary() {
 
   const saveSeriesMeta = React.useCallback(
     async (tmdbId: string, meta: SeriesMeta) => {
+      const { saveSeriesMeta: saveLocal, getAllSeriesMeta } = await import("@/lib/watched");
+      const existingLocal = getAllSeriesMeta()[tmdbId];
+      saveLocal(tmdbId, {
+        ...meta,
+        seasons: meta.seasons ?? existingLocal?.seasons,
+      });
       if (!user || !groupOwnerId) {
-        const { saveSeriesMeta: saveLocal } = await import("@/lib/watched");
-        saveLocal(tmdbId, meta);
         bumpLocal();
         return;
       }
