@@ -75,6 +75,23 @@ export function normalizeTvSeasons(
     .sort((a, b) => a.seasonNumber - b.seasonNumber);
 }
 
+/** Combineert lokale en API-seizoensdata; API wint bij meer seizoenen of hogere aantallen. */
+export function mergeTvSeasons(
+  ...sources: (readonly TvSeasonInfo[] | undefined)[]
+): TvSeasonInfo[] {
+  const byNumber = new Map<number, TvSeasonInfo>();
+  for (const source of sources) {
+    for (const season of source ?? []) {
+      if (season.seasonNumber <= 0) continue;
+      const existing = byNumber.get(season.seasonNumber);
+      if (!existing || season.episodeCount > existing.episodeCount) {
+        byNumber.set(season.seasonNumber, season);
+      }
+    }
+  }
+  return normalizeTvSeasons([...byNumber.values()]);
+}
+
 /**
  * Volgende aflevering om te kijken na `lastWatched` (laatst gemarkeerde ep-id).
  * `null` = serie volledig bekeken.
@@ -161,9 +178,10 @@ export function buildWatchingTvItems(input: {
     const lastWatched = getHighestWatchedProgress(input.watchedIds, tmdbId);
     if (!lastWatched) continue;
 
-    const seasons =
-      input.seasonsByTmdbId?.[tmdbId] ??
-      input.seriesMeta[tmdbId]?.seasons;
+    const seasons = mergeTvSeasons(
+      input.seasonsByTmdbId?.[tmdbId],
+      input.seriesMeta[tmdbId]?.seasons,
+    );
 
     if (isSeriesFullyWatched(lastWatched, seasons)) continue;
 

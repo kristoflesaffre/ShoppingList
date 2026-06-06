@@ -448,8 +448,12 @@ export default function FilmsSeriesPage() {
           undoFn: () => {},
         });
       } else if (result.epId && result.episode != null) {
+        const seasonLabel =
+          result.season != null && result.season > item.lastWatched.season
+            ? `Seizoen ${result.season}, aflevering ${result.episode}`
+            : `Aflevering ${result.episode}`;
         setSnackbar({
-          message: `Aflevering ${result.episode} als bekeken gemarkeerd`,
+          message: `${seasonLabel} als bekeken gemarkeerd`,
           undoFn: () => void unmarkWatched(result.epId!),
         });
       }

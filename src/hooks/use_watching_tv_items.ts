@@ -8,6 +8,7 @@ import {
   getHighestWatchedProgress,
   isSeriesFullyWatched,
   mapSeasonsFromDetail,
+  mergeTvSeasons,
   parseEpisodeWatchedId,
   type TvSeasonInfo,
   type WatchingTvItem,
@@ -49,15 +50,16 @@ export function useWatchingTvItems() {
   }, [watchedIds]);
 
   const getSeasonsFor = React.useCallback(
-    (tmdbId: string): TvSeasonInfo[] | undefined =>
-      fetchedSeasons[tmdbId] ?? seriesMeta[tmdbId]?.seasons,
+    (tmdbId: string): TvSeasonInfo[] | undefined => {
+      const merged = mergeTvSeasons(fetchedSeasons[tmdbId], seriesMeta[tmdbId]?.seasons);
+      return merged.length > 0 ? merged : undefined;
+    },
     [fetchedSeasons, seriesMeta],
   );
 
   React.useEffect(() => {
     for (const tmdbId of watchingTmdbIds) {
-      const hasSeasons = (getSeasonsFor(tmdbId)?.length ?? 0) > 0;
-      if (hasSeasons || fetchingRef.current.has(tmdbId)) continue;
+      if (fetchingRef.current.has(tmdbId)) continue;
       fetchingRef.current.add(tmdbId);
 
       void fetch(`/api/films/detail?type=tv&id=${tmdbId}`)
@@ -69,8 +71,9 @@ export function useWatchingTvItems() {
             posterUrl: string | null;
             seasons?: { seasonNumber: number; episodeCount: number; name?: string }[];
           }) => {
-            const seasons = mapSeasonsFromDetail(data.seasons);
-            if (seasons.length === 0) return;
+            const remoteSeasons = mapSeasonsFromDetail(data.seasons);
+            if (remoteSeasons.length === 0) return;
+            const seasons = mergeTvSeasons(seriesMeta[tmdbId]?.seasons, remoteSeasons);
             setFetchedSeasons((prev) => ({ ...prev, [tmdbId]: seasons }));
             const existing = seriesMeta[tmdbId];
             void saveSeriesMeta(tmdbId, {
@@ -85,7 +88,7 @@ export function useWatchingTvItems() {
           fetchingRef.current.delete(tmdbId);
         });
     }
-  }, [watchingTmdbIds, seriesMeta, getSeasonsFor, saveSeriesMeta]);
+  }, [watchingTmdbIds, seriesMeta, saveSeriesMeta]);
 
   React.useEffect(() => {
     for (const tmdbId of watchingTmdbIds) {
@@ -116,7 +119,12 @@ export function useWatchingTvItems() {
       }
       const epId = `ep-${item.tmdbId}-s${next.season}e${next.episode}`;
       await markWatched(epId);
-      return { completed: false as const, epId, episode: next.episode };
+      return {
+        completed: false as const,
+        epId,
+        episode: next.episode,
+        season: next.season,
+      };
     },
     [getSeasonsFor, removeFromWatchlist, markWatched],
   );
