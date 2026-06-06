@@ -6009,12 +6009,11 @@ export default function ListDetailPage({
         isVenueCounterList &&
         isEditMode &&
         !(isCafeList && listLayoutMode === "grid")
-      ) &&
-      !snackbarMessage ? (
+      ) ? (
         <div
           className={cn(
-            "pointer-events-none fixed inset-x-0 z-20",
-            APP_FAB_BOTTOM_NO_NAV_CLASS,
+            "pointer-events-none fixed inset-x-0 z-20 transition-[bottom] duration-200",
+            snackbarMessage ? "bottom-[80px]" : APP_FAB_BOTTOM_NO_NAV_CLASS,
           )}
         >
           <div className={APP_FAB_INNER_PX4_CLASS}>
