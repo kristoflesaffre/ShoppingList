@@ -51,6 +51,7 @@ export interface SwipeToAddProps {
   disabled?: boolean;
   className?: string;
   addActionLabel?: string;
+  actionIcon?: React.ReactNode;
 }
 
 /** Zelfde swipe-pattern als SwipeToDelete, maar gespiegeld naar rechts voor toevoegen. */
@@ -60,6 +61,7 @@ export function SwipeToAdd({
   disabled,
   className,
   addActionLabel = "Veeg naar rechts om toe te voegen",
+  actionIcon,
 }: SwipeToAddProps) {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const surfaceRef = React.useRef<HTMLDivElement>(null);
@@ -235,7 +237,7 @@ export function SwipeToAdd({
         aria-hidden="true"
       >
         <div className="absolute left-[24px] top-1/2 -translate-y-1/2 text-[var(--white)]">
-          <PlusSwipeIcon />
+          {actionIcon ?? <PlusSwipeIcon />}
         </div>
       </div>
 

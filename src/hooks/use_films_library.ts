@@ -681,12 +681,16 @@ export function useFilmsLibrary() {
         bumpLocal();
         return;
       }
-      const row = ((libraryData?.filmsWatchedMarks ?? []) as DbWatchedRow[]).find(
-        (r) => r.contentId === contentId,
-      );
+      const row =
+        ((libraryData?.filmsWatchedMarks ?? []) as DbWatchedRow[]).find(
+          (r) => r.contentId === contentId,
+        ) ??
+        ((personalData?.filmsWatchedMarks ?? []) as DbWatchedRow[]).find(
+          (r) => r.contentId === contentId,
+        );
       if (row?.id) await db.transact(db.tx.filmsWatchedMarks[row.id].delete());
     },
-    [user, groupOwnerId, libraryData?.filmsWatchedMarks, bumpLocal],
+    [user, groupOwnerId, libraryData?.filmsWatchedMarks, personalData?.filmsWatchedMarks, bumpLocal],
   );
 
   const saveSeriesMeta = React.useCallback(

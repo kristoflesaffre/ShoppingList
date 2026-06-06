@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-06-06T12:59:23.028Z",
+  "generatedAt": "2026-06-06T17:02:29.973Z",
   "source": "src/lib/cafe-venue-wizard.ts",
   "categoryOrder": [
     "frisdranken",
@@ -1777,7 +1777,7 @@
     {
       "id": "bieren__fuze_tea_sparkling_lemon",
       "name": "Fuze Tea Sparkling Lemon",
-      "category": "bieren",
+      "category": "frisdranken",
       "iconSrc": "/images/dranken/bieren/fuze_tea_sparkling_lemon_240.webp"
     },
     {
@@ -2521,7 +2521,7 @@
     {
       "id": "bieren__orangina",
       "name": "Orangina",
-      "category": "bieren",
+      "category": "frisdranken",
       "iconSrc": "/images/dranken/bieren/orangina_240.webp"
     },
     {
@@ -3043,7 +3043,7 @@
     {
       "id": "bieren__tonissteiner_orange",
       "name": "Tonissteiner Orange",
-      "category": "bieren",
+      "category": "frisdranken",
       "iconSrc": "/images/dranken/bieren/tonissteiner_orange_240.webp"
     },
     {
@@ -3337,7 +3337,7 @@
     {
       "id": "cocktails__french_coffee",
       "name": "French Coffee",
-      "category": "cocktails",
+      "category": "warm",
       "iconSrc": "/images/dranken/Cocktails/french_coffee_240.webp"
     },
     {
@@ -3361,13 +3361,13 @@
     {
       "id": "cocktails__irish_coffee",
       "name": "Irish Coffee",
-      "category": "cocktails",
+      "category": "warm",
       "iconSrc": "/images/dranken/Cocktails/irish_coffee_240.webp"
     },
     {
       "id": "cocktails__italian_coffee",
       "name": "Italian Coffee",
-      "category": "cocktails",
+      "category": "warm",
       "iconSrc": "/images/dranken/Cocktails/italian_coffee_240.webp"
     },
     {
@@ -3493,7 +3493,7 @@
     {
       "id": "cocktails__russian_coffee",
       "name": "Russian Coffee",
-      "category": "cocktails",
+      "category": "warm",
       "iconSrc": "/images/dranken/Cocktails/russian_coffee_240.webp"
     },
     {
@@ -6007,7 +6007,7 @@
     {
       "id": "sterk__whisky_fles",
       "name": "Whisky Fles",
-      "category": "sterk",
+      "category": "wijnen",
       "iconSrc": "/images/dranken/sterke dranken/whisky_fles_240.webp"
     },
     {
@@ -6263,5 +6263,9 @@
       "iconSrc": "/images/dranken/wijnen/witte_wijn_glas_240.webp"
     }
   ],
-  "synonymToCanonical": {}
+  "synonymToCanonical": {
+    "spuitwater": "Badoit Bruiswater",
+    "ginger ale": "Canada Dry",
+    "chocomelk": "Cecemel"
+  }
 }

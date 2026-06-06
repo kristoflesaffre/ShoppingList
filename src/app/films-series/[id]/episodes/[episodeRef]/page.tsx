@@ -670,7 +670,7 @@ export default function EpisodeDetailPage() {
                     <h1 className="min-w-0 flex-1 text-2xl font-bold leading-8 text-[#16181a]">
                       {episode.title}
                     </h1>
-                    {episode.rating !== null && (
+                    {episode.rating != null && (
                       <div className="flex shrink-0 items-center gap-1">
                         <StarIcon />
                         <p className="font-medium text-[var(--text-primary)]">
