@@ -163,6 +163,16 @@ const rows = XLSX.utils.sheet_to_json(itemsSheet, { header: 1, defval: "" });
 const { itemToCategory, slugToCategory, excelCategoryToApp } =
   parseItemsSheet(rows);
 
+let existingSynonyms = {};
+if (fs.existsSync(outPath)) {
+  try {
+    const existing = JSON.parse(fs.readFileSync(outPath, "utf8"));
+    existingSynonyms = existing.synonymToCanonical ?? {};
+  } catch {
+    existingSynonyms = {};
+  }
+}
+
 const payload = {
   version: 1,
   generatedAt: new Date().toISOString(),
@@ -171,6 +181,7 @@ const payload = {
   excelCategoryToApp,
   itemToCategory,
   slugToCategory,
+  synonymToCanonical: existingSynonyms,
 };
 
 fs.mkdirSync(path.dirname(outPath), { recursive: true });

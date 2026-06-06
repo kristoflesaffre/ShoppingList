@@ -1,0 +1,286 @@
+{
+  "version": 1,
+  "generatedAt": "2026-06-06T12:59:28.230Z",
+  "source": "src/app/lijstje/[id]/page.tsx",
+  "categoryOrder": [
+    "frieten",
+    "snacks",
+    "sauzen"
+  ],
+  "categoryLabels": {
+    "frieten": "Frieten",
+    "snacks": "Snacks",
+    "sauzen": "Sauzen"
+  },
+  "itemToCategory": {
+    "mini friet": "frieten",
+    "kleine friet": "frieten",
+    "grote friet": "frieten",
+    "maxi friet": "frieten",
+    "bami": "snacks",
+    "berepoot": "snacks",
+    "bicky burger": "snacks",
+    "bicky rib": "snacks",
+    "bitterballen": "snacks",
+    "cervela": "snacks",
+    "cervela speciaal": "snacks",
+    "chicken fingers": "snacks",
+    "curryworst": "snacks",
+    "curryworst speciaal": "snacks",
+    "kipcorn": "snacks",
+    "kipnuggets": "snacks",
+    "kippenboutjes": "snacks",
+    "loempia": "snacks",
+    "lucifer": "snacks",
+    "mexicano": "snacks",
+    "mini lucifers": "snacks",
+    "sate": "snacks",
+    "viandel": "snacks",
+    "vlammetjes": "snacks",
+    "vuurvreter": "snacks",
+    "andalouse": "sauzen",
+    "cocktail": "sauzen",
+    "curry koud": "sauzen",
+    "curry warm": "sauzen",
+    "curryketchup": "sauzen",
+    "joppie": "sauzen",
+    "mammouth": "sauzen",
+    "mayonaise": "sauzen",
+    "samoerai": "sauzen",
+    "satekruiden": "sauzen",
+    "stoofvleessaus": "sauzen",
+    "tartaar": "sauzen",
+    "tomatenketchup": "sauzen"
+  },
+  "items": [
+    {
+      "id": "mini-friet",
+      "name": "Mini friet",
+      "category": "frieten",
+      "iconSrc": "/images/frituur/frieten_mini_160.webp"
+    },
+    {
+      "id": "kleine-friet",
+      "name": "Kleine friet",
+      "category": "frieten",
+      "iconSrc": "/images/frituur/frieten_klein_160.webp"
+    },
+    {
+      "id": "grote-friet",
+      "name": "Grote friet",
+      "category": "frieten",
+      "iconSrc": "/images/frituur/frieten_groot_160.webp"
+    },
+    {
+      "id": "maxi-friet",
+      "name": "Maxi friet",
+      "category": "frieten",
+      "iconSrc": "/images/frituur/frieten_maxi_160.webp"
+    },
+    {
+      "id": "bami",
+      "name": "Bami",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/bami_160.webp"
+    },
+    {
+      "id": "berepoot",
+      "name": "Berepoot",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/berepoot_160.webp"
+    },
+    {
+      "id": "bicky-burger",
+      "name": "Bicky burger",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/bicky_burger_160.webp"
+    },
+    {
+      "id": "bicky-rib",
+      "name": "Bicky rib",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/bicky_rib_160.webp"
+    },
+    {
+      "id": "bitterballen",
+      "name": "Bitterballen",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/bitterballen_160.webp"
+    },
+    {
+      "id": "cervela",
+      "name": "Cervela",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/cervela_160.webp"
+    },
+    {
+      "id": "cervela-speciaal",
+      "name": "Cervela speciaal",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/cervela_speciaal_160.webp"
+    },
+    {
+      "id": "chicken-fingers",
+      "name": "Chicken fingers",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/chicken_fingers_160.webp"
+    },
+    {
+      "id": "curryworst",
+      "name": "Curryworst",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/curryworst_160.webp"
+    },
+    {
+      "id": "curryworst-speciaal",
+      "name": "Curryworst speciaal",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/curryworst_speciaal_160.webp"
+    },
+    {
+      "id": "kipcorn",
+      "name": "Kipcorn",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/kipcorn_160.webp"
+    },
+    {
+      "id": "kipnuggets",
+      "name": "Kipnuggets",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/kipnuggets_160.webp"
+    },
+    {
+      "id": "kippenboutjes",
+      "name": "Kippenboutjes",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/kippenboutjes_160.webp"
+    },
+    {
+      "id": "loempia",
+      "name": "Loempia",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/loempia_160.webp"
+    },
+    {
+      "id": "lucifer",
+      "name": "Lucifer",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/lucifer_160.webp"
+    },
+    {
+      "id": "mexicano",
+      "name": "Mexicano",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/mexicano_160.webp"
+    },
+    {
+      "id": "mini-lucifers",
+      "name": "Mini lucifers",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/mini_lucifers_160.webp"
+    },
+    {
+      "id": "saté",
+      "name": "Saté",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/saté_160.webp"
+    },
+    {
+      "id": "viandel",
+      "name": "Viandel",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/viandel_160.webp"
+    },
+    {
+      "id": "vlammetjes",
+      "name": "Vlammetjes",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/vlammetjes_160.webp"
+    },
+    {
+      "id": "vuurvreter",
+      "name": "Vuurvreter",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/vuurvreter_160.webp"
+    },
+    {
+      "id": "andalouse",
+      "name": "Andalouse",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/andalouse_saus_160.webp"
+    },
+    {
+      "id": "cocktail",
+      "name": "Cocktail",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/cocktail_saus_160.webp"
+    },
+    {
+      "id": "curry-koud",
+      "name": "Curry koud",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/curry_saus_koud_160.webp"
+    },
+    {
+      "id": "curry-warm",
+      "name": "Curry warm",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/curry_saus_warm_160.webp"
+    },
+    {
+      "id": "curryketchup",
+      "name": "Curryketchup",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/curryketchup_saus_160.webp"
+    },
+    {
+      "id": "joppie",
+      "name": "Joppie",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/joppie_saus_160.webp"
+    },
+    {
+      "id": "mammouth",
+      "name": "Mammouth",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/mammouth_saus_160.webp"
+    },
+    {
+      "id": "mayonaise",
+      "name": "Mayonaise",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/mayonaise_saus_160.webp"
+    },
+    {
+      "id": "samoerai",
+      "name": "Samoerai",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/samoerai_saus_160.webp"
+    },
+    {
+      "id": "satékruiden",
+      "name": "Satékruiden",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/satékruiden_160.webp"
+    },
+    {
+      "id": "stoofvleessaus",
+      "name": "Stoofvleessaus",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/stoofvleessaus_saus_160.webp"
+    },
+    {
+      "id": "tartaar",
+      "name": "Tartaar",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/tartaar_saus_160.webp"
+    },
+    {
+      "id": "tomatenketchup",
+      "name": "Tomatenketchup",
+      "category": "sauzen",
+      "iconSrc": "/images/frituur/tomatenketchup_saus_160.webp"
+    }
+  ],
+  "synonymToCanonical": {}
+}

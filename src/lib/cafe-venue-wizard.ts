@@ -2,6 +2,13 @@
  * Café-venue catalogus en hulpfuncties (Figma 1321:23139 — tabs + tellerijen).
  */
 
+import cafeItemCategories from "@/lib/data/cafe_item_categories.json";
+import {
+  CAFE_SYNONYM_TO_CANONICAL,
+  resolveCanonicalNameFromSynonyms,
+} from "@/lib/venue-synonyms";
+import { mergeVenueWizardItems } from "@/lib/venue-category-merge";
+
 /** Catalogus-tab (drank staat in één vaste categorie). */
 export type CafeWizardCatalogCategory =
   | "aperitieven"
@@ -27,7 +34,7 @@ export type CafeWizardItem = {
   iconSrc: string;
 };
 
-export const CAFE_WIZARD_CATEGORY_LABELS: Record<CafeWizardCategory, string> = {
+const CAFE_WIZARD_CATEGORY_LABELS_BASE: Record<CafeWizardCategory, string> = {
   meest: "Meest gekozen",
   frisdranken: "Frisdranken",
   warm: "Warme dranken",
@@ -38,6 +45,14 @@ export const CAFE_WIZARD_CATEGORY_LABELS: Record<CafeWizardCategory, string> = {
   sterk: "Sterke dranken",
   snacks: "Snacks",
   ijsjes: "IJsjes",
+};
+
+export const CAFE_WIZARD_CATEGORY_LABELS: Record<CafeWizardCategory, string> = {
+  ...CAFE_WIZARD_CATEGORY_LABELS_BASE,
+  ...(cafeItemCategories.categoryLabels as Partial<
+    Record<CafeWizardCatalogCategory, string>
+  >),
+  meest: CAFE_WIZARD_CATEGORY_LABELS_BASE.meest,
 };
 
 /** Tabvolgorde in de UI: «Meest gekozen» eerst, daarna catalogus. */
@@ -106,7 +121,23 @@ export function nextCafeRoundSectionTitle(
   return `Rondje ${n + 1}`;
 }
 
-export const CAFE_WIZARD_ITEMS: readonly CafeWizardItem[] = [
+const CAFE_CATALOG_CATEGORIES = new Set<string>([
+  "aperitieven",
+  "bieren",
+  "cocktails",
+  "frisdranken",
+  "ijsjes",
+  "snacks",
+  "sterk",
+  "warm",
+  "wijnen",
+]);
+
+function isCafeCatalogCategory(value: string): value is CafeWizardCatalogCategory {
+  return CAFE_CATALOG_CATEGORIES.has(value);
+}
+
+const CAFE_WIZARD_ITEMS_RAW: readonly CafeWizardItem[] = [
   { id: "aperitieven__aperol_spritz", name: "Aperol Spritz", category: "aperitieven", priority: 10, defaultCount: 0, iconSrc: "/images/dranken/aperitieven/aperol_spritz_240.webp" },
   { id: "aperitieven__campari", name: "Campari", category: "aperitieven", priority: 30, defaultCount: 0, iconSrc: "/images/dranken/aperitieven/campari_240.webp" },
   { id: "aperitieven__cinzano_rood", name: "Cinzano Rood", category: "aperitieven", defaultCount: 0, iconSrc: "/images/dranken/aperitieven/cinzano_rood_240.webp" },
@@ -1002,10 +1033,29 @@ export const CAFE_WIZARD_ITEMS: readonly CafeWizardItem[] = [
 
 ];
 
+/** Catalogus met categorieën uit `cafe_item_categories.json` (beheerswebsite). */
+export const CAFE_WIZARD_ITEMS: readonly CafeWizardItem[] = mergeVenueWizardItems(
+  CAFE_WIZARD_ITEMS_RAW,
+  cafeItemCategories,
+  isCafeCatalogCategory,
+);
+
 const CAFE_WIZARD_PLACEHOLDER_ICON_URL = "/images/ui/cafe_160.webp";
 
 export function normalizeCafeChoiceName(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/** Getypte naam → canonieke catalogusnaam (synoniemen uit beheerswebsite). */
+export function resolveCanonicalCafeItemName(name: string): string {
+  return resolveCanonicalNameFromSynonyms(name, CAFE_SYNONYM_TO_CANONICAL);
+}
+
+function cafeItemsMatchName(itemName: string, queryName: string): boolean {
+  return (
+    normalizeCafeChoiceName(itemName) ===
+    normalizeCafeChoiceName(resolveCanonicalCafeItemName(queryName))
+  );
 }
 
 /** Sorteer op totaal gekozen (hoog→laag), daarna op vaste populariteitsvolgorde, daarna A–Z (nl). Alleen voor «Meest gekozen». */
@@ -1111,10 +1161,7 @@ export function sortCafeWizardItemsBrandGrouped(
 }
 
 export function cafeItemIconSrc(name: string): string {
-  const normalized = normalizeCafeChoiceName(name);
-  const hit = CAFE_WIZARD_ITEMS.find(
-    (item) => normalizeCafeChoiceName(item.name) === normalized,
-  );
+  const hit = CAFE_WIZARD_ITEMS.find((item) => cafeItemsMatchName(item.name, name));
   return hit?.iconSrc ?? CAFE_WIZARD_PLACEHOLDER_ICON_URL;
 }
 
@@ -1135,9 +1182,8 @@ export function cafeCategorySectionFromItem(item: {
   ) {
     return fromSection;
   }
-  const normalized = normalizeCafeChoiceName(item.name);
-  const wizardItem = CAFE_WIZARD_ITEMS.find(
-    (w) => normalizeCafeChoiceName(w.name) === normalized,
+  const wizardItem = CAFE_WIZARD_ITEMS.find((w) =>
+    cafeItemsMatchName(w.name, item.name),
   );
   return wizardItem
     ? CAFE_WIZARD_CATEGORY_LABELS[wizardItem.category]
@@ -1205,11 +1251,16 @@ export function buildCafeWizardInitialState(
   for (const w of CAFE_WIZARD_ITEMS) counts[w.id] = 0;
 
   const byName = new Map(
-    CAFE_WIZARD_ITEMS.map((w) => [normalizeCafeChoiceName(w.name), w]),
+    CAFE_WIZARD_ITEMS.map((w) => [
+      normalizeCafeChoiceName(w.name),
+      w,
+    ]),
   );
 
   for (const existingItem of existingItems) {
-    const w = byName.get(normalizeCafeChoiceName(existingItem.name));
+    const w = byName.get(
+      normalizeCafeChoiceName(resolveCanonicalCafeItemName(existingItem.name)),
+    );
     if (!w) continue;
     counts[w.id] =
       (counts[w.id] ?? 0) + parseCafeQuantityCount(existingItem.quantity);

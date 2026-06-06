@@ -4,9 +4,11 @@ import * as React from "react";
 import ReactDOM from "react-dom";
 import {
   useItemSlugs,
+  useItemSynonyms,
   normalizeForMatch,
   itemPhotoUrlFromSlug,
 } from "@/lib/item-photos";
+import { matchItemSlugsForAutocomplete } from "@/lib/item-slug-autocomplete";
 import {
   useIngredientSlugs,
   useIngredientSynonyms,
@@ -114,11 +116,12 @@ export function ItemNameSearchSlideIn({
   defaultSlugs,
 }: ItemNameSearchSlideInProps) {
   const itemSlugs = useItemSlugs();
+  const itemSynonyms = useItemSynonyms();
   const ingredientSlugs = useIngredientSlugs();
   const ingredientSynonyms = useIngredientSynonyms();
   const slugs = photoCatalog === "ingredients" ? ingredientSlugs : itemSlugs;
   const synonyms =
-    photoCatalog === "ingredients" ? ingredientSynonyms : ({} as Record<string, string>);
+    photoCatalog === "ingredients" ? ingredientSynonyms : itemSynonyms;
   const [query, setQuery] = React.useState(initialValue);
   const [domVisible, setDomVisible] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
@@ -179,13 +182,12 @@ export function ItemNameSearchSlideIn({
         SLIDE_IN_MAX_SUGGESTIONS,
       );
     }
-    const matching = slugs.filter((slug) =>
-      slug.split("_").some((w) => w.startsWith(norm)),
+    return matchItemSlugsForAutocomplete(
+      norm,
+      slugs,
+      synonyms,
+      SLIDE_IN_MAX_SUGGESTIONS,
     );
-    matching.sort(
-      (a, b) => (a.startsWith(norm) ? 0 : 1) - (b.startsWith(norm) ? 0 : 1),
-    );
-    return matching.slice(0, SLIDE_IN_MAX_SUGGESTIONS);
   }, [slugs, norm, photoCatalog, synonyms, defaultSlugs]);
 
   const handleSelect = React.useCallback(

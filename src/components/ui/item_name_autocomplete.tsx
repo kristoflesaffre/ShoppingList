@@ -7,10 +7,12 @@ import { InputField } from "@/components/ui/input_field";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
 import {
   useItemSlugs,
+  useItemSynonyms,
   useItemPhotoUrl,
   normalizeForMatch,
   itemPhotoUrlFromSlug,
 } from "@/lib/item-photos";
+import { matchItemSlugsForAutocomplete } from "@/lib/item-slug-autocomplete";
 import {
   useIngredientSlugs,
   useIngredientPhotoUrl,
@@ -69,11 +71,12 @@ function LargeScreenAutocomplete({
   autoFocus,
 }: ItemNameAutocompleteProps) {
   const itemSlugs = useItemSlugs();
+  const itemSynonyms = useItemSynonyms();
   const ingredientSlugs = useIngredientSlugs();
   const ingredientSynonyms = useIngredientSynonyms();
   const slugs = photoCatalog === "ingredients" ? ingredientSlugs : itemSlugs;
   const synonyms =
-    photoCatalog === "ingredients" ? ingredientSynonyms : ({} as Record<string, string>);
+    photoCatalog === "ingredients" ? ingredientSynonyms : itemSynonyms;
   const [open, setOpen] = React.useState(false);
   const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -97,19 +100,12 @@ function LargeScreenAutocomplete({
         MAX_SUGGESTIONS,
       );
     }
-    const words = (slug: string) => slug.split("_");
-    // Priority 0: slug starts with query; 1: a word starts with query; 2: slug contains query anywhere
-    const priority = (slug: string): number => {
-      if (slug.startsWith(norm)) return 0;
-      if (words(slug).some((w) => w.startsWith(norm))) return 1;
-      if (slug.includes(norm)) return 2;
-      return 99;
-    };
-    const matching = slugs
-      .map((slug) => ({ slug, p: priority(slug) }))
-      .filter(({ p }) => p < 99)
-      .sort((a, b) => a.p - b.p || a.slug.localeCompare(b.slug));
-    return matching.slice(0, MAX_SUGGESTIONS).map(({ slug }) => slug);
+    return matchItemSlugsForAutocomplete(
+      norm,
+      slugs,
+      synonyms,
+      MAX_SUGGESTIONS,
+    );
   }, [slugs, value, photoCatalog, synonyms]);
 
   const showDropdown = open && suggestions.length > 0;

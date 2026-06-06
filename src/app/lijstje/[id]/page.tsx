@@ -110,6 +110,12 @@ import {
   type SavedRecipe,
 } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
+import frituurItemCategories from "@/lib/data/frituur_item_categories.json";
+import {
+  FRITUUR_SYNONYM_TO_CANONICAL,
+  resolveCanonicalNameFromSynonyms,
+} from "@/lib/venue-synonyms";
+import { mergeVenueWizardItems } from "@/lib/venue-category-merge";
 import { ALL_LIST_PRODUCT_ICON_URLS } from "@/lib/list-product-icon-urls";
 import {
   CAFE_ROUND_SECTION_TITLE,
@@ -1923,7 +1929,13 @@ type FrituurWizardItem = {
   iconSrc?: string;
 };
 
-const FRITUUR_WIZARD_ITEMS: readonly FrituurWizardItem[] = [
+const FRITUUR_CATALOG_CATEGORIES = new Set<string>(["frieten", "snacks", "sauzen"]);
+
+function isFrituurCatalogCategory(value: string): value is FrituurWizardCategory {
+  return FRITUUR_CATALOG_CATEGORIES.has(value);
+}
+
+const FRITUUR_WIZARD_ITEMS_RAW: readonly FrituurWizardItem[] = [
   {
     id: "mini-friet",
     name: "Mini friet",
@@ -2205,10 +2217,16 @@ const FRITUUR_WIZARD_ITEMS: readonly FrituurWizardItem[] = [
   },
 ] as const;
 
+const FRITUUR_WIZARD_ITEMS: readonly FrituurWizardItem[] = mergeVenueWizardItems(
+  FRITUUR_WIZARD_ITEMS_RAW,
+  frituurItemCategories,
+  isFrituurCatalogCategory,
+);
+
 const FRITUUR_WIZARD_CATEGORY_LABELS: Record<FrituurWizardCategory, string> = {
-  frieten: "Frieten",
-  snacks: "Snacks",
-  sauzen: "Sauzen",
+  frieten: frituurItemCategories.categoryLabels.frieten ?? "Frieten",
+  snacks: frituurItemCategories.categoryLabels.snacks ?? "Snacks",
+  sauzen: frituurItemCategories.categoryLabels.sauzen ?? "Sauzen",
 };
 
 type FrituurWizardSelectedItem = {
@@ -2222,10 +2240,20 @@ function normalizeFrituurChoiceName(name: string): string {
   return name.trim().toLowerCase();
 }
 
+function resolveCanonicalFrituurItemName(name: string): string {
+  return resolveCanonicalNameFromSynonyms(name, FRITUUR_SYNONYM_TO_CANONICAL);
+}
+
+function frituurItemsMatchName(itemName: string, queryName: string): boolean {
+  return (
+    normalizeFrituurChoiceName(itemName) ===
+    normalizeFrituurChoiceName(resolveCanonicalFrituurItemName(queryName))
+  );
+}
+
 function frituurItemIconSrc(name: string): string {
-  const normalized = normalizeFrituurChoiceName(name);
-  const match = FRITUUR_WIZARD_ITEMS.find(
-    (item) => normalizeFrituurChoiceName(item.name) === normalized,
+  const match = FRITUUR_WIZARD_ITEMS.find((item) =>
+    frituurItemsMatchName(item.name, name),
   );
   return match?.iconSrc ?? FRITUUR_WIZARD_PLACEHOLDER_ICON_URL;
 }
@@ -2234,10 +2262,8 @@ function frituurCategoryFromItem(item: ListItem): "Frieten" | "Sauzen" | "Snacks
   if (item.section === "Sauzen" || item.section === "Snacks" || item.section === "Frieten") {
     return item.section;
   }
-  const match = FRITUUR_WIZARD_ITEMS.find(
-    (wizardItem) =>
-      normalizeFrituurChoiceName(wizardItem.name) ===
-      normalizeFrituurChoiceName(item.name),
+  const match = FRITUUR_WIZARD_ITEMS.find((wizardItem) =>
+    frituurItemsMatchName(wizardItem.name, item.name),
   );
   if (match?.category === "sauzen") return "Sauzen";
   if (match?.category === "snacks") return "Snacks";

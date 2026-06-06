@@ -174,6 +174,29 @@ export function useItemSlugs(): string[] {
  * Hook that returns only the slugs from the /images/vakantie folder.
  * Reactive: updates once the /api/item-images fetch resolves.
  */
+/** Synoniemen voor itemfoto's en zoeken (alle lijsttypes samengevoegd). */
+export function useItemSynonyms(): Record<string, string> {
+  const [synonyms, setSynonyms] = React.useState<Record<string, string>>(
+    cachedSynonyms ?? {},
+  );
+
+  React.useEffect(() => {
+    if (cachedSynonyms) {
+      setSynonyms(cachedSynonyms);
+      return;
+    }
+    let cancelled = false;
+    void fetchSynonyms().then((result) => {
+      if (!cancelled) setSynonyms(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return synonyms;
+}
+
 export function useVacationItemSlugs(): string[] {
   const allSlugs = useItemSlugs();
   return React.useMemo(

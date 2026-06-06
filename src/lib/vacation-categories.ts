@@ -49,6 +49,7 @@ type VacationCategoriesFile = {
   categoryOrder: string[];
   itemToCategory: Record<string, string>;
   slugToCategory: Record<string, string>;
+  synonymToCanonical?: Record<string, string>;
 };
 
 const data = vacationItemCategories as VacationCategoriesFile;
@@ -90,7 +91,24 @@ function lookupKeysForName(name: string): string[] {
   }
   const slug = slugKeyFromName(name);
   if (slug) keys.add(slug);
+
+  const synonymCanonical = data.synonymToCanonical?.[n];
+  if (synonymCanonical) {
+    const cn = normalizeVacationItemKey(synonymCanonical);
+    if (cn) {
+      keys.add(cn);
+      keys.add(cn.replace(/\s/g, "_"));
+      keys.add(slugKeyFromName(synonymCanonical));
+    }
+  }
+
   return Array.from(keys);
+}
+
+/** Getypte naam → canonieke paklijstnaam (beheerd via beheerswebsite). */
+export function resolveCanonicalVacationItemName(name: string): string {
+  const key = normalizeVacationItemKey(name);
+  return data.synonymToCanonical?.[key]?.trim() || name.trim();
 }
 
 function categoryFromJsonMaps(name: string): VacationCategory | null {
