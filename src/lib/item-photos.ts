@@ -17,6 +17,27 @@ let cachedSlugs: string[] | null = null;
 let slugToFileBase: Map<string, string> = new Map();
 let fetchPromise: Promise<string[]> | null = null;
 
+// Synonym cache: normalized item name → normalized canonical item name (for image fallback)
+let cachedSynonyms: Record<string, string> | null = null;
+let synonymFetchPromise: Promise<Record<string, string>> | null = null;
+
+function fetchSynonyms(): Promise<Record<string, string>> {
+  if (cachedSynonyms) return Promise.resolve(cachedSynonyms);
+  if (synonymFetchPromise) return synonymFetchPromise;
+  synonymFetchPromise = fetch("/api/item-synonyms")
+    .then((r) => r.json() as Promise<Record<string, string>>)
+    .then((data) => {
+      cachedSynonyms = data;
+      synonymFetchPromise = null;
+      return data;
+    })
+    .catch(() => {
+      synonymFetchPromise = null;
+      return {};
+    });
+  return synonymFetchPromise;
+}
+
 export type { ItemPhotoSize };
 
 export function itemPhotoUrlFromSlug(slug: string, size?: number): string {
@@ -79,17 +100,23 @@ export function matchItemPhotoUrl(
   slugs: string[],
   size?: number,
   options?: ItemPhotoLookupOptions,
+  synonyms?: Record<string, string>,
 ): string | null {
   const matchOptions: MatchItemPhotoUrlOptions | undefined = options?.tripPerson
     ? { personImageSuffix: tripPersonImageSuffix(options.tripPerson) }
     : undefined;
-  return matchItemPhotoUrlBase(
-    itemName,
-    slugs,
-    size,
-    slugToFileBase,
-    matchOptions,
-  );
+  const direct = matchItemPhotoUrlBase(itemName, slugs, size, slugToFileBase, matchOptions);
+  if (direct) return direct;
+
+  // Fallback: try canonical name via synonymToCanonical
+  if (synonyms) {
+    const normalized = normalizeForMatch(itemName);
+    const canonical = synonyms[normalized];
+    if (canonical && canonical !== normalized) {
+      return matchItemPhotoUrlBase(canonical, slugs, size, slugToFileBase, matchOptions);
+    }
+  }
+  return null;
 }
 
 /**
@@ -141,30 +168,30 @@ export function useItemPhotoUrl(
   options?: ItemPhotoLookupOptions,
 ) => string | null {
   const [slugs, setSlugs] = React.useState<string[]>(cachedSlugs ?? []);
+  const [synonyms, setSynonyms] = React.useState<Record<string, string>>(cachedSynonyms ?? {});
   const normalizedSize = normalizeItemPhotoSize(size);
 
   React.useEffect(() => {
-    if (cachedSlugs) {
+    if (!cachedSlugs) {
+      let cancelled = false;
+      void fetchSlugs().then((result) => { if (!cancelled) setSlugs(result); });
+      return () => { cancelled = true; };
+    } else {
       setSlugs(cachedSlugs);
-      return;
     }
-    let cancelled = false;
-    fetchSlugs().then((result) => {
-      if (!cancelled) setSlugs(result);
-    });
-    return () => {
-      cancelled = true;
-    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!cachedSynonyms) {
+      let cancelled = false;
+      void fetchSynonyms().then((result) => { if (!cancelled) setSynonyms(result); });
+      return () => { cancelled = true; };
+    }
   }, []);
 
   return React.useCallback(
     (itemName: string, overrideSize?: number, options?: ItemPhotoLookupOptions) =>
-      matchItemPhotoUrl(
-        itemName,
-        slugs,
-        overrideSize ?? normalizedSize,
-        options,
-      ),
-    [slugs, normalizedSize],
+      matchItemPhotoUrl(itemName, slugs, overrideSize ?? normalizedSize, options, synonyms),
+    [slugs, synonyms, normalizedSize],
   );
 }
