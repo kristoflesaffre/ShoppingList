@@ -18,9 +18,13 @@ const excelPath = path.join(
 );
 const itemsDir = path.join(root, "public/images/items");
 
+const GF = "Groenten & Fruit";
 const Z = "Zuivel, Kaas & Eieren";
 const V = "Vlees & Charcuterie";
+const VZ = "Vis & Zeevruchten";
 const B = "Brood";
+const BE = "Beleg";
+const DP = "Diepvries";
 const D = "Droogwaren & Bakproducten";
 const C = "Conserven, Sauzen, Olie & Kruiden";
 const ZS = "Zoute Snacks";
@@ -127,6 +131,58 @@ const NEW_ITEMS = {
   zwarte_peperbollen: {
     category: C,
     synonyms: ["zwarte peperbollen", "zwarte peper"],
+  },
+  chips_croky_paprika_rings: {
+    category: ZS,
+    synonyms: ["croky paprika rings", "croky chips paprika"],
+  },
+  chips_paprika: { category: ZS, synonyms: ["paprika chips", "chips paprika"] },
+  chips_pickles: {
+    category: ZS,
+    synonyms: ["pickles chips", "augurken chips"],
+  },
+  chips_salt_and_vinegar: {
+    category: ZS,
+    synonyms: ["salt and vinegar chips", "zout azijn chips"],
+  },
+  chips_zout: { category: ZS, synonyms: ["zoute chips", "chips zout"] },
+  confituur: { category: BE, synonyms: ["jam", "confiture", "fruitbeleg"] },
+  coquilles: {
+    category: VZ,
+    synonyms: ["sint-jakobsschelpen", "jakobsschelpen"],
+  },
+  gerookte_zalmhaasje: {
+    category: VZ,
+    synonyms: ["gerookte zalm", "rookzalm", "zalmhaasje"],
+  },
+  huishoudfolie: {
+    category: H,
+    synonyms: ["aluminiumfolie", "afdeklfolie", "vershoudfolie"],
+  },
+  pompoen: { category: GF, synonyms: ["pumpkin", "pompoenstuk"] },
+  smeerboter: {
+    category: Z,
+    synonyms: ["boter om te smeren", "roomboter kuip"],
+  },
+  speculoospasta: {
+    category: BE,
+    synonyms: ["speculoos pasta", "speculaas pasta", "speculoos spread"],
+  },
+  "vol-au-vent_koekje": {
+    category: DP,
+    synonyms: ["vol au vent koekje", "vol-au-vent bladerdeeghapje"],
+  },
+  "vol-au-vent_voorgemaakt": {
+    category: DP,
+    synonyms: ["vol au vent voorgemaakt", "vol-au-vent gerecht"],
+  },
+  zuur_fruit_snoep: {
+    category: SC,
+    synonyms: ["zure snoepjes", "zuurtjes", "zuur fruit"],
+  },
+  vleesje_noë: {
+    category: V,
+    synonyms: ["vleesje noë", "vleesje noe"],
   },
 };
 

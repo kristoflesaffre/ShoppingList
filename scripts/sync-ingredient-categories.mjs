@@ -249,12 +249,80 @@ if (!categoryOrder.includes(OVERIG)) {
   categoryOrder.push(OVERIG);
 }
 
+/** Synoniemen uit breed Synoniemen-blad → admin/JSON (`synoniem` → canonieke ingrediëntnaam). */
+function buildSynonymToCanonicalFromWideSheet(rows, slugCol) {
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const slugRaw = String(row[slugCol] ?? "").trim();
+    if (!slugRaw) continue;
+    const canonical = normalizeIngredientKey(slugRaw);
+    if (!canonical) continue;
+    for (let c = slugCol + 1; c < row.length; c++) {
+      const synRaw = String(row[c] ?? "").trim();
+      if (!synRaw) continue;
+      const key = normalizeIngredientKey(synRaw);
+      if (!key || key === canonical) continue;
+      out[key] = canonical;
+    }
+  }
+  return out;
+}
+
+let existingSynonymToCanonical = {};
+if (fs.existsSync(outPath)) {
+  try {
+    const existing = JSON.parse(fs.readFileSync(outPath, "utf8"));
+    existingSynonymToCanonical = existing.synonymToCanonical ?? {};
+  } catch {
+    existingSynonymToCanonical = {};
+  }
+}
+
+const synSheetForCanonical = findSheet(wb, ["Synoniemen", "Synonyms", "Synonymen"]);
+let synonymToCanonical = { ...existingSynonymToCanonical };
+if (synSheetForCanonical) {
+  const synRowsForCanonical = XLSX.utils.sheet_to_json(synSheetForCanonical, {
+    header: 1,
+    defval: "",
+  });
+  const header = (synRowsForCanonical[0] ?? []).map((c) =>
+    String(c).trim().toLowerCase(),
+  );
+  let slugCol = 0;
+  if (!slugHeaderCell(header[0])) {
+    const idx = header.findIndex(slugHeaderCell);
+    if (idx >= 0) slugCol = idx;
+  }
+  if (!synonymHeaderCell(header[0])) {
+    synonymToCanonical = {
+      ...synonymToCanonical,
+      ...buildSynonymToCanonicalFromWideSheet(synRowsForCanonical, slugCol),
+    };
+  }
+}
+
+// Verwijder verouderde mappings waarbij een canoniek product als synoniem naar iets anders wijst
+for (const [syn, canonical] of Object.entries(synonymToCanonical)) {
+  const synNorm = normalizeIngredientKey(syn);
+  const canNorm = normalizeIngredientKey(canonical);
+  if (
+    synNorm &&
+    ingredientToCategory[synNorm] &&
+    synNorm !== canNorm
+  ) {
+    delete synonymToCanonical[syn];
+  }
+}
+
 const payload = {
   version: 1,
   generatedAt: new Date().toISOString(),
   source: "public/images/items/ingredienten_categorieen.xlsx",
   categoryOrder,
   ingredientToCategory,
+  synonymToCanonical,
 };
 
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
