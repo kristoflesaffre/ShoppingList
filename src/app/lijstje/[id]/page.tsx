@@ -5045,6 +5045,30 @@ export default function ListDetailPage({
     })
   );
 
+  // Maps each item id to its section title so we can filter collision targets
+  // to the same section, preventing cross-section visual swap artefacts.
+  const itemSectionMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const section of sections) {
+      for (const item of section.items) {
+        map.set(item.id, section.title);
+      }
+    }
+    return map;
+  }, [sections]);
+
+  const sectionAwareCollision = React.useCallback<typeof closestCenter>(
+    (args) => {
+      const activeSection = itemSectionMap.get(String(args.active.id));
+      if (!activeSection) return closestCenter(args);
+      const filtered = args.droppableContainers.filter((c) =>
+        itemSectionMap.get(String(c.id)) === activeSection,
+      );
+      return closestCenter({ ...args, droppableContainers: filtered });
+    },
+    [itemSectionMap],
+  );
+
   const loyaltySwipePanes = React.useMemo((): LoyaltySwipePane[] => {
     const panes: LoyaltySwipePane[] = [];
     if (isLidlDelhaizeList) {
@@ -5881,7 +5905,7 @@ export default function ListDetailPage({
             {!isPuddyTabSelected ? (
               <DndContext
                 sensors={sensors}
-                collisionDetection={closestCenter}
+                collisionDetection={sectionAwareCollision}
                 onDragEnd={handleReorderItems}
                 modifiers={listViewMode === "grid" ? [] : [restrictToVerticalAxis]}
               >
