@@ -1547,14 +1547,15 @@ function SortableItemRow({
   const isAdding = addingId === item.id;
   const isAddingCollapsed = isAdding && !addingIdExpanded;
   const isAnimating = isRemoving || isAddingCollapsed;
-  // During drag: keep max-h so the browser doesn't animate height to "none" (causing a brief
-  // collapse flash), but drop overflow-hidden so CSS transforms on child items aren't clipped,
-  // and drop transition so there's no competing max-height animation while dragging.
-  const wrapperClass = cn(
-    !isDndActive && listViewMode !== "grid" && "overflow-hidden",
-    !isDndActive && "transition-[max-height,opacity,margin] duration-300 ease-out",
-    isAnimating && !isDndActive ? "max-h-0 opacity-0" : "max-h-[1200px] opacity-100",
-  );
+  const wrapperClass = isDndActive
+    ? ""
+    : cn(
+        listViewMode === "grid"
+          ? "transition-[max-height,opacity,margin] duration-300 ease-out"
+          : "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+        /* Ruime max voor lange namen / grotere tekst; collapse-animatie blijft werken */
+        isAnimating ? "max-h-0 opacity-0" : "max-h-[1200px] opacity-100",
+      );
 
   return (
     <div className={wrapperClass}>
@@ -1640,11 +1641,8 @@ function SortableItemCard({
   } = useSortable({ id: item.id, disabled: disableSortable });
 
   const style = {
-    // CSS.Translate strips scale values so only translation is applied — prevents
-    // scale artefacts that make items appear to resize or flicker during sort.
-    transform: CSS.Translate.toString(transform),
+    transform: CSS.Transform.toString(transform),
     transition,
-    willChange: isDragging ? "transform" : undefined,
   };
   const displayItemName = isVacationList
     ? vacationDisplayItemName(item.name)
