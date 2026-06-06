@@ -97,13 +97,19 @@ function LargeScreenAutocomplete({
         MAX_SUGGESTIONS,
       );
     }
-    const matching = slugs.filter((slug) =>
-      slug.split("_").some((w) => w.startsWith(norm)),
-    );
-    matching.sort(
-      (a, b) => (a.startsWith(norm) ? 0 : 1) - (b.startsWith(norm) ? 0 : 1),
-    );
-    return matching.slice(0, MAX_SUGGESTIONS);
+    const words = (slug: string) => slug.split("_");
+    // Priority 0: slug starts with query; 1: a word starts with query; 2: slug contains query anywhere
+    const priority = (slug: string): number => {
+      if (slug.startsWith(norm)) return 0;
+      if (words(slug).some((w) => w.startsWith(norm))) return 1;
+      if (slug.includes(norm)) return 2;
+      return 99;
+    };
+    const matching = slugs
+      .map((slug) => ({ slug, p: priority(slug) }))
+      .filter(({ p }) => p < 99)
+      .sort((a, b) => a.p - b.p || a.slug.localeCompare(b.slug));
+    return matching.slice(0, MAX_SUGGESTIONS).map(({ slug }) => slug);
   }, [slugs, value, photoCatalog, synonyms]);
 
   const showDropdown = open && suggestions.length > 0;
