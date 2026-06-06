@@ -951,7 +951,6 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               className={cn(
                 "relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover",
                 isChecked && "opacity-20",
-                isEditable && "hidden lg:block",
               )}
             >
               {itemThumbnail}
