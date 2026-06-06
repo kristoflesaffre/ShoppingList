@@ -18,6 +18,7 @@ import { defaultNewListName } from "@/lib/list-default-name";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import { SwipeToAdd } from "@/components/ui/swipe_to_add";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
+import { SearchBar } from "@/components/ui/search_bar";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import {
@@ -810,6 +811,16 @@ export default function SelecteerMasterItemsPage() {
     }));
   }, [masterList, hiddenItemIds, teKopenItems, addedPrevNames]);
 
+  const [searchQuery, setSearchQuery] = React.useState("");
+
+  const filteredVisibleSections = React.useMemo(() => {
+    if (!searchQuery.trim()) return visibleSections;
+    const q = searchQuery.trim().toLowerCase();
+    return visibleSections
+      .map((s) => ({ ...s, items: s.items.filter((i) => i.name.toLowerCase().includes(q)) }))
+      .filter((s) => s.items.length > 0);
+  }, [visibleSections, searchQuery]);
+
   const selectedItemCount =
     Object.keys(selectedQuantitiesById).length +
     selectedTeKopenItemIds.size +
@@ -1215,8 +1226,14 @@ export default function SelecteerMasterItemsPage() {
             </p>
           </section>
 
+          <SearchBar
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+            placeholder="Zoeken in favorieten…"
+          />
+
           <div className="flex w-full flex-col gap-6">
-            {visibleSections.map((section) => (
+            {filteredVisibleSections.map((section) => (
               <section key={section.title} className="flex flex-col gap-3">
                 <h3 className="text-xs font-medium uppercase tracking-normal text-[var(--blue-900)]">
                   {categoryHeadingDisplay(section.title)}

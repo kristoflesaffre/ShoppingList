@@ -3598,6 +3598,7 @@ export default function ListDetailPage({
   const [listLayoutMode, setListLayoutMode] = React.useState<"list" | "grid">("list");
   const [isListLayoutHydrated, setIsListLayoutHydrated] = React.useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
+  const [masterSearchQuery, setMasterSearchQuery] = React.useState("");
   const [editingItem, setEditingItem] = React.useState<ListItem | null>(null);
   const [initialSection, setInitialSection] = React.useState<string | null>(null);
   const [initialItemCategory, setInitialItemCategory] = React.useState<
@@ -4779,6 +4780,14 @@ export default function ListDetailPage({
 
   const hasItems = items.length > 0;
   const isMasterEmpty = isMasterList && !hasItems;
+
+  const sectionsForDisplay = React.useMemo(() => {
+    if (!isMasterList || !masterSearchQuery.trim()) return sections;
+    const q = masterSearchQuery.trim().toLowerCase();
+    return sections
+      .map((s) => ({ ...s, items: s.items.filter((i) => i.name.toLowerCase().includes(q)) }))
+      .filter((s) => s.items.length > 0);
+  }, [sections, isMasterList, masterSearchQuery]);
   const showUncheckedFirstToggle =
     !isMasterList &&
     hasItems &&
@@ -5903,6 +5912,13 @@ export default function ListDetailPage({
                 «Wie» in via toevoegen of bewerken van een item.
               </p>
             ) : null}
+            {isMasterList && hasItems && !isMasterCategoryOrderMode ? (
+              <SearchBar
+                value={masterSearchQuery}
+                onValueChange={setMasterSearchQuery}
+                placeholder="Zoeken in favorieten…"
+              />
+            ) : null}
             {!isPuddyTabSelected ? (
               <DndContext
                 sensors={sensors}
@@ -5911,11 +5927,11 @@ export default function ListDetailPage({
                 modifiers={listViewMode === "grid" ? [] : [restrictToVerticalAxis]}
               >
                 <SortableContext
-                  items={itemsForListSections.map((i) => i.id)}
+                  items={sectionsForDisplay.flatMap((s) => s.items).map((i) => i.id)}
                   strategy={listViewMode === "grid" ? rectSortingStrategy : verticalListSortingStrategy}
                 >
                   <SortableItemItems
-                    sections={sections}
+                    sections={sectionsForDisplay}
                     groupingMode={
                       isMasterList ? "category" : effectiveListGroupingMode
                     }
