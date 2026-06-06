@@ -27,7 +27,7 @@ function slugToDisplayName(slug: string): string {
     .join(" ");
 }
 
-const MAX_SUGGESTIONS = 6;
+const MAX_SUGGESTIONS = 8;
 const ROW_HEIGHT = 56;
 
 /** True wanneer de viewport smaller is dan 768px (md breakpoint). */
