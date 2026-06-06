@@ -678,6 +678,7 @@ export function NewItemModal({
                     placeholder="Naam item"
                     value={itemName}
                     onChange={setItemName}
+                    autoFocus={!nameSearchOpen}
                   />
                   {isVacationList && (
                     <>
