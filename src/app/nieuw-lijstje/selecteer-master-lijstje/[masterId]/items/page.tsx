@@ -32,6 +32,7 @@ type TemplateItem = {
   name: string;
   quantity: string;
   section: string;
+  order?: number;
   recipeGroupId?: string;
   recipeName?: string;
   recipeLink?: string;
@@ -401,11 +402,13 @@ export default function SelecteerMasterItemsPage() {
         name: String(i.name),
         quantity: String(i.quantity),
         section: String(i.section),
+        order: typeof i.order === "number" ? i.order : undefined,
         recipeGroupId:
           typeof i.recipeGroupId === "string" ? i.recipeGroupId : undefined,
         recipeName: typeof i.recipeName === "string" ? i.recipeName : undefined,
         recipeLink: typeof i.recipeLink === "string" ? i.recipeLink : undefined,
-      }));
+      }))
+      .sort((a: TemplateItem, b: TemplateItem) => (a.order ?? 0) - (b.order ?? 0));
     const lc = (found as { loyaltyCard?: unknown }).loyaltyCard as
       | Record<string, unknown>
       | null
