@@ -89,7 +89,7 @@ export function mergeTvSeasons(
       }
     }
   }
-  return normalizeTvSeasons([...byNumber.values()]);
+  return normalizeTvSeasons(Array.from(byNumber.values()));
 }
 
 /**
@@ -174,7 +174,7 @@ export function buildWatchingTvItems(input: {
 
   const items: WatchingTvItem[] = [];
 
-  for (const tmdbId of tmdbIds) {
+  for (const tmdbId of Array.from(tmdbIds)) {
     const lastWatched = getHighestWatchedProgress(input.watchedIds, tmdbId);
     if (!lastWatched) continue;
 

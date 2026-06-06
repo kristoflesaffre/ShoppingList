@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
+import type { WatchlistItem } from "@/lib/watchlist";
 import {
   buildWatchingTvItems,
   getEpisodeIdAfterWatchingNext,
@@ -14,14 +15,21 @@ import {
   type WatchingTvItem,
 } from "@/lib/tv-watching-progress";
 
+export type RemovedWatchingTvItemSnapshot = {
+  watchlistItem: WatchlistItem;
+  watchedEpisodeIds: string[];
+};
+
 export function useWatchingTvItems() {
   const {
     watchedIds,
     watchlist,
     seriesMeta,
+    addToWatchlist,
     saveSeriesMeta,
     removeFromWatchlist,
     markWatched,
+    unmarkWatched,
     isInWatchlist,
   } = useFilmsLibrary();
 
@@ -46,7 +54,7 @@ export function useWatchingTvItems() {
       const parsed = parseEpisodeWatchedId(id);
       if (parsed) ids.add(parsed.tmdbId);
     }
-    return [...ids];
+    return Array.from(ids);
   }, [watchedIds]);
 
   const getSeasonsFor = React.useCallback(
@@ -129,7 +137,41 @@ export function useWatchingTvItems() {
     [getSeasonsFor, removeFromWatchlist, markWatched],
   );
 
-  return { watchingItems, markNextEpisode };
+  const getWatchedEpisodeIdsFor = React.useCallback(
+    (tmdbId: string) =>
+      watchedIds.filter((id) => parseEpisodeWatchedId(id)?.tmdbId === tmdbId),
+    [watchedIds],
+  );
+
+  const removeWatchingItem = React.useCallback(
+    async (item: WatchingTvItem): Promise<RemovedWatchingTvItemSnapshot> => {
+      const watchedEpisodeIds = getWatchedEpisodeIdsFor(item.tmdbId);
+      const watchlistItem: WatchlistItem = {
+        id: item.id,
+        type: "tv",
+        title: item.title,
+        year: item.year,
+        posterUrl: item.posterUrl,
+        score: null,
+      };
+
+      await Promise.all(watchedEpisodeIds.map((id) => unmarkWatched(id)));
+      await removeFromWatchlist(item.id);
+
+      return { watchlistItem, watchedEpisodeIds };
+    },
+    [getWatchedEpisodeIdsFor, removeFromWatchlist, unmarkWatched],
+  );
+
+  const restoreWatchingItem = React.useCallback(
+    async (snapshot: RemovedWatchingTvItemSnapshot) => {
+      await addToWatchlist(snapshot.watchlistItem);
+      await Promise.all(snapshot.watchedEpisodeIds.map((id) => markWatched(id)));
+    },
+    [addToWatchlist, markWatched],
+  );
+
+  return { watchingItems, markNextEpisode, removeWatchingItem, restoreWatchingItem };
 }
 
 export type { WatchingTvItem };

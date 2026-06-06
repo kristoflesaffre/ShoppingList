@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 type Season = {
   seasonNumber: number;
   name: string;
+  episodeCount: number;
 };
 
 type Episode = {
