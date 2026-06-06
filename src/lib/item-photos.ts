@@ -15,7 +15,14 @@ import { tripPersonImageSuffix, type TripPersonTab } from "@/lib/trip-person";
 let cachedSlugs: string[] | null = null;
 /** Maps normalised slug → original filename base (without size suffix / extension). */
 let slugToFileBase: Map<string, string> = new Map();
+/** Bestands-mtime (seconden) per slug — cache-bust na vervangen afbeelding met zelfde naam. */
+let slugVersions: Map<string, number> = new Map();
 let fetchPromise: Promise<string[]> | null = null;
+
+type ItemImagesPayload = {
+  slugs?: string[];
+  versions?: Record<string, number>;
+};
 
 // Synonym cache: normalized item name → normalized canonical item name (for image fallback)
 let cachedSynonyms: Record<string, string> | null = null;
@@ -40,8 +47,15 @@ function fetchSynonyms(): Promise<Record<string, string>> {
 
 export type { ItemPhotoSize };
 
+function appendImageVersion(url: string | null, slug?: string): string | null {
+  if (!url) return null;
+  const key = slug ?? normalizeForMatch(url.split("/").pop()?.replace(/_\d+\.webp$/, "") ?? "");
+  const version = slugVersions.get(key);
+  return version ? `${url}?v=${version}` : url;
+}
+
 export function itemPhotoUrlFromSlug(slug: string, size?: number): string {
-  return itemPhotoUrlFromSlugBase(slug, size, slugToFileBase);
+  return appendImageVersion(itemPhotoUrlFromSlugBase(slug, size, slugToFileBase), slug)!;
 }
 
 /**
@@ -67,12 +81,22 @@ function buildSlugIndex(raw: string[]): string[] {
   return Array.from(map.keys()).sort();
 }
 
+function applyVersions(versions: Record<string, number> | undefined): void {
+  slugVersions = new Map();
+  if (!versions) return;
+  for (const [key, mtime] of Object.entries(versions)) {
+    if (Number.isFinite(mtime)) slugVersions.set(key, mtime);
+  }
+}
+
 function fetchSlugs(): Promise<string[]> {
   if (cachedSlugs) return Promise.resolve(cachedSlugs);
   if (fetchPromise) return fetchPromise;
   fetchPromise = fetch("/api/item-images")
-    .then((r) => r.json() as Promise<string[]>)
-    .then((rawSlugs) => {
+    .then((r) => r.json() as Promise<string[] | ItemImagesPayload>)
+    .then((payload) => {
+      const rawSlugs = Array.isArray(payload) ? payload : (payload.slugs ?? []);
+      if (!Array.isArray(payload)) applyVersions(payload.versions);
       const slugs = buildSlugIndex(rawSlugs);
       cachedSlugs = slugs;
       fetchPromise = null;
@@ -106,14 +130,17 @@ export function matchItemPhotoUrl(
     ? { personImageSuffix: tripPersonImageSuffix(options.tripPerson) }
     : undefined;
   const direct = matchItemPhotoUrlBase(itemName, slugs, size, slugToFileBase, matchOptions);
-  if (direct) return direct;
+  if (direct) return appendImageVersion(direct);
 
   // Fallback: try canonical name via synonymToCanonical
   if (synonyms) {
     const normalized = normalizeForMatch(itemName);
     const canonical = synonyms[normalized];
     if (canonical && canonical !== normalized) {
-      return matchItemPhotoUrlBase(canonical, slugs, size, slugToFileBase, matchOptions);
+      return appendImageVersion(
+        matchItemPhotoUrlBase(canonical, slugs, size, slugToFileBase, matchOptions),
+        canonical,
+      );
     }
   }
   return null;
