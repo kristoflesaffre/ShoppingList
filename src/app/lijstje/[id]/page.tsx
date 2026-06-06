@@ -5072,21 +5072,7 @@ export default function ListDetailPage({
   const loyaltySwipePanes = React.useMemo((): LoyaltySwipePane[] => {
     const panes: LoyaltySwipePane[] = [];
     if (isLidlDelhaizeList) {
-      const delhaizeCard = existingLoyaltyCard ?? delhaizeLoyaltyCardFromStoreName;
-      if (
-        delhaizeCard &&
-        typeof delhaizeCard.rawValue === "string" &&
-        delhaizeCard.rawValue.length > 0
-      ) {
-        panes.push({
-          heading: "Klantenkaart Delhaize",
-          codeType: delhaizeCard.codeType as "qr" | "barcode",
-          codeFormat: String(delhaizeCard.codeFormat ?? ""),
-          rawValue: delhaizeCard.rawValue,
-          footerLogoSrc: LOYALTY_COMBO_PRIMARY_LOGO_SRC,
-          pillTabLabel: "Delhaize",
-        });
-      }
+      // Lidl eerst: gebruiker gaat altijd eerst langs Lidl, dan Delhaize
       const lidlCard = existingLoyaltyCardSecondary ?? lidlLoyaltyCardFromStoreName;
       if (
         lidlCard &&
@@ -5100,6 +5086,21 @@ export default function ListDetailPage({
           rawValue: lidlCard.rawValue,
           footerLogoSrc: LOYALTY_COMBO_SECONDARY_LOGO_SRC,
           pillTabLabel: "Lidl",
+        });
+      }
+      const delhaizeCard = existingLoyaltyCard ?? delhaizeLoyaltyCardFromStoreName;
+      if (
+        delhaizeCard &&
+        typeof delhaizeCard.rawValue === "string" &&
+        delhaizeCard.rawValue.length > 0
+      ) {
+        panes.push({
+          heading: "Klantenkaart Delhaize",
+          codeType: delhaizeCard.codeType as "qr" | "barcode",
+          codeFormat: String(delhaizeCard.codeFormat ?? ""),
+          rawValue: delhaizeCard.rawValue,
+          footerLogoSrc: LOYALTY_COMBO_PRIMARY_LOGO_SRC,
+          pillTabLabel: "Delhaize",
         });
       }
     } else {
