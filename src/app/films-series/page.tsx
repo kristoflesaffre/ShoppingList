@@ -789,7 +789,11 @@ export default function FilmsSeriesPage() {
               <section className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
                   <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Aan het kijken</h2>
-                  <button type="button" className="shrink-0 text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/films-series/aan-het-kijken")}
+                    className="shrink-0 text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  >
                     Toon alle
                   </button>
                 </div>

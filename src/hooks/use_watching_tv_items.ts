@@ -171,7 +171,13 @@ export function useWatchingTvItems() {
     [addToWatchlist, markWatched],
   );
 
-  return { watchingItems, markNextEpisode, removeWatchingItem, restoreWatchingItem };
+  return {
+    watchingItems,
+    markNextEpisode,
+    removeWatchingItem,
+    restoreWatchingItem,
+    unmarkWatchedEpisode: unmarkWatched,
+  };
 }
 
 export type { WatchingTvItem };
