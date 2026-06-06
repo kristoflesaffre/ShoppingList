@@ -650,11 +650,7 @@ function SortableItemItems({
           className={cn(
             "transition-[max-height,opacity] duration-200",
             "[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
-            isSectionRemoving
-              ? "overflow-hidden"
-              : listViewMode === "grid"
-                ? "overflow-visible"
-                : "overflow-hidden",
+            isSectionRemoving ? "overflow-hidden" : "overflow-visible",
             isSectionRemoving ? "max-h-0 opacity-0" : "max-h-[999999px] opacity-100"
           )}
         >
@@ -1641,7 +1637,7 @@ function SortableItemCard({
   } = useSortable({ id: item.id, disabled: disableSortable });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
   };
   const displayItemName = isVacationList
