@@ -652,7 +652,7 @@ function SortableItemItems({
             "[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
             isSectionRemoving
               ? "overflow-hidden"
-              : listViewMode === "grid"
+              : listViewMode === "grid" || isDndActive
                 ? "overflow-visible"
                 : "overflow-hidden",
             isSectionRemoving ? "max-h-0 opacity-0" : "max-h-[999999px] opacity-100"
