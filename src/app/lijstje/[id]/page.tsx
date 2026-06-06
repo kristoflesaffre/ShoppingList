@@ -6065,7 +6065,7 @@ export default function ListDetailPage({
             ? tripPersonTab
             : undefined
         }
-        groupingMode={effectiveListGroupingMode}
+        groupingMode="day"
       />
 
       <LandalPuddyFeedSlideIn
