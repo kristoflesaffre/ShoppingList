@@ -14,6 +14,8 @@ import {
   useIngredientSynonyms,
   matchIngredientSlugsForAutocomplete,
 } from "@/lib/ingredient-photos";
+import type { SavedRecipe } from "@/lib/recipe_library";
+import { matchRecipesForAutocomplete } from "@/lib/recipe-search";
 import { cn } from "@/lib/utils";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 
@@ -104,6 +106,10 @@ export type ItemNameSearchSlideInProps = {
   photoCatalog?: "items" | "ingredients";
   /** Getoond wanneer de zoekbalk leeg is (bijv. alle vakantie-items). */
   defaultSlugs?: string[];
+  /** Recepten die naast items in dezelfde zoekopdracht mogen verschijnen. */
+  recipes?: SavedRecipe[];
+  /** Wordt aangeroepen wanneer een receptresultaat wordt gekozen. */
+  onSelectRecipe?: (recipe: SavedRecipe) => void;
 };
 
 export function ItemNameSearchSlideIn({
@@ -114,6 +120,8 @@ export function ItemNameSearchSlideIn({
   title = "Item toevoegen",
   photoCatalog = "items",
   defaultSlugs,
+  recipes = [],
+  onSelectRecipe,
 }: ItemNameSearchSlideInProps) {
   const itemSlugs = useItemSlugs();
   const itemSynonyms = useItemSynonyms();
@@ -190,6 +198,15 @@ export function ItemNameSearchSlideIn({
     );
   }, [slugs, norm, photoCatalog, synonyms, defaultSlugs]);
 
+  const recipeSuggestions = React.useMemo(() => {
+    if (!onSelectRecipe) return [];
+    return matchRecipesForAutocomplete(
+      query,
+      recipes,
+      SLIDE_IN_MAX_SUGGESTIONS,
+    );
+  }, [onSelectRecipe, query, recipes]);
+
   const handleSelect = React.useCallback(
     (slug: string) => {
       onSelect(slugToDisplayName(slug));
@@ -205,6 +222,14 @@ export function ItemNameSearchSlideIn({
       onClose();
     }
   }, [query, onSelect, onClose]);
+
+  const handleSelectRecipe = React.useCallback(
+    (recipe: SavedRecipe) => {
+      onSelectRecipe?.(recipe);
+      onClose();
+    },
+    [onClose, onSelectRecipe],
+  );
 
   if (!mounted || !domVisible) return null;
 
@@ -251,7 +276,7 @@ export function ItemNameSearchSlideIn({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Zoek item…"
+              placeholder={onSelectRecipe ? "Zoek item of recept…" : "Zoek item…"}
               autoComplete="off"
               enterKeyHint="search"
               inputMode="text"
@@ -280,8 +305,16 @@ export function ItemNameSearchSlideIn({
           role="listbox"
           className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(45px,env(safe-area-inset-bottom,45px))]"
         >
+          {onSelectRecipe && suggestions.length > 0 ? (
+            <li
+              role="presentation"
+              className="pb-1 pt-2 text-xs font-medium leading-4 text-[var(--text-tertiary)]"
+            >
+              Items
+            </li>
+          ) : null}
           {suggestions.map((slug) => (
-            <li key={slug} role="option">
+            <li key={slug} role="option" aria-selected={false}>
               <button
                 type="button"
                 onClick={() => handleSelect(slug)}
@@ -307,9 +340,47 @@ export function ItemNameSearchSlideIn({
             </li>
           ))}
 
+          {recipeSuggestions.length > 0 ? (
+            <li
+              role="presentation"
+              className="pb-1 pt-4 text-xs font-medium leading-4 text-[var(--text-tertiary)]"
+            >
+              Recepten
+            </li>
+          ) : null}
+          {recipeSuggestions.map((recipe) => (
+            <li key={`recipe-${recipe.id}`} role="option" aria-selected={false}>
+              <button
+                type="button"
+                onClick={() => handleSelectRecipe(recipe)}
+                className="flex w-full items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- receptfoto kan een externe/data-URL zijn */}
+                <img
+                  src={recipe.photoUrl || "/images/ui/recept_320.webp"}
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="size-8 shrink-0 rounded-[4px] object-cover"
+                  aria-hidden
+                  decoding="async"
+                />
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
+                    {recipe.name}
+                  </span>
+                  <span className="truncate text-sm leading-5 text-[var(--text-tertiary)]">
+                    Recept · {recipe.ingredients.length} ingrediënten
+                  </span>
+                </span>
+              </button>
+              <div className="h-px w-full bg-[var(--gray-100,#edeef0)]" aria-hidden />
+            </li>
+          ))}
+
           {/* "Toevoegen als nieuw item" — onderaan de lijst */}
           {query.trim().length > 0 && (
-            <li role="option">
+            <li role="option" aria-selected={false}>
               <button
                 type="button"
                 onClick={handleSelectCustom}

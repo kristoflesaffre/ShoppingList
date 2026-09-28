@@ -4,7 +4,6 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { ToggleButton } from "@/components/ui/toggle_button";
-import { PillTab } from "@/components/ui/pill_tab";
 import { InputField } from "@/components/ui/input_field";
 import { ItemNameAutocomplete, useIsSmallScreen } from "@/components/ui/item_name_autocomplete";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
@@ -70,6 +69,21 @@ export type ListItem = {
 };
 
 type Ingredient = RecipeIngredient;
+type AddSourceFilter = "all" | "items" | "recipes" | "stock";
+
+const BASE_SOURCE_FILTERS: ReadonlyArray<{
+  value: AddSourceFilter;
+  label: string;
+}> = [
+  { value: "all", label: "Alle" },
+  { value: "items", label: "Items" },
+  { value: "recipes", label: "Recepten" },
+];
+
+const STOCK_SOURCE_FILTER = {
+  value: "stock" as const,
+  label: "Voorraad",
+};
 
 const DAY_OPTIONS = [
   { label: "Geen", value: "Geen" },
@@ -153,7 +167,8 @@ export function NewItemModal({
   const [vacationCategory, setVacationCategory] = React.useState<string>("Andere");
   const [tripPerson, setTripPerson] =
     React.useState<TripPersonTab>(DEFAULT_TRIP_PERSON_TAB);
-  const [activeTab, setActiveTab] = React.useState<"first" | "second" | "third">("first");
+  const [sourceFilter, setSourceFilter] =
+    React.useState<AddSourceFilter>("all");
   const [selectedStore, setSelectedStore] = React.useState<string | null>(null);
   const [freezerSearch, setFreezerSearch] = React.useState("");
   const [itemName, setItemName] = React.useState("");
@@ -247,7 +262,7 @@ export function NewItemModal({
       setVacationCategory("Andere");
       setTripPerson(DEFAULT_TRIP_PERSON_TAB);
       setSelectedStore(null);
-      setActiveTab("first");
+      setSourceFilter("all");
       setItemName("");
       setStepperValue(1);
       setQuantityDesc("stuk");
@@ -271,7 +286,7 @@ export function NewItemModal({
       setSelectedDay(
         editingItem.section === "Algemeen" ? "Geen" : editingItem.section
       );
-      setActiveTab("first");
+      setSourceFilter("items");
       if (isVacationList && editingItem.itemCategory) {
         setVacationCategory(
           (VACATION_CATEGORIES as readonly string[]).includes(editingItem.itemCategory)
@@ -286,7 +301,7 @@ export function NewItemModal({
       setSelectedDay(
         initialSection === "Algemeen" ? "Geen" : initialSection
       );
-      setActiveTab("first");
+      setSourceFilter("all");
       if (isVacationList) {
         if (initialItemCategory) {
           setVacationCategory(
@@ -301,7 +316,7 @@ export function NewItemModal({
       }
     } else if (initialItemCategory) {
       setSelectedDay("Geen");
-      setActiveTab("first");
+      setSourceFilter("all");
       if (isVacationList) {
         setVacationCategory(
           (VACATION_CATEGORIES as readonly string[]).includes(initialItemCategory)
@@ -317,13 +332,9 @@ export function NewItemModal({
     }
   }, [open, editingItem, initialSection, initialItemCategory, isVacationList, initialTripPerson]);
 
-  // Default to "hoofdgerecht" filter when opening, only if recipes with that category exist
   React.useEffect(() => {
-    if (open) {
-      const hasHoofdgerecht = storedRecipes.some((r) => r.category === "hoofdgerecht");
-      setActiveCategory(hasHoofdgerecht ? "hoofdgerecht" : null);
-    }
-  }, [open, storedRecipes]);
+    if (open) setActiveCategory(null);
+  }, [open]);
 
   React.useEffect(() => {
     if (!open || !isVacationList || isEditMode || initialItemCategory != null) return;
@@ -498,6 +509,19 @@ export function NewItemModal({
     ? ingredients.find((i) => i.id === editingIngredientId) ?? null
     : null;
 
+  const handleSourceFilterChange = React.useCallback(
+    (nextFilter: AddSourceFilter) => {
+      if (nextFilter === sourceFilter) return;
+      if (nextFilter === "recipes" && sourceFilter !== "recipes") {
+        setRecipeSearch(itemName);
+      } else if (nextFilter !== "recipes" && sourceFilter === "recipes") {
+        setItemName(recipeSearch);
+      }
+      setSourceFilter(nextFilter);
+    },
+    [itemName, recipeSearch, sourceFilter],
+  );
+
   const modalTitle = showRecipeForm
     ? editingLibraryRecipeId
       ? "Recept wijzigen"
@@ -507,7 +531,10 @@ export function NewItemModal({
       : "Item(s) toevoegen";
 
   const itemFooter =
-    isEditMode || activeTab === "first" || masterItemFormOnly ? (
+    isEditMode ||
+    sourceFilter === "all" ||
+    sourceFilter === "items" ||
+    masterItemFormOnly ? (
       <Button
         variant="primary"
         disabled={!isEditMode && !canAdd}
@@ -515,7 +542,7 @@ export function NewItemModal({
       >
         {isEditMode ? "Bewaren" : "Toevoegen"}
       </Button>
-    ) : activeTab === "third" ? undefined : undefined;
+    ) : undefined;
 
   const recipeFooter = (
     <Button
@@ -641,8 +668,8 @@ export function NewItemModal({
                             onClick={() => {
                               setSelectedDay(day.value);
                               if (day.value === "Geen") {
-                                setActiveTab((prev) =>
-                                  prev === "third" ? "first" : prev,
+                                setSourceFilter((prev) =>
+                                  prev === "stock" ? "all" : prev,
                                 );
                               }
                             }}
@@ -655,18 +682,51 @@ export function NewItemModal({
                   )}
 
                   {!isEditMode && groupingMode !== "category" && (
-                    <PillTab
-                      value={activeTab}
-                      onValueChange={setActiveTab}
-                      labelFirst="item"
-                      labelSecond="recept"
-                      labelThird={daySelected ? "voorraad" : undefined}
-                    />
+                    <div
+                      className="-mx-4 min-w-0 overflow-x-auto px-4"
+                      style={{ scrollbarWidth: "none" } as React.CSSProperties}
+                    >
+                      <div
+                        className="flex gap-2 pb-1"
+                        role="group"
+                        aria-label="Filter op type"
+                        style={{ width: "max-content" }}
+                      >
+                        {[
+                          ...BASE_SOURCE_FILTERS,
+                          ...(daySelected ? [STOCK_SOURCE_FILTER] : []),
+                        ].map(
+                          (filter) => {
+                            const isActive = sourceFilter === filter.value;
+                            return (
+                              <button
+                                key={filter.value}
+                                type="button"
+                                aria-pressed={isActive}
+                                onClick={() => handleSourceFilterChange(filter.value)}
+                                className={cn(
+                                  "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+                                  isActive
+                                    ? "bg-[var(--action-primary)] font-medium text-[var(--action-primary-foreground)]"
+                                    : "bg-[var(--white)] font-normal text-[var(--text-tertiary)] hover:bg-[var(--action-ghost-hover)]",
+                                )}
+                              >
+                                {filter.label}
+                              </button>
+                            );
+                          },
+                        )}
+                      </div>
+                    </div>
                   )}
                 </>
               ) : null}
 
-              {(isEditMode || activeTab === "first" || isMasterList) && activeTab !== "third" && (
+              {(isEditMode ||
+                sourceFilter === "all" ||
+                sourceFilter === "items" ||
+                isMasterList) &&
+                sourceFilter !== "stock" && (
                 <div
                   className={cn(
                     "flex flex-col",
@@ -674,11 +734,14 @@ export function NewItemModal({
                   )}
                 >
                   <ItemNameAutocomplete
-                    label="Naam item"
-                    placeholder="Naam item"
+                    label={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
+                    placeholder={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
                     value={itemName}
                     onChange={setItemName}
                     autoFocus={!nameSearchOpen}
+                    recipes={sourceFilter === "all" ? storedRecipes : undefined}
+                    onSelectRecipe={handleSelectRecipe}
+                    slideInTitle={sourceFilter === "all" ? "Item of recept toevoegen" : "Item toevoegen"}
                   />
                   {isVacationList && (
                     <>
@@ -780,7 +843,7 @@ export function NewItemModal({
                 </div>
               )}
 
-              {!isMasterList && !isEditMode && activeTab === "third" && (
+              {!isMasterList && !isEditMode && sourceFilter === "stock" && (
                 <div className="flex flex-col gap-4">
                   {allFreezerItems.length === 0 ? (
                     <div className="mt-10 flex flex-col items-center gap-6">
@@ -902,7 +965,7 @@ export function NewItemModal({
                 </div>
               )}
 
-              {!isMasterList && !isEditMode && activeTab === "second" && (
+              {!isMasterList && !isEditMode && sourceFilter === "recipes" && (
                 <div className="flex flex-col gap-4">
                   {storedRecipes.length > 0 ? (
                     <SearchBar

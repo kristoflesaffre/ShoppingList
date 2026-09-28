@@ -19,6 +19,8 @@ import {
   useIngredientSynonyms,
   matchIngredientSlugsForAutocomplete,
 } from "@/lib/ingredient-photos";
+import type { SavedRecipe } from "@/lib/recipe_library";
+import { matchRecipesForAutocomplete } from "@/lib/recipe-search";
 import { cn } from "@/lib/utils";
 
 /** Slug "vleesje_noe" → "Vleesje noe" (eerste woord hoofdletter, rest kleine letters). */
@@ -31,6 +33,10 @@ function slugToDisplayName(slug: string): string {
 
 const MAX_SUGGESTIONS = 8;
 const ROW_HEIGHT = 56;
+
+type AutocompleteSuggestion =
+  | { kind: "item"; slug: string }
+  | { kind: "recipe"; recipe: SavedRecipe };
 
 /** True wanneer de viewport smaller is dan 768px (md breakpoint). */
 export function useIsSmallScreen(): boolean {
@@ -57,6 +63,10 @@ export type ItemNameAutocompleteProps = {
   autoFocus?: boolean;
   /** Titel van de mobiele zoek-slide-in. Default: "Item toevoegen". */
   slideInTitle?: string;
+  /** Recepten die naast items in dezelfde zoekopdracht mogen verschijnen. */
+  recipes?: SavedRecipe[];
+  /** Wordt aangeroepen wanneer een receptresultaat wordt gekozen. */
+  onSelectRecipe?: (recipe: SavedRecipe) => void;
 };
 
 // ─── Large-screen dropdown ────────────────────────────────────────────────────
@@ -69,6 +79,8 @@ function LargeScreenAutocomplete({
   className,
   photoCatalog = "items",
   autoFocus,
+  recipes = [],
+  onSelectRecipe,
 }: ItemNameAutocompleteProps) {
   const itemSlugs = useItemSlugs();
   const itemSynonyms = useItemSynonyms();
@@ -87,7 +99,7 @@ function LargeScreenAutocomplete({
     setMounted(true);
   }, []);
 
-  const suggestions = React.useMemo(() => {
+  const itemSuggestions = React.useMemo(() => {
     const q = value.trim();
     if (!q || !slugs.length) return [];
     const norm = normalizeForMatch(q);
@@ -107,6 +119,19 @@ function LargeScreenAutocomplete({
       MAX_SUGGESTIONS,
     );
   }, [slugs, value, photoCatalog, synonyms]);
+
+  const recipeSuggestions = React.useMemo(() => {
+    if (!onSelectRecipe) return [];
+    return matchRecipesForAutocomplete(value, recipes, MAX_SUGGESTIONS);
+  }, [onSelectRecipe, recipes, value]);
+
+  const suggestions = React.useMemo<AutocompleteSuggestion[]>(
+    () => [
+      ...itemSuggestions.map((slug) => ({ kind: "item" as const, slug })),
+      ...recipeSuggestions.map((recipe) => ({ kind: "recipe" as const, recipe })),
+    ],
+    [itemSuggestions, recipeSuggestions],
+  );
 
   const showDropdown = open && suggestions.length > 0;
 
@@ -165,11 +190,15 @@ function LargeScreenAutocomplete({
   }, [showDropdown, recalcPosition]);
 
   const handleSelect = React.useCallback(
-    (slug: string) => {
-      onChange(slugToDisplayName(slug));
+    (suggestion: AutocompleteSuggestion) => {
+      if (suggestion.kind === "recipe") {
+        onSelectRecipe?.(suggestion.recipe);
+      } else {
+        onChange(slugToDisplayName(suggestion.slug));
+      }
       setOpen(false);
     },
-    [onChange],
+    [onChange, onSelectRecipe],
   );
 
   const handleKeyDown = React.useCallback(
@@ -200,13 +229,21 @@ function LargeScreenAutocomplete({
             className="overflow-y-auto overflow-x-hidden rounded-[var(--radius-sm,6px)] border border-[var(--gray-100)] bg-[var(--white)] shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
             onMouseDown={(e) => e.preventDefault()}
           >
-            {suggestions.map((slug, i) => (
-              <li key={slug} role="option" aria-selected={i === highlightedIndex}>
+            {suggestions.map((suggestion, i) => (
+              <li
+                key={
+                  suggestion.kind === "item"
+                    ? `item-${suggestion.slug}`
+                    : `recipe-${suggestion.recipe.id}`
+                }
+                role="option"
+                aria-selected={i === highlightedIndex}
+              >
                 <button
                   type="button"
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    handleSelect(slug);
+                    handleSelect(suggestion);
                   }}
                   className={cn(
                     "flex w-full items-center gap-3 px-3 py-2 text-left transition-colors",
@@ -216,22 +253,47 @@ function LargeScreenAutocomplete({
                     i > 0 && "border-t border-[var(--gray-100)]",
                   )}
                 >
-                  <Image
-                    src={
-                      photoCatalog === "ingredients"
-                        ? `/images/ingredients/${slug}_160.webp`
-                        : itemPhotoUrlFromSlug(slug, 160)
-                    }
-                    alt=""
-                    width={40}
-                    height={40}
-                    unoptimized
-                    className="size-10 shrink-0 rounded-[4px] object-contain"
-                    aria-hidden
-                  />
-                  <span className="min-w-0 truncate text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-                    {slugToDisplayName(slug)}
-                  </span>
+                  {suggestion.kind === "item" ? (
+                    <>
+                      <Image
+                        src={
+                          photoCatalog === "ingredients"
+                            ? `/images/ingredients/${suggestion.slug}_160.webp`
+                            : itemPhotoUrlFromSlug(suggestion.slug, 160)
+                        }
+                        alt=""
+                        width={40}
+                        height={40}
+                        unoptimized
+                        className="size-10 shrink-0 rounded-[4px] object-contain"
+                        aria-hidden
+                      />
+                      <span className="min-w-0 truncate text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+                        {slugToDisplayName(suggestion.slug)}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- receptfoto kan een externe/data-URL zijn */}
+                      <img
+                        src={suggestion.recipe.photoUrl || "/images/ui/recept_320.webp"}
+                        alt=""
+                        width={40}
+                        height={40}
+                        className="size-10 shrink-0 rounded-[4px] object-cover"
+                        aria-hidden
+                        decoding="async"
+                      />
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate text-sm font-medium leading-20 text-[var(--text-primary)]">
+                          {suggestion.recipe.name}
+                        </span>
+                        <span className="truncate text-xs leading-16 text-[var(--text-tertiary)]">
+                          Recept · {suggestion.recipe.ingredients.length} ingrediënten
+                        </span>
+                      </span>
+                    </>
+                  )}
                 </button>
               </li>
             ))}
@@ -275,6 +337,8 @@ function SmallScreenAutocomplete({
   className,
   photoCatalog = "items",
   slideInTitle = "Item toevoegen",
+  recipes,
+  onSelectRecipe,
 }: ItemNameAutocompleteProps) {
   const [slideInOpen, setSlideInOpen] = React.useState(false);
   const getItemPhotoUrl = useItemPhotoUrl();
@@ -325,6 +389,8 @@ function SmallScreenAutocomplete({
         onSelect={(name) => onChange(name)}
         photoCatalog={photoCatalog}
         title={slideInTitle}
+        recipes={recipes}
+        onSelectRecipe={onSelectRecipe}
       />
     </div>
   );
