@@ -55,6 +55,8 @@ export type ItemNameAutocompleteProps = {
   value: string;
   onChange: (value: string) => void;
   label?: string;
+  /** Toegankelijke naam wanneer het zichtbare label bewust wordt weggelaten. */
+  ariaLabel?: string;
   placeholder?: string;
   className?: string;
   /** `ingredients` = suggesties en thumbnails uit /images/ingredients (webp); default = items jpg. */
@@ -75,6 +77,7 @@ function LargeScreenAutocomplete({
   value,
   onChange,
   label,
+  ariaLabel,
   placeholder,
   className,
   photoCatalog = "items",
@@ -306,6 +309,7 @@ function LargeScreenAutocomplete({
     <div ref={containerRef} className={cn("relative w-full", className)}>
       <InputField
         label={label}
+        aria-label={ariaLabel ?? label ?? placeholder}
         placeholder={placeholder}
         value={value}
         onChange={(e) => {
@@ -333,6 +337,7 @@ function SmallScreenAutocomplete({
   value,
   onChange,
   label,
+  ariaLabel,
   placeholder,
   className,
   photoCatalog = "items",
@@ -360,6 +365,7 @@ function SmallScreenAutocomplete({
         onClick={() => setSlideInOpen(true)}
         className="flex h-12 w-full items-center gap-3 rounded-lg border border-[#c6c8ce] bg-[var(--white)] px-4 text-left text-base leading-24 tracking-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         aria-haspopup="dialog"
+        aria-label={ariaLabel ?? label ?? placeholder}
       >
         {value ? (
           <>

@@ -738,7 +738,7 @@ export function NewItemModal({
                 >
                   <div className="flex flex-col gap-3">
                     <ItemNameAutocomplete
-                      label={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
+                      ariaLabel={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
                       placeholder={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
                       value={itemName}
                       onChange={setItemName}
