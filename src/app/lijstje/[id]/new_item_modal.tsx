@@ -1306,23 +1306,25 @@ export function NewItemModal({
               )}
 
               {!isMasterList && !isEditMode && sourceFilter === "recipes" && (
-                <div className="flex flex-col gap-4">
-                  {storedRecipes.length > 0 ? (
-                    <ItemNameAutocomplete
-                      ariaLabel="Naam recept"
-                      placeholder="Zoek recept"
-                      value={itemSearchQuery}
-                      onChange={(value) => {
-                        setItemSearchQuery(value);
-                        if (value.trim()) setActiveCategory(null);
-                      }}
-                      recipes={storedRecipes}
-                      suggestionScope="recipes"
-                      onSelectRecipe={handleSelectRecipe}
-                      slideInTitle="Recept zoeken"
-                    />
-                  ) : null}
-                  {sourceFilterControls}
+                <div className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-3">
+                    {storedRecipes.length > 0 ? (
+                      <ItemNameAutocomplete
+                        ariaLabel="Naam recept"
+                        placeholder="Naam recept"
+                        value={itemSearchQuery}
+                        onChange={(value) => {
+                          setItemSearchQuery(value);
+                          if (value.trim()) setActiveCategory(null);
+                        }}
+                        recipes={storedRecipes}
+                        suggestionScope="recipes"
+                        onSelectRecipe={handleSelectRecipe}
+                        slideInTitle="Recept zoeken"
+                      />
+                    ) : null}
+                    {sourceFilterControls}
+                  </div>
                   {batchQueueControls}
                   {batchEntries.length === 0 &&
                   storedRecipes.length > 0 &&
