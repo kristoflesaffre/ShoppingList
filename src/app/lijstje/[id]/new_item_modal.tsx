@@ -554,6 +554,47 @@ export function NewItemModal({
     </Button>
   );
 
+  const sourceFilterControls =
+    !isMasterList &&
+    !isVacationList &&
+    !isEditMode &&
+    groupingMode !== "category" ? (
+      <div
+        className="-mx-4 min-w-0 overflow-x-auto px-4"
+        style={{ scrollbarWidth: "none" } as React.CSSProperties}
+      >
+        <div
+          className="flex gap-2 pb-1"
+          role="group"
+          aria-label="Filter op type"
+          style={{ width: "max-content" }}
+        >
+          {[
+            ...BASE_SOURCE_FILTERS,
+            ...(daySelected ? [STOCK_SOURCE_FILTER] : []),
+          ].map((filter) => {
+            const isActive = sourceFilter === filter.value;
+            return (
+              <button
+                key={filter.value}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => handleSourceFilterChange(filter.value)}
+                className={cn(
+                  "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+                  isActive
+                    ? "bg-[var(--action-primary)] font-medium text-[var(--action-primary-foreground)]"
+                    : "bg-[var(--neutrals-100,#f0f1f9)] font-normal text-[var(--text-tertiary)] hover:bg-[var(--action-ghost-hover)]",
+                )}
+              >
+                {filter.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    ) : null;
+
   return (
     <>
     <ItemNameSearchSlideIn
@@ -681,44 +722,6 @@ export function NewItemModal({
                     </div>
                   )}
 
-                  {!isEditMode && groupingMode !== "category" && (
-                    <div
-                      className="-mx-4 min-w-0 overflow-x-auto px-4"
-                      style={{ scrollbarWidth: "none" } as React.CSSProperties}
-                    >
-                      <div
-                        className="flex gap-2 pb-1"
-                        role="group"
-                        aria-label="Filter op type"
-                        style={{ width: "max-content" }}
-                      >
-                        {[
-                          ...BASE_SOURCE_FILTERS,
-                          ...(daySelected ? [STOCK_SOURCE_FILTER] : []),
-                        ].map(
-                          (filter) => {
-                            const isActive = sourceFilter === filter.value;
-                            return (
-                              <button
-                                key={filter.value}
-                                type="button"
-                                aria-pressed={isActive}
-                                onClick={() => handleSourceFilterChange(filter.value)}
-                                className={cn(
-                                  "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                                  isActive
-                                    ? "bg-[var(--action-primary)] font-medium text-[var(--action-primary-foreground)]"
-                                    : "bg-[var(--white)] font-normal text-[var(--text-tertiary)] hover:bg-[var(--action-ghost-hover)]",
-                                )}
-                              >
-                                {filter.label}
-                              </button>
-                            );
-                          },
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </>
               ) : null}
 
@@ -733,16 +736,19 @@ export function NewItemModal({
                     masterItemFormOnly ? "gap-4" : "gap-6",
                   )}
                 >
-                  <ItemNameAutocomplete
-                    label={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
-                    placeholder={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
-                    value={itemName}
-                    onChange={setItemName}
-                    autoFocus={!nameSearchOpen}
-                    recipes={sourceFilter === "all" ? storedRecipes : undefined}
-                    onSelectRecipe={handleSelectRecipe}
-                    slideInTitle={sourceFilter === "all" ? "Item of recept toevoegen" : "Item toevoegen"}
-                  />
+                  <div className="flex flex-col gap-3">
+                    <ItemNameAutocomplete
+                      label={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
+                      placeholder={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
+                      value={itemName}
+                      onChange={setItemName}
+                      autoFocus={!nameSearchOpen}
+                      recipes={sourceFilter === "all" ? storedRecipes : undefined}
+                      onSelectRecipe={handleSelectRecipe}
+                      slideInTitle={sourceFilter === "all" ? "Item of recept toevoegen" : "Item toevoegen"}
+                    />
+                    {sourceFilterControls}
+                  </div>
                   {isVacationList && (
                     <>
                       {(isEditMode || initialItemCategory !== "Te regelen") && (
@@ -846,6 +852,8 @@ export function NewItemModal({
               {!isMasterList && !isEditMode && sourceFilter === "stock" && (
                 <div className="flex flex-col gap-4">
                   {allFreezerItems.length === 0 ? (
+                    <>
+                    {sourceFilterControls}
                     <div className="mt-10 flex flex-col items-center gap-6">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -859,6 +867,7 @@ export function NewItemModal({
                         Je hebt geen items in je diepvriesvoorraad
                       </p>
                     </div>
+                    </>
                   ) : (
                   <>
                   <SearchBar
@@ -866,6 +875,7 @@ export function NewItemModal({
                     value={freezerSearch}
                     onValueChange={setFreezerSearch}
                   />
+                  {sourceFilterControls}
                   {filteredFreezerItems.length === 0 ? (
                     <p className="py-4 text-center text-base font-medium leading-6 text-[var(--text-tertiary)]">
                       Geen items gevonden
@@ -974,6 +984,7 @@ export function NewItemModal({
                       onValueChange={setRecipeSearch}
                     />
                   ) : null}
+                  {sourceFilterControls}
                   {storedRecipes.length > 0 && visibleCategories.length > 0 ? (
                     <div className="-mx-4 min-w-0 overflow-x-auto px-4" style={{ scrollbarWidth: "none" } as React.CSSProperties}>
                       <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
