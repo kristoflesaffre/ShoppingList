@@ -67,6 +67,8 @@ export type ItemNameAutocompleteProps = {
   slideInTitle?: string;
   /** Recepten die naast items in dezelfde zoekopdracht mogen verschijnen. */
   recipes?: SavedRecipe[];
+  /** Beperk de zoekresultaten tot items, recepten of beide. */
+  suggestionScope?: "items" | "recipes" | "all";
   /** Wordt aangeroepen wanneer een bestaand itemresultaat wordt gekozen. */
   onSelectItem?: (name: string) => void;
   /** Wordt aangeroepen wanneer een receptresultaat wordt gekozen. */
@@ -85,6 +87,7 @@ function LargeScreenAutocomplete({
   photoCatalog = "items",
   autoFocus,
   recipes = [],
+  suggestionScope = "all",
   onSelectItem,
   onSelectRecipe,
 }: ItemNameAutocompleteProps) {
@@ -106,6 +109,7 @@ function LargeScreenAutocomplete({
   }, []);
 
   const itemSuggestions = React.useMemo(() => {
+    if (suggestionScope === "recipes") return [];
     const q = value.trim();
     if (!q || !slugs.length) return [];
     const norm = normalizeForMatch(q);
@@ -124,12 +128,12 @@ function LargeScreenAutocomplete({
       synonyms,
       MAX_SUGGESTIONS,
     );
-  }, [slugs, value, photoCatalog, synonyms]);
+  }, [slugs, value, photoCatalog, suggestionScope, synonyms]);
 
   const recipeSuggestions = React.useMemo(() => {
-    if (!onSelectRecipe) return [];
+    if (suggestionScope === "items" || !onSelectRecipe) return [];
     return matchRecipesForAutocomplete(value, recipes, MAX_SUGGESTIONS);
-  }, [onSelectRecipe, recipes, value]);
+  }, [onSelectRecipe, recipes, suggestionScope, value]);
 
   const suggestions = React.useMemo<AutocompleteSuggestion[]>(
     () => [
@@ -351,6 +355,7 @@ function SmallScreenAutocomplete({
   photoCatalog = "items",
   slideInTitle = "Item toevoegen",
   recipes,
+  suggestionScope = "all",
   onSelectItem,
   onSelectRecipe,
 }: ItemNameAutocompleteProps) {
@@ -359,7 +364,8 @@ function SmallScreenAutocomplete({
   const getIngredientPhotoUrl = useIngredientPhotoUrl(160);
   const getPhotoUrl =
     photoCatalog === "ingredients" ? getIngredientPhotoUrl : getItemPhotoUrl;
-  const photoUrl = value ? getPhotoUrl(value) : null;
+  const photoUrl =
+    suggestionScope !== "recipes" && value ? getPhotoUrl(value) : null;
 
   return (
     <div className={cn("relative w-full", className)}>
@@ -411,6 +417,7 @@ function SmallScreenAutocomplete({
         photoCatalog={photoCatalog}
         title={slideInTitle}
         recipes={recipes}
+        suggestionScope={suggestionScope}
         onSelectRecipe={onSelectRecipe}
       />
     </div>

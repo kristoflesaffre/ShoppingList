@@ -1308,18 +1308,25 @@ export function NewItemModal({
               {!isMasterList && !isEditMode && sourceFilter === "recipes" && (
                 <div className="flex flex-col gap-4">
                   {storedRecipes.length > 0 ? (
-                    <SearchBar
+                    <ItemNameAutocomplete
+                      ariaLabel="Naam recept"
                       placeholder="Zoek recept"
                       value={itemSearchQuery}
-                      onValueChange={(value) => {
+                      onChange={(value) => {
                         setItemSearchQuery(value);
                         if (value.trim()) setActiveCategory(null);
                       }}
+                      recipes={storedRecipes}
+                      suggestionScope="recipes"
+                      onSelectRecipe={handleSelectRecipe}
+                      slideInTitle="Recept zoeken"
                     />
                   ) : null}
                   {sourceFilterControls}
                   {batchQueueControls}
-                  {storedRecipes.length > 0 && visibleCategories.length > 0 ? (
+                  {batchEntries.length === 0 &&
+                  storedRecipes.length > 0 &&
+                  visibleCategories.length > 0 ? (
                     <div className="-mx-4 min-w-0 overflow-x-auto px-4" style={{ scrollbarWidth: "none" } as React.CSSProperties}>
                       <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
                         <button
@@ -1361,7 +1368,7 @@ export function NewItemModal({
                       </div>
                     </div>
                   ) : null}
-                  {storedRecipes.length === 0 ? (
+                  {batchEntries.length > 0 ? null : storedRecipes.length === 0 ? (
                     <div className="flex flex-col items-center gap-6 py-8">
                       {/* Zelfde illustratie als /recepten lege staat (Figma 1199:11239). */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}

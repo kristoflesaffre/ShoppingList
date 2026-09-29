@@ -108,6 +108,8 @@ export type ItemNameSearchSlideInProps = {
   defaultSlugs?: string[];
   /** Recepten die naast items in dezelfde zoekopdracht mogen verschijnen. */
   recipes?: SavedRecipe[];
+  /** Beperk de zoekresultaten tot items, recepten of beide. */
+  suggestionScope?: "items" | "recipes" | "all";
   /** Wordt aangeroepen wanneer een receptresultaat wordt gekozen. */
   onSelectRecipe?: (recipe: SavedRecipe) => void;
 };
@@ -121,6 +123,7 @@ export function ItemNameSearchSlideIn({
   photoCatalog = "items",
   defaultSlugs,
   recipes = [],
+  suggestionScope = "all",
   onSelectRecipe,
 }: ItemNameSearchSlideInProps) {
   const itemSlugs = useItemSlugs();
@@ -180,6 +183,7 @@ export function ItemNameSearchSlideIn({
   }, [query]);
 
   const suggestions = React.useMemo(() => {
+    if (suggestionScope === "recipes") return [];
     if (!norm) return defaultSlugs ?? [];
     if (!slugs.length) return [];
     if (photoCatalog === "ingredients") {
@@ -196,16 +200,16 @@ export function ItemNameSearchSlideIn({
       synonyms,
       SLIDE_IN_MAX_SUGGESTIONS,
     );
-  }, [slugs, norm, photoCatalog, synonyms, defaultSlugs]);
+  }, [slugs, norm, photoCatalog, suggestionScope, synonyms, defaultSlugs]);
 
   const recipeSuggestions = React.useMemo(() => {
-    if (!onSelectRecipe) return [];
+    if (suggestionScope === "items" || !onSelectRecipe) return [];
     return matchRecipesForAutocomplete(
       query,
       recipes,
       SLIDE_IN_MAX_SUGGESTIONS,
     );
-  }, [onSelectRecipe, query, recipes]);
+  }, [onSelectRecipe, query, recipes, suggestionScope]);
 
   const handleSelect = React.useCallback(
     (slug: string) => {
@@ -276,7 +280,13 @@ export function ItemNameSearchSlideIn({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={onSelectRecipe ? "Zoek item of recept…" : "Zoek item…"}
+              placeholder={
+                suggestionScope === "recipes"
+                  ? "Zoek recept…"
+                  : onSelectRecipe
+                    ? "Zoek item of recept…"
+                    : "Zoek item…"
+              }
               autoComplete="off"
               enterKeyHint="search"
               inputMode="text"
@@ -379,7 +389,7 @@ export function ItemNameSearchSlideIn({
           ))}
 
           {/* "Toevoegen als nieuw item" — onderaan de lijst */}
-          {query.trim().length > 0 && (
+          {suggestionScope !== "recipes" && query.trim().length > 0 && (
             <li role="option" aria-selected={false}>
               <button
                 type="button"
