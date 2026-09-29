@@ -33,7 +33,7 @@ export interface SearchBarProps
 }
 
 /** public/icons/search.svg – 24×24 magnifying glass, uses currentColor for theme support */
-function SearchIcon({ className }: { className?: string }) {
+export function SearchIcon({ className }: { className?: string }) {
   return (
     <svg
       className={cn("size-6 shrink-0", className)}

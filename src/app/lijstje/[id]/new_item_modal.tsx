@@ -441,13 +441,14 @@ export function NewItemModal({
     setEditingBatchEntryId(null);
   }, []);
 
-  const handleCompleteBatchItem = React.useCallback(() => {
+  /** Bouwt het item dat momenteel in de batch-editor staat (of null als er geen is). */
+  const buildActiveBatchEntry = React.useCallback((): BatchEntry | null => {
     const name = itemName.trim();
-    if (!batchMode || !name) return;
+    if (!batchMode || !name) return null;
 
     const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
     const entryId = editingBatchEntryId ?? createBatchId("item");
-    const nextEntry: BatchEntry = {
+    return {
       id: entryId,
       kind: "item",
       item: {
@@ -459,24 +460,24 @@ export function NewItemModal({
         itemCategory: resolveItemCategoryFromName(name),
       },
     };
+  }, [batchMode, editingBatchEntryId, itemName, quantityDesc, selectedDay, stepperValue]);
 
-    setBatchEntries((previous) =>
+  const mergeBatchEntry = React.useCallback(
+    (previous: BatchEntry[], nextEntry: BatchEntry): BatchEntry[] =>
       editingBatchEntryId
         ? previous.map((entry) =>
             entry.id === editingBatchEntryId ? nextEntry : entry,
           )
         : [...previous, nextEntry],
-    );
+    [editingBatchEntryId],
+  );
+
+  const handleCompleteBatchItem = React.useCallback(() => {
+    const nextEntry = buildActiveBatchEntry();
+    if (!nextEntry) return;
+    setBatchEntries((previous) => mergeBatchEntry(previous, nextEntry));
     resetActiveBatchItem();
-  }, [
-    batchMode,
-    editingBatchEntryId,
-    itemName,
-    quantityDesc,
-    resetActiveBatchItem,
-    selectedDay,
-    stepperValue,
-  ]);
+  }, [buildActiveBatchEntry, mergeBatchEntry, resetActiveBatchItem]);
 
   const handleEditBatchItem = React.useCallback((entry: BatchEntry) => {
     if (entry.kind !== "item") return;
@@ -502,13 +503,20 @@ export function NewItemModal({
     [editingBatchEntryId, resetActiveBatchItem],
   );
 
+  /** Item dat nog in de editor staat telt mee bij de footer-CTA, zodat "Klaar" optioneel is. */
+  const hasPendingBatchItem = batchMode && itemName.trim().length > 0;
+  const effectiveBatchCount =
+    batchEntries.length + (hasPendingBatchItem && !editingBatchEntryId ? 1 : 0);
+
   const handleSubmitBatch = React.useCallback(() => {
-    if (batchEntries.length === 0) return;
-    const itemsToAdd = batchEntries.flatMap((entry) =>
+    const pending = buildActiveBatchEntry();
+    const entries = pending ? mergeBatchEntry(batchEntries, pending) : batchEntries;
+    if (entries.length === 0) return;
+    const itemsToAdd = entries.flatMap((entry) =>
       entry.kind === "item" ? [entry.item] : entry.items,
     );
     onApplyRecipeToList(itemsToAdd);
-  }, [batchEntries, onApplyRecipeToList]);
+  }, [batchEntries, buildActiveBatchEntry, mergeBatchEntry, onApplyRecipeToList]);
 
   const closeRecipeFormPanel = React.useCallback(() => {
     setShowRecipeForm(false);
@@ -671,23 +679,23 @@ export function NewItemModal({
       ? "Recept wijzigen"
       : "Recept toevoegen"
     : isEditMode
-      ? "Wijzig item(s)"
-      : "Item(s) toevoegen";
+      ? "Item wijzigen"
+      : "Items toevoegen";
 
   const batchContainsRecipe = batchEntries.some(
     (entry) => entry.kind === "recipe",
   );
   const batchFooterLabel = batchContainsRecipe
-    ? `${batchEntries.length} ${batchEntries.length === 1 ? "selectie" : "selecties"} toevoegen`
-    : `${batchEntries.length} ${batchEntries.length === 1 ? "item" : "items"} toevoegen`;
+    ? `${effectiveBatchCount} ${effectiveBatchCount === 1 ? "selectie" : "selecties"} toevoegen`
+    : `${effectiveBatchCount} ${effectiveBatchCount === 1 ? "item" : "items"} toevoegen`;
 
   const itemFooter = batchMode ? (
     <Button
       variant="primary"
-      disabled={batchEntries.length === 0}
+      disabled={effectiveBatchCount === 0}
       onClick={handleSubmitBatch}
     >
-      {batchEntries.length > 0 ? batchFooterLabel : "Items toevoegen"}
+      {effectiveBatchCount > 0 ? batchFooterLabel : "Items toevoegen"}
     </Button>
   ) : isEditMode ||
     sourceFilter === "all" ||
@@ -742,7 +750,7 @@ export function NewItemModal({
                   "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
                   isActive
                     ? "bg-[var(--action-primary)] font-medium text-[var(--action-primary-foreground)]"
-                    : "bg-[var(--neutrals-100,#f0f1f9)] font-normal text-[var(--text-tertiary)] hover:bg-[var(--action-ghost-hover)]",
+                    : "bg-[var(--gray-50)] font-normal text-[var(--text-tertiary)] hover:bg-[var(--gray-100)] hover:text-[var(--text-primary)]",
                 )}
               >
                 {filter.label}
@@ -758,14 +766,15 @@ export function NewItemModal({
     : null;
   const activeBatchEditor = batchMode && itemName.trim() ? (
     <section
-      className="flex flex-col gap-4 border-b border-[var(--border-subtle)] pb-6"
+      key={editingBatchEntryId ?? itemName.trim()}
+      className="flex flex-col gap-4 rounded-md bg-[var(--blue-25)] p-4 motion-safe:animate-fade-slide-in"
       aria-label={
         editingBatchEntryId ? `${itemName} wijzigen` : `${itemName} afwerken`
       }
     >
       <div className="flex min-w-0 items-center gap-3">
         {activeBatchItemPhotoUrl ? (
-          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[var(--gray-25)]">
+          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[var(--white)]">
             {/* eslint-disable-next-line @next/next/no-img-element -- lokale productfoto met dynamisch gematchte URL */}
             <img
               src={activeBatchItemPhotoUrl}
@@ -780,8 +789,9 @@ export function NewItemModal({
         <p className="min-w-0 flex-1 truncate text-base font-semibold leading-24 text-[var(--text-primary)]">
           {itemName.trim()}
         </p>
+        {/* Secundair: de footer-CTA neemt dit item al mee, "Klaar" is de weg naar een volgend item. */}
         <MiniButton
-          variant="primary"
+          variant="secondary"
           className="min-h-11"
           onClick={handleCompleteBatchItem}
         >
@@ -792,15 +802,17 @@ export function NewItemModal({
         <span className="text-sm font-normal leading-20 text-[var(--text-primary)]">
           Hoeveelheid
         </span>
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(160px,0.55fr)]">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(104px,0.45fr)] gap-3">
           <Stepper
             value={stepperValue}
             onValueChange={setStepperValue}
             min={1}
+            className="!min-w-0"
           />
           <InputField
             value={quantityDesc}
             aria-label="Eenheid"
+            placeholder="Eenheid"
             onFocus={(event) => {
               const input = event.target;
               requestAnimationFrame(() => input.select());
@@ -815,16 +827,19 @@ export function NewItemModal({
   const visibleBatchEntries = batchEntries.filter(
     (entry) => entry.id !== editingBatchEntryId,
   );
-  const batchQueueControls = batchMode && batchEntries.length > 0 ? (
+  const batchQueueControls = batchMode && visibleBatchEntries.length > 0 ? (
     <section className="flex flex-col" aria-labelledby="batch-selection-title">
       <h3
         id="batch-selection-title"
         className="border-b border-[var(--border-subtle)] pb-3 text-base font-semibold leading-24 text-[var(--text-primary)]"
-        aria-live="polite"
       >
-        Selectie ({batchEntries.length})
+        Selectie
       </h3>
-      <div className="flex flex-col">
+      {/* Zichtbare telling staat in de footer-CTA; hier alleen aankondigen voor screenreaders. */}
+      <span className="sr-only" aria-live="polite">
+        {batchEntries.length} in selectie
+      </span>
+      <ul className="flex flex-col">
         {visibleBatchEntries.map((entry) => {
           const isItem = entry.kind === "item";
           const itemPhotoUrl = isItem
@@ -835,11 +850,8 @@ export function NewItemModal({
             ? entry.item.quantity
             : `Recept · ${entry.items.length} ${entry.items.length === 1 ? "ingrediënt" : "ingrediënten"}`;
 
-          return (
-            <div
-              key={entry.id}
-              className="flex min-h-16 items-center gap-3 border-b border-[var(--border-subtle)] py-2"
-            >
+          const rowContent = (
+            <>
               {itemPhotoUrl ? (
                 <div
                   className={cn(
@@ -863,36 +875,65 @@ export function NewItemModal({
                 </div>
               ) : null}
               <div className="flex min-w-0 flex-1 flex-col">
-                <p className="truncate text-base font-medium leading-24 text-[var(--text-primary)]">
+                <span className="truncate text-base font-medium leading-24 text-[var(--text-primary)]">
                   {title}
-                </p>
-                <p className="truncate text-sm leading-20 text-[var(--text-tertiary)]">
+                </span>
+                <span className="truncate text-sm leading-20 text-[var(--text-tertiary)]">
                   {metadata}
-                </p>
+                  {isItem ? (
+                    <>
+                      <span aria-hidden> · </span>
+                      <span className="font-medium text-[var(--text-link)]" aria-hidden>
+                        Wijzig
+                      </span>
+                    </>
+                  ) : null}
+                </span>
               </div>
+            </>
+          );
+
+          return (
+            <li
+              key={entry.id}
+              className="flex min-h-16 items-center gap-1 border-b border-[var(--border-subtle)] motion-safe:animate-fade-slide-in"
+            >
               {isItem ? (
+                /* Hele rij tikbaar om hoeveelheid te wijzigen; grotere tap-target dan een losse tekstlink. */
                 <button
                   type="button"
                   onClick={() => handleEditBatchItem(entry)}
-                  className="min-h-11 shrink-0 px-2 text-sm font-medium text-[var(--text-link)] transition-colors hover:text-[var(--action-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                  aria-label={`${title} wijzigen`}
+                  className="-ml-2 flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-md py-2 pl-2 pr-1 text-left transition-colors hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                 >
-                  Wijzig
+                  {rowContent}
                 </button>
-              ) : null}
+              ) : (
+                <div className="flex min-h-16 min-w-0 flex-1 items-center gap-3 py-2">
+                  {rowContent}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => handleDeleteBatchEntry(entry.id)}
                 aria-label={`${title} verwijderen uit selectie`}
-                className="flex size-11 shrink-0 items-center justify-center text-[var(--error-400)] transition-colors hover:text-[var(--error-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--error-400)] focus-visible:ring-offset-2"
+                className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-md text-[var(--text-tertiary)] transition-colors hover:bg-[var(--gray-25)] hover:text-[var(--error-400)] active:text-[var(--error-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
               >
                 <BatchTrashIcon />
               </button>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   ) : null;
+
+  const batchEmptyHint =
+    batchMode && batchEntries.length === 0 && !activeBatchEditor ? (
+      <p className="mx-auto max-w-[30ch] pt-2 text-center text-sm leading-20 text-[var(--text-tertiary)] [text-wrap:balance]">
+        Kies meerdere items en voeg ze in één keer toe.
+      </p>
+    ) : null;
 
   return (
     <>
@@ -997,14 +1038,20 @@ export function NewItemModal({
                       <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
                         Dag
                       </span>
-                      <div className="grid grid-cols-4 gap-2">
+                      {/* Eén compacte rij zodat het zoekveld het visuele anker blijft */}
+                      <div
+                        className="grid grid-cols-[1.45fr_repeat(7,minmax(0,1fr))] gap-1.5"
+                        role="group"
+                        aria-label="Dag"
+                      >
                         {DAY_OPTIONS.map((day) => (
                           <ToggleButton
                             key={day.value}
                             variant={
                               selectedDay === day.value ? "active" : "inactive"
                             }
-                            className="w-full"
+                            aria-pressed={selectedDay === day.value}
+                            className="w-full min-h-10 !px-0"
                             onClick={() => {
                               setSelectedDay(day.value);
                               if (day.value === "Geen") {
@@ -1057,6 +1104,7 @@ export function NewItemModal({
                   </div>
                   {activeBatchEditor}
                   {batchQueueControls}
+                  {batchEmptyHint}
                   {isVacationList && (
                     <>
                       {(isEditMode || initialItemCategory !== "Te regelen") && (
@@ -1172,7 +1220,7 @@ export function NewItemModal({
                         height={96}
                         className="size-24 object-contain"
                       />
-                      <p className="text-center text-base font-medium leading-6 text-[#707784]">
+                      <p className="text-center text-base font-medium leading-6 text-[var(--text-tertiary)]">
                         Je hebt geen items in je diepvriesvoorraad
                       </p>
                     </div>
@@ -1337,8 +1385,8 @@ export function NewItemModal({
                           className={cn(
                             "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                             activeCategory === null
-                              ? "bg-[#4f55f1] font-medium text-white"
-                              : "bg-[var(--neutrals-100,#f0f1f9)] font-normal text-[#707784]",
+                              ? "bg-[var(--action-primary)] font-medium text-[var(--action-primary-foreground)]"
+                              : "bg-[var(--gray-50)] font-normal text-[var(--text-tertiary)]",
                           )}
                         >
                           Alle
@@ -1353,8 +1401,8 @@ export function NewItemModal({
                               className={cn(
                                 "flex shrink-0 items-center gap-1.5 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                                 isActive
-                                  ? "bg-[#4f55f1] font-medium text-white"
-                                  : "bg-[var(--neutrals-100,#f0f1f9)] font-normal text-[#707784]",
+                                  ? "bg-[var(--action-primary)] font-medium text-[var(--action-primary-foreground)]"
+                                  : "bg-[var(--gray-50)] font-normal text-[var(--text-tertiary)]",
                               )}
                             >
                               {isActive && (

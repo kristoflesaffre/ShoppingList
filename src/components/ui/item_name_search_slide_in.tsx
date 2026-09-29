@@ -16,8 +16,8 @@ import {
 } from "@/lib/ingredient-photos";
 import type { SavedRecipe } from "@/lib/recipe_library";
 import { matchRecipesForAutocomplete } from "@/lib/recipe-search";
-import { cn } from "@/lib/utils";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
+import { SearchIcon } from "@/components/ui/search_bar";
 
 /** Max treffers in slide-in; synoniemen kunnen de lijst verlengen. */
 const SLIDE_IN_MAX_SUGGESTIONS = 400;
@@ -47,15 +47,15 @@ function HighlightedName({ slug, norm }: { slug: string; norm: string }) {
             {i > 0 && " "}
             {isMatch ? (
               <>
-                <span className="font-medium text-[#16181a]">
+                <span className="font-medium text-[var(--text-primary)]">
                   {dw.slice(0, norm.length)}
                 </span>
-                <span className="font-normal text-[#707784]">
+                <span className="font-normal text-[var(--text-tertiary)]">
                   {dw.slice(norm.length)}
                 </span>
               </>
             ) : (
-              <span className="font-normal text-[#707784]">{dw}</span>
+              <span className="font-normal text-[var(--text-tertiary)]">{dw}</span>
             )}
           </React.Fragment>
         );
@@ -259,14 +259,14 @@ export function ItemNameSearchSlideIn({
         {/* Header — 64px */}
         <div className="flex h-16 shrink-0 items-center gap-4 px-4">
           <span className="size-6 shrink-0" aria-hidden />
-          <h2 className="min-w-0 flex-1 text-center text-base font-medium leading-6 tracking-normal text-[#302112]">
+          <h2 className="min-w-0 flex-1 text-center text-base font-medium leading-6 tracking-normal text-[var(--secondary-900)]">
             {title}
           </h2>
           <button
             type="button"
             onClick={handleClose}
             aria-label="Sluiten"
-            className="flex size-6 shrink-0 items-center justify-center text-[#302112] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className="flex size-6 shrink-0 items-center justify-center text-[var(--secondary-900)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
             <CrossIcon />
           </button>
@@ -274,7 +274,7 @@ export function ItemNameSearchSlideIn({
 
         {/* Search input */}
         <div className="shrink-0 px-4 pb-6">
-          <div className="flex h-12 items-center gap-[10px] rounded-lg border border-[#c6c8ce] bg-white px-4">
+          <div className="flex h-12 items-center gap-[10px] rounded-md border border-[var(--border-default)] bg-[var(--white)] px-4 transition-[border-color] focus-within:border-[var(--border-focus)]">
             <input
               ref={inputRef}
               type="text"
@@ -291,9 +291,9 @@ export function ItemNameSearchSlideIn({
               enterKeyHint="search"
               inputMode="text"
               autoFocus
-              className="min-w-0 flex-1 bg-transparent text-base leading-6 tracking-normal text-[#16181a] placeholder:text-[#8c929d] focus:outline-none"
+              className="min-w-0 flex-1 bg-transparent text-base leading-6 tracking-normal text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] focus:outline-none"
             />
-            {query.length > 0 && (
+            {query.length > 0 ? (
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
@@ -302,10 +302,12 @@ export function ItemNameSearchSlideIn({
                   inputRef.current?.focus();
                 }}
                 aria-label="Wis zoekopdracht"
-                className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none"
+                className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
               >
                 <ClearIcon />
               </button>
+            ) : (
+              <SearchIcon className="text-[var(--blue-500)]" />
             )}
           </div>
         </div>
@@ -346,7 +348,7 @@ export function ItemNameSearchSlideIn({
                 />
                 <HighlightedName slug={slug} norm={norm} />
               </button>
-              <div className="h-px w-full bg-[var(--gray-100,#edeef0)]" aria-hidden />
+              <div className="h-px w-full bg-[var(--border-subtle)]" aria-hidden />
             </li>
           ))}
 
@@ -384,7 +386,7 @@ export function ItemNameSearchSlideIn({
                   </span>
                 </span>
               </button>
-              <div className="h-px w-full bg-[var(--gray-100,#edeef0)]" aria-hidden />
+              <div className="h-px w-full bg-[var(--border-subtle)]" aria-hidden />
             </li>
           ))}
 
@@ -399,12 +401,12 @@ export function ItemNameSearchSlideIn({
                 <span className="flex size-8 shrink-0 items-center justify-center">
                   <PlusCircleMaskIcon />
                 </span>
-                <span className="min-w-0 truncate text-base leading-6 tracking-normal text-[#16181a]">
+                <span className="min-w-0 truncate text-base leading-6 tracking-normal text-[var(--text-primary)]">
                   <span className="font-medium">&ldquo;{query.trim()}&rdquo; </span>
                   <span className="font-normal">toevoegen</span>
                 </span>
               </button>
-              <div className="h-px w-full bg-[var(--gray-100,#edeef0)]" aria-hidden />
+              <div className="h-px w-full bg-[var(--border-subtle)]" aria-hidden />
             </li>
           )}
         </ul>

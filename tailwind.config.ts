@@ -163,9 +163,14 @@ const config: Config = {
           "60%": { transform: "scale(1.05)" },
           "100%": { transform: "scale(1)" },
         },
+        "fade-slide-in": {
+          "0%": { opacity: "0", transform: "translateY(6px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "edit-button-scale": "edit-button-scale 0.25s ease-out forwards",
+        "fade-slide-in": "fade-slide-in 0.2s ease-out both",
       },
     },
   },

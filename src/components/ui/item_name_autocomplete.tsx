@@ -5,6 +5,7 @@ import Image from "next/image";
 import ReactDOM from "react-dom";
 import { InputField } from "@/components/ui/input_field";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
+import { SearchIcon } from "@/components/ui/search_bar";
 import {
   useItemSlugs,
   useItemSynonyms,
@@ -378,7 +379,7 @@ function SmallScreenAutocomplete({
       <button
         type="button"
         onClick={() => setSlideInOpen(true)}
-        className="flex h-12 w-full items-center gap-3 rounded-lg border border-[#c6c8ce] bg-[var(--white)] px-4 text-left text-base leading-24 tracking-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        className="flex h-12 w-full items-center gap-3 rounded-md border border-[var(--border-default)] bg-[var(--white)] px-4 text-left text-base leading-24 tracking-normal transition-colors hover:border-[var(--gray-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         aria-haspopup="dialog"
         aria-label={ariaLabel ?? label ?? placeholder}
       >
@@ -396,11 +397,15 @@ function SmallScreenAutocomplete({
                 decoding="async"
               />
             )}
-            <span className="min-w-0 truncate text-[var(--text-primary)]">{value}</span>
+            <span className="min-w-0 flex-1 truncate text-[var(--text-primary)]">{value}</span>
           </>
         ) : (
-          <span className="text-[var(--text-placeholder)]">{placeholder}</span>
+          <span className="min-w-0 flex-1 truncate text-[var(--text-placeholder)]">
+            {placeholder}
+          </span>
         )}
+        {/* Zelfde zoek-affordance als SearchBar: icoon rechts in primary-kleur */}
+        <SearchIcon className="text-[var(--blue-500)]" />
       </button>
 
       <ItemNameSearchSlideIn
