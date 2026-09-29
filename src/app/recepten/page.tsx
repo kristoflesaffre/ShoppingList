@@ -161,14 +161,18 @@ function SortableRecipeRow({
 
 function SectionHeader({ section }: { section: { meta: typeof RECIPE_CATEGORIES[0] | null; recipes: SavedRecipe[] } }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-baseline gap-2">
       {section.meta ? (
-        <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: section.meta.dot }} />
+        <span
+          className="size-2 shrink-0 self-center rounded-full"
+          style={{ backgroundColor: section.meta.dot }}
+          aria-hidden
+        />
       ) : null}
-      <span className="text-[11px] font-semibold uppercase leading-16 tracking-[0.8px] text-[var(--text-tertiary)]">
+      <h2 className="min-w-0 truncate text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
         {section.meta ? section.meta.labelPlural : "Overige"}
-      </span>
-      <span className="ml-auto text-xs leading-16 text-[var(--text-quaternary,var(--neutrals-400,#a9adb5))]">
+      </h2>
+      <span className="ml-auto shrink-0 text-sm leading-20 tracking-normal text-[var(--text-tertiary)]">
         {section.recipes.length}{" "}{section.recipes.length === 1 ? "recept" : "recepten"}
       </span>
     </div>
@@ -184,7 +188,7 @@ function RecipeGridCard({ recipe }: { recipe: SavedRecipe }) {
   return (
     <Link href={`/recepten/${recipe.id}`} className="no-underline">
       {/* h-full + flex-col so the card stretches to the full grid-row height */}
-      <div className="flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-drop">
+      <div className="flex h-full flex-col overflow-hidden rounded-lg bg-[var(--white)] shadow-card">
         {/* Photo – vaste aspect-ratio, hoogte wijzigt nooit */}
         <div className="relative aspect-square w-full shrink-0 bg-[var(--blue-25)]">
           {hasPhoto ? (

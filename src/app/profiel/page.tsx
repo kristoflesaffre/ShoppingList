@@ -15,6 +15,54 @@ type AuthUserWithEmail = {
   email?: string | null;
 };
 
+function ChevronRightIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn("size-5 shrink-0", className)}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M7.5 4.5 13 10l-5.5 5.5" />
+    </svg>
+  );
+}
+
+/** Navigatierij in een instellingengroep: label + optionele toelichting, chevron rechts. */
+function ProfileSettingsRow({
+  label,
+  description,
+  onClick,
+}: {
+  label: string;
+  description?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+    >
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-base font-medium leading-24 tracking-normal text-text-primary">
+          {label}
+        </span>
+        {description ? (
+          <span className="truncate text-sm font-normal leading-20 tracking-normal text-text-tertiary">
+            {description}
+          </span>
+        ) : null}
+      </span>
+      <ChevronRightIcon className="text-[var(--gray-400)]" />
+    </button>
+  );
+}
+
 /**
  * Mijn profiel – Figma 760:3043: grote foto, wijzigen, uitloggen.
  */
@@ -147,12 +195,19 @@ export default function ProfielPage() {
             </h1>
           </div>
 
-          <main className="mx-auto flex w-full max-w-[390px] flex-1 flex-col items-center pb-[env(safe-area-inset-bottom,0px)]">
-            {/* Figma 760:3415: foto + voornaam (12px gap), daarna acties */}
-            <div className="mt-8 flex flex-col items-center gap-3">
+          <main className="mx-auto flex w-full max-w-[480px] flex-1 flex-col gap-4 pb-[env(safe-area-inset-bottom,0px)]">
+            {/* Identiteitskaart: avatar + naam + e-mail + fotoactie in één surface */}
+            <section
+              aria-labelledby="profiel-identiteit-titel"
+              className="flex flex-col items-center gap-4 rounded-lg bg-[var(--white)] px-4 pb-5 pt-6 text-center shadow-card"
+            >
+              <h2 id="profiel-identiteit-titel" className="sr-only">
+                Jouw gegevens
+              </h2>
               <div
-                className="flex size-[200px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--white)] ring-1 ring-[var(--gray-100)]"
+                className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] ring-4 ring-[var(--blue-25)]"
                 aria-label="Profielfoto"
+                role="img"
               >
                 {displayUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- data-URL
@@ -163,11 +218,11 @@ export default function ProfielPage() {
                   />
                 ) : (
                   <svg
-                    className="size-[120px] text-[var(--blue-300)]"
+                    className="size-12 text-[var(--blue-400)]"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth={1}
+                    strokeWidth={1.25}
                     aria-hidden
                   >
                     <circle cx="12" cy="8" r="4" />
@@ -175,14 +230,18 @@ export default function ProfielPage() {
                   </svg>
                 )}
               </div>
-              {profileFirstName ? (
-                <p className="text-center text-base font-bold leading-32 tracking-normal text-text-primary">
-                  {profileFirstName}
-                </p>
-              ) : null}
-            </div>
 
-            <div className="mt-8 flex w-full max-w-[320px] flex-col items-center gap-6">
+              <div className="flex min-w-0 w-full flex-col items-center gap-0.5">
+                <p className="w-full truncate text-section-title font-semibold leading-24 tracking-tight text-text-primary">
+                  {profileFirstName ?? "Jouw profiel"}
+                </p>
+                {adminUser?.email ? (
+                  <p className="w-full truncate text-sm font-normal leading-20 tracking-normal text-text-tertiary">
+                    {adminUser.email}
+                  </p>
+                ) : null}
+              </div>
+
               <MiniButton
                 type="button"
                 variant="secondary"
@@ -201,29 +260,43 @@ export default function ProfielPage() {
                   {localError}
                 </p>
               ) : null}
-            </div>
+            </section>
 
-            <div className="mt-auto flex w-full max-w-[320px] flex-col gap-4 pt-12">
-              {isAdmin ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => router.push("/admin/ontbrekende-afbeeldingen")}
-                  className="w-full max-w-none"
-                >
-                  Ontbrekende afbeeldingen beheren
-                </Button>
-              ) : null}
+            {/* Instellingen: gegroepeerde rijen met chevron (één componenttaal voor “ga naar …”) */}
+            <section aria-labelledby="profiel-instellingen-titel" className="flex flex-col gap-2">
+              <h2
+                id="profiel-instellingen-titel"
+                className="px-1 text-sm font-semibold leading-20 tracking-normal text-text-secondary"
+              >
+                Instellingen
+              </h2>
+              <ul className="m-0 flex list-none flex-col divide-y divide-[var(--border-subtle)] overflow-hidden rounded-lg bg-[var(--white)] p-0 shadow-card">
+                <li>
+                  <ProfileSettingsRow
+                    label="Homepagina beheren"
+                    description="Kies welke secties je op de startpagina ziet"
+                    onClick={() => router.push("/beheer-homepagina")}
+                  />
+                </li>
+                {isAdmin ? (
+                  <li>
+                    <ProfileSettingsRow
+                      label="Ontbrekende afbeeldingen beheren"
+                      description="Beheerder: productfoto's aanvullen"
+                      onClick={() => router.push("/admin/ontbrekende-afbeeldingen")}
+                    />
+                  </li>
+                ) : null}
+              </ul>
+            </section>
 
+            <div className="mt-auto flex w-full flex-col items-center pt-8">
               <Button
                 type="button"
                 variant="tertiary"
+                tertiaryTone="danger"
                 onClick={() => void handleLogout()}
-                className={cn(
-                  "w-full max-w-none min-w-0",
-                  /* Tertiary zet text-link; cn() merged niet → zonder ! wint stylesheet-volgorde */
-                  "!text-[var(--error-400)] hover:!text-[var(--error-600)]",
-                )}
+                className="w-full max-w-none min-w-0"
               >
                 Uitloggen
               </Button>

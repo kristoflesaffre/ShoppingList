@@ -155,14 +155,15 @@ function FavoriteListSubtitleHeartIcon({ className }: { className?: string }) {
  * Figma 1148:9681 — bewerkmodus: zelfde gap/px als 9010 (`gap-3` = 12px, `p-3` = 12px), rij `items-center`.
  */
 const containerBaseCompact =
-  "flex w-full min-w-0 items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] p-[var(--space-3)]";
+  "flex w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] p-[var(--space-3)] shadow-card";
 
 /**
- * Figma 1148:9010 — List card: gap scale/12, px/py sp-12, rd-8, bd-1 gray-100, wit;
+ * Figma 1148:9010 — List card: gap scale/12, px/py sp-12, wit;
+ * surface = borderless + `shadow-card` + `rounded-lg` (app-breed elevation-systeem).
  * `items-end` voor uitlijning icoon / tekst / winkelmerk.
  */
 const containerBaseFigma9010 =
-  "flex w-full min-w-0 items-end gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] p-[var(--space-3)]";
+  "flex w-full min-w-0 items-end gap-3 rounded-lg bg-[var(--white)] p-[var(--space-3)] shadow-card";
 
 const sizeStyles: Record<ListCardSize, string> = {
   default: "gap-3",

@@ -58,6 +58,7 @@ import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loadin
 import {
   ListSectionHeader,
 } from "@/components/list_section_header";
+import { HomeHeader } from "@/components/home_header";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
 import type { MasterStoreSlug } from "@/lib/master-stores";
@@ -372,9 +373,9 @@ function HomeLoyaltyCardTile({ card, onClick }: { card: HomeLoyaltyCard; onClick
     <button
       type="button"
       onClick={onClick}
-      className="block rounded-[8px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      className="block rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
     >
-      <div className="flex w-[120px] shrink-0 items-center rounded-[8px] border border-[var(--gray-100)] bg-[var(--white)] p-3 transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)]">
+      <div className="flex w-[120px] shrink-0 items-center rounded-lg bg-[var(--white)] p-3 shadow-card transition-[box-shadow,background-color] [@media(hover:hover)]:hover:bg-[var(--gray-25)] [@media(hover:hover)]:hover:shadow-raised">
         <div className="flex w-full flex-col gap-2">
           <div className="flex items-start">
             {/* winkellogo */}
@@ -553,9 +554,9 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
   return (
     <Link
       href={href}
-      className="block h-full rounded-md no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+      className="block h-full rounded-lg no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
     >
-      <div className="flex h-full w-full items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
+      <div className="flex h-full w-full items-center gap-3 rounded-lg bg-[var(--white)] px-3 py-3 shadow-card">
         {/* Datumwidget */}
         <div className="flex size-10 shrink-0 flex-col items-center justify-center gap-px rounded-[4px] bg-[var(--blue-25)] px-2 py-1">
           <p className="text-[8px] font-semibold leading-none text-[var(--blue-500)]">
@@ -766,7 +767,7 @@ function HomeDiepvriesSection({
         />
 
         {/* Thumbnails card */}
-        <div className="rounded-lg border border-[var(--gray-100)] bg-white p-3">
+        <div className="rounded-lg bg-[var(--white)] p-3 shadow-card">
           <FreezerThumbnailsRow items={previewItems} />
         </div>
       </div>
@@ -833,12 +834,18 @@ function HomeTeKopenItemCard({ item }: { item: HomeShoppingItem }) {
     : null;
 
   return (
-    <div className="flex h-16 w-[170px] shrink-0 items-end gap-3 rounded-[8px] border border-[#e2e4e6] bg-white px-3 py-3">
+    <div className="flex h-16 w-[170px] shrink-0 items-end gap-3 rounded-lg bg-[var(--white)] px-3 py-3 shadow-card">
       {photoSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={photoSrc} alt="" width={40} height={40} className="size-10 shrink-0 object-cover" aria-hidden />
       ) : (
-        <div className="size-10 shrink-0 rounded bg-[var(--gray-50)]" aria-hidden />
+        /* Geen foto: monogram i.p.v. leeg grijs vlak — de tegel blijft leesbaar en niet “kapot”. */
+        <div
+          className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[var(--blue-50)] text-base font-semibold leading-none text-[var(--blue-500)]"
+          aria-hidden
+        >
+          {item.name.trim().charAt(0).toUpperCase()}
+        </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
@@ -884,7 +891,7 @@ function HomeTeKopenSection({
           <button
             type="button"
             onClick={onAddProduct}
-            className="flex h-12 w-full items-center gap-3 rounded-[8px] border border-dashed border-[var(--primary-200,#b9bbf9)] bg-white p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className="flex h-12 w-full items-center gap-3 rounded-lg border border-dashed border-[var(--blue-200)] bg-[var(--blue-25)] p-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -946,7 +953,7 @@ function HomeTeKopenSection({
           type="button"
           onClick={onAddProduct}
           aria-label="Product toevoegen"
-          className="flex size-16 shrink-0 items-center justify-center rounded-[8px] border border-dashed border-[#e2e4e6] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-[var(--blue-200)] bg-[var(--blue-25)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
           <PlusCircleMaskIcon />
         </button>
@@ -2584,7 +2591,8 @@ export default function Home() {
     <div className={cn("relative flex min-h-dvh w-full flex-col px-[var(--space-4)]", !hasLists && "bg-gradient-to-b from-[#dcddfc] to-white")}>
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
-          <div className={cn("flex flex-col", !hasLists ? "gap-8 py-2" : "gap-10 pt-4")}>
+          <HomeHeader ownerId={ownerId} className="pt-[var(--space-6)]" />
+          <div className={cn("flex flex-col", !hasLists ? "gap-8 pt-8 pb-2" : "gap-10 pt-8")}>
             {homeSectionConfig.order.map((sectionId) => {
               if (homeSectionConfig.hidden.includes(sectionId)) return null;
               const onHide = sectionId !== "lijstjes" ? () => hideSection(sectionId) : undefined;
@@ -2816,7 +2824,7 @@ export default function Home() {
             type="button"
             onClick={handleBlankVenuePickSupermarkt}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -2839,7 +2847,7 @@ export default function Home() {
             type="button"
             onClick={handleBlankVenuePickFrituur}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -2862,7 +2870,7 @@ export default function Home() {
             type="button"
             onClick={handleBlankVenuePickCafe}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -2885,7 +2893,7 @@ export default function Home() {
             type="button"
             onClick={handleBlankVenuePickLandal}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -2908,7 +2916,7 @@ export default function Home() {
             type="button"
             onClick={handleBlankVenuePickVakantie}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -2995,7 +3003,7 @@ export default function Home() {
             type="button"
             onClick={() => handleLandalSubPick("Gezin")}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -3012,7 +3020,7 @@ export default function Home() {
             type="button"
             onClick={() => handleLandalSubPick("Vrienden")}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}

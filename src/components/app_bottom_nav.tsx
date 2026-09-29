@@ -210,12 +210,13 @@ export function AppBottomNav({
   const trimmedName = profileFirstName?.trim() ?? "";
   const profileTabLabel = trimmedName.length > 0 ? trimmedName : "Profiel";
 
-  const tabClass = "flex w-[41px] shrink-0 flex-col items-center gap-1 no-underline";
+  const tabClass =
+    "flex w-[41px] shrink-0 flex-col items-center gap-1 rounded-md no-underline transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
 
   return (
     <div
       className={cn(
-        "fixed inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[24px] bg-[var(--white)] pt-2 shadow-[0px_1px_4px_0px_rgba(0,0,0,0.13)]",
+        "fixed inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[24px] bg-[var(--white)] pt-2 shadow-nav",
         "pb-[calc(8px+env(safe-area-inset-bottom,0px))]",
       )}
     >

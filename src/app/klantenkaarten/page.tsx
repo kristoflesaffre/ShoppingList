@@ -121,7 +121,7 @@ function CardIcon({ className }: { className?: string }) {
 }
 
 const loyaltyTileCardClass =
-  "flex w-full min-w-0 flex-col rounded-[8px] bg-[var(--white)] p-3 text-center shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)]";
+  "flex w-full min-w-0 flex-col rounded-lg bg-[var(--white)] p-3 text-center shadow-card";
 
 /** Zachte ease-out; scaleY groeit naar beneden (origin-top). */
 const SCALE_MS = 560;

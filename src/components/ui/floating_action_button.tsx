@@ -61,14 +61,15 @@ const FloatingActionButton = React.forwardRef<
     const Comp = asChild ? Slot : "button";
 
     const base =
-      "inline-flex items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none [&_svg]:shrink-0";
+      "inline-flex items-center justify-center rounded-full transition-[background-color,box-shadow,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none [&_svg]:shrink-0 motion-safe:active:scale-95";
 
     const sizeStyles: Record<FloatingActionButtonSize, string> = {
       default: "p-4",
     };
 
+    /* Gekleurde schaduw (blue-500-tint): de FAB is de enige zwevende primaire actie en mag “gloeien”. */
     const defaultStyles =
-      "bg-[var(--blue-500)] text-[var(--white)] hover:bg-[var(--blue-600)] shadow-drop";
+      "bg-[var(--blue-500)] text-[var(--white)] shadow-fab [@media(hover:hover)]:hover:bg-[var(--blue-600)] [@media(hover:hover)]:hover:shadow-raised";
     const disabledStyles =
       "bg-[var(--blue-25)] text-[var(--blue-300)] shadow-none";
 

@@ -236,7 +236,7 @@ function TrashIcon({ className }: { className?: string }) {
 
 /** Figma 508:1729: gap-12, pl-16 pr-12 py-12, rounded rd-8. Min-height keeps card height stable when checked (divider + claim hidden). */
 const containerBase =
-  "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-md py-3 pl-4 pr-3";
+  "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-lg py-3 pl-4 pr-3";
 const gridTileThumbClass =
   "relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-md)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover";
 const gridTileFallbackClass =
@@ -503,33 +503,36 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
     const showGottenByYouChrome = !isBare && isGottenByYou && !isGottenByOther;
     const containerClassName = isBare
       ? cn(
-          "flex w-full min-w-0 items-center rounded-md border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3",
+          "flex w-full min-w-0 items-center rounded-lg bg-[var(--white)] py-3 pl-4 pr-3 shadow-card",
           showItemThumbnail && "gap-3",
           className,
         )
       : isAddedLayout
         ? cn(
             /* Figma 797:5139: gap-12 + padding sp-12 rondom (niet pl-16/pr-12 van default item) */
-            "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-md bg-[var(--blue-400)] p-3",
+            "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-lg bg-[var(--blue-400)] p-3",
             className,
           )
         : cn(
             containerBase,
             gridDensity &&
               cn(
-                "!min-h-0 justify-center p-3 rounded-[var(--radius-md)]",
+                "!min-h-0 justify-center p-3",
                 isEditable ? "h-auto min-h-[168px]" : "h-[140px]",
               ),
-            gridEditable && "bg-[var(--white)] shadow-drop",
-            gridDensity && !gridEditable && !isGottenByOther && !isChecked && "shadow-drop",
+            gridEditable && "bg-[var(--white)] shadow-card",
+            gridDensity && !gridEditable && !isGottenByOther && !isChecked && "shadow-card",
+            /* Door iemand anders gehaald: getint vlak zonder elevation (rust) */
             isGottenByOther &&
               !gridEditable &&
-              "border border-[var(--gray-100)] bg-[var(--blue-25)]",
+              "border border-[var(--blue-50)] bg-[var(--blue-25)]",
             (!isGottenByOther || gridEditable) && "bg-[var(--white)]",
+            /* Rustende rij: borderless surface met zachte schaduw */
             !gridDensity &&
               !isGottenByOther &&
               !isGottenByYou &&
-              "border border-[var(--gray-100)]",
+              "shadow-card",
+            /* Door jou gehaald: primaire rand (status niet enkel via kleur — ook vinkje) */
             !gridDensity && showGottenByYouChrome && "border border-[var(--blue-500)]",
             gridDensity && !gridEditable && isGottenByYou && "border-2 border-[var(--blue-500)]",
             className,
@@ -537,7 +540,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
 
     const containerStyle: React.CSSProperties = {
       ...(incomingStyle && typeof incomingStyle === "object" ? incomingStyle : {}),
-      ...(showGottenByYouChrome ? { boxShadow: "var(--shadow-drop)" } : {}),
+      ...(showGottenByYouChrome ? { boxShadow: "var(--shadow-card)" } : {}),
     };
 
     const containerProps = {
@@ -1134,7 +1137,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             ref={ref}
             data-variant="from-stock"
             className={cn(
-              "flex w-full min-w-0 !min-h-0 h-[140px] justify-center p-3 rounded-[var(--radius-md)] bg-[var(--white)] border border-[var(--gray-100)] items-center",
+              "flex w-full min-w-0 !min-h-0 h-[140px] justify-center p-3 rounded-lg bg-[var(--white)] shadow-card items-center",
               className,
             )}
             style={incomingStyle}
@@ -1191,7 +1194,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
         <div
           ref={ref}
           data-variant="from-stock"
-          className={cn(containerBase, "border border-[var(--gray-100)] bg-[var(--white)]", className)}
+          className={cn(containerBase, "bg-[var(--white)] shadow-card", className)}
           style={incomingStyle}
           aria-label={typeof itemName === "string" ? itemName : undefined}
           {...restProps}

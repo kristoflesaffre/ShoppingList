@@ -1235,7 +1235,7 @@ export default function SelecteerMasterItemsPage() {
           <div className="flex w-full flex-col gap-6">
             {filteredVisibleSections.map((section) => (
               <section key={section.title} className="flex flex-col gap-3">
-                <h3 className="text-xs font-medium uppercase tracking-normal text-[var(--blue-900)]">
+                <h3 className="text-sm font-semibold leading-20 tracking-normal text-[var(--text-secondary)]">
                   {categoryHeadingDisplay(section.title)}
                 </h3>
                 <div className="flex w-full flex-col gap-3">

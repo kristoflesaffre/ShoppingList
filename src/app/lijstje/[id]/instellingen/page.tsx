@@ -634,7 +634,7 @@ export default function LijstInstellingenPage() {
             disabled={landalTripSaving}
             onClick={() => void handleLandalTripChange("Gezin")}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
               landalTripSaving && "pointer-events-none opacity-60",
@@ -659,7 +659,7 @@ export default function LijstInstellingenPage() {
             disabled={landalTripSaving}
             onClick={() => void handleLandalTripChange("Vrienden")}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center shadow-[0px_2px_4px_rgba(0,0,0,0.16)] transition-colors",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
               landalTripSaving && "pointer-events-none opacity-60",

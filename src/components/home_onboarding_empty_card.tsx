@@ -43,7 +43,7 @@ export function HomeOnboardingEmptyCard({
         contentAlign === "end" ? "items-end" : "items-start",
       )}
     >
-      <p className="w-full text-[12px] font-normal leading-4 text-[var(--text-tertiary)]">
+      <p className="w-full text-sm font-normal leading-20 tracking-normal text-[var(--text-secondary)] [text-wrap:pretty]">
         {text}
       </p>
       {actions}
@@ -53,7 +53,7 @@ export function HomeOnboardingEmptyCard({
   return (
     <div
       className={cn(
-        "flex items-center gap-4 rounded-lg border border-[var(--gray-100)] bg-white p-3",
+        "flex items-center gap-4 rounded-lg bg-[var(--white)] p-4 shadow-card",
         className,
       )}
     >

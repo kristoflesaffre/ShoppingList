@@ -540,7 +540,13 @@ export default function KalenderPage() {
                   const weekNumber = getISOWeekNumber(monday);
                   return (
                     <section key={mondayIso}>
-                      <div className="flex flex-col rounded-[8px] border border-[var(--gray-100)] bg-[var(--white)] p-3">
+                      <div
+                        className={cn(
+                          "flex flex-col rounded-lg bg-[var(--white)] p-3",
+                          /* Huidige week krijgt iets meer elevation: het “nu” ligt bovenop */
+                          isCurrentWeek ? "shadow-raised" : "shadow-card",
+                        )}
+                      >
                         <button
                           type="button"
                           id={`${panelId}-toggle`}

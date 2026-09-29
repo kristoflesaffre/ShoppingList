@@ -1252,7 +1252,7 @@ export function NewItemModal({
                           <button
                             key={it.id}
                             type="button"
-                            className="relative flex w-full items-center gap-3 rounded-lg bg-white py-3 pl-4 pr-3 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)] text-left transition-colors active:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                            className="relative flex w-full items-center gap-3 rounded-lg bg-[var(--white)] py-3 pl-4 pr-3 shadow-card text-left transition-colors active:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                             onClick={() => {
                               const stockItem = {
                                 name: it.name ?? "",

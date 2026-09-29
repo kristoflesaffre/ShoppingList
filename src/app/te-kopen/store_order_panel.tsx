@@ -114,7 +114,7 @@ function SortableStoreRow({ storeKey }: { storeKey: string }) {
       style={style}
       className={cn(isDragging && "z-10 cursor-grabbing opacity-90 shadow-[var(--shadow-drop)]")}
     >
-      <div className="flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
+      <div className="flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-lg bg-[var(--white)] py-3 pl-4 pr-3 shadow-card">
         <div className="flex shrink-0 items-center gap-3">
           <button
             type="button"

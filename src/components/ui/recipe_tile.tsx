@@ -108,7 +108,7 @@ function RecipePhotoThumb({
   return (
     <span
       className={cn(
-        "relative size-12 min-h-12 min-w-12 shrink-0 overflow-hidden rounded-full shadow-[var(--shadow-drop)]",
+        "relative size-12 min-h-12 min-w-12 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--border-subtle)]",
         isDisabled && "opacity-[0.3]",
       )}
     >
@@ -204,10 +204,10 @@ const RecipeTile = React.forwardRef<HTMLDivElement, RecipeTileProps>(
     const hasPhoto = trimmedPhoto != null;
 
     const containerClassName = cn(
-      "flex w-full min-w-0 items-center rounded-md min-h-12",
+      "flex w-full min-w-0 items-center rounded-lg min-h-12",
       isDisabled
         ? "gap-3 bg-[var(--blue-25)] py-[var(--space-3)] pl-[var(--space-4)] pr-[var(--space-3)] pointer-events-none"
-        : "gap-3 bg-[var(--white)] py-[var(--space-3)] pl-[var(--space-4)] pr-[var(--space-3)] shadow-drop",
+        : "gap-3 bg-[var(--white)] py-[var(--space-3)] pl-[var(--space-4)] pr-[var(--space-3)] shadow-card",
       className,
     );
 

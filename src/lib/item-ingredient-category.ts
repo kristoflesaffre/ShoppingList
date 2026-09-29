@@ -281,6 +281,13 @@ export function orderedCategorySectionTitlesWithMasterOverride(
   return out;
 }
 
+/**
+ * Weergavenaam van een categoriekop: sentence case (eerste letter hoofdletter).
+ * Geen ALL-CAPS meer — categoriekoppen zijn gewone koppen in de typografische
+ * hiërarchie en moeten leesbaar blijven voor screenreaders (caps worden soms gespeld).
+ */
 export function categoryHeadingDisplay(title: string): string {
-  return title.toLocaleUpperCase("nl-NL");
+  const trimmed = title.trim();
+  if (trimmed.length === 0) return trimmed;
+  return trimmed.charAt(0).toLocaleUpperCase("nl-NL") + trimmed.slice(1);
 }

@@ -82,7 +82,7 @@ function CustomCardAddRow({ query }: { query: string }) {
   const href = `/klantenkaarten/toevoegen/nieuw?naam=${encodeURIComponent(trimmed)}`;
 
   const rowClass = cn(
-    "flex w-full min-w-0 items-center gap-3 rounded-[8px] bg-[var(--white)] py-3 pl-4 pr-3 text-left shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)] transition-colors",
+    "flex w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] py-3 pl-4 pr-3 text-left shadow-card transition-colors",
     enabled
       ? "no-underline [@media(hover:hover)]:hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
       : "cursor-not-allowed opacity-50",
@@ -137,7 +137,7 @@ function StorePickRow({
     <Link
       href={href}
       className={cn(
-        "flex w-full min-w-0 items-center gap-3 rounded-[8px] bg-[var(--white)] py-3 pl-4 pr-3 no-underline shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)] transition-colors",
+        "flex w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] py-3 pl-4 pr-3 no-underline shadow-card transition-colors",
         "[@media(hover:hover)]:hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
       )}

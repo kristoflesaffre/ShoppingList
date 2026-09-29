@@ -134,7 +134,7 @@ function FreezerItemGridCard({
 
   /* Vaste min-h: 12 + 64 + 8 + 44 + 8 + 44 + 12 = 192px — voorkomt springen bij edit. */
   return (
-    <article className="flex min-h-[192px] min-w-0 w-full flex-col rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-[12px]">
+    <article className="flex min-h-[192px] min-w-0 w-full flex-col rounded-lg bg-[var(--white)] shadow-card p-[12px]">
       <div className="flex min-w-0 w-full flex-col items-center gap-2">
         {/* 1178:8654 — 64×64; gerecht rond, product vierkant (Figma list/grid). */}
         <div
@@ -276,7 +276,7 @@ function FreezerItemListRow({
   if (!isEditing) {
     /* Figma 1170:9545 — elk item eigen “List card”, gap 12px tussen kaarten. */
     return (
-      <article className="flex min-h-[56px] w-full min-w-0 items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
+      <article className="flex min-h-[56px] w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3">
         <p className="w-6 shrink-0 text-center tabular-nums text-[32px] font-semibold leading-6 text-[var(--blue-900)]">
           {item.packages}
         </p>
@@ -295,7 +295,7 @@ function FreezerItemListRow({
 
   // Figma 1176:7747 “List card” — bin/minus | divider | 40px thumb | tekst | 32px count | divider | plus
   return (
-    <article className="flex min-h-[56px] w-full min-w-0 items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
+    <article className="flex min-h-[56px] w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3">
       <button
         type="button"
         onClick={item.packages <= 1 ? onDelete : onDecrement}

@@ -83,7 +83,7 @@ function SortableCategoryRow({ title }: { title: string }) {
     >
       <div
         className={cn(
-          "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3",
+          "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-lg bg-[var(--white)] py-3 pl-4 pr-3 shadow-card",
         )}
       >
         <div className="flex shrink-0 items-center gap-3">

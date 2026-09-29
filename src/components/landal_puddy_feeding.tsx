@@ -44,7 +44,7 @@ export function LandalPuddyFeedingCard({
 
   return (
     <section
-      className="flex w-full min-w-0 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3"
+      className="flex w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] py-3 pl-4 pr-3 shadow-card"
       aria-label="Puddy voeren"
     >
       <div className="relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
@@ -212,7 +212,7 @@ export function VacationPlantWateringCard({
 
   return (
     <section
-      className="flex w-full min-w-0 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3"
+      className="flex w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] py-3 pl-4 pr-3 shadow-card"
       aria-label="Planten water geven"
     >
       <div className="relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">

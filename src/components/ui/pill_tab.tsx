@@ -9,7 +9,7 @@ export type PillTabSize = "default";
 
 /**
  * Pill tab: two- or three-segment pill (Figma 474-2712). One tab is active; clicking a tab activates it.
- * Container: gray-25 bg, gray-100 border. Active tab: white bg, primary blue text. Inactive: no bg, gray-300 text.
+ * Container: primary/50 trog met 4px inzet. Active tab: witte thumb (shadow-card), primary blue text. Inactive: no bg, text-secondary.
  * @param asChild - When true, merges container props onto the single child (Radix Slot)
  */
 export interface PillTabProps {
@@ -34,13 +34,17 @@ export interface PillTabProps {
   className?: string;
 }
 
-/** Figma: container bg neutrals/25, border neutrals/100, rounded rd-256, gap 0. Tabs: px-16 py-10, font semibold, 16px, leading-24. Active: white bg, primary/500 text. Inactive: no bg, neutrals/300 text. */
+/**
+ * Segmented control: getinte trog (primary/50) met 4px inzet, witte “thumb” met zachte schaduw.
+ * Tabs: px-16, font semibold, 16px, leading-24. Actief: wit + primary/500 tekst.
+ * Inactief: text-secondary (AA-contrast; voorheen neutrals/300 haalde geen 3:1).
+ */
 const containerBase =
-  "relative flex w-full gap-0 overflow-hidden rounded-pill border border-[var(--gray-100)] bg-[var(--gray-25)]";
+  "relative flex w-full gap-0 overflow-hidden rounded-pill bg-[var(--blue-50)] p-1";
 
 /** vaste min-h: actief (semibold) vs inactief (normal) mag de pill niet laten verspringen (Figma 903:6212). */
 const tabBase =
-  "flex min-h-[48px] flex-1 min-w-0 items-center justify-center text-base leading-[length:var(--leading-24)] tracking-normal whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
+  "flex min-h-[40px] flex-1 min-w-0 items-center justify-center text-base leading-[length:var(--leading-24)] tracking-normal whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
 
 const sizeStyles: Record<PillTabSize, string> = {
   default: "px-4 py-2",
@@ -96,7 +100,8 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
       : ["first", "second"];
 
     // Sliding indicator
-    const indicatorWidth = hasThird ? "w-1/3" : "w-1/2";
+    /* Breedte = (container − 2×4px inzet) / n; translate-x-full is relatief aan die eigen breedte. */
+    const indicatorWidth = hasThird ? "w-[calc((100%-8px)/3)]" : "w-[calc(50%-4px)]";
     const indicatorTranslate =
       activeValue === "first"
         ? "translate-x-0"
@@ -128,7 +133,7 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
         <div
           aria-hidden="true"
           className={cn(
-            "absolute inset-y-0 left-0 rounded-pill bg-[var(--white)] transition-transform duration-200 ease-out",
+            "absolute inset-y-1 left-1 rounded-pill bg-[var(--white)] shadow-card motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out",
             indicatorWidth,
             indicatorTranslate,
           )}
@@ -150,7 +155,7 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
                 "relative z-10 rounded-pill bg-transparent",
                 isActive
                   ? "font-semibold text-[var(--blue-500)]"
-                  : "font-normal text-[var(--gray-300)] hover:text-[var(--gray-400)]",
+                  : "font-normal text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
               )}
             >
               {label}

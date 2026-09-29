@@ -136,6 +136,7 @@ const config: Config = {
       },
       letterSpacing: {
         normal: "var(--tracking-normal)",
+        tight: "var(--tracking-tight)",
       },
       spacing: {
         0: "var(--space-0)",
@@ -151,11 +152,16 @@ const config: Config = {
         none: "var(--radius-none)",
         sm: "var(--radius-sm)",
         md: "var(--radius-md)",
+        lg: "var(--radius-lg)",
         pill: "var(--radius-pill)",
         full: "var(--radius-full)",
       },
       boxShadow: {
         drop: "var(--shadow-drop)",
+        card: "var(--shadow-card)",
+        raised: "var(--shadow-raised)",
+        fab: "var(--shadow-fab)",
+        nav: "var(--shadow-nav)",
       },
       keyframes: {
         "edit-button-scale": {

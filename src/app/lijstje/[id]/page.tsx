@@ -110,6 +110,7 @@ import {
   type SavedRecipe,
 } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
+import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
 import frituurItemCategories from "@/lib/data/frituur_item_categories.json";
 import {
   FRITUUR_SYNONYM_TO_CANONICAL,
@@ -669,7 +670,7 @@ function SortableItemItems({
             {isCategoryGrouping && !isVacationList ? (
               <p
                 className={cn(
-                  "m-0 min-w-0 flex-1 text-xs font-medium uppercase tracking-normal text-[var(--blue-900)]",
+                  "m-0 min-w-0 flex-1 text-sm font-semibold tracking-normal text-[var(--text-secondary)]",
                   isEditMode && showMasterCategoryReorderLink
                     ? "leading-20"
                     : "leading-16",
@@ -984,7 +985,7 @@ function FrituurListItemRow({
       <button
         type="button"
         onClick={() => onEdit(item)}
-        className="flex min-h-[64px] w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        className="flex min-h-[64px] w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
         {rowContent}
       </button>
@@ -992,7 +993,7 @@ function FrituurListItemRow({
   }
 
   return (
-    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3 text-left">
+    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3 text-left">
       <button
         type="button"
         aria-label={
@@ -1044,7 +1045,7 @@ function CafeListAddItemRow({
         type="button"
         onClick={onAdd}
         aria-label={`Item toevoegen aan ${roundTitle}`}
-        className="flex w-full min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        className="flex w-full min-w-0 flex-col items-center justify-center gap-2 rounded-lg bg-[var(--white)] shadow-card p-3 text-center transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
         <span className="relative size-16 shrink-0 overflow-hidden rounded-md bg-[var(--gray-50)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1071,7 +1072,7 @@ function CafeListAddItemRow({
       type="button"
       onClick={onAdd}
       aria-label={`Item toevoegen aan ${roundTitle}`}
-      className="flex min-h-[64px] w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      className="flex min-h-[64px] w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
     >
       <span className="relative size-10 shrink-0 overflow-hidden rounded-md bg-[var(--gray-50)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1164,7 +1165,7 @@ function CafeListItems({
         const isLatest = roundIdx === 0;
         const blockExpanded = isLatest || expandedPastTitles.has(round.title);
         const headerClass = cn(
-          "flex w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3",
+          "flex w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3",
           listViewMode === "grid" && "mx-auto max-w-[358px]",
         );
         /** Langzame, zachte rotatie (loopt mee met paneel). */
@@ -1345,7 +1346,7 @@ function CafeListItemRow({
 
   if (!isEditMode && isGrid) {
     return (
-      <div className="flex w-full min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center">
+      <div className="flex w-full min-w-0 flex-col items-center justify-center gap-2 rounded-lg bg-[var(--white)] shadow-card p-3 text-center">
         {/* Figma 1323:23977 — Logo tile: 64px afbeelding, sp-8 tussen kolommen, daarna getal, dan naam. */}
         <span className="relative size-16 shrink-0 overflow-hidden rounded-md">
           {/* eslint-disable-next-line @next/next/no-img-element -- lokale productafbeeldingen uit /public */}
@@ -1381,7 +1382,7 @@ function CafeListItemRow({
   /** Figma 1323:24195 — bewerkmodus in raster: tegel + middenrij −/getal/+, dan naam (zelfde sp-8 als view). */
   if (isEditMode && isGrid) {
     return (
-      <div className="flex w-full min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] p-3 text-center">
+      <div className="flex w-full min-w-0 flex-col items-center justify-center gap-2 rounded-lg bg-[var(--white)] shadow-card p-3 text-center">
         <span className="relative size-16 shrink-0 overflow-hidden rounded-md">
           {/* eslint-disable-next-line @next/next/no-img-element -- lokale productafbeeldingen uit /public */}
           <img
@@ -1439,7 +1440,7 @@ function CafeListItemRow({
     return (
       <div
         className={cn(
-          "flex w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] text-left",
+          "flex w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card text-left",
           "min-h-[64px] px-3 py-3",
         )}
       >
@@ -1451,7 +1452,7 @@ function CafeListItemRow({
   return (
     <div
       className={cn(
-        "flex min-h-[64px] w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3 text-left",
+        "flex min-h-[64px] w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3 text-left",
       )}
     >
       <div className="flex shrink-0 rounded-pill p-1">
@@ -2337,7 +2338,7 @@ function FrituurWizardItemRow({
   const hasCount = count > 0;
   const showSizeToggle = item.category === "sauzen" && hasCount && onSizeChange;
   return (
-    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
+    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3">
       <button
         type="button"
         aria-label={`${item.name} verminderen`}
@@ -2620,7 +2621,7 @@ function FrituurListWizard({
               />
             ))
           ) : (
-            <div className="rounded-md border border-[var(--gray-100)] bg-[var(--white)] p-4 text-center text-sm leading-20 text-[var(--gray-500)]">
+            <div className="rounded-lg bg-[var(--white)] shadow-card p-4 text-center text-sm leading-20 text-[var(--gray-500)]">
               Nog geen items in deze categorie.
             </div>
           )}
@@ -2642,7 +2643,7 @@ function CafeWizardCustomAddRow({
 }) {
   const hasCount = count > 0;
   return (
-    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-lg border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
+    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3">
       <div className="flex shrink-0 rounded-pill p-1">
         <button
           type="button"
@@ -2696,7 +2697,7 @@ function CafeWizardItemRow({
 }) {
   const hasCount = count > 0;
   return (
-    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-md border border-[var(--gray-100)] bg-[var(--white)] px-3 py-3">
+    <div className="flex min-h-[64px] w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3">
       <button
         type="button"
         aria-label={`${item.name} verminderen`}
@@ -2997,7 +2998,7 @@ function CafeListWizard({
               ))
             )
           ) : !showCustomAddRow ? (
-            <div className="rounded-md border border-[var(--gray-100)] bg-[var(--white)] p-4 text-center text-sm leading-20 text-[var(--gray-500)]">
+            <div className="rounded-lg bg-[var(--white)] shadow-card p-4 text-center text-sm leading-20 text-[var(--gray-500)]">
               {category === "meest"
                 ? "Nog geen eerdere keuzes in je café-lijsten voor deze zoekterm."
                 : category === null
@@ -3616,6 +3617,9 @@ export default function ListDetailPage({
   }, [claimerProfileData?.profiles]);
 
   const [isEditMode, setIsEditMode] = React.useState(false);
+  /** Large-title-patroon: compacte titel in de topbalk pas zodra de grote titel wegscrolt. */
+  const { titleRef: largeTitleRef, collapsed: isLargeTitleCollapsed } =
+    useLargeTitleCollapse<HTMLHeadingElement>(56);
   /** Masterlijst: scherm alleen categorieën slepen (Figma volgorde wijzigen). */
   const [isMasterCategoryOrderMode, setIsMasterCategoryOrderMode] =
     React.useState(false);
@@ -5208,7 +5212,15 @@ export default function ListDetailPage({
   );
 
   const listAppHeader = (
-      <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
+      <div
+        className={cn(
+          "fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
+          /* Hairline pas zichtbaar zodra content onder de balk schuift */
+          isLargeTitleCollapsed || isMasterCategoryOrderMode
+            ? "shadow-[0_1px_0_var(--border-subtle)]"
+            : "shadow-none",
+        )}
+      >
         <header className="relative mx-auto flex h-14 max-w-[956px] items-center px-4">
           {isMasterCategoryOrderMode ? (
             <button
@@ -5228,7 +5240,16 @@ export default function ListDetailPage({
               <BackArrowIcon />
             </Link>
           )}
-          <h1 className="pointer-events-none absolute inset-x-0 truncate px-24 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
+          <h1
+            className={cn(
+              "pointer-events-none absolute inset-x-0 truncate px-24 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]",
+              "motion-safe:transition-[opacity,transform] motion-safe:duration-200 motion-safe:ease-out",
+              /* Grote titel nog in beeld (en geen aparte modus) → compacte titel verborgen */
+              showListDetailHeader && !isMasterCategoryOrderMode && !isLargeTitleCollapsed
+                ? "opacity-0 motion-safe:translate-y-1"
+                : "opacity-100 translate-y-0",
+            )}
+          >
             {isMasterCategoryOrderMode
               ? "Volgorde categorieën"
               : isCafeList && !isMasterList
@@ -5314,7 +5335,10 @@ export default function ListDetailPage({
                     </span>
                   ) : null}
                   <div className="flex min-w-0 items-center gap-2">
-                    <h2 className="min-w-0 truncate text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
+                    <h2
+                      ref={largeTitleRef}
+                      className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]"
+                    >
                       {listName}
                     </h2>
                     {!isMasterEmpty && !(isVenueCounterList && isEditMode) ? (
@@ -5489,7 +5513,7 @@ export default function ListDetailPage({
             !isVakantieList &&
             !isPuddyTabSelected &&
             !isMasterList ? (
-              <div className="flex w-full min-w-0 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
+              <div className="flex w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] shadow-card py-3 pl-4 pr-3">
                 <Checkbox
                   id="unchecked-first-toggle"
                   checked={showUncheckedFirst}
@@ -5529,7 +5553,7 @@ export default function ListDetailPage({
             isLidlDelhaizeList ? (
               <div className="flex w-full flex-col gap-3">
                 {existingLoyaltyCard ? (
-                  <div className="flex w-full items-center gap-3 rounded-md border border-[var(--gray-100)] border-solid bg-[var(--white)] py-3 pl-4 pr-3">
+                  <div className="flex w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card py-3 pl-4 pr-3">
                     {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
                     <img
                       src={LOYALTY_COMBO_PRIMARY_LOGO_SRC}
@@ -5590,7 +5614,7 @@ export default function ListDetailPage({
                   </button>
                 )}
                 {existingLoyaltyCardSecondary ? (
-                  <div className="flex w-full items-center gap-3 rounded-md border border-[var(--gray-100)] border-solid bg-[var(--white)] py-3 pl-4 pr-3">
+                  <div className="flex w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card py-3 pl-4 pr-3">
                     {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
                     <img
                       src={LOYALTY_COMBO_SECONDARY_LOGO_SRC}
@@ -5653,7 +5677,7 @@ export default function ListDetailPage({
               </div>
             ) : isMasterList ? (
               existingLoyaltyCard ? (
-                <div className="flex w-full items-center gap-3 rounded-md border border-[var(--gray-100)] border-solid bg-[var(--white)] py-3 pl-4 pr-3">
+                <div className="flex w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card py-3 pl-4 pr-3">
                   {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
                   <img
                     src={listIcon}
@@ -5895,7 +5919,7 @@ export default function ListDetailPage({
             {showUncheckedFirstToggle &&
             !isPuddyTabSelected &&
             !isLandalOrVakantieList ? (
-              <div className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
+              <div className="flex w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card py-3 pl-4 pr-3">
                 <Checkbox
                   id="unchecked-first-toggle"
                   checked={showUncheckedFirst}
@@ -5915,7 +5939,7 @@ export default function ListDetailPage({
             isVakantieList &&
             !isPuddyTabSelected &&
             tripPersonTab !== "Voor vertrek" ? (
-              <div className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] py-3 pl-4 pr-3">
+              <div className="flex w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card py-3 pl-4 pr-3">
                 <Checkbox
                   id="unchecked-first-toggle"
                   checked={showUncheckedFirst}
@@ -5940,7 +5964,7 @@ export default function ListDetailPage({
                 s.items.length > 0 &&
                 !("isGroupHeader" in s && s.isGroupHeader === true),
             ) ? (
-              <p className="rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-[var(--white)] px-4 py-6 text-center text-base font-normal leading-6 text-[var(--text-tertiary)]">
+              <p className="rounded-lg bg-[var(--white)] shadow-card px-4 py-6 text-center text-base font-normal leading-6 text-[var(--text-tertiary)]">
                 Geen items voor {tripPersonTab}. Kies een andere tab, of stel
                 «Wie» in via toevoegen of bewerken van een item.
               </p>
