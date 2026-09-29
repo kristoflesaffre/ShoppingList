@@ -213,7 +213,6 @@ export function NewItemModal({
   const [quantityDesc, setQuantityDesc] = React.useState("stuk");
   const [batchEntries, setBatchEntries] = React.useState<BatchEntry[]>([]);
   const [editingBatchEntryId, setEditingBatchEntryId] = React.useState<string | null>(null);
-  const [recipeSearch, setRecipeSearch] = React.useState("");
   const [activeCategory, setActiveCategory] = React.useState<RecipeCategory | null>(null);
   const [showRecipeForm, setShowRecipeForm] = React.useState(false);
   const [editingLibraryRecipeId, setEditingLibraryRecipeId] = React.useState<
@@ -289,11 +288,13 @@ export function NewItemModal({
 
   const filteredRecipes = React.useMemo(() => {
     let result = storedRecipes;
-    const q = recipeSearch.trim().toLowerCase();
+    const q = itemSearchQuery.trim().toLowerCase();
     if (q) result = result.filter((r) => r.name.toLowerCase().includes(q));
-    if (activeCategory) result = result.filter((r) => r.category === activeCategory);
+    if (!q && activeCategory) {
+      result = result.filter((r) => r.category === activeCategory);
+    }
     return result;
-  }, [storedRecipes, recipeSearch, activeCategory]);
+  }, [storedRecipes, itemSearchQuery, activeCategory]);
 
   const usedCategoryIds = React.useMemo(
     () => new Set(storedRecipes.map((r) => r.category).filter(Boolean)),
@@ -314,7 +315,6 @@ export function NewItemModal({
       setQuantityDesc("stuk");
       setBatchEntries([]);
       setEditingBatchEntryId(null);
-      setRecipeSearch("");
       setFreezerSearch("");
       setActiveCategory(null);
       setShowRecipeForm(false);
@@ -590,7 +590,6 @@ export function NewItemModal({
           },
         ]);
         resetActiveBatchItem();
-        setRecipeSearch("");
         return;
       }
       onApplyRecipeToList(newItems);
@@ -659,15 +658,12 @@ export function NewItemModal({
   const handleSourceFilterChange = React.useCallback(
     (nextFilter: AddSourceFilter) => {
       if (nextFilter === sourceFilter) return;
-      if (nextFilter === "recipes" && sourceFilter !== "recipes") {
-        setRecipeSearch(itemSearchQuery);
-      } else if (nextFilter !== "recipes" && sourceFilter === "recipes") {
-        setItemSearchQuery(recipeSearch);
-        if (!editingBatchEntryId) setItemName(recipeSearch);
+      if (nextFilter !== "recipes" && sourceFilter === "recipes") {
+        if (!editingBatchEntryId) setItemName(itemSearchQuery);
       }
       setSourceFilter(nextFilter);
     },
-    [editingBatchEntryId, itemSearchQuery, recipeSearch, sourceFilter],
+    [editingBatchEntryId, itemSearchQuery, sourceFilter],
   );
 
   const modalTitle = showRecipeForm
@@ -1314,8 +1310,11 @@ export function NewItemModal({
                   {storedRecipes.length > 0 ? (
                     <SearchBar
                       placeholder="Zoek recept"
-                      value={recipeSearch}
-                      onValueChange={setRecipeSearch}
+                      value={itemSearchQuery}
+                      onValueChange={(value) => {
+                        setItemSearchQuery(value);
+                        if (value.trim()) setActiveCategory(null);
+                      }}
                     />
                   ) : null}
                   {sourceFilterControls}
