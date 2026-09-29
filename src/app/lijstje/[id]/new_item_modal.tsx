@@ -31,7 +31,7 @@ import {
   VACATION_CATEGORIES,
 } from "@/lib/vacation-categories";
 import { isVacationSlugAllowedForEmail, getVacationDefaultSlugsForPerson } from "@/lib/vacation-default-items";
-import { useVacationItemSlugs } from "@/lib/item-photos";
+import { useItemPhotoUrl, useVacationItemSlugs } from "@/lib/item-photos";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
 
 const RecipeIngredientSortableList = dynamic(
@@ -70,6 +70,19 @@ export type ListItem = {
 
 type Ingredient = RecipeIngredient;
 type AddSourceFilter = "all" | "items" | "recipes" | "stock";
+type BatchEntry =
+  | {
+      id: string;
+      kind: "item";
+      item: ListItem;
+    }
+  | {
+      id: string;
+      kind: "recipe";
+      recipeName: string;
+      photoUrl?: string;
+      items: ListItem[];
+    };
 
 const BASE_SOURCE_FILTERS: ReadonlyArray<{
   value: AddSourceFilter;
@@ -97,6 +110,29 @@ const DAY_OPTIONS = [
 ] as const;
 
 const SLIDE_TRANSITION = "transform 350ms cubic-bezier(0.16, 1, 0.3, 1)";
+
+function createBatchId(prefix: "item" | "recipe"): string {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function BatchTrashIcon() {
+  return (
+    <span
+      aria-hidden
+      className="inline-block size-6 bg-current"
+      style={{
+        WebkitMaskImage: 'url("/icons/recycle_bin.svg")',
+        maskImage: 'url("/icons/recycle_bin.svg")',
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+      }}
+    />
+  );
+}
 
 function FishIcon({ className }: { className?: string }) {
   return (
@@ -171,9 +207,12 @@ export function NewItemModal({
     React.useState<AddSourceFilter>("all");
   const [selectedStore, setSelectedStore] = React.useState<string | null>(null);
   const [freezerSearch, setFreezerSearch] = React.useState("");
+  const [itemSearchQuery, setItemSearchQuery] = React.useState("");
   const [itemName, setItemName] = React.useState("");
   const [stepperValue, setStepperValue] = React.useState(1);
   const [quantityDesc, setQuantityDesc] = React.useState("stuk");
+  const [batchEntries, setBatchEntries] = React.useState<BatchEntry[]>([]);
+  const [editingBatchEntryId, setEditingBatchEntryId] = React.useState<string | null>(null);
   const [recipeSearch, setRecipeSearch] = React.useState("");
   const [activeCategory, setActiveCategory] = React.useState<RecipeCategory | null>(null);
   const [showRecipeForm, setShowRecipeForm] = React.useState(false);
@@ -197,6 +236,12 @@ export function NewItemModal({
   const canSaveRecipe = recipeName.trim().length > 0;
   const masterItemFormOnly = isMasterList && !showRecipeForm;
   const daySelected = selectedDay !== "Geen";
+  const batchMode =
+    !isEditMode &&
+    !isMasterList &&
+    !isVacationList &&
+    groupingMode !== "category";
+  const getItemPhotoUrl = useItemPhotoUrl(160);
 
   // Diepvriesvoorraad — only query when a day is selected and we're not in edit/master mode
   const { data: freezerData } = db.useQuery(
@@ -263,9 +308,12 @@ export function NewItemModal({
       setTripPerson(DEFAULT_TRIP_PERSON_TAB);
       setSelectedStore(null);
       setSourceFilter("all");
+      setItemSearchQuery("");
       setItemName("");
       setStepperValue(1);
       setQuantityDesc("stuk");
+      setBatchEntries([]);
+      setEditingBatchEntryId(null);
       setRecipeSearch("");
       setFreezerSearch("");
       setActiveCategory(null);
@@ -385,6 +433,83 @@ export function NewItemModal({
     onClose();
   };
 
+  const resetActiveBatchItem = React.useCallback(() => {
+    setItemSearchQuery("");
+    setItemName("");
+    setStepperValue(1);
+    setQuantityDesc("stuk");
+    setEditingBatchEntryId(null);
+  }, []);
+
+  const handleCompleteBatchItem = React.useCallback(() => {
+    const name = itemName.trim();
+    if (!batchMode || !name) return;
+
+    const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
+    const entryId = editingBatchEntryId ?? createBatchId("item");
+    const nextEntry: BatchEntry = {
+      id: entryId,
+      kind: "item",
+      item: {
+        id: `draft-${entryId}`,
+        name,
+        quantity: `${stepperValue} ${quantityDesc}`.trim(),
+        checked: false,
+        section,
+        itemCategory: resolveItemCategoryFromName(name),
+      },
+    };
+
+    setBatchEntries((previous) =>
+      editingBatchEntryId
+        ? previous.map((entry) =>
+            entry.id === editingBatchEntryId ? nextEntry : entry,
+          )
+        : [...previous, nextEntry],
+    );
+    resetActiveBatchItem();
+  }, [
+    batchMode,
+    editingBatchEntryId,
+    itemName,
+    quantityDesc,
+    resetActiveBatchItem,
+    selectedDay,
+    stepperValue,
+  ]);
+
+  const handleEditBatchItem = React.useCallback((entry: BatchEntry) => {
+    if (entry.kind !== "item") return;
+    const parsedQuantity = parseRecipeIngredientQuantity(entry.item.quantity);
+    setSourceFilter("items");
+    setItemSearchQuery("");
+    setItemName(entry.item.name);
+    setStepperValue(parsedQuantity.stepperValue);
+    setQuantityDesc(parsedQuantity.quantityDesc);
+    setSelectedDay(
+      entry.item.section === "Algemeen" ? "Geen" : entry.item.section,
+    );
+    setEditingBatchEntryId(entry.id);
+  }, []);
+
+  const handleDeleteBatchEntry = React.useCallback(
+    (entryId: string) => {
+      setBatchEntries((previous) =>
+        previous.filter((entry) => entry.id !== entryId),
+      );
+      if (editingBatchEntryId === entryId) resetActiveBatchItem();
+    },
+    [editingBatchEntryId, resetActiveBatchItem],
+  );
+
+  const handleSubmitBatch = React.useCallback(() => {
+    if (batchEntries.length === 0) return;
+    const itemsToAdd = batchEntries.flatMap((entry) =>
+      entry.kind === "item" ? [entry.item] : entry.items,
+    );
+    onApplyRecipeToList(itemsToAdd);
+  }, [batchEntries, onApplyRecipeToList]);
+
   const closeRecipeFormPanel = React.useCallback(() => {
     setShowRecipeForm(false);
     setEditingLibraryRecipeId(null);
@@ -452,9 +577,31 @@ export function NewItemModal({
         recipeName: recipe.name.trim(),
         recipeLink: link.length > 0 ? link : undefined,
       }));
+      if (batchMode && batchEntries.length > 0) {
+        const entryId = createBatchId("recipe");
+        setBatchEntries((previous) => [
+          ...previous,
+          {
+            id: entryId,
+            kind: "recipe",
+            recipeName: recipe.name.trim(),
+            photoUrl: recipe.photoUrl ?? undefined,
+            items: newItems,
+          },
+        ]);
+        resetActiveBatchItem();
+        setRecipeSearch("");
+        return;
+      }
       onApplyRecipeToList(newItems);
     },
-    [selectedDay, onApplyRecipeToList],
+    [
+      batchEntries.length,
+      batchMode,
+      onApplyRecipeToList,
+      resetActiveBatchItem,
+      selectedDay,
+    ],
   );
 
   const handleDeleteIngredient = React.useCallback((id: string) => {
@@ -513,13 +660,14 @@ export function NewItemModal({
     (nextFilter: AddSourceFilter) => {
       if (nextFilter === sourceFilter) return;
       if (nextFilter === "recipes" && sourceFilter !== "recipes") {
-        setRecipeSearch(itemName);
+        setRecipeSearch(itemSearchQuery);
       } else if (nextFilter !== "recipes" && sourceFilter === "recipes") {
-        setItemName(recipeSearch);
+        setItemSearchQuery(recipeSearch);
+        if (!editingBatchEntryId) setItemName(recipeSearch);
       }
       setSourceFilter(nextFilter);
     },
-    [itemName, recipeSearch, sourceFilter],
+    [editingBatchEntryId, itemSearchQuery, recipeSearch, sourceFilter],
   );
 
   const modalTitle = showRecipeForm
@@ -530,8 +678,22 @@ export function NewItemModal({
       ? "Wijzig item(s)"
       : "Item(s) toevoegen";
 
-  const itemFooter =
-    isEditMode ||
+  const batchContainsRecipe = batchEntries.some(
+    (entry) => entry.kind === "recipe",
+  );
+  const batchFooterLabel = batchContainsRecipe
+    ? `${batchEntries.length} ${batchEntries.length === 1 ? "selectie" : "selecties"} toevoegen`
+    : `${batchEntries.length} ${batchEntries.length === 1 ? "item" : "items"} toevoegen`;
+
+  const itemFooter = batchMode ? (
+    <Button
+      variant="primary"
+      disabled={batchEntries.length === 0}
+      onClick={handleSubmitBatch}
+    >
+      {batchEntries.length > 0 ? batchFooterLabel : "Items toevoegen"}
+    </Button>
+  ) : isEditMode ||
     sourceFilter === "all" ||
     sourceFilter === "items" ||
     masterItemFormOnly ? (
@@ -594,6 +756,147 @@ export function NewItemModal({
         </div>
       </div>
     ) : null;
+
+  const activeBatchItemPhotoUrl = itemName.trim()
+    ? getItemPhotoUrl(itemName.trim(), 160)
+    : null;
+  const activeBatchEditor = batchMode && itemName.trim() ? (
+    <section
+      className="flex flex-col gap-4 border-b border-[var(--border-subtle)] pb-6"
+      aria-label={
+        editingBatchEntryId ? `${itemName} wijzigen` : `${itemName} afwerken`
+      }
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        {activeBatchItemPhotoUrl ? (
+          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[var(--gray-25)]">
+            {/* eslint-disable-next-line @next/next/no-img-element -- lokale productfoto met dynamisch gematchte URL */}
+            <img
+              src={activeBatchItemPhotoUrl}
+              alt=""
+              width={48}
+              height={48}
+              className="size-12 object-contain"
+              aria-hidden
+            />
+          </div>
+        ) : null}
+        <p className="min-w-0 flex-1 truncate text-base font-semibold leading-24 text-[var(--text-primary)]">
+          {itemName.trim()}
+        </p>
+        <MiniButton
+          variant="primary"
+          className="min-h-11"
+          onClick={handleCompleteBatchItem}
+        >
+          {editingBatchEntryId ? "Bewaren" : "Klaar"}
+        </MiniButton>
+      </div>
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-normal leading-20 text-[var(--text-primary)]">
+          Hoeveelheid
+        </span>
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(160px,0.55fr)]">
+          <Stepper
+            value={stepperValue}
+            onValueChange={setStepperValue}
+            min={1}
+          />
+          <InputField
+            value={quantityDesc}
+            aria-label="Eenheid"
+            onFocus={(event) => {
+              const input = event.target;
+              requestAnimationFrame(() => input.select());
+            }}
+            onChange={(event) => setQuantityDesc(event.target.value)}
+          />
+        </div>
+      </div>
+    </section>
+  ) : null;
+
+  const visibleBatchEntries = batchEntries.filter(
+    (entry) => entry.id !== editingBatchEntryId,
+  );
+  const batchQueueControls = batchMode && batchEntries.length > 0 ? (
+    <section className="flex flex-col" aria-labelledby="batch-selection-title">
+      <h3
+        id="batch-selection-title"
+        className="border-b border-[var(--border-subtle)] pb-3 text-base font-semibold leading-24 text-[var(--text-primary)]"
+        aria-live="polite"
+      >
+        Selectie ({batchEntries.length})
+      </h3>
+      <div className="flex flex-col">
+        {visibleBatchEntries.map((entry) => {
+          const isItem = entry.kind === "item";
+          const itemPhotoUrl = isItem
+            ? getItemPhotoUrl(entry.item.name, 160)
+            : entry.photoUrl || "/images/ui/recept_320.webp";
+          const title = isItem ? entry.item.name : entry.recipeName;
+          const metadata = isItem
+            ? entry.item.quantity
+            : `Recept · ${entry.items.length} ${entry.items.length === 1 ? "ingrediënt" : "ingrediënten"}`;
+
+          return (
+            <div
+              key={entry.id}
+              className="flex min-h-16 items-center gap-3 border-b border-[var(--border-subtle)] py-2"
+            >
+              {itemPhotoUrl ? (
+                <div
+                  className={cn(
+                    "flex size-12 shrink-0 items-center justify-center overflow-hidden bg-[var(--gray-25)]",
+                    isItem ? "rounded-md" : "rounded-full",
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- lokale itemfoto of opgeslagen receptfoto */}
+                  <img
+                    src={itemPhotoUrl}
+                    alt=""
+                    width={48}
+                    height={48}
+                    className={cn(
+                      "size-12",
+                      isItem ? "object-contain" : "object-cover",
+                    )}
+                    aria-hidden
+                    decoding="async"
+                  />
+                </div>
+              ) : null}
+              <div className="flex min-w-0 flex-1 flex-col">
+                <p className="truncate text-base font-medium leading-24 text-[var(--text-primary)]">
+                  {title}
+                </p>
+                <p className="truncate text-sm leading-20 text-[var(--text-tertiary)]">
+                  {metadata}
+                </p>
+              </div>
+              {isItem ? (
+                <button
+                  type="button"
+                  onClick={() => handleEditBatchItem(entry)}
+                  className="min-h-11 shrink-0 px-2 text-sm font-medium text-[var(--text-link)] transition-colors hover:text-[var(--action-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                >
+                  Wijzig
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => handleDeleteBatchEntry(entry.id)}
+                aria-label={`${title} verwijderen uit selectie`}
+                className="flex size-11 shrink-0 items-center justify-center text-[var(--error-400)] transition-colors hover:text-[var(--error-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--error-400)] focus-visible:ring-offset-2"
+              >
+                <BatchTrashIcon />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  ) : null;
 
   return (
     <>
@@ -740,8 +1043,15 @@ export function NewItemModal({
                     <ItemNameAutocomplete
                       ariaLabel={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
                       placeholder={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
-                      value={itemName}
-                      onChange={setItemName}
+                      value={batchMode ? itemSearchQuery : itemName}
+                      onChange={(value) => {
+                        if (batchMode) setItemSearchQuery(value);
+                        setItemName(value);
+                      }}
+                      onSelectItem={(name) => {
+                        setItemName(name);
+                        if (batchMode) setItemSearchQuery("");
+                      }}
                       autoFocus={!nameSearchOpen}
                       recipes={sourceFilter === "all" ? storedRecipes : undefined}
                       onSelectRecipe={handleSelectRecipe}
@@ -749,6 +1059,8 @@ export function NewItemModal({
                     />
                     {sourceFilterControls}
                   </div>
+                  {activeBatchEditor}
+                  {batchQueueControls}
                   {isVacationList && (
                     <>
                       {(isEditMode || initialItemCategory !== "Te regelen") && (
@@ -827,7 +1139,7 @@ export function NewItemModal({
                       )}
                     </>
                   )}
-                  {!isVacationList && (
+                  {!isVacationList && !batchMode && (
                   <div className="flex flex-col gap-2">
                     <Stepper
                       label="Hoeveelheid"
@@ -854,6 +1166,7 @@ export function NewItemModal({
                   {allFreezerItems.length === 0 ? (
                     <>
                     {sourceFilterControls}
+                    {batchQueueControls}
                     <div className="mt-10 flex flex-col items-center gap-6">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -876,6 +1189,7 @@ export function NewItemModal({
                     onValueChange={setFreezerSearch}
                   />
                   {sourceFilterControls}
+                  {batchQueueControls}
                   {filteredFreezerItems.length === 0 ? (
                     <p className="py-4 text-center text-base font-medium leading-6 text-[var(--text-tertiary)]">
                       Geen items gevonden
@@ -896,13 +1210,33 @@ export function NewItemModal({
                             type="button"
                             className="relative flex w-full items-center gap-3 rounded-lg bg-white py-3 pl-4 pr-3 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)] text-left transition-colors active:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                             onClick={() => {
-                              onAdd({
+                              const stockItem = {
                                 name: it.name ?? "",
                                 quantity: subtitle,
                                 section: selectedDay,
                                 fromStock: true,
                                 stockPhotoUrl: it.recipePhotoUrl || undefined,
-                              });
+                              };
+                              if (batchMode) {
+                                const entryId = createBatchId("item");
+                                setBatchEntries((previous) => [
+                                  ...previous,
+                                  {
+                                    id: entryId,
+                                    kind: "item",
+                                    item: {
+                                      id: `draft-${entryId}`,
+                                      ...stockItem,
+                                      checked: false,
+                                      itemCategory: resolveItemCategoryFromName(
+                                        stockItem.name,
+                                      ),
+                                    },
+                                  },
+                                ]);
+                                return;
+                              }
+                              onAdd(stockItem);
                               onClose();
                             }}
                           >
@@ -985,6 +1319,7 @@ export function NewItemModal({
                     />
                   ) : null}
                   {sourceFilterControls}
+                  {batchQueueControls}
                   {storedRecipes.length > 0 && visibleCategories.length > 0 ? (
                     <div className="-mx-4 min-w-0 overflow-x-auto px-4" style={{ scrollbarWidth: "none" } as React.CSSProperties}>
                       <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>

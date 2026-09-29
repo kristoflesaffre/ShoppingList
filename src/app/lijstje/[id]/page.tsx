@@ -4318,6 +4318,13 @@ export default function ListDetailPage({
                 recipeGroupId: item.recipeGroupId ?? "",
                 recipeName: item.recipeName ?? "",
                 recipeLink: item.recipeLink ?? "",
+                ...(item.fromStock ? { fromStock: true } : {}),
+                ...(item.stockPhotoUrl
+                  ? { stockPhotoUrl: item.stockPhotoUrl }
+                  : {}),
+                ...(item.tripPerson !== undefined
+                  ? { tripPerson: normalizeTripPerson(item.tripPerson) }
+                  : {}),
                 ...(computedItemDate != null ? { itemDate: computedItemDate } : {}),
               })
               .link({ list: listId });

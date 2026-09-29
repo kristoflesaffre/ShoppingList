@@ -67,6 +67,8 @@ export type ItemNameAutocompleteProps = {
   slideInTitle?: string;
   /** Recepten die naast items in dezelfde zoekopdracht mogen verschijnen. */
   recipes?: SavedRecipe[];
+  /** Wordt aangeroepen wanneer een bestaand itemresultaat wordt gekozen. */
+  onSelectItem?: (name: string) => void;
   /** Wordt aangeroepen wanneer een receptresultaat wordt gekozen. */
   onSelectRecipe?: (recipe: SavedRecipe) => void;
 };
@@ -83,6 +85,7 @@ function LargeScreenAutocomplete({
   photoCatalog = "items",
   autoFocus,
   recipes = [],
+  onSelectItem,
   onSelectRecipe,
 }: ItemNameAutocompleteProps) {
   const itemSlugs = useItemSlugs();
@@ -197,11 +200,16 @@ function LargeScreenAutocomplete({
       if (suggestion.kind === "recipe") {
         onSelectRecipe?.(suggestion.recipe);
       } else {
-        onChange(slugToDisplayName(suggestion.slug));
+        const selectedName = slugToDisplayName(suggestion.slug);
+        if (onSelectItem) {
+          onSelectItem(selectedName);
+        } else {
+          onChange(selectedName);
+        }
       }
       setOpen(false);
     },
-    [onChange, onSelectRecipe],
+    [onChange, onSelectItem, onSelectRecipe],
   );
 
   const handleKeyDown = React.useCallback(
@@ -343,6 +351,7 @@ function SmallScreenAutocomplete({
   photoCatalog = "items",
   slideInTitle = "Item toevoegen",
   recipes,
+  onSelectItem,
   onSelectRecipe,
 }: ItemNameAutocompleteProps) {
   const [slideInOpen, setSlideInOpen] = React.useState(false);
@@ -392,7 +401,13 @@ function SmallScreenAutocomplete({
         open={slideInOpen}
         onClose={() => setSlideInOpen(false)}
         initialValue={value}
-        onSelect={(name) => onChange(name)}
+        onSelect={(name) => {
+          if (onSelectItem) {
+            onSelectItem(name);
+          } else {
+            onChange(name);
+          }
+        }}
         photoCatalog={photoCatalog}
         title={slideInTitle}
         recipes={recipes}
