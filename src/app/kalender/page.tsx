@@ -236,7 +236,11 @@ function DayCard({
         const tile = (
           <RecipeTile
             recipeName={meal.recipeName}
-            itemCount={`${meal.ingredientCount} ${meal.ingredientCount === 1 ? "ingrediënt" : "ingrediënten"}`}
+            itemCount={
+              meal.fromStock
+                ? "Diepvries"
+                : `${meal.ingredientCount} ${meal.ingredientCount === 1 ? "ingrediënt" : "ingrediënten"}`
+            }
             photoUrl={meal.photoUrl}
             state="bare"
           />

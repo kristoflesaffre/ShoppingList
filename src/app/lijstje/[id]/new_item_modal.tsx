@@ -547,15 +547,6 @@ export function NewItemModal({
     setShowRecipeForm(true);
   }, []);
 
-  const openRecipeForEdit = React.useCallback((recipe: SavedRecipe) => {
-    setEditingLibraryRecipeId(recipe.id);
-    setRecipeName(recipe.name);
-    setRecipeLink(recipe.link);
-    setRecipePersons(recipe.persons);
-    setIngredients(recipe.ingredients.map((i) => ({ ...i })));
-    setShowRecipeForm(true);
-  }, []);
-
   const handleSaveRecipe = () => {
     if (!canSaveRecipe) return;
     onSaveRecipeToLibrary({
@@ -601,6 +592,52 @@ export function NewItemModal({
         return;
       }
       onApplyRecipeToList(newItems);
+    },
+    [
+      batchEntries.length,
+      batchMode,
+      onApplyRecipeToList,
+      resetActiveBatchItem,
+      selectedDay,
+    ],
+  );
+
+  const handleSelectRecipeFromFreezer = React.useCallback(
+    (recipe: SavedRecipe) => {
+      const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
+      const ts = Date.now();
+      const recipeGroupId = `recipe-${recipe.id}-${ts}`;
+      const persons = recipe.persons > 0 ? recipe.persons : 1;
+      const quantity = persons === 1 ? "1 persoon" : `${persons} personen`;
+      const freezerItem: ListItem = {
+        id: `from-freezer-recipe-${recipe.id}-${ts}`,
+        name: recipe.name.trim(),
+        quantity,
+        checked: false,
+        section,
+        itemCategory: resolveItemCategoryFromName(recipe.name),
+        recipeGroupId,
+        recipeName: recipe.name.trim(),
+        recipeLink: recipe.link.trim().length > 0 ? recipe.link.trim() : undefined,
+        fromStock: true,
+        stockPhotoUrl: recipe.photoUrl ?? undefined,
+      };
+      if (batchMode && batchEntries.length > 0) {
+        const entryId = createBatchId("recipe");
+        setBatchEntries((previous) => [
+          ...previous,
+          {
+            id: entryId,
+            kind: "recipe",
+            recipeName: recipe.name.trim(),
+            photoUrl: recipe.photoUrl ?? undefined,
+            items: [freezerItem],
+          },
+        ]);
+        resetActiveBatchItem();
+        return;
+      }
+      onApplyRecipeToList([freezerItem]);
     },
     [
       batchEntries.length,
@@ -1098,6 +1135,7 @@ export function NewItemModal({
                       autoFocus={!nameSearchOpen}
                       recipes={sourceFilter === "all" ? storedRecipes : undefined}
                       onSelectRecipe={handleSelectRecipe}
+                      onSelectRecipeFromFreezer={handleSelectRecipeFromFreezer}
                       slideInTitle={sourceFilter === "all" ? "Item of recept toevoegen" : "Item toevoegen"}
                     />
                     {sourceFilterControls}
@@ -1368,6 +1406,7 @@ export function NewItemModal({
                         recipes={storedRecipes}
                         suggestionScope="recipes"
                         onSelectRecipe={handleSelectRecipe}
+                        onSelectRecipeFromFreezer={handleSelectRecipeFromFreezer}
                         slideInTitle="Recept zoeken"
                       />
                     ) : null}
@@ -1457,7 +1496,7 @@ export function NewItemModal({
                               recipeName={r.name}
                               itemCount={itemCount}
                               photoUrl={r.photoUrl ?? undefined}
-                              onEdit={() => openRecipeForEdit(r)}
+                              onAddFromFreezer={() => handleSelectRecipeFromFreezer(r)}
                               className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
                               role="button"
                               tabIndex={0}

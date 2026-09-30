@@ -251,7 +251,7 @@ function chunkSectionItems(sectionItems: ListItem[]): SectionItemsChunk[] {
   for (const item of sectionItems) {
     const gid = item.recipeGroupId;
     const title = item.recipeName;
-    if (gid && title) {
+    if (gid && title && item.fromStock !== true) {
       const last = chunks[chunks.length - 1];
       if (last?.type === "recipe" && last.groupId === gid) {
         last.items.push(item);

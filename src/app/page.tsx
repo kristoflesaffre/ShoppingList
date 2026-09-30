@@ -618,18 +618,38 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
           /* Recept: foto + naam + aantal */
           <>
             {firstMeal?.photoUrl ? (
-              <div className="relative size-10 shrink-0 overflow-hidden rounded-full">
-                {/* eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto */}
-                <img
-                  src={firstMeal.photoUrl}
-                  alt=""
-                  width={40}
-                  height={40}
-                  decoding="async"
-                  loading="lazy"
-                  className="size-full object-cover"
-                  aria-hidden
-                />
+              <div className="relative size-10 shrink-0">
+                <div className="size-10 overflow-hidden rounded-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto */}
+                  <img
+                    src={firstMeal.photoUrl}
+                    alt=""
+                    width={40}
+                    height={40}
+                    decoding="async"
+                    loading="lazy"
+                    className="size-full object-cover"
+                    aria-hidden
+                  />
+                </div>
+                {firstMeal.fromStock ? (
+                  <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-[var(--white)] shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
+                    <span
+                      className="inline-block size-[11px] bg-[var(--blue-500)]"
+                      style={{
+                        WebkitMaskImage: "url(/icons/freeze.svg)",
+                        maskImage: "url(/icons/freeze.svg)",
+                        WebkitMaskSize: "contain",
+                        maskSize: "contain",
+                        WebkitMaskRepeat: "no-repeat",
+                        maskRepeat: "no-repeat",
+                        WebkitMaskPosition: "center",
+                        maskPosition: "center",
+                      }}
+                      aria-hidden
+                    />
+                  </span>
+                ) : null}
               </div>
             ) : null}
             <div className="flex min-w-0 flex-1 flex-col">
@@ -637,9 +657,11 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
                 {firstMeal?.recipeName ?? ""}
               </p>
               <p className="text-xs leading-5 text-[var(--gray-400)]">
-                {firstMeal?.ingredientCount === 1
-                  ? "1 ingrediënt"
-                  : `${firstMeal?.ingredientCount ?? 0} ingrediënten`}
+                {firstMeal?.fromStock
+                  ? "Diepvries"
+                  : firstMeal?.ingredientCount === 1
+                    ? "1 ingrediënt"
+                    : `${firstMeal?.ingredientCount ?? 0} ingrediënten`}
               </p>
             </div>
           </>

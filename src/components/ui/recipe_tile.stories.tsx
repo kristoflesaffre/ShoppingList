@@ -70,6 +70,18 @@ export const DefaultWithPhoto: Story = {
   },
 };
 
+/** Sneeuwvlok i.p.v. potlood: toevoegen als diepvriesgerecht. */
+export const DefaultFromFreezer: Story = {
+  name: "Default from freezer",
+  args: {
+    recipeName: "Lasagne",
+    itemCount: "9 ingrediënten",
+    state: "default",
+    photoUrl: DEMO_RECIPE_PHOTO,
+    onAddFromFreezer: fn(),
+  },
+};
+
 /** Alleen titel + subtitel, geen iconen (Figma “Bare”). */
 export const Bare: Story = {
   args: {

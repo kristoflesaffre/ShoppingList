@@ -10,6 +10,8 @@ export type CalendarMeal = {
   recipeId: string | null;
   photoUrl: string | null;
   ingredientCount: number;
+  /** Gerecht uit de diepvries: geen ingrediënten om te kopen. */
+  fromStock?: boolean;
 };
 
 export type DayEntry = {
@@ -180,12 +182,18 @@ export function buildCalendarEntries(
             recipeGroupId: item.recipeGroupId,
             recipeName: item.recipeName ?? "Recept",
             recipeId: recipeId ?? null,
-            photoUrl: recipe?.photoUrl ?? null,
+            photoUrl: item.stockPhotoUrl ?? recipe?.photoUrl ?? null,
             ingredientCount: 0,
+            fromStock: item.fromStock === true || undefined,
           };
           entry.meals.push(meal);
         }
-        meal.ingredientCount++;
+        if (item.fromStock) {
+          meal.fromStock = true;
+          if (item.stockPhotoUrl) meal.photoUrl = item.stockPhotoUrl;
+        } else {
+          meal.ingredientCount++;
+        }
       } else {
         let loosePhotoUrl: string | null = null;
         if (item.fromStock && item.stockPhotoUrl) {

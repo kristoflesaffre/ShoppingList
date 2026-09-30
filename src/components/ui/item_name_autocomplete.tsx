@@ -22,6 +22,7 @@ import {
 } from "@/lib/ingredient-photos";
 import type { SavedRecipe } from "@/lib/recipe_library";
 import { matchRecipesForAutocomplete } from "@/lib/recipe-search";
+import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 import { cn } from "@/lib/utils";
 
 /** Slug "vleesje_noe" → "Vleesje noe" (eerste woord hoofdletter, rest kleine letters). */
@@ -74,6 +75,8 @@ export type ItemNameAutocompleteProps = {
   onSelectItem?: (name: string) => void;
   /** Wordt aangeroepen wanneer een receptresultaat wordt gekozen. */
   onSelectRecipe?: (recipe: SavedRecipe) => void;
+  /** Wordt aangeroepen wanneer het sneeuwvlok-icoon bij een recept wordt gekozen. */
+  onSelectRecipeFromFreezer?: (recipe: SavedRecipe) => void;
 };
 
 // ─── Large-screen dropdown ────────────────────────────────────────────────────
@@ -91,6 +94,7 @@ function LargeScreenAutocomplete({
   suggestionScope = "all",
   onSelectItem,
   onSelectRecipe,
+  onSelectRecipeFromFreezer,
 }: ItemNameAutocompleteProps) {
   const itemSlugs = useItemSlugs();
   const itemSynonyms = useItemSynonyms();
@@ -255,6 +259,7 @@ function LargeScreenAutocomplete({
                 role="option"
                 aria-selected={i === highlightedIndex}
               >
+                {suggestion.kind === "item" ? (
                 <button
                   type="button"
                   onMouseDown={(e) => {
@@ -269,8 +274,6 @@ function LargeScreenAutocomplete({
                     i > 0 && "border-t border-[var(--gray-100)]",
                   )}
                 >
-                  {suggestion.kind === "item" ? (
-                    <>
                       <Image
                         src={
                           photoCatalog === "ingredients"
@@ -287,9 +290,25 @@ function LargeScreenAutocomplete({
                       <span className="min-w-0 truncate text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
                         {slugToDisplayName(suggestion.slug)}
                       </span>
-                    </>
-                  ) : (
-                    <>
+                </button>
+                ) : (
+                <div
+                  className={cn(
+                    "flex w-full items-center gap-1 px-3 py-2",
+                    i === highlightedIndex
+                      ? "bg-[var(--blue-25)]"
+                      : "hover:bg-[var(--blue-25)]",
+                    i > 0 && "border-t border-[var(--gray-100)]",
+                  )}
+                >
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleSelect(suggestion);
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  >
                       {/* eslint-disable-next-line @next/next/no-img-element -- receptfoto kan een externe/data-URL zijn */}
                       <img
                         src={suggestion.recipe.photoUrl || "/images/ui/recept_320.webp"}
@@ -300,7 +319,7 @@ function LargeScreenAutocomplete({
                         aria-hidden
                         decoding="async"
                       />
-                      <span className="flex min-w-0 flex-col">
+                      <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate text-sm font-medium leading-20 text-[var(--text-primary)]">
                           {suggestion.recipe.name}
                         </span>
@@ -308,9 +327,24 @@ function LargeScreenAutocomplete({
                           Recept · {suggestion.recipe.ingredients.length} ingrediënten
                         </span>
                       </span>
-                    </>
-                  )}
-                </button>
+                  </button>
+                      {onSelectRecipeFromFreezer ? (
+                        <button
+                          type="button"
+                          aria-label={`${suggestion.recipe.name} toevoegen als diepvriesgerecht`}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onSelectRecipeFromFreezer(suggestion.recipe);
+                            setOpen(false);
+                          }}
+                          className="flex size-8 shrink-0 items-center justify-center rounded-pill text-[var(--blue-500)] transition-[color,background-color,transform] duration-fast ease-out-strong hover:bg-[var(--blue-25)] motion-safe:active:scale-90"
+                        >
+                          <FreezeMaskIcon />
+                        </button>
+                      ) : null}
+                </div>
+                )}
               </li>
             ))}
           </ul>,
@@ -359,6 +393,7 @@ function SmallScreenAutocomplete({
   suggestionScope = "all",
   onSelectItem,
   onSelectRecipe,
+  onSelectRecipeFromFreezer,
 }: ItemNameAutocompleteProps) {
   const [slideInOpen, setSlideInOpen] = React.useState(false);
   const getItemPhotoUrl = useItemPhotoUrl();
@@ -424,6 +459,7 @@ function SmallScreenAutocomplete({
         recipes={recipes}
         suggestionScope={suggestionScope}
         onSelectRecipe={onSelectRecipe}
+        onSelectRecipeFromFreezer={onSelectRecipeFromFreezer}
       />
     </div>
   );

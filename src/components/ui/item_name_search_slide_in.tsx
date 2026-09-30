@@ -17,6 +17,7 @@ import {
 import type { SavedRecipe } from "@/lib/recipe_library";
 import { matchRecipesForAutocomplete } from "@/lib/recipe-search";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
+import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 import { SearchIcon } from "@/components/ui/search_bar";
 
 /** Max treffers in slide-in; synoniemen kunnen de lijst verlengen. */
@@ -112,6 +113,8 @@ export type ItemNameSearchSlideInProps = {
   suggestionScope?: "items" | "recipes" | "all";
   /** Wordt aangeroepen wanneer een receptresultaat wordt gekozen. */
   onSelectRecipe?: (recipe: SavedRecipe) => void;
+  /** Wordt aangeroepen wanneer het sneeuwvlok-icoon bij een recept wordt gekozen. */
+  onSelectRecipeFromFreezer?: (recipe: SavedRecipe) => void;
 };
 
 export function ItemNameSearchSlideIn({
@@ -125,6 +128,7 @@ export function ItemNameSearchSlideIn({
   recipes = [],
   suggestionScope = "all",
   onSelectRecipe,
+  onSelectRecipeFromFreezer,
 }: ItemNameSearchSlideInProps) {
   const itemSlugs = useItemSlugs();
   const itemSynonyms = useItemSynonyms();
@@ -233,6 +237,14 @@ export function ItemNameSearchSlideIn({
       onClose();
     },
     [onClose, onSelectRecipe],
+  );
+
+  const handleSelectRecipeFromFreezer = React.useCallback(
+    (recipe: SavedRecipe) => {
+      onSelectRecipeFromFreezer?.(recipe);
+      onClose();
+    },
+    [onClose, onSelectRecipeFromFreezer],
   );
 
   if (!mounted || !domVisible) return null;
@@ -362,30 +374,42 @@ export function ItemNameSearchSlideIn({
           ) : null}
           {recipeSuggestions.map((recipe) => (
             <li key={`recipe-${recipe.id}`} role="option" aria-selected={false}>
-              <button
-                type="button"
-                onClick={() => handleSelectRecipe(recipe)}
-                className="flex w-full items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- receptfoto kan een externe/data-URL zijn */}
-                <img
-                  src={recipe.photoUrl || "/images/ui/recept_320.webp"}
-                  alt=""
-                  width={32}
-                  height={32}
-                  className="size-8 shrink-0 rounded-[4px] object-cover"
-                  aria-hidden
-                  decoding="async"
-                />
-                <span className="flex min-w-0 flex-col">
-                  <span className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
-                    {recipe.name}
+              <div className="flex w-full items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSelectRecipe(recipe)}
+                  className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- receptfoto kan een externe/data-URL zijn */}
+                  <img
+                    src={recipe.photoUrl || "/images/ui/recept_320.webp"}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="size-8 shrink-0 rounded-[4px] object-cover"
+                    aria-hidden
+                    decoding="async"
+                  />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
+                      {recipe.name}
+                    </span>
+                    <span className="truncate text-sm leading-5 text-[var(--text-tertiary)]">
+                      Recept · {recipe.ingredients.length} ingrediënten
+                    </span>
                   </span>
-                  <span className="truncate text-sm leading-5 text-[var(--text-tertiary)]">
-                    Recept · {recipe.ingredients.length} ingrediënten
-                  </span>
-                </span>
-              </button>
+                </button>
+                {onSelectRecipeFromFreezer ? (
+                  <button
+                    type="button"
+                    aria-label={`${recipe.name} toevoegen als diepvriesgerecht`}
+                    onClick={() => handleSelectRecipeFromFreezer(recipe)}
+                    className="flex size-11 shrink-0 items-center justify-center rounded-pill text-[var(--blue-500)] transition-[color,background-color,transform] duration-fast ease-out-strong hover:bg-[var(--blue-25)] motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  >
+                    <FreezeMaskIcon />
+                  </button>
+                ) : null}
+              </div>
               <div className="h-px w-full bg-[var(--border-subtle)]" aria-hidden />
             </li>
           ))}

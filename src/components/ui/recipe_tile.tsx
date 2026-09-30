@@ -3,13 +3,14 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
+import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 
 export type RecipeTileState = "default" | "bare" | "editable" | "disabled";
 export type RecipeTileSize = "default";
 
 /**
  * Recipe tile (Figma 520:2469).
- * - **default**: witte kaart + schaduw, tekst + potlood (indien `onEdit`).
+ * - **default**: witte kaart + schaduw, tekst + potlood (`onEdit`) of sneeuwvlok (`onAddFromFreezer`).
  * - **bare**: zelfde kaart + schaduw, alleen tekst (geen acties).
  * - **editable**: kaart + schaduw, volgorde-greep | scheiding | tekst + potlood | scheiding | prullenbak.
  * - **disabled**: primary/25 achtergrond, gedempte tekst, geen acties.
@@ -23,6 +24,11 @@ export interface RecipeTileProps
   asChild?: boolean;
   children?: React.ReactNode;
   onEdit?: () => void;
+  /**
+   * Voegt het recept toe als diepvriesgerecht (geen ingrediënten).
+   * Vervangt het potlood in `state="default"` wanneer gezet.
+   */
+  onAddFromFreezer?: () => void;
   /** Alleen `state="editable"`: verwijderactie. */
   onDelete?: () => void;
   /** Alleen `state="editable"`: dnd-kit `listeners` + `attributes` op de volgorde-knop. */
@@ -175,6 +181,23 @@ function PencilButton({ onEdit }: { onEdit: () => void }) {
   );
 }
 
+function FreezeButton({ onAddFromFreezer }: { onAddFromFreezer: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label="Toevoegen als diepvriesgerecht"
+      onClick={(e) => {
+        e.stopPropagation();
+        onAddFromFreezer();
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-action-primary transition-[color,background-color,transform] duration-fast ease-out-strong hover:bg-action-ghost-hover motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+    >
+      <FreezeMaskIcon />
+    </button>
+  );
+}
+
 const RecipeTile = React.forwardRef<HTMLDivElement, RecipeTileProps>(
   (
     {
@@ -186,6 +209,7 @@ const RecipeTile = React.forwardRef<HTMLDivElement, RecipeTileProps>(
       asChild = false,
       children,
       onEdit,
+      onAddFromFreezer,
       onDelete,
       dragHandleProps,
       photoUrl,
@@ -256,7 +280,11 @@ const RecipeTile = React.forwardRef<HTMLDivElement, RecipeTileProps>(
           <>
             {photoSlot}
             {textBlock}
-            {onEdit != null ? <PencilButton onEdit={onEdit} /> : null}
+            {onAddFromFreezer != null ? (
+              <FreezeButton onAddFromFreezer={onAddFromFreezer} />
+            ) : onEdit != null ? (
+              <PencilButton onEdit={onEdit} />
+            ) : null}
           </>
         ) : null}
 
