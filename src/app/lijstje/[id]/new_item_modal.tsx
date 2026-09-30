@@ -115,6 +115,20 @@ function createBatchId(prefix: "item" | "recipe"): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function isSideDishRecipe(recipe: SavedRecipe): boolean {
+  return recipe.category === "bijgerecht";
+}
+
+/** Bijgerechten blijven in de add-sheet zodat je erna nog items (bv. vlees) kunt kiezen. */
+function shouldQueueRecipeInBatch(
+  recipe: SavedRecipe,
+  batchMode: boolean,
+  hasBatchEntries: boolean,
+): boolean {
+  if (!batchMode) return false;
+  return hasBatchEntries || isSideDishRecipe(recipe);
+}
+
 function BatchTrashIcon() {
   return (
     <span
@@ -559,6 +573,27 @@ export function NewItemModal({
     closeRecipeFormPanel();
   };
 
+  const enqueueRecipeInBatch = React.useCallback(
+    (recipe: SavedRecipe, items: ListItem[]) => {
+      const entryId = createBatchId("recipe");
+      setBatchEntries((previous) => [
+        ...previous,
+        {
+          id: entryId,
+          kind: "recipe",
+          recipeName: recipe.name.trim(),
+          photoUrl: recipe.photoUrl ?? undefined,
+          items,
+        },
+      ]);
+      resetActiveBatchItem();
+      if (isSideDishRecipe(recipe)) {
+        setSourceFilter("items");
+      }
+    },
+    [resetActiveBatchItem],
+  );
+
   const handleSelectRecipe = React.useCallback(
     (recipe: SavedRecipe) => {
       const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
@@ -576,19 +611,8 @@ export function NewItemModal({
         recipeName: recipe.name.trim(),
         recipeLink: link.length > 0 ? link : undefined,
       }));
-      if (batchMode && batchEntries.length > 0) {
-        const entryId = createBatchId("recipe");
-        setBatchEntries((previous) => [
-          ...previous,
-          {
-            id: entryId,
-            kind: "recipe",
-            recipeName: recipe.name.trim(),
-            photoUrl: recipe.photoUrl ?? undefined,
-            items: newItems,
-          },
-        ]);
-        resetActiveBatchItem();
+      if (shouldQueueRecipeInBatch(recipe, batchMode, batchEntries.length > 0)) {
+        enqueueRecipeInBatch(recipe, newItems);
         return;
       }
       onApplyRecipeToList(newItems);
@@ -596,8 +620,8 @@ export function NewItemModal({
     [
       batchEntries.length,
       batchMode,
+      enqueueRecipeInBatch,
       onApplyRecipeToList,
-      resetActiveBatchItem,
       selectedDay,
     ],
   );
@@ -622,19 +646,8 @@ export function NewItemModal({
         fromStock: true,
         stockPhotoUrl: recipe.photoUrl ?? undefined,
       };
-      if (batchMode && batchEntries.length > 0) {
-        const entryId = createBatchId("recipe");
-        setBatchEntries((previous) => [
-          ...previous,
-          {
-            id: entryId,
-            kind: "recipe",
-            recipeName: recipe.name.trim(),
-            photoUrl: recipe.photoUrl ?? undefined,
-            items: [freezerItem],
-          },
-        ]);
-        resetActiveBatchItem();
+      if (shouldQueueRecipeInBatch(recipe, batchMode, batchEntries.length > 0)) {
+        enqueueRecipeInBatch(recipe, [freezerItem]);
         return;
       }
       onApplyRecipeToList([freezerItem]);
@@ -642,8 +655,8 @@ export function NewItemModal({
     [
       batchEntries.length,
       batchMode,
+      enqueueRecipeInBatch,
       onApplyRecipeToList,
-      resetActiveBatchItem,
       selectedDay,
     ],
   );
