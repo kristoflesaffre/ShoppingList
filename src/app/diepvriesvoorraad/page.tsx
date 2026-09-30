@@ -568,7 +568,7 @@ export default function DiepvriesvoorraadPage() {
             "pt-[calc(64px+32px+env(safe-area-inset-top,0px))]",
           )}
         >
-        <div className="flex w-full max-w-[956px] flex-col gap-6">
+        <div className="flex w-full max-w-[956px] flex-col gap-6 motion-safe:animate-fade-up">
           {/* Figma 1178:8410 / 1176:7892 — vaste rijhoogte (h-9) links/rechts voorkomt layoutverspringing bij edit. */}
           <div className="flex min-h-9 w-full min-w-0 items-center justify-between gap-4">
             <div className="flex min-h-9 min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -618,7 +618,7 @@ export default function DiepvriesvoorraadPage() {
                     aria-pressed={viewMode === "list"}
                     onClick={() => setViewMode("list")}
                     className={cn(
-                      "flex h-full w-9 items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      "flex h-full w-9 items-center justify-center transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
                       viewMode === "list"
                         ? "bg-[var(--blue-25)]"
                         : "bg-[var(--white)]",
@@ -639,7 +639,7 @@ export default function DiepvriesvoorraadPage() {
                     aria-pressed={viewMode === "grid"}
                     onClick={() => setViewMode("grid")}
                     className={cn(
-                      "flex h-full w-9 items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      "flex h-full w-9 items-center justify-center transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
                       viewMode === "grid"
                         ? "bg-[var(--blue-25)]"
                         : "bg-[var(--white)]",
@@ -686,14 +686,14 @@ export default function DiepvriesvoorraadPage() {
         </div>
       ) : (
         /* ── Empty state ──────────────────────────────────────────────────── */
-        <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-[env(safe-area-inset-bottom,0px)] pt-[calc(64px+env(safe-area-inset-top,0px))]">
+        <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-[env(safe-area-inset-bottom,0px)] pt-[calc(64px+env(safe-area-inset-top,0px))] motion-safe:animate-fade-up">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/images/ui/empty_state_diepvries.png"
             alt=""
             width={96}
             height={96}
-            className="size-24 object-contain"
+            className="size-24 object-contain motion-safe:animate-float"
           />
           <p className="text-center text-base font-medium leading-6 text-[var(--text-tertiary)]">
             Je hebt geen items in je diepvriesvoorraad
@@ -710,7 +710,7 @@ export default function DiepvriesvoorraadPage() {
           type="button"
           aria-label="Item toevoegen"
           onClick={() => openAddModal("first")}
-          className="fixed z-20 flex size-14 shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          className="fixed z-20 flex size-14 shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           style={{
             bottom: "calc(45px + env(safe-area-inset-bottom, 0px))",
             // 24px from the right edge of the max-w-[956px] content column

@@ -61,7 +61,7 @@ const FloatingActionButton = React.forwardRef<
     const Comp = asChild ? Slot : "button";
 
     const base =
-      "inline-flex items-center justify-center rounded-full transition-[background-color,box-shadow,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none [&_svg]:shrink-0 motion-safe:active:scale-95";
+      "inline-flex items-center justify-center rounded-full transition-[background-color,box-shadow,transform] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none [&_svg]:shrink-0 motion-safe:active:scale-90 group/fab";
 
     const sizeStyles: Record<FloatingActionButtonSize, string> = {
       default: "p-4",
@@ -84,7 +84,9 @@ const FloatingActionButton = React.forwardRef<
           }
         : {};
 
-    const content = <PlusIcon className="size-6" />;
+    const content = (
+      <PlusIcon className="size-6 motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:group-active/fab:rotate-90" />
+    );
 
     return (
       <Comp

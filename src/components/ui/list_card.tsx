@@ -259,6 +259,9 @@ const ListCard = React.forwardRef<HTMLDivElement, ListCardProps>(
       useFigma9010Tile
         ? containerBaseFigma9010
         : cn(containerBaseCompact, sizeStyles[size]),
+      /* Press-feedback: alleen op navigeerbare (niet-bewerkbare) tegels */
+      useFigma9010Tile &&
+        "motion-safe:transition-[transform,box-shadow] motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.98]",
       className,
     );
 

@@ -34,7 +34,9 @@ export interface SlideInModalProps {
   bodyClassName?: string;
 }
 
-const SLIDE_DURATION_MS = 500;
+/** Enter: drawer-curve (Emil: 380ms, snel decelererend). Exit is korter — de gebruiker wil weg. */
+const SLIDE_IN_MS = 380;
+const SLIDE_OUT_MS = 260;
 
 /** Close icon – public/icons/cross.svg, 24×24, currentColor. */
 function CloseIcon({ className }: { className?: string }) {
@@ -114,7 +116,7 @@ export function SlideInModal({
     setIsClosing(true);
     const t = setTimeout(() => {
       onClose();
-    }, SLIDE_DURATION_MS);
+    }, SLIDE_OUT_MS);
     return () => clearTimeout(t);
   }, [onClose, isClosing]);
 
@@ -141,22 +143,22 @@ export function SlideInModal({
         type="button"
         onClick={handleClose}
         className={cn(
-          "absolute inset-0 bg-black/50 transition-opacity duration-500",
+          "absolute inset-0 bg-black/50 motion-safe:backdrop-blur-[2px] transition-[opacity,backdrop-filter] ease-out",
           isAnimatingIn && !isClosing ? "opacity-100" : "opacity-0"
         )}
+        style={{ transitionDuration: `${isClosing ? SLIDE_OUT_MS : SLIDE_IN_MS}ms` }}
         aria-label="Sluiten"
       />
 
       {/* Panel: hoogte tot inhoud, max. viewport minus 48px; body scrollt bij overflow */}
       <div
         className={cn(
-          "relative z-10 flex max-h-[calc(100dvh-48px)] w-full max-w-[956px] flex-col overflow-hidden rounded-t-[var(--radius-md)] bg-[var(--white)] shadow-[0px_1px_4px_0px_rgba(0,0,0,0.13)] transition-transform duration-500 ease-out",
+          "relative z-10 flex max-h-[calc(100dvh-48px)] w-full max-w-[956px] flex-col overflow-hidden rounded-t-[var(--radius-lg)] bg-[var(--white)] shadow-raised transition-transform will-change-transform",
           isAnimatingIn && !isClosing ? "translate-y-0" : "translate-y-full",
+          isClosing ? "ease-in-out-strong" : "ease-drawer",
           className
         )}
-        style={{
-          transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
-        }}
+        style={{ transitionDuration: `${isClosing ? SLIDE_OUT_MS : SLIDE_IN_MS}ms` }}
       >
         <SlideInModalHeader
           title={title}
@@ -176,10 +178,13 @@ export function SlideInModal({
             bodyClassName,
           )}
         >
+          {/* Inhoud komt iets ná het paneel binnen (gestaggerd) — geeft diepte zonder te vertragen */}
           {bodyFullWidth ? (
-            <div className="w-full min-w-0 [&>*]:w-full">{children}</div>
+            <div className="w-full min-w-0 motion-safe:animate-fade-up motion-safe:[animation-delay:90ms] [&>*]:w-full">
+              {children}
+            </div>
           ) : (
-            <div className="mx-auto w-full max-w-[768px] [&>*]:w-full">
+            <div className="mx-auto w-full max-w-[768px] motion-safe:animate-fade-up motion-safe:[animation-delay:90ms] [&>*]:w-full">
               {children}
             </div>
           )}

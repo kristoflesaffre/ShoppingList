@@ -40,7 +40,7 @@ const ToggleButton = React.forwardRef<HTMLButtonElement, ToggleButtonProps>(
     const Comp = asChild ? Slot : "button";
 
     const base =
-      "inline-flex items-center justify-center text-sm leading-20 tracking-normal whitespace-nowrap rounded-md transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 [&_svg]:shrink-0";
+      "inline-flex items-center justify-center text-sm leading-20 tracking-normal whitespace-nowrap rounded-md transition-[color,background-color,box-shadow,transform] duration-base ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 [&_svg]:shrink-0";
 
     const sizeStyles: Record<ToggleButtonSize, string> = {
       default: "py-2 px-3",

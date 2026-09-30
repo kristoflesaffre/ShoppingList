@@ -47,7 +47,7 @@ const RadioButton = React.forwardRef<HTMLButtonElement, RadioButtonProps>(
     const isSlot = asChild;
 
     const baseStyles =
-      "inline-flex shrink-0 items-center justify-center rounded-full border border-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
+      "inline-flex shrink-0 items-center justify-center rounded-full border border-1 transition-[border-color,background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
 
     const sizeStyles: Record<RadioButtonSize, string> = {
       default: "size-6",
@@ -85,7 +85,7 @@ const RadioButton = React.forwardRef<HTMLButtonElement, RadioButtonProps>(
           children ?? (
             <span
               className={cn(
-                "size-4 rounded-full border border-1",
+                "size-4 rounded-full border border-1 motion-safe:animate-pop",
                 isDisabled
                   ? "border-blue-100 bg-blue-200"
                   : "border-blue-100 bg-action-primary",

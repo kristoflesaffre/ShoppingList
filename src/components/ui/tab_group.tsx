@@ -86,7 +86,7 @@ export function TabGroup({
           aria-hidden
           className={cn(
             "pointer-events-none absolute bottom-0 z-[1] h-[2px] bg-[var(--blue-500)]",
-            "transition-[left,width] duration-200 ease-out motion-reduce:transition-none",
+            "transition-[left,width] duration-base ease-in-out-strong motion-reduce:transition-none",
           )}
           style={{
             left: indicator.width > 0 ? indicator.left : 0,

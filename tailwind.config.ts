@@ -163,6 +163,18 @@ const config: Config = {
         fab: "var(--shadow-fab)",
         nav: "var(--shadow-nav)",
       },
+      transitionTimingFunction: {
+        "out-strong": "var(--ease-out-strong)",
+        "in-out-strong": "var(--ease-in-out-strong)",
+        drawer: "var(--ease-drawer)",
+        spring: "var(--ease-spring)",
+      },
+      transitionDuration: {
+        fast: "var(--dur-fast)",
+        base: "var(--dur-base)",
+        slow: "var(--dur-slow)",
+        drawer: "var(--dur-drawer)",
+      },
       keyframes: {
         "edit-button-scale": {
           "0%": { transform: "scale(0.95)" },
@@ -173,10 +185,52 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(6px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        /* Enter van content/kaarten: kort omhoog + fade (stagger via animation-delay) */
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        /* Feedback-pop bij afvinken / toevoegen: nooit vanuit scale(0) */
+        pop: {
+          "0%": { transform: "scale(0.9)" },
+          "55%": { transform: "scale(1.08)" },
+          "100%": { transform: "scale(1)" },
+        },
+        /* Vinkje “tekent” zichzelf (pathLength 1 → dasharray 1) */
+        "check-draw": {
+          "0%": { strokeDashoffset: "1" },
+          "100%": { strokeDashoffset: "0" },
+        },
+        /* Zwevende actie / snackbar komt van beneden in */
+        "rise-in": {
+          "0%": { opacity: "0", transform: "translateY(16px) scale(0.96)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        /* Illustraties in empty states: trage, subtiele zweving */
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-4px)" },
+        },
+        /* Afgewezen invoer: korte jitter, daarna rust (Emil: zelden, mag iets speelser) */
+        shake: {
+          "0%, 100%": { transform: "translateX(0)" },
+          "20%": { transform: "translateX(-5px)" },
+          "40%": { transform: "translateX(5px)" },
+          "60%": { transform: "translateX(-3px)" },
+          "80%": { transform: "translateX(3px)" },
+        },
       },
       animation: {
         "edit-button-scale": "edit-button-scale 0.25s ease-out forwards",
         "fade-slide-in": "fade-slide-in 0.2s ease-out both",
+        /* `backwards`: startframe wordt vóór de (delay-)start getoond, maar na afloop laat de
+           animatie de eigenschappen los — zodat `active:scale-*`-transitions daarna weer werken. */
+        "fade-up": "fade-up var(--dur-slow) var(--ease-out-strong) backwards",
+        pop: "pop 220ms var(--ease-spring) backwards",
+        "check-draw": "check-draw 180ms var(--ease-out-strong) both",
+        "rise-in": "rise-in var(--dur-slow) var(--ease-out-strong) backwards",
+        float: "float 4s ease-in-out infinite",
+        shake: "shake 320ms var(--ease-out-strong)",
       },
     },
   },

@@ -32,7 +32,7 @@ export function HomeOnboardingEmptyCard({
       alt={illustrationAlt}
       width={72}
       height={72}
-      className="size-[72px] shrink-0 object-cover opacity-70"
+      className="size-[72px] shrink-0 object-cover opacity-70 motion-safe:animate-float"
     />
   );
 

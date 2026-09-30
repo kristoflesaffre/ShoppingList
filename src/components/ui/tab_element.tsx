@@ -98,7 +98,7 @@ export const TabElement = React.forwardRef<HTMLButtonElement, TabElementProps>(
         data-selected={selected ? "true" : "false"}
         data-size={size}
         className={cn(
-          "flex min-w-0 shrink-0 flex-col items-stretch gap-[var(--space-2)] bg-transparent p-0 text-left transition-colors",
+          "flex min-w-0 shrink-0 flex-col items-stretch gap-[var(--space-2)] bg-transparent p-0 text-left transition-[color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
           "disabled:pointer-events-none disabled:opacity-50",
           sizeStyles[size],

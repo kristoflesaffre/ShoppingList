@@ -156,4 +156,22 @@
 
   /* Letter spacing voor grote titels (Inter ≥ 18px leest strakker met licht negatieve tracking) */
   --tracking-tight: -0.01em;
+
+  /* ========== MOTION ========== */
+  /*
+   * Eén motion-taal voor de hele app.
+   * - ease-out-strong: enter / feedback (start snel, voelt direct)
+   * - ease-in-out-strong: verplaatsing op het scherm (indicator, thumb)
+   * - ease-drawer: iOS-achtige curve voor slide-in panelen (Ionic)
+   * - ease-spring: lichte overshoot voor “pop” bij afvinken / toevoegen
+   * Duraties: UI-animaties blijven onder 300ms; panelen tot 400ms.
+   */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 300ms;
+  --dur-drawer: 380ms;
 }

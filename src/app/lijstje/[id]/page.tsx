@@ -717,7 +717,7 @@ function SortableItemItems({
                       : section.title,
                   )
                 }
-                className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
               >
                 <PlusCircleMaskIcon />
               </button>
@@ -879,7 +879,7 @@ function FrituurListItems({
                 type="button"
                 aria-label={`Item toevoegen aan ${section.title}`}
                 onClick={() => onAddToSection(section.title)}
-                className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
               >
                 <PlusCircleMaskIcon />
               </button>
@@ -985,7 +985,7 @@ function FrituurListItemRow({
       <button
         type="button"
         onClick={() => onEdit(item)}
-        className="flex min-h-[64px] w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        className="flex min-h-[64px] w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3 text-left transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
         {rowContent}
       </button>
@@ -1045,7 +1045,7 @@ function CafeListAddItemRow({
         type="button"
         onClick={onAdd}
         aria-label={`Item toevoegen aan ${roundTitle}`}
-        className="flex w-full min-w-0 flex-col items-center justify-center gap-2 rounded-lg bg-[var(--white)] shadow-card p-3 text-center transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        className="flex w-full min-w-0 flex-col items-center justify-center gap-2 rounded-lg bg-[var(--white)] shadow-card p-3 text-center transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
         <span className="relative size-16 shrink-0 overflow-hidden rounded-md bg-[var(--gray-50)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1072,7 +1072,7 @@ function CafeListAddItemRow({
       type="button"
       onClick={onAdd}
       aria-label={`Item toevoegen aan ${roundTitle}`}
-      className="flex min-h-[64px] w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      className="flex min-h-[64px] w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3 text-left transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
     >
       <span className="relative size-10 shrink-0 overflow-hidden rounded-md bg-[var(--gray-50)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -5311,7 +5311,7 @@ export default function ListDetailPage({
         className={mainSurfaceClassName}
       >
         {/* Geen extra gradient: zelfde principe als gewone lijstdetail — alleen body::before (globals.css). */}
-        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4">
+        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4 motion-safe:animate-fade-up">
           {showListDetailHeader && !isMasterCategoryOrderMode ? (
             <div className="flex flex-col gap-3">
               <div className="flex items-start gap-3">
@@ -5439,7 +5439,7 @@ export default function ListDetailPage({
                     aria-pressed={listLayoutMode === "list"}
                     onClick={() => setListLayoutMode("list")}
                     className={cn(
-                      "flex w-9 items-center justify-center p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      "flex w-9 items-center justify-center p-1 transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
                       /* Figma 1323:23881 — actieve weergave op primary-25 */
                       listLayoutMode === "list"
                         ? "bg-[var(--blue-25)]"
@@ -5459,7 +5459,7 @@ export default function ListDetailPage({
                     aria-pressed={listLayoutMode === "grid"}
                     onClick={() => setListLayoutMode("grid")}
                     className={cn(
-                      "flex w-9 items-center justify-center p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      "flex w-9 items-center justify-center p-1 transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
                       listLayoutMode === "grid"
                         ? "bg-[var(--blue-25)]"
                         : "bg-[var(--white)]",

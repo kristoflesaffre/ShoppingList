@@ -88,7 +88,7 @@ function ClearButtonIcon() {
 
 /** Figma: border bd-1, gap 10px, h 48px, px sp-16, py 10px, rounded rd-8. Default/Focus: white bg. Default: border neutrals/200. Focus: border primary/500 only (no ring). Disabled: bg primary/25, border neutrals/200. */
 const containerBase =
-  "group flex h-12 w-full min-w-0 items-center gap-[10px] rounded-md border bg-[var(--white)] px-4 py-2.5 transition-[border-color] focus-within:border-[var(--blue-500)]";
+  "group flex h-12 w-full min-w-0 items-center gap-[10px] rounded-md border bg-[var(--white)] px-4 py-2.5 transition-[border-color,box-shadow] duration-fast ease-out-strong focus-within:border-[var(--blue-500)] focus-within:shadow-[0_0_0_3px_var(--blue-100)]";
 
 /** Figma: placeholder Inter Light, neutrals/300. Value/focus: Inter Regular, neutrals/900. Disabled: placeholder opacity 0. Hide native search clear so only our clear button shows. */
 const inputBase =
@@ -180,8 +180,8 @@ const SearchBar = React.forwardRef<HTMLDivElement, SearchBarProps>(
         </span>
         <span
           className={cn(
-            "flex size-6 shrink-0 items-center justify-center",
-            disabled ? "text-[var(--gray-300)]" : "text-[var(--blue-500)]"
+            "flex size-6 shrink-0 items-center justify-center motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong",
+            disabled ? "text-[var(--gray-300)]" : "text-[var(--blue-500)] group-focus-within:scale-110",
           )}
           aria-hidden="true"
         >

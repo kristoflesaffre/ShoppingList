@@ -49,7 +49,7 @@ const Snackbar = React.forwardRef<HTMLDivElement, SnackbarProps>(
     const isDisabled = state === "disabled";
 
     const containerClassName = cn(
-      "flex w-full max-w-[374px] items-center gap-3 rounded-md px-3 py-3 shadow-drop text-sm leading-20 tracking-normal",
+      "flex w-full max-w-[374px] items-center gap-3 rounded-md px-3 py-3 shadow-drop text-sm leading-20 tracking-normal motion-safe:animate-rise-in",
       isDisabled
         ? "bg-gray-400 text-text-inverse opacity-80 pointer-events-none"
         : "bg-blue-800 text-text-inverse",

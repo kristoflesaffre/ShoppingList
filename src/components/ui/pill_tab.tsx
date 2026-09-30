@@ -44,7 +44,7 @@ const containerBase =
 
 /** vaste min-h: actief (semibold) vs inactief (normal) mag de pill niet laten verspringen (Figma 903:6212). */
 const tabBase =
-  "flex min-h-[40px] flex-1 min-w-0 items-center justify-center text-base leading-[length:var(--leading-24)] tracking-normal whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
+  "flex min-h-[40px] flex-1 min-w-0 items-center justify-center text-base leading-[length:var(--leading-24)] tracking-normal whitespace-nowrap transition-[color,background-color,box-shadow,transform] duration-base ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
 
 const sizeStyles: Record<PillTabSize, string> = {
   default: "px-4 py-2",
@@ -133,7 +133,7 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
         <div
           aria-hidden="true"
           className={cn(
-            "absolute inset-y-1 left-1 rounded-pill bg-[var(--white)] shadow-card motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out",
+            "absolute inset-y-1 left-1 rounded-pill bg-[var(--white)] shadow-card motion-safe:transition-transform motion-safe:duration-slow motion-safe:ease-in-out-strong",
             indicatorWidth,
             indicatorTranslate,
           )}

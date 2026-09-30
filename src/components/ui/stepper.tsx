@@ -162,12 +162,32 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
       }
     };
 
+    /** Korte "pop" op het getal na +/−, zodat de wijziging voelbaar is. */
+    const [bump, setBump] = React.useState(false);
+    const bumpTimerRef = React.useRef<number | null>(null);
+    const triggerBump = React.useCallback(() => {
+      if (bumpTimerRef.current != null) window.clearTimeout(bumpTimerRef.current);
+      setBump(false);
+      // Volgende frame opnieuw aanzetten zodat de keyframe-animatie herstart.
+      window.requestAnimationFrame(() => {
+        setBump(true);
+        bumpTimerRef.current = window.setTimeout(() => setBump(false), 240);
+      });
+    }, []);
+    React.useEffect(
+      () => () => {
+        if (bumpTimerRef.current != null) window.clearTimeout(bumpTimerRef.current);
+      },
+      [],
+    );
+
     const handleDecrement = (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       if (disabled || atMin) return;
       const next = Math.max(min, value - 1);
       if (!isControlled) setUncontrolledValue(next);
       onValueChange?.(next);
+      triggerBump();
     };
 
     const handleIncrement = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -176,7 +196,11 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
       const next = max !== undefined ? Math.min(max, value + 1) : value + 1;
       if (!isControlled) setUncontrolledValue(next);
       onValueChange?.(next);
+      triggerBump();
     };
+
+    const stepButtonBase =
+      "inline-flex size-6 shrink-0 items-center justify-center rounded bg-transparent transition-[color,transform] duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-1 disabled:pointer-events-none [&_svg]:shrink-0";
 
     const barClassName = cn(barBase, className);
     const barProps = {
@@ -198,7 +222,7 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
           disabled={disabled || atMin}
           aria-label="Decrease"
           className={cn(
-            "inline-flex size-6 shrink-0 items-center justify-center rounded bg-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-1 disabled:pointer-events-none [&_svg]:shrink-0",
+            stepButtonBase,
             disabled || atMin
               ? "text-[var(--gray-200)]"
               : "text-[var(--action-primary)] hover:text-[var(--action-primary-hover)]"
@@ -222,8 +246,10 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
           disabled={disabled}
+          data-bump={bump || undefined}
           className={cn(
-            "flex flex-1 min-w-0 w-full bg-transparent text-center text-base leading-24 tracking-normal text-[var(--text-primary)] outline-none placeholder:text-[var(--text-placeholder)] group-data-[disabled]:text-[var(--text-disabled)] disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            "flex flex-1 min-w-0 w-full bg-transparent text-center text-base leading-24 tracking-normal text-[var(--text-primary)] outline-none placeholder:text-[var(--text-placeholder)] group-data-[disabled]:text-[var(--text-disabled)] disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+            "motion-safe:data-[bump]:animate-pop",
           )}
         />
         <div
@@ -236,7 +262,7 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
           disabled={disabled || atMax}
           aria-label="Increase"
           className={cn(
-            "inline-flex size-6 shrink-0 items-center justify-center rounded bg-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-1 disabled:pointer-events-none [&_svg]:shrink-0",
+            stepButtonBase,
             disabled || atMax
               ? "text-[var(--gray-200)]"
               : "text-[var(--action-primary)] hover:text-[var(--action-primary-hover)]"

@@ -27,7 +27,7 @@ export interface InputFieldProps
 }
 
 const inputBase =
-  "flex h-12 w-full items-center rounded-md border bg-[var(--white)] px-4 text-base leading-24 tracking-normal text-[var(--text-primary)] transition-colors placeholder:text-[var(--text-placeholder)] focus-visible:outline-none disabled:pointer-events-none disabled:bg-[var(--blue-25)] disabled:text-[var(--text-disabled)]";
+  "flex h-12 w-full items-center rounded-md border bg-[var(--white)] px-4 text-base leading-24 tracking-normal text-[var(--text-primary)] transition-[border-color,box-shadow] duration-fast ease-out-strong placeholder:text-[var(--text-placeholder)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--blue-100)] disabled:pointer-events-none disabled:bg-[var(--blue-25)] disabled:text-[var(--text-disabled)]";
 
 const inputDefaultBorder =
   "border border-[var(--border-default)] focus-visible:border-[var(--border-focus)] disabled:border-[var(--border-subtle)]";

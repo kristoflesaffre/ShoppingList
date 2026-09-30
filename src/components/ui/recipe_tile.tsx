@@ -208,6 +208,9 @@ const RecipeTile = React.forwardRef<HTMLDivElement, RecipeTileProps>(
       isDisabled
         ? "gap-3 bg-[var(--blue-25)] py-[var(--space-3)] pl-[var(--space-4)] pr-[var(--space-3)] pointer-events-none"
         : "gap-3 bg-[var(--white)] py-[var(--space-3)] pl-[var(--space-4)] pr-[var(--space-3)] shadow-card",
+      !isDisabled &&
+        !isEditable &&
+        "motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.98]",
       className,
     );
 

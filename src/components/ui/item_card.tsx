@@ -234,11 +234,38 @@ function TrashIcon({ className }: { className?: string }) {
   );
 }
 
+/**
+ * Doorstreping die “getekend” wordt: lijn groeit van links (scaleX 0 → 1) i.p.v. een harde
+ * `line-through`. Kleurwissel van de tekst loopt mee via `transition-colors` op de parent.
+ * Bij `prefers-reduced-motion` verschijnt de lijn direct (transition uit), maar blijft zichtbaar.
+ */
+function StrikeText({
+  struck,
+  children,
+}: {
+  struck: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="relative inline">
+      {children}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-1/2 h-[1.5px] origin-left rounded-full bg-current",
+          "motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out-strong",
+          struck ? "scale-x-100" : "scale-x-0",
+        )}
+      />
+    </span>
+  );
+}
+
 /** Figma 508:1729: gap-12, pl-16 pr-12 py-12, rounded rd-8. Min-height keeps card height stable when checked (divider + claim hidden). */
 const containerBase =
   "flex w-full min-w-0 min-h-[68px] items-center gap-3 rounded-lg py-3 pl-4 pr-3";
 const gridTileThumbClass =
-  "relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-md)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover";
+  "relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-md)] transition-opacity duration-slow ease-out-strong [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover";
 const gridTileFallbackClass =
   "relative flex size-16 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--gray-25)] p-[10px]";
 
@@ -515,6 +542,10 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
           )
         : cn(
             containerBase,
+            /* Press-feedback op tikbare rijen/tegels (niet in bewerkmodus: daar wordt gesleept) */
+            !isEditable &&
+              !isGottenByOther &&
+              "motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.985]",
             gridDensity &&
               cn(
                 "!min-h-0 justify-center p-3",
@@ -558,21 +589,15 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       <>
         <span
           className={cn(
-            "truncate font-medium text-base leading-24 tracking-normal w-full",
-            isChecked && "line-through text-[var(--gray-400)]",
-            !isChecked && "text-[var(--text-primary)]",
+            "truncate font-medium text-base leading-24 tracking-normal w-full transition-colors duration-base",
+            isChecked ? "text-[var(--gray-400)]" : "text-[var(--text-primary)]",
           )}
         >
-          {itemName}
+          <StrikeText struck={isChecked}>{itemName}</StrikeText>
         </span>
         {quantity != null && (
-          <span
-            className={cn(
-              "font-normal text-sm leading-20 tracking-normal text-[var(--gray-400)] w-full",
-              isChecked && "line-through",
-            )}
-          >
-            {quantity}
+          <span className="font-normal text-sm leading-20 tracking-normal text-[var(--gray-400)] w-full">
+            <StrikeText struck={isChecked}>{quantity}</StrikeText>
           </span>
         )}
       </>
@@ -843,21 +868,15 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               <>
                 <span
                   className={cn(
-                    "w-full truncate text-base font-medium leading-24 tracking-normal",
-                    isChecked && "line-through text-[var(--gray-400)]",
-                    !isChecked && "text-[var(--text-primary)]",
+                    "w-full truncate text-base font-medium leading-24 tracking-normal transition-colors duration-base",
+                    isChecked ? "text-[var(--gray-400)]" : "text-[var(--text-primary)]",
                   )}
                 >
-                  {itemName}
+                  <StrikeText struck={isChecked}>{itemName}</StrikeText>
                 </span>
                 {quantity != null && (
-                  <span
-                    className={cn(
-                      "w-full text-sm font-normal leading-20 tracking-normal text-[var(--gray-400)]",
-                      isChecked && "line-through",
-                    )}
-                  >
-                    {quantity}
+                  <span className="w-full text-sm font-normal leading-20 tracking-normal text-[var(--gray-400)]">
+                    <StrikeText struck={isChecked}>{quantity}</StrikeText>
                   </span>
                 )}
               </>
@@ -952,7 +971,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
           {itemThumbnail != null && !isMasterLayout && !isAddedLayout ? (
             <div
               className={cn(
-                "relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover",
+                "relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] transition-opacity duration-slow ease-out-strong [&_img]:pointer-events-none [&_img]:size-full [&_img]:object-cover",
                 isChecked && "opacity-20",
               )}
             >

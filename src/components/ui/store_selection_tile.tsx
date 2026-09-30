@@ -64,7 +64,7 @@ const StoreSelectionTile = React.forwardRef<
         type={type}
         data-selected={selected || undefined}
         className={cn(
-          "relative flex w-[100px] shrink-0 flex-col items-center gap-[var(--space-2)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center transition-colors",
+          "relative flex w-[100px] shrink-0 flex-col items-center gap-[var(--space-2)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center transition-[border-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
           selected
             ? "border border-action-primary"
@@ -79,7 +79,11 @@ const StoreSelectionTile = React.forwardRef<
         <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
           {label}
         </p>
-        {selected ? <StoreSelectionCornerBadge /> : null}
+        {selected ? (
+          <span className="motion-safe:animate-pop">
+            <StoreSelectionCornerBadge />
+          </span>
+        ) : null}
       </button>
     );
   },

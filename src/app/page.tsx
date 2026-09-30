@@ -375,7 +375,7 @@ function HomeLoyaltyCardTile({ card, onClick }: { card: HomeLoyaltyCard; onClick
       onClick={onClick}
       className="block rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
     >
-      <div className="flex w-[120px] shrink-0 items-center rounded-lg bg-[var(--white)] p-3 shadow-card transition-[box-shadow,background-color] [@media(hover:hover)]:hover:bg-[var(--gray-25)] [@media(hover:hover)]:hover:shadow-raised">
+      <div className="flex w-[120px] shrink-0 items-center rounded-lg bg-[var(--white)] p-3 shadow-card transition-[box-shadow,background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] [@media(hover:hover)]:hover:bg-[var(--gray-25)] [@media(hover:hover)]:hover:shadow-raised">
         <div className="flex w-full flex-col gap-2">
           <div className="flex items-start">
             {/* winkellogo */}
@@ -556,7 +556,7 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
       href={href}
       className="block h-full rounded-lg no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
     >
-      <div className="flex h-full w-full items-center gap-3 rounded-lg bg-[var(--white)] px-3 py-3 shadow-card">
+      <div className="flex h-full w-full items-center gap-3 rounded-lg bg-[var(--white)] px-3 py-3 shadow-card motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.97]">
         {/* Datumwidget */}
         <div className="flex size-10 shrink-0 flex-col items-center justify-center gap-px rounded-[4px] bg-[var(--blue-25)] px-2 py-1">
           <p className="text-[8px] font-semibold leading-none text-[var(--blue-500)]">
@@ -834,7 +834,7 @@ function HomeTeKopenItemCard({ item }: { item: HomeShoppingItem }) {
     : null;
 
   return (
-    <div className="flex h-16 w-[170px] shrink-0 items-end gap-3 rounded-lg bg-[var(--white)] px-3 py-3 shadow-card">
+    <div className="flex h-16 w-[170px] shrink-0 items-end gap-3 rounded-lg bg-[var(--white)] px-3 py-3 shadow-card motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.97]">
       {photoSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={photoSrc} alt="" width={40} height={40} className="size-10 shrink-0 object-cover" aria-hidden />
@@ -891,7 +891,7 @@ function HomeTeKopenSection({
           <button
             type="button"
             onClick={onAddProduct}
-            className="flex h-12 w-full items-center gap-3 rounded-lg border border-dashed border-[var(--blue-200)] bg-[var(--blue-25)] p-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className="flex h-12 w-full items-center gap-3 rounded-lg border border-dashed border-[var(--blue-200)] bg-[var(--blue-25)] p-3 text-left transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -953,7 +953,7 @@ function HomeTeKopenSection({
           type="button"
           onClick={onAddProduct}
           aria-label="Product toevoegen"
-          className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-[var(--blue-200)] bg-[var(--blue-25)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-[var(--blue-200)] bg-[var(--blue-25)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-90 [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
           <PlusCircleMaskIcon />
         </button>
@@ -2573,6 +2573,70 @@ export default function Home() {
     router.push("/nieuw-lijstje/vakantie");
   }, [router]);
 
+  const renderHomeSection = (sectionId: HomeSectionId): React.ReactNode => {
+    const onHide = sectionId !== "lijstjes" ? () => hideSection(sectionId) : undefined;
+    switch (sectionId) {
+      case "lijstjes":
+        return (
+          <HomeLijstjesSection
+            normalLists={normalLists}
+            addingId={addingId}
+            addingIdExpanded={addingIdExpanded}
+            removingId={removingId}
+            onDelete={handleDeleteList}
+            onStartFromMaster={handleStartFromMaster}
+            onOpenCreateModal={handleOpenCreateModal}
+          />
+        );
+      case "te-kopen":
+        return (
+          <HomeTeKopenSection
+            shoppingItems={homeShoppingItems}
+            hasUsedBefore={hasUsedTeKopen}
+            onAddProduct={() => setTeKopenSlideOpen(true)}
+            onHide={onHide}
+          />
+        );
+      case "favorieten":
+        return (
+          <HomeFavorietenSection
+            masterLists={masterLists}
+            onStartFromMaster={handleStartFromMaster}
+            onOpenCreateModal={handleOpenCreateModal}
+            onHide={onHide}
+          />
+        );
+      case "kalender":
+        return (
+          <HomeKalenderSection
+            entries={homeCalendarEntries}
+            hasEverUsedCalendar={hasEverUsedCalendar}
+            onHide={onHide}
+          />
+        );
+      case "klantenkaarten":
+        return <HomeKlantenkaartSection cards={homeLoyaltyCards} onHide={onHide} />;
+      case "diepvries":
+        return (
+          <HomeDiepvriesSection
+            itemCount={homeFreezerItems.length}
+            previewItems={homeFreezerItems.slice(0, 5).map((it) => ({
+              id: it.id,
+              name: it.name,
+              type: it.type,
+              recipePhotoUrl: it.recipePhotoUrl,
+              packages: it.packages,
+            }))}
+            onHide={onHide}
+          />
+        );
+      case "films-series":
+        return <HomeFilmsSeriesSection onHide={onHide} />;
+      default:
+        return null;
+    }
+  };
+
   if (authLoading || !user || isLoading) {
     return <PageSpinner />;
   }
@@ -2591,87 +2655,31 @@ export default function Home() {
     <div className={cn("relative flex min-h-dvh w-full flex-col px-[var(--space-4)]", !hasLists && "bg-gradient-to-b from-[#dcddfc] to-white")}>
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
-          <HomeHeader ownerId={ownerId} className="pt-[var(--space-6)]" />
-          <div className={cn("flex flex-col", !hasLists ? "gap-8 pt-8 pb-2" : "gap-10 pt-8")}>
-            {homeSectionConfig.order.map((sectionId) => {
-              if (homeSectionConfig.hidden.includes(sectionId)) return null;
-              const onHide = sectionId !== "lijstjes" ? () => hideSection(sectionId) : undefined;
-              switch (sectionId) {
-                case "lijstjes":
-                  return (
-                    <HomeLijstjesSection
-                      key="lijstjes"
-                      normalLists={normalLists}
-                      addingId={addingId}
-                      addingIdExpanded={addingIdExpanded}
-                      removingId={removingId}
-                      onDelete={handleDeleteList}
-                      onStartFromMaster={handleStartFromMaster}
-                      onOpenCreateModal={handleOpenCreateModal}
-                    />
-                  );
-                case "te-kopen":
-                  return (
-                    <HomeTeKopenSection
-                      key="te-kopen"
-                      shoppingItems={homeShoppingItems}
-                      hasUsedBefore={hasUsedTeKopen}
-                      onAddProduct={() => setTeKopenSlideOpen(true)}
-                      onHide={onHide}
-                    />
-                  );
-                case "favorieten":
-                  return (
-                    <HomeFavorietenSection
-                      key="favorieten"
-                      masterLists={masterLists}
-                      onStartFromMaster={handleStartFromMaster}
-                      onOpenCreateModal={handleOpenCreateModal}
-                      onHide={onHide}
-                    />
-                  );
-                case "kalender":
-                  return (
-                    <HomeKalenderSection
-                      key="kalender"
-                      entries={homeCalendarEntries}
-                      hasEverUsedCalendar={hasEverUsedCalendar}
-                      onHide={onHide}
-                    />
-                  );
-                case "klantenkaarten":
-                  return (
-                    <HomeKlantenkaartSection
-                      key="klantenkaarten"
-                      cards={homeLoyaltyCards}
-                      onHide={onHide}
-                    />
-                  );
-                case "diepvries":
-                  return (
-                    <HomeDiepvriesSection
-                      key="diepvries"
-                      itemCount={homeFreezerItems.length}
-                      previewItems={homeFreezerItems.slice(0, 5).map((it) => ({
-                        id: it.id,
-                        name: it.name,
-                        type: it.type,
-                        recipePhotoUrl: it.recipePhotoUrl,
-                        packages: it.packages,
-                      }))}
-                      onHide={onHide}
-                    />
-                  );
-                case "films-series":
-                  return (
-                    <HomeFilmsSeriesSection
-                      key="films-series"
-                      onHide={onHide}
-                    />
-                  );
-                default:
-                  return null;
-              }
+          <HomeHeader
+            ownerId={ownerId}
+            className="pt-[var(--space-6)] motion-safe:animate-fade-up"
+          />
+          {/* Secties komen gestaggerd binnen (60ms per sectie, max 4 stappen) — geeft ritme zonder te vertragen */}
+          <div
+            className={cn(
+              "flex flex-col",
+              !hasLists ? "gap-8 pt-8 pb-2" : "gap-10 pt-8",
+            )}
+          >
+            {homeSectionConfig.order
+              .filter((sectionId) => !homeSectionConfig.hidden.includes(sectionId))
+              .map((sectionId, index) => {
+              const section = renderHomeSection(sectionId);
+              if (section == null) return null;
+              return (
+                <div
+                  key={sectionId}
+                  className="motion-safe:animate-fade-up"
+                  style={{ animationDelay: `${Math.min(index + 1, 4) * 60}ms` }}
+                >
+                  {section}
+                </div>
+              );
             })}
           </div>
           <div className="mt-10 flex justify-center pb-4">
@@ -2824,7 +2832,7 @@ export default function Home() {
             type="button"
             onClick={handleBlankVenuePickSupermarkt}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -2847,7 +2855,7 @@ export default function Home() {
             type="button"
             onClick={handleBlankVenuePickFrituur}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -2870,7 +2878,7 @@ export default function Home() {
             type="button"
             onClick={handleBlankVenuePickCafe}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -2893,7 +2901,7 @@ export default function Home() {
             type="button"
             onClick={handleBlankVenuePickLandal}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -2916,7 +2924,7 @@ export default function Home() {
             type="button"
             onClick={handleBlankVenuePickVakantie}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -3003,7 +3011,7 @@ export default function Home() {
             type="button"
             onClick={() => handleLandalSubPick("Gezin")}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
@@ -3020,7 +3028,7 @@ export default function Home() {
             type="button"
             onClick={() => handleLandalSubPick("Vrienden")}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow]",
+              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
               "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}

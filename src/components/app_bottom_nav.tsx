@@ -187,9 +187,25 @@ function KaartenIcon({
   return <MaskNavIcon src="/icons/card.svg" className={className} />;
 }
 
+type AppBottomNavTab =
+  | "lijstjes"
+  | "recepten"
+  | "kalender"
+  | "klantenkaarten"
+  | "profiel";
+
+/** Kolomvolgorde in de nav — bepaalt de positie van de schuivende indicator. */
+const NAV_ORDER: readonly AppBottomNavTab[] = [
+  "lijstjes",
+  "klantenkaarten",
+  "kalender",
+  "recepten",
+  "profiel",
+];
+
 export interface AppBottomNavProps {
   /** Actieve tab – Figma 854:7039 */
-  active: "lijstjes" | "recepten" | "kalender" | "klantenkaarten" | "profiel";
+  active: AppBottomNavTab;
   /** Data-URL of URL voor profieltab; null = placeholder icoon */
   profileAvatarUrl: string | null;
   /**
@@ -211,7 +227,22 @@ export function AppBottomNav({
   const profileTabLabel = trimmedName.length > 0 ? trimmedName : "Profiel";
 
   const tabClass =
-    "flex w-[41px] shrink-0 flex-col items-center gap-1 rounded-md no-underline transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+    "relative z-[1] flex w-[41px] shrink-0 flex-col items-center gap-1 rounded-md no-underline transition-[color,transform] duration-base ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+
+  const activeIndex = NAV_ORDER.indexOf(active);
+
+  /* Icoon “popt” alleen bij een tabwissel, niet bij de eerste mount (Emil: geen animatie zonder aanleiding). */
+  const hasSwitchedRef = React.useRef(false);
+  const prevActiveRef = React.useRef(active);
+  if (prevActiveRef.current !== active) {
+    prevActiveRef.current = active;
+    hasSwitchedRef.current = true;
+  }
+  const iconWrapClass = (tab: AppBottomNavProps["active"]) =>
+    cn(
+      "flex size-6 items-center justify-center",
+      tab === active && hasSwitchedRef.current && "motion-safe:animate-pop",
+    );
 
   return (
     <div
@@ -221,9 +252,25 @@ export function AppBottomNav({
       )}
     >
       <nav
-        className="mx-auto grid min-h-[40px] w-full max-w-[390px] grid-cols-5 items-center px-2 py-1"
+        className="relative mx-auto grid min-h-[40px] w-full max-w-[390px] grid-cols-5 items-center px-2 py-1"
         aria-label="Hoofdnavigatie"
       >
+        {/* Schuivende actieve-indicator: zachte pill achter het icoon, glijdt tussen de 5 kolommen */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-2 right-2 grid grid-cols-5"
+        >
+          <span
+            className={cn(
+              "col-start-1 col-end-2 flex justify-center pt-0",
+              "motion-safe:transition-transform motion-safe:duration-slow motion-safe:ease-in-out-strong",
+            )}
+            style={{ transform: `translateX(${activeIndex * 100}%)` }}
+          >
+            <span className="mt-0 h-8 w-12 rounded-pill bg-[var(--blue-25)]" />
+          </span>
+        </span>
+
         <div className="flex justify-center">
           <Link
             href="/"
@@ -235,7 +282,9 @@ export function AppBottomNav({
                 : "text-[var(--gray-500)]",
             )}
           >
-            <ListIcon className="size-6" filled={active === "lijstjes"} />
+            <span className={iconWrapClass("lijstjes")}>
+              <ListIcon className="size-6" filled={active === "lijstjes"} />
+            </span>
             <span className="text-xs font-normal leading-4 tracking-normal">
               Lijstjes
             </span>
@@ -253,7 +302,9 @@ export function AppBottomNav({
                 : "text-[var(--gray-500)]",
             )}
           >
-            <KaartenIcon className="size-6" filled={active === "klantenkaarten"} />
+            <span className={iconWrapClass("klantenkaarten")}>
+              <KaartenIcon className="size-6" filled={active === "klantenkaarten"} />
+            </span>
             <span className="text-xs font-normal leading-4 tracking-normal">
               Kaarten
             </span>
@@ -271,7 +322,9 @@ export function AppBottomNav({
                 : "text-[var(--gray-500)]",
             )}
           >
-            <KalenderIcon className="size-6" filled={active === "kalender"} />
+            <span className={iconWrapClass("kalender")}>
+              <KalenderIcon className="size-6" filled={active === "kalender"} />
+            </span>
             <span className="text-xs font-normal leading-4 tracking-normal">
               Kalender
             </span>
@@ -289,10 +342,12 @@ export function AppBottomNav({
                 : "text-[var(--gray-500)]",
             )}
           >
-            <ReceptenIcon
-              className="size-6"
-              filled={active === "recepten"}
-            />
+            <span className={iconWrapClass("recepten")}>
+              <ReceptenIcon
+                className="size-6"
+                filled={active === "recepten"}
+              />
+            </span>
             <span className="text-xs font-normal leading-4 tracking-normal">
               Recepten
             </span>
@@ -307,7 +362,7 @@ export function AppBottomNav({
             }
             aria-current={active === "profiel" ? "page" : undefined}
             className={cn(
-              "flex min-w-[41px] max-w-[104px] shrink-0 flex-col items-center gap-1 no-underline",
+              "relative z-[1] flex min-w-[41px] max-w-[104px] shrink-0 flex-col items-center gap-1 no-underline transition-[color,transform] duration-base ease-out-strong motion-safe:active:scale-95",
               active === "profiel"
                 ? "text-[var(--blue-500)]"
                 : "text-[var(--gray-500)]",

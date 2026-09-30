@@ -122,6 +122,9 @@ function CardIcon({ className }: { className?: string }) {
 
 const loyaltyTileCardClass =
   "flex w-full min-w-0 flex-col rounded-lg bg-[var(--white)] p-3 text-center shadow-card";
+/** Press-feedback voor tikbare tegels (niet in bewerkmodus: daar schaalt de wrapper al via scaleY). */
+const loyaltyTilePressClass =
+  "motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.97]";
 
 /** Zachte ease-out; scaleY groeit naar beneden (origin-top). */
 const SCALE_MS = 560;
@@ -592,7 +595,7 @@ export default function KlantenKaartenPage() {
           "pb-[calc(100px+env(safe-area-inset-bottom,0px))]",
         )}
       >
-        <div className="mx-auto flex w-full min-w-0 max-w-[956px] flex-1 flex-col">
+        <div className="mx-auto flex w-full min-w-0 max-w-[956px] flex-1 flex-col motion-safe:animate-fade-up">
           {!empty ? (
             <div className="mb-0 flex shrink-0 flex-col gap-6">
               {/* Figma 1096:6757 — titel + potlood (sp-8); 1096:7436 — titel + Gereed met vinkje (sp-16) */}

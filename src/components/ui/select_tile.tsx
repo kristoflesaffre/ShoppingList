@@ -81,7 +81,7 @@ const SelectTile = React.forwardRef<HTMLDivElement, SelectTileProps>(
       "flex w-full min-w-0 items-center gap-3 rounded-md py-3 pl-4 pr-3 tracking-normal",
       isDisabled
         ? "bg-blue-25 pointer-events-none shadow-none"
-        : "bg-background-elevated shadow-drop",
+        : "bg-background-elevated shadow-drop motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.98]",
       className,
     );
 

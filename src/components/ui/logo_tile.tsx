@@ -50,7 +50,7 @@ const LogoTile = React.forwardRef<HTMLDivElement, LogoTileProps>(
       "flex h-full min-h-0 min-w-0 w-[5.125rem] shrink-0 flex-col items-center gap-2 rounded-md p-3 tracking-normal",
       isDisabled
         ? "bg-blue-25 pointer-events-none shadow-none"
-        : "bg-background-elevated shadow-drop",
+        : "bg-background-elevated shadow-drop motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.97]",
       className,
     );
 

@@ -452,7 +452,7 @@ export default function ReceptenPage() {
       )}
     >
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6">
+        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 motion-safe:animate-fade-up">
           {hasRecipes ? (
             <div className="flex items-center gap-3">
               {/* Titel + potlood */}
@@ -492,7 +492,7 @@ export default function ReceptenPage() {
                     aria-pressed={viewMode === "list"}
                     onClick={() => setViewMode("list")}
                     className={cn(
-                      "flex w-9 items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      "flex w-9 items-center justify-center transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
                       viewMode === "list" ? "bg-[var(--blue-25)]" : "bg-[var(--white)]",
                     )}
                   >
@@ -505,7 +505,7 @@ export default function ReceptenPage() {
                     aria-pressed={viewMode === "grid"}
                     onClick={() => setViewMode("grid")}
                     className={cn(
-                      "flex w-9 items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
+                      "flex w-9 items-center justify-center transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
                       viewMode === "grid" ? "bg-[var(--blue-25)]" : "bg-[var(--white)]",
                     )}
                   >
@@ -535,7 +535,7 @@ export default function ReceptenPage() {
                       type="button"
                       onClick={() => setActiveCategory(null)}
                       className={cn(
-                        "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                        "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-[color,background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                         activeCategory === null
                           ? "bg-[#4f55f1] font-medium text-white"
                           : "bg-white font-normal text-[#707784]",
@@ -551,7 +551,7 @@ export default function ReceptenPage() {
                           type="button"
                           onClick={() => setActiveCategory(isActive ? null : cat.id)}
                           className={cn(
-                            "flex shrink-0 items-center gap-1.5 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                            "flex shrink-0 items-center gap-1.5 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-[color,background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                             isActive
                               ? "bg-[#4f55f1] font-medium text-white"
                               : "bg-white font-normal text-[#707784]",
@@ -559,7 +559,7 @@ export default function ReceptenPage() {
                         >
                           {isActive && (
                             <span
-                              className="size-2 shrink-0 rounded-full"
+                              className="size-2 shrink-0 rounded-full motion-safe:animate-pop"
                               style={{ backgroundColor: cat.dot }}
                             />
                           )}

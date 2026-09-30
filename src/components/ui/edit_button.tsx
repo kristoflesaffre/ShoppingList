@@ -106,7 +106,7 @@ const EditButton = React.forwardRef<HTMLButtonElement, EditButtonProps>(
     const Comp = asChild ? Slot : "button";
 
     const base =
-      "inline-flex items-center justify-center gap-1 font-normal text-sm leading-20 tracking-normal whitespace-nowrap transition-[color,background-color,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none [&_svg]:shrink-0 active:scale-95";
+      "inline-flex items-center justify-center gap-1 font-normal text-sm leading-20 tracking-normal whitespace-nowrap transition-[color,background-color,transform] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none [&_svg]:shrink-0 motion-safe:active:scale-95";
 
     const sizeStyles: Record<EditButtonSize, string> = {
       default: "py-1 px-2 rounded-pill",

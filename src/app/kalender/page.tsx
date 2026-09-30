@@ -129,7 +129,7 @@ function ChevronDownIcon({ expanded }: { expanded: boolean }) {
       fill="none"
       aria-hidden
       className={cn(
-        "shrink-0 text-[var(--blue-500)] transition-transform duration-200",
+        "shrink-0 text-[var(--blue-500)] motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out-strong",
         expanded && "rotate-180",
       )}
     >
@@ -495,7 +495,7 @@ export default function KalenderPage() {
   return (
     <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
       <div className="flex min-w-0 flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full min-w-0 max-w-[956px] flex-1 flex-col gap-6">
+        <div className="mx-auto flex w-full min-w-0 max-w-[956px] flex-1 flex-col gap-6 motion-safe:animate-fade-up">
           {!calendarIsEmpty ? (
             <h1 className="text-page-title font-bold leading-8 tracking-normal text-text-primary">
               Kalender

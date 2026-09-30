@@ -72,4 +72,8 @@ body::before {
     border-right-color: var(--gray-100);
     opacity: 0.9;
   }
+
+  html {
+    scroll-behavior: auto;
+  }
 }
