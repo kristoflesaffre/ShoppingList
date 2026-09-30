@@ -1,0 +1,8 @@
+---
+description: Na afronden van UI/feature-werk altijd committen en naar Vercel pushen.
+alwaysApply: true
+---
+
+# Deploy naar Vercel
+
+Aan het einde van een taak die code wijzigt: commit de relevante files, push naar `origin` (meestal `main`) zodat Vercel productie bouwt, en geef de productie-URL terug (`https://shoppinglist-azure.vercel.app`). Niet vragen om bevestiging voor commit/push als de gebruiker dit al als standaard heeft gevraagd. Geen secrets, `.claude/`, of `outputs/` meenemen.
