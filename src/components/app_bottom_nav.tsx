@@ -172,16 +172,26 @@ function KaartenIcon({
   filled?: boolean;
 }) {
   if (filled) {
+    /* Inline i.p.v. card_filled.svg: die heeft een vaste kleur (#4F55F1) en volgt het thema niet. */
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- statisch SVG-icoon uit /public/icons
-      <img
-        src="/icons/card_filled.svg"
-        alt=""
+      <svg
+        className={cn("pointer-events-none shrink-0", className)}
         width={24}
         height={24}
-        className={cn("pointer-events-none shrink-0", className)}
+        viewBox="0 0 24 24"
+        fill="none"
         aria-hidden
-      />
+      >
+        <path
+          d="M20 5H4C2.89543 5 2 5.89543 2 7V17C2 18.1046 2.89543 19 4 19H20C21.1046 19 22 18.1046 22 17V7C22 5.89543 21.1046 5 20 5Z"
+          fill="currentColor"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinejoin="round"
+        />
+        <path d="M2 10H22" stroke="var(--white)" strokeWidth={1.5} strokeLinecap="round" />
+        <path d="M6 15.5H10" stroke="var(--white)" strokeWidth={1.5} strokeLinecap="round" />
+      </svg>
     );
   }
   return <MaskNavIcon src="/icons/card.svg" className={className} />;
@@ -193,15 +203,6 @@ type AppBottomNavTab =
   | "kalender"
   | "klantenkaarten"
   | "profiel";
-
-/** Kolomvolgorde in de nav — bepaalt de positie van de schuivende indicator. */
-const NAV_ORDER: readonly AppBottomNavTab[] = [
-  "lijstjes",
-  "klantenkaarten",
-  "kalender",
-  "recepten",
-  "profiel",
-];
 
 export interface AppBottomNavProps {
   /** Actieve tab – Figma 854:7039 */
@@ -229,8 +230,6 @@ export function AppBottomNav({
   const tabClass =
     "relative z-[1] flex w-[41px] shrink-0 flex-col items-center gap-1 rounded-md no-underline transition-[color,transform] duration-base ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
 
-  const activeIndex = NAV_ORDER.indexOf(active);
-
   /* Icoon “popt” alleen bij een tabwissel, niet bij de eerste mount (Emil: geen animatie zonder aanleiding). */
   const hasSwitchedRef = React.useRef(false);
   const prevActiveRef = React.useRef(active);
@@ -256,22 +255,6 @@ export function AppBottomNav({
         className="pointer-events-auto relative grid min-h-[60px] w-full max-w-[420px] grid-cols-5 items-center rounded-[24px] bg-[var(--white)] px-2 py-2 shadow-nav-floating"
         aria-label="Hoofdnavigatie"
       >
-        {/* Schuivende actieve-indicator: zachte pill achter het icoon, glijdt tussen de 5 kolommen */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-y-2 left-2 right-2 grid grid-cols-5"
-        >
-          <span
-            className={cn(
-              "col-start-1 col-end-2 flex justify-center pt-0",
-              "motion-safe:transition-transform motion-safe:duration-slow motion-safe:ease-in-out-strong",
-            )}
-            style={{ transform: `translateX(${activeIndex * 100}%)` }}
-          >
-            <span className="mt-0 h-8 w-12 rounded-pill bg-[var(--blue-25)]" />
-          </span>
-        </span>
-
         <div className="flex justify-center">
           <Link
             href="/"
