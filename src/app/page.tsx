@@ -66,6 +66,7 @@ import {
   buildCalendarEntries,
   toIsoDate,
   dayEntryHasContent,
+  addDays,
   type DayEntry,
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
@@ -531,8 +532,66 @@ function HomeCalendarIngredientPhotos({
   );
 }
 
+/**
+ * Losse items van een dag in de weekstrip: tot drie overlappende foto's, de namen als titel
+ * en het aantal als ondertitel (zelfde typografie als de receptregel in de dagkaart).
+ */
+function HomeCalendarLooseSummary({
+  ingredients,
+}: {
+  ingredients: { name: string; quantity: string; photoUrl?: string | null; fromStock?: boolean }[];
+}) {
+  const getPhotoUrl = useItemPhotoUrl(320);
+  const photos = ingredients
+    .map((ing) => ing.photoUrl ?? getPhotoUrl(ing.name))
+    .filter((url): url is string => url != null)
+    .slice(0, 3);
+  const names = ingredients.map((ing) => ing.name).join(", ");
+  const count = ingredients.length;
+  const fromStock = ingredients.some((ing) => ing.fromStock);
+
+  return (
+    <>
+      {photos.length > 0 ? (
+        <div className="flex shrink-0 items-center">
+          {photos.map((url, i) => (
+            <div
+              key={url + i}
+              className={cn(
+                "size-10 overflow-hidden rounded-full bg-[var(--white)] ring-2 ring-[var(--white)]",
+                i > 0 && "-ml-3",
+              )}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
+              <img src={url} alt="" width={40} height={40} decoding="async" loading="lazy" className="size-full object-cover" aria-hidden />
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <p className="truncate text-base font-medium leading-6 text-[var(--gray-900)] first-letter:uppercase">
+          {names}
+        </p>
+        <p className="truncate text-xs leading-5 text-[var(--gray-400)]">
+          {count === 1 ? "1 item" : `${count} items`}
+          {fromStock ? " · uit de diepvries" : ""}
+        </p>
+      </div>
+    </>
+  );
+}
+
 /** Figma 1142:7467 / 1134:12682 — kalender-dagkaart op startpagina. */
-function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry }) {
+function HomeCalendarCard({
+  isoDate,
+  entry,
+  showDate = true,
+}: {
+  isoDate: string;
+  entry: DayEntry;
+  /** Uit in de weekstrip: de dag staat dan al in de geselecteerde dagknop. */
+  showDate?: boolean;
+}) {
   const date = entry.date;
   const monthAbbr = date
     .toLocaleDateString("nl-NL", { month: "short" })
@@ -544,7 +603,8 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
 
   const firstMeal = entry.meals[0] ?? null;
   const hasOnlyLooseIngredients = firstMeal === null && entry.looseIngredients.length > 0;
-  const firstStockItem = hasOnlyLooseIngredients
+  /* In de weekstrip tonen we alle losse items samen (HomeCalendarLooseSummary), niet enkel het diepvriesitem. */
+  const firstStockItem = hasOnlyLooseIngredients && showDate
     ? (entry.looseIngredients.find((i) => i.fromStock && i.photoUrl) ?? null)
     : null;
 
@@ -559,8 +619,8 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
       className="block h-full rounded-lg no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
     >
       <div className="flex h-full w-full items-center gap-3 rounded-lg bg-[var(--white)] px-3 py-3 shadow-card motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.97]">
-        {/* Datumwidget */}
-        {/* Stijl 1: vandaag = gevuld accentblok, andere dagen = zachte tint */}
+        {/* Datumwidget — stijl 1: vandaag = gevuld accentblok, andere dagen = zachte tint */}
+        {showDate ? (
         <div
           className={cn(
             "flex h-12 w-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md",
@@ -585,6 +645,7 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
             {dayNum}
           </p>
         </div>
+        ) : null}
 
         {firstStockItem ? (
           /* Figma 1216:11859: diepvries-item — foto met sneeuwvlok-badge + naam + hoeveelheid */
@@ -631,8 +692,13 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
             </div>
           </>
         ) : hasOnlyLooseIngredients ? (
-          /* Figma 1135:7448: rij van ingrediëntenfoto's met overflow */
-          <HomeCalendarIngredientPhotos ingredients={entry.looseIngredients} />
+          showDate ? (
+            /* Figma 1135:7448: rij van ingrediëntenfoto's met overflow */
+            <HomeCalendarIngredientPhotos ingredients={entry.looseIngredients} />
+          ) : (
+            /* Weekstrip: foto's + namen + aantal, zodat de tegel zegt wat er op het menu staat */
+            <HomeCalendarLooseSummary ingredients={entry.looseIngredients} />
+          )
         ) : (
           /* Recept: foto + naam + aantal */
           <>
@@ -1043,11 +1109,30 @@ const HOME_TE_KOPEN_SWIMLANE_CLASSES = cn(
 /** Figma 1142:7467 — kalender-sectie op startpagina (alleen bij content vandaag of toekomst).
  *  Mobile: swimlane (1 kaart per kolom, 300 px breed) als > 3 items; anders verticaal.
  *  Desktop: 3-kolommen grid. */
+type HomeWeekDay = { isoDate: string; date: Date; entry: DayEntry | null };
+
+const WEEKDAY_ABBR = ["ZO", "MA", "DI", "WO", "DO", "VR", "ZA"] as const;
+
+/**
+ * Kalender op de startpagina: zeven dagknoppen met vandaag in het midden (−3 … +3).
+ * Een tik kiest de dag; daaronder de dagkaart van die dag (zonder datumblok, want
+ * de dag staat al in de geselecteerde knop).
+ */
 function HomeCalendarSection({
-  entries,
+  days,
+  todayIso,
 }: {
-  entries: Array<{ isoDate: string; entry: DayEntry }>;
+  days: HomeWeekDay[];
+  todayIso: string;
 }) {
+  const [selectedIso, setSelectedIso] = React.useState(todayIso);
+  const selected = days.find((d) => d.isoDate === selectedIso) ?? days[3];
+  const selectedLabel = selected.date.toLocaleDateString("nl-NL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
   return (
     <div className="flex flex-col gap-4">
       <ListSectionHeader
@@ -1056,22 +1141,79 @@ function HomeCalendarSection({
         showNaarOverzicht
         naarOverzichtHref="/kalender"
       />
-      {/* Mobile: swimlane met 1 kaart per kolom */}
-      <div
-        className={cn(SWIMLANE_CLASSES, "lg:hidden")}
-        style={{ scrollbarWidth: "none" } as React.CSSProperties}
-      >
-        {entries.map(({ isoDate, entry }) => (
-          <div key={isoDate} className="w-[300px] shrink-0 self-stretch">
-            <HomeCalendarCard isoDate={isoDate} entry={entry} />
-          </div>
-        ))}
+      <div role="group" aria-label="Kies een dag" className="grid grid-cols-7 gap-1.5">
+        {days.map((d) => {
+          const isSelected = d.isoDate === selected.isoDate;
+          const isToday = d.isoDate === todayIso;
+          const hasContent = dayEntryHasContent(d.entry ?? undefined);
+          const fullLabel = d.date.toLocaleDateString("nl-NL", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          });
+          return (
+            <button
+              key={d.isoDate}
+              type="button"
+              aria-pressed={isSelected}
+              aria-label={`${fullLabel}${isToday ? ", vandaag" : ""}${hasContent ? ", iets gepland" : ""}`}
+              onClick={() => setSelectedIso(d.isoDate)}
+              className={cn(
+                "flex min-w-0 flex-col items-center gap-1 rounded-md py-2 transition-[background-color,color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+                isSelected
+                  ? "bg-[var(--blue-500)] text-[var(--white)] shadow-none"
+                  : "bg-[var(--white)] text-[var(--text-primary)] shadow-card",
+                !isSelected && isToday && "shadow-[inset_0_0_0_1.5px_var(--blue-500)]",
+              )}
+            >
+              <span
+                className={cn(
+                  "text-[11px] font-semibold leading-none tracking-[0.02em]",
+                  isSelected ? "text-[var(--white)]" : "text-[var(--text-secondary)]",
+                )}
+              >
+                {WEEKDAY_ABBR[d.date.getDay()]}
+              </span>
+              <span className="text-base font-bold leading-5 tabular-nums">{d.date.getDate()}</span>
+              <span
+                aria-hidden
+                className={cn(
+                  "size-[5px] rounded-full",
+                  !hasContent && "invisible",
+                  isSelected ? "bg-[var(--white)]" : "bg-[var(--blue-500)]",
+                )}
+              />
+            </button>
+          );
+        })}
       </div>
-      {/* Desktop: 3-kolommen grid */}
-      <div className="hidden lg:grid lg:grid-cols-3 lg:gap-3">
-        {entries.map(({ isoDate, entry }) => (
-          <HomeCalendarCard key={isoDate} isoDate={isoDate} entry={entry} />
-        ))}
+
+      <div aria-live="polite">
+        {selected.entry && dayEntryHasContent(selected.entry) ? (
+          <HomeCalendarCard
+            key={selected.isoDate}
+            isoDate={selected.isoDate}
+            entry={selected.entry}
+            showDate={false}
+          />
+        ) : (
+          <Link
+            href={`/kalender?date=${selected.isoDate}`}
+            className="flex min-h-[64px] items-center justify-between gap-3 rounded-lg bg-[var(--white)] px-4 py-3 no-underline shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+          >
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
+                Nog niets gepland
+              </span>
+              <span className="truncate text-xs leading-5 text-[var(--gray-400)] first-letter:uppercase">
+                {selectedLabel}
+              </span>
+            </span>
+            <span className="shrink-0 text-sm font-medium leading-5 text-action-primary">
+              Plannen
+            </span>
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -1338,15 +1480,21 @@ function HomeFavorietenSection({
 
 function HomeKalenderSection({
   entries,
+  weekDays,
+  todayIso,
   hasEverUsedCalendar,
   onHide,
 }: {
   entries: Array<{ isoDate: string; entry: DayEntry }>;
+  weekDays: HomeWeekDay[];
+  todayIso: string;
   hasEverUsedCalendar: boolean;
   onHide?: () => void;
 }) {
-  if (entries.length > 0) return <HomeCalendarSection entries={entries} />;
-  if (hasEverUsedCalendar) return null;
+  /* Weekstrip zodra de kalender ooit gebruikt is; ook zonder plannen deze week (dan "Nog niets gepland"). */
+  if ((entries.length > 0 || hasEverUsedCalendar) && weekDays.length === 7) {
+    return <HomeCalendarSection days={weekDays} todayIso={todayIso} />;
+  }
   return (
     <div className="flex flex-col gap-4">
       <ListSectionHeader icon="calendar" label="Kalender" showNaarOverzicht={false} onHide={onHide} />
@@ -2070,8 +2218,15 @@ export default function Home() {
     }
   }, [homeShoppingItems.length]);
 
-  const { homeCalendarEntries, hasEverUsedCalendar } = React.useMemo(() => {
-    if (!data) return { homeCalendarEntries: [] as Array<{ isoDate: string; entry: DayEntry }>, hasEverUsedCalendar: false };
+  const { homeCalendarEntries, hasEverUsedCalendar, homeWeekDays, todayIso } = React.useMemo(() => {
+    if (!data) {
+      return {
+        homeCalendarEntries: [] as Array<{ isoDate: string; entry: DayEntry }>,
+        hasEverUsedCalendar: false,
+        homeWeekDays: [] as HomeWeekDay[],
+        todayIso: "",
+      };
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayIso = toIsoDate(today);
@@ -2091,7 +2246,14 @@ export default function Home() {
       }
     }
     result.sort((a, b) => a.isoDate.localeCompare(b.isoDate));
-    return { homeCalendarEntries: result, hasEverUsedCalendar };
+
+    const weekDays: HomeWeekDay[] = [];
+    for (let offset = -3; offset <= 3; offset++) {
+      const date = addDays(today, offset);
+      const iso = toIsoDate(date);
+      weekDays.push({ isoDate: iso, date, entry: calMap.get(iso) ?? null });
+    }
+    return { homeCalendarEntries: result, hasEverUsedCalendar, homeWeekDays: weekDays, todayIso };
   }, [data]);
 
   /** Eénmalige herberekening van lijst-decor-iconen: min duplicaten binnen de product-icon-pool. */
@@ -2670,6 +2832,8 @@ export default function Home() {
         return (
           <HomeKalenderSection
             entries={homeCalendarEntries}
+            weekDays={homeWeekDays}
+            todayIso={todayIso}
             hasEverUsedCalendar={hasEverUsedCalendar}
             onHide={onHide}
           />
