@@ -265,7 +265,7 @@ export function AppBottomNav({
             width: "calc((100% - 12px) / 5)",
             transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
             backgroundColor:
-              "color-mix(in srgb, var(--blue-100) 58%, transparent)",
+              "color-mix(in srgb, var(--bg-app) 78%, transparent)",
             WebkitBackdropFilter: "blur(14px)",
             backdropFilter: "blur(14px)",
           }}
