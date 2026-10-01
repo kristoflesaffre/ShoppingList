@@ -634,7 +634,7 @@ export function LijstjesBeherenClient({
   const isFavorietenEmpty = section === "favorieten" && !hasSectionLists;
 
   return (
-    <div className={cn("relative flex min-h-dvh w-full flex-col", isFavorietenEmpty && "bg-gradient-to-b from-[#e3e4ff] to-white")}>
+    <div className={cn("relative flex min-h-dvh w-full flex-col", isFavorietenEmpty && "bg-[var(--bg-app)]")}>
       {/*
         Figma 1148:8955 — top app bar: back + gecentreerde titel (medium 16) + three-dots.
         Grid met 2.5rem / 1fr / 2.5rem zodat het midden altijd echt gecentreerd is.

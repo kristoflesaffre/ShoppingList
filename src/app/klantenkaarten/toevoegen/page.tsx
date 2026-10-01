@@ -188,7 +188,7 @@ export default function KlantenkaartToevoegenPage() {
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-gradient-to-b from-[var(--blue-100)] to-[var(--white)] px-[16px]">
+    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)] px-[16px]">
       <div className="flex min-w-0 flex-1 flex-col pb-[calc(24px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full min-w-0 max-w-[956px] flex-1 flex-col gap-6">
           <header className="flex min-h-8 items-center gap-4">

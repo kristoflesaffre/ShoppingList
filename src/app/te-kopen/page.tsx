@@ -199,10 +199,8 @@ function StoreSectionHeader({
           height={24}
           className="size-6 shrink-0 object-contain"
         />
-      ) : (
-        <div className="size-6 shrink-0" aria-hidden />
-      )}
-      <p className="min-w-0 flex-1 text-lg font-bold leading-6 text-[var(--primary-900)]">
+      ) : null}
+      <p className="min-w-0 flex-1 text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
         {store ?? "Algemeen"}
       </p>
       {isEditing && showReorder ? (
@@ -461,13 +459,7 @@ export default function TeKopenPage() {
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-white">
-      {/* Gradient */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[478px]"
-        style={{ background: "linear-gradient(to bottom, #e3e4ff, white)" }}
-        aria-hidden
-      />
+    <div className="relative flex min-h-dvh w-full flex-col">
 
       {/* Fixed header */}
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
@@ -560,7 +552,7 @@ export default function TeKopenPage() {
                 className="size-24 object-contain"
                 aria-hidden
               />
-              <p className="text-base font-medium leading-6 text-[#707784]">
+              <p className="text-base font-medium leading-6 text-[var(--gray-500)]">
                 Je hebt geen producten om te kopen
               </p>
               <MiniButton variant="primary" onClick={() => { setPreselectedStore(null); setAddOpen(true); }}>

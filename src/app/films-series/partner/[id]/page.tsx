@@ -130,21 +130,21 @@ function GhostPanel({ item, detail }: { item: WatchlistItem | null; detail: Film
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <h1 className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-2xl font-bold leading-8 text-[#16181a]">
+            <h1 className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-2xl font-bold leading-8 text-[var(--gray-900)]">
               {item.title}
             </h1>
             {score != null && (
               <div className="flex shrink-0 items-center gap-1">
                 <StarIcon />
-                <p className="font-medium text-[#16181a]">
+                <p className="font-medium text-[var(--gray-900)]">
                   <span className="text-base leading-6">{score.toFixed(1)}</span>
-                  <span className="text-xs font-normal leading-none text-[#8c929d]">/10</span>
+                  <span className="text-xs font-normal leading-none text-[var(--gray-400)]">/10</span>
                 </p>
               </div>
             )}
           </div>
           {metaLine ? (
-            <p className="whitespace-nowrap text-sm leading-5 text-[#8c929d]">{metaLine}</p>
+            <p className="whitespace-nowrap text-sm leading-5 text-[var(--gray-400)]">{metaLine}</p>
           ) : (
             // Placeholder so layout height matches when meta loads
             <div className="h-5 w-48 rounded bg-[var(--gray-100)]" />
@@ -159,7 +159,7 @@ function GhostPanel({ item, detail }: { item: WatchlistItem | null; detail: Film
 
       {/* Overview */}
       {detail?.overview ? (
-        <p className="line-clamp-5 text-base font-medium leading-6 text-[#16181a]">
+        <p className="line-clamp-5 text-base font-medium leading-6 text-[var(--gray-900)]">
           {detail.overview}
         </p>
       ) : (
@@ -172,9 +172,9 @@ function GhostPanel({ item, detail }: { item: WatchlistItem | null; detail: Film
 
       {/* Action buttons */}
       <div className="flex gap-3">
-        <div className="h-12 flex-1 rounded-[8px] border border-[#4f55f1]" />
-        <div className="h-12 flex-1 rounded-[8px] bg-[#4f55f1]" />
-        <div className="h-12 flex-1 rounded-[8px] bg-[#d64040]" />
+        <div className="h-12 flex-1 rounded-[8px] border border-[var(--blue-500)]" />
+        <div className="h-12 flex-1 rounded-[8px] bg-[var(--blue-500)]" />
+        <div className="h-12 flex-1 rounded-[8px] bg-[var(--error-400)]" />
       </div>
 
       {/* Poster */}
@@ -558,13 +558,13 @@ export default function PartnerFilmDetailPage() {
             >
               <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
             </button>
-            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[#16181a]">
+            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[var(--gray-900)]">
               Watchlist {partnerName ?? "Partner"}
             </p>
             <button
               type="button"
               aria-label="Opties"
-              className="flex size-6 shrink-0 items-center justify-center text-[#16181a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              className="flex size-6 shrink-0 items-center justify-center text-[var(--gray-900)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
             >
               <ThreeDotsIcon />
             </button>
@@ -590,9 +590,9 @@ export default function PartnerFilmDetailPage() {
                 !prevItem && "pointer-events-none opacity-30",
               )}
             >
-              <MaskIcon src="/icons/chevron.svg" className="size-6 rotate-90 bg-[#4f55f1]" />
+              <MaskIcon src="/icons/chevron.svg" className="size-6 rotate-90 bg-[var(--blue-500)]" />
             </button>
-            <p className="flex-1 text-center text-base font-medium leading-6 text-[#16181a] lg:flex-none">
+            <p className="flex-1 text-center text-base font-medium leading-6 text-[var(--gray-900)] lg:flex-none">
               {currentIndex >= 0 ? `${currentIndex + 1} van ${totalCount}` : `van ${totalCount}`}
             </p>
             <button
@@ -605,7 +605,7 @@ export default function PartnerFilmDetailPage() {
                 !nextItem && "pointer-events-none opacity-30",
               )}
             >
-              <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[#4f55f1]" />
+              <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[var(--blue-500)]" />
             </button>
           </div>
         )}
@@ -642,22 +642,22 @@ export default function PartnerFilmDetailPage() {
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                      <h1 className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-2xl font-bold leading-8 text-[#16181a]">
+                      <h1 className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-2xl font-bold leading-8 text-[var(--gray-900)]">
                         {detail.title}
                       </h1>
                       {detail.score !== null && (
                         <div className="flex shrink-0 items-center gap-1">
                           <StarIcon />
-                          <p className="font-medium text-[#16181a]">
+                          <p className="font-medium text-[var(--gray-900)]">
                             <span className="text-base leading-6">{detail.score.toFixed(1)}</span>
-                            <span className="text-xs font-normal leading-none text-[#8c929d]">/10</span>
+                            <span className="text-xs font-normal leading-none text-[var(--gray-400)]">/10</span>
                           </p>
                         </div>
                       )}
                     </div>
                     {metaLine && (
                       <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                        <p className="whitespace-nowrap text-sm leading-5 text-[#8c929d]">{metaLine}</p>
+                        <p className="whitespace-nowrap text-sm leading-5 text-[var(--gray-400)]">{metaLine}</p>
                       </div>
                     )}
                   </div>
@@ -692,7 +692,7 @@ export default function PartnerFilmDetailPage() {
                   <div className="relative lg:hidden">
                     <p
                       ref={overviewRef}
-                      className="text-base font-medium leading-6 text-[#16181a]"
+                      className="text-base font-medium leading-6 text-[var(--gray-900)]"
                       style={
                         !overviewExpanded && overviewOverflows
                           ? { overflow: "hidden", maxHeight: `${MAX_HEIGHT}px` }
@@ -708,13 +708,13 @@ export default function PartnerFilmDetailPage() {
                           style={{
                             width: 48,
                             height: LINE_HEIGHT,
-                            background: "linear-gradient(to right, rgba(255,255,255,0), white)",
+                            background: "linear-gradient(to right, transparent, var(--white))",
                           }}
                         />
                         <button
                           type="button"
                           onClick={() => setOverviewExpanded(true)}
-                          className="bg-white text-base font-medium leading-6 text-[#4f55f1] underline decoration-solid underline-offset-2 focus-visible:outline-none"
+                          className="bg-white text-base font-medium leading-6 text-[var(--blue-500)] underline decoration-solid underline-offset-2 focus-visible:outline-none"
                         >
                           ... toon meer
                         </button>
@@ -730,15 +730,15 @@ export default function PartnerFilmDetailPage() {
                       type="button"
                       aria-label="Al gezien"
                       onClick={() => void handleReact("seen")}
-                      className="flex h-12 flex-1 items-center justify-center rounded-[8px] border border-[#4f55f1] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      className="flex h-12 flex-1 items-center justify-center rounded-[8px] border border-[var(--blue-500)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                     >
-                      <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
+                      <MaskIcon src="/icons/visible.svg" className="size-6 bg-[var(--blue-500)]" />
                     </button>
                     <button
                       type="button"
                       aria-label="Toevoegen aan mijn watchlist"
                       onClick={() => void handleReact("up")}
-                      className="flex h-12 flex-1 items-center justify-center rounded-[8px] bg-[#4f55f1] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      className="flex h-12 flex-1 items-center justify-center rounded-[8px] bg-[var(--blue-500)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                     >
                       <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-white" />
                     </button>
@@ -746,7 +746,7 @@ export default function PartnerFilmDetailPage() {
                       type="button"
                       aria-label="Niet interessant"
                       onClick={() => void handleReact("down")}
-                      className="flex h-12 flex-1 items-center justify-center rounded-[8px] bg-[#d64040] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      className="flex h-12 flex-1 items-center justify-center rounded-[8px] bg-[var(--error-400)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                     >
                       <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />
                     </button>
@@ -775,7 +775,7 @@ export default function PartnerFilmDetailPage() {
                         type="button"
                         aria-label="Trailer afspelen"
                         onClick={() => setShowTrailer(true)}
-                        className="absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-black/20 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        className="absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-fixed-white bg-black/20 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
                       >
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
                           <path d="M8 5v14l11-7L8 5z" fill="white" />
@@ -802,17 +802,17 @@ export default function PartnerFilmDetailPage() {
                     </div>
                     <div className="relative min-w-0 flex-1">
                       <div className={cn("overflow-hidden", !overviewExpanded && "h-[191px]")}>
-                        <p className="text-base font-medium leading-6 text-[#16181a]">
+                        <p className="text-base font-medium leading-6 text-[var(--gray-900)]">
                           {overviewFull || "Geen beschrijving beschikbaar."}
                         </p>
                       </div>
                       {!overviewExpanded && overviewFull && (
                         <div className="absolute bottom-0 right-0 flex items-baseline gap-1 bg-white">
-                          <span className="text-base font-medium leading-6 text-[#16181a]">…</span>
+                          <span className="text-base font-medium leading-6 text-[var(--gray-900)]">…</span>
                           <button
                             type="button"
                             onClick={() => setOverviewExpanded(true)}
-                            className="text-base font-medium leading-6 text-[#4f55f1] underline decoration-solid underline-offset-2 focus-visible:outline-none"
+                            className="text-base font-medium leading-6 text-[var(--blue-500)] underline decoration-solid underline-offset-2 focus-visible:outline-none"
                           >
                             toon meer
                           </button>
@@ -848,16 +848,16 @@ export default function PartnerFilmDetailPage() {
                       type="button"
                       aria-label="Al gezien"
                       onClick={() => void handleReact("seen")}
-                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] border border-[#4f55f1] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] border border-[var(--blue-500)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                     >
-                      <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
-                      <span className="text-base font-medium text-[#4f55f1]">Gezien</span>
+                      <MaskIcon src="/icons/visible.svg" className="size-6 bg-[var(--blue-500)]" />
+                      <span className="text-base font-medium text-[var(--blue-500)]">Gezien</span>
                     </button>
                     <button
                       type="button"
                       aria-label="Toevoegen aan mijn watchlist"
                       onClick={() => void handleReact("up")}
-                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] bg-[#4f55f1] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] bg-[var(--blue-500)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                     >
                       <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-white" />
                       <span className="text-base font-medium text-white">Toevoegen</span>
@@ -866,7 +866,7 @@ export default function PartnerFilmDetailPage() {
                       type="button"
                       aria-label="Niet interessant"
                       onClick={() => void handleReact("down")}
-                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] bg-[#d64040] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] bg-[var(--error-400)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                     >
                       <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />
                       <span className="text-base font-medium text-white">Overslaan</span>
@@ -878,11 +878,11 @@ export default function PartnerFilmDetailPage() {
                 {detail.cast.length > 0 && (
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-6 lg:gap-4">
-                      <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130] lg:flex-none">Cast</h2>
+                      <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)] lg:flex-none">Cast</h2>
                       <button
                         type="button"
                         onClick={() => router.push(`/films-series/${currentId}/cast`)}
-                        className="shrink-0 text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none"
+                        className="shrink-0 text-xs font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
                       >
                         Toon alle
                       </button>
@@ -911,10 +911,10 @@ export default function PartnerFilmDetailPage() {
                               )}
                             </div>
                             <div className="flex flex-col">
-                              <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[#16181a]">
+                              <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[var(--gray-900)]">
                                 {member.name}
                               </p>
-                              <p className="text-[14px] font-normal leading-5 text-[#8c929d]">
+                              <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
                                 {member.character}
                               </p>
                             </div>

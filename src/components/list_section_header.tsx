@@ -62,34 +62,39 @@ const sectionActionClass =
   "group inline-flex shrink-0 items-center gap-0.5 rounded-pill py-1 pl-2 pr-1 -mr-1 text-sm font-medium leading-20 tracking-normal text-action-primary no-underline transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover [@media(hover:hover)]:hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
 
 /**
- * Sectiekop voor home-secties: sectietitel (18px, sentence case) met accenticoon
- * en optionele actie rechts («Naar overzicht» met chevron, of «Sectie verbergen»).
+ * Sectiekop voor home-secties (stijl 1 · Helder): sectietitel (18px, sentence case) met
+ * optioneel aantal ernaast in gedempte tekst, en rechts «Alles» met chevron (of «Sectie verbergen»).
  *
- * Bewust géén uppercase-eyebrow: de titel is het anker van de sectie en moet
- * dezelfde typografische rang hebben als de andere sectietitels in de app.
+ * Bewust géén uppercase-eyebrow en geen icoon meer vóór de titel: de titel is het anker,
+ * het aantal geeft context zonder extra beeldruis.
  */
 export function ListSectionHeader({
-  icon,
   label,
+  count,
   showNaarOverzicht,
   naarOverzichtHref = "/lijstjes-beheren/lijstjes",
   onHide,
 }: {
-  icon: "list" | "heart" | "card" | "calendar" | "freeze" | "shopping-bag" | "films";
-  /** Zichtbare naam, in sentence case (bv. «Favorieten lijstjes»). */
+  /** @deprecated Niet meer getoond sinds stijl 1; blijft voor bestaande aanroepen. */
+  icon?: "list" | "heart" | "card" | "calendar" | "freeze" | "shopping-bag" | "films";
+  /** Zichtbare naam, in sentence case (bv. «Favorieten»). */
   label: string;
+  /** Aantal items in de sectie; verborgen bij `undefined` of 0. */
+  count?: number;
   showNaarOverzicht: boolean;
   naarOverzichtHref?: string;
-  /** When provided, renders "Sectie verbergen" instead of "Naar overzicht". */
+  /** When provided, renders "Sectie verbergen" instead of "Alles". */
   onHide?: () => void;
 }) {
   return (
     <div className="flex min-h-8 items-center justify-between gap-3">
-      <h2 className="flex min-w-0 items-center gap-2 text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
-        <span className="flex size-5 shrink-0 items-center justify-center text-[var(--blue-500)]">
-          <ListSectionHeaderIcon variant={icon} className="size-[18px]" />
-        </span>
+      <h2 className="flex min-w-0 items-baseline gap-2 text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
         <span className="min-w-0 truncate">{label}</span>
+        {count ? (
+          <span className="shrink-0 text-sm font-medium leading-20 tracking-normal text-[var(--text-secondary)] tabular-nums">
+            {count}
+          </span>
+        ) : null}
       </h2>
       {onHide ? (
         <button type="button" onClick={onHide} className={sectionActionClass}>
@@ -99,9 +104,9 @@ export function ListSectionHeader({
         <Link
           href={naarOverzichtHref}
           className={sectionActionClass}
-          aria-label={`${label}: naar overzicht`}
+          aria-label={`${label}: alles bekijken`}
         >
-          Naar overzicht
+          Alles
           <ChevronRightIcon className="transition-transform [@media(hover:hover)]:group-hover:translate-x-px" />
         </Link>
       ) : null}

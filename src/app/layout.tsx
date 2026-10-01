@@ -1,16 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { AppPersistentBottomNav } from "@/components/app_chrome";
+import { ThemeSync } from "@/components/theme_sync";
+import { THEME_COLORS, THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-/** Bovenste gradientkleur (blue-100) — sluit aan bij globals.css voor statusbalk/splash. */
-const APP_THEME_TOP = "#dcddfc";
-
 export const viewport: Viewport = {
-  themeColor: APP_THEME_TOP,
+  /** Statusbalk/splash = `--bg-app` van het actieve thema; `ThemeSync` volgt een handmatige keuze. */
+  themeColor: THEME_COLORS.light,
   width: "device-width",
   initialScale: 1,
-  /** iOS: pagina mag onder notch/statusbalk tekenen → gradient zichtbaar i.p.v. witte balk. */
+  /** iOS: pagina mag onder notch/statusbalk tekenen → app-achtergrond zichtbaar i.p.v. witte balk. */
   viewportFit: "cover",
   /**
    * Virtueel toetsenbord legt over de pagina i.p.v. layout te verkleinen
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     title: "Shopping List",
     /**
      * "default" = op iPhone vaak een **ondoorzichtige witte** statusbalk (standalone/PWA).
-     * "black-translucent" = inhoud loopt door onder de balk; zie body-gradient + safe-area padding.
+     * "black-translucent" = inhoud loopt door onder de balk; zie body-achtergrond + safe-area padding.
      */
     statusBarStyle: "black-translucent",
   },
@@ -40,8 +40,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="nl">
+    /* `data-theme` wordt vóór de eerste paint gezet door THEME_INIT_SCRIPT, dus wijkt af van de server-HTML. */
+    <html lang="nl" data-theme="light" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body>
+        <ThemeSync />
         {children}
         <Suspense fallback={null}>
           <AppPersistentBottomNav />

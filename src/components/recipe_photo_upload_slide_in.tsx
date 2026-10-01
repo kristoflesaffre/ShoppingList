@@ -111,7 +111,7 @@ export function RecipePhotoUploadSlideIn({
       footer={
         <div className="flex w-full flex-col items-center gap-3">
           {error ? (
-            <p className="text-center text-xs text-[var(--color-error,#ef4444)]">
+            <p className="text-center text-xs text-[var(--error-400)]">
               {error}
             </p>
           ) : null}
@@ -189,7 +189,7 @@ export function RecipePhotoUploadSlideIn({
                     type="button"
                     aria-label={`Foto ${i + 1} verwijderen`}
                     onClick={() => removeImage(i)}
-                    className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                    className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/50 text-fixed-white hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
                   >
                     <SmallCrossIcon />
                   </button>

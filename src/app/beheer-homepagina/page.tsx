@@ -137,7 +137,7 @@ function SortableSectionRow({
         {/* Label */}
         <p className={cn(
           "min-w-0 flex-1 text-base leading-6 tracking-normal",
-          isChecked ? "font-medium text-[var(--text-primary)]" : "font-normal text-[#8c929d]",
+          isChecked ? "font-medium text-[var(--text-primary)]" : "font-normal text-[var(--gray-400)]",
         )}>
           {meta.label}
         </p>

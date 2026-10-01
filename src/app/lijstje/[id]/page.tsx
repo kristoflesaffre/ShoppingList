@@ -6200,7 +6200,7 @@ export default function ListDetailPage({
         disableEscapeClose={loyaltyCardScanResultOpen || loyaltyCameraScanOpen}
         footer={
           loyaltyDecodeError ? (
-            <p className="text-center text-xs text-[var(--color-error,#ef4444)]">
+            <p className="text-center text-xs text-[var(--error-400)]">
               {loyaltyDecodeError}
             </p>
           ) : null
@@ -6290,7 +6290,7 @@ export default function ListDetailPage({
         footer={
           <div className="flex w-full flex-col items-center gap-3">
             {loyaltyDecodeError ? (
-              <p className="text-center text-xs text-[var(--color-error,#ef4444)]">
+              <p className="text-center text-xs text-[var(--error-400)]">
                 {loyaltyDecodeError}
               </p>
             ) : null}

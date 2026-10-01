@@ -20,10 +20,10 @@ export const HOME_SECTIONS_META: {
 }[] = [
   { id: "lijstjes", label: "Lijstjes", illustration: "/images/ui/lijstje_320.webp", hideable: false },
   { id: "te-kopen", label: "Te kopen", illustration: "/images/ui/kopen_320.webp", hideable: true },
-  { id: "favorieten", label: "Favorieten lijstjes", illustration: "/images/ui/hart_320.webp", hideable: true },
+  { id: "favorieten", label: "Favorieten", illustration: "/images/ui/hart_320.webp", hideable: true },
   { id: "kalender", label: "Kalender", illustration: "/images/ui/kalender_320.webp", hideable: true },
   { id: "klantenkaarten", label: "Klantenkaarten", illustration: "/images/ui/klantenkaart_320.webp", hideable: true },
-  { id: "diepvries", label: "Voorraad diepvries", illustration: "/images/ui/empty_state_diepvries.png", hideable: true },
+  { id: "diepvries", label: "Diepvries", illustration: "/images/ui/empty_state_diepvries.png", hideable: true },
   { id: "films-series", label: "Films en series", illustration: "/images/ui/films_320.webp", hideable: true },
 ];
 

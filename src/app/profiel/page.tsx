@@ -6,6 +6,12 @@ import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { MiniButton } from "@/components/ui/mini_button";
+import { PillTab, type PillTabVariant } from "@/components/ui/pill_tab";
+import {
+  readThemePreference,
+  setThemePreference,
+  type ThemePreference,
+} from "@/lib/theme";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { cn } from "@/lib/utils";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
@@ -60,6 +66,46 @@ function ProfileSettingsRow({
       </span>
       <ChevronRightIcon className="text-[var(--gray-400)]" />
     </button>
+  );
+}
+
+const THEME_TO_TAB: Record<ThemePreference, PillTabVariant> = {
+  light: "first",
+  dark: "second",
+  system: "third",
+};
+const TAB_TO_THEME: Record<PillTabVariant, ThemePreference> = {
+  first: "light",
+  second: "dark",
+  third: "system",
+};
+
+/** Weergave: licht (standaard), donker of het systeem volgen. Apparaatvoorkeur (localStorage). */
+function ThemeSetting() {
+  const [pref, setPref] = React.useState<ThemePreference>("light");
+  React.useEffect(() => setPref(readThemePreference()), []);
+
+  return (
+    <section aria-labelledby="profiel-weergave-titel" className="flex flex-col gap-2">
+      <h2
+        id="profiel-weergave-titel"
+        className="px-1 text-sm font-semibold leading-20 tracking-normal text-text-secondary"
+      >
+        Weergave
+      </h2>
+      <PillTab
+        aria-label="Weergave"
+        value={THEME_TO_TAB[pref]}
+        onValueChange={(tab) => {
+          const next = TAB_TO_THEME[tab];
+          setPref(next);
+          setThemePreference(next);
+        }}
+        labelFirst="Licht"
+        labelSecond="Donker"
+        labelThird="Systeem"
+      />
+    </section>
   );
 }
 
@@ -262,6 +308,8 @@ export default function ProfielPage() {
               ) : null}
             </section>
 
+            <ThemeSetting />
+
             {/* Instellingen: gegroepeerde rijen met chevron (één componenttaal voor “ga naar …”) */}
             <section aria-labelledby="profiel-instellingen-titel" className="flex flex-col gap-2">
               <h2
@@ -273,7 +321,7 @@ export default function ProfielPage() {
               <ul className="m-0 flex list-none flex-col divide-y divide-[var(--border-subtle)] overflow-hidden rounded-lg bg-[var(--white)] p-0 shadow-card">
                 <li>
                   <ProfileSettingsRow
-                    label="Homepagina beheren"
+                    label="Homepagina aanpassen"
                     description="Kies welke secties je op de startpagina ziet"
                     onClick={() => router.push("/beheer-homepagina")}
                   />

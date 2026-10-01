@@ -672,7 +672,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             onAddedDecrement?.();
           }}
           onPointerDown={(e) => e.stopPropagation()}
-          className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--text-inverse)] transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)] disabled:pointer-events-none disabled:opacity-50"
+          className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--text-inverse)] transition-colors hover:bg-fixed-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)] disabled:pointer-events-none disabled:opacity-50"
           disabled={!onAddedDecrement}
         >
           <MinusCircleIcon />
@@ -690,7 +690,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             onAddedIncrement?.();
           }}
           onPointerDown={(e) => e.stopPropagation()}
-          className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--text-inverse)] transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)] disabled:pointer-events-none disabled:opacity-50"
+          className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--text-inverse)] transition-colors hover:bg-fixed-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)] disabled:pointer-events-none disabled:opacity-50"
           disabled={!onAddedIncrement}
         >
           <PlusCircleMaskIcon colorClassName="bg-[var(--text-inverse)]" />

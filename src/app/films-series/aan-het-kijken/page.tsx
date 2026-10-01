@@ -44,7 +44,7 @@ function ThreeDotsIcon({ className }: { className?: string }) {
 
 function WatchingSkeleton() {
   return (
-    <div className="flex w-full animate-pulse items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3">
+    <div className="flex w-full animate-pulse items-start gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3">
       <div className="h-[108px] w-[72px] shrink-0 rounded-[4px] bg-[var(--gray-100)]" />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="h-5 w-3/4 rounded bg-[var(--gray-100)]" />
@@ -78,7 +78,7 @@ function WatchingCard({
           onOpen();
         }
       }}
-      className="flex w-full cursor-pointer items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      className="flex w-full cursor-pointer items-start gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
     >
       <div className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
         {item.posterUrl ? (
@@ -100,7 +100,7 @@ function WatchingCard({
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex w-full flex-col">
           <div className="flex w-full items-center gap-3">
-            <p className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[#16181a]">
+            <p className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[var(--gray-900)]">
               {item.title}
             </p>
             <button
@@ -112,16 +112,16 @@ function WatchingCard({
               }}
               className="flex size-6 shrink-0 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
             >
-              <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
+              <MaskIcon src="/icons/visible.svg" className="size-6 bg-[var(--blue-500)]" />
             </button>
           </div>
-          <p className="text-sm leading-5 text-[#8c929d]">{item.year} TV Serie</p>
+          <p className="text-sm leading-5 text-[var(--gray-400)]">{item.year} TV Serie</p>
         </div>
         <div className="flex flex-nowrap items-center gap-2">
-          <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[#edeefe] px-2 py-1 text-xs leading-4 text-[#4f55f1]">
+          <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[var(--blue-50)] px-2 py-1 text-xs leading-4 text-[var(--blue-500)]">
             Seizoen {item.nextSeason}
           </span>
-          <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[#edeefe] px-2 py-1 text-xs leading-4 text-[#4f55f1]">
+          <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[var(--blue-50)] px-2 py-1 text-xs leading-4 text-[var(--blue-500)]">
             Aflevering {item.nextEpisode}
           </span>
         </div>
@@ -269,7 +269,7 @@ export default function WatchingOverviewPage() {
             >
               <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
             </button>
-            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[#16181a]">
+            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[var(--gray-900)]">
               Aan het kijken
             </p>
             <button
@@ -288,7 +288,7 @@ export default function WatchingOverviewPage() {
         className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4 pt-8 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]"
         style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
       >
-        <h1 className="truncate text-2xl font-bold leading-8 text-[#16181a]">Aan het kijken</h1>
+        <h1 className="truncate text-2xl font-bold leading-8 text-[var(--gray-900)]">Aan het kijken</h1>
 
         <div className="flex flex-col gap-3">
           {!mounted ? (

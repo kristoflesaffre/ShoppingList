@@ -562,7 +562,7 @@ export default function ReceptDetailPage() {
                   <button
                     type="button"
                     onClick={() => setDeleteConfirmOpen(true)}
-                    className="text-[12px] font-medium leading-4 text-[var(--color-error,#ef4444)] underline underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    className="text-[12px] font-medium leading-4 text-[var(--error-400)] underline underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                   >
                     Recept verwijderen
                   </button>
@@ -853,7 +853,7 @@ export default function ReceptDetailPage() {
               <button
                 type="button"
                 onClick={() => void handleDeleteRecipe()}
-                className="w-full rounded-pill bg-[var(--color-error,#ef4444)] py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                className="w-full rounded-pill bg-[var(--error-400)] py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
               >
                 Verwijderen
               </button>

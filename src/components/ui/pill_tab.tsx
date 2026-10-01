@@ -32,6 +32,8 @@ export interface PillTabProps {
   /** When asChild, the single child element to merge onto */
   children?: React.ReactNode;
   className?: string;
+  /** Toegankelijke naam van de tablist (standaard "Tabs"). */
+  "aria-label"?: string;
 }
 
 /**

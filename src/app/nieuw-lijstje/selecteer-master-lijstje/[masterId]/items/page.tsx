@@ -207,7 +207,7 @@ function SelectableItemCard({
           <button
             type="button"
             onClick={addedQuantity === 1 ? onCancelAdd : onDecrement}
-            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--white)] transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)]"
+            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--white)] transition-colors hover:bg-fixed-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)]"
             aria-label={
               addedQuantity === 1
                 ? `Verwijder "${item.name}" uit selectie`
@@ -237,7 +237,7 @@ function SelectableItemCard({
           <button
             type="button"
             onClick={onIncrement}
-            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--white)] transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)]"
+            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--white)] transition-colors hover:bg-fixed-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)]"
             aria-label={`Verhoog hoeveelheid voor "${item.name}"`}
           >
             <PlusCircleMaskIcon
@@ -1073,7 +1073,7 @@ export default function SelecteerMasterItemsPage() {
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-gradient-to-b from-[#e3e4ff] to-[var(--white)]">
+    <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-[var(--bg-app)]">
       <header className="relative z-[1] flex h-16 shrink-0 bg-[var(--white)] px-4">
         <div className="mx-auto flex w-full max-w-[956px] items-center gap-4">
           <Link

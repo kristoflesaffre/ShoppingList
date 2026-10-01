@@ -124,7 +124,7 @@ function SelecteerMasterLijstPageContent() {
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-gradient-to-b from-[#dcddfc] to-[var(--white)] px-4">
+    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)] px-4">
       <div className="flex flex-1 flex-col pb-[96px] pt-[calc(52px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
           <header className="mb-6 flex min-w-0 items-center gap-4">

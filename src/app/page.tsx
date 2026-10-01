@@ -539,6 +539,7 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
     .slice(0, 3)
     .toUpperCase();
   const dayNum = date.getDate();
+  const isToday = date.toDateString() === new Date().toDateString();
 
   const firstMeal = entry.meals[0] ?? null;
   const hasOnlyLooseIngredients = firstMeal === null && entry.looseIngredients.length > 0;
@@ -558,11 +559,28 @@ function HomeCalendarCard({ isoDate, entry }: { isoDate: string; entry: DayEntry
     >
       <div className="flex h-full w-full items-center gap-3 rounded-lg bg-[var(--white)] px-3 py-3 shadow-card motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.97]">
         {/* Datumwidget */}
-        <div className="flex size-10 shrink-0 flex-col items-center justify-center gap-px rounded-[4px] bg-[var(--blue-25)] px-2 py-1">
-          <p className="text-[8px] font-semibold leading-none text-[var(--blue-500)]">
+        {/* Stijl 1: vandaag = gevuld accentblok, andere dagen = zachte tint */}
+        <div
+          className={cn(
+            "flex h-12 w-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md",
+            isToday ? "bg-[var(--blue-500)]" : "bg-[var(--blue-50)]",
+          )}
+          aria-label={isToday ? "Vandaag" : undefined}
+        >
+          <p
+            className={cn(
+              "text-[10px] font-bold leading-none tracking-[0.04em]",
+              isToday ? "text-[var(--white)]" : "text-[var(--blue-500)]",
+            )}
+          >
             {monthAbbr}
           </p>
-          <p className="text-[18px] font-bold leading-none text-[var(--gray-900)]">
+          <p
+            className={cn(
+              "text-[20px] font-bold leading-none",
+              isToday ? "text-[var(--white)]" : "text-[var(--gray-900)]",
+            )}
+          >
             {dayNum}
           </p>
         </div>
@@ -783,7 +801,8 @@ function HomeDiepvriesSection({
       <div className="flex flex-col gap-4">
         <ListSectionHeader
           icon="freeze"
-          label="Voorraad diepvries"
+          label="Diepvries"
+          count={itemCount}
           showNaarOverzicht
           naarOverzichtHref="/diepvriesvoorraad"
         />
@@ -801,7 +820,7 @@ function HomeDiepvriesSection({
     <div className="flex flex-col gap-4">
       <ListSectionHeader
         icon="freeze"
-        label="Voorraad diepvries"
+        label="Diepvries"
         showNaarOverzicht={false}
         onHide={onHide}
       />
@@ -924,12 +943,12 @@ function HomeTeKopenSection({
               className="size-8 shrink-0 object-contain opacity-70"
               aria-hidden
             />
-            <span className="min-w-0 flex-1 text-sm font-normal leading-5 text-[#9599f7]">
+            <span className="min-w-0 flex-1 text-sm font-normal leading-5 text-[var(--blue-300)]">
               Product toevoegen
             </span>
             <PlusCircleMaskIcon
               className="size-6 shrink-0"
-              colorClassName="bg-[#9599f7]"
+              colorClassName="bg-[var(--blue-300)]"
             />
           </button>
         </div>
@@ -964,6 +983,7 @@ function HomeTeKopenSection({
       <ListSectionHeader
         icon="shopping-bag"
         label="Te kopen"
+        count={shoppingItems.length}
         showNaarOverzicht
         naarOverzichtHref="/te-kopen"
       />
@@ -975,7 +995,7 @@ function HomeTeKopenSection({
           type="button"
           onClick={onAddProduct}
           aria-label="Product toevoegen"
-          className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-[var(--blue-200)] bg-[var(--blue-25)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-90 [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          className="flex size-16 shrink-0 items-center justify-center rounded-lg border-[1.5px] border-dashed border-[var(--blue-500)] bg-transparent transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-90 [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
           <PlusCircleMaskIcon />
         </button>
@@ -1118,6 +1138,7 @@ function HomeLijstjesSection({
       <ListSectionHeader
         icon="list"
         label="Lijstjes"
+        count={normalLists.length}
         showNaarOverzicht
       />
       {normalLists.length > 3 ? (
@@ -1211,7 +1232,7 @@ function HomeFavorietenSection({
       <div className="flex flex-col gap-4">
         <ListSectionHeader
           icon="heart"
-          label="Favorieten lijstjes"
+          label="Favorieten"
           showNaarOverzicht={false}
           onHide={onHide}
         />
@@ -1242,7 +1263,7 @@ function HomeFavorietenSection({
     <div className="flex flex-col">
       <ListSectionHeader
         icon="heart"
-        label="Favorieten lijstjes"
+        label="Favorieten"
         showNaarOverzicht
         naarOverzichtHref="/lijstjes-beheren/favorieten"
       />
@@ -2673,7 +2694,7 @@ export default function Home() {
   }
 
   return (
-    <div className={cn("relative flex min-h-dvh w-full flex-col px-[var(--space-4)]", !hasLists && "bg-gradient-to-b from-[#dcddfc] to-white")}>
+    <div className={cn("relative flex min-h-dvh w-full flex-col px-[var(--space-4)]", !hasLists && "bg-[var(--bg-app)]")}>
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
           <HomeHeader
@@ -2706,9 +2727,9 @@ export default function Home() {
           <div className="mt-10 flex justify-center pb-4">
             <Link
               href="/beheer-homepagina"
-              className="text-sm font-medium leading-5 text-action-primary underline underline-offset-2 transition-colors [@media(hover:hover)]:hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+              className="rounded-pill bg-[var(--white)] px-4 py-2 text-sm font-medium leading-5 text-action-primary shadow-card transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
             >
-              Homepagina beheren
+              Homepagina aanpassen
             </Link>
           </div>
         </div>

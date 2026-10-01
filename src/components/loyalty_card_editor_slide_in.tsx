@@ -123,7 +123,7 @@ export function LoyaltyCardEditorSlideIn({
         footer={
           <div className="flex w-full flex-col items-center gap-3">
             {decodeError ? (
-              <p className="text-center text-xs text-[var(--color-error,#ef4444)]">
+              <p className="text-center text-xs text-[var(--error-400)]">
                 {decodeError}
               </p>
             ) : null}

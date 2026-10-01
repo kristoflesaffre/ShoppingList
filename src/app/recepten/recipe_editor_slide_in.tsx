@@ -417,7 +417,7 @@ export function RecipeEditorSlideIn({
                     "flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-sm font-medium leading-18 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                     isActive
                       ? "bg-[var(--blue-500)] text-white"
-                      : "bg-[var(--neutrals-100,#f0f1f9)] text-[var(--text-secondary)]",
+                      : "bg-[var(--gray-50)] text-[var(--text-secondary)]",
                   )}
                 >
                   <span
@@ -449,7 +449,7 @@ export function RecipeEditorSlideIn({
                 {aiLoading ? "Bezig…" : "Gebruik AI"}
               </MiniButton>
               {aiError ? (
-                <p className="text-xs text-[var(--color-error,#ef4444)]">
+                <p className="text-xs text-[var(--error-400)]">
                   {aiError}
                 </p>
               ) : null}

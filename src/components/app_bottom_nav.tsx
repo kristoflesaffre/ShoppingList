@@ -245,20 +245,21 @@ export function AppBottomNav({
     );
 
   return (
+    /* Zwevende tabbalk (stijl 3, lichte variant): losgekoppeld van de rand, volgt het thema via --white. */
     <div
       className={cn(
-        "fixed inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[24px] bg-[var(--white)] pt-2 shadow-nav",
-        "pb-[calc(8px+env(safe-area-inset-bottom,0px))]",
+        "pointer-events-none fixed inset-x-3 z-20 flex justify-center",
+        "bottom-[calc(12px+env(safe-area-inset-bottom,0px))]",
       )}
     >
       <nav
-        className="relative mx-auto grid min-h-[40px] w-full max-w-[390px] grid-cols-5 items-center px-2 py-1"
+        className="pointer-events-auto relative grid min-h-[60px] w-full max-w-[420px] grid-cols-5 items-center rounded-[24px] bg-[var(--white)] px-2 py-2 shadow-nav-floating"
         aria-label="Hoofdnavigatie"
       >
         {/* Schuivende actieve-indicator: zachte pill achter het icoon, glijdt tussen de 5 kolommen */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-2 right-2 grid grid-cols-5"
+          className="pointer-events-none absolute inset-y-2 left-2 right-2 grid grid-cols-5"
         >
           <span
             className={cn(
@@ -278,14 +279,14 @@ export function AppBottomNav({
             className={cn(
               tabClass,
               active === "lijstjes"
-                ? "text-[var(--blue-500)]"
-                : "text-[var(--gray-500)]",
+                ? "font-semibold text-[var(--blue-500)]"
+                : "font-normal text-[var(--gray-500)]",
             )}
           >
             <span className={iconWrapClass("lijstjes")}>
               <ListIcon className="size-6" filled={active === "lijstjes"} />
             </span>
-            <span className="text-xs font-normal leading-4 tracking-normal">
+            <span className="text-xs leading-4 tracking-normal">
               Lijstjes
             </span>
           </Link>
@@ -298,14 +299,14 @@ export function AppBottomNav({
             className={cn(
               tabClass,
               active === "klantenkaarten"
-                ? "text-[var(--blue-500)]"
-                : "text-[var(--gray-500)]",
+                ? "font-semibold text-[var(--blue-500)]"
+                : "font-normal text-[var(--gray-500)]",
             )}
           >
             <span className={iconWrapClass("klantenkaarten")}>
               <KaartenIcon className="size-6" filled={active === "klantenkaarten"} />
             </span>
-            <span className="text-xs font-normal leading-4 tracking-normal">
+            <span className="text-xs leading-4 tracking-normal">
               Kaarten
             </span>
           </Link>
@@ -318,14 +319,14 @@ export function AppBottomNav({
             className={cn(
               tabClass,
               active === "kalender"
-                ? "text-[var(--blue-500)]"
-                : "text-[var(--gray-500)]",
+                ? "font-semibold text-[var(--blue-500)]"
+                : "font-normal text-[var(--gray-500)]",
             )}
           >
             <span className={iconWrapClass("kalender")}>
               <KalenderIcon className="size-6" filled={active === "kalender"} />
             </span>
-            <span className="text-xs font-normal leading-4 tracking-normal">
+            <span className="text-xs leading-4 tracking-normal">
               Kalender
             </span>
           </Link>
@@ -338,8 +339,8 @@ export function AppBottomNav({
             className={cn(
               tabClass,
               active === "recepten"
-                ? "text-[var(--blue-500)]"
-                : "text-[var(--gray-500)]",
+                ? "font-semibold text-[var(--blue-500)]"
+                : "font-normal text-[var(--gray-500)]",
             )}
           >
             <span className={iconWrapClass("recepten")}>
@@ -348,7 +349,7 @@ export function AppBottomNav({
                 filled={active === "recepten"}
               />
             </span>
-            <span className="text-xs font-normal leading-4 tracking-normal">
+            <span className="text-xs leading-4 tracking-normal">
               Recepten
             </span>
           </Link>
@@ -364,8 +365,8 @@ export function AppBottomNav({
             className={cn(
               "relative z-[1] flex min-w-[41px] max-w-[104px] shrink-0 flex-col items-center gap-1 no-underline transition-[color,transform] duration-base ease-out-strong motion-safe:active:scale-95",
               active === "profiel"
-                ? "text-[var(--blue-500)]"
-                : "text-[var(--gray-500)]",
+                ? "font-semibold text-[var(--blue-500)]"
+                : "font-normal text-[var(--gray-500)]",
             )}
           >
             <span className="relative size-6 shrink-0 overflow-hidden rounded-full bg-[var(--gray-100)]">
@@ -401,7 +402,7 @@ export function AppBottomNav({
               />
             </span>
             <span
-              className="w-full truncate text-center text-xs font-normal leading-4 tracking-normal"
+              className="w-full truncate text-center text-xs leading-4 tracking-normal"
               title={trimmedName.length > 0 ? trimmedName : undefined}
             >
               {profileTabLabel}

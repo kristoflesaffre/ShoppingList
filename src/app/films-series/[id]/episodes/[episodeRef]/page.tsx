@@ -128,7 +128,7 @@ function GhostContent({ episode, season, ep }: { episode: EpisodeDetail | null; 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold leading-8 text-[#16181a]">{episode.title}</h1>
+        <h1 className="text-2xl font-bold leading-8 text-[var(--gray-900)]">{episode.title}</h1>
         <p className="text-sm leading-5 text-[var(--gray-400)]">Seizoen {season} aflevering {ep}</p>
       </div>
       <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
@@ -145,8 +145,8 @@ function GhostContent({ episode, season, ep }: { episode: EpisodeDetail | null; 
         </div>
       </div>
       <div className="flex gap-3">
-        <div className="h-12 flex-1 rounded-[8px] border border-[#4f55f1]" />
-        <div className="h-12 flex-1 rounded-[8px] bg-[#4f55f1]" />
+        <div className="h-12 flex-1 rounded-[8px] border border-[var(--blue-500)]" />
+        <div className="h-12 flex-1 rounded-[8px] bg-[var(--blue-500)]" />
       </div>
     </div>
   );
@@ -609,9 +609,9 @@ export default function EpisodeDetailPage() {
               !hasPrev && "opacity-25 pointer-events-none",
             )}
           >
-            <MaskIcon src="/icons/chevron.svg" className="size-6 bg-[#4f55f1] rotate-90" />
+            <MaskIcon src="/icons/chevron.svg" className="size-6 bg-[var(--blue-500)] rotate-90" />
           </button>
-          <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[#16181a] lg:flex-none">
+          <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--gray-900)] lg:flex-none">
             Seizoen {currentSeason} aflevering {currentEp}
           </p>
           <button
@@ -624,7 +624,7 @@ export default function EpisodeDetailPage() {
               !hasNext && "opacity-25 pointer-events-none",
             )}
           >
-            <MaskIcon src="/icons/chevron.svg" className="size-6 bg-[#4f55f1] -rotate-90" />
+            <MaskIcon src="/icons/chevron.svg" className="size-6 bg-[var(--blue-500)] -rotate-90" />
           </button>
         </div>
 
@@ -667,7 +667,7 @@ export default function EpisodeDetailPage() {
                 {/* Title + rating */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <h1 className="min-w-0 flex-1 text-2xl font-bold leading-8 text-[#16181a]">
+                    <h1 className="min-w-0 flex-1 text-2xl font-bold leading-8 text-[var(--gray-900)]">
                       {episode.title}
                     </h1>
                     {episode.rating != null && (
@@ -721,7 +721,7 @@ export default function EpisodeDetailPage() {
                         <button
                           type="button"
                           onClick={() => setOverviewExpanded(true)}
-                          className="text-base font-medium leading-6 text-[#4f55f1] underline decoration-solid underline-offset-2 focus-visible:outline-none"
+                          className="text-base font-medium leading-6 text-[var(--blue-500)] underline decoration-solid underline-offset-2 focus-visible:outline-none"
                         >
                           toon meer
                         </button>
@@ -741,18 +741,18 @@ export default function EpisodeDetailPage() {
                     }}
                     className={cn(
                       "flex h-12 flex-1 items-center gap-3 rounded-[8px] border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                      watched ? "border-[#34C759]" : "border-[#4f55f1]",
+                      watched ? "border-[#34C759]" : "border-[var(--blue-500)]",
                     )}
                   >
                     <span className={cn(
                       "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium",
-                      watched ? "text-[#34C759]" : "text-[#4f55f1]",
+                      watched ? "text-[#34C759]" : "text-[var(--blue-500)]",
                     )}>
                       Bekeken
                     </span>
                     <MaskIcon
                       src={watched ? "/icons/checkmark.svg" : "/icons/visible.svg"}
-                      className={cn("size-6 shrink-0", watched ? "bg-[#34C759]" : "bg-[#4f55f1]")}
+                      className={cn("size-6 shrink-0", watched ? "bg-[#34C759]" : "bg-[var(--blue-500)]")}
                     />
                   </button>
 
@@ -760,7 +760,7 @@ export default function EpisodeDetailPage() {
                   <button
                     type="button"
                     onClick={() => router.push(`/films-series/${rawId}/episodes`)}
-                    className="flex h-12 flex-1 items-center justify-center rounded-[8px] bg-[#4f55f1] px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                    className="flex h-12 flex-1 items-center justify-center rounded-[8px] bg-[var(--blue-500)] px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
                   >
                     <span className="whitespace-nowrap text-base font-medium text-white">Naar overzicht</span>
                   </button>
@@ -770,11 +770,11 @@ export default function EpisodeDetailPage() {
                 {episode.cast.length > 0 && (
                   <div className="flex w-full flex-col gap-4">
                     <div className="flex items-center gap-6 lg:gap-4">
-                      <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130] lg:flex-none">Cast</h2>
+                      <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)] lg:flex-none">Cast</h2>
                       <button
                         type="button"
                         onClick={() => router.push(`/films-series/${rawId}/cast`)}
-                        className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none"
+                        className="shrink-0 text-xs font-medium text-[var(--blue-500)] focus-visible:outline-none"
                       >
                         Toon alle
                       </button>
@@ -803,10 +803,10 @@ export default function EpisodeDetailPage() {
                               )}
                             </div>
                             <div className="flex flex-col">
-                              <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[#16181a]">
+                              <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[var(--gray-900)]">
                                 {member.name}
                               </p>
-                              <p className="text-[14px] font-normal leading-5 text-[#8c929d]">
+                              <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
                                 {member.character}
                               </p>
                             </div>

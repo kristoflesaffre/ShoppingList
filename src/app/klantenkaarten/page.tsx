@@ -588,7 +588,7 @@ export default function KlantenKaartenPage() {
   const fabVisible = !empty && !isEditMode && !snackbarMessage;
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-gradient-to-b from-[var(--blue-100)] to-[var(--white)] px-[16px]">
+    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)] px-[16px]">
       <div
         className={cn(
           "flex min-w-0 flex-1 flex-col pt-[calc(52px+env(safe-area-inset-top,0px))]",

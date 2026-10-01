@@ -80,7 +80,7 @@ function formatDate(airDate: string | null): string {
 
 function EpisodeSkeleton() {
   return (
-    <div className="flex animate-pulse items-start gap-4 rounded-[8px] border border-[#dcddfc] bg-[#f6f6fe] p-2">
+    <div className="flex animate-pulse items-start gap-4 rounded-[8px] border border-[var(--blue-100)] bg-[var(--blue-25)] p-2">
       <div className="h-[131px] w-[87px] shrink-0 rounded bg-[var(--gray-100)]" />
       <div className="flex flex-1 flex-col gap-2 pt-1">
         <div className="h-5 w-3/4 rounded bg-[var(--gray-100)]" />
@@ -200,7 +200,7 @@ export default function EpisodesPage() {
         {/* Seizoentabs */}
         {seriesInfo && seriesInfo.seasons.length > 0 && (
           <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-            <div className="flex gap-6 border-b border-[#e2e4e6]" style={{ width: "max-content" }}>
+            <div className="flex gap-6 border-b border-[var(--gray-100)]" style={{ width: "max-content" }}>
               {seriesInfo.seasons.map((s) => {
                 const active = s.seasonNumber === selectedSeason;
                 return (
@@ -210,12 +210,12 @@ export default function EpisodesPage() {
                     onClick={() => setSelectedSeason(s.seasonNumber)}
                     className={cn(
                       "flex shrink-0 flex-col gap-2 pb-0 focus-visible:outline-none",
-                      active ? "font-medium text-[#16181a]" : "font-normal text-[#8c929d]",
+                      active ? "font-medium text-[var(--gray-900)]" : "font-normal text-[var(--gray-400)]",
                     )}
                   >
                     <span className="whitespace-nowrap text-base leading-6">{s.name}</span>
                     <div
-                      className="h-[2px] w-full rounded-full bg-[#4f55f1]"
+                      className="h-[2px] w-full rounded-full bg-[var(--blue-500)]"
                       style={{ opacity: active ? 1 : 0 }}
                     />
                   </button>
@@ -227,7 +227,7 @@ export default function EpisodesPage() {
 
         {/* Jaar-header */}
         {year && (
-          <p className="text-sm font-semibold leading-4 text-[#4f55f1]">{year}</p>
+          <p className="text-sm font-semibold leading-4 text-[var(--blue-500)]">{year}</p>
         )}
 
         {/* Afleveringenlijst */}
@@ -244,7 +244,7 @@ export default function EpisodesPage() {
                     type="button"
                     onClick={() => router.push(`/films-series/${rawId}/episodes/s${selectedSeason}e${ep.episodeNumber}`)}
                     className={cn(
-                      "flex w-full items-start gap-4 rounded-[8px] border border-[#dcddfc] bg-[#f6f6fe] p-2 text-left transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                      "flex w-full items-start gap-4 rounded-[8px] border border-[var(--blue-100)] bg-[var(--blue-25)] p-2 text-left transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                       epWatched && "opacity-80",
                     )}
                   >
@@ -272,7 +272,7 @@ export default function EpisodesPage() {
                       <div className="flex flex-col">
                         <div className="flex items-center gap-1">
                           <ol
-                            className="min-w-px flex-1 list-decimal text-base font-medium leading-6 text-[#16181a]"
+                            className="min-w-px flex-1 list-decimal text-base font-medium leading-6 text-[var(--gray-900)]"
                             start={ep.episodeNumber}
                           >
                             <li className="ms-6">{ep.name}</li>
@@ -300,26 +300,26 @@ export default function EpisodesPage() {
                           >
                             <MaskIcon
                               src={epWatched ? "/icons/checkmark.svg" : "/icons/visible.svg"}
-                              className={cn("size-6", epWatched ? "bg-[#34C759]" : "bg-[#4f55f1]")}
+                              className={cn("size-6", epWatched ? "bg-[#34C759]" : "bg-[var(--blue-500)]")}
                             />
                           </span>
                         </div>
                         {meta && (
-                          <p className="text-sm leading-5 text-[#8c929d]">{meta}</p>
+                          <p className="text-sm leading-5 text-[var(--gray-400)]">{meta}</p>
                         )}
                       </div>
                       {/* Rating */}
                       {ep.rating !== null && (
                         <div className="flex items-center gap-1">
                           <StarIcon />
-                          <span className="text-[12px] leading-4 text-[#16181a]">
+                          <span className="text-[12px] leading-4 text-[var(--gray-900)]">
                             {ep.rating.toFixed(1)}
                           </span>
                         </div>
                       )}
                       {/* Beschrijving */}
                       {ep.overview && (
-                        <p className="line-clamp-3 text-xs leading-4 text-[#8c929d]">
+                        <p className="line-clamp-3 text-xs leading-4 text-[var(--gray-400)]">
                           {ep.overview}
                         </p>
                       )}

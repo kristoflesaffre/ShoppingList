@@ -99,6 +99,8 @@ const config: Config = {
           600: "var(--error-600)",
         },
         white: "var(--white)",
+        /** Altijd wit, ongeacht thema: tekst/randen op foto’s, video en zwarte overlays. */
+        "fixed-white": "#ffffff",
       },
       borderWidth: {
         1: "var(--border-width-1)",
@@ -115,7 +117,7 @@ const config: Config = {
         mono: ["var(--font-mono)"],
       },
       fontSize: {
-        "page-title": "var(--text-page-title)",
+        "page-title": ["var(--text-page-title)", { letterSpacing: "-0.015em" }],
         "section-title": "var(--text-section-title)",
         base: "var(--text-base)",
         sm: "var(--text-sm)",
@@ -162,6 +164,7 @@ const config: Config = {
         raised: "var(--shadow-raised)",
         fab: "var(--shadow-fab)",
         nav: "var(--shadow-nav)",
+        "nav-floating": "var(--shadow-nav-floating)",
       },
       transitionTimingFunction: {
         "out-strong": "var(--ease-out-strong)",

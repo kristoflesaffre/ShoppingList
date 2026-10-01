@@ -58,8 +58,8 @@ function ThreeDotsIcon({ className }: { className?: string }) {
 }
 
 function StarIcon({ source }: { source?: "imdb" | "tmdb" | null }) {
-  const color = source === "imdb" ? "#FBBF24" : "#4f55f1";
-  const strokeColor = source === "imdb" ? "#F59E0B" : "#4f55f1";
+  const color = source === "imdb" ? "#FBBF24" : "var(--blue-500)";
+  const strokeColor = source === "imdb" ? "#F59E0B" : "var(--blue-500)";
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className="size-4 shrink-0">
       <path
@@ -122,7 +122,7 @@ function FilmResultCard({
           {result.score !== null && (
             <div className="flex shrink-0 items-center gap-[4px]">
               <StarIcon source={result.scoreSource ?? scoreSource} />
-              <span className="text-[12px] font-medium leading-4 text-[#16181a]">{result.score.toFixed(1)}</span>
+              <span className="text-[12px] font-medium leading-4 text-[var(--gray-900)]">{result.score.toFixed(1)}</span>
             </div>
           )}
         </div>
@@ -574,13 +574,7 @@ export default function FilmsSeriesPage() {
   }, [restoringFilmId, watchlistFilms]);
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-white">
-      {/* Gradient achtergrond — Figma 1652:46675 */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[478px]"
-        style={{ background: "linear-gradient(to bottom, #e3e4ff, white)" }}
-        aria-hidden
-      />
+    <div className="relative flex min-h-dvh w-full flex-col">
 
       {/* Vaste header */}
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
@@ -633,8 +627,8 @@ export default function FilmsSeriesPage() {
                   className={cn(
                     "shrink-0 rounded-full px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                     filter === chip.id
-                      ? "bg-[#4f55f1] font-medium text-white"
-                      : "bg-white font-normal text-[#707784] shadow-[0px_1px_2px_rgba(0,0,0,0.04)]",
+                      ? "bg-[var(--blue-500)] font-medium text-white"
+                      : "bg-white font-normal text-[var(--gray-500)] shadow-[0px_1px_2px_rgba(0,0,0,0.04)]",
                   )}
                 >
                   {chip.label}
@@ -668,13 +662,13 @@ export default function FilmsSeriesPage() {
             {hasPartnerItems && (
               <section className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)]">
                     Watchlist {partnerName ?? "Partner"}
                   </h2>
                   <button
                     type="button"
                     onClick={() => router.push("/films-series/partner-watchlist")}
-                    className="shrink-0 text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    className="shrink-0 text-xs font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                   >
                     Toon alle
                   </button>
@@ -684,7 +678,7 @@ export default function FilmsSeriesPage() {
                     {partnerWatchlist.map((item) => (
                       <div
                         key={item.id}
-                        className="flex w-[300px] shrink-0 gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3"
+                        className="flex w-[300px] shrink-0 gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3"
                       >
                         {/* Poster */}
                         <button
@@ -712,28 +706,28 @@ export default function FilmsSeriesPage() {
                                 <button
                                   type="button"
                                   onClick={() => router.push(`/films-series/partner/${item.id}`)}
-                                  className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[#16181a] focus-visible:outline-none"
+                                  className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[var(--gray-900)] focus-visible:outline-none"
                                 >
                                   {item.title}
                                 </button>
                                 {/* Partner avatar */}
-                                <div className="size-6 shrink-0 overflow-hidden rounded-full border border-white bg-[#edeefe]">
+                                <div className="size-6 shrink-0 overflow-hidden rounded-full border border-white bg-[var(--blue-50)]">
                                   {partnerAvatarUrl ? (
                                     // eslint-disable-next-line @next/next/no-img-element
                                     <img src={partnerAvatarUrl} alt={partnerName ?? ""} className="size-full object-cover" />
                                   ) : (
                                     <div className="flex size-full items-center justify-center">
-                                      <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[#4f55f1]" />
+                                      <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[var(--blue-500)]" />
                                     </div>
                                   )}
                                 </div>
                               </div>
-                              <p className="text-[14px] font-normal leading-5 text-[#8c929d]">
+                              <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
                                 {item.year} {item.type === "movie" ? "Film" : "TV Serie"}
                               </p>
                             </div>
                             {(item.overview ?? partnerOverviews[item.id]) && (
-                              <p className="line-clamp-2 text-[10px] font-normal leading-3 text-[#595f6a]">
+                              <p className="line-clamp-2 text-[10px] font-normal leading-3 text-[var(--gray-600)]">
                                 {item.overview ?? partnerOverviews[item.id]}
                               </p>
                             )}
@@ -744,7 +738,7 @@ export default function FilmsSeriesPage() {
                             {item.score != null ? (
                               <div className="flex shrink-0 items-center gap-[4px]">
                                 <StarIcon source={scoreSourceMap[item.id]} />
-                                <span className="text-[12px] font-medium leading-4 text-[#16181a]">{item.score.toFixed(1)}</span>
+                                <span className="text-[12px] font-medium leading-4 text-[var(--gray-900)]">{item.score.toFixed(1)}</span>
                               </div>
                             ) : (
                               <div />
@@ -788,11 +782,11 @@ export default function FilmsSeriesPage() {
             {watchingItems.length > 0 && (
               <section className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Aan het kijken</h2>
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)]">Aan het kijken</h2>
                   <button
                     type="button"
                     onClick={() => router.push("/films-series/aan-het-kijken")}
-                    className="shrink-0 text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    className="shrink-0 text-xs font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                   >
                     Toon alle
                   </button>
@@ -806,7 +800,7 @@ export default function FilmsSeriesPage() {
                           key={id}
                           type="button"
                           onClick={() => router.push(`/films-series/${id}/episodes/s${nextSeason}e${nextEpisode}`)}
-                          className="flex w-[300px] shrink-0 items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                          className="flex w-[300px] shrink-0 items-start gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                         >
                           <div className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
                             {posterUrl ? (
@@ -821,7 +815,7 @@ export default function FilmsSeriesPage() {
                           <div className="flex min-w-0 flex-1 flex-col gap-1">
                             <div className="flex w-full flex-col">
                               <div className="flex w-full items-center gap-3">
-                                <p className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[#16181a]">{title}</p>
+                                <p className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[var(--gray-900)]">{title}</p>
                                 <span
                                   role="button"
                                   tabIndex={0}
@@ -839,13 +833,13 @@ export default function FilmsSeriesPage() {
                                   <MaskIcon src="/icons/visible.svg" className={cn("size-6", CARD_ACTION_ICON)} />
                                 </span>
                               </div>
-                              <p className="text-sm leading-5 text-[#8c929d]">{year} TV Serie</p>
+                              <p className="text-sm leading-5 text-[var(--gray-400)]">{year} TV Serie</p>
                             </div>
                             <div className="flex flex-nowrap items-center gap-2">
-                              <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[#edeefe] px-2 py-1 text-xs leading-4 text-[#4f55f1]">
+                              <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[var(--blue-50)] px-2 py-1 text-xs leading-4 text-[var(--blue-500)]">
                                 Seizoen {nextSeason}
                               </span>
-                              <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[#edeefe] px-2 py-1 text-xs leading-4 text-[#4f55f1]">
+                              <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[var(--blue-50)] px-2 py-1 text-xs leading-4 text-[var(--blue-500)]">
                                 Aflevering {nextEpisode}
                               </span>
                             </div>
@@ -862,11 +856,11 @@ export default function FilmsSeriesPage() {
             {watchlistFilms.length > 0 && (
               <section ref={filmsSectionRef} className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Watchlist films</h2>
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)]">Watchlist films</h2>
                   <button
                     type="button"
                     onClick={() => router.push("/films-series/watchlist/films")}
-                    className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    className="shrink-0 text-xs font-medium text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                   >
                     Toon alle
                   </button>
@@ -913,13 +907,13 @@ export default function FilmsSeriesPage() {
                           </span>
                         </div>
                         <div className="flex flex-col gap-0">
-                          <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[#16181a]">{item.title}</p>
+                          <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[var(--gray-900)]">{item.title}</p>
                           <div className="flex items-center justify-between">
-                            <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
+                            <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">{item.year}</p>
                             {item.score != null && (
                               <div className="flex items-center gap-1">
                                 <StarIcon source={scoreSourceMap[item.id]} />
-                                <span className="text-[12px] font-medium leading-4 text-[#16181a]">{item.score.toFixed(1)}</span>
+                                <span className="text-[12px] font-medium leading-4 text-[var(--gray-900)]">{item.score.toFixed(1)}</span>
                               </div>
                             )}
                           </div>
@@ -937,11 +931,11 @@ export default function FilmsSeriesPage() {
             {watchlistSeries.length > 0 && (
               <section ref={seriesSectionRef} className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Watchlist series</h2>
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)]">Watchlist series</h2>
                   <button
                     type="button"
                     onClick={() => router.push("/films-series/watchlist/series")}
-                    className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    className="shrink-0 text-xs font-medium text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                   >
                     Toon alle
                   </button>
@@ -967,13 +961,13 @@ export default function FilmsSeriesPage() {
                           )}
                         </div>
                         <div className="flex flex-col gap-0">
-                          <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[#16181a]">{item.title}</p>
+                          <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[var(--gray-900)]">{item.title}</p>
                           <div className="flex items-center justify-between">
-                            <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{item.year}</p>
+                            <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">{item.year}</p>
                             {item.score != null && (
                               <div className="flex items-center gap-1">
                                 <StarIcon source={scoreSourceMap[item.id]} />
-                                <span className="text-[12px] font-medium leading-4 text-[#16181a]">{item.score.toFixed(1)}</span>
+                                <span className="text-[12px] font-medium leading-4 text-[var(--gray-900)]">{item.score.toFixed(1)}</span>
                               </div>
                             )}
                           </div>
@@ -989,12 +983,12 @@ export default function FilmsSeriesPage() {
             {hasDiscoverSection && (
               <section className="flex flex-col gap-4">
                 <div className="flex items-center gap-6">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130]">Te ontdekken</h2>
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)]">Te ontdekken</h2>
                   {discoverVisible.length > 0 && (
                     <button
                       type="button"
                       onClick={() => router.push("/films-series/discover")}
-                      className="shrink-0 text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      className="shrink-0 text-xs font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                     >
                       Toon carousel
                     </button>
@@ -1053,15 +1047,15 @@ export default function FilmsSeriesPage() {
                             </span>
                           </button>
                           <div className="flex flex-col gap-0">
-                            <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[#16181a]">
+                            <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[var(--gray-900)]">
                               {item.title}
                             </p>
                             <div className="flex items-center justify-between gap-1">
-                              <p className="truncate text-[12px] leading-4 text-[#8c929d]">{item.year}</p>
+                              <p className="truncate text-[12px] leading-4 text-[var(--gray-400)]">{item.year}</p>
                               {item.score != null && (
                                 <div className="flex shrink-0 items-center gap-0.5">
                                   <StarIcon source={scoreSourceMap[item.id] ?? item.scoreSource} />
-                                  <span className="text-[10px] font-medium leading-4 text-[#16181a]">
+                                  <span className="text-[10px] font-medium leading-4 text-[var(--gray-900)]">
                                     {item.score.toFixed(1)}
                                   </span>
                                 </div>

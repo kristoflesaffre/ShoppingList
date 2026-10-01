@@ -74,7 +74,7 @@ function MemberAvatars({
     return (
       <div
         className={cn(
-          "shrink-0 overflow-hidden rounded-full border border-white bg-[#edeefe]",
+          "shrink-0 overflow-hidden rounded-full border border-white bg-[var(--blue-50)]",
           sizeClass,
           className,
         )}
@@ -84,7 +84,7 @@ function MemberAvatars({
           <img src={person.url} alt={person.name ?? ""} className="size-full object-cover" />
         ) : (
           <div className="flex size-full items-center justify-center">
-            <MaskIcon src="/icons/avatar.svg" className="size-[10px] bg-[#4f55f1]" />
+            <MaskIcon src="/icons/avatar.svg" className="size-[10px] bg-[var(--blue-500)]" />
           </div>
         )}
       </div>
@@ -232,7 +232,7 @@ function TrailerModal({ trailerKey, onClose }: { trailerKey: string; onClose: ()
         type="button"
         aria-label="Sluit trailer"
         onClick={onClose}
-        className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full bg-black/60 text-white focus-visible:outline-none"
+        className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full bg-black/60 text-fixed-white focus-visible:outline-none"
       >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="white" aria-hidden>
           <path d="M1 1l12 12M13 1L1 13" stroke="white" strokeWidth="2" strokeLinecap="round" />
@@ -277,7 +277,7 @@ function toEnriched(
 
 function CardSkeleton() {
   return (
-    <div className="flex w-full animate-pulse items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3">
+    <div className="flex w-full animate-pulse items-start gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3">
       <div className="h-[130px] w-[87px] shrink-0 rounded-[4px] bg-[var(--gray-100)]" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="h-6 w-3/4 rounded bg-[var(--gray-100)]" />
@@ -316,11 +316,11 @@ function SwipeableCard({
       const bg = bgRef.current;
       if (!bg) return;
       if (dir === "left") {
-        bg.style.background = "#d64040";
+        bg.style.background = "var(--error-400)";
         if (iconDeleteRef.current) iconDeleteRef.current.style.display = "flex";
         if (iconWatchRef.current) iconWatchRef.current.style.display = "none";
       } else if (dir === "right") {
-        bg.style.background = "#4f55f1";
+        bg.style.background = "var(--blue-500)";
         if (iconDeleteRef.current) iconDeleteRef.current.style.display = "none";
         if (iconWatchRef.current) iconWatchRef.current.style.display = "flex";
       } else {
@@ -432,7 +432,7 @@ function WatchlistItemCard({
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(); }}
-      className="flex w-full cursor-pointer items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      className="flex w-full cursor-pointer items-start gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
     >
       {item.trailerKey && onPlay ? (
         <button
@@ -455,7 +455,7 @@ function WatchlistItemCard({
               <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
             </div>
           )}
-          <div className="absolute left-1/2 top-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-black/40">
+          <div className="absolute left-1/2 top-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-fixed-white bg-black/40">
             <PlayIcon />
           </div>
         </button>
@@ -481,7 +481,7 @@ function WatchlistItemCard({
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex w-full flex-col">
           <div className="flex w-full items-center gap-2">
-            <span className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[#16181a]">
+            <span className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[var(--gray-900)]">
               {item.title}
             </span>
             <div className="flex shrink-0 items-center gap-3">
@@ -510,7 +510,7 @@ function WatchlistItemCard({
                 }}
                 className="hidden sm:flex items-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
               >
-                <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
+                <MaskIcon src="/icons/visible.svg" className="size-6 bg-[var(--blue-500)]" />
               </button>
             </div>
           </div>
@@ -522,21 +522,21 @@ function WatchlistItemCard({
             {item.score != null && (
               <div className="flex shrink-0 items-center gap-1">
                 <StarIcon />
-                <span className="text-xs font-medium leading-4 text-[#16181a]">{item.score.toFixed(1)}</span>
+                <span className="text-xs font-medium leading-4 text-[var(--gray-900)]">{item.score.toFixed(1)}</span>
               </div>
             )}
             {item.metaLine && (
-              <p className="min-w-0 flex-1 truncate text-sm leading-5 text-[#8c929d]">{item.metaLine}</p>
+              <p className="min-w-0 flex-1 truncate text-sm leading-5 text-[var(--gray-400)]">{item.metaLine}</p>
             )}
           </div>
 
           {item.castNames && (
-            <p className="truncate text-xs leading-4 text-[#8c929d]">{item.castNames}</p>
+            <p className="truncate text-xs leading-4 text-[var(--gray-400)]">{item.castNames}</p>
           )}
         </div>
 
         {item.overview && (
-          <p className="line-clamp-4 text-xs leading-4 text-[#595f6a]">{item.overview}</p>
+          <p className="line-clamp-4 text-xs leading-4 text-[var(--gray-600)]">{item.overview}</p>
         )}
       </div>
     </div>
@@ -1014,7 +1014,7 @@ export default function WatchlistKindPage() {
       {/* Blauwe gradient achtergrond */}
       <div
         className="pointer-events-none fixed inset-0 z-0"
-        style={{ background: "linear-gradient(to bottom, #e3e4ff 0%, white 40%)" }}
+        style={{ background: "var(--bg-app)" }}
       />
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
         <div className="mx-auto w-full max-w-[956px] px-4">
@@ -1027,7 +1027,7 @@ export default function WatchlistKindPage() {
             >
               <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
             </button>
-            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[#16181a]">
+            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[var(--gray-900)]">
               {config.pageTitle}
             </p>
             <button
@@ -1047,7 +1047,7 @@ export default function WatchlistKindPage() {
         style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
       >
         <div className="flex flex-col gap-4">
-          <h1 className="text-[18px] font-bold leading-6 text-[#101130]">{config.sectionTitle}</h1>
+          <h1 className="text-[18px] font-bold leading-6 text-[var(--blue-900)]">{config.sectionTitle}</h1>
 
           <SearchBar placeholder="Zoek" value={query} onValueChange={setQuery} />
 
@@ -1079,8 +1079,8 @@ export default function WatchlistKindPage() {
                         className={cn(
                           "h-8 shrink-0 rounded-full px-3 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                           genreFilter === chip
-                            ? "bg-[#4f55f1] font-semibold text-white"
-                            : "bg-white font-normal text-[#707784] shadow-[0px_1px_2px_rgba(0,0,0,0.04)]",
+                            ? "bg-[var(--blue-500)] font-semibold text-white"
+                            : "bg-white font-normal text-[var(--gray-500)] shadow-[0px_1px_2px_rgba(0,0,0,0.04)]",
                         )}
                       >
                         {chip}
@@ -1198,8 +1198,8 @@ export default function WatchlistKindPage() {
                       className={cn(
                         "h-8 shrink-0 rounded-full px-3 text-[13px] leading-[18px] transition-colors focus-visible:outline-none",
                         watchingSlide.selectedSeason === s.seasonNumber
-                          ? "bg-[#4f55f1] font-semibold text-white"
-                          : "bg-[var(--gray-100)] font-normal text-[#707784]",
+                          ? "bg-[var(--blue-500)] font-semibold text-white"
+                          : "bg-[var(--gray-100)] font-normal text-[var(--gray-500)]",
                       )}
                     >
                       {s.name.startsWith("Seizoen") || s.name.startsWith("Season") ? s.name : `Seizoen ${s.seasonNumber}`}

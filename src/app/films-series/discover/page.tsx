@@ -79,8 +79,8 @@ function ThreeDotsIcon() {
 }
 
 function StarIcon({ source = "tmdb" }: { source?: "imdb" | "tmdb" }) {
-  const fill = source === "imdb" ? "#FBBF24" : "#4f55f1";
-  const stroke = source === "imdb" ? "#F59E0B" : "#4f55f1";
+  const fill = source === "imdb" ? "#FBBF24" : "var(--blue-500)";
+  const stroke = source === "imdb" ? "#F59E0B" : "var(--blue-500)";
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden className="size-6 shrink-0">
       <path
@@ -146,9 +146,9 @@ function GhostContent({
       </div>
       <div className="h-16 rounded bg-[var(--gray-100)]" />
       <div className="flex gap-3">
-        <div className="h-14 flex-1 rounded-lg border border-[#4f55f1]" />
-        <div className="h-14 flex-1 rounded-lg bg-[#4f55f1]" />
-        <div className="h-14 flex-1 rounded-lg bg-[#d64040]" />
+        <div className="h-14 flex-1 rounded-lg border border-[var(--blue-500)]" />
+        <div className="h-14 flex-1 rounded-lg bg-[var(--blue-500)]" />
+        <div className="h-14 flex-1 rounded-lg bg-[var(--error-400)]" />
       </div>
       <div
         className="relative w-full overflow-hidden rounded-lg bg-[var(--gray-100)]"
@@ -723,7 +723,7 @@ export default function DiscoverCarouselPage() {
             if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
             setShowTrailer(false);
           }}
-          className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-black/60 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-black/60 text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
             <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -761,7 +761,7 @@ export default function DiscoverCarouselPage() {
                   !hasPrev && "pointer-events-none opacity-25",
                 )}
               >
-                <MaskIcon src="/icons/chevron.svg" className="size-6 rotate-90 bg-[#4f55f1]" />
+                <MaskIcon src="/icons/chevron.svg" className="size-6 rotate-90 bg-[var(--blue-500)]" />
               </button>
               <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
                 {currentIndex + 1} van {items.length}
@@ -776,7 +776,7 @@ export default function DiscoverCarouselPage() {
                   !hasNext && "pointer-events-none opacity-25",
                 )}
               >
-                <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[#4f55f1]" />
+                <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[var(--blue-500)]" />
               </button>
             </div>
 
@@ -833,7 +833,7 @@ export default function DiscoverCarouselPage() {
 
                       {metaLine && (
                         <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                          <p className="whitespace-nowrap text-sm leading-5 text-[#8c929d]">{metaLine}</p>
+                          <p className="whitespace-nowrap text-sm leading-5 text-[var(--gray-400)]">{metaLine}</p>
                         </div>
                       )}
 
@@ -877,7 +877,7 @@ export default function DiscoverCarouselPage() {
                           <button
                             type="button"
                             onClick={() => setOverviewExpanded((v) => !v)}
-                            className="self-start text-sm font-medium leading-5 text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                            className="self-start text-sm font-medium leading-5 text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                           >
                             {overviewExpanded ? "Toon minder" : "Toon meer"}
                           </button>
@@ -892,15 +892,15 @@ export default function DiscoverCarouselPage() {
                           type="button"
                           aria-label="Als gezien markeren"
                           onClick={handleSeen}
-                          className="flex flex-1 items-center justify-center rounded-lg border border-[#4f55f1] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                          className="flex flex-1 items-center justify-center rounded-lg border border-[var(--blue-500)] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                         >
-                          <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
+                          <MaskIcon src="/icons/visible.svg" className="size-6 bg-[var(--blue-500)]" />
                         </button>
                         <button
                           type="button"
                           aria-label="Liken en toevoegen aan watchlist"
                           onClick={handleLike}
-                          className="flex flex-1 items-center justify-center rounded-lg bg-[#4f55f1] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                          className="flex flex-1 items-center justify-center rounded-lg bg-[var(--blue-500)] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                         >
                           <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-white" />
                         </button>
@@ -908,7 +908,7 @@ export default function DiscoverCarouselPage() {
                           type="button"
                           aria-label="Disliken"
                           onClick={handleDislike}
-                          className="flex flex-1 items-center justify-center rounded-lg bg-[#d64040] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                          className="flex flex-1 items-center justify-center rounded-lg bg-[var(--error-400)] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                         >
                           <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />
                         </button>
@@ -918,12 +918,12 @@ export default function DiscoverCarouselPage() {
                           type="button"
                           aria-label="Ik ben dit nu aan het kijken"
                           onClick={handleWatching}
-                          className="flex w-full items-center gap-3 rounded-lg border border-[#4f55f1] p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                          className="flex w-full items-center gap-3 rounded-lg border border-[var(--blue-500)] p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                         >
-                          <span className="flex-1 text-left text-base font-medium leading-6 text-[#4f55f1]">
+                          <span className="flex-1 text-left text-base font-medium leading-6 text-[var(--blue-500)]">
                             Ik ben dit nu aan het kijken
                           </span>
-                          <MaskIcon src="/icons/visible.svg" className="size-6 shrink-0 bg-[#4f55f1]" />
+                          <MaskIcon src="/icons/visible.svg" className="size-6 shrink-0 bg-[var(--blue-500)]" />
                         </button>
                       )}
                     </div>
@@ -948,7 +948,7 @@ export default function DiscoverCarouselPage() {
                           type="button"
                           aria-label="Trailer afspelen"
                           onClick={handlePlay}
-                          className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[2.75px] border-white bg-black/20 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                          className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[2.75px] border-fixed-white bg-black/20 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
                           style={{ width: 51, height: 51 }}
                         >
                           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -983,7 +983,7 @@ export default function DiscoverCarouselPage() {
                           <button
                             type="button"
                             onClick={() => router.push(`/films-series/${detail.id}`)}
-                            className="text-xs font-medium leading-4 text-[#4f55f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                            className="text-xs font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                           >
                             Toon alle
                           </button>
@@ -1011,7 +1011,7 @@ export default function DiscoverCarouselPage() {
                                 <p className="line-clamp-2 text-center text-[11px] font-medium leading-4 text-[var(--text-primary)]">
                                   {member.name}
                                 </p>
-                                <p className="line-clamp-1 text-center text-[10px] leading-3 text-[#8c929d]">
+                                <p className="line-clamp-1 text-center text-[10px] leading-3 text-[var(--gray-400)]">
                                   {member.character}
                                 </p>
                               </div>

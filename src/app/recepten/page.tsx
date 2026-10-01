@@ -448,7 +448,7 @@ export default function ReceptenPage() {
     <div
       className={cn(
         "relative flex min-h-dvh w-full flex-col px-[16px]",
-        !hasRecipes && "bg-gradient-to-b from-[#dcddfc] to-white",
+        !hasRecipes && "bg-[var(--bg-app)]",
       )}
     >
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
@@ -537,8 +537,8 @@ export default function ReceptenPage() {
                       className={cn(
                         "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-[color,background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                         activeCategory === null
-                          ? "bg-[#4f55f1] font-medium text-white"
-                          : "bg-white font-normal text-[#707784]",
+                          ? "bg-[var(--blue-500)] font-medium text-white"
+                          : "bg-white font-normal text-[var(--gray-500)]",
                       )}
                     >
                       Alle
@@ -553,8 +553,8 @@ export default function ReceptenPage() {
                           className={cn(
                             "flex shrink-0 items-center gap-1.5 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-[color,background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                             isActive
-                              ? "bg-[#4f55f1] font-medium text-white"
-                              : "bg-white font-normal text-[#707784]",
+                              ? "bg-[var(--blue-500)] font-medium text-white"
+                              : "bg-white font-normal text-[var(--gray-500)]",
                           )}
                         >
                           {isActive && (

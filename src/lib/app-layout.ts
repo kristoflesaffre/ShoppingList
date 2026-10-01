@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
  * Bottom offset voor vaste FAB’s: 24px boven de bottom navigation (Figma 854-7039).
  * Snackbar met zichtbare FAB (`APP_SNACKBAR_FIXTURE_CLASS`) gebruikt dezelfde `bottom` zodat
  * de onderkant van de snackbar gelijk loopt met de onderkant van de FAB.
- * Nav-hoogte ≈ pt-2 + nav-rij + pb (8+48+8) plus safe-area in de nav-pb.
+ * Zwevende nav: 12px van de onderkant + 60px hoog = 72px; FAB staat 16px daarboven.
  * De nav zelf staat in `AppPersistentBottomNav` (root layout + Suspense), niet op elke pagina.
  */
 export const APP_FAB_BOTTOM_CLASS =

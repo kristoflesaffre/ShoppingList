@@ -169,7 +169,7 @@ function SwipeToReact({
   return (
     <div ref={rootRef} className={cn("relative w-full min-w-0 overflow-hidden rounded-[8px]", className)}>
       {offset < 0 && (
-        <div className="pointer-events-none absolute inset-0 rounded-[8px] bg-[#d64040]" aria-hidden>
+        <div className="pointer-events-none absolute inset-0 rounded-[8px] bg-[var(--error-400)]" aria-hidden>
           <div className="absolute right-6 top-1/2 -translate-y-1/2">
             <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />
           </div>
@@ -252,8 +252,8 @@ function ThreeDotsIcon() {
 }
 
 function StarIcon({ source }: { source?: "imdb" | "tmdb" | null }) {
-  const color = source === "imdb" ? "#FBBF24" : "#4f55f1";
-  const strokeColor = source === "imdb" ? "#F59E0B" : "#4f55f1";
+  const color = source === "imdb" ? "#FBBF24" : "var(--blue-500)";
+  const strokeColor = source === "imdb" ? "#F59E0B" : "var(--blue-500)";
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className="size-4 shrink-0">
       <path
@@ -383,7 +383,7 @@ function TrailerModal({ trailerKey, onClose }: { trailerKey: string; onClose: ()
         type="button"
         aria-label="Sluit trailer"
         onClick={onClose}
-        className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full bg-black/60 text-white focus-visible:outline-none"
+        className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full bg-black/60 text-fixed-white focus-visible:outline-none"
       >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="white" aria-hidden>
           <path d="M1 1l12 12M13 1L1 13" stroke="white" strokeWidth="2" strokeLinecap="round" />
@@ -395,7 +395,7 @@ function TrailerModal({ trailerKey, onClose }: { trailerKey: string; onClose: ()
 
 function CardSkeleton() {
   return (
-    <div className="flex w-full animate-pulse items-start gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3">
+    <div className="flex w-full animate-pulse items-start gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3">
       <div className="h-[160px] w-[107px] shrink-0 rounded-[4px] bg-[var(--gray-100)]" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="h-6 w-3/4 rounded bg-[var(--gray-100)]" />
@@ -430,7 +430,7 @@ function PartnerWatchlistItemCard({
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(); }}
-      className="flex w-full cursor-pointer items-stretch gap-3 rounded-[8px] border border-[#e2e4e6] bg-white py-3 pl-4 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      className="flex w-full cursor-pointer items-stretch gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
     >
       {item.trailerKey ? (
         <button
@@ -453,7 +453,7 @@ function PartnerWatchlistItemCard({
               <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
             </div>
           )}
-          <div className="absolute left-1/2 top-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-black/40">
+          <div className="absolute left-1/2 top-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-fixed-white bg-black/40">
             <PlayIcon />
           </div>
         </button>
@@ -478,12 +478,12 @@ function PartnerWatchlistItemCard({
 
       <div className="flex min-w-0 flex-1 flex-col justify-between gap-1.5">
         <div className="flex w-full flex-col items-start">
-          <span className="w-full truncate text-left text-base font-medium leading-6 text-[#16181a]">
+          <span className="w-full truncate text-left text-base font-medium leading-6 text-[var(--gray-900)]">
             {item.title}
           </span>
 
           <div className="flex w-full items-center gap-2">
-            <div className="size-[15.333px] shrink-0 overflow-hidden rounded-full border border-white bg-[#edeefe]">
+            <div className="size-[15.333px] shrink-0 overflow-hidden rounded-full border border-white bg-[var(--blue-50)]">
               {partnerAvatar.url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -493,30 +493,30 @@ function PartnerWatchlistItemCard({
                 />
               ) : (
                 <div className="flex size-full items-center justify-center">
-                  <MaskIcon src="/icons/avatar.svg" className="size-[10px] bg-[#4f55f1]" />
+                  <MaskIcon src="/icons/avatar.svg" className="size-[10px] bg-[var(--blue-500)]" />
                 </div>
               )}
             </div>
             {item.score != null && (
               <div className="flex shrink-0 items-center gap-1">
                 <StarIcon source={item.scoreSource} />
-                <span className="text-xs font-medium leading-4 text-[#16181a]">
+                <span className="text-xs font-medium leading-4 text-[var(--gray-900)]">
                   {item.score.toFixed(1)}
                 </span>
               </div>
             )}
             {item.metaLine && (
-              <p className="min-w-0 flex-1 truncate text-sm leading-5 text-[#8c929d]">{item.metaLine}</p>
+              <p className="min-w-0 flex-1 truncate text-sm leading-5 text-[var(--gray-400)]">{item.metaLine}</p>
             )}
           </div>
 
           {item.castNames && (
-            <p className="w-full truncate text-xs leading-4 text-[#8c929d]">{item.castNames}</p>
+            <p className="w-full truncate text-xs leading-4 text-[var(--gray-400)]">{item.castNames}</p>
           )}
         </div>
 
         {item.overview && (
-          <p className="line-clamp-4 min-h-[64px] text-xs leading-4 text-[#595f6a]">{item.overview}</p>
+          <p className="line-clamp-4 min-h-[64px] text-xs leading-4 text-[var(--gray-600)]">{item.overview}</p>
         )}
 
         <div className="flex w-[88px] items-start justify-end gap-2 self-end">
@@ -534,7 +534,7 @@ function PartnerWatchlistItemCard({
             onClick={(e) => { e.stopPropagation(); onReact("down"); }}
             className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
-            <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-[#eb5552]" />
+            <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-[var(--error-300)]" />
           </button>
           <button
             type="button"
@@ -542,7 +542,7 @@ function PartnerWatchlistItemCard({
             onClick={(e) => { e.stopPropagation(); onReact("seen"); }}
             className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
-            <MaskIcon src="/icons/visible.svg" className="size-6 bg-[#4f55f1]" />
+            <MaskIcon src="/icons/visible.svg" className="size-6 bg-[var(--blue-500)]" />
           </button>
         </div>
       </div>
@@ -734,12 +734,7 @@ export default function PartnerWatchlistPage() {
 
   return (
     <>
-    <div className="relative flex min-h-dvh w-full flex-col bg-white">
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[478px]"
-        style={{ background: "linear-gradient(to bottom, #e3e4ff, white)" }}
-        aria-hidden
-      />
+    <div className="relative flex min-h-dvh w-full flex-col">
 
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
         <div className="mx-auto w-full max-w-[956px] px-4">
@@ -752,7 +747,7 @@ export default function PartnerWatchlistPage() {
             >
               <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
             </button>
-            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[#16181a]">
+            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[var(--gray-900)]">
               Watchlist films
             </p>
             <button
@@ -773,7 +768,7 @@ export default function PartnerWatchlistPage() {
       >
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-4">
-            <div className="size-6 shrink-0 overflow-hidden rounded-full border border-white bg-[#edeefe]">
+            <div className="size-6 shrink-0 overflow-hidden rounded-full border border-white bg-[var(--blue-50)]">
               {partnerAvatar.url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -783,11 +778,11 @@ export default function PartnerWatchlistPage() {
                 />
               ) : (
                 <div className="flex size-full items-center justify-center">
-                  <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[#4f55f1]" />
+                  <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[var(--blue-500)]" />
                 </div>
               )}
             </div>
-            <h1 className="min-w-0 flex-1 text-[18px] font-bold leading-6 text-[#101130]">
+            <h1 className="min-w-0 flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)]">
               {sectionTitle}
             </h1>
           </div>

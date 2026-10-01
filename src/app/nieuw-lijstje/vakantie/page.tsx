@@ -422,13 +422,9 @@ function VacationChecklistStep({
     React.useState<VacationTabValue>("voor-vertrek");
 
   return (
-    <main className="relative mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white">
+    <main className="relative mx-auto flex min-h-dvh w-full max-w-[390px] flex-col">
       <VacationTopBar title="Vakantie" onBack={onBack} showActions />
       <div className="relative flex flex-1 flex-col gap-6 overflow-hidden px-4 pb-[calc(120px+env(safe-area-inset-bottom,0px))] pt-8">
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-[478px] bg-gradient-to-b from-[#e3e4ff] to-white"
-          aria-hidden
-        />
         <div className="relative z-[1] flex flex-col gap-6">
           <VacationListHeader />
           <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
@@ -661,7 +657,7 @@ export default function NieuwVakantielijstjePage() {
   }
 
   return (
-    <main className="relative mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white">
+    <main className="relative mx-auto flex min-h-dvh w-full max-w-[390px] flex-col">
       <VacationTopBar title="Nieuw vakantielijstje" />
 
       <div className="flex flex-1 flex-col gap-6 px-4 pb-[calc(112px+env(safe-area-inset-bottom,0px))] pt-8">

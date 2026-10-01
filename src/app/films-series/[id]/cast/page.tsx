@@ -134,9 +134,9 @@ export default function CastPage() {
       >
         {/* Heading + subtitle */}
         <div className="mb-4 flex flex-col gap-1">
-          <h1 className="text-2xl font-bold leading-8 text-[#16181a]">Cast</h1>
+          <h1 className="text-2xl font-bold leading-8 text-[var(--gray-900)]">Cast</h1>
           {data?.title && (
-            <p className="text-[14px] font-normal leading-5 text-[#8c929d]">{data.title}</p>
+            <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">{data.title}</p>
           )}
         </div>
 
@@ -186,16 +186,16 @@ export default function CastPage() {
 
                 {/* Tekst */}
                 <div className="flex flex-col gap-0.5">
-                  <p className="text-[16px] font-medium leading-6 text-[#16181a]">
+                  <p className="text-[16px] font-medium leading-6 text-[var(--gray-900)]">
                     {member.name}
                   </p>
                   {member.character && (
-                    <p className="text-[14px] font-normal leading-5 text-[#8c929d]">
+                    <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
                       {member.character}
                     </p>
                   )}
                   {data?.type === "tv" && member.episodeCount != null && (
-                    <p className="text-[14px] font-normal leading-5 text-[#8c929d]">
+                    <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
                       ({member.episodeCount}{" "}
                       {member.episodeCount === 1 ? "aflevering" : "afleveringen"}
                       {member.yearRange ? `, ${member.yearRange}` : ""})

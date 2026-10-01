@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { MiniButton } from "@/components/ui/mini_button";
+import { FloatingActionButton } from "@/components/ui/floating_action_button";
+import { APP_FAB_BOTTOM_NO_NAV_CLASS, APP_FAB_INNER_PX4_CLASS } from "@/lib/app-layout";
 import { db } from "@/lib/db";
 import { id as instantId } from "@instantdb/react";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
@@ -528,13 +530,7 @@ export default function DiepvriesvoorraadPage() {
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-white">
-      {/* Gradient background */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[478px]"
-        style={{ background: "linear-gradient(to bottom, #e3e4ff, white)" }}
-        aria-hidden
-      />
+    <div className="relative flex min-h-dvh w-full flex-col">
 
       {/* Fixed header — zelfde horizontale kolom als body: px-4 buiten, max-w binnen (geen dubbele inspringing). */}
       <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
@@ -706,19 +702,15 @@ export default function DiepvriesvoorraadPage() {
 
       {/* FAB — only visible when items exist and not editing */}
       {hasItems && !isEditing && (
-        <button
-          type="button"
-          aria-label="Item toevoegen"
-          onClick={() => openAddModal("first")}
-          className="fixed z-20 flex size-14 shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.16)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-          style={{
-            bottom: "calc(45px + env(safe-area-inset-bottom, 0px))",
-            // 24px from the right edge of the max-w-[956px] content column
-            right: "calc(max(0px, (100vw - 956px) / 2) + 24px)",
-          }}
-        >
-          <MaskIcon src="/icons/plus.svg" className="size-6 bg-white" />
-        </button>
+        <div className={cn("pointer-events-none fixed inset-x-0 z-20", APP_FAB_BOTTOM_NO_NAV_CLASS)}>
+          <div className={APP_FAB_INNER_PX4_CLASS}>
+            <FloatingActionButton
+              aria-label="Item toevoegen"
+              className="pointer-events-auto"
+              onClick={() => openAddModal("first")}
+            />
+          </div>
+        </div>
       )}
 
       <NewFreezerItemModal

@@ -34,7 +34,7 @@ type AuthFlow = "login" | "register";
 const PROFILE_SETUP_STEPS: AuthStep[] = ["password", "photo"];
 
 const authShell =
-  "flex min-h-dvh w-full flex-col bg-gradient-to-b from-[var(--blue-100)] to-[var(--white)]";
+  "flex min-h-dvh w-full flex-col bg-[var(--bg-app)]";
 const authContentWrap = "mx-auto flex w-full max-w-[768px] flex-1 flex-col px-4";
 /** 24px boven de onderkant; safe-area voor iOS erbovenop */
 const authFooterPad =
@@ -151,7 +151,7 @@ export default function AuthPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-gradient-to-b from-[var(--blue-100)] to-[var(--white)]">
+      <div className="flex min-h-dvh items-center justify-center bg-[var(--bg-app)]">
         <div className="size-8 animate-spin rounded-full border-2 border-[var(--blue-300)] border-t-[var(--blue-500)]" />
       </div>
     );

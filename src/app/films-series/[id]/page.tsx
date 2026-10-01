@@ -101,7 +101,7 @@ function AvatarCircle({ person, className }: { person: FeedbackAvatar; className
   return (
     <div
       className={cn(
-        "size-6 shrink-0 overflow-hidden rounded-full border border-[#edeefe] bg-white",
+        "size-6 shrink-0 overflow-hidden rounded-full border border-[var(--blue-50)] bg-white",
         className,
       )}
     >
@@ -110,7 +110,7 @@ function AvatarCircle({ person, className }: { person: FeedbackAvatar; className
         <img src={person.url} alt={person.name ?? ""} className="size-full object-cover" />
       ) : (
         <div className="flex size-full items-center justify-center">
-          <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[#4f55f1]" />
+          <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[var(--blue-500)]" />
         </div>
       )}
     </div>
@@ -161,18 +161,18 @@ function PartnerFeedbackBanner({
       ) : (
         <AvatarCircle person={partnerAvatar} />
       )}
-      <p className="min-w-0 flex-1 text-left text-xs font-normal leading-4 text-[#4f55f1]">
+      <p className="min-w-0 flex-1 text-left text-xs font-normal leading-4 text-[var(--blue-500)]">
         {feedbackText({ reaction, mediaType, partnerName })}
       </p>
       {interactive ? (
-        <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[#4f55f1]" aria-hidden />
+        <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[var(--blue-500)]" aria-hidden />
       ) : null}
     </>
   );
 
   if (!interactive) {
     return (
-      <div className="flex w-full items-center gap-4 rounded-[8px] bg-[#edeefe] p-3">
+      <div className="flex w-full items-center gap-4 rounded-[8px] bg-[var(--blue-50)] p-3">
         {content}
       </div>
     );
@@ -182,7 +182,7 @@ function PartnerFeedbackBanner({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-4 rounded-[8px] bg-[#edeefe] p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      className="flex w-full items-center gap-4 rounded-[8px] bg-[var(--blue-50)] p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
     >
       {content}
     </button>
@@ -430,8 +430,8 @@ export default function FilmDetailPage() {
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden className="size-6 shrink-0">
                         <path
                           d="M12 2l2.75 5.57 6.15.9-4.45 4.33 1.05 6.11L12 15.9l-5.5 2.89 1.05-6.11L3.1 8.47l6.15-.9L12 2z"
-                          fill={detail.scoreSource === "imdb" ? "#FBBF24" : "#4f55f1"}
-                          stroke={detail.scoreSource === "imdb" ? "#F59E0B" : "#4f55f1"}
+                          fill={detail.scoreSource === "imdb" ? "#FBBF24" : "var(--blue-500)"}
+                          stroke={detail.scoreSource === "imdb" ? "#F59E0B" : "var(--blue-500)"}
                           strokeWidth="0.5"
                           strokeLinejoin="round"
                         />
@@ -480,10 +480,10 @@ export default function FilmDetailPage() {
                     onClick={() => router.push(`/films-series/${rawId}/episodes`)}
                     className="flex shrink-0 items-center gap-1 focus-visible:outline-none"
                   >
-                    <span className="text-sm font-normal leading-5 text-[#4f55f1]">
+                    <span className="text-sm font-normal leading-5 text-[var(--blue-500)]">
                       {detail.totalEpisodes} afleveringen
                     </span>
-                    <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[#4f55f1]" />
+                    <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[var(--blue-500)]" />
                   </button>
                 )}
               </div>
@@ -492,7 +492,7 @@ export default function FilmDetailPage() {
             {/* Seizoentabs — alleen voor TV-series */}
             {isTV && detail.seasons.length > 0 && (
               <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                <div className="flex gap-6 border-b border-[#e2e4e6]" style={{ width: "max-content" }}>
+                <div className="flex gap-6 border-b border-[var(--gray-100)]" style={{ width: "max-content" }}>
                   {detail.seasons.map((s) => {
                     const active = s.seasonNumber === selectedSeason;
                     return (
@@ -503,13 +503,13 @@ export default function FilmDetailPage() {
                         className={cn(
                           "flex shrink-0 flex-col gap-2 pb-0 focus-visible:outline-none",
                           active
-                            ? "font-medium text-[#16181a]"
-                            : "font-normal text-[#8c929d]",
+                            ? "font-medium text-[var(--gray-900)]"
+                            : "font-normal text-[var(--gray-400)]",
                         )}
                       >
                         <span className="whitespace-nowrap text-base leading-6">{s.name}</span>
                         <div
-                          className="h-[2px] w-full rounded-full bg-[#4f55f1]"
+                          className="h-[2px] w-full rounded-full bg-[var(--blue-500)]"
                           style={{ opacity: active ? 1 : 0 }}
                         />
                       </button>
@@ -539,7 +539,7 @@ export default function FilmDetailPage() {
                     type="button"
                     aria-label="Trailer afspelen"
                     onClick={() => setShowTrailer(true)}
-                    className="absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-black/20 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                    className="absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-fixed-white bg-black/20 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
                   >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
                       <path d="M8 5v14l11-7L8 5z" fill="white" />
@@ -591,7 +591,7 @@ export default function FilmDetailPage() {
                       <button
                         type="button"
                         onClick={() => setOverviewExpanded(true)}
-                        className="text-base font-medium leading-6 text-[#4f55f1] underline decoration-solid underline-offset-2 focus-visible:outline-none"
+                        className="text-base font-medium leading-6 text-[var(--blue-500)] underline decoration-solid underline-offset-2 focus-visible:outline-none"
                       >
                         toon meer
                       </button>
@@ -618,18 +618,18 @@ export default function FilmDetailPage() {
                 }}
                 className={cn(
                   "flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[8px] p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                  watched ? "border border-[#595f6a] bg-transparent" : "border border-[#4f55f1] bg-transparent",
+                  watched ? "border border-[var(--gray-600)] bg-transparent" : "border border-[var(--blue-500)] bg-transparent",
                 )}
               >
                 <p className={cn(
                   "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-center text-base font-medium",
-                  watched ? "text-[#595f6a]" : "text-[#4f55f1]",
+                  watched ? "text-[var(--gray-600)]" : "text-[var(--blue-500)]",
                 )}>
                   {watched ? "Bekeken" : "Bekeken"}
                 </p>
                 <MaskIcon
                   src={watched ? "/icons/checkmark.svg" : "/icons/visible.svg"}
-                  className={cn("size-6 shrink-0", watched ? "bg-[#595f6a]" : "bg-[#4f55f1]")}
+                  className={cn("size-6 shrink-0", watched ? "bg-[var(--gray-600)]" : "bg-[var(--blue-500)]")}
                 />
               </button>
 
@@ -654,7 +654,7 @@ export default function FilmDetailPage() {
                 }}
                 className={cn(
                   "flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[8px] p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                  inWatchlist ? "bg-[#d64040]" : "bg-[#4f55f1]",
+                  inWatchlist ? "bg-[var(--error-400)]" : "bg-[var(--blue-500)]",
                 )}
               >
                 <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-center text-base font-medium text-white">
@@ -671,11 +671,11 @@ export default function FilmDetailPage() {
             {detail.cast.length > 0 && (
               <div className="flex w-full flex-col gap-4">
                 <div className="flex items-center gap-6 lg:gap-4">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[#101130] lg:flex-none">Cast</h2>
+                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)] lg:flex-none">Cast</h2>
                   <button
                     type="button"
                     onClick={() => router.push(`/films-series/${rawId}/cast`)}
-                    className="shrink-0 text-xs font-medium text-[#4f55f1] focus-visible:outline-none"
+                    className="shrink-0 text-xs font-medium text-[var(--blue-500)] focus-visible:outline-none"
                   >
                     Toon alle
                   </button>
@@ -704,10 +704,10 @@ export default function FilmDetailPage() {
                           )}
                         </div>
                         <div className="flex flex-col">
-                          <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[#16181a]">
+                          <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[var(--gray-900)]">
                             {member.name}
                           </p>
-                          <p className="text-[14px] font-normal leading-5 text-[#8c929d]">
+                          <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
                             {member.character}
                           </p>
                         </div>
@@ -731,7 +731,7 @@ export default function FilmDetailPage() {
             type="button"
             aria-label="Sluiten"
             onClick={() => setShowTrailer(false)}
-            className="absolute right-4 top-[calc(env(safe-area-inset-top,0px)+16px)] flex size-8 items-center justify-center rounded-full bg-white/20 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="absolute right-4 top-[calc(env(safe-area-inset-top,0px)+16px)] flex size-8 items-center justify-center rounded-full bg-fixed-white/20 text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
           >
             <CloseIcon />
           </button>
@@ -758,7 +758,7 @@ export default function FilmDetailPage() {
             type="button"
             aria-label="Sluiten"
             onClick={() => setPosterFullscreen(false)}
-            className="absolute right-4 top-[calc(env(safe-area-inset-top,0px)+16px)] flex size-8 items-center justify-center rounded-full bg-white/20 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="absolute right-4 top-[calc(env(safe-area-inset-top,0px)+16px)] flex size-8 items-center justify-center rounded-full bg-fixed-white/20 text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
           >
             <CloseIcon />
           </button>

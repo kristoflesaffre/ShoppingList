@@ -12,7 +12,8 @@
   --gray-100: #e2e4e6;
   --gray-200: #c6c8ce;
   --gray-300: #a9adb5;
-  --gray-400: #8c929d;
+  /* Stijl 1 · Helder: van #8c929d (3.13:1) naar AA-contrast op wit (4.8:1) */
+  --gray-400: #6e7381;
   --gray-500: #707784;
   --gray-600: #595f6a;
   --gray-700: #43474f;
@@ -38,6 +39,10 @@
   --bg-overlay: var(--white);
   --bg-muted: var(--gray-100);
   --bg-elevated: var(--white);
+  /* App-ondergrond (stijl 1 · Helder): vlak, licht koel grijs i.p.v. de lavendel-gradient */
+  --bg-app: #f5f6fa;
+  /* Haarlijn rond kaarten/tegels (deel van --shadow-card) */
+  --card-hairline: #e6e8f0;
 
   /* ========== BORDERS ========== */
   --border-default: var(--gray-200);
@@ -99,7 +104,7 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   /* Font sizes – Figma: font-page-title, font-section-title, font-normal, font-small, font-extra-small */
-  --text-page-title: 1.5rem;      /* 24px */
+  --text-page-title: 1.75rem;     /* 28px (stijl 1 · Helder) */
   --text-section-title: 1.125rem; /* 18px */
   --text-base: 1rem;              /* 16px font-normal */
   --text-sm: 0.875rem;            /* 14px font-small */
@@ -111,7 +116,7 @@
   --font-semibold: 600;
   --font-bold: 700;
   /* Line heights – Figma: scale/32, lineheight/24, lineheight/20, lineheight/16 */
-  --leading-32: 2rem;    /* 32px – page title */
+  --leading-32: 2.125rem; /* 34px – page title (naam historisch: was 32px) */
   --leading-24: 1.5rem;  /* 24px */
   --leading-20: 1.25rem; /* 20px */
   --leading-16: 1rem;    /* 16px */
@@ -134,7 +139,7 @@
   --radius-none: 0;
   --radius-sm: 4px;    /* rd-4 */
   --radius-md: 8px;    /* rd-8 */
-  --radius-lg: 12px;   /* kaarten / surfaces (controls blijven rd-8) */
+  --radius-lg: 16px;   /* kaarten / surfaces (stijl 1 · Helder; controls blijven rd-8) */
   --radius-pill: 256px; /* rd-256 – buttons, pill tabs */
   --radius-full: 9999px;
 
@@ -149,10 +154,13 @@
    * fab    = primaire zwevende actie (gekleurde schaduw, blue-500)
    * nav    = onderste navigatiebalk (schaduw omhoog)
    */
-  --shadow-card: 0 1px 2px rgba(16, 17, 48, 0.05), 0 4px 12px -2px rgba(16, 17, 48, 0.08);
+  /* Stijl 1 · Helder: haarlijn + heel zachte schaduw i.p.v. zwevende kaart */
+  --shadow-card: 0 0 0 1px var(--card-hairline), 0 1px 2px rgba(16, 17, 48, 0.04);
   --shadow-raised: 0 2px 4px rgba(16, 17, 48, 0.06), 0 10px 24px -6px rgba(16, 17, 48, 0.14);
   --shadow-fab: 0 2px 4px rgba(79, 85, 241, 0.24), 0 8px 20px -4px rgba(79, 85, 241, 0.45);
   --shadow-nav: 0 -1px 0 rgba(16, 17, 48, 0.04), 0 -8px 24px -8px rgba(16, 17, 48, 0.1);
+  /* Zwevende tabbalk (stijl 3, lichte variant) */
+  --shadow-nav-floating: 0 0 0 1px var(--card-hairline), 0 10px 28px -10px rgba(16, 17, 48, 0.22);
 
   /* Letter spacing voor grote titels (Inter ≥ 18px leest strakker met licht negatieve tracking) */
   --tracking-tight: -0.01em;
@@ -174,4 +182,70 @@
   --dur-base: 200ms;
   --dur-slow: 300ms;
   --dur-drawer: 380ms;
+}
+
+/*
+ * ========== DONKER THEMA (stijl 4 · Avond) ==========
+ * Actief via <html data-theme="dark"> (instelling in Profiel → Weergave).
+ * Componenten gebruiken de primitieven (--white = oppervlak, --gray-900 = inkt,
+ * --blue-500 = accent), dus die worden hier per rol herverdeeld:
+ * - --white      → kaartoppervlak (#1a1d2e); tekst "op accent" (text-white) wordt daardoor donker,
+ *                  wat klopt op het lichte lavendel accent.
+ * - gray-ramp    → omgekeerd: 25/50/100 zijn donkere vlakken, 400–900 lichte tekst.
+ * - blue-ramp    → 25–200 donkere indigo-tinten, 500 lavendel accent, 800/900 licht.
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --gray-25: #1f2235;
+  --gray-50: #151827;
+  --gray-100: #272b42;
+  --gray-200: #3a3f5c;
+  --gray-300: #7a7f9c;
+  --gray-400: #a4a8c2;
+  --gray-500: #b3b7cf;
+  --gray-600: #c6c9dc;
+  --gray-700: #d8dae8;
+  --gray-800: #e6e8f2;
+  --gray-900: #eef0fb;
+  --white: #1a1d2e;
+
+  --blue-25: #1f2238;
+  --blue-50: #24284a;
+  --blue-100: #2e3360;
+  --blue-200: #454a85;
+  --blue-300: #7c80d0;
+  --blue-400: #8b8ef0;
+  --blue-500: #a9acff;
+  --blue-600: #c4c6ff;
+  --blue-700: #d8d9ff;
+  --blue-800: #e4e5ff;
+  --blue-900: #eef0fb;
+
+  --secondary-100: #3a2c1c;
+  --secondary-200: #4a3622;
+  --secondary-400: #f5b87b;
+  --secondary-500: #f5b87b;
+  --secondary-600: #f5b87b;
+  --secondary-700: #f8cc9e;
+  --secondary-800: #fbdcbc;
+  --secondary-900: #fde9d6;
+
+  --error-25: #3a1f26;
+  --error-300: #ff8f87;
+  --error-400: #ff8f87;
+  --error-600: #ff7a70;
+
+  --bg-app: #10121f;
+  --card-hairline: #272b42;
+  /* Tekst op gekleurde vlakken (snackbar blue-800, accentknoppen) blijft donker */
+  --text-inverse: #10121f;
+  --action-primary-foreground: #10121f;
+  --action-danger-foreground: #10121f;
+
+  --shadow-drop: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 0 0 1px var(--card-hairline);
+  --shadow-raised: 0 0 0 1px var(--card-hairline), 0 12px 28px -8px rgba(0, 0, 0, 0.6);
+  --shadow-fab: 0 8px 24px -8px rgba(169, 172, 255, 0.55);
+  --shadow-nav: 0 -1px 0 var(--card-hairline);
+  --shadow-nav-floating: 0 0 0 1px var(--card-hairline), 0 12px 28px -10px rgba(0, 0, 0, 0.7);
 }
