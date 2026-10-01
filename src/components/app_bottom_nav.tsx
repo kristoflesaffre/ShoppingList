@@ -238,13 +238,14 @@ export function AppBottomNav({
   const tabClass =
     "relative z-[1] flex h-14 min-w-0 w-full flex-col items-center justify-center gap-1 rounded-full px-1 no-underline transition-[color,transform] duration-base ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]";
   const iconWrapClass = "flex size-6 shrink-0 items-center justify-center";
+  const labelClass = "text-[11px] leading-[14px] tracking-normal";
 
   return (
     /* De balk zakt deels in de iOS safe area, zoals native navigatie, zonder de tappunten te verkleinen. */
     <div
       className="pointer-events-none fixed inset-x-3 z-20 flex justify-center"
       style={{
-        bottom: "max(6px, calc(env(safe-area-inset-bottom, 0px) - 18px))",
+        bottom: "max(12px, calc(env(safe-area-inset-bottom, 0px) - 10px))",
       }}
     >
       <nav
@@ -284,9 +285,7 @@ export function AppBottomNav({
             <span className={iconWrapClass}>
               <ListIcon className="size-6" filled={active === "lijstjes"} />
             </span>
-            <span className="text-xs leading-4 tracking-normal">
-              Lijstjes
-            </span>
+            <span className={labelClass}>Lijstjes</span>
           </Link>
         </div>
 
@@ -304,9 +303,7 @@ export function AppBottomNav({
             <span className={iconWrapClass}>
               <KaartenIcon className="size-6" filled={active === "klantenkaarten"} />
             </span>
-            <span className="text-xs leading-4 tracking-normal">
-              Kaarten
-            </span>
+            <span className={labelClass}>Kaarten</span>
           </Link>
         </div>
 
@@ -324,9 +321,7 @@ export function AppBottomNav({
             <span className={iconWrapClass}>
               <KalenderIcon className="size-6" filled={active === "kalender"} />
             </span>
-            <span className="text-xs leading-4 tracking-normal">
-              Kalender
-            </span>
+            <span className={labelClass}>Kalender</span>
           </Link>
         </div>
 
@@ -347,9 +342,7 @@ export function AppBottomNav({
                 filled={active === "recepten"}
               />
             </span>
-            <span className="text-xs leading-4 tracking-normal">
-              Recepten
-            </span>
+            <span className={labelClass}>Recepten</span>
           </Link>
         </div>
 
@@ -400,7 +393,7 @@ export function AppBottomNav({
               />
             </span>
             <span
-              className="w-full truncate text-center text-xs leading-4 tracking-normal"
+              className={cn("w-full truncate text-center", labelClass)}
               title={trimmedName.length > 0 ? trimmedName : undefined}
             >
               {profileTabLabel}
