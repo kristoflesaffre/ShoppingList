@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -204,6 +203,14 @@ type AppBottomNavTab =
   | "klantenkaarten"
   | "profiel";
 
+const APP_BOTTOM_NAV_INDEX: Record<AppBottomNavTab, number> = {
+  lijstjes: 0,
+  klantenkaarten: 1,
+  kalender: 2,
+  recepten: 3,
+  profiel: 4,
+};
+
 export interface AppBottomNavProps {
   /** Actieve tab – Figma 854:7039 */
   active: AppBottomNavTab;
@@ -226,36 +233,44 @@ export function AppBottomNav({
 }: AppBottomNavProps) {
   const trimmedName = profileFirstName?.trim() ?? "";
   const profileTabLabel = trimmedName.length > 0 ? trimmedName : "Profiel";
+  const activeIndex = APP_BOTTOM_NAV_INDEX[active];
 
   const tabClass =
-    "relative z-[1] flex w-[41px] shrink-0 flex-col items-center gap-1 rounded-md no-underline transition-[color,transform] duration-base ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
-
-  /* Icoon “popt” alleen bij een tabwissel, niet bij de eerste mount (Emil: geen animatie zonder aanleiding). */
-  const hasSwitchedRef = React.useRef(false);
-  const prevActiveRef = React.useRef(active);
-  if (prevActiveRef.current !== active) {
-    prevActiveRef.current = active;
-    hasSwitchedRef.current = true;
-  }
-  const iconWrapClass = (tab: AppBottomNavProps["active"]) =>
-    cn(
-      "flex size-6 items-center justify-center",
-      tab === active && hasSwitchedRef.current && "motion-safe:animate-pop",
-    );
+    "relative z-[1] flex h-14 min-w-0 w-full flex-col items-center justify-center gap-1 rounded-full px-1 no-underline transition-[color,transform] duration-base ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]";
+  const iconWrapClass = "flex size-6 shrink-0 items-center justify-center";
 
   return (
-    /* Zwevende tabbalk (stijl 3, lichte variant): losgekoppeld van de rand, volgt het thema via --white. */
+    /* De balk zakt deels in de iOS safe area, zoals native navigatie, zonder de tappunten te verkleinen. */
     <div
-      className={cn(
-        "pointer-events-none fixed inset-x-3 z-20 flex justify-center",
-        "bottom-[calc(12px+env(safe-area-inset-bottom,0px))]",
-      )}
+      className="pointer-events-none fixed inset-x-3 z-20 flex justify-center"
+      style={{
+        bottom: "max(6px, calc(env(safe-area-inset-bottom, 0px) - 18px))",
+      }}
     >
       <nav
-        className="pointer-events-auto relative grid min-h-[60px] w-full max-w-[420px] grid-cols-5 items-center rounded-[24px] bg-[var(--white)] px-2 py-2 shadow-nav-floating"
+        className="pointer-events-auto relative isolate grid h-[68px] w-full max-w-[420px] grid-cols-5 items-center overflow-hidden rounded-full px-1.5 py-1.5 shadow-nav-floating"
+        style={{
+          backgroundColor:
+            "color-mix(in srgb, var(--white) 92%, transparent)",
+          WebkitBackdropFilter: "blur(24px) saturate(1.15)",
+          backdropFilter: "blur(24px) saturate(1.15)",
+        }}
         aria-label="Hoofdnavigatie"
       >
-        <div className="flex justify-center">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-1.5 left-1.5 -z-0 rounded-full motion-safe:transition-transform motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+          style={{
+            width: "calc((100% - 12px) / 5)",
+            transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
+            backgroundColor:
+              "color-mix(in srgb, var(--blue-100) 58%, transparent)",
+            WebkitBackdropFilter: "blur(14px)",
+            backdropFilter: "blur(14px)",
+          }}
+        />
+
+        <div className="flex min-w-0 justify-center">
           <Link
             href="/"
             aria-current={active === "lijstjes" ? "page" : undefined}
@@ -266,7 +281,7 @@ export function AppBottomNav({
                 : "font-normal text-[var(--gray-500)]",
             )}
           >
-            <span className={iconWrapClass("lijstjes")}>
+            <span className={iconWrapClass}>
               <ListIcon className="size-6" filled={active === "lijstjes"} />
             </span>
             <span className="text-xs leading-4 tracking-normal">
@@ -275,7 +290,7 @@ export function AppBottomNav({
           </Link>
         </div>
 
-        <div className="flex justify-center">
+        <div className="flex min-w-0 justify-center">
           <Link
             href="/klantenkaarten"
             aria-current={active === "klantenkaarten" ? "page" : undefined}
@@ -286,7 +301,7 @@ export function AppBottomNav({
                 : "font-normal text-[var(--gray-500)]",
             )}
           >
-            <span className={iconWrapClass("klantenkaarten")}>
+            <span className={iconWrapClass}>
               <KaartenIcon className="size-6" filled={active === "klantenkaarten"} />
             </span>
             <span className="text-xs leading-4 tracking-normal">
@@ -295,7 +310,7 @@ export function AppBottomNav({
           </Link>
         </div>
 
-        <div className="flex justify-center">
+        <div className="flex min-w-0 justify-center">
           <Link
             href="/kalender"
             aria-current={active === "kalender" ? "page" : undefined}
@@ -306,7 +321,7 @@ export function AppBottomNav({
                 : "font-normal text-[var(--gray-500)]",
             )}
           >
-            <span className={iconWrapClass("kalender")}>
+            <span className={iconWrapClass}>
               <KalenderIcon className="size-6" filled={active === "kalender"} />
             </span>
             <span className="text-xs leading-4 tracking-normal">
@@ -315,7 +330,7 @@ export function AppBottomNav({
           </Link>
         </div>
 
-        <div className="flex justify-center">
+        <div className="flex min-w-0 justify-center">
           <Link
             href="/recepten"
             aria-current={active === "recepten" ? "page" : undefined}
@@ -326,7 +341,7 @@ export function AppBottomNav({
                 : "font-normal text-[var(--gray-500)]",
             )}
           >
-            <span className={iconWrapClass("recepten")}>
+            <span className={iconWrapClass}>
               <ReceptenIcon
                 className="size-6"
                 filled={active === "recepten"}
@@ -338,7 +353,7 @@ export function AppBottomNav({
           </Link>
         </div>
 
-        <div className="flex justify-center">
+        <div className="flex min-w-0 justify-center">
           <Link
             href="/profiel"
             aria-label={
@@ -346,7 +361,7 @@ export function AppBottomNav({
             }
             aria-current={active === "profiel" ? "page" : undefined}
             className={cn(
-              "relative z-[1] flex min-w-[41px] max-w-[104px] shrink-0 flex-col items-center gap-1 no-underline transition-[color,transform] duration-base ease-out-strong motion-safe:active:scale-95",
+              tabClass,
               active === "profiel"
                 ? "font-semibold text-[var(--blue-500)]"
                 : "font-normal text-[var(--gray-500)]",

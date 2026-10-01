@@ -159,8 +159,8 @@
   --shadow-raised: 0 2px 4px rgba(16, 17, 48, 0.06), 0 10px 24px -6px rgba(16, 17, 48, 0.14);
   --shadow-fab: 0 2px 4px rgba(79, 85, 241, 0.24), 0 8px 20px -4px rgba(79, 85, 241, 0.45);
   --shadow-nav: 0 -1px 0 rgba(16, 17, 48, 0.04), 0 -8px 24px -8px rgba(16, 17, 48, 0.1);
-  /* Zwevende tabbalk (stijl 3, lichte variant) */
-  --shadow-nav-floating: 0 0 0 1px var(--card-hairline), 0 10px 28px -10px rgba(16, 17, 48, 0.22);
+  /* Zwevende tabbalk: zachte elevatie zonder zichtbare kaart-rand. */
+  --shadow-nav-floating: 0 8px 24px -10px rgba(16, 17, 48, 0.24);
 
   /* Letter spacing voor grote titels (Inter ≥ 18px leest strakker met licht negatieve tracking) */
   --tracking-tight: -0.01em;
@@ -247,5 +247,5 @@
   --shadow-raised: 0 0 0 1px var(--card-hairline), 0 12px 28px -8px rgba(0, 0, 0, 0.6);
   --shadow-fab: 0 8px 24px -8px rgba(169, 172, 255, 0.55);
   --shadow-nav: 0 -1px 0 var(--card-hairline);
-  --shadow-nav-floating: 0 0 0 1px var(--card-hairline), 0 12px 28px -10px rgba(0, 0, 0, 0.7);
+  --shadow-nav-floating: 0 8px 24px -10px rgba(0, 0, 0, 0.72);
 }
