@@ -995,9 +995,23 @@ function HomeTeKopenSection({
           type="button"
           onClick={onAddProduct}
           aria-label="Product toevoegen"
-          className="flex size-16 shrink-0 items-center justify-center rounded-lg border-[1.5px] border-dashed border-[var(--blue-500)] bg-transparent transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-90 [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          className="flex size-16 shrink-0 items-center justify-center rounded-lg border-[1.5px] border-dashed border-[var(--blue-200)] bg-transparent text-[var(--blue-400)] transition-[background-color,border-color,color,transform] duration-fast ease-out-strong motion-safe:active:scale-90 [@media(hover:hover)]:hover:border-[var(--blue-300)] [@media(hover:hover)]:hover:bg-[var(--blue-25)] [@media(hover:hover)]:hover:text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
-          <PlusCircleMaskIcon />
+          {/* Stijl 1: gewoon plusje (geen cirkel), gedempt zodat de tegel niet concurreert met de items */}
+          <span
+            aria-hidden
+            className="inline-block size-6 shrink-0 bg-current"
+            style={{
+              WebkitMaskImage: "url(/icons/plus.svg)",
+              maskImage: "url(/icons/plus.svg)",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+            }}
+          />
         </button>
         {shoppingItems.map((item) => (
           <Link key={item.id} href="/te-kopen" className="shrink-0 no-underline">
