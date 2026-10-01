@@ -71,6 +71,7 @@ import {
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
+import { primeKeyboard } from "@/lib/keyboard_focus";
 import { loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import {
@@ -2649,7 +2650,10 @@ export default function Home() {
           <HomeTeKopenSection
             shoppingItems={homeShoppingItems}
             hasUsedBefore={hasUsedTeKopen}
-            onAddProduct={() => setTeKopenSlideOpen(true)}
+            onAddProduct={() => {
+              primeKeyboard();
+              setTeKopenSlideOpen(true);
+            }}
             onHide={onHide}
           />
         );

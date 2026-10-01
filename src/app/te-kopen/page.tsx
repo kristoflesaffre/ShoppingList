@@ -11,6 +11,7 @@ import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { Snackbar } from "@/components/ui/snackbar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { APP_FAB_BOTTOM_NO_NAV_CLASS, APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
+import { primeKeyboard } from "@/lib/keyboard_focus";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
 import {
   TE_KOPEN_STORE_OPTIONS,
@@ -392,6 +393,7 @@ export default function TeKopenPage() {
 
   function openAddForStore(store: string | null) {
     setPreselectedStore(store);
+    primeKeyboard();
     setAddOpen(true);
   }
 
@@ -555,7 +557,7 @@ export default function TeKopenPage() {
               <p className="text-base font-medium leading-6 text-[var(--gray-500)]">
                 Je hebt geen producten om te kopen
               </p>
-              <MiniButton variant="primary" onClick={() => { setPreselectedStore(null); setAddOpen(true); }}>
+              <MiniButton variant="primary" onClick={() => { primeKeyboard(); setPreselectedStore(null); setAddOpen(true); }}>
                 Voeg product toe
               </MiniButton>
             </div>
@@ -618,7 +620,7 @@ export default function TeKopenPage() {
               <FloatingActionButton
                 aria-label="Product toevoegen"
                 className="pointer-events-auto"
-                onClick={() => { setPreselectedStore(null); setAddOpen(true); }}
+                onClick={() => { primeKeyboard(); setPreselectedStore(null); setAddOpen(true); }}
               />
             </div>
           </div>
