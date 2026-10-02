@@ -1307,6 +1307,16 @@ function homeVenueListImage(list: HomeList): string | null {
   return null;
 }
 
+/** Alle producten van een lijstje: eerst nog te halen, dan afgevinkt (elk nieuwste eerst). */
+function homeListAllItems(list: HomeList): HomeListItemRow[] {
+  return ((list.items ?? []) as HomeListItemRow[])
+    .filter((it) => typeof it.name === "string" && it.name.trim().length > 0)
+    .sort((a, b) => {
+      const doneDiff = Number(a.checked === true) - Number(b.checked === true);
+      return doneDiff !== 0 ? doneDiff : (b.order ?? 0) - (a.order ?? 0);
+    });
+}
+
 function homeListOpenItems(list: HomeList): HomeListItemRow[] {
   return ((list.items ?? []) as HomeListItemRow[])
     .filter((it) => it.checked !== true && typeof it.name === "string" && it.name.trim().length > 0)
@@ -1355,9 +1365,14 @@ function HomeListSwimCard({ list }: { list: HomeList }) {
     );
   }
 
-  const withPhotos = openItems
-    .map((it) => ({ id: it.id, name: it.name ?? "", url: it.stockPhotoUrl || getPhotoUrl(it.name ?? "") }))
-    .sort((a, b) => Number(b.url != null) - Number(a.url != null));
+  /* Alle producten (ook afgevinkte), zodat de tegel toont wat er op het lijstje staat en nooit leeg is.
+     Afgevinkte producten staan achteraan en zijn licht gedempt. */
+  const withPhotos = homeListAllItems(list).map((it) => ({
+    id: it.id,
+    name: it.name ?? "",
+    done: it.checked === true,
+    url: it.stockPhotoUrl || getPhotoUrl(it.name ?? ""),
+  }));
   const overflow = withPhotos.length > HOME_LIST_PHOTO_SLOTS;
   const shown = withPhotos.slice(0, overflow ? HOME_LIST_PHOTO_SLOTS - 1 : HOME_LIST_PHOTO_SLOTS);
   const rest = withPhotos.length - shown.length;
@@ -1389,9 +1404,15 @@ function HomeListSwimCard({ list }: { list: HomeList }) {
             >
               {p.url ? (
                 // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
-                <img src={p.url} alt="" className="size-[82%] object-contain" loading="lazy" decoding="async" />
+                <img
+                  src={p.url}
+                  alt=""
+                  className={cn("size-[82%] object-contain", p.done && "opacity-50")}
+                  loading="lazy"
+                  decoding="async"
+                />
               ) : (
-                <span className="text-base font-semibold text-[var(--blue-500)]">
+                <span className={cn("text-base font-semibold text-[var(--blue-500)]", p.done && "opacity-50")}>
                   {p.name.trim().charAt(0).toUpperCase()}
                 </span>
               )}
