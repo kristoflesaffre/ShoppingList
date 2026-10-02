@@ -49,6 +49,7 @@ import { APP_FAB_BOTTOM_CLASS } from "@/lib/app-layout";
 import {
   homeListCardIconSrc,
   listIsFrituurVenueList,
+  listIsCafeVenueList,
   listProductIconUrlFromListName,
   pickListProductIconForNewList,
   planOwnerListDecorIconUpdates,
@@ -72,6 +73,8 @@ import { useItemPhotoUrl } from "@/lib/item-photos";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
 import { primeKeyboard } from "@/lib/keyboard_focus";
+import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
+import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
 import { loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import {
@@ -1289,57 +1292,180 @@ function HomeCalendarSection({
   );
 }
 
+type HomeListItemRow = {
+  id: string;
+  name?: string;
+  checked?: boolean;
+  order?: number;
+  stockPhotoUrl?: string;
+};
+
+/** Foto voor frituur- en caféjeslijstjes: één beeld dat het type lijstje toont. */
+function homeVenueListImage(list: HomeList): string | null {
+  if (listIsFrituurVenueList(list.name)) return "/images/frituur/frieten_groot_240.webp";
+  if (listIsCafeVenueList(list.name)) return "/images/ui/cafe_240.webp";
+  return null;
+}
+
+function homeListOpenItems(list: HomeList): HomeListItemRow[] {
+  return ((list.items ?? []) as HomeListItemRow[])
+    .filter((it) => it.checked !== true && typeof it.name === "string" && it.name.trim().length > 0)
+    .sort((a, b) => (b.order ?? 0) - (a.order ?? 0));
+}
+
+const HOME_LIST_PHOTO_SLOTS = 5;
+
+/**
+ * Lijstje-tegel in de swimlane (voorstel 6): wit, haarlijn, volledig klikbaar.
+ * Boodschappenlijstje: 5 vakjes (open producten, laatste vakje “+N” als er meer zijn).
+ * Frituur/café: één groot beeld i.p.v. een foto per product.
+ */
+function HomeListSwimCard({ list }: { list: HomeList }) {
+  const getPhotoUrl = useItemPhotoUrl(160);
+  const openItems = homeListOpenItems(list);
+  const venueImage = homeVenueListImage(list);
+  const openLabel =
+    openItems.length === 0
+      ? "Alles afgevinkt"
+      : openItems.length === 1
+        ? "1 product te halen"
+        : `${openItems.length} producten te halen`;
+  const meta = list.sharedWithFirstName ? `met ${list.sharedWithFirstName}` : "";
+
+  const cardClass =
+    "flex h-full w-full rounded-lg bg-[var(--white)] p-4 no-underline shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+
+  if (venueImage) {
+    return (
+      <Link href={`/lijstje/${list.id}`} className={cn(cardClass, "gap-3.5")}>
+        <span className="flex w-28 shrink-0 items-center justify-center rounded-md bg-[var(--secondary-100)]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp */}
+          <img src={venueImage} alt="" width={92} height={104} className="h-[104px] w-[92px] object-contain" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="truncate text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
+            {list.name}
+          </span>
+          <span className="truncate text-[13px] leading-[18px] text-[var(--gray-400)]">
+            {(list.items ?? []).length === 1 ? "1 product" : `${(list.items ?? []).length} producten`}
+            {meta ? ` · ${meta}` : ""}
+          </span>
+        </span>
+      </Link>
+    );
+  }
+
+  const withPhotos = openItems
+    .map((it) => ({ id: it.id, name: it.name ?? "", url: it.stockPhotoUrl || getPhotoUrl(it.name ?? "") }))
+    .sort((a, b) => Number(b.url != null) - Number(a.url != null));
+  const overflow = withPhotos.length > HOME_LIST_PHOTO_SLOTS;
+  const shown = withPhotos.slice(0, overflow ? HOME_LIST_PHOTO_SLOTS - 1 : HOME_LIST_PHOTO_SLOTS);
+  const rest = withPhotos.length - shown.length;
+
+  return (
+    <Link href={`/lijstje/${list.id}`} className={cn(cardClass, "flex-col gap-3.5")}>
+      <span className="flex items-start gap-3">
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
+            {list.name}
+          </span>
+          {meta ? (
+            <span className="truncate text-[13px] leading-[18px] text-[var(--gray-400)]">{meta}</span>
+          ) : null}
+        </span>
+        {list.storeLogos[0] ? (
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--white)] shadow-[0_0_0_1px_var(--card-hairline)]">
+            {/* eslint-disable-next-line @next/next/no-img-element -- winkellogo */}
+            <img src={list.storeLogos[0]} alt="" width={26} height={26} className="size-[26px] object-contain" />
+          </span>
+        ) : null}
+      </span>
+      {shown.length > 0 ? (
+        <span className="grid grid-cols-5 gap-2" aria-hidden>
+          {shown.map((p) => (
+            <span
+              key={p.id}
+              className="flex aspect-square min-w-0 items-center justify-center overflow-hidden rounded-md bg-[var(--gray-25)]"
+            >
+              {p.url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
+                <img src={p.url} alt="" className="size-[82%] object-contain" loading="lazy" decoding="async" />
+              ) : (
+                <span className="text-base font-semibold text-[var(--blue-500)]">
+                  {p.name.trim().charAt(0).toUpperCase()}
+                </span>
+              )}
+            </span>
+          ))}
+          {rest > 0 ? (
+            <span className="flex aspect-square min-w-0 items-center justify-center rounded-md bg-[var(--blue-50)] text-[15px] font-semibold text-[var(--blue-500)] tabular-nums">
+              +{rest}
+            </span>
+          ) : null}
+        </span>
+      ) : null}
+      <span className="mt-auto text-[13px] leading-[18px] text-[var(--gray-400)]">{openLabel}</span>
+    </Link>
+  );
+}
+
+/**
+ * Startpagina-lijstjes (voorstel 6): snel toevoegen aan het lijstje in beeld, daaronder een
+ * swimlane met de actieve lijstjes (max. 2), een kaart «Alle N lijstjes» en paginering.
+ */
 function HomeLijstjesSection({
   normalLists,
-  addingId,
-  addingIdExpanded,
-  removingId,
-  onDelete,
-  onStartFromMaster,
   onOpenCreateModal,
+  onQuickAdd,
 }: {
   normalLists: HomeList[];
-  addingId: string | null;
-  addingIdExpanded: boolean;
-  removingId: string | null;
-  onDelete: (id: string) => void;
-  onStartFromMaster: (id: string) => void;
   onOpenCreateModal: () => void;
+  /** Voegt een product toe aan het gegeven lijstje. */
+  onQuickAdd: (list: HomeList, name: string) => void;
 }) {
-  const rowWrapperClass = (isAnimating: boolean, index: number, len: number) =>
-    cn(
-      "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-      isAnimating ? "mb-0 max-h-0 opacity-0" : "max-h-[200px] opacity-100",
-      !isAnimating && (index < len - 1 ? "mb-3" : "mb-0"),
-    );
+  const laneRef = React.useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  const [confirmation, setConfirmation] = React.useState<string | null>(null);
 
-  const cardFor = (list: HomeList) => (
-    <ListCard
-      listName={list.name}
-      itemCount={homeListCardItemCountLine(list)}
-      displayVariant={list.displayVariant}
-      storeLogos={list.storeLogos}
-      sharedWithFirstName={list.sharedWithFirstName ?? undefined}
-      icon={
-        // eslint-disable-next-line @next/next/no-img-element -- lokale webp
-        <img
-          src={list.customIconUrl ?? homeListCardIconSrc(list)}
-          alt=""
-          width={48}
-          height={48}
-          decoding="async"
-          className={list.customIconUrl ? "size-full rounded-[var(--radius-md)] object-cover" : "object-contain"}
-        />
+  /* Actief = de lijstjes met nog open producten, bovenaan eerst; max. 2. Anders het nieuwste. */
+  const activeLists = React.useMemo(() => {
+    const withOpen = normalLists.filter((l) => homeListOpenItems(l).length > 0).slice(0, 2);
+    return withOpen.length > 0 ? withOpen : normalLists.slice(0, 1);
+  }, [normalLists]);
+  const pageCount = activeLists.length + 1;
+  const targetList = activeLists[Math.min(activeIndex, activeLists.length - 1)] ?? activeLists[0];
+
+  React.useEffect(() => {
+    if (!confirmation) return;
+    const t = window.setTimeout(() => setConfirmation(null), 2600);
+    return () => window.clearTimeout(t);
+  }, [confirmation]);
+
+  const handleScroll = React.useCallback(() => {
+    const el = laneRef.current;
+    if (!el) return;
+    const cards = Array.from(el.children) as HTMLElement[];
+    const left = el.scrollLeft;
+    let best = 0;
+    let bestDist = Infinity;
+    cards.forEach((c, i) => {
+      const d = Math.abs(c.offsetLeft - el.offsetLeft - left);
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
       }
-      state="default"
-      onMasterAdd={
-        list.displayVariant === "master"
-          ? () => onStartFromMaster(list.id)
-          : undefined
-      }
-      className="cursor-pointer"
-    />
-  );
+    });
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 4) best = cards.length - 1;
+    setActiveIndex(best);
+  }, []);
+
+  const scrollToPage = (index: number) => {
+    const el = laneRef.current;
+    const card = el?.children[index] as HTMLElement | undefined;
+    if (!el || !card) return;
+    el.scrollTo({ left: card.offsetLeft - el.offsetLeft, behavior: "smooth" });
+  };
 
   if (normalLists.length === 0) {
     return (
@@ -1360,55 +1486,124 @@ function HomeLijstjesSection({
     );
   }
 
+  const otherLists = normalLists.filter((l) => !activeLists.some((a) => a.id === l.id)).slice(0, 3);
+
   return (
-    <div className="flex flex-col">
-      <ListSectionHeader
-        icon="list"
-        label="Lijstjes"
-        count={normalLists.length}
-        showNaarOverzicht
-      />
-      {normalLists.length > 3 ? (
-        <div
-          className={cn("mt-4 lg:hidden", SWIMLANE_CLASSES)}
-          style={{ scrollbarWidth: "none" } as React.CSSProperties}
+    <div className="flex flex-col gap-4">
+      <div className="flex min-h-8 items-center justify-between gap-3">
+        <h2 className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">Lijstjes</h2>
+        <Link
+          href="/lijstjes-beheren/lijstjes"
+          className="-mr-1 inline-flex items-center gap-0.5 rounded-pill py-1 pl-2 pr-1 text-sm font-medium leading-20 text-action-primary no-underline transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
         >
-          {chunkArray(normalLists, 3).map((chunk, i) => (
-            <div key={i} className="flex w-[300px] shrink-0 flex-col gap-3">
-              {chunk.map((list) => (
-                <Link key={list.id} href={`/lijstje/${list.id}`} className="block no-underline">
-                  {cardFor(list)}
-                </Link>
-              ))}
-            </div>
+          Alle {normalLists.length}
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+            <path d="M6 3.5 10.5 8 6 12.5" />
+          </svg>
+        </Link>
+      </div>
+
+      {/* Snel toevoegen aan het lijstje dat in beeld is */}
+      <button
+        type="button"
+        onClick={() => {
+          primeKeyboard();
+          setSearchOpen(true);
+        }}
+        className="flex h-[52px] w-full items-center gap-2.5 rounded-lg bg-[var(--white)] pl-4 pr-1.5 text-left shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        <span
+          aria-live="polite"
+          className={cn(
+            "min-w-0 flex-1 truncate text-base leading-6",
+            confirmation ? "font-medium text-[var(--text-primary)]" : "text-[var(--text-tertiary)]",
+          )}
+        >
+          {confirmation ?? `Voeg toe aan ${targetList?.name ?? "je lijstje"}…`}
+        </span>
+        <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[var(--blue-500)] text-[var(--white)]">
+          <span
+            className="inline-block size-5 bg-current"
+            style={{
+              WebkitMaskImage: "url(/icons/plus.svg)",
+              maskImage: "url(/icons/plus.svg)",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+            }}
+          />
+        </span>
+      </button>
+
+      <div
+        ref={laneRef}
+        onScroll={handleScroll}
+        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:px-0"
+      >
+        {activeLists.map((list) => (
+          <div key={list.id} className="w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start">
+            <HomeListSwimCard list={list} />
+          </div>
+        ))}
+        <Link
+          href="/lijstjes-beheren/lijstjes"
+          className="flex w-40 shrink-0 snap-start flex-col items-center justify-center gap-2.5 rounded-lg bg-[var(--white)] p-4 no-underline shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+        >
+          <span className="flex" aria-hidden>
+            {otherLists.map((l, i) => (
+              // eslint-disable-next-line @next/next/no-img-element -- lokale webp
+              <img
+                key={l.id}
+                src={l.customIconUrl ?? homeListCardIconSrc(l)}
+                alt=""
+                width={36}
+                height={36}
+                className={cn(
+                  "size-9 rounded-full bg-[var(--gray-25)] object-contain shadow-[0_0_0_2px_var(--white)]",
+                  i > 0 && "-ml-2.5",
+                )}
+              />
+            ))}
+          </span>
+          <span className="text-[15px] font-semibold leading-5 text-action-primary">Alle {normalLists.length} lijstjes</span>
+        </Link>
+      </div>
+
+      {pageCount > 1 ? (
+        <div className="flex justify-center gap-1.5" role="tablist" aria-label="Lijstjes">
+          {Array.from({ length: pageCount }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              role="tab"
+              aria-selected={i === activeIndex}
+              aria-label={i < activeLists.length ? activeLists[i].name : `Alle ${normalLists.length} lijstjes`}
+              onClick={() => scrollToPage(i)}
+              className={cn(
+                "h-1.5 rounded-full transition-[width,background-color] duration-base ease-out-strong",
+                i === activeIndex ? "w-[18px] bg-[var(--blue-500)]" : "w-1.5 bg-[var(--gray-200)]",
+              )}
+            />
           ))}
         </div>
-      ) : (
-        <div className="mt-4 lg:hidden">
-          {normalLists.map((list, index) => {
-            const isAnimating = (addingId === list.id && !addingIdExpanded) || removingId === list.id;
-            return (
-              <div key={list.id} className={rowWrapperClass(isAnimating, index, normalLists.length)}>
-                <SwipeToDelete
-                  onDelete={list.isOwner ? () => onDelete(list.id) : undefined}
-                  deleteActionLabel="Lijstje verwijderen"
-                >
-                  <Link href={`/lijstje/${list.id}`} className="block no-underline">
-                    {cardFor(list)}
-                  </Link>
-                </SwipeToDelete>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      <div className="mt-4 hidden lg:grid lg:grid-cols-3 lg:gap-3">
-        {normalLists.slice(0, 9).map((list) => (
-          <Link key={list.id} href={`/lijstje/${list.id}`} className="block no-underline">
-            {cardFor(list)}
-          </Link>
-        ))}
-      </div>
+      ) : null}
+
+      <ItemNameSearchSlideIn
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        initialValue=""
+        title={targetList ? `Toevoegen aan ${targetList.name}` : "Item toevoegen"}
+        photoCatalog="items"
+        suggestionScope="items"
+        onSelect={(name) => {
+          if (!targetList) return;
+          onQuickAdd(targetList, name);
+          setConfirmation(`${name.charAt(0).toUpperCase()}${name.slice(1)} toegevoegd aan ${targetList.name}`);
+        }}
+      />
     </div>
   );
 }
@@ -1995,6 +2190,24 @@ export default function Home() {
     () => lists.filter((l) => l.isMasterTemplate),
     [lists],
   );
+
+  /** Snel toevoegen vanop home: zelfde itemvorm als «Items toevoegen» in het lijstje (sectie Algemeen). */
+  const handleQuickAddToList = React.useCallback((list: HomeList, name: string) => {
+    const items = (list.items ?? []) as Array<{ order?: number }>;
+    const maxOrder = items.reduce((m, it) => Math.max(m, typeof it.order === "number" ? it.order : 0), -1);
+    void db.transact(
+      db.tx.items[iid()]
+        .update({
+          name,
+          quantity: "1 stuk",
+          checked: false,
+          section: "Algemeen",
+          itemCategory: resolveItemCategoryFromName(name),
+          order: maxOrder + 1,
+        })
+        .link({ list: list.id }),
+    );
+  }, []);
 
   const [homeSectionConfig, setHomeSectionConfig] = React.useState<HomeSectionConfig>(
     () => loadHomeSectionConfig(),
@@ -2881,12 +3094,8 @@ export default function Home() {
         return (
           <HomeLijstjesSection
             normalLists={normalLists}
-            addingId={addingId}
-            addingIdExpanded={addingIdExpanded}
-            removingId={removingId}
-            onDelete={handleDeleteList}
-            onStartFromMaster={handleStartFromMaster}
             onOpenCreateModal={handleOpenCreateModal}
+            onQuickAdd={handleQuickAddToList}
           />
         );
       case "te-kopen":
