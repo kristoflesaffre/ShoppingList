@@ -269,9 +269,6 @@ function SelectableItemCard({
               {displayQuantity}
             </p>
           </div>
-          <span className="relative flex h-11 w-0 shrink-0 items-center justify-center">
-            <span className="absolute left-1/2 top-0 h-11 w-px -translate-x-1/2 bg-[var(--gray-100)]" />
-          </span>
           <button
             type="button"
             onClick={onAdd}
@@ -335,9 +332,6 @@ function TeKopenSuggestionCard({
           ) : null}
         </div>
       </div>
-      <span className="relative flex h-11 w-0 shrink-0 items-center justify-center">
-        <span className="absolute left-1/2 top-0 h-11 w-px -translate-x-1/2 bg-[var(--blue-200)]" />
-      </span>
       <button
         type="button"
         onClick={onAdd}
@@ -888,6 +882,25 @@ export default function SelecteerMasterItemsPage() {
     for (const item of prevListItems) schedulePrevHide(item.id);
   }, [schedulePrevHide, prevListItems]);
 
+  const handleDeletePrevItem = React.useCallback((itemId: string) => {
+    const pendingHide = prevHideTimeoutRef.current[itemId];
+    if (pendingHide) {
+      window.clearTimeout(pendingHide);
+      delete prevHideTimeoutRef.current[itemId];
+    }
+    setSelectedPrevItemIds((prev) => {
+      const next = new Set(prev);
+      next.delete(itemId);
+      return next;
+    });
+    setHiddenPrevItemIds((prev) => {
+      const next = new Set(prev);
+      next.add(itemId);
+      return next;
+    });
+    void db.transact(db.tx.items[itemId].delete());
+  }, []);
+
   const handleIncrement = React.useCallback(
     (item: TemplateItem) => {
       const current = selectedQuantitiesById[item.id];
@@ -1079,7 +1092,7 @@ export default function SelecteerMasterItemsPage() {
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-[var(--bg-app)]">
+    <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-[var(--white)]">
       <header className="relative z-[1] flex h-16 shrink-0 bg-[var(--white)] px-4">
         <div className="mx-auto flex w-full max-w-[956px] items-center gap-4">
           <Link
@@ -1096,7 +1109,7 @@ export default function SelecteerMasterItemsPage() {
         </div>
       </header>
 
-      <div className="relative flex-1 overflow-y-auto px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-8">
+      <div className="relative flex-1 overflow-y-auto bg-[var(--bg-app)] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-8">
         <div className="relative mx-auto flex w-full max-w-[956px] flex-col gap-6">
           <div className="flex items-center gap-4">
             <div className="min-w-0 flex-1">
@@ -1181,10 +1194,10 @@ export default function SelecteerMasterItemsPage() {
           ) : null}
 
           {prevListItems.length > 0 ? (
-            <section className="flex flex-col gap-4" aria-label="Niet gevonden vorige keer">
+            <section className="flex flex-col gap-4" aria-label="Niet gevonden">
               <div className="flex items-center gap-3">
                 <h3 className="min-w-0 flex-1 text-[18px] font-bold leading-6 tracking-normal text-[var(--blue-900)]">
-                  Niet gevonden vorige keer
+                  Niet gevonden
                 </h3>
                 <button
                   type="button"
@@ -1210,11 +1223,16 @@ export default function SelecteerMasterItemsPage() {
                           : "max-h-[200px] opacity-100",
                       )}
                     >
-                      <TeKopenSuggestionCard
-                        item={item}
-                        photoUrl={getPhotoUrl(item.name)}
-                        onAdd={() => handleAddPrevItem(item)}
-                      />
+                      <SwipeToDelete
+                        onDelete={() => handleDeletePrevItem(item.id)}
+                        deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}
+                      >
+                        <TeKopenSuggestionCard
+                          item={item}
+                          photoUrl={getPhotoUrl(item.name)}
+                          onAdd={() => handleAddPrevItem(item)}
+                        />
+                      </SwipeToDelete>
                     </div>
                   );
                 })}
