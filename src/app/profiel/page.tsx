@@ -368,18 +368,14 @@ export default function ProfielPage() {
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col px-4">
-      {/* Mobiel (5.1b): licht verloop achter de foto, zoals de login. Desktop (F3): zachte lavendel band bovenaan. */}
+      {/* Mobiel (5.1c) en desktop (F3): zachte lavendel band bovenaan die uitloopt in de achtergrond. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_50%_118px,var(--white)_0px,var(--blue-25)_80px,var(--blue-50)_190px,var(--bg-app)_360px)] md:hidden"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 hidden h-60 bg-[linear-gradient(180deg,var(--blue-50)_0%,var(--blue-25)_60%,var(--bg-app)_100%)] md:block"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[200px] bg-[linear-gradient(180deg,var(--blue-50)_0%,var(--blue-25)_60%,var(--bg-app)_100%)] md:h-60"
       />
 
-      {/* ── Mobiel: 5.1b ── */}
-      <main className="relative mx-auto flex w-full max-w-[480px] flex-1 flex-col gap-5 pb-[calc(96px+env(safe-area-inset-bottom,0px))] pt-[calc(72px+env(safe-area-inset-top,0px))] motion-safe:animate-fade-up md:hidden">
+      {/* ── Mobiel: 5.1c ── */}
+      <main className="relative mx-auto flex w-full max-w-[480px] flex-1 flex-col gap-5 pb-[calc(96px+env(safe-area-inset-bottom,0px))] pt-[calc(112px+env(safe-area-inset-top,0px))] motion-safe:animate-fade-up md:hidden">
         <section className="flex flex-col items-center gap-4">
           {avatar("md")}
           {identity("text-[26px] leading-8")}
