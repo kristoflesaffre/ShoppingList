@@ -79,9 +79,9 @@ function AuthIconTile({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Desktop (lg): inhoud in een halftransparante witte kaart op het verloop (canvas «Desktop login 3»). */
+/** Vanaf tablet (md, 768px): inhoud in een halftransparante witte kaart op het verloop (canvas «Desktop login 3»). */
 const authDesktopCard =
-  "lg:relative lg:my-auto lg:flex-none lg:rounded-[28px] lg:bg-[rgba(255,255,255,0.82)] lg:px-9 lg:pb-8 lg:shadow-[0_0_0_1px_rgba(230,232,240,0.9),0_30px_60px_-30px_rgba(79,85,241,0.45)] lg:backdrop-blur-sm [[data-theme=dark]_&]:lg:bg-[rgba(31,34,56,0.82)]";
+  "md:relative md:my-auto md:flex-none md:rounded-[28px] md:bg-[rgba(255,255,255,0.82)] md:px-9 md:pb-8 md:shadow-[0_0_0_1px_rgba(230,232,240,0.9),0_30px_60px_-30px_rgba(79,85,241,0.45)] md:backdrop-blur-sm [[data-theme=dark]_&]:md:bg-[rgba(31,34,56,0.82)]";
 
 const REGISTER_STEP_COUNT = 4;
 
@@ -108,10 +108,10 @@ function RegisterStepShell({
     <div
       className={cn(
         authShell,
-        "bg-[radial-gradient(circle_at_50%_210px,var(--white)_0px,var(--blue-25)_110px,var(--blue-50)_280px,var(--blue-100)_560px)] pt-[env(safe-area-inset-top,0px)] lg:bg-[radial-gradient(circle_at_50%_42%,var(--white)_0px,var(--blue-25)_180px,var(--blue-50)_480px,var(--blue-100)_900px)] lg:py-16",
+        "bg-[radial-gradient(circle_at_50%_210px,var(--white)_0px,var(--blue-25)_110px,var(--blue-50)_280px,var(--blue-100)_560px)] pt-[env(safe-area-inset-top,0px)] md:bg-[radial-gradient(circle_at_50%_42%,var(--white)_0px,var(--blue-25)_180px,var(--blue-50)_480px,var(--blue-100)_900px)] md:py-16",
       )}
     >
-      <div className={cn("mx-auto flex w-full max-w-[420px] flex-1 flex-col px-5 lg:max-w-[480px] lg:pt-3", authDesktopCard)}>
+      <div className={cn("mx-auto flex w-full max-w-[420px] flex-1 flex-col px-5 md:max-w-[480px] md:pt-3", authDesktopCard)}>
         <div className="flex items-center gap-3.5 pt-4">
           <button
             type="button"
@@ -146,7 +146,7 @@ function RegisterStepShell({
           </span>
         </div>
 
-        <div className="flex flex-col items-center gap-4 pt-10 text-center lg:pt-8">
+        <div className="flex flex-col items-center gap-4 pt-10 text-center md:pt-8">
           {visual}
           <div className="flex flex-col gap-1.5">
             <h1 className="text-[26px] font-bold leading-8 tracking-tight text-[var(--text-primary)]">{title}</h1>
@@ -154,8 +154,8 @@ function RegisterStepShell({
           </div>
         </div>
 
-        <div className="flex-1 lg:hidden" />
-        <div className={cn("flex flex-col gap-3 pt-8 lg:pb-0 lg:pt-7", authFooterPad)}>{children}</div>
+        <div className="flex-1 md:hidden" />
+        <div className={cn("flex flex-col gap-3 pt-8 md:pb-0 md:pt-7", authFooterPad)}>{children}</div>
       </div>
     </div>
   );
@@ -492,12 +492,12 @@ export default function AuthPage() {
       <div
         className={cn(
           authShell,
-          "bg-[radial-gradient(circle_at_50%_38%,var(--white)_0px,var(--blue-25)_120px,var(--blue-50)_300px,var(--blue-100)_560px)] pt-[env(safe-area-inset-top,0px)] lg:bg-[radial-gradient(circle_at_50%_42%,var(--white)_0px,var(--blue-25)_180px,var(--blue-50)_480px,var(--blue-100)_900px)] lg:py-16",
+          "bg-[radial-gradient(circle_at_50%_38%,var(--white)_0px,var(--blue-25)_120px,var(--blue-50)_300px,var(--blue-100)_560px)] pt-[env(safe-area-inset-top,0px)] md:bg-[radial-gradient(circle_at_50%_42%,var(--white)_0px,var(--blue-25)_180px,var(--blue-50)_480px,var(--blue-100)_900px)] md:py-16",
         )}
       >
-        <div className={cn("mx-auto flex w-full max-w-[420px] flex-1 flex-col px-5 lg:max-w-[440px] lg:pt-24", authDesktopCard)}>
+        <div className={cn("mx-auto flex w-full max-w-[420px] flex-1 flex-col px-5 md:max-w-[440px] md:pt-24", authDesktopCard)}>
           {/* Mobiel: logo boven de mand in het lichte midden. Desktop: mand steekt boven de kaart uit, logo in de kaart. */}
-          <div className="flex flex-1 flex-col items-center justify-center gap-[22px] py-10 lg:flex-none lg:py-0 lg:pb-4">
+          <div className="flex flex-1 flex-col items-center justify-center gap-[22px] py-10 md:flex-none md:py-0 md:pb-4">
             <Image
               src="/images/ui/logo.png"
               alt="Shopping list"
@@ -511,7 +511,7 @@ export default function AuthPage() {
               alt=""
               width={200}
               height={200}
-              className="h-auto w-[200px] lg:absolute lg:left-1/2 lg:top-[-110px] lg:w-[190px] lg:-translate-x-1/2"
+              className="h-auto w-[200px] md:absolute md:left-1/2 md:top-[-110px] md:w-[190px] md:-translate-x-1/2"
               priority
             />
           </div>
@@ -522,7 +522,7 @@ export default function AuthPage() {
               e.preventDefault();
               void handleLoginWithPassword();
             }}
-            className={cn("flex flex-col gap-3 lg:pb-0", authFooterPad)}
+            className={cn("flex flex-col gap-3 md:pb-0", authFooterPad)}
           >
             <label className={fieldShell}>
               <span className="flex min-w-0 flex-1 flex-col gap-px">
