@@ -1022,6 +1022,57 @@ function HomeTeKopenRow({
   );
 }
 
+/** Aantal producten dat de Te kopen-sectie op desktop dichtgeklapt toont (twee rijen van drie). */
+const TE_KOPEN_DESKTOP_PREVIEW_COUNT = 6;
+
+/** Desktop 1 · één product als eigen tegel: foto of monogram, naam, en «4 stuks · door Chloé». */
+function HomeTeKopenTile({
+  item,
+  addedBy,
+}: {
+  item: HomeShoppingItem;
+  addedBy: ShoppingAddedBy | null;
+}) {
+  const getPhotoUrl = useItemPhotoUrl(160);
+  const photoSrc = getPhotoUrl(item.name);
+  const quantity = pluralizeShoppingQuantity(item.quantity);
+
+  return (
+    <Link
+      href="/te-kopen"
+      className="flex h-16 min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] pl-3 pr-3.5 no-underline shadow-card transition-[transform,background-color] duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+    >
+      {photoSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
+        <img
+          src={photoSrc}
+          alt=""
+          width={40}
+          height={40}
+          className="size-10 shrink-0 rounded-xl bg-[var(--blue-25)] object-contain p-1 mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal"
+          aria-hidden
+        />
+      ) : (
+        <span
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--blue-25)] text-[15px] font-semibold leading-none text-[var(--blue-400)]"
+          aria-hidden
+        >
+          {item.name.trim().charAt(0).toUpperCase()}
+        </span>
+      )}
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-[15px] font-medium leading-5 text-[var(--text-primary)] first-letter:uppercase">
+          {item.name}
+        </span>
+        <span className="truncate text-xs leading-4 text-[var(--gray-400)] tabular-nums">
+          {quantity}
+          {addedBy ? ` · door ${addedBy.firstName}` : ""}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 /** Figma 1473:10662 / 1477:11210 / 1480:12999 — sectie «Te kopen» op de startpagina. */
 function HomeTeKopenSection({
   shoppingItems,
@@ -1104,6 +1155,9 @@ function HomeTeKopenSection({
   const recentItems = [...shoppingItems].sort((a, b) => b.order - a.order);
   const visibleItems = expanded ? recentItems : recentItems.slice(0, TE_KOPEN_PREVIEW_COUNT);
   const canExpand = recentItems.length > TE_KOPEN_PREVIEW_COUNT;
+  const desktopItems = expanded ? recentItems : recentItems.slice(0, TE_KOPEN_DESKTOP_PREVIEW_COUNT);
+  const canExpandDesktop = recentItems.length > TE_KOPEN_DESKTOP_PREVIEW_COUNT;
+  const toggleLabel = expanded ? "Toon minder" : `Toon alle ${recentItems.length}`;
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -1118,8 +1172,34 @@ function HomeTeKopenSection({
           </button>
         }
       />
-      {/* E5 · één tegel zonder dividers: laatste 3 producten, uitklapbaar; toevoegen staat in de kop. */}
-      <div className={cn("overflow-hidden rounded-lg bg-[var(--white)] pt-1.5 shadow-card", !canExpand && "pb-1.5")}>
+      {/* Desktop 1 · raster van tegels (3 kolommen), twee rijen dichtgeklapt. */}
+      <div className="hidden flex-col gap-3 lg:flex">
+        <ul id={`${listId}-desktop`} className="m-0 grid list-none grid-cols-3 gap-3 pl-0">
+          {desktopItems.map((item) => (
+            <li key={item.id} className="min-w-0">
+              <HomeTeKopenTile item={item} addedBy={addedByFor(item)} />
+            </li>
+          ))}
+        </ul>
+        {canExpandDesktop ? (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              aria-controls={`${listId}-desktop`}
+              className="inline-flex h-8 items-center gap-0.5 rounded-pill px-2.5 text-[13px] font-medium leading-[18px] text-action-primary transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            >
+              {toggleLabel}
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn("size-3.5 shrink-0 motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out-strong", expanded && "rotate-180")}>
+                <path d="M3.5 6 8 10.5 12.5 6" />
+              </svg>
+            </button>
+          </div>
+        ) : null}
+      </div>
+      {/* E5 · één tegel zonder dividers (mobiel/tablet): laatste 3 producten, uitklapbaar; toevoegen staat in de kop. */}
+      <div className={cn("overflow-hidden rounded-lg bg-[var(--white)] pt-1.5 shadow-card lg:hidden", !canExpand && "pb-1.5")}>
         <ul id={listId} className="m-0 list-none pl-0">
           {visibleItems.map((item) => (
             <li key={item.id}>
@@ -1136,7 +1216,7 @@ function HomeTeKopenSection({
               aria-controls={listId}
               className="inline-flex h-8 items-center gap-0.5 rounded-pill px-2.5 text-[13px] font-medium leading-[18px] text-action-primary transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
             >
-              {expanded ? "Toon minder" : `Toon alle ${recentItems.length}`}
+              {toggleLabel}
               <svg
                 viewBox="0 0 16 16"
                 fill="none"
