@@ -371,7 +371,7 @@ export default function ProfielPage() {
       {/* Mobiel (5.1c) en desktop (F3): zachte lavendel band bovenaan die uitloopt in de achtergrond. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[200px] bg-[linear-gradient(180deg,var(--blue-50)_0%,var(--blue-25)_60%,var(--bg-app)_100%)] md:h-60"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[200px] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--blue-100)_60%,var(--blue-50))_0%,var(--blue-50)_55%,var(--bg-app)_100%)] md:h-60"
       />
 
       {/* ── Mobiel: 5.1c ── */}
