@@ -12,6 +12,8 @@ export interface OtpInputProps {
   onChange?: (code: string) => void;
   disabled?: boolean;
   className?: string;
+  /** Vervangt de standaardstijl van elk cijfervak (bv. witte vakken op het registratieverloop). */
+  cellClassName?: string;
   /** Auto-focus the first input on mount. */
   autoFocus?: boolean;
 }
@@ -26,6 +28,7 @@ export function OtpInput({
   onChange,
   disabled,
   className,
+  cellClassName,
   autoFocus = true,
 }: OtpInputProps) {
   const [values, setValues] = React.useState<string[]>(
@@ -108,11 +111,14 @@ export function OtpInput({
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onFocus={(e) => e.target.select()}
-          className={cn(
-            "flex h-12 w-0 min-w-0 flex-1 items-center rounded-md border bg-[var(--white)] text-center text-lg font-medium leading-24 text-[var(--text-primary)] transition-colors",
-            "border-[var(--border-default)] focus-visible:border-[var(--border-focus)] focus-visible:outline-none",
-            "disabled:bg-[var(--blue-25)] disabled:text-[var(--text-disabled)]",
-          )}
+          className={
+            cellClassName ??
+            cn(
+              "flex h-12 w-0 min-w-0 flex-1 items-center rounded-md border bg-[var(--white)] text-center text-lg font-medium leading-24 text-[var(--text-primary)] transition-colors",
+              "border-[var(--border-default)] focus-visible:border-[var(--border-focus)] focus-visible:outline-none",
+              "disabled:bg-[var(--blue-25)] disabled:text-[var(--text-disabled)]",
+            )
+          }
         />
       ))}
     </div>

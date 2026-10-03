@@ -5,8 +5,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { Button } from "@/components/ui/button";
-import { InputField } from "@/components/ui/input_field";
-import { MiniButton } from "@/components/ui/mini_button";
 import { OtpInput } from "@/components/ui/otp_input";
 import { cn, getSafeInternalPath } from "@/lib/utils";
 
@@ -35,29 +33,127 @@ const PROFILE_SETUP_STEPS: AuthStep[] = ["password", "photo"];
 
 const authShell =
   "flex min-h-dvh w-full flex-col bg-[var(--bg-app)]";
-const authContentWrap = "mx-auto flex w-full max-w-[768px] flex-1 flex-col px-4";
 /** 24px boven de onderkant; safe-area voor iOS erbovenop */
 const authFooterPad =
   "pb-[calc(24px+env(safe-area-inset-bottom,0px))] pt-4";
 
-/** public/icons/arrow.svg – kleur primary 500 via mask */
-function ArrowBackIcon({ className }: { className?: string }) {
+/* ── Bouwstenen login/registratie (canvas «Login 5b» en «Account aanmaken») ── */
+
+/** Volle breedte, 50px; disabled blijft zichtbaar lavendelblauw op het verloop. */
+function authPrimaryButtonClass(enabled: boolean) {
+  return cn(
+    "!h-[50px] w-full !max-w-none !font-semibold",
+    !enabled && "!bg-[var(--blue-200)] !text-[var(--white)]",
+  );
+}
+
+const authSoftFieldShell =
+  "flex h-[58px] w-full items-center gap-2 rounded-lg bg-[var(--white)] pl-4 pr-2 shadow-card transition-shadow focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-500)]";
+const authSoftFieldLabel = "text-xs font-medium leading-4 text-[var(--blue-400)]";
+const authSoftFieldInput =
+  "w-full min-w-0 bg-transparent text-base leading-[22px] text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] focus:outline-none";
+
+/** Wit invoerveld met het label klein in het veld (invoerstijl 5). */
+function AuthSoftField({
+  label,
+  trailing,
+  ...inputProps
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string; trailing?: React.ReactNode }) {
   return (
-    <span
+    <label className={authSoftFieldShell}>
+      <span className="flex min-w-0 flex-1 flex-col gap-px">
+        <span className={authSoftFieldLabel}>{label}</span>
+        <input {...inputProps} className={authSoftFieldInput} />
+      </span>
+      {trailing}
+    </label>
+  );
+}
+
+/** 92px witte tegel met een icoon (@, envelop, slot) boven de titel. */
+function AuthIconTile({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="flex size-[92px] items-center justify-center rounded-[28px] bg-[var(--white)] text-[var(--blue-500)] shadow-[0_0_0_1px_var(--border-subtle),0_14px_30px_-14px_rgba(79,85,241,0.45)]">
+      {children}
+    </span>
+  );
+}
+
+const REGISTER_STEP_COUNT = 4;
+
+/**
+ * Registratiestap: lavendel verloop met licht midden, terugknop + voortgang (n/4) bovenaan,
+ * icoon/visual met gecentreerde titel en uitleg, en de invoer + knop onderaan.
+ */
+function RegisterStepShell({
+  stepNumber,
+  onBack,
+  visual,
+  title,
+  subtitle,
+  children,
+}: {
+  stepNumber: number;
+  onBack: () => void;
+  visual: React.ReactNode;
+  title: string;
+  subtitle: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
       className={cn(
-        "inline-block size-6 shrink-0 bg-[var(--blue-500)]",
-        className,
+        authShell,
+        "bg-[radial-gradient(circle_at_50%_210px,var(--white)_0px,var(--blue-25)_110px,var(--blue-50)_280px,var(--blue-100)_560px)] pt-[env(safe-area-inset-top,0px)]",
       )}
-      style={{
-        maskImage: "url(/icons/arrow.svg)",
-        WebkitMaskImage: "url(/icons/arrow.svg)",
-        maskSize: "contain",
-        WebkitMaskSize: "contain",
-        maskRepeat: "no-repeat",
-        maskPosition: "center",
-      }}
-      aria-hidden
-    />
+    >
+      <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col px-5">
+        <div className="flex items-center gap-3.5 pt-4">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Terug"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
+              <path d="M10 3.5 5.5 8 10 12.5" />
+            </svg>
+          </button>
+          <div
+            className="flex flex-1 gap-1.5"
+            role="progressbar"
+            aria-label="Account aanmaken"
+            aria-valuemin={1}
+            aria-valuemax={REGISTER_STEP_COUNT}
+            aria-valuenow={stepNumber}
+          >
+            {Array.from({ length: REGISTER_STEP_COUNT }, (_, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "h-1 flex-1 rounded-full",
+                  i < stepNumber ? "bg-[var(--blue-500)]" : "bg-[rgba(79,85,241,0.18)]",
+                )}
+              />
+            ))}
+          </div>
+          <span className="w-10 text-right text-xs font-semibold text-[var(--blue-400)] tabular-nums" aria-hidden>
+            {stepNumber}/{REGISTER_STEP_COUNT}
+          </span>
+        </div>
+
+        <div className="flex flex-col items-center gap-4 pt-10 text-center">
+          {visual}
+          <div className="flex flex-col gap-1.5">
+            <h1 className="text-[26px] font-bold leading-8 tracking-tight text-[var(--text-primary)]">{title}</h1>
+            <p className="text-[15px] leading-[21px] text-[var(--text-secondary)]">{subtitle}</p>
+          </div>
+        </div>
+
+        <div className="flex-1" />
+        <div className={cn("flex flex-col gap-3 pt-8", authFooterPad)}>{children}</div>
+      </div>
+    </div>
   );
 }
 
@@ -67,30 +163,6 @@ function PasswordVisibilityIcon({ passwordVisible }: { passwordVisible: boolean 
   return (
     // eslint-disable-next-line @next/next/no-img-element -- statisch icoon uit /public
     <img src={src} alt="" width={24} height={24} className="size-6 shrink-0" />
-  );
-}
-
-function StepHeader({
-  title,
-  onBack,
-}: {
-  title: string;
-  onBack: () => void;
-}) {
-  return (
-    <div className="flex w-full items-center gap-4">
-      <button
-        type="button"
-        onClick={onBack}
-        className="flex size-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-[var(--gray-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-        aria-label="Terug"
-      >
-        <ArrowBackIcon />
-      </button>
-      <h1 className="flex-1 text-2xl font-bold leading-8 text-[var(--text-primary)]">
-        {title}
-      </h1>
-    </div>
   );
 }
 
@@ -497,10 +569,7 @@ export default function AuthPage() {
               type="submit"
               disabled={!canSubmit}
               /* Login 5b: volle breedte, 50px hoog; disabled blijft zichtbaar blauw op het lavendel verloop. */
-              className={cn(
-                "mt-1 !h-[50px] w-full !max-w-none !font-semibold",
-                !canSubmit && "!bg-[var(--blue-200)] !text-[var(--white)]",
-              )}
+              className={cn("mt-1", authPrimaryButtonClass(canSubmit))}
             >
               {isPasswordSigningIn ? "Inloggen…" : "Inloggen"}
             </Button>
@@ -520,166 +589,167 @@ export default function AuthPage() {
     );
   }
 
-  /* ── E-mail (alleen registratie → magic code) ── */
+  /* ── Registratie 1: e-mailadres (→ magic code) ── */
   if (step === "email") {
     const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const canNext = isValid && !isSending;
 
     return (
-      <div
-        className={cn(authShell, "pt-[env(safe-area-inset-top,0px)]")}
+      <RegisterStepShell
+        stepNumber={1}
+        onBack={handleGoBack}
+        visual={
+          <AuthIconTile>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-11">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.9 7.9" />
+            </svg>
+          </AuthIconTile>
+        }
+        title="Geef e-mailadres in"
+        subtitle={
+          <>
+            We sturen je een code om je
+            <br />
+            e-mailadres te bevestigen.
+          </>
+        }
       >
-        <div className={cn(authContentWrap, "gap-6 pt-12")}>
-          <StepHeader title="Account aanmaken" onBack={handleGoBack} />
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSendCode();
-            }}
-            className="flex flex-col gap-6"
-          >
-            <InputField
-              label="Je e-mailadres"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              autoFocus
-              placeholder="E-mailadres"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null);
-              }}
-            />
-
-            {error && (
-              <p className="text-sm text-[var(--error-600)]">{error}</p>
-            )}
-          </form>
-        </div>
-
-        <div
-          className={cn(
-            "mx-auto flex w-full max-w-[768px] justify-center px-4",
-            authFooterPad,
-          )}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canNext) void handleSendCode();
+          }}
+          className="flex flex-col gap-3"
         >
-          <Button
-            variant="primary"
-            disabled={!isValid || isSending}
-            onClick={handleSendCode}
-            className="w-full max-w-[320px]"
-          >
+          <AuthSoftField
+            label="E-mailadres"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoFocus
+            placeholder="naam@voorbeeld.be"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError(null);
+            }}
+          />
+          {error && <p className="text-sm text-[var(--error-600)]">{error}</p>}
+          <Button variant="primary" type="submit" disabled={!canNext} className={cn("mt-1", authPrimaryButtonClass(canNext))}>
             {isSending ? "Versturen…" : "Volgende"}
           </Button>
-        </div>
-      </div>
+        </form>
+      </RegisterStepShell>
     );
   }
 
-  /* ── Code step ── */
+  /* ── Registratie 2: code (gaat automatisch verder bij het 6e cijfer) ── */
   if (step === "code") {
     return (
-      <div
-        className={cn(authShell, "pt-[env(safe-area-inset-top,0px)]")}
+      <RegisterStepShell
+        stepNumber={2}
+        onBack={handleGoBack}
+        visual={
+          <AuthIconTile>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-11">
+              <rect x="3" y="5" width="18" height="14" rx="3" />
+              <path d="m4 7 8 6 8-6" />
+            </svg>
+          </AuthIconTile>
+        }
+        title="Check je mailbox"
+        subtitle={
+          <>
+            Geef de code van 6 cijfers in die we stuurden naar{" "}
+            <span className="font-semibold text-[var(--text-primary)]">{email}</span>
+          </>
+        }
       >
-        <div className={cn(authContentWrap, "gap-6 pt-12")}>
-          <StepHeader title="Verificatiecode ingeven" onBack={handleGoBack} />
-
-          <p className="text-base font-light leading-6 text-[var(--text-primary)]">
-            Geef de verificatiecode van 6 cijfers in die verstuurd werd naar
-            het e-mailadres <span className="font-medium">{email}</span>
+        <OtpInput
+          length={6}
+          autoFocus
+          disabled={isVerifying}
+          onChange={(v) => {
+            setCode(v);
+            setError(null);
+          }}
+          onComplete={(v) => handleVerifyCode(v)}
+          className="justify-between gap-2"
+          cellClassName="h-[58px] w-0 min-w-0 max-w-[52px] flex-1 rounded-[14px] bg-[var(--white)] text-center text-2xl font-semibold text-[var(--text-primary)] shadow-card transition-shadow focus-visible:shadow-[inset_0_0_0_1.5px_var(--blue-500),0_0_0_4px_var(--blue-50)] focus-visible:outline-none disabled:opacity-60"
+        />
+        {error ? (
+          <p className="text-center text-sm text-[var(--error-600)]">{error}</p>
+        ) : (
+          <p className="text-center text-[13px] text-[var(--gray-400)]" aria-live="polite">
+            {isVerifying ? "Code controleren…" : "We gaan automatisch verder zodra de code klopt."}
           </p>
-
-          <OtpInput
-            length={6}
-            autoFocus
-            disabled={isVerifying}
-            onChange={(v) => setCode(v)}
-            onComplete={(v) => handleVerifyCode(v)}
-          />
-
-          {error && (
-            <p className="text-sm text-[var(--error-600)]">{error}</p>
-          )}
-        </div>
-
-        <div
-          className={cn(
-            "mx-auto flex w-full max-w-[768px] flex-col items-center gap-3 px-4",
-            authFooterPad,
-          )}
-        >
-          <Button
-            variant="tertiary"
+        )}
+        <p className="pb-2 pt-1 text-center text-sm text-[var(--text-secondary)]">
+          Geen code ontvangen?{" "}
+          <button
+            type="button"
             onClick={handleResendCode}
             disabled={isSending}
-            className="w-full max-w-[320px]"
+            className="rounded font-semibold text-action-primary disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
             {isSending ? "Versturen…" : "Nieuwe code versturen"}
-          </Button>
-          <Button
-            variant="primary"
-            disabled={code.length < 6 || isVerifying}
-            onClick={() => handleVerifyCode()}
-            className="w-full max-w-[320px]"
-          >
-            {isVerifying ? "Verifiëren…" : "Code verifiëren"}
-          </Button>
-        </div>
-      </div>
+          </button>
+        </p>
+      </RegisterStepShell>
     );
   }
 
-  /* ── Password step (register only) ── */
+  /* ── Registratie 3: paswoord ── */
   if (step === "password" && user) {
-    const canNext =
-      password.length >= 8 &&
-      confirmPassword.length >= 8 &&
-      password === confirmPassword;
+    const longEnough = password.length >= 8;
+    const mismatch = confirmPassword.length > 0 && password !== confirmPassword;
+    const canNext = longEnough && confirmPassword.length >= 8 && password === confirmPassword && !isSavingPassword;
 
     return (
-      <div
-        className={cn(authShell, "pt-[env(safe-area-inset-top,0px)]")}
+      <RegisterStepShell
+        stepNumber={3}
+        onBack={handleGoBack}
+        visual={
+          <AuthIconTile>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[42px]">
+              <rect x="5" y="10" width="14" height="10" rx="2.5" />
+              <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+              <circle cx="12" cy="15" r="1.2" fill="currentColor" />
+            </svg>
+          </AuthIconTile>
+        }
+        title="Kies een paswoord"
+        subtitle="Hiermee log je voortaan in."
       >
-        <div className={cn(authContentWrap, "gap-6 pt-12")}>
-          <StepHeader title="Account aanmaken" onBack={handleGoBack} />
-
-          <div className="flex flex-col gap-2">
-            <label
-              htmlFor="auth-password"
-              className="text-sm font-normal leading-5 text-[var(--text-primary)]"
-            >
-              Je paswoord
-            </label>
-            <div className="relative flex w-full items-center">
-              <input
-                id="auth-password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                placeholder="Paswoord"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setError(null);
-                }}
-                className={cn(
-                  "h-12 w-full rounded-md border border-[var(--border-default)] bg-[var(--white)] py-2 pl-4 pr-12 text-base leading-6 text-[var(--text-primary)]",
-                  "placeholder:text-[var(--text-placeholder)] focus-visible:border-[var(--border-focus)] focus-visible:outline-none",
-                )}
-              />
-              <button
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canNext) void handleSavePassword();
+          }}
+          className="flex flex-col gap-3"
+        >
+          <AuthSoftField
+            label="Paswoord"
+            id="auth-password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="new-password"
+            placeholder="Paswoord"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError(null);
+            }}
+            trailing={              <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                className="shrink-0 rounded p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                 aria-label={showPassword ? "Verberg paswoord" : "Toon paswoord"}
               >
                 <PasswordVisibilityIcon passwordVisible={showPassword} />
-              </button>
-            </div>
-          </div>
-
-          <InputField
+              </button>}
+          />
+          <AuthSoftField
             label="Bevestig paswoord"
             id="auth-password-confirm"
             type={showPassword ? "text" : "password"}
@@ -691,50 +761,94 @@ export default function AuthPage() {
               setError(null);
             }}
           />
-
-          {error && (
-            <p className="text-sm text-[var(--error-600)]">{error}</p>
-          )}
-        </div>
-
-        <div
-          className={cn(
-            "mx-auto flex w-full max-w-[768px] justify-center px-4",
-            authFooterPad,
-          )}
-        >
-          <Button
-            variant="primary"
-            disabled={!canNext || isSavingPassword}
-            onClick={handleSavePassword}
-            className="w-full max-w-[320px]"
+          <p
+            className={cn(
+              "flex items-center gap-2 px-1 text-[13px]",
+              mismatch ? "text-[var(--error-600)]" : longEnough ? "text-[var(--success-soft-fg)]" : "text-[var(--gray-400)]",
+            )}
+            aria-live="polite"
           >
+            <span
+              aria-hidden
+              className={cn(
+                "flex size-4 items-center justify-center rounded-full",
+                longEnough && !mismatch ? "bg-[var(--success-soft-bg)]" : "bg-[var(--gray-100)]",
+              )}
+            >
+              {longEnough && !mismatch ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" className="size-2.5">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              ) : null}
+            </span>
+            {mismatch ? "De paswoorden zijn niet gelijk" : "Minstens 8 tekens"}
+          </p>
+          {error && <p className="text-sm text-[var(--error-600)]">{error}</p>}
+          <Button variant="primary" type="submit" disabled={!canNext} className={cn("mt-1", authPrimaryButtonClass(canNext))}>
             {isSavingPassword ? "Opslaan…" : "Volgende"}
           </Button>
-        </div>
-      </div>
+        </form>
+      </RegisterStepShell>
     );
   }
 
-  /* ── Naam + profielfoto (register only; Figma 760:3202 / 760:3250 / 760:3370) ── */
+  /* ── Registratie 4: naam en foto ── */
   if (step === "photo" && user) {
-    const nameOk = firstName.trim().length > 0;
+    const canNext = firstName.trim().length > 0 && !isSavingAvatar;
 
     return (
-      <div
-        className={cn(authShell, "pt-[env(safe-area-inset-top,0px)]")}
+      <RegisterStepShell
+        stepNumber={4}
+        onBack={handleGoBack}
+        visual={
+          <>
+            <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={handleFileChange} />
+            <button
+              type="button"
+              onClick={handlePickPhoto}
+              aria-label={avatarPreview ? "Profielfoto wijzigen" : "Profielfoto toevoegen"}
+              className="relative flex size-[92px] items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-200)] shadow-[0_0_0_4px_var(--white),0_0_0_5px_var(--border-subtle),0_14px_30px_-14px_rgba(79,85,241,0.45)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-4"
+            >
+              <span className="flex size-full items-center justify-center overflow-hidden rounded-full">
+                {avatarPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- gebruiker-upload, dynamische data-URL
+                  <img src={avatarPreview} alt="" className="size-full object-cover" />
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-11">
+                    <circle cx="12" cy="9" r="4" />
+                    <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+                  </svg>
+                )}
+              </span>
+              <span
+                aria-hidden
+                className="absolute -bottom-1 -right-1 flex size-8 items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)] shadow-[0_0_0_3px_var(--white)]"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-[17px]">
+                  <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+                  <circle cx="12" cy="13" r="3.5" />
+                </svg>
+              </span>
+            </button>
+          </>
+        }
+        title="Naam en foto"
+        subtitle={
+          <>
+            Zo zien de mensen met wie je lijstjes
+            <br />
+            deelt wie iets toevoegde.
+          </>
+        }
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          onChange={handleFileChange}
-        />
-        <div className={cn(authContentWrap, "gap-6 pt-12")}>
-          <StepHeader title="Naam en profielfoto" onBack={handleGoBack} />
-
-          <InputField
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canNext) void upsertProfileNameAndAvatarAndGoHome();
+          }}
+          className="flex flex-col gap-3"
+        >
+          <AuthSoftField
             label="Je voornaam"
             autoComplete="given-name"
             autoFocus
@@ -745,56 +859,12 @@ export default function AuthPage() {
               setError(null);
             }}
           />
-
-          <div className="flex flex-1 flex-col items-center justify-center gap-6">
-            <div className="flex size-[160px] items-center justify-center overflow-hidden rounded-full bg-[var(--white)] ring-1 ring-[var(--gray-100)]">
-              {avatarPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element -- gebruiker-upload, dynamische data-URL
-                <img
-                  src={avatarPreview}
-                  alt=""
-                  className="size-full object-cover"
-                />
-              ) : (
-                <svg
-                  className="size-[106px] text-[var(--blue-300)]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  aria-hidden="true"
-                >
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 20c0-4 4-7 8-7s8 3 8 7" />
-                </svg>
-              )}
-            </div>
-            <MiniButton variant="secondary" type="button" onClick={handlePickPhoto}>
-              Profielfoto toevoegen
-            </MiniButton>
-          </div>
-
-          {error && (
-            <p className="text-center text-sm text-[var(--error-600)]">{error}</p>
-          )}
-        </div>
-
-        <div
-          className={cn(
-            "mx-auto flex w-full max-w-[768px] flex-col items-center px-4",
-            authFooterPad,
-          )}
-        >
-          <Button
-            variant="primary"
-            disabled={!nameOk || isSavingAvatar}
-            onClick={() => void upsertProfileNameAndAvatarAndGoHome()}
-            className="w-full max-w-[320px]"
-          >
-            {isSavingAvatar ? "Opslaan…" : "Volgende"}
+          {error && <p className="text-center text-sm text-[var(--error-600)]">{error}</p>}
+          <Button variant="primary" type="submit" disabled={!canNext} className={cn("mt-1", authPrimaryButtonClass(canNext))}>
+            {isSavingAvatar ? "Opslaan…" : "Account aanmaken"}
           </Button>
-        </div>
-      </div>
+        </form>
+      </RegisterStepShell>
     );
   }
 
