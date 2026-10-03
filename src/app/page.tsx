@@ -212,6 +212,8 @@ type HomeList = {
   displayVariant: "default" | "shared" | "master" | "from-master";
   /** Voornaam van de andere partij (deelnemer of eigenaar); null = ListCard toont "deelnemer". */
   sharedWithFirstName: string | null;
+  /** Profielfoto van die andere partij (rechtsonder op de home-tegel). */
+  sharedWithAvatarUrl?: string | null;
   /** Winkellogo-URL's (1-2) voor kaartbadge bij displayVariant "from-master". */
   storeLogos: string[];
   /** Master-template (niet: weeklijst met winkel-logo). */
@@ -1462,8 +1464,31 @@ function HomeListSwimCard({
     </div>
   );
 
+  /* Gedeeld lijstje: profielfoto van de andere persoon rechtsonder op de tegel. */
+  const sharedAvatar = list.sharedWithFirstName ? (
+    <span
+      role="img"
+      aria-label={`Gedeeld met ${list.sharedWithFirstName}`}
+      className="pointer-events-none ml-auto flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--secondary-100)] text-[11px] font-bold leading-none text-[var(--secondary-800)] shadow-[0_0_0_2px_var(--white),0_0_0_3px_var(--border-subtle)]"
+    >
+      {list.sharedWithAvatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- profielfoto (data-URL of blob)
+        <img src={list.sharedWithAvatarUrl} alt="" className="size-full object-cover" />
+      ) : (
+        list.sharedWithFirstName.charAt(0).toUpperCase()
+      )}
+    </span>
+  ) : null;
+
   /* Café: het icoon zegt genoeg, geen productfoto's. */
-  if (listIsCafeVenueList(list.name)) return cardShell(header);
+  if (listIsCafeVenueList(list.name)) {
+    return cardShell(
+      <>
+        {header}
+        {sharedAvatar ? <span className="flex">{sharedAvatar}</span> : null}
+      </>,
+    );
+  }
 
   const withPhotos = products.map((it) => ({
     id: it.id,
@@ -1478,6 +1503,8 @@ function HomeListSwimCard({
   return cardShell(
     <>
       {header}
+      {shown.length > 0 || sharedAvatar ? (
+        <span className="flex items-center gap-3">
       {shown.length > 0 ? (
         /* Overlappende fotostapel: kleine ronde productfoto's, laatste rondje «+N». */
         <span className="pointer-events-none isolate flex pl-[3px]" aria-hidden>
@@ -1514,6 +1541,9 @@ function HomeListSwimCard({
               +{rest}
             </span>
           ) : null}
+        </span>
+      ) : null}
+          {sharedAvatar}
         </span>
       ) : null}
     </>,
@@ -2125,6 +2155,16 @@ export default function Home() {
     return m;
   }, [shareProfilesData?.profiles]);
 
+  const shareAvatarByUserId = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of shareProfilesData?.profiles ?? []) {
+      const uid = p.instantUserId;
+      const url = (p.avatarUrl ?? "").trim();
+      if (uid && url) m.set(uid, url);
+    }
+    return m;
+  }, [shareProfilesData?.profiles]);
+
   /** Te kopen-tegel: wie een item toevoegde (naam + profielfoto), enkel voor items van anderen. */
   const teKopenAddedByFor = React.useCallback(
     (item: HomeShoppingItem): ShoppingAddedBy | null => {
@@ -2185,6 +2225,8 @@ export default function Home() {
               : "default",
         storeLogos: isFromMaster ? storeLogosFromListIcon(effectiveBadgeIcon) : [],
         sharedWithFirstName: isMaster ? null : hasOtherMembers ? sharedName : null,
+        sharedWithAvatarUrl:
+          !isMaster && primaryOtherId != null ? shareAvatarByUserId.get(primaryOtherId) ?? null : null,
         isMasterTemplate: isMaster,
         customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
           ? (l as Record<string, unknown>).customIconUrl as string
@@ -2243,6 +2285,7 @@ export default function Home() {
               ? ("from-master" as const)
               : ("shared" as const),
           sharedWithFirstName: isMaster ? null : ownerFirst,
+          sharedWithAvatarUrl: !isMaster && ownerId != null ? shareAvatarByUserId.get(ownerId) ?? null : null,
           storeLogos: isFromMaster ? storeLogosFromListIcon(effectiveBadgeIcon2) : [],
           isMasterTemplate: isMaster,
           customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
@@ -2267,7 +2310,7 @@ export default function Home() {
     return Array.from(byId.values()).sort(
       (a, b) => (a.order ?? 0) - (b.order ?? 0),
     );
-  }, [data, user?.id, shareFirstNameByUserId]);
+  }, [data, user?.id, shareFirstNameByUserId, shareAvatarByUserId]);
 
   const normalLists = React.useMemo(
     () => lists.filter((l) => !l.isMasterTemplate),
