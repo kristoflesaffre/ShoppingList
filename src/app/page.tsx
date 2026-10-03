@@ -1177,8 +1177,12 @@ type HomeWeekDay = { isoDate: string; date: Date; entry: DayEntry | null };
 
 const WEEKDAY_ABBR = ["ZO", "MA", "DI", "WO", "DO", "VR", "ZA"] as const;
 
+/** Hoeveel dagen terug de kalenderstrip op de startpagina gaat (swipen naar rechts). */
+const HOME_CALENDAR_PAST_DAYS = 56;
+
 /**
- * Kalender op de startpagina: zeven dagknoppen met vandaag in het midden (−3 … +3).
+ * Kalender op de startpagina: swimlane met dagknoppen, telkens zeven in beeld. Bij openen
+ * staat vandaag in het midden (−3 … +3); naar rechts swipen toont oudere dagen en gerechten.
  * Een tik kiest de dag; daaronder de dagkaart van die dag (zonder datumblok, want
  * de dag staat al in de geselecteerde knop).
  */
@@ -1190,7 +1194,17 @@ function HomeCalendarSection({
   todayIso: string;
 }) {
   const [selectedIso, setSelectedIso] = React.useState(todayIso);
-  const selected = days.find((d) => d.isoDate === selectedIso) ?? days[3];
+  const laneRef = React.useRef<HTMLDivElement>(null);
+  const selected =
+    days.find((d) => d.isoDate === selectedIso) ??
+    days.find((d) => d.isoDate === todayIso) ??
+    days[days.length - 1];
+
+  /* Start aan het einde van de strip: de laatste zeven dagen (vandaag in het midden). */
+  React.useLayoutEffect(() => {
+    const el = laneRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, []);
   const selectedLabel = selected.date.toLocaleDateString("nl-NL", {
     weekday: "long",
     day: "numeric",
@@ -1205,7 +1219,12 @@ function HomeCalendarSection({
         showNaarOverzicht
         naarOverzichtHref="/kalender"
       />
-      <div role="group" aria-label="Kies een dag" className="grid grid-cols-7 gap-1.5">
+      <div
+        ref={laneRef}
+        role="group"
+        aria-label="Kies een dag"
+        className="-m-1 flex snap-x snap-mandatory scroll-px-1 gap-1.5 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {days.map((d) => {
           const isSelected = d.isoDate === selected.isoDate;
           const isToday = d.isoDate === todayIso;
@@ -1223,9 +1242,9 @@ function HomeCalendarSection({
               aria-label={`${fullLabel}${isToday ? ", vandaag" : ""}${hasContent ? ", iets gepland" : ""}`}
               onClick={() => setSelectedIso(d.isoDate)}
               className={cn(
-                "flex min-w-0 flex-col items-center gap-1 rounded-md py-2 transition-[background-color,color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+                "flex w-[calc((100%-36px)/7)] shrink-0 snap-start flex-col items-center gap-1 rounded-md py-2 transition-[background-color,color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
                 isSelected
-                  ? "bg-[var(--blue-500)] text-[var(--white)] shadow-none"
+                  ? "bg-[var(--blue-50)] text-[var(--blue-500)] shadow-[inset_0_0_0_1px_var(--blue-500)]"
                   : "bg-[var(--white)] text-[var(--text-primary)] shadow-card",
                 !isSelected && isToday && "shadow-[inset_0_0_0_1.5px_var(--blue-500)]",
               )}
@@ -1233,7 +1252,7 @@ function HomeCalendarSection({
               <span
                 className={cn(
                   "text-[11px] font-semibold leading-none tracking-[0.02em]",
-                  isSelected ? "text-[var(--white)]" : "text-[var(--text-secondary)]",
+                  isSelected ? "text-[var(--blue-500)]" : "text-[var(--text-secondary)]",
                 )}
               >
                 {WEEKDAY_ABBR[d.date.getDay()]}
@@ -1244,7 +1263,7 @@ function HomeCalendarSection({
                 className={cn(
                   "size-[5px] rounded-full",
                   !hasContent && "invisible",
-                  isSelected ? "bg-[var(--white)]" : "bg-[var(--blue-500)]",
+                  isSelected ? "bg-[var(--blue-500)]" : "bg-[var(--blue-300)]",
                 )}
               />
             </button>
@@ -1797,7 +1816,7 @@ function HomeKalenderSection({
   onHide?: () => void;
 }) {
   /* Weekstrip zodra de kalender ooit gebruikt is; ook zonder plannen deze week (dan "Nog niets gepland"). */
-  if ((entries.length > 0 || hasEverUsedCalendar) && weekDays.length === 7) {
+  if ((entries.length > 0 || hasEverUsedCalendar) && weekDays.length >= 7) {
     return <HomeCalendarSection days={weekDays} todayIso={todayIso} />;
   }
   return (
@@ -2593,7 +2612,7 @@ export default function Home() {
     result.sort((a, b) => a.isoDate.localeCompare(b.isoDate));
 
     const weekDays: HomeWeekDay[] = [];
-    for (let offset = -3; offset <= 3; offset++) {
+    for (let offset = -HOME_CALENDAR_PAST_DAYS; offset <= 3; offset++) {
       const date = addDays(today, offset);
       const iso = toIsoDate(date);
       weekDays.push({ isoDate: iso, date, entry: calMap.get(iso) ?? null });
