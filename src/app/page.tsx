@@ -1375,10 +1375,12 @@ function HomeSoftPillPlusIcon() {
  */
 function HomeListSwimCard({
   list,
+  recipePhotoByName,
   onAddItem,
   onNewList,
 }: {
   list: HomeList;
+  recipePhotoByName: ReadonlyMap<string, string>;
   onAddItem: (list: HomeList) => void;
   onNewList: (list: HomeList) => void;
 }) {
@@ -1496,14 +1498,21 @@ function HomeListSwimCard({
     );
   }
 
-  const withPhotos = products.map((it) => ({
-    id: it.id,
-    name: it.name ?? "",
-    done: it.checked === true,
-    url: isFrituurList
-      ? frituurItemIconSrc(it.name ?? "")
-      : it.stockPhotoUrl || getPhotoUrl(it.name ?? ""),
-  }));
+  const withPhotos = products.map((it) => {
+    const name = it.name ?? "";
+    const frozenSuffix = " (diepvries)";
+    const frozenRecipeName = name.endsWith(frozenSuffix)
+      ? name.slice(0, -frozenSuffix.length).trim()
+      : null;
+    const url = isFrituurList
+      ? frituurItemIconSrc(name)
+      : it.stockPhotoUrl ||
+        (frozenRecipeName
+          ? recipePhotoByName.get(frozenRecipeName.toLowerCase()) ||
+            getPhotoUrl(frozenRecipeName)
+          : getPhotoUrl(name));
+    return { id: it.id, name, url };
+  });
   const overflow = withPhotos.length > HOME_LIST_PHOTO_SLOTS;
   const shown = withPhotos.slice(0, overflow ? HOME_LIST_PHOTO_SLOTS - 1 : HOME_LIST_PHOTO_SLOTS);
   const rest = withPhotos.length - shown.length;
@@ -1532,10 +1541,10 @@ function HomeListSwimCard({
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  className={cn("size-[74%] object-contain", p.done && "opacity-50")}
+                  className="size-[74%] object-contain"
                 />
               ) : (
-                <span className={cn("text-xs font-semibold text-[var(--blue-400)]", p.done && "opacity-50")}>
+                <span className="text-xs font-semibold text-[var(--blue-400)]">
                   {p.name.trim().charAt(0).toUpperCase()}
                 </span>
               )}
@@ -1565,11 +1574,13 @@ function HomeListSwimCard({
  */
 function HomeLijstjesSection({
   normalLists,
+  recipePhotoByName,
   onOpenCreateModal,
   onQuickAdd,
   onNewListLike,
 }: {
   normalLists: HomeList[];
+  recipePhotoByName: ReadonlyMap<string, string>;
   onOpenCreateModal: () => void;
   /** Voegt een product toe aan het gegeven lijstje. */
   onQuickAdd: (list: HomeList, name: string) => void;
@@ -1668,6 +1679,7 @@ function HomeLijstjesSection({
           <div key={list.id} className="w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start">
             <HomeListSwimCard
               list={list}
+              recipePhotoByName={recipePhotoByName}
               onAddItem={(l) => {
                 primeKeyboard();
                 setSearchTarget(l);
@@ -2341,6 +2353,16 @@ export default function Home() {
     () => lists.filter((l) => l.isMasterTemplate),
     [lists],
   );
+  const recipePhotoByName = React.useMemo(() => {
+    const photos = new Map<string, string>();
+    for (const recipe of data?.recipes ?? []) {
+      const name = typeof recipe.name === "string" ? recipe.name.trim() : "";
+      const photoUrl =
+        typeof recipe.photoUrl === "string" ? recipe.photoUrl.trim() : "";
+      if (name && photoUrl) photos.set(name.toLowerCase(), photoUrl);
+    }
+    return photos;
+  }, [data?.recipes]);
 
   /** Snel toevoegen vanop home: zelfde itemvorm als «Items toevoegen» in het lijstje (sectie Algemeen). */
   const handleQuickAddToList = React.useCallback((list: HomeList, name: string) => {
@@ -3275,6 +3297,7 @@ export default function Home() {
         return (
           <HomeLijstjesSection
             normalLists={normalLists}
+            recipePhotoByName={recipePhotoByName}
             onOpenCreateModal={handleOpenCreateModal}
             onQuickAdd={handleQuickAddToList}
             onNewListLike={handleNewListLike}
