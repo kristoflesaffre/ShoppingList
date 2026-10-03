@@ -1,14 +1,10 @@
-import { readFile } from "fs/promises";
+import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { normalizeForMatch } from "@/lib/item-photo-matching";
-import {
-  listStaticImageFiles,
-  type StaticImageDir,
-} from "@/lib/server/static-image-files";
 
-async function listImageBases(dir: StaticImageDir): Promise<string[]> {
+async function listImageBases(dir: string): Promise<string[]> {
   try {
-    const files = (await listStaticImageFiles(dir)).map((f) => f.name);
+    const files = await readdir(dir);
     return Array.from(
       new Set(
         files
@@ -27,8 +23,8 @@ async function listImageBases(dir: StaticImageDir): Promise<string[]> {
 
 export async function loadItemImageSlugs(): Promise<string[]> {
   const [items, vakantie] = await Promise.all([
-    listImageBases("items"),
-    listImageBases("vakantie"),
+    listImageBases(join(process.cwd(), "public/images/items")),
+    listImageBases(join(process.cwd(), "public/images/vakantie")),
   ]);
   return Array.from(
     new Set([...items, ...vakantie].map(normalizeForMatch).filter(Boolean)),
@@ -36,7 +32,9 @@ export async function loadItemImageSlugs(): Promise<string[]> {
 }
 
 export async function loadIngredientImageSlugs(): Promise<string[]> {
-  const rawBases = await listImageBases("ingredients");
+  const rawBases = await listImageBases(
+    join(process.cwd(), "public/images/ingredients"),
+  );
   return Array.from(
     new Set(
       rawBases
