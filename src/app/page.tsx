@@ -70,6 +70,7 @@ import {
   type DayEntry,
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
+import { frituurItemIconSrc } from "@/lib/frituur-item-icons";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
 import { primeKeyboard } from "@/lib/keyboard_focus";
@@ -1379,6 +1380,7 @@ function HomeListSwimCard({
 }) {
   const getPhotoUrl = useItemPhotoUrl(160);
   const completed = isListDatePassed(list.date);
+  const isFrituurList = listIsFrituurVenueList(list.name);
   const venueImage = homeVenueListImage(list);
   const products = homeListProductItems(list);
   const storeLogo = list.storeLogos[0] ?? null;
@@ -1494,7 +1496,9 @@ function HomeListSwimCard({
     id: it.id,
     name: it.name ?? "",
     done: it.checked === true,
-    url: it.stockPhotoUrl || getPhotoUrl(it.name ?? ""),
+    url: isFrituurList
+      ? frituurItemIconSrc(it.name ?? "")
+      : it.stockPhotoUrl || getPhotoUrl(it.name ?? ""),
   }));
   const overflow = withPhotos.length > HOME_LIST_PHOTO_SLOTS;
   const shown = withPhotos.slice(0, overflow ? HOME_LIST_PHOTO_SLOTS - 1 : HOME_LIST_PHOTO_SLOTS);

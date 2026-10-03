@@ -117,6 +117,7 @@ import {
   resolveCanonicalNameFromSynonyms,
 } from "@/lib/venue-synonyms";
 import { mergeVenueWizardItems } from "@/lib/venue-category-merge";
+import { frituurItemIconSrc } from "@/lib/frituur-item-icons";
 import { ALL_LIST_PRODUCT_ICON_URLS } from "@/lib/list-product-icon-urls";
 import {
   CAFE_ROUND_SECTION_TITLE,
@@ -2250,13 +2251,6 @@ function frituurItemsMatchName(itemName: string, queryName: string): boolean {
     normalizeFrituurChoiceName(itemName) ===
     normalizeFrituurChoiceName(resolveCanonicalFrituurItemName(queryName))
   );
-}
-
-function frituurItemIconSrc(name: string): string {
-  const match = FRITUUR_WIZARD_ITEMS.find((item) =>
-    frituurItemsMatchName(item.name, name),
-  );
-  return match?.iconSrc ?? FRITUUR_WIZARD_PLACEHOLDER_ICON_URL;
 }
 
 function frituurCategoryFromItem(item: ListItem): "Frieten" | "Sauzen" | "Snacks" {
