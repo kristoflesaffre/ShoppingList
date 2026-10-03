@@ -48,6 +48,8 @@
   --item-tile-border-hover: #cfd3de;
   --item-tile-hover: #f7f8fa;
   --shadow-item-tile: 0 1px 2px rgba(16, 17, 48, 0.04);
+  /* Gedempt destructief vlak voor swipe-acties; rustiger dan het algemene foutrood. */
+  --swipe-delete-bg: #c75a62;
 
   /* ========== BORDERS ========== */
   --border-default: var(--gray-200);
@@ -251,6 +253,7 @@
   --item-tile-border-hover: #4a506d;
   --item-tile-hover: #1f2235;
   --shadow-item-tile: none;
+  --swipe-delete-bg: #b85f67;
   /* Tekst op gekleurde vlakken (snackbar blue-800, accentknoppen) blijft donker */
   --text-inverse: #10121f;
   --action-primary-foreground: #10121f;

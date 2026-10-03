@@ -23,7 +23,7 @@ function isInteractiveTarget(target: EventTarget | null) {
   );
 }
 
-/** public/icons/recycle_bin.svg (fill black in asset) → wit op error-600 via filter. */
+/** public/icons/recycle_bin.svg (fill black in asset) → wit op het delete-vlak via filter. */
 function RecycleBinSwipeIcon({ className }: { className?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- statisch SVG-icoon uit /public
@@ -269,7 +269,13 @@ export function SwipeToDelete({
     >
       {offset < 0 && (
         <div
-          className="pointer-events-none absolute inset-0 rounded-md bg-[var(--error-600)]"
+          className="pointer-events-none absolute inset-y-0 right-0 overflow-hidden rounded-r-md bg-[var(--swipe-delete-bg)]"
+          style={{
+            width: Math.min(
+              Math.ceil(Math.abs(offset)),
+              widthRef.current || Math.abs(offset),
+            ),
+          }}
           aria-hidden="true"
         >
           <div className="absolute right-[24px] top-1/2 -translate-y-1/2">
