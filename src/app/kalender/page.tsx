@@ -7,21 +7,20 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
-import { RecipeTile } from "@/components/ui/recipe_tile";
 import {
   buildCalendarEntries,
   addDays,
   toIsoDate,
   dayEntryHasContent,
-  getMondayOfWeek,
+  type CalendarMeal,
   type DayEntry,
-
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 
-/** Ruimte boven/onder inhoud (matcht padding op kalender-container). */
-const CAL_SCROLL_TOP_RESERVE_PX = 52;
-const CAL_SCROLL_BOTTOM_RESERVE_PX = 195;
+/** Aantal dagen vóór en na de middelste dag (canvas «Kalender 2»: vandaag in het midden). */
+const DAYS_AROUND = 3;
+
+const MONTHS_SHORT = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"] as const;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,271 +32,246 @@ function startOfDay(date: Date): Date {
   return d;
 }
 
+function isoToDate(iso: string): Date | null {
+  const [yy, mm, dd] = iso.split("-").map((x) => parseInt(x, 10));
+  if (isNaN(yy) || isNaN(mm) || isNaN(dd)) return null;
+  return startOfDay(new Date(yy, mm - 1, dd));
+}
+
 /** Twee-letterige dagafkorting: MA, DI, WO, DO, VR, ZA, ZO */
 function shortDayAbbr(date: Date): string {
   return date.toLocaleDateString("nl-NL", { weekday: "short" }).slice(0, 2).toUpperCase();
 }
 
-/** ISO-weeknummer (1–53) voor een gegeven datum. */
-function getISOWeekNumber(date: Date): number {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
-  const week1 = new Date(d.getFullYear(), 0, 4);
-  return (
-    1 +
-    Math.round(
-      ((d.getTime() - week1.getTime()) / 86400000 -
-        3 +
-        ((week1.getDay() + 6) % 7)) /
-        7,
-    )
-  );
-}
-
-/** Ma–zo van dezelfde week; kort label voor weekkop. */
-function formatWeekSectionTitle(monday: Date): string {
-  const sunday = addDays(monday, 6);
-  const sameMonth =
-    monday.getMonth() === sunday.getMonth() &&
-    monday.getFullYear() === sunday.getFullYear();
-  if (sameMonth) {
-    const month = monday.toLocaleDateString("nl-NL", { month: "long" });
-    return `${monday.getDate()}–${sunday.getDate()} ${month}`;
+/** «28 sep – 4 okt», of «7 – 13 okt» binnen dezelfde maand. */
+function formatRange(first: Date, last: Date): string {
+  if (first.getMonth() === last.getMonth()) {
+    return `${first.getDate()} – ${last.getDate()} ${MONTHS_SHORT[last.getMonth()]}`;
   }
-  const a = monday.toLocaleDateString("nl-NL", {
-    day: "numeric",
-    month: "short",
-  });
-  const b = sunday.toLocaleDateString("nl-NL", {
-    day: "numeric",
-    month: "short",
-  });
-  return `${a} – ${b}`;
+  return `${first.getDate()} ${MONTHS_SHORT[first.getMonth()]} – ${last.getDate()} ${MONTHS_SHORT[last.getMonth()]}`;
 }
 
-function groupDisplayDaysByWeek(sortedDays: Date[]): {
-  mondayIso: string;
-  monday: Date;
-  days: Date[];
-}[] {
-  const groups: { mondayIso: string; monday: Date; days: Date[] }[] = [];
-  let cur: { mondayIso: string; monday: Date; days: Date[] } | null = null;
-  for (const d of sortedDays) {
-    const monday = startOfDay(getMondayOfWeek(d));
-    const iso = toIsoDate(monday);
-    if (!cur || cur.mondayIso !== iso) {
-      cur = { mondayIso: iso, monday, days: [] };
-      groups.push(cur);
-    }
-    cur.days.push(startOfDay(d));
-  }
-  return groups;
+function ingredientCountLabel(n: number): string {
+  return n === 1 ? "1 ingrediënt" : `${n} ingrediënten`;
 }
 
-/** Centreert element in het zichtbare midden (niet onder de bottom nav). */
-function scrollElementToComfortableCenter(el: HTMLElement) {
-  const rect = el.getBoundingClientRect();
-  const elCenterY = rect.top + rect.height / 2;
-  const vv = window.visualViewport;
-  const vh = vv?.height ?? window.innerHeight;
-  const vTop = vv?.offsetTop ?? 0;
-  const usableTop = vTop + CAL_SCROLL_TOP_RESERVE_PX;
-  const usableBottom = vTop + vh - CAL_SCROLL_BOTTOM_RESERVE_PX;
-  const visibleCenterY = (usableTop + usableBottom) / 2;
-  const delta = elCenterY - visibleCenterY;
-  window.scrollBy({ top: delta, left: 0, behavior: "auto" });
-}
-
-function dayCollapsedSummary(entry: DayEntry | undefined): string {
-  if (!entry) return "";
-  if (entry.meals.length > 0) {
-    return entry.meals.map((m) => m.recipeName).join(", ");
-  }
-  if (entry.looseIngredients.length > 0) {
-    return entry.looseIngredients.map((i) => i.name).join(", ");
-  }
-  return "";
-}
-
-function ChevronDownIcon({ expanded }: { expanded: boolean }) {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden
-      className={cn(
-        "shrink-0 text-[var(--blue-500)] motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out-strong",
-        expanded && "rotate-180",
-      )}
-    >
-      <path
-        d="M5 7.5L10 12.5L15 7.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
-
-function LooseIngredientPhotoGrid({
-  ingredients,
-}: {
-  ingredients: { name: string; quantity: string; photoUrl?: string | null }[];
-}) {
-  const getPhotoUrl = useItemPhotoUrl();
-  if (ingredients.length === 0) return null;
+function ChevronIcon({ direction, className }: { direction: "left" | "right" | "down"; className?: string }) {
+  const d =
+    direction === "left" ? "M10 3.5 5.5 8 10 12.5" : direction === "right" ? "M6 3.5 10.5 8 6 12.5" : "M3.5 6 8 10.5 12.5 6";
   return (
-    <div className="py-3">
-      <div className="grid w-full grid-cols-3 gap-x-4 gap-y-6 lg:grid-cols-6">
-        {ingredients.map((ing, i) => {
-          const photoUrl = ing.photoUrl ?? getPhotoUrl(ing.name);
-          return (
-            <div key={i} className="flex min-w-0 flex-col items-center gap-2">
-              <div className="relative aspect-square w-full overflow-hidden rounded-sm">
-                {photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediënt-webp: Next/Image optimizer faalt op sommige iOS-builds
-                  <img
-                    src={photoUrl}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-contain"
-                    aria-hidden
-                    decoding="async"
-                  />
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn("size-4 shrink-0", className)}>
+      <path d={d} />
+    </svg>
+  );
+}
+
+function FreezerPill() {
+  return (
+    <span className="inline-flex h-5 items-center gap-1 self-start rounded-pill bg-[#e8f4fb] pl-1.5 pr-[7px] text-[11px] font-semibold text-[#2b7bb0] [[data-theme=dark]_&]:bg-[#1d3646] [[data-theme=dark]_&]:text-[#8cc8ec]">
+      <span
+        aria-hidden
+        className="inline-block size-3 shrink-0 bg-current"
+        style={{
+          WebkitMaskImage: "url(/icons/freeze.svg)",
+          maskImage: "url(/icons/freeze.svg)",
+          WebkitMaskSize: "contain",
+          maskSize: "contain",
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "center",
+          maskPosition: "center",
+        }}
+      />
+      Diepvries
+    </span>
+  );
+}
+
+/** Ronde gerechtfoto: cirkelvormige crop, geen schaduw (zelfde als op Recepten). */
+function MealPlate({ photoUrl }: { photoUrl: string | null }) {
+  return (
+    <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-25)]">
+      {photoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- data-URL of lokale webp
+        <img src={photoUrl} alt="" loading="lazy" decoding="async" className="size-[108%] max-w-none object-cover" />
+      ) : (
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden>
+          <path d="M26 6H6C4.9 6 4 6.9 4 8v16c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 18H6V8h20v16zm-9-3l-4-5-3 4-2-2.5L5 21h22l-5-6-5 6z" fill="var(--blue-200,#b0b4f8)" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
+/** Losse ingrediënten als «samengesteld bord»: grijze cirkel met tot drie productfoto's. */
+function IngredientPlate({ photos }: { photos: (string | null)[] }) {
+  const positions = ["left-1/2 top-[30%]", "left-[28%] top-[66%]", "left-[72%] top-[66%]"];
+  return (
+    <span aria-hidden className="relative block size-12 shrink-0 rounded-full bg-[var(--gray-25)]">
+      {photos.slice(0, 3).map((src, i) =>
+        src ? (
+          // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediënt-webp
+          <img
+            key={i}
+            src={src}
+            alt=""
+            decoding="async"
+            className={cn(
+              "absolute size-6 -translate-x-1/2 -translate-y-1/2 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal",
+              positions[i],
+            )}
+          />
+        ) : null,
+      )}
+    </span>
+  );
+}
+
+function MealRow({ meal }: { meal: CalendarMeal }) {
+  const content = (
+    <span className="flex min-w-0 items-center gap-3">
+      <MealPlate photoUrl={meal.photoUrl} />
+      <span className="flex min-w-0 flex-col gap-[3px]">
+        <span className="truncate text-[15px] font-semibold leading-5 text-text-primary">{meal.recipeName}</span>
+        {meal.fromStock ? (
+          <FreezerPill />
+        ) : (
+          <span className="text-xs leading-4 text-[var(--gray-400)]">{ingredientCountLabel(meal.ingredientCount)}</span>
+        )}
+      </span>
+    </span>
+  );
+  return meal.recipeId ? (
+    <Link
+      href={`/recepten/${meal.recipeId}`}
+      className="block rounded-md no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+    >
+      {content}
+    </Link>
+  ) : (
+    content
+  );
+}
+
+/** Dag met losse ingrediënten (geen recept): ingeklapt met «A, b +N», tik om alles te zien. */
+function LooseIngredientsRow({
+  ingredients,
+  open,
+  onToggle,
+}: {
+  ingredients: DayEntry["looseIngredients"];
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const getPhotoUrl = useItemPhotoUrl(160);
+  const withPhotos = ingredients.map((ing) => ({ ...ing, photo: ing.photoUrl ?? getPhotoUrl(ing.name) ?? null }));
+  const shown = withPhotos.slice(0, 2).map((ing, i) => (i === 0 ? capitalize(ing.name) : ing.name.toLowerCase()));
+  const rest = withPhotos.length - shown.length;
+  const panelId = React.useId();
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="flex min-w-0 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      >
+        <IngredientPlate photos={withPhotos.map((i) => i.photo)} />
+        <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <span className="truncate text-[15px] font-semibold leading-5 text-text-primary">
+            {shown.join(", ")}
+            {rest > 0 ? <span className="text-[var(--blue-400)]"> +{rest}</span> : null}
+          </span>
+          <span className="text-xs leading-4 text-[var(--gray-400)]">{ingredientCountLabel(ingredients.length)} · geen recept</span>
+        </span>
+        <ChevronIcon
+          direction="down"
+          className={cn("text-[var(--blue-300)] motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out-strong", open && "rotate-180")}
+        />
+      </button>
+      {open ? (
+        <ul id={panelId} className="m-0 flex list-none flex-wrap gap-1.5 p-0">
+          {withPhotos.map((ing, i) => (
+            <li
+              key={`${ing.name}-${i}`}
+              className="inline-flex h-8 items-center gap-1.5 rounded-pill bg-[var(--gray-25)] pl-1 pr-2.5 text-[13px] text-text-primary"
+            >
+              <span className="flex size-6 items-center justify-center rounded-full bg-[var(--white)]">
+                {ing.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediënt-webp
+                  <img src={ing.photo} alt="" className="size-5 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />
                 ) : null}
-              </div>
-              <div className="w-full text-center">
-                <p className="break-words text-[13px] font-medium leading-5 text-[var(--text-primary)]">
-                  {ing.name}
-                </p>
-                <p className="text-[13px] font-normal leading-5 text-[var(--text-secondary)]">
-                  {ing.quantity}
-                </p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              </span>
+              {capitalize(ing.name)}
+              {ing.quantity ? <span className="text-[var(--gray-400)]">{ing.quantity}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }
 
-function DayCard({
+function DayRow({
   date,
   entry,
   isToday,
-  collapsible,
-  bodyOpen,
-  onToggleBody,
-  isLast,
+  looseOpen,
+  onToggleLoose,
+  rowRef,
 }: {
   date: Date;
   entry: DayEntry | undefined;
   isToday: boolean;
-  collapsible?: boolean;
-  bodyOpen?: boolean;
-  onToggleBody?: () => void;
-  isLast?: boolean;
+  looseOpen: boolean;
+  onToggleLoose: () => void;
+  rowRef?: React.Ref<HTMLDivElement>;
 }) {
-  const abbr = shortDayAbbr(date);
   const hasContent = dayEntryHasContent(entry);
-  const expanded = collapsible ? (bodyOpen ?? false) : true;
-  const summary = dayCollapsedSummary(entry);
-
-  // Compacte headerrij: afkorting + samenvatting + Vandaag-badge + chevron
-  const headerContent = (
-    <>
-      <span className="w-[35px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] font-bold leading-5 text-text-primary">
-        {abbr}
-      </span>
-      <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-normal leading-5 text-[var(--gray-400)]">
-        {summary}
-      </span>
-      {isToday ? (
-        <span className="shrink-0 rounded bg-[var(--blue-500)] px-2 py-1 text-[10px] font-medium leading-3 text-white">
-          Vandaag
-        </span>
-      ) : null}
-    </>
-  );
-
-  const body = hasContent ? (
-    <div className="flex flex-col gap-2">
-      {entry!.meals.map((meal) => {
-        const tile = (
-          <RecipeTile
-            recipeName={meal.recipeName}
-            itemCount={
-              meal.fromStock
-                ? "Diepvries"
-                : `${meal.ingredientCount} ${meal.ingredientCount === 1 ? "ingrediënt" : "ingrediënten"}`
-            }
-            photoUrl={meal.photoUrl}
-            state="bare"
-          />
-        );
-        return meal.recipeId ? (
-          <Link
-            key={meal.recipeGroupId}
-            href={`/recepten/${meal.recipeId}`}
-            className="block no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 rounded-md"
-          >
-            {tile}
-          </Link>
-        ) : (
-          <div key={meal.recipeGroupId}>{tile}</div>
-        );
-      })}
-      {entry!.looseIngredients.length > 0 && (
-        <LooseIngredientPhotoGrid ingredients={entry!.looseIngredients} />
-      )}
-    </div>
-  ) : null;
-
-  if (collapsible && onToggleBody) {
-    return (
-      <div className="flex flex-col">
-        <button
-          type="button"
-          onClick={onToggleBody}
-          aria-expanded={expanded}
-          className="flex w-full min-w-0 items-center gap-3 pb-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-        >
-          {headerContent}
-          <ChevronDownIcon expanded={expanded} />
-        </button>
-        <div
-          className={cn(
-            "grid transition-[grid-template-rows] duration-300 ease-in-out",
-            expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-          )}
-        >
-          <div className="-mx-3 overflow-hidden px-3">
-            <div className="pb-3 pt-1">{body}</div>
-          </div>
-        </div>
-        {!isLast && <div className="h-px bg-[var(--gray-100)]" aria-hidden />}
-      </div>
-    );
-  }
+  const label = date.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" });
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center gap-3 pb-3">
-        {headerContent}
-        {hasContent ? <ChevronDownIcon expanded={true} /> : null}
+    <div
+      ref={rowRef}
+      aria-label={`${label}${isToday ? ", vandaag" : ""}`}
+      aria-current={isToday ? "date" : undefined}
+      className={cn(
+        "flex items-center gap-3 rounded-[16px] bg-[var(--white)] py-2.5 pl-2.5 pr-3.5 md:gap-3.5 md:rounded-[18px] md:py-3.5 md:pl-3.5 md:pr-5",
+        isToday ? "shadow-[0_0_0_1.5px_var(--blue-500),0_0_0_4px_var(--blue-50)]" : "shadow-card",
+      )}
+    >
+      <div className="flex w-10 shrink-0 flex-col items-center md:w-12" aria-hidden>
+        <span className={cn("text-[11px] font-semibold leading-4", isToday ? "text-[var(--blue-500)]" : "text-[var(--text-secondary)]")}>
+          {shortDayAbbr(date)}
+        </span>
+        <span className={cn("text-xl font-bold leading-6 tabular-nums", isToday ? "text-[var(--blue-500)]" : "text-text-primary")}>
+          {date.getDate()}
+        </span>
       </div>
-      {body ? <div className="pb-3">{body}</div> : null}
-      {!isLast && <div className="h-px bg-[var(--gray-100)]" aria-hidden />}
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        {hasContent ? (
+          <>
+            {entry!.meals.map((meal) => (
+              <MealRow key={meal.recipeGroupId} meal={meal} />
+            ))}
+            {entry!.looseIngredients.length > 0 ? (
+              <LooseIngredientsRow ingredients={entry!.looseIngredients} open={looseOpen} onToggle={onToggleLoose} />
+            ) : null}
+          </>
+        ) : (
+          <span className="text-[13px] leading-[18px] text-[var(--text-tertiary)]">Nog niets gepland</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -310,31 +284,15 @@ export default function KalenderPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = db.useAuth();
   const ownerId = user?.id;
-
-  /** Initieel ~4 weken terug; verder verleden via bovenste sentinel. */
-  const [startOffset, setStartOffset] = React.useState(-28);
-
   const searchParams = useSearchParams();
   const targetDateIso = searchParams.get("date") ?? null;
-  const targetWeekMondayIso = React.useMemo(() => {
-    if (!targetDateIso) return null;
-    const [yy, mm, dd] = targetDateIso.split("-").map((x) => parseInt(x, 10));
-    if (isNaN(yy) || isNaN(mm) || isNaN(dd)) return null;
-    return toIsoDate(getMondayOfWeek(new Date(yy, mm - 1, dd)));
-  }, [targetDateIso]);
 
-  const topSentinelRef = React.useRef<HTMLDivElement>(null);
-  const prependRef = React.useRef<{ scrollHeight: number } | null>(null);
-  const todayRowRef = React.useRef<HTMLDivElement | null>(null);
-  const hasCenteredTodayRef = React.useRef(false);
-  const targetDayRef = React.useRef<HTMLDivElement | null>(null);
-  const hasCenteredTargetRef = React.useRef(false);
-  const [weekExpanded, setWeekExpanded] = React.useState<
-    Record<string, boolean>
-  >({});
-  const [dayBodyOpen, setDayBodyOpen] = React.useState<
-    Record<string, boolean>
-  >({});
+  const todayKey = toIsoDate(startOfDay(new Date()));
+  /** Middelste dag van de reeks: standaard vandaag, of de gelinkte ?date=. */
+  const [centerIso, setCenterIso] = React.useState(() =>
+    targetDateIso && isoToDate(targetDateIso) ? targetDateIso : todayKey,
+  );
+  const [looseOpen, setLooseOpen] = React.useState<Record<string, boolean>>({});
 
   const { isLoading: dataLoading, data } = db.useQuery(
     ownerId
@@ -345,38 +303,9 @@ export default function KalenderPage() {
       : null,
   );
 
-  // Auth redirect
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
-
-  // Scroll-positie corrigeren na prepend (vóór paint)
-  React.useLayoutEffect(() => {
-    if (prependRef.current) {
-      const newHeight = document.documentElement.scrollHeight;
-      window.scrollBy(0, newHeight - prependRef.current.scrollHeight);
-      prependRef.current = null;
-    }
-  });
-
-  // Bovenste sentinel: laad meer verleden
-  React.useEffect(() => {
-    const el = topSentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          prependRef.current = {
-            scrollHeight: document.documentElement.scrollHeight,
-          };
-          setStartOffset((prev) => prev - 7);
-        }
-      },
-      { threshold: 0 },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
 
   const calendarMap = React.useMemo(() => {
     if (!data) return new Map<string, DayEntry>();
@@ -386,144 +315,38 @@ export default function KalenderPage() {
     );
   }, [data]);
 
-  const todayKey = toIsoDate(startOfDay(new Date()));
-
-  const displayDays = React.useMemo(() => {
-    const [yy, mm, dd] = todayKey.split("-").map((x) => parseInt(x, 10));
-    const todayDate = startOfDay(new Date(yy, mm - 1, dd));
-    const past: Date[] = [];
-    for (let i = startOffset; i <= 0; i++) {
-      const d = startOfDay(addDays(todayDate, i));
-      if (dayEntryHasContent(calendarMap.get(toIsoDate(d)))) {
-        past.push(d);
-      }
-    }
-    const future: Date[] = [];
-    for (const [iso, entry] of Array.from(calendarMap.entries())) {
-      if (iso <= todayKey) continue;
-      if (!dayEntryHasContent(entry)) continue;
-      future.push(startOfDay(entry.date));
-    }
-    future.sort((a, b) => a.getTime() - b.getTime());
-    return [...past, ...future];
-  }, [startOffset, calendarMap, todayKey]);
-
-  const currentWeekMondayIso = React.useMemo(() => {
-    const [yy, mm, dd] = todayKey.split("-").map((x) => parseInt(x, 10));
-    const todayDate = startOfDay(new Date(yy, mm - 1, dd));
-    return toIsoDate(startOfDay(getMondayOfWeek(todayDate)));
-  }, [todayKey]);
-
-  const weekGroups = React.useMemo(
-    () => groupDisplayDaysByWeek(displayDays),
-    [displayDays],
+  const calendarIsEmpty = React.useMemo(
+    () => !Array.from(calendarMap.values()).some((entry) => dayEntryHasContent(entry)),
+    [calendarMap],
   );
 
-  const calendarIsEmpty = displayDays.length === 0;
+  const days = React.useMemo(() => {
+    const center = isoToDate(centerIso) ?? startOfDay(new Date());
+    return Array.from({ length: DAYS_AROUND * 2 + 1 }, (_, i) => startOfDay(addDays(center, i - DAYS_AROUND)));
+  }, [centerIso]);
 
-  const getWeekIsOpen = React.useCallback(
-    (mondayIso: string) =>
-      weekExpanded[mondayIso] ??
-      (mondayIso >= currentWeekMondayIso || mondayIso === targetWeekMondayIso),
-    [weekExpanded, currentWeekMondayIso, targetWeekMondayIso],
-  );
-
-  const toggleWeek = React.useCallback(
-    (mondayIso: string) => {
-      setWeekExpanded((prev) => {
-        const def = mondayIso >= currentWeekMondayIso;
-        const cur = prev[mondayIso] ?? def;
-        return { ...prev, [mondayIso]: !cur };
-      });
-    },
-    [currentWeekMondayIso],
-  );
-
-  const getDayBodyOpen = React.useCallback(
-    (iso: string, isToday: boolean) => {
-      if (iso === targetDateIso) return true;
-      return dayBodyOpen[iso] ?? isToday;
-    },
-    [dayBodyOpen, targetDateIso],
-  );
-
-  const toggleDayBody = React.useCallback((iso: string) => {
-    const isToday = iso === todayKey;
-    setDayBodyOpen((prev) => ({
-      ...prev,
-      [iso]: !(prev[iso] ?? isToday),
-    }));
-  }, [todayKey]);
-
-  /** Eén keer: vandaag in het midden van het zichtbare gebied (t.o.v. bottom nav). */
-  React.useLayoutEffect(() => {
-    // Als er een target-datum is, scrol daarheen i.p.v. naar vandaag.
-    if (targetDateIso) return;
-    if (hasCenteredTodayRef.current || prependRef.current) return;
-    if (!todayRowRef.current) return;
-    let cancelled = false;
-    const id = window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        if (cancelled || !todayRowRef.current) return;
-        scrollElementToComfortableCenter(todayRowRef.current);
-        hasCenteredTodayRef.current = true;
-      });
-    });
-    return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(id);
-    };
-  }, [displayDays, targetDateIso]);
-
-  /** Eén keer: scroll naar de gelinkte dag als ?date= aanwezig is. */
-  React.useLayoutEffect(() => {
-    if (!targetDateIso) return;
-    if (hasCenteredTargetRef.current || prependRef.current) return;
-    if (!targetDayRef.current) return;
-    let cancelled = false;
-    const id = window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        if (cancelled || !targetDayRef.current) return;
-        scrollElementToComfortableCenter(targetDayRef.current);
-        hasCenteredTargetRef.current = true;
-      });
-    });
-    return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(id);
-    };
-  }, [displayDays, targetDateIso]);
+  const shiftWeek = (dir: -1 | 1) => {
+    const center = isoToDate(centerIso) ?? startOfDay(new Date());
+    setCenterIso(toIsoDate(addDays(center, dir * 7)));
+  };
 
   if (authLoading || !user || dataLoading) return <PageSpinner />;
 
+  const showsToday = days.some((d) => toIsoDate(d) === todayKey);
+  const roundBtn =
+    "flex size-12 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_0_0_1px_var(--border-subtle),0_1px_3px_rgba(16,17,48,0.08)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+
   return (
-    <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
-      <div className="flex min-w-0 flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full min-w-0 max-w-[956px] flex-1 flex-col gap-6 motion-safe:animate-fade-up">
-          {!calendarIsEmpty ? (
-            <h1 className="text-page-title font-bold leading-8 tracking-normal text-text-primary">
-              Kalender
-            </h1>
-          ) : null}
+    <div className="relative flex min-h-dvh w-full flex-col px-4">
+      <div className="flex min-w-0 flex-1 flex-col pb-[calc(120px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
+        <div className="mx-auto flex w-full min-w-0 max-w-[720px] flex-1 flex-col gap-2.5 motion-safe:animate-fade-up md:gap-3">
+          <h1 className="text-page-title font-bold leading-8 tracking-normal text-text-primary">Kalender</h1>
 
           {calendarIsEmpty ? (
-            <section
-              className="flex min-h-[min(520px,calc(100dvh-12rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] flex-1 flex-col items-center justify-center"
-              aria-labelledby="kalender-page-title"
-            >
-              <h1 id="kalender-page-title" className="sr-only">
-                Kalender
-              </h1>
-              <div className="flex w-full max-w-[358px] flex-col items-center gap-0 text-center">
+            <section className="flex min-h-[min(520px,calc(100dvh-12rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] flex-1 flex-col items-center justify-center">
+              <div className="flex w-full max-w-[358px] flex-col items-center text-center">
                 <div className="relative size-24 shrink-0 overflow-hidden">
-                  <Image
-                    src="/images/ui/kalender_320.webp"
-                    alt=""
-                    width={320}
-                    height={320}
-                    className="size-full object-contain"
-                    priority
-                  />
+                  <Image src="/images/ui/kalender_320.webp" alt="" width={320} height={320} className="size-full object-contain" priority />
                 </div>
                 <p className="mt-6 w-full text-base font-medium leading-6 tracking-normal text-[var(--gray-500)]">
                   Voeg items toe in je boodschappenlijstje op een weekdag en ze verschijnen hier in je kalender.
@@ -532,98 +355,44 @@ export default function KalenderPage() {
             </section>
           ) : (
             <>
-              {/* Bovenste sentinel voor infinite scroll omhoog */}
-              <div ref={topSentinelRef} className="h-px" aria-hidden />
-
-              {/* Weken (inklapbaar); binnen huidige week zijn eerdere dagen ingeklapt. */}
-              <div className="flex flex-col gap-3">
-                {weekGroups.map(({ mondayIso, monday, days }) => {
-                  const wkOpen = getWeekIsOpen(mondayIso);
-                  const panelId = `kalender-week-${mondayIso}`;
-                  const isCurrentWeek = mondayIso === currentWeekMondayIso;
-                  const weekNumber = getISOWeekNumber(monday);
-                  return (
-                    <section key={mondayIso}>
-                      <div
-                        className={cn(
-                          "flex flex-col rounded-lg bg-[var(--white)] p-3",
-                          /* Huidige week krijgt iets meer elevation: het “nu” ligt bovenop */
-                          isCurrentWeek ? "shadow-raised" : "shadow-card",
-                        )}
-                      >
-                        <button
-                          type="button"
-                          id={`${panelId}-toggle`}
-                          aria-expanded={wkOpen}
-                          aria-controls={panelId}
-                          onClick={() => toggleWeek(mondayIso)}
-                          className="flex w-full items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                        >
-                          {/* WEEK-badge */}
-                          <div className="flex shrink-0 flex-col items-center gap-px rounded-[4px] bg-[var(--blue-25)] px-2 py-1">
-                            <span className="text-[8px] font-semibold leading-[8px] text-[var(--blue-500)]">
-                              WEEK
-                            </span>
-                            <span className="text-[18px] font-bold leading-[18px] text-text-primary">
-                              {weekNumber}
-                            </span>
-                          </div>
-                          <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium leading-6 text-text-primary">
-                            {formatWeekSectionTitle(monday)}
-                          </span>
-                          <ChevronDownIcon expanded={wkOpen} />
-                        </button>
-                        <div
-                          id={panelId}
-                          role="region"
-                          aria-labelledby={`${panelId}-toggle`}
-                          className={cn(
-                            "grid transition-[grid-template-rows] duration-300 ease-in-out",
-                            wkOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-                          )}
-                        >
-                          <div className="-mx-3 overflow-hidden px-3">
-                            <div className="flex flex-col gap-3 pl-4 pt-3">
-                              {/* Separator bovenaan eerste dag */}
-                              <div className="h-px bg-[var(--gray-100)]" aria-hidden />
-                              {days.map((day, dayIdx) => {
-                                const iso = toIsoDate(day);
-                                const isToday = iso === todayKey;
-                                const isOlderWeek = mondayIso < currentWeekMondayIso;
-                                const isLast = dayIdx === days.length - 1;
-                                const isTarget = iso === targetDateIso;
-                                return (
-                                  <div
-                                    key={iso}
-                                    ref={
-                                      isTarget
-                                        ? targetDayRef
-                                        : isToday
-                                          ? todayRowRef
-                                          : undefined
-                                    }
-                                    className={cn((isToday || isTarget) && "scroll-mt-4")}
-                                  >
-                                    <DayCard
-                                      date={day}
-                                      entry={calendarMap.get(iso)}
-                                      isToday={isToday}
-                                      collapsible
-                                      bodyOpen={getDayBodyOpen(iso, isToday)}
-                                      onToggleBody={() => toggleDayBody(iso)}
-                                      isLast={isLast}
-                                    />
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </section>
-                  );
-                })}
+              {/* Navigatie: vandaag in het midden, 3 dagen terug en 3 vooruit; pijlen schuiven een week. */}
+              <div className="mb-2 mt-1.5 flex items-center justify-between gap-2.5">
+                <button type="button" aria-label="Vorige week" onClick={() => shiftWeek(-1)} className={roundBtn}>
+                  <ChevronIcon direction="left" />
+                </button>
+                <div className="flex min-w-0 flex-col items-center">
+                  <span className="text-[17px] font-semibold leading-[22px] tracking-tight text-text-primary" aria-live="polite">
+                    {formatRange(days[0], days[days.length - 1])}
+                  </span>
+                  {!showsToday ? (
+                    <button
+                      type="button"
+                      onClick={() => setCenterIso(todayKey)}
+                      className="rounded-pill px-2 text-[13px] font-medium leading-[18px] text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    >
+                      Naar vandaag
+                    </button>
+                  ) : null}
+                </div>
+                <button type="button" aria-label="Volgende week" onClick={() => shiftWeek(1)} className={roundBtn}>
+                  <ChevronIcon direction="right" />
+                </button>
               </div>
+
+              {days.map((day) => {
+                const iso = toIsoDate(day);
+                const isToday = iso === todayKey;
+                return (
+                  <DayRow
+                    key={iso}
+                    date={day}
+                    entry={calendarMap.get(iso)}
+                    isToday={isToday}
+                    looseOpen={looseOpen[iso] ?? false}
+                    onToggleLoose={() => setLooseOpen((prev) => ({ ...prev, [iso]: !(prev[iso] ?? false) }))}
+                  />
+                );
+              })}
             </>
           )}
         </div>
