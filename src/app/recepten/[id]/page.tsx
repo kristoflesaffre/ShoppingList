@@ -911,6 +911,7 @@ function IngredientGrid({
                   sizes="(min-width: 1024px) 160px, 100px"
                   className="object-contain"
                   aria-hidden
+                  unoptimized
                 />
               ) : null}
             </div>

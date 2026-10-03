@@ -1,0 +1,10 @@
+# Deze mappen staan op Vercel Blob (npm run sync:images) en worden via de
+# /images-rewrite in next.config.mjs geserveerd. Zo blijft elke deployment
+# klein (~80 MB minder per deployment).
+/public/images/dranken
+/public/images/frituur
+/public/images/ingredients
+/public/images/items
+/public/images/reference_images
+/public/images/vakantie
+/public/images/done

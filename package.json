@@ -16,6 +16,7 @@
     "sync:ingredient-categories": "node scripts/sync-ingredient-categories.mjs",
     "sync:vacation-categories": "node scripts/sync-vacation-categories.mjs",
     "admin": "node scripts/admin-categories.mjs",
+    "sync:images": "node scripts/sync-static-images.mjs",
     "export:recipe-photos": "node scripts/export-recipe-photos.mjs",
     "storybook": "sh scripts/run-storybook.sh",
     "build-storybook": "node -r ./scripts/patch-os-network.cjs ./node_modules/storybook/bin/index.cjs build"

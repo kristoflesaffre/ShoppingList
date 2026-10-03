@@ -1,6 +1,8 @@
-import { readdir, stat } from "fs/promises";
-import { join } from "path";
 import { NextResponse } from "next/server";
+import {
+  listStaticImageFiles,
+  type StaticImageDir,
+} from "@/lib/server/static-image-files";
 
 function slugKeyFromFilename(filename: string): string {
   const base = filename.replace(/\.[^.]+$/, "").replace(/_(160|240|320)$/i, "");
@@ -13,24 +15,20 @@ function slugKeyFromFilename(filename: string): string {
 }
 
 async function listDir(
-  dir: string,
-  prefix: string,
+  prefix: StaticImageDir,
 ): Promise<{ slugs: string[]; versions: Record<string, number> }> {
   try {
-    const files = await readdir(dir);
+    const files = await listStaticImageFiles(prefix);
     const slugs = new Set<string>();
     const versions: Record<string, number> = {};
 
-    for (const f of files.filter((file) => /\.(jpe?g|png|webp)$/i.test(file))) {
+    for (const { name: f, version } of files.filter((file) =>
+      /\.(jpe?g|png|webp)$/i.test(file.name),
+    )) {
       slugs.add(`${prefix}/${f.replace(/\.[^.]+$/, "")}`);
       const key = slugKeyFromFilename(f);
       if (!key) continue;
-      try {
-        const mtime = Math.floor((await stat(join(dir, f))).mtimeMs / 1000);
-        versions[key] = Math.max(versions[key] ?? 0, mtime);
-      } catch {
-        /* ignore */
-      }
+      versions[key] = Math.max(versions[key] ?? 0, version);
     }
 
     return { slugs: Array.from(slugs), versions };
@@ -41,8 +39,8 @@ async function listDir(
 
 export async function GET() {
   const [items, vakantie] = await Promise.all([
-    listDir(join(process.cwd(), "public/images/items"), "items"),
-    listDir(join(process.cwd(), "public/images/vakantie"), "vakantie"),
+    listDir("items"),
+    listDir("vakantie"),
   ]);
   const versions = { ...items.versions, ...vakantie.versions };
   // Vakantie-/Landal-assets achteraan zodat ze reguliere items kunnen overschrijven bij zelfde naam

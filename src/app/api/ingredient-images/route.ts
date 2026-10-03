@@ -1,11 +1,9 @@
-import { readdir } from "fs/promises";
-import { join } from "path";
 import { NextResponse } from "next/server";
+import { listStaticImageFiles } from "@/lib/server/static-image-files";
 
 export async function GET() {
-  const dir = join(process.cwd(), "public/images/ingredients");
   try {
-    const files = await readdir(dir);
+    const files = (await listStaticImageFiles("ingredients")).map((f) => f.name);
     // Strip size suffix (_160, _240, _320) and extension, return unique base slugs
     const slugs = Array.from(
       new Set(
@@ -16,7 +14,7 @@ export async function GET() {
               .replace(/\.[^.]+$/, "")
               .replace(/_\d+$/, "")
               .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, ""),
+              .replace(/[̀-ͯ]/g, ""),
           ),
       ),
     );
