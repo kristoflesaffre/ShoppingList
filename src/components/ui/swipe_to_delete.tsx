@@ -15,6 +15,8 @@ const SPRING_MS = 320;
 const SPRING_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const SWIPE_OUT_MS = 260;
 const SWIPE_OUT_EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
+/** Laat het actievlak onder de afgeronde trailing edge van de kaart doorlopen. */
+const ACTION_UNDERLAP_PX = 16;
 
 function isInteractiveTarget(target: EventTarget | null) {
   if (!(target instanceof Element)) return true;
@@ -271,10 +273,13 @@ export function SwipeToDelete({
         <div
           className="pointer-events-none absolute inset-y-0 right-0 overflow-hidden rounded-r-md bg-[var(--swipe-delete-bg)]"
           style={{
-            width: Math.min(
-              Math.ceil(Math.abs(offset)),
-              widthRef.current || Math.abs(offset),
-            ),
+            width:
+              widthRef.current > 0
+                ? Math.min(
+                    Math.ceil(Math.abs(offset)) + ACTION_UNDERLAP_PX,
+                    widthRef.current,
+                  )
+                : Math.ceil(Math.abs(offset)) + ACTION_UNDERLAP_PX,
           }}
           aria-hidden="true"
         >
