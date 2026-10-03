@@ -1104,7 +1104,6 @@ function HomeTeKopenSection({
       <ListSectionHeader
         icon="shopping-bag"
         label="Te kopen"
-        count={shoppingItems.length}
         showNaarOverzicht={false}
       />
       {/* A2 · één tegel: laatste 3 producten, uitklapbaar naar alles, toevoegen onderaan. */}
@@ -1485,9 +1484,9 @@ function HomeListSwimCard({
 }
 
 /**
- * Startpagina-lijstjes (8.4): swimlane met de lijstjes waarvan de winkeldag nog komt
- * (max. 2, eerstvolgende eerst), anders het nieuwste (afgerond); een kaart «Alle N lijstjes»
- * en paginering. «+ Item» opent de zoek-slide-in voor dat lijstje.
+ * Startpagina-lijstjes (8.4): swimlane met maximaal twee lijstjes. Eerst de aankomende
+ * winkeldagen, aangevuld met de meest recente afgeronde lijstjes; daarna een kaart
+ * «Alle N lijstjes» en paginering. «+ Item» opent de zoek-slide-in voor dat lijstje.
  */
 function HomeLijstjesSection({
   normalLists,
@@ -1511,7 +1510,16 @@ function HomeLijstjesSection({
       .filter((l) => !isListDatePassed(l.date))
       .sort((a, b) => (listDateToIso(a.date) ?? "").localeCompare(listDateToIso(b.date) ?? "") || a.order - b.order)
       .slice(0, 2);
-    return upcoming.length > 0 ? upcoming : normalLists.slice(0, 1);
+    if (upcoming.length === 2) return upcoming;
+
+    const completed = normalLists
+      .filter((l) => isListDatePassed(l.date))
+      .sort(
+        (a, b) =>
+          (listDateToIso(b.date) ?? "").localeCompare(listDateToIso(a.date) ?? "") ||
+          b.order - a.order,
+      );
+    return [...upcoming, ...completed.slice(0, 2 - upcoming.length)];
   }, [normalLists]);
   const pageCount = activeLists.length + 1;
 
@@ -1563,18 +1571,7 @@ function HomeLijstjesSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex min-h-8 items-center justify-between gap-3">
-        <h2 className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">Lijstjes</h2>
-        <Link
-          href="/lijstjes-beheren/lijstjes"
-          className="-mr-1 inline-flex items-center gap-0.5 rounded-pill py-1 pl-2 pr-1 text-sm font-medium leading-20 text-action-primary no-underline transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-        >
-          Alle {normalLists.length}
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
-            <path d="M6 3.5 10.5 8 6 12.5" />
-          </svg>
-        </Link>
-      </div>
+      <ListSectionHeader icon="list" label="Lijstjes" showNaarOverzicht={false} />
 
       <div
         ref={laneRef}
