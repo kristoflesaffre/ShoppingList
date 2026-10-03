@@ -968,22 +968,22 @@ function HomeTeKopenRow({
   return (
     <Link
       href="/te-kopen"
-      className="flex min-h-[52px] items-center gap-3 pl-3 pr-3.5 no-underline transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+      className="flex h-10 items-center gap-2.5 pl-2.5 pr-3.5 no-underline transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
     >
       {photoSrc ? (
         // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
         <img
           src={photoSrc}
           alt=""
-          width={32}
-          height={32}
-          className="size-8 shrink-0 rounded-md bg-[var(--white)] object-contain"
+          width={28}
+          height={28}
+          className="size-7 shrink-0 rounded-md bg-[var(--blue-25)] object-contain p-0.5 mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal"
           aria-hidden
         />
       ) : (
         /* Geen foto: monogram i.p.v. leeg grijs vlak — de rij blijft leesbaar. */
         <span
-          className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[var(--blue-50)] text-sm font-semibold leading-none text-[var(--blue-500)]"
+          className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[var(--blue-25)] text-xs font-semibold leading-none text-[var(--blue-400)]"
           aria-hidden
         >
           {item.name.trim().charAt(0).toUpperCase()}
@@ -995,7 +995,7 @@ function HomeTeKopenRow({
       <span className="flex shrink-0 items-center justify-end gap-2">
         {addedBy ? (
           <span
-            className="relative flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--secondary-100)] text-[10px] font-bold leading-none text-[var(--secondary-800)]"
+            className="relative flex size-[18px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--secondary-100)] text-[9px] font-bold leading-none text-[var(--secondary-800)]"
             title={`Toegevoegd door ${addedBy.firstName}`}
             aria-label={`Toegevoegd door ${addedBy.firstName}`}
           >
@@ -1104,26 +1104,32 @@ function HomeTeKopenSection({
       <ListSectionHeader
         icon="shopping-bag"
         label="Te kopen"
+        count={recentItems.length}
         showNaarOverzicht={false}
+        action={
+          <button type="button" onClick={onAddProduct} className={HOME_SOFT_PILL_CLASS}>
+            <HomeSoftPillPlusIcon />
+            Toevoegen
+          </button>
+        }
       />
-      {/* A2 · één tegel: laatste 3 producten, uitklapbaar naar alles, toevoegen onderaan. */}
-      <div className="overflow-hidden rounded-lg bg-[var(--white)] shadow-card">
-        <ul id={listId} className="m-0 list-none py-1 pl-0">
-          {visibleItems.map((item, index) => (
+      {/* E5 · één tegel zonder dividers: laatste 3 producten, uitklapbaar; toevoegen staat in de kop. */}
+      <div className={cn("overflow-hidden rounded-lg bg-[var(--white)] pt-1.5 shadow-card", !canExpand && "pb-1.5")}>
+        <ul id={listId} className="m-0 list-none pl-0">
+          {visibleItems.map((item) => (
             <li key={item.id}>
-              {index > 0 ? <div aria-hidden className="ml-14 h-px bg-[var(--border-subtle)]" /> : null}
               <HomeTeKopenRow item={item} addedBy={addedByFor(item)} />
             </li>
           ))}
         </ul>
-        <div className="flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] py-2 pl-3 pr-2.5">
-          {canExpand ? (
+        {canExpand ? (
+          <div className="flex justify-center pb-1.5 pt-0.5">
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
               aria-expanded={expanded}
               aria-controls={listId}
-              className="-ml-1 inline-flex h-9 items-center gap-1 rounded-pill pl-2 pr-2.5 text-sm font-medium leading-5 text-action-primary transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+              className="inline-flex h-8 items-center gap-0.5 rounded-pill px-2.5 text-[13px] font-medium leading-[18px] text-action-primary transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
             >
               {expanded ? "Toon minder" : `Toon alle ${recentItems.length}`}
               <svg
@@ -1135,25 +1141,15 @@ function HomeTeKopenSection({
                 strokeLinejoin="round"
                 aria-hidden
                 className={cn(
-                  "size-4 shrink-0 motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out-strong",
+                  "size-3.5 shrink-0 motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out-strong",
                   expanded && "rotate-180",
                 )}
               >
                 <path d="M3.5 6 8 10.5 12.5 6" />
               </svg>
             </button>
-          ) : (
-            <span aria-hidden />
-          )}
-          <button
-            type="button"
-            onClick={onAddProduct}
-            className={HOME_SOFT_PILL_CLASS}
-          >
-            <HomeSoftPillPlusIcon />
-            Toevoegen
-          </button>
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

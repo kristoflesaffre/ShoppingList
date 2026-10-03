@@ -1,3 +1,4 @@
+import type * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +75,7 @@ export function ListSectionHeader({
   showNaarOverzicht,
   naarOverzichtHref = "/lijstjes-beheren/lijstjes",
   onHide,
+  action,
 }: {
   /** @deprecated Niet meer getoond sinds stijl 1; blijft voor bestaande aanroepen. */
   icon?: "list" | "heart" | "card" | "calendar" | "freeze" | "shopping-bag" | "films";
@@ -85,6 +87,8 @@ export function ListSectionHeader({
   naarOverzichtHref?: string;
   /** When provided, renders "Sectie verbergen" instead of "Alles". */
   onHide?: () => void;
+  /** Eigen actie rechts (bv. «Toevoegen»-pil); gaat vóór «Alles». */
+  action?: React.ReactNode;
 }) {
   return (
     <div className="flex min-h-8 items-center justify-between gap-3">
@@ -96,7 +100,9 @@ export function ListSectionHeader({
           </span>
         ) : null}
       </h2>
-      {onHide ? (
+      {action ? (
+        action
+      ) : onHide ? (
         <button type="button" onClick={onHide} className={sectionActionClass}>
           Sectie verbergen
         </button>
