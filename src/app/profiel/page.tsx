@@ -4,8 +4,6 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
-import { Button } from "@/components/ui/button";
-import { MiniButton } from "@/components/ui/mini_button";
 import { PillTab, type PillTabVariant } from "@/components/ui/pill_tab";
 import {
   readThemePreference,
@@ -42,18 +40,35 @@ function ChevronRightIcon({ className }: { className?: string }) {
 function ProfileSettingsRow({
   label,
   description,
+  icon,
+  bare = false,
   onClick,
 }: {
   label: string;
   description?: string;
+  /** Icoon in een zacht lavendel tegeltje vooraan. */
+  icon?: React.ReactNode;
+  /** Zonder eigen zijpadding (in het witte blad op desktop). */
+  bare?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+      className={cn(
+        "flex min-h-14 w-full items-center gap-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
+        bare ? "rounded-md px-0" : "px-4 [@media(hover:hover)]:hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)]",
+      )}
     >
+      {icon ? (
+        <span
+          aria-hidden
+          className="flex size-[38px] shrink-0 items-center justify-center rounded-[11px] bg-[var(--blue-25)] text-[var(--blue-500)]"
+        >
+          {icon}
+        </span>
+      ) : null}
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-base font-medium leading-24 tracking-normal text-text-primary">
           {label}
@@ -64,7 +79,7 @@ function ProfileSettingsRow({
           </span>
         ) : null}
       </span>
-      <ChevronRightIcon className="text-[var(--gray-400)]" />
+      <ChevronRightIcon className="text-[var(--blue-200)]" />
     </button>
   );
 }
@@ -81,19 +96,30 @@ const TAB_TO_THEME: Record<PillTabVariant, ThemePreference> = {
 };
 
 /** Weergave: licht (standaard), donker of het systeem volgen. Apparaatvoorkeur (localStorage). */
-function ThemeSetting() {
+function ThemeSetting({ inline = false }: { inline?: boolean }) {
   const [pref, setPref] = React.useState<ThemePreference>("light");
   React.useEffect(() => setPref(readThemePreference()), []);
+  const titleId = React.useId();
 
   return (
-    <section aria-labelledby="profiel-weergave-titel" className="flex flex-col gap-2">
-      <h2
-        id="profiel-weergave-titel"
-        className="px-1 text-sm font-semibold leading-20 tracking-normal text-text-secondary"
-      >
-        Weergave
-      </h2>
+    <section
+      aria-labelledby={titleId}
+      className={cn(inline ? "flex items-center justify-between gap-6" : "flex flex-col gap-2")}
+    >
+      {inline ? (
+        <div className="min-w-0">
+          <h2 id={titleId} className="text-[15px] font-semibold leading-5 text-text-primary">
+            Weergave
+          </h2>
+          <p className="text-[13px] leading-[18px] text-text-tertiary">Licht, donker of je systeem volgen</p>
+        </div>
+      ) : (
+        <h2 id={titleId} className="px-1 text-sm font-semibold leading-20 tracking-normal text-text-secondary">
+          Weergave
+        </h2>
+      )}
       <PillTab
+        className={inline ? "w-[264px] shrink-0" : undefined}
         aria-label="Weergave"
         value={THEME_TO_TAB[pref]}
         onValueChange={(tab) => {
@@ -230,128 +256,163 @@ export default function ProfielPage() {
     );
   }
 
+  const homeIcon = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="size-5">
+      <path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" />
+    </svg>
+  );
+  const imageIcon = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="size-5">
+      <rect x="3" y="4" width="18" height="16" rx="3" />
+      <circle cx="9" cy="10" r="2" />
+      <path d="m21 16-5-5-9 9" />
+    </svg>
+  );
+
+  /** Profielfoto als knop met camerabadge (tik = foto wijzigen). */
+  const avatar = (size: "md" | "lg") => (
+    <button
+      type="button"
+      onClick={handlePickPhoto}
+      disabled={isSaving}
+      aria-label="Profielfoto wijzigen"
+      className={cn(
+        "relative flex shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] shadow-[0_0_0_4px_var(--white),0_0_0_5px_var(--border-subtle),0_14px_30px_-14px_rgba(79,85,241,0.45)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-4",
+        size === "lg" ? "size-28" : "size-[92px]",
+      )}
+    >
+      <span className="flex size-full items-center justify-center overflow-hidden rounded-full">
+        {displayUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- data-URL of blob
+          <img src={displayUrl} alt="" className="size-full object-cover" />
+        ) : (
+          <svg className="size-1/2 text-[var(--blue-400)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.25} aria-hidden>
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 20c0-4 4-7 8-7s8 3 8 7" />
+          </svg>
+        )}
+      </span>
+      <span
+        aria-hidden
+        className={cn(
+          "absolute -bottom-1 -right-1 flex items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)] shadow-[0_0_0_3px_var(--white)]",
+          size === "lg" ? "size-9" : "size-8",
+        )}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-1/2">
+          <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+          <circle cx="12" cy="13" r="3.5" />
+        </svg>
+      </span>
+    </button>
+  );
+
+  const identity = (titleClass: string) => (
+    <div className="flex min-w-0 w-full flex-col items-center gap-0.5 text-center">
+      <h1 className={cn("w-full truncate font-bold tracking-tight text-text-primary", titleClass)}>
+        {profileFirstName ?? "Jouw profiel"}
+      </h1>
+      {adminUser?.email ? (
+        <p className="w-full truncate text-sm leading-20 text-text-tertiary">{adminUser.email}</p>
+      ) : null}
+      {isSaving ? <p className="text-[13px] text-[var(--blue-400)]">Foto opslaan…</p> : null}
+      {localError ? (
+        <p className="text-sm text-[var(--error-600)]" role="alert">
+          {localError}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  const logoutButton = (fullWidth: boolean) => (
+    <button
+      type="button"
+      onClick={() => void handleLogout()}
+      className={cn(
+        "inline-flex h-12 items-center justify-center gap-2 rounded-pill px-5 text-[15px] font-semibold text-[var(--error-600)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--error-300)_45%,transparent)] transition-colors [@media(hover:hover)]:hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        fullWidth && "w-full",
+      )}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
+        <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
+        <path d="M10 16l-4-4 4-4M6 12h10" />
+      </svg>
+      Uitloggen
+    </button>
+  );
+
+  const settingsRows = (bare: boolean) => (
+    <>
+      <li>
+        <ProfileSettingsRow
+          bare={bare}
+          icon={homeIcon}
+          label="Homepagina aanpassen"
+          description="Kies welke secties je op de startpagina ziet"
+          onClick={() => router.push("/beheer-homepagina")}
+        />
+      </li>
+      {isAdmin ? (
+        <li>
+          <ProfileSettingsRow
+            bare={bare}
+            icon={imageIcon}
+            label="Ontbrekende afbeeldingen beheren"
+            description="Beheerder: productfoto's aanvullen"
+            onClick={() => router.push("/admin/ontbrekende-afbeeldingen")}
+          />
+        </li>
+      ) : null}
+    </>
+  );
+
   return (
-    <div className="relative flex min-h-dvh w-full flex-col px-[16px]">
-      {/* Zelfde content-padding als Mijn lijstjes (home); geen vaste witte header zoals lijstje-detail */}
-      <div className="flex flex-1 flex-col pb-[96px] pt-[calc(52px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col motion-safe:animate-fade-up">
-          <div className="mb-6 flex items-center gap-4">
-            <h1 className="flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
-              Mijn profiel
-            </h1>
+    <div className="relative flex min-h-dvh w-full flex-col px-4">
+      {/* Mobiel (5.1b): licht verloop achter de foto, zoals de login. Desktop (F3): zachte lavendel band bovenaan. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_50%_118px,var(--white)_0px,var(--blue-25)_80px,var(--blue-50)_190px,var(--bg-app)_360px)] md:hidden"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 hidden h-60 bg-[linear-gradient(180deg,var(--blue-50)_0%,var(--blue-25)_60%,var(--bg-app)_100%)] md:block"
+      />
+
+      {/* ── Mobiel: 5.1b ── */}
+      <main className="relative mx-auto flex w-full max-w-[480px] flex-1 flex-col gap-5 pb-[calc(96px+env(safe-area-inset-bottom,0px))] pt-[calc(72px+env(safe-area-inset-top,0px))] motion-safe:animate-fade-up md:hidden">
+        <section className="flex flex-col items-center gap-4">
+          {avatar("md")}
+          {identity("text-[26px] leading-8")}
+        </section>
+
+        <ThemeSetting />
+
+        <section aria-labelledby="profiel-instellingen-titel" className="flex flex-col gap-2">
+          <h2 id="profiel-instellingen-titel" className="px-1 text-sm font-semibold leading-20 tracking-normal text-text-secondary">
+            Instellingen
+          </h2>
+          <ul className="m-0 flex list-none flex-col divide-y divide-[var(--border-subtle)] overflow-hidden rounded-lg bg-[var(--white)] p-0 shadow-card">
+            {settingsRows(false)}
+          </ul>
+        </section>
+
+        {logoutButton(true)}
+      </main>
+
+      {/* ── Desktop: F3, één wit blad met de foto half erboven ── */}
+      <main className="relative mx-auto hidden w-full max-w-[620px] pb-32 pt-[120px] motion-safe:animate-fade-up md:block">
+        <div className="flex flex-col items-center rounded-[28px] bg-[var(--white)] px-10 pb-8 shadow-[0_0_0_1px_var(--border-subtle),0_30px_60px_-30px_rgba(79,85,241,0.4)]">
+          <div className="-mt-14">{avatar("lg")}</div>
+          <div className="mt-3.5 w-full">{identity("text-[28px] leading-[34px]")}</div>
+          <div className="mt-6 w-full border-t border-[var(--border-subtle)] pt-5">
+            <ThemeSetting inline />
           </div>
-
-          <main className="mx-auto flex w-full max-w-[480px] flex-1 flex-col gap-4 pb-[env(safe-area-inset-bottom,0px)]">
-            {/* Identiteitskaart: avatar + naam + e-mail + fotoactie in één surface */}
-            <section
-              aria-labelledby="profiel-identiteit-titel"
-              className="flex flex-col items-center gap-4 rounded-lg bg-[var(--white)] px-4 pb-5 pt-6 text-center shadow-card"
-            >
-              <h2 id="profiel-identiteit-titel" className="sr-only">
-                Jouw gegevens
-              </h2>
-              <div
-                className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] ring-4 ring-[var(--blue-25)]"
-                aria-label="Profielfoto"
-                role="img"
-              >
-                {displayUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- data-URL
-                  <img
-                    src={displayUrl}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <svg
-                    className="size-12 text-[var(--blue-400)]"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.25}
-                    aria-hidden
-                  >
-                    <circle cx="12" cy="8" r="4" />
-                    <path d="M4 20c0-4 4-7 8-7s8 3 8 7" />
-                  </svg>
-                )}
-              </div>
-
-              <div className="flex min-w-0 w-full flex-col items-center gap-0.5">
-                <p className="w-full truncate text-section-title font-semibold leading-24 tracking-tight text-text-primary">
-                  {profileFirstName ?? "Jouw profiel"}
-                </p>
-                {adminUser?.email ? (
-                  <p className="w-full truncate text-sm font-normal leading-20 tracking-normal text-text-tertiary">
-                    {adminUser.email}
-                  </p>
-                ) : null}
-              </div>
-
-              <MiniButton
-                type="button"
-                variant="secondary"
-                disabled={isSaving}
-                onClick={handlePickPhoto}
-                aria-label="Profielfoto wijzigen"
-              >
-                {isSaving ? "Bezig met opslaan…" : "Profielfoto wijzigen"}
-              </MiniButton>
-
-              {localError ? (
-                <p
-                  className="text-center text-sm text-[var(--error-600)]"
-                  role="alert"
-                >
-                  {localError}
-                </p>
-              ) : null}
-            </section>
-
-            <ThemeSetting />
-
-            {/* Instellingen: gegroepeerde rijen met chevron (één componenttaal voor “ga naar …”) */}
-            <section aria-labelledby="profiel-instellingen-titel" className="flex flex-col gap-2">
-              <h2
-                id="profiel-instellingen-titel"
-                className="px-1 text-sm font-semibold leading-20 tracking-normal text-text-secondary"
-              >
-                Instellingen
-              </h2>
-              <ul className="m-0 flex list-none flex-col divide-y divide-[var(--border-subtle)] overflow-hidden rounded-lg bg-[var(--white)] p-0 shadow-card">
-                <li>
-                  <ProfileSettingsRow
-                    label="Homepagina aanpassen"
-                    description="Kies welke secties je op de startpagina ziet"
-                    onClick={() => router.push("/beheer-homepagina")}
-                  />
-                </li>
-                {isAdmin ? (
-                  <li>
-                    <ProfileSettingsRow
-                      label="Ontbrekende afbeeldingen beheren"
-                      description="Beheerder: productfoto's aanvullen"
-                      onClick={() => router.push("/admin/ontbrekende-afbeeldingen")}
-                    />
-                  </li>
-                ) : null}
-              </ul>
-            </section>
-
-            <div className="mt-auto flex w-full flex-col items-center pt-8">
-              <Button
-                type="button"
-                variant="tertiary"
-                tertiaryTone="danger"
-                onClick={() => void handleLogout()}
-                className="w-full max-w-none min-w-0"
-              >
-                Uitloggen
-              </Button>
-            </div>
-          </main>
+          <ul className="m-0 mt-5 flex w-full list-none flex-col divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)] p-0">
+            {settingsRows(true)}
+          </ul>
+          <div className="mt-4">{logoutButton(false)}</div>
         </div>
-      </div>
+      </main>
 
       <input
         ref={fileInputRef}
