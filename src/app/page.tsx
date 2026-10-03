@@ -425,6 +425,7 @@ function HomeLoyaltyCardsSwimlane({ cards }: { cards: HomeLoyaltyCard[] }) {
         label="Klantenkaarten"
         showNaarOverzicht
         naarOverzichtHref="/klantenkaarten"
+        overzichtLabel="Alle klantenkaarten"
       />
       {/* -mx + px: tegel-scroll loopt tot aan de schermrand, padding houdt eerste tegel op grid. */}
       <div
@@ -883,6 +884,7 @@ function HomeDiepvriesSection({
           count={itemCount}
           showNaarOverzicht
           naarOverzichtHref="/diepvriesvoorraad"
+          overzichtLabel="Alle voorraad"
         />
 
         {/* Thumbnails card */}
@@ -1218,6 +1220,7 @@ function HomeCalendarSection({
         label="Kalender"
         showNaarOverzicht
         naarOverzichtHref="/kalender"
+        overzichtLabel="Hele kalender"
       />
       <div
         ref={laneRef}
@@ -1623,7 +1626,13 @@ function HomeLijstjesSection({
   if (normalLists.length === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <ListSectionHeader icon="list" label="Lijstjes" showNaarOverzicht={false} />
+        <ListSectionHeader
+          icon="list"
+          label="Lijstjes"
+          showNaarOverzicht
+          naarOverzichtHref="/lijstjes-beheren/lijstjes"
+          overzichtLabel="Alle lijstjes"
+        />
         <HomeOnboardingEmptyCard
           illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.lijstjes}
           illustrationSide="start"
@@ -1643,7 +1652,13 @@ function HomeLijstjesSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <ListSectionHeader icon="list" label="Lijstjes" showNaarOverzicht={false} />
+      <ListSectionHeader
+        icon="list"
+        label="Lijstjes"
+        showNaarOverzicht
+        naarOverzichtHref="/lijstjes-beheren/lijstjes"
+        overzichtLabel="Alle lijstjes"
+      />
 
       <div
         ref={laneRef}
@@ -1800,6 +1815,7 @@ function HomeFavorietenSection({
         label="Favorieten"
         showNaarOverzicht
         naarOverzichtHref="/lijstjes-beheren/favorieten"
+        overzichtLabel="Alle favorieten"
       />
       <div
         className={cn("mt-4 lg:hidden", SWIMLANE_CLASSES)}
@@ -1972,6 +1988,7 @@ function HomeFilmsSeriesSection({ onHide }: { onHide?: () => void }) {
         label="Films en series"
         showNaarOverzicht
         naarOverzichtHref="/films-series"
+        overzichtLabel="Alle titels"
       />
       <div
         className={SWIMLANE_CLASSES}
