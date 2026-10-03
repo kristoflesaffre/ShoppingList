@@ -1382,8 +1382,14 @@ function HomeListSwimCard({
   const completed = isListDatePassed(list.date);
   const venueImage = homeVenueListImage(list);
   const products = homeListProductItems(list);
-  const meta = list.sharedWithFirstName ? `met ${list.sharedWithFirstName}` : "";
   const storeLogo = list.storeLogos[0] ?? null;
+  const storeName = masterStoreLabelFromListIcon(
+    storeLogo ?? list.masterIcon ?? list.icon,
+  );
+  const sharedWith = list.sharedWithFirstName
+    ? `Met ${list.sharedWithFirstName}`
+    : "";
+  const meta = [storeName, sharedWith].filter(Boolean).join(" - ");
 
   const action = completed ? (
     <button type="button" onClick={() => onNewList(list)} className={HOME_SOFT_PILL_CLASS} aria-label={`Nieuw lijstje maken zoals ${list.name}`}>
@@ -2224,7 +2230,7 @@ export default function Home() {
             : isFromMaster
               ? ("from-master" as const)
               : ("shared" as const),
-          sharedWithFirstName: isMaster || isFromMaster ? null : ownerFirst,
+          sharedWithFirstName: isMaster ? null : ownerFirst,
           storeLogos: isFromMaster ? storeLogosFromListIcon(effectiveBadgeIcon2) : [],
           isMasterTemplate: isMaster,
           customIconUrl: typeof (l as Record<string, unknown>).customIconUrl === "string"
