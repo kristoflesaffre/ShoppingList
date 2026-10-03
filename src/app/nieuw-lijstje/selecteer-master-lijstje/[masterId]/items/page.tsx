@@ -1093,23 +1093,25 @@ export default function SelecteerMasterItemsPage() {
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-[var(--white)]">
-      <header className="relative z-[1] flex h-16 shrink-0 bg-[var(--white)] px-4">
-        <div className="mx-auto flex w-full max-w-[956px] items-center gap-4">
-          <Link
-            href={`/nieuw-lijstje/selecteer-master-lijstje?naam=${encodeURIComponent(listName)}`}
-            aria-label="Terug naar favorietenlijsten"
-            className="relative z-[1] flex !min-w-0 !w-10 size-10 shrink-0 items-center justify-center p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus rounded-md"
-          >
-            <BackArrowIcon className="size-6 shrink-0" />
-          </Link>
-          <h1 className="min-w-0 flex-1 truncate text-center text-base font-medium leading-24 tracking-normal text-text-primary">
-            {listName}
-          </h1>
-          <span className="size-10 shrink-0" aria-hidden />
-        </div>
-      </header>
+      <div className="fixed inset-x-0 top-0 z-20 bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
+        <header className="flex h-16 px-4">
+          <div className="mx-auto flex w-full max-w-[956px] items-center gap-4">
+            <Link
+              href={`/nieuw-lijstje/selecteer-master-lijstje?naam=${encodeURIComponent(listName)}`}
+              aria-label="Terug naar favorietenlijsten"
+              className="relative z-[1] flex !min-w-0 !w-10 size-10 shrink-0 items-center justify-center p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus rounded-md"
+            >
+              <BackArrowIcon className="size-6 shrink-0" />
+            </Link>
+            <h1 className="min-w-0 flex-1 truncate text-center text-base font-medium leading-24 tracking-normal text-text-primary">
+              {listName}
+            </h1>
+            <span className="size-10 shrink-0" aria-hidden />
+          </div>
+        </header>
+      </div>
 
-      <div className="relative flex-1 overflow-y-auto bg-[var(--bg-app)] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-8">
+      <div className="relative flex-1 overflow-y-auto bg-[var(--bg-app)] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-[calc(64px+32px+env(safe-area-inset-top,0px))]">
         <div className="relative mx-auto flex w-full max-w-[956px] flex-col gap-6">
           <div className="flex items-center gap-4">
             <div className="min-w-0 flex-1">
