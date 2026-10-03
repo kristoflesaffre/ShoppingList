@@ -515,6 +515,13 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
     const gridEditable = gridDensity && isEditable;
     const isNeutralGridTile =
       gridDensity && !isGottenByOther && !isGottenByYou;
+    const isNeutralListRow =
+      !gridDensity &&
+      !isBare &&
+      !isMasterLayout &&
+      !isAddedLayout &&
+      !isGottenByOther &&
+      !isGottenByYou;
 
     const showItemThumbnail =
       itemThumbnail != null &&
@@ -564,11 +571,11 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               !gridEditable &&
               "border border-[var(--blue-50)] bg-[var(--blue-25)]",
             (!isGottenByOther || gridEditable) && "bg-[var(--white)]",
-            /* Rustende rij: borderless surface met zachte schaduw */
-            !gridDensity &&
-              !isGottenByOther &&
-              !isGottenByYou &&
-              "shadow-card",
+            isNeutralListRow &&
+              "border border-[var(--item-tile-border)]",
+            isNeutralListRow &&
+              !isEditable &&
+              "[@media(hover:hover)]:hover:border-[var(--item-tile-border-hover)] [@media(hover:hover)]:hover:bg-[var(--item-tile-hover)]",
             /* Door jou gehaald: primaire rand (status niet enkel via kleur — ook vinkje) */
             !gridDensity && showGottenByYouChrome && "border border-[var(--blue-500)]",
             gridDensity && !gridEditable && isGottenByYou && "border-2 border-[var(--blue-500)]",
@@ -577,7 +584,9 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
 
     const containerStyle: React.CSSProperties = {
       ...(incomingStyle && typeof incomingStyle === "object" ? incomingStyle : {}),
-      ...(isNeutralGridTile ? { boxShadow: "var(--shadow-item-tile)" } : {}),
+      ...(isNeutralGridTile || isNeutralListRow
+        ? { boxShadow: "var(--shadow-item-tile)" }
+        : {}),
       ...(showGottenByYouChrome ? { boxShadow: "var(--shadow-card)" } : {}),
     };
 
@@ -1225,8 +1234,17 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
         <div
           ref={ref}
           data-variant="from-stock"
-          className={cn(containerBase, "bg-[var(--white)] shadow-card", className)}
-          style={incomingStyle}
+          className={cn(
+            containerBase,
+            "border border-[var(--item-tile-border)] bg-[var(--white)]",
+            className,
+          )}
+          style={{
+            ...(incomingStyle && typeof incomingStyle === "object"
+              ? incomingStyle
+              : {}),
+            boxShadow: "var(--shadow-item-tile)",
+          }}
           aria-label={typeof itemName === "string" ? itemName : undefined}
           {...restProps}
         >
