@@ -42,6 +42,8 @@ export interface FloatingActionButtonProps
    * Ignored when asChild is false.
    */
   children?: React.ReactNode;
+  /** Optioneel label dat vanaf desktop vóór het plusicoon verschijnt. */
+  desktopLabel?: string;
 }
 
 const FloatingActionButton = React.forwardRef<
@@ -54,6 +56,7 @@ const FloatingActionButton = React.forwardRef<
       size = "default",
       disabled = false,
       asChild = false,
+      desktopLabel,
       ...props
     },
     ref
@@ -85,7 +88,14 @@ const FloatingActionButton = React.forwardRef<
         : {};
 
     const content = (
-      <PlusIcon className="size-6 motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:group-active/fab:rotate-90" />
+      <>
+        {desktopLabel ? (
+          <span className="hidden text-sm font-semibold leading-5 lg:inline">
+            {desktopLabel}
+          </span>
+        ) : null}
+        <PlusIcon className="size-6 motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:group-active/fab:rotate-90" />
+      </>
     );
 
     return (

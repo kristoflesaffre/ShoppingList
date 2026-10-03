@@ -4014,13 +4014,15 @@ export default function Home() {
         className={cn(
           "pointer-events-none fixed inset-x-0 z-20",
           APP_FAB_BOTTOM_CLASS,
+          "lg:bottom-[38px]",
         )}
       >
         <div className="px-[var(--space-4)]">
           <div className="mx-auto flex w-full max-w-[956px] justify-end">
             <FloatingActionButton
               aria-label="Nieuw lijstje"
-              className="pointer-events-auto"
+              desktopLabel="Nieuw lijstje"
+              className="pointer-events-auto lg:h-14 lg:gap-2 lg:px-5 lg:py-0"
               onClick={handleOpenCreateModal}
             />
           </div>
