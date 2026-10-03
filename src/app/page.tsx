@@ -1416,35 +1416,36 @@ function HomeListSwimCard({
 
   const header = (
     <span className="flex items-center gap-3">
-      <span
-        aria-hidden
-        className="pointer-events-none flex size-[60px] shrink-0 items-center justify-center overflow-hidden rounded-[16px] bg-gradient-to-br from-[var(--blue-25)] to-[var(--blue-50)]"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp of eigen foto */}
-        <img
-          src={iconSrc}
-          alt=""
-          width={customIcon ? 60 : 42}
-          height={customIcon ? 60 : 42}
-          className={customIcon ? "size-full object-cover" : "size-[42px] object-contain"}
-        />
+      <span className="pointer-events-none relative shrink-0">
+        <span
+          aria-hidden
+          className="flex size-[60px] items-center justify-center overflow-hidden rounded-[16px] bg-gradient-to-br from-[var(--blue-25)] to-[var(--blue-50)]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp of eigen foto */}
+          <img
+            src={iconSrc}
+            alt=""
+            width={customIcon ? 60 : 42}
+            height={customIcon ? 60 : 42}
+            className={customIcon ? "size-full object-cover" : "size-[42px] object-contain"}
+          />
+        </span>
+        {/* 11.1 F: afgerond-vinkje rechtsboven op het icoon, licht buiten de hoek, met witte rand. */}
+        {completed ? (
+          <span
+            role="img"
+            aria-label="Afgerond"
+            className="absolute -right-[3px] -top-[3px] flex size-[18px] items-center justify-center rounded-full bg-[var(--success-soft-bg)] text-[var(--success-soft-fg)] shadow-[0_0_0_2px_var(--white)]"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-2.5">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </span>
+        ) : null}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-[17px] font-semibold leading-[22px] tracking-tight text-[var(--text-primary)]">
-            {list.name}
-          </span>
-          {completed ? (
-            <span
-              role="img"
-              aria-label="Afgerond"
-              className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[var(--success-soft-bg)] text-[var(--success-soft-fg)]"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-2.5">
-                <path d="M20 6 9 17l-5-5" />
-              </svg>
-            </span>
-          ) : null}
+        <span className="truncate text-[17px] font-semibold leading-[22px] tracking-tight text-[var(--text-primary)]">
+          {list.name}
         </span>
         {storeLogo || meta ? (
           <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-[18px] text-[var(--gray-400)]">
