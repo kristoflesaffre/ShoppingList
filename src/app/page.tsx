@@ -3509,6 +3509,15 @@ export default function Home() {
           <HomeHeader
             ownerId={ownerId}
             className="pt-[var(--space-6)] motion-safe:animate-fade-up"
+            action={
+              <FloatingActionButton
+                aria-label="Nieuw lijstje"
+                desktopLabel="Nieuw lijstje"
+                elevated={false}
+                className="hidden h-14 gap-2 px-5 py-0 lg:inline-flex"
+                onClick={handleOpenCreateModal}
+              />
+            }
           />
           {/* Secties komen gestaggerd binnen (60ms per sectie, max 4 stappen) — geeft ritme zonder te vertragen */}
           <div
@@ -4012,17 +4021,16 @@ export default function Home() {
 
       <div
         className={cn(
-          "pointer-events-none fixed inset-x-0 z-20",
+          "pointer-events-none fixed inset-x-0 z-20 lg:hidden",
           APP_FAB_BOTTOM_CLASS,
-          "lg:bottom-[38px]",
         )}
       >
         <div className="px-[var(--space-4)]">
           <div className="mx-auto flex w-full max-w-[956px] justify-end">
             <FloatingActionButton
               aria-label="Nieuw lijstje"
-              desktopLabel="Nieuw lijstje"
-              className="pointer-events-auto lg:h-14 lg:gap-2 lg:px-5 lg:py-0"
+              elevated={false}
+              className="pointer-events-auto"
               onClick={handleOpenCreateModal}
             />
           </div>

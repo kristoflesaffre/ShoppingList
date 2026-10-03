@@ -8,6 +8,8 @@ export interface HomeHeaderProps {
   /** InstantDB user-id van de ingelogde gebruiker; bepaalt welk profiel de voornaam levert. */
   ownerId: string;
   className?: string;
+  /** Optionele actie rechts naast de paginatitel. */
+  action?: React.ReactNode;
 }
 
 /** Dagdeel-begroeting (lokale tijd). */
@@ -32,7 +34,7 @@ function formatTodayLabel(date: Date): string {
  * Geeft de home dezelfde typografische rang als «Mijn recepten» / «Klantenkaarten»
  * en laat de eerste sectiekop niet meer als paginatitel fungeren.
  */
-export function HomeHeader({ ownerId, className }: HomeHeaderProps) {
+export function HomeHeader({ ownerId, className, action }: HomeHeaderProps) {
   const { data } = db.useQuery({
     profiles: {
       $: { where: { instantUserId: ownerId } },
@@ -46,14 +48,22 @@ export function HomeHeader({ ownerId, className }: HomeHeaderProps) {
   const dateLabel = formatTodayLabel(now);
 
   return (
-    <header className={cn("flex min-w-0 flex-col gap-1", className)}>
-      <p className="text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)]">
+    <header
+      className={cn(
+        "grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1",
+        className,
+      )}
+    >
+      <p className="col-start-1 row-start-1 text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)]">
         <time dateTime={now.toISOString().slice(0, 10)}>{dateLabel}</time>
       </p>
-      <h1 className="truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
+      <h1 className="col-start-1 row-start-2 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
         {greeting}
         {firstName ? `, ${firstName}` : ""}
       </h1>
+      {action ? (
+        <div className="col-start-2 row-start-2 self-center">{action}</div>
+      ) : null}
     </header>
   );
 }

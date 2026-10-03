@@ -44,6 +44,8 @@ export interface FloatingActionButtonProps
   children?: React.ReactNode;
   /** Optioneel label dat vanaf desktop vóór het plusicoon verschijnt. */
   desktopLabel?: string;
+  /** Schakel de zwevende schaduw en hover-glow uit. */
+  elevated?: boolean;
 }
 
 const FloatingActionButton = React.forwardRef<
@@ -57,6 +59,7 @@ const FloatingActionButton = React.forwardRef<
       disabled = false,
       asChild = false,
       desktopLabel,
+      elevated = true,
       ...props
     },
     ref
@@ -71,8 +74,12 @@ const FloatingActionButton = React.forwardRef<
     };
 
     /* Gekleurde schaduw (blue-500-tint): de FAB is de enige zwevende primaire actie en mag “gloeien”. */
-    const defaultStyles =
-      "bg-[var(--blue-500)] text-[var(--white)] shadow-fab [@media(hover:hover)]:hover:bg-[var(--blue-600)] [@media(hover:hover)]:hover:shadow-raised";
+    const defaultStyles = cn(
+      "bg-[var(--blue-500)] text-[var(--white)] [@media(hover:hover)]:hover:bg-[var(--blue-600)]",
+      elevated
+        ? "shadow-fab [@media(hover:hover)]:hover:shadow-raised"
+        : "shadow-none",
+    );
     const disabledStyles =
       "bg-[var(--blue-25)] text-[var(--blue-300)] shadow-none";
 
