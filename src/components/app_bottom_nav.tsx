@@ -241,11 +241,11 @@ export function AppBottomNav({
   const labelClass = "text-[11px] leading-[14px] tracking-normal";
 
   return (
-    /* De balk zakt deels in de iOS safe area, zoals native navigatie, zonder de tappunten te verkleinen. */
+    /* Houd 32px afstand tot de onderrand en respecteer grotere native safe areas. */
     <div
       className="pointer-events-none fixed inset-x-3 z-20 flex justify-center"
       style={{
-        bottom: "max(12px, calc(env(safe-area-inset-bottom, 0px) - 10px))",
+        bottom: "max(32px, env(safe-area-inset-bottom, 0px))",
       }}
     >
       <nav
