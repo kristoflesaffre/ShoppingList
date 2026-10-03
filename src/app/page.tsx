@@ -1110,7 +1110,6 @@ function HomeTeKopenSection({
       <ListSectionHeader
         icon="shopping-bag"
         label="Te kopen"
-        count={recentItems.length}
         showNaarOverzicht={false}
         action={
           <button type="button" onClick={onAddProduct} className={HOME_SOFT_PILL_CLASS}>
@@ -1332,6 +1331,7 @@ function homeListProductItems(list: HomeList): HomeListItemRow[] {
       (it) =>
         typeof it.name === "string" &&
         it.name.trim().length > 0 &&
+        !it.name.trim().toLowerCase().endsWith(" (diepvries)") &&
         !it.recipeGroupId &&
         it.fromStock !== true,
     )
@@ -1375,12 +1375,10 @@ function HomeSoftPillPlusIcon() {
  */
 function HomeListSwimCard({
   list,
-  recipePhotoByName,
   onAddItem,
   onNewList,
 }: {
   list: HomeList;
-  recipePhotoByName: ReadonlyMap<string, string>;
   onAddItem: (list: HomeList) => void;
   onNewList: (list: HomeList) => void;
 }) {
@@ -1501,17 +1499,9 @@ function HomeListSwimCard({
 
   const withPhotos = products.map((it) => {
     const name = it.name ?? "";
-    const frozenSuffix = " (diepvries)";
-    const frozenRecipeName = name.endsWith(frozenSuffix)
-      ? name.slice(0, -frozenSuffix.length).trim()
-      : null;
     const url = isFrituurList
       ? frituurItemIconSrc(name)
-      : it.stockPhotoUrl ||
-        (frozenRecipeName
-          ? recipePhotoByName.get(frozenRecipeName.toLowerCase()) ||
-            getPhotoUrl(frozenRecipeName)
-          : getPhotoUrl(name));
+      : it.stockPhotoUrl || getPhotoUrl(name);
     return { id: it.id, name, url };
   });
   const overflow = withPhotos.length > HOME_LIST_PHOTO_SLOTS;
@@ -1575,13 +1565,11 @@ function HomeListSwimCard({
  */
 function HomeLijstjesSection({
   normalLists,
-  recipePhotoByName,
   onOpenCreateModal,
   onQuickAdd,
   onNewListLike,
 }: {
   normalLists: HomeList[];
-  recipePhotoByName: ReadonlyMap<string, string>;
   onOpenCreateModal: () => void;
   /** Voegt een product toe aan het gegeven lijstje. */
   onQuickAdd: (list: HomeList, name: string) => void;
@@ -1680,7 +1668,6 @@ function HomeLijstjesSection({
           <div key={list.id} className="w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start">
             <HomeListSwimCard
               list={list}
-              recipePhotoByName={recipePhotoByName}
               onAddItem={(l) => {
                 primeKeyboard();
                 setSearchTarget(l);
@@ -2354,17 +2341,6 @@ export default function Home() {
     () => lists.filter((l) => l.isMasterTemplate),
     [lists],
   );
-  const recipePhotoByName = React.useMemo(() => {
-    const photos = new Map<string, string>();
-    for (const recipe of data?.recipes ?? []) {
-      const name = typeof recipe.name === "string" ? recipe.name.trim() : "";
-      const photoUrl =
-        typeof recipe.photoUrl === "string" ? recipe.photoUrl.trim() : "";
-      if (name && photoUrl) photos.set(name.toLowerCase(), photoUrl);
-    }
-    return photos;
-  }, [data?.recipes]);
-
   /** Snel toevoegen vanop home: zelfde itemvorm als «Items toevoegen» in het lijstje (sectie Algemeen). */
   const handleQuickAddToList = React.useCallback((list: HomeList, name: string) => {
     const items = (list.items ?? []) as Array<{ order?: number }>;
@@ -3298,7 +3274,6 @@ export default function Home() {
         return (
           <HomeLijstjesSection
             normalLists={normalLists}
-            recipePhotoByName={recipePhotoByName}
             onOpenCreateModal={handleOpenCreateModal}
             onQuickAdd={handleQuickAddToList}
             onNewListLike={handleNewListLike}
