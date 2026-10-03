@@ -1488,7 +1488,7 @@ function HomeListSwimCard({
                 "relative flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--white)] shadow-[0_0_0_2px_var(--white),0_0_0_3px_var(--border-subtle)]",
                 index > 0 && "-ml-2",
               )}
-              style={{ zIndex: shown.length - index + 1 }}
+              style={{ zIndex: index + 1 }}
             >
               {p.url ? (
                 // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
@@ -1508,7 +1508,8 @@ function HomeListSwimCard({
           ))}
           {rest > 0 ? (
             <span
-              className="relative z-[1] -ml-2 flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)] text-xs font-medium text-[var(--blue-400)] shadow-[0_0_0_2px_var(--white),0_0_0_3px_var(--border-subtle)] tabular-nums"
+              className="relative -ml-2 flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)] text-xs font-medium text-[var(--blue-400)] shadow-[0_0_0_1px_var(--border-subtle)] tabular-nums"
+              style={{ zIndex: shown.length + 1 }}
             >
               +{rest}
             </span>
