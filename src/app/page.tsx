@@ -1250,6 +1250,9 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 const SWIMLANE_CLASSES =
   "-mx-[var(--space-4)] flex gap-3 overflow-x-auto px-[var(--space-4)] pb-1";
 
+const HOME_SWIMLANE_ARROW_CLASS =
+  "flex size-8 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-card transition-[color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 disabled:text-[var(--gray-200)] disabled:shadow-[0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
+
 /** Alleen voor Te kopen: op lg geen negatieve marge zodat de swimlane binnen max-w-[956px] blijft. */
 /** Figma 1142:7467 — kalender-sectie op startpagina (alleen bij content vandaag of toekomst).
  *  Mobile: swimlane (1 kaart per kolom, 300 px breed) als > 3 items; anders verticaal.
@@ -1276,16 +1279,39 @@ function HomeCalendarSection({
 }) {
   const [selectedIso, setSelectedIso] = React.useState(todayIso);
   const laneRef = React.useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = React.useState({ atStart: false, atEnd: true });
   const selected =
     days.find((d) => d.isoDate === selectedIso) ??
     days.find((d) => d.isoDate === todayIso) ??
     days[days.length - 1];
 
+  const handleScroll = React.useCallback(() => {
+    const el = laneRef.current;
+    if (!el) return;
+    const atStart = el.scrollLeft <= 4;
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+    setEdges((prev) =>
+      prev.atStart === atStart && prev.atEnd === atEnd
+        ? prev
+        : { atStart, atEnd },
+    );
+  }, []);
+
   /* Start aan het einde van de strip: de laatste zeven dagen (vandaag in het midden). */
   React.useLayoutEffect(() => {
     const el = laneRef.current;
-    if (el) el.scrollLeft = el.scrollWidth;
-  }, []);
+    if (!el) return;
+    el.scrollLeft = el.scrollWidth;
+    handleScroll();
+  }, [days.length, handleScroll]);
+
+  const scrollByWeek = (dir: -1 | 1) => {
+    const el = laneRef.current;
+    const first = el?.children[0] as HTMLElement | undefined;
+    if (!el || !first) return;
+    const gap = parseFloat(getComputedStyle(el).columnGap || "0") || 0;
+    el.scrollBy({ left: dir * (first.offsetWidth + gap) * 7, behavior: "smooth" });
+  };
   const selectedLabel = selected.date.toLocaleDateString("nl-NL", {
     weekday: "long",
     day: "numeric",
@@ -1300,9 +1326,24 @@ function HomeCalendarSection({
         showNaarOverzicht
         naarOverzichtHref="/kalender"
         overzichtLabel="Toon alle"
+        extra={
+          <span className="hidden gap-1.5 lg:flex">
+            <button type="button" aria-label="Vorige week" disabled={edges.atStart} onClick={() => scrollByWeek(-1)} className={HOME_SWIMLANE_ARROW_CLASS}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                <path d="M10 3.5 5.5 8 10 12.5" />
+              </svg>
+            </button>
+            <button type="button" aria-label="Volgende week" disabled={edges.atEnd} onClick={() => scrollByWeek(1)} className={HOME_SWIMLANE_ARROW_CLASS}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                <path d="M6 3.5 10.5 8 6 12.5" />
+              </svg>
+            </button>
+          </span>
+        }
       />
       <div
         ref={laneRef}
+        onScroll={handleScroll}
         role="group"
         aria-label="Kies een dag"
         className="-m-1 flex snap-x snap-mandatory scroll-px-1 gap-1.5 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -1748,9 +1789,6 @@ function HomeLijstjesSection({
   }
 
   const otherLists = normalLists.filter((l) => !activeLists.some((a) => a.id === l.id)).slice(0, 3);
-  const arrowClass =
-    "flex size-8 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-card transition-[color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 disabled:text-[var(--gray-200)] disabled:shadow-[0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
-
   return (
     <div className="flex flex-col gap-4">
       <ListSectionHeader
@@ -1761,12 +1799,12 @@ function HomeLijstjesSection({
         overzichtLabel="Toon alle"
         extra={
           <span className="hidden gap-1.5 lg:flex">
-            <button type="button" aria-label="Vorige lijstjes" disabled={edges.atStart} onClick={() => scrollByCard(-1)} className={arrowClass}>
+            <button type="button" aria-label="Vorige lijstjes" disabled={edges.atStart} onClick={() => scrollByCard(-1)} className={HOME_SWIMLANE_ARROW_CLASS}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
                 <path d="M10 3.5 5.5 8 10 12.5" />
               </svg>
             </button>
-            <button type="button" aria-label="Volgende lijstjes" disabled={edges.atEnd} onClick={() => scrollByCard(1)} className={arrowClass}>
+            <button type="button" aria-label="Volgende lijstjes" disabled={edges.atEnd} onClick={() => scrollByCard(1)} className={HOME_SWIMLANE_ARROW_CLASS}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
                 <path d="M6 3.5 10.5 8 6 12.5" />
               </svg>
