@@ -168,17 +168,6 @@ export default function AuthPage() {
     return null;
   }
 
-  const handleStartLogin = () => {
-    setFlow("login");
-    setStep("login-credentials");
-    setEmail("");
-    setCode("");
-    setPassword("");
-    setConfirmPassword("");
-    setAvatarPreview(null);
-    setError(null);
-  };
-
   const handleStartRegister = () => {
     setFlow("register");
     setStep("email");
@@ -413,70 +402,42 @@ export default function AuthPage() {
     }
   };
 
-  /* ── Landing ── */
-  if (step === "landing") {
-    return (
-      <div className={cn(authShell, "relative items-center")}>
-        <div
-          className={cn(
-            authContentWrap,
-            "items-center justify-center gap-12 pb-40",
-          )}
-        >
-          <Image
-            src="/images/ui/logo.png"
-            alt="Shopping list"
-            width={174}
-            height={36}
-            className="h-9 w-auto"
-            priority
-          />
-          <Image
-            src="/images/ui/basket.png"
-            alt=""
-            width={256}
-            height={237}
-            className="h-auto w-[256px]"
-            priority
-          />
-        </div>
-
-        <div
-          className={cn(
-            "absolute inset-x-0 bottom-0 mx-auto flex w-full max-w-[768px] flex-col items-center gap-3 px-4",
-            authFooterPad,
-          )}
-        >
-          <Button
-            variant="secondary"
-            onClick={handleStartLogin}
-            className="w-full max-w-[320px]"
-          >
-            Inloggen
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleStartRegister}
-            className="w-full max-w-[320px]"
-          >
-            Account aanmaken
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  /* ── Inloggen: e-mail + paswoord (Figma 377:1307) ── */
-  if (step === "login-credentials") {
+  /* ── Landing + inloggen in één scherm (canvas «Login 5b»): mand en logo in het lichte
+     midden van een lavendel verloop, e-mail + paswoord en «Account aanmaken» eronder. ── */
+  if (step === "landing" || step === "login-credentials") {
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     const canSubmit = emailOk && password.length > 0 && !isPasswordSigningIn;
-
+    const fieldShell =
+      "flex h-[58px] w-full items-center gap-2 rounded-lg bg-[var(--white)] pl-4 pr-2 shadow-card transition-shadow focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-500)]";
+    const fieldLabel = "text-xs font-medium leading-4 text-[var(--blue-400)]";
+    const fieldInput =
+      "w-full min-w-0 bg-transparent text-base leading-[22px] text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] focus:outline-none";
     return (
       <div
-        className={cn(authShell, "pt-[env(safe-area-inset-top,0px)]")}
+        className={cn(
+          authShell,
+          "bg-[radial-gradient(circle_at_50%_38%,var(--white)_0px,var(--blue-25)_120px,var(--blue-50)_300px,var(--blue-100)_560px)] pt-[env(safe-area-inset-top,0px)]",
+        )}
       >
-        <div className={cn(authContentWrap, "gap-6 pt-12")}>
-          <StepHeader title="Inloggen" onBack={handleGoBack} />
+        <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col px-5">
+          <div className="flex flex-1 flex-col items-center justify-center gap-[22px] py-10">
+            <Image
+              src="/images/ui/logo.png"
+              alt="Shopping list"
+              width={136}
+              height={28}
+              className="h-7 w-auto [[data-theme=dark]_&]:invert"
+              priority
+            />
+            <Image
+              src="/images/ui/basket.png"
+              alt=""
+              width={200}
+              height={200}
+              className="h-auto w-[200px]"
+              priority
+            />
+          </div>
 
           <form
             id="auth-login-form"
@@ -484,30 +445,28 @@ export default function AuthPage() {
               e.preventDefault();
               void handleLoginWithPassword();
             }}
-            className="flex flex-col gap-6"
+            className={cn("flex flex-col gap-3", authFooterPad)}
           >
-            <InputField
-              label="Je e-mailadres"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              autoFocus
-              placeholder="E-mailadres"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null);
-              }}
-            />
-
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="auth-login-password"
-                className="text-sm font-normal leading-5 text-[var(--text-primary)]"
-              >
-                Je paswoord
-              </label>
-              <div className="relative flex w-full items-center">
+            <label className={fieldShell}>
+              <span className="flex min-w-0 flex-1 flex-col gap-px">
+                <span className={fieldLabel}>E-mailadres</span>
+                <input
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="naam@voorbeeld.be"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError(null);
+                  }}
+                  className={fieldInput}
+                />
+              </span>
+            </label>
+            <label className={fieldShell}>
+              <span className="flex min-w-0 flex-1 flex-col gap-px">
+                <span className={fieldLabel}>Paswoord</span>
                 <input
                   id="auth-login-password"
                   type={showPassword ? "text" : "password"}
@@ -518,43 +477,40 @@ export default function AuthPage() {
                     setPassword(e.target.value);
                     setError(null);
                   }}
-                  className={cn(
-                    "h-12 w-full rounded-md border border-[var(--border-default)] bg-[var(--white)] py-2 pl-4 pr-12 text-base leading-6 text-[var(--text-primary)]",
-                    "placeholder:text-[var(--text-placeholder)] focus-visible:border-[var(--border-focus)] focus-visible:outline-none",
-                  )}
+                  className={fieldInput}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                  aria-label={showPassword ? "Verberg paswoord" : "Toon paswoord"}
-                >
-                  <PasswordVisibilityIcon passwordVisible={showPassword} />
-                </button>
-              </div>
-            </div>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="shrink-0 rounded p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                aria-label={showPassword ? "Verberg paswoord" : "Toon paswoord"}
+              >
+                <PasswordVisibilityIcon passwordVisible={showPassword} />
+              </button>
+            </label>
 
-            {error && (
-              <p className="text-sm text-[var(--error-600)]">{error}</p>
-            )}
+            {error && <p className="text-sm text-[var(--error-600)]">{error}</p>}
+
+            <Button
+              variant="primary"
+              type="submit"
+              disabled={!canSubmit}
+              className="mt-1 w-full"
+            >
+              {isPasswordSigningIn ? "Inloggen…" : "Inloggen"}
+            </Button>
+            <p className="text-center text-sm leading-5 text-[var(--text-secondary)]">
+              Nog geen account?{" "}
+              <button
+                type="button"
+                onClick={handleStartRegister}
+                className="rounded font-semibold text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                Account aanmaken
+              </button>
+            </p>
           </form>
-        </div>
-
-        <div
-          className={cn(
-            "mx-auto flex w-full max-w-[768px] justify-center px-4",
-            authFooterPad,
-          )}
-        >
-          <Button
-            variant="primary"
-            type="submit"
-            form="auth-login-form"
-            disabled={!canSubmit}
-            className="w-full max-w-[320px]"
-          >
-            {isPasswordSigningIn ? "Inloggen…" : "Inloggen"}
-          </Button>
         </div>
       </div>
     );
