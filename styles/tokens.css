@@ -96,6 +96,9 @@
   /* Semantic status */
   --status-success: var(--secondary-600);
   --status-success-bg: var(--secondary-100);
+  /* Zacht «afgerond»-vinkje op lijstjestegels. */
+  --success-soft-bg: #e7f4ea;
+  --success-soft-fg: #3d8f55;
   --status-warning: var(--secondary-500);
   --status-warning-bg: var(--secondary-100);
   --status-error: var(--error-600);
@@ -200,6 +203,8 @@
  * - blue-ramp    → 25–200 donkere indigo-tinten, 500 lavendel accent, 800/900 licht.
  */
 :root[data-theme="dark"] {
+  --success-soft-bg: #1f3326;
+  --success-soft-fg: #7fcb94;
   color-scheme: dark;
   --gray-25: #1f2235;
   --gray-50: #151827;

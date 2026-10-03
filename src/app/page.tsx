@@ -73,6 +73,7 @@ import { useItemPhotoUrl } from "@/lib/item-photos";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
 import { primeKeyboard } from "@/lib/keyboard_focus";
+import { isListDatePassed, isoToListDate, listDateToIso, todayIsoDate } from "@/lib/list-date";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
 import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
 import { loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
@@ -219,6 +220,10 @@ type HomeList = {
   customIconUrl?: string | null;
   /** Landal-trip (Gezin/Vrienden) voor kaartondertitel. */
   landalTripLabel?: string | null;
+  /** Winkellogo van de master waaruit dit lijstje gemaakt is (voor «+ Lijstje»). */
+  masterIcon?: string | null;
+  /** Master-lijstje waaruit dit lijstje gemaakt is (voor «+ Lijstje»). */
+  sourceMasterListId?: string | null;
 };
 
 type SavedListIconImage = {
@@ -1144,22 +1149,9 @@ function HomeTeKopenSection({
           <button
             type="button"
             onClick={onAddProduct}
-            className="inline-flex h-9 items-center gap-1.5 rounded-pill border-[1.5px] border-dashed border-[var(--blue-200)] bg-transparent pl-2.5 pr-3.5 text-sm font-medium leading-5 text-action-primary transition-[background-color,border-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 [@media(hover:hover)]:hover:border-[var(--blue-300)] [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className={HOME_SOFT_PILL_CLASS}
           >
-            <span
-              aria-hidden
-              className="inline-block size-4 shrink-0 bg-current"
-              style={{
-                WebkitMaskImage: "url(/icons/plus.svg)",
-                maskImage: "url(/icons/plus.svg)",
-                WebkitMaskSize: "contain",
-                maskSize: "contain",
-                WebkitMaskRepeat: "no-repeat",
-                maskRepeat: "no-repeat",
-                WebkitMaskPosition: "center",
-                maskPosition: "center",
-              }}
-            />
+            <HomeSoftPillPlusIcon />
             Toevoegen
           </button>
         </div>
@@ -1298,6 +1290,8 @@ type HomeListItemRow = {
   checked?: boolean;
   order?: number;
   stockPhotoUrl?: string;
+  recipeGroupId?: string;
+  fromStock?: boolean;
 };
 
 /** Foto voor frituur- en caféjeslijstjes: één beeld dat het type lijstje toont. */
@@ -1307,67 +1301,142 @@ function homeVenueListImage(list: HomeList): string | null {
   return null;
 }
 
-/** Alle producten van een lijstje: eerst nog te halen, dan afgevinkt (elk nieuwste eerst). */
-function homeListAllItems(list: HomeList): HomeListItemRow[] {
+/**
+ * Producten om te kopen (geen gerechten: geen recept-items en geen diepvriesgerechten),
+ * eerst nog te halen, dan afgevinkt; elk nieuwste eerst.
+ */
+function homeListProductItems(list: HomeList): HomeListItemRow[] {
   return ((list.items ?? []) as HomeListItemRow[])
-    .filter((it) => typeof it.name === "string" && it.name.trim().length > 0)
+    .filter(
+      (it) =>
+        typeof it.name === "string" &&
+        it.name.trim().length > 0 &&
+        !it.recipeGroupId &&
+        it.fromStock !== true,
+    )
     .sort((a, b) => {
       const doneDiff = Number(a.checked === true) - Number(b.checked === true);
       return doneDiff !== 0 ? doneDiff : (b.order ?? 0) - (a.order ?? 0);
     });
 }
 
-function homeListOpenItems(list: HomeList): HomeListItemRow[] {
-  return ((list.items ?? []) as HomeListItemRow[])
-    .filter((it) => it.checked !== true && typeof it.name === "string" && it.name.trim().length > 0)
-    .sort((a, b) => (b.order ?? 0) - (a.order ?? 0));
-}
-
 const HOME_LIST_PHOTO_SLOTS = 5;
 
+/** Zachte pil (8.4): zelfde knopstijl voor «+ Item», «+ Lijstje» en Te kopen «Toevoegen». */
+const HOME_SOFT_PILL_CLASS =
+  "relative z-[1] inline-flex h-7 shrink-0 items-center gap-1 rounded-pill bg-[var(--blue-25)] pl-2 pr-2.5 text-[13px] font-medium leading-[18px] text-[var(--blue-500)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+
+function HomeSoftPillPlusIcon() {
+  return (
+    <span
+      aria-hidden
+      className="inline-block size-[13px] shrink-0 bg-current"
+      style={{
+        WebkitMaskImage: "url(/icons/plus.svg)",
+        maskImage: "url(/icons/plus.svg)",
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+      }}
+    />
+  );
+}
+
 /**
- * Lijstje-tegel in de swimlane (voorstel 6): wit, haarlijn, volledig klikbaar.
- * Boodschappenlijstje: 5 vakjes (open producten, laatste vakje “+N” als er meer zijn).
+ * Lijstje-tegel in de swimlane (8.4): wit, haarlijn, volledig klikbaar.
+ * Rechtsboven een zachte pil: «+ Item» (winkeldag nog niet voorbij) of «+ Lijstje» (afgerond,
+ * met klein groen vinkje naast de naam). 5 fotovakjes met de producten (geen gerechten).
  * Frituur/café: één groot beeld i.p.v. een foto per product.
  */
-function HomeListSwimCard({ list }: { list: HomeList }) {
+function HomeListSwimCard({
+  list,
+  onAddItem,
+  onNewList,
+}: {
+  list: HomeList;
+  onAddItem: (list: HomeList) => void;
+  onNewList: (list: HomeList) => void;
+}) {
   const getPhotoUrl = useItemPhotoUrl(160);
-  const openItems = homeListOpenItems(list);
+  const completed = isListDatePassed(list.date);
   const venueImage = homeVenueListImage(list);
-  const openLabel =
-    openItems.length === 0
-      ? "Alles afgevinkt"
-      : openItems.length === 1
-        ? "1 product te halen"
-        : `${openItems.length} producten te halen`;
+  const products = homeListProductItems(list);
   const meta = list.sharedWithFirstName ? `met ${list.sharedWithFirstName}` : "";
+  const storeLogo = list.storeLogos[0] ?? null;
 
-  const cardClass =
-    "flex h-full w-full rounded-lg bg-[var(--white)] p-4 no-underline shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+  const action = completed ? (
+    <button type="button" onClick={() => onNewList(list)} className={HOME_SOFT_PILL_CLASS} aria-label={`Nieuw lijstje maken zoals ${list.name}`}>
+      <HomeSoftPillPlusIcon />
+      Lijstje
+    </button>
+  ) : (
+    <button type="button" onClick={() => onAddItem(list)} className={HOME_SOFT_PILL_CLASS} aria-label={`Item toevoegen aan ${list.name}`}>
+      <HomeSoftPillPlusIcon />
+      Item
+    </button>
+  );
 
-  if (venueImage) {
-    return (
-      <Link href={`/lijstje/${list.id}`} className={cn(cardClass, "gap-3.5")}>
-        <span className="flex w-28 shrink-0 items-center justify-center rounded-md bg-[var(--secondary-100)]">
-          {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp */}
-          <img src={venueImage} alt="" width={92} height={104} className="h-[104px] w-[92px] object-contain" />
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-1">
+  const header = (
+    <span className="flex items-center gap-3">
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
             {list.name}
           </span>
-          <span className="truncate text-[13px] leading-[18px] text-[var(--gray-400)]">
-            {(list.items ?? []).length === 1 ? "1 product" : `${(list.items ?? []).length} producten`}
-            {meta ? ` · ${meta}` : ""}
-          </span>
+          {completed ? (
+            <span
+              role="img"
+              aria-label="Afgerond"
+              className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[var(--success-soft-bg)] text-[var(--success-soft-fg)]"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-2.5">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </span>
+          ) : null}
         </span>
-      </Link>
+        {storeLogo || meta ? (
+          <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-[18px] text-[var(--gray-400)]">
+            {storeLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- winkellogo
+              <img src={storeLogo} alt="" width={16} height={16} className="size-4 shrink-0 object-contain" />
+            ) : null}
+            {meta ? <span className="truncate">{meta}</span> : null}
+          </span>
+        ) : null}
+      </span>
+      {action}
+    </span>
+  );
+
+  /* Hele tegel klikbaar via een link die de kaart bedekt; de knop ligt erboven (geen knop in een link). */
+  const cardShell = (children: React.ReactNode) => (
+    <div className="relative flex h-full w-full flex-col gap-3.5 rounded-lg bg-[var(--white)] p-4 shadow-card transition-transform duration-fast ease-out-strong has-[a:active]:motion-safe:scale-[0.98]">
+      <Link
+        href={`/lijstje/${list.id}`}
+        aria-label={`${list.name} openen`}
+        className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      />
+      {children}
+    </div>
+  );
+
+  if (venueImage) {
+    return cardShell(
+      <>
+        {header}
+        <span aria-hidden className="pointer-events-none flex h-[104px] items-center justify-center rounded-md bg-[var(--secondary-100)]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp */}
+          <img src={venueImage} alt="" width={92} height={96} className="h-24 w-[92px] object-contain" />
+        </span>
+      </>,
     );
   }
 
-  /* Alle producten (ook afgevinkte), zodat de tegel toont wat er op het lijstje staat en nooit leeg is.
-     Afgevinkte producten staan achteraan en zijn licht gedempt. */
-  const withPhotos = homeListAllItems(list).map((it) => ({
+  const withPhotos = products.map((it) => ({
     id: it.id,
     name: it.name ?? "",
     done: it.checked === true,
@@ -1377,91 +1446,74 @@ function HomeListSwimCard({ list }: { list: HomeList }) {
   const shown = withPhotos.slice(0, overflow ? HOME_LIST_PHOTO_SLOTS - 1 : HOME_LIST_PHOTO_SLOTS);
   const rest = withPhotos.length - shown.length;
 
-  return (
-    <Link href={`/lijstje/${list.id}`} className={cn(cardClass, "flex-col gap-3.5")}>
-      <span className="flex items-start gap-3">
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
-            {list.name}
-          </span>
-          {meta ? (
-            <span className="truncate text-[13px] leading-[18px] text-[var(--gray-400)]">{meta}</span>
-          ) : null}
-        </span>
-        {list.storeLogos[0] ? (
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--white)] shadow-[0_0_0_1px_var(--card-hairline)]">
-            {/* eslint-disable-next-line @next/next/no-img-element -- winkellogo */}
-            <img src={list.storeLogos[0]} alt="" width={26} height={26} className="size-[26px] object-contain" />
-          </span>
-        ) : null}
-      </span>
+  return cardShell(
+    <>
+      {header}
       {shown.length > 0 ? (
-        <span className="grid grid-cols-5 gap-2" aria-hidden>
+        <span className="pointer-events-none grid grid-cols-5 gap-2" aria-hidden>
           {shown.map((p) => (
             <span
               key={p.id}
-              className="flex aspect-square min-w-0 items-center justify-center overflow-hidden rounded-md bg-[var(--gray-25)]"
+              className="flex aspect-square min-w-0 items-center justify-center overflow-hidden rounded-md bg-[var(--blue-25)]"
             >
               {p.url ? (
                 // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
                 <img
                   src={p.url}
                   alt=""
-                  className={cn("size-[82%] object-contain", p.done && "opacity-50")}
                   loading="lazy"
                   decoding="async"
+                  /* multiply laat de witte fotoachtergrond wegvallen op het lichte vakje (alleen licht thema). */
+                  className={cn("size-[80%] object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal", p.done && "opacity-50")}
                 />
               ) : (
-                <span className={cn("text-base font-semibold text-[var(--blue-500)]", p.done && "opacity-50")}>
+                <span className={cn("text-base font-semibold text-[var(--blue-400)]", p.done && "opacity-50")}>
                   {p.name.trim().charAt(0).toUpperCase()}
                 </span>
               )}
             </span>
           ))}
           {rest > 0 ? (
-            <span className="flex aspect-square min-w-0 items-center justify-center rounded-md bg-[var(--blue-50)] text-[15px] font-semibold text-[var(--blue-500)] tabular-nums">
+            <span className="flex aspect-square min-w-0 items-center justify-center rounded-md bg-[var(--blue-25)] text-sm font-medium text-[var(--blue-300)] tabular-nums">
               +{rest}
             </span>
           ) : null}
         </span>
       ) : null}
-      <span className="mt-auto text-[13px] leading-[18px] text-[var(--gray-400)]">{openLabel}</span>
-    </Link>
+    </>,
   );
 }
 
 /**
- * Startpagina-lijstjes (voorstel 6): snel toevoegen aan het lijstje in beeld, daaronder een
- * swimlane met de actieve lijstjes (max. 2), een kaart «Alle N lijstjes» en paginering.
+ * Startpagina-lijstjes (8.4): swimlane met de lijstjes waarvan de winkeldag nog komt
+ * (max. 2, eerstvolgende eerst), anders het nieuwste (afgerond); een kaart «Alle N lijstjes»
+ * en paginering. «+ Item» opent de zoek-slide-in voor dat lijstje.
  */
 function HomeLijstjesSection({
   normalLists,
   onOpenCreateModal,
   onQuickAdd,
+  onNewListLike,
 }: {
   normalLists: HomeList[];
   onOpenCreateModal: () => void;
   /** Voegt een product toe aan het gegeven lijstje. */
   onQuickAdd: (list: HomeList, name: string) => void;
+  /** Nieuw lijstje voor dezelfde winkel (vanaf de masterlijst). */
+  onNewListLike: (list: HomeList) => void;
 }) {
   const laneRef = React.useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
-  const [searchOpen, setSearchOpen] = React.useState(false);
-  const [confirmation, setConfirmation] = React.useState<string | null>(null);
+  const [searchTarget, setSearchTarget] = React.useState<HomeList | null>(null);
 
-  /* Actief = de lijstjes met nog open producten, bovenaan eerst; max. 2. Anders het nieuwste. */
   const activeLists = React.useMemo(() => {
-    const withOpen = normalLists.filter((l) => homeListOpenItems(l).length > 0).slice(0, 2);
-    return withOpen.length > 0 ? withOpen : normalLists.slice(0, 1);
+    const upcoming = normalLists
+      .filter((l) => !isListDatePassed(l.date))
+      .sort((a, b) => (listDateToIso(a.date) ?? "").localeCompare(listDateToIso(b.date) ?? "") || a.order - b.order)
+      .slice(0, 2);
+    return upcoming.length > 0 ? upcoming : normalLists.slice(0, 1);
   }, [normalLists]);
   const pageCount = activeLists.length + 1;
-  const targetList = activeLists[Math.min(activeIndex, activeLists.length - 1)] ?? activeLists[0];
-
-  React.useEffect(() => {
-    if (!confirmation) return;
-    const t = window.setTimeout(() => setConfirmation(null), 2600);
-    return () => window.clearTimeout(t);
-  }, [confirmation]);
 
   const handleScroll = React.useCallback(() => {
     const el = laneRef.current;
@@ -1524,41 +1576,6 @@ function HomeLijstjesSection({
         </Link>
       </div>
 
-      {/* Snel toevoegen aan het lijstje dat in beeld is */}
-      <button
-        type="button"
-        onClick={() => {
-          primeKeyboard();
-          setSearchOpen(true);
-        }}
-        className="flex h-[52px] w-full items-center gap-2.5 rounded-lg bg-[var(--white)] pl-4 pr-1.5 text-left shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-      >
-        <span
-          aria-live="polite"
-          className={cn(
-            "min-w-0 flex-1 truncate text-base leading-6",
-            confirmation ? "font-medium text-[var(--text-primary)]" : "text-[var(--text-tertiary)]",
-          )}
-        >
-          {confirmation ?? `Voeg toe aan ${targetList?.name ?? "je lijstje"}…`}
-        </span>
-        <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[var(--blue-500)] text-[var(--white)]">
-          <span
-            className="inline-block size-5 bg-current"
-            style={{
-              WebkitMaskImage: "url(/icons/plus.svg)",
-              maskImage: "url(/icons/plus.svg)",
-              WebkitMaskSize: "contain",
-              maskSize: "contain",
-              WebkitMaskRepeat: "no-repeat",
-              maskRepeat: "no-repeat",
-              WebkitMaskPosition: "center",
-              maskPosition: "center",
-            }}
-          />
-        </span>
-      </button>
-
       <div
         ref={laneRef}
         onScroll={handleScroll}
@@ -1566,7 +1583,14 @@ function HomeLijstjesSection({
       >
         {activeLists.map((list) => (
           <div key={list.id} className="w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start">
-            <HomeListSwimCard list={list} />
+            <HomeListSwimCard
+              list={list}
+              onAddItem={(l) => {
+                primeKeyboard();
+                setSearchTarget(l);
+              }}
+              onNewList={onNewListLike}
+            />
           </div>
         ))}
         <Link
@@ -1613,16 +1637,14 @@ function HomeLijstjesSection({
       ) : null}
 
       <ItemNameSearchSlideIn
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
+        open={searchTarget != null}
+        onClose={() => setSearchTarget(null)}
         initialValue=""
-        title={targetList ? `Toevoegen aan ${targetList.name}` : "Item toevoegen"}
+        title={searchTarget ? `Toevoegen aan ${searchTarget.name}` : "Item toevoegen"}
         photoCatalog="items"
         suggestionScope="items"
         onSelect={(name) => {
-          if (!targetList) return;
-          onQuickAdd(targetList, name);
-          setConfirmation(`${name.charAt(0).toUpperCase()}${name.slice(1)} toegevoegd aan ${targetList.name}`);
+          if (searchTarget) onQuickAdd(searchTarget, name);
         }}
       />
     </div>
@@ -2113,6 +2135,11 @@ export default function Home() {
         icon: l.icon,
         order: l.order,
         items: l.items ?? [],
+        masterIcon: masterIconSrc || null,
+        sourceMasterListId:
+          typeof (l as Record<string, unknown>).sourceMasterListId === "string"
+            ? ((l as Record<string, unknown>).sourceMasterListId as string)
+            : null,
         isOwner: true,
         membershipIds: (l.memberships ?? []).map((m) => m.id),
         displayVariant: isMaster
@@ -2170,6 +2197,11 @@ export default function Home() {
           icon: l.icon,
           order: l.order,
           items: l.items ?? [],
+          masterIcon: masterIconSrc2 || null,
+          sourceMasterListId:
+            typeof (l as Record<string, unknown>).sourceMasterListId === "string"
+              ? ((l as Record<string, unknown>).sourceMasterListId as string)
+              : null,
           isOwner: false,
           displayVariant: isMaster
             ? ("master" as const)
@@ -2632,6 +2664,8 @@ export default function Home() {
   );
 
   const [newListName, setNewListName] = React.useState("");
+  /** Geplande winkeldag (ISO); bepaalt wanneer het lijstje als afgerond telt. */
+  const [newListDate, setNewListDate] = React.useState(() => todayIsoDate());
   const [newListCustomIcon, setNewListCustomIcon] = React.useState<string | null>(null);
   const [newListIconPickerOpen, setNewListIconPickerOpen] = React.useState(false);
   const [pendingFrituurChoice, setPendingFrituurChoice] =
@@ -2645,6 +2679,8 @@ export default function Home() {
     React.useState<MasterStoreSlug | null>(null);
   const newListPhotoInputRef = React.useRef<HTMLInputElement>(null);
   const [quickMasterListName, setQuickMasterListName] = React.useState("");
+  /** Geplande winkeldag (ISO) voor «+ Lijstje» vanaf een master. */
+  const [quickMasterDate, setQuickMasterDate] = React.useState(() => todayIsoDate());
   const [quickMasterId, setQuickMasterId] = React.useState<string | null>(null);
   const [isQuickMasterModalOpen, setIsQuickMasterModalOpen] = React.useState(false);
   /** Nieuwe key bij elke modal-open: remount van het formulier zodat radio’s terug naar default staan. */
@@ -2721,6 +2757,7 @@ export default function Home() {
     setSupermarktNewListSlideOpen(true);
     setSelectedSupermarktStoreSlug(null);
     setNewListName(defaultNewListName(new Date(), lists.map((l) => l.name)));
+    setNewListDate(todayIsoDate());
     setNewListFormKey((k) => k + 1);
     setNewListCustomIcon(null);
     setNewListIconPickerOpen(false);
@@ -2757,8 +2794,28 @@ export default function Home() {
   const handleStartFromMaster = React.useCallback((masterId: string) => {
     setQuickMasterId(masterId);
     setQuickMasterListName(defaultNewListName(new Date(), lists.map((l) => l.name)));
+    setQuickMasterDate(todayIsoDate());
     setIsQuickMasterModalOpen(true);
   }, [lists]);
+
+  /** «+ Lijstje» op een afgeronde tegel: nieuw lijstje voor dezelfde winkel vanaf de masterlijst. */
+  const handleNewListLike = React.useCallback(
+    (list: HomeList) => {
+      const master =
+        (list.sourceMasterListId
+          ? masterLists.find((m) => m.id === list.sourceMasterListId)
+          : undefined) ??
+        (list.masterIcon
+          ? masterLists.find((m) => m.icon === list.masterIcon || m.masterIcon === list.masterIcon)
+          : undefined);
+      if (master) {
+        handleStartFromMaster(master.id);
+        return;
+      }
+      router.push("/nieuw-lijstje/selecteer-master-lijstje");
+    },
+    [handleStartFromMaster, masterLists, router],
+  );
 
   const handleQuickMasterSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -2769,11 +2826,11 @@ export default function Home() {
       router.push(
         `/nieuw-lijstje/selecteer-master-lijstje/${encodeURIComponent(
           quickMasterId,
-        )}/items?naam=${encodeURIComponent(name)}`,
+        )}/items?naam=${encodeURIComponent(name)}&datum=${encodeURIComponent(quickMasterDate)}`,
       );
       handleCloseQuickMasterModal();
     },
-    [handleCloseQuickMasterModal, quickMasterId, quickMasterListName, router],
+    [handleCloseQuickMasterModal, quickMasterDate, quickMasterId, quickMasterListName, router],
   );
 
   const loyaltyCardsForLinking = React.useMemo(() => {
@@ -2806,8 +2863,11 @@ export default function Home() {
       loyaltyCardIdToLink,
       landalTripLabel,
       copyItemsFrom,
+      listDateIso,
     }: {
       listName: string;
+      /** Geplande winkeldag (ISO); standaard vandaag. */
+      listDateIso?: string | null;
       duplicateFrom?: FrituurPreviousList | null;
       copyItemsFrom?: CopyableListTemplate | null;
       startFrituurWizard: boolean;
@@ -2834,7 +2894,7 @@ export default function Home() {
       const txs: Parameters<typeof db.transact>[0] = [
         db.tx.lists[newId].update({
           name: listName,
-          date: now.toLocaleDateString("nl-NL"),
+          date: isoToListDate(listDateIso ?? todayIsoDate(now)),
           icon,
           order:
             lists.length > 0 ? Math.min(...lists.map((l) => l.order)) - 1 : 0,
@@ -2984,9 +3044,11 @@ export default function Home() {
       customIconForCreate: newListCustomIcon,
       pickerMasterStore: store ?? null,
       loyaltyCardIdToLink,
+      listDateIso: newListDate,
     });
   }, [
     createBlankList,
+    newListDate,
     loyaltyCardsForLinking,
     newListCustomIcon,
     newListName,
@@ -3117,6 +3179,7 @@ export default function Home() {
             normalLists={normalLists}
             onOpenCreateModal={handleOpenCreateModal}
             onQuickAdd={handleQuickAddToList}
+            onNewListLike={handleNewListLike}
           />
         );
       case "te-kopen":
@@ -3322,6 +3385,22 @@ export default function Home() {
               className="sr-only"
               tabIndex={-1}
               onChange={handleNewListPhotoChange}
+            />
+          </div>
+
+          <div className="flex w-full flex-col gap-[var(--space-2)]">
+            <label
+              htmlFor="supermarkt-new-list-date"
+              className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]"
+            >
+              Winkeldag
+            </label>
+            <input
+              id="supermarkt-new-list-date"
+              type="date"
+              value={newListDate}
+              onChange={(e) => setNewListDate(e.target.value || todayIsoDate())}
+              className="flex h-12 w-full appearance-none rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--white)] px-4 text-base leading-24 tracking-normal text-[var(--text-primary)] transition-colors focus-visible:border-[var(--border-focus)] focus-visible:outline-none"
             />
           </div>
 
@@ -3690,6 +3769,21 @@ export default function Home() {
             onChange={(e) => setQuickMasterListName(e.target.value)}
             onFocus={selectListNameInputOnFocus}
           />
+          <div className="flex w-full flex-col gap-[var(--space-2)]">
+            <label
+              htmlFor="quick-master-list-date"
+              className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]"
+            >
+              Winkeldag
+            </label>
+            <input
+              id="quick-master-list-date"
+              type="date"
+              value={quickMasterDate}
+              onChange={(e) => setQuickMasterDate(e.target.value || todayIsoDate())}
+              className="flex h-12 w-full appearance-none rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--white)] px-4 text-base leading-24 tracking-normal text-[var(--text-primary)] transition-colors focus-visible:border-[var(--border-focus)] focus-visible:outline-none"
+            />
+          </div>
         </form>
       </SlideInModal>
 

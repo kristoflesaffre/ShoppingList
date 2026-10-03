@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { isoToListDate } from "@/lib/list-date";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
@@ -355,6 +356,8 @@ export default function SelecteerMasterItemsPage() {
   const searchParams = useSearchParams();
   const listName =
     (searchParams.get("naam") ?? "").trim() || defaultNewListName();
+  /** Geplande winkeldag (ISO) uit de startpagina; standaard vandaag. */
+  const plannedDateIso = (searchParams.get("datum") ?? "").trim();
   const masterId = decodeURIComponent(String(params.masterId ?? ""));
 
   const { isLoading: authLoading, user } = db.useAuth();
@@ -947,7 +950,9 @@ export default function SelecteerMasterItemsPage() {
     const txns: Parameters<typeof db.transact>[0] = [
       db.tx.lists[newId].update({
         name: listName,
-        date: now.toLocaleDateString("nl-NL"),
+        date: /^\d{4}-\d{2}-\d{2}$/.test(plannedDateIso)
+          ? isoToListDate(plannedDateIso)
+          : now.toLocaleDateString("nl-NL"),
         icon,
         masterIcon: masterList.icon,
         /** Zelfde categorievolgorde als deze master bij «per categorie». */
@@ -1035,6 +1040,7 @@ export default function SelecteerMasterItemsPage() {
     router.push(`/lijstje/${newId}`);
   }, [
     data?.lists,
+    plannedDateIso,
     data?.shoppingItems,
     formatQuantity,
     listName,
