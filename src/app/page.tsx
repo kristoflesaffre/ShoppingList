@@ -1334,7 +1334,7 @@ function homeListProductItems(list: HomeList): HomeListItemRow[] {
     });
 }
 
-const HOME_LIST_PHOTO_SLOTS = 5;
+const HOME_LIST_PHOTO_SLOTS = 8;
 
 /** Zachte pil (8.4): zelfde knopstijl voor «+ Item», «+ Lijstje» en Te kopen «Toevoegen». */
 const HOME_SOFT_PILL_CLASS =
@@ -1362,7 +1362,8 @@ function HomeSoftPillPlusIcon() {
 /**
  * Lijstje-tegel in de swimlane (8.4): wit, haarlijn, volledig klikbaar.
  * Rechtsboven een zachte pil: «+ Item» (winkeldag nog niet voorbij) of «+ Lijstje» (afgerond,
- * met klein groen vinkje naast de naam). 5 fotovakjes met de producten (geen gerechten).
+ * met klein groen vinkje naast de naam). Lijsticoon vooraan (10.3) en een overlappende
+ * stapel ronde productfoto's (geen gerechten).
  * Frituur/café: één groot beeld i.p.v. een foto per product.
  */
 function HomeListSwimCard({
@@ -1399,11 +1400,28 @@ function HomeListSwimCard({
     </button>
   );
 
+  /* 10.3: lijsticoon als herkenningsteken in een zacht verlopend vierkant; eigen foto vult het vlak. */
+  const customIcon = list.customIconUrl ?? null;
+  const iconSrc = customIcon ?? venueImage ?? homeListCardIconSrc(list);
+
   const header = (
     <span className="flex items-center gap-3">
+      <span
+        aria-hidden
+        className="pointer-events-none flex size-[60px] shrink-0 items-center justify-center overflow-hidden rounded-[16px] bg-gradient-to-br from-[var(--blue-25)] to-[var(--blue-50)]"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp of eigen foto */}
+        <img
+          src={iconSrc}
+          alt=""
+          width={customIcon ? 60 : 42}
+          height={customIcon ? 60 : 42}
+          className={customIcon ? "size-full object-cover" : "size-[42px] object-contain"}
+        />
+      </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
+          <span className="truncate text-[17px] font-semibold leading-[22px] tracking-tight text-[var(--text-primary)]">
             {list.name}
           </span>
           {completed ? (
@@ -1444,17 +1462,8 @@ function HomeListSwimCard({
     </div>
   );
 
-  if (venueImage) {
-    return cardShell(
-      <>
-        {header}
-        <span aria-hidden className="pointer-events-none flex h-[104px] items-center justify-center rounded-md bg-[var(--secondary-100)]">
-          {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp */}
-          <img src={venueImage} alt="" width={92} height={96} className="h-24 w-[92px] object-contain" />
-        </span>
-      </>,
-    );
-  }
+  /* Frituur/café: het icoon zegt genoeg, geen productfoto's. */
+  if (venueImage) return cardShell(header);
 
   const withPhotos = products.map((it) => ({
     id: it.id,
@@ -1470,11 +1479,15 @@ function HomeListSwimCard({
     <>
       {header}
       {shown.length > 0 ? (
-        <span className="pointer-events-none grid grid-cols-5 gap-2" aria-hidden>
-          {shown.map((p) => (
+        /* Overlappende fotostapel: kleine ronde productfoto's, laatste rondje «+N». */
+        <span className="pointer-events-none flex pl-[3px]" aria-hidden>
+          {shown.map((p, index) => (
             <span
               key={p.id}
-              className="flex aspect-square min-w-0 items-center justify-center overflow-hidden rounded-md bg-[var(--blue-25)]"
+              className={cn(
+                "flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--white)] shadow-[0_0_0_2px_var(--white),0_0_0_3px_var(--border-subtle)]",
+                index > 0 && "-ml-2",
+              )}
             >
               {p.url ? (
                 // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
@@ -1483,18 +1496,17 @@ function HomeListSwimCard({
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  /* multiply laat de witte fotoachtergrond wegvallen op het lichte vakje (alleen licht thema). */
-                  className={cn("size-[80%] object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal", p.done && "opacity-50")}
+                  className={cn("size-[74%] object-contain", p.done && "opacity-50")}
                 />
               ) : (
-                <span className={cn("text-base font-semibold text-[var(--blue-400)]", p.done && "opacity-50")}>
+                <span className={cn("text-xs font-semibold text-[var(--blue-400)]", p.done && "opacity-50")}>
                   {p.name.trim().charAt(0).toUpperCase()}
                 </span>
               )}
             </span>
           ))}
           {rest > 0 ? (
-            <span className="flex aspect-square min-w-0 items-center justify-center rounded-md bg-[var(--blue-25)] text-sm font-medium text-[var(--blue-300)] tabular-nums">
+            <span className="-ml-2 flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)] text-xs font-medium text-[var(--blue-400)] shadow-[0_0_0_2px_var(--white),0_0_0_3px_var(--border-subtle)] tabular-nums">
               +{rest}
             </span>
           ) : null}
