@@ -1480,14 +1480,15 @@ function HomeListSwimCard({
       {header}
       {shown.length > 0 ? (
         /* Overlappende fotostapel: kleine ronde productfoto's, laatste rondje «+N». */
-        <span className="pointer-events-none flex pl-[3px]" aria-hidden>
+        <span className="pointer-events-none isolate flex pl-[3px]" aria-hidden>
           {shown.map((p, index) => (
             <span
               key={p.id}
               className={cn(
-                "flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--white)] shadow-[0_0_0_2px_var(--white),0_0_0_3px_var(--border-subtle)]",
+                "relative flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--white)] shadow-[0_0_0_2px_var(--white),0_0_0_3px_var(--border-subtle)]",
                 index > 0 && "-ml-2",
               )}
+              style={{ zIndex: shown.length - index + 1 }}
             >
               {p.url ? (
                 // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
@@ -1506,7 +1507,9 @@ function HomeListSwimCard({
             </span>
           ))}
           {rest > 0 ? (
-            <span className="-ml-2 flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)] text-xs font-medium text-[var(--blue-400)] shadow-[0_0_0_2px_var(--white),0_0_0_3px_var(--border-subtle)] tabular-nums">
+            <span
+              className="relative z-[1] -ml-2 flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)] text-xs font-medium text-[var(--blue-400)] shadow-[0_0_0_2px_var(--white),0_0_0_3px_var(--border-subtle)] tabular-nums"
+            >
               +{rest}
             </span>
           ) : null}
