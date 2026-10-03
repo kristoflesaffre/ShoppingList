@@ -48,3 +48,6 @@ yarn-error.log*
 
 # Lokaal export-script (receptfoto's uit Instant)
 exported-recipe-photos/
+
+# Local Netlify folder
+.netlify

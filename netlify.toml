@@ -1,0 +1,8 @@
+# Netlify-hosting (alternatief voor Vercel). Netlify detecteert Next.js en
+# gebruikt automatisch de OpenNext-runtime (@netlify/plugin-nextjs).
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
