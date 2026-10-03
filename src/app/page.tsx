@@ -74,6 +74,7 @@ import { frituurItemIconSrc } from "@/lib/frituur-item-icons";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
 import { primeKeyboard } from "@/lib/keyboard_focus";
+import { ListDateStepper } from "@/components/list_date_stepper";
 import { isListDatePassed, isoToListDate, listDateToIso, todayIsoDate } from "@/lib/list-date";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
 import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
@@ -3400,6 +3401,8 @@ export default function Home() {
           key={newListFormKey}
           className="flex w-full flex-col items-center gap-[var(--space-8)]"
         >
+          <ListDateStepper value={newListDate} onChange={setNewListDate} />
+
           <div className="flex w-full flex-col gap-[var(--space-2)]">
             <label
               htmlFor="supermarkt-new-list-name"
@@ -3466,22 +3469,6 @@ export default function Home() {
               className="sr-only"
               tabIndex={-1}
               onChange={handleNewListPhotoChange}
-            />
-          </div>
-
-          <div className="flex w-full flex-col gap-[var(--space-2)]">
-            <label
-              htmlFor="supermarkt-new-list-date"
-              className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]"
-            >
-              Winkeldag
-            </label>
-            <input
-              id="supermarkt-new-list-date"
-              type="date"
-              value={newListDate}
-              onChange={(e) => setNewListDate(e.target.value || todayIsoDate())}
-              className="flex h-12 w-full appearance-none rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--white)] px-4 text-base leading-24 tracking-normal text-[var(--text-primary)] transition-colors focus-visible:border-[var(--border-focus)] focus-visible:outline-none"
             />
           </div>
 
@@ -3841,6 +3828,7 @@ export default function Home() {
           onSubmit={handleQuickMasterSubmit}
           className="flex w-full flex-col items-center gap-8"
         >
+          <ListDateStepper value={quickMasterDate} onChange={setQuickMasterDate} />
           <InputField
             label="Naam lijstje"
             placeholder="Naam lijstje"
@@ -3850,21 +3838,6 @@ export default function Home() {
             onChange={(e) => setQuickMasterListName(e.target.value)}
             onFocus={selectListNameInputOnFocus}
           />
-          <div className="flex w-full flex-col gap-[var(--space-2)]">
-            <label
-              htmlFor="quick-master-list-date"
-              className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]"
-            >
-              Winkeldag
-            </label>
-            <input
-              id="quick-master-list-date"
-              type="date"
-              value={quickMasterDate}
-              onChange={(e) => setQuickMasterDate(e.target.value || todayIsoDate())}
-              className="flex h-12 w-full appearance-none rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--white)] px-4 text-base leading-24 tracking-normal text-[var(--text-primary)] transition-colors focus-visible:border-[var(--border-focus)] focus-visible:outline-none"
-            />
-          </div>
         </form>
       </SlideInModal>
 
