@@ -60,6 +60,7 @@ export function ListSectionHeader({
   overzichtLabel = "Alles",
   onHide,
   action,
+  extra,
 }: {
   /** @deprecated Niet meer getoond sinds stijl 1; blijft voor bestaande aanroepen. */
   icon?: "list" | "heart" | "card" | "calendar" | "freeze" | "shopping-bag" | "films";
@@ -74,6 +75,8 @@ export function ListSectionHeader({
   onHide?: () => void;
   /** Eigen actie rechts (bv. «Toevoegen»-pil); gaat vóór «Alles». */
   action?: React.ReactNode;
+  /** Extra bediening links naast «Alles» (bv. carrouselpijlen op desktop); de link blijft staan. */
+  extra?: React.ReactNode;
 }) {
   return (
     <div className="flex min-h-8 items-center justify-between gap-3">
@@ -92,13 +95,16 @@ export function ListSectionHeader({
           Sectie verbergen
         </button>
       ) : showNaarOverzicht ? (
-        <Link
-          href={naarOverzichtHref}
-          className={sectionActionClass}
-          aria-label={`${label}: alles bekijken`}
-        >
-          {overzichtLabel}
-        </Link>
+        <div className="flex shrink-0 items-center gap-3">
+          {extra}
+          <Link
+            href={naarOverzichtHref}
+            className={sectionActionClass}
+            aria-label={`${label}: alles bekijken`}
+          >
+            {overzichtLabel}
+          </Link>
+        </div>
       ) : null}
     </div>
   );

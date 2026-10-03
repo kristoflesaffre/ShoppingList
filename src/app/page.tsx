@@ -1658,6 +1658,7 @@ function HomeLijstjesSection({
 }) {
   const laneRef = React.useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
+  const [edges, setEdges] = React.useState({ atStart: true, atEnd: false });
   const [searchTarget, setSearchTarget] = React.useState<HomeList | null>(null);
 
   const activeLists = React.useMemo(() => {
@@ -1691,9 +1692,28 @@ function HomeLijstjesSection({
         best = i;
       }
     });
-    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 4) best = cards.length - 1;
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+    if (atEnd) best = cards.length - 1;
     setActiveIndex(best);
+    setEdges((prev) =>
+      prev.atStart === el.scrollLeft <= 4 && prev.atEnd === atEnd
+        ? prev
+        : { atStart: el.scrollLeft <= 4, atEnd },
+    );
   }, []);
+
+  React.useEffect(() => {
+    handleScroll();
+  }, [handleScroll, activeLists.length]);
+
+  /* Desktop 3 · pijlknoppen schuiven één kaart (breedte + gap) per klik. */
+  const scrollByCard = (dir: -1 | 1) => {
+    const el = laneRef.current;
+    const first = el?.children[0] as HTMLElement | undefined;
+    if (!el || !first) return;
+    const gap = parseFloat(getComputedStyle(el).columnGap || "0") || 0;
+    el.scrollBy({ left: dir * (first.offsetWidth + gap), behavior: "smooth" });
+  };
 
   const scrollToPage = (index: number) => {
     const el = laneRef.current;
@@ -1728,6 +1748,8 @@ function HomeLijstjesSection({
   }
 
   const otherLists = normalLists.filter((l) => !activeLists.some((a) => a.id === l.id)).slice(0, 3);
+  const arrowClass =
+    "flex size-8 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-card transition-[color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 disabled:text-[var(--gray-200)] disabled:shadow-[0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 
   return (
     <div className="flex flex-col gap-4">
@@ -1737,15 +1759,29 @@ function HomeLijstjesSection({
         showNaarOverzicht
         naarOverzichtHref="/lijstjes-beheren/lijstjes"
         overzichtLabel="Toon alle"
+        extra={
+          <span className="hidden gap-1.5 lg:flex">
+            <button type="button" aria-label="Vorige lijstjes" disabled={edges.atStart} onClick={() => scrollByCard(-1)} className={arrowClass}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                <path d="M10 3.5 5.5 8 10 12.5" />
+              </svg>
+            </button>
+            <button type="button" aria-label="Volgende lijstjes" disabled={edges.atEnd} onClick={() => scrollByCard(1)} className={arrowClass}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                <path d="M6 3.5 10.5 8 6 12.5" />
+              </svg>
+            </button>
+          </span>
+        }
       />
 
       <div
         ref={laneRef}
         onScroll={handleScroll}
-        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:px-0"
+        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:gap-4 lg:scroll-px-0 lg:px-0"
       >
         {activeLists.map((list) => (
-          <div key={list.id} className="w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start">
+          <div key={list.id} className="w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start lg:w-[calc((100%-32px)/3)] lg:max-w-none">
             <HomeListSwimCard
               list={list}
               onAddItem={(l) => {
@@ -1781,7 +1817,7 @@ function HomeLijstjesSection({
       </div>
 
       {pageCount > 1 ? (
-        <div className="flex justify-center gap-1.5" role="tablist" aria-label="Lijstjes">
+        <div className="flex justify-center gap-1.5 lg:hidden" role="tablist" aria-label="Lijstjes">
           {Array.from({ length: pageCount }, (_, i) => (
             <button
               key={i}
