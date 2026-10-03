@@ -513,6 +513,8 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       !isMasterLayout &&
       !isAddedLayout;
     const gridEditable = gridDensity && isEditable;
+    const isNeutralGridTile =
+      gridDensity && !isGottenByOther && !isGottenByYou;
 
     const showItemThumbnail =
       itemThumbnail != null &&
@@ -545,14 +547,18 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             /* Press-feedback op tikbare rijen/tegels (niet in bewerkmodus: daar wordt gesleept) */
             !isEditable &&
               !isGottenByOther &&
-              "motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.985]",
+              "motion-safe:transition-[background-color,border-color,box-shadow,transform] motion-safe:duration-fast motion-safe:ease-out-strong motion-safe:active:scale-[0.985]",
             gridDensity &&
               cn(
                 "!min-h-0 justify-center p-3",
                 isEditable ? "h-auto min-h-[168px]" : "h-[140px]",
               ),
-            gridEditable && "bg-[var(--white)] shadow-card",
-            gridDensity && !gridEditable && !isGottenByOther && !isChecked && "shadow-card",
+            gridEditable && "bg-[var(--white)]",
+            isNeutralGridTile &&
+              "border border-[var(--item-tile-border)]",
+            isNeutralGridTile &&
+              !isEditable &&
+              "[@media(hover:hover)]:hover:border-[var(--item-tile-border-hover)] [@media(hover:hover)]:hover:bg-[var(--item-tile-hover)]",
             /* Door iemand anders gehaald: getint vlak zonder elevation (rust) */
             isGottenByOther &&
               !gridEditable &&
@@ -571,6 +577,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
 
     const containerStyle: React.CSSProperties = {
       ...(incomingStyle && typeof incomingStyle === "object" ? incomingStyle : {}),
+      ...(isNeutralGridTile ? { boxShadow: "var(--shadow-item-tile)" } : {}),
       ...(showGottenByYouChrome ? { boxShadow: "var(--shadow-card)" } : {}),
     };
 
@@ -1156,10 +1163,15 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
             ref={ref}
             data-variant="from-stock"
             className={cn(
-              "flex w-full min-w-0 !min-h-0 h-[140px] justify-center p-3 rounded-lg bg-[var(--white)] shadow-card items-center",
+              "flex w-full min-w-0 !min-h-0 h-[140px] justify-center border border-[var(--item-tile-border)] p-3 rounded-lg bg-[var(--white)] items-center",
               className,
             )}
-            style={incomingStyle}
+            style={{
+              ...(incomingStyle && typeof incomingStyle === "object"
+                ? incomingStyle
+                : {}),
+              boxShadow: "var(--shadow-item-tile)",
+            }}
             aria-label={typeof itemName === "string" ? itemName : undefined}
             {...restProps}
           >
