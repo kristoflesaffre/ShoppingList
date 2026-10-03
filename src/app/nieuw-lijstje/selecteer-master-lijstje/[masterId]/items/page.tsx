@@ -1128,10 +1128,10 @@ export default function SelecteerMasterItemsPage() {
               onClick={handleDone}
               disabled={selectedItemCount === 0}
               className={cn(
-                "inline-flex items-center gap-1 rounded-pill px-2 py-1 text-sm leading-20 tracking-normal",
+                "inline-flex items-center gap-1 rounded-pill border px-2 py-1 text-sm font-medium leading-20 tracking-normal transition-colors disabled:cursor-not-allowed",
                 selectedItemCount > 0
-                  ? "bg-action-primary text-[var(--white)]"
-                  : "bg-[var(--blue-25)] text-[var(--blue-300)]",
+                  ? "border-transparent bg-[var(--action-primary)] text-[var(--action-primary-foreground)] [@media(hover:hover)]:hover:bg-[var(--action-primary-hover)]"
+                  : "border-[var(--border-default)] bg-[var(--bg-muted)] text-[var(--text-secondary)]",
               )}
             >
               <CheckIcon className="size-6 shrink-0" />
