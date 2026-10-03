@@ -57,39 +57,6 @@ type RecipeUndoSnapshot = {
   }>;
 };
 
-/** `public/icons/toggle_*.svg` — monochrome mask, kleur primary 500 (`--action-primary`). */
-function ToggleViewIcon({
-  src,
-  active,
-  className,
-}: {
-  src: string;
-  active: boolean;
-  /** bv. size-6 in de 48px-hoge toggle naast SearchBar */
-  className?: string;
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-block size-5 shrink-0 bg-action-primary",
-        !active && "opacity-[0.42]",
-        className,
-      )}
-      style={{
-        WebkitMaskImage: `url("${src}")`,
-        maskImage: `url("${src}")`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-      aria-hidden
-    />
-  );
-}
-
 function SortableRecipeRow({
   recipe,
   isEditMode,
@@ -179,46 +146,127 @@ function SectionHeader({ section }: { section: { meta: typeof RECIPE_CATEGORIES[
   );
 }
 
-function RecipeGridCard({ recipe }: { recipe: SavedRecipe }) {
+/** Ronde gerechtfoto (canvas «Recepten 2»): cirkelvormige crop, geen schaduw. */
+function RecipePlate({ recipe }: { recipe: SavedRecipe }) {
+  const hasPhoto = typeof recipe.photoUrl === "string" && recipe.photoUrl.trim().length > 0;
+  return (
+    <span className="mx-auto flex aspect-square w-[84%] items-center justify-center overflow-hidden rounded-full bg-[var(--blue-25)]">
+      {hasPhoto ? (
+        // eslint-disable-next-line @next/next/no-img-element -- data-URL
+        <img
+          src={recipe.photoUrl!}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          /* iets ingezoomd zodat het bord de cirkel vult en de witte hoeken wegvallen */
+          className="size-[108%] max-w-none object-cover"
+        />
+      ) : (
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden>
+          <path d="M26 6H6C4.9 6 4 6.9 4 8v16c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 18H6V8h20v16zm-9-3l-4-5-3 4-2-2.5L5 21h22l-5-6-5 6z" fill="var(--blue-200,#b0b4f8)" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
+function RecipePlateCard({ recipe }: { recipe: SavedRecipe }) {
   const n = recipe.ingredients.length;
   const itemCount = n === 1 ? "1 ingrediënt" : `${n} ingrediënten`;
-  const hasPhoto =
-    typeof recipe.photoUrl === "string" && recipe.photoUrl.trim().length > 0;
+  const dot = RECIPE_CATEGORIES.find((c) => c.id === recipe.category)?.dot ?? null;
+  return (
+    <Link
+      href={`/recepten/${recipe.id}`}
+      className="flex h-full flex-col gap-3 rounded-[18px] bg-[var(--white)] px-2.5 pb-3.5 pt-4 text-center no-underline shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+    >
+      <RecipePlate recipe={recipe} />
+      <span className="flex flex-col items-center gap-[3px] px-0.5">
+        <span className="line-clamp-2 text-sm font-semibold leading-[19px] text-text-primary">{recipe.name}</span>
+        <span className="flex items-center gap-1.5 text-xs leading-4 text-[var(--gray-400)]">
+          {dot ? <span aria-hidden className="size-[7px] shrink-0 rounded-full" style={{ backgroundColor: dot }} /> : null}
+          {itemCount}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+/**
+ * Eén categorie als rij (canvas «Recepten 2»): mobiel een swipebare rij met «Alles»,
+ * desktop zes kaarten naast elkaar met pijlknoppen.
+ */
+function RecipeCategoryLane({
+  section,
+  onShowAll,
+}: {
+  section: { meta: (typeof RECIPE_CATEGORIES)[0] | null; recipes: SavedRecipe[] };
+  onShowAll: () => void;
+}) {
+  const laneRef = React.useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = React.useState({ atStart: true, atEnd: false });
+  const updateEdges = React.useCallback(() => {
+    const el = laneRef.current;
+    if (!el) return;
+    const atStart = el.scrollLeft <= 4;
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+    setEdges((prev) => (prev.atStart === atStart && prev.atEnd === atEnd ? prev : { atStart, atEnd }));
+  }, []);
+  React.useEffect(() => {
+    updateEdges();
+    window.addEventListener("resize", updateEdges);
+    return () => window.removeEventListener("resize", updateEdges);
+  }, [updateEdges, section.recipes.length]);
+  const scrollPage = (dir: -1 | 1) => {
+    const el = laneRef.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth, behavior: "smooth" });
+  };
+  const count = section.recipes.length;
+  const arrowClass =
+    "flex size-8 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 disabled:text-[var(--gray-200)] disabled:shadow-[0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 
   return (
-    <Link href={`/recepten/${recipe.id}`} className="no-underline">
-      {/* h-full + flex-col so the card stretches to the full grid-row height */}
-      <div className="flex h-full flex-col overflow-hidden rounded-lg bg-[var(--white)] shadow-card">
-        {/* Photo – vaste aspect-ratio, hoogte wijzigt nooit */}
-        <div className="relative aspect-square w-full shrink-0 bg-[var(--blue-25)]">
-          {hasPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={recipe.photoUrl!}
-              alt=""
-              className="absolute inset-0 size-full object-cover"
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden>
-                <path d="M26 6H6C4.9 6 4 6.9 4 8v16c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 18H6V8h20v16zm-9-3l-4-5-3 4-2-2.5L5 21h22l-5-6-5 6z" fill="var(--blue-200,#b0b4f8)"/>
-              </svg>
-            </div>
-          )}
-        </div>
-        {/* Info – flex-1 zodat dit gedeelte uitbreidt als de rij hoger wordt door meer tekst */}
-        <div className="flex flex-1 flex-col items-center justify-center gap-0.5 px-3 py-2.5 text-center">
-          <span className="line-clamp-2 text-sm font-medium leading-20 tracking-normal text-text-primary">
-            {recipe.name}
-          </span>
-          <span className="text-xs font-normal leading-16 tracking-normal text-[var(--gray-400)]">
-            {itemCount}
-          </span>
-        </div>
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        {section.meta ? (
+          <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: section.meta.dot }} />
+        ) : null}
+        <h2 className="min-w-0 truncate text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
+          {section.meta ? section.meta.labelPlural : "Overige"}
+        </h2>
+        <span className="shrink-0 text-sm font-medium leading-20 text-[var(--text-secondary)] tabular-nums">{count}</span>
+        <span className="flex-1" />
+        <button
+          type="button"
+          onClick={onShowAll}
+          className="rounded-pill px-2 py-1 text-sm font-medium leading-20 text-action-primary transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] md:hidden"
+        >
+          Alles
+        </button>
+        <span className="hidden gap-1.5 md:flex">
+          <button type="button" aria-label="Vorige recepten" disabled={edges.atStart} onClick={() => scrollPage(-1)} className={arrowClass}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+              <path d="M10 3.5 5.5 8 10 12.5" />
+            </svg>
+          </button>
+          <button type="button" aria-label="Volgende recepten" disabled={edges.atEnd} onClick={() => scrollPage(1)} className={arrowClass}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+              <path d="M6 3.5 10.5 8 6 12.5" />
+            </svg>
+          </button>
+        </span>
       </div>
-    </Link>
+      <div
+        ref={laneRef}
+        onScroll={updateEdges}
+        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 py-1 [scrollbar-width:none] md:mx-0 md:gap-3.5 md:scroll-px-0 md:px-0 [&::-webkit-scrollbar]:hidden"
+      >
+        {section.recipes.map((r) => (
+          <div key={r.id} className="w-[150px] shrink-0 snap-start md:w-[calc((100%-70px)/6)]">
+            <RecipePlateCard recipe={r} />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -261,7 +309,6 @@ export default function ReceptenPage() {
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [recipeSearch, setRecipeSearch] = React.useState("");
   const [activeCategory, setActiveCategory] = React.useState<RecipeCategory | null>(null);
-  const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
   const [recipeEditorOpen, setRecipeEditorOpen] = React.useState(false);
   const [recipeEditorTarget, setRecipeEditorTarget] =
     React.useState<SavedRecipe | null>(null);
@@ -317,12 +364,6 @@ export default function ReceptenPage() {
     return result;
   }, [savedRecipes, recipeSearch, activeCategory]);
 
-  // Only show category filter chips when there are categorised recipes
-  const usedCategoryIds = React.useMemo(
-    () => new Set(savedRecipes.map((r) => r.category).filter(Boolean)),
-    [savedRecipes],
-  );
-  const visibleCategories = RECIPE_CATEGORIES.filter((c) => usedCategoryIds.has(c.id));
 
   // Group filtered recipes by category for the sectioned view
   const groupedSections = React.useMemo(() => {
@@ -344,6 +385,7 @@ export default function ReceptenPage() {
   }, [filteredRecipes, activeCategory, recipeSearch]);
 
   const displayRecipes = isEditMode ? savedRecipes : filteredRecipes;
+  const activeCategoryMeta = RECIPE_CATEGORIES.find((c) => c.id === activeCategory) ?? null;
 
   const handleReorderRecipes = React.useCallback(
     (event: DragEndEvent) => {
@@ -458,7 +500,7 @@ export default function ReceptenPage() {
               {/* Titel + potlood */}
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <h1 className="text-page-title font-bold leading-32 tracking-normal text-text-primary">
-                  Mijn recepten
+                  Recepten
                 </h1>
                 <button
                   type="button"
@@ -481,36 +523,8 @@ export default function ReceptenPage() {
                   Gereed
                 </button>
               ) : (
-                <div
-                  className="box-border flex h-9 shrink-0 items-stretch overflow-hidden rounded-md border border-[var(--gray-200)] bg-[var(--white)]"
-                  role="group"
-                  aria-label="Weergave"
-                >
-                  <button
-                    type="button"
-                    aria-label="Lijstweergave"
-                    aria-pressed={viewMode === "list"}
-                    onClick={() => setViewMode("list")}
-                    className={cn(
-                      "flex w-9 items-center justify-center transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
-                      viewMode === "list" ? "bg-[var(--blue-25)]" : "bg-[var(--white)]",
-                    )}
-                  >
-                    <ToggleViewIcon src="/icons/toggle_list.svg" active={viewMode === "list"} />
-                  </button>
-                  <div className="w-px shrink-0 self-stretch bg-[var(--gray-200)]" aria-hidden />
-                  <button
-                    type="button"
-                    aria-label="Tegelweergave"
-                    aria-pressed={viewMode === "grid"}
-                    onClick={() => setViewMode("grid")}
-                    className={cn(
-                      "flex w-9 items-center justify-center transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
-                      viewMode === "grid" ? "bg-[var(--blue-25)]" : "bg-[var(--white)]",
-                    )}
-                  >
-                    <ToggleViewIcon src="/icons/toggle_grid.svg" active={viewMode === "grid"} />
-                  </button>
+                <div className="hidden w-[320px] shrink-0 md:block">
+                  <SearchBar placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
                 </div>
               )}
             </div>
@@ -518,58 +532,29 @@ export default function ReceptenPage() {
 
           {hasRecipes ? (
             <>
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-              <div className="order-1 w-full md:max-w-[360px] lg:order-2 lg:w-[280px] lg:max-w-none lg:shrink-0">
-                <SearchBar
-                  placeholder="Zoek recept"
-                  value={recipeSearch}
-                  onValueChange={setRecipeSearch}
-                />
-              </div>
-
-              {/* Category filter chips */}
-              {visibleCategories.length > 0 ? (
-                <div className="order-2 -mx-4 min-w-0 overflow-x-auto px-4 lg:order-1 lg:mx-0 lg:flex-1 lg:px-0" style={{ scrollbarWidth: "none" } as React.CSSProperties}>
-                  <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-                    <button
-                      type="button"
-                      onClick={() => setActiveCategory(null)}
-                      className={cn(
-                        "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-[color,background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                        activeCategory === null
-                          ? "bg-[var(--blue-500)] font-medium text-white"
-                          : "bg-white font-normal text-[var(--gray-500)]",
-                      )}
-                    >
-                      Alle
-                    </button>
-                    {visibleCategories.map((cat) => {
-                      const isActive = activeCategory === cat.id;
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => setActiveCategory(isActive ? null : cat.id)}
-                          className={cn(
-                            "flex shrink-0 items-center gap-1.5 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-[color,background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                            isActive
-                              ? "bg-[var(--blue-500)] font-medium text-white"
-                              : "bg-white font-normal text-[var(--gray-500)]",
-                          )}
-                        >
-                          {isActive && (
-                            <span
-                              className="size-2 shrink-0 rounded-full motion-safe:animate-pop"
-                              style={{ backgroundColor: cat.dot }}
-                            />
-                          )}
-                          {cat.labelPlural}
-                        </button>
-                      );
-                    })}
-                  </div>
+              {activeCategory && !isEditMode ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategory(null)}
+                    aria-label="Terug naar alle recepten"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  >
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                      <path d="M10 3.5 5.5 8 10 12.5" />
+                    </svg>
+                  </button>
+                  {activeCategoryMeta ? (
+                    <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: activeCategoryMeta.dot }} />
+                  ) : null}
+                  <h2 className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
+                    {activeCategoryMeta?.labelPlural ?? "Recepten"}
+                  </h2>
+                  <span className="text-sm font-medium leading-20 text-[var(--text-secondary)] tabular-nums">{filteredRecipes.length}</span>
                 </div>
               ) : null}
+              <div className={cn("md:hidden", isEditMode && "hidden")}>
+                <SearchBar placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
               </div>
 
               {!isEditMode && filteredRecipes.length === 0 ? (
@@ -621,50 +606,21 @@ export default function ReceptenPage() {
                     )}
                   </SortableContext>
                 </DndContext>
-              ) : groupedSections ? (
-                <div className="flex flex-col gap-6">
+              ) : groupedSections && !activeCategory ? (
+                <div className="flex flex-col gap-7">
                   {groupedSections.map((section) => (
-                    <div key={section.meta?.id ?? "overige"} className="flex flex-col gap-3">
-                      <SectionHeader section={section} />
-                      {/* Tiles / grid */}
-                      {viewMode === "grid" ? (
-                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                          {section.recipes.map((r) => (
-                            <RecipeGridCard key={r.id} recipe={r} />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-3">
-                          {section.recipes.map((r) => (
-                            <SortableRecipeRow
-                              key={r.id}
-                              recipe={r}
-                              isEditMode={false}
-                              onEdit={openEdit}
-                              onDelete={handleDeleteRecipe}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : viewMode === "grid" ? (
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  {displayRecipes.map((r) => (
-                    <RecipeGridCard key={r.id} recipe={r} />
+                    <RecipeCategoryLane
+                      key={section.meta?.id ?? "overige"}
+                      section={section}
+                      onShowAll={() => setActiveCategory(section.meta?.id ?? null)}
+                    />
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
+                /* Zoeken of één categorie open: alle kaarten in een raster. */
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                   {displayRecipes.map((r) => (
-                    <SortableRecipeRow
-                      key={r.id}
-                      recipe={r}
-                      isEditMode={false}
-                      onEdit={openEdit}
-                      onDelete={handleDeleteRecipe}
-                    />
+                    <RecipePlateCard key={r.id} recipe={r} />
                   ))}
                 </div>
               )}
