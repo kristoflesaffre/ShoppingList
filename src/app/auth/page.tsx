@@ -496,7 +496,11 @@ export default function AuthPage() {
               variant="primary"
               type="submit"
               disabled={!canSubmit}
-              className="mt-1 w-full"
+              /* Login 5b: volle breedte, 50px hoog; disabled blijft zichtbaar blauw op het lavendel verloop. */
+              className={cn(
+                "mt-1 !h-[50px] w-full !max-w-none !font-semibold",
+                !canSubmit && "!bg-[var(--blue-200)] !text-[var(--white)]",
+              )}
             >
               {isPasswordSigningIn ? "Inloggen…" : "Inloggen"}
             </Button>
