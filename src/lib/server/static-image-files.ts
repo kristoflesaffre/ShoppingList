@@ -18,16 +18,9 @@ export type StaticImageFile = {
 export async function listStaticImageFiles(
   dir: StaticImageDir,
 ): Promise<StaticImageFile[]> {
-  const fromManifest = () =>
-    Object.entries(manifest[dir] as Record<string, number>).map(
-      ([name, version]) => ({ name, version }),
-    );
-  // Op Vercel nooit de schijf vertrouwen: de map kan leeg achterblijven.
-  if (process.env.VERCEL) return fromManifest();
   const abs = join(process.cwd(), "public/images", dir);
   try {
     const names = await readdir(abs);
-    if (names.length === 0) return fromManifest();
     return Promise.all(
       names.map(async (name) => {
         let version = 0;
@@ -40,6 +33,8 @@ export async function listStaticImageFiles(
       }),
     );
   } catch {
-    return fromManifest();
+    return Object.entries(manifest[dir] as Record<string, number>).map(
+      ([name, version]) => ({ name, version }),
+    );
   }
 }
