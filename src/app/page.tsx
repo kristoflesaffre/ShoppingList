@@ -425,7 +425,7 @@ function HomeLoyaltyCardsSwimlane({ cards }: { cards: HomeLoyaltyCard[] }) {
         label="Klantenkaarten"
         showNaarOverzicht
         naarOverzichtHref="/klantenkaarten"
-        overzichtLabel="Alle klantenkaarten"
+        overzichtLabel="Toon alle"
       />
       {/* -mx + px: tegel-scroll loopt tot aan de schermrand, padding houdt eerste tegel op grid. */}
       <div
@@ -884,7 +884,7 @@ function HomeDiepvriesSection({
           count={itemCount}
           showNaarOverzicht
           naarOverzichtHref="/diepvriesvoorraad"
-          overzichtLabel="Alle voorraad"
+          overzichtLabel="Toon alle"
         />
 
         {/* Thumbnails card */}
@@ -1220,7 +1220,7 @@ function HomeCalendarSection({
         label="Kalender"
         showNaarOverzicht
         naarOverzichtHref="/kalender"
-        overzichtLabel="Hele kalender"
+        overzichtLabel="Toon alle"
       />
       <div
         ref={laneRef}
@@ -1559,9 +1559,9 @@ function HomeListSwimCard({
 }
 
 /**
- * Startpagina-lijstjes (8.4): swimlane met maximaal twee lijstjes. Eerst de aankomende
- * winkeldagen, aangevuld met de meest recente afgeronde lijstjes; daarna een kaart
- * «Alle N lijstjes» en paginering. «+ Item» opent de zoek-slide-in voor dat lijstje.
+ * Startpagina-lijstjes (8.4): eerst maximaal twee aankomende winkeldagen, daarna
+ * maximaal zes eerdere lijstjes en tot slot de kaart «Alle N lijstjes». «+ Item»
+ * opent de zoek-slide-in voor dat lijstje.
  */
 function HomeLijstjesSection({
   normalLists,
@@ -1585,16 +1585,15 @@ function HomeLijstjesSection({
       .filter((l) => !isListDatePassed(l.date))
       .sort((a, b) => (listDateToIso(a.date) ?? "").localeCompare(listDateToIso(b.date) ?? "") || a.order - b.order)
       .slice(0, 2);
-    if (upcoming.length === 2) return upcoming;
-
-    const completed = normalLists
+    const previous = normalLists
       .filter((l) => isListDatePassed(l.date))
       .sort(
         (a, b) =>
           (listDateToIso(b.date) ?? "").localeCompare(listDateToIso(a.date) ?? "") ||
           b.order - a.order,
-      );
-    return [...upcoming, ...completed.slice(0, 2 - upcoming.length)];
+      )
+      .slice(0, 6);
+    return [...upcoming, ...previous];
   }, [normalLists]);
   const pageCount = activeLists.length + 1;
 
@@ -1631,7 +1630,7 @@ function HomeLijstjesSection({
           label="Lijstjes"
           showNaarOverzicht
           naarOverzichtHref="/lijstjes-beheren/lijstjes"
-          overzichtLabel="Alle lijstjes"
+          overzichtLabel="Toon alle"
         />
         <HomeOnboardingEmptyCard
           illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.lijstjes}
@@ -1657,7 +1656,7 @@ function HomeLijstjesSection({
         label="Lijstjes"
         showNaarOverzicht
         naarOverzichtHref="/lijstjes-beheren/lijstjes"
-        overzichtLabel="Alle lijstjes"
+        overzichtLabel="Toon alle"
       />
 
       <div
@@ -1815,7 +1814,7 @@ function HomeFavorietenSection({
         label="Favorieten"
         showNaarOverzicht
         naarOverzichtHref="/lijstjes-beheren/favorieten"
-        overzichtLabel="Alle favorieten"
+        overzichtLabel="Toon alle"
       />
       <div
         className={cn("mt-4 lg:hidden", SWIMLANE_CLASSES)}
@@ -1988,7 +1987,7 @@ function HomeFilmsSeriesSection({ onHide }: { onHide?: () => void }) {
         label="Films en series"
         showNaarOverzicht
         naarOverzichtHref="/films-series"
-        overzichtLabel="Alle titels"
+        overzichtLabel="Toon alle"
       />
       <div
         className={SWIMLANE_CLASSES}
