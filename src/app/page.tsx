@@ -3811,7 +3811,7 @@ export default function Home() {
       <SlideInModal
         open={isQuickMasterModalOpen}
         onClose={handleCloseQuickMasterModal}
-        title="Naam lijstje"
+        title="Nieuw lijstje"
         footer={
           <Button
             type="submit"
