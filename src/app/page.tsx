@@ -1364,7 +1364,7 @@ function HomeSoftPillPlusIcon() {
  * Rechtsboven een zachte pil: «+ Item» (winkeldag nog niet voorbij) of «+ Lijstje» (afgerond,
  * met klein groen vinkje naast de naam). Lijsticoon vooraan (10.3) en een overlappende
  * stapel ronde productfoto's (geen gerechten).
- * Frituur/café: één groot beeld i.p.v. een foto per product.
+ * Frituur gebruikt dezelfde productstapel als gewone lijstjes; café toont alleen het lijsticoon.
  */
 function HomeListSwimCard({
   list,
@@ -1462,8 +1462,8 @@ function HomeListSwimCard({
     </div>
   );
 
-  /* Frituur/café: het icoon zegt genoeg, geen productfoto's. */
-  if (venueImage) return cardShell(header);
+  /* Café: het icoon zegt genoeg, geen productfoto's. */
+  if (listIsCafeVenueList(list.name)) return cardShell(header);
 
   const withPhotos = products.map((it) => ({
     id: it.id,
