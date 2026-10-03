@@ -605,14 +605,23 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       <>
         <span
           className={cn(
-            "truncate font-medium text-base leading-24 tracking-normal w-full transition-colors duration-base",
-            isChecked ? "text-[var(--gray-400)]" : "text-[var(--text-primary)]",
+            "w-full truncate text-base leading-24 tracking-normal transition-[color,font-weight] duration-base",
+            isChecked
+              ? "font-normal text-[var(--gray-300)]"
+              : "font-medium text-[var(--text-primary)]",
           )}
         >
           <StrikeText struck={isChecked}>{itemName}</StrikeText>
         </span>
         {quantity != null && (
-          <span className="font-normal text-sm leading-20 tracking-normal text-[var(--gray-400)] w-full">
+          <span
+            className={cn(
+              "w-full text-sm font-normal leading-20 tracking-normal transition-colors duration-base",
+              isChecked
+                ? "text-[var(--gray-300)]"
+                : "text-[var(--gray-400)]",
+            )}
+          >
             <StrikeText struck={isChecked}>{quantity}</StrikeText>
           </span>
         )}
@@ -884,14 +893,23 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               <>
                 <span
                   className={cn(
-                    "w-full truncate text-base font-medium leading-24 tracking-normal transition-colors duration-base",
-                    isChecked ? "text-[var(--gray-400)]" : "text-[var(--text-primary)]",
+                    "w-full truncate text-base leading-24 tracking-normal transition-[color,font-weight] duration-base",
+                    isChecked
+                      ? "font-normal text-[var(--gray-300)]"
+                      : "font-medium text-[var(--text-primary)]",
                   )}
                 >
                   <StrikeText struck={isChecked}>{itemName}</StrikeText>
                 </span>
                 {quantity != null && (
-                  <span className="w-full text-sm font-normal leading-20 tracking-normal text-[var(--gray-400)]">
+                  <span
+                    className={cn(
+                      "w-full text-sm font-normal leading-20 tracking-normal transition-colors duration-base",
+                      isChecked
+                        ? "text-[var(--gray-300)]"
+                        : "text-[var(--gray-400)]",
+                    )}
+                  >
                     <StrikeText struck={isChecked}>{quantity}</StrikeText>
                   </span>
                 )}
@@ -1216,11 +1234,11 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               )}
 
               <div className="flex h-[44px] w-full flex-col items-center text-center">
-                <span className="w-full truncate text-base font-medium leading-24 tracking-normal line-through text-[var(--gray-400)]">
+                <span className="w-full truncate text-base font-normal leading-24 tracking-normal line-through text-[var(--gray-300)]">
                   {itemName}
                 </span>
                 {quantity != null && (
-                  <span className="w-full text-sm font-normal leading-20 tracking-normal line-through text-[var(--gray-400)]">
+                  <span className="w-full text-sm font-normal leading-20 tracking-normal line-through text-[var(--gray-300)]">
                     {quantity}
                   </span>
                 )}
@@ -1260,11 +1278,11 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
 
           {/* Tekst – doorgestreept, grijs */}
           <div className="min-w-0 flex flex-1 flex-col gap-0">
-            <span className="truncate font-medium text-base leading-24 tracking-normal w-full line-through text-[var(--gray-400)]">
+            <span className="w-full truncate text-base font-normal leading-24 tracking-normal line-through text-[var(--gray-300)]">
               {itemName}
             </span>
             {quantity != null && (
-              <span className="font-normal text-sm leading-20 tracking-normal text-[var(--gray-400)] w-full line-through">
+              <span className="w-full text-sm font-normal leading-20 tracking-normal line-through text-[var(--gray-300)]">
                 {quantity}
               </span>
             )}
