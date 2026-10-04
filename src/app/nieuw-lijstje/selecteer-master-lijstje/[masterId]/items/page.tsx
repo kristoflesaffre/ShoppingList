@@ -819,11 +819,8 @@ export default function SelecteerMasterItemsPage() {
                 <p className="truncate text-[13px] leading-4 text-[var(--text-secondary)]">{storeLabel}</p>
               </div>
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <div className="shrink-0">
               <DoneButton onClick={handleDone} disabled={selectedItemCount === 0} className="disabled:cursor-not-allowed disabled:opacity-40" />
-              <span className="text-xs text-[var(--text-secondary)]" aria-live="polite">
-                {selectedItemCount} {selectedItemCount === 1 ? "item" : "items"} toegevoegd
-              </span>
             </div>
           </div>
 
@@ -888,23 +885,39 @@ export default function SelecteerMasterItemsPage() {
         </div>
       </div>
 
-      {/* Mobiel: zwevende «Gereed»-balk, zodat je niet terug naar boven hoeft te scrollen. */}
+      {/* Zwevende «Gereed»-balk, zodat je niet terug naar boven hoeft te scrollen. */}
       {selectedItemCount > 0 ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 lg:hidden">
-          <div aria-hidden className="h-[120px] bg-gradient-to-b from-transparent to-[var(--bg-app)] to-45%" />
-          <div className="pointer-events-auto absolute inset-x-4 bottom-[calc(26px+env(safe-area-inset-bottom,0px))] flex items-center gap-3 rounded-pill bg-[var(--white)] py-[7px] pl-4 pr-[7px] shadow-[0_10px_30px_-10px_rgba(16,17,48,0.35),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up">
-            <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[13px] font-bold tabular-nums text-[var(--blue-500)]">
-              {selectedItemCount}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-sm text-[var(--text-secondary)]">
-              <b className="font-semibold text-text-primary">{selectedItemCount === 1 ? "item" : "items"}</b> toegevoegd
-            </span>
-            <DoneButton
-              onClick={handleDone}
-              className="h-[42px] px-5 text-[15px] shadow-[0_6px_16px_-6px_rgba(79,85,241,0.6)]"
-            />
+        <>
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 lg:hidden">
+            <div aria-hidden className="h-[120px] bg-gradient-to-b from-transparent to-[var(--bg-app)] to-45%" />
+            <div className="pointer-events-auto absolute inset-x-4 bottom-[calc(26px+env(safe-area-inset-bottom,0px))] flex items-center gap-3 rounded-pill bg-[var(--white)] py-[7px] pl-4 pr-[7px] shadow-[0_10px_30px_-10px_rgba(16,17,48,0.35),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up">
+              <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[13px] font-bold tabular-nums text-[var(--blue-500)]">
+                {selectedItemCount}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm text-[var(--text-secondary)]">
+                <b className="font-semibold text-text-primary">{selectedItemCount === 1 ? "item" : "items"}</b> toegevoegd
+              </span>
+              <DoneButton
+                onClick={handleDone}
+                className="h-[42px] px-5 text-[15px] shadow-[0_6px_16px_-6px_rgba(79,85,241,0.6)]"
+              />
+            </div>
           </div>
-        </div>
+
+          <div className="pointer-events-none fixed inset-x-0 bottom-6 z-20 hidden lg:block">
+            <div className="mx-auto flex w-full max-w-[956px] justify-end">
+              <div className="pointer-events-auto flex items-center gap-3 rounded-pill bg-[var(--white)] py-[7px] pl-4 pr-[7px] shadow-[0_10px_30px_-10px_rgba(16,17,48,0.28),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up">
+                <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[13px] font-bold tabular-nums text-[var(--blue-500)]">
+                  {selectedItemCount}
+                </span>
+                <span className="whitespace-nowrap text-sm text-[var(--text-secondary)]">
+                  <b className="font-semibold text-text-primary">{selectedItemCount === 1 ? "item" : "items"}</b> toegevoegd
+                </span>
+                <DoneButton onClick={handleDone} className="h-[42px] px-5 text-[15px]" />
+              </div>
+            </div>
+          </div>
+        </>
       ) : null}
     </div>
   );
