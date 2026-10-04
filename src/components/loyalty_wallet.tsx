@@ -247,7 +247,7 @@ export function LoyaltyWallet({
   const cardH = Math.round(width / 1.586);
   const n = cards.length;
   /** Hoogte van een opengeklapte kaart: kop + wit codevlak (canvas «Kaarten 1b/1c»). */
-  const codeH = (card: WalletCard) => Math.max(cardH, card.codeType === "qr" ? 300 : 236);
+  const codeH = () => Math.max(cardH, 236);
   const last = cards[n - 1];
   /** Onderste kaart ligt al open: QR-kaarten tonen daar meteen het 1c-codevlak. */
   const isOpen = (card: WalletCard) => card.id === selectedId || (card === last && last.codeType === "qr");
@@ -257,9 +257,9 @@ export function LoyaltyWallet({
   let y = 0;
   cards.forEach((card, i) => {
     ys.push(y);
-    y += isOpen(card) && i < n - 1 ? codeH(card) + OPEN_GAP : STRIP;
+    y += isOpen(card) && i < n - 1 ? codeH() + OPEN_GAP : STRIP;
   });
-  const lastH = last ? (isOpen(last) ? codeH(last) : cardH) : 0;
+  const lastH = last ? (isOpen(last) ? codeH() : cardH) : 0;
   const height = n ? ys[n - 1] + lastH : 0;
 
   const transition = reducedMotion
@@ -293,7 +293,7 @@ export function LoyaltyWallet({
               }
             }}
             style={{
-              height: open ? codeH(card) : cardH,
+              height: open ? codeH() : cardH,
               transform: `translate3d(0, ${ys[i]}px, 0)`,
               zIndex: i + 1,
               transition,
@@ -358,7 +358,7 @@ function WalletCardView({
       <div
         className={cn(
           "pointer-events-none absolute inset-x-4 bottom-4 top-[66px] flex items-center justify-center rounded-[14px] bg-white px-4 py-[18px]",
-          isQr ? "[&_svg]:!size-[min(176px,100%)]" : "[&_svg]:!h-[88px] [&_svg]:!w-full",
+          isQr ? "[&_svg]:!h-full [&_svg]:!w-auto [&_svg]:aspect-square" : "[&_svg]:!h-full [&_svg]:!w-full",
         )}
         style={fade(showCode, 180)}
         aria-hidden={!showCode}
