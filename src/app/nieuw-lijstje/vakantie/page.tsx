@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { TitleEditButton } from "@/components/ui/title_edit_button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
@@ -322,13 +323,7 @@ function VacationListHeader() {
           <h2 className="text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
             Vakantie
           </h2>
-          <button
-            type="button"
-            aria-label="Naam wijzigen"
-            className="flex size-6 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-          >
-            <MaskIcon src="/icons/pencil.svg" />
-          </button>
+          <TitleEditButton aria-label="Naam wijzigen" />
         </div>
         <div className="flex w-full items-center gap-1">
           <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--gray-100)]">
