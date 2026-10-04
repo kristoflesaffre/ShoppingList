@@ -46,14 +46,13 @@ export interface LoyaltyCardEditorSlideInProps {
 }
 
 /**
- * Slide-in “Klantenkaart” met scan / screenshot — zelfde patroon als masterlijst (lijstje-detail).
+ * Kaartcode vervangen via camera of screenshot: bestandskiezer, camerascanner en bevestigscherm.
+ * Gedeeld door de slide-in (bewerkmodus raster) en de schermvullende kaartweergave.
  */
-export function LoyaltyCardEditorSlideIn({
-  card,
-  onClose,
-  logoSrc,
-  onSaveDecoded,
-}: LoyaltyCardEditorSlideInProps) {
+export function useLoyaltyCardReplace(
+  onSaveDecoded: (result: SuccessDecodeResult) => Promise<void>,
+  onSaved?: () => void,
+) {
   const [decodeError, setDecodeError] = React.useState<string | null>(null);
   const [decodeResult, setDecodeResult] =
     React.useState<SuccessDecodeResult | null>(null);
@@ -62,31 +61,37 @@ export function LoyaltyCardEditorSlideIn({
   const [saving, setSaving] = React.useState(false);
   const photoInputRef = React.useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => {
-    if (!card) {
-      setDecodeError(null);
-      setDecodeResult(null);
-      setScanResultOpen(false);
-      setCameraOpen(false);
-    }
-  }, [card]);
+  const reset = React.useCallback(() => {
+    setDecodeError(null);
+    setDecodeResult(null);
+    setScanResultOpen(false);
+    setCameraOpen(false);
+  }, []);
 
   const handleSaveScan = React.useCallback(async () => {
-    if (!decodeResult || !card) return;
+    if (!decodeResult) return;
     setSaving(true);
     try {
       await onSaveDecoded(decodeResult);
       setScanResultOpen(false);
       setDecodeResult(null);
-      onClose();
+      onSaved?.();
     } finally {
       setSaving(false);
     }
-  }, [card, decodeResult, onClose, onSaveDecoded]);
+  }, [decodeResult, onSaveDecoded, onSaved]);
 
-  if (!card) return null;
+  const startCamera = React.useCallback(() => {
+    setDecodeError(null);
+    setCameraOpen(true);
+  }, []);
 
-  return (
+  const startUpload = React.useCallback(() => {
+    setDecodeError(null);
+    photoInputRef.current?.click();
+  }, []);
+
+  const elements = (
     <>
       <input
         ref={photoInputRef}
@@ -113,38 +118,74 @@ export function LoyaltyCardEditorSlideIn({
           reader.readAsDataURL(file);
         }}
       />
+      <CameraBarcodeScannerSlideIn
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onDecoded={(result) => {
+          setCameraOpen(false);
+          setDecodeResult(result);
+          setScanResultOpen(true);
+        }}
+      />
+      <LoyaltyCardScanResultSlideIn
+        open={scanResultOpen}
+        onClose={() => setScanResultOpen(false)}
+        onBack={() => setScanResultOpen(false)}
+        decodeResult={decodeResult}
+        saving={saving}
+        onSave={() => void handleSaveScan()}
+      />
+    </>
+  );
 
+  return {
+    decodeError,
+    startCamera,
+    startUpload,
+    reset,
+    elements,
+    /** Camera of bevestigscherm staat open (Escape hoort daar). */
+    busy: cameraOpen || scanResultOpen,
+  };
+}
+
+/**
+ * Slide-in “Klantenkaart” met scan / screenshot — zelfde patroon als masterlijst (lijstje-detail).
+ */
+export function LoyaltyCardEditorSlideIn({
+  card,
+  onClose,
+  logoSrc,
+  onSaveDecoded,
+}: LoyaltyCardEditorSlideInProps) {
+  const replace = useLoyaltyCardReplace(onSaveDecoded, onClose);
+  const { reset } = replace;
+
+  React.useEffect(() => {
+    if (!card) reset();
+  }, [card, reset]);
+
+  if (!card) return null;
+
+  return (
+    <>
       <SlideInModal
         open={Boolean(card)}
         onClose={onClose}
         title="Klantenkaart"
         titleId="loyalty-card-editor-slide-title"
-        disableEscapeClose={scanResultOpen || cameraOpen}
+        disableEscapeClose={replace.busy}
         footer={
           <div className="flex w-full flex-col items-center gap-3">
-            {decodeError ? (
+            {replace.decodeError ? (
               <p className="text-center text-xs text-[var(--error-400)]">
-                {decodeError}
+                {replace.decodeError}
               </p>
             ) : null}
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => {
-                setDecodeError(null);
-                setCameraOpen(true);
-              }}
-            >
+            <Button type="button" variant="primary" onClick={replace.startCamera}>
               Scan met camera
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setDecodeError(null);
-                photoInputRef.current?.click();
-              }}
-            >
+            <Button type="button" variant="secondary" onClick={replace.startUpload}>
               Screenshot opladen
             </Button>
           </div>
@@ -171,24 +212,7 @@ export function LoyaltyCardEditorSlideIn({
         </div>
       </SlideInModal>
 
-      <CameraBarcodeScannerSlideIn
-        open={cameraOpen}
-        onClose={() => setCameraOpen(false)}
-        onDecoded={(result) => {
-          setCameraOpen(false);
-          setDecodeResult(result);
-          setScanResultOpen(true);
-        }}
-      />
-
-      <LoyaltyCardScanResultSlideIn
-        open={scanResultOpen}
-        onClose={() => setScanResultOpen(false)}
-        onBack={() => setScanResultOpen(false)}
-        decodeResult={decodeResult}
-        saving={saving}
-        onSave={() => void handleSaveScan()}
-      />
+      {replace.elements}
     </>
   );
 }

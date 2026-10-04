@@ -3,6 +3,9 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
+import { useLoyaltyCardReplace } from "@/components/loyalty_card_editor_slide_in";
+import { Button } from "@/components/ui/button";
+import type { DecodeResult } from "@/lib/loyalty_card";
 import { cn } from "@/lib/utils";
 
 export type WalletCard = {
@@ -616,15 +619,15 @@ export function LoyaltyCardViewer({
   cards,
   openId,
   onClose,
-  onEdit,
+  onSaveDecoded,
   onDelete,
   deletingId,
 }: {
   cards: WalletCard[];
   openId: string | null;
   onClose: () => void;
-  /** Kaart bewerken (opnieuw scannen of screenshot opladen). */
-  onEdit: (card: WalletCard) => void;
+  /** Nieuwe code bewaren na scannen of screenshot (bewerkstand in de weergave zelf). */
+  onSaveDecoded: (card: WalletCard, result: Extract<DecodeResult, { ok: true }>) => Promise<void>;
   onDelete: (card: WalletCard) => void;
   deletingId: string | null;
 }) {
@@ -639,6 +642,23 @@ export function LoyaltyCardViewer({
   const open = openId !== null && cards.some((c) => c.id === openId);
   const indexRef = React.useRef(index);
   indexRef.current = index;
+  const current: WalletCard | undefined = cards[Math.min(index, cards.length - 1)];
+
+  // Bewerkstand: potlood toont de knoppen om de code te vervangen, gewoon in deze weergave.
+  const [editing, setEditing] = React.useState(false);
+  const replace = useLoyaltyCardReplace(
+    React.useCallback(async (result) => {
+      if (current) await onSaveDecoded(current, result);
+    }, [current, onSaveDecoded]),
+    React.useCallback(() => setEditing(false), []),
+  );
+  const { reset: resetReplace, busy: replaceBusy } = replace;
+  React.useEffect(() => {
+    if (!open) {
+      setEditing(false);
+      resetReplace();
+    }
+  }, [open, resetReplace]);
 
   React.useLayoutEffect(() => {
     if (!open) return;
@@ -728,7 +748,9 @@ export function LoyaltyCardViewer({
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.querySelector('[aria-labelledby="confirm-delete-title"]')) void requestClose();
+      if (e.key !== "Escape" || replaceBusy || document.querySelector('[aria-labelledby="confirm-delete-title"]')) return;
+      if (editing) setEditing(false);
+      else void requestClose();
     };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -737,10 +759,13 @@ export function LoyaltyCardViewer({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, requestClose]);
+  }, [open, requestClose, replaceBusy, editing]);
 
-  if (!open || typeof document === "undefined") return null;
-  const current = cards[Math.min(index, cards.length - 1)];
+  if (!open || !current || typeof document === "undefined") return null;
+
+  const editActions = editing ? (
+    <EditActions error={replace.decodeError} onCamera={replace.startCamera} onUpload={replace.startUpload} />
+  ) : null;
 
   return ReactDOM.createPortal(
     <>
@@ -762,7 +787,7 @@ export function LoyaltyCardViewer({
           className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {cards.map((card) => (
-            <ViewerPage key={card.id} card={card} dark={dark} />
+            <ViewerPage key={card.id} card={card} dark={dark} actions={card.id === current.id ? editActions : null} />
           ))}
         </div>
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-[calc(16px+env(safe-area-inset-top,0px))]">
@@ -773,9 +798,14 @@ export function LoyaltyCardViewer({
             <button
               type="button"
               aria-label={`${current.cardName} bewerken`}
-              onClick={() => onEdit(current)}
+              aria-pressed={editing}
+              onClick={() => setEditing((v) => !v)}
               data-viewer-stagger="3"
-              className={cn(roundGlass, "pointer-events-auto !text-[var(--blue-500)]")}
+              className={cn(
+                roundGlass,
+                "pointer-events-auto transition-colors",
+                editing ? "!bg-[var(--blue-500)] !text-white" : "!text-[var(--blue-500)]",
+              )}
             >
               <PencilIcon />
             </button>
@@ -801,12 +831,30 @@ export function LoyaltyCardViewer({
         dialogRef={desktopRef}
         scrimRef={scrimRef}
         onClose={() => void requestClose()}
-        onEdit={() => onEdit(current)}
+        editing={editing}
+        onToggleEdit={() => setEditing((v) => !v)}
+        actions={editActions}
         onDelete={() => onDelete(current)}
         deleting={deletingId === current.id}
       />
+      {replace.elements}
     </>,
     document.body,
+  );
+}
+
+/** Knoppen in de bewerkstand: nieuwe code via camera of screenshot. */
+function EditActions({ error, onCamera, onUpload }: { error: string | null; onCamera: () => void; onUpload: () => void }) {
+  return (
+    <div className="flex w-full flex-col items-center gap-3 motion-safe:animate-fade-up">
+      {error ? <p className="text-center text-xs text-[var(--error-400)]">{error}</p> : null}
+      <Button type="button" variant="primary" onClick={onCamera} className="!max-w-none">
+        Scan met camera
+      </Button>
+      <Button type="button" variant="secondary" onClick={onUpload} className="!max-w-none !bg-white">
+        Screenshot opladen
+      </Button>
+    </div>
   );
 }
 
@@ -825,7 +873,7 @@ function ViewerDots({ cards, index, dark }: { cards: WalletCard[]; index: number
   );
 }
 
-function ViewerPage({ card, dark }: { card: WalletCard; dark: boolean }) {
+function ViewerPage({ card, dark, actions }: { card: WalletCard; dark: boolean; actions: React.ReactNode }) {
   const colors = cardColors(useLogoTint(card.logoSrc), dark);
   return (
     <section
@@ -842,6 +890,7 @@ function ViewerPage({ card, dark }: { card: WalletCard; dark: boolean }) {
       <div className="mt-9 w-full">
         <BigCode card={card} qrSize="min(298px, calc(100vw - 92px))" barHeight={150} />
       </div>
+      {actions ? <div className="mt-6 w-full">{actions}</div> : null}
     </section>
   );
 }
@@ -852,7 +901,9 @@ function DesktopViewer({
   dialogRef,
   scrimRef,
   onClose,
-  onEdit,
+  editing,
+  onToggleEdit,
+  actions,
   onDelete,
   deleting,
 }: {
@@ -861,7 +912,9 @@ function DesktopViewer({
   dialogRef: React.RefObject<HTMLDivElement>;
   scrimRef: React.RefObject<HTMLDivElement>;
   onClose: () => void;
-  onEdit: () => void;
+  editing: boolean;
+  onToggleEdit: () => void;
+  actions: React.ReactNode;
   onDelete: () => void;
   deleting: boolean;
 }) {
@@ -881,8 +934,14 @@ function DesktopViewer({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={onEdit}
-                className="inline-flex h-10 items-center gap-2 rounded-full bg-[rgba(255,255,255,0.75)] px-3.5 text-sm font-semibold text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                onClick={onToggleEdit}
+                aria-pressed={editing}
+                className={cn(
+                  "inline-flex h-10 items-center gap-2 rounded-full px-3.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                  editing
+                    ? "bg-[var(--blue-500)] text-white"
+                    : "bg-[rgba(255,255,255,0.75)] text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-white",
+                )}
               >
                 <PencilIcon />
                 Bewerken
@@ -908,6 +967,7 @@ function DesktopViewer({
           <div className="mt-6 w-full" data-viewer-stagger="1">
             <BigCode card={card} qrSize="240px" barHeight={154} />
           </div>
+          {actions ? <div className="mt-5 w-full">{actions}</div> : null}
         </div>
       </div>
     </div>

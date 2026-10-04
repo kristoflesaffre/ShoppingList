@@ -779,9 +779,19 @@ export default function KlantenKaartenPage() {
           setViewOpen(false);
           setViewCard(null);
         }}
-        onEdit={(c) => {
+        onSaveDecoded={async (c, result) => {
           const card = cards.find((x) => x.id === c.id);
-          if (card) setEditorCard(card);
+          if (!card || !user) return;
+          await db.transact(
+            db.tx.loyaltyCards[card.id].update({
+              codeType: result.codeType,
+              codeFormat: result.codeFormat,
+              rawValue: result.rawValue,
+              cardName: card.cardName,
+              createdAtIso: card.createdAtIso,
+              ownerId: user.id,
+            }),
+          );
         }}
         onDelete={(c) => {
           const card = cards.find((x) => x.id === c.id);
