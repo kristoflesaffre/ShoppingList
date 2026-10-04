@@ -721,3 +721,112 @@ export function ListGroupingToggle({
     </div>
   );
 }
+
+const CHIP_CLASS =
+  "inline-flex h-[34px] shrink-0 items-center rounded-pill bg-[var(--white)] text-[13px] font-semibold text-text-primary transition-[box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
+
+/** «Per dag ▾»-chip met een klein menu (canvas «Open eerst · O1», mobiel). */
+export function ListGroupingMenuChip({
+  value,
+  onChange,
+}: {
+  value: "day" | "category";
+  onChange: (value: "day" | "category") => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  const options = [
+    { value: "day" as const, label: "Per dag" },
+    { value: "category" as const, label: "Per categorie" },
+  ];
+  const current = options.find((o) => o.value === value) ?? options[0];
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Groepering: ${current.label}`}
+        onClick={() => setOpen((v) => !v)}
+        className={cn(CHIP_CLASS, "gap-1 pl-[13px] pr-2.5 shadow-[inset_0_0_0_1px_var(--gray-100)]")}
+      >
+        {current.label}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn("size-3.5 transition-transform", open && "rotate-180")}>
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open ? (
+        <div role="menu" className="absolute left-0 top-[40px] z-30 w-[190px] rounded-[14px] bg-[var(--white)] p-1.5 shadow-[0_14px_34px_-10px_rgba(16,17,48,0.32)] motion-safe:animate-fade-up">
+          {options.map((o) => {
+            const on = o.value === value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="menuitemradio"
+                aria-checked={on}
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-[9px] px-2.5 py-2.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
+                  on ? "bg-[var(--bg-app)] font-semibold text-text-primary" : "text-text-primary [@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+                )}
+              >
+                {o.label}
+                {on ? <CheckIcon className="size-3.5 text-[var(--blue-500)]" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** «Open eerst» met rond schuifje: niet-afgevinkte items bovenaan (canvas «Open eerst · O1»). */
+export function OpenFirstChip({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      aria-label="Niet afgevinkte items eerst"
+      onClick={() => onChange(!value)}
+      className={cn(
+        CHIP_CLASS,
+        "gap-2 pl-[13px] pr-2",
+        value ? "shadow-[inset_0_0_0_1px_var(--blue-200)]" : "shadow-[inset_0_0_0_1px_var(--gray-100)]",
+      )}
+    >
+      Open eerst
+      <span
+        aria-hidden
+        className={cn("relative inline-block h-[18px] w-[30px] shrink-0 rounded-full transition-colors", value ? "bg-[var(--blue-500)]" : "bg-[var(--gray-200)]")}
+      >
+        <span
+          className={cn(
+            "absolute top-[2px] size-[14px] rounded-full bg-white shadow-[0_1px_2px_rgba(16,17,48,0.25)] transition-[left] duration-fast ease-out-strong",
+            value ? "left-[14px]" : "left-[2px]",
+          )}
+        />
+      </span>
+    </button>
+  );
+}

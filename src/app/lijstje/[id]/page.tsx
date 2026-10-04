@@ -149,8 +149,10 @@ import {
 import type { ListItem } from "./new_item_modal";
 import {
   ListCardsView,
+  ListGroupingMenuChip,
   ListGroupingToggle,
   ListLayoutToggle,
+  OpenFirstChip,
   type ListCardLayout,
 } from "./list_cards_view";
 import { ListSuggestions, type Suggestion } from "./list_suggestions";
@@ -5564,7 +5566,8 @@ export default function ListDetailPage({
                   (isCafeList && !isMasterList && !isEditMode)) ? (
                 <div className="flex shrink-0 items-center gap-2">
                   {showListGroupingControl ? (
-                    <div className="hidden lg:block">
+                    <div className="hidden items-center gap-2 lg:flex">
+                      {!isEditMode ? <OpenFirstChip value={showUncheckedFirst} onChange={setShowUncheckedFirst} /> : null}
                       <ListGroupingToggle
                         value={listGroupingMode}
                         onChange={setListGroupingMode}
@@ -5640,16 +5643,11 @@ export default function ListDetailPage({
           ) : null}
 
           {showListGroupingControl ? (
-            <PillTab
-              className="w-full min-w-0 lg:hidden"
-              aria-label="Groepering lijst"
-              value={listGroupingMode === "day" ? "first" : "second"}
-              onValueChange={(v) =>
-                setListGroupingMode(v === "first" ? "day" : "category")
-              }
-              labelFirst="Per dag"
-              labelSecond="Per categorie"
-            />
+            /* Canvas «Open eerst · O1»: groepering als chip links, «Open eerst» met schuifje rechts. */
+            <div className="flex w-full min-w-0 items-center justify-between gap-3 lg:hidden">
+              <ListGroupingMenuChip value={listGroupingMode} onChange={setListGroupingMode} />
+              {!isEditMode ? <OpenFirstChip value={showUncheckedFirst} onChange={setShowUncheckedFirst} /> : null}
+            </div>
           ) : null}
 
           {!isMasterCategoryOrderMode && showLoyaltyLinkRows ? (
@@ -5943,25 +5941,6 @@ export default function ListDetailPage({
               </div>
             ) : null}
             {showUncheckedFirstToggle &&
-            !isPuddyTabSelected &&
-            !isLandalOrVakantieList ? (
-              <div className="flex w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card py-3 pl-4 pr-3">
-                <Checkbox
-                  id="unchecked-first-toggle"
-                  checked={showUncheckedFirst}
-                  onCheckedChange={(v) => setShowUncheckedFirst(v === true)}
-                  className="border-[1.3px]"
-                  aria-label="Toon niet afgevinkte items bovenaan"
-                />
-                <label
-                  htmlFor="unchecked-first-toggle"
-                  className="min-w-0 flex-1 cursor-pointer select-none text-base font-normal leading-6 tracking-normal text-[var(--gray-700)]"
-                >
-                  Toon niet afgevinkte items bovenaan
-                </label>
-              </div>
-            ) : null}
-            {showUncheckedFirstToggle &&
             isVakantieList &&
             !isPuddyTabSelected &&
             tripPersonTab !== "Voor vertrek" ? (
@@ -6011,7 +5990,7 @@ export default function ListDetailPage({
                 listDateStr={listDateStr}
                 savedRecipes={savedRecipes}
                 getPhotoUrl={getPhotoUrl}
-                uncheckedFirst={effectiveListGroupingMode === "category" ? showUncheckedFirst : true}
+                uncheckedFirst={showUncheckedFirst}
                 onCheckedChange={handleCheckedChange}
                 onAddToSection={(sectionTitle) => {
                   if (effectiveListGroupingMode === "category") {
