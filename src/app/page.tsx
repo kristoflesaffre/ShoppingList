@@ -1598,7 +1598,7 @@ function HomeWeekColumn({ day, isToday }: { day: HomeWeekDay; isToday: boolean }
           {day.date.getDate()}
         </span>
       </span>
-      <span className="mt-3.5">
+      <span className="mt-3.5 flex h-24 w-full shrink-0 items-start justify-center">
         {summary ? (
           summary.loose ? (
             <IngredientPlate photos={loosePhotos} size={96} className="bg-[var(--white)]" />
