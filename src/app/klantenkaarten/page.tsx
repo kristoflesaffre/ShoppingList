@@ -665,11 +665,12 @@ export default function KlantenKaartenPage() {
                 </div>
               ) : (
                 <>
-                  {/* Mobiel: wallet-stapel (canvas «Kaarten 1b/1c»); tik schuift open, tweede tik toont schermvullend. */}
+                  {/* Mobiel: wallet-stapel (canvas «Kaarten 1b/1c»); tik schuift open en gaat meteen door naar schermvullend. */}
                   <div className="md:hidden">
                     <LoyaltyWallet
                       cards={cards}
                       reducedMotion={prefersReducedMotion}
+                      viewingId={viewOpen ? (viewCard?.id ?? null) : null}
                       onOpen={(c) => {
                         const full = cards.find((x) => x.id === c.id);
                         if (!full) return;

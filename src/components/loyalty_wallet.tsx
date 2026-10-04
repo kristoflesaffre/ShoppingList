@@ -193,7 +193,9 @@ const STRIP = 58;
 /** Ruimte tussen een opengeklapte kaart en de kaart eronder. */
 const OPEN_GAP = 10;
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
-const DURATION = 520;
+const DURATION = 480;
+/** Na het openklappen meteen door naar schermvullend (iets vóór het einde, voor één vloeiende beweging). */
+const UNFOLD_TO_FULLSCREEN_MS = 400;
 
 /** Echte code als klein voorbeeld (geschaald), zodat kaarten «echt» ogen nog voor je tikt. */
 export function CodePreview({ card, className }: { card: WalletCard; className?: string }) {
@@ -223,13 +225,31 @@ export function CodePreview({ card, className }: { card: WalletCard; className?:
 export function LoyaltyWallet({
   cards,
   reducedMotion,
+  viewingId,
   onOpen,
 }: {
   cards: WalletCard[];
   reducedMotion: boolean;
+  /** Kaart die nu schermvullend open is; zodra die sluit, schuift de stapel weer dicht. */
+  viewingId: string | null;
   onOpen: (card: WalletCard) => void;
 }) {
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const pendingRef = React.useRef<number | null>(null);
+  const wasViewingRef = React.useRef(false);
+
+  // Terugweg: de schermvullende weergave krimpt eerst terug in de open kaart, daarna klapt de stapel dicht.
+  React.useEffect(() => {
+    if (viewingId) wasViewingRef.current = true;
+    else if (wasViewingRef.current) {
+      wasViewingRef.current = false;
+      setSelectedId(null);
+    }
+  }, [viewingId]);
+
+  React.useEffect(() => () => {
+    if (pendingRef.current) window.clearTimeout(pendingRef.current);
+  }, []);
   const [width, setWidth] = React.useState(343);
   const dark = useIsDarkTheme();
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -288,13 +308,20 @@ export function LoyaltyWallet({
             showCode={open}
             showPreview={isLast && !open}
             onToggle={() => {
+              if (pendingRef.current || viewingId) return;
               if (open) {
-                // Tweede tik (of onderste, al open kaart): schermvullend; de stapel klapt daarna dicht.
                 onOpen(card);
-                window.setTimeout(() => setSelectedId(null), 700);
-              } else {
-                setSelectedId(card.id);
+                return;
               }
+              // Eén beweging: de kaart klapt open in de stapel en gaat meteen door naar schermvullend.
+              setSelectedId(card.id);
+              pendingRef.current = window.setTimeout(
+                () => {
+                  pendingRef.current = null;
+                  onOpen(card);
+                },
+                reducedMotion ? 0 : UNFOLD_TO_FULLSCREEN_MS,
+              );
             }}
             style={{
               height: open ? codeH() : cardH,
@@ -652,8 +679,8 @@ export function LoyaltyCardViewer({
             el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "forwards" }),
           );
           const { card: rect, parts } = measureMorph(root, card.id);
-          await runMorph(root, rect, parts, { from: 1, to: 0, duration: 420, ease: easeInOutCubic });
-          await root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: "ease-out", fill: "forwards" }).finished;
+          await runMorph(root, rect, parts, { from: 1, to: 0, duration: 460, ease: easeInOutCubic });
+          await root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: "ease-out", fill: "forwards" }).finished;
         } else {
           await root.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(24px)" }], {
             duration: 360,
