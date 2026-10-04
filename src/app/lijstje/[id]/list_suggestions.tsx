@@ -108,7 +108,9 @@ export function ListSuggestions({
   }, [open]);
 
   if (total === 0) return null;
-  const photos = [...teKopen, ...previous].map((s) => s.photo).filter((p): p is string => Boolean(p)).slice(0, 4);
+  const suggestions = [...teKopen, ...previous];
+  const singleSuggestion = total === 1 ? suggestions[0] : null;
+  const photos = suggestions.map((s) => s.photo).filter((p): p is string => Boolean(p)).slice(0, 4);
   const parts = [
     teKopen.length ? `${teKopen.length} te kopen` : null,
     previous.length ? `${previous.length} van vorig lijstje` : null,
@@ -118,8 +120,14 @@ export function ListSuggestions({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        aria-haspopup="dialog"
+        onClick={() => {
+          if (singleSuggestion) {
+            onAdd(singleSuggestion);
+            return;
+          }
+          setOpen(true);
+        }}
+        aria-haspopup={singleSuggestion ? undefined : "dialog"}
         className="flex w-full items-center gap-3 rounded-[16px] bg-[var(--blue-25)] px-3 py-2.5 text-left shadow-[inset_0_0_0_1.5px_var(--blue-100)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
         <span className="flex shrink-0 pl-1">
@@ -137,10 +145,12 @@ export function ListSuggestions({
           <span className="block text-sm font-bold text-text-primary">
             {total} {total === 1 ? "suggestie" : "suggesties"}
           </span>
-          <span className="block truncate text-xs text-[var(--text-secondary)]">{parts.join(" · ")}</span>
+          <span className="block truncate text-xs text-[var(--text-secondary)]">
+            {singleSuggestion ? singleSuggestion.name : parts.join(" · ")}
+          </span>
         </span>
         <span className="inline-flex h-[30px] shrink-0 items-center rounded-pill bg-[var(--blue-500)] px-3 text-[13px] font-semibold text-white">
-          Bekijken
+          {singleSuggestion ? "Toevoegen" : "Bekijken"}
         </span>
       </button>
 
