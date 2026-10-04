@@ -195,7 +195,7 @@ const OPEN_GAP = 10;
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const DURATION = 480;
 /** Na het openklappen meteen door naar schermvullend (iets vóór het einde, voor één vloeiende beweging). */
-const UNFOLD_TO_FULLSCREEN_MS = 400;
+const UNFOLD_TO_FULLSCREEN_MS = 200;
 
 /** Echte code als klein voorbeeld (geschaald), zodat kaarten «echt» ogen nog voor je tikt. */
 export function CodePreview({ card, className }: { card: WalletCard; className?: string }) {
@@ -495,13 +495,16 @@ function staggerIn(root: HTMLElement, baseDelay: number) {
   });
 }
 
-/** Gedempte veer (zelfde curve als SPRING_EASE), als functie voor rAF-animaties. */
-function springAt(t: number): number {
+/**
+ * Gedempte veer voor rAF-animaties. Met beginsnelheid `v0` vertrekt hij al in beweging, zodat de
+ * morph naadloos aansluit op het openklappen van de stapel (geen stilstand tussen beide).
+ */
+function springAt(t: number, v0 = 0): number {
   if (t >= 1) return 1;
   const zeta = 0.7;
   const omega = 11;
   const wd = omega * Math.sqrt(1 - zeta * zeta);
-  return 1 - Math.exp(-zeta * omega * t) * (Math.cos(wd * t) + ((zeta * omega) / wd) * Math.sin(wd * t));
+  return 1 - Math.exp(-zeta * omega * t) * (Math.cos(wd * t) + ((zeta * omega - v0) / wd) * Math.sin(wd * t));
 }
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -641,7 +644,7 @@ export function LoyaltyCardViewer({
       if (from) {
         const { card, parts } = measureMorph(root, openId);
         applyMorph(root, card, parts, 0);
-        void runMorph(root, card, parts, { from: 0, to: 1, duration: 680, ease: springAt }).then(() => clearMorph(root, parts));
+        void runMorph(root, card, parts, { from: 0, to: 1, duration: 680, ease: (t) => springAt(t, 4) }).then(() => clearMorph(root, parts));
       } else {
         root.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 420, easing: SPRING_EASE });
       }
@@ -679,8 +682,8 @@ export function LoyaltyCardViewer({
             el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "forwards" }),
           );
           const { card: rect, parts } = measureMorph(root, card.id);
+          // Eindigt exact op de open kaart; meteen daarna schuift de stapel dicht (geen pauze, geen fade).
           await runMorph(root, rect, parts, { from: 1, to: 0, duration: 460, ease: easeInOutCubic });
-          await root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: "ease-out", fill: "forwards" }).finished;
         } else {
           await root.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(24px)" }], {
             duration: 360,
