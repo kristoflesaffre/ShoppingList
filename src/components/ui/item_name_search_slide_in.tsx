@@ -397,9 +397,12 @@ export function ItemNameSearchSlideIn({
                       type="button"
                       aria-label={`${recipe.name} toevoegen als diepvriesgerecht`}
                       onClick={() => handleSelectRecipeFromFreezer(recipe)}
-                      className="flex size-11 shrink-0 items-center justify-center rounded-pill text-[var(--blue-500)] transition-[background-color,transform] duration-fast ease-out-strong hover:bg-[var(--blue-25)] motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      className="group flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-none"
                     >
-                      <FreezeMaskIcon />
+                      {/* Zelfde zacht bolletje als de bewerkknop (TitleEditButton). */}
+                      <span className="flex size-8 items-center justify-center rounded-full bg-[var(--blue-50)] transition-[background-color,transform] duration-fast ease-out-strong group-active:scale-90 group-focus-visible:ring-2 group-focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:group-hover:bg-[var(--blue-100)]">
+                        <FreezeMaskIcon className="size-[18px]" colorClassName="bg-[var(--blue-500)]" />
+                      </span>
                     </button>
                   ) : null}
                 </div>
