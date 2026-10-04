@@ -12,6 +12,8 @@ type Props = {
   displaySize?: "default" | "fullscreen";
   /** Alleen QR: pixelmaat binnen Figma 256px-kader (bijv. 248 met p-4). */
   fullscreenQrSize?: number;
+  /** Alleen barcode: zonder marge en uitgerekt tot het kader (voorbeeld op een kaarttegel). */
+  stretch?: boolean;
 };
 
 /**
@@ -24,6 +26,7 @@ export function LoyaltyCardDisplay({
   rawValue,
   displaySize = "default",
   fullscreenQrSize,
+  stretch = false,
 }: Props) {
   const svgRef = React.useRef<SVGSVGElement>(null);
   const isFullscreen = displaySize === "fullscreen";
@@ -32,7 +35,7 @@ export function LoyaltyCardDisplay({
     if (codeType !== "barcode") return;
     if (!svgRef.current || !rawValue) return;
 
-    const margin = isFullscreen ? 12 : 8;
+    const margin = stretch ? 0 : isFullscreen ? 12 : 8;
     const barcodeOpts = {
       displayValue: false,
       margin,
@@ -49,17 +52,19 @@ export function LoyaltyCardDisplay({
           format: codeFormat,
           ...barcodeOpts,
         });
+        if (stretch) svgRef.current.setAttribute("preserveAspectRatio", "none");
       } catch {
         // Ongekend barcode-formaat: val terug op auto-detect
         JsBarcode(svgRef.current, rawValue, {
           format: "auto",
           ...barcodeOpts,
         });
+        if (stretch) svgRef.current?.setAttribute("preserveAspectRatio", "none");
       }
     }).catch(() => {
       // jsbarcode kon niet geladen worden
     });
-  }, [codeType, codeFormat, rawValue, isFullscreen]);
+  }, [codeType, codeFormat, rawValue, isFullscreen, stretch]);
 
   if (codeType === "qr") {
     return (

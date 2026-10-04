@@ -396,24 +396,23 @@ function GridCard({ card, onOpen }: { card: WalletCard; onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label={`${card.cardName} tonen`}
-      className="flex h-[272px] w-full flex-col gap-3 rounded-[20px] p-4 text-left transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      className="flex aspect-[1.586] w-full flex-col justify-between rounded-[20px] p-4 text-left transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
       style={{ background: colors.background, boxShadow: `inset 0 0 0 1px ${colors.edge}` }}
     >
-      <span className="flex min-w-0 items-center gap-3">
+      <span className="flex min-w-0 items-center gap-2.5">
         <CardLogo src={card.logoSrc} size={36} />
         <span className="min-w-0 flex-1 truncate text-base font-semibold leading-6 text-text-primary">{card.cardName}</span>
       </span>
-      {/* Echte code in een wit vlak, zoals de geopende kaart (canvas «Kaarten 1c»). */}
-      <span
-        aria-hidden
-        className={cn(
-          "pointer-events-none flex min-h-0 flex-1 flex-col items-center justify-center gap-2 rounded-[14px] bg-white px-4 py-3",
-          isQr ? "[&_svg]:!size-[150px]" : "[&_svg]:!h-[88px] [&_svg]:!w-full",
-        )}
-      >
-        <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} />
-        <span className="whitespace-nowrap text-center text-[12px] leading-4 text-[#6e7381]">
-          {isQr ? "Scan de QR-code aan de kassa" : "Toon de barcode aan de kassa"}
+      {/* Canvas «Kaarten D3»: echte code rechtsonder in een even hoog wit vlak (QR vierkant, barcode breder). */}
+      <span className="flex justify-end">
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none flex items-center justify-center overflow-hidden rounded-[12px] bg-white",
+            isQr ? "size-20 p-2 [&_svg]:!size-full" : "h-20 w-[150px] px-3.5 py-3 [&_svg]:!h-full [&_svg]:!w-full",
+          )}
+        >
+          <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} stretch />
         </span>
       </span>
     </button>
