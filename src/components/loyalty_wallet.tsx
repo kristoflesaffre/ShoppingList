@@ -186,10 +186,8 @@ function WalletCardHead({ card, accent }: { card: WalletCard; accent: string }) 
 
 /** Zichtbare kop van elke kaart in de stapel (Apple Wallet). */
 const STRIP = 58;
-/** Afstand tussen de kaarten in de opgeschoven stapel onder een geopende kaart. */
-const PILE_STEP = 9;
-const PILE_PEEK = 72;
-const OPEN_GAP = 18;
+/** Ruimte tussen een opengeklapte kaart en de kaart eronder. */
+const OPEN_GAP = 10;
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const DURATION = 520;
 
@@ -247,28 +245,27 @@ export function LoyaltyWallet({
   }, [cards, selectedId]);
 
   const cardH = Math.round(width / 1.586);
-  const selected = cards.find((c) => c.id === selectedId) ?? null;
-  const codeH = (card: WalletCard) => Math.max(cardH, card.codeType === "qr" ? 330 : 236);
-  const openH = selected ? codeH(selected) : cardH;
   const n = cards.length;
-  const pileCount = selected ? n - 1 : 0;
-  const height = selected
-    ? openH + (pileCount > 0 ? OPEN_GAP + (pileCount - 1) * PILE_STEP + PILE_PEEK : 0)
-    : (n - 1) * STRIP + cardH;
+  /** Hoogte van een opengeklapte kaart: kop + wit codevlak (canvas «Kaarten 1b/1c»). */
+  const codeH = (card: WalletCard) => Math.max(cardH, card.codeType === "qr" ? 300 : 236);
+  const last = cards[n - 1];
+  /** Onderste kaart ligt al open: QR-kaarten tonen daar meteen het 1c-codevlak. */
+  const isOpen = (card: WalletCard) => card.id === selectedId || (card === last && last.codeType === "qr");
 
-  const select = (id: string) => {
-    setSelectedId(id);
-    const el = rootRef.current;
-    if (el && el.getBoundingClientRect().top < 0) {
-      window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - 72, behavior: reducedMotion ? "auto" : "smooth" });
-    }
-  };
+  // Openklappen op de plek zelf: de kaart blijft liggen en groeit, de kaarten eronder schuiven op.
+  const ys: number[] = [];
+  let y = 0;
+  cards.forEach((card, i) => {
+    ys.push(y);
+    y += isOpen(card) && i < n - 1 ? codeH(card) + OPEN_GAP : STRIP;
+  });
+  const lastH = last ? (isOpen(last) ? codeH(last) : cardH) : 0;
+  const height = n ? ys[n - 1] + lastH : 0;
 
   const transition = reducedMotion
     ? "none"
     : `transform ${DURATION}ms ${EASE}, height ${DURATION}ms ${EASE}, box-shadow ${DURATION}ms ${EASE}`;
 
-  let pileIndex = 0;
   return (
     <div
       ref={rootRef}
@@ -276,41 +273,29 @@ export function LoyaltyWallet({
       style={{ height, transition: reducedMotion ? "none" : `height ${DURATION}ms ${EASE}` }}
     >
       {cards.map((card, i) => {
-        const isSelected = card.id === selectedId;
-        let y: number;
-        let scale = 1;
-        let h = cardH;
-        if (!selected) {
-          y = i * STRIP;
-        } else if (isSelected) {
-          y = 0;
-          h = openH;
-        } else {
-          const j = pileIndex++;
-          y = openH + OPEN_GAP + j * PILE_STEP;
-          scale = 1 - Math.min(0.06, (pileCount - 1 - j) * 0.012);
-        }
+        const open = isOpen(card);
+        const isLast = i === n - 1;
         return (
           <WalletCardView
             key={card.id}
             card={card}
             dark={dark}
-            open={isSelected}
-            showCode={isSelected}
-            showPreview={!selected && i === n - 1}
+            open={open}
+            showCode={open}
+            showPreview={isLast && !open}
             onToggle={() => {
-              if (isSelected) {
-                // Schermvullend tonen en de stapel meteen terug dichtklappen voor als je terugkomt.
+              if (open) {
+                // Tweede tik (of onderste, al open kaart): schermvullend; de stapel klapt terug dicht.
                 onOpen(card);
                 setSelectedId(null);
+              } else {
+                setSelectedId(card.id);
               }
-              else if (selected) setSelectedId(null);
-              else select(card.id);
             }}
             style={{
-              height: h,
-              transform: `translate3d(0, ${y}px, 0) scale(${scale})`,
-              zIndex: isSelected ? n + 1 : i + 1,
+              height: open ? codeH(card) : cardH,
+              transform: `translate3d(0, ${ys[i]}px, 0)`,
+              zIndex: i + 1,
               transition,
             }}
             reducedMotion={reducedMotion}
@@ -371,12 +356,15 @@ function WalletCardView({
       </div>
       {/* Geopende kaart: scanbare code. */}
       <div
-        className="pointer-events-none absolute inset-x-4 bottom-4 top-[66px] flex items-center justify-center rounded-[14px] bg-white p-4"
+        className={cn(
+          "pointer-events-none absolute inset-x-4 bottom-4 top-[66px] flex items-center justify-center rounded-[14px] bg-white px-4 py-[18px]",
+          isQr ? "[&_svg]:!size-[min(176px,100%)]" : "[&_svg]:!h-[88px] [&_svg]:!w-full",
+        )}
         style={fade(showCode, 180)}
         aria-hidden={!showCode}
       >
         {showCode ? (
-          <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} />
+          <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} stretch={!isQr} />
         ) : null}
       </div>
     </div>
