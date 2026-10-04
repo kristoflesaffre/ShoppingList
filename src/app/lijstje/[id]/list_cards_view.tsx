@@ -86,7 +86,7 @@ const CATEGORY_COLORS: Array<[RegExp, Rgb]> = [
   [/baby|kind/i, [224, 90, 160]],
   [/verzorg|huishoud|schoonmaak|drogist/i, [43, 179, 163]],
 ];
-function categoryColor(title: string): Rgb {
+export function categoryColor(title: string): Rgb {
   return CATEGORY_COLORS.find(([re]) => re.test(title))?.[1] ?? LAVENDER;
 }
 

@@ -5,10 +5,8 @@ import { isoToListDate } from "@/lib/list-date";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
-import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
-import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import {
   MASTER_STORE_OPTIONS,
@@ -17,9 +15,6 @@ import {
 } from "@/lib/master-stores";
 import { defaultNewListName } from "@/lib/list-default-name";
 import { listIsMasterTemplate } from "@/lib/list-master";
-import { SwipeToAdd } from "@/components/ui/swipe_to_add";
-import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
-import { SearchBar } from "@/components/ui/search_bar";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import {
@@ -28,6 +23,9 @@ import {
   resolveItemCategoryFromName,
 } from "@/lib/item-ingredient-category";
 import { pickListProductIconForNewList } from "@/lib/list-product-icons";
+import { DoneButton } from "@/components/ui/title_edit_button";
+import { ListSuggestions, type Suggestion } from "@/app/lijstje/[id]/list_suggestions";
+import { categoryColor } from "@/app/lijstje/[id]/list_cards_view";
 
 type TemplateItem = {
   id: string;
@@ -100,61 +98,26 @@ function BackArrowIcon({ className }: { className?: string }) {
   );
 }
 
-function CheckIcon({ className }: { className?: string }) {
+function PlusIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      <path
-        d="M20.13 6.43411C20.321 6.62511 20.321 6.94211 20.13 7.13311L9.14999 18.1161C9.05399 18.2111 8.92799 18.2591 8.80299 18.2591C8.67599 18.2591 8.54999 18.2111 8.45399 18.1161L3.86999 13.5301C3.67899 13.3401 3.67899 13.0231 3.86999 12.8321C4.06099 12.6411 4.37699 12.6411 4.56799 12.8321L8.80299 17.0671L19.432 6.43411C19.623 6.24211 19.939 6.24211 20.13 6.43411Z"
-        fill="currentColor"
-      />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className={className}>
+      <path d="M12 5v14M5 12h14" />
     </svg>
   );
 }
 
-function MinusCircleIcon({ className }: { className?: string }) {
+function MinusIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <g transform="translate(2.47 2.47)">
-        <path
-          fill="currentColor"
-          d="M10.05,10.05h-3.08c-.29,0-.52-.23-.52-.52s.23-.52.52-.52h3.08M10.05,9.01h2.04c.29,0,.52.23.52.52s-.23.52-.52.52h-2.04M19.06,9.53c0,5.26-4.27,9.53-9.53,9.53S0,14.78,0,9.53,4.27,0,9.53,0s9.53,4.28,9.53,9.53ZM18.02,9.53c0-4.68-3.81-8.49-8.49-8.49S1.04,4.85,1.04,9.53s3.81,8.49,8.49,8.49,8.49-3.81,8.49-8.49Z"
-        />
-      </g>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className={className}>
+      <path d="M6 12h12" />
     </svg>
   );
 }
 
 function TrashIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      width="24"
-      height="24"
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M22.938 13.5933V23.2223C22.938 23.7893 22.717 24.3243 22.317 24.7253C21.916 25.1253 21.381 25.3463 20.814 25.3463H11.186C10.618 25.3463 10.084 25.1253 9.68395 24.7253C9.28295 24.3233 9.06095 23.7893 9.06095 23.2223V13.5933C9.06095 13.3063 9.29395 13.0733 9.58095 13.0733C9.86795 13.0733 10.101 13.3063 10.101 13.5933V23.2223C10.101 23.5073 10.217 23.7873 10.419 23.9893C10.624 24.1943 10.896 24.3073 11.186 24.3073H20.815C21.105 24.3073 21.377 24.1943 21.582 23.9893C21.787 23.7853 21.9 23.5123 21.9 23.2223V13.5933C21.9 13.3063 22.132 13.0733 22.42 13.0733C22.708 13.0733 22.938 13.3063 22.938 13.5933ZM25.346 10.3843C25.346 10.6713 25.114 10.9043 24.826 10.9043H7.17295C6.88595 10.9043 6.65295 10.6713 6.65295 10.3843C6.65295 10.0973 6.88595 9.8643 7.17295 9.8643H12.27V7.1743C12.27 6.8873 12.503 6.6543 12.79 6.6543H19.209C19.496 6.6543 19.729 6.8873 19.729 7.1743V9.8643H24.826C25.113 9.8643 25.346 10.0973 25.346 10.3843ZM13.311 9.8643H18.691V7.6943H13.311V9.8643ZM18.659 20.8143V16.0003C18.659 15.7133 18.427 15.4803 18.139 15.4803C17.851 15.4803 17.619 15.7133 17.619 16.0003V20.8143C17.619 21.1013 17.851 21.3343 18.139 21.3343C18.427 21.3343 18.659 21.1023 18.659 20.8143ZM14.38 20.8143V16.0003C14.38 15.7133 14.147 15.4803 13.86 15.4803C13.573 15.4803 13.34 15.7133 13.34 16.0003V20.8143C13.34 21.1013 13.573 21.3343 13.86 21.3343C14.147 21.3343 14.38 21.1023 14.38 20.8143Z"
-        fill="currentColor"
-      />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
     </svg>
   );
 }
@@ -174,173 +137,98 @@ function StoreLogoSmall({ src }: { src: string }) {
   );
 }
 
-function SelectableItemCard({
-  item,
-  addedQuantity,
-  displayQuantity,
-  photoUrl,
+const STEP_BTN =
+  "flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--white)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)]";
+
+/** − / aantal / + (canvas «Nieuw lijstje · favorieten 1b»); bij 0 enkel een plus. */
+function CountStepper({
+  name,
+  count,
   onAdd,
   onIncrement,
   onDecrement,
-  onCancelAdd,
 }: {
-  item: TemplateItem;
-  addedQuantity: number | null;
-  displayQuantity: string;
-  photoUrl?: string | null;
+  name: string;
+  count: number;
   onAdd: () => void;
   onIncrement: () => void;
   onDecrement: () => void;
-  onCancelAdd: () => void;
 }) {
-  const isAdded = addedQuantity != null;
-  return (
-    <div
-      className={cn(
-        "flex w-full min-w-0 items-center gap-3 rounded-md border py-3 pl-4 pr-3 text-left",
-        isAdded
-          ? "border-[var(--blue-500)] bg-[var(--blue-400)]"
-          : "border-[var(--gray-100)] bg-[var(--white)]",
-      )}
-    >
-      {isAdded ? (
-        <>
-          <button
-            type="button"
-            onClick={addedQuantity === 1 ? onCancelAdd : onDecrement}
-            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--white)] transition-colors hover:bg-fixed-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)]"
-            aria-label={
-              addedQuantity === 1
-                ? `Verwijder "${item.name}" uit selectie`
-                : `Verminder hoeveelheid voor "${item.name}"`
-            }
-          >
-            {addedQuantity === 1 ? (
-              <TrashIcon className="size-6 shrink-0" />
-            ) : (
-              <MinusCircleIcon className="size-6 shrink-0" />
-            )}
-          </button>
-          <span className="relative flex h-11 w-0 shrink-0 items-center justify-center">
-            <span className="absolute left-1/2 top-0 h-11 w-px -translate-x-1/2 bg-[var(--white)]/30" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-center text-base font-medium leading-24 tracking-normal text-[var(--white)]">
-              {item.name}
-            </p>
-            <p className="text-center text-sm font-normal leading-20 tracking-normal text-[var(--white)]">
-              {displayQuantity}
-            </p>
-          </div>
-          <span className="relative flex h-11 w-0 shrink-0 items-center justify-center">
-            <span className="absolute left-1/2 top-0 h-11 w-px -translate-x-1/2 bg-[var(--white)]/30" />
-          </span>
-          <button
-            type="button"
-            onClick={onIncrement}
-            className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-[var(--white)] transition-colors hover:bg-fixed-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-400)]"
-            aria-label={`Verhoog hoeveelheid voor "${item.name}"`}
-          >
-            <PlusCircleMaskIcon
-              className="size-6 shrink-0"
-              colorClassName="bg-[var(--white)]"
-            />
-          </button>
-        </>
-      ) : (
-        <>
-          {photoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp: Next/Image optimizer faalt op sommige iOS-builds
-            <img
-              src={photoUrl}
-              alt=""
-              width={44}
-              height={44}
-              className="size-11 shrink-0 rounded-[4px] object-contain"
-              aria-hidden
-              decoding="async"
-            />
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-medium leading-24 tracking-normal text-text-primary">
-              {item.name}
-            </p>
-            <p className="text-sm font-normal leading-20 tracking-normal text-[var(--text-tertiary)]">
-              {displayQuantity}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onAdd}
-            className="flex shrink-0 items-center rounded-pill p-1 text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-            aria-label={`Voeg "${item.name}" toe`}
-          >
-            <PlusCircleMaskIcon className="size-6 shrink-0" />
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
-function TeKopenSuggestionCard({
-  item,
-  photoUrl,
-  addedBy,
-  onAdd,
-}: {
-  item: ShoppingItem;
-  photoUrl?: string | null;
-  addedBy?: { firstName: string; avatarUrl: string | null } | null;
-  onAdd: () => void;
-}) {
-  return (
-    <div className="flex w-full min-w-0 items-center gap-3 rounded-md border border-dashed border-[var(--blue-200)] bg-[var(--blue-25)] py-3 pl-4 pr-3 text-left">
-      {photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
-        <img
-          src={photoUrl}
-          alt=""
-          width={44}
-          height={44}
-          className="size-11 shrink-0 rounded-[4px] object-contain"
-          aria-hidden
-          decoding="async"
-        />
-      ) : (
-        <div className="size-11 shrink-0 rounded-[4px] bg-[var(--gray-50)]" aria-hidden />
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-base font-medium leading-24 tracking-normal text-text-primary">
-          {item.name}
-        </p>
-        <div className="flex min-w-0 items-center gap-1">
-          <p className="min-w-0 truncate text-sm font-normal leading-20 tracking-normal text-[var(--gray-400)]">
-            {addedBy
-              ? `${item.quantity} - door ${addedBy.firstName}`
-              : item.quantity}
-          </p>
-          {addedBy?.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- profiel-data-URL
-            <img
-              src={addedBy.avatarUrl}
-              alt=""
-              width={16}
-              height={16}
-              className="size-4 shrink-0 rounded-full object-cover"
-            />
-          ) : null}
-        </div>
-      </div>
+  if (count === 0) {
+    return (
       <button
         type="button"
         onClick={onAdd}
-        className="flex shrink-0 items-center rounded-pill p-1 text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-        aria-label={`Voeg "${item.name}" toe vanuit te kopen`}
+        aria-label={`Voeg "${name}" toe`}
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
-        <PlusCircleMaskIcon className="size-6 shrink-0" />
+        <PlusIcon className="size-[15px]" />
       </button>
-    </div>
+    );
+  }
+  return (
+    <span className="inline-flex h-[34px] shrink-0 items-center gap-0.5 rounded-pill bg-[var(--blue-500)] px-[3px]">
+      <button
+        type="button"
+        onClick={onDecrement}
+        aria-label={count === 1 ? `Verwijder "${name}"` : `Minder "${name}"`}
+        className={cn(STEP_BTN, count === 1 ? "text-[var(--error-400)]" : "text-[var(--blue-500)]")}
+      >
+        {count === 1 ? <TrashIcon className="size-3.5" /> : <MinusIcon className="size-3.5" />}
+      </button>
+      <span className="min-w-[22px] text-center text-sm font-bold tabular-nums text-white" aria-live="polite">
+        {count}
+      </span>
+      <button type="button" onClick={onIncrement} aria-label={`Meer "${name}"`} className={cn(STEP_BTN, "text-[var(--blue-500)]")}>
+        <PlusIcon className="size-3.5" />
+      </button>
+    </span>
+  );
+}
+
+function FavoriteRow({
+  item,
+  count,
+  displayQuantity,
+  photoUrl,
+  first,
+  onAdd,
+  onIncrement,
+  onDecrement,
+}: {
+  item: TemplateItem;
+  count: number;
+  displayQuantity: string;
+  photoUrl?: string | null;
+  first: boolean;
+  onAdd: () => void;
+  onIncrement: () => void;
+  onDecrement: () => void;
+}) {
+  const added = count > 0;
+  return (
+    <li className={cn("flex items-center gap-3 px-1 py-[9px]", !first && "border-t border-[var(--border-subtle)]")}>
+      <span
+        className={cn(
+          "flex size-[42px] shrink-0 items-center justify-center rounded-[12px] transition-colors",
+          added ? "bg-[var(--blue-25)]" : "bg-[var(--gray-25)]",
+        )}
+      >
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
+          <img src={photoUrl} alt="" width={34} height={34} className="size-[34px] object-contain" aria-hidden decoding="async" />
+        ) : null}
+      </span>
+      <span className="min-w-0 flex-1 leading-[19px]">
+        <span className={cn("block truncate text-[15px] text-text-primary", added ? "font-semibold" : "font-medium")}>
+          {item.name}
+        </span>
+        <span className={cn("block truncate text-[13px]", added ? "font-semibold text-[var(--blue-500)]" : "text-[var(--text-tertiary)]")}>
+          {displayQuantity}
+        </span>
+      </span>
+      <CountStepper name={item.name} count={count} onAdd={onAdd} onIncrement={onIncrement} onDecrement={onDecrement} />
+    </li>
   );
 }
 
@@ -460,22 +348,12 @@ export default function SelecteerMasterItemsPage() {
     };
   }, [data?.lists, masterId]);
 
-  const [selectedQuantitiesById, setSelectedQuantitiesById] = React.useState<
-    Record<string, number>
-  >({});
+  /** Aantal keer dat een favoriet op het lijstje komt (canvas «favorieten 1b: aantallen»). */
+  const [countsById, setCountsById] = React.useState<Record<string, number>>({});
   const [selectedTeKopenItemIds, setSelectedTeKopenItemIds] = React.useState<
     Set<string>
   >(() => new Set());
-  const [hiddenItemIds, setHiddenItemIds] = React.useState<Set<string>>(
-    () => new Set(),
-  );
   const [hiddenTeKopenItemIds, setHiddenTeKopenItemIds] = React.useState<Set<string>>(
-    () => new Set(),
-  );
-  const [removingItemIds, setRemovingItemIds] = React.useState<Set<string>>(
-    () => new Set(),
-  );
-  const [removingTeKopenItemIds, setRemovingTeKopenItemIds] = React.useState<Set<string>>(
     () => new Set(),
   );
   const [selectedPrevItemIds, setSelectedPrevItemIds] = React.useState<Set<string>>(
@@ -484,33 +362,6 @@ export default function SelecteerMasterItemsPage() {
   const [hiddenPrevItemIds, setHiddenPrevItemIds] = React.useState<Set<string>>(
     () => new Set(),
   );
-  const [removingPrevItemIds, setRemovingPrevItemIds] = React.useState<Set<string>>(
-    () => new Set(),
-  );
-  const hideTimeoutRef = React.useRef<Record<string, number>>({});
-  const teKopenHideTimeoutRef = React.useRef<Record<string, number>>({});
-  const prevHideTimeoutRef = React.useRef<Record<string, number>>({});
-  const REMOVE_ANIM_MS = 300;
-  const ADDED_STATE_MS = 1000;
-
-  const clearHideTimer = React.useCallback((itemId: string) => {
-    const t = hideTimeoutRef.current[itemId];
-    if (t) {
-      window.clearTimeout(t);
-      delete hideTimeoutRef.current[itemId];
-    }
-  }, []);
-
-  React.useEffect(() => {
-    return () => {
-      Object.values(hideTimeoutRef.current).forEach((t) => window.clearTimeout(t));
-      hideTimeoutRef.current = {};
-      Object.values(teKopenHideTimeoutRef.current).forEach((t) => window.clearTimeout(t));
-      teKopenHideTimeoutRef.current = {};
-      Object.values(prevHideTimeoutRef.current).forEach((t) => window.clearTimeout(t));
-      prevHideTimeoutRef.current = {};
-    };
-  }, []);
 
   const parseQuantity = React.useCallback((raw: string) => {
     const match = raw.trim().match(/^(\d+)\s*(.*)$/);
@@ -533,108 +384,14 @@ export default function SelecteerMasterItemsPage() {
     return normalizedUnit ? `${amount} ${normalizedUnit}` : String(amount);
   }, []);
 
-  const getStep = React.useCallback((amount: number) => {
-    if (amount <= 0) return 1;
-    if (amount % 100 === 0) return 100;
-    if (amount % 10 === 0) return 10;
-    return 1;
-  }, []);
-
-  const scheduleHide = React.useCallback(
-    (itemId: string) => {
-      clearHideTimer(itemId);
-      hideTimeoutRef.current[itemId] = window.setTimeout(() => {
-        setRemovingItemIds((prev) => {
-          const next = new Set(prev);
-          next.add(itemId);
-          return next;
-        });
-        window.setTimeout(() => {
-          setHiddenItemIds((prev) => {
-            const next = new Set(prev);
-            next.add(itemId);
-            return next;
-          });
-          setRemovingItemIds((prev) => {
-            const next = new Set(prev);
-            next.delete(itemId);
-            return next;
-          });
-        }, REMOVE_ANIM_MS);
-      }, ADDED_STATE_MS);
+  /** «3 stuk» × 2 → «6 stuks»; bij één keer blijft de hoeveelheid van de favoriet staan. */
+  const quantityForCount = React.useCallback(
+    (raw: string, count: number) => {
+      if (count <= 1) return raw;
+      const { amount, unit } = parseQuantity(raw);
+      return formatQuantity(amount * count, unit);
     },
-    [clearHideTimer],
-  );
-
-  const scheduleTeKopenHide = React.useCallback((itemId: string) => {
-    const existing = teKopenHideTimeoutRef.current[itemId];
-    if (existing) window.clearTimeout(existing);
-    teKopenHideTimeoutRef.current[itemId] = window.setTimeout(() => {
-      setRemovingTeKopenItemIds((prev) => {
-        const next = new Set(prev);
-        next.add(itemId);
-        return next;
-      });
-      window.setTimeout(() => {
-        setHiddenTeKopenItemIds((prev) => {
-          const next = new Set(prev);
-          next.add(itemId);
-          return next;
-        });
-        setRemovingTeKopenItemIds((prev) => {
-          const next = new Set(prev);
-          next.delete(itemId);
-          return next;
-        });
-      }, REMOVE_ANIM_MS);
-    }, ADDED_STATE_MS);
-  }, []);
-
-  const schedulePrevHide = React.useCallback((itemId: string) => {
-    const existing = prevHideTimeoutRef.current[itemId];
-    if (existing) window.clearTimeout(existing);
-    prevHideTimeoutRef.current[itemId] = window.setTimeout(() => {
-      setRemovingPrevItemIds((prev) => {
-        const next = new Set(prev);
-        next.add(itemId);
-        return next;
-      });
-      window.setTimeout(() => {
-        setHiddenPrevItemIds((prev) => {
-          const next = new Set(prev);
-          next.add(itemId);
-          return next;
-        });
-        setRemovingPrevItemIds((prev) => {
-          const next = new Set(prev);
-          next.delete(itemId);
-          return next;
-        });
-      }, REMOVE_ANIM_MS);
-    }, ADDED_STATE_MS);
-  }, []);
-
-  const restoreOriginalState = React.useCallback(
-    (itemId: string) => {
-      clearHideTimer(itemId);
-      setRemovingItemIds((prev) => {
-        const next = new Set(prev);
-        next.delete(itemId);
-        return next;
-      });
-      setHiddenItemIds((prev) => {
-        const next = new Set(prev);
-        next.delete(itemId);
-        return next;
-      });
-      setSelectedQuantitiesById((prev) => {
-        if (prev[itemId] == null) return prev;
-        const next = { ...prev };
-        delete next[itemId];
-        return next;
-      });
-    },
-    [clearHideTimer],
+    [formatQuantity, parseQuantity],
   );
 
   const storeLabel = React.useMemo(() => {
@@ -696,17 +453,6 @@ export default function SelecteerMasterItemsPage() {
       const uid = p.instantUserId;
       const firstName = p.firstName?.trim();
       if (uid && firstName) m.set(uid, firstName);
-    }
-    return m;
-  }, [shoppingProfilesData?.profiles]);
-
-  const shoppingAvatarByUserId = React.useMemo(() => {
-    const m = new Map<string, string | null>();
-    for (const p of (shoppingProfilesData?.profiles ?? []) as ProfileRow[]) {
-      const uid = p.instantUserId;
-      if (!uid) continue;
-      const url = p.avatarUrl?.trim();
-      m.set(uid, url && url.length > 0 ? url : null);
     }
     return m;
   }, [shoppingProfilesData?.profiles]);
@@ -793,7 +539,6 @@ export default function SelecteerMasterItemsPage() {
     );
     const grouped = new Map<string, TemplateItem[]>();
     for (const item of masterList.items) {
-      if (hiddenItemIds.has(item.id)) continue;
       if (teKopenNames.has(item.name.trim().toLowerCase())) continue;
       if (addedPrevNames.has(item.name.trim().toLowerCase())) continue;
       const category = resolveItemCategoryFromName(item.name);
@@ -806,123 +551,78 @@ export default function SelecteerMasterItemsPage() {
       title,
       items: grouped.get(title) ?? [],
     }));
-  }, [masterList, hiddenItemIds, teKopenItems, addedPrevNames]);
-
-  const [searchQuery, setSearchQuery] = React.useState("");
-
-  const filteredVisibleSections = React.useMemo(() => {
-    if (!searchQuery.trim()) return visibleSections;
-    const q = searchQuery.trim().toLowerCase();
-    return visibleSections
-      .map((s) => ({ ...s, items: s.items.filter((i) => i.name.toLowerCase().includes(q)) }))
-      .filter((s) => s.items.length > 0);
-  }, [visibleSections, searchQuery]);
+  }, [masterList, teKopenItems, addedPrevNames]);
 
   const selectedItemCount =
-    Object.keys(selectedQuantitiesById).length +
+    Object.keys(countsById).length +
     selectedTeKopenItemIds.size +
     selectedPrevItemIds.size;
 
-  const handleAdd = React.useCallback(
-    (item: TemplateItem) => {
-      if (hiddenItemIds.has(item.id) || removingItemIds.has(item.id)) return;
-      const base = parseQuantity(item.quantity).amount;
-      setSelectedQuantitiesById((prev) => ({
-        ...prev,
-        [item.id]: prev[item.id] ?? base,
-      }));
-      scheduleHide(item.id);
-    },
-    [hiddenItemIds, parseQuantity, removingItemIds, scheduleHide],
-  );
-
-  const handleAddTeKopenItem = React.useCallback(
-    (item: ShoppingItem) => {
-      if (hiddenTeKopenItemIds.has(item.id) || removingTeKopenItemIds.has(item.id)) return;
-      setSelectedTeKopenItemIds((prev) => {
-        const next = new Set(prev);
-        next.add(item.id);
-        return next;
-      });
-      scheduleTeKopenHide(item.id);
-    },
-    [hiddenTeKopenItemIds, removingTeKopenItemIds, scheduleTeKopenHide],
-  );
-
-  const handleAddAllTeKopenItems = React.useCallback(() => {
-    if (teKopenItems.length === 0) return;
-    setSelectedTeKopenItemIds((prev) => {
-      const next = new Set(prev);
-      for (const item of teKopenItems) next.add(item.id);
+  const setCount = React.useCallback((itemId: string, count: number) => {
+    setCountsById((prev) => {
+      const next = { ...prev };
+      if (count <= 0) delete next[itemId];
+      else next[itemId] = count;
       return next;
     });
-    for (const item of teKopenItems) scheduleTeKopenHide(item.id);
-  }, [scheduleTeKopenHide, teKopenItems]);
-
-  const handleAddPrevItem = React.useCallback(
-    (item: PrevListItem) => {
-      if (hiddenPrevItemIds.has(item.id) || removingPrevItemIds.has(item.id)) return;
-      setSelectedPrevItemIds((prev) => {
-        const next = new Set(prev);
-        next.add(item.id);
-        return next;
-      });
-      schedulePrevHide(item.id);
-    },
-    [hiddenPrevItemIds, removingPrevItemIds, schedulePrevHide],
-  );
-
-  const handleAddAllPrevItems = React.useCallback(() => {
-    if (prevListItems.length === 0) return;
-    setSelectedPrevItemIds((prev) => {
-      const next = new Set(prev);
-      for (const item of prevListItems) next.add(item.id);
-      return next;
-    });
-    for (const item of prevListItems) schedulePrevHide(item.id);
-  }, [schedulePrevHide, prevListItems]);
-
-  const handleDeletePrevItem = React.useCallback((itemId: string) => {
-    const pendingHide = prevHideTimeoutRef.current[itemId];
-    if (pendingHide) {
-      window.clearTimeout(pendingHide);
-      delete prevHideTimeoutRef.current[itemId];
-    }
-    setSelectedPrevItemIds((prev) => {
-      const next = new Set(prev);
-      next.delete(itemId);
-      return next;
-    });
-    setHiddenPrevItemIds((prev) => {
-      const next = new Set(prev);
-      next.add(itemId);
-      return next;
-    });
-    void db.transact(db.tx.items[itemId].delete());
   }, []);
 
-  const handleIncrement = React.useCallback(
-    (item: TemplateItem) => {
-      const current = selectedQuantitiesById[item.id];
-      if (current == null) return;
-      const next = current + getStep(current);
-      setSelectedQuantitiesById((prev) => ({ ...prev, [item.id]: next }));
-      scheduleHide(item.id);
-    },
-    [getStep, scheduleHide, selectedQuantitiesById],
+  const teKopenSuggestions = React.useMemo(
+    (): Suggestion[] =>
+      teKopenItems
+        .filter((item) => !selectedTeKopenItemIds.has(item.id))
+        .map((item) => {
+          const owner = item.ownerId ?? "";
+          const by =
+            user?.id && owner && owner !== user.id
+              ? shoppingFirstNameByUserId.get(owner) ?? "deelnemer"
+              : null;
+          return {
+            key: `tk:${item.id}`,
+            name: item.name,
+            quantity: item.quantity,
+            photo: getPhotoUrl(item.name) ?? null,
+            meta: by ? `door ${by}` : undefined,
+          };
+        }),
+    [getPhotoUrl, selectedTeKopenItemIds, shoppingFirstNameByUserId, teKopenItems, user?.id],
   );
 
-  const handleDecrement = React.useCallback(
-    (item: TemplateItem) => {
-      const current = selectedQuantitiesById[item.id];
-      if (current == null) return;
-      const step = getStep(current);
-      const next = Math.max(1, current - step);
-      setSelectedQuantitiesById((prev) => ({ ...prev, [item.id]: next }));
-      scheduleHide(item.id);
-    },
-    [getStep, scheduleHide, selectedQuantitiesById],
+  const prevSuggestions = React.useMemo(
+    (): Suggestion[] =>
+      prevListItems
+        .filter((item) => !selectedPrevItemIds.has(item.id))
+        .map((item) => ({
+          key: `vl:${item.id}`,
+          name: item.name,
+          quantity: item.quantity,
+          photo: getPhotoUrl(item.name) ?? null,
+        })),
+    [getPhotoUrl, prevListItems, selectedPrevItemIds],
   );
+
+  const addToSet = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, ids: string[]) =>
+    setter((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.add(id);
+      return next;
+    });
+
+  const handleSuggestionAdd = React.useCallback((s: Suggestion) => {
+    const id = s.key.slice(3);
+    addToSet(s.key.startsWith("tk:") ? setSelectedTeKopenItemIds : setSelectedPrevItemIds, [id]);
+  }, []);
+
+  /** Vuilbakje: enkel verbergen voor dit nieuwe lijstje, niets wordt gewist. */
+  const handleSuggestionDismiss = React.useCallback((s: Suggestion) => {
+    const id = s.key.slice(3);
+    addToSet(s.key.startsWith("tk:") ? setHiddenTeKopenItemIds : setHiddenPrevItemIds, [id]);
+  }, []);
+
+  const handleSuggestionAddAll = React.useCallback(() => {
+    addToSet(setSelectedTeKopenItemIds, teKopenSuggestions.map((s) => s.key.slice(3)));
+    addToSet(setSelectedPrevItemIds, prevSuggestions.map((s) => s.key.slice(3)));
+  }, [prevSuggestions, teKopenSuggestions]);
 
   const handleDone = React.useCallback(() => {
     if (!user || !masterList) return;
@@ -931,9 +631,9 @@ export default function SelecteerMasterItemsPage() {
     const selectedItems = masterList.items
       .map((i) => ({
         ...i,
-        selectedAmount: selectedQuantitiesById[i.id] ?? null,
+        count: countsById[i.id] ?? 0,
       }))
-      .filter((i) => i.selectedAmount != null);
+      .filter((i) => i.count > 0);
     const selectedPrevItems = prevList
       ? ((prevList.items ?? []) as any[])
           .filter((i: any) => typeof i?.id === "string" && selectedPrevItemIds.has(String(i.id)))
@@ -1002,10 +702,7 @@ export default function SelecteerMasterItemsPage() {
         db.tx.items[iid()]
           .update({
             name: item.name,
-            quantity: formatQuantity(
-              item.selectedAmount ?? parseQuantity(item.quantity).amount,
-              parseQuantity(item.quantity).unit,
-            ),
+            quantity: quantityForCount(item.quantity, item.count),
             checked: false,
             section: item.section,
             itemCategory: resolveItemCategoryFromName(item.name),
@@ -1055,14 +752,13 @@ export default function SelecteerMasterItemsPage() {
     data?.lists,
     plannedDateIso,
     data?.shoppingItems,
-    formatQuantity,
+    countsById,
     listName,
     masterList,
-    parseQuantity,
     prevList,
+    quantityForCount,
     router,
     selectedPrevItemIds,
-    selectedQuantitiesById,
     selectedTeKopenItemIds,
     user,
   ]);
@@ -1092,7 +788,7 @@ export default function SelecteerMasterItemsPage() {
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-[var(--white)]">
+    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)]">
       <div className="fixed inset-x-0 top-0 z-20 bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
         <header className="flex h-16 px-4">
           <div className="mx-auto flex w-full max-w-[956px] items-center gap-4">
@@ -1111,218 +807,105 @@ export default function SelecteerMasterItemsPage() {
         </header>
       </div>
 
-      <div className="relative flex-1 overflow-y-auto bg-[var(--bg-app)] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-[calc(64px+32px+env(safe-area-inset-top,0px))]">
-        <div className="relative mx-auto flex w-full max-w-[956px] flex-col gap-6">
-          <div className="flex items-center gap-4">
+      <div className="relative flex-1 bg-[var(--bg-app)] px-4 pb-[calc(112px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+16px+env(safe-area-inset-top,0px))] lg:pb-12">
+        <div className="relative mx-auto flex w-full max-w-[956px] flex-col gap-[14px] lg:gap-[18px]">
+          <div className="flex items-start gap-4">
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-page-title font-bold leading-32 tracking-normal text-text-primary">
+              <h2 className="truncate text-page-title font-bold leading-32 tracking-normal text-text-primary lg:text-[34px] lg:leading-[40px]">
                 {listName}
               </h2>
-              <div className="mt-0.5 flex min-w-0 items-center gap-1">
+              <div className="mt-1 flex min-w-0 items-center gap-1.5">
                 <StoreLogoSmall src={masterList.icon} />
-                <p className="truncate text-xs font-normal leading-16 tracking-normal text-[var(--text-tertiary)]">
-                  {storeLabel}
-                </p>
+                <p className="truncate text-[13px] leading-4 text-[var(--text-secondary)]">{storeLabel}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleDone}
-              disabled={selectedItemCount === 0}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-pill border px-2 py-1 text-sm font-medium leading-20 tracking-normal transition-colors disabled:cursor-not-allowed",
-                selectedItemCount > 0
-                  ? "border-transparent bg-[var(--action-primary)] text-[var(--action-primary-foreground)] [@media(hover:hover)]:hover:bg-[var(--action-primary-hover)]"
-                  : "border-[var(--border-default)] bg-[var(--bg-muted)] text-[var(--text-secondary)]",
-              )}
-            >
-              <CheckIcon className="size-6 shrink-0" />
-              Gereed
-            </button>
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+              <DoneButton onClick={handleDone} disabled={selectedItemCount === 0} className="disabled:cursor-not-allowed disabled:opacity-40" />
+              <span className="text-xs text-[var(--text-secondary)]" aria-live="polite">
+                {selectedItemCount} {selectedItemCount === 1 ? "item" : "items"} toegevoegd
+              </span>
+            </div>
           </div>
 
-          {teKopenItems.length > 0 ? (
-            <section className="flex flex-col gap-4" aria-label="Vanuit te kopen">
-              <div className="flex items-center gap-3">
-                <h3 className="min-w-0 flex-1 text-[18px] font-bold leading-6 tracking-normal text-[var(--blue-900)]">
-                  Vanuit te kopen
-                </h3>
-                <button
-                  type="button"
-                  onClick={handleAddAllTeKopenItems}
-                  className="inline-flex h-6 shrink-0 items-center justify-center rounded-pill bg-action-primary px-4 text-xs font-medium leading-16 tracking-normal text-white transition-colors hover:bg-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-                >
-                  Alles toevoegen
-                </button>
-              </div>
-              <p className="text-base font-light leading-24 tracking-normal text-text-primary">
-                {"Deze items stonden klaar in je 'te kopen' lijst."}
-              </p>
-              <div className="flex w-full flex-col gap-3">
-                {teKopenItems.map((item) => {
-                  const isRemoving = removingTeKopenItemIds.has(item.id);
-                  const ownerId = item.ownerId ?? "";
-                  const addedBy =
-                    user?.id && ownerId && ownerId !== user.id
-                      ? {
-                          firstName:
-                            shoppingFirstNameByUserId.get(ownerId) ??
-                            "deelnemer",
-                          avatarUrl:
-                            shoppingAvatarByUserId.get(ownerId) ?? null,
-                        }
-                      : null;
-                  return (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-                        isRemoving
-                          ? "max-h-0 opacity-0 mb-0"
-                          : "max-h-[200px] opacity-100",
-                      )}
-                    >
-                      <TeKopenSuggestionCard
-                        item={item}
-                        photoUrl={getPhotoUrl(item.name)}
-                        addedBy={addedBy}
-                        onAdd={() => handleAddTeKopenItem(item)}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
+          {teKopenSuggestions.length + prevSuggestions.length > 0 ? (
+            <div className="lg:max-w-[520px]">
+              <ListSuggestions
+                teKopen={teKopenSuggestions}
+                previous={prevSuggestions}
+                previousLabel={prevList ? String(prevList.name ?? "") || null : null}
+                onAdd={handleSuggestionAdd}
+                onAddAll={handleSuggestionAddAll}
+                onDismiss={handleSuggestionDismiss}
+              />
+            </div>
           ) : null}
 
-          {prevListItems.length > 0 ? (
-            <section className="flex flex-col gap-4" aria-label="Niet gevonden">
-              <div className="flex items-center gap-3">
-                <h3 className="min-w-0 flex-1 text-[18px] font-bold leading-6 tracking-normal text-[var(--blue-900)]">
-                  Niet gevonden
-                </h3>
-                <button
-                  type="button"
-                  onClick={handleAddAllPrevItems}
-                  className="inline-flex h-6 shrink-0 items-center justify-center rounded-pill bg-action-primary px-4 text-xs font-medium leading-16 tracking-normal text-white transition-colors hover:bg-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+          {/* Mobiel één kolom, desktop drie (canvas «favorieten 1b: aantallen»). */}
+          <div className="lg:columns-3 lg:gap-4">
+            {visibleSections.map((section) => {
+              const title = categoryHeadingDisplay(section.title);
+              const rgb = categoryColor(title).join(",");
+              const onList = section.items.filter((i) => (countsById[i.id] ?? 0) > 0).length;
+              return (
+                <section
+                  key={section.title}
+                  className="mb-3 break-inside-avoid overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:mb-4"
                 >
-                  Alles toevoegen
-                </button>
-              </div>
-              <p className="text-base font-light leading-24 tracking-normal text-text-primary">
-                Deze items stonden op je vorige lijstje maar werden niet aangevinkt.
-              </p>
-              <div className="flex w-full flex-col gap-3">
-                {prevListItems.map((item) => {
-                  const isRemoving = removingPrevItemIds.has(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-                        isRemoving
-                          ? "max-h-0 opacity-0 mb-0"
-                          : "max-h-[200px] opacity-100",
-                      )}
-                    >
-                      <SwipeToDelete
-                        onDelete={() => handleDeletePrevItem(item.id)}
-                        deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}
-                      >
-                        <TeKopenSuggestionCard
+                  <div
+                    className="flex items-center gap-2.5 px-3.5 py-3"
+                    style={{ background: `linear-gradient(90deg, rgba(${rgb},0.16), rgba(${rgb},0.05))` }}
+                  >
+                    <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb})` }} aria-hidden />
+                    <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
+                    {onList > 0 ? (
+                      <span className="shrink-0 rounded-pill bg-[var(--white)] px-[9px] py-[3px] text-xs font-bold text-[var(--blue-500)]">
+                        {onList} op lijstje
+                      </span>
+                    ) : null}
+                  </div>
+                  <ul className="px-2.5 pb-1 pt-0.5">
+                    {section.items.map((item, k) => {
+                      const count = countsById[item.id] ?? 0;
+                      return (
+                        <FavoriteRow
+                          key={item.id}
                           item={item}
+                          count={count}
+                          first={k === 0}
+                          displayQuantity={quantityForCount(item.quantity, count)}
                           photoUrl={getPhotoUrl(item.name)}
-                          onAdd={() => handleAddPrevItem(item)}
+                          onAdd={() => setCount(item.id, 1)}
+                          onIncrement={() => setCount(item.id, count + 1)}
+                          onDecrement={() => setCount(item.id, count - 1)}
                         />
-                      </SwipeToDelete>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          ) : null}
-
-          <section className="flex flex-col gap-4" aria-label="Items favorieten lijstje">
-            <h3 className="text-[18px] font-bold leading-6 tracking-normal text-[var(--blue-900)]">
-              Items favorieten lijstje
-            </h3>
-            <p className="text-base font-light leading-24 tracking-normal text-text-primary">
-              Selecteer hieronder de items uit je favorietenlijst die je wil
-              toevoegen aan je weeklijstje.
-            </p>
-          </section>
-
-          <SearchBar
-            value={searchQuery}
-            onValueChange={setSearchQuery}
-            placeholder="Zoeken in favorieten…"
-          />
-
-          <div className="flex w-full flex-col gap-6">
-            {filteredVisibleSections.map((section) => (
-              <section key={section.title} className="flex flex-col gap-3">
-                <h3 className="text-sm font-semibold leading-20 tracking-normal text-[var(--text-secondary)]">
-                  {categoryHeadingDisplay(section.title)}
-                </h3>
-                <div className="flex w-full flex-col gap-3">
-                  {section.items.map((item) => {
-                    const isRemoving = removingItemIds.has(item.id);
-                    const qty = selectedQuantitiesById[item.id] ?? null;
-                    const parsed = parseQuantity(item.quantity);
-                    return (
-                      <div
-                        key={item.id}
-                        className={cn(
-                          "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
-                          isRemoving ? "max-h-0 opacity-0 mb-0" : "max-h-[200px] opacity-100",
-                        )}
-                      >
-                        <SwipeToDelete
-                          onDelete={() => restoreOriginalState(item.id)}
-                          disabled={qty == null}
-                          deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}
-                        >
-                          <SwipeToAdd
-                            onAdd={() => handleAdd(item)}
-                            disabled={qty != null}
-                            addActionLabel={`Veeg naar rechts om "${item.name}" toe te voegen`}
-                          >
-                            <SelectableItemCard
-                              item={item}
-                              addedQuantity={qty}
-                              displayQuantity={
-                                qty == null
-                                  ? item.quantity
-                                  : formatQuantity(qty, parsed.unit)
-                              }
-                              photoUrl={getPhotoUrl(item.name)}
-                              onAdd={() => handleAdd(item)}
-                              onIncrement={() => handleIncrement(item)}
-                              onDecrement={() => handleDecrement(item)}
-                              onCancelAdd={() => restoreOriginalState(item.id)}
-                            />
-                          </SwipeToAdd>
-                        </SwipeToDelete>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
-
-          <div className="flex w-full justify-center pb-2 pt-1">
-            <Button
-              type="button"
-              variant="primary"
-              onClick={handleDone}
-              disabled={selectedItemCount === 0}
-            >
-              Gereed
-            </Button>
+                      );
+                    })}
+                  </ul>
+                </section>
+              );
+            })}
           </div>
         </div>
       </div>
+
+      {/* Mobiel: zwevende «Gereed»-balk, zodat je niet terug naar boven hoeft te scrollen. */}
+      {selectedItemCount > 0 ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 lg:hidden">
+          <div aria-hidden className="h-[120px] bg-gradient-to-b from-transparent to-[var(--bg-app)] to-45%" />
+          <div className="pointer-events-auto absolute inset-x-4 bottom-[calc(26px+env(safe-area-inset-bottom,0px))] flex items-center gap-3 rounded-pill bg-[var(--white)] py-[7px] pl-4 pr-[7px] shadow-[0_10px_30px_-10px_rgba(16,17,48,0.35),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up">
+            <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[13px] font-bold tabular-nums text-[var(--blue-500)]">
+              {selectedItemCount}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm text-[var(--text-secondary)]">
+              <b className="font-semibold text-text-primary">{selectedItemCount === 1 ? "item" : "items"}</b> toegevoegd
+            </span>
+            <DoneButton
+              onClick={handleDone}
+              className="h-[42px] px-5 text-[15px] shadow-[0_6px_16px_-6px_rgba(79,85,241,0.6)]"
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
