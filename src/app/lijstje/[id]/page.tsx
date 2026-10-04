@@ -5566,8 +5566,7 @@ export default function ListDetailPage({
                   (isCafeList && !isMasterList && !isEditMode)) ? (
                 <div className="flex shrink-0 items-center gap-2">
                   {showListGroupingControl ? (
-                    <div className="hidden items-center gap-2 lg:flex">
-                      {!isEditMode ? <OpenFirstChip value={showUncheckedFirst} onChange={setShowUncheckedFirst} /> : null}
+                    <div className="hidden lg:block">
                       <ListGroupingToggle
                         value={listGroupingMode}
                         onChange={setListGroupingMode}
