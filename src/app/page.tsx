@@ -1611,13 +1611,15 @@ function HomeWeekColumn({ day, isToday }: { day: HomeWeekDay; isToday: boolean }
           </span>
         )}
       </span>
-      <span
-        className={cn(
-          "mt-3 line-clamp-2 min-h-9 text-center text-sm leading-[18px]",
-          summary ? "font-semibold text-[var(--text-primary)]" : "text-[var(--text-tertiary)]",
-        )}
-      >
-        {summary?.title ?? "Niets gepland"}
+      <span className="mt-3 flex h-9 w-full items-start justify-center">
+        <span
+          className={cn(
+            "line-clamp-2 text-center text-sm leading-[18px]",
+            summary ? "font-semibold text-[var(--text-primary)]" : "text-[var(--text-tertiary)]",
+          )}
+        >
+          {summary?.title ?? "Niets gepland"}
+        </span>
       </span>
       <span className="mt-auto pt-2 text-xs leading-4 text-[var(--text-tertiary)]">
         {summary?.sub ?? " "}
