@@ -56,20 +56,39 @@ export function HomeHeader({ ownerId, className, action }: HomeHeaderProps) {
         className,
       )}
     >
-      {/* Profielfoto links van de begroeting (zoals in de KBC-app); vervangt de profieltab in de navigatie. */}
+      {/* Profielknop (canvas «Avatar S4»): foto op een witte schijf met schaduw en een blauw badge.
+          Met foto: «›» (naar profiel). Zonder foto: persoon-icoon + camera (foto toevoegen). */}
       <Link
         href="/profiel"
-        aria-label={firstName ? `Profiel, ${firstName}` : "Profiel"}
-        className="col-start-1 row-span-2 row-start-1 flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] shadow-[0_0_0_3px_var(--white),0_0_0_4px_var(--border-subtle)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-4"
+        aria-label={avatarUrl ? (firstName ? `Profiel, ${firstName}` : "Profiel") : "Profiel – profielfoto toevoegen"}
+        className="relative col-start-1 row-span-2 row-start-1 flex shrink-0 rounded-full bg-[var(--white)] p-[5px] shadow-[0_6px_16px_-4px_rgba(16,17,48,0.28),0_2px_4px_rgba(16,17,48,0.10)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-4"
       >
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- data-URL of blob uit profiel
-          <img src={avatarUrl} alt="" className="size-full object-cover" />
-        ) : (
-          <span aria-hidden className="text-xl font-bold text-[var(--blue-500)]">
-            {firstName ? firstName.charAt(0).toUpperCase() : "?"}
-          </span>
-        )}
+        <span className="flex size-[52px] items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] text-[var(--blue-400)]">
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- data-URL of blob uit profiel
+            <img src={avatarUrl} alt="" className="size-full object-cover" />
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-7">
+              <circle cx="12" cy="9" r="4" />
+              <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+            </svg>
+          )}
+        </span>
+        <span
+          aria-hidden
+          className="absolute -bottom-0.5 -right-0.5 flex size-[22px] items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)] shadow-[0_0_0_2px_var(--white)]"
+        >
+          {avatarUrl ? (
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-3">
+              <path d="M6 3.5 10.5 8 6 12.5" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="size-3">
+              <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+              <circle cx="12" cy="13" r="3.5" />
+            </svg>
+          )}
+        </span>
       </Link>
       <p className="col-start-2 row-start-1 self-end text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)]">
         <time dateTime={now.toISOString().slice(0, 10)}>{dateLabel}</time>
