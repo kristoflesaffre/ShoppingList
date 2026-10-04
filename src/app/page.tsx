@@ -1558,113 +1558,78 @@ function useLoosePhotos(loose: DayEntry["looseIngredients"] | null | undefined):
   return (loose ?? []).map((i) => i.photoUrl ?? getItemPhoto(i.name) ?? null);
 }
 
-const HOME_LONG_DATE = (d: Date) =>
-  d.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "short" }).replace(".", "");
-
-/** Grote dagkaart (canvas «Kalender home · D4»): verloop in de kleur van het gerecht. */
-function HomeDayBigCard({ day, label }: { day: HomeWeekDay; label: "Vandaag" | "Morgen" }) {
+/** Dagkolom in de desktopweek (canvas «Kalender home · D1»): gerecht meteen zichtbaar, in zijn kleur. */
+function HomeWeekColumn({ day, isToday }: { day: HomeWeekDay; isToday: boolean }) {
   const summary = homeDaySummary(day.isoDate, day.entry);
   const loosePhotos = useLoosePhotos(summary?.loose);
-  const firstLoosePhoto = loosePhotos.find(Boolean) ?? null;
-  const tint = recipeTintColors(useRecipeTint(summary?.photo ?? firstLoosePhoto), useIsDarkTheme());
-  const pill = (
-    <span
-      className={cn(
-        "inline-flex h-6 self-start items-center rounded-pill px-2.5 text-xs font-bold",
-        label === "Vandaag" ? "bg-[var(--blue-500)] text-white" : "bg-[var(--white)] text-[var(--blue-500)]",
-      )}
-    >
-      {label}
-    </span>
-  );
-  const dateLabel = <span className="text-[13px] leading-[18px] text-[var(--text-secondary)] first-letter:uppercase">{HOME_LONG_DATE(day.date)}</span>;
-  if (!summary) {
-    return (
-      <Link
-        href={`/kalender?date=${day.isoDate}`}
-        className="flex min-w-0 flex-1 items-center gap-5 rounded-[24px] bg-[var(--white)] px-[22px] py-5 no-underline shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-      >
-        <span aria-hidden className="size-[112px] shrink-0 rounded-full border-[1.5px] border-dashed border-[var(--gray-200)]" />
-        <span className="flex min-w-0 flex-col gap-1.5">
-          {pill}
-          {dateLabel}
-          <span className="text-[22px] font-bold leading-7 tracking-[-0.01em] text-[var(--text-tertiary)]">Nog niets gepland</span>
-        </span>
-      </Link>
-    );
-  }
-  return (
-    <Link
-      href={summary.href}
-      style={{ backgroundImage: `linear-gradient(120deg, ${tint.top} 0%, ${tint.mid} 70%, transparent 100%)` }}
-      className="flex min-w-0 flex-1 items-center gap-5 rounded-[24px] bg-[var(--white)] px-[22px] py-5 no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-    >
-      {summary.loose ? (
-        <IngredientPlate photos={loosePhotos} size={112} className="bg-[var(--white)]" />
-      ) : (
-        <HomeDayPlate src={summary.photo} size={112} freeze={summary.fromStock} shadow />
-      )}
-      <span className="flex min-w-0 flex-col gap-1.5">
-        {pill}
-        {dateLabel}
-        <span className="line-clamp-2 text-[22px] font-bold leading-7 tracking-[-0.01em] text-[var(--text-primary)]">{summary.title}</span>
-        <span className="text-[13px] leading-[18px] text-[var(--text-secondary)]">{summary.sub}</span>
-      </span>
-    </Link>
-  );
-}
-
-function HomeDayChip({ day, past }: { day: HomeWeekDay; past: boolean }) {
-  const summary = homeDaySummary(day.isoDate, day.entry);
-  const loosePhotos = useLoosePhotos(summary?.loose);
-  const abbr = `${WEEKDAY_ABBR[day.date.getDay()]} ${day.date.getDate()}`;
+  const tintSrc = summary?.photo ?? loosePhotos.find(Boolean) ?? null;
+  const tint = recipeTintColors(useRecipeTint(tintSrc), useIsDarkTheme());
+  const fullLabel = day.date.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" });
   return (
     <Link
       href={summary?.href ?? `/kalender?date=${day.isoDate}`}
+      aria-label={`${fullLabel}${isToday ? ", vandaag" : ""}: ${summary?.title ?? "niets gepland"}`}
+      style={summary ? { backgroundImage: `linear-gradient(180deg, ${tint.mid} 0%, transparent 70%)` } : undefined}
       className={cn(
-        "flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-[var(--white)] px-3 py-2.5 no-underline shadow-card transition-[opacity,transform] duration-fast ease-out-strong [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2",
-        past && "opacity-60",
+        "flex min-w-0 flex-1 flex-col items-center rounded-[20px] bg-[var(--white)] px-2.5 pb-4 pt-3.5 no-underline transition-[transform,box-shadow] duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2",
+        isToday
+          ? "shadow-[0_0_0_2px_var(--blue-500),0_10px_24px_-14px_rgba(79,85,241,0.5)]"
+          : "shadow-[inset_0_0_0_1px_var(--border-subtle)]",
       )}
     >
-      {summary ? (
-        summary.loose ? (
-          <IngredientPlate photos={loosePhotos} size={40} />
+      <span className="flex h-[46px] flex-col items-center justify-center gap-0.5">
+        {isToday ? (
+          <span className="inline-flex h-5 items-center rounded-pill bg-[var(--blue-500)] px-2 text-[11px] font-bold text-white">Vandaag</span>
         ) : (
-          <HomeDayPlate src={summary.photo} size={40} freeze={summary.fromStock} />
-        )
-      ) : (
-        <span aria-hidden className="size-10 shrink-0 rounded-full border-[1.5px] border-dashed border-[var(--gray-200)]" />
-      )}
-      <span className="flex min-w-0 flex-col leading-[17px]">
-        <span className="text-[11px] font-bold tracking-[0.05em] text-[var(--text-tertiary)]">{abbr}</span>
-        <span className={cn("truncate text-[13px]", summary ? "font-semibold text-[var(--text-primary)]" : "text-[var(--text-tertiary)]")}>
-          {summary?.title ?? "Niets gepland"}
+          <span className="text-xs font-semibold tracking-[0.06em] text-[var(--text-tertiary)]">{WEEKDAY_ABBR[day.date.getDay()]}</span>
+        )}
+        <span className={cn("text-[22px] font-bold leading-6 tabular-nums", isToday ? "text-[var(--blue-500)]" : "text-[var(--text-primary)]")}>
+          {day.date.getDate()}
         </span>
       </span>
+      <span className="mt-3.5">
+        {summary ? (
+          summary.loose ? (
+            <IngredientPlate photos={loosePhotos} size={96} className="bg-[var(--white)]" />
+          ) : (
+            <HomeDayPlate src={summary.photo} size={96} freeze={summary.fromStock} />
+          )
+        ) : (
+          <span aria-hidden className="flex size-24 items-center justify-center rounded-full border-[1.5px] border-dashed border-[var(--gray-200)] text-[13px] text-[var(--text-tertiary)]">
+            Vrij
+          </span>
+        )}
+      </span>
+      <span
+        className={cn(
+          "mt-3 line-clamp-2 h-9 text-center text-sm leading-[18px]",
+          summary ? "font-semibold text-[var(--text-primary)]" : "text-[var(--text-tertiary)]",
+        )}
+      >
+        {summary?.title ?? "Niets gepland"}
+      </span>
+      <span className="text-xs leading-4 text-[var(--text-tertiary)]">{summary?.sub ?? " "}</span>
     </Link>
   );
 }
 
 /**
- * Desktop-kalender op de startpagina (canvas «Kalender home · D4»): vandaag en morgen groot in de
- * kleur van het gerecht, de rest van de week compact eronder (voorbije dagen gedimd).
- * Met de pijlen blader je per week terug; vorige weken tonen alle zeven dagen compact.
+ * Desktop-kalender op de startpagina (canvas «Kalender home · D1»): zeven dagkolommen met het
+ * gerecht er meteen in, elk in de kleur van het gerecht; vandaag met een blauwe rand.
+ * Met de pijlen blader je per week terug.
  */
 function HomeCalendarWeekDesktop({ days, todayIso }: { days: HomeWeekDay[]; todayIso: string }) {
   const todayIdx = Math.max(0, days.findIndex((d) => d.isoDate === todayIso));
   const [weekOffset, setWeekOffset] = React.useState(0);
-  const start = todayIdx - 3 + weekOffset * 7;
-  const windowDays = days.slice(Math.max(0, start), start + 7);
-  const canPrev = start - 7 >= 0;
+  const start = Math.max(0, todayIdx - 3 + weekOffset * 7);
+  const windowDays = days.slice(start, start + 7);
+  const canPrev = start > 0;
   const isCurrent = weekOffset === 0;
-  const today = days[todayIdx];
-  const tomorrow = days[todayIdx + 1];
   const first = windowDays[0]?.date;
   const last = windowDays[windowDays.length - 1]?.date;
   const fmt = (d: Date, withMonth: boolean) =>
     withMonth ? d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" }).replace(".", "") : String(d.getDate());
   const range = first && last ? `${fmt(first, first.getMonth() !== last.getMonth())} – ${fmt(last, true)}` : "";
-  const rest = isCurrent ? windowDays.filter((d) => d !== today && d !== tomorrow) : windowDays;
 
   return (
     <div className="flex flex-col gap-4">
@@ -1690,22 +1655,11 @@ function HomeCalendarWeekDesktop({ days, todayIso }: { days: HomeWeekDay[]; toda
           </span>
         }
       />
-      {isCurrent && today ? (
-        <div className="flex gap-4">
-          <HomeDayBigCard day={today} label="Vandaag" />
-          {tomorrow ? <HomeDayBigCard day={tomorrow} label="Morgen" /> : null}
-        </div>
-      ) : null}
-      {rest.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          {isCurrent ? <span className="text-[13px] font-semibold text-[var(--text-tertiary)]">Rest van de week</span> : null}
-          <div className="flex gap-2.5">
-            {rest.map((d) => (
-              <HomeDayChip key={d.isoDate} day={d} past={d.isoDate < todayIso} />
-            ))}
-          </div>
-        </div>
-      ) : null}
+      <div className="flex gap-3">
+        {windowDays.map((d) => (
+          <HomeWeekColumn key={d.isoDate} day={d} isToday={d.isoDate === todayIso} />
+        ))}
+      </div>
     </div>
   );
 }
