@@ -77,6 +77,8 @@ export type ItemNameAutocompleteProps = {
   onSelectRecipe?: (recipe: SavedRecipe) => void;
   /** Wordt aangeroepen wanneer het sneeuwvlok-icoon bij een recept wordt gekozen. */
   onSelectRecipeFromFreezer?: (recipe: SavedRecipe) => void;
+  /** `top`: zacht grijs zoekveld met icoon links; mobiele zoek-slide-in met zoekbalk bovenaan. */
+  searchVariant?: "default" | "top";
 };
 
 // ─── Large-screen dropdown ────────────────────────────────────────────────────
@@ -223,6 +225,12 @@ function LargeScreenAutocomplete({
 
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter" && onSelectItem && value.trim() && (!showDropdown || highlightedIndex < 0)) {
+        e.preventDefault();
+        onSelectItem(value.trim());
+        setOpen(false);
+        return;
+      }
       if (!showDropdown) return;
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -237,7 +245,7 @@ function LargeScreenAutocomplete({
         setOpen(false);
       }
     },
-    [showDropdown, suggestions, highlightedIndex, handleSelect],
+    [showDropdown, suggestions, highlightedIndex, handleSelect, onSelectItem, value],
   );
 
   const dropdown =
@@ -394,6 +402,7 @@ function SmallScreenAutocomplete({
   onSelectItem,
   onSelectRecipe,
   onSelectRecipeFromFreezer,
+  searchVariant = "default",
 }: ItemNameAutocompleteProps) {
   const [slideInOpen, setSlideInOpen] = React.useState(false);
   const getItemPhotoUrl = useItemPhotoUrl();
@@ -411,6 +420,18 @@ function SmallScreenAutocomplete({
         </p>
       )}
       {/* Opent de zoek-slide-in; het echte invoerveld krijgt daar meteen focus (mobiel toetsenbord). */}
+      {searchVariant === "top" ? (
+        <button
+          type="button"
+          onClick={() => setSlideInOpen(true)}
+          className="flex h-12 w-full items-center gap-2.5 rounded-[16px] bg-[var(--gray-25)] px-3.5 text-left text-[15px] transition-colors active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          aria-haspopup="dialog"
+          aria-label={ariaLabel ?? label ?? placeholder}
+        >
+          <SearchIcon className="shrink-0 text-[var(--text-tertiary)]" />
+          <span className="min-w-0 flex-1 truncate text-[var(--text-tertiary)]">{placeholder}</span>
+        </button>
+      ) : (
       <button
         type="button"
         onClick={() => setSlideInOpen(true)}
@@ -442,8 +463,10 @@ function SmallScreenAutocomplete({
         {/* Zelfde zoek-affordance als SearchBar: icoon rechts in primary-kleur */}
         <SearchIcon className="text-[var(--blue-500)]" />
       </button>
+      )}
 
       <ItemNameSearchSlideIn
+        variant={searchVariant}
         open={slideInOpen}
         onClose={() => setSlideInOpen(false)}
         initialValue={value}

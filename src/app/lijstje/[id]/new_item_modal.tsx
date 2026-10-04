@@ -33,6 +33,7 @@ import {
 import { isVacationSlugAllowedForEmail, getVacationDefaultSlugsForPerson } from "@/lib/vacation-default-items";
 import { useItemPhotoUrl, useVacationItemSlugs } from "@/lib/item-photos";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
+import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate } from "@/lib/calendar-utils";
 
 const RecipeIngredientSortableList = dynamic(
   () => import("@/app/recepten/recipe_ingredient_sortable_list").then((m) => m.RecipeIngredientSortableList),
@@ -88,8 +89,8 @@ const BASE_SOURCE_FILTERS: ReadonlyArray<{
   value: AddSourceFilter;
   label: string;
 }> = [
-  { value: "all", label: "Alle" },
-  { value: "items", label: "Items" },
+  { value: "all", label: "Alles" },
+  { value: "items", label: "Producten" },
   { value: "recipes", label: "Recepten" },
 ];
 
@@ -110,6 +111,75 @@ const DAY_OPTIONS = [
 ] as const;
 
 const SLIDE_TRANSITION = "transform 350ms cubic-bezier(0.16, 1, 0.3, 1)";
+
+/** «2 stuk» → «2 stuks» en omgekeerd; andere eenheden blijven ongewijzigd. */
+function quantityWithCount(quantity: string, count: number): string {
+  const { quantityDesc } = parseRecipeIngredientQuantity(quantity);
+  const unit =
+    quantityDesc === "stuk" || quantityDesc === "stuks" ? (count === 1 ? "stuk" : "stuks") : quantityDesc;
+  return `${count} ${unit}`.trim();
+}
+
+const DAY_SHORT: Record<string, string> = {
+  Maandag: "MA",
+  Dinsdag: "DI",
+  Woensdag: "WO",
+  Donderdag: "DO",
+  Vrijdag: "VR",
+  Zaterdag: "ZA",
+  Zondag: "ZO",
+};
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+      <rect x="4" y="5" width="16" height="15" rx="2.5" />
+      <path d="M4 10h16M9 3v4M15 3v4" />
+    </svg>
+  );
+}
+
+/** − / aantal / + na selectie (zelfde patroon als «toevoegen uit favorieten»); bij 1 een vuilbakje. */
+function BatchCountStepper({
+  name,
+  count,
+  onChange,
+}: {
+  name: string;
+  count: number;
+  onChange: (next: number) => void;
+}) {
+  const btn =
+    "flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--white)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)]";
+  return (
+    <span className="inline-flex h-[34px] shrink-0 items-center gap-0.5 rounded-pill bg-[var(--blue-500)] px-[3px]">
+      <button
+        type="button"
+        onClick={() => onChange(count - 1)}
+        aria-label={count === 1 ? `${name} verwijderen uit selectie` : `Minder ${name}`}
+        className={cn(btn, count === 1 ? "text-[var(--error-400)]" : "text-[var(--blue-500)]")}
+      >
+        {count === 1 ? (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3.5">
+            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-3.5">
+            <path d="M6 12h12" />
+          </svg>
+        )}
+      </button>
+      <span className="min-w-[22px] text-center text-sm font-bold tabular-nums text-white" aria-live="polite">
+        {count}
+      </span>
+      <button type="button" onClick={() => onChange(count + 1)} aria-label={`Meer ${name}`} className={cn(btn, "text-[var(--blue-500)]")}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-3.5">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
+    </span>
+  );
+}
 
 function createBatchId(prefix: "item" | "recipe"): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -182,6 +252,7 @@ export function NewItemModal({
   isVacationList = false,
   initialTripPerson,
   groupingMode = "day",
+  listDateStr = "",
 }: {
   open: boolean;
   onClose: () => void;
@@ -209,6 +280,8 @@ export function NewItemModal({
   initialTripPerson?: TripPersonTab;
   /** Groeperingsmodus van het lijstje: bepaalt of dag- of winkel-selector getoond wordt. */
   groupingMode?: "day" | "category";
+  /** Datum van het lijstje (dd-mm-jjjj): voor de datum op de dagkaartjes. */
+  listDateStr?: string;
 }) {
   const isEditMode = editingItem != null;
   const isSmall = useIsSmallScreen();
@@ -255,6 +328,21 @@ export function NewItemModal({
     !isVacationList &&
     groupingMode !== "category";
   const getItemPhotoUrl = useItemPhotoUrl(160);
+
+  /** Datum per dag (zelfde logica als de dagkaarten op het lijstje). */
+  const dayDates = React.useMemo(() => {
+    const out = new Map<string, number>();
+    const listDate = parseDutchDate(listDateStr);
+    if (!listDate) return out;
+    for (const day of DAY_OPTIONS) {
+      const offset = dutchDayToOffset(day.value);
+      if (offset === null) continue;
+      let date = addDays(getMondayOfWeek(listDate), offset);
+      if (date < listDate) date = addDays(date, 7);
+      out.set(day.value, date.getDate());
+    }
+    return out;
+  }, [listDateStr]);
 
   // Diepvriesvoorraad — only query when a day is selected and we're not in edit/master mode
   const { data: freezerData } = db.useQuery(
@@ -517,6 +605,56 @@ export function NewItemModal({
     [editingBatchEntryId, resetActiveBatchItem],
   );
 
+  /** Gekozen in de zoeklijst: meteen in de selectie (1 stuk), of +1 als het er al in staat. */
+  const addBatchItem = React.useCallback(
+    (rawName: string) => {
+      const name = rawName.trim();
+      if (!name) return;
+      setBatchEntries((previous) => {
+        const existing = previous.find(
+          (entry) => entry.kind === "item" && entry.item.name.trim().toLowerCase() === name.toLowerCase(),
+        );
+        if (existing && existing.kind === "item") {
+          const count = parseRecipeIngredientQuantity(existing.item.quantity).stepperValue + 1;
+          return previous.map((entry) =>
+            entry.id === existing.id && entry.kind === "item"
+              ? { ...entry, item: { ...entry.item, quantity: quantityWithCount(entry.item.quantity, count) } }
+              : entry,
+          );
+        }
+        const entryId = createBatchId("item");
+        return [
+          ...previous,
+          {
+            id: entryId,
+            kind: "item",
+            item: {
+              id: `draft-${entryId}`,
+              name,
+              quantity: "1 stuk",
+              checked: false,
+              section: selectedDay === "Geen" ? "Algemeen" : selectedDay,
+              itemCategory: resolveItemCategoryFromName(name),
+            },
+          },
+        ];
+      });
+    },
+    [selectedDay],
+  );
+
+  const setBatchItemCount = React.useCallback((entryId: string, count: number) => {
+    setBatchEntries((previous) =>
+      count <= 0
+        ? previous.filter((entry) => entry.id !== entryId)
+        : previous.map((entry) =>
+            entry.id === entryId && entry.kind === "item"
+              ? { ...entry, item: { ...entry.item, quantity: quantityWithCount(entry.item.quantity, count) } }
+              : entry,
+          ),
+    );
+  }, []);
+
   /** Item dat nog in de editor staat telt mee bij de footer-CTA, zodat "Klaar" optioneel is. */
   const hasPendingBatchItem = batchMode && itemName.trim().length > 0;
   const effectiveBatchCount =
@@ -526,11 +664,12 @@ export function NewItemModal({
     const pending = buildActiveBatchEntry();
     const entries = pending ? mergeBatchEntry(batchEntries, pending) : batchEntries;
     if (entries.length === 0) return;
-    const itemsToAdd = entries.flatMap((entry) =>
-      entry.kind === "item" ? [entry.item] : entry.items,
-    );
+    const section = selectedDay === "Geen" ? "Algemeen" : selectedDay;
+    const itemsToAdd = entries
+      .flatMap((entry) => (entry.kind === "item" ? [entry.item] : entry.items))
+      .map((item) => ({ ...item, section }));
     onApplyRecipeToList(itemsToAdd);
-  }, [batchEntries, buildActiveBatchEntry, mergeBatchEntry, onApplyRecipeToList]);
+  }, [batchEntries, buildActiveBatchEntry, mergeBatchEntry, onApplyRecipeToList, selectedDay]);
 
   const closeRecipeFormPanel = React.useCallback(() => {
     setShowRecipeForm(false);
@@ -716,12 +855,12 @@ export function NewItemModal({
   const handleSourceFilterChange = React.useCallback(
     (nextFilter: AddSourceFilter) => {
       if (nextFilter === sourceFilter) return;
-      if (nextFilter !== "recipes" && sourceFilter === "recipes") {
+      if (nextFilter !== "recipes" && sourceFilter === "recipes" && !batchMode) {
         if (!editingBatchEntryId) setItemName(itemSearchQuery);
       }
       setSourceFilter(nextFilter);
     },
-    [editingBatchEntryId, itemSearchQuery, sourceFilter],
+    [batchMode, editingBatchEntryId, itemSearchQuery, sourceFilter],
   );
 
   const modalTitle = showRecipeForm
@@ -735,9 +874,10 @@ export function NewItemModal({
   const batchContainsRecipe = batchEntries.some(
     (entry) => entry.kind === "recipe",
   );
+  const batchDaySuffix = selectedDay !== "Geen" ? ` op ${selectedDay.toLowerCase()}` : "";
   const batchFooterLabel = batchContainsRecipe
-    ? `${effectiveBatchCount} ${effectiveBatchCount === 1 ? "selectie" : "selecties"} toevoegen`
-    : `${effectiveBatchCount} ${effectiveBatchCount === 1 ? "item" : "items"} toevoegen`;
+    ? `${effectiveBatchCount} ${effectiveBatchCount === 1 ? "selectie" : "selecties"} toevoegen${batchDaySuffix}`
+    : `${effectiveBatchCount} ${effectiveBatchCount === 1 ? "item" : "items"} toevoegen${batchDaySuffix}`;
 
   const itemFooter = batchMode ? (
     <Button
@@ -745,7 +885,16 @@ export function NewItemModal({
       disabled={effectiveBatchCount === 0}
       onClick={handleSubmitBatch}
     >
-      {effectiveBatchCount > 0 ? batchFooterLabel : "Items toevoegen"}
+      {effectiveBatchCount > 0 ? (
+        <span className="inline-flex items-center gap-2">
+          <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[rgba(255,255,255,0.22)] px-1.5 text-[13px] tabular-nums">
+            {effectiveBatchCount}
+          </span>
+          {batchFooterLabel}
+        </span>
+      ) : (
+        "Items toevoegen"
+      )}
     </Button>
   ) : isEditMode ||
     sourceFilter === "all" ||
@@ -770,44 +919,35 @@ export function NewItemModal({
     </Button>
   );
 
+  /* Canvas «Items toevoegen 1b»: segmentknop Alles / Producten / Recepten (+ Voorraad bij een dag). */
   const sourceFilterControls =
     !isMasterList &&
     !isVacationList &&
     !isEditMode &&
     groupingMode !== "category" ? (
-      <div
-        className="-mx-4 min-w-0 overflow-x-auto px-4"
-        style={{ scrollbarWidth: "none" } as React.CSSProperties}
-      >
-        <div
-          className="flex gap-2 pb-1"
-          role="group"
-          aria-label="Filter op type"
-          style={{ width: "max-content" }}
-        >
-          {[
-            ...BASE_SOURCE_FILTERS,
-            ...(daySelected ? [STOCK_SOURCE_FILTER] : []),
-          ].map((filter) => {
-            const isActive = sourceFilter === filter.value;
-            return (
-              <button
-                key={filter.value}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => handleSourceFilterChange(filter.value)}
-                className={cn(
-                  "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                  isActive
-                    ? "bg-[var(--action-primary)] font-medium text-[var(--action-primary-foreground)]"
-                    : "bg-[var(--gray-50)] font-normal text-[var(--text-tertiary)] hover:bg-[var(--gray-100)] hover:text-[var(--text-primary)]",
-                )}
-              >
-                {filter.label}
-              </button>
-            );
-          })}
-        </div>
+      <div className="flex rounded-[13px] bg-[var(--gray-50)] p-[3px]" role="group" aria-label="Filter op type">
+        {[
+          ...BASE_SOURCE_FILTERS,
+          ...(daySelected ? [STOCK_SOURCE_FILTER] : []),
+        ].map((filter) => {
+          const isActive = sourceFilter === filter.value;
+          return (
+            <button
+              key={filter.value}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => handleSourceFilterChange(filter.value)}
+              className={cn(
+                "flex h-8 min-w-0 flex-1 items-center justify-center rounded-[10px] text-[13.5px] font-semibold transition-[background-color,color,box-shadow] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                isActive
+                  ? "bg-[var(--white)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(16,17,48,0.12)]"
+                  : "text-[var(--text-secondary)]",
+              )}
+            >
+              {filter.label}
+            </button>
+          );
+        })}
       </div>
     ) : null;
 
@@ -874,103 +1014,70 @@ export function NewItemModal({
     </section>
   ) : null;
 
-  const visibleBatchEntries = batchEntries.filter(
-    (entry) => entry.id !== editingBatchEntryId,
-  );
-  const batchQueueControls = batchMode && visibleBatchEntries.length > 0 ? (
-    <section className="flex flex-col" aria-labelledby="batch-selection-title">
-      <h3
-        id="batch-selection-title"
-        className="border-b border-[var(--border-subtle)] pb-3 text-base font-semibold leading-24 text-[var(--text-primary)]"
-      >
-        Selectie
-      </h3>
-      {/* Zichtbare telling staat in de footer-CTA; hier alleen aankondigen voor screenreaders. */}
-      <span className="sr-only" aria-live="polite">
-        {batchEntries.length} in selectie
-      </span>
-      <ul className="flex flex-col">
-        {visibleBatchEntries.map((entry) => {
+  /* Canvas «Items toevoegen 1b · gekozen»: selectie met − / + per item; recepten met vuilbakje. */
+  const batchQueueControls = batchMode && batchEntries.length > 0 ? (
+    <section className="flex flex-col gap-2" aria-labelledby="batch-selection-title">
+      <div className="flex items-center justify-between">
+        <h3 id="batch-selection-title" className="text-xs font-bold tracking-[0.05em] text-[var(--text-tertiary)]">
+          GEKOZEN · {batchEntries.length}
+        </h3>
+        <button
+          type="button"
+          onClick={() => setBatchEntries([])}
+          className="rounded-sm text-[13px] font-semibold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          Alles wissen
+        </button>
+      </div>
+      <ul className="rounded-[18px] bg-[var(--white)] px-2.5 pb-1 pt-0.5 shadow-[0_0_0_1px_var(--border-subtle)]">
+        {batchEntries.map((entry, index) => {
           const isItem = entry.kind === "item";
-          const itemPhotoUrl = isItem
-            ? getItemPhotoUrl(entry.item.name, 160)
-            : entry.photoUrl || "/images/ui/recept_320.webp";
           const title = isItem ? entry.item.name : entry.recipeName;
-          const metadata = isItem
-            ? entry.item.quantity
-            : `Recept · ${entry.items.length} ${entry.items.length === 1 ? "ingrediënt" : "ingrediënten"}`;
-
-          const rowContent = (
-            <>
-              {itemPhotoUrl ? (
-                <div
-                  className={cn(
-                    "flex size-12 shrink-0 items-center justify-center overflow-hidden bg-[var(--gray-25)]",
-                    isItem ? "rounded-md" : "rounded-full",
-                  )}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- lokale itemfoto of opgeslagen receptfoto */}
-                  <img
-                    src={itemPhotoUrl}
-                    alt=""
-                    width={48}
-                    height={48}
-                    className={cn(
-                      "size-12",
-                      isItem ? "object-contain" : "object-cover",
-                    )}
-                    aria-hidden
-                    decoding="async"
-                  />
-                </div>
-              ) : null}
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-base font-medium leading-24 text-[var(--text-primary)]">
-                  {title}
-                </span>
-                <span className="truncate text-sm leading-20 text-[var(--text-tertiary)]">
-                  {metadata}
-                  {isItem ? (
-                    <>
-                      <span aria-hidden> · </span>
-                      <span className="font-medium text-[var(--text-link)]" aria-hidden>
-                        Wijzig
-                      </span>
-                    </>
-                  ) : null}
-                </span>
-              </div>
-            </>
-          );
-
+          const photo = isItem
+            ? entry.item.stockPhotoUrl ?? getItemPhotoUrl(entry.item.name, 160)
+            : entry.photoUrl || "/images/ui/recept_320.webp";
+          const count = isItem ? parseRecipeIngredientQuantity(entry.item.quantity).stepperValue : 0;
           return (
             <li
               key={entry.id}
-              className="flex min-h-16 items-center gap-1 border-b border-[var(--border-subtle)] motion-safe:animate-fade-slide-in"
+              className={cn(
+                "flex items-center gap-3 px-1 py-[9px] motion-safe:animate-fade-slide-in",
+                index > 0 && "border-t border-[var(--border-subtle)]",
+              )}
             >
               {isItem ? (
-                /* Hele rij tikbaar om hoeveelheid te wijzigen; grotere tap-target dan een losse tekstlink. */
+                <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--blue-25)]" aria-hidden>
+                  {photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- lokale itemfoto
+                    <img src={photo} alt="" width={34} height={34} className="size-[34px] object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" decoding="async" />
+                  ) : (
+                    <span className="text-base font-bold text-[var(--blue-500)]">{title.trim().charAt(0).toUpperCase()}</span>
+                  )}
+                </span>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element -- receptfoto kan een externe/data-URL zijn
+                <img src={photo ?? ""} alt="" width={42} height={42} className="size-[42px] shrink-0 rounded-full object-cover" aria-hidden decoding="async" />
+              )}
+              <span className="flex min-w-0 flex-1 flex-col leading-[18px]">
+                <span className="truncate text-[15px] font-semibold text-[var(--text-primary)] first-letter:uppercase">{title}</span>
+                <span className={cn("truncate text-[12.5px]", isItem ? "font-semibold text-[var(--blue-500)]" : "text-[var(--text-tertiary)]")}>
+                  {isItem
+                    ? entry.item.quantity
+                    : `Recept · ${entry.items.length} ${entry.items.length === 1 ? "ingrediënt" : "ingrediënten"}`}
+                </span>
+              </span>
+              {isItem ? (
+                <BatchCountStepper name={title} count={count} onChange={(next) => setBatchItemCount(entry.id, next)} />
+              ) : (
                 <button
                   type="button"
-                  onClick={() => handleEditBatchItem(entry)}
-                  aria-label={`${title} wijzigen`}
-                  className="-ml-2 flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-md py-2 pl-2 pr-1 text-left transition-colors hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  onClick={() => handleDeleteBatchEntry(entry.id)}
+                  aria-label={`${title} verwijderen uit selectie`}
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full text-[var(--text-tertiary)] transition-colors hover:bg-[var(--gray-25)] hover:text-[var(--error-400)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                 >
-                  {rowContent}
+                  <BatchTrashIcon />
                 </button>
-              ) : (
-                <div className="flex min-h-16 min-w-0 flex-1 items-center gap-3 py-2">
-                  {rowContent}
-                </div>
               )}
-              <button
-                type="button"
-                onClick={() => handleDeleteBatchEntry(entry.id)}
-                aria-label={`${title} verwijderen uit selectie`}
-                className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-md text-[var(--text-tertiary)] transition-colors hover:bg-[var(--gray-25)] hover:text-[var(--error-400)] active:text-[var(--error-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <BatchTrashIcon />
-              </button>
             </li>
           );
         })}
@@ -978,11 +1085,35 @@ export function NewItemModal({
     </section>
   ) : null;
 
+  /* Canvas «Items toevoegen 1b · leeg». */
   const batchEmptyHint =
-    batchMode && batchEntries.length === 0 && !activeBatchEditor ? (
-      <p className="mx-auto max-w-[30ch] pt-2 text-center text-sm leading-20 text-[var(--text-tertiary)] [text-wrap:balance]">
-        Kies meerdere items en voeg ze in één keer toe.
-      </p>
+    batchMode && batchEntries.length === 0 ? (
+      <div className="flex flex-col items-center px-6 pt-8 text-center">
+        <span className="flex h-[84px] w-[132px] items-center justify-center rounded-pill bg-[var(--blue-25)]" aria-hidden>
+          {["Appels", "Brood", "Eieren"].map((name, i) => {
+            const src = getItemPhotoUrl(name, 160);
+            return (
+              <span
+                key={name}
+                className={cn(
+                  "relative flex size-11 items-center justify-center rounded-full bg-[var(--white)] shadow-[0_0_0_3px_var(--blue-25),0_6px_14px_-8px_rgba(16,17,48,0.25)]",
+                  i > 0 && "-ml-3",
+                )}
+                style={{ zIndex: 3 - i }}
+              >
+                {src ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- lokale itemfoto
+                  <img src={src} alt="" width={32} height={32} className="size-8 object-contain" />
+                ) : null}
+              </span>
+            );
+          })}
+        </span>
+        <p className="mt-4 text-base font-bold text-[var(--text-primary)]">Kies meerdere items</p>
+        <p className="mt-1 max-w-[32ch] text-sm leading-5 text-[var(--text-secondary)] [text-wrap:balance]">
+          Zoek producten of recepten en voeg ze in één keer toe aan de gekozen dag.
+        </p>
+      </div>
     ) : null;
 
   return (
@@ -1083,37 +1214,48 @@ export function NewItemModal({
                       </div>
                     </div>
                   ) : (
-                    /* Per dag modus: dag-selector */
+                    /* Canvas «Items toevoegen 1b»: dagkaartjes met datum. */
                     <div className="flex flex-col gap-2">
-                      <span className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-                        Dag
-                      </span>
-                      {/* Eén compacte rij zodat het zoekveld het visuele anker blijft */}
-                      <div
-                        className="grid grid-cols-[1.45fr_repeat(7,minmax(0,1fr))] gap-1.5"
-                        role="group"
-                        aria-label="Dag"
-                      >
-                        {DAY_OPTIONS.map((day) => (
-                          <ToggleButton
-                            key={day.value}
-                            variant={
-                              selectedDay === day.value ? "active" : "inactive"
-                            }
-                            aria-pressed={selectedDay === day.value}
-                            className="w-full min-h-10 !px-0"
-                            onClick={() => {
-                              setSelectedDay(day.value);
-                              if (day.value === "Geen") {
-                                setSourceFilter((prev) =>
-                                  prev === "stock" ? "all" : prev,
-                                );
-                              }
-                            }}
-                          >
-                            {day.label}
-                          </ToggleButton>
-                        ))}
+                      <span className="text-xs font-bold tracking-[0.05em] text-[var(--text-tertiary)]">VOOR WELKE DAG?</span>
+                      <div className="grid grid-cols-[1.2fr_repeat(7,minmax(0,1fr))] gap-1.5" role="group" aria-label="Dag">
+                        {DAY_OPTIONS.map((day) => {
+                          const active = selectedDay === day.value;
+                          const date = dayDates.get(day.value);
+                          return (
+                            <button
+                              key={day.value}
+                              type="button"
+                              aria-pressed={active}
+                              aria-label={day.value === "Geen" ? "Geen dag" : `${day.value}${date ? ` ${date}` : ""}`}
+                              onClick={() => {
+                                setSelectedDay(day.value);
+                                if (day.value === "Geen") {
+                                  setSourceFilter((prev) => (prev === "stock" ? "all" : prev));
+                                }
+                              }}
+                              className={cn(
+                                "flex h-[58px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[14px] transition-[background-color,color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+                                active
+                                  ? "bg-[var(--blue-500)] text-white shadow-[0_6px_14px_-6px_rgba(79,85,241,0.6)]"
+                                  : "bg-[var(--gray-25)] text-[var(--text-primary)]",
+                              )}
+                            >
+                              {day.value === "Geen" ? (
+                                <>
+                                  <span className={active ? "text-white" : "text-[var(--text-secondary)]"}>
+                                    <CalendarIcon />
+                                  </span>
+                                  <span className={cn("text-[11px] font-bold", active ? "text-white" : "text-[var(--text-secondary)]")}>Geen</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-[10px] font-bold opacity-75">{DAY_SHORT[day.value]}</span>
+                                  <span className="text-[17px] font-bold leading-5 tabular-nums">{date ?? day.label}</span>
+                                </>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -1134,16 +1276,21 @@ export function NewItemModal({
                 >
                   <div className="flex flex-col gap-3">
                     <ItemNameAutocomplete
-                      ariaLabel={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
-                      placeholder={sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
+                      ariaLabel={batchMode ? (sourceFilter === "all" ? "Zoek een product of recept" : "Zoek een product") : sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
+                      placeholder={batchMode ? (sourceFilter === "all" ? "Zoek een product of recept" : "Zoek een product") : sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
+                      searchVariant={batchMode ? "top" : "default"}
                       value={batchMode ? itemSearchQuery : itemName}
                       onChange={(value) => {
                         if (batchMode) setItemSearchQuery(value);
-                        setItemName(value);
+                        else setItemName(value);
                       }}
                       onSelectItem={(name) => {
-                        setItemName(name);
-                        if (batchMode) setItemSearchQuery("");
+                        if (batchMode) {
+                          addBatchItem(name);
+                          setItemSearchQuery("");
+                        } else {
+                          setItemName(name);
+                        }
                       }}
                       autoFocus={!nameSearchOpen}
                       recipes={sourceFilter === "all" ? storedRecipes : undefined}
