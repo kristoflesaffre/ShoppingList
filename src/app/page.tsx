@@ -70,6 +70,7 @@ import {
   type DayEntry,
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
+import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { frituurItemIconSrc } from "@/lib/frituur-item-icons";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
@@ -1425,6 +1426,250 @@ function HomeCalendarSection({
   );
 }
 
+/** Samenvatting van een kalenderdag voor de desktopweek (gerecht of losse items). */
+function homeDaySummary(isoDate: string, entry: DayEntry | null) {
+  if (!entry || !dayEntryHasContent(entry)) return null;
+  const meal = entry.meals[0] ?? null;
+  if (meal) {
+    const extra = entry.meals.length - 1;
+    return {
+      title: meal.recipeName,
+      sub: meal.fromStock
+        ? "Uit de diepvries"
+        : extra > 0
+          ? `+ ${extra} ${extra === 1 ? "gerecht" : "gerechten"}`
+          : meal.ingredientCount === 1
+            ? "1 ingrediënt"
+            : `${meal.ingredientCount} ingrediënten`,
+      photo: meal.photoUrl,
+      productName: null as string | null,
+      fromStock: meal.fromStock === true,
+      href: meal.recipeId ? `/recepten/${meal.recipeId}` : `/kalender?date=${isoDate}`,
+    };
+  }
+  const items = entry.looseIngredients;
+  const first = items.find((i) => i.photoUrl) ?? items[0];
+  const names = items.map((i) => i.name);
+  return {
+    title: names.length > 2 ? `${names.slice(0, 2).join(", ")} +${names.length - 2}` : names.join(", "),
+    sub: items.length === 1 ? "1 item" : `${items.length} items`,
+    photo: first?.photoUrl ?? null,
+    /** Zonder eigen foto: productfoto van het eerste item als terugval. */
+    productName: first?.photoUrl ? null : (first?.name ?? null),
+    fromStock: first?.fromStock === true,
+    href: `/kalender?date=${isoDate}`,
+  };
+}
+
+function HomeFreezeBadge({ size = 20 }: { size?: number }) {
+  return (
+    <span
+      className="absolute -right-0.5 -top-0.5 flex items-center justify-center rounded-full bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.15)]"
+      style={{ width: size, height: size }}
+    >
+      <span
+        aria-hidden
+        className="inline-block bg-[var(--blue-500)]"
+        style={{
+          width: Math.round(size * 0.6),
+          height: Math.round(size * 0.6),
+          WebkitMaskImage: "url(/icons/freeze.svg)",
+          maskImage: "url(/icons/freeze.svg)",
+          WebkitMaskSize: "contain",
+          maskSize: "contain",
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "center",
+          maskPosition: "center",
+        }}
+      />
+    </span>
+  );
+}
+
+function HomeDayPlate({
+  src,
+  size,
+  freeze,
+  shadow = false,
+  product = false,
+}: {
+  src: string | null;
+  size: number;
+  freeze: boolean;
+  shadow?: boolean;
+  /** Productfoto (vrijstaand) i.p.v. gerechtfoto: niet bijsnijden, met wat lucht. */
+  product?: boolean;
+}) {
+  return (
+    <span className="relative shrink-0" style={{ width: size, height: size }}>
+      <span
+        className={cn(
+          "block size-full overflow-hidden rounded-full bg-[var(--gray-25)]",
+          shadow && "shadow-[0_10px_24px_-12px_rgba(16,17,48,0.35)]",
+        )}
+      >
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto
+          <img
+            src={src}
+            alt=""
+            decoding="async"
+            loading="lazy"
+            className={product ? "size-full object-contain p-[14%]" : "size-full scale-[1.08] object-cover"}
+          />
+        ) : null}
+      </span>
+      {freeze ? <HomeFreezeBadge size={Math.max(18, Math.round(size / 4))} /> : null}
+    </span>
+  );
+}
+
+const HOME_LONG_DATE = (d: Date) =>
+  d.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "short" }).replace(".", "");
+
+/** Grote dagkaart (canvas «Kalender home · D4»): verloop in de kleur van het gerecht. */
+function HomeDayBigCard({ day, label }: { day: HomeWeekDay; label: "Vandaag" | "Morgen" }) {
+  const summary = homeDaySummary(day.isoDate, day.entry);
+  const getItemPhoto = useItemPhotoUrl(160);
+  const productPhoto = summary?.productName ? getItemPhoto(summary.productName) : null;
+  const tint = recipeTintColors(useRecipeTint(summary?.photo ?? productPhoto), useIsDarkTheme());
+  const pill = (
+    <span
+      className={cn(
+        "inline-flex h-6 self-start items-center rounded-pill px-2.5 text-xs font-bold",
+        label === "Vandaag" ? "bg-[var(--blue-500)] text-white" : "bg-[var(--white)] text-[var(--blue-500)]",
+      )}
+    >
+      {label}
+    </span>
+  );
+  const dateLabel = <span className="text-[13px] leading-[18px] text-[var(--text-secondary)] first-letter:uppercase">{HOME_LONG_DATE(day.date)}</span>;
+  if (!summary) {
+    return (
+      <Link
+        href={`/kalender?date=${day.isoDate}`}
+        className="flex min-w-0 flex-1 items-center gap-5 rounded-[24px] bg-[var(--white)] px-[22px] py-5 no-underline shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+      >
+        <span aria-hidden className="size-[112px] shrink-0 rounded-full border-[1.5px] border-dashed border-[var(--gray-200)]" />
+        <span className="flex min-w-0 flex-col gap-1.5">
+          {pill}
+          {dateLabel}
+          <span className="text-[22px] font-bold leading-7 tracking-[-0.01em] text-[var(--text-tertiary)]">Nog niets gepland</span>
+        </span>
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href={summary.href}
+      style={{ backgroundImage: `linear-gradient(120deg, ${tint.top} 0%, ${tint.mid} 70%, transparent 100%)` }}
+      className="flex min-w-0 flex-1 items-center gap-5 rounded-[24px] bg-[var(--white)] px-[22px] py-5 no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+    >
+      <HomeDayPlate src={summary.photo ?? productPhoto} size={112} freeze={summary.fromStock} shadow={!productPhoto} product={!summary.photo && !!productPhoto} />
+      <span className="flex min-w-0 flex-col gap-1.5">
+        {pill}
+        {dateLabel}
+        <span className="line-clamp-2 text-[22px] font-bold leading-7 tracking-[-0.01em] text-[var(--text-primary)]">{summary.title}</span>
+        <span className="text-[13px] leading-[18px] text-[var(--text-secondary)]">{summary.sub}</span>
+      </span>
+    </Link>
+  );
+}
+
+function HomeDayChip({ day, past }: { day: HomeWeekDay; past: boolean }) {
+  const summary = homeDaySummary(day.isoDate, day.entry);
+  const getItemPhoto = useItemPhotoUrl(160);
+  const productPhoto = summary?.productName ? getItemPhoto(summary.productName) : null;
+  const abbr = `${WEEKDAY_ABBR[day.date.getDay()]} ${day.date.getDate()}`;
+  return (
+    <Link
+      href={summary?.href ?? `/kalender?date=${day.isoDate}`}
+      className={cn(
+        "flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-[var(--white)] px-3 py-2.5 no-underline shadow-card transition-[opacity,transform] duration-fast ease-out-strong [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2",
+        past && "opacity-60",
+      )}
+    >
+      {summary ? (
+        <HomeDayPlate src={summary.photo ?? productPhoto} size={40} freeze={summary.fromStock} product={!summary.photo && !!productPhoto} />
+      ) : (
+        <span aria-hidden className="size-10 shrink-0 rounded-full border-[1.5px] border-dashed border-[var(--gray-200)]" />
+      )}
+      <span className="flex min-w-0 flex-col leading-[17px]">
+        <span className="text-[11px] font-bold tracking-[0.05em] text-[var(--text-tertiary)]">{abbr}</span>
+        <span className={cn("truncate text-[13px]", summary ? "font-semibold text-[var(--text-primary)]" : "text-[var(--text-tertiary)]")}>
+          {summary?.title ?? "Niets gepland"}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+/**
+ * Desktop-kalender op de startpagina (canvas «Kalender home · D4»): vandaag en morgen groot in de
+ * kleur van het gerecht, de rest van de week compact eronder (voorbije dagen gedimd).
+ * Met de pijlen blader je per week terug; vorige weken tonen alle zeven dagen compact.
+ */
+function HomeCalendarWeekDesktop({ days, todayIso }: { days: HomeWeekDay[]; todayIso: string }) {
+  const todayIdx = Math.max(0, days.findIndex((d) => d.isoDate === todayIso));
+  const [weekOffset, setWeekOffset] = React.useState(0);
+  const start = todayIdx - 3 + weekOffset * 7;
+  const windowDays = days.slice(Math.max(0, start), start + 7);
+  const canPrev = start - 7 >= 0;
+  const isCurrent = weekOffset === 0;
+  const today = days[todayIdx];
+  const tomorrow = days[todayIdx + 1];
+  const first = windowDays[0]?.date;
+  const last = windowDays[windowDays.length - 1]?.date;
+  const fmt = (d: Date, withMonth: boolean) =>
+    withMonth ? d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" }).replace(".", "") : String(d.getDate());
+  const range = first && last ? `${fmt(first, first.getMonth() !== last.getMonth())} – ${fmt(last, true)}` : "";
+  const rest = isCurrent ? windowDays.filter((d) => d !== today && d !== tomorrow) : windowDays;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <ListSectionHeader
+        icon="calendar"
+        label="Kalender"
+        showNaarOverzicht
+        naarOverzichtHref="/kalender"
+        overzichtLabel="Toon alle"
+        extra={
+          <span className="flex items-center gap-1.5">
+            <span className="mr-2 text-sm text-[var(--text-tertiary)]">{range}</span>
+            <button type="button" aria-label="Vorige week" disabled={!canPrev} onClick={() => setWeekOffset((w) => w - 1)} className={HOME_SWIMLANE_ARROW_CLASS}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                <path d="M10 3.5 5.5 8 10 12.5" />
+              </svg>
+            </button>
+            <button type="button" aria-label="Volgende week" disabled={isCurrent} onClick={() => setWeekOffset((w) => Math.min(0, w + 1))} className={HOME_SWIMLANE_ARROW_CLASS}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                <path d="M6 3.5 10.5 8 6 12.5" />
+              </svg>
+            </button>
+          </span>
+        }
+      />
+      {isCurrent && today ? (
+        <div className="flex gap-4">
+          <HomeDayBigCard day={today} label="Vandaag" />
+          {tomorrow ? <HomeDayBigCard day={tomorrow} label="Morgen" /> : null}
+        </div>
+      ) : null}
+      {rest.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {isCurrent ? <span className="text-[13px] font-semibold text-[var(--text-tertiary)]">Rest van de week</span> : null}
+          <div className="flex gap-2.5">
+            {rest.map((d) => (
+              <HomeDayChip key={d.isoDate} day={d} past={d.isoDate < todayIso} />
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 type HomeListItemRow = {
   id: string;
   name?: string;
@@ -2039,7 +2284,16 @@ function HomeKalenderSection({
 }) {
   /* Weekstrip zodra de kalender ooit gebruikt is; ook zonder plannen deze week (dan "Nog niets gepland"). */
   if ((entries.length > 0 || hasEverUsedCalendar) && weekDays.length >= 7) {
-    return <HomeCalendarSection days={weekDays} todayIso={todayIso} />;
+    return (
+      <>
+        <div className="lg:hidden">
+          <HomeCalendarSection days={weekDays} todayIso={todayIso} />
+        </div>
+        <div className="hidden lg:block">
+          <HomeCalendarWeekDesktop days={weekDays} todayIso={todayIso} />
+        </div>
+      </>
+    );
   }
   return (
     <div className="flex flex-col gap-4">
