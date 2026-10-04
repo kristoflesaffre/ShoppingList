@@ -3514,7 +3514,7 @@ export default function Home() {
                 aria-label="Nieuw lijstje"
                 desktopLabel="Nieuw lijstje"
                 elevated={false}
-                className="hidden h-14 gap-2 px-5 py-0 lg:inline-flex"
+                className="hidden h-12 gap-2 px-5 py-0 lg:inline-flex"
                 onClick={handleOpenCreateModal}
               />
             }
