@@ -186,6 +186,12 @@ function WalletCardHead({ card, accent }: { card: WalletCard; accent: string }) 
 
 /** Zichtbare kop van elke kaart in de stapel (Apple Wallet). */
 const STRIP = 58;
+/** Afstand tussen de kaarten in de opgeschoven stapel onder een geopende kaart. */
+const PILE_STEP = 9;
+const PILE_PEEK = 72;
+const OPEN_GAP = 18;
+const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+const DURATION = 520;
 
 /** Echte code als klein voorbeeld (geschaald), zodat kaarten «echt» ogen nog voor je tikt. */
 export function CodePreview({ card, className }: { card: WalletCard; className?: string }) {
@@ -205,12 +211,23 @@ export function CodePreview({ card, className }: { card: WalletCard; className?:
 }
 
 /**
- * Mobiele wallet volgens het Apple Wallet-principe: alle kaarten liggen op elkaar met enkel hun
- * kop zichtbaar; de onderste kaart toont je volledig (QR-kaart: met de grote code, canvas
- * «Kaarten 1c»). Een tik opent de kaart in de schermvullende weergave (canvas «Kaartmodal C»);
- * de stapel zelf blijft liggen.
+ * Mobiele wallet volgens het Apple Wallet-principe (canvas «Kaarten 1b/1c» + voorbeeld):
+ * alle kaarten liggen op elkaar met enkel hun kop zichtbaar; de onderste kaart toont je
+ * volledig, met een voorbeeld van de code. Tik op een kaart: die schuift vloeiend naar boven
+ * en vouwt open met de scanbare code, de rest zakt samen tot een stapeltje eronder.
+ * Nog een tik op de geopende kaart toont hem schermvullend (canvas «Kaartmodal C»);
+ * een tik op het stapeltje legt alles terug.
  */
-export function LoyaltyWallet({ cards, onOpen }: { cards: WalletCard[]; onOpen: (card: WalletCard) => void }) {
+export function LoyaltyWallet({
+  cards,
+  reducedMotion,
+  onOpen,
+}: {
+  cards: WalletCard[];
+  reducedMotion: boolean;
+  onOpen: (card: WalletCard) => void;
+}) {
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [width, setWidth] = React.useState(343);
   const dark = useIsDarkTheme();
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -225,26 +242,78 @@ export function LoyaltyWallet({ cards, onOpen }: { cards: WalletCard[]; onOpen: 
     return () => ro.disconnect();
   }, []);
 
-  const cardH = Math.round(width / 1.586);
-  const n = cards.length;
-  const last = cards[n - 1];
-  const lastFullQr = last?.codeType === "qr";
-  const lastH = lastFullQr ? Math.max(cardH, 330) : cardH;
-  const height = (n - 1) * STRIP + lastH;
+  React.useEffect(() => {
+    if (selectedId && !cards.some((c) => c.id === selectedId)) setSelectedId(null);
+  }, [cards, selectedId]);
 
+  const cardH = Math.round(width / 1.586);
+  const selected = cards.find((c) => c.id === selectedId) ?? null;
+  const codeH = (card: WalletCard) => Math.max(cardH, card.codeType === "qr" ? 330 : 236);
+  const openH = selected ? codeH(selected) : cardH;
+  const last = cards[cards.length - 1];
+  /** QR-kaart onderaan de stapel: meteen volledig zichtbaar met de grote QR-code (canvas «Kaarten 1c»). */
+  const lastFullQr = !selected && last?.codeType === "qr";
+  const n = cards.length;
+  const pileCount = selected ? n - 1 : 0;
+  const height = selected
+    ? openH + (pileCount > 0 ? OPEN_GAP + (pileCount - 1) * PILE_STEP + PILE_PEEK : 0)
+    : (n - 1) * STRIP + (lastFullQr ? codeH(last) : cardH);
+
+  const select = (id: string) => {
+    setSelectedId(id);
+    const el = rootRef.current;
+    if (el && el.getBoundingClientRect().top < 0) {
+      window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - 72, behavior: reducedMotion ? "auto" : "smooth" });
+    }
+  };
+
+  const transition = reducedMotion
+    ? "none"
+    : `transform ${DURATION}ms ${EASE}, height ${DURATION}ms ${EASE}, box-shadow ${DURATION}ms ${EASE}`;
+
+  let pileIndex = 0;
   return (
-    <div ref={rootRef} className="relative" style={{ height }}>
+    <div
+      ref={rootRef}
+      className="relative"
+      style={{ height, transition: reducedMotion ? "none" : `height ${DURATION}ms ${EASE}` }}
+    >
       {cards.map((card, i) => {
-        const isLast = i === n - 1;
+        const isSelected = card.id === selectedId;
+        let y: number;
+        let scale = 1;
+        let h = cardH;
+        if (!selected) {
+          y = i * STRIP;
+          if (lastFullQr && i === n - 1) h = codeH(card);
+        } else if (isSelected) {
+          y = 0;
+          h = openH;
+        } else {
+          const j = pileIndex++;
+          y = openH + OPEN_GAP + j * PILE_STEP;
+          scale = 1 - Math.min(0.06, (pileCount - 1 - j) * 0.012);
+        }
         return (
           <WalletCardView
             key={card.id}
             card={card}
             dark={dark}
-            showCode={isLast && lastFullQr}
-            showPreview={isLast && !lastFullQr}
-            onOpen={() => onOpen(card)}
-            style={{ height: isLast ? lastH : cardH, top: i * STRIP, zIndex: i + 1 }}
+            open={isSelected}
+            showCode={isSelected || (lastFullQr && i === n - 1)}
+            showPreview={!selected && !lastFullQr && i === n - 1}
+            onToggle={() => {
+              if (isSelected) onOpen(card);
+              else if (selected) setSelectedId(null);
+              else select(card.id);
+            }}
+            style={{
+              height: h,
+              transform: `translate3d(0, ${y}px, 0) scale(${scale})`,
+              zIndex: isSelected ? n + 1 : i + 1,
+              transition,
+            }}
+            reducedMotion={reducedMotion}
           />
         );
       })}
@@ -255,23 +324,31 @@ export function LoyaltyWallet({ cards, onOpen }: { cards: WalletCard[]; onOpen: 
 function WalletCardView({
   card,
   dark,
+  open,
   showCode,
   showPreview,
-  onOpen,
+  onToggle,
   style,
+  reducedMotion,
 }: {
   card: WalletCard;
   dark: boolean;
+  open: boolean;
   showCode: boolean;
   showPreview: boolean;
-  onOpen: () => void;
+  onToggle: () => void;
   style: React.CSSProperties;
+  reducedMotion: boolean;
 }) {
   const colors = cardColors(useLogoTint(card.logoSrc), dark);
   const isQr = card.codeType === "qr";
+  const fade = (visible: boolean, delay: number): React.CSSProperties => ({
+    opacity: visible ? 1 : 0,
+    transition: reducedMotion ? "none" : `opacity 260ms ease ${visible ? delay : 0}ms`,
+  });
   return (
     <div
-      className="absolute inset-x-0 overflow-hidden rounded-[20px] transition-transform duration-fast ease-out-strong has-[button:active]:scale-[0.985]"
+      className="absolute inset-x-0 top-0 origin-top overflow-hidden rounded-[20px] will-change-transform"
       style={{
         ...style,
         background: colors.background,
@@ -280,26 +357,28 @@ function WalletCardView({
     >
       <button
         type="button"
-        onClick={onOpen}
-        aria-label={`${card.cardName} tonen`}
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-label={open ? `${card.cardName} schermvullend tonen` : `${card.cardName} tonen`}
         className="absolute inset-0 z-0 rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
       />
       <div className="pointer-events-none relative px-4 pt-3.5">
         <WalletCardHead card={card} accent={colors.accent} />
       </div>
-      {showPreview ? (
-        <div className="pointer-events-none absolute bottom-4 right-4">
-          <CodePreview card={card} className={isQr ? "" : "!w-[132px]"} />
-        </div>
-      ) : null}
-      {showCode ? (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-4 bottom-4 top-[66px] flex items-center justify-center rounded-[14px] bg-white p-4 [&_svg]:!size-[min(220px,100%)]"
-        >
-          <LoyaltyCardDisplay codeType="qr" codeFormat={card.codeFormat} rawValue={card.rawValue} />
-        </div>
-      ) : null}
+      {/* Onderste kaart in de stapel: voorbeeld van de code rechtsonder. */}
+      <div className="pointer-events-none absolute bottom-4 right-4" style={fade(showPreview, 120)}>
+        <CodePreview card={card} className={isQr ? "" : "!w-[132px]"} />
+      </div>
+      {/* Geopende kaart: scanbare code. */}
+      <div
+        className="pointer-events-none absolute inset-x-4 bottom-4 top-[66px] flex items-center justify-center rounded-[14px] bg-white p-4"
+        style={fade(showCode, 180)}
+        aria-hidden={!showCode}
+      >
+        {showCode ? (
+          <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} />
+        ) : null}
+      </div>
     </div>
   );
 }
