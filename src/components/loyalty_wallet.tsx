@@ -285,9 +285,9 @@ export function LoyaltyWallet({
             showPreview={isLast && !open}
             onToggle={() => {
               if (open) {
-                // Tweede tik (of onderste, al open kaart): schermvullend; de stapel klapt terug dicht.
+                // Tweede tik (of onderste, al open kaart): schermvullend; de stapel klapt daarna dicht.
                 onOpen(card);
-                setSelectedId(null);
+                window.setTimeout(() => setSelectedId(null), 700);
               } else {
                 setSelectedId(card.id);
               }
@@ -333,6 +333,7 @@ function WalletCardView({
   });
   return (
     <div
+      data-card-origin={card.id}
       className="absolute inset-x-0 top-0 origin-top overflow-hidden rounded-[20px] will-change-transform"
       style={{
         ...style,
@@ -409,6 +410,63 @@ const roundGlass =
   "flex size-11 shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.75)] text-text-primary backdrop-blur-sm transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-50";
 
 /**
+ * Veereffect als CSS `linear()`-curve: gedempte veer (ζ≈0.7) met een lichte overshoot van ~4%.
+ * Browsers zonder `linear()` krijgen een cubic-bezier met kleine bounce.
+ */
+const SPRING_EASE: string = (() => {
+  const fallback = "cubic-bezier(0.34, 1.28, 0.64, 1)";
+  if (typeof window === "undefined" || !window.CSS?.supports?.("animation-timing-function", "linear(0, 1)")) return fallback;
+  const zeta = 0.7;
+  const omega = 11;
+  const wd = omega * Math.sqrt(1 - zeta * zeta);
+  const pts: string[] = [];
+  for (let i = 0; i <= 48; i++) {
+    const t = i / 48;
+    const v = 1 - Math.exp(-zeta * omega * t) * (Math.cos(wd * t) + ((zeta * omega) / wd) * Math.sin(wd * t));
+    pts.push(v.toFixed(4));
+  }
+  pts[pts.length - 1] = "1";
+  return `linear(${pts.join(", ")})`;
+})();
+const EASE_IN_OUT = "cubic-bezier(0.4, 0, 0.2, 1)";
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Zichtbare kaart in de stapel of het raster waar de weergave uit «groeit». */
+function originRect(id: string): DOMRect | null {
+  const els = document.querySelectorAll<HTMLElement>(`[data-card-origin="${CSS.escape(id)}"]`);
+  for (const el of Array.from(els)) {
+    if (el.offsetParent !== null) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) return r;
+    }
+  }
+  return null;
+}
+
+function clipTo(r: DOMRect): string {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  return `inset(${r.top}px ${vw - r.right}px ${vh - r.bottom}px ${r.left}px round 20px)`;
+}
+
+/** Inhoud (logo, naam, code, knoppen) veert kort na de vorm binnen, licht verspringend. */
+function staggerIn(root: HTMLElement, baseDelay: number) {
+  root.querySelectorAll<HTMLElement>("[data-viewer-stagger]").forEach((el) => {
+    const step = Number(el.dataset.viewerStagger) || 0;
+    el.animate(
+      [
+        { opacity: 0, transform: "translateY(18px) scale(0.96)" },
+        { opacity: 1, transform: "none" },
+      ],
+      { duration: 620, delay: baseDelay + step * 55, easing: SPRING_EASE, fill: "backwards" },
+    );
+  });
+}
+
+/**
  * Kaart bekijken (canvas «Kaartmodal C»). Mobiel: schermvullend in de kaartkleur met logo, naam
  * en een grote code; swipe opzij naar de volgende kaart. Desktop: grote modal in de kaartkleur
  * met «Verwijderen» linksboven en sluiten rechtsboven.
@@ -430,20 +488,96 @@ export function LoyaltyCardViewer({
   const startIndex = Math.max(0, cards.findIndex((c) => c.id === openId));
   const [index, setIndex] = React.useState(startIndex);
   const pagerRef = React.useRef<HTMLDivElement>(null);
+  const mobileRef = React.useRef<HTMLDivElement>(null);
+  const desktopRef = React.useRef<HTMLDivElement>(null);
+  const scrimRef = React.useRef<HTMLDivElement>(null);
+  const closingRef = React.useRef(false);
   const open = openId !== null && cards.some((c) => c.id === openId);
+  const indexRef = React.useRef(index);
+  indexRef.current = index;
 
   React.useLayoutEffect(() => {
     if (!open) return;
     setIndex(startIndex);
     const el = pagerRef.current;
     if (el) el.scrollLeft = startIndex * el.clientWidth;
+    closingRef.current = false;
+    if (!openId || prefersReducedMotion()) return;
+
+    // Openen: de weergave groeit uit de aangetikte kaart (vorm + kleur lopen door) met een lichte veer.
+    const from = originRect(openId);
+    const desktop = window.matchMedia("(min-width: 768px)").matches;
+    if (!desktop && mobileRef.current) {
+      const root = mobileRef.current;
+      if (from) {
+        root.animate([{ clipPath: clipTo(from) }, { clipPath: "inset(0px 0px 0px 0px round 0px)" }], {
+          duration: 640,
+          easing: SPRING_EASE,
+        });
+      } else {
+        root.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 420, easing: SPRING_EASE });
+      }
+      staggerIn(root, 110);
+    } else if (desktop && desktopRef.current) {
+      const dialog = desktopRef.current;
+      const d = dialog.getBoundingClientRect();
+      const transformFrom = from
+        ? `translate(${from.left + from.width / 2 - (d.left + d.width / 2)}px, ${from.top + from.height / 2 - (d.top + d.height / 2)}px) scale(${from.width / d.width})`
+        : "translateY(24px) scale(0.94)";
+      dialog.animate([{ transform: transformFrom, opacity: 0.4 }, { transform: "none", opacity: 1 }], { duration: 600, easing: SPRING_EASE });
+      scrimRef.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: "ease-out" });
+      staggerIn(dialog, 120);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- enkel bij openen naar de gekozen kaart springen
   }, [open, openId]);
+
+  /** Sluiten: terug krimpen naar de kaart in de stapel (of het raster), daarna pas ontkoppelen. */
+  const requestClose = React.useCallback(async () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    const card = cards[Math.min(indexRef.current, cards.length - 1)];
+    if (!card || prefersReducedMotion()) {
+      onClose();
+      return;
+    }
+    const to = originRect(card.id);
+    const desktop = window.matchMedia("(min-width: 768px)").matches;
+    try {
+      if (!desktop && mobileRef.current) {
+        const frames: Keyframe[] = to
+          ? [
+              { clipPath: "inset(0px 0px 0px 0px round 0px)", opacity: 1 },
+              { clipPath: clipTo(to), opacity: 1, offset: 0.8 },
+              { clipPath: clipTo(to), opacity: 0 },
+            ]
+          : [
+              { opacity: 1, transform: "none" },
+              { opacity: 0, transform: "translateY(24px)" },
+            ];
+        await mobileRef.current.animate(frames, { duration: 400, easing: EASE_IN_OUT, fill: "forwards" }).finished;
+      } else if (desktop && desktopRef.current) {
+        const dialog = desktopRef.current;
+        const d = dialog.getBoundingClientRect();
+        const transformTo = to
+          ? `translate(${to.left + to.width / 2 - (d.left + d.width / 2)}px, ${to.top + to.height / 2 - (d.top + d.height / 2)}px) scale(${to.width / d.width})`
+          : "translateY(16px) scale(0.96)";
+        scrimRef.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "ease-in", fill: "forwards" });
+        await dialog.animate([{ transform: "none", opacity: 1 }, { transform: transformTo, opacity: 0 }], {
+          duration: 320,
+          easing: EASE_IN_OUT,
+          fill: "forwards",
+        }).finished;
+      }
+    } catch {
+      /* animatie onderbroken: gewoon sluiten */
+    }
+    onClose();
+  }, [cards, onClose]);
 
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.querySelector('[aria-labelledby="confirm-delete-title"]')) onClose();
+      if (e.key === "Escape" && !document.querySelector('[aria-labelledby="confirm-delete-title"]')) void requestClose();
     };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -452,7 +586,7 @@ export function LoyaltyCardViewer({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, onClose]);
+  }, [open, requestClose]);
 
   if (!open || typeof document === "undefined") return null;
   const current = cards[Math.min(index, cards.length - 1)];
@@ -460,7 +594,13 @@ export function LoyaltyCardViewer({
   return ReactDOM.createPortal(
     <>
       {/* Mobiel: schermvullend, horizontaal swipen tussen kaarten. */}
-      <div role="dialog" aria-modal="true" aria-label={current.cardName} className="fixed inset-0 z-[45] bg-[var(--bg-app)] md:hidden motion-safe:animate-fade-up">
+      <div
+        ref={mobileRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={current.cardName}
+        className="fixed inset-0 z-[45] bg-[var(--bg-app)] will-change-[clip-path] md:hidden"
+      >
         <div
           ref={pagerRef}
           onScroll={(e) => {
@@ -475,7 +615,7 @@ export function LoyaltyCardViewer({
           ))}
         </div>
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-[calc(16px+env(safe-area-inset-top,0px))]">
-          <button type="button" aria-label="Sluiten" onClick={onClose} className={cn(roundGlass, "pointer-events-auto")}>
+          <button type="button" aria-label="Sluiten" data-viewer-stagger="3" onClick={() => void requestClose()} className={cn(roundGlass, "pointer-events-auto")}>
             <CloseIcon />
           </button>
           <button
@@ -483,6 +623,7 @@ export function LoyaltyCardViewer({
             aria-label={`${current.cardName} verwijderen`}
             disabled={deletingId === current.id}
             onClick={() => onDelete(current)}
+            data-viewer-stagger="3"
             className={cn(roundGlass, "pointer-events-auto !text-[var(--error-400)]")}
           >
             <TrashIcon />
@@ -492,7 +633,15 @@ export function LoyaltyCardViewer({
       </div>
 
       {/* Desktop: grote modal in de kaartkleur. */}
-      <DesktopViewer card={current} dark={dark} onClose={onClose} onDelete={() => onDelete(current)} deleting={deletingId === current.id} />
+      <DesktopViewer
+        card={current}
+        dark={dark}
+        dialogRef={desktopRef}
+        scrimRef={scrimRef}
+        onClose={() => void requestClose()}
+        onDelete={() => onDelete(current)}
+        deleting={deletingId === current.id}
+      />
     </>,
     document.body,
   );
@@ -520,11 +669,11 @@ function ViewerPage({ card, dark }: { card: WalletCard; dark: boolean }) {
       className="flex h-full w-full shrink-0 snap-center flex-col items-center px-5 pt-[calc(88px+env(safe-area-inset-top,0px))]"
       style={{ background: colors.background }}
     >
-      <div className="flex flex-col items-center gap-2.5">
+      <div className="flex flex-col items-center gap-2.5" data-viewer-stagger="0">
         <CardLogo src={card.logoSrc} size={64} />
         <h2 className="text-[24px] font-bold leading-8 tracking-[-0.01em] text-text-primary">{card.cardName}</h2>
       </div>
-      <div className="mt-9 w-full">
+      <div className="mt-9 w-full" data-viewer-stagger="1">
         <BigCode card={card} qrSize="min(298px, calc(100vw - 92px))" barHeight={150} />
       </div>
     </section>
@@ -534,12 +683,16 @@ function ViewerPage({ card, dark }: { card: WalletCard; dark: boolean }) {
 function DesktopViewer({
   card,
   dark,
+  dialogRef,
+  scrimRef,
   onClose,
   onDelete,
   deleting,
 }: {
   card: WalletCard;
   dark: boolean;
+  dialogRef: React.RefObject<HTMLDivElement>;
+  scrimRef: React.RefObject<HTMLDivElement>;
   onClose: () => void;
   onDelete: () => void;
   deleting: boolean;
@@ -547,12 +700,13 @@ function DesktopViewer({
   const colors = cardColors(useLogoTint(card.logoSrc), dark);
   return (
     <div className="fixed inset-0 z-[45] hidden items-center justify-center p-6 md:flex">
-      <div aria-hidden className="absolute inset-0 bg-[rgba(16,17,48,0.45)]" onClick={onClose} />
+      <div ref={scrimRef} aria-hidden className="absolute inset-0 bg-[rgba(16,17,48,0.45)]" onClick={onClose} />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={card.cardName}
-        className="relative flex w-full max-w-[520px] flex-col items-center overflow-hidden rounded-[32px] bg-[var(--bg-app)] shadow-[0_30px_80px_-20px_rgba(16,17,48,0.45)] motion-safe:animate-fade-up"
+        className="relative flex w-full max-w-[520px] flex-col items-center overflow-hidden rounded-[32px] bg-[var(--bg-app)] shadow-[0_30px_80px_-20px_rgba(16,17,48,0.45)]"
       >
         <div className="flex w-full flex-col items-center px-7 pb-[26px] pt-[22px]" style={{ background: colors.background }}>
           <div className="flex w-full items-center justify-between">
@@ -569,11 +723,11 @@ function DesktopViewer({
               <CloseIcon />
             </button>
           </div>
-          <div className="mt-2 flex flex-col items-center gap-2.5">
+          <div className="mt-2 flex flex-col items-center gap-2.5" data-viewer-stagger="0">
             <CardLogo src={card.logoSrc} size={60} />
             <h2 className="text-[24px] font-bold leading-8 tracking-[-0.01em] text-text-primary">{card.cardName}</h2>
           </div>
-          <div className="mt-6 w-full">
+          <div className="mt-6 w-full" data-viewer-stagger="1">
             <BigCode card={card} qrSize="240px" barHeight={154} />
           </div>
         </div>
@@ -604,6 +758,7 @@ function GridCard({ card, onOpen }: { card: WalletCard; onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label={`${card.cardName} tonen`}
+      data-card-origin={card.id}
       className="flex aspect-[1.586] w-full flex-col justify-between rounded-[20px] p-4 text-left transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
       style={{ background: colors.background, boxShadow: `inset 0 0 0 1px ${colors.edge}` }}
     >
