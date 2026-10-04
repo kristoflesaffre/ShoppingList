@@ -15,7 +15,6 @@ export type WalletCard = {
 
 type Rgb = [number, number, number];
 
-const LAST_CARD_KEY = "sl-last-loyalty-card";
 const TINT_CACHE_KEY = "sl-logo-tints-v1";
 /** Lavendel als terugval zolang het logo nog niet gemeten is (of geen kleur heeft). */
 const FALLBACK_TINT: Rgb = [79, 85, 241];
@@ -184,158 +183,186 @@ function WalletCardHead({ card, accent }: { card: WalletCard; accent: string }) 
   );
 }
 
-const STRIP_HEIGHT = 64;
-const STRIP_OVERLAP = 14;
-const SPRING = "cubic-bezier(0.32, 0.72, 0, 1)";
+/** Zichtbare kop van elke kaart in de stapel (Apple Wallet). */
+const STRIP = 58;
+/** Afstand tussen de kaarten in de opgeschoven stapel onder een geopende kaart. */
+const PILE_STEP = 9;
+const PILE_PEEK = 72;
+const OPEN_GAP = 18;
+const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+const DURATION = 520;
+
+/** Echte code als klein voorbeeld (geschaald), zodat kaarten «echt» ogen nog voor je tikt. */
+export function CodePreview({ card, className }: { card: WalletCard; className?: string }) {
+  const isQr = card.codeType === "qr";
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "pointer-events-none flex items-center justify-center overflow-hidden rounded-[10px] bg-white",
+        isQr ? "size-[62px] p-1.5 [&_svg]:!size-full" : "h-[46px] w-full px-2 [&_svg]:!h-full [&_svg]:!w-full",
+        className,
+      )}
+    >
+      <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} />
+    </span>
+  );
+}
 
 /**
- * Mobiele wallet (canvas «Kaarten 1b/1c»): de gekozen kaart staat open bovenaan met de code
- * klaar om te scannen; de andere kaarten liggen als gekleurde stroken in een stapel eronder.
- * Een tik op een strook schuift die kaart «uit de stapel» naar boven (FLIP-animatie) terwijl
- * de vorige kaart terugzakt in de stapel en de code openvouwt.
+ * Mobiele wallet volgens het Apple Wallet-principe (canvas «Kaarten 1b/1c» + voorbeeld):
+ * alle kaarten liggen op elkaar met enkel hun kop zichtbaar; de onderste kaart toont je
+ * volledig, met een voorbeeld van de code. Tik op een kaart: die schuift vloeiend naar boven
+ * en vouwt open met de scanbare code, de rest zakt samen tot een stapeltje eronder.
+ * Tik op de geopende kaart of op het stapeltje om alles terug te leggen.
  */
 export function LoyaltyWallet({ cards, reducedMotion }: { cards: WalletCard[]; reducedMotion: boolean }) {
-  const [activeId, setActiveId] = React.useState<string | null>(null);
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [width, setWidth] = React.useState(343);
   const dark = useIsDarkTheme();
-  const nodes = React.useRef(new Map<string, HTMLElement>());
-  const before = React.useRef<Map<string, DOMRect> | null>(null);
+  const rootRef = React.useRef<HTMLDivElement>(null);
 
-  // Laatst getoonde kaart onthouden (per toestel).
-  React.useEffect(() => {
-    let stored: string | null = null;
-    try {
-      stored = window.localStorage.getItem(LAST_CARD_KEY);
-    } catch {
-      /* negeren */
-    }
-    setActiveId((prev) => prev ?? (stored && cards.some((c) => c.id === stored) ? stored : cards[0]?.id ?? null));
-  }, [cards]);
-
-  const active = cards.find((c) => c.id === activeId) ?? cards[0];
-  const others = cards.filter((c) => c.id !== active?.id);
-
-  const select = (id: string) => {
-    if (id === active?.id) return;
-    if (!reducedMotion) {
-      const rects = new Map<string, DOMRect>();
-      nodes.current.forEach((el, key) => rects.set(key, el.getBoundingClientRect()));
-      before.current = rects;
-    }
-    setActiveId(id);
-    try {
-      window.localStorage.setItem(LAST_CARD_KEY, id);
-    } catch {
-      /* negeren */
-    }
-  };
-
-  // FLIP: elke kaart start op haar oude plek en glijdt naar de nieuwe.
   React.useLayoutEffect(() => {
-    const prev = before.current;
-    if (!prev) return;
-    before.current = null;
-    nodes.current.forEach((el, key) => {
-      const from = prev.get(key);
-      if (!from) return;
-      const to = el.getBoundingClientRect();
-      const dy = from.top - to.top;
-      if (Math.abs(dy) < 1) return;
-      const isNewActive = key === activeId;
-      el.animate(
-        [
-          { transform: `translateY(${dy}px)${isNewActive ? " scale(0.98)" : ""}` },
-          { transform: "translateY(0) scale(1)" },
-        ],
-        { duration: isNewActive ? 520 : 440, easing: SPRING },
-      );
-    });
-  }, [activeId]);
+    const el = rootRef.current;
+    if (!el) return;
+    const update = () => setWidth(el.clientWidth || 343);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
-  if (!active) return null;
+  React.useEffect(() => {
+    if (selectedId && !cards.some((c) => c.id === selectedId)) setSelectedId(null);
+  }, [cards, selectedId]);
 
-  const setNode = (id: string) => (el: HTMLElement | null) => {
-    if (el) nodes.current.set(id, el);
-    else nodes.current.delete(id);
+  const cardH = Math.round(width / 1.586);
+  const selected = cards.find((c) => c.id === selectedId) ?? null;
+  const openH = selected ? Math.max(cardH, selected.codeType === "qr" ? 330 : 236) : cardH;
+  const n = cards.length;
+  const pileCount = selected ? n - 1 : 0;
+  const height = selected
+    ? openH + (pileCount > 0 ? OPEN_GAP + (pileCount - 1) * PILE_STEP + PILE_PEEK : 0)
+    : (n - 1) * STRIP + cardH;
+
+  const toggle = (id: string) => {
+    setSelectedId((cur) => (cur === id ? null : id));
+    const el = rootRef.current;
+    if (el && el.getBoundingClientRect().top < 0) {
+      window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - 72, behavior: reducedMotion ? "auto" : "smooth" });
+    }
   };
 
-  return (
-    <div className="flex flex-col gap-4">
-      <ActiveWalletCard key={active.id} card={active} dark={dark} reducedMotion={reducedMotion} nodeRef={setNode(active.id)} />
+  const transition = reducedMotion
+    ? "none"
+    : `transform ${DURATION}ms ${EASE}, height ${DURATION}ms ${EASE}, box-shadow ${DURATION}ms ${EASE}`;
 
-      {others.length > 0 ? (
-        <>
-          <h2 className="px-1 pt-1 text-[13px] font-semibold leading-[18px] text-[var(--text-secondary)]">Andere kaarten</h2>
-          <ul className="m-0 list-none p-0">
-            {others.map((card, i) => (
-              <li
-                key={card.id}
-                ref={setNode(card.id)}
-                className="relative"
-                style={{ marginTop: i === 0 ? 0 : -STRIP_OVERLAP, zIndex: i + 1 }}
-              >
-                <WalletStrip card={card} dark={dark} onSelect={() => select(card.id)} />
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
+  let pileIndex = 0;
+  return (
+    <div
+      ref={rootRef}
+      className="relative"
+      style={{ height, transition: reducedMotion ? "none" : `height ${DURATION}ms ${EASE}` }}
+    >
+      {cards.map((card, i) => {
+        const isSelected = card.id === selectedId;
+        let y: number;
+        let scale = 1;
+        let h = cardH;
+        if (!selected) {
+          y = i * STRIP;
+        } else if (isSelected) {
+          y = 0;
+          h = openH;
+        } else {
+          const j = pileIndex++;
+          y = openH + OPEN_GAP + j * PILE_STEP;
+          scale = 1 - Math.min(0.06, (pileCount - 1 - j) * 0.012);
+        }
+        return (
+          <WalletCardView
+            key={card.id}
+            card={card}
+            dark={dark}
+            open={isSelected}
+            showPreview={!selected && i === n - 1}
+            onToggle={() => (selected && !isSelected ? setSelectedId(null) : toggle(card.id))}
+            style={{
+              height: h,
+              transform: `translate3d(0, ${y}px, 0) scale(${scale})`,
+              zIndex: isSelected ? n + 1 : i + 1,
+              transition,
+            }}
+            reducedMotion={reducedMotion}
+          />
+        );
+      })}
     </div>
   );
 }
 
-function WalletStrip({ card, dark, onSelect }: { card: WalletCard; dark: boolean; onSelect: () => void }) {
-  const colors = cardColors(useLogoTint(card.logoSrc), dark);
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-label={`${card.cardName} tonen`}
-      className="flex w-full items-start rounded-[20px] px-4 pt-3.5 text-left transition-[filter] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 active:brightness-[0.98]"
-      style={{
-        height: STRIP_HEIGHT,
-        background: colors.background,
-        boxShadow: `inset 0 0 0 1px ${colors.edge}, 0 -2px 10px -4px rgba(16,17,48,0.10)`,
-      }}
-    >
-      <WalletCardHead card={card} accent={colors.accent} />
-    </button>
-  );
-}
-
-function ActiveWalletCard({
+function WalletCardView({
   card,
   dark,
+  open,
+  showPreview,
+  onToggle,
+  style,
   reducedMotion,
-  nodeRef,
 }: {
   card: WalletCard;
   dark: boolean;
+  open: boolean;
+  showPreview: boolean;
+  onToggle: () => void;
+  style: React.CSSProperties;
   reducedMotion: boolean;
-  nodeRef: (el: HTMLElement | null) => void;
 }) {
   const colors = cardColors(useLogoTint(card.logoSrc), dark);
   const isQr = card.codeType === "qr";
+  const fade = (visible: boolean, delay: number): React.CSSProperties => ({
+    opacity: visible ? 1 : 0,
+    transition: reducedMotion ? "none" : `opacity 260ms ease ${visible ? delay : 0}ms`,
+  });
   return (
-    <section
-      ref={nodeRef}
-      aria-label={`${card.cardName}, klaar om te scannen`}
-      className="rounded-[20px] px-4 pb-4 pt-3.5"
-      style={{ background: colors.background, boxShadow: `inset 0 0 0 1px ${colors.edge}` }}
+    <div
+      className="absolute inset-x-0 top-0 origin-top overflow-hidden rounded-[20px] will-change-transform"
+      style={{
+        ...style,
+        background: colors.background,
+        boxShadow: `inset 0 0 0 1px ${colors.edge}, 0 -1px 12px -6px rgba(16,17,48,0.18)`,
+      }}
     >
-      <WalletCardHead card={card} accent={colors.accent} />
-      {/* Code vouwt open zodra de kaart bovenaan staat. */}
-      <div
-        className={cn(
-          "mt-4 flex flex-col items-center gap-2.5 rounded-[14px] bg-white px-4 py-[18px]",
-          !reducedMotion && "origin-top animate-[wallet-unfold_420ms_cubic-bezier(0.32,0.72,0,1)_80ms_both]",
-        )}
-      >
-        <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} />
-        <span className="text-[13px] leading-[18px] text-[#6e7381]">
-          {isQr ? "Scan de QR-code aan de kassa" : "Toon de barcode aan de kassa"}
-        </span>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-label={open ? `${card.cardName} sluiten` : `${card.cardName} tonen`}
+        className="absolute inset-0 z-0 rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+      />
+      <div className="pointer-events-none relative px-4 pt-3.5">
+        <WalletCardHead card={card} accent={colors.accent} />
       </div>
-    </section>
+      {/* Onderste kaart in de stapel: voorbeeld van de code rechtsonder. */}
+      <div className="pointer-events-none absolute bottom-4 right-4" style={fade(showPreview, 120)}>
+        <CodePreview card={card} className={isQr ? "" : "!w-[132px]"} />
+      </div>
+      {/* Geopende kaart: scanbare code. */}
+      <div
+        className="pointer-events-none absolute inset-x-4 bottom-4 top-[66px] flex flex-col items-center justify-center gap-2.5 rounded-[14px] bg-white px-4 py-4"
+        style={fade(open, 180)}
+        aria-hidden={!open}
+      >
+        {open ? (
+          <>
+            <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} />
+            <span className="text-[13px] leading-[18px] text-[#6e7381]">
+              {isQr ? "Scan de QR-code aan de kassa" : "Toon de barcode aan de kassa"}
+            </span>
+          </>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -355,21 +382,23 @@ export function LoyaltyCardGrid({ cards, onOpen }: { cards: WalletCard[]; onOpen
 function GridCard({ card, onOpen }: { card: WalletCard; onOpen: () => void }) {
   const dark = useIsDarkTheme();
   const colors = cardColors(useLogoTint(card.logoSrc), dark);
+  const isQr = card.codeType === "qr";
   return (
     <button
       type="button"
       onClick={onOpen}
       aria-label={`${card.cardName} tonen`}
-      className="flex aspect-[1.586] w-full flex-col justify-between rounded-[20px] p-4 text-left transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      className="flex aspect-[1.45] w-full flex-col justify-between gap-3 rounded-[20px] p-4 text-left transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
       style={{ background: colors.background, boxShadow: `inset 0 0 0 1px ${colors.edge}` }}
     >
-      <span className="flex items-start justify-between">
-        <CardLogo src={card.logoSrc} size={40} />
-        <span style={{ color: colors.accent }} className="flex">
-          <CodeTypeIcon codeType={card.codeType} />
-        </span>
+      <span className="flex min-w-0 items-center gap-3">
+        <CardLogo src={card.logoSrc} size={36} />
+        <span className="min-w-0 flex-1 truncate text-base font-semibold leading-6 text-text-primary">{card.cardName}</span>
       </span>
-      <span className="truncate text-base font-semibold leading-6 text-text-primary">{card.cardName}</span>
+      {/* Echte code als voorbeeld: QR klein links, barcode over de volle breedte. */}
+      <span className={cn("flex", isQr ? "justify-start" : "")}>
+        <CodePreview card={card} className={isQr ? "!size-[72px]" : "!h-[52px]"} />
+      </span>
     </button>
   );
 }
