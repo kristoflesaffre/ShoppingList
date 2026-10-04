@@ -363,9 +363,9 @@ function WalletCardView({
 }) {
   const colors = cardColors(useLogoTint(card.logoSrc), dark);
   const isQr = card.codeType === "qr";
-  const fade = (visible: boolean, delay: number): React.CSSProperties => ({
+  const fade = (visible: boolean, delay: number, hideDelay = 0): React.CSSProperties => ({
     opacity: visible ? 1 : 0,
-    transition: reducedMotion ? "none" : `opacity 260ms ease ${visible ? delay : 0}ms`,
+    transition: reducedMotion ? "none" : `opacity ${visible ? 260 : 160}ms ease ${visible ? delay : hideDelay}ms`,
   });
   return (
     <div
@@ -397,13 +397,12 @@ function WalletCardView({
           "pointer-events-none absolute inset-x-4 bottom-4 top-[66px] flex items-center justify-center rounded-[14px] bg-white px-4 py-[18px]",
           isQr ? "[&_svg]:!h-full [&_svg]:!w-auto [&_svg]:aspect-square" : "[&_svg]:!h-full [&_svg]:!w-full",
         )}
-        style={fade(showCode, 180)}
+        // Bij dichtklappen blijft de code staan tot de kaart eronder eroverheen geschoven is.
+        style={fade(showCode, 180, DURATION)}
         data-morph={`code-${card.id}`}
         aria-hidden={!showCode}
       >
-        {showCode ? (
-          <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} stretch={!isQr} />
-        ) : null}
+        <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} stretch={!isQr} />
       </div>
     </div>
   );
