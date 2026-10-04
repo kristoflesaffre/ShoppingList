@@ -147,7 +147,12 @@ import {
   listIsFrituurVenueList,
 } from "@/lib/list-product-icons";
 import type { ListItem } from "./new_item_modal";
-import { ListCardsView, ListLayoutToggle, type ListCardLayout } from "./list_cards_view";
+import {
+  ListCardsView,
+  ListGroupingToggle,
+  ListLayoutToggle,
+  type ListCardLayout,
+} from "./list_cards_view";
 import { ListSuggestions, type Suggestion } from "./list_suggestions";
 
 const RecipeIngredientSortableList = dynamic(
@@ -5443,6 +5448,34 @@ export default function ListDetailPage({
     );
   }
 
+  const showListGroupingControl =
+    !isMasterCategoryOrderMode &&
+    !isMasterList &&
+    hasItems &&
+    isListGroupingHydrated &&
+    !isMasterEmpty &&
+    !isVenueCounterList &&
+    !isLandalOrVakantieList;
+  const showListSuggestions =
+    teKopenSuggestions.length + previousSuggestions.length > 0 &&
+    !isMasterList &&
+    !isVenueCounterList &&
+    !isCafeList &&
+    !isFrietenList &&
+    !isPuddyTabSelected;
+  const embedSuggestionsInDayCards =
+    showListSuggestions && useCardView && effectiveListGroupingMode === "day";
+  const listSuggestions = showListSuggestions ? (
+    <ListSuggestions
+      teKopen={teKopenSuggestions}
+      previous={previousSuggestions}
+      previousLabel={previousListSuggestions.label}
+      onAdd={handleAddSuggestion}
+      onAddAll={handleAddAllSuggestions}
+      onDismiss={(suggestion) => dismissSuggestion(suggestion.key)}
+    />
+  ) : null;
+
   const listMain = (
       <main
         className={mainSurfaceClassName}
@@ -5529,13 +5562,23 @@ export default function ListDetailPage({
               ) : hasItems &&
                 (!isVenueCounterList ||
                   (isCafeList && !isMasterList && !isEditMode)) ? (
-                <ListLayoutToggle
-                  value={cardLayout}
-                  onChange={(v) => {
-                    setCardLayout(v);
-                    setListLayoutMode(v === "tiles" ? "grid" : "list");
-                  }}
-                />
+                <div className="flex shrink-0 items-center gap-2">
+                  {showListGroupingControl ? (
+                    <div className="hidden lg:block">
+                      <ListGroupingToggle
+                        value={listGroupingMode}
+                        onChange={setListGroupingMode}
+                      />
+                    </div>
+                  ) : null}
+                  <ListLayoutToggle
+                    value={cardLayout}
+                    onChange={(v) => {
+                      setCardLayout(v);
+                      setListLayoutMode(v === "tiles" ? "grid" : "list");
+                    }}
+                  />
+                </div>
               ) : null}
             </div>
             {isLandalOrVakantieList &&
@@ -5596,13 +5639,9 @@ export default function ListDetailPage({
             </div>
           ) : null}
 
-          {!isMasterCategoryOrderMode &&
-          !isMasterList &&
-          hasItems &&
-          isListGroupingHydrated &&
-          !isMasterEmpty && !isVenueCounterList && !isLandalOrVakantieList ? (
+          {showListGroupingControl ? (
             <PillTab
-              className="w-full min-w-0"
+              className="w-full min-w-0 lg:hidden"
               aria-label="Groepering lijst"
               value={listGroupingMode === "day" ? "first" : "second"}
               onValueChange={(v) =>
@@ -5804,21 +5843,7 @@ export default function ListDetailPage({
             ) : null
           ) : null}
 
-          {teKopenSuggestions.length + previousSuggestions.length > 0 &&
-          !isMasterList &&
-          !isVenueCounterList &&
-          !isCafeList &&
-          !isFrietenList &&
-          !isPuddyTabSelected ? (
-            <ListSuggestions
-              teKopen={teKopenSuggestions}
-              previous={previousSuggestions}
-              previousLabel={previousListSuggestions.label}
-              onAdd={handleAddSuggestion}
-              onAddAll={handleAddAllSuggestions}
-              onDismiss={(sug) => dismissSuggestion(sug.key)}
-            />
-          ) : null}
+          {listSuggestions && !embedSuggestionsInDayCards ? listSuggestions : null}
 
           {isMasterCategoryOrderMode &&
           isMasterList &&
@@ -5982,6 +6007,7 @@ export default function ListDetailPage({
                 sections={sectionsForDisplay}
                 groupingMode={effectiveListGroupingMode}
                 layout={cardLayout}
+                dayLead={embedSuggestionsInDayCards ? listSuggestions : undefined}
                 listDateStr={listDateStr}
                 savedRecipes={savedRecipes}
                 getPhotoUrl={getPhotoUrl}

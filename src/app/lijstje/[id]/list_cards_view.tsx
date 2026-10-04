@@ -404,6 +404,7 @@ export interface ListCardsViewProps {
   sections: Section[];
   groupingMode: "day" | "category";
   layout: ListCardLayout;
+  dayLead?: React.ReactNode;
   listDateStr: string;
   savedRecipes: SavedRecipe[];
   getPhotoUrl?: GetPhotoUrl;
@@ -422,7 +423,7 @@ export function ListCardsView(props: ListCardsViewProps) {
   return props.groupingMode === "day" ? <DayCards {...props} /> : <CategoryCards {...props} />;
 }
 
-function DayCards({ sections, layout, listDateStr, savedRecipes, getPhotoUrl, uncheckedFirst, onCheckedChange, onAddToSection }: ListCardsViewProps) {
+function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPhotoUrl, uncheckedFirst, onCheckedChange, onAddToSection }: ListCardsViewProps) {
   const days = React.useMemo(
     () =>
       sections
@@ -556,10 +557,14 @@ function DayCards({ sections, layout, listDateStr, savedRecipes, getPhotoUrl, un
   return (
     <>
       {/* Mobiel: één kolom in de gewone volgorde. */}
-      <div className="flex flex-col gap-3 lg:hidden">{days.map((d) => renderDay(d, false))}</div>
+      <div className="flex flex-col gap-3 lg:hidden">
+        {dayLead}
+        {days.map((d) => renderDay(d, false))}
+      </div>
       {/* Desktop: links «Altijd nodig», rechts de gerechten per dag chronologisch. */}
       <div className="hidden gap-5 lg:grid lg:grid-cols-2 lg:items-start">
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-3.5">
+          {dayLead}
           <span className="text-xs font-bold tracking-[0.06em] text-[var(--text-tertiary)]">ALTIJD NODIG</span>
           {general.map((d) => renderDay(d, true))}
         </div>
@@ -671,6 +676,45 @@ export function ListLayoutToggle({ value, onChange }: { value: ListCardLayout; o
             )}
           >
             <LayoutIcon kind={o.value} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ListGroupingToggle({
+  value,
+  onChange,
+}: {
+  value: "day" | "category";
+  onChange: (value: "day" | "category") => void;
+}) {
+  const options = [
+    { value: "day" as const, label: "Per dag" },
+    { value: "category" as const, label: "Per categorie" },
+  ];
+
+  return (
+    <div role="tablist" aria-label="Groepering lijst" className="flex shrink-0 gap-0.5 rounded-[13px] bg-[var(--blue-50)] p-[3px]">
+      {options.map((option) => {
+        const selected = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "flex h-8 min-w-[104px] items-center justify-center rounded-[10px] px-3 text-[13px] transition-[background-color,color,box-shadow] duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+              selected
+                ? "bg-[var(--white)] font-semibold text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.12)]"
+                : "font-normal text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--blue-400)]",
+            )}
+          >
+            {option.label}
           </button>
         );
       })}
