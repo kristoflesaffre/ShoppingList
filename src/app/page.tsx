@@ -1314,12 +1314,6 @@ function HomeCalendarSection({
     const gap = parseFloat(getComputedStyle(el).columnGap || "0") || 0;
     el.scrollBy({ left: dir * (first.offsetWidth + gap) * 7, behavior: "smooth" });
   };
-  const selectedLabel = selected.date.toLocaleDateString("nl-NL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-
   return (
     <div className="flex flex-col gap-4">
       <ListSectionHeader
@@ -1348,82 +1342,117 @@ function HomeCalendarSection({
         onScroll={handleScroll}
         role="group"
         aria-label="Kies een dag"
-        className="-m-1 flex snap-x snap-mandatory scroll-px-1 gap-1.5 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-m-1 flex snap-x snap-mandatory scroll-px-1 gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {days.map((d) => {
-          const isSelected = d.isoDate === selected.isoDate;
-          const isToday = d.isoDate === todayIso;
-          const hasContent = dayEntryHasContent(d.entry ?? undefined);
-          const fullLabel = d.date.toLocaleDateString("nl-NL", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          });
-          return (
-            <button
-              key={d.isoDate}
-              type="button"
-              aria-pressed={isSelected}
-              aria-label={`${fullLabel}${isToday ? ", vandaag" : ""}${hasContent ? ", iets gepland" : ""}`}
-              onClick={() => setSelectedIso(d.isoDate)}
-              className={cn(
-                "flex w-[calc((100%-36px)/7)] shrink-0 snap-start flex-col items-center gap-1 rounded-md py-2 transition-[background-color,color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
-                isSelected
-                  ? "bg-[var(--blue-50)] text-[var(--blue-500)] shadow-[inset_0_0_0_1px_var(--blue-500)]"
-                  : "bg-[var(--white)] text-[var(--text-primary)] shadow-card",
-                !isSelected && isToday && "shadow-[inset_0_0_0_1.5px_var(--blue-500)]",
-              )}
-            >
-              <span
-                className={cn(
-                  "text-[11px] font-semibold leading-none tracking-[0.02em]",
-                  isSelected ? "text-[var(--blue-500)]" : "text-[var(--text-secondary)]",
-                )}
-              >
-                {WEEKDAY_ABBR[d.date.getDay()]}
-              </span>
-              <span className="text-base font-bold leading-5 tabular-nums">{d.date.getDate()}</span>
-              <span
-                aria-hidden
-                className={cn(
-                  "size-[5px] rounded-full",
-                  !hasContent && "invisible",
-                  isSelected ? "bg-[var(--blue-500)]" : "bg-[var(--blue-300)]",
-                )}
-              />
-            </button>
-          );
-        })}
+        {days.map((d) => (
+          <HomeDayTile
+            key={d.isoDate}
+            day={d}
+            selected={d.isoDate === selected.isoDate}
+            isToday={d.isoDate === todayIso}
+            onSelect={() => setSelectedIso(d.isoDate)}
+          />
+        ))}
       </div>
 
       <div aria-live="polite">
-        {selected.entry && dayEntryHasContent(selected.entry) ? (
-          <HomeCalendarCard
-            key={selected.isoDate}
-            isoDate={selected.isoDate}
-            entry={selected.entry}
-            showDate={false}
-          />
-        ) : (
-          <Link
-            href={`/kalender?date=${selected.isoDate}`}
-            className="flex min-h-[64px] items-center justify-between gap-3 rounded-lg bg-[var(--white)] px-4 py-3 no-underline shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-          >
-            <span className="flex min-w-0 flex-col">
-              <span className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
-                Nog niets gepland
-              </span>
-              <span className="truncate text-xs leading-5 text-[var(--gray-400)] first-letter:uppercase">
-                {selectedLabel}
-              </span>
-            </span>
-            <span className="shrink-0 text-sm font-medium leading-5 text-action-primary">
-              Plannen
-            </span>
-          </Link>
-        )}
+        <HomeDaySelectedCard key={selected.isoDate} day={selected} isToday={selected.isoDate === todayIso} />
       </div>
     </div>
+  );
+}
+
+/**
+ * Dagtegel in de mobiele weekstrip (canvas «Kalender home mobiel · M4»): zachte kleur van het
+ * gerecht en een mini-bord; lege dagen blijven wit met een gestippeld bordje.
+ */
+function HomeDayTile({
+  day,
+  selected,
+  isToday,
+  onSelect,
+}: {
+  day: HomeWeekDay;
+  selected: boolean;
+  isToday: boolean;
+  onSelect: () => void;
+}) {
+  const summary = homeDaySummary(day.isoDate, day.entry);
+  const loosePhotos = useLoosePhotos(summary?.loose);
+  const tintSrc = summary?.photo ?? loosePhotos.find(Boolean) ?? null;
+  const tint = recipeTintColors(useRecipeTint(tintSrc), useIsDarkTheme());
+  const fullLabel = day.date.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" });
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      aria-label={`${fullLabel}${isToday ? ", vandaag" : ""}${summary ? `, ${summary.title}` : ""}`}
+      onClick={onSelect}
+      style={summary ? { backgroundImage: `linear-gradient(180deg, ${tint.top} 0%, ${tint.mid} 60%, transparent 100%)` } : undefined}
+      className={cn(
+        "flex w-[calc((100%-24px)/7)] shrink-0 snap-start flex-col items-center gap-[5px] rounded-[14px] bg-[var(--white)] pb-2 pt-[7px] transition-[box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
+        selected
+          ? "shadow-[0_0_0_2px_var(--blue-500)]"
+          : isToday
+            ? "shadow-[inset_0_0_0_1.5px_var(--blue-300)]"
+            : "shadow-[inset_0_0_0_1px_var(--border-subtle)]",
+      )}
+    >
+      <span
+        className={cn(
+          "text-[10px] font-bold leading-none tracking-[0.04em]",
+          selected ? "text-[var(--blue-500)]" : "text-[var(--text-secondary)]",
+        )}
+      >
+        {WEEKDAY_ABBR[day.date.getDay()]}
+      </span>
+      <span className={cn("text-[15px] font-bold leading-4 tabular-nums", selected ? "text-[var(--blue-500)]" : "text-[var(--text-primary)]")}>
+        {day.date.getDate()}
+      </span>
+      {summary ? (
+        summary.loose ? (
+          <IngredientPlate photos={loosePhotos} size={30} className="bg-[var(--white)]" />
+        ) : (
+          <HomeDayPlate src={summary.photo} size={30} freeze={summary.fromStock} />
+        )
+      ) : (
+        <span aria-hidden className="size-[30px] rounded-full border-[1.5px] border-dashed border-[var(--gray-200)]" />
+      )}
+    </button>
+  );
+}
+
+/** Gekozen dag als witte kaart onder de strip (M4): bord, «Vandaag · zondag 4 okt», naam, chevron. */
+function HomeDaySelectedCard({ day, isToday }: { day: HomeWeekDay; isToday: boolean }) {
+  const summary = homeDaySummary(day.isoDate, day.entry);
+  const loosePhotos = useLoosePhotos(summary?.loose);
+  const dateLabel = day.date.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "short" }).replace(".", "");
+  const label = isToday ? `Vandaag · ${dateLabel}` : dateLabel;
+  return (
+    <Link
+      href={summary?.href ?? `/kalender?date=${day.isoDate}`}
+      className="flex items-center gap-3.5 rounded-[22px] bg-[var(--white)] p-4 no-underline shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+    >
+      {summary ? (
+        summary.loose ? (
+          <IngredientPlate photos={loosePhotos} size={64} />
+        ) : (
+          <HomeDayPlate src={summary.photo} size={64} freeze={summary.fromStock} />
+        )
+      ) : (
+        <span aria-hidden className="size-16 shrink-0 rounded-full border-[1.5px] border-dashed border-[var(--gray-200)]" />
+      )}
+      <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+        <span className="text-xs font-semibold leading-4 text-[var(--blue-500)] first-letter:uppercase">{label}</span>
+        <span className={cn("line-clamp-2 text-[17px] font-bold leading-[22px]", summary ? "text-[var(--text-primary)]" : "text-[var(--text-tertiary)]")}>
+          {summary?.title ?? "Nog niets gepland"}
+        </span>
+        {summary ? <span className="text-[13px] leading-[18px] text-[var(--text-secondary)]">{summary.sub}</span> : null}
+      </span>
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px] shrink-0 text-[var(--gray-300)]">
+        <path d="M6 3.5 10.5 8 6 12.5" />
+      </svg>
+    </Link>
   );
 }
 
