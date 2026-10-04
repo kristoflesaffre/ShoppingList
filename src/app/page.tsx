@@ -1008,7 +1008,7 @@ function HomeTeKopenSwimTile({
       {photoSrc ? (
         <span className="flex size-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[var(--gray-25)]" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
-          <img src={photoSrc} alt="" width={40} height={40} className="size-10 object-contain" />
+          <img src={photoSrc} alt="" width={40} height={40} className="size-10 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />
         </span>
       ) : (
         <span
@@ -1093,7 +1093,7 @@ function HomeTeKopenSwimlane({
       <div
         ref={laneRef}
         onScroll={handleScroll}
-        className="-mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-4 -my-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-px-4 px-4 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {columns.map((col) => (
           <ul key={col[0].id} className="m-0 flex shrink-0 snap-start list-none flex-col gap-2.5 pl-0">
