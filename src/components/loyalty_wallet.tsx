@@ -195,9 +195,11 @@ const OPEN_GAP = 10;
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const DURATION = 480;
 /** Na het openklappen meteen door naar schermvullend (iets vóór het einde, voor één vloeiende beweging). */
-const UNFOLD_TO_FULLSCREEN_MS = 170;
+const UNFOLD_TO_FULLSCREEN_MS = 480;
 /** Openklappen richting schermvullend: duidelijk zichtbaar, lineair zodat de snelheid doorloopt in de morph. */
-const FLOW_UNFOLD_MS = 200;
+const FLOW_UNFOLD_MS = 480;
+/** Gespiegelde curve van het dichtklappen (EASE achterstevoren): openen = exact het omgekeerde van sluiten. */
+const EASE_REVERSED = "cubic-bezier(1, 0, 0.68, 0.28)";
 
 /** Echte code als klein voorbeeld (geschaald), zodat kaarten «echt» ogen nog voor je tikt. */
 export function CodePreview({ card, className }: { card: WalletCard; className?: string }) {
@@ -291,7 +293,7 @@ export function LoyaltyWallet({
   const lastH = last ? (isOpen(last) ? codeH() : cardH) : 0;
   const height = n ? ys[n - 1] + lastH : 0;
 
-  const ease = flowingOpen ? "linear" : EASE;
+  const ease = flowingOpen ? EASE_REVERSED : EASE;
   const dur = flowingOpen ? FLOW_UNFOLD_MS : DURATION;
   const transition = reducedMotion
     ? "none"
@@ -368,7 +370,7 @@ function WalletCardView({
   const isQr = card.codeType === "qr";
   const fade = (visible: boolean, delay: number, hideDelay = 0): React.CSSProperties => ({
     opacity: visible ? 1 : 0,
-    transition: reducedMotion ? "none" : visible ? `opacity 120ms ease ${delay}ms` : `opacity 160ms ease ${hideDelay}ms`,
+    transition: reducedMotion ? "none" : visible ? `opacity 160ms ease ${delay}ms` : `opacity 160ms ease ${hideDelay}ms`,
   });
   return (
     <div
@@ -502,17 +504,6 @@ function staggerIn(root: HTMLElement, baseDelay: number) {
   });
 }
 
-/**
- * Gedempte veer voor rAF-animaties. Met beginsnelheid `v0` vertrekt hij al in beweging, zodat de
- * morph naadloos aansluit op het openklappen van de stapel (geen stilstand tussen beide).
- */
-function springAt(t: number, v0 = 0): number {
-  if (t >= 1) return 1;
-  const zeta = 0.7;
-  const omega = 11;
-  const wd = omega * Math.sqrt(1 - zeta * zeta);
-  return 1 - Math.exp(-zeta * omega * t) * (Math.cos(wd * t) + ((zeta * omega - v0) / wd) * Math.sin(wd * t));
-}
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
@@ -651,11 +642,14 @@ export function LoyaltyCardViewer({
       if (from) {
         const { card, parts } = measureMorph(root, openId);
         applyMorph(root, card, parts, 0);
-        void runMorph(root, card, parts, { from: 0, to: 1, duration: 680, ease: (t) => springAt(t, 4) }).then(() => clearMorph(root, parts));
+        // Exact het omgekeerde van sluiten: zelfde duur en (symmetrische) curve.
+        void runMorph(root, card, parts, { from: 0, to: 1, duration: 460, ease: easeInOutCubic }).then(() => clearMorph(root, parts));
       } else {
         root.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 420, easing: SPRING_EASE });
       }
-      staggerIn(root, 260);
+      root.querySelectorAll<HTMLElement>("[data-viewer-stagger]").forEach((el) =>
+        el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: 300, fill: "backwards" }),
+      );
     } else if (desktop && desktopRef.current) {
       const dialog = desktopRef.current;
       const d = dialog.getBoundingClientRect();
