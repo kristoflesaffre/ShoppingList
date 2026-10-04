@@ -195,9 +195,9 @@ const OPEN_GAP = 10;
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const DURATION = 480;
 /** Na het openklappen meteen door naar schermvullend (iets vóór het einde, voor één vloeiende beweging). */
-const UNFOLD_TO_FULLSCREEN_MS = 480;
+const UNFOLD_TO_FULLSCREEN_MS = 336;
 /** Openklappen richting schermvullend: duidelijk zichtbaar, lineair zodat de snelheid doorloopt in de morph. */
-const FLOW_UNFOLD_MS = 480;
+const FLOW_UNFOLD_MS = 336;
 
 
 /** Echte code als klein voorbeeld (geschaald), zodat kaarten «echt» ogen nog voor je tikt. */
