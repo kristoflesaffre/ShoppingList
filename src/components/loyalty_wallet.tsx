@@ -195,9 +195,9 @@ const OPEN_GAP = 10;
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const DURATION = 480;
 /** Na het openklappen meteen door naar schermvullend (iets vóór het einde, voor één vloeiende beweging). */
-const UNFOLD_TO_FULLSCREEN_MS = 520;
+const UNFOLD_TO_FULLSCREEN_MS = 170;
 /** Openklappen richting schermvullend: duidelijk zichtbaar, lineair zodat de snelheid doorloopt in de morph. */
-const FLOW_UNFOLD_MS = 620;
+const FLOW_UNFOLD_MS = 200;
 
 /** Echte code als klein voorbeeld (geschaald), zodat kaarten «echt» ogen nog voor je tikt. */
 export function CodePreview({ card, className }: { card: WalletCard; className?: string }) {
@@ -368,7 +368,7 @@ function WalletCardView({
   const isQr = card.codeType === "qr";
   const fade = (visible: boolean, delay: number, hideDelay = 0): React.CSSProperties => ({
     opacity: visible ? 1 : 0,
-    transition: reducedMotion ? "none" : visible ? `opacity 200ms ease ${delay}ms` : `opacity 160ms ease ${hideDelay}ms`,
+    transition: reducedMotion ? "none" : visible ? `opacity 120ms ease ${delay}ms` : `opacity 160ms ease ${hideDelay}ms`,
   });
   return (
     <div
