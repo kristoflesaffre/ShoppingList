@@ -164,10 +164,10 @@ function CodeTypeIcon({ codeType, className }: { codeType: string; className?: s
   );
 }
 
-function CardLogo({ src, size }: { src: string; size: number }) {
+function CardLogo({ src, size, morph }: { src: string; size: number; morph?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos
-    <img src={src} alt="" width={size} height={size} className="shrink-0 object-contain" style={{ width: size, height: size }} />
+    <img src={src} alt="" width={size} height={size} data-morph={morph} className="shrink-0 object-contain" style={{ width: size, height: size }} />
   );
 }
 
@@ -175,8 +175,12 @@ function CardLogo({ src, size }: { src: string; size: number }) {
 function WalletCardHead({ card, accent }: { card: WalletCard; accent: string }) {
   return (
     <span className="flex min-w-0 items-center gap-3">
-      <CardLogo src={card.logoSrc} size={36} />
-      <span className="min-w-0 flex-1 truncate text-base font-semibold leading-6 text-text-primary">{card.cardName}</span>
+      <CardLogo src={card.logoSrc} size={36} morph={`logo-${card.id}`} />
+      <span className="min-w-0 flex-1 truncate text-base font-semibold leading-6 text-text-primary">
+        <span data-morph={`name-${card.id}`} className="inline-block">
+          {card.cardName}
+        </span>
+      </span>
       <span style={{ color: accent }} className="flex">
         <CodeTypeIcon codeType={card.codeType} />
       </span>
@@ -362,6 +366,7 @@ function WalletCardView({
           isQr ? "[&_svg]:!h-full [&_svg]:!w-auto [&_svg]:aspect-square" : "[&_svg]:!h-full [&_svg]:!w-full",
         )}
         style={fade(showCode, 180)}
+        data-morph={`code-${card.id}`}
         aria-hidden={!showCode}
       >
         {showCode ? (
@@ -392,9 +397,12 @@ function TrashIcon() {
 function BigCode({ card, qrSize, barHeight }: { card: WalletCard; qrSize: string; barHeight: number }) {
   const isQr = card.codeType === "qr";
   return (
-    <div className="flex w-full items-center justify-center rounded-[28px] bg-white p-[26px] shadow-[0_16px_40px_-16px_rgba(16,17,48,0.25)]">
+    <div
+      data-morph={`code-${card.id}`}
+      className="flex w-full items-center justify-center rounded-[28px] bg-white p-[26px] shadow-[0_16px_40px_-16px_rgba(16,17,48,0.25)]"
+    >
       {isQr ? (
-        <div className="aspect-square [&_svg]:!size-full" style={{ width: qrSize }}>
+        <div data-morph-inner className="aspect-square [&_svg]:!size-full" style={{ width: qrSize }}>
           <LoyaltyCardDisplay codeType="qr" codeFormat={card.codeFormat} rawValue={card.rawValue} />
         </div>
       ) : (
@@ -446,12 +454,6 @@ function originRect(id: string): DOMRect | null {
   return null;
 }
 
-function clipTo(r: DOMRect): string {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  return `inset(${r.top}px ${vw - r.right}px ${vh - r.bottom}px ${r.left}px round 20px)`;
-}
-
 /** Inhoud (logo, naam, code, knoppen) veert kort na de vorm binnen, licht verspringend. */
 function staggerIn(root: HTMLElement, baseDelay: number) {
   root.querySelectorAll<HTMLElement>("[data-viewer-stagger]").forEach((el) => {
@@ -463,6 +465,106 @@ function staggerIn(root: HTMLElement, baseDelay: number) {
       ],
       { duration: 620, delay: baseDelay + step * 55, easing: SPRING_EASE, fill: "backwards" },
     );
+  });
+}
+
+/** Gedempte veer (zelfde curve als SPRING_EASE), als functie voor rAF-animaties. */
+function springAt(t: number): number {
+  if (t >= 1) return 1;
+  const zeta = 0.7;
+  const omega = 11;
+  const wd = omega * Math.sqrt(1 - zeta * zeta);
+  return 1 - Math.exp(-zeta * omega * t) * (Math.cos(wd * t) + ((zeta * omega) / wd) * Math.sin(wd * t));
+}
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
+
+type MorphPart = { el: HTMLElement; dx: number; dy: number; sx: number; sy: number; inner?: { el: HTMLElement; k: number } };
+
+/**
+ * Shared-element morph (mobiel): de kaart groeit tot het volledige scherm, en logo, naam en het
+ * codevlak bewegen en schalen van hun plek op de kaart naar hun plek in de schermvullende weergave.
+ * De QR-code zelf blijft daarbij vierkant (tegenschaal binnen het witte vlak).
+ */
+function measureMorph(root: HTMLElement, id: string): { card: DOMRect | null; parts: MorphPart[] } {
+  const visibleOutside = (sel: string) =>
+    Array.from(document.querySelectorAll<HTMLElement>(sel)).find((el) => !root.contains(el) && el.offsetParent !== null) ?? null;
+  const inside = (sel: string) => {
+    const page = root.querySelector<HTMLElement>(`[data-viewer-page="${CSS.escape(id)}"]`);
+    return page?.querySelector<HTMLElement>(sel) ?? null;
+  };
+  const parts: MorphPart[] = [];
+  for (const key of ["logo", "name", "code"]) {
+    const sel = `[data-morph="${key}-${CSS.escape(id)}"]`;
+    const src = visibleOutside(sel);
+    const dst = inside(sel);
+    if (!src || !dst) continue;
+    const a = src.getBoundingClientRect();
+    const b = dst.getBoundingClientRect();
+    if (!a.width || !b.width) continue;
+    const part: MorphPart = {
+      el: dst,
+      dx: a.left + a.width / 2 - (b.left + b.width / 2),
+      dy: a.top + a.height / 2 - (b.top + b.height / 2),
+      sx: a.width / b.width,
+      sy: key === "code" ? a.height / b.height : a.width / b.width,
+    };
+    if (key === "code") {
+      const innerDst = dst.querySelector<HTMLElement>("[data-morph-inner]");
+      const srcSvg = src.querySelector("svg")?.getBoundingClientRect();
+      if (innerDst && srcSvg?.width) part.inner = { el: innerDst, k: srcSvg.width / innerDst.getBoundingClientRect().width };
+    }
+    parts.push(part);
+  }
+  return { card: originRect(id), parts };
+}
+
+function applyMorph(root: HTMLElement, card: DOMRect | null, parts: MorphPart[], p: number) {
+  if (card) {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const q = 1 - p;
+    root.style.clipPath = `inset(${card.top * q}px ${(vw - card.right) * q}px ${(vh - card.bottom) * q}px ${card.left * q}px round ${Math.max(0, 20 * q)}px)`;
+  }
+  for (const part of parts) {
+    const sx = lerp(part.sx, 1, p);
+    const sy = lerp(part.sy, 1, p);
+    part.el.style.transformOrigin = "50% 50%";
+    part.el.style.transform = `translate(${part.dx * (1 - p)}px, ${part.dy * (1 - p)}px) scale(${sx}, ${sy})`;
+    if (part.inner) {
+      const k = lerp(part.inner.k, 1, p);
+      part.inner.el.style.transform = `scale(${k / sx}, ${k / sy})`;
+    }
+  }
+}
+
+function clearMorph(root: HTMLElement, parts: MorphPart[]) {
+  root.style.clipPath = "";
+  for (const part of parts) {
+    part.el.style.transform = "";
+    part.el.style.transformOrigin = "";
+    if (part.inner) part.inner.el.style.transform = "";
+  }
+}
+
+function runMorph(
+  root: HTMLElement,
+  card: DOMRect | null,
+  parts: MorphPart[],
+  { from, to, duration, ease }: { from: number; to: number; duration: number; ease: (t: number) => number },
+): Promise<void> {
+  return new Promise((resolve) => {
+    const start = performance.now();
+    applyMorph(root, card, parts, from);
+    const frame = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      applyMorph(root, card, parts, lerp(from, to, ease(t)));
+      if (t < 1) requestAnimationFrame(frame);
+      else resolve();
+    };
+    requestAnimationFrame(frame);
   });
 }
 
@@ -510,14 +612,13 @@ export function LoyaltyCardViewer({
     if (!desktop && mobileRef.current) {
       const root = mobileRef.current;
       if (from) {
-        root.animate([{ clipPath: clipTo(from) }, { clipPath: "inset(0px 0px 0px 0px round 0px)" }], {
-          duration: 640,
-          easing: SPRING_EASE,
-        });
+        const { card, parts } = measureMorph(root, openId);
+        applyMorph(root, card, parts, 0);
+        void runMorph(root, card, parts, { from: 0, to: 1, duration: 680, ease: springAt }).then(() => clearMorph(root, parts));
       } else {
         root.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 420, easing: SPRING_EASE });
       }
-      staggerIn(root, 110);
+      staggerIn(root, 260);
     } else if (desktop && desktopRef.current) {
       const dialog = desktopRef.current;
       const d = dialog.getBoundingClientRect();
@@ -544,17 +645,22 @@ export function LoyaltyCardViewer({
     const desktop = window.matchMedia("(min-width: 768px)").matches;
     try {
       if (!desktop && mobileRef.current) {
-        const frames: Keyframe[] = to
-          ? [
-              { clipPath: "inset(0px 0px 0px 0px round 0px)", opacity: 1 },
-              { clipPath: clipTo(to), opacity: 1, offset: 0.8 },
-              { clipPath: clipTo(to), opacity: 0 },
-            ]
-          : [
-              { opacity: 1, transform: "none" },
-              { opacity: 0, transform: "translateY(24px)" },
-            ];
-        await mobileRef.current.animate(frames, { duration: 400, easing: EASE_IN_OUT, fill: "forwards" }).finished;
+        const root = mobileRef.current;
+        if (to) {
+          // Terug in de kaart: dezelfde morph achterwaarts, daarna kort vervagen.
+          root.querySelectorAll<HTMLElement>("[data-viewer-stagger]").forEach((el) =>
+            el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "forwards" }),
+          );
+          const { card: rect, parts } = measureMorph(root, card.id);
+          await runMorph(root, rect, parts, { from: 1, to: 0, duration: 420, ease: easeInOutCubic });
+          await root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: "ease-out", fill: "forwards" }).finished;
+        } else {
+          await root.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(24px)" }], {
+            duration: 360,
+            easing: EASE_IN_OUT,
+            fill: "forwards",
+          }).finished;
+        }
       } else if (desktop && desktopRef.current) {
         const dialog = desktopRef.current;
         const d = dialog.getBoundingClientRect();
@@ -666,14 +772,17 @@ function ViewerPage({ card, dark }: { card: WalletCard; dark: boolean }) {
   const colors = cardColors(useLogoTint(card.logoSrc), dark);
   return (
     <section
+      data-viewer-page={card.id}
       className="flex h-full w-full shrink-0 snap-center flex-col items-center px-5 pt-[calc(88px+env(safe-area-inset-top,0px))]"
       style={{ background: colors.background }}
     >
-      <div className="flex flex-col items-center gap-2.5" data-viewer-stagger="0">
-        <CardLogo src={card.logoSrc} size={64} />
-        <h2 className="text-[24px] font-bold leading-8 tracking-[-0.01em] text-text-primary">{card.cardName}</h2>
+      <div className="flex flex-col items-center gap-2.5">
+        <CardLogo src={card.logoSrc} size={64} morph={`logo-${card.id}`} />
+        <h2 data-morph={`name-${card.id}`} className="text-[24px] font-bold leading-8 tracking-[-0.01em] text-text-primary">
+          {card.cardName}
+        </h2>
       </div>
-      <div className="mt-9 w-full" data-viewer-stagger="1">
+      <div className="mt-9 w-full">
         <BigCode card={card} qrSize="min(298px, calc(100vw - 92px))" barHeight={150} />
       </div>
     </section>
