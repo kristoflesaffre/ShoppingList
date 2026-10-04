@@ -104,22 +104,18 @@ function ThemeSetting({ inline = false }: { inline?: boolean }) {
   return (
     <section
       aria-labelledby={titleId}
-      className={cn(inline ? "flex items-center justify-between gap-6" : "flex flex-col gap-2")}
+      className={cn("flex flex-col", inline ? "gap-3" : "gap-2")}
     >
       {inline ? (
-        <div className="min-w-0">
-          <h2 id={titleId} className="text-[15px] font-semibold leading-5 text-text-primary">
-            Weergave
-          </h2>
-          <p className="text-[13px] leading-[18px] text-text-tertiary">Licht, donker of je systeem volgen</p>
-        </div>
+        <h2 id={titleId} className="text-[15px] font-semibold leading-5 text-text-primary">
+          Weergave
+        </h2>
       ) : (
         <h2 id={titleId} className="px-1 text-sm font-semibold leading-20 tracking-normal text-text-secondary">
           Weergave
         </h2>
       )}
       <PillTab
-        className={inline ? "w-[264px] shrink-0" : undefined}
         aria-label="Weergave"
         value={THEME_TO_TAB[pref]}
         onValueChange={(tab) => {
