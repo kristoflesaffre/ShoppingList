@@ -1788,7 +1788,7 @@ function HomeListSwimCard({
   const iconSrc = customIcon ?? venueImage ?? homeListCardIconSrc(list);
 
   const header = (
-    <span className="flex items-center gap-3">
+    <span className="flex items-start gap-3">
       <span className="pointer-events-none relative shrink-0">
         <span
           aria-hidden
