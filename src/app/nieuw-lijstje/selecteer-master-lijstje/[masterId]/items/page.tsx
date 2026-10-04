@@ -809,18 +809,13 @@ export default function SelecteerMasterItemsPage() {
 
       <div className="relative flex-1 bg-[var(--bg-app)] px-4 pb-[calc(112px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+16px+env(safe-area-inset-top,0px))] lg:pb-12">
         <div className="relative mx-auto flex w-full max-w-[956px] flex-col gap-[14px] lg:gap-[18px]">
-          <div className="flex items-start gap-4">
-            <div className="min-w-0 flex-1">
-              <h2 className="truncate text-page-title font-bold leading-32 tracking-normal text-text-primary lg:text-[34px] lg:leading-[40px]">
-                {listName}
-              </h2>
-              <div className="mt-1 flex min-w-0 items-center gap-1.5">
-                <StoreLogoSmall src={masterList.icon} />
-                <p className="truncate text-[13px] leading-4 text-[var(--text-secondary)]">{storeLabel}</p>
-              </div>
-            </div>
-            <div className="shrink-0">
-              <DoneButton onClick={handleDone} disabled={selectedItemCount === 0} className="disabled:cursor-not-allowed disabled:opacity-40" />
+          <div className="min-w-0">
+            <h2 className="truncate text-page-title font-bold leading-32 tracking-normal text-text-primary lg:text-[34px] lg:leading-[40px]">
+              {listName}
+            </h2>
+            <div className="mt-1 flex min-w-0 items-center gap-1.5">
+              <StoreLogoSmall src={masterList.icon} />
+              <p className="truncate text-[13px] leading-4 text-[var(--text-secondary)]">{storeLabel}</p>
             </div>
           </div>
 
