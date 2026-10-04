@@ -977,6 +977,13 @@ const TE_KOPEN_MONOGRAM_RGB: Array<[number, number, number]> = [
   [43, 160, 150],
 ];
 
+/** Zacht vlak + letter in dezelfde tint, vast per beginletter (mobiel en desktop gelijk). */
+function teKopenMonogramStyle(name: string): React.CSSProperties {
+  const code = name.trim().toUpperCase().charCodeAt(0) || 0;
+  const rgb = TE_KOPEN_MONOGRAM_RGB[code % TE_KOPEN_MONOGRAM_RGB.length].join(",");
+  return { backgroundColor: `rgba(${rgb},0.14)`, color: `rgb(${rgb})` };
+}
+
 function teKopenStoreLogo(store?: string | null): string | null {
   if (!store) return null;
   return MASTER_STORE_OPTIONS.find((s) => s.label === store)?.logoSrc ?? null;
@@ -998,7 +1005,6 @@ function HomeTeKopenSwimTile({
   const quantity = pluralizeShoppingQuantity(item.quantity);
   const storeLogo = teKopenStoreLogo(item.store);
   const initial = item.name.trim().charAt(0).toUpperCase();
-  const rgb = TE_KOPEN_MONOGRAM_RGB[(initial.charCodeAt(0) || 0) % TE_KOPEN_MONOGRAM_RGB.length].join(",");
 
   return (
     <Link
@@ -1013,7 +1019,7 @@ function HomeTeKopenSwimTile({
       ) : (
         <span
           className="flex size-[52px] shrink-0 items-center justify-center rounded-[14px] text-xl font-bold leading-none"
-          style={{ backgroundColor: `rgba(${rgb},0.14)`, color: `rgb(${rgb})` }}
+          style={teKopenMonogramStyle(item.name)}
           aria-hidden
         >
           {initial}
@@ -1173,7 +1179,8 @@ function HomeTeKopenTile({
         />
       ) : (
         <span
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--blue-25)] text-[15px] font-semibold leading-none text-[var(--blue-400)]"
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl text-base font-bold leading-none"
+          style={teKopenMonogramStyle(item.name)}
           aria-hidden
         >
           {item.name.trim().charAt(0).toUpperCase()}
