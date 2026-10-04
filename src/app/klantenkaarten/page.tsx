@@ -11,11 +11,9 @@ import {
   LOYALTY_COMBO_PRIMARY_LOGO_SRC,
   LOYALTY_COMBO_SECONDARY_LOGO_SRC,
 } from "@/lib/master-stores";
-import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 import { MiniButton } from "@/components/ui/mini_button";
-import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
-import { LoyaltyCardGrid, LoyaltyWallet } from "@/components/loyalty_wallet";
+import { LoyaltyCardGrid, LoyaltyCardViewer, LoyaltyWallet } from "@/components/loyalty_wallet";
 import { LoyaltyCardEditorSlideIn } from "@/components/loyalty_card_editor_slide_in";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
@@ -583,10 +581,8 @@ export default function KlantenKaartenPage() {
     return <PageSpinner />;
   }
 
-  const viewLogoSrc = viewCard?.logoSrc ?? "";
-
   const empty = cards.length === 0;
-  const fabVisible = !empty && !isEditMode && !snackbarMessage;
+  const fabVisible = !empty && !isEditMode && !snackbarMessage && !viewOpen;
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)] px-[16px]">
@@ -669,9 +665,17 @@ export default function KlantenKaartenPage() {
                 </div>
               ) : (
                 <>
-                  {/* Mobiel: wallet met de gekozen kaart open bovenaan (canvas «Kaarten 1b/1c»). */}
+                  {/* Mobiel: wallet-stapel (canvas «Kaarten 1b/1c»); tik opent de kaart schermvullend. */}
                   <div className="md:hidden">
-                    <LoyaltyWallet cards={cards} reducedMotion={prefersReducedMotion} />
+                    <LoyaltyWallet
+                      cards={cards}
+                      onOpen={(c) => {
+                        const full = cards.find((x) => x.id === c.id);
+                        if (!full) return;
+                        setViewCard(full);
+                        setViewOpen(true);
+                      }}
+                    />
                   </div>
                   {/* Desktop: bankkaarten in de logokleur; tik opent de kaart. */}
                   <div className="hidden md:block">
@@ -764,52 +768,26 @@ export default function KlantenKaartenPage() {
         }}
       />
 
-      <SlideInModal
-        open={viewOpen}
+      {/* Kaart bekijken (canvas «Kaartmodal C»): mobiel schermvullend, desktop grote modal. */}
+      <LoyaltyCardViewer
+        cards={cards}
+        openId={viewOpen ? (viewCard?.id ?? null) : null}
+        deletingId={deletingId}
         onClose={() => {
           setViewOpen(false);
           setViewCard(null);
         }}
-        title={viewCard?.cardName ?? "Klantenkaart"}
-        titleId="view-card-slide-title"
-        footer={
-          <Button
-            type="button"
-            variant="tertiary"
-            disabled={deletingId === viewCard?.id}
-            onClick={() => {
-              if (viewCard) void handleDeleteCard(viewCard);
-            }}
-            className="!text-[var(--error-400)] hover:!text-[var(--error-600)]"
-          >
-            {deletingId === viewCard?.id
-              ? "Verwijderen…"
-              : "Klantenkaart verwijderen"}
-          </Button>
-        }
-      >
-        {viewCard ? (
-          <div className="flex flex-col items-center gap-6 px-4">
-            <div className="flex items-center justify-center rounded-xl bg-white p-4 shadow-sm">
-              <LoyaltyCardDisplay
-                codeType={viewCard.codeType as "qr" | "barcode"}
-                codeFormat={viewCard.codeFormat}
-                rawValue={viewCard.rawValue}
-              />
-            </div>
-            {viewLogoSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos
-              <img
-                src={viewLogoSrc}
-                alt=""
-                width={64}
-                height={64}
-                className="pointer-events-none size-16 shrink-0 object-contain"
-              />
-            ) : null}
-          </div>
-        ) : null}
-      </SlideInModal>
+        onDelete={(c) => {
+          const card = cards.find((x) => x.id === c.id);
+          if (!card) return;
+          setViewCard(card);
+          if (cardListMap.has(card.id)) {
+            setConfirmDeleteCard(card);
+          } else {
+            void handleDeleteCard(card);
+          }
+        }}
+      />
 
       {snackbarMessage ? (
         <div
