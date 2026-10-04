@@ -156,6 +156,7 @@ import {
   type ListCardLayout,
 } from "./list_cards_view";
 import { ListSuggestions, type Suggestion } from "./list_suggestions";
+import { MasterCategoryCards, MasterLoyaltyLine } from "./master_view";
 
 const RecipeIngredientSortableList = dynamic(
   () =>
@@ -3635,6 +3636,7 @@ export default function ListDetailPage({
   const [isListLayoutHydrated, setIsListLayoutHydrated] = React.useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
   const [masterSearchQuery, setMasterSearchQuery] = React.useState("");
+  const [masterSearchOpen, setMasterSearchOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<ListItem | null>(null);
   const [initialSection, setInitialSection] = React.useState<string | null>(null);
   const [initialItemCategory, setInitialItemCategory] = React.useState<
@@ -5544,17 +5546,18 @@ export default function ListDetailPage({
                   </div>
                 ) : null}
                 {isMasterList && masterStoreLabel ? (
-                  <div className="mt-0 flex w-full items-center justify-start gap-2">
+                  /* Canvas «Favorieten beheren 1»: logo + aantal favorieten. */
+                  <div className="mt-1 flex w-full items-center justify-start gap-1.5">
                     {/* eslint-disable-next-line @next/next/no-img-element -- store-SVG uit /public/logos */}
                     <img
                       src={listIcon}
                       alt=""
-                      width={24}
-                      height={24}
-                      className="size-6 object-contain"
+                      width={16}
+                      height={16}
+                      className="size-4 object-contain"
                     />
-                    <p className="text-sm font-normal leading-20 tracking-normal text-[var(--text-tertiary)]">
-                      {masterStoreLabel}
+                    <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
+                      {hasItems ? `${items.length} ${items.length === 1 ? "favoriet" : "favorieten"}` : masterStoreLabel}
                     </p>
                   </div>
                 ) : null}
@@ -5573,13 +5576,36 @@ export default function ListDetailPage({
                       />
                     </div>
                   ) : null}
-                  <ListLayoutToggle
-                    value={cardLayout}
-                    onChange={(v) => {
-                      setCardLayout(v);
-                      setListLayoutMode(v === "tiles" ? "grid" : "list");
-                    }}
-                  />
+                  {isMasterList ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMasterSearchOpen((v) => !v);
+                        setMasterSearchQuery("");
+                      }}
+                      aria-label={masterSearchOpen ? "Zoeken sluiten" : "Zoeken in favorieten"}
+                      aria-pressed={masterSearchOpen}
+                      className={cn(
+                        "flex size-9 shrink-0 items-center justify-center rounded-full transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                        masterSearchOpen
+                          ? "bg-[var(--blue-500)] text-white"
+                          : "bg-[var(--white)] text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(16,17,48,0.10)]",
+                      )}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden className="size-[18px]">
+                        <circle cx="11" cy="11" r="6.5" />
+                        <path d="M20 20l-4.2-4.2" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <ListLayoutToggle
+                      value={cardLayout}
+                      onChange={(v) => {
+                        setCardLayout(v);
+                        setListLayoutMode(v === "tiles" ? "grid" : "list");
+                      }}
+                    />
+                  )}
                 </div>
               ) : null}
             </div>
@@ -5650,194 +5676,23 @@ export default function ListDetailPage({
           ) : null}
 
           {!isMasterCategoryOrderMode && showLoyaltyLinkRows ? (
-            isLidlDelhaizeList ? (
-              <div className="flex w-full flex-col gap-3">
-                {existingLoyaltyCard ? (
-                  <div className="flex w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card py-3 pl-4 pr-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
-                    <img
-                      src={LOYALTY_COMBO_PRIMARY_LOGO_SRC}
-                      alt=""
-                      width={24}
-                      height={24}
-                      className="size-6 shrink-0 object-contain"
-                    />
-                    <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-                      Klantenkaart gekoppeld
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoyaltyViewSlot("delhaize");
-                        setLoyaltyCardViewSlideOpen(true);
-                      }}
-                      className="shrink-0 text-sm font-normal leading-20 tracking-normal text-action-primary underline decoration-action-primary underline-offset-2 transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                    >
-                      Wijzigen
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoyaltySlot("delhaize");
-                      setLoyaltyCardSlideOpen(true);
-                    }}
-                    aria-label="Klantenkaart Delhaize koppelen"
-                    className="flex w-full items-center gap-3 rounded-md border border-dashed border-[var(--blue-500)] bg-[var(--white)] py-3 pl-4 pr-3 text-left transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
-                    <img
-                      src={LOYALTY_COMBO_PRIMARY_LOGO_SRC}
-                      alt=""
-                      width={24}
-                      height={24}
-                      className="size-6 shrink-0 object-contain"
-                    />
-                    <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-action-primary">
-                      Klantenkaart koppelen
-                    </p>
-                    <span
-                      aria-hidden="true"
-                      className="inline-block size-6 shrink-0 bg-[var(--blue-500)]"
-                      style={{
-                        WebkitMaskImage: 'url("/icons/qr.svg")',
-                        maskImage: 'url("/icons/qr.svg")',
-                        WebkitMaskRepeat: "no-repeat",
-                        maskRepeat: "no-repeat",
-                        WebkitMaskSize: "contain",
-                        maskSize: "contain",
-                        WebkitMaskPosition: "center",
-                        maskPosition: "center",
-                      }}
-                    />
-                  </button>
-                )}
-                {existingLoyaltyCardSecondary ? (
-                  <div className="flex w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card py-3 pl-4 pr-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
-                    <img
-                      src={LOYALTY_COMBO_SECONDARY_LOGO_SRC}
-                      alt=""
-                      width={24}
-                      height={24}
-                      className="size-6 shrink-0 object-contain"
-                    />
-                    <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-                      Klantenkaart gekoppeld
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoyaltyViewSlot("lidl");
-                        setLoyaltyCardViewSlideOpen(true);
-                      }}
-                      className="shrink-0 text-sm font-normal leading-20 tracking-normal text-action-primary underline decoration-action-primary underline-offset-2 transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                    >
-                      Wijzigen
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoyaltySlot("lidl");
-                      setLoyaltyCardSlideOpen(true);
-                    }}
-                    aria-label="Klantenkaart Lidl koppelen"
-                    className="flex w-full items-center gap-3 rounded-md border border-dashed border-[var(--blue-500)] bg-[var(--white)] py-3 pl-4 pr-3 text-left transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
-                    <img
-                      src={LOYALTY_COMBO_SECONDARY_LOGO_SRC}
-                      alt=""
-                      width={24}
-                      height={24}
-                      className="size-6 shrink-0 object-contain"
-                    />
-                    <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-action-primary">
-                      Klantenkaart koppelen
-                    </p>
-                    <span
-                      aria-hidden="true"
-                      className="inline-block size-6 shrink-0 bg-[var(--blue-500)]"
-                      style={{
-                        WebkitMaskImage: 'url("/icons/qr.svg")',
-                        maskImage: 'url("/icons/qr.svg")',
-                        WebkitMaskRepeat: "no-repeat",
-                        maskRepeat: "no-repeat",
-                        WebkitMaskSize: "contain",
-                        maskSize: "contain",
-                        WebkitMaskPosition: "center",
-                        maskPosition: "center",
-                      }}
-                    />
-                  </button>
-                )}
-              </div>
-            ) : isMasterList ? (
-              existingLoyaltyCard ? (
-                <div className="flex w-full items-center gap-3 rounded-lg bg-[var(--white)] shadow-card py-3 pl-4 pr-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
-                  <img
-                    src={listIcon}
-                    alt=""
-                    width={24}
-                    height={24}
-                    className="size-6 shrink-0 object-contain"
-                  />
-                  <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-                    Klantenkaart gekoppeld
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoyaltyViewSlot("delhaize");
-                      setLoyaltyCardViewSlideOpen(true);
-                    }}
-                    className="shrink-0 text-sm font-normal leading-20 tracking-normal text-action-primary underline decoration-action-primary underline-offset-2 transition-colors hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                  >
-                    Wijzigen
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoyaltySlot("delhaize");
-                    setLoyaltyCardSlideOpen(true);
-                  }}
-                  aria-label="Klantenkaart koppelen"
-                  className="flex w-full items-center gap-3 rounded-md border border-dashed border-[var(--blue-500)] bg-[var(--white)] py-3 pl-4 pr-3 text-left transition-colors hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- store-logo uit /public/logos */}
-                  <img
-                    src={listIcon}
-                    alt=""
-                    width={24}
-                    height={24}
-                    className="size-6 shrink-0 object-contain"
-                  />
-                  <p className="min-w-0 flex-1 text-sm font-normal leading-20 tracking-normal text-action-primary">
-                    Klantenkaart koppelen
-                  </p>
-                  <span
-                    aria-hidden="true"
-                    className="inline-block size-6 shrink-0 bg-[var(--blue-500)]"
-                    style={{
-                      WebkitMaskImage: 'url("/icons/qr.svg")',
-                      maskImage: 'url("/icons/qr.svg")',
-                      WebkitMaskRepeat: "no-repeat",
-                      maskRepeat: "no-repeat",
-                      WebkitMaskSize: "contain",
-                      maskSize: "contain",
-                      WebkitMaskPosition: "center",
-                      maskPosition: "center",
-                    }}
-                  />
-                </button>
-              )
-            ) : null
+            <MasterLoyaltyLine
+              combo={isLidlDelhaizeList}
+              storeLogo={listIcon}
+              storeLabel={masterStoreLabel || "winkel"}
+              primaryLogo={LOYALTY_COMBO_PRIMARY_LOGO_SRC}
+              secondaryLogo={LOYALTY_COMBO_SECONDARY_LOGO_SRC}
+              hasPrimary={existingLoyaltyCard != null}
+              hasSecondary={existingLoyaltyCardSecondary != null}
+              onView={(slot) => {
+                setLoyaltyViewSlot(slot);
+                setLoyaltyCardViewSlideOpen(true);
+              }}
+              onLink={(slot) => {
+                setLoyaltySlot(slot);
+                setLoyaltyCardSlideOpen(true);
+              }}
+            />
           ) : null}
 
           {listSuggestions && !embedSuggestionsInDayCards ? listSuggestions : null}
@@ -5973,14 +5828,27 @@ export default function ListDetailPage({
                 «Wie» in via toevoegen of bewerken van een item.
               </p>
             ) : null}
-            {isMasterList && hasItems && !isMasterCategoryOrderMode ? (
+            {isMasterList && hasItems && !isMasterCategoryOrderMode && masterSearchOpen ? (
               <SearchBar
                 value={masterSearchQuery}
                 onValueChange={setMasterSearchQuery}
                 placeholder="Zoeken in favorieten…"
               />
             ) : null}
-            {useCardView ? (
+            {isMasterList && !isEditMode ? (
+              <MasterCategoryCards
+                sections={sectionsForDisplay}
+                getPhotoUrl={getPhotoUrl}
+                onAddToSection={(sectionTitle) => {
+                  setInitialItemCategory(sectionTitle);
+                  setInitialSection("Algemeen");
+                  setEditingItem(null);
+                  setIsNewItemOpen(true);
+                }}
+                onEdit={(item) => setEditingItem(item)}
+                onDelete={handleDeleteItem}
+              />
+            ) : useCardView ? (
               <ListCardsView
                 sections={sectionsForDisplay}
                 groupingMode={effectiveListGroupingMode}
