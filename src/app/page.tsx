@@ -1614,7 +1614,7 @@ function HomeWeekColumn({ day, isToday }: { day: HomeWeekDay; isToday: boolean }
       <span className="mt-3 flex h-9 w-full items-start justify-center">
         <span
           className={cn(
-            "line-clamp-2 text-center text-sm leading-[18px]",
+            "line-clamp-2 w-full min-w-0 break-words px-0.5 text-center text-xs leading-[15px] [overflow-wrap:anywhere]",
             summary ? "font-semibold text-[var(--text-primary)]" : "text-[var(--text-tertiary)]",
           )}
         >
