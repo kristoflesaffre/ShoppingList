@@ -436,7 +436,7 @@ export default function ReceptDetailPage() {
         )}
         style={{ backgroundColor: scrolled ? "color-mix(in srgb, var(--bg-app) 86%, transparent)" : "transparent" }}
       >
-        <header className="mx-auto flex h-16 max-w-[1180px] items-center gap-2 px-4 lg:h-[88px] lg:px-12">
+        <header className="mx-auto flex h-16 max-w-[1180px] items-center gap-2 px-4 lg:h-[88px] lg:px-[150px]">
           <button
             type="button"
             aria-label="Terug"
