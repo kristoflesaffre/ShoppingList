@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,7 @@ export function HomeHeader({ ownerId, className, action }: HomeHeaderProps) {
     },
   });
   const firstName = (data?.profiles?.[0]?.firstName ?? "").trim();
+  const avatarUrl = (data?.profiles?.[0]?.avatarUrl ?? "").trim() || null;
 
   // Eén keer bij mount bepalen: geen re-render per seconde nodig, wel altijd client-tijd.
   const [now] = React.useState(() => new Date());
@@ -50,19 +52,34 @@ export function HomeHeader({ ownerId, className, action }: HomeHeaderProps) {
   return (
     <header
       className={cn(
-        "grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1",
+        "grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-0.5",
         className,
       )}
     >
-      <p className="col-start-1 row-start-1 text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)]">
+      {/* Profielfoto links van de begroeting (zoals in de KBC-app); vervangt de profieltab in de navigatie. */}
+      <Link
+        href="/profiel"
+        aria-label={firstName ? `Profiel, ${firstName}` : "Profiel"}
+        className="col-start-1 row-span-2 row-start-1 flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] shadow-[0_0_0_3px_var(--white),0_0_0_4px_var(--border-subtle)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-4"
+      >
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- data-URL of blob uit profiel
+          <img src={avatarUrl} alt="" className="size-full object-cover" />
+        ) : (
+          <span aria-hidden className="text-xl font-bold text-[var(--blue-500)]">
+            {firstName ? firstName.charAt(0).toUpperCase() : "?"}
+          </span>
+        )}
+      </Link>
+      <p className="col-start-2 row-start-1 self-end text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)]">
         <time dateTime={now.toISOString().slice(0, 10)}>{dateLabel}</time>
       </p>
-      <h1 className="col-start-1 row-start-2 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
+      <h1 className="col-start-2 row-start-2 self-start truncate text-[24px] font-bold leading-[30px] tracking-tight text-[var(--text-primary)] md:text-page-title md:leading-32">
         {greeting}
         {firstName ? `, ${firstName}` : ""}
       </h1>
       {action ? (
-        <div className="col-start-2 row-start-2 self-center">{action}</div>
+        <div className="col-start-3 row-span-2 row-start-1 self-center">{action}</div>
       ) : null}
     </header>
   );

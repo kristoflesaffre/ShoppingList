@@ -143,26 +143,6 @@ function KalenderIcon({
   return <MaskNavIcon src="/icons/calendar.svg" className={className} />;
 }
 
-function AvatarIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width={24}
-      height={24}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12.41 11.6263C14.7921 11.6263 16.7231 9.69525 16.7231 7.31316C16.7231 4.93107 14.7921 3 12.41 3C10.0279 3 8.0968 4.93107 8.0968 7.31316C8.0968 9.69525 10.0279 11.6263 12.41 11.6263Z" />
-      <path d="M19.82 20.2526C19.82 16.9143 16.4989 14.2142 12.41 14.2142C8.32113 14.2142 5 16.9143 5 20.2526" />
-    </svg>
-  );
-}
-
 function KaartenIcon({
   className,
   filled,
@@ -224,16 +204,13 @@ export interface AppBottomNavProps {
 }
 
 /**
- * Vaste bottom navigation: Lijstjes, Recepten, Profiel (Figma 854:7039).
+ * Vaste bottom navigation: Lijstjes, Kaarten, Kalender, Recepten. Profiel opent via de avatar in de kop van de startpagina.
  */
-export function AppBottomNav({
-  active,
-  profileAvatarUrl,
-  profileFirstName,
-}: AppBottomNavProps) {
-  const trimmedName = profileFirstName?.trim() ?? "";
-  const profileTabLabel = trimmedName.length > 0 ? trimmedName : "Profiel";
+export function AppBottomNav({ active }: AppBottomNavProps) {
+  /* Profiel zit niet meer in de navigatie (avatar staat in de kop van de startpagina);
+     op /profiel is dus geen tab actief en verdwijnt de indicator. */
   const activeIndex = APP_BOTTOM_NAV_INDEX[active];
+  const showIndicator = active !== "profiel";
 
   const tabClass =
     "relative z-[1] flex h-14 min-w-0 w-full flex-col items-center justify-center gap-1 rounded-full px-1 no-underline transition-[color,transform] duration-base ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]";
@@ -249,7 +226,7 @@ export function AppBottomNav({
       }}
     >
       <nav
-        className="pointer-events-auto relative isolate grid h-[68px] w-full max-w-[420px] grid-cols-5 items-center overflow-hidden rounded-full px-1.5 py-1.5 shadow-nav-floating"
+        className="pointer-events-auto relative isolate grid h-[68px] w-full max-w-[380px] grid-cols-4 items-center overflow-hidden rounded-full px-1.5 py-1.5 shadow-nav-floating"
         style={{
           backgroundColor:
             "color-mix(in srgb, var(--white) 92%, transparent)",
@@ -260,9 +237,10 @@ export function AppBottomNav({
       >
         <span
           aria-hidden
+          hidden={!showIndicator}
           className="pointer-events-none absolute inset-y-1.5 left-1.5 -z-0 rounded-full motion-safe:transition-transform motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           style={{
-            width: "calc((100% - 12px) / 5)",
+            width: "calc((100% - 12px) / 4)",
             transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
             backgroundColor:
               "color-mix(in srgb, var(--bg-app) 78%, transparent)",
@@ -346,60 +324,6 @@ export function AppBottomNav({
           </Link>
         </div>
 
-        <div className="flex min-w-0 justify-center">
-          <Link
-            href="/profiel"
-            aria-label={
-              trimmedName.length > 0 ? `Profiel, ${trimmedName}` : "Profiel"
-            }
-            aria-current={active === "profiel" ? "page" : undefined}
-            className={cn(
-              tabClass,
-              active === "profiel"
-                ? "font-semibold text-[var(--blue-500)]"
-                : "font-normal text-[var(--gray-500)]",
-            )}
-          >
-            <span className="relative size-6 shrink-0 overflow-hidden rounded-full bg-[var(--gray-100)]">
-              {profileAvatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- data-URL uit profiel
-                <img
-                  src={profileAvatarUrl}
-                  alt=""
-                  width={24}
-                  height={24}
-                  className="size-full object-cover"
-                />
-              ) : active === "profiel" ? (
-                <span className="flex size-full items-center justify-center">
-                  <MaskNavIcon
-                    src="/icons/avatar_filled.svg"
-                    className="size-6"
-                  />
-                </span>
-              ) : (
-                <span className="flex size-full items-center justify-center">
-                  <AvatarIcon className="size-6" />
-                </span>
-              )}
-              <span
-                aria-hidden
-                className={cn(
-                  "pointer-events-none absolute inset-0 rounded-full",
-                  active === "profiel"
-                    ? "shadow-[inset_0_0_0_1px_var(--blue-500)]"
-                    : "shadow-[inset_0_0_0_1px_var(--gray-500)]",
-                )}
-              />
-            </span>
-            <span
-              className={cn("w-full truncate text-center", labelClass)}
-              title={trimmedName.length > 0 ? trimmedName : undefined}
-            >
-              {profileTabLabel}
-            </span>
-          </Link>
-        </div>
       </nav>
     </div>
   );
