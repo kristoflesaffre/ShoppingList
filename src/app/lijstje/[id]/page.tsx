@@ -147,6 +147,8 @@ import {
   listIsFrituurVenueList,
 } from "@/lib/list-product-icons";
 import type { ListItem } from "./new_item_modal";
+import { ListCardsView, ListLayoutToggle, type ListCardLayout } from "./list_cards_view";
+import { ListSuggestions, type Suggestion } from "./list_suggestions";
 
 const RecipeIngredientSortableList = dynamic(
   () =>
@@ -3621,6 +3623,8 @@ export default function ListDetailPage({
   const [masterCategorySnapshotTitles, setMasterCategorySnapshotTitles] =
     React.useState<string[]>([]);
   const [listLayoutMode, setListLayoutMode] = React.useState<"list" | "grid">("list");
+  /** Weergave van de kaarten (canvas «Lijstje 6b»): 1 kolom, 2 kolommen of tegels. */
+  const [cardLayout, setCardLayout] = React.useState<ListCardLayout>("two");
   const [isListLayoutHydrated, setIsListLayoutHydrated] = React.useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
   const [masterSearchQuery, setMasterSearchQuery] = React.useState("");
@@ -4057,6 +4061,132 @@ export default function ListDetailPage({
     },
     [items, listId],
   );
+
+  /**
+   * «Niet gehaald op vorig lijstje»: het meest recente eerdere lijstje van dezelfde favorietenlijst
+   * (of hetzelfde winkellogo), met de niet-afgevinkte losse items die hier nog niet op staan.
+   */
+  const previousListSuggestions = React.useMemo((): { label: string | null; items: Array<{ name: string; quantity: string; itemCategory?: string }> } => {
+    const current = listData as Record<string, unknown> | undefined;
+    if (!current || !listId) return { label: null, items: [] };
+    const curDate = parseDutchDate(String(current.date ?? ""));
+    const curSource = typeof current.sourceMasterListId === "string" ? current.sourceMasterListId : "";
+    const curIcon = String(current.masterIcon ?? "") || String(current.icon ?? "");
+    if (!curDate) return { label: null, items: [] };
+    let best: { row: Record<string, unknown>; date: Date } | null = null;
+    for (const raw of (ownerVenueHistoryData?.lists ?? []) as Record<string, unknown>[]) {
+      if (raw.id === listId || raw.isMasterTemplate === true) continue;
+      const sameSource = curSource ? raw.sourceMasterListId === curSource : (String(raw.masterIcon ?? "") || String(raw.icon ?? "")) === curIcon;
+      if (!sameSource) continue;
+      const d = parseDutchDate(String(raw.date ?? ""));
+      if (!d || d >= curDate) continue;
+      if (!best || d > best.date) best = { row: raw, date: d };
+    }
+    if (!best) return { label: null, items: [] };
+    const have = new Set(items.map((i) => i.name.trim().toLowerCase()));
+    const seen = new Set<string>();
+    const out: Array<{ name: string; quantity: string; itemCategory?: string }> = [];
+    for (const it of (best.row.items ?? []) as Array<Record<string, unknown>>) {
+      const name = String(it.name ?? "").trim();
+      const key = name.toLowerCase();
+      if (!name || it.checked === true || it.fromStock === true || it.recipeGroupId) continue;
+      if (have.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      out.push({ name, quantity: String(it.quantity ?? ""), itemCategory: typeof it.itemCategory === "string" ? it.itemCategory : undefined });
+    }
+    return { label: String(best.row.name ?? "") || null, items: out };
+  }, [listData, listId, ownerVenueHistoryData?.lists, items]);
+
+  /** Verborgen suggesties (vuilbakje) per lijstje — niets wordt verwijderd uit «te kopen». */
+  const [dismissedSuggestions, setDismissedSuggestions] = React.useState<Set<string>>(() => new Set());
+  React.useEffect(() => {
+    if (!listId) return;
+    try {
+      const raw = window.localStorage.getItem(`list-dismissed-suggestions:${listId}`);
+      setDismissedSuggestions(new Set(raw ? (JSON.parse(raw) as string[]) : []));
+    } catch {
+      setDismissedSuggestions(new Set());
+    }
+  }, [listId]);
+  const dismissSuggestion = React.useCallback(
+    (key: string) => {
+      setDismissedSuggestions((prev) => {
+        const next = new Set(prev);
+        next.add(key);
+        try {
+          window.localStorage.setItem(`list-dismissed-suggestions:${listId}`, JSON.stringify(Array.from(next)));
+        } catch {
+          /* opslag niet beschikbaar */
+        }
+        return next;
+      });
+    },
+    [listId],
+  );
+
+  const teKopenSuggestions: Suggestion[] = React.useMemo(
+    () =>
+      teKopenItems
+        .filter((i) => !dismissedSuggestions.has(`tk:${i.id}`))
+        .map((i) => ({
+          key: `tk:${i.id}`,
+          name: i.name,
+          quantity: i.quantity,
+          photo: getPhotoUrl(i.name, 80),
+          meta: i.addedBy ? `door ${i.addedBy.firstName}` : undefined,
+        })),
+    [teKopenItems, dismissedSuggestions, getPhotoUrl],
+  );
+  const previousSuggestions: Suggestion[] = React.useMemo(
+    () =>
+      previousListSuggestions.items
+        .filter((i) => !dismissedSuggestions.has(`vl:${i.name.toLowerCase()}`))
+        .map((i) => ({ key: `vl:${i.name.toLowerCase()}`, name: i.name, quantity: i.quantity, photo: getPhotoUrl(i.name, 80) })),
+    [previousListSuggestions.items, dismissedSuggestions, getPhotoUrl],
+  );
+
+  const handleAddPreviousItems = React.useCallback(
+    (names: string[]) => {
+      if (!listId || names.length === 0) return;
+      const maxOrder = items.length > 0 ? Math.max(...items.map((i) => i.order ?? 0)) : -1;
+      const txns = names.flatMap((name, idx) => {
+        const src = previousListSuggestions.items.find((i) => i.name === name);
+        if (!src) return [];
+        return [
+          db.tx.items[iid()]
+            .update({
+              name: src.name,
+              quantity: src.quantity,
+              checked: false,
+              section: "Algemeen",
+              itemCategory: src.itemCategory ?? resolveItemCategoryFromName(src.name),
+              order: maxOrder + 1 + idx,
+            })
+            .link({ list: listId }),
+        ];
+      });
+      if (txns.length) db.transact(txns as Parameters<typeof db.transact>[0]);
+    },
+    [items, listId, previousListSuggestions.items],
+  );
+
+  const handleAddSuggestion = React.useCallback(
+    (sug: Suggestion) => {
+      if (sug.key.startsWith("tk:")) {
+        const it = teKopenItems.find((i) => `tk:${i.id}` === sug.key);
+        if (it) handleAddTeKopenItem(it.id, it.name, it.quantity);
+      } else {
+        handleAddPreviousItems([sug.name]);
+      }
+    },
+    [teKopenItems, handleAddTeKopenItem, handleAddPreviousItems],
+  );
+
+  const handleAddAllSuggestions = React.useCallback(() => {
+    const tk = teKopenItems.filter((i) => !dismissedSuggestions.has(`tk:${i.id}`));
+    if (tk.length) handleAddAllTeKopenItems(tk);
+    handleAddPreviousItems(previousSuggestions.map((s) => s.name));
+  }, [teKopenItems, dismissedSuggestions, handleAddAllTeKopenItems, handleAddPreviousItems, previousSuggestions]);
 
   const ownerLoyaltyCardByStoreLabel = React.useMemo(() => {
     const standaloneCards = ownerLoyaltyCardsData?.loyaltyCards ?? [];
@@ -4827,7 +4957,7 @@ export default function ListDetailPage({
     (effectiveListGroupingMode === "category" || isLandalOrVakantieList);
 
   const showListDetailHeader =
-    hasItems || showSharedDetailRow || isMasterEmpty || teKopenItems.length > 0;
+    hasItems || showSharedDetailRow || isMasterEmpty || teKopenItems.length > 0 || previousListSuggestions.items.length > 0;
 
   const handleCompleteFrituurWizard = React.useCallback(
     (selectedItems: FrituurWizardSelectedItem[]) => {
@@ -4972,6 +5102,9 @@ export default function ListDetailPage({
   }, [sections]);
 
   const listViewMode: "list" | "grid" = listLayoutMode;
+  /** Nieuwe kaartweergave (6b/6) voor gewone lijstjes; bewerkmodus houdt de sleep-/verwijderweergave. */
+  const useCardView =
+    !isEditMode && !isMasterList && !isLandalOrVakantieList && !isPuddyTabSelected && !isVenueCounterList;
 
   React.useEffect(() => {
     if (!listId) return;
@@ -4983,6 +5116,14 @@ export default function ListDetailPage({
       } else {
         setListLayoutMode("list");
       }
+      const savedCards = window.localStorage.getItem(`list-card-layout:${listId}`);
+      setCardLayout(
+        savedCards === "one" || savedCards === "two" || savedCards === "tiles"
+          ? savedCards
+          : saved === "grid"
+            ? "tiles"
+            : "two",
+      );
     } catch {
       setListLayoutMode("list");
     } finally {
@@ -4994,10 +5135,11 @@ export default function ListDetailPage({
     if (!listId || !isListLayoutHydrated) return;
     try {
       window.localStorage.setItem(`list-view-mode:${listId}`, listLayoutMode);
+      window.localStorage.setItem(`list-card-layout:${listId}`, cardLayout);
     } catch {
       // no-op: storage unavailable (private mode / blocked)
     }
-  }, [listId, listLayoutMode, isListLayoutHydrated]);
+  }, [listId, listLayoutMode, cardLayout, isListLayoutHydrated]);
 
   React.useEffect(() => {
     if (!listId) return;
@@ -5387,50 +5529,13 @@ export default function ListDetailPage({
               ) : hasItems &&
                 (!isVenueCounterList ||
                   (isCafeList && !isMasterList && !isEditMode)) ? (
-                <div
-                  className="box-border flex h-9 shrink-0 items-stretch overflow-hidden rounded-[4px] border border-[var(--gray-100)] bg-[var(--white)]"
-                  role="group"
-                  aria-label="Weergave"
-                >
-                  <button
-                    type="button"
-                    aria-label="Lijstweergave"
-                    aria-pressed={listLayoutMode === "list"}
-                    onClick={() => setListLayoutMode("list")}
-                    className={cn(
-                      "flex w-9 items-center justify-center p-1 transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
-                      /* Figma 1323:23881 — actieve weergave op primary-25 */
-                      listLayoutMode === "list"
-                        ? "bg-[var(--blue-25)]"
-                        : "bg-[var(--white)]",
-                    )}
-                  >
-                    <ToggleViewIcon
-                      src="/icons/toggle_list.svg"
-                      active={listLayoutMode === "list"}
-                      className="size-6"
-                    />
-                  </button>
-                  <div className="h-8 w-px shrink-0 bg-[var(--gray-100)]" aria-hidden />
-                  <button
-                    type="button"
-                    aria-label="Tegelweergave"
-                    aria-pressed={listLayoutMode === "grid"}
-                    onClick={() => setListLayoutMode("grid")}
-                    className={cn(
-                      "flex w-9 items-center justify-center p-1 transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
-                      listLayoutMode === "grid"
-                        ? "bg-[var(--blue-25)]"
-                        : "bg-[var(--white)]",
-                    )}
-                  >
-                    <ToggleViewIcon
-                      src="/icons/toggle_grid.svg"
-                      active={listLayoutMode === "grid"}
-                      className="size-6"
-                    />
-                  </button>
-                </div>
+                <ListLayoutToggle
+                  value={cardLayout}
+                  onChange={(v) => {
+                    setCardLayout(v);
+                    setListLayoutMode(v === "tiles" ? "grid" : "list");
+                  }}
+                />
               ) : null}
             </div>
             {isLandalOrVakantieList &&
@@ -5699,83 +5804,20 @@ export default function ListDetailPage({
             ) : null
           ) : null}
 
-          {teKopenItems.length > 0 &&
+          {teKopenSuggestions.length + previousSuggestions.length > 0 &&
           !isMasterList &&
           !isVenueCounterList &&
           !isCafeList &&
           !isFrietenList &&
           !isPuddyTabSelected ? (
-            <section className="flex flex-col gap-4" aria-label="Vanuit te kopen">
-              <div className="flex items-center gap-3">
-                <p className="min-w-0 flex-1 text-[18px] font-bold leading-6 tracking-normal text-[var(--blue-900)]">
-                  Vanuit te kopen
-                </p>
-                <MiniButton
-                  variant="primary"
-                  onClick={() => handleAddAllTeKopenItems(teKopenItems)}
-                >
-                  Alles toevoegen
-                </MiniButton>
-              </div>
-              <p className="text-base font-light leading-6 tracking-normal text-[var(--text-primary)]">
-                {"Deze items stonden klaar in je 'te kopen' lijst."}
-              </p>
-              <div className="flex flex-col gap-3">
-                {teKopenItems.map((item) => {
-                  const photoUrl = getPhotoUrl(item.name, 44);
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 rounded-[var(--radius-lg,8px)] border border-dashed border-[var(--blue-200)] bg-[var(--blue-25)] pl-4 pr-3 py-3"
-                    >
-                      {/* Product photo */}
-                      <div className="relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
-                        {photoUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={photoUrl} alt="" width={44} height={44} className="size-full object-cover" />
-                        ) : (
-                          <div className="size-full bg-[var(--gray-50)]" />
-                        )}
-                      </div>
-                      {/* Name + quantity (+ door … + avatar) */}
-                      <div className="min-w-0 flex-1 flex flex-col">
-                        <p className="truncate text-base font-medium leading-6 tracking-normal text-[var(--text-primary)]">
-                          {item.name}
-                        </p>
-                        <div className="flex min-w-0 items-center gap-1">
-                          <p className="min-w-0 truncate text-sm font-normal leading-5 tracking-normal text-[var(--gray-400)]">
-                            {item.addedBy
-                              ? `${item.quantity} - door ${item.addedBy.firstName}`
-                              : item.quantity}
-                          </p>
-                          {item.addedBy?.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- profiel-data-URL
-                            <img
-                              src={item.addedBy.avatarUrl}
-                              alt=""
-                              width={16}
-                              height={16}
-                              className="size-4 shrink-0 rounded-full object-cover"
-                            />
-                          ) : null}
-                        </div>
-                      </div>
-                      {/* Divider */}
-                      <span className="h-11 w-px shrink-0 bg-[var(--blue-200)]" aria-hidden />
-                      {/* Add button */}
-                      <button
-                        type="button"
-                        aria-label={`${item.name} toevoegen aan lijstje`}
-                        onClick={() => handleAddTeKopenItem(item.id, item.name, item.quantity)}
-                        className="flex size-8 shrink-0 items-center justify-center rounded-full text-action-primary transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                      >
-                        <PlusCircleMaskIcon />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
+            <ListSuggestions
+              teKopen={teKopenSuggestions}
+              previous={previousSuggestions}
+              previousLabel={previousListSuggestions.label}
+              onAdd={handleAddSuggestion}
+              onAddAll={handleAddAllSuggestions}
+              onDismiss={(sug) => dismissSuggestion(sug.key)}
+            />
           ) : null}
 
           {isMasterCategoryOrderMode &&
@@ -5935,7 +5977,29 @@ export default function ListDetailPage({
                 placeholder="Zoeken in favorieten…"
               />
             ) : null}
-            {!isPuddyTabSelected ? (
+            {useCardView ? (
+              <ListCardsView
+                sections={sectionsForDisplay}
+                groupingMode={effectiveListGroupingMode}
+                layout={cardLayout}
+                listDateStr={listDateStr}
+                savedRecipes={savedRecipes}
+                getPhotoUrl={getPhotoUrl}
+                uncheckedFirst={effectiveListGroupingMode === "category" ? showUncheckedFirst : true}
+                onCheckedChange={handleCheckedChange}
+                onAddToSection={(sectionTitle) => {
+                  if (effectiveListGroupingMode === "category") {
+                    setInitialItemCategory(sectionTitle);
+                    setInitialSection("Algemeen");
+                  } else {
+                    setInitialSection(sectionTitle);
+                    setInitialItemCategory(null);
+                  }
+                  setEditingItem(null);
+                  setIsNewItemOpen(true);
+                }}
+              />
+            ) : !isPuddyTabSelected ? (
               <DndContext
                 sensors={sensors}
                 collisionDetection={sectionAwareCollision}

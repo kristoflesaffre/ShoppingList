@@ -175,3 +175,93 @@ export function scaleQuantity(quantity: string, factor: number): string {
   const rounded = value >= 10 ? Math.round(value) : Math.round(value * 10) / 10;
   return `${String(rounded).replace(".", ",")}${m[2]}`;
 }
+
+/** Gemeten kleur voor een foto (zelfde cache als useRecipeTint); voor meerdere foto's tegelijk. */
+export function measureTintCached(src: string): Promise<Rgb | null> {
+  loadCache();
+  const key = photoKey(src);
+  if (cache.has(key)) return Promise.resolve(cache.get(key) ?? null);
+  let job = pending.get(key);
+  if (!job) {
+    job = measure(src)
+      .catch(() => null)
+      .then((rgb) => {
+        cache.set(key, rgb);
+        pending.delete(key);
+        saveCache();
+        return rgb;
+      });
+    pending.set(key, job);
+  }
+  return job;
+}
+
+/** Kleuren voor een reeks foto's: src → kleur (of null), vult aan zodra metingen klaar zijn. */
+export function useTintMap(srcs: string[]): Map<string, Rgb | null> {
+  loadCache();
+  const joined = srcs.join("\u0000");
+  const [map, setMap] = React.useState<Map<string, Rgb | null>>(() => {
+    const m = new Map<string, Rgb | null>();
+    for (const s of srcs) {
+      const k = photoKey(s);
+      if (cache.has(k)) m.set(s, cache.get(k) ?? null);
+    }
+    return m;
+  });
+  React.useEffect(() => {
+    let cancelled = false;
+    const list = joined ? joined.split("\u0000") : [];
+    for (const s of list) {
+      void measureTintCached(s).then((rgb) => {
+        if (cancelled) return;
+        setMap((prev) => {
+          if (prev.has(s) && prev.get(s) === rgb) return prev;
+          const next = new Map(prev);
+          next.set(s, rgb);
+          return next;
+        });
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [joined]);
+  return map;
+}
+
+function hueOf([r, g, b]: Rgb): number {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return 0;
+  let h: number;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return (h * 60 + 360) % 360;
+}
+
+function hueDistance(a: Rgb, b: Rgb): number {
+  const d = Math.abs(hueOf(a) - hueOf(b));
+  return Math.min(d, 360 - d);
+}
+
+/** Zachte paletkleuren als terugval (nooit het blauw van de app). */
+export const DISTINCT_PALETTE: Rgb[] = [
+  [43, 179, 163], // teal
+  [76, 175, 92], // groen
+  [139, 108, 240], // violet
+  [229, 97, 138], // roze
+  [224, 140, 47], // oranje
+];
+
+/**
+ * Kies voor een dag een kleur die verschilt van de al gebruikte kleuren: eerst de productkleur die
+ * het verst van de rest ligt (minstens 30° op het kleurenwiel), anders de verste paletkleur.
+ */
+export function pickDistinctTint(candidates: Rgb[], used: Rgb[]): Rgb {
+  const score = (c: Rgb) => (used.length ? Math.min(...used.map((u) => hueDistance(c, u))) : 360);
+  const best = [...candidates].sort((a, b) => score(b) - score(a))[0];
+  if (best && score(best) >= 30) return best;
+  return [...DISTINCT_PALETTE].sort((a, b) => score(b) - score(a))[0];
+}

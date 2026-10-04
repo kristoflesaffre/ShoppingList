@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { photoKey, pickRecipeTint, recipeTintColors, scaleQuantity } from "./recipe-tint";
+import { DISTINCT_PALETTE, photoKey, pickDistinctTint, pickRecipeTint, recipeTintColors, scaleQuantity } from "./recipe-tint";
 
 function image(fill: (x: number, y: number) => [number, number, number]) {
   const size = 64;
@@ -52,5 +52,15 @@ describe("photoKey", () => {
   it("is stabiel en verschilt per foto", () => {
     expect(photoKey("data:a")).toBe(photoKey("data:a"));
     expect(photoKey("data:a")).not.toBe(photoKey("data:b"));
+  });
+});
+
+describe("pickDistinctTint", () => {
+  it("neemt de productkleur die genoeg verschilt", () => {
+    expect(pickDistinctTint([[141, 178, 81]], [[140, 45, 3], [210, 174, 111]])).toEqual([141, 178, 81]);
+  });
+  it("valt terug op het palet als alle productkleuren te dicht liggen", () => {
+    const pick = pickDistinctTint([[248, 178, 81], [245, 234, 200]], [[140, 45, 3], [210, 174, 111]]);
+    expect(DISTINCT_PALETTE).toContainEqual(pick);
   });
 });
