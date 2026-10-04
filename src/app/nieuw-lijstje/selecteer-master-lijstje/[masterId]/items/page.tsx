@@ -828,7 +828,7 @@ export default function SelecteerMasterItemsPage() {
           </div>
 
           {teKopenSuggestions.length + prevSuggestions.length > 0 ? (
-            <div className="lg:max-w-[520px]">
+            <div className="w-full">
               <ListSuggestions
                 teKopen={teKopenSuggestions}
                 previous={prevSuggestions}
