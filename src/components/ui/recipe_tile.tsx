@@ -191,9 +191,10 @@ function FreezeButton({ onAddFromFreezer }: { onAddFromFreezer: () => void }) {
         onAddFromFreezer();
       }}
       onPointerDown={(e) => e.stopPropagation()}
-      className="flex size-8 shrink-0 items-center justify-center rounded-pill p-1 text-action-primary transition-[color,background-color,transform] duration-fast ease-out-strong hover:bg-action-ghost-hover motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] transition-[background-color,transform] duration-fast ease-out-strong [@media(hover:hover)]:hover:bg-[var(--blue-100)] motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
     >
-      <FreezeMaskIcon />
+      {/* Zacht bolletje zoals de bewerkknop (TitleEditButton). */}
+      <FreezeMaskIcon className="size-[18px]" colorClassName="bg-[var(--blue-500)]" />
     </button>
   );
 }
