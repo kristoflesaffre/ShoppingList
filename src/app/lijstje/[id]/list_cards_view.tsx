@@ -298,9 +298,12 @@ function Counter({ items }: { items: ListItem[] }) {
   const done = items.filter((i) => i.checked).length;
   if (done === items.length) {
     return (
-      <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-pill bg-[rgba(255,255,255,0.8)] px-2.5 text-xs font-bold text-[#2f8a4a]">
-        <CheckIcon className="size-3" />
-        Gedaan
+      <span
+        role="img"
+        aria-label="Gedaan"
+        className="inline-flex size-6 shrink-0 items-center justify-center text-[#2f8a4a]"
+      >
+        <CheckIcon className="size-4" />
       </span>
     );
   }
