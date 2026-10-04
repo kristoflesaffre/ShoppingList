@@ -733,7 +733,7 @@ export default function KlantenKaartenPage() {
       {fabVisible ? (
         <div
           className={cn(
-            "pointer-events-none fixed inset-x-0 z-20",
+            "pointer-events-none fixed inset-x-0 z-20 lg:bottom-[38px]",
             APP_FAB_BOTTOM_CLASS,
           )}
         >
