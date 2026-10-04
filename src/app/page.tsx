@@ -67,6 +67,7 @@ import {
   toIsoDate,
   dayEntryHasContent,
   addDays,
+  selectCalendarPreviewItems,
   type DayEntry,
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
@@ -555,12 +556,15 @@ function HomeCalendarLooseSummary({
 }: {
   ingredients: { name: string; quantity: string; photoUrl?: string | null; fromStock?: boolean }[];
 }) {
-  const getPhotoUrl = useItemPhotoUrl(320);
-  const photos = ingredients
-    .map((ing) => ing.photoUrl ?? getPhotoUrl(ing.name))
-    .filter((url): url is string => url != null)
-    .slice(0, 3);
-  const names = ingredients.map((ing) => ing.name).join(", ");
+  const photos = useLoosePhotos(ingredients).filter(
+    (url): url is string => url != null,
+  );
+  const previewItems = selectCalendarPreviewItems(ingredients);
+  const shownNames = previewItems.slice(0, 2).map((ing) => ing.name);
+  const names =
+    ingredients.length > shownNames.length
+      ? `${shownNames.join(", ")} +${ingredients.length - shownNames.length}`
+      : shownNames.join(", ");
   const count = ingredients.length;
   const fromStock = ingredients.some((ing) => ing.fromStock);
 
@@ -1478,14 +1482,15 @@ function homeDaySummary(isoDate: string, entry: DayEntry | null) {
     };
   }
   const items = entry.looseIngredients;
+  const previewItems = selectCalendarPreviewItems(items);
   const first = items.find((i) => i.photoUrl) ?? items[0];
-  const names = items.map((i) => i.name);
+  const names = previewItems.map((i) => i.name);
   return {
-    title: names.length > 2 ? `${names.slice(0, 2).join(", ")} +${names.length - 2}` : names.join(", "),
+    title: items.length > 2 ? `${names.slice(0, 2).join(", ")} +${items.length - 2}` : names.join(", "),
     sub: items.length === 1 ? "1 item" : `${items.length} items`,
     photo: null as string | null,
     /** Losse items: bord met tot drie productfoto's (zoals op de kalenderpagina). */
-    loose: items,
+    loose: previewItems,
     fromStock: first?.fromStock === true,
     href: `/kalender?date=${isoDate}`,
   };
@@ -1555,7 +1560,13 @@ function HomeDayPlate({
 /** Foto's voor losse items: eigen (diepvries)foto of de productfoto bij de naam. */
 function useLoosePhotos(loose: DayEntry["looseIngredients"] | null | undefined): (string | null)[] {
   const getItemPhoto = useItemPhotoUrl(160);
-  return (loose ?? []).map((i) => i.photoUrl ?? getItemPhoto(i.name) ?? null);
+  const withPhotos = (loose ?? []).map((item) => ({
+    ...item,
+    photo: item.photoUrl ?? getItemPhoto(item.name) ?? null,
+  }));
+  return selectCalendarPreviewItems(withPhotos.filter((item) => item.photo)).map(
+    (item) => item.photo,
+  );
 }
 
 /** Dagkolom in de desktopweek (canvas «Kalender home · D1»): gerecht meteen zichtbaar, in zijn kleur. */

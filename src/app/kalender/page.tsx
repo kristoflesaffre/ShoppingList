@@ -13,6 +13,7 @@ import {
   addDays,
   toIsoDate,
   dayEntryHasContent,
+  selectCalendarPreviewItems,
   type CalendarMeal,
   type DayEntry,
 } from "@/lib/calendar-utils";
@@ -150,7 +151,10 @@ function LooseIngredientsRow({
 }) {
   const getPhotoUrl = useItemPhotoUrl(160);
   const withPhotos = ingredients.map((ing) => ({ ...ing, photo: ing.photoUrl ?? getPhotoUrl(ing.name) ?? null }));
-  const shown = withPhotos.slice(0, 2).map((ing, i) => (i === 0 ? capitalize(ing.name) : ing.name.toLowerCase()));
+  const previewItems = selectCalendarPreviewItems(
+    withPhotos.filter((ingredient) => ingredient.photo),
+  );
+  const shown = previewItems.slice(0, 2).map((ing, i) => (i === 0 ? capitalize(ing.name) : ing.name.toLowerCase()));
   const rest = withPhotos.length - shown.length;
   const panelId = React.useId();
 
@@ -163,7 +167,7 @@ function LooseIngredientsRow({
         aria-controls={panelId}
         className="flex min-w-0 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
       >
-        <IngredientPlate photos={withPhotos.map((i) => i.photo)} />
+        <IngredientPlate photos={previewItems.map((i) => i.photo)} />
         <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
           <span className="truncate text-[15px] font-semibold leading-5 text-text-primary">
             {shown.join(", ")}

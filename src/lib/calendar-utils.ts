@@ -3,6 +3,8 @@
  * van recepten + ingrediënten uit bestaande lijstdata.
  */
 
+import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
+
 export type CalendarMeal = {
   recipeGroupId: string;
   recipeName: string;
@@ -24,6 +26,52 @@ export type DayEntry = {
 export function dayEntryHasContent(entry: DayEntry | undefined): boolean {
   if (!entry) return false;
   return entry.meals.length > 0 || entry.looseIngredients.length > 0;
+}
+
+const CALENDAR_MEAT_CATEGORY = "Vlees & Charcuterie";
+const CALENDAR_PRODUCE_CATEGORY = "Groenten & Fruit";
+const POTATO_NAME_PATTERN = /\b(?:aardappel\w*|patat\w*|krielt\w*|friet\w*|kroket\w*)\b/i;
+
+/**
+ * Kiest maximaal drie representatieve losse items voor een kalendertegel:
+ * eerst vlees/kip, daarna aardappelen en vervolgens een groente. Ontbrekende
+ * plaatsen worden stabiel aangevuld uit de oorspronkelijke volgorde.
+ */
+export function selectCalendarPreviewItems<T extends { name: string }>(
+  items: readonly T[],
+  limit = 3,
+): T[] {
+  if (limit <= 0) return [];
+  if (items.length <= limit) return [...items];
+
+  const selectedIndexes = new Set<number>();
+  const selected: T[] = [];
+  const takeFirst = (matches: (item: T) => boolean) => {
+    const index = items.findIndex(
+      (item, itemIndex) => !selectedIndexes.has(itemIndex) && matches(item),
+    );
+    if (index === -1 || selected.length >= limit) return;
+    selectedIndexes.add(index);
+    selected.push(items[index]);
+  };
+
+  takeFirst(
+    (item) => resolveItemCategoryFromName(item.name) === CALENDAR_MEAT_CATEGORY,
+  );
+  takeFirst((item) => POTATO_NAME_PATTERN.test(item.name));
+  takeFirst(
+    (item) =>
+      !POTATO_NAME_PATTERN.test(item.name) &&
+      resolveItemCategoryFromName(item.name) === CALENDAR_PRODUCE_CATEGORY,
+  );
+
+  for (let index = 0; index < items.length && selected.length < limit; index++) {
+    if (selectedIndexes.has(index)) continue;
+    selectedIndexes.add(index);
+    selected.push(items[index]);
+  }
+
+  return selected;
 }
 
 /** Parse Dutch locale date string "D-M-YYYY" (of "DD-MM-YYYY") naar een Date. */
