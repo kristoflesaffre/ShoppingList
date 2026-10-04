@@ -195,7 +195,9 @@ const OPEN_GAP = 10;
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const DURATION = 480;
 /** Na het openklappen meteen door naar schermvullend (iets vóór het einde, voor één vloeiende beweging). */
-const UNFOLD_TO_FULLSCREEN_MS = 200;
+const UNFOLD_TO_FULLSCREEN_MS = 520;
+/** Openklappen richting schermvullend: duidelijk zichtbaar, lineair zodat de snelheid doorloopt in de morph. */
+const FLOW_UNFOLD_MS = 620;
 
 /** Echte code als klein voorbeeld (geschaald), zodat kaarten «echt» ogen nog voor je tikt. */
 export function CodePreview({ card, className }: { card: WalletCard; className?: string }) {
@@ -290,15 +292,16 @@ export function LoyaltyWallet({
   const height = n ? ys[n - 1] + lastH : 0;
 
   const ease = flowingOpen ? "linear" : EASE;
+  const dur = flowingOpen ? FLOW_UNFOLD_MS : DURATION;
   const transition = reducedMotion
     ? "none"
-    : `transform ${DURATION}ms ${ease}, height ${DURATION}ms ${ease}, box-shadow ${DURATION}ms ${ease}`;
+    : `transform ${dur}ms ${ease}, height ${dur}ms ${ease}, box-shadow ${dur}ms ${ease}`;
 
   return (
     <div
       ref={rootRef}
       className="relative"
-      style={{ height, transition: reducedMotion ? "none" : `height ${DURATION}ms ${ease}` }}
+      style={{ height, transition: reducedMotion ? "none" : `height ${dur}ms ${ease}` }}
     >
       {cards.map((card, i) => {
         const open = isOpen(card);
@@ -365,7 +368,7 @@ function WalletCardView({
   const isQr = card.codeType === "qr";
   const fade = (visible: boolean, delay: number, hideDelay = 0): React.CSSProperties => ({
     opacity: visible ? 1 : 0,
-    transition: reducedMotion ? "none" : `opacity ${visible ? 260 : 160}ms ease ${visible ? delay : hideDelay}ms`,
+    transition: reducedMotion ? "none" : visible ? `opacity 200ms ease ${delay}ms` : `opacity 160ms ease ${hideDelay}ms`,
   });
   return (
     <div
@@ -397,8 +400,8 @@ function WalletCardView({
           "pointer-events-none absolute inset-x-4 bottom-4 top-[66px] flex items-center justify-center rounded-[14px] bg-white px-4 py-[18px]",
           isQr ? "[&_svg]:!h-full [&_svg]:!w-auto [&_svg]:aspect-square" : "[&_svg]:!h-full [&_svg]:!w-full",
         )}
-        // Bij dichtklappen blijft de code staan tot de kaart eronder eroverheen geschoven is.
-        style={fade(showCode, 180, DURATION)}
+        // Openen: meteen zichtbaar (de kaart eronder schuift ervan weg); dichtklappen: pas weg als hij bedekt is.
+        style={fade(showCode, 0, DURATION)}
         data-morph={`code-${card.id}`}
         aria-hidden={!showCode}
       >
