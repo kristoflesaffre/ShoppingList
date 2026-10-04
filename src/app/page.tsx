@@ -20,6 +20,7 @@ import {
   defaultFrituurListName,
   defaultLandalListName,
   defaultNewListName,
+  formatDefaultListNameForDisplay,
   selectListNameInputOnFocus,
 } from "@/lib/list-default-name";
 import {
@@ -201,6 +202,10 @@ type PendingFrituurChoice = {
   listName: string;
   customIconUrl: string | null;
 };
+
+function defaultListNameForIsoDate(isoDate: string): string {
+  return defaultNewListName(new Date(`${isoDate}T12:00:00`));
+}
 
 type HomeList = {
   id: string;
@@ -1759,6 +1764,7 @@ function HomeListSwimCard({
 }) {
   const getPhotoUrl = useItemPhotoUrl(160);
   const completed = isListDatePassed(list.date);
+  const displayName = formatDefaultListNameForDisplay(list.name);
   const isFrituurList = listIsFrituurVenueList(list.name);
   const venueImage = homeVenueListImage(list);
   const products = homeListProductItems(list);
@@ -1816,7 +1822,7 @@ function HomeListSwimCard({
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-[17px] font-semibold leading-[22px] tracking-tight text-[var(--text-primary)]">
-          {list.name}
+          {displayName}
         </span>
         {storeLogo || meta ? (
           <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-[18px] text-[var(--gray-400)]">
@@ -1837,7 +1843,7 @@ function HomeListSwimCard({
     <div className="relative flex h-full w-full flex-col gap-3.5 rounded-lg bg-[var(--white)] p-4 shadow-card transition-transform duration-fast ease-out-strong has-[a:active]:motion-safe:scale-[0.98]">
       <Link
         href={`/lijstje/${list.id}`}
-        aria-label={`${list.name} openen`}
+        aria-label={`${displayName} openen`}
         className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
       />
       {children}
@@ -3202,6 +3208,30 @@ export default function Home() {
   const [removingId, setRemovingId] = React.useState<string | null>(null);
   const removeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const handleNewListDateChange = React.useCallback(
+    (nextDate: string) => {
+      setNewListName((current) =>
+        current === defaultListNameForIsoDate(newListDate)
+          ? defaultListNameForIsoDate(nextDate)
+          : current,
+      );
+      setNewListDate(nextDate);
+    },
+    [newListDate],
+  );
+
+  const handleQuickMasterDateChange = React.useCallback(
+    (nextDate: string) => {
+      setQuickMasterListName((current) =>
+        current === defaultListNameForIsoDate(quickMasterDate)
+          ? defaultListNameForIsoDate(nextDate)
+          : current,
+      );
+      setQuickMasterDate(nextDate);
+    },
+    [quickMasterDate],
+  );
+
   const hasLists = lists.length > 0;
 
   const DELETE_ANIMATION_MS = 300;
@@ -3840,7 +3870,7 @@ export default function Home() {
           key={newListFormKey}
           className="flex w-full flex-col items-center gap-[var(--space-8)]"
         >
-          <ListDateStepper value={newListDate} onChange={setNewListDate} />
+          <ListDateStepper value={newListDate} onChange={handleNewListDateChange} />
 
           <div className="flex w-full flex-col gap-[var(--space-2)]">
             <label
@@ -4267,7 +4297,7 @@ export default function Home() {
           onSubmit={handleQuickMasterSubmit}
           className="flex w-full flex-col items-center gap-8"
         >
-          <ListDateStepper value={quickMasterDate} onChange={setQuickMasterDate} />
+          <ListDateStepper value={quickMasterDate} onChange={handleQuickMasterDateChange} />
           <InputField
             label="Naam lijstje"
             placeholder="Naam lijstje"

@@ -12,24 +12,24 @@ describe("list-default-name", () => {
     expect(weekWithinCalendarMonth(new Date("2026-04-29"))).toBe(5);
   });
 
-  it("maakt nieuwe lijstnamen zonder het woord week", () => {
-    expect(defaultNewListName(new Date("2026-04-11"))).toBe("April 2");
+  it("gebruikt de winkeldatum als standaardnaam", () => {
+    expect(defaultNewListName(new Date("2026-04-11"))).toBe("11 april");
   });
 
-  it("telt nieuwe en legacy maandnamen mee voor het volgende nummer", () => {
+  it("houdt dezelfde datumnaam ongeacht bestaande lijstnamen", () => {
     expect(
       defaultNewListName(new Date("2026-04-11"), [
         "April 1",
         "April week 2",
         "Maart 1",
       ]),
-    ).toBe("April 3");
+    ).toBe("11 april");
   });
 
-  it("parset nieuwe en legacy kalenderlijsttitels", () => {
+  it("toont oude maand-dagnamen als dag-maand en behoudt legacy weekbadges", () => {
     expect(parseCalendarWeekListTitle("April 11")).toEqual({
-      displayName: "April",
-      weekBadge: "11",
+      displayName: "11 april",
+      weekBadge: null,
     });
     expect(parseCalendarWeekListTitle("april week 10")).toEqual({
       displayName: "April",

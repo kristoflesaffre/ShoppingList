@@ -27,32 +27,24 @@ function capitalizeDutchMonth(month: string): string {
   return month.charAt(0).toUpperCase() + month.slice(1);
 }
 
-/**
- * Standaardnaam voor een nieuw lijstje, bv. "Maart 4".
- * Als `existingNames` opgegeven is, wordt een uniek volgnummer gekozen:
- * het aantal bestaande kalender-lijstjes van dezelfde maand + 1.
- */
+/** Standaardnaam voor een nieuw lijstje op basis van de winkeldatum, bv. "4 maart". */
 export function defaultNewListName(
   date: Date = new Date(),
-  existingNames: string[] = [],
+  _existingNames: string[] = [],
 ): string {
-  const month = capitalizeDutchMonth(DUTCH_MONTHS[date.getMonth()]);
+  return `${date.getDate()} ${DUTCH_MONTHS[date.getMonth()]}`;
+}
 
-  if (existingNames.length === 0) {
-    const week = weekWithinCalendarMonth(date);
-    return `${month} ${week}`;
-  }
+/** Zet een oude automatische naam zoals "Oktober 1" om naar "1 oktober". */
+export function formatDefaultListNameForDisplay(name: string): string {
+  const trimmed = name.trim();
+  const match = /^(\S+)\s+(\d+)$/i.exec(trimmed);
+  if (!match) return name;
 
-  // Tel bestaande kalender-lijstjes van deze maand, inclusief oude "{maand} week {n}" namen.
-  const monthPattern = new RegExp(
-    `^${month}\\s+(?:week\\s+)?\\d+\\s*$`,
-    "i",
-  );
-  const existingCount = existingNames.filter((n) =>
-    monthPattern.test(n.trim()),
-  ).length;
+  const month = match[1].toLowerCase();
+  if (!(DUTCH_MONTHS as readonly string[]).includes(month)) return name;
 
-  return `${month} ${existingCount + 1}`;
+  return `${Number(match[2])} ${month}`;
 }
 
 const FRITUUR_BASE_NAMES = ["Frituur", "Frieten", "Frietjes"] as const;
@@ -122,9 +114,12 @@ export function parseCalendarWeekListTitle(name: string): {
   weekBadge: string | null;
 } {
   const trimmed = name.trim();
-  const m = /^(.+?)\s+(?:week\s+)?(\d+)\s*$/i.exec(trimmed);
+  const m = /^(.+?)\s+week\s+(\d+)\s*$/i.exec(trimmed);
   if (!m) {
-    return { displayName: name, weekBadge: null };
+    return {
+      displayName: formatDefaultListNameForDisplay(name),
+      weekBadge: null,
+    };
   }
   const monthToken = m[1].trim().toLowerCase();
   if (
