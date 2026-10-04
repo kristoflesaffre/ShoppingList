@@ -763,9 +763,10 @@ export function LoyaltyCardViewer({
 
   if (!open || !current || typeof document === "undefined") return null;
 
-  const editActions = editing ? (
+  const editButtons = (
     <EditActions error={replace.decodeError} onCamera={replace.startCamera} onUpload={replace.startUpload} />
-  ) : null;
+  );
+  const editActions = editing ? editButtons : null;
 
   return ReactDOM.createPortal(
     <>
@@ -833,7 +834,7 @@ export function LoyaltyCardViewer({
         onClose={() => void requestClose()}
         editing={editing}
         onToggleEdit={() => setEditing((v) => !v)}
-        actions={editActions}
+        actions={editButtons}
         onDelete={() => onDelete(current)}
         deleting={deletingId === current.id}
       />
@@ -846,7 +847,7 @@ export function LoyaltyCardViewer({
 /** Knoppen in de bewerkstand: nieuwe code via camera of screenshot. */
 function EditActions({ error, onCamera, onUpload }: { error: string | null; onCamera: () => void; onUpload: () => void }) {
   return (
-    <div className="flex w-full flex-col items-center gap-3 motion-safe:animate-fade-up">
+    <div className="flex w-full flex-col items-center gap-3 motion-safe:animate-fade-up md:!animate-none">
       {error ? <p className="text-center text-xs text-[var(--error-400)]">{error}</p> : null}
       <Button type="button" variant="primary" onClick={onCamera} className="!max-w-none">
         Scan met camera
@@ -919,6 +920,11 @@ function DesktopViewer({
   deleting: boolean;
 }) {
   const colors = cardColors(useLogoTint(card.logoSrc), dark);
+  const editAreaRef = React.useRef<HTMLDivElement>(null);
+  // Dichtgeklapte knoppen niet focusbaar (React 18 kent `inert` nog niet als prop).
+  React.useEffect(() => {
+    if (editAreaRef.current) editAreaRef.current.inert = !editing;
+  }, [editing]);
   return (
     <div className="fixed inset-0 z-[45] hidden items-center justify-center p-6 md:flex">
       <div ref={scrimRef} aria-hidden className="absolute inset-0 bg-[rgba(16,17,48,0.45)]" onClick={onClose} />
@@ -967,7 +973,28 @@ function DesktopViewer({
           <div className="mt-6 w-full" data-viewer-stagger="1">
             <BigCode card={card} qrSize="240px" barHeight={154} />
           </div>
-          {actions ? <div className="mt-5 w-full">{actions}</div> : null}
+          {/* Bewerkstand: het kader groeit vloeiend in hoogte, daarna schuiven de knoppen in. */}
+          <div
+            className={cn(
+              "grid w-full transition-[grid-template-rows] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
+              editing ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+            )}
+            ref={editAreaRef}
+            aria-hidden={!editing}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <div
+                className={cn(
+                  "px-1 pb-1 pt-5 transition-[opacity,transform] motion-reduce:transition-none",
+                  editing
+                    ? "translate-y-0 opacity-100 delay-[120ms] duration-[360ms] ease-out"
+                    : "translate-y-3 opacity-0 duration-150 ease-in",
+                )}
+              >
+                {actions}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
