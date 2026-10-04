@@ -1766,10 +1766,8 @@ function HomeListSwimCard({
   const storeName = masterStoreLabelFromListIcon(
     storeLogo ?? list.masterIcon ?? list.icon,
   );
-  const sharedWith = list.sharedWithFirstName
-    ? `Met ${list.sharedWithFirstName}`
-    : "";
-  const meta = [storeName, sharedWith].filter(Boolean).join(" - ");
+  /* Lijstkaart 2b A: «Lidl / Delhaize · Chloé». */
+  const meta = [storeName, list.sharedWithFirstName ?? ""].filter(Boolean).join(" · ");
 
   const action = completed ? (
     <button type="button" onClick={() => onNewList(list)} className={HOME_SOFT_PILL_CLASS} aria-label={`Nieuw lijstje maken zoals ${list.name}`}>
@@ -1851,7 +1849,7 @@ function HomeListSwimCard({
     <span
       role="img"
       aria-label={`Gedeeld met ${list.sharedWithFirstName}`}
-      className="pointer-events-none ml-auto flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--secondary-100)] text-[11px] font-bold leading-none text-[var(--secondary-800)] shadow-[0_0_0_2px_var(--white),0_0_0_3px_var(--border-subtle)]"
+      className="pointer-events-none ml-auto flex size-[30px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--secondary-100)] text-[11px] font-bold leading-none text-[var(--secondary-800)] shadow-[0_0_0_2px_var(--white)]"
     >
       {list.sharedWithAvatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- profielfoto (data-URL of blob)
@@ -1889,13 +1887,13 @@ function HomeListSwimCard({
       {shown.length > 0 || sharedAvatar ? (
         <span className="flex items-center gap-3">
       {shown.length > 0 ? (
-        /* Overlappende fotostapel: kleine ronde productfoto's, laatste rondje «+N». */
+        /* Overlappende fotostapel (Lijstkaart 2b): grijze bolletjes zonder rand, witte scheiding, lavendel «+N». */
         <span className="pointer-events-none isolate flex pl-[3px]" aria-hidden>
           {shown.map((p, index) => (
             <span
               key={p.id}
               className={cn(
-                "relative flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--white)] shadow-[0_0_0_2px_var(--white),0_0_0_3px_var(--border-subtle)]",
+                "relative flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--gray-50)] shadow-[0_0_0_2px_var(--white)]",
                 index > 0 && "-ml-2",
               )}
               style={{ zIndex: index + 1 }}
@@ -1918,7 +1916,7 @@ function HomeListSwimCard({
           ))}
           {rest > 0 ? (
             <span
-              className="relative -ml-2 flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)] text-xs font-medium text-[var(--blue-400)] shadow-[0_0_0_1px_var(--border-subtle)] tabular-nums"
+              className="relative -ml-2 flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)] text-xs font-medium text-[var(--blue-400)] shadow-[0_0_0_2px_var(--white)] tabular-nums"
               style={{ zIndex: shown.length + 1 }}
             >
               +{rest}
