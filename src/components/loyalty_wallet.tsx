@@ -237,12 +237,15 @@ export function LoyaltyWallet({
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const pendingRef = React.useRef<number | null>(null);
   const wasViewingRef = React.useRef(false);
+  /** Openklappen richting schermvullend: lineair (geen ease-out), zodat de snelheid doorloopt in de morph. */
+  const [flowingOpen, setFlowingOpen] = React.useState(false);
 
   // Terugweg: de schermvullende weergave krimpt eerst terug in de open kaart, daarna klapt de stapel dicht.
   React.useEffect(() => {
     if (viewingId) wasViewingRef.current = true;
     else if (wasViewingRef.current) {
       wasViewingRef.current = false;
+      setFlowingOpen(false);
       setSelectedId(null);
     }
   }, [viewingId]);
@@ -286,15 +289,16 @@ export function LoyaltyWallet({
   const lastH = last ? (isOpen(last) ? codeH() : cardH) : 0;
   const height = n ? ys[n - 1] + lastH : 0;
 
+  const ease = flowingOpen ? "linear" : EASE;
   const transition = reducedMotion
     ? "none"
-    : `transform ${DURATION}ms ${EASE}, height ${DURATION}ms ${EASE}, box-shadow ${DURATION}ms ${EASE}`;
+    : `transform ${DURATION}ms ${ease}, height ${DURATION}ms ${ease}, box-shadow ${DURATION}ms ${ease}`;
 
   return (
     <div
       ref={rootRef}
       className="relative"
-      style={{ height, transition: reducedMotion ? "none" : `height ${DURATION}ms ${EASE}` }}
+      style={{ height, transition: reducedMotion ? "none" : `height ${DURATION}ms ${ease}` }}
     >
       {cards.map((card, i) => {
         const open = isOpen(card);
@@ -314,6 +318,7 @@ export function LoyaltyWallet({
                 return;
               }
               // Eén beweging: de kaart klapt open in de stapel en gaat meteen door naar schermvullend.
+              setFlowingOpen(true);
               setSelectedId(card.id);
               pendingRef.current = window.setTimeout(
                 () => {
