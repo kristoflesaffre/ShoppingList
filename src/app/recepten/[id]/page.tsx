@@ -6,10 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
-import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { MiniButton } from "@/components/ui/mini_button";
-import { TabGroup } from "@/components/ui/tab_group";
-import { TabElement } from "@/components/ui/tab_element";
 import dynamic from "next/dynamic";
 import type { RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
 import { RecipeIngredientSortableList } from "@/app/recepten/recipe_ingredient_sortable_list";
@@ -37,12 +34,9 @@ const RecipeShareSlideIn = dynamic(
   { ssr: false },
 );
 import { uploadUserImageFile } from "@/lib/image-storage";
-import {
-  APP_FAB_BOTTOM_NO_NAV_CLASS,
-  APP_FAB_INNER_PX4_CLASS,
-} from "@/lib/app-layout";
 import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
+import { recipeTintColors, scaleQuantity, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 function BackArrowIcon({ className }: { className?: string }) {
@@ -103,8 +97,6 @@ function MoreDotsIcon({ className }: { className?: string }) {
   );
 }
 
-type DetailTab = "ingredienten" | "recept" | "lijstje";
-
 export default function ReceptDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -117,19 +109,25 @@ export default function ReceptDetailPage() {
       : null,
   );
 
-  const [detailTab, setDetailTab] = React.useState<DetailTab>("ingredienten");
-  const [ingredientView, setIngredientView] = React.useState<"groot" | "klein" | "lijst">("groot");
-
+  /** Aantal personen in de stepper (null = zoals in het recept). */
+  const [persons, setPersons] = React.useState<number | null>(null);
+  /** Kopbalk krijgt een achtergrond zodra je scrolt (knoppen zweven anders over de inhoud). */
+  const [scrolled, setScrolled] = React.useState(false);
   React.useEffect(() => {
-    const saved = localStorage.getItem("ingredientView");
-    if (saved === "groot" || saved === "klein" || saved === "lijst") {
-      setIngredientView(saved);
-    }
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  const handleIngredientViewChange = React.useCallback((view: "groot" | "klein" | "lijst") => {
-    setIngredientView(view);
-    localStorage.setItem("ingredientView", view);
+  /** Afgevinkte ingrediënten tijdens het koken (enkel lokaal). */
+  const [checked, setChecked] = React.useState<Set<string>>(() => new Set());
+  const toggleChecked = React.useCallback((id: string) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }, []);
   const getPhotoUrl = useIngredientPhotoUrl();
   const [shareSlideOpen, setShareSlideOpen] = React.useState(false);
@@ -173,6 +171,8 @@ export default function ReceptDetailPage() {
         })),
     };
   }, [recipeData, recipeId]);
+
+  const tint = recipeTintColors(useRecipeTint(savedRecipe?.photoUrl), useIsDarkTheme());
 
   const openEditor = React.useCallback(() => {
     setDetailPhotoEditMode(false);
@@ -410,19 +410,33 @@ export default function ReceptDetailPage() {
     );
   }
 
-  const navTitle =
-    savedRecipe.name.length > 28
-      ? `${savedRecipe.name.slice(0, 28)}…`
-      : savedRecipe.name;
   const recipeSteps = (savedRecipe.steps ?? "")
     .split(/\r?\n/)
     .map((s) => s.trim().replace(/^\d+[.)]\s*/, ""))
     .filter((s) => s.length > 0);
+  const recipeLink = savedRecipe.link.trim();
+  const ingredientCount = savedRecipe.ingredients.length;
+  const basePersons = savedRecipe.persons > 0 ? savedRecipe.persons : 0;
+  const shownPersons = persons ?? basePersons;
+  const factor = basePersons > 0 ? shownPersons / basePersons : 1;
 
   return (
-    <div className="relative min-h-dvh w-full bg-[var(--white)]">
-      <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
-        <header className="mx-auto flex h-16 max-w-[956px] items-center gap-4 px-4">
+    <div className="relative min-h-dvh w-full bg-[var(--bg-app)]">
+      {/* Warme band in de kleur van het gerecht (canvas «Recept detail 2a»), automatisch uit de foto. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[460px] lg:h-[520px]"
+        style={{ backgroundImage: `linear-gradient(180deg, ${tint.top} 0%, ${tint.mid} 55%, var(--bg-app) 100%)` }}
+      />
+
+      <div
+        className={cn(
+          "fixed inset-x-0 top-0 z-10 pt-[env(safe-area-inset-top,0px)] transition-[background-color,box-shadow,backdrop-filter] duration-200",
+          scrolled && "shadow-[0_1px_0_var(--border-subtle)] backdrop-blur-md",
+        )}
+        style={{ backgroundColor: scrolled ? "color-mix(in srgb, var(--bg-app) 86%, transparent)" : "transparent" }}
+      >
+        <header className="mx-auto flex h-16 max-w-[1180px] items-center gap-2 px-4 lg:h-[88px] lg:px-12">
           <button
             type="button"
             aria-label="Terug"
@@ -433,18 +447,16 @@ export default function ReceptDetailPage() {
                 router.replace("/recepten");
               }
             }}
-            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className={roundHeaderBtn}
           >
             <BackArrowIcon />
           </button>
-          <p className="min-w-0 flex-1 text-center text-base font-medium leading-24 tracking-normal text-[var(--text-primary)] truncate">
-            {navTitle}
-          </p>
+          <span className="flex-1" />
           <button
             type="button"
             aria-label="Recept delen"
             onClick={() => setShareSlideOpen(true)}
-            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className={roundHeaderBtn}
           >
             <ShareIcon />
           </button>
@@ -452,7 +464,7 @@ export default function ReceptDetailPage() {
             type="button"
             aria-label="Meer opties (beschikbaar binnenkort)"
             disabled
-            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-50"
+            className={cn(roundHeaderBtn, "!text-[var(--gray-300)] disabled:opacity-70")}
           >
             <MoreDotsIcon />
           </button>
@@ -468,328 +480,228 @@ export default function ReceptDetailPage() {
         onChange={handleRecipePhotoChange}
       />
 
-      <main
-        className={cn(
-          "relative z-0 mx-auto w-full max-w-[956px] px-4 pb-[calc(120px+env(safe-area-inset-bottom,0px))]",
-          "pt-[calc(64px+16px+env(safe-area-inset-top,0px))]",
-        )}
-      >
-        <div className="relative z-[1] flex flex-col gap-6">
-          <div className="relative z-[1] flex min-h-9 items-center gap-3">
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <h1 className="min-w-0 text-section-title font-bold leading-24 tracking-normal text-[var(--text-primary)]">
-                {savedRecipe.name}
-              </h1>
-              <button
-                type="button"
-                aria-label={detailPhotoEditMode ? "Stop bewerken" : "Bewerken"}
-                onClick={toggleDetailPhotoEditMode}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path d="M3.17663 19.8235C3.03379 19.6807 2.97224 19.4751 3.01172 19.2777L3.94074 14.633C3.96397 14.5157 4.02087 14.4089 4.10564 14.323L15.2539 3.17679C15.4896 2.94107 15.8728 2.94107 16.1086 3.17679L19.8246 6.89257C19.9361 7.00637 20 7.15965 20 7.31989C20 7.48013 19.9361 7.63341 19.8246 7.7472L17.0376 10.534L8.67642 18.8934C8.59048 18.9782 8.48365 19.0362 8.36636 19.0594L3.72126 19.9884C3.68178 19.9965 3.6423 20 3.60281 20C3.44488 19.9988 3.29043 19.9361 3.17663 19.8235ZM13.7465 6.39094L16.6091 9.25326L18.5426 7.31989L15.6801 4.45757L13.7465 6.39094ZM4.37274 18.6263L7.95062 17.911L15.7544 10.1079L12.893 7.24557L5.08808 15.0499L4.37274 18.6263Z" fill="currentColor"/>
-                </svg>
-              </button>
+      <main className="relative mx-auto w-full max-w-[1180px] px-4 pb-[calc(48px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+env(safe-area-inset-top,0px))] lg:px-[150px] lg:pt-[48px]">
+        {/* Kop: rond bord, titel met potlood, chips */}
+        <section className="flex flex-col items-center">
+          <div className="relative">
+            <div
+              className={cn(
+                "shrink-0 overflow-hidden rounded-full bg-[var(--white)] shadow-[0_18px_40px_-18px_rgba(120,80,20,0.35)]",
+                savedRecipe.photoUrl ? "size-[200px] lg:size-[190px]" : "size-[124px]",
+              )}
+            >
+              {savedRecipe.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB
+                <img
+                  src={savedRecipe.photoUrl}
+                  alt=""
+                  width={200}
+                  height={200}
+                  className={cn(
+                    /* iets ingezoomd zodat het bord de cirkel vult (zoals in het overzicht) */
+                    "size-full scale-[1.08] object-cover transition-opacity duration-150",
+                    detailPhotoEditMode ? "opacity-10" : "opacity-100",
+                  )}
+                />
+              ) : (
+                <Image
+                  src="/images/ui/recipe_plate.png"
+                  alt=""
+                  width={124}
+                  height={124}
+                  className={cn(
+                    "size-[124px] object-cover transition-opacity duration-150",
+                    detailPhotoEditMode ? "opacity-10" : "opacity-100",
+                  )}
+                />
+              )}
             </div>
             {detailPhotoEditMode ? (
-              <button
-                type="button"
-                onClick={toggleDetailPhotoEditMode}
-                className="h-9 shrink-0 rounded-pill bg-[var(--blue-500)] px-4 text-sm font-medium leading-20 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                Gereed
-              </button>
-            ) : null}
-          </div>
-
-          <div className="relative z-[1] flex flex-col items-center gap-3">
-            {/* Zonder foto: 124×124 placeholder. Met foto: 256×256. Bewerkmodus: 10% opacity + overlay (Figma 863:5339). */}
-            <div className="relative">
-              <div
-                className={cn(
-                  "shrink-0 overflow-hidden rounded-full",
-                  savedRecipe.photoUrl ? "size-[256px]" : "size-[124px]",
-                )}
-              >
-                {savedRecipe.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB
-                  <img
-                    src={savedRecipe.photoUrl}
-                    alt=""
-                    width={256}
-                    height={256}
-                    className={cn(
-                      "size-[256px] object-cover transition-opacity duration-150",
-                      detailPhotoEditMode ? "opacity-10" : "opacity-100",
-                    )}
-                  />
-                ) : (
-                  <Image
-                    src="/images/ui/recipe_plate.png"
-                    alt=""
-                    width={124}
-                    height={124}
-                    className={cn(
-                      "size-[124px] object-cover transition-opacity duration-150",
-                      detailPhotoEditMode ? "opacity-10" : "opacity-100",
-                    )}
-                  />
-                )}
-              </div>
-              {detailPhotoEditMode ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                  <MiniButton
-                    type="button"
-                    variant="secondary"
-                    disabled={photoSaving}
-                    onClick={openPhotoSourceSlide}
-                    className="w-[118px]"
-                  >
-                    {photoSaving
-                      ? "Bezig…"
-                      : savedRecipe.photoUrl
-                        ? "Foto wijzigen"
-                        : "Foto toevoegen"}
-                  </MiniButton>
-                  <MiniButton
-                    type="button"
-                    variant="secondary"
-                    onClick={openEditor}
-                    className="w-[118px]"
-                  >
-                    Recept wijzigen
-                  </MiniButton>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirmOpen(true)}
-                    className="text-[12px] font-medium leading-4 text-[var(--error-400)] underline underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                  >
-                    Recept verwijderen
-                  </button>
-                </div>
-              ) : null}
-            </div>
-            {photoError ? (
-              <p className="text-center text-xs text-[var(--error-600)]">
-                {photoError}
-              </p>
-            ) : null}
-            {!detailPhotoEditMode && !savedRecipe.photoUrl ? (
-              <MiniButton
-                type="button"
-                variant="secondary"
-                disabled={photoSaving}
-                onClick={openPhotoSourceSlide}
-              >
-                {photoSaving ? "Bezig…" : "Foto toevoegen"}
-              </MiniButton>
-            ) : null}
-          </div>
-
-          <div className="relative z-[1] w-full">
-          <TabGroup
-            value={detailTab}
-            onValueChange={(v) => {
-              if (v === "ingredienten" || v === "recept" || v === "lijstje") {
-                setDetailTab(v);
-              }
-            }}
-            aria-label="Receptonderdelen"
-          >
-            <TabElement value="ingredienten">Ingrediënten</TabElement>
-            <TabElement value="recept">Recept</TabElement>
-            <TabElement value="lijstje">Lijstje</TabElement>
-          </TabGroup>
-          </div>
-
-          {detailTab === "ingredienten" ? (
-            <div className="relative z-[1] flex w-full flex-col gap-4 py-2">
-              {/* Pill tab: Groot / Klein / Lijst */}
-              <div
-                role="tablist"
-                aria-label="Weergave ingrediënten"
-                className="relative flex w-full overflow-hidden rounded-pill border border-[var(--gray-100)] bg-[var(--gray-25)]"
-              >
-                {/* Sliding white indicator */}
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-0 left-0 w-1/3 rounded-pill bg-[var(--white)] transition-transform duration-200 ease-out"
-                  style={{ transform: `translateX(${["groot", "klein", "lijst"].indexOf(ingredientView) * 100}%)` }}
-                />
-                {(["groot", "klein", "lijst"] as const).map((view) => (
-                  <button
-                    key={view}
-                    type="button"
-                    role="tab"
-                    aria-selected={ingredientView === view}
-                    onClick={() => handleIngredientViewChange(view)}
-                    className={cn(
-                      "relative z-10 flex flex-1 items-center justify-center rounded-pill px-4 py-[10px] text-base font-semibold leading-24 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                      ingredientView === view
-                        ? "text-[var(--blue-500)]"
-                        : "text-[var(--gray-300)]",
-                    )}
-                  >
-                    {view === "groot" ? "Groot" : view === "klein" ? "Klein" : "Lijst"}
-                  </button>
-                ))}
-              </div>
-
-              {/* Groot: 4 kolommen */}
-              {ingredientView === "groot" && (
-                savedRecipe.ingredients.length === 0 ? (
-                  <p className="py-4 text-sm text-[var(--text-tertiary)]">
-                    Nog geen ingrediënten. Tik op + om er een toe te voegen.
-                  </p>
-                ) : (
-                  <IngredientGrid
-                    ingredients={savedRecipe.ingredients}
-                    gridClass="grid-cols-3"
-                    lgGridClass="lg:grid-cols-4"
-                    getPhotoUrl={getPhotoUrl}
-                    textSize="text-[13px]"
-                    lgTextSize="lg:text-[15px]"
-                    leadingClass="leading-5 lg:leading-4"
-                  />
-                )
-              )}
-
-              {/* Klein: 6 kolommen */}
-              {ingredientView === "klein" && (
-                savedRecipe.ingredients.length === 0 ? (
-                  <p className="py-4 text-sm text-[var(--text-tertiary)]">
-                    Nog geen ingrediënten. Tik op + om er een toe te voegen.
-                  </p>
-                ) : (
-                  <IngredientGrid
-                    ingredients={savedRecipe.ingredients}
-                    gridClass="grid-cols-4"
-                    lgGridClass="lg:grid-cols-6"
-                    getPhotoUrl={getPhotoUrl}
-                    textSize="text-[10px]"
-                    lgTextSize="lg:text-[15px]"
-                  />
-                )
-              )}
-
-              {/* Lijst: bestaande verticale lijst */}
-              {ingredientView === "lijst" && (
-                savedRecipe.ingredients.length === 0 ? (
-                  <p className="py-4 text-sm text-[var(--text-tertiary)]">
-                    Nog geen ingrediënten. Tik op + om er een toe te voegen of gebruik
-                    Wijzigen voor het volledige recept.
-                  </p>
-                ) : (
-                  <ul className="flex w-full flex-col">
-                    {savedRecipe.ingredients.map((ing) => (
-                      <li
-                        key={ing.id}
-                        className="flex flex-col gap-3 border-b border-[var(--border-subtle)] py-3 text-base font-medium leading-24 text-[var(--text-primary)] last:border-b-0"
-                      >
-                        <div className="flex items-center gap-6">
-                          <span className="min-w-0 flex-1">{ing.name}</span>
-                          <span className="shrink-0 whitespace-nowrap text-right">{ing.quantity}</span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )
-              )}
-            </div>
-          ) : null}
-
-          {detailTab === "recept" ? (
-            <div className="relative z-[1] flex flex-col gap-6">
-              {recipeSteps.length > 0 ? (
-                <ol className="flex flex-col gap-4">
-                  {recipeSteps.map((step, index) => (
-                    <React.Fragment key={`${index}-${step}`}>
-                      <li className="flex items-start gap-6">
-                        <span className="shrink-0 text-2xl font-bold leading-24 tracking-normal text-[var(--text-primary)]">
-                          {index + 1}
-                        </span>
-                        <p className="min-w-0 flex-1 text-base font-normal leading-24 tracking-normal text-[var(--text-secondary)]">
-                          {step}
-                        </p>
-                      </li>
-                      {index < recipeSteps.length - 1 && (
-                        <div className="h-px w-full bg-[var(--border-subtle)]" />
-                      )}
-                    </React.Fragment>
-                  ))}
-                </ol>
-              ) : null}
-              {savedRecipe.link.trim() ? (
-                <MiniButton variant="secondary" asChild className="self-center">
-                  <a
-                    href={savedRecipe.link.trim()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Link recept
-                  </a>
-                </MiniButton>
-              ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                 <MiniButton
                   type="button"
                   variant="secondary"
-                  className="self-center"
-                  onClick={openEditor}
+                  disabled={photoSaving}
+                  onClick={openPhotoSourceSlide}
+                  className="w-[124px]"
                 >
-                  Link recept
+                  {photoSaving ? "Bezig…" : savedRecipe.photoUrl ? "Foto wijzigen" : "Foto toevoegen"}
                 </MiniButton>
-              )}
-            </div>
+                <MiniButton type="button" variant="secondary" onClick={openEditor} className="w-[124px]">
+                  Recept wijzigen
+                </MiniButton>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  className="text-[12px] font-medium leading-4 text-[var(--error-400)] underline underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                >
+                  Recept verwijderen
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {photoError ? <p className="mt-2 text-center text-xs text-[var(--error-600)]">{photoError}</p> : null}
+          {!detailPhotoEditMode && !savedRecipe.photoUrl ? (
+            <MiniButton type="button" variant="secondary" disabled={photoSaving} onClick={openPhotoSourceSlide} className="mt-3">
+              {photoSaving ? "Bezig…" : "Foto toevoegen"}
+            </MiniButton>
           ) : null}
 
-          {detailTab === "lijstje" ? (
-            <div className="relative z-[1] flex flex-col gap-6">
-              {savedRecipe.ingredients.length === 0 ? (
-                <>
-                  <p className="text-center text-base leading-24 text-[var(--text-tertiary)]">
-                    Nog geen ingrediënten. Gebruik Wijzigen om ze toe te voegen,
-                    of ga naar een lijstje om dit recept toe te passen.
-                  </p>
-                  <Link href="/" className="self-center no-underline">
-                    <MiniButton variant="primary" type="button">
-                      Ga naar lijstjes
-                    </MiniButton>
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <RecipeIngredientSortableList
-                    ingredients={savedRecipe.ingredients}
-                    onDragEndReorder={handleLijstjeIngredientReorder}
-                    onDelete={handleLijstjeIngredientDelete}
-                    onEdit={handleLijstjeIngredientEdit}
-                  />
-                  <Link href="/" className="self-center no-underline">
-                    <MiniButton variant="secondary" type="button">
-                      Ga naar lijstjes
-                    </MiniButton>
-                  </Link>
-                </>
+          <div className="mt-4 flex max-w-full items-center gap-2 px-2">
+            <h1 className="min-w-0 text-center text-[28px] font-bold leading-[34px] tracking-[-0.015em] text-text-primary lg:text-[36px] lg:leading-[44px]">
+              {savedRecipe.name}
+            </h1>
+            <button
+              type="button"
+              aria-label={detailPhotoEditMode ? "Stop bewerken" : "Bewerken"}
+              aria-pressed={detailPhotoEditMode}
+              onClick={toggleDetailPhotoEditMode}
+              className={cn(
+                "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                detailPhotoEditMode
+                  ? "bg-[var(--blue-500)] text-white"
+                  : "text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.6)]",
               )}
+            >
+              <PencilIcon />
+            </button>
+          </div>
+          <div className="mt-2.5 flex flex-wrap justify-center gap-2">
+            <span className={chipClass}>
+              <ListGlyph />
+              {ingredientCount === 1 ? "1 ingrediënt" : `${ingredientCount} ingrediënten`}
+            </span>
+            {recipeLink ? (
+              <a href={recipeLink} target="_blank" rel="noopener noreferrer" className={cn(chipClass, "!text-[var(--blue-500)] no-underline")}>
+                <LinkGlyph />
+                Recept
+              </a>
+            ) : (
+              <button type="button" onClick={openEditor} className={cn(chipClass, "!text-[var(--blue-500)]")}>
+                <LinkGlyph />
+                Link toevoegen
+              </button>
+            )}
+          </div>
+        </section>
+
+        {/* Ingrediënten en bereiding: onder elkaar (mobiel), naast elkaar (desktop) */}
+        <div className="mt-[22px] flex flex-col gap-3.5 lg:mt-10 lg:flex-row lg:items-start lg:gap-[22px]">
+          <section
+            aria-label="Ingrediënten"
+            className="rounded-[22px] bg-[var(--white)] px-4 pb-2 pt-[18px] shadow-[0_10px_30px_-18px_rgba(16,17,48,0.18)] lg:w-[430px] lg:shrink-0 lg:px-5"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl font-bold leading-7 text-text-primary">Ingrediënten</h2>
+              {basePersons > 0 && !detailPhotoEditMode ? (
+                <PersonsStepper value={shownPersons} onChange={setPersons} />
+              ) : null}
             </div>
-          ) : null}
+
+            {ingredientCount === 0 ? (
+              <p className="py-5 text-center text-sm leading-5 text-[var(--text-tertiary)]">Nog geen ingrediënten.</p>
+            ) : detailPhotoEditMode ? (
+              <div className="pt-3">
+                <RecipeIngredientSortableList
+                  ingredients={savedRecipe.ingredients}
+                  onDragEndReorder={handleLijstjeIngredientReorder}
+                  onDelete={handleLijstjeIngredientDelete}
+                  onEdit={handleLijstjeIngredientEdit}
+                />
+              </div>
+            ) : (
+              <ul className="mt-1.5">
+                {savedRecipe.ingredients.map((ing, i) => {
+                  const photo = getPhotoUrl(ing.name, ing.quantity);
+                  const done = checked.has(ing.id);
+                  return (
+                    <li key={ing.id} className={cn(i < ingredientCount - 1 && "border-b border-[var(--border-subtle)]")}>
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={done}
+                        onClick={() => toggleChecked(ing.id)}
+                        className="flex w-full items-center gap-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+                      >
+                        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--gray-25)]">
+                          {photo ? (
+                            <Image src={photo} alt="" width={38} height={38} className="size-[38px] object-contain" aria-hidden />
+                          ) : null}
+                        </span>
+                        <span
+                          className={cn(
+                            "min-w-0 flex-1 text-[15px] font-medium leading-5 text-text-primary transition-opacity",
+                            done && "opacity-50",
+                          )}
+                        >
+                          {ing.name}
+                        </span>
+                        <span className={cn("whitespace-nowrap text-sm leading-5 text-[var(--text-secondary)]", done && "opacity-50")}>
+                          {scaleQuantity(ing.quantity, factor)}
+                        </span>
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "flex size-[26px] shrink-0 items-center justify-center rounded-full transition-colors",
+                            done
+                              ? "bg-[var(--blue-500)] text-white"
+                              : "text-transparent shadow-[inset_0_0_0_1.5px_var(--gray-200)]",
+                          )}
+                        >
+                          <CheckGlyph />
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <div className="flex justify-center pb-2.5 pt-1.5">
+              <button type="button" onClick={openFabAddIngredient} className={ghostBtn}>
+                <PlusGlyph />
+                Ingrediënt toevoegen
+              </button>
+            </div>
+          </section>
+
+          <section aria-label="Bereiding" className="flex-1 rounded-[22px] bg-[var(--white)] px-4 pb-5 pt-[18px] lg:px-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-xl font-bold leading-7 text-text-primary">Bereiding</h2>
+              {recipeLink ? (
+                <a
+                  href={recipeLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--blue-500)] no-underline"
+                >
+                  <LinkGlyph />
+                  Origineel recept
+                </a>
+              ) : null}
+            </div>
+            {recipeSteps.length > 0 ? (
+              <ol className="flex flex-col gap-[18px]">
+                {recipeSteps.map((step, index) => (
+                  <li key={`${index}-${step}`} className="flex items-start gap-3.5">
+                    <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-sm font-bold text-[var(--blue-500)]">
+                      {index + 1}
+                    </span>
+                    <p className="mt-1 min-w-0 flex-1 text-[15px] leading-[23px] text-[var(--text-secondary)]">{step}</p>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-3 text-center">
+                <p className="text-sm leading-5 text-[var(--text-tertiary)]">Nog geen bereiding toegevoegd.</p>
+                <button type="button" onClick={openEditor} className={ghostBtn}>
+                  <PencilIcon small />
+                  Bereiding toevoegen
+                </button>
+              </div>
+            )}
+          </section>
         </div>
       </main>
-
-      <div
-        className={cn(
-          "pointer-events-none fixed inset-x-0 z-20",
-          APP_FAB_BOTTOM_NO_NAV_CLASS,
-        )}
-      >
-        <div className={cn(APP_FAB_INNER_PX4_CLASS, "pointer-events-none")}>
-          <FloatingActionButton
-            aria-label="Ingrediënt toevoegen"
-            className="pointer-events-auto shadow-[var(--shadow-drop)]"
-            onClick={openFabAddIngredient}
-          />
-        </div>
-      </div>
 
       <RecipeShareSlideIn
         open={shareSlideOpen}
@@ -872,73 +784,71 @@ export default function ReceptDetailPage() {
   );
 }
 
-// ─── Ingredient grid (Groot / Klein) ─────────────────────────────────────────
-// gridClass / lgGridClass must be full Tailwind class strings (no dynamic
-// interpolation) so Tailwind picks them up at build time.
+const roundHeaderBtn =
+  "flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
+const chipClass =
+  "inline-flex h-8 items-center gap-1.5 rounded-pill bg-[var(--white)] px-3 text-[13px] font-medium text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
+const ghostBtn =
+  "inline-flex h-9 items-center gap-1.5 rounded-pill bg-[var(--blue-50)] px-3.5 text-sm font-semibold text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 
-function IngredientGrid({
-  ingredients,
-  gridClass,
-  lgGridClass,
-  getPhotoUrl,
-  textSize,
-  lgTextSize,
-  leadingClass = "leading-4",
-}: {
-  ingredients: RecipeIngredient[];
-  /** CSS grid-cols class for mobile, e.g. "grid-cols-3" */
-  gridClass: string;
-  /** CSS grid-cols class for lg breakpoint, e.g. "lg:grid-cols-2" */
-  lgGridClass: string;
-  getPhotoUrl: (name: string, quantity?: string) => string | null;
-  textSize: string;
-  lgTextSize: string;
-  /** Regelhoogte naam + hoeveelheid (default leading-4); bij grotere mobiele tekst o.a. leading-5 lg:leading-4 */
-  leadingClass?: string;
-}) {
+function PencilIcon({ small = false }: { small?: boolean }) {
   return (
-    <div className={cn("grid w-full gap-x-4 gap-y-6", gridClass, lgGridClass)}>
-      {ingredients.map((ing) => {
-        const photoUrl = getPhotoUrl(ing.name, ing.quantity);
-        return (
-          <div key={ing.id} className="flex flex-col items-center gap-2 min-w-0">
-            <div className="relative aspect-square w-full overflow-hidden rounded-sm bg-[var(--white)]">
-              {photoUrl ? (
-                <Image
-                  src={photoUrl}
-                  alt=""
-                  fill
-                  sizes="(min-width: 1024px) 160px, 100px"
-                  className="object-contain"
-                  aria-hidden
-                />
-              ) : null}
-            </div>
-            <div className="w-full text-center">
-              <p
-                className={cn(
-                  textSize,
-                  lgTextSize,
-                  "font-medium text-[var(--text-primary)] break-words",
-                  leadingClass,
-                )}
-              >
-                {ing.name}
-              </p>
-              <p
-                className={cn(
-                  textSize,
-                  lgTextSize,
-                  "font-normal text-[var(--text-secondary)]",
-                  leadingClass,
-                )}
-              >
-                {ing.quantity}
-              </p>
-            </div>
-          </div>
-        );
-      })}
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={small ? "size-4" : "size-5"}>
+      <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4" />
+    </svg>
+  );
+}
+function ListGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden className="size-4 text-[var(--gray-400)]">
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <circle cx="4.5" cy="6" r="1" fill="currentColor" />
+      <circle cx="4.5" cy="12" r="1" fill="currentColor" />
+      <circle cx="4.5" cy="18" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+function LinkGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+      <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+    </svg>
+  );
+}
+function PlusGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="size-[18px]">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+function CheckGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
+/** «– 4 personen +»: herschaalt de hoeveelheden (enkel weergave, het recept blijft ongewijzigd). */
+function PersonsStepper({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const btn =
+    "flex size-7 items-center justify-center rounded-full bg-[var(--bg-app)] transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
+  return (
+    <div className="inline-flex h-9 shrink-0 items-center gap-1 rounded-pill bg-[var(--white)] px-1 shadow-[inset_0_0_0_1px_var(--border-subtle)]">
+      <button type="button" aria-label="Minder personen" disabled={value <= 1} onClick={() => onChange(value - 1)} className={cn(btn, "text-[var(--text-secondary)]")}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="size-4">
+          <path d="M6 12h12" />
+        </svg>
+      </button>
+      <span className="min-w-[78px] text-center text-sm font-semibold tabular-nums text-text-primary" aria-live="polite">
+        {value} {value === 1 ? "persoon" : "personen"}
+      </span>
+      <button type="button" aria-label="Meer personen" disabled={value >= 24} onClick={() => onChange(value + 1)} className={cn(btn, "text-[var(--blue-500)]")}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="size-4">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
     </div>
   );
 }

@@ -38,6 +38,7 @@ import { APP_FAB_BOTTOM_CLASS, APP_SNACKBAR_FIXTURE_CLASS } from "@/lib/app-layo
 import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
+import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 /** Snapshot voor Snackbar-undo na verwijderen (zelfde ids als InstantDB). */
@@ -171,13 +172,16 @@ function RecipePlate({ recipe }: { recipe: SavedRecipe }) {
 }
 
 function RecipePlateCard({ recipe }: { recipe: SavedRecipe }) {
+  // Tegel in de kleur van het gerecht, automatisch uit de foto (canvas «Receptkleur»).
+  const tint = recipeTintColors(useRecipeTint(recipe.photoUrl), useIsDarkTheme());
   const n = recipe.ingredients.length;
   const itemCount = n === 1 ? "1 ingrediënt" : `${n} ingrediënten`;
   const dot = RECIPE_CATEGORIES.find((c) => c.id === recipe.category)?.dot ?? null;
   return (
     <Link
       href={`/recepten/${recipe.id}`}
-      className="flex h-full flex-col gap-3 rounded-[18px] bg-[var(--white)] px-2.5 pb-3.5 pt-4 text-center no-underline shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      style={{ backgroundImage: `linear-gradient(180deg, ${tint.top} 0%, ${tint.mid} 55%, transparent 100%)` }}
+      className="flex h-full flex-col gap-3 rounded-[18px] bg-[var(--white)] px-2.5 pb-3.5 pt-4 text-center no-underline shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
     >
       <RecipePlate recipe={recipe} />
       <span className="flex flex-col items-center gap-[3px] px-0.5">
