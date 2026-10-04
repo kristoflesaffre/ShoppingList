@@ -1792,15 +1792,15 @@ function HomeListSwimCard({
       <span className="pointer-events-none relative shrink-0">
         <span
           aria-hidden
-          className="flex size-[60px] items-center justify-center overflow-hidden rounded-[16px] bg-gradient-to-br from-[var(--blue-25)] to-[var(--blue-50)]"
+          className="flex size-12 items-center justify-center overflow-hidden rounded-[14px] bg-gradient-to-br from-[var(--blue-25)] to-[var(--blue-50)]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp of eigen foto */}
           <img
             src={iconSrc}
             alt=""
-            width={customIcon ? 60 : 42}
-            height={customIcon ? 60 : 42}
-            className={customIcon ? "size-full object-cover" : "size-[42px] object-contain"}
+            width={customIcon ? 48 : 34}
+            height={customIcon ? 48 : 34}
+            className={customIcon ? "size-full object-cover" : "size-[34px] object-contain"}
           />
         </span>
         {/* 11.1 F: afgerond-vinkje rechtsboven op het icoon, licht buiten de hoek, met witte rand. */}
