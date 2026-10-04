@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
@@ -35,28 +36,6 @@ type LoyaltyCardRow = {
   createdAtIso: string;
 };
 
-
-/** Figma 1096:7436 EditButton — alert-func-check 24×24 + label */
-function CheckmarkIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width={24}
-      height={24}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden
-    >
-      <path
-        d="M20 6L9 17l-5-5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 /** Figma 1096:7436 — action-func-bin, rood (outline) */
 function TrashOutlineIcon({ className }: { className?: string }) {
@@ -607,25 +586,11 @@ export default function KlantenKaartenPage() {
                     Klantenkaarten
                   </h1>
                   {!isEditMode ? (
-                    <button
-                      type="button"
-                      aria-label="Bewerken"
-                      onClick={() => setIsEditMode(true)}
-                      className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      <PencilIcon className="size-6" />
-                    </button>
+                    <TitleEditButton onClick={() => setIsEditMode(true)} />
                   ) : null}
                 </div>
                 {isEditMode ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditMode(false)}
-                    className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--blue-500)] px-2 py-1 text-sm font-normal leading-20 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                  >
-                    <CheckmarkIcon className="size-6 shrink-0" />
-                    Gereed
-                  </button>
+                  <DoneButton onClick={() => setIsEditMode(false)} />
                 ) : null}
               </div>
 

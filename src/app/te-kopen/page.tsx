@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { id as instantId } from "@instantdb/react";
@@ -71,17 +72,6 @@ function MaskIcon({ src, className }: { src: string; className?: string }) {
       }}
       aria-hidden
     />
-  );
-}
-
-function PencilIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width={24} height={24} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M3.17663 19.8235C3.03379 19.6807 2.97224 19.4751 3.01172 19.2777L3.94074 14.633C3.96397 14.5157 4.02087 14.4089 4.10564 14.323L15.2539 3.17679C15.4896 2.94107 15.8728 2.94107 16.1086 3.17679L19.8246 6.89257C19.9361 7.00637 20 7.15965 20 7.31989C20 7.48013 19.9361 7.63341 19.8246 7.7472L17.0376 10.534L8.67642 18.8934C8.59048 18.9782 8.48365 19.0362 8.36636 19.0594L3.72126 19.9884C3.68178 19.9965 3.6423 20 3.60281 20C3.44488 19.9988 3.29043 19.9361 3.17663 19.8235ZM13.7465 6.39094L16.6091 9.25326L18.5426 7.31989L15.6801 4.45757L13.7465 6.39094ZM4.37274 18.6263L7.95062 17.911L15.7544 10.1079L12.893 7.24557L5.08808 15.0499L4.37274 18.6263Z"
-        fill="currentColor"
-      />
-    </svg>
   );
 }
 
@@ -506,35 +496,14 @@ export default function TeKopenPage() {
                 {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
               </h1>
               {!isEditing && !isStoreOrderMode && allItems.length > 0 && (
-                <button
-                  type="button"
-                  aria-label="Bewerken"
-                  onClick={() => setIsEditing(true)}
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  <PencilIcon className="size-6" />
-                </button>
+                <TitleEditButton onClick={() => setIsEditing(true)} />
               )}
             </div>
             {isStoreOrderMode && (
-              <button
-                type="button"
-                onClick={() => setIsStoreOrderMode(false)}
-                className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--blue-500)] px-2 py-1 text-sm font-normal leading-5 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <MaskIcon src="/icons/checkmark.svg" className="size-5 bg-white" />
-                Gereed
-              </button>
+              <DoneButton onClick={() => setIsStoreOrderMode(false)} />
             )}
             {isEditing && !isStoreOrderMode && (
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--blue-500)] px-2 py-1 text-sm font-normal leading-5 text-white transition-colors hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <MaskIcon src="/icons/checkmark.svg" className="size-5 bg-white" />
-                Gereed
-              </button>
+              <DoneButton onClick={() => setIsEditing(false)} />
             )}
           </div>
 

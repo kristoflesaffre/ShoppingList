@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
 import { useRouter } from "next/navigation";
 import { MiniButton } from "@/components/ui/mini_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
@@ -572,36 +573,14 @@ export default function DiepvriesvoorraadPage() {
                 Diepvriesvoorraad
               </h1>
               {!isEditing ? (
-                <button
-                  type="button"
-                  aria-label="Bewerken"
-                  onClick={() => setIsEditing(true)}
-                  className="flex size-9 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  <MaskIcon
-                    src="/icons/pencil.svg"
-                    className="size-6 bg-[var(--blue-500)]"
-                  />
-                </button>
+                <TitleEditButton onClick={() => setIsEditing(true)} />
               ) : (
-                <span className="size-9 shrink-0" aria-hidden />
+                <span className="size-8 shrink-0" aria-hidden />
               )}
             </div>
             <div className="flex h-9 shrink-0 items-stretch">
               {isEditing ? (
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(false)}
-                  className="flex h-full items-center gap-1 rounded-full bg-[var(--blue-500)] px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  <MaskIcon
-                    src="/icons/checkmark.svg"
-                    className="size-5 bg-white"
-                  />
-                  <span className="text-sm font-normal leading-5 tracking-normal text-white">
-                    Gereed
-                  </span>
-                </button>
+                <DoneButton onClick={() => setIsEditing(false)} className="self-center" />
               ) : (
                 <div
                   className="box-border flex h-9 items-stretch overflow-hidden rounded border border-[var(--gray-100)] bg-[var(--white)]"

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -551,20 +552,11 @@ export default function ReceptDetailPage() {
             <h1 className="min-w-0 text-center text-[28px] font-bold leading-[34px] tracking-[-0.015em] text-text-primary lg:text-[36px] lg:leading-[44px]">
               {savedRecipe.name}
             </h1>
-            <button
-              type="button"
-              aria-label={detailPhotoEditMode ? "Stop bewerken" : "Bewerken"}
-              aria-pressed={detailPhotoEditMode}
-              onClick={toggleDetailPhotoEditMode}
-              className={cn(
-                "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                detailPhotoEditMode
-                  ? "bg-[var(--blue-500)] text-white"
-                  : "text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.6)]",
-              )}
-            >
-              <PencilIcon />
-            </button>
+            {detailPhotoEditMode ? (
+              <DoneButton onClick={toggleDetailPhotoEditMode} />
+            ) : (
+              <TitleEditButton onClick={toggleDetailPhotoEditMode} />
+            )}
           </div>
           <div className="mt-2.5 flex flex-wrap justify-center gap-2">
             <span className={chipClass}>
