@@ -250,14 +250,11 @@ export function LoyaltyWallet({
   const selected = cards.find((c) => c.id === selectedId) ?? null;
   const codeH = (card: WalletCard) => Math.max(cardH, card.codeType === "qr" ? 330 : 236);
   const openH = selected ? codeH(selected) : cardH;
-  const last = cards[cards.length - 1];
-  /** QR-kaart onderaan de stapel: meteen volledig zichtbaar met de grote QR-code (canvas «Kaarten 1c»). */
-  const lastFullQr = !selected && last?.codeType === "qr";
   const n = cards.length;
   const pileCount = selected ? n - 1 : 0;
   const height = selected
     ? openH + (pileCount > 0 ? OPEN_GAP + (pileCount - 1) * PILE_STEP + PILE_PEEK : 0)
-    : (n - 1) * STRIP + (lastFullQr ? codeH(last) : cardH);
+    : (n - 1) * STRIP + cardH;
 
   const select = (id: string) => {
     setSelectedId(id);
@@ -285,7 +282,6 @@ export function LoyaltyWallet({
         let h = cardH;
         if (!selected) {
           y = i * STRIP;
-          if (lastFullQr && i === n - 1) h = codeH(card);
         } else if (isSelected) {
           y = 0;
           h = openH;
@@ -300,10 +296,14 @@ export function LoyaltyWallet({
             card={card}
             dark={dark}
             open={isSelected}
-            showCode={isSelected || (lastFullQr && i === n - 1)}
-            showPreview={!selected && !lastFullQr && i === n - 1}
+            showCode={isSelected}
+            showPreview={!selected && i === n - 1}
             onToggle={() => {
-              if (isSelected) onOpen(card);
+              if (isSelected) {
+                // Schermvullend tonen en de stapel meteen terug dichtklappen voor als je terugkomt.
+                onOpen(card);
+                setSelectedId(null);
+              }
               else if (selected) setSelectedId(null);
               else select(card.id);
             }}
