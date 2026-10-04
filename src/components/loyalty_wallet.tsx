@@ -238,12 +238,16 @@ export function LoyaltyWallet({ cards, reducedMotion }: { cards: WalletCard[]; r
 
   const cardH = Math.round(width / 1.586);
   const selected = cards.find((c) => c.id === selectedId) ?? null;
-  const openH = selected ? Math.max(cardH, selected.codeType === "qr" ? 330 : 236) : cardH;
+  const codeH = (card: WalletCard) => Math.max(cardH, card.codeType === "qr" ? 330 : 236);
+  const openH = selected ? codeH(selected) : cardH;
+  const last = cards[cards.length - 1];
+  /** QR-kaart onderaan de stapel: meteen volledig zichtbaar met de grote QR-code (canvas «Kaarten 1c»). */
+  const lastFullQr = !selected && last?.codeType === "qr";
   const n = cards.length;
   const pileCount = selected ? n - 1 : 0;
   const height = selected
     ? openH + (pileCount > 0 ? OPEN_GAP + (pileCount - 1) * PILE_STEP + PILE_PEEK : 0)
-    : (n - 1) * STRIP + cardH;
+    : (n - 1) * STRIP + (lastFullQr ? codeH(last) : cardH);
 
   const toggle = (id: string) => {
     setSelectedId((cur) => (cur === id ? null : id));
@@ -271,6 +275,7 @@ export function LoyaltyWallet({ cards, reducedMotion }: { cards: WalletCard[]; r
         let h = cardH;
         if (!selected) {
           y = i * STRIP;
+          if (lastFullQr && i === n - 1) h = codeH(card);
         } else if (isSelected) {
           y = 0;
           h = openH;
@@ -285,7 +290,8 @@ export function LoyaltyWallet({ cards, reducedMotion }: { cards: WalletCard[]; r
             card={card}
             dark={dark}
             open={isSelected}
-            showPreview={!selected && i === n - 1}
+            showCode={isSelected || (lastFullQr && i === n - 1)}
+            showPreview={!selected && !lastFullQr && i === n - 1}
             onToggle={() => (selected && !isSelected ? setSelectedId(null) : toggle(card.id))}
             style={{
               height: h,
@@ -305,6 +311,7 @@ function WalletCardView({
   card,
   dark,
   open,
+  showCode,
   showPreview,
   onToggle,
   style,
@@ -313,6 +320,7 @@ function WalletCardView({
   card: WalletCard;
   dark: boolean;
   open: boolean;
+  showCode: boolean;
   showPreview: boolean;
   onToggle: () => void;
   style: React.CSSProperties;
@@ -350,10 +358,10 @@ function WalletCardView({
       {/* Geopende kaart: scanbare code. */}
       <div
         className="pointer-events-none absolute inset-x-4 bottom-4 top-[66px] flex flex-col items-center justify-center gap-2.5 rounded-[14px] bg-white px-4 py-4"
-        style={fade(open, 180)}
-        aria-hidden={!open}
+        style={fade(showCode, 180)}
+        aria-hidden={!showCode}
       >
-        {open ? (
+        {showCode ? (
           <>
             <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} />
             <span className="text-[13px] leading-[18px] text-[#6e7381]">
@@ -388,16 +396,25 @@ function GridCard({ card, onOpen }: { card: WalletCard; onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label={`${card.cardName} tonen`}
-      className="flex aspect-[1.45] w-full flex-col justify-between gap-3 rounded-[20px] p-4 text-left transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      className="flex h-[272px] w-full flex-col gap-3 rounded-[20px] p-4 text-left transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
       style={{ background: colors.background, boxShadow: `inset 0 0 0 1px ${colors.edge}` }}
     >
       <span className="flex min-w-0 items-center gap-3">
         <CardLogo src={card.logoSrc} size={36} />
         <span className="min-w-0 flex-1 truncate text-base font-semibold leading-6 text-text-primary">{card.cardName}</span>
       </span>
-      {/* Echte code als voorbeeld: QR klein links, barcode over de volle breedte. */}
-      <span className={cn("flex", isQr ? "justify-start" : "")}>
-        <CodePreview card={card} className={isQr ? "!size-[72px]" : "!h-[52px]"} />
+      {/* Echte code in een wit vlak, zoals de geopende kaart (canvas «Kaarten 1c»). */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none flex min-h-0 flex-1 flex-col items-center justify-center gap-2 rounded-[14px] bg-white px-4 py-3",
+          isQr ? "[&_svg]:!size-[150px]" : "[&_svg]:!h-[88px] [&_svg]:!w-full",
+        )}
+      >
+        <LoyaltyCardDisplay codeType={isQr ? "qr" : "barcode"} codeFormat={card.codeFormat} rawValue={card.rawValue} />
+        <span className="whitespace-nowrap text-center text-[12px] leading-4 text-[#6e7381]">
+          {isQr ? "Scan de QR-code aan de kassa" : "Toon de barcode aan de kassa"}
+        </span>
       </span>
     </button>
   );
