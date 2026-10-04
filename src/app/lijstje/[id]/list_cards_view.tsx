@@ -341,6 +341,7 @@ function Card({
   children,
   collapsible,
   headerClassName,
+  reserveChevronSpace = false,
 }: {
   header: React.ReactNode;
   gradient: string;
@@ -348,6 +349,7 @@ function Card({
   children: React.ReactNode;
   collapsible: boolean;
   headerClassName?: string;
+  reserveChevronSpace?: boolean;
 }) {
   const allDone = items.length > 0 && items.every((i) => i.checked);
   const [open, setOpen] = React.useState(!allDone);
@@ -383,7 +385,11 @@ function Card({
         style={{ backgroundImage: gradient }}
       >
         {header}
-        {canCollapse ? <Chevron open={open} /> : null}
+        {canCollapse ? (
+          <Chevron open={open} />
+        ) : reserveChevronSpace ? (
+          <span aria-hidden className="size-4 shrink-0" />
+        ) : null}
       </div>
       {!canCollapse || open ? children : null}
     </section>
@@ -536,6 +542,7 @@ function DayCards({ sections, layout, listDateStr, savedRecipes, getPhotoUrl, un
         collapsible
         header={header}
         headerClassName="min-h-[74px]"
+        reserveChevronSpace
       >
         <ItemsLayout items={sortItems(restItems, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
       </Card>
