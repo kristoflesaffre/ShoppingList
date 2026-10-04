@@ -184,9 +184,9 @@ function RecipePlateCard({ recipe }: { recipe: SavedRecipe }) {
       className="flex h-full flex-col gap-3 rounded-[18px] bg-[var(--white)] px-2.5 pb-3.5 pt-4 text-center no-underline shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
     >
       <RecipePlate recipe={recipe} />
-      <span className="flex flex-col items-center gap-[3px] px-0.5">
+      <span className="flex flex-1 flex-col items-center px-0.5">
         <span className="line-clamp-2 text-sm font-semibold leading-[19px] text-text-primary">{recipe.name}</span>
-        <span className="flex items-center gap-1.5 text-xs leading-4 text-[var(--gray-400)]">
+        <span className="mt-auto flex items-center gap-1.5 pt-[3px] text-xs leading-4 text-[var(--gray-400)]">
           {dot ? <span aria-hidden className="size-[7px] shrink-0 rounded-full" style={{ backgroundColor: dot }} /> : null}
           {itemCount}
         </span>
