@@ -1721,7 +1721,8 @@ function homeListProductItems(list: HomeList): HomeListItemRow[] {
     });
 }
 
-const HOME_LIST_PHOTO_SLOTS = 8;
+/** Zes productfoto's plus, bij overflow, één `+n`-tegel. */
+const HOME_LIST_PHOTO_SLOTS = 7;
 
 /** Zachte pil (8.4): zelfde knopstijl voor «+ Item», «+ Lijstje» en Te kopen «Toevoegen». */
 const HOME_SOFT_PILL_CLASS =
