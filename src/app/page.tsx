@@ -958,9 +958,6 @@ type HomeShoppingItem = {
   ownerId?: string | null;
 };
 
-/** Aantal producten dat de Te kopen-tegel dichtgeklapt toont. */
-const TE_KOPEN_PREVIEW_COUNT = 3;
-
 /** «4 stuk» → «4 stuks»; «1 stuk» blijft enkelvoud. Andere eenheden blijven zoals ingegeven. */
 function pluralizeShoppingQuantity(quantity: string): string {
   const match = /^(\d+(?:[.,]\d+)?)\s*stuks?$/i.exec(quantity.trim());
@@ -970,8 +967,26 @@ function pluralizeShoppingQuantity(quantity: string): string {
 
 type ShoppingAddedBy = { firstName: string; avatarUrl: string | null };
 
-/** Eén rij in de Te kopen-tegel: foto of monogram, naam, en rechts (wie) + aantal in een vaste kolom. */
-function HomeTeKopenRow({
+/** Monogramkleuren voor producten zonder foto (canvas «Te kopen 6c»): zacht vlak, letter in dezelfde tint. */
+const TE_KOPEN_MONOGRAM_RGB: Array<[number, number, number]> = [
+  [214, 112, 31],
+  [47, 127, 191],
+  [61, 143, 85],
+  [139, 108, 240],
+  [204, 74, 128],
+  [43, 160, 150],
+];
+
+function teKopenStoreLogo(store?: string | null): string | null {
+  if (!store) return null;
+  return MASTER_STORE_OPTIONS.find((s) => s.label === store)?.logoSrc ?? null;
+}
+
+/** Aantal producten in de Te kopen-swimlane (mobiel): kolommen van twee tegels. */
+const TE_KOPEN_SWIM_COUNT = 8;
+
+/** Te kopen 6c · brede tegel (227px) in een kolom van twee: foto of monogram, naam, winkel + aantal, wie. */
+function HomeTeKopenSwimTile({
   item,
   addedBy,
 }: {
@@ -981,55 +996,148 @@ function HomeTeKopenRow({
   const getPhotoUrl = useItemPhotoUrl(160);
   const photoSrc = getPhotoUrl(item.name);
   const quantity = pluralizeShoppingQuantity(item.quantity);
+  const storeLogo = teKopenStoreLogo(item.store);
+  const initial = item.name.trim().charAt(0).toUpperCase();
+  const rgb = TE_KOPEN_MONOGRAM_RGB[(initial.charCodeAt(0) || 0) % TE_KOPEN_MONOGRAM_RGB.length].join(",");
 
   return (
     <Link
       href="/te-kopen"
-      className="flex h-10 items-center gap-2.5 pl-2.5 pr-3.5 no-underline transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+      className="flex h-20 w-[227px] items-center gap-3 rounded-[18px] bg-[var(--white)] px-3 no-underline shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
     >
       {photoSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
-        <img
-          src={photoSrc}
-          alt=""
-          width={28}
-          height={28}
-          className="size-7 shrink-0 rounded-md bg-[var(--blue-25)] object-contain p-0.5 mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal"
-          aria-hidden
-        />
+        <span className="flex size-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[var(--gray-25)]" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
+          <img src={photoSrc} alt="" width={40} height={40} className="size-10 object-contain" />
+        </span>
       ) : (
-        /* Geen foto: monogram i.p.v. leeg grijs vlak — de rij blijft leesbaar. */
         <span
-          className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[var(--blue-25)] text-xs font-semibold leading-none text-[var(--blue-400)]"
+          className="flex size-[52px] shrink-0 items-center justify-center rounded-[14px] text-xl font-bold leading-none"
+          style={{ backgroundColor: `rgba(${rgb},0.14)`, color: `rgb(${rgb})` }}
           aria-hidden
         >
-          {item.name.trim().charAt(0).toUpperCase()}
+          {initial}
         </span>
       )}
-      <span className="min-w-0 flex-1 truncate text-[15px] font-medium leading-5 text-[var(--text-primary)] first-letter:uppercase">
-        {item.name}
-      </span>
-      <span className="flex shrink-0 items-center justify-end gap-2">
+      <span className="flex min-w-0 flex-1 flex-col leading-[18px]">
+        <span className="truncate text-[15px] font-semibold text-[var(--text-primary)] first-letter:uppercase">
+          {item.name}
+        </span>
+        <span className="flex min-w-0 items-center gap-[5px] text-[12.5px] text-[var(--gray-400)] tabular-nums">
+          {storeLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- winkellogo
+            <img src={storeLogo} alt="" width={13} height={13} className="size-[13px] shrink-0 object-contain" />
+          ) : null}
+          <span className="truncate">{quantity}</span>
+        </span>
         {addedBy ? (
-          <span
-            className="relative flex size-[18px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--secondary-100)] text-[9px] font-bold leading-none text-[var(--secondary-800)]"
-            title={`Toegevoegd door ${addedBy.firstName}`}
-            aria-label={`Toegevoegd door ${addedBy.firstName}`}
-          >
-            {addedBy.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- profielfoto (data-URL of blob)
-              <img src={addedBy.avatarUrl} alt="" className="size-full object-cover" />
-            ) : (
-              addedBy.firstName.charAt(0).toUpperCase()
-            )}
+          <span className="mt-0.5 flex min-w-0 items-center gap-[5px] text-xs text-[var(--gray-400)]">
+            <span className="flex size-3.5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--secondary-100)] text-[7px] font-bold text-[var(--secondary-800)]" aria-hidden>
+              {addedBy.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- profielfoto (data-URL of blob)
+                <img src={addedBy.avatarUrl} alt="" className="size-full object-cover" />
+              ) : (
+                addedBy.firstName.charAt(0).toUpperCase()
+              )}
+            </span>
+            <span className="truncate">door {addedBy.firstName}</span>
           </span>
         ) : null}
-        {/* Vaste kolom zodat alle aantallen rechts onder elkaar uitlijnen, met of zonder avatar. */}
-        <span className="w-14 whitespace-nowrap text-right text-[13px] leading-[18px] text-[var(--gray-400)] tabular-nums">
-          {quantity}
-        </span>
       </span>
     </Link>
+  );
+}
+
+/** Te kopen 6c · swimlane met kolommen van twee brede tegels, «+N · Alle M» als laatste kaart, bolletjes eronder. */
+function HomeTeKopenSwimlane({
+  items,
+  total,
+  addedByFor,
+}: {
+  items: HomeShoppingItem[];
+  total: number;
+  addedByFor: (item: HomeShoppingItem) => ShoppingAddedBy | null;
+}) {
+  const laneRef = React.useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  const columns = chunkArray(items, 2);
+  const rest = total - items.length;
+  const pageCount = columns.length + (rest > 0 ? 1 : 0);
+
+  const handleScroll = React.useCallback(() => {
+    const el = laneRef.current;
+    if (!el) return;
+    const cols = Array.from(el.children) as HTMLElement[];
+    let best = 0;
+    let bestDist = Infinity;
+    cols.forEach((c, i) => {
+      const d = Math.abs(c.offsetLeft - el.offsetLeft - el.scrollLeft);
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    });
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 4) best = cols.length - 1;
+    setActiveIndex(best);
+  }, []);
+
+  const scrollToPage = (index: number) => {
+    const el = laneRef.current;
+    const col = el?.children[index] as HTMLElement | undefined;
+    if (!el || !col) return;
+    el.scrollTo({ left: col.offsetLeft - el.offsetLeft, behavior: "smooth" });
+  };
+
+  return (
+    <div className="flex flex-col gap-3.5">
+      <div
+        ref={laneRef}
+        onScroll={handleScroll}
+        className="-mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {columns.map((col) => (
+          <ul key={col[0].id} className="m-0 flex shrink-0 snap-start list-none flex-col gap-2.5 pl-0">
+            {col.map((item) => (
+              <li key={item.id}>
+                <HomeTeKopenSwimTile item={item} addedBy={addedByFor(item)} />
+              </li>
+            ))}
+          </ul>
+        ))}
+        {rest > 0 ? (
+          <Link
+            href="/te-kopen"
+            className="flex w-24 shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-[18px] bg-[var(--blue-25)] text-[13px] font-semibold text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <span className="text-xl font-bold tabular-nums">+{rest}</span>
+            <span className="inline-flex items-center gap-0.5">
+              Alle {total}
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3">
+                <path d="M6 3.5 10.5 8 6 12.5" />
+              </svg>
+            </span>
+          </Link>
+        ) : null}
+      </div>
+      {pageCount > 1 ? (
+        <div className="flex justify-center gap-1.5" role="tablist" aria-label="Te kopen">
+          {Array.from({ length: pageCount }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              role="tab"
+              aria-selected={i === activeIndex}
+              aria-label={i < columns.length ? `Producten ${i * 2 + 1}–${Math.min(i * 2 + 2, items.length)}` : `Alle ${total} producten`}
+              onClick={() => scrollToPage(i)}
+              className={cn(
+                "h-1.5 rounded-full transition-[width,background-color] duration-base ease-out-strong",
+                i === activeIndex ? "w-[18px] bg-[var(--blue-500)]" : "w-1.5 bg-[var(--gray-200)]",
+              )}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -1164,8 +1272,6 @@ function HomeTeKopenSection({
 
   /* Laatst toegevoegd eerst (hoogste `order`), los van de winkelgroepering van de volledige lijst. */
   const recentItems = [...shoppingItems].sort((a, b) => b.order - a.order);
-  const visibleItems = expanded ? recentItems : recentItems.slice(0, TE_KOPEN_PREVIEW_COUNT);
-  const canExpand = recentItems.length > TE_KOPEN_PREVIEW_COUNT;
   const desktopItems = expanded ? recentItems : recentItems.slice(0, TE_KOPEN_DESKTOP_PREVIEW_COUNT);
   const canExpandDesktop = recentItems.length > TE_KOPEN_DESKTOP_PREVIEW_COUNT;
   const toggleLabel = expanded ? "Toon minder" : `Toon alle ${recentItems.length}`;
@@ -1209,43 +1315,13 @@ function HomeTeKopenSection({
           </div>
         ) : null}
       </div>
-      {/* E5 · één tegel zonder dividers (mobiel/tablet): laatste 3 producten, uitklapbaar; toevoegen staat in de kop. */}
-      <div className={cn("overflow-hidden rounded-lg bg-[var(--white)] pt-1.5 shadow-card lg:hidden", !canExpand && "pb-1.5")}>
-        <ul id={listId} className="m-0 list-none pl-0">
-          {visibleItems.map((item) => (
-            <li key={item.id}>
-              <HomeTeKopenRow item={item} addedBy={addedByFor(item)} />
-            </li>
-          ))}
-        </ul>
-        {canExpand ? (
-          <div className="flex justify-center pb-1.5 pt-0.5">
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              aria-expanded={expanded}
-              aria-controls={listId}
-              className="inline-flex h-8 items-center gap-0.5 rounded-pill px-2.5 text-[13px] font-medium leading-[18px] text-action-primary transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-            >
-              {toggleLabel}
-              <svg
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.75}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-                className={cn(
-                  "size-3.5 shrink-0 motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out-strong",
-                  expanded && "rotate-180",
-                )}
-              >
-                <path d="M3.5 6 8 10.5 12.5 6" />
-              </svg>
-            </button>
-          </div>
-        ) : null}
+      <div className="-mt-3 flex flex-col gap-3 lg:hidden">
+        <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">Laatst toegevoegd</p>
+        <HomeTeKopenSwimlane
+          items={recentItems.slice(0, TE_KOPEN_SWIM_COUNT)}
+          total={recentItems.length}
+          addedByFor={addedByFor}
+        />
       </div>
     </div>
   );
