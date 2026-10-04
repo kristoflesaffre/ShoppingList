@@ -514,30 +514,25 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
       ...split.stockDishes.filter((s) => s !== stock),
     ];
     const countable = section.items.filter((i) => i !== stock);
-    const header =
-      mainRecipe || stock ? (
-        <>
-          <Plate src={mainRecipe?.photo ?? stock?.stockPhotoUrl ?? null} size={46} freeze={!mainRecipe} />
-          <span className="min-w-0 flex-1 leading-[18px]">
-            <span className="block text-xs font-bold text-[var(--text-secondary)] first-letter:uppercase">{label}</span>
-            <span className="block truncate text-[15px] font-bold text-text-primary">{mainRecipe?.name ?? stock?.name}</span>
-            <span className="block truncate text-xs text-[var(--text-secondary)]">
-              {mainRecipe
-                ? `${mainRecipe.items.length} ingrediënten${split.recipes.length > 1 ? ` · + ${split.recipes.length - 1} recept` : ""}`
-                : `Uit de diepvries${stock?.quantity ? ` · ${stock.quantity}` : ""}`}
+    /* Elke dag: datumtegel + dag als titel; het gerecht (recept of diepvries) als sublabel. */
+    const dishName = mainRecipe?.name ?? stock?.name ?? null;
+    const extraRecipes = mainRecipe ? split.recipes.length - 1 : 0;
+    const header = (
+      <>
+        <DateChip date={d.date} />
+        <span className="min-w-0 flex-1 leading-[19px]">
+          <span className="block truncate text-[15px] font-bold text-text-primary first-letter:uppercase">{label}</span>
+          {dishName ? (
+            <span className="block truncate text-[13px] text-[var(--text-secondary)]">
+              {dishName}
+              {extraRecipes > 0 ? ` + ${extraRecipes} recept${extraRecipes > 1 ? "en" : ""}` : ""}
             </span>
-          </span>
-          <Counter items={countable} />
-          <AddButton label={`Item toevoegen aan ${label}`} onClick={() => onAddToSection(section.title)} />
-        </>
-      ) : (
-        <>
-          <DateChip date={d.date} />
-          <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary first-letter:uppercase">{label}</h3>
-          <Counter items={countable} />
-          <AddButton label={`Item toevoegen aan ${label}`} onClick={() => onAddToSection(section.title)} />
-        </>
-      );
+          ) : null}
+        </span>
+        <Counter items={countable} />
+        <AddButton label={`Item toevoegen aan ${label}`} onClick={() => onAddToSection(section.title)} />
+      </>
+    );
     return (
       <Card
         key={section.title}
