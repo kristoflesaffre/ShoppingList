@@ -198,8 +198,7 @@ const DURATION = 480;
 const UNFOLD_TO_FULLSCREEN_MS = 480;
 /** Openklappen richting schermvullend: duidelijk zichtbaar, lineair zodat de snelheid doorloopt in de morph. */
 const FLOW_UNFOLD_MS = 480;
-/** Gespiegelde curve van het dichtklappen (EASE achterstevoren): openen = exact het omgekeerde van sluiten. */
-const EASE_REVERSED = "cubic-bezier(1, 0, 0.68, 0.28)";
+
 
 /** Echte code als klein voorbeeld (geschaald), zodat kaarten «echt» ogen nog voor je tikt. */
 export function CodePreview({ card, className }: { card: WalletCard; className?: string }) {
@@ -293,7 +292,8 @@ export function LoyaltyWallet({
   const lastH = last ? (isOpen(last) ? codeH() : cardH) : 0;
   const height = n ? ys[n - 1] + lastH : 0;
 
-  const ease = flowingOpen ? EASE_REVERSED : EASE;
+  // Openen richting schermvullend: constante snelheid, geen trage start (en geen afremmen vóór de morph).
+  const ease = flowingOpen ? "linear" : EASE;
   const dur = flowingOpen ? FLOW_UNFOLD_MS : DURATION;
   const transition = reducedMotion
     ? "none"
@@ -504,6 +504,9 @@ function staggerIn(root: HTMLElement, baseDelay: number) {
   });
 }
 
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
@@ -642,8 +645,8 @@ export function LoyaltyCardViewer({
       if (from) {
         const { card, parts } = measureMorph(root, openId);
         applyMorph(root, card, parts, 0);
-        // Exact het omgekeerde van sluiten: zelfde duur en (symmetrische) curve.
-        void runMorph(root, card, parts, { from: 0, to: 1, duration: 460, ease: easeInOutCubic }).then(() => clearMorph(root, parts));
+        // Zelfde duur als sluiten; vertrekt meteen op snelheid (ease-out), zonder trage aanloop.
+        void runMorph(root, card, parts, { from: 0, to: 1, duration: 460, ease: easeOutCubic }).then(() => clearMorph(root, parts));
       } else {
         root.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 420, easing: SPRING_EASE });
       }
