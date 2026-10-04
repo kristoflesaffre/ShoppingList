@@ -327,7 +327,7 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
 
 function Chevron({ open }: { open: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn("size-4 shrink-0 text-[var(--text-secondary)] transition-transform", !open && "-rotate-90")}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn("size-4 shrink-0 text-[var(--text-secondary)] transition-transform", open && "rotate-180")}>
       <path d="M6 9l6 6 6-6" />
     </svg>
   );
@@ -340,12 +340,14 @@ function Card({
   items,
   children,
   collapsible,
+  headerClassName,
 }: {
   header: React.ReactNode;
   gradient: string;
   items: ListItem[];
   children: React.ReactNode;
   collapsible: boolean;
+  headerClassName?: string;
 }) {
   const allDone = items.length > 0 && items.every((i) => i.checked);
   const [open, setOpen] = React.useState(!allDone);
@@ -373,7 +375,11 @@ function Card({
               }
             : undefined
         }
-        className={cn("flex items-center gap-2.5 px-3.5 py-3", canCollapse && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]")}
+        className={cn(
+          "flex items-center gap-2.5 px-3.5 py-3",
+          headerClassName,
+          canCollapse && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
+        )}
         style={{ backgroundImage: gradient }}
       >
         {header}
@@ -523,7 +529,14 @@ function DayCards({ sections, layout, listDateStr, savedRecipes, getPhotoUrl, un
         </>
       );
     return (
-      <Card key={section.title} gradient={headerGradient(color)} items={countable} collapsible header={header}>
+      <Card
+        key={section.title}
+        gradient={headerGradient(color)}
+        items={countable}
+        collapsible
+        header={header}
+        headerClassName="min-h-[74px]"
+      >
         <ItemsLayout items={sortItems(restItems, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
       </Card>
     );
