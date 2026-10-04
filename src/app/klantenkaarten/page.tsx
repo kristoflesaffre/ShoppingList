@@ -15,6 +15,7 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
+import { LoyaltyCardGrid, LoyaltyWallet } from "@/components/loyalty_wallet";
 import { LoyaltyCardEditorSlideIn } from "@/components/loyalty_card_editor_slide_in";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
@@ -632,39 +633,60 @@ export default function KlantenKaartenPage() {
                 ) : null}
               </div>
 
+              {isEditMode ? (
               <div
-                className="grid grid-cols-3 items-start overflow-visible"
-                style={
-                  isEditMode && !prefersReducedMotion
-                    ? ({
-                        columnGap: GRID_GAP_PX,
-                        // scaleY(1.04) + origin-top eet visuele rijruimte; compenseer zodat ≈ kolom 16px
-                        rowGap: GRID_GAP_PX + GRID_ROW_GAP_EXTRA_SCALE_Y_PX,
-                      } as React.CSSProperties)
-                    : ({ gap: GRID_GAP_PX } as React.CSSProperties)
-                }
-              >
-                {cards.map((card) => (
-                  <LoyaltyCardGridTile
-                    key={card.id}
-                    card={card}
-                    isEditMode={isEditMode}
-                    prefersReducedMotion={prefersReducedMotion}
-                    onOpen={() => {
-                      setViewCard(card);
-                      setViewOpen(true);
-                    }}
-                    onRequestEdit={() => setEditorCard(card)}
-                    onRequestDelete={() => {
-                      if (cardListMap.has(card.id)) {
-                        setConfirmDeleteCard(card);
-                      } else {
-                        void handleDeleteCard(card);
-                      }
-                    }}
-                  />
-                ))}
-              </div>
+                  className="grid grid-cols-3 items-start overflow-visible"
+                  style={
+                    isEditMode && !prefersReducedMotion
+                      ? ({
+                          columnGap: GRID_GAP_PX,
+                          // scaleY(1.04) + origin-top eet visuele rijruimte; compenseer zodat ≈ kolom 16px
+                          rowGap: GRID_GAP_PX + GRID_ROW_GAP_EXTRA_SCALE_Y_PX,
+                        } as React.CSSProperties)
+                      : ({ gap: GRID_GAP_PX } as React.CSSProperties)
+                  }
+                >
+                  {cards.map((card) => (
+                    <LoyaltyCardGridTile
+                      key={card.id}
+                      card={card}
+                      isEditMode={isEditMode}
+                      prefersReducedMotion={prefersReducedMotion}
+                      onOpen={() => {
+                        setViewCard(card);
+                        setViewOpen(true);
+                      }}
+                      onRequestEdit={() => setEditorCard(card)}
+                      onRequestDelete={() => {
+                        if (cardListMap.has(card.id)) {
+                          setConfirmDeleteCard(card);
+                        } else {
+                          void handleDeleteCard(card);
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {/* Mobiel: wallet met de gekozen kaart open bovenaan (canvas «Kaarten 1b/1c»). */}
+                  <div className="md:hidden">
+                    <LoyaltyWallet cards={cards} reducedMotion={prefersReducedMotion} />
+                  </div>
+                  {/* Desktop: bankkaarten in de logokleur; tik opent de kaart. */}
+                  <div className="hidden md:block">
+                    <LoyaltyCardGrid
+                      cards={cards}
+                      onOpen={(c) => {
+                        const full = cards.find((x) => x.id === c.id);
+                        if (!full) return;
+                        setViewCard(full);
+                        setViewOpen(true);
+                      }}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           ) : null}
 
