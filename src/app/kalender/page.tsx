@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { IngredientPlate } from "@/components/ingredient_plate";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -106,30 +107,6 @@ function MealPlate({ photoUrl }: { photoUrl: string | null }) {
         <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden>
           <path d="M26 6H6C4.9 6 4 6.9 4 8v16c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 18H6V8h20v16zm-9-3l-4-5-3 4-2-2.5L5 21h22l-5-6-5 6z" fill="var(--blue-200,#b0b4f8)" />
         </svg>
-      )}
-    </span>
-  );
-}
-
-/** Losse ingrediënten als «samengesteld bord»: grijze cirkel met tot drie productfoto's. */
-function IngredientPlate({ photos }: { photos: (string | null)[] }) {
-  const positions = ["left-1/2 top-[30%]", "left-[28%] top-[66%]", "left-[72%] top-[66%]"];
-  return (
-    <span aria-hidden className="relative block size-12 shrink-0 rounded-full bg-[var(--gray-25)]">
-      {photos.slice(0, 3).map((src, i) =>
-        src ? (
-          // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediënt-webp
-          <img
-            key={i}
-            src={src}
-            alt=""
-            decoding="async"
-            className={cn(
-              "absolute size-6 -translate-x-1/2 -translate-y-1/2 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal",
-              positions[i],
-            )}
-          />
-        ) : null,
       )}
     </span>
   );

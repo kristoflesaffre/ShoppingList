@@ -71,6 +71,7 @@ import {
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
+import { IngredientPlate } from "@/components/ingredient_plate";
 import { frituurItemIconSrc } from "@/lib/frituur-item-icons";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
@@ -1442,7 +1443,7 @@ function homeDaySummary(isoDate: string, entry: DayEntry | null) {
             ? "1 ingrediënt"
             : `${meal.ingredientCount} ingrediënten`,
       photo: meal.photoUrl,
-      productName: null as string | null,
+      loose: null as DayEntry["looseIngredients"] | null,
       fromStock: meal.fromStock === true,
       href: meal.recipeId ? `/recepten/${meal.recipeId}` : `/kalender?date=${isoDate}`,
     };
@@ -1453,9 +1454,9 @@ function homeDaySummary(isoDate: string, entry: DayEntry | null) {
   return {
     title: names.length > 2 ? `${names.slice(0, 2).join(", ")} +${names.length - 2}` : names.join(", "),
     sub: items.length === 1 ? "1 item" : `${items.length} items`,
-    photo: first?.photoUrl ?? null,
-    /** Zonder eigen foto: productfoto van het eerste item als terugval. */
-    productName: first?.photoUrl ? null : (first?.name ?? null),
+    photo: null as string | null,
+    /** Losse items: bord met tot drie productfoto's (zoals op de kalenderpagina). */
+    loose: items,
     fromStock: first?.fromStock === true,
     href: `/kalender?date=${isoDate}`,
   };
@@ -1492,14 +1493,11 @@ function HomeDayPlate({
   size,
   freeze,
   shadow = false,
-  product = false,
 }: {
   src: string | null;
   size: number;
   freeze: boolean;
   shadow?: boolean;
-  /** Productfoto (vrijstaand) i.p.v. gerechtfoto: niet bijsnijden, met wat lucht. */
-  product?: boolean;
 }) {
   return (
     <span className="relative shrink-0" style={{ width: size, height: size }}>
@@ -1516,7 +1514,7 @@ function HomeDayPlate({
             alt=""
             decoding="async"
             loading="lazy"
-            className={product ? "size-full object-contain p-[14%]" : "size-full scale-[1.08] object-cover"}
+            className="size-full scale-[1.08] object-cover"
           />
         ) : null}
       </span>
@@ -1525,15 +1523,21 @@ function HomeDayPlate({
   );
 }
 
+/** Foto's voor losse items: eigen (diepvries)foto of de productfoto bij de naam. */
+function useLoosePhotos(loose: DayEntry["looseIngredients"] | null | undefined): (string | null)[] {
+  const getItemPhoto = useItemPhotoUrl(160);
+  return (loose ?? []).map((i) => i.photoUrl ?? getItemPhoto(i.name) ?? null);
+}
+
 const HOME_LONG_DATE = (d: Date) =>
   d.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "short" }).replace(".", "");
 
 /** Grote dagkaart (canvas «Kalender home · D4»): verloop in de kleur van het gerecht. */
 function HomeDayBigCard({ day, label }: { day: HomeWeekDay; label: "Vandaag" | "Morgen" }) {
   const summary = homeDaySummary(day.isoDate, day.entry);
-  const getItemPhoto = useItemPhotoUrl(160);
-  const productPhoto = summary?.productName ? getItemPhoto(summary.productName) : null;
-  const tint = recipeTintColors(useRecipeTint(summary?.photo ?? productPhoto), useIsDarkTheme());
+  const loosePhotos = useLoosePhotos(summary?.loose);
+  const firstLoosePhoto = loosePhotos.find(Boolean) ?? null;
+  const tint = recipeTintColors(useRecipeTint(summary?.photo ?? firstLoosePhoto), useIsDarkTheme());
   const pill = (
     <span
       className={cn(
@@ -1566,7 +1570,11 @@ function HomeDayBigCard({ day, label }: { day: HomeWeekDay; label: "Vandaag" | "
       style={{ backgroundImage: `linear-gradient(120deg, ${tint.top} 0%, ${tint.mid} 70%, transparent 100%)` }}
       className="flex min-w-0 flex-1 items-center gap-5 rounded-[24px] bg-[var(--white)] px-[22px] py-5 no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
     >
-      <HomeDayPlate src={summary.photo ?? productPhoto} size={112} freeze={summary.fromStock} shadow={!productPhoto} product={!summary.photo && !!productPhoto} />
+      {summary.loose ? (
+        <IngredientPlate photos={loosePhotos} size={112} className="bg-[var(--white)]" />
+      ) : (
+        <HomeDayPlate src={summary.photo} size={112} freeze={summary.fromStock} shadow />
+      )}
       <span className="flex min-w-0 flex-col gap-1.5">
         {pill}
         {dateLabel}
@@ -1579,8 +1587,7 @@ function HomeDayBigCard({ day, label }: { day: HomeWeekDay; label: "Vandaag" | "
 
 function HomeDayChip({ day, past }: { day: HomeWeekDay; past: boolean }) {
   const summary = homeDaySummary(day.isoDate, day.entry);
-  const getItemPhoto = useItemPhotoUrl(160);
-  const productPhoto = summary?.productName ? getItemPhoto(summary.productName) : null;
+  const loosePhotos = useLoosePhotos(summary?.loose);
   const abbr = `${WEEKDAY_ABBR[day.date.getDay()]} ${day.date.getDate()}`;
   return (
     <Link
@@ -1591,7 +1598,11 @@ function HomeDayChip({ day, past }: { day: HomeWeekDay; past: boolean }) {
       )}
     >
       {summary ? (
-        <HomeDayPlate src={summary.photo ?? productPhoto} size={40} freeze={summary.fromStock} product={!summary.photo && !!productPhoto} />
+        summary.loose ? (
+          <IngredientPlate photos={loosePhotos} size={40} />
+        ) : (
+          <HomeDayPlate src={summary.photo} size={40} freeze={summary.fromStock} />
+        )
       ) : (
         <span aria-hidden className="size-10 shrink-0 rounded-full border-[1.5px] border-dashed border-[var(--gray-200)]" />
       )}
