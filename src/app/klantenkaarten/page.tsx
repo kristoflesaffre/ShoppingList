@@ -779,6 +779,10 @@ export default function KlantenKaartenPage() {
           setViewOpen(false);
           setViewCard(null);
         }}
+        onEdit={(c) => {
+          const card = cards.find((x) => x.id === c.id);
+          if (card) setEditorCard(card);
+        }}
         onDelete={(c) => {
           const card = cards.find((x) => x.id === c.id);
           if (!card) return;

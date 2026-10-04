@@ -421,6 +421,14 @@ function CloseIcon() {
   );
 }
 
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
+      <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4" />
+    </svg>
+  );
+}
+
 function TrashIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
@@ -608,12 +616,15 @@ export function LoyaltyCardViewer({
   cards,
   openId,
   onClose,
+  onEdit,
   onDelete,
   deletingId,
 }: {
   cards: WalletCard[];
   openId: string | null;
   onClose: () => void;
+  /** Kaart bewerken (opnieuw scannen of screenshot opladen). */
+  onEdit: (card: WalletCard) => void;
   onDelete: (card: WalletCard) => void;
   deletingId: string | null;
 }) {
@@ -758,16 +769,27 @@ export function LoyaltyCardViewer({
           <button type="button" aria-label="Sluiten" data-viewer-stagger="3" onClick={() => void requestClose()} className={cn(roundGlass, "pointer-events-auto")}>
             <CloseIcon />
           </button>
-          <button
-            type="button"
-            aria-label={`${current.cardName} verwijderen`}
-            disabled={deletingId === current.id}
-            onClick={() => onDelete(current)}
-            data-viewer-stagger="3"
-            className={cn(roundGlass, "pointer-events-auto !text-[var(--error-400)]")}
-          >
-            <TrashIcon />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label={`${current.cardName} bewerken`}
+              onClick={() => onEdit(current)}
+              data-viewer-stagger="3"
+              className={cn(roundGlass, "pointer-events-auto !text-[var(--blue-500)]")}
+            >
+              <PencilIcon />
+            </button>
+            <button
+              type="button"
+              aria-label={`${current.cardName} verwijderen`}
+              disabled={deletingId === current.id}
+              onClick={() => onDelete(current)}
+              data-viewer-stagger="3"
+              className={cn(roundGlass, "pointer-events-auto !text-[var(--error-400)]")}
+            >
+              <TrashIcon />
+            </button>
+          </div>
         </div>
         {cards.length > 1 ? <ViewerDots cards={cards} index={index} dark={dark} /> : null}
       </div>
@@ -779,6 +801,7 @@ export function LoyaltyCardViewer({
         dialogRef={desktopRef}
         scrimRef={scrimRef}
         onClose={() => void requestClose()}
+        onEdit={() => onEdit(current)}
         onDelete={() => onDelete(current)}
         deleting={deletingId === current.id}
       />
@@ -829,6 +852,7 @@ function DesktopViewer({
   dialogRef,
   scrimRef,
   onClose,
+  onEdit,
   onDelete,
   deleting,
 }: {
@@ -837,6 +861,7 @@ function DesktopViewer({
   dialogRef: React.RefObject<HTMLDivElement>;
   scrimRef: React.RefObject<HTMLDivElement>;
   onClose: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   deleting: boolean;
 }) {
@@ -853,15 +878,25 @@ function DesktopViewer({
       >
         <div className="flex w-full flex-col items-center px-7 pb-[26px] pt-[22px]" style={{ background: colors.background }}>
           <div className="flex w-full items-center justify-between">
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={deleting}
-              className="inline-flex h-10 items-center gap-2 rounded-full bg-[rgba(255,255,255,0.75)] px-3.5 text-sm font-semibold text-[var(--error-400)] transition-colors [@media(hover:hover)]:hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-50"
-            >
-              <TrashIcon />
-              {deleting ? "Verwijderen…" : "Verwijderen"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-[rgba(255,255,255,0.75)] px-3.5 text-sm font-semibold text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                <PencilIcon />
+                Bewerken
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={deleting}
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-[rgba(255,255,255,0.75)] px-3.5 text-sm font-semibold text-[var(--error-400)] transition-colors [@media(hover:hover)]:hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-50"
+              >
+                <TrashIcon />
+                {deleting ? "Verwijderen…" : "Verwijderen"}
+              </button>
+            </div>
             <button type="button" aria-label="Sluiten" onClick={onClose} className={cn(roundGlass, "!size-10 [@media(hover:hover)]:hover:bg-white")}>
               <CloseIcon />
             </button>
