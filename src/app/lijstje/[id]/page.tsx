@@ -563,6 +563,12 @@ function dayTitleWithDate(sectionTitle: string, listDateStr: string, storedIsoDa
 }
 
 /** Renders sortable item cards; must be inside DndContext for drag state. */
+/** Recept-ingrediënten slepen enkel binnen hun recept; losse items enkel tussen losse items. */
+function dragGroupKey(item: { recipeGroupId?: string; recipeName?: string; fromStock?: boolean } | undefined): string {
+  if (!item) return "";
+  return item.recipeGroupId && item.recipeName && !item.fromStock ? `recipe:${item.recipeGroupId}` : "loose";
+}
+
 function SortableItemItems({
   sections,
   groupingMode,
@@ -5212,17 +5218,10 @@ export default function ListDetailPage({
       const oldIndex = items.findIndex((i) => i.id === movedId);
       const newIndex = items.findIndex((i) => i.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return;
+      // Items binnen een recept blijven in dat recept; losse items blijven los (zie dragGroupCollision).
+      if (dragGroupKey(items[oldIndex]) !== dragGroupKey(items[newIndex])) return;
       const reordered = arrayMove(items, oldIndex, newIndex);
-      const txns = reordered.map((item, i) =>
-        item.id === movedId
-          ? db.tx.items[item.id].update({
-              order: i,
-              recipeGroupId: "",
-              recipeName: "",
-              recipeLink: "",
-            })
-          : db.tx.items[item.id].update({ order: i }),
-      );
+      const txns = reordered.map((item, i) => db.tx.items[item.id].update({ order: i }));
       db.transact(txns as Parameters<typeof db.transact>[0]);
     },
     [items],
@@ -5240,13 +5239,13 @@ export default function ListDetailPage({
     })
   );
 
-  // Maps each item id to its section title so we can filter collision targets
-  // to the same section, preventing cross-section visual swap artefacts.
+  // Sleepgroep per item: sectie + recept (of «los»). Zo blijft een receptingrediënt binnen zijn
+  // recept en kan een los item niet in een recept belanden; ook geen visuele wissels tussen secties.
   const itemSectionMap = React.useMemo(() => {
     const map = new Map<string, string>();
     for (const section of sections) {
       for (const item of section.items) {
-        map.set(item.id, section.title);
+        map.set(item.id, `${section.title}::${dragGroupKey(item)}`);
       }
     }
     return map;
@@ -5254,10 +5253,10 @@ export default function ListDetailPage({
 
   const sectionAwareCollision = React.useCallback<typeof closestCenter>(
     (args) => {
-      const activeSection = itemSectionMap.get(String(args.active.id));
-      if (!activeSection) return closestCenter(args);
+      const activeGroup = itemSectionMap.get(String(args.active.id));
+      if (!activeGroup) return closestCenter(args);
       const filtered = args.droppableContainers.filter((c) =>
-        itemSectionMap.get(String(c.id)) === activeSection,
+        itemSectionMap.get(String(c.id)) === activeGroup,
       );
       return closestCenter({ ...args, droppableContainers: filtered });
     },
