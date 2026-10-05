@@ -154,13 +154,15 @@ export function SlideInModal({
       {/* Panel: hoogte tot inhoud, max. viewport minus 48px; body scrollt bij overflow */}
       <div
         className={cn(
-          "relative z-10 flex max-h-[calc(100dvh-48px)] w-full max-w-[956px] flex-col overflow-hidden rounded-t-[var(--radius-lg)] bg-[var(--white)] shadow-raised transition-transform will-change-transform",
+          "relative z-10 flex max-h-[calc(100dvh-48px)] w-full max-w-[956px] flex-col overflow-hidden rounded-t-[26px] bg-[var(--white)] shadow-raised transition-transform will-change-transform",
           isAnimatingIn && !isClosing ? "translate-y-0" : "translate-y-full",
           isClosing ? "ease-in-out-strong" : "ease-drawer",
           className
         )}
         style={{ transitionDuration: `${isClosing ? SLIDE_OUT_MS : SLIDE_IN_MS}ms` }}
       >
+        {/* Design system «Blad»: greepje bovenaan, hoeken 26px. */}
+        <span aria-hidden className="mx-auto mt-2 block h-1 w-[38px] shrink-0 rounded-full bg-[var(--gray-100)]" />
         <SlideInModalHeader
           title={title}
           onClose={handleClose}
@@ -171,8 +173,8 @@ export function SlideInModal({
           className={cn(
             "flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-4 pt-6",
             footer
-              ? "max-h-[calc(100dvh-48px-4rem-5.5rem)]"
-              : "max-h-[calc(100dvh-48px-4rem)]",
+              ? "max-h-[calc(100dvh-48px-4.25rem-5.5rem)]"
+              : "max-h-[calc(100dvh-48px-4.25rem)]",
             bodyFullWidth
               ? "w-full min-w-0 items-stretch px-0"
               : "items-center px-4",
@@ -218,7 +220,7 @@ export function SlideInModalHeader({
 }) {
   /* Design system: titel links, ronde grijze sluitknop rechts (RoundIconButton neutral 36). */
   return (
-    <div className="flex h-16 shrink-0 items-center justify-center px-4">
+    <div className="flex h-14 shrink-0 items-center justify-center px-4">
       <div className="flex h-full w-full max-w-[768px] items-center gap-3">
         {onBack ? (
           <RoundIconButton tone="neutral" size={36} onClick={onBack} aria-label="Terug">
