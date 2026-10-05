@@ -8,6 +8,8 @@ import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate } from "@/li
 import { categoryHeadingDisplay } from "@/lib/item-ingredient-category";
 import { mixWithWhite, pickDistinctTint, useTintMap, type Rgb } from "@/lib/recipe-tint";
 import { cn } from "@/lib/utils";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 /** Weergave van de items in een kaart: rijen, twee kolommen of vierkante tegels (canvas «Lijstje 6b» + «Lijstje 2»). */
 export type ListCardLayout = "one" | "two" | "tiles";
@@ -267,6 +269,155 @@ function ItemsLayout({
   );
 }
 
+/* ─── Bewerkmodus (canvas «Lijstje · bewerkmodus in kaarten») ─── */
+export type ListCardsEditHandlers = {
+  onEdit: (item: ListItem) => void;
+  onDelete: (id: string) => void;
+  onDeleteSection: (sectionTitle: string) => void;
+  onDeleteRecipeGroup: (groupId: string) => void;
+};
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+    </svg>
+  );
+}
+
+function TrashButton({ label, onClick, size = 32 }: { label: string; onClick: () => void; size?: number }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="flex shrink-0 items-center justify-center rounded-full bg-[var(--error-25)] text-[var(--error-400)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      style={{ width: size, height: size }}
+    >
+      <TrashIcon className="size-[15px]" />
+    </button>
+  );
+}
+
+/** Rij in bewerkmodus: greep om te slepen, tik op de rij om te wijzigen, vuilbakje om te verwijderen. */
+function EditRow({ item, getPhotoUrl, edit, first }: { item: ListItem; getPhotoUrl?: GetPhotoUrl; edit: ListCardsEditHandlers; first: boolean }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn(
+        "relative flex items-center gap-2.5 bg-[var(--white)] py-2 pr-1",
+        !first && "border-t border-[var(--border-subtle)]",
+        isDragging && "z-10 rounded-[12px] shadow-[0_10px_24px_-10px_rgba(16,17,48,0.35)]",
+      )}
+    >
+      <button
+        type="button"
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        aria-label={`${item.name} verplaatsen`}
+        className="flex h-10 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-[var(--gray-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] active:cursor-grabbing"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-[18px]">
+          {[6, 12, 18].map((y) => (
+            <React.Fragment key={y}>
+              <circle cx="9" cy={y} r="1.4" />
+              <circle cx="15" cy={y} r="1.4" />
+            </React.Fragment>
+          ))}
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => edit.onEdit(item)}
+        aria-label={`${item.name} wijzigen`}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        <ItemPhoto item={{ ...item, checked: false }} getPhotoUrl={getPhotoUrl} size={42} />
+        <span className="min-w-0 flex-1 leading-[19px]">
+          <span className="block truncate text-[15px] font-medium text-[var(--text-primary)]">{item.name}</span>
+          <span className="block truncate text-[13px] text-[var(--text-tertiary)]">{item.quantity}</span>
+        </span>
+      </button>
+      <TrashButton label={`${item.name} verwijderen`} onClick={() => edit.onDelete(item.id)} />
+    </div>
+  );
+}
+
+function EditRows({ items, getPhotoUrl, edit }: { items: ListItem[]; getPhotoUrl?: GetPhotoUrl; edit: ListCardsEditHandlers }) {
+  return (
+    <>
+      {items.map((it, k) => (
+        <EditRow key={it.id} item={it} getPhotoUrl={getPhotoUrl} edit={edit} first={k === 0} />
+      ))}
+    </>
+  );
+}
+
+/**
+ * Inhoud van een kaart in bewerkmodus. Een receptkop (met vuilbakje) verschijnt enkel als er naast
+ * het recept nog iets anders in de kaart zit; anders zegt de kaartkop het al.
+ */
+function EditCardBody({ items, savedRecipes, getPhotoUrl, edit }: { items: ListItem[]; savedRecipes: SavedRecipe[]; getPhotoUrl?: GetPhotoUrl; edit: ListCardsEditHandlers }) {
+  const split = splitDay(items, savedRecipes);
+  const others = [...split.loose, ...split.stockDishes];
+  const showRecipeHeads = split.recipes.length > 1 || (split.recipes.length === 1 && others.length > 0);
+  if (!showRecipeHeads) {
+    return (
+      <div className="px-3 pb-1.5 pt-0.5">
+        <EditRows items={[...split.recipes.flatMap((r) => r.items), ...others]} getPhotoUrl={getPhotoUrl} edit={edit} />
+      </div>
+    );
+  }
+  return (
+    <div className="px-3 pb-1.5 pt-1">
+      {split.recipes.map((r) => (
+        <div key={r.groupId}>
+          <div className="mb-0.5 mt-1.5 flex items-center gap-2.5 rounded-[12px] bg-[var(--blue-25)] py-2 pl-2.5 pr-2">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)]" aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-4">
+                <path d="M7 18h10v2H7zM6 14a4 4 0 0 1 1.2-7.8A5 5 0 0 1 16.8 6.2 4 4 0 0 1 18 14v4H6z" />
+              </svg>
+            </span>
+            <span className="min-w-0 flex-1 leading-[17px]">
+              <span className="block truncate text-sm font-bold text-text-primary">{r.name}</span>
+              <span className="block truncate text-xs text-[var(--text-secondary)]">
+                Recept · {r.items.length} {r.items.length === 1 ? "ingrediënt" : "ingrediënten"}
+              </span>
+            </span>
+            <TrashButton label={`Recept ${r.name} verwijderen`} onClick={() => edit.onDeleteRecipeGroup(r.groupId)} size={30} />
+          </div>
+          <EditRows items={r.items} getPhotoUrl={getPhotoUrl} edit={edit} />
+        </div>
+      ))}
+      {others.length > 0 ? (
+        <>
+          <p className="mt-2.5 text-[11.5px] font-bold tracking-[0.05em] text-[var(--text-tertiary)]">LOSSE ITEMS</p>
+          <EditRows items={others} getPhotoUrl={getPhotoUrl} edit={edit} />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/** Eén boom tegelijk in bewerkmodus (mobiel óf desktop), zodat sleep-id's uniek blijven. */
+function useIsDesktop(): boolean {
+  const [desktop, setDesktop] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const read = () => setDesktop(mq.matches);
+    read();
+    mq.addEventListener("change", read);
+    return () => mq.removeEventListener("change", read);
+  }, []);
+  return desktop;
+}
+
 function headerGradient(rgb: Rgb) {
   return `linear-gradient(110deg, ${mixWithWhite(rgb, 0.32)} 0%, ${mixWithWhite(rgb, 0.13)} 70%, ${mixWithWhite(rgb, 0.06)} 100%)`;
 }
@@ -414,6 +565,8 @@ export interface ListCardsViewProps {
   uncheckedFirst: boolean;
   onCheckedChange: (id: string, checked: boolean) => void;
   onAddToSection: (sectionTitle: string) => void;
+  /** Bewerkmodus: rijen met greep + vuilbakje; moet binnen een DndContext/SortableContext staan. */
+  edit?: ListCardsEditHandlers;
 }
 
 /**
@@ -426,7 +579,8 @@ export function ListCardsView(props: ListCardsViewProps) {
   return props.groupingMode === "day" ? <DayCards {...props} /> : <CategoryCards {...props} />;
 }
 
-function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPhotoUrl, uncheckedFirst, onCheckedChange, onAddToSection }: ListCardsViewProps) {
+function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPhotoUrl, uncheckedFirst, onCheckedChange, onAddToSection, edit }: ListCardsViewProps) {
+  const isDesktop = useIsDesktop();
   const days = React.useMemo(
     () =>
       sections
@@ -481,6 +635,27 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
 
   const renderDay = (d: (typeof days)[number], wide: boolean) => {
     const { section, split } = d;
+    if (d.isGeneral && edit) {
+      return (
+        <Card
+          key={section.title}
+          gradient="linear-gradient(90deg, var(--blue-50), var(--blue-25))"
+          items={section.items}
+          collapsible={false}
+          header={
+            <>
+              <span className="size-2.5 shrink-0 rounded-full bg-[var(--blue-500)]" aria-hidden />
+              <h3 className="text-[15px] font-bold text-text-primary">Algemeen</h3>
+              <span className="text-xs text-[var(--text-tertiary)]">· altijd nodig</span>
+              <span className="flex-1" />
+              <TrashButton label="Algemeen leegmaken" onClick={() => edit.onDeleteSection(section.title)} size={30} />
+            </>
+          }
+        >
+          <EditCardBody items={section.items} savedRecipes={savedRecipes} getPhotoUrl={getPhotoUrl} edit={edit} />
+        </Card>
+      );
+    }
     if (d.isGeneral) {
       return (
         <Card
@@ -529,10 +704,23 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
             </span>
           ) : null}
         </span>
-        <Counter items={countable} />
-        <AddButton label={`Item toevoegen aan ${label}`} onClick={() => onAddToSection(section.title)} />
+        {edit ? (
+          <TrashButton label={`${label} verwijderen`} onClick={() => edit.onDeleteSection(section.title)} size={30} />
+        ) : (
+          <>
+            <Counter items={countable} />
+            <AddButton label={`Item toevoegen aan ${label}`} onClick={() => onAddToSection(section.title)} />
+          </>
+        )}
       </>
     );
+    if (edit) {
+      return (
+        <Card key={section.title} gradient={headerGradient(color)} items={section.items} collapsible={false} header={header} headerClassName="min-h-[74px]">
+          <EditCardBody items={section.items} savedRecipes={savedRecipes} getPhotoUrl={getPhotoUrl} edit={edit} />
+        </Card>
+      );
+    }
     return (
       <Card
         key={section.title}
@@ -551,6 +739,23 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
   const general = days.filter((d) => d.isGeneral);
   const dayCards = days.filter((d) => !d.isGeneral);
   const chronological = [...dayCards].sort((a, b) => (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0));
+
+  if (edit) {
+    return isDesktop ? (
+      <div className="grid grid-cols-2 items-start gap-5">
+        <div className="flex flex-col gap-3.5">
+          <span className="text-xs font-bold tracking-[0.06em] text-[var(--text-tertiary)]">ALTIJD NODIG</span>
+          {general.map((d) => renderDay(d, true))}
+        </div>
+        <div className="flex flex-col gap-3.5">
+          <span className="text-xs font-bold tracking-[0.06em] text-[var(--text-tertiary)]">GERECHTEN PER DAG</span>
+          {chronological.map((d) => renderDay(d, true))}
+        </div>
+      </div>
+    ) : (
+      <div className="flex flex-col gap-3">{days.map((d) => renderDay(d, false))}</div>
+    );
+  }
 
   return (
     <>
@@ -586,11 +791,31 @@ function DateChip({ date }: { date: Date | null }) {
   );
 }
 
-function CategoryCards({ sections, layout, getPhotoUrl, uncheckedFirst, onCheckedChange, onAddToSection }: ListCardsViewProps) {
+function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedFirst, onCheckedChange, onAddToSection, edit }: ListCardsViewProps) {
+  const isDesktop = useIsDesktop();
   const cards = sections.filter((s) => s.items.length > 0);
   const render = (s: Section, wide: boolean) => {
     const title = categoryHeadingDisplay(s.displayTitle ?? s.title);
     const rgb = categoryColor(title);
+    if (edit) {
+      return (
+        <Card
+          key={s.title}
+          gradient={`linear-gradient(90deg, rgba(${rgb.join(",")},0.16), rgba(${rgb.join(",")},0.05))`}
+          items={s.items}
+          collapsible={false}
+          header={
+            <>
+              <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb.join(",")})` }} aria-hidden />
+              <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
+              <TrashButton label={`${title} verwijderen`} onClick={() => edit.onDeleteSection(s.title)} size={30} />
+            </>
+          }
+        >
+          <EditCardBody items={s.items} savedRecipes={savedRecipes} getPhotoUrl={getPhotoUrl} edit={edit} />
+        </Card>
+      );
+    }
     return (
       <Card
         key={s.title}
@@ -610,6 +835,13 @@ function CategoryCards({ sections, layout, getPhotoUrl, uncheckedFirst, onChecke
       </Card>
     );
   };
+  if (edit) {
+    return isDesktop ? (
+      <div className="columns-3 gap-4 [&>*]:mb-4">{cards.map((s) => render(s, false))}</div>
+    ) : (
+      <div className="flex flex-col gap-3">{cards.map((s) => render(s, false))}</div>
+    );
+  }
   return (
     <>
       <div className="flex flex-col gap-3 lg:hidden">{cards.map((s) => render(s, false))}</div>

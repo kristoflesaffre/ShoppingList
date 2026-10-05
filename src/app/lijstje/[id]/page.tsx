@@ -5114,6 +5114,9 @@ export default function ListDetailPage({
   /** Nieuwe kaartweergave (6b/6) voor gewone lijstjes; bewerkmodus houdt de sleep-/verwijderweergave. */
   const useCardView =
     !isEditMode && !isMasterList && !isLandalOrVakantieList && !isPuddyTabSelected && !isVenueCounterList;
+  /** Canvas «Lijstje · bewerkmodus in kaarten»: zelfde kaarten, met greep en vuilbakjes. */
+  const useCardEditView =
+    isEditMode && !isMasterList && !isLandalOrVakantieList && !isPuddyTabSelected && !isVenueCounterList;
 
   React.useEffect(() => {
     if (!listId) return;
@@ -5453,6 +5456,7 @@ export default function ListDetailPage({
   }
 
   const showListGroupingControl =
+    !isEditMode &&
     !isMasterCategoryOrderMode &&
     !isMasterList &&
     hasItems &&
@@ -5461,6 +5465,7 @@ export default function ListDetailPage({
     !isVenueCounterList &&
     !isLandalOrVakantieList;
   const showListSuggestions =
+    !isEditMode &&
     teKopenSuggestions.length + previousSuggestions.length > 0 &&
     !isMasterList &&
     !isVenueCounterList &&
@@ -5848,6 +5853,45 @@ export default function ListDetailPage({
                 onEdit={(item) => setEditingItem(item)}
                 onDelete={handleDeleteItem}
               />
+            ) : useCardEditView ? (
+              <div className="flex flex-col gap-3">
+                <p className="flex items-center gap-2 rounded-[14px] bg-[var(--blue-25)] px-3 py-2.5 text-[13px] leading-[18px] text-[var(--text-secondary)]">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-[18px] shrink-0 text-[var(--blue-500)]">
+                    <circle cx="9" cy="6" r="1.4" /><circle cx="15" cy="6" r="1.4" /><circle cx="9" cy="12" r="1.4" />
+                    <circle cx="15" cy="12" r="1.4" /><circle cx="9" cy="18" r="1.4" /><circle cx="15" cy="18" r="1.4" />
+                  </svg>
+                  Sleep om de volgorde te wijzigen · tik op een item om het te wijzigen
+                </p>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={sectionAwareCollision}
+                  onDragEnd={handleReorderItems}
+                  modifiers={[restrictToVerticalAxis]}
+                >
+                  <SortableContext
+                    items={sectionsForDisplay.flatMap((s) => s.items).map((i) => i.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <ListCardsView
+                      sections={sectionsForDisplay}
+                      groupingMode={effectiveListGroupingMode}
+                      layout="one"
+                      listDateStr={listDateStr}
+                      savedRecipes={savedRecipes}
+                      getPhotoUrl={getPhotoUrl}
+                      uncheckedFirst={false}
+                      onCheckedChange={handleCheckedChange}
+                      onAddToSection={() => undefined}
+                      edit={{
+                        onEdit: (item) => setEditingItem(item),
+                        onDelete: handleDeleteItem,
+                        onDeleteSection: handleDeleteSection,
+                        onDeleteRecipeGroup: handleDeleteRecipeGroup,
+                      }}
+                    />
+                  </SortableContext>
+                </DndContext>
+              </div>
             ) : useCardView ? (
               <ListCardsView
                 sections={sectionsForDisplay}
