@@ -355,14 +355,10 @@ function EditRow({ item, getPhotoUrl, edit, first }: { item: ListItem; getPhotoU
   );
 }
 
-function EditRows({ items, getPhotoUrl, edit }: { items: ListItem[]; getPhotoUrl?: GetPhotoUrl; edit: ListCardsEditHandlers }) {
-  return (
-    <>
-      {items.map((it, k) => (
-        <EditRow key={it.id} item={it} getPhotoUrl={getPhotoUrl} edit={edit} first={k === 0} />
-      ))}
-    </>
-  );
+function EditRows({ items, getPhotoUrl, edit, indent = false }: { items: ListItem[]; getPhotoUrl?: GetPhotoUrl; edit: ListCardsEditHandlers; indent?: boolean }) {
+  const rows = items.map((it, k) => <EditRow key={it.id} item={it} getPhotoUrl={getPhotoUrl} edit={edit} first={k === 0} />);
+  // Ingrediënten van een recept springen in onder de receptkop.
+  return indent ? <div className="pl-6">{rows}</div> : <>{rows}</>;
 }
 
 export const RECIPE_BLOCK_PREFIX = "recipe-block:";
@@ -405,9 +401,8 @@ function SortableRecipeBlock({ recipe, getPhotoUrl, edit }: { recipe: Recipe; ge
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        // Omlijnd blok: duidelijk waar het recept stopt tussen de losse items.
-        "relative my-1.5 rounded-[14px] bg-[var(--white)] px-1.5 pb-0.5 pt-0.5 shadow-[inset_0_0_0_1.5px_var(--blue-100)]",
-        isDragging && "z-10 shadow-[inset_0_0_0_1.5px_var(--blue-200),0_14px_30px_-12px_rgba(16,17,48,0.4)]",
+        "relative bg-[var(--white)]",
+        isDragging && "z-10 rounded-[14px] shadow-[0_14px_30px_-12px_rgba(16,17,48,0.4)]",
       )}
     >
       <RecipeHead
@@ -427,7 +422,7 @@ function SortableRecipeBlock({ recipe, getPhotoUrl, edit }: { recipe: Recipe; ge
         }
       />
       <SortableContext items={recipe.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <EditRows items={recipe.items} getPhotoUrl={getPhotoUrl} edit={edit} />
+        <EditRows items={recipe.items} getPhotoUrl={getPhotoUrl} edit={edit} indent />
       </SortableContext>
     </div>
   );
@@ -498,7 +493,7 @@ function EditCardBody({
       {split.recipes.map((r) => (
         <div key={r.groupId}>
           <RecipeHead recipe={r} edit={edit} />
-          <EditRows items={r.items} getPhotoUrl={getPhotoUrl} edit={edit} />
+          <EditRows items={r.items} getPhotoUrl={getPhotoUrl} edit={edit} indent />
         </div>
       ))}
       {others.length > 0 ? (
