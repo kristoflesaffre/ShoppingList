@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search_bar";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
+import { CountStepper } from "@/components/ui/count_stepper";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { MiniButton } from "@/components/ui/mini_button";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
@@ -138,48 +139,6 @@ function CalendarIcon() {
       <rect x="4" y="5" width="16" height="15" rx="2.5" />
       <path d="M4 10h16M9 3v4M15 3v4" />
     </svg>
-  );
-}
-
-/** − / aantal / + na selectie (zelfde patroon als «toevoegen uit favorieten»); bij 1 een vuilbakje. */
-function BatchCountStepper({
-  name,
-  count,
-  onChange,
-}: {
-  name: string;
-  count: number;
-  onChange: (next: number) => void;
-}) {
-  const btn =
-    "flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--white)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)]";
-  return (
-    <span className="inline-flex h-[34px] shrink-0 items-center gap-0.5 rounded-pill bg-[var(--blue-500)] px-[3px]">
-      <button
-        type="button"
-        onClick={() => onChange(count - 1)}
-        aria-label={count === 1 ? `${name} verwijderen uit selectie` : `Minder ${name}`}
-        className={cn(btn, count === 1 ? "text-[var(--error-400)]" : "text-[var(--blue-500)]")}
-      >
-        {count === 1 ? (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3.5">
-            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-3.5">
-            <path d="M6 12h12" />
-          </svg>
-        )}
-      </button>
-      <span className="min-w-[22px] text-center text-sm font-bold tabular-nums text-white" aria-live="polite">
-        {count}
-      </span>
-      <button type="button" onClick={() => onChange(count + 1)} aria-label={`Meer ${name}`} className={cn(btn, "text-[var(--blue-500)]")}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-3.5">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </button>
-    </span>
   );
 }
 
@@ -1051,7 +1010,7 @@ export function NewItemModal({
                 </span>
               </span>
               {isItem ? (
-                <BatchCountStepper name={title} count={count} onChange={(next) => setBatchItemCount(entry.id, next)} />
+                <CountStepper name={title} value={count} onChange={(next) => setBatchItemCount(entry.id, next)} />
               ) : (
                 <button
                   type="button"

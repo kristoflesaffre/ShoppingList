@@ -7,6 +7,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { CountStepper } from "@/components/ui/count_stepper";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import {
   MASTER_STORE_OPTIONS,
@@ -99,30 +101,6 @@ function BackArrowIcon({ className }: { className?: string }) {
   );
 }
 
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className={className}>
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
-
-function MinusIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className={className}>
-      <path d="M6 12h12" />
-    </svg>
-  );
-}
-
-function TrashIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
-      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
-    </svg>
-  );
-}
-
 function StoreLogoSmall({ src }: { src: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- winkel-SVG/PNG uit /public: stabiel op iOS
@@ -138,53 +116,26 @@ function StoreLogoSmall({ src }: { src: string }) {
   );
 }
 
-const STEP_BTN =
-  "flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--white)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)]";
-
-/** − / aantal / + (canvas «Nieuw lijstje · favorieten 1b»); bij 0 enkel een plus. */
-function CountStepper({
+/** Bij 0 een zachte plus; daarna de gedeelde lijst-stepper (design system). */
+function CountControl({
   name,
   count,
   onAdd,
-  onIncrement,
-  onDecrement,
+  onChange,
 }: {
   name: string;
   count: number;
   onAdd: () => void;
-  onIncrement: () => void;
-  onDecrement: () => void;
+  onChange: (next: number) => void;
 }) {
   if (count === 0) {
     return (
-      <button
-        type="button"
-        onClick={onAdd}
-        aria-label={`Voeg "${name}" toe`}
-        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-      >
-        <PlusIcon className="size-[15px]" />
-      </button>
+      <RoundIconButton tone="primary" size={32} onClick={onAdd} aria-label={`Voeg "${name}" toe`}>
+        {RoundIcons.plus}
+      </RoundIconButton>
     );
   }
-  return (
-    <span className="inline-flex h-[34px] shrink-0 items-center gap-0.5 rounded-pill bg-[var(--blue-500)] px-[3px]">
-      <button
-        type="button"
-        onClick={onDecrement}
-        aria-label={count === 1 ? `Verwijder "${name}"` : `Minder "${name}"`}
-        className={cn(STEP_BTN, count === 1 ? "text-[var(--error-400)]" : "text-[var(--blue-500)]")}
-      >
-        {count === 1 ? <TrashIcon className="size-3.5" /> : <MinusIcon className="size-3.5" />}
-      </button>
-      <span className="min-w-[22px] text-center text-sm font-bold tabular-nums text-white" aria-live="polite">
-        {count}
-      </span>
-      <button type="button" onClick={onIncrement} aria-label={`Meer "${name}"`} className={cn(STEP_BTN, "text-[var(--blue-500)]")}>
-        <PlusIcon className="size-3.5" />
-      </button>
-    </span>
-  );
+  return <CountStepper name={name} value={count} onChange={onChange} />;
 }
 
 function FavoriteRow({
@@ -228,7 +179,12 @@ function FavoriteRow({
           {displayQuantity}
         </span>
       </span>
-      <CountStepper name={item.name} count={count} onAdd={onAdd} onIncrement={onIncrement} onDecrement={onDecrement} />
+      <CountControl
+        name={item.name}
+        count={count}
+        onAdd={onAdd}
+        onChange={(next) => (next > count ? onIncrement() : onDecrement())}
+      />
     </li>
   );
 }

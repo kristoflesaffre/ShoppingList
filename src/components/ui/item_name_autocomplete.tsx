@@ -438,8 +438,17 @@ function SmallScreenAutocomplete({
           aria-haspopup="dialog"
           aria-label={ariaLabel ?? label ?? placeholder}
         >
-          <SearchIcon className="shrink-0 text-[var(--text-tertiary)]" />
-          <span className="min-w-0 flex-1 truncate text-[var(--text-tertiary)]">{placeholder}</span>
+          {value && photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
+            <img src={photoUrl} alt="" width={28} height={28} className="size-7 shrink-0 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" aria-hidden decoding="async" />
+          ) : (
+            <SearchIcon className="shrink-0 text-[var(--text-tertiary)]" />
+          )}
+          {value ? (
+            <span className="min-w-0 flex-1 truncate font-medium text-[var(--text-primary)]">{value}</span>
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-[var(--text-tertiary)]">{placeholder}</span>
+          )}
         </button>
       ) : (
       <button

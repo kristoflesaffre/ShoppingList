@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Stepper } from "./stepper";
 
+/**
+ * Design system «Stepper · formulier»: breed grijs veld met ronde witte knoppen (Hoeveelheid,
+ * Aantal personen). In lijsten: CountStepper (blauwe pil).
+ */
 const meta: Meta<typeof Stepper> = {
   title: "UI/Stepper",
   component: Stepper,

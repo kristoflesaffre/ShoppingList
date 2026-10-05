@@ -78,8 +78,9 @@ export interface StepperProps {
 const labelBase =
   "text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]";
 
+/* Design system «Stepper · formulier»: grijs vlak zonder rand (zoals het zoekveld), ronde witte knoppen. */
 const barBase =
-  "group flex h-12 w-full min-w-[280px] items-center justify-center gap-3 rounded-md border border-[var(--border-default)] bg-[var(--white)] px-3 transition-colors focus-within:outline-none focus-within:border-[var(--border-focus)] data-[disabled]:border-[var(--border-subtle)] data-[disabled]:bg-[var(--blue-25)]";
+  "group flex h-12 w-full min-w-0 items-center justify-center gap-2 rounded-[16px] bg-[var(--gray-25)] px-2 transition-[background-color,box-shadow] duration-fast focus-within:outline-none focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-300)] data-[disabled]:opacity-60";
 
 const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
   (
@@ -200,7 +201,7 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
     };
 
     const stepButtonBase =
-      "inline-flex size-6 shrink-0 items-center justify-center rounded bg-transparent transition-[color,transform] duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-1 disabled:pointer-events-none [&_svg]:shrink-0";
+      "inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.08)] transition-[color,transform] duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-1 disabled:pointer-events-none disabled:shadow-none [&_svg]:shrink-0";
 
     const barClassName = cn(barBase, className);
     const barProps = {
@@ -228,12 +229,8 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
               : "text-[var(--action-primary)] hover:text-[var(--action-primary-hover)]"
           )}
         >
-          <MinusIcon className="size-6" />
+          <MinusIcon className="size-4" />
         </button>
-        <div
-          className="h-8 w-px shrink-0 bg-[var(--border-default)] group-data-[disabled]:bg-[var(--border-subtle)]"
-          aria-hidden="true"
-        />
         <input
           ref={inputRef}
           type="text"
@@ -248,13 +245,9 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
           disabled={disabled}
           data-bump={bump || undefined}
           className={cn(
-            "flex flex-1 min-w-0 w-full bg-transparent text-center text-base leading-24 tracking-normal text-[var(--text-primary)] outline-none placeholder:text-[var(--text-placeholder)] group-data-[disabled]:text-[var(--text-disabled)] disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+            "flex flex-1 min-w-0 w-full bg-transparent text-center text-base font-semibold leading-24 tracking-normal text-[var(--text-primary)] outline-none placeholder:text-[var(--text-placeholder)] group-data-[disabled]:text-[var(--text-disabled)] disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             "motion-safe:data-[bump]:animate-pop",
           )}
-        />
-        <div
-          className="h-8 w-px shrink-0 bg-[var(--border-default)] group-data-[disabled]:bg-[var(--border-subtle)]"
-          aria-hidden="true"
         />
         <button
           type="button"
@@ -268,7 +261,7 @@ const Stepper = React.forwardRef<HTMLDivElement, StepperProps>(
               : "text-[var(--action-primary)] hover:text-[var(--action-primary-hover)]"
           )}
         >
-          <PlusIcon className="size-6" />
+          <PlusIcon className="size-4" />
         </button>
       </>
     );
