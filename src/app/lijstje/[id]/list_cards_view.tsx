@@ -581,7 +581,10 @@ function GeneralBody({
               <span className="min-w-0 flex-1 truncate text-sm font-bold text-text-primary">{b.recipe.name}</span>
               <Counter items={b.recipe.items} />
             </div>
-            <ItemsLayout items={sortItems(b.recipe.items, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
+            {/* Ingrediënten springen in onder het receptkopje. */}
+            <div className="pl-6">
+              <ItemsLayout items={sortItems(b.recipe.items, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
+            </div>
           </div>
         ) : (
           <ItemsLayout key={`loose-${k}`} items={sortItems(b.items, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />

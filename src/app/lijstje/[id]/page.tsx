@@ -5883,13 +5883,6 @@ export default function ListDetailPage({
               />
             ) : useCardEditView ? (
               <div className="flex flex-col gap-3">
-                <p className="flex items-center gap-2 rounded-[14px] bg-[var(--blue-25)] px-3 py-2.5 text-[13px] leading-[18px] text-[var(--text-secondary)]">
-                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-[18px] shrink-0 text-[var(--blue-500)]">
-                    <circle cx="9" cy="6" r="1.4" /><circle cx="15" cy="6" r="1.4" /><circle cx="9" cy="12" r="1.4" />
-                    <circle cx="15" cy="12" r="1.4" /><circle cx="9" cy="18" r="1.4" /><circle cx="15" cy="18" r="1.4" />
-                  </svg>
-                  Sleep om de volgorde te wijzigen · tik op een item om het te wijzigen
-                </p>
                 <DndContext
                   sensors={sensors}
                   collisionDetection={sectionAwareCollision}
