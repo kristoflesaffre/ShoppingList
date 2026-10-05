@@ -522,6 +522,75 @@ function useIsDesktop(): boolean {
   return desktop;
 }
 
+/**
+ * Inhoud van «Algemeen» in de gewone weergave: recepten blijven herkenbaar met een eigen kopje
+ * (foto of koksmuts, naam, teller) en hun ingrediënten eronder; losse items in de volgorde van het lijstje.
+ */
+function GeneralBody({
+  items,
+  savedRecipes,
+  layout,
+  getPhotoUrl,
+  uncheckedFirst,
+  onCheckedChange,
+  wide,
+}: {
+  items: ListItem[];
+  savedRecipes: SavedRecipe[];
+  layout: ListCardLayout;
+  getPhotoUrl?: GetPhotoUrl;
+  uncheckedFirst: boolean;
+  onCheckedChange: (id: string, checked: boolean) => void;
+  wide?: boolean;
+}) {
+  const split = splitDay(items, savedRecipes);
+  if (split.recipes.length === 0) {
+    return <ItemsLayout items={sortItems(items, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />;
+  }
+  // Blokken in lijstvolgorde: een recept op de plek van zijn eerste ingrediënt, losse items gegroepeerd per reeks.
+  const blocks: Array<{ kind: "recipe"; recipe: Recipe } | { kind: "loose"; items: ListItem[] }> = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    const recipe = split.recipes.find((r) => r.items.includes(item));
+    if (recipe) {
+      if (!seen.has(recipe.groupId)) {
+        seen.add(recipe.groupId);
+        blocks.push({ kind: "recipe", recipe });
+      }
+    } else {
+      const last = blocks[blocks.length - 1];
+      if (last && last.kind === "loose") last.items.push(item);
+      else blocks.push({ kind: "loose", items: [item] });
+    }
+  }
+  return (
+    <div className="pb-1">
+      {blocks.map((b, k) =>
+        b.kind === "recipe" ? (
+          <div key={b.recipe.groupId}>
+            <div className={cn("mx-2.5 flex items-center gap-2.5 rounded-[12px] bg-[var(--blue-25)] px-2.5 py-2", k === 0 ? "mt-2.5" : "mt-1.5")}>
+              {b.recipe.photo ? (
+                <Plate src={b.recipe.photo} size={30} />
+              ) : (
+                <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)]" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-4">
+                    <path d="M7 18h10v2H7zM6 14a4 4 0 0 1 1.2-7.8A5 5 0 0 1 16.8 6.2 4 4 0 0 1 18 14v4H6z" />
+                  </svg>
+                </span>
+              )}
+              <span className="min-w-0 flex-1 truncate text-sm font-bold text-text-primary">{b.recipe.name}</span>
+              <Counter items={b.recipe.items} />
+            </div>
+            <ItemsLayout items={sortItems(b.recipe.items, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
+          </div>
+        ) : (
+          <ItemsLayout key={`loose-${k}`} items={sortItems(b.items, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
+        ),
+      )}
+    </div>
+  );
+}
+
 function headerGradient(rgb: Rgb) {
   return `linear-gradient(110deg, ${mixWithWhite(rgb, 0.32)} 0%, ${mixWithWhite(rgb, 0.13)} 70%, ${mixWithWhite(rgb, 0.06)} 100%)`;
 }
@@ -778,7 +847,15 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
             </>
           }
         >
-          <ItemsLayout items={sortItems(section.items, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
+          <GeneralBody
+            items={section.items}
+            savedRecipes={savedRecipes}
+            layout={layout}
+            getPhotoUrl={getPhotoUrl}
+            uncheckedFirst={uncheckedFirst}
+            onCheckedChange={onCheckedChange}
+            wide={wide}
+          />
         </Card>
       );
     }
