@@ -7,6 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { CategoryCard } from "@/components/ui/category_card";
 import { CountStepper } from "@/components/ui/count_stepper";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
@@ -794,25 +795,21 @@ export default function SelecteerMasterItemsPage() {
           <div className="lg:columns-3 lg:gap-4">
             {visibleSections.map((section) => {
               const title = categoryHeadingDisplay(section.title);
-              const rgb = categoryColor(title).join(",");
               const onList = section.items.filter((i) => (countsById[i.id] ?? 0) > 0).length;
               return (
-                <section
+                <CategoryCard
                   key={section.title}
-                  className="mb-3 break-inside-avoid overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:mb-4"
-                >
-                  <div
-                    className="flex items-center gap-2.5 px-3.5 py-3"
-                    style={{ background: `linear-gradient(90deg, rgba(${rgb},0.16), rgba(${rgb},0.05))` }}
-                  >
-                    <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb})` }} aria-hidden />
-                    <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
-                    {onList > 0 ? (
+                  className="mb-3 lg:mb-4"
+                  rgb={categoryColor(title)}
+                  title={title}
+                  action={
+                    onList > 0 ? (
                       <span className="shrink-0 rounded-pill bg-[var(--white)] px-[9px] py-[3px] text-xs font-bold text-[var(--blue-500)]">
                         {onList} op lijstje
                       </span>
-                    ) : null}
-                  </div>
+                    ) : null
+                  }
+                >
                   <ul className="px-2.5 pb-1 pt-0.5">
                     {section.items.map((item, k) => {
                       const count = countsById[item.id] ?? 0;
@@ -831,7 +828,7 @@ export default function SelecteerMasterItemsPage() {
                       );
                     })}
                   </ul>
-                </section>
+                </CategoryCard>
               );
             })}
           </div>

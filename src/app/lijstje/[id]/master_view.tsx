@@ -7,6 +7,7 @@ import type { ItemPhotoLookupOptions } from "@/lib/item-photos";
 import { categoryHeadingDisplay, groupMeatSubtypes } from "@/lib/item-ingredient-category";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { cn } from "@/lib/utils";
+import { CategoryCard } from "@/components/ui/category_card";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 
 type Section = { title: string; displayTitle?: string; items: ListItem[] };
@@ -215,23 +216,19 @@ export function MasterCategoryCards({
     <div className="lg:columns-3 lg:gap-4">
       {cards.map((s) => {
         const title = categoryHeadingDisplay(s.displayTitle ?? s.title);
-        const rgb = categoryColor(title).join(",");
         return (
-          <section
+          <CategoryCard
             key={s.title}
-            className="mb-3 break-inside-avoid overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:mb-4"
-          >
-            <div
-              className="flex items-center gap-2.5 px-3.5 py-3"
-              style={{ background: `linear-gradient(90deg, rgba(${rgb},0.16), rgba(${rgb},0.05))` }}
-            >
-              <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb})` }} aria-hidden />
-              <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
-              <span className="text-xs font-bold tabular-nums text-[var(--text-secondary)]">{s.items.length}</span>
+            className="mb-3 lg:mb-4"
+            rgb={categoryColor(title)}
+            title={title}
+            count={s.items.length}
+            action={
               <RoundIconButton tone="onColor" size={28} onClick={() => onAddToSection(s.title)} aria-label={`Favoriet toevoegen aan ${title}`}>
                 {RoundIcons.plus}
               </RoundIconButton>
-            </div>
+            }
+          >
             <ul className="px-2.5 pb-1 pt-0.5">
               {groupMeatSubtypes(s.title, s.items, (i) => i.name).map((item, k) => {
                 const photo = item.stockPhotoUrl ?? getPhotoUrl(item.name, 80) ?? null;
@@ -261,7 +258,7 @@ export function MasterCategoryCards({
                 );
               })}
             </ul>
-          </section>
+          </CategoryCard>
         );
       })}
     </div>
