@@ -42,10 +42,11 @@ const MiniButton = React.forwardRef<HTMLButtonElement, MiniButtonProps>(
     const Comp = asChild ? Slot : "button";
 
     const base =
-      "inline-flex items-center justify-center font-medium text-xs leading-16 tracking-normal whitespace-nowrap rounded-pill transition-[color,background-color,border-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
+      "inline-flex items-center justify-center gap-1.5 font-semibold text-sm tracking-normal whitespace-nowrap rounded-pill transition-[color,background-color,border-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
 
     const sizeStyles: Record<MiniButtonSize, string> = {
-      default: "py-1 px-4",
+      /* Design system «Knop sm»: 34px. */
+      default: "h-[34px] px-3.5",
     };
 
     const variantStyles: Record<
@@ -58,10 +59,8 @@ const MiniButton = React.forwardRef<HTMLButtonElement, MiniButtonProps>(
         disabled: "bg-[var(--blue-25)] text-[var(--blue-300)]",
       },
       secondary: {
-        default:
-          "bg-[var(--action-secondary-bg)] border border-[var(--action-secondary-border)] text-[var(--action-secondary-foreground)] hover:bg-[var(--action-ghost-hover)]",
-        disabled:
-          "border border-[var(--blue-200)] text-[var(--blue-300)] bg-[var(--action-secondary-bg)]",
+        default: "bg-[var(--blue-25)] text-[var(--blue-500)] hover:bg-[var(--blue-50)]",
+        disabled: "bg-[var(--gray-25)] text-[var(--blue-300)]",
       },
     };
 

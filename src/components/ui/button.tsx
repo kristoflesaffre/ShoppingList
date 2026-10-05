@@ -5,7 +5,8 @@ import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
 export type ButtonVariant = "primary" | "secondary" | "tertiary";
-export type ButtonSize = "default";
+/** Design system «Knop»: lg 50px (hoofdactie onderaan een blad), md 42px, sm 34px. `default` = lg. */
+export type ButtonSize = "default" | "lg" | "md" | "sm";
 
 /** Alleen bij `variant="tertiary"`: standaard linkblauw of foutkleur (Figma destructive link). */
 export type ButtonTertiaryTone = "default" | "danger";
@@ -43,10 +44,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button";
 
     const base =
-      "inline-flex w-full max-w-[320px] items-center justify-center overflow-hidden font-medium text-base leading-24 whitespace-nowrap transition-[color,background-color,border-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
+      "inline-flex w-full max-w-[320px] items-center justify-center gap-1.5 overflow-hidden font-semibold whitespace-nowrap transition-[color,background-color,border-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
 
-    const sizeStyles = {
-      default: "py-2 px-4 rounded-[var(--radius-pill)]",
+    const sizeStyles: Record<ButtonSize, string> = {
+      default: "h-[50px] px-6 text-base rounded-[var(--radius-pill)]",
+      lg: "h-[50px] px-6 text-base rounded-[var(--radius-pill)]",
+      md: "h-[42px] px-[18px] text-[15px] rounded-[var(--radius-pill)]",
+      sm: "h-[34px] w-auto px-3.5 text-sm rounded-[var(--radius-pill)]",
     };
 
     const tertiaryToneStyles: Record<
@@ -74,11 +78,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           "bg-[var(--action-primary)] text-[var(--action-primary-foreground)] hover:bg-[var(--action-primary-hover)]",
         disabled: "bg-[var(--blue-25)] text-[var(--blue-300)]",
       },
+      /* Design system: secundair = zacht lavendel, geen rand. */
       secondary: {
         default:
-          "bg-[var(--action-secondary-bg)] border border-[var(--action-secondary-border)] text-[var(--action-secondary-foreground)] hover:bg-[var(--action-ghost-hover)]",
-        disabled:
-          "border border-[var(--blue-200)] text-[var(--blue-300)] bg-[var(--action-secondary-bg)]",
+          "bg-[var(--blue-25)] text-[var(--blue-500)] hover:bg-[var(--blue-50)]",
+        disabled: "bg-[var(--gray-25)] text-[var(--blue-300)]",
       },
       tertiary: tertiaryToneStyles[tertiaryTone],
     };

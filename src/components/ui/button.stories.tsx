@@ -173,3 +173,15 @@ export const LongText: Story = {
     },
   },
 };
+
+/** Design system «Knop»: schaal lg 50 · md 42 · sm 34; secundair = zacht lavendel. */
+export const DesignSystemSizes: Story = {
+  render: () => (
+    <div className="flex w-[320px] flex-col items-start gap-3">
+      <Button size="lg">2 items toevoegen</Button>
+      <Button size="md">Toevoegen</Button>
+      <Button size="sm">Gereed</Button>
+      <Button size="sm" variant="secondary">+ Toevoegen</Button>
+    </div>
+  ),
+};

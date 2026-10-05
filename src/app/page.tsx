@@ -1809,7 +1809,8 @@ const HOME_LIST_PHOTO_SLOTS = 7;
 
 /** Zachte pil (8.4): zelfde knopstijl voor «+ Item», «+ Lijstje» en Te kopen «Toevoegen». */
 const HOME_SOFT_PILL_CLASS =
-  "relative z-[1] inline-flex h-7 shrink-0 items-center gap-1 rounded-pill bg-[var(--blue-25)] pl-2 pr-2.5 text-[13px] font-medium leading-[18px] text-[var(--blue-500)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+  /* Design system «Knop sm · secundair» (34px, zacht lavendel). */
+  "relative z-[1] inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-pill bg-[var(--blue-25)] pl-3 pr-3.5 text-sm font-semibold text-[var(--blue-500)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
 
 function HomeSoftPillPlusIcon() {
   return (
