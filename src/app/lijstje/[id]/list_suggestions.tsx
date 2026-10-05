@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { cn } from "@/lib/utils";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 
 export type Suggestion = {
   /** Unieke sleutel ("tk:<id>" of "vl:<naam>"), ook gebruikt om te verbergen. */
@@ -13,21 +14,6 @@ export type Suggestion = {
   /** Extra regel, bv. «door Chloé». */
   meta?: string;
 };
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-3.5">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3.5">
-      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
-    </svg>
-  );
-}
 
 function SuggestionRow({ s, onAdd, onDismiss }: { s: Suggestion; onAdd: () => void; onDismiss: () => void }) {
   return (
@@ -45,22 +31,12 @@ function SuggestionRow({ s, onAdd, onDismiss }: { s: Suggestion; onAdd: () => vo
           {s.meta ? ` · ${s.meta}` : ""}
         </span>
       </span>
-      <button
-        type="button"
-        aria-label={`${s.name} niet toevoegen`}
-        onClick={onDismiss}
-        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--error-25)] text-[var(--error-400)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-      >
-        <TrashIcon />
-      </button>
-      <button
-        type="button"
-        aria-label={`${s.name} toevoegen aan lijstje`}
-        onClick={onAdd}
-        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-      >
-        <PlusIcon />
-      </button>
+      <RoundIconButton tone="danger" size={28} aria-label={`${s.name} niet toevoegen`} onClick={onDismiss}>
+        {RoundIcons.trash}
+      </RoundIconButton>
+      <RoundIconButton tone="primary" size={28} aria-label={`${s.name} toevoegen aan lijstje`} onClick={onAdd}>
+        {RoundIcons.plus}
+      </RoundIconButton>
     </li>
   );
 }

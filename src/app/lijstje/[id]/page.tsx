@@ -159,6 +159,7 @@ import { ListSuggestions, type Suggestion } from "./list_suggestions";
 import { MasterCategoryCards, MasterLoyaltyLine } from "./master_view";
 import { MasterAddSheet } from "./master_add_sheet";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 
 const RecipeIngredientSortableList = dynamic(
   () =>
@@ -5588,26 +5589,18 @@ export default function ListDetailPage({
                     </div>
                   ) : null}
                   {isMasterList ? (
-                    <button
-                      type="button"
+                    <RoundIconButton
+                      tone={masterSearchOpen ? "primary" : "surface"}
+                      size={36}
                       onClick={() => {
                         setMasterSearchOpen((v) => !v);
                         setMasterSearchQuery("");
                       }}
                       aria-label={masterSearchOpen ? "Zoeken sluiten" : "Zoeken in favorieten"}
                       aria-pressed={masterSearchOpen}
-                      className={cn(
-                        "flex size-9 shrink-0 items-center justify-center rounded-full transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                        masterSearchOpen
-                          ? "bg-[var(--blue-500)] text-white"
-                          : "bg-[var(--white)] text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(16,17,48,0.10)]",
-                      )}
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden className="size-[18px]">
-                        <circle cx="11" cy="11" r="6.5" />
-                        <path d="M20 20l-4.2-4.2" />
-                      </svg>
-                    </button>
+                      {RoundIcons.search}
+                    </RoundIconButton>
                   ) : (
                     <ListLayoutToggle
                       value={cardLayout}

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 
 /**
  * Bewerkknop naast een paginatitel (canvas «Bewerkknop · 5 Zacht bolletje»):
@@ -13,19 +14,9 @@ export function TitleEditButton({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[var(--blue-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-        className,
-      )}
-      {...props}
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
-        <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4" />
-      </svg>
-    </button>
+    <RoundIconButton tone="primary" size={32} aria-label={ariaLabel} className={className} {...props}>
+      {RoundIcons.pencil}
+    </RoundIconButton>
   );
 }
 

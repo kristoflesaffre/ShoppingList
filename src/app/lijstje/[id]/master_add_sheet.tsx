@@ -14,6 +14,7 @@ import {
   resolveItemCategoryFromName,
 } from "@/lib/item-ingredient-category";
 import { cn } from "@/lib/utils";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 
 type CatalogItem = { slug: string; name: string; photo: string; category: string };
 
@@ -298,16 +299,9 @@ export function MasterAddSheet({
 
   const subtitle = `${listName} · ${favoritesCount} ${favoritesCount === 1 ? "favoriet" : "favorieten"}`;
   const closeButton = (
-    <button
-      type="button"
-      onClick={onClose}
-      aria-label="Sluiten"
-      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--gray-50)] text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden className="size-5">
-        <path d="M6 6l12 12M18 6 6 18" />
-      </svg>
-    </button>
+    <RoundIconButton tone="neutral" size={36} onClick={onClose} aria-label="Sluiten">
+      {RoundIcons.close}
+    </RoundIconButton>
   );
   const emptyState = (
     <p className="py-10 text-center text-sm text-[var(--text-tertiary)]">

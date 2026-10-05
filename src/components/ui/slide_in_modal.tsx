@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 
 export interface SlideInModalProps {
   /** Whether the modal is open */
@@ -202,8 +203,7 @@ export function SlideInModal({
 }
 
 /**
- * Header for SlideInModal: title (centered) + close button. Figma 472:2350.
- * h-64, px-4; title: font-medium 16px leading-24, secondary-900.
+ * Header for SlideInModal: title links + ronde grijze sluitknop (design system).
  */
 export function SlideInModalHeader({
   title,
@@ -216,40 +216,21 @@ export function SlideInModalHeader({
   onBack?: () => void;
   titleId?: string;
 }) {
-  const iconBtnClass =
-    "relative z-[1] !min-w-0 !w-10 size-10 shrink-0 no-underline p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] [&_svg]:size-6";
-
+  /* Design system: titel links, ronde grijze sluitknop rechts (RoundIconButton neutral 36). */
   return (
     <div className="flex h-16 shrink-0 items-center justify-center px-4">
-      <div className="relative flex h-full w-full max-w-[768px] items-center justify-between">
-        <div className="flex w-10 shrink-0 items-center justify-start">
-          {onBack && (
-            <Button
-              type="button"
-              variant="tertiary"
-              onClick={onBack}
-              aria-label="Terug"
-              className={iconBtnClass}
-            >
-              <BackArrowIcon className="size-6 shrink-0" />
-            </Button>
-          )}
-        </div>
-        <h2
-          id={titleId}
-          className="pointer-events-none absolute inset-0 flex items-center justify-center px-12 text-center font-medium text-base leading-24 tracking-normal text-[var(--secondary-900)]"
-        >
+      <div className="flex h-full w-full max-w-[768px] items-center gap-3">
+        {onBack ? (
+          <RoundIconButton tone="neutral" size={36} onClick={onBack} aria-label="Terug">
+            {RoundIcons.back}
+          </RoundIconButton>
+        ) : null}
+        <h2 id={titleId} className="min-w-0 flex-1 truncate text-xl font-bold tracking-tight text-[var(--text-primary)]">
           {title}
         </h2>
-        <Button
-          type="button"
-          variant="tertiary"
-          onClick={onClose}
-          aria-label="Sluiten"
-          className={iconBtnClass}
-        >
-          <CloseIcon className="size-6 shrink-0" />
-        </Button>
+        <RoundIconButton tone="neutral" size={36} onClick={onClose} aria-label="Sluiten">
+          {RoundIcons.close}
+        </RoundIconButton>
       </div>
     </div>
   );

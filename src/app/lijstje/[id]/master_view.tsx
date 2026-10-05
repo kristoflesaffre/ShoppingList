@@ -7,6 +7,7 @@ import type { ItemPhotoLookupOptions } from "@/lib/item-photos";
 import { categoryHeadingDisplay, groupMeatSubtypes } from "@/lib/item-ingredient-category";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { cn } from "@/lib/utils";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 
 type Section = { title: string; displayTitle?: string; items: ListItem[] };
 type GetPhotoUrl = (name: string, size?: number, options?: ItemPhotoLookupOptions) => string | null;
@@ -227,14 +228,9 @@ export function MasterCategoryCards({
               <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb})` }} aria-hidden />
               <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
               <span className="text-xs font-bold tabular-nums text-[var(--text-secondary)]">{s.items.length}</span>
-              <button
-                type="button"
-                onClick={() => onAddToSection(s.title)}
-                aria-label={`Favoriet toevoegen aan ${title}`}
-                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <PlusIcon />
-              </button>
+              <RoundIconButton tone="onColor" size={28} onClick={() => onAddToSection(s.title)} aria-label={`Favoriet toevoegen aan ${title}`}>
+                {RoundIcons.plus}
+              </RoundIconButton>
             </div>
             <ul className="px-2.5 pb-1 pt-0.5">
               {groupMeatSubtypes(s.title, s.items, (i) => i.name).map((item, k) => {

@@ -20,6 +20,7 @@ import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 import { SearchIcon } from "@/components/ui/search_bar";
 import { FilterChip } from "@/components/ui/filter_chip";
+import { RoundIconButton } from "@/components/ui/round_icon_button";
 
 /** Max treffers in slide-in; synoniemen kunnen de lijst verlengen. */
 const SLIDE_IN_MAX_SUGGESTIONS = 400;
@@ -384,17 +385,15 @@ export function ItemNameSearchSlideIn({
                     </span>
                   </button>
                   {onSelectRecipeFromFreezer ? (
-                    <button
-                      type="button"
+                    <RoundIconButton
+                      tone="primary"
+                      size={28}
                       aria-label={`${recipe.name} toevoegen als diepvriesgerecht`}
                       onClick={() => handleSelectRecipeFromFreezer(recipe)}
-                      className="group flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-none"
+                      className="mx-2"
                     >
-                      {/* Zelfde zacht bolletje als de bewerkknop (TitleEditButton). */}
-                      <span className="flex size-8 items-center justify-center rounded-full bg-[var(--blue-50)] transition-[background-color,transform] duration-fast ease-out-strong group-active:scale-90 group-focus-visible:ring-2 group-focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:group-hover:bg-[var(--blue-100)]">
-                        <FreezeMaskIcon className="size-[18px]" colorClassName="bg-[var(--blue-500)]" />
-                      </span>
-                    </button>
+                      <FreezeMaskIcon className="!size-4" colorClassName="bg-[var(--blue-500)]" />
+                    </RoundIconButton>
                   ) : null}
                 </div>
               </li>

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
+import { RoundIconButton } from "@/components/ui/round_icon_button";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 
 export type RecipeTileState = "default" | "bare" | "editable" | "disabled";
@@ -183,19 +184,18 @@ function PencilButton({ onEdit }: { onEdit: () => void }) {
 
 function FreezeButton({ onAddFromFreezer }: { onAddFromFreezer: () => void }) {
   return (
-    <button
-      type="button"
+    <RoundIconButton
+      tone="primary"
+      size={28}
       aria-label="Toevoegen als diepvriesgerecht"
       onClick={(e) => {
         e.stopPropagation();
         onAddFromFreezer();
       }}
       onPointerDown={(e) => e.stopPropagation()}
-      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] transition-[background-color,transform] duration-fast ease-out-strong [@media(hover:hover)]:hover:bg-[var(--blue-100)] motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
     >
-      {/* Zacht bolletje zoals de bewerkknop (TitleEditButton). */}
-      <FreezeMaskIcon className="size-[18px]" colorClassName="bg-[var(--blue-500)]" />
-    </button>
+      <FreezeMaskIcon className="!size-4" colorClassName="bg-[var(--blue-500)]" />
+    </RoundIconButton>
   );
 }
 

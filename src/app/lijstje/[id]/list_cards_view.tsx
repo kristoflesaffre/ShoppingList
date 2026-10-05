@@ -9,6 +9,7 @@ import { categoryHeadingDisplay, groupMeatSubtypes } from "@/lib/item-ingredient
 import { mixWithWhite, pickDistinctTint, useTintMap, type Rgb } from "@/lib/recipe-tint";
 import { cn } from "@/lib/utils";
 import { SegmentedControl } from "@/components/ui/segmented_control";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { IngredientPlate } from "@/components/ingredient_plate";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -279,31 +280,20 @@ export type ListCardsEditHandlers = {
   onDeleteRecipeGroup: (groupId: string) => void;
 };
 
-function TrashIcon({ className }: { className?: string }) {
+function TrashButton({ label, onClick, className }: { label: string; onClick: () => void; className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
-      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
-    </svg>
-  );
-}
-
-function TrashButton({ label, onClick, size = 32, className }: { label: string; onClick: () => void; size?: number; className?: string }) {
-  return (
-    <button
-      type="button"
+    <RoundIconButton
+      tone="danger"
+      size={28}
       aria-label={label}
+      className={className}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
-      className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-[var(--error-25)] text-[var(--error-400)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-        className,
-      )}
-      style={{ width: size, height: size }}
     >
-      <TrashIcon className="size-[15px]" />
-    </button>
+      {RoundIcons.trash}
+    </RoundIconButton>
   );
 }
 
@@ -641,19 +631,17 @@ function Counter({ items }: { items: ListItem[] }) {
 
 function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button
-      type="button"
+    <RoundIconButton
+      tone="onColor"
+      size={28}
       aria-label={label}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
-      className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.75)] text-[var(--blue-500)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-3.5">
-        <path d="M12 5v14M5 12h14" />
-      </svg>
-    </button>
+      {RoundIcons.plus}
+    </RoundIconButton>
   );
 }
 
