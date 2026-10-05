@@ -157,6 +157,7 @@ import { RECIPE_BLOCK_PREFIX,
 } from "./list_cards_view";
 import { ListSuggestions, type Suggestion } from "./list_suggestions";
 import { MasterCategoryCards, MasterLoyaltyLine } from "./master_view";
+import { MasterAddSheet } from "./master_add_sheet";
 
 const RecipeIngredientSortableList = dynamic(
   () =>
@@ -6074,8 +6075,24 @@ export default function ListDetailPage({
 
   const listModals = (
     <>
+      {isMasterList ? (
+        /* Canvas «Favorieten toevoegen»: zoeken of bladeren in producten die nog ontbreken. */
+        <MasterAddSheet
+          open={isNewItemOpen && editingItem == null}
+          onClose={() => {
+            setIsNewItemOpen(false);
+            setInitialSection(null);
+            setInitialItemCategory(null);
+          }}
+          listName={masterStoreLabel || listName}
+          favoritesCount={items.length}
+          existingNames={items.map((i) => i.name)}
+          initialCategory={initialItemCategory}
+          onAddItems={handleAddItemsFromRecipe}
+        />
+      ) : null}
       <NewItemModal
-        open={isNewItemOpen || editingItem != null}
+        open={(isNewItemOpen && !isMasterList) || editingItem != null}
         onClose={() => {
           setIsNewItemOpen(false);
           setEditingItem(null);
