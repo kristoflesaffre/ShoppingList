@@ -285,7 +285,7 @@ function TrashIcon({ className }: { className?: string }) {
   );
 }
 
-function TrashButton({ label, onClick, size = 32 }: { label: string; onClick: () => void; size?: number }) {
+function TrashButton({ label, onClick, size = 32, className }: { label: string; onClick: () => void; size?: number; className?: string }) {
   return (
     <button
       type="button"
@@ -294,7 +294,10 @@ function TrashButton({ label, onClick, size = 32 }: { label: string; onClick: ()
         e.stopPropagation();
         onClick();
       }}
-      className="flex shrink-0 items-center justify-center rounded-full bg-[var(--error-25)] text-[var(--error-400)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-full bg-[var(--error-25)] text-[var(--error-400)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        className,
+      )}
       style={{ width: size, height: size }}
     >
       <TrashIcon className="size-[15px]" />
@@ -373,7 +376,7 @@ function RecipeHead({
   grip?: React.ReactNode;
 }) {
   return (
-    <div className="mb-0.5 mt-1.5 flex items-center gap-2.5 rounded-[12px] bg-[var(--blue-25)] py-2 pl-2.5 pr-2">
+    <div className="mb-0.5 mt-1.5 flex items-center gap-2.5 rounded-[12px] bg-[var(--blue-25)] py-2 pl-2.5 pr-1">
       {grip}
       <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)]" aria-hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-4">
@@ -386,7 +389,7 @@ function RecipeHead({
           Recept · {recipe.items.length} {recipe.items.length === 1 ? "ingrediënt" : "ingrediënten"}
         </span>
       </span>
-      <TrashButton label={`Recept ${recipe.name} verwijderen`} onClick={() => edit.onDeleteRecipeGroup(recipe.groupId)} size={30} />
+      <TrashButton label={`Recept ${recipe.name} verwijderen`} onClick={() => edit.onDeleteRecipeGroup(recipe.groupId)} />
     </div>
   );
 }
@@ -749,7 +752,7 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
               <h3 className="text-[15px] font-bold text-text-primary">Algemeen</h3>
               <span className="text-xs text-[var(--text-tertiary)]">· altijd nodig</span>
               <span className="flex-1" />
-              <TrashButton label="Algemeen leegmaken" onClick={() => edit.onDeleteSection(section.title)} size={30} />
+              <TrashButton label="Algemeen leegmaken" onClick={() => edit.onDeleteSection(section.title)} className="mr-0.5" />
             </>
           }
         >
@@ -806,7 +809,7 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
           ) : null}
         </span>
         {edit ? (
-          <TrashButton label={`${label} verwijderen`} onClick={() => edit.onDeleteSection(section.title)} size={30} />
+          <TrashButton label={`${label} verwijderen`} onClick={() => edit.onDeleteSection(section.title)} className="mr-0.5" />
         ) : (
           <>
             <Counter items={countable} />
@@ -909,7 +912,7 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
             <>
               <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb.join(",")})` }} aria-hidden />
               <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
-              <TrashButton label={`${title} verwijderen`} onClick={() => edit.onDeleteSection(s.title)} size={30} />
+              <TrashButton label={`${title} verwijderen`} onClick={() => edit.onDeleteSection(s.title)} className="mr-0.5" />
             </>
           }
         >
