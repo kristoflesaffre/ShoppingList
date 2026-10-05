@@ -15,4 +15,21 @@ describe("resolveItemCategoryFromName", () => {
       expect(resolveItemCategoryFromName(name)).toBe("Koude Dranken");
     },
   );
+
+  it.each(["Kippenvinken", "Witte pensen"])(
+    "deelt %s in bij vlees en charcuterie",
+    (name) => {
+      expect(resolveItemCategoryFromName(name)).toBe("Vlees & Charcuterie");
+    },
+  );
+
+  it("deelt Zespri gold kiwi in bij groenten en fruit", () => {
+    expect(resolveItemCategoryFromName("Zespri gold kiwi")).toBe(
+      "Groenten & Fruit",
+    );
+  });
+
+  it("deelt krabsla in bij beleg", () => {
+    expect(resolveItemCategoryFromName("Krabsla")).toBe("Beleg");
+  });
 });

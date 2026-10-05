@@ -51,6 +51,7 @@ const DEFAULT_CATEGORY_HINTS: Record<string, string> = {
   bananen: GF,
   banaan: GF,
   ananas: GF,
+  kiwi: GF,
   perziken: GF,
   perzik: GF,
   sinaasappels: GF,
@@ -82,6 +83,9 @@ const DEFAULT_CATEGORY_HINTS: Record<string, string> = {
   gehakt: V,
   kip: V,
   kipfilet: V,
+  kippenvinken: V,
+  pensen: V,
+  "witte pensen": V,
   biefstuk: V,
   steak: V,
   spek: V,
@@ -99,6 +103,7 @@ const DEFAULT_CATEGORY_HINTS: Record<string, string> = {
   nutella: BE,
   hagelslag: BE,
   pindakaas: BE,
+  krabsla: BE,
   honing: BE,
   jam: BE,
   rijst: D,
@@ -295,4 +300,50 @@ export function categoryHeadingDisplay(title: string): string {
   const trimmed = title.trim();
   if (trimmed.length === 0) return trimmed;
   return trimmed.charAt(0).toLocaleUpperCase("nl-NL") + trimmed.slice(1);
+}
+
+/* ─── Vlees: subgroepen samen tonen (geen aparte categorie) ─── */
+
+/**
+ * Volgorde van vleessoorten binnen «Vlees & Charcuterie»: kip, kalkoen, rund & gehakt, varken,
+ * vleeswaren, worst, de rest. Enkel om items samen te tonen; de categorie zelf blijft dezelfde.
+ */
+const MEAT_SUBGROUPS: Array<[RegExp, number]> = [
+  [/\bkip|kippen|chicken|poulet|vol.?au.?vent|\bvide\b|drumstick|kippebout/, 0],
+  [/kalkoen/, 1],
+  [/gehakt|americain|hamburger|burger|carpaccio|loze vink|biefstuk|steak|\brund|stoofvlees|entrecote|balletjes|tartaar|kalfs/, 2],
+  [/varken|\bspek|kotelet|ribbetje|schnitzel|filet pur|\blende|buikspek|gyros/, 3],
+  [/\bham\b|parmaham|salami|fuet|chorizo|vleesje|prepare|pastrami|pate|boterham|serrano|coppa|bresaola|charcuterie/, 4],
+  [/worst|chipolata|merguez|knakwortel|frankfurter/, 5],
+];
+
+function normalizeMeatName(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+/** Rang van de vleessoort (0 = kip … 5 = worst); 9 voor overig vlees of niet-vlees. */
+export function meatSubgroupRank(name: string): number {
+  const n = normalizeMeatName(name);
+  for (const [re, rank] of MEAT_SUBGROUPS) if (re.test(n)) return rank;
+  return 9;
+}
+
+/** Geldt voor categorieën met vlees («Vlees & Charcuterie» e.d.). */
+export function isMeatCategory(categoryTitle: string): boolean {
+  return /vlees|charcut/i.test(categoryTitle);
+}
+
+/**
+ * Zet in een vleescategorie dezelfde soorten bij elkaar (alle kip samen, dan kalkoen, …).
+ * Stabiel: binnen een soort blijft de bestaande volgorde behouden. Andere categorieën ongewijzigd.
+ */
+export function groupMeatSubtypes<T>(categoryTitle: string, items: T[], getName: (item: T) => string): T[] {
+  if (!isMeatCategory(categoryTitle) || items.length < 2) return items;
+  return items
+    .map((item, index) => ({ item, index, rank: meatSubgroupRank(getName(item)) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((x) => x.item);
 }
