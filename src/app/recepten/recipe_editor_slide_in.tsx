@@ -21,6 +21,7 @@ import { RecipePhotoUploadSlideIn, type ExtractedRecipeData } from "@/components
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
+import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { useNormalizeIngredientName } from "@/lib/ingredient-photos";
 import { normalizeQuantity } from "@/lib/recipe_ingredient_quantity";
@@ -405,30 +406,16 @@ export function RecipeEditorSlideIn({
           <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
             Categorie
           </label>
-          <div className="flex flex-wrap gap-2">
+          <FilterChipRow wrap ariaLabel="Categorie">
             {RECIPE_CATEGORIES.map((cat) => {
               const isActive = recipeCategory === cat.id;
               return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setRecipeCategory(isActive ? null : cat.id)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-sm font-medium leading-18 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                    isActive
-                      ? "bg-[var(--blue-500)] text-white"
-                      : "bg-[var(--gray-50)] text-[var(--text-secondary)]",
-                  )}
-                >
-                  <span
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: cat.dot }}
-                  />
+                <FilterChip key={cat.id} selected={isActive} dotColor={cat.dot} onClick={() => setRecipeCategory(isActive ? null : cat.id)}>
                   {cat.label}
-                </button>
+                </FilterChip>
               );
             })}
-          </div>
+          </FilterChipRow>
         </div>
         <div className="flex flex-col gap-2">
           <InputField

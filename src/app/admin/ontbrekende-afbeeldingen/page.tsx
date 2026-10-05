@@ -8,6 +8,7 @@ import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loadin
 import { SearchBar } from "@/components/ui/search_bar";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { FilterChip } from "@/components/ui/filter_chip";
 
 type MissingImageReport = {
   id: string;
@@ -162,18 +163,9 @@ function FilterButton({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-pill border px-4 py-2 text-sm font-medium leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-        active
-          ? "border-[var(--action-primary)] bg-[var(--action-primary)] text-[var(--action-primary-foreground)]"
-          : "border-[var(--gray-200)] bg-[var(--white)] text-[var(--text-primary)] hover:bg-[var(--gray-25)]",
-      )}
-    >
+    <FilterChip selected={active} onClick={onClick}>
       {children}
-    </button>
+    </FilterChip>
   );
 }
 

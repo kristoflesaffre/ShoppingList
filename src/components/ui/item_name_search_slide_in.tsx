@@ -19,6 +19,7 @@ import { matchRecipesForAutocomplete } from "@/lib/recipe-search";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 import { SearchIcon } from "@/components/ui/search_bar";
+import { FilterChip } from "@/components/ui/filter_chip";
 
 /** Max treffers in slide-in; synoniemen kunnen de lijst verlengen. */
 const SLIDE_IN_MAX_SUGGESTIONS = 400;
@@ -336,19 +337,9 @@ export function ItemNameSearchSlideIn({
           {showChips ? (
             <div className="flex shrink-0 gap-1.5 px-[18px] pb-2" role="group" aria-label="Filter op type">
               {chips.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  aria-pressed={topScope === c.value}
-                  onClick={() => setTopScope(c.value)}
-                  className={
-                    topScope === c.value
-                      ? "h-[30px] rounded-pill bg-[var(--blue-500)] px-[11px] text-[12.5px] font-semibold text-white"
-                      : "h-[30px] rounded-pill bg-[var(--gray-50)] px-[11px] text-[12.5px] font-semibold text-[var(--text-secondary)]"
-                  }
-                >
+                <FilterChip key={c.value} selected={topScope === c.value} onClick={() => setTopScope(c.value)}>
                   {c.label}
-                </button>
+                </FilterChip>
               ))}
             </div>
           ) : null}

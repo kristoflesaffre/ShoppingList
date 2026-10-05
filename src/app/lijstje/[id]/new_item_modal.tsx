@@ -11,6 +11,7 @@ import { Stepper } from "@/components/ui/stepper";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search_bar";
 import { SegmentedControl } from "@/components/ui/segmented_control";
+import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { MiniButton } from "@/components/ui/mini_button";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
@@ -1558,46 +1559,19 @@ export function NewItemModal({
                   {batchEntries.length === 0 &&
                   storedRecipes.length > 0 &&
                   visibleCategories.length > 0 ? (
-                    <div className="-mx-4 min-w-0 overflow-x-auto px-4" style={{ scrollbarWidth: "none" } as React.CSSProperties}>
-                      <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-                        <button
-                          type="button"
-                          onClick={() => setActiveCategory(null)}
-                          className={cn(
-                            "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                            activeCategory === null
-                              ? "bg-[var(--action-primary)] font-medium text-[var(--action-primary-foreground)]"
-                              : "bg-[var(--gray-50)] font-normal text-[var(--text-tertiary)]",
-                          )}
-                        >
-                          Alle
-                        </button>
-                        {visibleCategories.map((cat) => {
-                          const isActive = activeCategory === cat.id;
-                          return (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => setActiveCategory(isActive ? null : cat.id)}
-                              className={cn(
-                                "flex shrink-0 items-center gap-1.5 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                                isActive
-                                  ? "bg-[var(--action-primary)] font-medium text-[var(--action-primary-foreground)]"
-                                  : "bg-[var(--gray-50)] font-normal text-[var(--text-tertiary)]",
-                              )}
-                            >
-                              {isActive && (
-                                <span
-                                  className="size-2 shrink-0 rounded-full"
-                                  style={{ backgroundColor: cat.dot }}
-                                />
-                              )}
-                              {cat.labelPlural}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+                    <FilterChipRow ariaLabel="Receptcategorie">
+                      <FilterChip selected={activeCategory === null} onClick={() => setActiveCategory(null)}>
+                        Alle
+                      </FilterChip>
+                      {visibleCategories.map((cat) => {
+                        const isActive = activeCategory === cat.id;
+                        return (
+                          <FilterChip key={cat.id} selected={isActive} dotColor={cat.dot} onClick={() => setActiveCategory(isActive ? null : cat.id)}>
+                            {cat.labelPlural}
+                          </FilterChip>
+                        );
+                      })}
+                    </FilterChipRow>
                   ) : null}
                   {batchEntries.length > 0 ? null : storedRecipes.length === 0 ? (
                     <div className="flex flex-col items-center gap-6 py-8">

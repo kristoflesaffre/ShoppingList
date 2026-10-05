@@ -158,6 +158,7 @@ import { RECIPE_BLOCK_PREFIX,
 import { ListSuggestions, type Suggestion } from "./list_suggestions";
 import { MasterCategoryCards, MasterLoyaltyLine } from "./master_view";
 import { MasterAddSheet } from "./master_add_sheet";
+import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 
 const RecipeIngredientSortableList = dynamic(
   () =>
@@ -2923,43 +2924,19 @@ function CafeListWizard({
         />
 
         {/* Figma 1321:23575 — Tab group: border-b neutraal, gap 24px, tabkolom gap 8px, indicator 2px primary */}
-        <div className="-mx-4 min-w-0 overflow-x-auto px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-            {/* "Alle" pill */}
-            <button
-              type="button"
-              aria-pressed={category === null}
-              onClick={() => setCategory(null)}
-              className={cn(
-                "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                category === null
-                  ? "bg-[var(--blue-500)] font-medium text-white"
-                  : "bg-[var(--gray-50)] font-normal text-[var(--gray-500)]",
-              )}
-            >
-              Alle
-            </button>
-            {cafeWizardTabOrder(showMeestTab).map((key) => {
-              const active = key === category;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setCategory(active ? null : key)}
-                  className={cn(
-                    "shrink-0 rounded-pill px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                    active
-                      ? "bg-[var(--blue-500)] font-medium text-white"
-                      : "bg-[var(--gray-50)] font-normal text-[var(--gray-500)]",
-                  )}
-                >
-                  {CAFE_WIZARD_CATEGORY_LABELS[key]}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <FilterChipRow ariaLabel="Categorie">
+          <FilterChip selected={category === null} onClick={() => setCategory(null)}>
+            Alle
+          </FilterChip>
+          {cafeWizardTabOrder(showMeestTab).map((key) => {
+            const active = key === category;
+            return (
+              <FilterChip key={key} selected={active} onClick={() => setCategory(active ? null : key)}>
+                {CAFE_WIZARD_CATEGORY_LABELS[key]}
+              </FilterChip>
+            );
+          })}
+        </FilterChipRow>
 
         <div className="mx-auto flex w-full max-w-[358px] flex-col gap-3 lg:max-w-none">
           {showCustomAddRow ? (
