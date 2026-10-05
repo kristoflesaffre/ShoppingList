@@ -3,7 +3,6 @@
 import * as React from "react";
 import Image from "next/image";
 import ReactDOM from "react-dom";
-import { InputField } from "@/components/ui/input_field";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
 import { SearchIcon } from "@/components/ui/search_bar";
 import {
@@ -110,6 +109,7 @@ function LargeScreenAutocomplete({
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [dropdownStyle, setDropdownStyle] = React.useState<React.CSSProperties>({});
   const [mounted, setMounted] = React.useState(false);
+  const listboxId = React.useId();
 
   React.useEffect(() => {
     setMounted(true);
@@ -252,6 +252,7 @@ function LargeScreenAutocomplete({
     mounted && showDropdown
       ? ReactDOM.createPortal(
           <ul
+            id={listboxId}
             role="listbox"
             style={dropdownStyle}
             className="overflow-y-auto overflow-x-hidden rounded-[var(--radius-sm,6px)] border border-[var(--gray-100)] bg-[var(--white)] shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
@@ -362,25 +363,34 @@ function LargeScreenAutocomplete({
 
   return (
     <div ref={containerRef} className={cn("relative w-full", className)}>
-      <InputField
-        label={label}
-        aria-label={ariaLabel ?? label ?? placeholder}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        onKeyDown={handleKeyDown}
-        autoComplete="off"
-        autoFocus={autoFocus}
-        role="combobox"
-        aria-expanded={showDropdown}
-        aria-autocomplete="list"
-        aria-haspopup="listbox"
-      />
+      {label ? (
+        <p className="mb-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">{label}</p>
+      ) : null}
+      {/* Design system «Zoekveld»: zacht grijs, vergrootglas links (zelfde als SearchBar). */}
+      <div className="group flex h-12 w-full min-w-0 items-center gap-2.5 rounded-[16px] bg-[var(--gray-25)] px-3.5 transition-[background-color,box-shadow] duration-fast ease-out-strong focus-within:bg-[var(--white)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-300)]">
+        <SearchIcon className="size-5 shrink-0 text-[var(--text-tertiary)] transition-colors group-focus-within:text-[var(--blue-500)]" />
+        <input
+          type="text"
+          aria-label={ariaLabel ?? label ?? placeholder}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onKeyDown={handleKeyDown}
+          autoComplete="off"
+          autoFocus={autoFocus}
+          role="combobox"
+          aria-controls={listboxId}
+          aria-expanded={showDropdown}
+          aria-autocomplete="list"
+          aria-haspopup="listbox"
+          className="min-w-0 flex-1 bg-transparent text-[15px] leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
+        />
+      </div>
       {dropdown}
     </div>
   );
@@ -402,7 +412,7 @@ function SmallScreenAutocomplete({
   onSelectItem,
   onSelectRecipe,
   onSelectRecipeFromFreezer,
-  searchVariant = "default",
+  searchVariant = "top",
 }: ItemNameAutocompleteProps) {
   const [slideInOpen, setSlideInOpen] = React.useState(false);
   const getItemPhotoUrl = useItemPhotoUrl();

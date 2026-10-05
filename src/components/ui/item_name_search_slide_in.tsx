@@ -134,7 +134,7 @@ export function ItemNameSearchSlideIn({
   suggestionScope = "all",
   onSelectRecipe,
   onSelectRecipeFromFreezer,
-  variant = "default",
+  variant = "top",
 }: ItemNameSearchSlideInProps) {
   const isTop = variant === "top";
   const itemSlugs = useItemSlugs();

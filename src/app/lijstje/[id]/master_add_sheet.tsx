@@ -255,7 +255,6 @@ export function MasterAddSheet({
       }}
       placeholder="Zoek een product"
       ariaLabel="Zoek een product"
-      searchVariant="top"
       slideInTitle="Favoriet zoeken"
     />
   );

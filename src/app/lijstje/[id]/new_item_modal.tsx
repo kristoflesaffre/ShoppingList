@@ -9,7 +9,7 @@ import { ItemNameAutocomplete, useIsSmallScreen } from "@/components/ui/item_nam
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
 import { Stepper } from "@/components/ui/stepper";
 import { Button } from "@/components/ui/button";
-import { SearchIcon } from "@/components/ui/search_bar";
+import { SearchBar } from "@/components/ui/search_bar";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { MiniButton } from "@/components/ui/mini_button";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
@@ -1278,7 +1278,6 @@ export function NewItemModal({
                     <ItemNameAutocomplete
                       ariaLabel={batchMode ? (sourceFilter === "all" ? "Zoek een product of recept" : "Zoek een product") : sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
                       placeholder={batchMode ? (sourceFilter === "all" ? "Zoek een product of recept" : "Zoek een product") : sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
-                      searchVariant={batchMode ? "top" : "default"}
                       value={batchMode ? itemSearchQuery : itemName}
                       onChange={(value) => {
                         if (batchMode) setItemSearchQuery(value);
@@ -1425,18 +1424,11 @@ export function NewItemModal({
                     </>
                   ) : (
                   <>
-                  {/* Zelfde zacht grijze zoekveld als «Alles» / «Recepten». */}
-                  <label className="flex h-12 w-full items-center gap-2.5 rounded-[16px] bg-[var(--gray-25)] px-3.5 focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-200)]">
-                    <SearchIcon className="shrink-0 text-[var(--text-tertiary)]" />
-                    <input
-                      type="search"
-                      value={freezerSearch}
-                      onChange={(e) => setFreezerSearch(e.target.value)}
-                      placeholder="Zoek gerecht of product"
-                      aria-label="Zoek gerecht of product"
-                      className="min-w-0 flex-1 bg-transparent text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none [&::-webkit-search-cancel-button]:hidden"
-                    />
-                  </label>
+                  <SearchBar
+                    placeholder="Zoek gerecht of product"
+                    value={freezerSearch}
+                    onValueChange={setFreezerSearch}
+                  />
                   {sourceFilterControls}
                   {batchQueueControls}
                   {filteredFreezerItems.length === 0 ? (
@@ -1565,8 +1557,7 @@ export function NewItemModal({
                       <ItemNameAutocomplete
                         ariaLabel={batchMode ? "Zoek een recept" : "Naam recept"}
                         placeholder={batchMode ? "Zoek een recept" : "Naam recept"}
-                        searchVariant={batchMode ? "top" : "default"}
-                        value={itemSearchQuery}
+                          value={itemSearchQuery}
                         onChange={(value) => {
                           setItemSearchQuery(value);
                           if (value.trim()) setActiveCategory(null);
