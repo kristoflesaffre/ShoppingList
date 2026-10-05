@@ -5,7 +5,7 @@ import type { ListItem } from "./new_item_modal";
 import type { SavedRecipe } from "@/lib/recipe_library";
 import type { ItemPhotoLookupOptions } from "@/lib/item-photos";
 import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate } from "@/lib/calendar-utils";
-import { categoryHeadingDisplay } from "@/lib/item-ingredient-category";
+import { categoryHeadingDisplay, groupMeatSubtypes } from "@/lib/item-ingredient-category";
 import { mixWithWhite, pickDistinctTint, useTintMap, type Rgb } from "@/lib/recipe-tint";
 import { cn } from "@/lib/utils";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -1015,7 +1015,7 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
           </>
         }
       >
-        <ItemsLayout items={sortItems(s.items, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
+        <ItemsLayout items={sortItems(groupMeatSubtypes(s.title, s.items, (i) => i.name), uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
       </Card>
     );
   };

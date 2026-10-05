@@ -311,10 +311,10 @@ export function categoryHeadingDisplay(title: string): string {
 const MEAT_SUBGROUPS: Array<[RegExp, number]> = [
   [/\bkip|kippen|chicken|poulet|vol.?au.?vent|\bvide\b|drumstick|kippebout/, 0],
   [/kalkoen/, 1],
-  [/gehakt|americain|hamburger|burger|carpaccio|loze vink|biefstuk|steak|\brund|stoofvlees|entrecote|balletjes|tartaar|kalfs/, 2],
+  [/worst|chipolata|merguez|knakwortel|frankfurter|pensen/, 5],
+  [/gehakt|americain|hamburger|burger|carpaccio|loze vink|biefstuk|steak|\brund|stoofvlees|entrecote|balletjes|tartaar|kalfsvlees|kalfsgehakt/, 2],
   [/varken|\bspek|kotelet|ribbetje|schnitzel|filet pur|\blende|buikspek|gyros/, 3],
   [/\bham\b|parmaham|salami|fuet|chorizo|vleesje|prepare|pastrami|pate|boterham|serrano|coppa|bresaola|charcuterie/, 4],
-  [/worst|chipolata|merguez|knakwortel|frankfurter/, 5],
 ];
 
 function normalizeMeatName(name: string): string {

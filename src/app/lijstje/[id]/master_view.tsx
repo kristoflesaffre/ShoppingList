@@ -4,7 +4,7 @@ import * as React from "react";
 import type { ListItem } from "./new_item_modal";
 import { categoryColor } from "./list_cards_view";
 import type { ItemPhotoLookupOptions } from "@/lib/item-photos";
-import { categoryHeadingDisplay } from "@/lib/item-ingredient-category";
+import { categoryHeadingDisplay, groupMeatSubtypes } from "@/lib/item-ingredient-category";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { cn } from "@/lib/utils";
 
@@ -237,7 +237,7 @@ export function MasterCategoryCards({
               </button>
             </div>
             <ul className="px-2.5 pb-1 pt-0.5">
-              {s.items.map((item, k) => {
+              {groupMeatSubtypes(s.title, s.items, (i) => i.name).map((item, k) => {
                 const photo = item.stockPhotoUrl ?? getPhotoUrl(item.name, 80) ?? null;
                 return (
                   <li key={item.id} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>

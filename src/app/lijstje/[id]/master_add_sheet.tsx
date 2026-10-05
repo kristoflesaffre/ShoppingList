@@ -9,6 +9,7 @@ import { normalizeForMatch, itemPhotoUrlFromSlug } from "@/lib/item-photo-matchi
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import {
   categoryHeadingDisplay,
+  groupMeatSubtypes,
   orderedCategorySectionTitles,
   resolveItemCategoryFromName,
 } from "@/lib/item-ingredient-category";
@@ -124,7 +125,11 @@ export function MasterAddSheet({
       list.push(item);
       map.set(item.category, list);
     }
-    return orderedCategorySectionTitles(Array.from(map.keys())).map((title) => ({ title, items: map.get(title) ?? [] }));
+    return orderedCategorySectionTitles(Array.from(map.keys())).map((title) => ({
+      title,
+      // Vlees: alle kip samen, dan kalkoen, rund, varken, … (zelfde categorie).
+      items: groupMeatSubtypes(title, map.get(title) ?? [], (i) => i.name),
+    }));
   }, [missing]);
 
   React.useEffect(() => {

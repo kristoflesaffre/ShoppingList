@@ -19,6 +19,7 @@ import { useItemPhotoUrl } from "@/lib/item-photos";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import {
   categoryHeadingDisplay,
+  groupMeatSubtypes,
   orderedCategorySectionTitles,
   resolveItemCategoryFromName,
 } from "@/lib/item-ingredient-category";
@@ -549,7 +550,8 @@ export default function SelecteerMasterItemsPage() {
     const orderedTitles = orderedCategorySectionTitles(Array.from(grouped.keys()));
     return orderedTitles.map((title) => ({
       title,
-      items: grouped.get(title) ?? [],
+      // Vlees: alle kip samen, dan kalkoen, rund, varken, … (zelfde categorie).
+      items: groupMeatSubtypes(title, grouped.get(title) ?? [], (i) => i.name),
     }));
   }, [masterList, teKopenItems, addedPrevNames]);
 
