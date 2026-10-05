@@ -8,6 +8,7 @@ import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate } from "@/li
 import { categoryHeadingDisplay, groupMeatSubtypes } from "@/lib/item-ingredient-category";
 import { mixWithWhite, pickDistinctTint, useTintMap, type Rgb } from "@/lib/recipe-tint";
 import { cn } from "@/lib/utils";
+import { IngredientPlate } from "@/components/ingredient_plate";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -881,8 +882,21 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
     const looseNames = !dishName && wide ? section.items.map((i) => i.name).join(", ") : null;
     const header = (
       <>
-        <DateChip date={d.date} />
-        {wide && dishName ? <Plate src={dishPhoto} size={44} freeze={!mainRecipe} /> : null}
+        {/* Desktop: gerechtfoto, of een wit bord met tot drie producten (zoals op de receptenpagina) i.p.v. de datumtegel. */}
+        {!wide ? (
+          <DateChip date={d.date} />
+        ) : dishName ? (
+          <Plate src={dishPhoto} size={46} freeze={!mainRecipe} />
+        ) : (
+          <IngredientPlate
+            photos={section.items
+              .map((i) => i.stockPhotoUrl ?? getPhotoUrl?.(i.name, 160) ?? null)
+              .filter((src): src is string => Boolean(src))
+              .slice(0, 3)}
+            size={46}
+            className="!bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.10)]"
+          />
+        )}
         <span className="min-w-0 flex-1 leading-[19px]">
           <span className="block truncate text-[15px] font-bold text-text-primary first-letter:uppercase">{label}</span>
           {dishName ? (
