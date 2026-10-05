@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { InputField } from "./input_field";
 
+/**
+ * Design system «Invoerveld»: grijs vlak zonder rand (radius 16), focus wit met lavendel rand —
+ * zelfde vormtaal als zoekveld en stepper.
+ */
 const meta: Meta<typeof InputField> = {
   title: "UI/InputField",
   component: InputField,

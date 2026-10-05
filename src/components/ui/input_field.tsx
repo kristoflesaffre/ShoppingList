@@ -26,11 +26,12 @@ export interface InputFieldProps
   children?: React.ReactNode;
 }
 
+/* Design system «Invoerveld»: grijs vlak zonder rand (radius 16), zoals zoekveld en stepper.
+   Focus: wit vlak met lavendel rand. */
 const inputBase =
-  "flex h-12 w-full items-center rounded-md border bg-[var(--white)] px-4 text-base leading-24 tracking-normal text-[var(--text-primary)] transition-[border-color,box-shadow] duration-fast ease-out-strong placeholder:text-[var(--text-placeholder)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--blue-100)] disabled:pointer-events-none disabled:bg-[var(--blue-25)] disabled:text-[var(--text-disabled)]";
+  "flex h-12 w-full items-center rounded-[16px] bg-[var(--gray-25)] px-4 text-[15px] leading-24 tracking-normal text-[var(--text-primary)] transition-[background-color,box-shadow] duration-fast ease-out-strong placeholder:text-[var(--text-tertiary)] focus-visible:outline-none focus-visible:bg-[var(--white)] focus-visible:shadow-[inset_0_0_0_1.5px_var(--blue-300)] disabled:pointer-events-none disabled:opacity-60 disabled:text-[var(--text-disabled)]";
 
-const inputDefaultBorder =
-  "border border-[var(--border-default)] focus-visible:border-[var(--border-focus)] disabled:border-[var(--border-subtle)]";
+const inputDefaultBorder = "";
 
 const labelBase =
   "text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]";
