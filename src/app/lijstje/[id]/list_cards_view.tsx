@@ -873,12 +873,16 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
       ...split.stockDishes.filter((s) => s !== stock),
     ];
     const countable = section.items.filter((i) => i !== stock);
-    /* Elke dag: datumtegel + dag als titel; het gerecht (recept of diepvries) als sublabel. */
+    /* Elke dag: datumtegel + dag als titel; het gerecht (recept of diepvries) als sublabel.
+       Desktop: ook de gerechtfoto, en bij dagen zonder gerecht de items als sublabel. */
     const dishName = mainRecipe?.name ?? stock?.name ?? null;
+    const dishPhoto = mainRecipe?.photo ?? stock?.stockPhotoUrl ?? null;
     const extraRecipes = mainRecipe ? split.recipes.length - 1 : 0;
+    const looseNames = !dishName && wide ? section.items.map((i) => i.name).join(", ") : null;
     const header = (
       <>
         <DateChip date={d.date} />
+        {wide && dishName ? <Plate src={dishPhoto} size={44} freeze={!mainRecipe} /> : null}
         <span className="min-w-0 flex-1 leading-[19px]">
           <span className="block truncate text-[15px] font-bold text-text-primary first-letter:uppercase">{label}</span>
           {dishName ? (
@@ -886,6 +890,8 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
               {dishName}
               {extraRecipes > 0 ? ` + ${extraRecipes} recept${extraRecipes > 1 ? "en" : ""}` : ""}
             </span>
+          ) : looseNames ? (
+            <span className="block truncate text-[13px] text-[var(--text-secondary)]">{looseNames}</span>
           ) : null}
         </span>
         {edit ? (
