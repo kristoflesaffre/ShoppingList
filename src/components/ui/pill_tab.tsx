@@ -41,12 +41,13 @@ export interface PillTabProps {
  * Tabs: px-16, font semibold, 16px, leading-24. Actief: wit + primary/500 tekst.
  * Inactief: text-secondary (AA-contrast; voorheen neutrals/300 haalde geen 3:1).
  */
+/* Design system «Segmentknop»: zelfde grijze stijl als SegmentedControl (radius 13, 3px inzet). */
 const containerBase =
-  "relative flex w-full gap-0 overflow-hidden rounded-pill bg-[var(--blue-50)] p-1";
+  "relative flex w-full gap-0 overflow-hidden rounded-[13px] bg-[var(--gray-50)] p-[3px]";
 
 /** vaste min-h: actief (semibold) vs inactief (normal) mag de pill niet laten verspringen (Figma 903:6212). */
 const tabBase =
-  "flex min-h-[40px] flex-1 min-w-0 items-center justify-center text-base leading-[length:var(--leading-24)] tracking-normal whitespace-nowrap transition-[color,background-color,box-shadow,transform] duration-base ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
+  "flex min-h-[36px] flex-1 min-w-0 items-center justify-center text-[15px] leading-[length:var(--leading-24)] tracking-normal whitespace-nowrap transition-[color,background-color,box-shadow,transform] duration-base ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
 
 const sizeStyles: Record<PillTabSize, string> = {
   default: "px-4 py-2",
@@ -103,7 +104,7 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
 
     // Sliding indicator
     /* Breedte = (container − 2×4px inzet) / n; translate-x-full is relatief aan die eigen breedte. */
-    const indicatorWidth = hasThird ? "w-[calc((100%-8px)/3)]" : "w-[calc(50%-4px)]";
+    const indicatorWidth = hasThird ? "w-[calc((100%-6px)/3)]" : "w-[calc(50%-3px)]";
     const indicatorTranslate =
       activeValue === "first"
         ? "translate-x-0"
@@ -135,7 +136,7 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
         <div
           aria-hidden="true"
           className={cn(
-            "absolute inset-y-1 left-1 rounded-pill bg-[var(--white)] shadow-card motion-safe:transition-transform motion-safe:duration-slow motion-safe:ease-in-out-strong",
+            "absolute inset-y-[3px] left-[3px] rounded-[10px] bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.12)] motion-safe:transition-transform motion-safe:duration-slow motion-safe:ease-in-out-strong",
             indicatorWidth,
             indicatorTranslate,
           )}
@@ -154,9 +155,9 @@ const PillTab = React.forwardRef<HTMLDivElement, PillTabProps>(
               className={cn(
                 tabBase,
                 sizeStyles[size],
-                "relative z-10 rounded-pill bg-transparent",
+                "relative z-10 rounded-[10px] bg-transparent",
                 isActive
-                  ? "font-semibold text-[var(--blue-500)]"
+                  ? "font-semibold text-[var(--text-primary)]"
                   : "font-normal text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
               )}
             >

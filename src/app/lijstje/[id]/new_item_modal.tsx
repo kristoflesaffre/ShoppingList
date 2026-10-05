@@ -10,6 +10,7 @@ import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in
 import { Stepper } from "@/components/ui/stepper";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search_bar";
+import { SegmentedControl } from "@/components/ui/segmented_control";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { MiniButton } from "@/components/ui/mini_button";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
@@ -925,30 +926,12 @@ export function NewItemModal({
     !isVacationList &&
     !isEditMode &&
     groupingMode !== "category" ? (
-      <div className="flex rounded-[13px] bg-[var(--gray-50)] p-[3px]" role="group" aria-label="Filter op type">
-        {[
-          ...BASE_SOURCE_FILTERS,
-          ...(daySelected ? [STOCK_SOURCE_FILTER] : []),
-        ].map((filter) => {
-          const isActive = sourceFilter === filter.value;
-          return (
-            <button
-              key={filter.value}
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => handleSourceFilterChange(filter.value)}
-              className={cn(
-                "flex h-8 min-w-0 flex-1 items-center justify-center rounded-[10px] text-[13.5px] font-semibold transition-[background-color,color,box-shadow] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                isActive
-                  ? "bg-[var(--white)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(16,17,48,0.12)]"
-                  : "text-[var(--text-secondary)]",
-              )}
-            >
-              {filter.label}
-            </button>
-          );
-        })}
-      </div>
+      <SegmentedControl
+        ariaLabel="Filter op type"
+        value={sourceFilter}
+        onChange={handleSourceFilterChange}
+        options={[...BASE_SOURCE_FILTERS, ...(daySelected ? [STOCK_SOURCE_FILTER] : [])]}
+      />
     ) : null;
 
   const activeBatchItemPhotoUrl = itemName.trim()

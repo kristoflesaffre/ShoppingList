@@ -8,6 +8,7 @@ import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate } from "@/li
 import { categoryHeadingDisplay, groupMeatSubtypes } from "@/lib/item-ingredient-category";
 import { mixWithWhite, pickDistinctTint, useTintMap, type Rgb } from "@/lib/recipe-tint";
 import { cn } from "@/lib/utils";
+import { SegmentedControl } from "@/components/ui/segmented_control";
 import { IngredientPlate } from "@/components/ingredient_plate";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -1094,26 +1095,14 @@ const LAYOUT_OPTIONS: Array<{ value: ListCardLayout; label: string }> = [
 
 export function ListLayoutToggle({ value, onChange }: { value: ListCardLayout; onChange: (v: ListCardLayout) => void }) {
   return (
-    <div role="group" aria-label="Weergave" className="flex shrink-0 gap-0.5 rounded-[13px] bg-[var(--blue-50)] p-[3px]">
-      {LAYOUT_OPTIONS.map((o) => {
-        const on = value === o.value;
-        return (
-          <button
-            key={o.value}
-            type="button"
-            aria-label={o.label}
-            aria-pressed={on}
-            onClick={() => onChange(o.value)}
-            className={cn(
-              "flex h-8 w-9 items-center justify-center rounded-[10px] transition-[background-color,color,box-shadow] duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-              on ? "bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.12)]" : "text-[var(--gray-300)] [@media(hover:hover)]:hover:text-[var(--blue-400)]",
-            )}
-          >
-            <LayoutIcon kind={o.value} />
-          </button>
-        );
-      })}
-    </div>
+    <SegmentedControl
+      ariaLabel="Weergave"
+      size="icon"
+      fill={false}
+      value={value}
+      onChange={onChange}
+      options={LAYOUT_OPTIONS.map((o) => ({ value: o.value, ariaLabel: o.label, label: <LayoutIcon kind={o.value} /> }))}
+    />
   );
 }
 
@@ -1124,35 +1113,17 @@ export function ListGroupingToggle({
   value: "day" | "category";
   onChange: (value: "day" | "category") => void;
 }) {
-  const options = [
-    { value: "day" as const, label: "Per dag" },
-    { value: "category" as const, label: "Per categorie" },
-  ];
-
   return (
-    <div role="tablist" aria-label="Groepering lijst" className="flex shrink-0 gap-0.5 rounded-[13px] bg-[var(--blue-50)] p-[3px]">
-      {options.map((option) => {
-        const selected = value === option.value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            tabIndex={selected ? 0 : -1}
-            onClick={() => onChange(option.value)}
-            className={cn(
-              "flex h-8 min-w-[104px] items-center justify-center rounded-[10px] px-3 text-[13px] transition-[background-color,color,box-shadow] duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-              selected
-                ? "bg-[var(--white)] font-semibold text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.12)]"
-                : "font-normal text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--blue-400)]",
-            )}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
+    <SegmentedControl
+      ariaLabel="Groepering lijst"
+      fill={false}
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: "day", label: <span className="min-w-[80px] text-center">Per dag</span> },
+        { value: "category", label: <span className="min-w-[80px] text-center">Per categorie</span> },
+      ]}
+    />
   );
 }
 
