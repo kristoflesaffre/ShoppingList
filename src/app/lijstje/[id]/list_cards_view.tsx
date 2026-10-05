@@ -8,7 +8,7 @@ import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate } from "@/li
 import { categoryHeadingDisplay } from "@/lib/item-ingredient-category";
 import { mixWithWhite, pickDistinctTint, useTintMap, type Rgb } from "@/lib/recipe-tint";
 import { cn } from "@/lib/utils";
-import { useSortable } from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 /** Weergave van de items in een kaart: rijen, twee kolommen of vierkante tegels (canvas «Lijstje 6b» + «Lijstje 2»). */
@@ -302,6 +302,19 @@ function TrashButton({ label, onClick, size = 32 }: { label: string; onClick: ()
   );
 }
 
+function GripIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-[18px]">
+      {[6, 12, 18].map((y) => (
+        <React.Fragment key={y}>
+          <circle cx="9" cy={y} r="1.4" />
+          <circle cx="15" cy={y} r="1.4" />
+        </React.Fragment>
+      ))}
+    </svg>
+  );
+}
+
 /** Rij in bewerkmodus: greep om te slepen, tik op de rij om te wijzigen, vuilbakje om te verwijderen. */
 function EditRow({ item, getPhotoUrl, edit, first }: { item: ListItem; getPhotoUrl?: GetPhotoUrl; edit: ListCardsEditHandlers; first: boolean }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
@@ -323,14 +336,7 @@ function EditRow({ item, getPhotoUrl, edit, first }: { item: ListItem; getPhotoU
         aria-label={`${item.name} verplaatsen`}
         className="flex h-10 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-[var(--gray-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] active:cursor-grabbing"
       >
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-[18px]">
-          {[6, 12, 18].map((y) => (
-            <React.Fragment key={y}>
-              <circle cx="9" cy={y} r="1.4" />
-              <circle cx="15" cy={y} r="1.4" />
-            </React.Fragment>
-          ))}
-        </svg>
+        <GripIcon />
       </button>
       <button
         type="button"
@@ -359,11 +365,92 @@ function EditRows({ items, getPhotoUrl, edit }: { items: ListItem[]; getPhotoUrl
   );
 }
 
+export const RECIPE_BLOCK_PREFIX = "recipe-block:";
+
+function RecipeHead({
+  recipe,
+  edit,
+  grip,
+}: {
+  recipe: Recipe;
+  edit: ListCardsEditHandlers;
+  grip?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-0.5 mt-1.5 flex items-center gap-2.5 rounded-[12px] bg-[var(--blue-25)] py-2 pl-2.5 pr-2">
+      {grip}
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)]" aria-hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-4">
+          <path d="M7 18h10v2H7zM6 14a4 4 0 0 1 1.2-7.8A5 5 0 0 1 16.8 6.2 4 4 0 0 1 18 14v4H6z" />
+        </svg>
+      </span>
+      <span className="min-w-0 flex-1 leading-[17px]">
+        <span className="block truncate text-sm font-bold text-text-primary">{recipe.name}</span>
+        <span className="block truncate text-xs text-[var(--text-secondary)]">
+          Recept · {recipe.items.length} {recipe.items.length === 1 ? "ingrediënt" : "ingrediënten"}
+        </span>
+      </span>
+      <TrashButton label={`Recept ${recipe.name} verwijderen`} onClick={() => edit.onDeleteRecipeGroup(recipe.groupId)} size={30} />
+    </div>
+  );
+}
+
+/** Recept als geheel versleepbaar (Algemeen): greep in de receptkop, ingrediënten blijven binnen het recept. */
+function SortableRecipeBlock({ recipe, getPhotoUrl, edit }: { recipe: Recipe; getPhotoUrl?: GetPhotoUrl; edit: ListCardsEditHandlers }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: `${RECIPE_BLOCK_PREFIX}${recipe.groupId}`,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn(
+        // Omlijnd blok: duidelijk waar het recept stopt tussen de losse items.
+        "relative my-1.5 rounded-[14px] bg-[var(--white)] px-1.5 pb-0.5 pt-0.5 shadow-[inset_0_0_0_1.5px_var(--blue-100)]",
+        isDragging && "z-10 shadow-[inset_0_0_0_1.5px_var(--blue-200),0_14px_30px_-12px_rgba(16,17,48,0.4)]",
+      )}
+    >
+      <RecipeHead
+        recipe={recipe}
+        edit={edit}
+        grip={
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            {...attributes}
+            {...listeners}
+            aria-label={`Recept ${recipe.name} verplaatsen`}
+            className="-ml-1 flex h-8 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-[var(--blue-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] active:cursor-grabbing"
+          >
+            <GripIcon />
+          </button>
+        }
+      />
+      <SortableContext items={recipe.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <EditRows items={recipe.items} getPhotoUrl={getPhotoUrl} edit={edit} />
+      </SortableContext>
+    </div>
+  );
+}
+
 /**
  * Inhoud van een kaart in bewerkmodus. Een receptkop (met vuilbakje) verschijnt enkel als er naast
  * het recept nog iets anders in de kaart zit; anders zegt de kaartkop het al.
+ * `recipesMovable` (Algemeen): recepten en losse items in de echte volgorde, recepten als geheel versleepbaar.
  */
-function EditCardBody({ items, savedRecipes, getPhotoUrl, edit }: { items: ListItem[]; savedRecipes: SavedRecipe[]; getPhotoUrl?: GetPhotoUrl; edit: ListCardsEditHandlers }) {
+function EditCardBody({
+  items,
+  savedRecipes,
+  getPhotoUrl,
+  edit,
+  recipesMovable = false,
+}: {
+  items: ListItem[];
+  savedRecipes: SavedRecipe[];
+  getPhotoUrl?: GetPhotoUrl;
+  edit: ListCardsEditHandlers;
+  recipesMovable?: boolean;
+}) {
   const split = splitDay(items, savedRecipes);
   const others = [...split.loose, ...split.stockDishes];
   const showRecipeHeads = split.recipes.length > 1 || (split.recipes.length === 1 && others.length > 0);
@@ -374,24 +461,43 @@ function EditCardBody({ items, savedRecipes, getPhotoUrl, edit }: { items: ListI
       </div>
     );
   }
+  if (recipesMovable) {
+    // Volgorde zoals op het lijstje: een recept staat op de plek van zijn eerste ingrediënt.
+    const units: Array<{ kind: "recipe"; recipe: Recipe } | { kind: "item"; item: ListItem }> = [];
+    const seen = new Set<string>();
+    for (const item of items) {
+      const recipe = split.recipes.find((r) => r.items.includes(item));
+      if (recipe) {
+        if (!seen.has(recipe.groupId)) {
+          seen.add(recipe.groupId);
+          units.push({ kind: "recipe", recipe });
+        }
+      } else {
+        units.push({ kind: "item", item });
+      }
+    }
+    return (
+      <div className="px-3 pb-1.5 pt-1">
+        <SortableContext
+          items={units.map((u) => (u.kind === "recipe" ? `${RECIPE_BLOCK_PREFIX}${u.recipe.groupId}` : u.item.id))}
+          strategy={verticalListSortingStrategy}
+        >
+          {units.map((u, k) =>
+            u.kind === "recipe" ? (
+              <SortableRecipeBlock key={u.recipe.groupId} recipe={u.recipe} getPhotoUrl={getPhotoUrl} edit={edit} />
+            ) : (
+              <EditRow key={u.item.id} item={u.item} getPhotoUrl={getPhotoUrl} edit={edit} first={k === 0 || units[k - 1].kind === "recipe"} />
+            ),
+          )}
+        </SortableContext>
+      </div>
+    );
+  }
   return (
     <div className="px-3 pb-1.5 pt-1">
       {split.recipes.map((r) => (
         <div key={r.groupId}>
-          <div className="mb-0.5 mt-1.5 flex items-center gap-2.5 rounded-[12px] bg-[var(--blue-25)] py-2 pl-2.5 pr-2">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)]" aria-hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-4">
-                <path d="M7 18h10v2H7zM6 14a4 4 0 0 1 1.2-7.8A5 5 0 0 1 16.8 6.2 4 4 0 0 1 18 14v4H6z" />
-              </svg>
-            </span>
-            <span className="min-w-0 flex-1 leading-[17px]">
-              <span className="block truncate text-sm font-bold text-text-primary">{r.name}</span>
-              <span className="block truncate text-xs text-[var(--text-secondary)]">
-                Recept · {r.items.length} {r.items.length === 1 ? "ingrediënt" : "ingrediënten"}
-              </span>
-            </span>
-            <TrashButton label={`Recept ${r.name} verwijderen`} onClick={() => edit.onDeleteRecipeGroup(r.groupId)} size={30} />
-          </div>
+          <RecipeHead recipe={r} edit={edit} />
           <EditRows items={r.items} getPhotoUrl={getPhotoUrl} edit={edit} />
         </div>
       ))}
@@ -652,7 +758,7 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
             </>
           }
         >
-          <EditCardBody items={section.items} savedRecipes={savedRecipes} getPhotoUrl={getPhotoUrl} edit={edit} />
+          <EditCardBody items={section.items} savedRecipes={savedRecipes} getPhotoUrl={getPhotoUrl} edit={edit} recipesMovable />
         </Card>
       );
     }

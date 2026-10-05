@@ -147,7 +147,7 @@ import {
   listIsFrituurVenueList,
 } from "@/lib/list-product-icons";
 import type { ListItem } from "./new_item_modal";
-import {
+import { RECIPE_BLOCK_PREFIX,
   ListCardsView,
   ListGroupingMenuChip,
   ListGroupingToggle,
@@ -5215,6 +5215,29 @@ export default function ListDetailPage({
       const { active, over } = event;
       if (over == null || active.id === over.id) return;
       const movedId = String(active.id);
+      const overId = String(over.id);
+      // Recept als geheel (Algemeen): het hele blok verschuift voor/na het doel (item of ander recept).
+      if (movedId.startsWith(RECIPE_BLOCK_PREFIX) || overId.startsWith(RECIPE_BLOCK_PREFIX)) {
+        const unitOf = (id: string) =>
+          id.startsWith(RECIPE_BLOCK_PREFIX)
+            ? items.filter((i) => i.recipeGroupId === id.slice(RECIPE_BLOCK_PREFIX.length) && !i.fromStock)
+            : items.filter((i) => i.id === id);
+        const moving = unitOf(movedId);
+        const target = unitOf(overId);
+        if (moving.length === 0 || target.length === 0) return;
+        const movingIds = new Set(moving.map((i) => i.id));
+        if (target.some((t) => movingIds.has(t.id))) return;
+        const firstIndex = (unit: ListItem[]) => items.findIndex((i) => i.id === unit[0].id);
+        const down = firstIndex(moving) < firstIndex(target);
+        const rest = items.filter((i) => !movingIds.has(i.id));
+        const anchor = down ? target[target.length - 1] : target[0];
+        let at = rest.findIndex((i) => i.id === anchor.id);
+        if (at === -1) return;
+        if (down) at += 1;
+        const reordered = [...rest.slice(0, at), ...moving, ...rest.slice(at)];
+        db.transact(reordered.map((item, i) => db.tx.items[item.id].update({ order: i })) as Parameters<typeof db.transact>[0]);
+        return;
+      }
       const oldIndex = items.findIndex((i) => i.id === movedId);
       const newIndex = items.findIndex((i) => i.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return;
@@ -5244,8 +5267,14 @@ export default function ListDetailPage({
   const itemSectionMap = React.useMemo(() => {
     const map = new Map<string, string>();
     for (const section of sections) {
+      // Algemeen: recepten als geheel versleepbaar tussen de losse items (zelfde «top»-groep).
+      const isGeneral = section.title === "Algemeen";
       for (const item of section.items) {
-        map.set(item.id, `${section.title}::${dragGroupKey(item)}`);
+        const key = dragGroupKey(item);
+        map.set(item.id, `${section.title}::${isGeneral && key === "loose" ? "top" : key}`);
+        if (isGeneral && key !== "loose" && item.recipeGroupId) {
+          map.set(`${RECIPE_BLOCK_PREFIX}${item.recipeGroupId}`, `${section.title}::top`);
+        }
       }
     }
     return map;
