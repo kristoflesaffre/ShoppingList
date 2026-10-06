@@ -501,6 +501,20 @@ export default function KlantenKaartenPage() {
     });
   }, [data]);
 
+  /** `?open=<id>` (bv. vanuit «Klantenkaart toevoegen» → Al toegevoegd): die kaart meteen openen. */
+  const openedFromQueryRef = React.useRef(false);
+  React.useEffect(() => {
+    if (openedFromQueryRef.current || cards.length === 0 || typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("open");
+    if (!id) return;
+    const card = cards.find((c) => c.id === id);
+    if (!card) return;
+    openedFromQueryRef.current = true;
+    setViewCard(card);
+    setViewOpen(true);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, [cards]);
+
   /** Kaarten die nog gelinkt zijn aan een (favorieten) lijstje: cardId → lijstnaam. */
   const cardListMap = React.useMemo(() => {
     const map = new Map<string, string>();

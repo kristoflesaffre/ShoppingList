@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
 import { LOYALTY_STANDALONE_STORE_OPTIONS } from "@/lib/loyalty-standalone-stores";
 import { SearchBar } from "@/components/ui/search_bar";
+import { PageBackButton } from "@/components/ui/page_back_button";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
-import { cn } from "@/lib/utils";
 
 /** Zelfde pijl als SlideInModal — public/icons/arrow.svg */
 function BackArrowIcon({ className }: { className?: string }) {
@@ -29,136 +29,49 @@ function BackArrowIcon({ className }: { className?: string }) {
   );
 }
 
-/** Generiek klantenkaart + plus (32×32 beeldvlak). */
-function CardPlusIcon({ className }: { className?: string }) {
+function CardBadgeIcon() {
   return (
-    <svg
-      className={cn("size-8 shrink-0", className)}
-      viewBox="0 0 32 32"
-      width={32}
-      height={32}
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      <rect
-        x="5"
-        y="9"
-        width="18"
-        height="12"
-        rx="2"
-        stroke="var(--gray-600)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M5 13h18"
-        stroke="var(--gray-600)"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <circle
-        cx="22"
-        cy="10"
-        r="5.5"
-        fill="var(--white)"
-        stroke="var(--blue-500)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M22 8v4M20 10h4"
-        stroke="var(--blue-500)"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[11px]">
+      <rect x="3" y="6" width="18" height="12" rx="2.5" />
+      <path d="M3 10h18" />
     </svg>
   );
 }
 
 const MAX_CUSTOM_NAAM_QUERY = 120;
 
-function CustomCardAddRow({ query }: { query: string }) {
+/** Enkel wanneer de zoekopdracht geen winkel oplevert: eigen kaart toevoegen. */
+function CustomCardRow({ query }: { query: string }) {
   const trimmed = query.trim().slice(0, MAX_CUSTOM_NAAM_QUERY);
-  const enabled = trimmed.length > 0;
-  const href = `/klantenkaarten/toevoegen/nieuw?naam=${encodeURIComponent(trimmed)}`;
-
-  const rowClass = cn(
-    "flex w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] py-3 pl-4 pr-3 text-left shadow-card transition-colors",
-    enabled
-      ? "no-underline [@media(hover:hover)]:hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-      : "cursor-not-allowed opacity-50",
-  );
-
-  const body = (
-    <>
-      <CardPlusIcon />
-      <div className="min-w-0 flex-1">
-        <p className="text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
-          Klantenkaart toevoegen
-        </p>
-        <p
-          className={cn(
-            "truncate text-sm font-normal leading-20 tracking-normal",
-            enabled
-              ? "text-[var(--text-secondary)]"
-              : "text-[var(--text-tertiary)]",
-          )}
-        >
-          {enabled ? `“${trimmed}”` : "Typ een winkelnaam in het zoekveld"}
-        </p>
-      </div>
-    </>
-  );
-
-  if (enabled) {
-    return (
-      <Link href={href} className={rowClass} aria-label={`Klantenkaart toevoegen: ${trimmed}`}>
-        {body}
-      </Link>
-    );
-  }
-
-  return (
-    <div className={rowClass} aria-disabled="true">
-      {body}
-    </div>
-  );
-}
-
-function StorePickRow({
-  label,
-  logoSrc,
-  href,
-}: {
-  label: string;
-  logoSrc: string;
-  href: string;
-}) {
   return (
     <Link
-      href={href}
-      className={cn(
-        "flex w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] py-3 pl-4 pr-3 no-underline shadow-card transition-colors",
-        "[@media(hover:hover)]:hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-      )}
+      href={`/klantenkaarten/toevoegen/nieuw?naam=${encodeURIComponent(trimmed)}`}
+      aria-label={`Klantenkaart toevoegen voor ${trimmed}`}
+      className="flex w-full min-w-0 items-center gap-3 rounded-[18px] bg-[var(--white)] p-3.5 no-underline shadow-[0_0_0_1px_var(--border-subtle)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)]"
     >
-      {/* Figma 1096:7045: logo 32×32, overflow-clip, géén achtergrondkleur */}
-      <div className="relative size-8 shrink-0 overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos */}
-        <img
-          src={logoSrc}
-          alt=""
-          width={32}
-          height={32}
-          className="size-full object-contain object-center"
-        />
-      </div>
-      <p className="min-w-0 flex-1 truncate text-base font-medium leading-24 tracking-normal text-[var(--text-primary)]">
-        {label}
-      </p>
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[var(--blue-50)] text-[var(--blue-500)]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
+          <rect x="3" y="6" width="18" height="12" rx="2.5" />
+          <path d="M3 10h18M7 15h4" />
+        </svg>
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-[15px] font-semibold leading-5 text-[var(--text-primary)]">
+          Kaart voor «{trimmed}» toevoegen
+        </span>
+        <span className="text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
+          Staat je winkel er niet tussen? Geen probleem.
+        </span>
+      </span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4 shrink-0 text-[var(--text-tertiary)]">
+        <path d="M9 6l6 6-6 6" />
+      </svg>
     </Link>
   );
 }
+
+const TILE_CLASS =
+  "relative flex h-[104px] min-w-0 flex-col items-center justify-center gap-[9px] rounded-[20px] bg-[var(--white)] px-2 no-underline shadow-[0_1px_2px_rgba(16,17,48,0.04)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus lg:h-[116px]";
 
 export default function KlantenkaartToevoegenPage() {
   const router = useRouter();
@@ -168,6 +81,20 @@ export default function KlantenkaartToevoegenPage() {
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
+
+  const { data } = db.useQuery({
+    loyaltyCards: { $: { where: { ownerId: user?.id ?? "__no_user__" } } },
+  });
+
+  /** Winkel (label, kleine letters) → bestaande kaart: tik opent die kaart. */
+  const existingByStore = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of (data?.loyaltyCards ?? []) as Array<{ id: string; cardName?: string | null }>) {
+      const key = String(c.cardName ?? "").trim().toLowerCase();
+      if (key && !map.has(key)) map.set(key, c.id);
+    }
+    return map;
+  }, [data?.loyaltyCards]);
 
   const sortedStores = React.useMemo(
     () =>
@@ -187,48 +114,91 @@ export default function KlantenkaartToevoegenPage() {
     return <PageSpinner />;
   }
 
+  const noMatch = filtered.length === 0 && query.trim().length > 0;
+
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)] px-[16px]">
-      <div className="flex min-w-0 flex-1 flex-col pb-[calc(24px+env(safe-area-inset-bottom,0px))] pt-[calc(52px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full min-w-0 max-w-[956px] flex-1 flex-col gap-6">
-          <header className="flex min-h-8 items-center gap-4">
-            <Link
-              href="/klantenkaarten"
-              className="flex size-10 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              aria-label="Terug naar klantenkaarten"
-            >
-              <BackArrowIcon className="size-6" />
-            </Link>
-            <h1 className="min-w-0 flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
-              Klantenkaart toevoegen
-            </h1>
-          </header>
+    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)] px-4">
+      {/* Mobiel: topbalk met terugpijl; desktop: ronde terugknop naast de titel. */}
+      <div className="fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] lg:hidden">
+        <header className="mx-auto flex h-16 max-w-[956px] items-center px-4">
+          <Link
+            href="/klantenkaarten"
+            aria-label="Terug naar klantenkaarten"
+            className="flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+          >
+            <BackArrowIcon className="size-6 shrink-0" />
+          </Link>
+        </header>
+      </div>
 
-          <SearchBar
-            placeholder="Zoek klantenkaart"
-            value={query}
-            onValueChange={setQuery}
-            autoComplete="off"
-            enterKeyHint="search"
-            className="shrink-0"
-          />
-
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-2">
-            {filtered.length === 0 && query.trim() ? (
-              <p className="py-2 text-center text-sm font-normal leading-20 text-[var(--text-tertiary)]">
-                Geen overeenkomst in de lijst — gebruik onderstaande knop om door te gaan.
-              </p>
-            ) : null}
-            {filtered.map((store) => (
-              <StorePickRow
-                key={store.slug}
-                label={store.label}
-                logoSrc={store.logoSrc}
-                href={`/klantenkaarten/toevoegen/${store.slug}`}
-              />
-            ))}
-            <CustomCardAddRow query={query} />
+      <div className="flex flex-1 flex-col pb-[calc(48px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+8px+env(safe-area-inset-top,0px))] lg:pt-[calc(44px+env(safe-area-inset-top,0px))]">
+        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-4 lg:gap-[22px]">
+          {/* Canvas «14 · Klantenkaart toevoegen — voorstel» */}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <PageBackButton href="/klantenkaarten" label="Terug naar klantenkaarten" />
+              <div className="min-w-0">
+                <h1 className="text-[30px] font-bold leading-9 tracking-tight text-text-primary lg:text-[32px]">
+                  Klantenkaart toevoegen
+                </h1>
+                <p className="mt-1 text-[13.5px] leading-[18px] text-[var(--text-secondary)]">Kies de winkel van je kaart</p>
+              </div>
+            </div>
+            <SearchBar
+              className="!bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:w-[300px]"
+              value={query}
+              onValueChange={setQuery}
+              placeholder="Zoek een winkel"
+              autoComplete="off"
+              enterKeyHint="search"
+            />
           </div>
+
+          {noMatch ? (
+            <div className="flex flex-col gap-4">
+              <p className="pt-1 text-center text-[13px] text-[var(--text-tertiary)]">
+                Geen winkel gevonden voor «{query.trim()}»
+              </p>
+              <CustomCardRow query={query} />
+            </div>
+          ) : (
+            <div className="grid w-full min-w-0 grid-cols-3 gap-2.5 lg:grid-cols-6 lg:gap-3">
+              {filtered.map((store) => {
+                const existingId = existingByStore.get(store.label.toLowerCase());
+                const logo = (
+                  // eslint-disable-next-line @next/next/no-img-element -- winkellogo
+                  <img src={store.logoSrc} alt="" width={46} height={46} className="size-10 object-contain lg:size-[46px]" aria-hidden />
+                );
+                return existingId ? (
+                  <Link
+                    key={store.slug}
+                    href={`/klantenkaarten?open=${encodeURIComponent(existingId)}`}
+                    aria-label={`${store.label}: kaart al toegevoegd, openen`}
+                    className={TILE_CLASS}
+                  >
+                    <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)]">
+                      <CardBadgeIcon />
+                    </span>
+                    {logo}
+                    <span className="flex w-full flex-col items-center">
+                      <span className="w-full truncate text-center text-[13.5px] font-semibold text-text-primary">{store.label}</span>
+                      <span className="text-[11px] font-semibold text-[var(--blue-500)]">Al toegevoegd</span>
+                    </span>
+                  </Link>
+                ) : (
+                  <Link
+                    key={store.slug}
+                    href={`/klantenkaarten/toevoegen/${store.slug}`}
+                    aria-label={`Klantenkaart toevoegen: ${store.label}`}
+                    className={TILE_CLASS}
+                  >
+                    {logo}
+                    <span className="w-full truncate text-center text-[13.5px] font-semibold text-text-primary">{store.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
