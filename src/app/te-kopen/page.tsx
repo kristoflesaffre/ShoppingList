@@ -27,6 +27,7 @@ import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { teKopenMonogramStyle, teKopenStoreGradient, teKopenStoreRgb } from "@/lib/te-kopen-style";
 import { StoreOrderPanel, loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
+import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
 
 const ShareListModal = dynamic(
   () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
@@ -250,6 +251,9 @@ export default function TeKopenPage() {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isEditing, setIsEditing] = React.useState(false);
+  /** Large-title-patroon (zoals favorieten): compacte titel pas zodra de grote titel wegscrolt. */
+  const { titleRef: largeTitleRef, collapsed: isLargeTitleCollapsed } =
+    useLargeTitleCollapse<HTMLHeadingElement>(64);
   const [isStoreOrderMode, setIsStoreOrderMode] = React.useState(false);
   const [storeOrder, setStoreOrder] = React.useState<string[] | null>(() => loadStoreOrder());
   const [lastDeletedItem, setLastDeletedItem] = React.useState<ShoppingItem | null>(null);
@@ -489,7 +493,12 @@ export default function TeKopenPage() {
     <div className="relative flex min-h-dvh w-full flex-col">
 
       {/* Fixed header */}
-      <div className="fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)]">
+      <div
+        className={cn(
+          "fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
+          isLargeTitleCollapsed || isStoreOrderMode ? "shadow-[0_1px_0_var(--border-subtle)]" : "shadow-none",
+        )}
+      >
         <div className="flex justify-center px-4">
           <header className="flex h-16 w-full max-w-[956px] items-center gap-4">
             <button
@@ -500,8 +509,15 @@ export default function TeKopenPage() {
             >
               <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
             </button>
-            <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
-              Te kopen
+            <p
+              className={cn(
+                "min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]",
+                "motion-safe:transition-[opacity,transform] motion-safe:duration-200 motion-safe:ease-out",
+                isLargeTitleCollapsed ? "translate-y-0 opacity-100" : "opacity-0 motion-safe:translate-y-1",
+              )}
+              aria-hidden={!isLargeTitleCollapsed}
+            >
+              {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
             </p>
             <button
               type="button"
@@ -528,7 +544,7 @@ export default function TeKopenPage() {
           <div className="flex w-full min-w-0 items-start justify-between gap-4">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex min-w-0 items-center gap-2">
-                <h1 className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
+                <h1 ref={largeTitleRef} className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
                   {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
                 </h1>
                 {!isEditing && !isStoreOrderMode && allItems.length > 0 && (
