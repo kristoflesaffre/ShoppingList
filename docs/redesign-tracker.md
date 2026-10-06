@@ -32,7 +32,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | # | Scherm | Route / bestand | Status |
 | --- | --- | --- | --- |
 | 1 | Te kopen | `/te-kopen` | ✅ |
-| 2 | Te kopen · item toevoegen | `add_shopping_item_slide_in.tsx` | ⬜ |
+| 2 | Te kopen · item toevoegen | `add_shopping_item_slide_in.tsx` | 🔄 voorstel op canvas |
 | 3 | Diepvriesvoorraad | `/diepvriesvoorraad` | ⬜ |
 | 4 | Diepvries · item toevoegen | `new_freezer_item_modal.tsx` | ⬜ |
 | 5 | Lijstjes beheren (overzicht) | `/lijstjes-beheren` | ⬜ |
