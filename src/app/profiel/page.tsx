@@ -362,7 +362,7 @@ export default function ProfielPage() {
         <ProfileSettingsRow
           bare={bare}
           icon={homeIcon}
-          label="Homepagina aanpassen"
+          label="Startpagina aanpassen"
           description="Kies welke secties je op de startpagina ziet"
           onClick={() => router.push("/beheer-homepagina")}
         />

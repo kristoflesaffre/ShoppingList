@@ -2212,112 +2212,6 @@ function HomeLijstjesSection({
   );
 }
 
-function HomeFavorietenSection({
-  masterLists,
-  onStartFromMaster,
-  onOpenCreateModal,
-  onHide,
-}: {
-  masterLists: HomeList[];
-  onStartFromMaster: (id: string) => void;
-  onOpenCreateModal: () => void;
-  onHide?: () => void;
-}) {
-  const router = useRouter();
-
-  const cardFor = (list: HomeList) => (
-    <ListCard
-      listName={list.name}
-      itemCount={homeListCardItemCountLine(list)}
-      displayVariant={list.displayVariant}
-      storeLogos={list.storeLogos}
-      sharedWithFirstName={list.sharedWithFirstName ?? undefined}
-      icon={
-        // eslint-disable-next-line @next/next/no-img-element -- lokale webp
-        <img
-          src={list.customIconUrl ?? homeListCardIconSrc(list)}
-          alt=""
-          width={48}
-          height={48}
-          decoding="async"
-          className={list.customIconUrl ? "size-full rounded-[var(--radius-md)] object-cover" : "object-contain"}
-        />
-      }
-      state="default"
-      onMasterAdd={
-        list.displayVariant === "master"
-          ? () => onStartFromMaster(list.id)
-          : undefined
-      }
-      className="cursor-pointer"
-    />
-  );
-
-  /* Geen favorietenlijsten: de favorieten-banner boven «Lijstjes» legt het uit. */
-  if (masterLists.length === 0) return null;
-
-  return (
-    <div className="flex flex-col">
-      <ListSectionHeader
-        icon="heart"
-        label="Favorieten"
-        showNaarOverzicht
-        naarOverzichtHref="/lijstjes-beheren/favorieten"
-        overzichtLabel="Toon alle"
-      />
-      <div
-        className={cn("mt-4 lg:hidden", SWIMLANE_CLASSES)}
-        style={{ scrollbarWidth: "none" } as React.CSSProperties}
-      >
-        {masterLists.map((list) => (
-          <div key={list.id} className="w-[300px] shrink-0">
-            <div
-              role="link"
-              tabIndex={0}
-              className="block cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-              onClick={(e) => {
-                if ((e.target as HTMLElement).closest("button")) return;
-                router.push(`/lijstje/${list.id}`);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  if ((e.target as HTMLElement).closest("button")) return;
-                  e.preventDefault();
-                  router.push(`/lijstje/${list.id}`);
-                }
-              }}
-            >
-              {cardFor(list)}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 hidden lg:grid lg:grid-cols-3 lg:gap-3">
-        {masterLists.map((list) => (
-          <div
-            key={list.id}
-            role="link"
-            tabIndex={0}
-            className="block cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-            onClick={(e) => {
-              if ((e.target as HTMLElement).closest("button")) return;
-              router.push(`/lijstje/${list.id}`);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                if ((e.target as HTMLElement).closest("button")) return;
-                e.preventDefault();
-                router.push(`/lijstje/${list.id}`);
-              }
-            }}
-          >
-            {cardFor(list)}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function HomeKalenderSection({
   entries,
@@ -3818,15 +3712,6 @@ export default function Home() {
               primeKeyboard();
               setTeKopenSlideOpen(true);
             }}
-            onHide={onHide}
-          />
-        );
-      case "favorieten":
-        return (
-          <HomeFavorietenSection
-            masterLists={masterLists}
-            onStartFromMaster={handleStartFromMaster}
-            onOpenCreateModal={handleOpenCreateModal}
             onHide={onHide}
           />
         );

@@ -1,7 +1,6 @@
 export type HomeSectionId =
   | "lijstjes"
   | "te-kopen"
-  | "favorieten"
   | "kalender"
   | "klantenkaarten"
   | "diepvries"
@@ -15,22 +14,24 @@ export type HomeSectionConfig = {
 export const HOME_SECTIONS_META: {
   id: HomeSectionId;
   label: string;
+  /** Korte uitleg onder het label op «Startpagina aanpassen». */
+  description: string;
+  /** Achtergrondkleur van de illustratietegel. */
+  tint: string;
   illustration: string;
   hideable: boolean;
 }[] = [
-  { id: "lijstjes", label: "Lijstjes", illustration: "/images/ui/lijstje_320.webp", hideable: false },
-  { id: "te-kopen", label: "Te kopen", illustration: "/images/ui/kopen_320.webp", hideable: true },
-  { id: "favorieten", label: "Favorieten", illustration: "/images/ui/hart_320.webp", hideable: true },
-  { id: "kalender", label: "Kalender", illustration: "/images/ui/kalender_320.webp", hideable: true },
-  { id: "klantenkaarten", label: "Klantenkaarten", illustration: "/images/ui/klantenkaart_320.webp", hideable: true },
-  { id: "diepvries", label: "Diepvries", illustration: "/images/ui/empty_state_diepvries.png", hideable: true },
-  { id: "films-series", label: "Films en series", illustration: "/images/ui/films_320.webp", hideable: true },
+  { id: "lijstjes", label: "Lijstjes", description: "Je boodschappenlijstjes", tint: "#f2f2fe", illustration: "/images/ui/lijstje_320.webp", hideable: false },
+  { id: "te-kopen", label: "Te kopen", description: "Losse dingen om mee te nemen", tint: "#fdf3df", illustration: "/images/ui/kopen_320.webp", hideable: true },
+  { id: "kalender", label: "Kalender", description: "Wat je deze week kookt", tint: "#fdeee3", illustration: "/images/ui/kalender_320.webp", hideable: true },
+  { id: "klantenkaarten", label: "Klantenkaarten", description: "Je kaarten altijd bij de hand", tint: "#fdf6d8", illustration: "/images/ui/klantenkaart_320.webp", hideable: true },
+  { id: "diepvries", label: "Diepvries", description: "Wat er in je diepvries ligt", tint: "#e5f1fb", illustration: "/images/ui/empty_state_diepvries.png", hideable: true },
+  { id: "films-series", label: "Films en series", description: "Je watchlist en wat je kijkt", tint: "#eceef4", illustration: "/images/ui/films_320.webp", hideable: true },
 ];
 
 export const DEFAULT_SECTION_ORDER: HomeSectionId[] = [
   "lijstjes",
   "te-kopen",
-  "favorieten",
   "kalender",
   "klantenkaarten",
   "diepvries",
