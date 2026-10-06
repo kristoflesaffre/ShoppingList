@@ -100,7 +100,7 @@ function PeopleCard({
           </Button>
         </div>
       ) : (
-        <ul className="m-0 flex list-none gap-4 overflow-x-auto p-0 pb-1">
+        <ul className="-m-2 flex list-none gap-4 overflow-x-auto p-2">
           {people.map((p, i) => (
             <li key={p.id} className="w-[64px] shrink-0">
               {p.isMe ? (
@@ -113,9 +113,9 @@ function PeopleCard({
                   type="button"
                   onClick={() => onSelect(p)}
                   aria-label={`Delen met ${p.name} beheren`}
-                  className="group -m-1 flex w-[calc(100%+8px)] flex-col items-center gap-1.5 rounded-[14px] p-1 transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[var(--blue-50)]"
+                  className="group flex w-full flex-col items-center gap-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] motion-safe:active:scale-95"
                 >
-                  <span className="relative">
+                  <span className="relative rounded-full transition-shadow duration-fast [@media(hover:hover)]:group-hover:shadow-[0_0_0_5px_var(--blue-100)]">
                     <PersonAvatar name={p.name} url={p.avatarUrl} index={i} />
                     <span
                       aria-hidden
@@ -138,7 +138,7 @@ function PeopleCard({
               type="button"
               onClick={onInvite}
               aria-label="Iemand uitnodigen"
-              className="flex size-[52px] items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[inset_0_0_0_2px_var(--blue-200)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--blue-50)]"
+              className="flex size-[52px] items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)] transition-[background-color,box-shadow] duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[var(--blue-100)] [@media(hover:hover)]:hover:shadow-[0_0_0_5px_var(--blue-100)]"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-5">
                 <path d="M12 5v14M5 12h14" />
