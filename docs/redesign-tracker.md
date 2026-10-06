@@ -45,7 +45,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 11 | Lijstje · instellingen | `/lijstje/[id]/instellingen` | ✅ |
 | 12 | Lijstje delen | `share_list_modal.tsx` | ✅ foto-avatars, deelknoppen boven link, «Ook toekomstige lijstjes» (auto-delen per soort). Beheerpagina «Samen delen» (`/profiel/delen`): deelgenoten + algemene uitnodigingslink (`/deel/samen/[token]`), soorten aan/uit, overzicht gedeelde lijstjes met schakelaar |
 | 13 | Startpagina aanpassen | `/beheer-homepagina` | ✅ één kaart met greep · illustratie · uitleg · schakelaar; Favorieten-sectie van de startpagina verwijderd |
-| 14 | Klantenkaart toevoegen (kies winkel) | `/klantenkaarten/toevoegen` | ⬜ |
+| 14 | Klantenkaart toevoegen (kies winkel) | `/klantenkaarten/toevoegen` | 🔄 voorstel op canvas |
 | 15 | Klantenkaart toevoegen (winkel / nieuw) | `/klantenkaarten/toevoegen/[storeSlug]`, `/nieuw` | ⬜ |
 | 16 | Klantenkaart bewerken / scanresultaat | `loyalty_card_editor_slide_in.tsx`, `loyalty_card_scan_result_slide_in.tsx` | ⬜ |
 | 17 | Recept bewerken | `recipe_editor_slide_in.tsx`, `recipe_ingredient_form_slide_in.tsx` | ⬜ |
