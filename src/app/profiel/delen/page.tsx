@@ -337,7 +337,7 @@ function PersonSheet({
         </Button>
       }
     >
-      <div className="flex flex-col items-center gap-4 pb-2 text-center">
+      <div className="flex flex-col items-center gap-4 pb-4 text-center md:pb-6">
         <PersonAvatar name={person.name} url={person.avatarUrl} index={index} />
         <div className="grid w-full grid-cols-2 gap-3">
           <div className="rounded-[16px] bg-[var(--gray-25)] px-3 py-3">
