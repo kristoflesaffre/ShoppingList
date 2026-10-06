@@ -40,6 +40,8 @@ export interface AddShoppingItemSlideInProps {
   onAdd: (name: string, quantity: string, store: string | null) => void;
   /** Pre-select a store when opening from a section header */
   initialStore?: string | null;
+  /** Bestaand product wijzigen: slaat het zoekblad over en vult alles in. */
+  editItem?: { name: string; quantity: string; store?: string | null } | null;
 }
 
 export function AddShoppingItemSlideIn({
@@ -47,6 +49,7 @@ export function AddShoppingItemSlideIn({
   onClose,
   onAdd,
   initialStore,
+  editItem,
 }: AddShoppingItemSlideInProps) {
   const [name, setName] = React.useState("");
   const [quantity, setQuantity] = React.useState("1");
@@ -63,17 +66,18 @@ export function AddShoppingItemSlideIn({
   // When the slide-in opens: reset state and show autocomplete first
   React.useEffect(() => {
     if (open) {
-      setName("");
-      setQuantity("1");
-      setUnit("stuk");
-      setSelectedStore(initialStore ?? null);
+      const m = editItem?.quantity.trim().match(/^(\d+)\s*(.*)$/);
+      setName(editItem?.name ?? "");
+      setQuantity(m ? m[1] : "1");
+      setUnit(m ? m[2] || "stuk" : "stuk");
+      setSelectedStore(editItem ? editItem.store ?? null : initialStore ?? null);
       setSearchMode(false);
       setStoreSearch("");
-      setSearchOpen(true);
+      setSearchOpen(!editItem);
     } else {
       setSearchOpen(false);
     }
-  }, [open, initialStore]);
+  }, [open, initialStore, editItem]);
 
   // User picked a name from autocomplete → close search, show main slide-in
   const handleNameSelected = React.useCallback((picked: string) => {
@@ -151,7 +155,7 @@ export function AddShoppingItemSlideIn({
       <SlideInModal
         open={mainSlideOpen}
         onClose={onClose}
-        title="Nieuw te kopen product"
+        title={editItem ? "Product wijzigen" : "Nieuw te kopen product"}
         containerClassName="z-40"
         footer={
           <Button
@@ -161,7 +165,7 @@ export function AddShoppingItemSlideIn({
             disabled={!name.trim()}
             className="w-full"
           >
-            Toevoegen
+            {editItem ? "Opslaan" : "Toevoegen"}
           </Button>
         }
       >

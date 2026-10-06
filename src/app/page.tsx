@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
@@ -968,22 +969,6 @@ function pluralizeShoppingQuantity(quantity: string): string {
 type ShoppingAddedBy = { firstName: string; avatarUrl: string | null };
 
 /** Monogramkleuren voor producten zonder foto (canvas «Te kopen 6c»): zacht vlak, letter in dezelfde tint. */
-const TE_KOPEN_MONOGRAM_RGB: Array<[number, number, number]> = [
-  [214, 112, 31],
-  [47, 127, 191],
-  [61, 143, 85],
-  [139, 108, 240],
-  [204, 74, 128],
-  [43, 160, 150],
-];
-
-/** Zacht vlak + letter in dezelfde tint, vast per beginletter (mobiel en desktop gelijk). */
-function teKopenMonogramStyle(name: string): React.CSSProperties {
-  const code = name.trim().toUpperCase().charCodeAt(0) || 0;
-  const rgb = TE_KOPEN_MONOGRAM_RGB[code % TE_KOPEN_MONOGRAM_RGB.length].join(",");
-  return { backgroundColor: `rgba(${rgb},0.14)`, color: `rgb(${rgb})` };
-}
-
 function teKopenStoreLogo(store?: string | null): string | null {
   if (!store) return null;
   return MASTER_STORE_OPTIONS.find((s) => s.label === store)?.logoSrc ?? null;

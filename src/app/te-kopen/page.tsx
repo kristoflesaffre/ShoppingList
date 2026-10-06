@@ -20,7 +20,11 @@ import {
 } from "@/lib/master-stores";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { MiniButton } from "@/components/ui/mini_button";
-import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
+import { CategoryCard } from "@/components/ui/category_card";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
+import { SearchBar } from "@/components/ui/search_bar";
+import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
+import { teKopenMonogramStyle, teKopenStoreGradient, teKopenStoreRgb } from "@/lib/te-kopen-style";
 import { StoreOrderPanel, loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 
@@ -95,124 +99,143 @@ function ChevronRightIcon() {
   );
 }
 
-// ─── Item card ────────────────────────────────────────────────────────────────
+// ─── Winkelkaart ──────────────────────────────────────────────────────────────
 
-function ShoppingItemCard({
+type AddedBy = { firstName: string; avatarUrl?: string | null };
+
+/** Canvas «01 · Te kopen — voorstel»: rij met foto of monogram, naam, aantal en wie het toevoegde. */
+function ShoppingRow({
   item,
   isEditing,
   addedBy,
+  onEdit,
   onDelete,
 }: {
   item: ShoppingItem;
   isEditing: boolean;
-  /** Figma 1477:11019 — «1 stuk - door Chloé» + 16px avatar, alles neutraal 400. */
-  addedBy?: { firstName: string; avatarUrl?: string | null } | null;
+  addedBy?: AddedBy | null;
+  onEdit: (item: ShoppingItem) => void;
   onDelete: (id: string) => void;
 }) {
   const getPhoto = useItemPhotoUrl(160);
   const photoSrc = getPhoto(item.name);
 
-  return (
-    <div className="flex h-16 w-full items-end gap-3 rounded-[var(--radius-md)] border border-[var(--gray-100)] bg-white px-3 py-3">
+  const content = (
+    <>
       {photoSrc ? (
-        <img
-          src={photoSrc}
-          alt=""
-          width={40}
-          height={40}
-          className="size-10 shrink-0 object-cover"
-        />
-      ) : (
-        <div className="size-10 shrink-0 bg-[var(--gray-50)]" aria-hidden />
-      )}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
-          {item.name}
+        <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--gray-25)]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
+          <img src={photoSrc} alt="" width={34} height={34} className="size-[34px] object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />
         </span>
-        <div className="flex min-w-0 items-center gap-1">
-          <span className="min-w-0 truncate text-xs font-normal leading-4 tracking-normal text-[var(--gray-400)]">
-            {addedBy
-              ? `${item.quantity} - door ${addedBy.firstName}`
-              : item.quantity}
-          </span>
-          {addedBy?.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- profiel-data-URL
-            <img
-              src={addedBy.avatarUrl}
-              alt=""
-              width={16}
-              height={16}
-              className="size-4 shrink-0 rounded-full object-cover"
-            />
-          ) : null}
-        </div>
-      </div>
-      {isEditing && (
-        <button
-          type="button"
-          onClick={() => onDelete(item.id)}
-          aria-label={`${item.name} verwijderen`}
-          className="flex size-8 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      ) : (
+        <span
+          className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] text-[17px] font-bold"
+          style={teKopenMonogramStyle(item.name)}
+          aria-hidden
         >
-          <MaskIcon src="/icons/recycle_bin.svg" className="size-6 bg-[var(--error-600)]" />
-        </button>
+          {item.name.trim().charAt(0).toUpperCase()}
+        </span>
       )}
-    </div>
+      <span className="min-w-0 flex-1 leading-[19px]">
+        <span className="block truncate text-[15px] font-medium text-text-primary first-letter:uppercase">{item.name}</span>
+        <span className="flex min-w-0 items-center gap-[5px] text-[13px] text-[var(--text-tertiary)]">
+          <span className="shrink-0">{item.quantity}</span>
+          {addedBy ? (
+            <>
+              <span aria-hidden>·</span>
+              <span className="flex size-[15px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--secondary-100)] text-[8px] font-bold text-[var(--secondary-800)]" aria-hidden>
+                {addedBy.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- profielfoto (data-URL)
+                  <img src={addedBy.avatarUrl} alt="" className="size-full object-cover" />
+                ) : (
+                  addedBy.firstName.charAt(0).toUpperCase()
+                )}
+              </span>
+              <span className="truncate">door {addedBy.firstName}</span>
+            </>
+          ) : null}
+        </span>
+      </span>
+    </>
+  );
+
+  if (isEditing) {
+    return (
+      <div className="flex w-full items-center gap-3 px-1 py-[9px]">
+        {content}
+        <RoundIconButton tone="danger" size={28} onClick={() => onDelete(item.id)} aria-label={`${item.name} verwijderen`}>
+          {RoundIcons.trash}
+        </RoundIconButton>
+      </div>
+    );
+  }
+
+  return (
+    <SwipeToDelete onDelete={() => onDelete(item.id)} deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}>
+      <button
+        type="button"
+        onClick={() => onEdit(item)}
+        className="flex w-full items-center gap-3 bg-[var(--white)] px-1 py-[9px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+      >
+        {content}
+      </button>
+    </SwipeToDelete>
   );
 }
 
-// ─── Store section header ─────────────────────────────────────────────────────
-
-function StoreSectionHeader({
+/** Winkel als CategoryCard: logo (of bolletje voor Algemeen) · naam · aantal · plus. */
+function StoreCard({
   store,
-  onAdd,
+  items,
   isEditing,
-  showReorder,
-  onReorder,
+  addedByFor,
+  onAdd,
+  onEdit,
+  onDelete,
 }: {
   store: string | null;
-  onAdd: () => void;
+  items: ShoppingItem[];
   isEditing: boolean;
-  showReorder: boolean;
-  onReorder: () => void;
+  addedByFor: (item: ShoppingItem) => AddedBy | null;
+  onAdd: () => void;
+  onEdit: (item: ShoppingItem) => void;
+  onDelete: (id: string) => void;
 }) {
-  const storeInfo = store
-    ? findTeKopenStoreByLabelOrSlug(store)
-    : null;
+  const storeInfo = store ? findTeKopenStoreByLabelOrSlug(store) : null;
+  const rgb = teKopenStoreRgb(store);
+  const title = store ?? "Algemeen";
 
   return (
-    <div className="flex items-center gap-3">
-      {storeInfo ? (
-        <img
-          src={storeInfo.logoSrc}
-          alt=""
-          width={24}
-          height={24}
-          className="size-6 shrink-0 object-contain"
-        />
-      ) : null}
-      <p className="min-w-0 flex-1 text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
-        {store ?? "Algemeen"}
-      </p>
-      {isEditing && showReorder ? (
-        <button
-          type="button"
-          onClick={onReorder}
-          className="shrink-0 text-sm font-normal leading-5 text-[var(--blue-500)] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-        >
-          Volgorde wijzigen
-        </button>
-      ) : !isEditing ? (
-        <button
-          type="button"
-          onClick={onAdd}
-          aria-label={`Product toevoegen aan ${store ?? "Algemeen"}`}
-          className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-        >
-          <PlusCircleMaskIcon />
-        </button>
-      ) : null}
-    </div>
+    <CategoryCard
+      className="mb-3 lg:mb-4"
+      rgb={rgb}
+      gradient={teKopenStoreGradient(store)}
+      header={
+        <>
+          {storeInfo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- winkellogo uit /public/logos
+            <img src={storeInfo.logoSrc} alt="" width={22} height={22} className="size-[22px] shrink-0 object-contain" />
+          ) : (
+            <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb.join(",")})` }} aria-hidden />
+          )}
+          <h2 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h2>
+          <span className="shrink-0 text-xs font-bold tabular-nums text-[var(--text-secondary)]">{items.length}</span>
+          {!isEditing ? (
+            <RoundIconButton tone="onColor" size={28} onClick={onAdd} aria-label={`Product toevoegen aan ${title}`}>
+              {RoundIcons.plus}
+            </RoundIconButton>
+          ) : null}
+        </>
+      }
+    >
+      <ul className="px-2.5 pb-1 pt-0.5">
+        {items.map((item, k) => (
+          <li key={item.id} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>
+            <ShoppingRow item={item} isEditing={isEditing} addedBy={addedByFor(item)} onEdit={onEdit} onDelete={onDelete} />
+          </li>
+        ))}
+      </ul>
+    </CategoryCard>
   );
 }
 
@@ -223,6 +246,9 @@ export default function TeKopenPage() {
   const { user, isLoading: authLoading } = db.useAuth();
   const [addOpen, setAddOpen] = React.useState(false);
   const [preselectedStore, setPreselectedStore] = React.useState<string | null>(null);
+  const [editingItem, setEditingItem] = React.useState<ShoppingItem | null>(null);
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
   const [isEditing, setIsEditing] = React.useState(false);
   const [isStoreOrderMode, setIsStoreOrderMode] = React.useState(false);
   const [storeOrder, setStoreOrder] = React.useState<string[] | null>(() => loadStoreOrder());
@@ -316,7 +342,9 @@ export default function TeKopenPage() {
 
   // Group by store (null = geen winkel, represented as "" in storeOrder)
   const storeGroups = new Map<string | null, ShoppingItem[]>();
-  for (const item of allItems) {
+  const query = searchQuery.trim().toLowerCase();
+  const visibleItems = query ? allItems.filter((i) => i.name.toLowerCase().includes(query)) : allItems;
+  for (const item of visibleItems) {
     const key = item.store ?? null;
     if (!storeGroups.has(key)) storeGroups.set(key, []);
     storeGroups.get(key)!.push(item);
@@ -342,6 +370,12 @@ export default function TeKopenPage() {
 
   async function handleAdd(name: string, quantity: string, store: string | null) {
     if (!user) return;
+    if (editingItem) {
+      await db.transact(
+        db.tx.shoppingItems[editingItem.id].update({ name, quantity, store: store ?? null }),
+      );
+      return;
+    }
     const maxOrder = allItems.reduce((max, i) => Math.max(max, i.order ?? 0), 0);
     await db.transact(
       db.tx.shoppingItems[instantId()].update({
@@ -382,6 +416,7 @@ export default function TeKopenPage() {
   }
 
   function openAddForStore(store: string | null) {
+    setEditingItem(null);
     setPreselectedStore(store);
     primeKeyboard();
     setAddOpen(true);
@@ -454,7 +489,7 @@ export default function TeKopenPage() {
     <div className="relative flex min-h-dvh w-full flex-col">
 
       {/* Fixed header */}
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
+      <div className="fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)]">
         <div className="flex justify-center px-4">
           <header className="flex h-16 w-full max-w-[956px] items-center gap-4">
             <button
@@ -489,23 +524,52 @@ export default function TeKopenPage() {
         )}
       >
         <div className="flex w-full max-w-[956px] flex-col gap-6">
-          {/* Page heading */}
-          <div className="flex min-h-9 w-full min-w-0 items-center justify-between gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <h1 className="min-w-0 truncate text-2xl font-bold leading-8 tracking-normal text-[var(--text-primary)]">
-                {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
-              </h1>
-              {!isEditing && !isStoreOrderMode && allItems.length > 0 && (
-                <TitleEditButton onClick={() => setIsEditing(true)} />
-              )}
+          {/* Page heading — canvas «01 · Te kopen — voorstel» */}
+          <div className="flex w-full min-w-0 items-start justify-between gap-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
+                  {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
+                </h1>
+                {!isEditing && !isStoreOrderMode && allItems.length > 0 && (
+                  <TitleEditButton onClick={() => setIsEditing(true)} />
+                )}
+              </div>
+              {!isStoreOrderMode && allItems.length > 0 ? (
+                <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
+                  {allItems.length} {allItems.length === 1 ? "product" : "producten"} · voor je volgende lijstje
+                </p>
+              ) : null}
             </div>
-            {isStoreOrderMode && (
+            {isStoreOrderMode ? (
               <DoneButton onClick={() => setIsStoreOrderMode(false)} />
-            )}
-            {isEditing && !isStoreOrderMode && (
+            ) : isEditing ? (
               <DoneButton onClick={() => setIsEditing(false)} />
-            )}
+            ) : allItems.length > 0 ? (
+              <RoundIconButton
+                tone={searchOpen ? "primary" : "surface"}
+                size={36}
+                onClick={() => {
+                  setSearchOpen((v) => !v);
+                  setSearchQuery("");
+                }}
+                aria-label={searchOpen ? "Zoeken sluiten" : "Zoeken in te kopen"}
+                aria-pressed={searchOpen}
+              >
+                {RoundIcons.search}
+              </RoundIconButton>
+            ) : null}
           </div>
+
+          {isEditing && !isStoreOrderMode && sortedGroups.length > 1 ? (
+            <MiniButton variant="secondary" className="self-start" onClick={() => setIsStoreOrderMode(true)}>
+              Volgorde winkels wijzigen
+            </MiniButton>
+          ) : null}
+
+          {searchOpen && !isEditing && !isStoreOrderMode && allItems.length > 0 ? (
+            <SearchBar value={searchQuery} onValueChange={setSearchQuery} placeholder="Zoeken in te kopen…" />
+          ) : null}
 
           {isStoreOrderMode ? (
             <StoreOrderPanel
@@ -526,45 +590,44 @@ export default function TeKopenPage() {
               <p className="text-base font-medium leading-6 text-[var(--gray-500)]">
                 Je hebt geen producten om te kopen
               </p>
-              <MiniButton variant="primary" onClick={() => { primeKeyboard(); setPreselectedStore(null); setAddOpen(true); }}>
+              <MiniButton variant="primary" onClick={() => { primeKeyboard(); setEditingItem(null); setPreselectedStore(null); setAddOpen(true); }}>
                 Voeg product toe
               </MiniButton>
             </div>
           ) : (
-            <div className="flex flex-col gap-8">
+            <div className="lg:columns-3 lg:gap-4">
+              {sortedGroups.length === 0 ? (
+                <p className="py-8 text-center text-[15px] text-[var(--text-tertiary)]">
+                  Geen producten gevonden voor «{searchQuery.trim()}».
+                </p>
+              ) : null}
               {sortedGroups.map(([store, items]) => (
-                <div key={store ?? "__algemeen"} className="flex flex-col gap-4">
-                  <StoreSectionHeader
-                    store={store}
-                    onAdd={() => openAddForStore(store)}
-                    isEditing={isEditing}
-                    showReorder={sortedGroups.length > 1}
-                    onReorder={() => setIsStoreOrderMode(true)}
-                  />
-                  <div className="flex flex-col gap-3">
-                    {items.map((item: ShoppingItem) => (
-                      <ShoppingItemCard
-                        key={item.id}
-                        item={item}
-                        isEditing={isEditing}
-                        addedBy={
-                          item.ownerId && item.ownerId !== user.id
-                            ? {
-                                firstName:
-                                  shoppingFirstNameByUserId.get(item.ownerId) ??
-                                  "deelnemer",
-                                avatarUrl: shoppingAvatarByUserId.get(
-                                  item.ownerId,
-                                ),
-                              }
-                            : null
+                <StoreCard
+                  key={store ?? "__algemeen"}
+                  store={store}
+                  items={items}
+                  isEditing={isEditing}
+                  addedByFor={(item) =>
+                    item.ownerId && item.ownerId !== user.id
+                      ? {
+                          firstName: shoppingFirstNameByUserId.get(item.ownerId) ?? "deelnemer",
+                          avatarUrl: shoppingAvatarByUserId.get(item.ownerId),
                         }
-                        onDelete={handleDelete}
-                      />
-                    ))}
-                  </div>
-                </div>
+                      : null
+                  }
+                  onAdd={() => openAddForStore(store)}
+                  onEdit={(item) => {
+                    setEditingItem(item);
+                    setAddOpen(true);
+                  }}
+                  onDelete={handleDelete}
+                />
               ))}
+              {!isEditing ? (
+                <p className="mt-1 text-center text-[12.5px] text-[var(--text-tertiary)] lg:hidden">
+                  Tik om te wijzigen · veeg naar links om te verwijderen
+                </p>
+              ) : null}
             </div>
           )}
         </div>
@@ -589,7 +652,7 @@ export default function TeKopenPage() {
               <FloatingActionButton
                 aria-label="Product toevoegen"
                 className="pointer-events-auto"
-                onClick={() => { primeKeyboard(); setPreselectedStore(null); setAddOpen(true); }}
+                onClick={() => { primeKeyboard(); setEditingItem(null); setPreselectedStore(null); setAddOpen(true); }}
               />
             </div>
           </div>
@@ -601,6 +664,7 @@ export default function TeKopenPage() {
         onClose={() => setAddOpen(false)}
         onAdd={handleAdd}
         initialStore={preselectedStore}
+        editItem={editingItem}
       />
 
       <SlideInModal
