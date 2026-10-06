@@ -13,7 +13,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 
 | Scherm | Route / bestand | Status |
 | --- | --- | --- |
-| Startpagina | `/` | ✅ |
+| Startpagina | `/` | ✅ (Diepvries-sectie: fototegels C2) |
 | Lijstje (per dag / per categorie, bewerkmodus) | `/lijstje/[id]` | ✅ |
 | Items toevoegen + zoekblad | `new_item_modal.tsx` | ✅ |
 | Suggesties | `list_suggestions.tsx` | ✅ |

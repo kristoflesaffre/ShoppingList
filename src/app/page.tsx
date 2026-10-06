@@ -73,6 +73,8 @@ import {
   type DayEntry,
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
+import { CountBadge } from "@/components/ui/count_badge";
+import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { IngredientPlate } from "@/components/ingredient_plate";
 import { frituurItemIconSrc } from "@/lib/frituur-item-icons";
@@ -328,6 +330,9 @@ type HomeFreezerRow = {
   type?: string;
   recipePhotoUrl?: string;
   packages: number;
+  quantityPerPackage?: number;
+  unit?: string;
+  recipePersons?: number;
 };
 
 function normalizeLoyaltyCodeType(codeType: unknown): LoyaltyCardCodeType | null {
@@ -780,97 +785,83 @@ function HomeCalendarCard({
   );
 }
 
-type FreezerPreviewItem = Pick<HomeFreezerRow, "id" | "name" | "type" | "recipePhotoUrl" | "packages">;
+type FreezerPreviewItem = Pick<
+  HomeFreezerRow,
+  "id" | "name" | "type" | "recipePhotoUrl" | "packages" | "quantityPerPackage" | "unit" | "recipePersons"
+>;
 
-const THUMB_SIZE = 48; // px
-const MAX_GAP = 24; // px
+/** Aantal tegels op de startpagina (daarna de «Alle N»-tegel). */
+const FREEZER_HOME_TILE_COUNT = 8;
 
-/** Rij thumbnails: justify-between als gap ≤ 24px, anders justify-start gap-6. */
-function FreezerThumbnailsRow({ items }: { items: FreezerPreviewItem[] }) {
-  const rowRef = React.useRef<HTMLDivElement>(null);
-  const [useAutoSpacing, setUseAutoSpacing] = React.useState(true);
+function freezerTileSubtitle(it: FreezerPreviewItem): string {
+  if (it.type === "gerecht") {
+    const persons = it.recipePersons ?? it.quantityPerPackage ?? 1;
+    return persons === 1 ? "1 persoon" : `${persons} personen`;
+  }
+  return `${it.quantityPerPackage ?? 1} ${it.unit ?? "stuk"}`;
+}
 
-  React.useEffect(() => {
-    const el = rowRef.current;
-    if (!el || items.length <= 1) {
-      setUseAutoSpacing(false);
-      return;
-    }
-    const check = () => {
-      const w = el.offsetWidth;
-      const gap = (w - items.length * THUMB_SIZE) / (items.length - 1);
-      setUseAutoSpacing(gap <= MAX_GAP);
-    };
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [items.length]);
+/** Canvas «Home · Diepvries C2»: gelijke fototegels, aantal als lavendel pil rechtsboven. */
+function FreezerHomeTile({ item, photo }: { item: FreezerPreviewItem; photo: string | null }) {
+  return (
+    <li className="w-28 shrink-0 snap-start lg:w-[124px]">
+      <Link
+        href="/diepvriesvoorraad"
+        className="block rounded-[20px] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        <span className="relative block aspect-square overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+          {photo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- receptfoto of lokale item-webp
+            <img src={photo} alt="" className="size-full object-cover" decoding="async" loading="lazy" />
+          ) : (
+            <span className="flex size-full items-center justify-center text-[40px] font-bold" style={teKopenMonogramStyle(item.name)} aria-hidden>
+              {item.name.trim().charAt(0).toUpperCase()}
+            </span>
+          )}
+          <CountBadge
+            value={item.packages}
+            label={`${item.packages} ${item.packages === 1 ? "portie" : "porties"}`}
+            className="absolute right-2 top-2 !h-[26px] !min-w-[26px] !px-2 !text-[13px]"
+          />
+        </span>
+        <span className="mt-[7px] block truncate text-sm font-semibold text-[var(--text-primary)] first-letter:uppercase">{item.name}</span>
+        <span className="block truncate text-[12.5px] text-[var(--text-tertiary)]">{freezerTileSubtitle(item)}</span>
+      </Link>
+    </li>
+  );
+}
+
+/** Recepten eerst, dan producten; binnen elke groep eerst items met een foto. */
+function FreezerTilesRow({ items, total }: { items: FreezerPreviewItem[]; total: number }) {
+  const getItemPhoto = useItemPhotoUrl(240);
+  const withPhotos = items.map((it) => ({
+    item: it,
+    photo: it.recipePhotoUrl ?? (it.type === "gerecht" ? null : getItemPhoto(it.name)) ?? null,
+  }));
+  withPhotos.sort(
+    (a, b) =>
+      (a.item.type === "gerecht" ? 0 : 1) - (b.item.type === "gerecht" ? 0 : 1) ||
+      (a.photo ? 0 : 1) - (b.photo ? 0 : 1),
+  );
+  const shown = withPhotos.slice(0, FREEZER_HOME_TILE_COUNT);
 
   return (
-    <div
-      ref={rowRef}
-      className={cn(
-        "flex items-center",
-        useAutoSpacing ? "justify-between" : "justify-start gap-6",
-      )}
-    >
-      {items.map((it) => {
-        const isGerecht = it.type === "gerecht";
-        return (
-          <div key={it.id} className="relative size-12 shrink-0">
-            {/* Photo */}
-            <div
-              className={cn(
-                "size-12 overflow-hidden bg-[var(--gray-50)]",
-                isGerecht ? "rounded-full" : "rounded-md",
-              )}
-            >
-              {it.recipePhotoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={it.recipePhotoUrl}
-                  alt={it.name}
-                  className="size-full object-cover"
-                  decoding="async"
-                  loading="lazy"
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src="/images/ui/empty_state_diepvries.png"
-                  alt=""
-                  className="size-full object-contain p-1 opacity-60"
-                />
-              )}
-            </div>
-
-            {/* Top-right: freeze snowflake badge */}
-            <div className="absolute -right-1 -top-1 flex size-[18px] items-center justify-center rounded-full bg-white">
-              <span
-                className="inline-block size-4 shrink-0 bg-[var(--blue-500)]"
-                style={{
-                  WebkitMaskImage: "url(/icons/freeze.svg)",
-                  maskImage: "url(/icons/freeze.svg)",
-                  WebkitMaskSize: "contain",
-                  maskSize: "contain",
-                  WebkitMaskRepeat: "no-repeat",
-                  maskRepeat: "no-repeat",
-                }}
-                aria-hidden
-              />
-            </div>
-
-            {/* Bottom-left: package count badge */}
-            <div className="absolute -bottom-1 -left-1 flex size-[18px] items-center justify-center rounded-full bg-white">
-              <p className="text-[12px] font-semibold leading-3 text-[var(--blue-900,#101130)]">
-                {it.packages}
-              </p>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <ul className="-mx-4 -my-1 flex list-none snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-px-4 px-4 py-1 [scrollbar-width:none] lg:mx-0 lg:gap-3.5 lg:px-0 [&::-webkit-scrollbar]:hidden">
+      {shown.map(({ item, photo }) => (
+        <FreezerHomeTile key={item.id} item={item} photo={photo} />
+      ))}
+      {total > shown.length ? (
+      <li className="w-28 shrink-0 snap-start lg:w-[124px]">
+        <Link
+          href="/diepvriesvoorraad"
+          className="flex aspect-square flex-col items-center justify-center gap-1 rounded-[20px] bg-[var(--blue-50)] text-sm font-bold text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          <FreezeMaskIcon className="!size-4" colorClassName="bg-[var(--blue-500)]" />
+          Alle {total}
+        </Link>
+      </li>
+      ) : null}
+    </ul>
   );
 }
 
@@ -899,10 +890,7 @@ function HomeDiepvriesSection({
           overzichtLabel="Toon alle"
         />
 
-        {/* Thumbnails card */}
-        <div className="rounded-lg bg-[var(--white)] p-3 shadow-card">
-          <FreezerThumbnailsRow items={previewItems} />
-        </div>
+        <FreezerTilesRow items={previewItems} total={itemCount} />
       </div>
     );
   }
@@ -3832,13 +3820,7 @@ export default function Home() {
         return (
           <HomeDiepvriesSection
             itemCount={homeFreezerItems.length}
-            previewItems={homeFreezerItems.slice(0, 5).map((it) => ({
-              id: it.id,
-              name: it.name,
-              type: it.type,
-              recipePhotoUrl: it.recipePhotoUrl,
-              packages: it.packages,
-            }))}
+            previewItems={homeFreezerItems}
             onHide={onHide}
           />
         );
