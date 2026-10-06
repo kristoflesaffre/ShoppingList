@@ -241,6 +241,7 @@ export function StaticStackedHomeListSections({
   onDelete,
   onStartFromMaster,
   beherenSingleSection,
+  columns = false,
 }: {
   lists: HomeOverviewList[];
   removingId: string | null;
@@ -249,6 +250,8 @@ export function StaticStackedHomeListSections({
   onDelete: (id: string) => void;
   onStartFromMaster: (id: string) => void;
   beherenSingleSection?: "lijstjes" | "favorieten";
+  /** Vanaf tablet in 2 kolommen (beheren-pagina). */
+  columns?: boolean;
 }) {
   const normalLists = lists.filter((l) => l.displayVariant !== "master");
   const masterLists = lists.filter((l) => l.displayVariant === "master");
@@ -267,7 +270,7 @@ export function StaticStackedHomeListSections({
               showNaarOverzicht={false}
             />
           ) : null}
-          <div className={cn("flex flex-col", showSectionHeaders && "mt-4")}>
+          <div className={cn("flex flex-col", showSectionHeaders && "mt-4", columns && "md:grid md:grid-cols-2 md:gap-x-3 md:[&>div]:mb-3")}>
             {visibleNormalLists.map((list, index) => {
               const isRemoving = removingId === list.id;
               const isAdding = addingId === list.id;
@@ -311,7 +314,7 @@ export function StaticStackedHomeListSections({
               showNaarOverzicht={false}
             />
           ) : null}
-          <div className={cn("flex flex-col", showSectionHeaders && "mt-4")}>
+          <div className={cn("flex flex-col", showSectionHeaders && "mt-4", columns && "md:grid md:grid-cols-2 md:gap-x-3 md:[&>div]:mb-3")}>
             {visibleMasterLists.map((list, index) => {
               const isRemoving = removingId === list.id;
               const isAdding = addingId === list.id;

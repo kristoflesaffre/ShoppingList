@@ -74,6 +74,7 @@ import {
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { CountBadge } from "@/components/ui/count_badge";
+import { FavoritesPromoBanner, useFavoritesPromo } from "@/components/favorites_promo_banner";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { IngredientPlate } from "@/components/ingredient_plate";
@@ -2245,37 +2246,8 @@ function HomeFavorietenSection({
     />
   );
 
-  if (masterLists.length === 0) {
-    return (
-      <div className="flex flex-col gap-4">
-        <ListSectionHeader
-          icon="heart"
-          label="Favorieten"
-          showNaarOverzicht={false}
-          onHide={onHide}
-        />
-        <HomeOnboardingEmptyCard
-          illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.favorieten}
-          illustrationSide="start"
-          contentAlign="end"
-          text="Maak per winkel favorieten met vaak gekochte producten voor snelle lijstjes."
-          actions={
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="text-[12px] font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
-              >
-                Meer info
-              </button>
-              <MiniButton variant="primary" onClick={onOpenCreateModal}>
-                Voeg lijstje toe
-              </MiniButton>
-            </div>
-          }
-        />
-      </div>
-    );
-  }
+  /* Geen favorietenlijsten: de favorieten-banner boven «Lijstjes» legt het uit. */
+  if (masterLists.length === 0) return null;
 
   return (
     <div className="flex flex-col">
@@ -2820,6 +2792,8 @@ export default function Home() {
     () => lists.filter((l) => l.isMasterTemplate),
     [lists],
   );
+  /** Favorieten-banner voor nieuwe gebruikers (geen favorietenlijst, nog niet gesloten). */
+  const favoritesPromo = useFavoritesPromo(masterLists.length > 0);
   /** Snel toevoegen vanop home: zelfde itemvorm als «Items toevoegen» in het lijstje (sectie Algemeen). */
   const handleQuickAddToList = React.useCallback((list: HomeList, name: string) => {
     const items = (list.items ?? []) as Array<{ order?: number }>;
@@ -3775,12 +3749,21 @@ export default function Home() {
     switch (sectionId) {
       case "lijstjes":
         return (
-          <HomeLijstjesSection
-            normalLists={normalLists}
-            onOpenCreateModal={handleOpenCreateModal}
-            onQuickAdd={handleQuickAddToList}
-            onNewListLike={handleNewListLike}
-          />
+          <>
+            {favoritesPromo.show ? (
+              <FavoritesPromoBanner
+                className="mb-6"
+                onSetUp={() => router.push("/nieuw-lijstje/selecteer-winkel")}
+                onDismiss={favoritesPromo.dismiss}
+              />
+            ) : null}
+            <HomeLijstjesSection
+              normalLists={normalLists}
+              onOpenCreateModal={handleOpenCreateModal}
+              onQuickAdd={handleQuickAddToList}
+              onNewListLike={handleNewListLike}
+            />
+          </>
         );
       case "te-kopen":
         return (

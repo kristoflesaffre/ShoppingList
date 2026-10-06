@@ -26,6 +26,9 @@ import { Button } from "@/components/ui/button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Snackbar } from "@/components/ui/snackbar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { SegmentedControl } from "@/components/ui/segmented_control";
+import { FavoritesEmptyState, FavoritesPromoBanner, useFavoritesPromo } from "@/components/favorites_promo_banner";
+import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
 import {
   SortableHomeListSections,
   StaticStackedHomeListSections,
@@ -75,24 +78,6 @@ function BackArrowIcon({ className }: { className?: string }) {
   );
 }
 
-function DotsIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M14.1 12C14.1 13.16 13.16 14.1 12 14.1C10.84 14.1 9.9 13.16 9.9 12C9.9 10.84 10.84 9.9 12 9.9C13.16 9.9 14.1 10.84 14.1 12ZM4.6 9.9C3.44 9.9 2.5 10.84 2.5 12C2.5 13.16 3.44 14.1 4.6 14.1C5.76 14.1 6.7 13.16 6.7 12C6.7 10.84 5.76 9.9 4.6 9.9ZM19.4 9.9C18.24 9.9 17.3 10.84 17.3 12C17.3 13.16 18.24 14.1 19.4 14.1C20.56 14.1 21.5 13.16 21.5 12C21.5 10.84 20.56 9.9 19.4 9.9Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
 
 function GereedEditButton({
   onPress,
@@ -402,7 +387,6 @@ export function LijstjesBeherenClient({
     prevSectionRef.current = section;
   }, [section]);
 
-  const hasAnyLists = lists.length > 0;
   const hasSectionLists = sectionLists.length > 0;
 
   const DELETE_ANIMATION_MS = 300;
@@ -516,15 +500,13 @@ export function LijstjesBeherenClient({
     [handleCloseQuickMasterModal, quickMasterId, quickMasterListName, router],
   );
 
-  const sisterHref =
-    section === "lijstjes"
-      ? "/lijstjes-beheren/favorieten"
-      : "/lijstjes-beheren/lijstjes";
-  const sisterLabel =
-    section === "lijstjes" ? "Naar favorietenlijsten" : "Naar lijstjes";
 
-  const pageTitle =
-    section === "lijstjes" ? "Lijstjes" : "Favorieten lijstjes";
+  const pageTitle = section === "lijstjes" ? "Lijstjes" : "Favorieten";
+
+  const favoritesPromo = useFavoritesPromo(lists.some((l) => inSectionList("favorieten", l)));
+  /** Large-title-patroon (zoals favorieten/te kopen). */
+  const { titleRef: largeTitleRef, collapsed: isLargeTitleCollapsed } =
+    useLargeTitleCollapse<HTMLHeadingElement>(64);
 
   const handleFabNewList = React.useCallback(() => {
     router.push("/nieuw-lijstje/selecteer-winkel");
@@ -582,15 +564,19 @@ export function LijstjesBeherenClient({
     );
   }
 
-  const isFavorietenEmpty = section === "favorieten" && !hasSectionLists;
+
+  const normalCount = lists.filter((l) => inSectionList("lijstjes", l)).length;
+  const masterCount = lists.filter((l) => inSectionList("favorieten", l)).length;
 
   return (
-    <div className={cn("relative flex min-h-dvh w-full flex-col", isFavorietenEmpty && "bg-[var(--bg-app)]")}>
-      {/*
-        Figma 1148:8955 — top app bar: back + gecentreerde titel (medium 16) + three-dots.
-        Grid met 2.5rem / 1fr / 2.5rem zodat het midden altijd echt gecentreerd is.
-      */}
-      <div className="fixed top-0 left-0 right-0 z-50 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)] shadow-[0_1px_0_var(--gray-100)]">
+    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)]">
+      {/* Topbalk in paginakleur; compacte titel pas zodra de grote titel wegscrolt. */}
+      <div
+        className={cn(
+          "fixed left-0 right-0 top-0 z-50 w-full bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
+          isLargeTitleCollapsed ? "shadow-[0_1px_0_var(--border-subtle)]" : "shadow-none",
+        )}
+      >
         <header className="mx-auto grid h-16 max-w-[956px] grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-4 px-[var(--space-4)]">
           <Link
             href="/"
@@ -599,135 +585,92 @@ export function LijstjesBeherenClient({
           >
             <BackArrowIcon className="size-6" />
           </Link>
-          <p className="min-w-0 truncate text-center text-base font-medium leading-24 tracking-normal text-text-primary">
+          <p
+            className={cn(
+              "min-w-0 truncate text-center text-base font-medium leading-24 tracking-normal text-text-primary",
+              "motion-safe:transition-[opacity,transform] motion-safe:duration-200 motion-safe:ease-out",
+              isLargeTitleCollapsed ? "translate-y-0 opacity-100" : "opacity-0 motion-safe:translate-y-1",
+            )}
+          >
             {pageTitle}
           </p>
-          <button
-            type="button"
-            aria-label="Meer opties (binnenkort beschikbaar)"
-            disabled
-            className="flex size-10 shrink-0 items-center justify-center rounded-full text-action-primary opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-          >
-            <DotsIcon className="size-6" />
-          </button>
+          <span className="size-10" aria-hidden />
         </header>
       </div>
 
       <div className="flex flex-1 flex-col pb-[calc(80px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col px-[var(--space-4)] pt-8">
-          {!hasAnyLists ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-4 py-12">
-              <p className="text-center text-base font-medium leading-24 text-[var(--text-secondary)]">
-                Je hebt nog geen lijstjes om te beheren.
-              </p>
-              <Link
-                href="/"
-                className="text-sm font-medium text-text-link underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-              >
-                Terug naar overzicht
-              </Link>
-            </div>
-          ) : !hasSectionLists ? (
-            section === "favorieten" ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-6">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/ui/hart_160.webp"
-                  alt=""
-                  width={96}
-                  height={96}
-                  className="size-24 shrink-0 object-cover"
-                  decoding="async"
-                />
-                <p className="text-center text-base font-medium leading-6 tracking-normal text-[var(--gray-500,#707784)]">
-                  Je hebt geen favorieten lijstjes
-                </p>
-                <MiniButton variant="primary" onClick={handleFabNewList}>
-                  Voeg lijstje toe
-                </MiniButton>
-              </div>
-            ) : (
-            <div className="flex flex-1 flex-col items-center justify-center gap-4 py-12">
-              <p className="text-center text-base font-medium leading-24 text-[var(--text-secondary)]">
-                Je hebt hier nog geen lijstjes om te rangschikken.
-              </p>
-              <Link
-                href={sisterHref}
-                className="text-sm font-medium text-action-primary no-underline transition-colors [@media(hover:hover)]:hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-              >
-                {sisterLabel}
-              </Link>
-              <Link
-                href="/"
-                className="text-sm font-medium text-text-link underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-              >
-                Terug naar home
-              </Link>
-            </div>
-            )
-          ) : (
-            <>
-              {/* Figma 1148:9003 / 1148:9665 — titel + potlood of titel + Gereed. */}
-              <div
-                className={cn(
-                  "mb-6 flex min-h-8 items-center",
-                  isCardsEditMode ? "gap-4" : "gap-2",
-                )}
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <h1 className="min-w-0 truncate text-page-title font-bold leading-32 tracking-normal text-text-primary">
+        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-4 px-[var(--space-4)] pt-6">
+          {/* Canvas «05–07 · voorstel»: titel + aantal, schakelaar Lijstjes | Favorieten. */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="flex min-w-0 flex-1 items-start justify-between gap-4">
+              <div className="flex min-w-0 flex-col gap-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h1 ref={largeTitleRef} className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-text-primary">
                     {pageTitle}
                   </h1>
-                  {!isCardsEditMode ? (
+                  {!isCardsEditMode && hasSectionLists ? (
                     <TitleEditButton
-                      aria-label={
-                        section === "lijstjes"
-                          ? "Lijstjes bewerken"
-                          : "Favorietenlijsten bewerken"
-                      }
+                      aria-label={section === "lijstjes" ? "Lijstjes bewerken" : "Favorietenlijsten bewerken"}
                       onClick={() => setIsCardsEditMode(true)}
                     />
                   ) : null}
                 </div>
-                {isCardsEditMode ? (
-                  <GereedEditButton
-                    onPress={exitCardsEditMode}
-                    ariaLabel="Gereed met bewerken"
-                  />
-                ) : null}
+                <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
+                  {isCardsEditMode
+                    ? "Sleep om te ordenen"
+                    : section === "lijstjes"
+                      ? `${normalCount} ${normalCount === 1 ? "lijstje" : "lijstjes"}`
+                      : masterCount === 0
+                        ? "Nog geen favorietenlijsten"
+                        : `${masterCount} ${masterCount === 1 ? "favorietenlijst" : "favorietenlijsten"}`}
+                </p>
               </div>
               {isCardsEditMode ? (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleReorderLists}
-                  modifiers={[restrictToVerticalAxis]}
-                >
-                  <SortableContext
-                    items={sectionLists.map((l) => l.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <SortableHomeListSections
-                      lists={sectionLists}
-                      interactionMode="edit"
-                      removingId={removingId}
-                      addingId={addingId}
-                      addingIdExpanded={addingIdExpanded}
-                      onDelete={handleDeleteList}
-                      onStartFromMaster={handleStartFromMaster}
-                      beherenSingleSection={section}
-                    />
-                  </SortableContext>
-                  <div className="mt-6 flex w-full justify-end">
-                    <GereedEditButton
-                      onPress={exitCardsEditMode}
-                      ariaLabel="Gereed met bewerken — onderaan de lijst"
-                    />
-                  </div>
-                </DndContext>
-              ) : (
-                <StaticStackedHomeListSections
+                <GereedEditButton onPress={exitCardsEditMode} ariaLabel="Gereed met bewerken" />
+              ) : null}
+            </div>
+            {!isCardsEditMode ? (
+              <SegmentedControl
+                className="md:w-[300px]"
+                ariaLabel="Soort lijstjes"
+                value={section}
+                onChange={(v) => {
+                  if (v !== section) router.push(v === "lijstjes" ? "/lijstjes-beheren/lijstjes" : "/lijstjes-beheren/favorieten");
+                }}
+                options={[
+                  { value: "lijstjes", label: <>Lijstjes <span className="ml-1 font-medium opacity-60">{normalCount}</span></> },
+                  { value: "favorieten", label: <>Favorieten <span className="ml-1 font-medium opacity-60">{masterCount}</span></> },
+                ]}
+              />
+            ) : null}
+          </div>
+
+          {section === "lijstjes" && favoritesPromo.show && !isCardsEditMode ? (
+            <FavoritesPromoBanner onSetUp={handleFabNewList} onDismiss={favoritesPromo.dismiss} />
+          ) : null}
+
+          {section === "favorieten" && !hasSectionLists ? (
+            <FavoritesEmptyState onCreate={handleFabNewList} />
+          ) : !hasSectionLists ? (
+            <div className="flex flex-col items-center justify-center gap-4 py-12">
+              <p className="text-center text-base font-medium leading-24 text-[var(--text-secondary)]">
+                Je hebt nog geen lijstjes.
+              </p>
+              <MiniButton variant="primary" onClick={() => router.push("/")}>
+                Naar de startpagina
+              </MiniButton>
+            </div>
+          ) : isCardsEditMode ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleReorderLists}
+              modifiers={[restrictToVerticalAxis]}
+            >
+              <SortableContext items={sectionLists.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+                <SortableHomeListSections
                   lists={sectionLists}
+                  interactionMode="edit"
                   removingId={removingId}
                   addingId={addingId}
                   addingIdExpanded={addingIdExpanded}
@@ -735,9 +678,25 @@ export function LijstjesBeherenClient({
                   onStartFromMaster={handleStartFromMaster}
                   beherenSingleSection={section}
                 />
-              )}
-            </>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <StaticStackedHomeListSections
+              lists={sectionLists}
+              removingId={removingId}
+              addingId={addingId}
+              addingIdExpanded={addingIdExpanded}
+              onDelete={handleDeleteList}
+              onStartFromMaster={handleStartFromMaster}
+              beherenSingleSection={section}
+              columns
+            />
           )}
+          {section === "favorieten" && hasSectionLists && !isCardsEditMode ? (
+            <p className="text-center text-[12.5px] text-[var(--text-tertiary)]">
+              Tik «+ Lijstje» om een nieuw lijstje uit je favorieten te maken
+            </p>
+          ) : null}
         </div>
       </div>
 

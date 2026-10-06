@@ -13,7 +13,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 
 | Scherm | Route / bestand | Status |
 | --- | --- | --- |
-| Startpagina | `/` | ✅ (Diepvries-sectie: fototegels C2) |
+| Startpagina | `/` | ✅ (Diepvries-sectie: fototegels C2; favorieten-banner; nieuwe lijstkaarten) |
 | Lijstje (per dag / per categorie, bewerkmodus) | `/lijstje/[id]` | ✅ |
 | Items toevoegen + zoekblad | `new_item_modal.tsx` | ✅ |
 | Suggesties | `list_suggestions.tsx` | ✅ |
@@ -35,9 +35,9 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 2 | Te kopen · item toevoegen | `add_shopping_item_slide_in.tsx` | ✅ |
 | 3 | Diepvriesvoorraad | `/diepvriesvoorraad` | ✅ |
 | 4 | Diepvries · item toevoegen | `new_freezer_item_modal.tsx` | ✅ |
-| 5 | Lijstjes beheren (overzicht) | `/lijstjes-beheren` → redirect naar 6 | 🔄 voorstel op canvas (samen met 6–7) |
-| 6 | Alle lijstjes | `/lijstjes-beheren/lijstjes` | 🔄 voorstel op canvas |
-| 7 | Alle favorietenlijsten | `/lijstjes-beheren/favorieten` | 🔄 voorstel op canvas |
+| 5 | Lijstjes beheren (overzicht) | `/lijstjes-beheren` → redirect naar 6 | ✅ |
+| 6 | Alle lijstjes | `/lijstjes-beheren/lijstjes` | ✅ |
+| 7 | Alle favorietenlijsten | `/lijstjes-beheren/favorieten` | ✅ |
 | 8 | Nieuw lijstje · kies winkel | `/nieuw-lijstje/selecteer-winkel` | ⬜ |
 | 9 | Nieuw lijstje · kies favorietenlijst | `/nieuw-lijstje/selecteer-master-lijstje` | ⬜ |
 | 10 | Nieuw lijstje · vakantie | `/nieuw-lijstje/vakantie` | ⬜ |
