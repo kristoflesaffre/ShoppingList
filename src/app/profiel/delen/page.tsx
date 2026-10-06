@@ -272,28 +272,51 @@ function SharedListsSection({
   sharedState,
   onToggle,
   memberNames,
+  onPickList,
 }: {
   lists: OwnedListRow[];
   sharedState: Record<string, boolean>;
   onToggle: (list: OwnedListRow, on: boolean) => void;
   memberNames: (list: OwnedListRow) => string;
+  /** Lege staat: één lijstje kiezen om te delen. */
+  onPickList: () => void;
 }) {
   return (
     <section aria-labelledby="gedeeld-titel">
       <SectionHeading
         id="gedeeld-titel"
         title="Individueel gedeelde lijstjes"
-        description="Losse lijstjes die je apart deelt, buiten de soorten hierboven."
+        description="Losse lijstjes die je apart deelt"
       />
       {lists.length === 0 ? (
-        <div className={cn(CARD, "flex items-center gap-3 px-3.5 py-4")}>
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--blue-25)]">
+        /* Canvas «Lege staat 4 · Banner» */
+        <div className="flex items-center gap-3.5 rounded-[20px] bg-[linear-gradient(135deg,#eef0fe_0%,#f6eefb_100%)] p-4">
+          <span className="relative size-16 shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element -- illustratie */}
-            <img src="/images/ui/lijstje_160.webp" alt="" className="size-7 object-contain" />
+            <img src="/images/ui/lijstje_160.webp" alt="" className="size-[58px] object-contain" />
+            <span className="absolute -bottom-1 -right-1.5 flex">
+              {["/images/delen/avatar-man-160.jpg", "/images/delen/avatar-vrouw-160.jpg"].map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element -- decoratieve avatar
+                <img
+                  key={src}
+                  src={src}
+                  alt=""
+                  className={cn("size-[30px] rounded-full object-cover shadow-[0_0_0_3px_var(--white)]", i > 0 && "-ml-2")}
+                />
+              ))}
+            </span>
           </span>
-          <p className="text-[13.5px] leading-[19px] text-[var(--text-secondary)]">
-            Nog geen losse lijstjes gedeeld. Open een lijstje en kies <span className="font-semibold">Lijstje delen</span>.
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-bold leading-5 text-[var(--text-primary)]">Eén lijstje delen?</p>
+            <p className="mb-2 mt-0.5 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">Deel één lijstje met iemand</p>
+            <button
+              type="button"
+              onClick={onPickList}
+              className="inline-flex h-8 items-center rounded-pill bg-[var(--action-primary)] px-3.5 text-[13px] font-bold text-[var(--white)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+            >
+              Kies een lijstje
+            </button>
+          </div>
         </div>
       ) : (
       <div className={CARD}>
@@ -336,6 +359,66 @@ function SharedListsSection({
         </p>
       ) : null}
     </section>
+  );
+}
+
+/** «Kies een lijstje»: één lijstje kiezen om apart te delen. */
+function ListPickerSheet({
+  open,
+  lists,
+  allShared = false,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  lists: OwnedListRow[];
+  /** True als je wel lijstjes hebt, maar ze allemaal al gedeeld zijn. */
+  allShared?: boolean;
+  onClose: () => void;
+  onPick: (list: OwnedListRow) => void;
+}) {
+  return (
+    <SlideInModal open={open} onClose={onClose} title="Kies een lijstje" className="md:!max-w-[540px]" bodyClassName="pt-2">
+      {lists.length === 0 ? (
+        <p className="pb-6 text-center text-sm text-[var(--text-secondary)]">
+          {allShared ? "Al je lijstjes worden al gedeeld." : "Je hebt nog geen lijstjes om te delen."}
+        </p>
+      ) : (
+        <ul className={cn(CARD, "m-0 mb-6 list-none p-0 shadow-[0_0_0_1px_var(--border-subtle)]")}>
+          {lists.map((list, i) => {
+            const tile = listTileSrc(list);
+            const kind = listAutoShareKind(list);
+            return (
+              <li key={list.id} className={cn(i > 0 && "border-t border-[var(--border-subtle)]")}>
+                <button
+                  type="button"
+                  onClick={() => onPick(list)}
+                  className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[var(--blue-25)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- lijstfoto of illustratie */}
+                    <img src={tile.src} alt="" className={tile.photo ? "size-full object-cover" : "size-7 object-contain"} />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-[15px] font-semibold leading-5 text-[var(--text-primary)]">
+                      {list.name || "Lijstje"}
+                    </span>
+                    {kind ? (
+                      <span className="text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
+                        {AUTO_SHARE_KIND_META[kind].label}
+                      </span>
+                    ) : null}
+                  </span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4 text-[var(--text-tertiary)]">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </SlideInModal>
   );
 }
 
@@ -591,6 +674,21 @@ export default function SamenDelenPage() {
 
   const [selectedPerson, setSelectedPerson] = React.useState<Person | null>(null);
 
+  /** Lege staat → lijstje kiezen → deelblad van dat lijstje. */
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+  const [shareListId, setShareListId] = React.useState<string | null>(null);
+  const shareList = lists.find((l) => l.id === shareListId) ?? null;
+  const shareListUrl =
+    shareList?.shareToken && typeof window !== "undefined"
+      ? `${window.location.origin}/deel/${encodeURIComponent(shareList.shareToken)}`
+      : "";
+  const pickableLists = lists.filter((l) => (l.memberships ?? []).length === 0);
+  const handlePickList = (list: OwnedListRow) => {
+    setPickerOpen(false);
+    setShareListId(list.id);
+    if (!list.shareToken) void db.transact(db.tx.lists[list.id].update({ shareToken: crypto.randomUUID() }));
+  };
+
   /** Algemene uitnodiging: link + soorten kiezen in hetzelfde deelblad. */
   const [inviteOpen, setInviteOpen] = React.useState(false);
   const inviteUrl =
@@ -620,6 +718,7 @@ export default function SamenDelenPage() {
       sharedState={sharedState}
       onToggle={(l, on) => void handleToggleList(l, on)}
       memberNames={memberNames}
+      onPickList={() => setPickerOpen(true)}
     />
   );
 
@@ -709,6 +808,23 @@ export default function SamenDelenPage() {
         sinceIso={selectedPerson ? autoShare.partnerSince[selectedPerson.id] : null}
         onClose={() => setSelectedPerson(null)}
         onRemove={(p) => autoShare.removePartner(p.id)}
+      />
+
+      <ListPickerSheet
+        open={pickerOpen}
+        lists={pickableLists}
+        allShared={lists.length > 0}
+        onClose={() => setPickerOpen(false)}
+        onPick={handlePickList}
+      />
+
+      <ShareListModal
+        open={shareList != null}
+        onClose={() => setShareListId(null)}
+        shareUrl={shareListUrl}
+        urlReady={Boolean(shareListUrl)}
+        listImageSrc={shareList ? listTileSrc(shareList).src : null}
+        listImageIsPhoto={shareList ? listTileSrc(shareList).photo : false}
       />
 
       <ShareListModal

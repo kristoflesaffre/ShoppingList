@@ -65,6 +65,7 @@ export type OwnedListRow = {
   icon?: string | null;
   customIconUrl?: string | null;
   masterIcon?: string | null;
+  shareToken?: string | null;
   isMasterTemplate?: boolean | null;
   order?: number | null;
   memberships?: MembershipRow[] | null;
