@@ -2796,6 +2796,21 @@ export default function Home() {
   /** Favorieten-banner voor nieuwe gebruikers (geen favorietenlijst, nog niet gesloten). */
   const favoritesPromo = useFavoritesPromo(masterLists.length > 0);
   useCleanupDraftMasterLists(data?.lists);
+  /** Favorietenlijsten voor de snelle start, gesorteerd op hoe vaak je er een lijstje van maakte. */
+  const quickStartMasters = React.useMemo(() => {
+    const usage = (m: HomeList) =>
+      lists.filter(
+        (l) =>
+          !l.isMasterTemplate &&
+          (l.sourceMasterListId === m.id ||
+            (!l.sourceMasterListId && !!l.masterIcon && (l.masterIcon === m.icon || l.masterIcon === m.masterIcon))),
+      ).length;
+    return masterLists
+      .filter((m) => (m.items?.length ?? 0) > 0)
+      .map((m) => ({ m, n: usage(m) }))
+      .sort((a, b) => b.n - a.n)
+      .map(({ m }) => m);
+  }, [lists, masterLists]);
   /** Snel toevoegen vanop home: zelfde itemvorm als «Items toevoegen» in het lijstje (sectie Algemeen). */
   const handleQuickAddToList = React.useCallback((list: HomeList, name: string) => {
     const items = (list.items ?? []) as Array<{ order?: number }>;
@@ -4020,13 +4035,11 @@ export default function Home() {
       >
         {/* Canvas «Nieuw lijstje A»: favorieten als snelle start + soorten als witte kaarten met schaduw. */}
         <div className="flex w-full flex-col gap-4">
-          {masterLists.some((m) => (m.items?.length ?? 0) > 0) ? (
+          {quickStartMasters.length > 0 ? (
             <div>
               <p className="mb-2 text-[13px] font-semibold text-[var(--text-secondary)]">Vanuit je favorieten</p>
               <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1.5 pt-0.5 [scrollbar-width:none] md:mx-0 md:flex-wrap md:overflow-visible md:px-0 [&::-webkit-scrollbar]:hidden">
-                {masterLists
-                  .filter((m) => (m.items?.length ?? 0) > 0)
-                  .map((m) => (
+                {quickStartMasters.map((m) => (
                     <button
                       key={m.id}
                       type="button"
@@ -4051,7 +4064,7 @@ export default function Home() {
             </div>
           ) : null}
           <div>
-            {masterLists.some((m) => (m.items?.length ?? 0) > 0) ? (
+            {quickStartMasters.length > 0 ? (
               <p className="mb-2 text-[13px] font-semibold text-[var(--text-secondary)]">Of kies een soort lijstje</p>
             ) : null}
             <div className="flex flex-col gap-2.5 md:grid md:grid-cols-3 md:gap-3">
