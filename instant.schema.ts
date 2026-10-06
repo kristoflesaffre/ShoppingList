@@ -177,6 +177,14 @@ const schema = i.schema({
       avatarUrl: i.string().optional(),
       /** JSON-array van lijstsoorten die automatisch gedeeld worden (zie `src/lib/auto-share.ts`). */
       autoShareKindsJson: i.string().optional(),
+      /** Token voor de algemene uitnodigingslink (/deel/samen/[token]) uit «Samen delen». */
+      shareInviteToken: i.string().optional().indexed(),
+    }),
+    /** Vaste deelgenoot van een gebruiker (via de algemene uitnodigingslink). */
+    sharePartners: i.entity({
+      ownerId: i.string().indexed(),
+      partnerUserId: i.string().indexed(),
+      createdAtIso: i.string().optional(),
     }),
     /** Persoonlijke bibliotheek van eerder gebruikte lijst-afbeeldingen. */
     listIconImages: i.entity({

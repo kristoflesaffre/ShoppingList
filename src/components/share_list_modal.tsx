@@ -28,6 +28,15 @@ export interface ShareListModalProps {
   listImageIsPhoto?: boolean;
   /** «Ook toekomstige lijstjes»-kaart; enkel voor de eigenaar van een gewoon lijstje. */
   futureShare?: ShareListModalFutureShare | null;
+  /** Teksten voor hergebruik (bv. algemene uitnodiging vanuit «Samen delen»). */
+  title?: string;
+  heading?: string;
+  description?: string;
+  /** Tekst bij de link in WhatsApp/e-mail. */
+  shareMessage?: string;
+  emailSubject?: string;
+  /** Extra inhoud onderaan het blad (bv. soorten kiezen). */
+  extra?: React.ReactNode;
 }
 
 const AVATARS = ["/images/delen/avatar-man-160.jpg", "/images/delen/avatar-vrouw-160.jpg"] as const;
@@ -115,6 +124,12 @@ export function ShareListModal({
   listImageSrc,
   listImageIsPhoto = false,
   futureShare,
+  title = "Lijstje delen",
+  heading = "Samen op één lijstje",
+  description = "Stuur de link naar je partner of huisgenoot. Jullie zien allebei meteen wat erbij komt en wat al in de kar ligt.",
+  shareMessage = "Schrijf mee op dit lijstje in Shopping list:",
+  emailSubject = "Uitnodiging: meeschrijven op een lijstje",
+  extra,
 }: ShareListModalProps) {
   const [copied, setCopied] = React.useState<"ok" | "fail" | null>(null);
   const [canNativeShare, setCanNativeShare] = React.useState(false);
@@ -127,7 +142,7 @@ export function ShareListModal({
     setCanNativeShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
   }, []);
 
-  const shareText = shareUrl ? `Schrijf mee op dit lijstje in Shopping list:\n${shareUrl}` : "";
+  const shareText = shareUrl ? `${shareMessage}\n${shareUrl}` : "";
   const ready = urlReady && Boolean(shareUrl);
 
   const handleCopy = async () => {
@@ -148,14 +163,14 @@ export function ShareListModal({
 
   const openEmail = () => {
     if (!ready) return;
-    const subject = encodeURIComponent("Uitnodiging: meeschrijven op een lijstje");
+    const subject = encodeURIComponent(emailSubject);
     window.location.href = `mailto:?subject=${subject}&body=${encodeURIComponent(shareText)}`;
   };
 
   const openNativeShare = async () => {
     if (!ready) return;
     try {
-      await navigator.share({ title: "Lijstje delen", text: "Schrijf mee op dit lijstje:", url: shareUrl });
+      await navigator.share({ title, text: shareMessage, url: shareUrl });
     } catch {
       /* geannuleerd */
     }
@@ -167,7 +182,7 @@ export function ShareListModal({
     <SlideInModal
       open={open}
       onClose={onClose}
-      title="Lijstje delen"
+      title={title}
       bodyFullWidth
       className="!bg-[var(--bg-app)] md:!max-w-[540px]"
       bodyClassName="pt-2"
@@ -204,11 +219,8 @@ export function ShareListModal({
               ))}
             </span>
           </div>
-          <h3 className="mt-1 text-[17px] font-bold leading-6 text-[var(--text-primary)]">Samen op één lijstje</h3>
-          <p className="max-w-[310px] text-[13.5px] leading-[19px] text-[var(--text-secondary)]">
-            Stuur de link naar je partner of huisgenoot. Jullie zien allebei meteen wat erbij komt en wat al in de kar
-            ligt.
-          </p>
+          <h3 className="mt-1 text-[17px] font-bold leading-6 text-[var(--text-primary)]">{heading}</h3>
+          <p className="max-w-[310px] text-[13.5px] leading-[19px] text-[var(--text-secondary)]">{description}</p>
         </div>
 
         <div className="flex justify-center gap-3">
@@ -263,6 +275,7 @@ export function ShareListModal({
             />
           </div>
         ) : null}
+        {extra}
       </div>
     </SlideInModal>
   );

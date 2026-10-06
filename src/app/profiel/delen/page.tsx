@@ -6,9 +6,9 @@ import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { PageBackButton } from "@/components/ui/page_back_button";
-import { SegmentedControl } from "@/components/ui/segmented_control";
+import { Button } from "@/components/ui/button";
+import { ShareListModal } from "@/components/share_list_modal";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { RouteLoadingSpinner } from "@/components/ui/route_loading_spinner";
 import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
 import { homeListCardIconSrc } from "@/lib/list-product-icons";
@@ -20,8 +20,6 @@ import {
   type AutoShareKind,
   type OwnedListRow,
 } from "@/lib/auto-share";
-
-type Tab = "soorten" | "lijstjes";
 
 const CARD = "overflow-hidden rounded-[20px] bg-[var(--white)] shadow-card";
 const SECTION_LABEL = "px-1 pb-2 text-sm font-semibold leading-20 text-[var(--text-secondary)]";
@@ -71,7 +69,7 @@ function PersonAvatar({ name, url, index }: { name: string; url?: string | null;
 
 type Person = { id: string; name: string; avatarUrl?: string | null; isMe?: boolean };
 
-function PeopleCard({ people }: { people: Person[] }) {
+function PeopleCard({ people, onInvite }: { people: Person[]; onInvite: () => void }) {
   const others = people.filter((p) => !p.isMe);
   return (
     <section aria-labelledby="deelgenoten-titel" className={cn(CARD, "px-3.5 pb-3 pt-3.5")}>
@@ -79,14 +77,18 @@ function PeopleCard({ people }: { people: Person[] }) {
         Je deelt met
       </h2>
       {others.length === 0 ? (
-        <div className="flex items-center gap-3 pb-1">
-          <span className="flex size-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)]">
-            <PeopleIcon className="size-6" />
-          </span>
-          <p className="text-[13.5px] leading-[19px] text-[var(--text-secondary)]">
-            Nog niemand schrijft mee. Open een lijstje en kies <span className="font-semibold">Lijstje delen</span> om
-            iemand uit te nodigen.
-          </p>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <span className="flex size-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)]">
+              <PeopleIcon className="size-6" />
+            </span>
+            <p className="text-[13.5px] leading-[19px] text-[var(--text-secondary)]">
+              Nog niemand. Stuur een link naar je partner of huisgenoot en kies wat jullie samen delen.
+            </p>
+          </div>
+          <Button type="button" variant="primary" size="md" onClick={onInvite} className="w-full max-w-none">
+            Iemand uitnodigen
+          </Button>
         </div>
       ) : (
         <ul className="m-0 flex list-none gap-4 overflow-x-auto p-0 pb-1">
@@ -98,6 +100,19 @@ function PeopleCard({ people }: { people: Person[] }) {
               </span>
             </li>
           ))}
+          <li className="flex w-[64px] shrink-0 flex-col items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onInvite}
+              aria-label="Iemand uitnodigen"
+              className="flex size-[52px] items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[inset_0_0_0_2px_var(--blue-200)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--blue-25)]"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-5">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+            <span className="text-[13px] font-semibold text-[var(--text-primary)]">Uitnodigen</span>
+          </li>
         </ul>
       )}
     </section>
@@ -195,87 +210,58 @@ function listTileSrc(list: OwnedListRow): { src: string; photo: boolean } {
   };
 }
 
-function ListsSection({
+function SharedListsSection({
   lists,
-  selected,
+  sharedState,
   onToggle,
-  onSelectAll,
-  disabled,
+  memberNames,
 }: {
   lists: OwnedListRow[];
-  selected: Record<string, boolean>;
-  onToggle: (id: string) => void;
-  onSelectAll: (on: boolean) => void;
-  disabled: boolean;
+  sharedState: Record<string, boolean>;
+  onToggle: (list: OwnedListRow, on: boolean) => void;
+  memberNames: (list: OwnedListRow) => string;
 }) {
-  const allSelected = lists.length > 0 && lists.every((l) => selected[l.id]);
   return (
-    <section aria-labelledby="lijstjes-titel">
-      <div className="flex items-end justify-between px-1 pb-2">
-        <h2 id="lijstjes-titel" className="text-sm font-semibold leading-20 text-[var(--text-secondary)]">
-          Bestaande lijstjes
-        </h2>
-        {lists.length > 0 ? (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => onSelectAll(!allSelected)}
-            className="rounded-md text-[13.5px] font-semibold text-[var(--text-link)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-40"
-          >
-            {allSelected ? "Niets selecteren" : "Alles selecteren"}
-          </button>
-        ) : null}
-      </div>
+    <section aria-labelledby="gedeeld-titel">
+      <h2 id="gedeeld-titel" className={SECTION_LABEL}>
+        Gedeelde lijstjes
+      </h2>
       <div className={CARD}>
-        {lists.length === 0 ? (
-          <p className="px-4 py-5 text-center text-sm text-[var(--text-secondary)]">Je hebt nog geen lijstjes.</p>
-        ) : (
-          <ul className="m-0 list-none p-0">
-            {lists.map((list, i) => {
-              const kind = listAutoShareKind(list);
-              const shared = (list.memberships ?? []).length > 0;
-              const tile = listTileSrc(list);
-              return (
-                <li key={list.id} className={cn(i > 0 && "border-t border-[var(--border-subtle)]")}>
-                  <label
-                    className={cn(
-                      "flex items-center gap-3 px-3.5 py-2.5",
-                      disabled ? "cursor-default" : "cursor-pointer [@media(hover:hover)]:hover:bg-[var(--gray-25)]",
-                    )}
-                  >
-                    <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[var(--blue-25)]">
-                      {/* eslint-disable-next-line @next/next/no-img-element -- lijstfoto of illustratie */}
-                      <img src={tile.src} alt="" className={tile.photo ? "size-full object-cover" : "size-7 object-contain"} />
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-[15px] font-semibold leading-5 text-[var(--text-primary)]">
-                        {list.name || "Lijstje"}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
-                        {kind ? `${AUTO_SHARE_KIND_META[kind].label} ·` : null}
-                        <span className={shared ? "font-medium text-[var(--blue-500)]" : "text-[var(--text-tertiary)]"}>
-                          {shared ? "Gedeeld" : "Alleen jij"}
-                        </span>
-                      </span>
-                    </span>
-                    <Checkbox
-                      checked={Boolean(selected[list.id])}
-                      onCheckedChange={() => onToggle(list.id)}
-                      disabled={disabled}
-                      aria-label={`${list.name || "Lijstje"} delen`}
-                    />
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <ul className="m-0 list-none p-0">
+          {lists.map((list, i) => {
+            const tile = listTileSrc(list);
+            const on = sharedState[list.id] ?? true;
+            const names = memberNames(list);
+            return (
+              <li
+                key={list.id}
+                className={cn("flex items-center gap-3 px-3.5 py-2.5", i > 0 && "border-t border-[var(--border-subtle)]")}
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[var(--blue-25)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- lijstfoto of illustratie */}
+                  <img src={tile.src} alt="" className={tile.photo ? "size-full object-cover" : "size-7 object-contain"} />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span id={`gedeeld-${list.id}`} className="truncate text-[15px] font-semibold leading-5 text-[var(--text-primary)]">
+                    {list.name || "Lijstje"}
+                  </span>
+                  <span className="truncate text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
+                    {on ? (names ? `Met ${names}` : "Gedeeld") : "Alleen jij"}
+                  </span>
+                </span>
+                <Switch
+                  checked={on}
+                  onCheckedChange={(next) => onToggle(list, next)}
+                  aria-labelledby={`gedeeld-${list.id}`}
+                />
+              </li>
+            );
+          })}
+        </ul>
       </div>
-      {disabled && lists.length > 0 ? (
-        <p className="px-1 pt-2 text-xs leading-[17px] text-[var(--text-tertiary)]">
-          Zodra iemand meeschrijft, deel je hier meerdere lijstjes in één keer.
-        </p>
-      ) : null}
+      <p className="px-1 pt-2 text-xs leading-[17px] text-[var(--text-tertiary)]">
+        Een lijstje apart delen doe je vanuit dat lijstje, via Instellingen → Lijstje delen.
+      </p>
     </section>
   );
 }
@@ -289,7 +275,6 @@ export default function SamenDelenPage() {
 
   const autoShare = useAutoShare(user?.id);
   const { titleRef, collapsed } = useLargeTitleCollapse<HTMLHeadingElement>(64);
-  const [tab, setTab] = React.useState<Tab>("soorten");
 
   const peopleIds = React.useMemo(
     () => (user?.id ? [user.id, ...autoShare.partnerIds] : []),
@@ -344,44 +329,54 @@ export default function SamenDelenPage() {
     return counts;
   }, [lists]);
 
-  /** Lijstjes-tab: lokale selectie t.o.v. de huidige deelstatus; «Bewaar» schrijft het verschil weg. */
-  const sharedNow = React.useMemo(
-    () => Object.fromEntries(lists.map((l) => [l.id, (l.memberships ?? []).length > 0])) as Record<string, boolean>,
-    [lists],
-  );
-  const [draft, setDraft] = React.useState<Record<string, boolean>>({});
-  const selected = React.useMemo(() => ({ ...sharedNow, ...draft }), [sharedNow, draft]);
-  const changes = lists.filter((l) => selected[l.id] !== sharedNow[l.id]);
-  const [saving, setSaving] = React.useState(false);
-  const hasPartners = autoShare.partnerIds.length > 0;
+  /**
+   * Gedeelde lijstjes: alleen lijstjes met meeschrijvers. Een lijstje dat je hier uitzet blijft
+   * zichtbaar (schakelaar uit) tot je de pagina verlaat, zodat je het meteen terug kan aanzetten.
+   */
+  const [sharedState, setSharedState] = React.useState<Record<string, boolean>>({});
+  const sharedLists = lists.filter((l) => (l.memberships ?? []).length > 0 || sharedState[l.id] === false);
+  const nameById = React.useMemo(() => new Map(people.map((p) => [p.id, p.name])), [people]);
+  const memberNames = (list: OwnedListRow) => {
+    const names = (list.memberships ?? [])
+      .map((m) => (m.instantUserId ? nameById.get(m.instantUserId) : undefined))
+      .filter((n): n is string => Boolean(n));
+    return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} en ${names[names.length - 1]}`;
+  };
+  const [removed, setRemoved] = React.useState<Record<string, string[]>>({});
 
-  const handleSave = async () => {
-    if (changes.length === 0) return;
-    setSaving(true);
-    try {
-      const txs = changes.flatMap((l) => {
-        const memberships = l.memberships ?? [];
-        if (selected[l.id]) {
-          const existing = new Set(memberships.map((m) => m.instantUserId));
-          return autoShare.partnerIds
-            .filter((uid) => !existing.has(uid))
-            .map((uid) => db.tx.listMembers[iid()].update({ instantUserId: uid }).link({ list: l.id }));
-        }
-        return memberships.filter((m) => m.id).map((m) => db.tx.listMembers[m.id!].delete());
-      });
-      if (txs.length > 0) await db.transact(txs);
-      setDraft({});
-    } finally {
-      setSaving(false);
+  const handleToggleList = async (list: OwnedListRow, on: boolean) => {
+    setSharedState((s) => ({ ...s, [list.id]: on }));
+    if (!on) {
+      const memberships = (list.memberships ?? []).filter((m) => m.id);
+      setRemoved((r) => ({
+        ...r,
+        [list.id]: memberships.map((m) => m.instantUserId ?? "").filter(Boolean),
+      }));
+      if (memberships.length > 0) {
+        await db.transact(memberships.map((m) => db.tx.listMembers[m.id!].delete()));
+      }
+      return;
     }
+    const restore = removed[list.id]?.length ? removed[list.id]! : autoShare.partnerIds;
+    const existing = new Set((list.memberships ?? []).map((m) => m.instantUserId));
+    const txs = restore
+      .filter((uid) => !existing.has(uid))
+      .map((uid) => db.tx.listMembers[iid()].update({ instantUserId: uid }).link({ list: list.id }));
+    if (txs.length > 0) await db.transact(txs);
+  };
+
+  /** Algemene uitnodiging: link + soorten kiezen in hetzelfde deelblad. */
+  const [inviteOpen, setInviteOpen] = React.useState(false);
+  const inviteUrl =
+    autoShare.inviteToken && typeof window !== "undefined"
+      ? `${window.location.origin}/deel/samen/${encodeURIComponent(autoShare.inviteToken)}`
+      : "";
+  const openInvite = () => {
+    setInviteOpen(true);
+    void autoShare.ensureInviteToken();
   };
 
   if (authLoading || !user) return <RouteLoadingSpinner />;
-
-  const changeLabel =
-    changes.length === 1
-      ? `${selected[changes[0]!.id] ? "Delen" : "Stoppen met delen"}: ${changes[0]!.name || "lijstje"}`
-      : `${changes.length} wijzigingen`;
 
   const kinds = (
     <KindsSection
@@ -392,14 +387,35 @@ export default function SamenDelenPage() {
       partnerLabel={partnerLabel}
     />
   );
-  const listsSection = (
-    <ListsSection
-      lists={lists}
-      selected={selected}
-      disabled={!hasPartners || saving}
-      onToggle={(id) => setDraft((d) => ({ ...d, [id]: !selected[id] }))}
-      onSelectAll={(on) => setDraft(Object.fromEntries(lists.map((l) => [l.id, on])))}
-    />
+  const shared =
+    sharedLists.length > 0 ? (
+      <SharedListsSection
+        lists={sharedLists}
+        sharedState={sharedState}
+        onToggle={(l, on) => void handleToggleList(l, on)}
+        memberNames={memberNames}
+      />
+    ) : null;
+
+  const inviteKinds = (
+    <div className="overflow-hidden rounded-[18px] bg-[var(--white)] shadow-[0_0_0_1px_var(--border-subtle)]">
+      <p className="px-3.5 pb-1 pt-3 text-[13px] font-semibold text-[var(--text-secondary)]">Wat deel je?</p>
+      <ul className="m-0 list-none p-0">
+        {ALL_KINDS.map((kind) => (
+          <li key={kind} className="flex items-center gap-3 px-3.5 py-2">
+            <KindTile kind={kind} size={34} />
+            <span id={`uitnodiging-${kind}`} className="min-w-0 flex-1 text-[15px] font-medium text-[var(--text-primary)]">
+              {AUTO_SHARE_KIND_META[kind].label}
+            </span>
+            <Switch
+              checked={autoShare.enabledKinds.has(kind)}
+              onCheckedChange={(on) => void autoShare.setKindEnabled(kind, on)}
+              aria-labelledby={`uitnodiging-${kind}`}
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 
   return (
@@ -444,52 +460,35 @@ export default function SamenDelenPage() {
           </h1>
         </div>
 
-        {/* Mobiel: deelgenoten · segment · één tab */}
-        <div className="flex flex-col gap-4 lg:hidden">
-          <PeopleCard people={people} />
-          <SegmentedControl
-            ariaLabel="Weergave"
-            fill
-            value={tab}
-            onChange={setTab}
-            options={[
-              { value: "soorten", label: "Soorten" },
-              { value: "lijstjes", label: "Lijstjes" },
-            ]}
-          />
-          {tab === "soorten" ? kinds : listsSection}
+        {/* Mobiel: alles onder elkaar */}
+        <div className="flex flex-col gap-5 lg:hidden">
+          <PeopleCard people={people} onInvite={openInvite} />
+          {kinds}
+          {shared}
         </div>
 
-        {/* Desktop: soorten links, lijstjes rechts */}
-        <div className="hidden items-start gap-6 lg:grid lg:grid-cols-[1fr_1.1fr]">
+        {/* Desktop: deelgenoten + soorten links, gedeelde lijstjes rechts */}
+        <div className="hidden items-start gap-6 lg:grid lg:grid-cols-[1fr_1fr]">
           <div className="flex flex-col gap-5">
-            <PeopleCard people={people} />
+            <PeopleCard people={people} onInvite={openInvite} />
             {kinds}
           </div>
-          {listsSection}
+          <div>{shared}</div>
         </div>
       </main>
 
-      {changes.length > 0 ? (
-        <div className="fixed inset-x-3 bottom-[calc(24px+env(safe-area-inset-bottom,0px))] z-30 mx-auto flex max-w-[456px] items-center gap-2.5 rounded-pill bg-[var(--gray-900)] py-2 pl-[18px] pr-2 text-[var(--white)] shadow-[0_18px_30px_-12px_rgba(16,17,48,0.5)] motion-safe:animate-fade-up">
-          <span className="min-w-0 flex-1 truncate text-sm">{changeLabel}</span>
-          <button
-            type="button"
-            onClick={() => setDraft({})}
-            className="h-10 shrink-0 rounded-pill px-3 text-sm font-semibold text-[var(--white)]/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)]"
-          >
-            Annuleer
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void handleSave()}
-            className="h-10 shrink-0 rounded-pill bg-[var(--action-primary)] px-[18px] text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] disabled:opacity-60"
-          >
-            {saving ? "Bewaren…" : "Bewaar"}
-          </button>
-        </div>
-      ) : null}
+      <ShareListModal
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        shareUrl={inviteUrl}
+        urlReady={Boolean(inviteUrl)}
+        title="Iemand uitnodigen"
+        heading="Samen boodschappen doen"
+        description="Wie de link opent, krijgt de soorten lijstjes die je hieronder aanzet, nu en later."
+        shareMessage="Doe samen boodschappen met mij in Shopping list:"
+        emailSubject="Uitnodiging: samen boodschappen doen"
+        extra={inviteKinds}
+      />
     </div>
   );
 }

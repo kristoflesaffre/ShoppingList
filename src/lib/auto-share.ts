@@ -114,19 +114,34 @@ export function useAutoShare(userId: string | null | undefined) {
   const { data } = db.useQuery({
     profiles: { $: { where: { instantUserId: uid } } },
     lists: { memberships: {}, $: { where: { ownerId: uid } } },
+    sharePartners: { $: { where: { ownerId: uid } } },
   });
 
   const profile = (data?.profiles?.[0] ?? null) as
-    | { id: string; autoShareKindsJson?: string | null }
+    | { id: string; autoShareKindsJson?: string | null; shareInviteToken?: string | null }
     | null;
   const enabledKinds = React.useMemo(
     () => parseAutoShareKinds(profile?.autoShareKindsJson),
     [profile?.autoShareKindsJson],
   );
-  const partnerIds = React.useMemo(
-    () => sharePartnerIds((data?.lists ?? []) as ListWithMemberships[], uid),
-    [data?.lists, uid],
-  );
+  const partnerIds = React.useMemo(() => {
+    const fromLists = sharePartnerIds((data?.lists ?? []) as ListWithMemberships[], uid);
+    const fromInvite = ((data?.sharePartners ?? []) as Array<{ partnerUserId?: string }>)
+      .map((p) => p.partnerUserId)
+      .filter((id): id is string => typeof id === "string" && id !== uid);
+    return Array.from(new Set([...fromInvite, ...fromLists]));
+  }, [data?.lists, data?.sharePartners, uid]);
+
+  /** Algemene uitnodigingslink: token op het profiel, aangemaakt bij eerste gebruik. */
+  const ensureInviteToken = React.useCallback(async (): Promise<string | null> => {
+    if (!userId) return null;
+    if (profile?.shareInviteToken) return profile.shareInviteToken;
+    const token = crypto.randomUUID();
+    await db.transact(
+      db.tx.profiles[profile?.id ?? iid()].update({ instantUserId: userId, shareInviteToken: token }),
+    );
+    return token;
+  }, [profile?.id, profile?.shareInviteToken, userId]);
 
   const setKinds = React.useCallback(
     async (next: ReadonlySet<AutoShareKind>) => {
@@ -161,6 +176,8 @@ export function useAutoShare(userId: string | null | undefined) {
     partnerIds,
     setKindEnabled,
     setKinds,
+    ensureInviteToken,
+    inviteToken: profile?.shareInviteToken ?? null,
     ownedLists: (data?.lists ?? []) as OwnedListRow[],
   } as const;
 }
