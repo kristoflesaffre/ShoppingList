@@ -44,7 +44,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 10b | Nieuw lijstje · keuze (modal op home) | `page.tsx` (`blankVenueSlideOpen`) | ✅ (variant A) |
 | 11 | Lijstje · instellingen | `/lijstje/[id]/instellingen` | ✅ |
 | 12 | Lijstje delen | `share_list_modal.tsx` | ✅ foto-avatars, deelknoppen boven link, «Ook toekomstige lijstjes» (auto-delen per soort). Beheerpagina «Samen delen» (`/profiel/delen`): deelgenoten + algemene uitnodigingslink (`/deel/samen/[token]`), soorten aan/uit, overzicht gedeelde lijstjes met schakelaar |
-| 13 | Startpagina aanpassen | `/beheer-homepagina` | ⬜ |
+| 13 | Startpagina aanpassen | `/beheer-homepagina` | 🔄 voorstel op canvas |
 | 14 | Klantenkaart toevoegen (kies winkel) | `/klantenkaarten/toevoegen` | ⬜ |
 | 15 | Klantenkaart toevoegen (winkel / nieuw) | `/klantenkaarten/toevoegen/[storeSlug]`, `/nieuw` | ⬜ |
 | 16 | Klantenkaart bewerken / scanresultaat | `loyalty_card_editor_slide_in.tsx`, `loyalty_card_scan_result_slide_in.tsx` | ⬜ |
