@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import ReactDOM from "react-dom";
+import { cn } from "@/lib/utils";
 import {
   useItemSlugs,
   useItemSynonyms,
@@ -18,7 +19,7 @@ import type { SavedRecipe } from "@/lib/recipe_library";
 import { matchRecipesForAutocomplete } from "@/lib/recipe-search";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
-import { SearchIcon } from "@/components/ui/search_bar";
+import { SEARCH_FIELD_CLASS, SearchIcon } from "@/components/ui/search_bar";
 import { FilterChip } from "@/components/ui/filter_chip";
 import { RoundIconButton } from "@/components/ui/round_icon_button";
 
@@ -290,13 +291,17 @@ export function ItemNameSearchSlideIn({
       <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={title}>
         <div className="absolute inset-0 bg-black/50" onClick={handleClose} aria-hidden />
         <div
-          className="absolute bottom-0 left-1/2 flex w-full max-w-[956px] -translate-x-1/2 flex-col overflow-hidden rounded-t-[26px] bg-[var(--white)]"
-          style={{ top: TOP_OFFSET }}
+          className={cn(
+            "absolute bottom-0 left-1/2 top-12 flex w-full max-w-[956px] -translate-x-1/2 flex-col overflow-hidden rounded-t-[26px] bg-[var(--white)]",
+            /* Tablet+: gecentreerd venster zoals SlideInModal (design system «Blad»). */
+            "md:bottom-auto md:top-1/2 md:h-[min(640px,calc(100dvh-48px))] md:max-w-[620px] md:-translate-y-1/2 md:rounded-[26px] md:shadow-[0_30px_60px_-20px_rgba(16,17,48,0.45)]",
+          )}
         >
-          <span aria-hidden className="mx-auto mt-2 block h-1 w-[38px] shrink-0 rounded-full bg-[var(--gray-100)]" />
-          <div className="flex shrink-0 items-center gap-2.5 px-[18px] pb-3 pt-3">
-            <div className="flex h-[46px] min-w-0 flex-1 items-center gap-2.5 rounded-[14px] bg-[var(--white)] px-3 shadow-[inset_0_0_0_1.5px_var(--blue-200)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-500)]">
-              <SearchIcon className="shrink-0 text-[var(--blue-500)]" />
+          <span aria-hidden className="mx-auto mt-2 block h-1 w-[38px] shrink-0 rounded-full bg-[var(--gray-100)] md:hidden" />
+          <div className="flex shrink-0 items-center gap-2.5 px-[18px] pb-3 pt-3 md:px-6 md:pt-5">
+            {/* Design system «Zoekveld»: zelfde vlak als SearchBar. */}
+            <div className={SEARCH_FIELD_CLASS}>
+              <SearchIcon className="shrink-0 text-[var(--text-tertiary)] group-focus-within:text-[var(--blue-500)]" />
               <input
                 ref={inputRef}
                 type="text"
@@ -308,7 +313,7 @@ export function ItemNameSearchSlideIn({
                 enterKeyHint="search"
                 inputMode="text"
                 autoFocus
-                className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none"
               />
               {query.length > 0 ? (
                 <button
@@ -336,7 +341,7 @@ export function ItemNameSearchSlideIn({
             </button>
           </div>
           {showChips ? (
-            <div className="flex shrink-0 gap-1.5 px-[18px] pb-2" role="group" aria-label="Filter op type">
+            <div className="flex shrink-0 gap-1.5 px-[18px] pb-2 md:px-6" role="group" aria-label="Filter op type">
               {chips.map((c) => (
                 <FilterChip key={c.value} selected={topScope === c.value} onClick={() => setTopScope(c.value)}>
                   {c.label}
@@ -344,7 +349,12 @@ export function ItemNameSearchSlideIn({
               ))}
             </div>
           ) : null}
-          <ul role="listbox" className="min-h-0 flex-1 overflow-y-auto px-[18px] pb-[max(45px,env(safe-area-inset-bottom,45px))]">
+          {!query.trim() ? (
+            <p className="px-6 pt-8 text-center text-[14px] leading-5 text-[var(--text-tertiary)]">
+              {scope === "recipes" ? "Typ de naam van een recept." : "Typ de naam van een product. Staat het er niet bij, dan voeg je het toe als nieuw item."}
+            </p>
+          ) : null}
+          <ul role="listbox" className="min-h-0 flex-1 overflow-y-auto px-[18px] pb-[max(45px,env(safe-area-inset-bottom,45px))] md:px-6 md:pb-6">
             {suggestions.map((slug, i) => (
               <li key={slug} role="option" aria-selected={false} className={i > 0 ? "border-t border-[var(--border-subtle)]" : undefined}>
                 <button type="button" onClick={() => handleSelect(slug)} className={rowClass}>

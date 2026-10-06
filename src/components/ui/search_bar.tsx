@@ -54,7 +54,7 @@ export function SearchIcon({ className }: { className?: string }) {
  * Design system «Zoekveld» (zacht grijs): grijs vlak zonder rand, vergrootglas links, radius 16, h 48.
  * Focus: wit vlak met lavendel rand. Zelfde look als de zoek-trigger in ItemNameAutocomplete.
  */
-const containerBase =
+export const SEARCH_FIELD_CLASS =
   "group flex h-12 w-full min-w-0 items-center gap-2.5 rounded-[16px] bg-[var(--gray-25)] px-3.5 transition-[background-color,box-shadow] duration-fast ease-out-strong focus-within:bg-[var(--white)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-300)]";
 
 /** Figma: placeholder Inter Light, neutrals/300. Value/focus: Inter Regular, neutrals/900. Disabled: placeholder opacity 0. Hide native search clear so only our clear button shows. */
@@ -102,7 +102,7 @@ const SearchBar = React.forwardRef<HTMLDivElement, SearchBarProps>(
     };
 
     const containerClassName = cn(
-      containerBase,
+      SEARCH_FIELD_CLASS,
       sizeStyles[size],
       disabled && "cursor-not-allowed opacity-60",
       className
