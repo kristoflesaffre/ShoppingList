@@ -23,7 +23,18 @@ import {
 } from "@/lib/auto-share";
 
 const CARD = "overflow-hidden rounded-[20px] bg-[var(--white)] shadow-card";
-const SECTION_LABEL = "px-1 pb-2 text-sm font-semibold leading-20 text-[var(--text-secondary)]";
+
+/** Sectiekop met korte uitleg: maakt het verschil tussen «per soort» en «individueel» duidelijk. */
+function SectionHeading({ id, title, description }: { id: string; title: string; description: string }) {
+  return (
+    <div className="px-1 pb-2.5">
+      <h2 id={id} className="text-[17px] font-bold leading-6 text-[var(--text-primary)]">
+        {title}
+      </h2>
+      <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">{description}</p>
+    </div>
+  );
+}
 
 function BackArrowIcon() {
   return (
@@ -181,9 +192,11 @@ function KindsSection({
   const allOn = ALL_KINDS.every((k) => enabled.has(k));
   return (
     <section aria-labelledby="soorten-titel">
-      <h2 id="soorten-titel" className={SECTION_LABEL}>
-        Nieuwe lijstjes automatisch delen
-      </h2>
+      <SectionHeading
+        id="soorten-titel"
+        title="Delen per soort"
+        description="Alle lijstjes van een soort, ook de nieuwe, voor iedereen met wie je deelt."
+      />
       <div className={CARD}>
         <div className="flex items-center gap-3 bg-[var(--blue-25)] px-3.5 py-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--white)] text-[var(--blue-500)] shadow-[0_0_0_1px_var(--blue-100)]">
@@ -256,9 +269,22 @@ function SharedListsSection({
 }) {
   return (
     <section aria-labelledby="gedeeld-titel">
-      <h2 id="gedeeld-titel" className={SECTION_LABEL}>
-        Gedeelde lijstjes
-      </h2>
+      <SectionHeading
+        id="gedeeld-titel"
+        title="Individueel gedeelde lijstjes"
+        description="Losse lijstjes die je apart deelt, buiten de soorten hierboven."
+      />
+      {lists.length === 0 ? (
+        <div className={cn(CARD, "flex items-center gap-3 px-3.5 py-4")}>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--blue-25)]">
+            {/* eslint-disable-next-line @next/next/no-img-element -- illustratie */}
+            <img src="/images/ui/lijstje_160.webp" alt="" className="size-7 object-contain" />
+          </span>
+          <p className="text-[13.5px] leading-[19px] text-[var(--text-secondary)]">
+            Nog geen losse lijstjes gedeeld. Open een lijstje en kies <span className="font-semibold">Lijstje delen</span>.
+          </p>
+        </div>
+      ) : (
       <div className={CARD}>
         <ul className="m-0 list-none p-0">
           {lists.map((list, i) => {
@@ -292,9 +318,12 @@ function SharedListsSection({
           })}
         </ul>
       </div>
-      <p className="px-1 pt-2 text-xs leading-[17px] text-[var(--text-tertiary)]">
-        Een lijstje apart delen doe je vanuit dat lijstje, via Instellingen → Lijstje delen.
-      </p>
+      )}
+      {lists.length > 0 ? (
+        <p className="px-1 pt-2 text-xs leading-[17px] text-[var(--text-tertiary)]">
+          Een lijstje apart delen doe je vanuit dat lijstje, via Instellingen → Lijstje delen.
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -442,7 +471,11 @@ export default function SamenDelenPage() {
    * zichtbaar (schakelaar uit) tot je de pagina verlaat, zodat je het meteen terug kan aanzetten.
    */
   const [sharedState, setSharedState] = React.useState<Record<string, boolean>>({});
-  const sharedLists = lists.filter((l) => (l.memberships ?? []).length > 0 || sharedState[l.id] === false);
+  const sharedLists = lists.filter((l) => {
+    const kind = listAutoShareKind(l);
+    if (kind && autoShare.enabledKinds.has(kind)) return false;
+    return (l.memberships ?? []).length > 0 || sharedState[l.id] === false;
+  });
   const nameById = React.useMemo(() => new Map(people.map((p) => [p.id, p.name])), [people]);
   const memberNames = (list: OwnedListRow) => {
     const names = (list.memberships ?? [])
@@ -497,15 +530,14 @@ export default function SamenDelenPage() {
       partnerLabel={partnerLabel}
     />
   );
-  const shared =
-    sharedLists.length > 0 ? (
-      <SharedListsSection
-        lists={sharedLists}
-        sharedState={sharedState}
-        onToggle={(l, on) => void handleToggleList(l, on)}
-        memberNames={memberNames}
-      />
-    ) : null;
+  const shared = (
+    <SharedListsSection
+      lists={sharedLists}
+      sharedState={sharedState}
+      onToggle={(l, on) => void handleToggleList(l, on)}
+      memberNames={memberNames}
+    />
+  );
 
   const inviteKinds = (
     <div className="overflow-hidden rounded-[18px] bg-[var(--white)] shadow-[0_0_0_1px_var(--border-subtle)]">
