@@ -242,9 +242,27 @@ export function ShareListModal({
             type="button"
             onClick={() => void handleCopy()}
             disabled={!ready}
-            className="inline-flex h-[38px] shrink-0 items-center rounded-pill bg-[var(--action-primary)] px-4 text-sm font-bold text-[var(--white)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:opacity-50"
+            className={cn(
+              "inline-flex h-[38px] shrink-0 items-center gap-1.5 rounded-pill px-4 text-sm font-bold transition-[background-color,color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:opacity-50",
+              copied === "ok"
+                ? "bg-[var(--white)] text-[var(--blue-500)] shadow-[inset_0_0_0_1.5px_var(--blue-300)]"
+                : copied === "fail"
+                  ? "bg-[var(--white)] text-[var(--error-600)] shadow-[inset_0_0_0_1.5px_var(--error-300)]"
+                  : "bg-[var(--action-primary)] text-[var(--white)]",
+            )}
           >
-            {copied === "ok" ? "Gekopieerd ✓" : copied === "fail" ? "Mislukt" : "Kopieer"}
+            {copied === "ok" ? (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3.5">
+                  <path d="M5 12.5l4.5 4.5L19 7.5" />
+                </svg>
+                Gekopieerd
+              </>
+            ) : copied === "fail" ? (
+              "Mislukt"
+            ) : (
+              "Kopieer"
+            )}
           </button>
         </div>
         <span className="sr-only" role="status">
