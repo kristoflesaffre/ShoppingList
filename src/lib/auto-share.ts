@@ -27,7 +27,7 @@ export const AUTO_SHARE_KIND_META: Record<
   vakantie: { label: "Vakantie", imageSrc: "/images/ui/vakantie_160.webp", tint: "#fdeadf" },
 };
 
-const ALL_KINDS = Object.keys(AUTO_SHARE_KIND_META) as AutoShareKind[];
+export const ALL_KINDS = Object.keys(AUTO_SHARE_KIND_META) as AutoShareKind[];
 
 export type AutoShareListInput = {
   name?: string | null;
@@ -57,7 +57,18 @@ export function parseAutoShareKinds(json: string | null | undefined): Set<AutoSh
   }
 }
 
-type MembershipRow = { instantUserId?: string | null };
+type MembershipRow = { id?: string; instantUserId?: string | null };
+
+export type OwnedListRow = {
+  id: string;
+  name?: string | null;
+  icon?: string | null;
+  customIconUrl?: string | null;
+  masterIcon?: string | null;
+  isMasterTemplate?: boolean | null;
+  order?: number | null;
+  memberships?: MembershipRow[] | null;
+};
 type ListWithMemberships = { memberships?: MembershipRow[] | null };
 
 /** Iedereen die op minstens één lijstje van de eigenaar meeschrijft. */
@@ -117,12 +128,9 @@ export function useAutoShare(userId: string | null | undefined) {
     [data?.lists, uid],
   );
 
-  const setKindEnabled = React.useCallback(
-    async (kind: AutoShareKind, enabled: boolean) => {
+  const setKinds = React.useCallback(
+    async (next: ReadonlySet<AutoShareKind>) => {
       if (!userId) return;
-      const next = new Set(enabledKinds);
-      if (enabled) next.add(kind);
-      else next.delete(kind);
       const json = JSON.stringify(ALL_KINDS.filter((k) => next.has(k)));
       try {
         await db.transact(
@@ -135,8 +143,24 @@ export function useAutoShare(userId: string | null | undefined) {
         console.error("[auto-share] voorkeur bewaren mislukt", e);
       }
     },
-    [enabledKinds, profile?.id, userId],
+    [profile?.id, userId],
   );
 
-  return { enabledKinds, partnerIds, setKindEnabled } as const;
+  const setKindEnabled = React.useCallback(
+    async (kind: AutoShareKind, enabled: boolean) => {
+      const next = new Set(enabledKinds);
+      if (enabled) next.add(kind);
+      else next.delete(kind);
+      await setKinds(next);
+    },
+    [enabledKinds, setKinds],
+  );
+
+  return {
+    enabledKinds,
+    partnerIds,
+    setKindEnabled,
+    setKinds,
+    ownedLists: (data?.lists ?? []) as OwnedListRow[],
+  } as const;
 }

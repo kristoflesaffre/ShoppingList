@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
+import { useAutoShare } from "@/lib/auto-share";
 import { db } from "@/lib/db";
 import { PillTab, type PillTabVariant } from "@/components/ui/pill_tab";
 import {
@@ -137,6 +138,7 @@ function ThemeSetting({ inline = false }: { inline?: boolean }) {
 export default function ProfielPage() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
+  const autoShare = useAutoShare(user?.id);
   const adminUser = user as AuthUserWithEmail | null;
   const ownerId = user?.id ?? "__no_user__";
 
@@ -252,6 +254,23 @@ export default function ProfielPage() {
     );
   }
 
+  const shareIcon = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="size-5">
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+      <circle cx="17" cy="9" r="2.8" />
+      <path d="M16.5 14c3 .2 5 2.3 5 5.5" />
+    </svg>
+  );
+  const kindCount = autoShare.enabledKinds.size;
+  const partnerCount = autoShare.partnerIds.length;
+  const shareDescription =
+    partnerCount === 0
+      ? "Lijstjes automatisch delen"
+      : `${partnerCount === 1 ? "1 persoon" : `${partnerCount} personen`} · ${
+          kindCount === 0 ? "niets automatisch" : kindCount === 1 ? "1 soort" : `${kindCount} soorten`
+        }`;
+
   const homeIcon = (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="size-5">
       <path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" />
@@ -346,6 +365,15 @@ export default function ProfielPage() {
           label="Homepagina aanpassen"
           description="Kies welke secties je op de startpagina ziet"
           onClick={() => router.push("/beheer-homepagina")}
+        />
+      </li>
+      <li>
+        <ProfileSettingsRow
+          bare={bare}
+          icon={shareIcon}
+          label="Samen delen"
+          description={shareDescription}
+          onClick={() => router.push("/profiel/delen")}
         />
       </li>
       {isAdmin ? (

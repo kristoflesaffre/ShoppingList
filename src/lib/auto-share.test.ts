@@ -23,7 +23,7 @@ describe("listAutoShareKind", () => {
 
 describe("parseAutoShareKinds", () => {
   it("negeert onbekende soorten en kapotte JSON", () => {
-    expect([...parseAutoShareKinds('["supermarkt","onbekend"]')]).toEqual(["supermarkt"]);
+    expect(Array.from(parseAutoShareKinds('["supermarkt","onbekend"]'))).toEqual(["supermarkt"]);
     expect(parseAutoShareKinds("{kapot").size).toBe(0);
     expect(parseAutoShareKinds(null).size).toBe(0);
   });
