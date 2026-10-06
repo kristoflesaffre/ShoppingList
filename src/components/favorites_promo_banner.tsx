@@ -126,18 +126,31 @@ const HOW_IT_WORKS = [
   { title: "Elke week: «+ Lijstje»", text: "Vink aan wat je nodig hebt en klaar" },
 ];
 
-/** Canvas «05–07 · Favorieten leeg»: uitleg + stappen + grote knop. */
+/**
+ * Canvas «05–07 · Favorieten leeg» (mobiel) en «Favorieten leeg desktop B» (lg+):
+ * mobiel = gestapelde kaarten + grote knop; desktop = brede introkaart met knop rechts + 3 stapkaarten naast elkaar.
+ */
 export function FavoritesEmptyState({ onCreate }: { onCreate: () => void }) {
+  const intro =
+    "Zet de producten die je elke week koopt in een favorietenlijst. Zo heb je je weeklijstje in een minuut.";
   return (
-    <div className="flex flex-col gap-4 md:mx-auto md:w-full md:max-w-[560px]">
-      <div className="flex flex-col items-center rounded-[20px] bg-[var(--white)] px-[18px] pb-5 pt-[22px] text-center shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+    <div className="flex flex-col gap-4 md:mx-auto md:w-full md:max-w-[560px] lg:max-w-none">
+      {/* Introkaart */}
+      <div className="flex flex-col items-center rounded-[20px] bg-[var(--white)] px-[18px] pb-5 pt-[22px] text-center shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:flex-row lg:gap-8 lg:bg-[linear-gradient(135deg,var(--white)_50%,#f3f2ff)] lg:px-8 lg:py-7 lg:text-left [[data-theme=dark]_&]:lg:bg-[var(--white)]">
         <FavoritesFanIllustration size={64} />
-        <h2 className="mt-4 text-xl font-bold tracking-tight text-[var(--text-primary)]">Nog geen favorieten</h2>
-        <p className="mt-1.5 max-w-[290px] text-sm leading-5 text-[var(--text-secondary)]">
-          Zet de producten die je elke week koopt in een favorietenlijst. Zo heb je je weeklijstje in een minuut.
-        </p>
+        <div className="lg:min-w-0 lg:flex-1">
+          <h2 className="mt-4 text-xl font-bold tracking-tight text-[var(--text-primary)] lg:mt-0 lg:text-[22px]">Nog geen favorieten</h2>
+          <p className="mt-1.5 max-w-[290px] text-sm leading-5 text-[var(--text-secondary)] lg:mt-1 lg:max-w-[440px] lg:text-[14.5px] lg:leading-[21px]">
+            {intro}
+          </p>
+        </div>
+        <Button variant="primary" className="hidden shrink-0 lg:inline-flex" onClick={onCreate}>
+          Maak je eerste favorietenlijst
+        </Button>
       </div>
-      <div className="flex flex-col gap-3.5 rounded-[20px] bg-[var(--white)] p-4 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+
+      {/* Stappen: mobiel één kaart met een lijst; desktop drie kaarten naast elkaar */}
+      <div className="flex flex-col gap-3.5 rounded-[20px] bg-[var(--white)] p-4 shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:hidden">
         <p className="text-[13px] font-bold text-[var(--text-secondary)]">Zo werkt het</p>
         <ol className="m-0 flex list-none flex-col gap-3.5 p-0">
           {HOW_IT_WORKS.map((step, i) => (
@@ -153,7 +166,22 @@ export function FavoritesEmptyState({ onCreate }: { onCreate: () => void }) {
           ))}
         </ol>
       </div>
-      <Button variant="primary" className="w-full" onClick={onCreate}>
+      <div className="hidden lg:block">
+        <p className="mb-2.5 mt-2 text-[13px] font-bold text-[var(--text-secondary)]">Zo werkt het</p>
+        <ol className="m-0 grid list-none grid-cols-3 gap-3 p-0">
+          {HOW_IT_WORKS.map((step, i) => (
+            <li key={step.title} className="rounded-[20px] bg-[var(--white)] p-5 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+              <span className="flex size-[30px] items-center justify-center rounded-full bg-[var(--blue-50)] text-sm font-bold text-[var(--blue-500)]">
+                {i + 1}
+              </span>
+              <span className="mt-3 block text-base font-semibold text-[var(--text-primary)]">{step.title}</span>
+              <span className="mt-0.5 block text-[13.5px] text-[var(--text-secondary)]">{step.text}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <Button variant="primary" className="w-full lg:hidden" onClick={onCreate}>
         Maak je eerste favorietenlijst
       </Button>
     </div>

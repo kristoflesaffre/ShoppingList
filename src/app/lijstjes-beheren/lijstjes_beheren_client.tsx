@@ -747,7 +747,7 @@ export function LijstjesBeherenClient({
         </div>
       ) : null}
 
-      {!snackbarMessage && !isCardsEditMode ? (
+      {!snackbarMessage && !isCardsEditMode && !(section === "favorieten" && !hasSectionLists) ? (
         <div
           className={cn(
             "pointer-events-none fixed inset-x-0 z-20",
