@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { Button } from "@/components/ui/button";
+import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { ShareListModal } from "@/components/share_list_modal";
 import { Switch } from "@/components/ui/switch";
 import { RouteLoadingSpinner } from "@/components/ui/route_loading_spinner";
@@ -69,7 +70,15 @@ function PersonAvatar({ name, url, index }: { name: string; url?: string | null;
 
 type Person = { id: string; name: string; avatarUrl?: string | null; isMe?: boolean };
 
-function PeopleCard({ people, onInvite }: { people: Person[]; onInvite: () => void }) {
+function PeopleCard({
+  people,
+  onInvite,
+  onSelect,
+}: {
+  people: Person[];
+  onInvite: () => void;
+  onSelect: (person: Person) => void;
+}) {
   const others = people.filter((p) => !p.isMe);
   return (
     <section aria-labelledby="deelgenoten-titel" className={cn(CARD, "px-3.5 pb-3 pt-3.5")}>
@@ -93,11 +102,23 @@ function PeopleCard({ people, onInvite }: { people: Person[]; onInvite: () => vo
       ) : (
         <ul className="m-0 flex list-none gap-4 overflow-x-auto p-0 pb-1">
           {people.map((p, i) => (
-            <li key={p.id} className="flex w-[64px] shrink-0 flex-col items-center gap-1.5">
-              <PersonAvatar name={p.name} url={p.avatarUrl} index={i} />
-              <span className="w-full truncate text-center text-[13px] font-semibold text-[var(--text-primary)]">
-                {p.isMe ? "Jij" : p.name}
-              </span>
+            <li key={p.id} className="w-[64px] shrink-0">
+              {p.isMe ? (
+                <div className="flex flex-col items-center gap-1.5">
+                  <PersonAvatar name={p.name} url={p.avatarUrl} index={i} />
+                  <span className="w-full truncate text-center text-[13px] font-semibold text-[var(--text-primary)]">Jij</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onSelect(p)}
+                  aria-label={`Delen met ${p.name} beheren`}
+                  className="flex w-full flex-col items-center gap-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] motion-safe:active:scale-95"
+                >
+                  <PersonAvatar name={p.name} url={p.avatarUrl} index={i} />
+                  <span className="w-full truncate text-center text-[13px] font-semibold text-[var(--text-primary)]">{p.name}</span>
+                </button>
+              )}
             </li>
           ))}
           <li className="flex w-[64px] shrink-0 flex-col items-center gap-1.5">
@@ -266,6 +287,81 @@ function SharedListsSection({
   );
 }
 
+function PersonSheet({
+  person,
+  index,
+  myId,
+  myLists,
+  onClose,
+  onRemove,
+}: {
+  person: Person | null;
+  index: number;
+  myId: string;
+  myLists: OwnedListRow[];
+  onClose: () => void;
+  onRemove: (person: Person) => Promise<void>;
+}) {
+  const [busy, setBusy] = React.useState(false);
+  const { data } = db.useQuery(
+    person ? { lists: { memberships: {}, $: { where: { ownerId: person.id } } } } : null,
+  );
+  if (!person) return null;
+  const mine = myLists.filter((l) => (l.memberships ?? []).some((m) => m.instantUserId === person.id)).length;
+  const theirs = ((data?.lists ?? []) as OwnedListRow[]).filter((l) =>
+    (l.memberships ?? []).some((m) => m.instantUserId === myId),
+  ).length;
+  const count = (n: number) => (n === 1 ? "1 lijstje" : `${n} lijstjes`);
+  return (
+    <SlideInModal
+      open
+      onClose={onClose}
+      title={person.name}
+      footer={
+        <Button
+          type="button"
+          variant="primary"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await onRemove(person);
+              onClose();
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className="!bg-[var(--error-500,#d92d20)] hover:!bg-[var(--error-600)]"
+        >
+          {busy ? "Bezig…" : "Stoppen met delen"}
+        </Button>
+      }
+    >
+      <div className="flex flex-col items-center gap-4 pb-2 text-center">
+        <PersonAvatar name={person.name} url={person.avatarUrl} index={index} />
+        <div className="grid w-full grid-cols-2 gap-3">
+          <div className="rounded-[16px] bg-[var(--gray-25)] px-3 py-3">
+            <p className="text-[22px] font-bold leading-7 text-[var(--text-primary)]">{mine}</p>
+            <p className="text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
+              {count(mine).replace(/^\d+ /, "")} van jou bij {person.name}
+            </p>
+          </div>
+          <div className="rounded-[16px] bg-[var(--gray-25)] px-3 py-3">
+            <p className="text-[22px] font-bold leading-7 text-[var(--text-primary)]">{theirs}</p>
+            <p className="text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
+              {count(theirs).replace(/^\d+ /, "")} van {person.name} bij jou
+            </p>
+          </div>
+        </div>
+        <p className="text-[13.5px] leading-[19px] text-[var(--text-secondary)]">
+          Stop je met delen, dan schrijven jullie niet langer mee op elkaars lijstjes. Nieuwe lijstjes worden niet meer
+          automatisch gedeeld. {person.name} kan dit ook zelf doen.
+        </p>
+      </div>
+    </SlideInModal>
+  );
+}
+
 export default function SamenDelenPage() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
@@ -365,6 +461,8 @@ export default function SamenDelenPage() {
     if (txs.length > 0) await db.transact(txs);
   };
 
+  const [selectedPerson, setSelectedPerson] = React.useState<Person | null>(null);
+
   /** Algemene uitnodiging: link + soorten kiezen in hetzelfde deelblad. */
   const [inviteOpen, setInviteOpen] = React.useState(false);
   const inviteUrl =
@@ -462,7 +560,7 @@ export default function SamenDelenPage() {
 
         {/* Mobiel: alles onder elkaar */}
         <div className="flex flex-col gap-5 lg:hidden">
-          <PeopleCard people={people} onInvite={openInvite} />
+          <PeopleCard people={people} onInvite={openInvite} onSelect={setSelectedPerson} />
           {kinds}
           {shared}
         </div>
@@ -470,12 +568,21 @@ export default function SamenDelenPage() {
         {/* Desktop: deelgenoten + soorten links, gedeelde lijstjes rechts */}
         <div className="hidden items-start gap-6 lg:grid lg:grid-cols-[1fr_1fr]">
           <div className="flex flex-col gap-5">
-            <PeopleCard people={people} onInvite={openInvite} />
+            <PeopleCard people={people} onInvite={openInvite} onSelect={setSelectedPerson} />
             {kinds}
           </div>
           <div>{shared}</div>
         </div>
       </main>
+
+      <PersonSheet
+        person={selectedPerson}
+        index={Math.max(0, people.findIndex((p) => p.id === selectedPerson?.id))}
+        myId={user.id}
+        myLists={lists}
+        onClose={() => setSelectedPerson(null)}
+        onRemove={(p) => autoShare.removePartner(p.id)}
+      />
 
       <ShareListModal
         open={inviteOpen}

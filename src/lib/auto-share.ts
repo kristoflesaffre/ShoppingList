@@ -106,15 +106,34 @@ export function autoShareMembershipTransactions(
     );
 }
 
+/** Bestaande lijstjes van de soorten die net aangezet zijn, delen met alle deelgenoten. */
+export function shareExistingListsTransactions(
+  lists: readonly OwnedListRow[],
+  kinds: ReadonlySet<AutoShareKind>,
+  partnerIds: readonly string[],
+): DbTxArray {
+  return lists.flatMap((list) =>
+    autoShareMembershipTransactions(
+      list.id,
+      listAutoShareKind(list),
+      kinds,
+      partnerIds,
+      (list.memberships ?? []).map((m) => m.instantUserId ?? ""),
+    ),
+  );
+}
+
 /**
- * Leest de voorkeur en de deelgenoten van de ingelogde gebruiker en geeft een setter terug.
+ * Leest de voorkeur en de deelgenoten van de ingelogde gebruiker en geeft setters terug.
+ * Een uitnodiging verbindt twee mensen in beide richtingen: `sharePartners` telt zowel
+ * waar je eigenaar als waar je deelgenoot bent.
  */
 export function useAutoShare(userId: string | null | undefined) {
   const uid = userId ?? "__no_user__";
-  const { data } = db.useQuery({
+  const { isLoading, data } = db.useQuery({
     profiles: { $: { where: { instantUserId: uid } } },
     lists: { memberships: {}, $: { where: { ownerId: uid } } },
-    sharePartners: { $: { where: { ownerId: uid } } },
+    sharePartners: { $: { where: { or: [{ ownerId: uid }, { partnerUserId: uid }] } } },
   });
 
   const profile = (data?.profiles?.[0] ?? null) as
@@ -124,13 +143,18 @@ export function useAutoShare(userId: string | null | undefined) {
     () => parseAutoShareKinds(profile?.autoShareKindsJson),
     [profile?.autoShareKindsJson],
   );
+  const ownedLists = React.useMemo(() => (data?.lists ?? []) as OwnedListRow[], [data?.lists]);
+  const partnerRows = React.useMemo(
+    () => (data?.sharePartners ?? []) as Array<{ id: string; ownerId?: string; partnerUserId?: string }>,
+    [data?.sharePartners],
+  );
   const partnerIds = React.useMemo(() => {
-    const fromLists = sharePartnerIds((data?.lists ?? []) as ListWithMemberships[], uid);
-    const fromInvite = ((data?.sharePartners ?? []) as Array<{ partnerUserId?: string }>)
-      .map((p) => p.partnerUserId)
+    const fromLists = sharePartnerIds(ownedLists, uid);
+    const fromInvite = partnerRows
+      .map((p) => (p.ownerId === uid ? p.partnerUserId : p.ownerId))
       .filter((id): id is string => typeof id === "string" && id !== uid);
     return Array.from(new Set([...fromInvite, ...fromLists]));
-  }, [data?.lists, data?.sharePartners, uid]);
+  }, [ownedLists, partnerRows, uid]);
 
   /** Algemene uitnodigingslink: token op het profiel, aangemaakt bij eerste gebruik. */
   const ensureInviteToken = React.useCallback(async (): Promise<string | null> => {
@@ -143,22 +167,22 @@ export function useAutoShare(userId: string | null | undefined) {
     return token;
   }, [profile?.id, profile?.shareInviteToken, userId]);
 
+  /** Bewaart de soorten; een soort die aan gaat deelt meteen ook je bestaande lijstjes van die soort. */
   const setKinds = React.useCallback(
     async (next: ReadonlySet<AutoShareKind>) => {
       if (!userId) return;
       const json = JSON.stringify(ALL_KINDS.filter((k) => next.has(k)));
+      const turnedOn = new Set(ALL_KINDS.filter((k) => next.has(k) && !enabledKinds.has(k)));
       try {
-        await db.transact(
-          db.tx.profiles[profile?.id ?? iid()].update({
-            instantUserId: userId,
-            autoShareKindsJson: json,
-          }),
-        );
+        await db.transact([
+          db.tx.profiles[profile?.id ?? iid()].update({ instantUserId: userId, autoShareKindsJson: json }),
+          ...shareExistingListsTransactions(ownedLists, turnedOn, partnerIds),
+        ]);
       } catch (e) {
         console.error("[auto-share] voorkeur bewaren mislukt", e);
       }
     },
-    [profile?.id, userId],
+    [enabledKinds, ownedLists, partnerIds, profile?.id, userId],
   );
 
   const setKindEnabled = React.useCallback(
@@ -171,13 +195,50 @@ export function useAutoShare(userId: string | null | undefined) {
     [enabledKinds, setKinds],
   );
 
+  /**
+   * Verbinding verbreken (kan elk van beide kanten): de koppeling verdwijnt en jullie
+   * schrijven niet langer mee op elkaars lijstjes.
+   */
+  const removePartner = React.useCallback(
+    async (partnerId: string) => {
+      if (!userId) return;
+      const { data: theirs } = await db.queryOnce({
+        lists: { memberships: {}, $: { where: { ownerId: partnerId } } },
+      });
+      const txs: DbTxArray = [
+        ...partnerRows
+          .filter(
+            (r) =>
+              (r.ownerId === userId && r.partnerUserId === partnerId) ||
+              (r.ownerId === partnerId && r.partnerUserId === userId),
+          )
+          .map((r) => db.tx.sharePartners[r.id].delete()),
+        ...ownedLists.flatMap((l) =>
+          (l.memberships ?? [])
+            .filter((m) => m.id && m.instantUserId === partnerId)
+            .map((m) => db.tx.listMembers[m.id!].delete()),
+        ),
+        ...((theirs?.lists ?? []) as OwnedListRow[]).flatMap((l) =>
+          (l.memberships ?? [])
+            .filter((m) => m.id && m.instantUserId === userId)
+            .map((m) => db.tx.listMembers[m.id!].delete()),
+        ),
+      ];
+      if (txs.length > 0) await db.transact(txs);
+    },
+    [ownedLists, partnerRows, userId],
+  );
+
   return {
+    isLoading,
+    profileId: profile?.id ?? null,
     enabledKinds,
     partnerIds,
     setKindEnabled,
     setKinds,
+    removePartner,
     ensureInviteToken,
     inviteToken: profile?.shareInviteToken ?? null,
-    ownedLists: (data?.lists ?? []) as OwnedListRow[],
+    ownedLists,
   } as const;
 }

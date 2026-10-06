@@ -5,18 +5,20 @@ import { useParams, useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import {
-  autoShareMembershipTransactions,
-  listAutoShareKind,
+  ALL_KINDS,
   parseAutoShareKinds,
+  shareExistingListsTransactions,
+  useAutoShare,
   type OwnedListRow,
 } from "@/lib/auto-share";
 
 const NO_MATCH = "__deel_samen_geen_token__";
 
 /**
- * Algemene uitnodiging («Samen delen» in het profiel): na inloggen wordt de gebruiker
- * vaste deelgenoot van de eigenaar en krijgt hij meteen de lijstjes van de soorten die
- * de eigenaar automatisch deelt. Nieuwe lijstjes volgen via `useAutoShare`.
+ * Algemene uitnodiging («Samen delen» in het profiel). Na inloggen worden beide mensen
+ * deelgenoten van elkaar (in beide richtingen): de ontvanger krijgt de lijstjes van de
+ * soorten die de eigenaar deelt, neemt die soorten over en deelt zijn eigen lijstjes van
+ * die soorten terug. Nieuwe lijstjes volgen via `useAutoShare`.
  */
 export default function DeelSamenUitnodigingPage() {
   const router = useRouter();
@@ -43,11 +45,12 @@ export default function DeelSamenUitnodigingPage() {
     sharePartners: { $: { where: { ownerId } } },
   });
 
+  const me = useAutoShare(user?.id);
   const [error, setError] = React.useState<string | null>(null);
   const startedRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (authLoading || !user || ownerLoading || listsLoading || startedRef.current) return;
+    if (authLoading || !user || ownerLoading || listsLoading || me.isLoading || startedRef.current) return;
     if (!owner?.instantUserId) {
       setError("Deze uitnodigingslink is ongeldig of verlopen.");
       return;
@@ -61,7 +64,8 @@ export default function DeelSamenUitnodigingPage() {
     const alreadyPartner = ((data?.sharePartners ?? []) as Array<{ partnerUserId?: string }>).some(
       (p) => p.partnerUserId === user.id,
     );
-    const enabled = parseAutoShareKinds(owner.autoShareKindsJson);
+    const ownerKinds = parseAutoShareKinds(owner.autoShareKindsJson);
+    const myKinds = new Set([...Array.from(me.enabledKinds), ...Array.from(ownerKinds)]);
     const txs = [
       ...(alreadyPartner
         ? []
@@ -72,15 +76,14 @@ export default function DeelSamenUitnodigingPage() {
               createdAtIso: new Date().toISOString(),
             }),
           ]),
-      ...((data?.lists ?? []) as OwnedListRow[]).flatMap((list) =>
-        autoShareMembershipTransactions(
-          list.id,
-          listAutoShareKind(list),
-          enabled,
-          [user.id],
-          (list.memberships ?? []).map((m) => m.instantUserId ?? ""),
-        ),
-      ),
+      // Eigenaar → ontvanger
+      ...shareExistingListsTransactions((data?.lists ?? []) as OwnedListRow[], ownerKinds, [user.id]),
+      // Ontvanger neemt de soorten over en deelt terug
+      db.tx.profiles[me.profileId ?? iid()].update({
+        instantUserId: user.id,
+        autoShareKindsJson: JSON.stringify(ALL_KINDS.filter((k) => myKinds.has(k))),
+      }),
+      ...shareExistingListsTransactions(me.ownedLists, myKinds, [owner.instantUserId]),
     ];
 
     (txs.length > 0 ? db.transact(txs) : Promise.resolve())
@@ -89,7 +92,7 @@ export default function DeelSamenUitnodigingPage() {
         startedRef.current = false;
         setError(e instanceof Error ? e.message : "Kon de uitnodiging niet verwerken.");
       });
-  }, [authLoading, user, ownerLoading, listsLoading, owner, data, router]);
+  }, [authLoading, user, ownerLoading, listsLoading, owner, data, router, me]);
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[var(--white)] px-4">
