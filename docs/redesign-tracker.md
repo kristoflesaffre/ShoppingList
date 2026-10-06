@@ -43,7 +43,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 10 | Nieuw lijstje · vakantie | `/nieuw-lijstje/vakantie` | ✅ |
 | 10b | Nieuw lijstje · keuze (modal op home) | `page.tsx` (`blankVenueSlideOpen`) | ✅ (variant A) |
 | 11 | Lijstje · instellingen | `/lijstje/[id]/instellingen` | ✅ |
-| 12 | Lijstje delen | `share_list_modal.tsx` | ⬜ |
+| 12 | Lijstje delen | `share_list_modal.tsx` | 🔄 voorstel op canvas |
 | 13 | Startpagina aanpassen | `/beheer-homepagina` | ⬜ |
 | 14 | Klantenkaart toevoegen (kies winkel) | `/klantenkaarten/toevoegen` | ⬜ |
 | 15 | Klantenkaart toevoegen (winkel / nieuw) | `/klantenkaarten/toevoegen/[storeSlug]`, `/nieuw` | ⬜ |
