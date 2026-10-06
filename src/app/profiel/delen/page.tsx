@@ -203,8 +203,15 @@ function KindsSection({
       {people ? <div className="pb-4">{people}</div> : null}
       <div className={CARD}>
         <div className="flex items-center gap-3 bg-[var(--blue-25)] px-3.5 py-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--white)] text-[var(--blue-500)] shadow-[0_0_0_1px_var(--blue-100)]">
-            <PeopleIcon className="size-[18px]" />
+          {/* Collage van vier soorten: «alles» in één tegel. */}
+          <span
+            aria-hidden
+            className="grid size-10 shrink-0 grid-cols-2 place-items-center gap-px rounded-[12px] bg-[var(--white)] p-[3px] shadow-[0_0_0_1px_var(--blue-100)]"
+          >
+            {(["supermarkt", "frituur", "cafe", "vakantie"] as const).map((k) => (
+              // eslint-disable-next-line @next/next/no-img-element -- soortillustratie
+              <img key={k} src={AUTO_SHARE_KIND_META[k].imageSrc} alt="" className="size-4 object-contain" />
+            ))}
           </span>
           <div className="min-w-0 flex-1">
             <p id="soort-alle" className="text-[15px] font-bold leading-5 text-[var(--text-primary)]">
