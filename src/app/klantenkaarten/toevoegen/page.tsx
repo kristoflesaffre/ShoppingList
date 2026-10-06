@@ -8,6 +8,7 @@ import { LOYALTY_STANDALONE_STORE_OPTIONS } from "@/lib/loyalty-standalone-store
 import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
+import { cn } from "@/lib/utils";
 
 /** Zelfde pijl als SlideInModal — public/icons/arrow.svg */
 function BackArrowIcon({ className }: { className?: string }) {
@@ -25,15 +26,6 @@ function BackArrowIcon({ className }: { className?: string }) {
         d="M3.59377 12.31C3.60777 12.329 3.61477 12.351 3.63177 12.368L9.23178 17.968C9.33378 18.069 9.46678 18.119 9.59978 18.119C9.73278 18.119 9.86678 18.068 9.96778 17.968C10.1698 17.765 10.1698 17.435 9.96778 17.232L5.25578 12.521L19.9998 12.521C20.2868 12.521 20.5198 12.288 20.5198 12.001C20.5198 11.714 20.2868 11.48 19.9998 11.48L5.25477 11.48L9.96678 6.768C10.1688 6.565 10.1688 6.236 9.96577 6.033C9.76477 5.83 9.43378 5.83 9.23078 6.033L3.63078 11.633C3.61378 11.65 3.60577 11.673 3.59177 11.692C3.56477 11.727 3.53678 11.76 3.51978 11.801C3.46678 11.929 3.46678 12.072 3.51978 12.2C3.53778 12.241 3.56677 12.275 3.59377 12.31Z"
         fill="currentColor"
       />
-    </svg>
-  );
-}
-
-function CardBadgeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[11px]">
-      <rect x="3" y="6" width="18" height="12" rx="2.5" />
-      <path d="M3 10h18" />
     </svg>
   );
 }
@@ -170,19 +162,21 @@ export default function KlantenkaartToevoegenPage() {
                   <img src={store.logoSrc} alt="" width={46} height={46} className="size-10 object-contain lg:size-[46px]" aria-hidden />
                 );
                 return existingId ? (
+                  /* Canvas «14 · Al toegevoegd A2»: nauwelijks getint, vinkje + tekst. */
                   <Link
                     key={store.slug}
                     href={`/klantenkaarten?open=${encodeURIComponent(existingId)}`}
                     aria-label={`${store.label}: kaart al toegevoegd, openen`}
-                    className={TILE_CLASS}
+                    className={cn(TILE_CLASS, "!gap-1.5 !bg-[#fafaff]")}
                   >
-                    <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)]">
-                      <CardBadgeIcon />
-                    </span>
-                    {logo}
-                    <span className="flex w-full flex-col items-center">
-                      <span className="w-full truncate text-center text-[13.5px] font-semibold text-text-primary">{store.label}</span>
-                      <span className="text-[11px] font-semibold text-[var(--blue-500)]">Al toegevoegd</span>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- winkellogo */}
+                    <img src={store.logoSrc} alt="" width={40} height={40} className="size-9 object-contain lg:size-10" aria-hidden />
+                    <span className="w-full truncate text-center text-[13.5px] font-semibold text-text-primary">{store.label}</span>
+                    <span className="inline-flex items-center gap-[3px] text-[11px] font-semibold text-[var(--blue-400)]">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-2.5">
+                        <path d="M5 12.5l4.5 4.5L19 7.5" />
+                      </svg>
+                      Toegevoegd
                     </span>
                   </Link>
                 ) : (
