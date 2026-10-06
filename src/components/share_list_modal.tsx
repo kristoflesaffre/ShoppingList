@@ -202,7 +202,7 @@ export function ShareListModal({
                 <PeopleIcon />
               )}
             </span>
-            <span className="absolute bottom-0 left-1/2 flex -translate-x-1/2">
+            <span className="absolute bottom-0 left-1/2 flex w-max -translate-x-1/2">
               {AVATARS.map((src, i) => (
                 // eslint-disable-next-line @next/next/no-img-element -- decoratieve avatar
                 <img
