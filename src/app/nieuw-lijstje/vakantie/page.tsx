@@ -14,6 +14,7 @@ import { TabElement } from "@/components/ui/tab_element";
 import { TabGroup } from "@/components/ui/tab_group";
 import { Button } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input_field";
+import { PageBackButton } from "@/components/ui/page_back_button";
 import { db } from "@/lib/db";
 import { defaultVakantieListName } from "@/lib/list-default-name";
 import { pickListProductIconForNewList } from "@/lib/list-product-icons";
@@ -227,26 +228,42 @@ function VacationItemImage({ src }: { src: string }) {
   );
 }
 
+/** Canvas «10 · vakantie — voorstel»: compacte keuzetegel (illustratie · naam · keuzerondje). */
 function VacationOptionTile({
   option,
   selected,
-  dimmed,
+  multiple,
   onClick,
 }: {
   option: Option;
   selected: boolean;
-  dimmed?: boolean;
+  multiple?: boolean;
   onClick: () => void;
 }) {
   return (
-    <StoreSelectionTile
-      label={option.label}
-      logoSrc={option.imageSrc}
-      selected={selected}
-      aria-pressed={selected}
+    <button
+      type="button"
+      role={multiple ? "checkbox" : "radio"}
+      aria-checked={selected}
       onClick={onClick}
-      className={cn("!h-[100px] !w-full", dimmed && !selected && "opacity-50")}
-    />
+      className={cn(
+        "relative flex h-[58px] min-w-0 items-center gap-1.5 rounded-[16px] pl-1.5 pr-5 text-left transition-[background-color,box-shadow] duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        selected
+          ? "bg-[var(--blue-25)] shadow-[inset_0_0_0_2px_var(--blue-500)]"
+          : "bg-[var(--gray-25)] [@media(hover:hover)]:hover:bg-[var(--gray-50)]",
+      )}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
+      <img src={option.imageSrc} alt="" width={36} height={36} className="size-9 shrink-0 object-contain" aria-hidden />
+      <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold text-[var(--text-primary)]">{option.label}</span>
+      {selected ? (
+        <span className="absolute right-1.5 top-1.5 flex size-[18px] items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)] motion-safe:animate-pop" aria-hidden>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+        </span>
+      ) : null}
+    </button>
   );
 }
 
@@ -454,32 +471,30 @@ function OptionSection({
   options,
   selectedValues,
   onToggle,
+  multiple = false,
 }: {
   title: string;
   options: Option[];
   selectedValues: Set<OptionValue>;
   onToggle: (value: OptionValue) => void;
+  multiple?: boolean;
 }) {
-  const hasSelection = selectedValues.size > 0;
-
   return (
-    <section className="flex w-full flex-col gap-2">
-      <h2 className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-        {title}
-      </h2>
-      <div className="grid w-full grid-cols-2 gap-3">
-        {options.map((option) => {
-          const selected = selectedValues.has(option.value);
-          return (
-            <VacationOptionTile
-              key={option.value}
-              option={option}
-              selected={selected}
-              dimmed={hasSelection}
-              onClick={() => onToggle(option.value)}
-            />
-          );
-        })}
+    <section className="rounded-[20px] bg-[var(--white)] p-3.5 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+      <div className="mb-2.5 flex items-baseline justify-between gap-3">
+        <h2 className="text-[15px] font-bold text-[var(--text-primary)]">{title}</h2>
+        <span className="text-xs text-[var(--text-tertiary)]">{multiple ? "meerdere mogelijk" : "kies één"}</span>
+      </div>
+      <div role={multiple ? "group" : "radiogroup"} aria-label={title} className="grid w-full grid-cols-2 gap-2">
+        {options.map((option) => (
+          <VacationOptionTile
+            key={option.value}
+            option={option}
+            selected={selectedValues.has(option.value)}
+            multiple={multiple}
+            onClick={() => onToggle(option.value)}
+          />
+        ))}
       </div>
     </section>
   );
@@ -651,77 +666,141 @@ export default function NieuwVakantielijstjePage() {
     );
   }
 
+  const labelOf = (opts: Option[], v: OptionValue | null) => opts.find((o) => o.value === v)?.label;
+  const summary = [
+    labelOf(SEASON_OPTIONS, season),
+    household.size > 0
+      ? HOUSEHOLD_OPTIONS.filter((o) => household.has(o.value)).map((o) => o.label).join(", ")
+      : null,
+    labelOf(TRANSPORT_OPTIONS, transport),
+    labelOf(ACCOMMODATION_OPTIONS, accommodation),
+  ].filter(Boolean);
+  const missing =
+    (season ? 0 : 1) + (household.size > 0 ? 0 : 1) + (transport ? 0 : 1) + (accommodation ? 0 : 1);
+
+  const nameCard = (
+    <section className="rounded-[20px] bg-[var(--white)] p-3.5 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+      <InputField
+        label="Naam"
+        placeholder={defaultVakantieListName(lists.map((l) => l.name))}
+        value={vacationName}
+        onChange={(event) => setVacationName(event.target.value)}
+        autoComplete="off"
+      />
+    </section>
+  );
+  const seasonCard = (
+    <OptionSection
+      title="Seizoen"
+      options={SEASON_OPTIONS}
+      selectedValues={season ? new Set([season]) : new Set()}
+      onToggle={(value) => setSeason((current) => (current === value ? null : value))}
+    />
+  );
+  const householdCard = (
+    <OptionSection
+      title="Wie gaat er mee?"
+      multiple
+      options={HOUSEHOLD_OPTIONS}
+      selectedValues={household}
+      onToggle={(value) =>
+        setHousehold((current) => {
+          const next = new Set(current);
+          if (next.has(value)) next.delete(value);
+          else next.add(value);
+          return next;
+        })
+      }
+    />
+  );
+  const transportCard = (
+    <OptionSection
+      title="Vervoer"
+      options={TRANSPORT_OPTIONS}
+      selectedValues={transport ? new Set([transport]) : new Set()}
+      onToggle={(value) => setTransport((current) => (current === value ? null : (value as TransportValue)))}
+    />
+  );
+  const accommodationCard = (
+    <OptionSection
+      title="Verblijf"
+      options={ACCOMMODATION_OPTIONS}
+      selectedValues={accommodation ? new Set([accommodation]) : new Set()}
+      onToggle={(value) =>
+        setAccommodation((current) => (current === value ? null : (value as AccommodationValue)))
+      }
+    />
+  );
+
   return (
-    <main className="relative mx-auto flex min-h-dvh w-full max-w-[390px] flex-col">
-      <VacationTopBar title="Nieuw vakantielijstje" />
-
-      <div className="flex flex-1 flex-col gap-6 px-4 pb-[calc(112px+env(safe-area-inset-bottom,0px))] pt-8">
-        <p className="text-base font-light leading-24 tracking-normal text-[var(--text-primary)]">
-          Duid hieronder aan wat van toepassing is voor jou vakantie.
-        </p>
-
-        <InputField
-          label="Naam vakantie"
-          placeholder="Naam vakantie"
-          value={vacationName}
-          onChange={(event) => setVacationName(event.target.value)}
-          autoComplete="off"
-        />
-
-        <OptionSection
-          title="Seizoen"
-          options={SEASON_OPTIONS}
-          selectedValues={season ? new Set([season]) : new Set()}
-          onToggle={(value) => setSeason((current) => (current === value ? null : value))}
-        />
-
-        <OptionSection
-          title="Samenstelling gezin"
-          options={HOUSEHOLD_OPTIONS}
-          selectedValues={household}
-          onToggle={(value) =>
-            setHousehold((current) => {
-              const next = new Set(current);
-              if (next.has(value)) next.delete(value);
-              else next.add(value);
-              return next;
-            })
-          }
-        />
-
-        <OptionSection
-          title="Transportmiddel"
-          options={TRANSPORT_OPTIONS}
-          selectedValues={transport ? new Set([transport]) : new Set()}
-          onToggle={(value) =>
-            setTransport((current) =>
-              current === value ? null : (value as TransportValue),
-            )
-          }
-        />
-
-        <OptionSection
-          title="Type verblijf"
-          options={ACCOMMODATION_OPTIONS}
-          selectedValues={accommodation ? new Set([accommodation]) : new Set()}
-          onToggle={(value) =>
-            setAccommodation((current) =>
-              current === value ? null : (value as AccommodationValue),
-            )
-          }
-        />
+    <main className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)] px-4">
+      {/* Mobiel: topbalk met terugpijl; desktop: ronde terugknop naast de titel. */}
+      <div className="fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] lg:hidden">
+        <header className="mx-auto flex h-16 max-w-[956px] items-center px-4">
+          <Link
+            href="/"
+            aria-label="Terug"
+            className="flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <BackArrowIcon className="size-6" />
+          </Link>
+        </header>
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(45px+env(safe-area-inset-bottom,0px))] z-10 flex justify-center px-4">
-        <Button
-          type="button"
-          variant="primary"
-          disabled={!canContinue}
-          onClick={saveVacationList}
-          className="pointer-events-auto"
-        >
-          Volgende
-        </Button>
+      <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-3 pb-[calc(120px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+8px+env(safe-area-inset-top,0px))] lg:gap-[14px] lg:pt-[calc(40px+env(safe-area-inset-top,0px))]">
+        <div className="mb-1 flex items-center gap-3 lg:mb-1.5">
+          <PageBackButton href="/" label="Terug" />
+          <div>
+            <h1 className="text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">Vakantielijstje</h1>
+            <p className="mt-0.5 text-[13px] leading-[18px] text-[var(--text-secondary)]">
+              Beantwoord 4 vragen, wij maken je paklijst
+            </p>
+          </div>
+        </div>
+
+        {/* Mobiel: één kolom; desktop: twee kolommen. */}
+        <div className="flex flex-col gap-3 lg:hidden">
+          {nameCard}
+          {seasonCard}
+          {householdCard}
+          {transportCard}
+          {accommodationCard}
+        </div>
+        <div className="hidden lg:grid lg:grid-cols-2 lg:items-start lg:gap-[14px]">
+          <div className="flex flex-col gap-[14px]">
+            {nameCard}
+            {seasonCard}
+            {transportCard}
+          </div>
+          <div className="flex flex-col gap-[14px]">
+            {householdCard}
+            {accommodationCard}
+          </div>
+        </div>
+      </div>
+
+      {/* Zwevende balk: samenvatting + «Maak paklijst» */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(24px+env(safe-area-inset-bottom,0px))] z-10 px-4">
+        <div className="pointer-events-auto mx-auto flex w-full max-w-[520px] items-center gap-3 rounded-[22px] bg-[var(--white)] py-3 pl-4 pr-3 shadow-[0_14px_30px_-12px_rgba(16,17,48,0.35),0_0_0_1px_rgba(16,17,48,0.04)]">
+          <div className="min-w-0 flex-1 leading-[18px]">
+            <p className="text-[13px] font-bold text-[var(--text-primary)]">
+              {missing === 0 ? "Klaar om te maken" : missing === 1 ? "Nog 1 vraag" : `Nog ${missing} vragen`}
+            </p>
+            <p className="truncate text-[12.5px] text-[var(--text-secondary)]">
+              {summary.length > 0 ? summary.join(" · ") : "Kies seizoen, wie er mee gaat, vervoer en verblijf"}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            disabled={!canContinue}
+            onClick={saveVacationList}
+            className="!w-auto shrink-0"
+          >
+            Maak paklijst
+          </Button>
+        </div>
       </div>
     </main>
   );
