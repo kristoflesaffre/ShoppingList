@@ -46,7 +46,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 12 | Lijstje delen | `share_list_modal.tsx` | ✅ foto-avatars, deelknoppen boven link, «Ook toekomstige lijstjes» (auto-delen per soort). Beheerpagina «Samen delen» (`/profiel/delen`): deelgenoten + algemene uitnodigingslink (`/deel/samen/[token]`), soorten aan/uit, overzicht gedeelde lijstjes met schakelaar |
 | 13 | Startpagina aanpassen | `/beheer-homepagina` | ✅ één kaart met greep · illustratie · uitleg · schakelaar; Favorieten-sectie van de startpagina verwijderd |
 | 14 | Klantenkaart toevoegen (kies winkel) | `/klantenkaarten/toevoegen` | ✅ tegelraster (3/6), zoeken; eigen kaart enkel bij geen resultaat; «Al toegevoegd» opent de kaart |
-| 15 | Klantenkaart toevoegen (winkel / nieuw) | `/klantenkaarten/toevoegen/[storeSlug]`, `/nieuw` | 🔄 voorstel op canvas |
+| 15 | Klantenkaart toevoegen (winkel / nieuw) | `add_loyalty_card_sheet.tsx` (oude routes → redirect) | ✅ variant 1a: blad «Kaart van …» met twee gelijke tegels Scannen / Screenshot |
 | 16 | Klantenkaart bewerken / scanresultaat | `loyalty_card_editor_slide_in.tsx`, `loyalty_card_scan_result_slide_in.tsx` | ⬜ |
 | 17 | Recept bewerken | `recipe_editor_slide_in.tsx`, `recipe_ingredient_form_slide_in.tsx` | ⬜ |
 | 18 | Recept toevoegen via link / AI / foto | `recipe_link_slide_in.tsx`, `recipe_ai_source_slide_in.tsx`, `recipe_photo_upload_slide_in.tsx`, `photo_source_slide_in.tsx` | ⬜ |

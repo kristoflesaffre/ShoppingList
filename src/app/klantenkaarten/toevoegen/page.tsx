@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { LOYALTY_STANDALONE_STORE_OPTIONS } from "@/lib/loyalty-standalone-stores";
 import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
+import { AddLoyaltyCardSheet } from "@/components/add_loyalty_card_sheet";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { cn } from "@/lib/utils";
 
@@ -33,13 +34,14 @@ function BackArrowIcon({ className }: { className?: string }) {
 const MAX_CUSTOM_NAAM_QUERY = 120;
 
 /** Enkel wanneer de zoekopdracht geen winkel oplevert: eigen kaart toevoegen. */
-function CustomCardRow({ query }: { query: string }) {
+function CustomCardRow({ query, onPick }: { query: string; onPick: (name: string) => void }) {
   const trimmed = query.trim().slice(0, MAX_CUSTOM_NAAM_QUERY);
   return (
-    <Link
-      href={`/klantenkaarten/toevoegen/nieuw?naam=${encodeURIComponent(trimmed)}`}
+    <button
+      type="button"
+      onClick={() => onPick(trimmed)}
       aria-label={`Klantenkaart toevoegen voor ${trimmed}`}
-      className="flex w-full min-w-0 items-center gap-3 rounded-[18px] bg-[var(--white)] p-3.5 no-underline shadow-[0_0_0_1px_var(--border-subtle)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)]"
+      className="flex w-full min-w-0 text-left items-center gap-3 rounded-[18px] bg-[var(--white)] p-3.5 no-underline shadow-[0_0_0_1px_var(--border-subtle)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-[var(--gray-25)] active:bg-[var(--gray-50)]"
     >
       <span className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[var(--blue-50)] text-[var(--blue-500)]">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
@@ -58,17 +60,24 @@ function CustomCardRow({ query }: { query: string }) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4 shrink-0 text-[var(--text-tertiary)]">
         <path d="M9 6l6 6-6 6" />
       </svg>
-    </Link>
+    </button>
   );
 }
 
 const TILE_CLASS =
-  "relative flex h-[104px] min-w-0 flex-col items-center justify-center gap-[9px] rounded-[20px] bg-[var(--white)] px-2 no-underline shadow-[0_1px_2px_rgba(16,17,48,0.04)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus lg:h-[116px]";
+  "relative w-full flex h-[104px] min-w-0 flex-col items-center justify-center gap-[9px] rounded-[20px] bg-[var(--white)] px-2 no-underline shadow-[0_1px_2px_rgba(16,17,48,0.04)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus lg:h-[116px]";
 
 export default function KlantenkaartToevoegenPage() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
   const [query, setQuery] = React.useState("");
+  /** Canvas «15 · variant 1a»: winkel kiezen opent meteen het blad «Kaart van …». */
+  const [sheetCard, setSheetCard] = React.useState<{ name: string; logoSrc: string | null } | null>(null);
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const openSheet = (name: string, logoSrc: string | null) => {
+    setSheetCard({ name, logoSrc });
+    setSheetOpen(true);
+  };
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
@@ -151,7 +160,7 @@ export default function KlantenkaartToevoegenPage() {
               <p className="pt-1 text-center text-[13px] text-[var(--text-tertiary)]">
                 Geen winkel gevonden voor «{query.trim()}»
               </p>
-              <CustomCardRow query={query} />
+              <CustomCardRow query={query} onPick={(name) => openSheet(name, null)} />
             </div>
           ) : (
             <div className="grid w-full min-w-0 grid-cols-3 gap-2.5 lg:grid-cols-6 lg:gap-3">
@@ -180,21 +189,30 @@ export default function KlantenkaartToevoegenPage() {
                     </span>
                   </Link>
                 ) : (
-                  <Link
+                  <button
                     key={store.slug}
-                    href={`/klantenkaarten/toevoegen/${store.slug}`}
+                    type="button"
+                    onClick={() => openSheet(store.label, store.logoSrc)}
                     aria-label={`Klantenkaart toevoegen: ${store.label}`}
                     className={TILE_CLASS}
                   >
                     {logo}
                     <span className="w-full truncate text-center text-[13.5px] font-semibold text-text-primary">{store.label}</span>
-                  </Link>
+                  </button>
                 );
               })}
             </div>
           )}
         </div>
       </div>
+      {sheetCard ? (
+        <AddLoyaltyCardSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          cardName={sheetCard.name}
+          logoSrc={sheetCard.logoSrc}
+        />
+      ) : null}
     </div>
   );
 }
