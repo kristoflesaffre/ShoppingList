@@ -175,6 +175,8 @@ const schema = i.schema({
       passwordHash: i.string().optional(),
       passwordSalt: i.string().optional(),
       avatarUrl: i.string().optional(),
+      /** JSON-array van lijstsoorten die automatisch gedeeld worden (zie `src/lib/auto-share.ts`). */
+      autoShareKindsJson: i.string().optional(),
     }),
     /** Persoonlijke bibliotheek van eerder gebruikte lijst-afbeeldingen. */
     listIconImages: i.entity({

@@ -1,5 +1,6 @@
 "use client";
 
+import { autoShareMembershipTransactions, useAutoShare } from "@/lib/auto-share";
 import * as React from "react";
 import { TitleEditButton } from "@/components/ui/title_edit_button";
 import Link from "next/link";
@@ -506,6 +507,7 @@ function OptionSection({
 export default function NieuwVakantielijstjePage() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
+  const autoShare = useAutoShare(user?.id);
   const ownerId = user?.id ?? "__no_user__";
   const { isLoading, error, data } = db.useQuery({
     lists: {
@@ -587,6 +589,14 @@ export default function NieuwVakantielijstjePage() {
           customIconUrl: VACATION_ICON,
         }),
       ];
+      txs.push(
+        ...autoShareMembershipTransactions(
+          newId,
+          "vakantie",
+          autoShare.enabledKinds,
+          autoShare.partnerIds,
+        ),
+      );
 
       let order = 0;
 
@@ -644,6 +654,8 @@ export default function NieuwVakantielijstjePage() {
       setIsSaving(false);
     }
   }, [
+    autoShare.enabledKinds,
+    autoShare.partnerIds,
     canContinue,
     accommodation,
     household,

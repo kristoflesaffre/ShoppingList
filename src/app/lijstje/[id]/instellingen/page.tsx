@@ -18,6 +18,7 @@ import { listIsMasterTemplate } from "@/lib/list-master";
 import { isIPhoneDevice } from "@/lib/utils";
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { selectListNameInputOnFocus } from "@/lib/list-default-name";
+import { AUTO_SHARE_KIND_META, listAutoShareKind, useAutoShare } from "@/lib/auto-share";
 import {
   type LandalTripChoice,
   LANDAL_LIST_CARD_ICON_URL,
@@ -132,6 +133,7 @@ export default function LijstInstellingenPage() {
   );
 
   const [shareModalOpen, setShareModalOpen] = React.useState(false);
+  const autoShare = useAutoShare(user?.id);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
   const [duplicateBusy, setDuplicateBusy] = React.useState(false);
   const [landalTripSlideOpen, setLandalTripSlideOpen] = React.useState(false);
@@ -445,6 +447,11 @@ export default function LijstInstellingenPage() {
           displayVariant: storeIcon ? "from-master" : "default",
           name: listName,
         }));
+  const autoShareKind = listAutoShareKind({
+    name: listName,
+    customIconUrl,
+    isMasterTemplate: isMaster,
+  });
   const countLabel = isMaster
     ? itemCount === 1
       ? "1 favoriet"
@@ -662,6 +669,17 @@ export default function LijstInstellingenPage() {
         onClose={() => setShareModalOpen(false)}
         shareUrl={shareUrl}
         urlReady={Boolean(shareUrl)}
+        listImageSrc={tileIcon || null}
+        listImageIsPhoto={Boolean(customIconUrl && !customIconUrl.startsWith("/"))}
+        futureShare={
+          isListOwner && autoShareKind
+            ? {
+                ...AUTO_SHARE_KIND_META[autoShareKind],
+                checked: autoShare.enabledKinds.has(autoShareKind),
+                onCheckedChange: (on) => void autoShare.setKindEnabled(autoShareKind, on),
+              }
+            : null
+        }
       />
 
       <SlideInModal

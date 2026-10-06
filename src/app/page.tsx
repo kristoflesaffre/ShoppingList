@@ -32,7 +32,13 @@ import {
 import {
   isLandalGezinList,
   landalGezinHouseholdMembershipTransactions,
+  LANDAL_GEZIN_HOUSEHOLD_INSTANT_USER_IDS,
 } from "@/lib/landal-gezin-household";
+import {
+  autoShareMembershipTransactions,
+  listAutoShareKind,
+  useAutoShare,
+} from "@/lib/auto-share";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import {
   MASTER_STORE_OPTIONS,
@@ -2497,6 +2503,7 @@ function IconPrimaryMask({ src, className }: { src: string; className?: string }
 export default function Home() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
+  const autoShare = useAutoShare(user?.id);
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
@@ -3551,6 +3558,22 @@ export default function Home() {
         );
       }
 
+      txs.push(
+        ...autoShareMembershipTransactions(
+          newId,
+          listAutoShareKind({ name: listName, customIconUrl: customIcon }),
+          autoShare.enabledKinds,
+          autoShare.partnerIds,
+          isLandalGezinList({
+            name: listName,
+            customIconUrl: customIcon,
+            landalTripLabel: landalTripLabel ?? null,
+          })
+            ? LANDAL_GEZIN_HOUSEHOLD_INSTANT_USER_IDS
+            : [],
+        ),
+      );
+
       if (pickerMasterStore) {
         const slug = pickerMasterStore.slug;
         const statRows = (data?.supermarktPickerStats ?? []) as Array<{
@@ -3599,6 +3622,8 @@ export default function Home() {
       setAddingId(newId);
     },
     [
+      autoShare.enabledKinds,
+      autoShare.partnerIds,
       data?.supermarktPickerStats,
       handleCloseNewListFormState,
       lists,
