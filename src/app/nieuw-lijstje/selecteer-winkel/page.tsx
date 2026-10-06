@@ -5,14 +5,13 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
-import { Button } from "@/components/ui/button";
-import { LogoTile } from "@/components/ui/logo_tile";
+import { SearchBar } from "@/components/ui/search_bar";
+import { PageBackButton } from "@/components/ui/page_back_button";
 import { db } from "@/lib/db";
 import {
   MASTER_STORE_OPTIONS,
   findMasterStoreBySlug,
 } from "@/lib/master-stores";
-import { cn } from "@/lib/utils";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 /** Zelfde pijl als SlideInModal — public/icons/arrow.svg */
@@ -35,19 +34,6 @@ function BackArrowIcon({ className }: { className?: string }) {
   );
 }
 
-function StoreLogoImg({ src }: { src: string }) {
-  return (
-    <img
-      src={src}
-      alt=""
-      width={48}
-      height={48}
-      className="size-12 max-h-full max-w-full object-contain"
-      aria-hidden
-    />
-  );
-}
-
 function SelecteerWinkelContent() {
   const router = useRouter();
 
@@ -63,6 +49,17 @@ function SelecteerWinkelContent() {
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
+
+  const [query, setQuery] = React.useState("");
+
+  /** Winkels waarvoor je al een favorietenlijst hebt, tonen we niet (geen dubbele lijsten). */
+  const availableStores = React.useMemo(() => {
+    const masters = (data?.lists ?? []).filter((l) => l.isMasterTemplate);
+    const q = query.trim().toLowerCase();
+    return MASTER_STORE_OPTIONS.filter(
+      (store) => !masters.some((l) => l.icon === store.logoSrc || l.name === store.label),
+    ).filter((store) => !q || store.label.toLowerCase().includes(q));
+  }, [data?.lists, query]);
 
   const handlePickStore = React.useCallback(
     (slug: string) => {
@@ -106,46 +103,73 @@ function SelecteerWinkelContent() {
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col px-4">
-      <div className="flex flex-1 flex-col pb-[96px] pt-[calc(52px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
-          <header className="mb-6 flex min-w-0 items-center gap-4">
-            <Link
-              href="/"
-              aria-label="Terug naar lijstjes"
-              className="relative z-[1] flex !min-w-0 !w-10 size-10 shrink-0 items-center justify-center p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus rounded-md"
-            >
-              <BackArrowIcon className="size-6 shrink-0" />
-            </Link>
-            <h1 className="min-w-0 flex-1 text-page-title font-bold leading-32 tracking-normal text-text-primary">
-              Selecteer winkel
-            </h1>
-          </header>
-
-          <div className="grid w-full min-w-0 grid-cols-3 gap-3 sm:gap-4">
-            {MASTER_STORE_OPTIONS.map((store) => (
-              <button
-                key={store.slug}
-                type="button"
-                aria-label={`Selecteer ${store.label}`}
-                title={store.label}
-                onClick={() => handlePickStore(store.slug)}
-                className={cn(
-                  "flex h-full min-h-[6.5rem] min-w-0 flex-col items-stretch rounded-md border-0 bg-transparent p-0",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2",
-                )}
-              >
-                <LogoTile
-                  className="h-full min-h-[6.5rem] w-full min-w-0 justify-between"
-                  label={store.label}
-                  logo={<StoreLogoImg src={store.logoSrc} />}
-                />
-              </button>
-            ))}
-          </div>
-        </div>
+    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)] px-4">
+      {/* Mobiel: topbalk met terugpijl; desktop: ronde terugknop naast de titel. */}
+      <div className="fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] lg:hidden">
+        <header className="mx-auto flex h-16 max-w-[956px] items-center px-4">
+          <Link
+            href="/"
+            aria-label="Terug"
+            className="flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+          >
+            <BackArrowIcon className="size-6 shrink-0" />
+          </Link>
+        </header>
       </div>
 
+      <div className="flex flex-1 flex-col pb-[110px] pt-[calc(64px+8px+env(safe-area-inset-top,0px))] lg:pt-[calc(40px+env(safe-area-inset-top,0px))]">
+        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-4 lg:gap-5">
+          {/* Canvas «08 · kies winkel — voorstel» */}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <PageBackButton href="/" label="Terug" />
+              <div className="min-w-0">
+                <h1 className="text-page-title font-bold leading-32 tracking-tight text-text-primary">
+                  Nieuwe favorietenlijst
+                </h1>
+                <p className="mt-0.5 text-[13px] leading-[18px] text-[var(--text-secondary)]">
+                  Kies de winkel waarvoor je je vaste producten wil bewaren
+                </p>
+              </div>
+            </div>
+            <SearchBar
+              className="!bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:w-[300px]"
+              value={query}
+              onValueChange={setQuery}
+              placeholder="Zoek een winkel"
+            />
+          </div>
+
+          {availableStores.length === 0 ? (
+            <p className="py-10 text-center text-[15px] text-[var(--text-tertiary)]">
+              {query.trim()
+                ? `Geen winkel gevonden voor «${query.trim()}».`
+                : "Je hebt voor elke winkel al een favorietenlijst."}
+            </p>
+          ) : (
+            <div className="grid w-full min-w-0 grid-cols-3 gap-2.5 lg:grid-cols-6 lg:gap-3">
+              {availableStores.map((store) => (
+                <button
+                  key={store.slug}
+                  type="button"
+                  aria-label={`Favorietenlijst maken voor ${store.label}`}
+                  onClick={() => handlePickStore(store.slug)}
+                  className="flex h-[104px] min-w-0 flex-col items-center justify-center gap-[9px] rounded-[20px] bg-[var(--white)] px-2 shadow-[0_1px_2px_rgba(16,17,48,0.04)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus lg:h-[116px]"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- winkellogo */}
+                  <img src={store.logoSrc} alt="" width={46} height={46} className="size-10 object-contain lg:size-[46px]" aria-hidden />
+                  <span className="w-full truncate text-[13.5px] font-semibold text-text-primary">{store.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {availableStores.length > 0 && !query.trim() ? (
+            <p className="text-center text-[12.5px] text-[var(--text-tertiary)]">
+              Winkels waarvoor je al favorieten hebt, staan hier niet meer
+            </p>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
