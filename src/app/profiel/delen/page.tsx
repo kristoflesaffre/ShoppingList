@@ -182,7 +182,10 @@ function KindsSection({
   onToggle,
   onToggleAll,
   partnerLabel,
+  people,
 }: {
+  /** Deelgenoten-kaart, tussen de sectiekop en de soorten. */
+  people?: React.ReactNode;
   enabled: ReadonlySet<AutoShareKind>;
   countByKind: Record<AutoShareKind, number>;
   onToggle: (kind: AutoShareKind, on: boolean) => void;
@@ -197,6 +200,7 @@ function KindsSection({
         title="Delen per soort"
         description="Alle lijstjes van een soort, ook de nieuwe, voor iedereen met wie je deelt."
       />
+      {people ? <div className="pb-4">{people}</div> : null}
       <div className={CARD}>
         <div className="flex items-center gap-3 bg-[var(--blue-25)] px-3.5 py-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--white)] text-[var(--blue-500)] shadow-[0_0_0_1px_var(--blue-100)]">
@@ -528,6 +532,7 @@ export default function SamenDelenPage() {
       onToggle={(k, on) => void autoShare.setKindEnabled(k, on)}
       onToggleAll={(on) => void autoShare.setKinds(new Set(on ? ALL_KINDS : []))}
       partnerLabel={partnerLabel}
+      people={<PeopleCard people={people} onInvite={openInvite} onSelect={setSelectedPerson} />}
     />
   );
   const shared = (
@@ -604,7 +609,6 @@ export default function SamenDelenPage() {
 
         {/* Mobiel: alles onder elkaar */}
         <div className="flex flex-col gap-5 lg:hidden">
-          <PeopleCard people={people} onInvite={openInvite} onSelect={setSelectedPerson} />
           {kinds}
           {shared}
         </div>
@@ -612,8 +616,7 @@ export default function SamenDelenPage() {
         {/* Desktop: deelgenoten + soorten links, gedeelde lijstjes rechts */}
         <div className="hidden items-start gap-6 lg:grid lg:grid-cols-[1fr_1fr]">
           <div className="flex flex-col gap-5">
-            <PeopleCard people={people} onInvite={openInvite} onSelect={setSelectedPerson} />
-            {kinds}
+              {kinds}
           </div>
           <div>{shared}</div>
         </div>
