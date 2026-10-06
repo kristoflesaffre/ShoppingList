@@ -247,22 +247,25 @@ function VacationOptionTile({
       aria-checked={selected}
       onClick={onClick}
       className={cn(
-        "relative flex h-[58px] min-w-0 items-center gap-1.5 rounded-[16px] pl-1.5 pr-5 text-left transition-[background-color,box-shadow] duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        "flex h-[58px] min-w-0 items-center gap-1 rounded-[16px] pl-1.5 pr-2.5 text-left transition-[background-color,box-shadow] duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
         selected
           ? "bg-[var(--blue-25)] shadow-[inset_0_0_0_2px_var(--blue-500)]"
           : "bg-[var(--gray-25)] [@media(hover:hover)]:hover:bg-[var(--gray-50)]",
       )}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
-      <img src={option.imageSrc} alt="" width={36} height={36} className="size-9 shrink-0 object-contain" aria-hidden />
-      <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold text-[var(--text-primary)]">{option.label}</span>
+      <img src={option.imageSrc} alt="" width={34} height={34} className="size-[34px] shrink-0 object-contain" aria-hidden />
+      <span className="min-w-0 flex-1 truncate text-[14px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">{option.label}</span>
+      {/* Canvas: keuzerondje rechts, verticaal gecentreerd (leeg of blauw met vinkje). */}
       {selected ? (
-        <span className="absolute right-1.5 top-1.5 flex size-[18px] items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)] motion-safe:animate-pop" aria-hidden>
+        <span className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)] motion-safe:animate-pop" aria-hidden>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12.5l4.5 4.5L19 7.5" />
           </svg>
         </span>
-      ) : null}
+      ) : (
+        <span className="size-[18px] shrink-0 rounded-full shadow-[inset_0_0_0_1.5px_var(--blue-200)]" aria-hidden />
+      )}
     </button>
   );
 }
@@ -480,12 +483,12 @@ function OptionSection({
   multiple?: boolean;
 }) {
   return (
-    <section className="rounded-[20px] bg-[var(--white)] p-3.5 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+    <section className="rounded-[20px] bg-[var(--white)] p-3 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
       <div className="mb-2.5 flex items-baseline justify-between gap-3">
         <h2 className="text-[15px] font-bold text-[var(--text-primary)]">{title}</h2>
         <span className="text-xs text-[var(--text-tertiary)]">{multiple ? "meerdere mogelijk" : "kies één"}</span>
       </div>
-      <div role={multiple ? "group" : "radiogroup"} aria-label={title} className="grid w-full grid-cols-2 gap-2">
+      <div role={multiple ? "group" : "radiogroup"} aria-label={title} className="grid w-full grid-cols-2 gap-1.5">
         {options.map((option) => (
           <VacationOptionTile
             key={option.value}
