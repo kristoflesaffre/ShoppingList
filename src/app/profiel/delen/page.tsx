@@ -197,7 +197,7 @@ function KindsSection({
     <section aria-labelledby="soorten-titel">
       <SectionHeading
         id="soorten-titel"
-        title="Delen per soort"
+        title="Alle lijstjes delen"
         description="Alle lijstjes van een soort, ook de nieuwe, voor iedereen met wie je deelt."
       />
       {people ? <div className="pb-4">{people}</div> : null}
