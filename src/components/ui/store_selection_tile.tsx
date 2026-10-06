@@ -3,34 +3,15 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-function StoreSelectionCornerBadge({ className }: { className?: string }) {
+/** Rond blauw vinkje rechtsboven op de gekozen tegel. */
+function StoreSelectionCheckBadge() {
   return (
     <span
-      className={cn(
-        "pointer-events-none absolute right-0 top-0 size-[36px]",
-        className,
-      )}
+      className="pointer-events-none absolute right-1.5 top-1.5 flex size-[18px] items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)] motion-safe:animate-pop"
       aria-hidden
     >
-      <span
-        className="absolute inset-0 bg-action-primary"
-        style={{ clipPath: "polygon(100% 0, 100% 100%, 0 0)" }}
-      />
-      <svg
-        className="absolute right-[7px] top-[7px]"
-        width="10"
-        height="10"
-        viewBox="0 0 10 10"
-        fill="none"
-        aria-hidden
-      >
-        <path
-          d="M1 5.80002L3.3999 8.1999L9 1"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
+        <path d="M1.5 5.5 4 8l4.5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </span>
   );
@@ -41,12 +22,16 @@ export interface StoreSelectionTileProps
   /** Winkelnaam onder het logo */
   label: string;
   /** Logo-URL (bijv. uit /public/logos of master-stores) */
-  logoSrc: string;
-  /** Geselecteerde staat: blauwe rand + hoekvinkje */
+  logoSrc?: string;
+  /** Eigen icoon i.p.v. een logo (bv. «Algemeen»). */
+  icon?: React.ReactNode;
+  /** Geselecteerde staat: wit met blauwe rand + rond vinkje */
   selected?: boolean;
 }
 
 /**
+ * Design system «Winkeltegel»: zacht grijs vlak (gray-25, radius 16), logo + naam;
+ * gekozen = wit met blauwe rand en rond vinkje rechtsboven.
  * Selecteerbare winkeltegel voor horizontale swimlanes (slide-ins te kopen, nieuw supermarktlijstje).
  * Gebruik in een `role="radiogroup"` met `role="radio"` en `aria-checked` op elke tegel.
  */
@@ -55,7 +40,7 @@ const StoreSelectionTile = React.forwardRef<
   StoreSelectionTileProps
 >(
   (
-    { className, label, logoSrc, selected = false, type = "button", ...props },
+    { className, label, logoSrc, icon, selected = false, type = "button", ...props },
     ref,
   ) => {
     return (
@@ -64,26 +49,20 @@ const StoreSelectionTile = React.forwardRef<
         type={type}
         data-selected={selected || undefined}
         className={cn(
-          "relative flex w-[100px] shrink-0 flex-col items-center gap-[var(--space-2)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--white)] p-[var(--space-3)] text-center transition-[border-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
+          "relative flex size-[84px] shrink-0 flex-col items-center justify-center gap-[7px] overflow-hidden rounded-[16px] px-1.5 text-center transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
           selected
-            ? "border border-action-primary"
-            : "border border-[var(--gray-100)]",
-          !selected &&
-            "[@media(hover:hover)]:hover:border-[var(--gray-200)]",
+            ? "bg-[var(--white)] shadow-[inset_0_0_0_2px_var(--blue-500)]"
+            : "bg-[var(--gray-25)] [@media(hover:hover)]:hover:bg-[var(--gray-50)]",
           className,
         )}
         {...props}
       >
-        <StoreLogo src={logoSrc} />
-        <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
+        {icon ?? (logoSrc ? <StoreLogo src={logoSrc} /> : null)}
+        <p className="w-full truncate text-xs font-semibold leading-4 tracking-normal text-[var(--text-primary)]">
           {label}
         </p>
-        {selected ? (
-          <span className="motion-safe:animate-pop">
-            <StoreSelectionCornerBadge />
-          </span>
-        ) : null}
+        {selected ? <StoreSelectionCheckBadge /> : null}
       </button>
     );
   },
@@ -93,13 +72,13 @@ StoreSelectionTile.displayName = "StoreSelectionTile";
 
 function StoreLogo({ src }: { src: string }) {
   return (
-    <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
+    <div className="relative size-8 shrink-0 overflow-hidden">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt=""
-        width={48}
-        height={48}
+        width={32}
+        height={32}
         className="size-full object-contain object-center"
       />
     </div>

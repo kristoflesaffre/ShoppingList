@@ -245,7 +245,7 @@ function VacationOptionTile({
       selected={selected}
       aria-pressed={selected}
       onClick={onClick}
-      className={cn("h-[100px] w-full", dimmed && !selected && "opacity-50")}
+      className={cn("!h-[100px] !w-full", dimmed && !selected && "opacity-50")}
     />
   );
 }

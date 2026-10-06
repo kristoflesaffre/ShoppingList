@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TE_KOPEN_STORE_OPTIONS } from "@/lib/master-stores";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
+import { Stepper } from "@/components/ui/stepper";
+import { FilterChip } from "@/components/ui/filter_chip";
+import { InputField } from "@/components/ui/input_field";
+import { SearchBar } from "@/components/ui/search_bar";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
+import { useItemPhotoUrl } from "@/lib/item-photos";
+import { TE_KOPEN_ALGEMEEN_RGB, teKopenMonogramStyle } from "@/lib/te-kopen-style";
 
 const STORE_FREQ_KEY = "te-kopen-store-freq";
 
@@ -26,11 +33,14 @@ function incrementStoreFreq(store: string | null): void {
   localStorage.setItem(STORE_FREQ_KEY, JSON.stringify(freq));
 }
 
-function SearchIcon({ className }: { className?: string }) {
+const UNIT_OPTIONS = ["stuk", "pak", "fles", "kg", "g"] as const;
+
+function FieldLabel({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M21.4 19.993L16.347 14.94C17.369 13.664 18 12.054 18 10.3C18 6.274 14.726 3 10.7 3C6.674 3 3.4 6.274 3.4 10.3C3.4 14.326 6.674 17.6 10.7 17.6C12.454 17.6 14.064 16.969 15.34 15.947L20.393 21L21.4 19.993ZM4.85 10.3C4.85 7.073 7.473 4.45 10.7 4.45C13.927 4.45 16.55 7.073 16.55 10.3C16.55 13.527 13.927 16.15 10.7 16.15C7.473 16.15 4.85 13.527 4.85 10.3Z" fill="currentColor"/>
-    </svg>
+    <div className="mb-2 flex min-h-7 items-center justify-between">
+      <span className="text-[13px] font-semibold leading-[18px] text-[var(--text-secondary)]">{children}</span>
+      {action}
+    </div>
   );
 }
 
@@ -56,6 +66,9 @@ export function AddShoppingItemSlideIn({
   const [unit, setUnit] = React.useState("stuk");
   const [selectedStore, setSelectedStore] = React.useState<string | null>(null);
   const [searchMode, setSearchMode] = React.useState(false);
+  /** «Andere…» gekozen: vrij eenheidsveld tonen. */
+  const [customUnit, setCustomUnit] = React.useState(false);
+  const getPhoto = useItemPhotoUrl(80);
   const [storeSearch, setStoreSearch] = React.useState("");
   // True while the fullscreen autocomplete is open (step 1)
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -69,7 +82,9 @@ export function AddShoppingItemSlideIn({
       const m = editItem?.quantity.trim().match(/^(\d+)\s*(.*)$/);
       setName(editItem?.name ?? "");
       setQuantity(m ? m[1] : "1");
-      setUnit(m ? m[2] || "stuk" : "stuk");
+      const initialUnit = m ? m[2] || "stuk" : "stuk";
+      setUnit(initialUnit);
+      setCustomUnit(!(UNIT_OPTIONS as readonly string[]).includes(initialUnit));
       setSelectedStore(editItem ? editItem.store ?? null : initialStore ?? null);
       setSearchMode(false);
       setStoreSearch("");
@@ -169,115 +184,123 @@ export function AddShoppingItemSlideIn({
           </Button>
         }
       >
-        <div className="flex flex-col gap-6 w-full">
-          {/* Gekozen productnaam — klikbaar om autocomplete opnieuw te openen */}
-          <div className="flex flex-col gap-2 w-full">
-            <span className="text-sm font-normal leading-5 text-[var(--text-primary)]">
-              Naam product
-            </span>
+        <div className="flex w-full flex-col gap-[22px]">
+          {/* Product — zacht veld met foto, naam en «Wijzig» (opent het zoekblad) */}
+          <div>
+            <FieldLabel>Product</FieldLabel>
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="flex h-12 w-full items-center rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white px-4 text-left focus-visible:border-[var(--border-focus)] focus-visible:outline-none"
+              className="flex h-[58px] w-full items-center gap-3 rounded-[16px] bg-[var(--gray-25)] pl-2 pr-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
             >
-              <span className={cn(
-                "flex-1 text-base leading-6 tracking-normal",
-                name ? "text-[var(--text-primary)]" : "font-light text-[var(--text-tertiary)]",
-              )}>
-                {name || "Naam product"}
+              {name && getPhoto(name) ? (
+                <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--white)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
+                  <img src={getPhoto(name)!} alt="" width={34} height={34} className="size-[34px] object-contain" />
+                </span>
+              ) : name ? (
+                <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] text-[17px] font-bold" style={teKopenMonogramStyle(name)} aria-hidden>
+                  {name.trim().charAt(0).toUpperCase()}
+                </span>
+              ) : null}
+              <span className={cn("min-w-0 flex-1 truncate text-base first-letter:uppercase", name ? "font-semibold text-[var(--text-primary)]" : "text-[var(--text-tertiary)]")}>
+                {name || "Kies een product"}
               </span>
+              <span className="shrink-0 text-[13px] font-semibold text-[var(--blue-500)]">Wijzig</span>
             </button>
           </div>
 
-          {/* Hoeveelheid — stepper + eenheid */}
-          <div className="flex flex-col gap-2 w-full">
-            <span className="text-sm font-normal leading-5 text-[var(--text-primary)]">
-              Hoeveelheid
-            </span>
-            {/* Stepper */}
-            <div className="flex items-center rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white h-12 overflow-hidden">
-              <button
-                type="button"
-                aria-label="Verminderen"
-                onClick={() =>
-                  setQuantity((v) => String(Math.max(1, (parseInt(v, 10) || 1) - 1)))
-                }
-                className="flex size-12 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+          {/* Hoeveelheid — formulier-stepper + eenheidschips */}
+          <div>
+            <FieldLabel>Hoeveelheid</FieldLabel>
+            <Stepper
+              value={parseInt(quantity, 10) || 1}
+              min={1}
+              onValueChange={(v) => setQuantity(String(v))}
+            />
+            <div role="group" aria-label="Eenheid" className="mt-2.5 flex flex-wrap gap-1.5">
+              {UNIT_OPTIONS.map((u) => (
+                <FilterChip
+                  key={u}
+                  selected={!customUnit && unit === u}
+                  onClick={() => {
+                    setCustomUnit(false);
+                    setUnit(u);
+                  }}
+                >
+                  {u}
+                </FilterChip>
+              ))}
+              <FilterChip
+                selected={customUnit}
+                onClick={() => {
+                  setCustomUnit(true);
+                  setUnit("");
+                }}
               >
-                <span className="text-xl font-light leading-none select-none">−</span>
-              </button>
-              <div className="w-px self-stretch bg-[var(--border-subtle)]" aria-hidden />
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value.replace(/\D/g, "") || "1")}
-                className="flex-1 text-center text-base font-normal leading-6 text-[var(--text-primary)] bg-transparent focus:outline-none"
-              />
-              <div className="w-px self-stretch bg-[var(--border-subtle)]" aria-hidden />
-              <button
-                type="button"
-                aria-label="Verhogen"
-                onClick={() =>
-                  setQuantity((v) => String((parseInt(v, 10) || 0) + 1))
-                }
-                className="flex size-12 shrink-0 items-center justify-center text-[var(--blue-500)] transition-colors hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
-              >
-                <span className="text-xl font-light leading-none select-none">+</span>
-              </button>
+                Andere…
+              </FilterChip>
             </div>
-            {/* Eenheid */}
-            <div className="flex rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white h-12 items-center px-4">
-              <input
-                type="text"
+            {customUnit ? (
+              <InputField
+                className="mt-2.5"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                placeholder="eenheid"
-                className="w-full text-center text-base font-normal leading-6 text-[var(--text-primary)] bg-transparent placeholder:text-[var(--text-tertiary)] focus:outline-none"
+                placeholder="Eenheid, bv. doos"
+                aria-label="Eenheid"
+                autoFocus
               />
-            </div>
+            ) : null}
           </div>
 
-          {/* Winkel */}
-          <div className="flex flex-col gap-2 w-full">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-normal leading-5 text-[var(--text-primary)]">
-                Winkel
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchMode((v) => !v);
-                  setStoreSearch("");
-                }}
-                className="text-xs font-medium leading-4 text-[var(--blue-500)] hover:text-[var(--blue-600)] focus-visible:outline-none"
-              >
-                {searchMode ? "Sluiten" : "Zoeken"}
-              </button>
-            </div>
-
-            {/* Winkelzoekbalk */}
-            {searchMode && (
-              <div className="relative w-full">
-                <input
-                  type="search"
-                  value={storeSearch}
-                  onChange={(e) => setStoreSearch(e.target.value)}
-                  placeholder="Zoek winkel"
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white px-4 py-[10px] pr-10 text-base font-normal leading-6 text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--border-focus)] focus:outline-none"
-                  autoFocus
-                />
-                <SearchIcon className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 size-5 text-[var(--text-tertiary)]" />
-              </div>
-            )}
-
-            {/* Store tiles — exact zelfde als supermarkt swimlane in page.tsx */}
+          {/* Winkel — Algemeen + winkeltegels; zoeken via ronde knop */}
+          <div>
+            <FieldLabel
+              action={
+                <RoundIconButton
+                  tone={searchMode ? "primary" : "neutral"}
+                  size={28}
+                  aria-label={searchMode ? "Winkel zoeken sluiten" : "Winkel zoeken"}
+                  aria-pressed={searchMode}
+                  onClick={() => {
+                    setSearchMode((v) => !v);
+                    setStoreSearch("");
+                  }}
+                >
+                  {RoundIcons.search}
+                </RoundIconButton>
+              }
+            >
+              Winkel
+            </FieldLabel>
+            {searchMode ? (
+              <SearchBar
+                className="mb-3"
+                value={storeSearch}
+                onValueChange={setStoreSearch}
+                placeholder="Zoek winkel"
+                autoFocus
+              />
+            ) : null}
             <div
               role="radiogroup"
-              aria-label="Winkel, optioneel"
-              className="-mx-1 flex gap-[var(--space-3)] overflow-x-auto px-1 pb-1 pt-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              aria-label="Winkel"
+              className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 pt-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             >
+              {!searchMode || !storeSearch.trim() ? (
+                <StoreSelectionTile
+                  role="radio"
+                  aria-checked={selectedStore === null}
+                  label="Algemeen"
+                  selected={selectedStore === null}
+                  onClick={() => setSelectedStore(null)}
+                  icon={
+                    <span className="flex size-8 items-center justify-center rounded-full" style={{ backgroundColor: `rgba(${TE_KOPEN_ALGEMEEN_RGB.join(",")},0.14)` }}>
+                      <span className="size-2.5 rounded-full bg-[var(--blue-500)]" />
+                    </span>
+                  }
+                />
+              ) : null}
               {filteredStores.map((store) => {
                 const selected = selectedStore === store.label;
                 return (
@@ -295,11 +318,7 @@ export function AddShoppingItemSlideIn({
                     label={store.label}
                     logoSrc={store.logoSrc}
                     selected={selected}
-                    onClick={() =>
-                      setSelectedStore((prev) =>
-                        prev === store.label ? null : store.label,
-                      )
-                    }
+                    onClick={() => setSelectedStore(store.label)}
                   />
                 );
               })}

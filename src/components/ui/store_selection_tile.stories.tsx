@@ -134,3 +134,17 @@ export const AllStates: Story = {
     </div>
   ),
 };
+
+/** «Algemeen» (geen winkel) met een eigen icoon i.p.v. een logo. */
+export const WithIcon: Story = {
+  args: {
+    label: "Algemeen",
+    logoSrc: undefined,
+    selected: false,
+    icon: (
+      <span className="flex size-8 items-center justify-center rounded-full bg-[rgba(79,85,241,0.14)]">
+        <span className="size-2.5 rounded-full bg-[var(--blue-500)]" />
+      </span>
+    ),
+  },
+};
