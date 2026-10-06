@@ -747,6 +747,16 @@ export default function KlantenKaartenPage() {
             }),
           );
         }}
+        onDelete={() => {
+          const card = editorCard;
+          if (!card) return;
+          setEditorCard(null);
+          if (cardListMap.has(card.id)) {
+            setConfirmDeleteCard(card);
+          } else {
+            void handleDeleteCard(card);
+          }
+        }}
       />
 
       {/* Kaart bekijken (canvas «Kaartmodal C»): mobiel schermvullend, desktop grote modal. */}

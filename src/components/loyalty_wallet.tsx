@@ -140,7 +140,7 @@ export function cardColors(tint: Rgb | null, dark = false) {
   };
 }
 
-function useIsDarkTheme(): boolean {
+export function useIsDarkTheme(): boolean {
   const [dark, setDark] = React.useState(false);
   React.useEffect(() => {
     const read = () => setDark(document.documentElement.dataset.theme === "dark");
@@ -651,6 +651,7 @@ export function LoyaltyCardViewer({
       if (current) await onSaveDecoded(current, result);
     }, [current, onSaveDecoded]),
     React.useCallback(() => setEditing(false), []),
+    { cardName: current?.cardName, logoSrc: current?.logoSrc || null },
   );
   const { reset: resetReplace, busy: replaceBusy } = replace;
   React.useEffect(() => {

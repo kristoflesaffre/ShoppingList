@@ -199,6 +199,13 @@ export function AddLoyaltyCardSheet({ open, onClose, cardName, logoSrc }: AddLoy
         decodeResult={decodeResult}
         saving={saving}
         onSave={() => void handleSave()}
+        cardName={cardName}
+        logoSrc={logoSrc}
+        onRescan={() => {
+          setResultOpen(false);
+          setDecodeResult(null);
+          setCameraOpen(true);
+        }}
       />
     </>
   );
