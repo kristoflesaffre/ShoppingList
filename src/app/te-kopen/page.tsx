@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { PageBackButton } from "@/components/ui/page_back_button";
 import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -495,7 +496,7 @@ export default function TeKopenPage() {
       {/* Fixed header */}
       <div
         className={cn(
-          "fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
+          "fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] lg:hidden pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
           isLargeTitleCollapsed || isStoreOrderMode ? "shadow-[0_1px_0_var(--border-subtle)]" : "shadow-none",
         )}
       >
@@ -536,12 +537,14 @@ export default function TeKopenPage() {
         className={cn(
           "relative z-10 flex flex-1 justify-center px-4",
           "pb-[calc(88px+env(safe-area-inset-bottom,0px))]",
-          "pt-[calc(64px+32px+env(safe-area-inset-top,0px))]",
+          "pt-[calc(64px+32px+env(safe-area-inset-top,0px))] lg:pt-[calc(40px+env(safe-area-inset-top,0px))]",
         )}
       >
         <div className="flex w-full max-w-[956px] flex-col gap-6">
           {/* Page heading — canvas «01 · Te kopen — voorstel» */}
-          <div className="flex w-full min-w-0 items-start justify-between gap-4">
+          <div className="flex w-full min-w-0 items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <PageBackButton href="/" label="Terug naar de startpagina" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex min-w-0 items-center gap-2">
                 <h1 ref={largeTitleRef} className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
@@ -556,6 +559,7 @@ export default function TeKopenPage() {
                   {allItems.length} {allItems.length === 1 ? "product" : "producten"} · voor je volgende lijstje
                 </p>
               ) : null}
+            </div>
             </div>
             {isStoreOrderMode ? (
               <DoneButton onClick={() => setIsStoreOrderMode(false)} />
@@ -573,6 +577,12 @@ export default function TeKopenPage() {
                 aria-pressed={searchOpen}
               >
                 {RoundIcons.search}
+              </RoundIconButton>
+            ) : null}
+            {!isEditing && !isStoreOrderMode ? (
+              /* Desktop: «⋯» uit de topbalk staat naast de titel (canvas «Terugnavigatie A»). */
+              <RoundIconButton tone="surface" size={36} className="hidden lg:flex" aria-label="Instellingen" onClick={() => setSettingsOpen(true)}>
+                {RoundIcons.more}
               </RoundIconButton>
             ) : null}
           </div>

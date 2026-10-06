@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { PageBackButton } from "@/components/ui/page_back_button";
 import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -573,7 +574,7 @@ export function LijstjesBeherenClient({
       {/* Topbalk in paginakleur; compacte titel pas zodra de grote titel wegscrolt. */}
       <div
         className={cn(
-          "fixed left-0 right-0 top-0 z-50 w-full bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
+          "fixed left-0 right-0 top-0 lg:hidden z-50 w-full bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
           isLargeTitleCollapsed ? "shadow-[0_1px_0_var(--border-subtle)]" : "shadow-none",
         )}
       >
@@ -598,11 +599,13 @@ export function LijstjesBeherenClient({
         </header>
       </div>
 
-      <div className="flex flex-1 flex-col pb-[calc(80px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-4 px-[var(--space-4)] pt-6">
+      <div className="flex flex-1 flex-col pb-[calc(80px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+env(safe-area-inset-top,0px))] lg:pt-[env(safe-area-inset-top,0px)]">
+        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-4 px-[var(--space-4)] pt-6 lg:pt-10">
           {/* Canvas «05–07 · voorstel»: titel + aantal, schakelaar Lijstjes | Favorieten. */}
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex min-w-0 flex-1 items-start justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <PageBackButton href="/" label="Terug naar de startpagina" />
               <div className="flex min-w-0 flex-col gap-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <h1 ref={largeTitleRef} className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-text-primary">
@@ -624,6 +627,8 @@ export function LijstjesBeherenClient({
                         ? "Nog geen favorietenlijsten"
                         : `${masterCount} ${masterCount === 1 ? "favorietenlijst" : "favorietenlijsten"}`}
                 </p>
+              </div>
+
               </div>
               {isCardsEditMode ? (
                 <GereedEditButton onPress={exitCardsEditMode} ariaLabel="Gereed met bewerken" />

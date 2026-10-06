@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { PageBackButton } from "@/components/ui/page_back_button";
 import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
 import { useRouter } from "next/navigation";
 import { MiniButton } from "@/components/ui/mini_button";
@@ -266,6 +267,8 @@ export default function DiepvriesvoorraadPage() {
       <div
         className={cn(
           "fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
+          /* Desktop: terugknop staat naast de titel; zonder items (geen titel) blijft de balk. */
+          hasItems && "lg:hidden",
           isLargeTitleCollapsed ? "shadow-[0_1px_0_var(--border-subtle)]" : "shadow-none",
         )}
       >
@@ -302,12 +305,14 @@ export default function DiepvriesvoorraadPage() {
           className={cn(
             "relative z-10 flex flex-1 justify-center px-4",
             "pb-[calc(88px+env(safe-area-inset-bottom,0px))]",
-            "pt-[calc(64px+32px+env(safe-area-inset-top,0px))]",
+            "pt-[calc(64px+32px+env(safe-area-inset-top,0px))] lg:pt-[calc(40px+env(safe-area-inset-top,0px))]",
           )}
         >
         <div className="flex w-full max-w-[956px] flex-col gap-6 motion-safe:animate-fade-up">
           {/* Paginakop — canvas «03 · Diepvriesvoorraad — voorstel» */}
           <div className="flex w-full min-w-0 items-start justify-between gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <PageBackButton href="/" label="Terug naar de startpagina" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex min-w-0 items-center gap-2">
                 <h1 ref={largeTitleRef} className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
@@ -324,6 +329,7 @@ export default function DiepvriesvoorraadPage() {
                   .filter(Boolean)
                   .join(" · ")}
               </p>
+            </div>
             </div>
             {isEditing ? <DoneButton onClick={() => setIsEditing(false)} /> : null}
           </div>

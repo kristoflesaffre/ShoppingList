@@ -83,6 +83,13 @@ export const RoundIcons = {
       <path d="M20 20l-4.2-4.2" />
     </svg>
   ),
+  more: (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <circle cx="5.5" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="18.5" cy="12" r="1.6" />
+    </svg>
+  ),
   back: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M19 12H5M11 6l-6 6 6 6" />

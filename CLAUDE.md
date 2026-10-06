@@ -14,6 +14,7 @@ Bouw schermen uit de gedeelde componenten in `src/components/ui/`. Style deze pa
 | Filterchip | `FilterChip`, `FilterChipRow` | 30px, halfvet; actief vol blauw, inactief grijs. Optioneel `dotColor` (categorie) en `count`. |
 | Ronde icoonknop | `RoundIconButton` + `RoundIcons` | Tonen: primary (acties), danger (verwijderen), neutral (sluiten), surface (los op de pagina), onColor (op een kaartkop). Maten: 28 in kaartkoppen en rijen, 32 naast een titel, 36 los op de pagina. |
 | Bewerken / Gereed | `TitleEditButton`, `DoneButton` | Potlood = RoundIconButton primary 32; Gereed = blauwe pil 34px. |
+| Paginakop + terug | `PageBackButton`, `useLargeTitleCollapse` | Mobiel: vaste topbalk (paginakleur) met terugpijl; compacte titel pas bij scrollen. Desktop (lg+): geen topbalk, ronde terugknop (surface 36) links van de grote titel; acties uit de topbalk (bv. «⋯») als ronde knoppen rechts. |
 | Knop | `Button` (`MiniButton` = sm) | Maten lg 50 (hoofdactie onderaan een blad), md 42, sm 34. Secundair = zacht lavendel zonder rand. |
 | Stepper | `CountStepper` (lijsten), `Stepper` (formulieren) | Lijst: blauwe pil, vuilbakje bij 1. Formulier: breed grijs veld met ronde witte knoppen. |
 | Aantalpil | `CountBadge` | Zachte lavendel pil (blue-50, blauw getal, 30px) om een aantal te tonen; in bewerkmodus vervangen door `CountStepper`. |
