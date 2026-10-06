@@ -377,6 +377,7 @@ function PersonSheet({
       onClose={onClose}
       title="Samen delen"
       className="md:!max-w-[540px]"
+      cancelLabel={null}
       footer={
         <Button
           type="button"
