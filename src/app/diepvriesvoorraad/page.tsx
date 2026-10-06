@@ -12,6 +12,12 @@ import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loadin
 import { NewFreezerItemModal } from "./new_freezer_item_modal";
 import { cn } from "@/lib/utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
+import { CategoryCard, type Rgb } from "@/components/ui/category_card";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
+import { CountBadge } from "@/components/ui/count_badge";
+import { CountStepper } from "@/components/ui/count_stepper";
+import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
+import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,40 +46,6 @@ function MaskIcon({
   );
 }
 
-/** Zelfde patroon als recepten: mask-icon op `public/icons/toggle_*.svg`. */
-function ToggleViewIcon({
-  src,
-  active,
-  className,
-}: {
-  src: string;
-  active: boolean;
-  className?: string;
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-block size-6 shrink-0 bg-action-primary",
-        !active && "opacity-[0.42]",
-        className,
-      )}
-      style={{
-        WebkitMaskImage: `url("${src}")`,
-        maskImage: `url("${src}")`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-      aria-hidden
-    />
-  );
-}
-
-const FREEZER_VIEW_STORAGE_KEY = "diepvriesvoorraad:viewMode";
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface FreezerItem {
@@ -90,339 +62,104 @@ interface FreezerItem {
   order?: number;
 }
 
-// ─── Grid tile — bekijk: Figma 1178:8427; bewerken: 1178:8623 (“Logo tile”) ───
-// https://www.figma.com/design/Z7869Lf1l9aVUR0U5FIiz9/Shopping-list-app?node-id=1178-8427
-// https://www.figma.com/design/Z7869Lf1l9aVUR0U5FIiz9/Shopping-list-app?node-id=1178-8623
-// Bekijk: foto → 32px telling → titel/ondertitel (gap 8). Bewerk: foto → rij bin|telling|plus (gap 16) → titel/ondertitel — geen border boven de knoppen.
+// ─── Rij en kaart — canvas «03 · Diepvriesvoorraad — voorstel» ────────────────
 
-function FreezerItemGridCard({
-  item,
-  isEditing,
-  onIncrement,
-  onDecrement,
-  onDelete,
-}: {
-  item: FreezerItem;
-  isEditing: boolean;
-  onIncrement: () => void;
-  onDecrement: () => void;
-  onDelete: () => void;
-}) {
-  const getItemPhoto = useItemPhotoUrl(240);
-  const imageSrc = React.useMemo(
-    () => item.recipePhotoUrl ?? getItemPhoto(item.name),
-    [item.recipePhotoUrl, item.name, getItemPhoto],
-  );
-  const thumbShape =
-    item.type === "gerecht" ? "rounded-full" : "rounded-md";
-
-  const personsCount = item.recipePersons ?? item.quantityPerPackage;
-  const subtitle =
-    item.type === "gerecht"
-      ? personsCount === 1
-        ? "1 persoon"
-        : `${personsCount} personen`
-      : `${item.quantityPerPackage} ${item.unit}`;
-
-  const textBlock = (
-    <div className="flex h-[44px] w-full min-w-0 flex-col items-center justify-center gap-0 text-center tracking-normal">
-      <p className="w-full truncate text-base font-medium leading-6 text-[var(--text-primary)]">
-        {item.name}
-      </p>
-      <p className="w-full text-sm font-normal leading-5 text-[var(--gray-400)]">
-        {subtitle}
-      </p>
-    </div>
-  );
-
-  /* Vaste min-h: 12 + 64 + 8 + 44 + 8 + 44 + 12 = 192px — voorkomt springen bij edit. */
-  return (
-    <article className="flex min-h-[192px] min-w-0 w-full flex-col rounded-lg bg-[var(--white)] shadow-card p-[12px]">
-      <div className="flex min-w-0 w-full flex-col items-center gap-2">
-        {/* 1178:8654 — 64×64; gerecht rond, product vierkant (Figma list/grid). */}
-        <div
-          className={cn(
-            "relative size-16 shrink-0 overflow-hidden bg-[var(--gray-50)]",
-            thumbShape,
-          )}
-        >
-          {imageSrc ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={imageSrc}
-              alt=""
-              className="absolute inset-0 size-full object-cover"
-              decoding="async"
-            />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src="/images/ui/empty_state_diepvries.png"
-              alt=""
-              className="absolute inset-0 size-full object-contain p-2 opacity-60"
-              decoding="async"
-            />
-          )}
-        </div>
-
-        {/* h-11 (44px): past bij 32px-cijfer + telling; zelfde in beide modi. */}
-        <div
-          className={cn(
-            "flex h-11 w-full shrink-0 items-center justify-center",
-            isEditing && "gap-4",
-          )}
-        >
-          {isEditing ? (
-            <>
-              <button
-                type="button"
-                onClick={item.packages <= 1 ? onDelete : onDecrement}
-                aria-label={item.packages <= 1 ? "Verwijder" : "Minder"}
-                className="flex size-6 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                {item.packages <= 1 ? (
-                  <MaskIcon
-                    src="/icons/recycle_bin.svg"
-                    className="size-6 bg-[var(--error-600)]"
-                  />
-                ) : (
-                  <MaskIcon
-                    src="/icons/minus-circle.svg"
-                    className="size-6 bg-[var(--blue-500)]"
-                  />
-                )}
-              </button>
-              <span className="min-w-10 shrink-0 text-center tabular-nums text-[32px] font-semibold leading-6 text-[var(--blue-900)]">
-                {item.packages}
-              </span>
-              <button
-                type="button"
-                onClick={onIncrement}
-                aria-label="Meer"
-                className="flex size-6 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <MaskIcon
-                  src="/icons/plus-circle.svg"
-                  className="size-6 bg-[var(--blue-500)]"
-                />
-              </button>
-            </>
-          ) : (
-            <p className="text-center tabular-nums text-[32px] font-semibold leading-6 tracking-normal text-[var(--blue-900)]">
-              {item.packages}
-            </p>
-          )}
-        </div>
-        {textBlock}
-      </div>
-    </article>
-  );
+function freezerSubtitle(item: FreezerItem): string {
+  if (item.type === "gerecht") {
+    const persons = item.recipePersons ?? item.quantityPerPackage;
+    return persons === 1 ? "1 persoon" : `${persons} personen`;
+  }
+  return `${item.quantityPerPackage} ${item.unit}`;
 }
 
-function FreezerItemListRow({
+function FreezerRow({
   item,
   isEditing,
-  onIncrement,
-  onDecrement,
-  onDelete,
+  onChangeCount,
 }: {
   item: FreezerItem;
   isEditing: boolean;
-  onIncrement: () => void;
-  onDecrement: () => void;
-  onDelete: () => void;
+  onChangeCount: (next: number) => void;
 }) {
   const getItemPhoto = useItemPhotoUrl(160);
-  const imageSrc = React.useMemo(
-    () => item.recipePhotoUrl ?? getItemPhoto(item.name),
-    [item.recipePhotoUrl, item.name, getItemPhoto],
-  );
+  const photo = item.recipePhotoUrl ?? getItemPhoto(item.name);
+  const isDish = item.type === "gerecht";
 
-  const personsCount = item.recipePersons ?? item.quantityPerPackage;
-  const subtitle =
-    item.type === "gerecht"
-      ? personsCount === 1
-        ? "1 persoon"
-        : `${personsCount} personen`
-      : `${item.quantityPerPackage} ${item.unit}`;
-
-  const thumbShape =
-    item.type === "gerecht" ? "rounded-full" : "rounded-md";
-
-  const thumb = (
-    <div
-      className={cn(
-        "relative size-10 shrink-0 overflow-hidden bg-[var(--gray-50)]",
-        thumbShape,
-      )}
-    >
-      {imageSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={imageSrc}
-          alt=""
-          className="absolute inset-0 size-full object-cover"
-          decoding="async"
-        />
+  return (
+    <div className="flex w-full items-center gap-3 px-1 py-[9px]">
+      {photo && isDish ? (
+        // eslint-disable-next-line @next/next/no-img-element -- receptfoto
+        <img src={photo} alt="" width={42} height={42} className="size-[42px] shrink-0 rounded-full object-cover" />
+      ) : photo ? (
+        <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--gray-25)]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
+          <img src={photo} alt="" width={34} height={34} className="size-[34px] object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />
+        </span>
       ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src="/images/ui/empty_state_diepvries.png"
-          alt=""
-          className="absolute inset-0 size-full object-contain p-1 opacity-60"
-          decoding="async"
-        />
+        <span
+          className={cn("flex size-[42px] shrink-0 items-center justify-center text-[17px] font-bold", isDish ? "rounded-full" : "rounded-[12px]")}
+          style={teKopenMonogramStyle(item.name)}
+          aria-hidden
+        >
+          {item.name.trim().charAt(0).toUpperCase()}
+        </span>
+      )}
+      <span className="min-w-0 flex-1 leading-[19px]">
+        <span className="block truncate text-[15px] font-medium text-text-primary first-letter:uppercase">{item.name}</span>
+        <span className="block truncate text-[13px] text-[var(--text-tertiary)]">{freezerSubtitle(item)}</span>
+      </span>
+      {isEditing ? (
+        <CountStepper name={item.name} value={item.packages} onChange={onChangeCount} />
+      ) : (
+        <CountBadge value={item.packages} label={`${item.packages} ${item.packages === 1 ? "portie" : "porties"}`} />
       )}
     </div>
   );
-
-  if (!isEditing) {
-    /* Figma 1170:9545 — elk item eigen “List card”, gap 12px tussen kaarten. */
-    return (
-      <article className="flex min-h-[56px] w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3">
-        <p className="w-6 shrink-0 text-center tabular-nums text-[32px] font-semibold leading-6 text-[var(--blue-900)]">
-          {item.packages}
-        </p>
-        {thumb}
-        <div className="flex min-h-11 min-w-0 flex-1 flex-col justify-center">
-          <p className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
-            {item.name}
-          </p>
-          <p className="truncate text-sm font-normal leading-5 text-[var(--gray-400)]">
-            {subtitle}
-          </p>
-        </div>
-      </article>
-    );
-  }
-
-  // Figma 1176:7747 “List card” — bin/minus | divider | 40px thumb | tekst | 32px count | divider | plus
-  return (
-    <article className="flex min-h-[56px] w-full min-w-0 items-center gap-3 rounded-lg bg-[var(--white)] shadow-card px-3 py-3">
-      <button
-        type="button"
-        onClick={item.packages <= 1 ? onDelete : onDecrement}
-        aria-label={item.packages <= 1 ? "Verwijder" : "Minder"}
-        className="flex shrink-0 items-center justify-center rounded-full p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-      >
-        {item.packages <= 1 ? (
-          <MaskIcon
-            src="/icons/recycle_bin.svg"
-            className="size-6 bg-[var(--error-600)]"
-          />
-        ) : (
-          <MaskIcon
-            src="/icons/minus-circle.svg"
-            className="size-6 bg-[var(--blue-500)]"
-          />
-        )}
-      </button>
-      <div
-        className="h-10 w-px shrink-0 bg-[var(--gray-100)]"
-        aria-hidden
-      />
-      <span className="w-6 shrink-0 text-center tabular-nums text-[32px] font-semibold leading-6 text-[var(--blue-900)]">
-        {item.packages}
-      </span>
-      {thumb}
-      <div className="flex min-h-11 min-w-0 flex-1 flex-col justify-center">
-        <p className="truncate text-base font-medium leading-6 text-[var(--text-primary)]">
-          {item.name}
-        </p>
-        <p className="truncate text-sm font-normal leading-5 text-[var(--gray-400)]">
-          {subtitle}
-        </p>
-      </div>
-      <div
-        className="h-10 w-px shrink-0 bg-[var(--gray-100)]"
-        aria-hidden
-      />
-      <button
-        type="button"
-        onClick={onIncrement}
-        aria-label="Meer"
-        className="flex shrink-0 items-center justify-center rounded-full p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-      >
-        <MaskIcon
-          src="/icons/plus-circle.svg"
-          className="size-6 bg-[var(--blue-500)]"
-        />
-      </button>
-    </article>
-  );
 }
 
-// ─── Section ──────────────────────────────────────────────────────────────────
-
-function FreezerSection({
+function FreezerCard({
   title,
+  rgb,
   items,
-  viewMode,
   isEditing,
   onAdd,
-  onIncrement,
-  onDecrement,
-  onDelete,
+  onChangeCount,
 }: {
   title: string;
+  rgb: Rgb;
   items: FreezerItem[];
-  viewMode: "grid" | "list";
   isEditing: boolean;
   onAdd: () => void;
-  onIncrement: (id: string) => void;
-  onDecrement: (id: string) => void;
-  onDelete: (id: string) => void;
+  onChangeCount: (item: FreezerItem, next: number) => void;
 }) {
   return (
-    <div className="flex w-full flex-col gap-4">
-      {/* Section header */}
-      <div className="flex items-center justify-between pr-4">
-        <p className="text-[18px] font-bold leading-6 tracking-normal text-[var(--blue-900,#101130)]">
-          {title}
-        </p>
-        <button
-          type="button"
-          onClick={onAdd}
-          aria-label={`${title} toevoegen`}
-          className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded-full"
-        >
-          <MaskIcon
-            src="/icons/plus-circle.svg"
-            className="size-6 bg-[var(--blue-500)]"
-          />
-        </button>
-      </div>
-
-      {viewMode === "grid" ? (
-        <div className="grid w-full grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-4">
-          {items.map((item) => (
-            <FreezerItemGridCard
-              key={item.id}
-              item={item}
-              isEditing={isEditing}
-              onIncrement={() => onIncrement(item.id)}
-              onDecrement={() => onDecrement(item.id)}
-              onDelete={() => onDelete(item.id)}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="flex w-full flex-col gap-3">
-          {items.map((item) => (
-            <FreezerItemListRow
-              key={item.id}
-              item={item}
-              isEditing={isEditing}
-              onIncrement={() => onIncrement(item.id)}
-              onDecrement={() => onDecrement(item.id)}
-              onDelete={() => onDelete(item.id)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+    <CategoryCard
+      className="mb-3 lg:mb-0"
+      rgb={rgb}
+      title={title}
+      count={items.length}
+      action={
+        !isEditing ? (
+          <RoundIconButton tone="onColor" size={28} onClick={onAdd} aria-label={`${title} toevoegen`}>
+            {RoundIcons.plus}
+          </RoundIconButton>
+        ) : null
+      }
+    >
+      <ul className="px-2.5 pb-1 pt-0.5">
+        {items.map((item, k) => (
+          <li key={item.id} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>
+            <FreezerRow item={item} isEditing={isEditing} onChangeCount={(next) => onChangeCount(item, next)} />
+          </li>
+        ))}
+      </ul>
+    </CategoryCard>
   );
 }
+
+/** Kopkleuren: gerechten warm oranje, producten ijsblauw. */
+const GERECHTEN_RGB: Rgb = [214, 112, 31];
+const PRODUCTEN_RGB: Rgb = [47, 127, 191];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -434,25 +171,9 @@ export default function DiepvriesvoorraadPage() {
     "first" | "second"
   >("first");
   const [isEditing, setIsEditing] = React.useState(false);
-  const [viewMode, setViewModeState] = React.useState<"grid" | "list">(() => {
-    if (typeof window === "undefined") return "grid";
-    try {
-      const raw = window.localStorage.getItem(FREEZER_VIEW_STORAGE_KEY);
-      if (raw === "list" || raw === "grid") return raw;
-    } catch {
-      /* ignore */
-    }
-    return "grid";
-  });
-
-  const setViewMode = React.useCallback((mode: "grid" | "list") => {
-    setViewModeState(mode);
-    try {
-      window.localStorage.setItem(FREEZER_VIEW_STORAGE_KEY, mode);
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  /** Large-title-patroon: compacte titel pas zodra de grote titel wegscrolt. */
+  const { titleRef: largeTitleRef, collapsed: isLargeTitleCollapsed } =
+    useLargeTitleCollapse<HTMLHeadingElement>(64);
 
   const { data: freezerData, isLoading: dataLoading } = db.useQuery(
     user ? { freezerItems: {} } : null,
@@ -525,6 +246,14 @@ export default function DiepvriesvoorraadPage() {
     await db.transact(db.tx.freezerItems[id].delete());
   }
 
+  function handleChangeCount(item: FreezerItem, next: number) {
+    if (next <= 0) void handleDelete(item.id);
+    else if (next > item.packages) void handleIncrement(item.id);
+    else void handleDecrement(item.id);
+  }
+
+  const totalPortions = allItems.reduce((sum, i) => sum + (i.packages ?? 0), 0);
+
   function openAddModal(tab: "first" | "second") {
     setAddModalInitialTab(tab);
     setAddModalOpen(true);
@@ -534,7 +263,12 @@ export default function DiepvriesvoorraadPage() {
     <div className="relative flex min-h-dvh w-full flex-col">
 
       {/* Fixed header — zelfde horizontale kolom als body: px-4 buiten, max-w binnen (geen dubbele inspringing). */}
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
+      <div
+        className={cn(
+          "fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
+          isLargeTitleCollapsed ? "shadow-[0_1px_0_var(--border-subtle)]" : "shadow-none",
+        )}
+      >
         <div className="flex justify-center px-4">
           <header className="flex h-16 w-full max-w-[956px] items-center gap-4">
             <button
@@ -548,7 +282,13 @@ export default function DiepvriesvoorraadPage() {
                 className="size-6 bg-[var(--blue-500)]"
               />
             </button>
-            <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
+            <p
+              className={cn(
+                "min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]",
+                "motion-safe:transition-[opacity,transform] motion-safe:duration-200 motion-safe:ease-out",
+                isLargeTitleCollapsed || !hasItems ? "translate-y-0 opacity-100" : "opacity-0 motion-safe:translate-y-1",
+              )}
+            >
               Diepvriesvoorraad
             </p>
             <div className="size-6 shrink-0" aria-hidden />
@@ -566,97 +306,53 @@ export default function DiepvriesvoorraadPage() {
           )}
         >
         <div className="flex w-full max-w-[956px] flex-col gap-6 motion-safe:animate-fade-up">
-          {/* Figma 1178:8410 / 1176:7892 — vaste rijhoogte (h-9) links/rechts voorkomt layoutverspringing bij edit. */}
-          <div className="flex min-h-9 w-full min-w-0 items-center justify-between gap-4">
-            <div className="flex min-h-9 min-w-0 flex-1 items-center gap-2 overflow-hidden">
-              <h1 className="min-w-0 truncate text-2xl font-bold leading-8 tracking-normal text-[var(--text-primary)]">
-                Diepvriesvoorraad
-              </h1>
-              {!isEditing ? (
-                <TitleEditButton onClick={() => setIsEditing(true)} />
-              ) : (
-                <span className="size-8 shrink-0" aria-hidden />
-              )}
+          {/* Paginakop — canvas «03 · Diepvriesvoorraad — voorstel» */}
+          <div className="flex w-full min-w-0 items-start justify-between gap-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 ref={largeTitleRef} className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
+                  Diepvriesvoorraad
+                </h1>
+                {!isEditing ? <TitleEditButton onClick={() => setIsEditing(true)} /> : null}
+              </div>
+              <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
+                {[
+                  `${totalPortions} ${totalPortions === 1 ? "portie" : "porties"}`,
+                  gerechten.length ? `${gerechten.length} ${gerechten.length === 1 ? "gerecht" : "gerechten"}` : null,
+                  producten.length ? `${producten.length} ${producten.length === 1 ? "product" : "producten"}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
             </div>
-            <div className="flex h-9 shrink-0 items-stretch">
-              {isEditing ? (
-                <DoneButton onClick={() => setIsEditing(false)} className="self-center" />
-              ) : (
-                <div
-                  className="box-border flex h-9 items-stretch overflow-hidden rounded border border-[var(--gray-100)] bg-[var(--white)]"
-                  role="group"
-                  aria-label="Weergave"
-                >
-                  <button
-                    type="button"
-                    aria-label="Lijstweergave"
-                    aria-pressed={viewMode === "list"}
-                    onClick={() => setViewMode("list")}
-                    className={cn(
-                      "flex h-full w-9 items-center justify-center transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
-                      viewMode === "list"
-                        ? "bg-[var(--blue-25)]"
-                        : "bg-[var(--white)]",
-                    )}
-                  >
-                    <ToggleViewIcon
-                      src="/icons/toggle_list.svg"
-                      active={viewMode === "list"}
-                    />
-                  </button>
-                  <div
-                    className="w-px shrink-0 self-stretch bg-[var(--gray-100)]"
-                    aria-hidden
-                  />
-                  <button
-                    type="button"
-                    aria-label="Tegelweergave"
-                    aria-pressed={viewMode === "grid"}
-                    onClick={() => setViewMode("grid")}
-                    className={cn(
-                      "flex h-full w-9 items-center justify-center transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-inset",
-                      viewMode === "grid"
-                        ? "bg-[var(--blue-25)]"
-                        : "bg-[var(--white)]",
-                    )}
-                  >
-                    <ToggleViewIcon
-                      src="/icons/toggle_grid.svg"
-                      active={viewMode === "grid"}
-                    />
-                  </button>
-                </div>
-              )}
-            </div>
+            {isEditing ? <DoneButton onClick={() => setIsEditing(false)} /> : null}
           </div>
 
-          {/* Gerechten section */}
-          {gerechten.length > 0 && (
-            <FreezerSection
-              title="Gerechten"
-              items={gerechten}
-              viewMode={viewMode}
-              isEditing={isEditing}
-              onAdd={() => openAddModal("second")}
-              onIncrement={handleIncrement}
-              onDecrement={handleDecrement}
-              onDelete={handleDelete}
-            />
-          )}
-
-          {/* Producten section */}
-          {producten.length > 0 && (
-            <FreezerSection
-              title="Producten"
-              items={producten}
-              viewMode={viewMode}
-              isEditing={isEditing}
-              onAdd={() => openAddModal("first")}
-              onIncrement={handleIncrement}
-              onDecrement={handleDecrement}
-              onDelete={handleDelete}
-            />
-          )}
+          <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
+            {gerechten.length > 0 ? (
+              <FreezerCard
+                title="Gerechten"
+                rgb={GERECHTEN_RGB}
+                items={gerechten}
+                isEditing={isEditing}
+                onAdd={() => openAddModal("second")}
+                onChangeCount={handleChangeCount}
+              />
+            ) : null}
+            {producten.length > 0 ? (
+              <FreezerCard
+                title="Producten"
+                rgb={PRODUCTEN_RGB}
+                items={producten}
+                isEditing={isEditing}
+                onAdd={() => openAddModal("first")}
+                onChangeCount={handleChangeCount}
+              />
+            ) : null}
+          </div>
+          <p className="text-center text-[12.5px] text-[var(--text-tertiary)] lg:hidden">
+            {isEditing ? "Tik − als je een portie uit de diepvries haalt" : "Tik op het potlood om porties bij te werken"}
+          </p>
         </div>
         </div>
       ) : (

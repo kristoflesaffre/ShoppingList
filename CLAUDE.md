@@ -16,6 +16,7 @@ Bouw schermen uit de gedeelde componenten in `src/components/ui/`. Style deze pa
 | Bewerken / Gereed | `TitleEditButton`, `DoneButton` | Potlood = RoundIconButton primary 32; Gereed = blauwe pil 34px. |
 | Knop | `Button` (`MiniButton` = sm) | Maten lg 50 (hoofdactie onderaan een blad), md 42, sm 34. Secundair = zacht lavendel zonder rand. |
 | Stepper | `CountStepper` (lijsten), `Stepper` (formulieren) | Lijst: blauwe pil, vuilbakje bij 1. Formulier: breed grijs veld met ronde witte knoppen. |
+| Aantalpil | `CountBadge` | Zachte lavendel pil (blue-50, blauw getal, 30px) om een aantal te tonen; in bewerkmodus vervangen door `CountStepper`. |
 | Blad (bottom sheet) | `SlideInModal` | Mobiel: greepje bovenaan, hoeken 26, titel links + grijze ronde sluitknop. Vanaf tablet (md): gecentreerd venster (`size="dialog"` 620px, `size="wide"` 956px voor volle-hoogte bladen) met «Annuleer» + actie (md 42) rechts onderaan. |
 | Winkeltegel | `StoreSelectionTile` | 84×84, zacht grijs (gray-25), radius 16, logo 32 + naam; gekozen = wit + blauwe rand 2px + rond vinkje. Optioneel `icon` (bv. «Algemeen»). |
 | Eenheid kiezen | `FilterChip` | Chips stuk · pak · fles · kg · g · «Andere…» (opent een `InputField`). |
