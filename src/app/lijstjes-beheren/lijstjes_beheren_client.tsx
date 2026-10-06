@@ -30,6 +30,7 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { FavoritesEmptyState, FavoritesPromoBanner, useFavoritesPromo } from "@/components/favorites_promo_banner";
 import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
+import { isEmptyDraftMasterList, useCleanupDraftMasterLists } from "@/lib/draft-master-lists";
 import {
   SortableHomeListSections,
   StaticStackedHomeListSections,
@@ -192,7 +193,7 @@ export function LijstjesBeherenClient({
   }, [shareProfilesData?.profiles]);
 
   const lists: HomeOverviewList[] = React.useMemo(() => {
-    const owned: HomeOverviewList[] = (data?.lists ?? []).map((l) => {
+    const owned: HomeOverviewList[] = (data?.lists ?? []).filter((l) => !isEmptyDraftMasterList(l)).map((l) => {
       const isMaster = listIsMasterTemplate(l);
       const memberIds = ((l.memberships ?? []) as ListMembershipRow[])
         .map((m) => m.instantUserId)
@@ -504,6 +505,7 @@ export function LijstjesBeherenClient({
 
   const pageTitle = section === "lijstjes" ? "Lijstjes" : "Favorieten";
 
+  useCleanupDraftMasterLists(data?.lists);
   const favoritesPromo = useFavoritesPromo(lists.some((l) => inSectionList("favorieten", l)));
   /** Large-title-patroon (zoals favorieten/te kopen). */
   const { titleRef: largeTitleRef, collapsed: isLargeTitleCollapsed } =

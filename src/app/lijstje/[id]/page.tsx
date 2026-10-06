@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useDraftMasterListOpen } from "@/lib/draft-master-lists";
 import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -3245,7 +3246,12 @@ export default function ListDetailPage({
   React.useEffect(() => {
     if (authLoading || !user || isLoading) return;
     // Wizard-flow: lijst wordt aangemaakt net voor de navigatie, even wachten op sync
-    if (searchParams.get("cafeWizard") === "1" || searchParams.get("frituurWizard") === "1") return;
+    if (
+      searchParams.get("cafeWizard") === "1" ||
+      searchParams.get("frituurWizard") === "1" ||
+      searchParams.get("nieuweFavorieten") === "1"
+    )
+      return;
     if (!listData || !canAccess) router.replace("/");
   }, [authLoading, user, isLoading, listData, canAccess, router, searchParams]);
   const listName = listData?.name ?? "Lijstje";
@@ -3608,6 +3614,8 @@ export default function ListDetailPage({
 
   const [isEditMode, setIsEditMode] = React.useState(false);
   /** Large-title-patroon: compacte titel in de topbalk pas zodra de grote titel wegscrolt. */
+  /** Nieuwe favorietenlijst (concept): niet opruimen zolang ze hier open staat. */
+  useDraftMasterListOpen(listId || undefined);
   const { titleRef: largeTitleRef, collapsed: isLargeTitleCollapsed } =
     useLargeTitleCollapse<HTMLHeadingElement>(56);
   /** Masterlijst: scherm alleen categorieën slepen (Figma volgorde wijzigen). */

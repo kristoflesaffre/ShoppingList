@@ -7,6 +7,11 @@ import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
+import {
+  isEmptyDraftMasterList,
+  markDraftMasterList,
+  useCleanupDraftMasterLists,
+} from "@/lib/draft-master-lists";
 import { db } from "@/lib/db";
 import {
   MASTER_STORE_OPTIONS,
@@ -42,6 +47,7 @@ function SelecteerWinkelContent() {
 
   const { isLoading, error, data } = db.useQuery({
     lists: {
+      items: {},
       $: { where: { ownerId } },
     },
   });
@@ -51,21 +57,31 @@ function SelecteerWinkelContent() {
   }, [authLoading, user, router]);
 
   const [query, setQuery] = React.useState("");
+  /** Gekozen winkel blijft zichtbaar tot de volgende pagina open is (geen verspringend raster). */
+  const [pickedSlug, setPickedSlug] = React.useState<string | null>(null);
+
+  // Opruimen bij het openen (bv. na «terug»), maar niet meer zodra je net een winkel koos.
+  useCleanupDraftMasterLists(pickedSlug ? undefined : data?.lists);
 
   /** Winkels waarvoor je al een favorietenlijst hebt, tonen we niet (geen dubbele lijsten). */
   const availableStores = React.useMemo(() => {
     const masters = (data?.lists ?? []).filter((l) => l.isMasterTemplate);
     const q = query.trim().toLowerCase();
     return MASTER_STORE_OPTIONS.filter(
-      (store) => !masters.some((l) => l.icon === store.logoSrc || l.name === store.label),
+      (store) =>
+        store.slug === pickedSlug ||
+        !masters.some(
+          (l) => !isEmptyDraftMasterList(l) && (l.icon === store.logoSrc || l.name === store.label),
+        ),
     ).filter((store) => !q || store.label.toLowerCase().includes(q));
-  }, [data?.lists, query]);
+  }, [data?.lists, query, pickedSlug]);
 
   const handlePickStore = React.useCallback(
     (slug: string) => {
       if (!user) return;
       const store = findMasterStoreBySlug(slug);
-      if (!store) return;
+      if (!store || pickedSlug) return;
+      setPickedSlug(slug);
       const myLists = data?.lists ?? [];
       const order =
         myLists.length > 0
@@ -83,9 +99,11 @@ function SelecteerWinkelContent() {
           isMasterTemplate: true,
         }),
       );
-      router.push(`/lijstje/${newId}`);
+      // Concept tot de eerste favoriet: zonder favorieten terugkeren ruimt de lijst op.
+      markDraftMasterList(newId);
+      router.push(`/lijstje/${newId}?nieuweFavorieten=1`);
     },
-    [user, data?.lists, router],
+    [user, data?.lists, router, pickedSlug],
   );
 
   if (authLoading || !user || isLoading) {

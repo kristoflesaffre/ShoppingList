@@ -74,6 +74,7 @@ import {
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { CountBadge } from "@/components/ui/count_badge";
+import { isEmptyDraftMasterList, useCleanupDraftMasterLists } from "@/lib/draft-master-lists";
 import { FavoritesPromoBanner, useFavoritesPromo } from "@/components/favorites_promo_banner";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
@@ -2650,7 +2651,7 @@ export default function Home() {
   );
 
   const lists: HomeList[] = React.useMemo(() => {
-    const owned: HomeList[] = (data?.lists ?? []).map((l) => {
+    const owned: HomeList[] = (data?.lists ?? []).filter((l) => !isEmptyDraftMasterList(l)).map((l) => {
       const isMaster = listIsMasterTemplate(l);
       const memberIds = ((l.memberships ?? []) as ListMembershipRow[])
         .map((m) => m.instantUserId)
@@ -2794,6 +2795,7 @@ export default function Home() {
   );
   /** Favorieten-banner voor nieuwe gebruikers (geen favorietenlijst, nog niet gesloten). */
   const favoritesPromo = useFavoritesPromo(masterLists.length > 0);
+  useCleanupDraftMasterLists(data?.lists);
   /** Snel toevoegen vanop home: zelfde itemvorm als «Items toevoegen» in het lijstje (sectie Algemeen). */
   const handleQuickAddToList = React.useCallback((list: HomeList, name: string) => {
     const items = (list.items ?? []) as Array<{ order?: number }>;
