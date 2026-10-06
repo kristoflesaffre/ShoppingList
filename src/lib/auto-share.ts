@@ -145,7 +145,13 @@ export function useAutoShare(userId: string | null | undefined) {
   );
   const ownedLists = React.useMemo(() => (data?.lists ?? []) as OwnedListRow[], [data?.lists]);
   const partnerRows = React.useMemo(
-    () => (data?.sharePartners ?? []) as Array<{ id: string; ownerId?: string; partnerUserId?: string }>,
+    () =>
+      (data?.sharePartners ?? []) as Array<{
+        id: string;
+        ownerId?: string;
+        partnerUserId?: string;
+        createdAtIso?: string | null;
+      }>,
     [data?.sharePartners],
   );
   const partnerIds = React.useMemo(() => {
@@ -155,6 +161,16 @@ export function useAutoShare(userId: string | null | undefined) {
       .filter((id): id is string => typeof id === "string" && id !== uid);
     return Array.from(new Set([...fromInvite, ...fromLists]));
   }, [ownedLists, partnerRows, uid]);
+
+  /** Sinds wanneer je met iemand deelt (enkel bij verbindingen via de uitnodigingslink). */
+  const partnerSince = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of partnerRows) {
+      const other = r.ownerId === uid ? r.partnerUserId : r.ownerId;
+      if (other && r.createdAtIso && (!map[other] || r.createdAtIso < map[other]!)) map[other] = r.createdAtIso;
+    }
+    return map;
+  }, [partnerRows, uid]);
 
   /** Algemene uitnodigingslink: token op het profiel, aangemaakt bij eerste gebruik. */
   const ensureInviteToken = React.useCallback(async (): Promise<string | null> => {
@@ -234,6 +250,7 @@ export function useAutoShare(userId: string | null | undefined) {
     profileId: profile?.id ?? null,
     enabledKinds,
     partnerIds,
+    partnerSince,
     setKindEnabled,
     setKinds,
     removePartner,

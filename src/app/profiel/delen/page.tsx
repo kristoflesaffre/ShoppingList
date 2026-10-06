@@ -332,11 +332,22 @@ function SharedListsSection({
   );
 }
 
+const SINCE_FORMAT = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "long" });
+const SINCE_FORMAT_YEAR = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "long", year: "numeric" });
+
+function formatSince(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return (d.getFullYear() === new Date().getFullYear() ? SINCE_FORMAT : SINCE_FORMAT_YEAR).format(d);
+}
+
+/** Canvas «Deelgenoot A · Groot portret»: grote foto met halo, naam, aantallen, stoppen. */
 function PersonSheet({
   person,
   index,
   myId,
   myLists,
+  sinceIso,
   onClose,
   onRemove,
 }: {
@@ -344,6 +355,7 @@ function PersonSheet({
   index: number;
   myId: string;
   myLists: OwnedListRow[];
+  sinceIso?: string | null;
   onClose: () => void;
   onRemove: (person: Person) => Promise<void>;
 }) {
@@ -356,12 +368,15 @@ function PersonSheet({
   const theirs = ((data?.lists ?? []) as OwnedListRow[]).filter((l) =>
     (l.memberships ?? []).some((m) => m.instantUserId === myId),
   ).length;
-  const count = (n: number) => (n === 1 ? "1 lijstje" : `${n} lijstjes`);
+  const word = (n: number) => (n === 1 ? "lijstje" : "lijstjes");
+  const since = sinceIso ? formatSince(sinceIso) : "";
+  const [bg, fg] = AVATAR_TINTS[index % AVATAR_TINTS.length]!;
   return (
     <SlideInModal
       open
       onClose={onClose}
-      title={`Je deelt je lijstjes met ${person.name}`}
+      title="Samen delen"
+      className="md:!max-w-[540px]"
       footer={
         <Button
           type="button"
@@ -382,23 +397,41 @@ function PersonSheet({
         </Button>
       }
     >
-      <div className="flex flex-col items-center gap-4 pb-4 text-center md:pb-6">
-        <PersonAvatar name={person.name} url={person.avatarUrl} index={index} />
-        <div className="grid w-full grid-cols-2 gap-3">
-          <div className="rounded-[16px] bg-[var(--gray-25)] px-3 py-3">
+      <div className="flex flex-col gap-[18px] pb-4 md:pb-6">
+        <div className="flex flex-col items-center gap-3.5 pt-1.5 text-center">
+          <span
+            className="flex size-28 items-center justify-center overflow-hidden rounded-full text-[40px] font-bold shadow-[0_0_0_4px_var(--white),0_0_0_10px_var(--blue-50),0_18px_34px_-16px_rgba(79,85,241,0.45)]"
+            style={{ backgroundColor: bg, color: fg }}
+          >
+            {person.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- profielfoto
+              <img src={person.avatarUrl} alt="" className="size-full object-cover" />
+            ) : (
+              person.name.trim().charAt(0).toUpperCase() || "?"
+            )}
+          </span>
+          <div>
+            <p className="text-2xl font-bold leading-8 tracking-tight text-[var(--text-primary)]">{person.name}</p>
+            {since ? (
+              <p className="text-[13.5px] leading-[19px] text-[var(--text-secondary)]">Deelt met jou sinds {since}</p>
+            ) : null}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-[16px] bg-[var(--gray-25)] p-3 text-center">
             <p className="text-[22px] font-bold leading-7 text-[var(--text-primary)]">{mine}</p>
             <p className="text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
-              {count(mine).replace(/^\d+ /, "")} van jou bij {person.name}
+              {word(mine)} van jou bij {person.name}
             </p>
           </div>
-          <div className="rounded-[16px] bg-[var(--gray-25)] px-3 py-3">
+          <div className="rounded-[16px] bg-[var(--gray-25)] p-3 text-center">
             <p className="text-[22px] font-bold leading-7 text-[var(--text-primary)]">{theirs}</p>
             <p className="text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
-              {count(theirs).replace(/^\d+ /, "")} van {person.name} bij jou
+              {word(theirs)} van {person.name} bij jou
             </p>
           </div>
         </div>
-        <p className="text-[13.5px] leading-[19px] text-[var(--text-secondary)]">
+        <p className="text-center text-[13px] leading-[18px] text-[var(--text-tertiary)]">
           Stop je met delen, dan schrijven jullie niet langer mee op elkaars lijstjes. Nieuwe lijstjes worden niet meer
           automatisch gedeeld. {person.name} kan dit ook zelf doen.
         </p>
@@ -627,6 +660,7 @@ export default function SamenDelenPage() {
         index={Math.max(0, people.findIndex((p) => p.id === selectedPerson?.id))}
         myId={user.id}
         myLists={lists}
+        sinceIso={selectedPerson ? autoShare.partnerSince[selectedPerson.id] : null}
         onClose={() => setSelectedPerson(null)}
         onRemove={(p) => autoShare.removePartner(p.id)}
       />
