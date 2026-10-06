@@ -15,7 +15,6 @@ function isMainBottomNavRoute(pathname: string): boolean {
   if (pathname === "/klantenkaarten") return true;
   if (pathname === "/profiel") return true;
   if (pathname === "/nieuw-lijstje/selecteer-winkel") return true;
-  if (pathname === "/nieuw-lijstje/selecteer-master-lijstje") return true;
   return false;
 }
 

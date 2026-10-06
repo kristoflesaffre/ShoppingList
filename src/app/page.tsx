@@ -3388,9 +3388,10 @@ export default function Home() {
         handleStartFromMaster(master.id);
         return;
       }
-      router.push("/nieuw-lijstje/selecteer-master-lijstje");
+      // Geen bijhorende favorietenlijst: gewoon een nieuw lijstje starten.
+      handleOpenCreateModal();
     },
-    [handleStartFromMaster, masterLists, router],
+    [handleStartFromMaster, handleOpenCreateModal, masterLists],
   );
 
   const handleQuickMasterSubmit = React.useCallback(

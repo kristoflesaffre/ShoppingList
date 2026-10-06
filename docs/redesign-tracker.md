@@ -39,7 +39,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 6 | Alle lijstjes | `/lijstjes-beheren/lijstjes` | ✅ |
 | 7 | Alle favorietenlijsten | `/lijstjes-beheren/favorieten` | ✅ |
 | 8 | Nieuwe favorietenlijst · kies winkel | `/nieuw-lijstje/selecteer-winkel` | ✅ |
-| 9 | Nieuw lijstje · kies favorietenlijst | `/nieuw-lijstje/selecteer-master-lijstje` | 🔄 voorstel op canvas |
+| 9 | Nieuw lijstje · kies favorietenlijst | `/nieuw-lijstje/selecteer-master-lijstje` | ✅ vervallen (redirect naar Favorieten) |
 | 10 | Nieuw lijstje · vakantie | `/nieuw-lijstje/vakantie` | ⬜ |
 | 11 | Lijstje · instellingen | `/lijstje/[id]/instellingen` | ⬜ |
 | 12 | Lijstje delen | `share_list_modal.tsx` | ⬜ |
