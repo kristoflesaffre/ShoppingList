@@ -23,6 +23,7 @@ import type { SavedRecipe } from "@/lib/recipe_library";
 import { matchRecipesForAutocomplete } from "@/lib/recipe-search";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 import { cn } from "@/lib/utils";
+import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 
 /** Slug "vleesje_noe" → "Vleesje noe" (eerste woord hoofdletter, rest kleine letters). */
 function slugToDisplayName(slug: string): string {
@@ -431,23 +432,37 @@ function SmallScreenAutocomplete({
       )}
       {/* Opent de zoek-slide-in; het echte invoerveld krijgt daar meteen focus (mobiel toetsenbord). */}
       {searchVariant === "top" ? (
+        /* Design system «Productveld»: leeg = zoekveld; gekozen = foto-tegel · naam (vet) · «Wijzig» (zoals Te kopen). */
         <button
           type="button"
           onClick={() => setSlideInOpen(true)}
-          className="flex h-12 w-full items-center gap-2.5 rounded-[16px] bg-[var(--gray-25)] px-3.5 text-left text-[15px] transition-colors active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          className={cn(
+            "flex w-full items-center rounded-[16px] bg-[var(--gray-25)] text-left transition-colors active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+            value ? "h-[58px] gap-3 pl-2 pr-4" : "h-12 gap-2.5 px-3.5 text-[15px]",
+          )}
           aria-haspopup="dialog"
           aria-label={ariaLabel ?? label ?? placeholder}
         >
-          {value && photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
-            <img src={photoUrl} alt="" width={28} height={28} className="size-7 shrink-0 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" aria-hidden decoding="async" />
-          ) : (
-            <SearchIcon className="shrink-0 text-[var(--text-tertiary)]" />
-          )}
           {value ? (
-            <span className="min-w-0 flex-1 truncate font-medium text-[var(--text-primary)]">{value}</span>
+            <>
+              {photoUrl ? (
+                <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--white)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
+                  <img src={photoUrl} alt="" width={34} height={34} className="size-[34px] object-contain" aria-hidden decoding="async" />
+                </span>
+              ) : (
+                <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] text-[17px] font-bold" style={teKopenMonogramStyle(value)} aria-hidden>
+                  {value.trim().charAt(0).toUpperCase()}
+                </span>
+              )}
+              <span className="min-w-0 flex-1 truncate text-base font-semibold text-[var(--text-primary)] first-letter:uppercase">{value}</span>
+              <span className="shrink-0 text-[13px] font-semibold text-[var(--blue-500)]">Wijzig</span>
+            </>
           ) : (
-            <span className="min-w-0 flex-1 truncate text-[var(--text-tertiary)]">{placeholder}</span>
+            <>
+              <SearchIcon className="shrink-0 text-[var(--text-tertiary)]" />
+              <span className="min-w-0 flex-1 truncate text-[var(--text-tertiary)]">{placeholder}</span>
+            </>
           )}
         </button>
       ) : (

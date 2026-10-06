@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
-import { PillTab } from "@/components/ui/pill_tab";
+import { SegmentedControl } from "@/components/ui/segmented_control";
+import { ChoiceRow } from "@/components/ui/choice_row";
+import { QuantityUnitField } from "@/components/ui/quantity_unit_field";
 import { ItemNameAutocomplete } from "@/components/ui/item_name_autocomplete";
-import { Stepper } from "@/components/ui/stepper";
 import { SearchBar } from "@/components/ui/search_bar";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
@@ -27,73 +28,21 @@ export interface NewFreezerItemModalProps {
   }) => void;
 }
 
-/** Radio button circle — unchecked or checked */
-function RadioCircle({ checked }: { checked: boolean }) {
-  return (
-    <span
-      className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-full border-[1.3px] bg-white transition-colors",
-        checked
-          ? "border-[var(--blue-500)]"
-          : "border-[var(--blue-300,#9599f7)]",
-      )}
-      aria-hidden
-    >
-      {checked && (
-        <span className="size-[18px] rounded-full bg-[var(--blue-500)]" />
-      )}
-    </span>
-  );
+/** Eenheden voor de diepvries; g/kg = gewicht per pakket, de rest = aantal pakketten. */
+const FREEZER_UNITS = ["stuk", "zak", "pak", "g", "kg"] as const;
+const WEIGHT_UNITS = new Set(["g", "kg"]);
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <p className="mb-2 text-[13px] font-semibold leading-[18px] text-[var(--text-secondary)]">{children}</p>;
 }
 
-/** Single recipe row card */
-function RecipeCard({
-  recipe,
-  selected,
-  onSelect,
-}: {
-  recipe: SavedRecipe;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        "flex h-[72px] w-full items-center gap-3 rounded-lg border py-3 pl-4 pr-3 text-left transition-colors",
-        selected
-          ? "border-[var(--blue-500)] bg-white"
-          : "border-[var(--gray-100,#e2e4e6)] bg-white",
-      )}
-    >
-      <RadioCircle checked={selected} />
-      {/* Recipe photo */}
-      <span className="relative size-12 shrink-0 overflow-hidden rounded-full bg-[var(--gray-100)]">
-        {recipe.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={recipe.photoUrl}
-            alt=""
-            width={48}
-            height={48}
-            className="size-full object-cover"
-          />
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src="/images/ui/empty_state_diepvries.png"
-            alt=""
-            width={48}
-            height={48}
-            className="size-full object-cover opacity-40"
-          />
-        )}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-base font-medium leading-6 tracking-normal text-[var(--text-primary)]">
-        {recipe.name}
-      </span>
-    </button>
+function RecipeThumb({ src }: { src: string | null }) {
+  return src ? (
+    // eslint-disable-next-line @next/next/no-img-element -- receptfoto
+    <img src={src} alt="" width={42} height={42} className="size-[42px] shrink-0 rounded-full object-cover" />
+  ) : (
+    // eslint-disable-next-line @next/next/no-img-element -- illustratie
+    <img src="/images/ui/empty_state_diepvries.png" alt="" width={42} height={42} className="size-[42px] shrink-0 rounded-full bg-[var(--gray-25)] object-contain p-1.5 opacity-60" />
   );
 }
 
@@ -105,20 +54,10 @@ export function NewFreezerItemModal({
 }: NewFreezerItemModalProps) {
   const [tab, setTab] = React.useState<"first" | "second">(initialTab);
 
-  // Product tab state
+  // Product tab state — canvas «04»: één «Aantal» + eenheid.
   const [productName, setProductName] = React.useState("");
-  const [quantityPerPackage, setQuantityPerPackage] = React.useState(1);
-  const [packages, setPackages] = React.useState(1);
+  const [amount, setAmount] = React.useState(1);
   const [unit, setUnit] = React.useState("stuk");
-
-  // Auto-pluralize stuk/stuks when stepper changes, but don't override custom values
-  React.useEffect(() => {
-    setUnit((prev) => {
-      if (prev === "stuk" && quantityPerPackage >= 2) return "stuks";
-      if (prev === "stuks" && quantityPerPackage === 1) return "stuk";
-      return prev;
-    });
-  }, [quantityPerPackage]);
 
   // Gerecht tab state
   const [recipeSearch, setRecipeSearch] = React.useState("");
@@ -160,8 +99,7 @@ export function NewFreezerItemModal({
     if (open) {
       setTab(initialTab);
       setProductName("");
-      setQuantityPerPackage(1);
-      setPackages(1);
+      setAmount(1);
       setUnit("stuk");
       setRecipeSearch("");
       setSelectedRecipeId(null);
@@ -201,11 +139,14 @@ export function NewFreezerItemModal({
     e.preventDefault();
     if (!canSubmit) return;
     const selectedRecipe = allRecipes.find((r) => r.id === selectedRecipeId);
+    const productUnit = unit.trim() || "stuk";
+    const isWeight = WEIGHT_UNITS.has(productUnit);
     onAdd?.({
       name: isProductTab ? productName.trim() : (selectedRecipe?.name ?? ""),
-      quantityPerPackage: isProductTab ? quantityPerPackage : portions,
-      unit: isProductTab ? unit : "portie",
-      packages: isProductTab ? packages : portions,
+      // Gewicht (g/kg): één pakket van «aantal» g; anders «aantal» pakketten van 1 eenheid.
+      quantityPerPackage: isProductTab ? (isWeight ? amount : 1) : 1,
+      unit: isProductTab ? productUnit : "portie",
+      packages: isProductTab ? (isWeight ? 1 : amount) : portions,
       type: isProductTab ? "product" : "gerecht",
       recipeId: selectedRecipeId ?? undefined,
       recipePhotoUrl: selectedRecipe?.photoUrl ?? undefined,
@@ -218,10 +159,7 @@ export function NewFreezerItemModal({
     <SlideInModal
       open={open}
       onClose={onClose}
-      title="Item(s) toevoegen"
-      className="h-[calc(100dvh-48px)]"
-      size="wide"
-      bodyClassName={!isProductTab ? "pb-0" : undefined}
+      title="Toevoegen aan diepvries"
       footer={
         <Button
           type="submit"
@@ -236,100 +174,77 @@ export function NewFreezerItemModal({
       <form
         id="new-freezer-item-form"
         onSubmit={handleSubmit}
-        className="flex w-full flex-col gap-6"
+        className="flex w-full flex-col gap-5"
       >
-        <PillTab
+        <SegmentedControl
+          options={[
+            { value: "first", label: "Product" },
+            { value: "second", label: "Gerecht" },
+          ]}
           value={tab}
-          onValueChange={handleTabChange}
-          labelFirst="Product"
-          labelSecond="Gerecht"
+          onChange={(v) => handleTabChange(v)}
+          ariaLabel="Soort"
+          fill
         />
 
         {isProductTab ? (
           <>
-            <ItemNameAutocomplete
-              label="Naam product"
-              placeholder="Naam item"
-              value={productName}
-              onChange={setProductName}
-              autoFocus
-            />
-
-            <div className="flex w-full flex-col gap-2">
-              <Stepper
-                label="Hoeveelheid in één diepvriespakket"
-                value={quantityPerPackage}
-                min={1}
-                onValueChange={setQuantityPerPackage}
-              />
-              {/* Editable unit field — auto-selects all text on focus */}
-              <input
-                type="text"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                className="flex h-12 w-full items-center rounded-md border border-[var(--border-default)] bg-white px-4 text-center text-base leading-6 tracking-normal text-[var(--text-primary)] outline-none transition-colors focus:border-[var(--border-focus)]"
+            <div>
+              <FieldLabel>Product</FieldLabel>
+              <ItemNameAutocomplete
+                placeholder="Kies een product"
+                value={productName}
+                onChange={setProductName}
               />
             </div>
-
-            <Stepper
-              label="Aantal diepvriespakketten"
-              value={packages}
-              min={1}
-              onValueChange={setPackages}
-            />
+            <div>
+              <FieldLabel>Aantal</FieldLabel>
+              <QuantityUnitField
+                value={amount}
+                onValueChange={setAmount}
+                unit={unit}
+                onUnitChange={setUnit}
+                units={FREEZER_UNITS}
+              />
+            </div>
           </>
         ) : (
-          /* Gerecht tab */
-          <div className="flex w-full flex-col gap-4">
-            {/* Search bar — hidden once a recipe is selected */}
-            {!selectedRecipeId && (
+          <>
+            <div>
+              <FieldLabel>Recept</FieldLabel>
               <SearchBar
-                placeholder="Zoek gerecht"
+                placeholder="Zoek een recept"
                 value={recipeSearch}
                 onValueChange={setRecipeSearch}
               />
-            )}
-
-            <div className="flex w-full flex-col gap-4">
-              {selectedRecipeId ? (
-                /* Selected state: only the chosen card + portions stepper */
-                <>
-                  {allRecipes
-                    .filter((r) => r.id === selectedRecipeId)
-                    .map((recipe) => (
-                      <RecipeCard
-                        key={recipe.id}
-                        recipe={recipe}
-                        selected
-                        onSelect={() => handleSelectRecipe(recipe.id)}
-                      />
-                    ))}
-                  <Stepper
-                    label="Aantal diepvriesporties"
-                    value={portions}
-                    min={1}
-                    onValueChange={setPortions}
-                  />
-                </>
-              ) : filteredRecipes.length === 0 ? (
-                <p className="py-8 text-center text-sm text-[var(--text-tertiary)]">
-                  {recipeSearch.trim()
-                    ? "Geen gerechten gevonden"
-                    : "Je hebt nog geen gerechten"}
+              {filteredRecipes.length === 0 ? (
+                <p className="py-6 text-center text-sm text-[var(--text-tertiary)]">
+                  {recipeSearch.trim() ? "Geen recepten gevonden" : "Je hebt nog geen recepten"}
                 </p>
               ) : (
-                filteredRecipes.map((recipe) => (
-                  <RecipeCard
-                    key={recipe.id}
-                    recipe={recipe}
-                    selected={false}
-                    onSelect={() => handleSelectRecipe(recipe.id)}
-                  />
-                ))
+                <div
+                  role="radiogroup"
+                  aria-label="Recept"
+                  className="-mx-1 mt-2.5 flex max-h-[264px] flex-col gap-1 overflow-y-auto px-1 py-0.5"
+                >
+                  {filteredRecipes.map((recipe) => (
+                    <ChoiceRow
+                      key={recipe.id}
+                      selected={selectedRecipeId === recipe.id}
+                      onSelect={() => handleSelectRecipe(recipe.id)}
+                      media={<RecipeThumb src={recipe.photoUrl ?? null} />}
+                      title={recipe.name}
+                      subtitle={recipe.persons ? `${recipe.persons} ${recipe.persons === 1 ? "persoon" : "personen"}` : undefined}
+                    />
+                  ))}
+                </div>
               )}
             </div>
-          </div>
+            <div>
+              <FieldLabel>Aantal</FieldLabel>
+              <QuantityUnitField value={portions} onValueChange={setPortions} />
+            </div>
+          </>
         )}
       </form>
     </SlideInModal>

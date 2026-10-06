@@ -19,7 +19,9 @@ Bouw schermen uit de gedeelde componenten in `src/components/ui/`. Style deze pa
 | Aantalpil | `CountBadge` | Zachte lavendel pil (blue-50, blauw getal, 30px) om een aantal te tonen; in bewerkmodus vervangen door `CountStepper`. |
 | Blad (bottom sheet) | `SlideInModal` | Mobiel: greepje bovenaan, hoeken 26, titel links + grijze ronde sluitknop. Vanaf tablet (md): gecentreerd venster (`size="dialog"` 620px, `size="wide"` 956px voor volle-hoogte bladen) met «Annuleer» + actie (md 42) rechts onderaan. |
 | Winkeltegel | `StoreSelectionTile` | 84×84, zacht grijs (gray-25), radius 16, logo 32 + naam; gekozen = wit + blauwe rand 2px + rond vinkje. Optioneel `icon` (bv. «Algemeen»). |
-| Eenheid kiezen | `FilterChip` | Chips stuk · pak · fles · kg · g · «Andere…» (opent een `InputField`). |
+| Aantal + eenheid | `QuantityUnitField` | Formulier-stepper + eenheidschips (stuk · pak · … · «Andere…» → `InputField`). Tablet+: compacte stepper met chips ernaast. Zonder eenheid = alleen stepper. |
+| Productveld | `ItemNameAutocomplete` | Leeg = zacht zoekveld; gekozen = foto-tegel (of monogram) · naam vet · «Wijzig», 58px. |
+| Keuzerij | `ChoiceRow` | Eén item uit een lijst kiezen: beeld · titel · subtitel · rondje; gekozen = lavendel vlak + blauwe rand + rond vinkje. In een `radiogroup`. |
 | Categoriekaart | `CategoryCard` (+ `categoryGradient`) | Witte kaart radius 20, kop met verloop 16%→5% van de categoriekleur, bolletje · titel · aantal · actie. |
 | Dagkaart / lijstkaarten | `ListCardsView` (`list_cards_view.tsx`) | Dag = datumtegel (mobiel) of gerechtfoto/ingrediëntenbord (desktop) + dag als titel + gerecht/items als sublabel. |
 

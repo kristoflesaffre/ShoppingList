@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TE_KOPEN_STORE_OPTIONS } from "@/lib/master-stores";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
-import { Stepper } from "@/components/ui/stepper";
-import { FilterChip } from "@/components/ui/filter_chip";
-import { InputField } from "@/components/ui/input_field";
+import { QuantityUnitField } from "@/components/ui/quantity_unit_field";
 import { SearchBar } from "@/components/ui/search_bar";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { useItemPhotoUrl } from "@/lib/item-photos";
@@ -38,7 +36,6 @@ function incrementStoreFreq(store: string | null): void {
   localStorage.setItem(STORE_FREQ_KEY, JSON.stringify(freq));
 }
 
-const UNIT_OPTIONS = ["stuk", "pak", "fles", "kg", "g"] as const;
 
 function FieldLabel({
   children,
@@ -79,8 +76,6 @@ export function AddShoppingItemSlideIn({
   const [unit, setUnit] = React.useState("stuk");
   const [selectedStore, setSelectedStore] = React.useState<string | null>(null);
   const [searchMode, setSearchMode] = React.useState(false);
-  /** «Andere…» gekozen: vrij eenheidsveld tonen. */
-  const [customUnit, setCustomUnit] = React.useState(false);
   const getPhoto = useItemPhotoUrl(80);
   const [storeSearch, setStoreSearch] = React.useState("");
   // True while the fullscreen autocomplete is open (step 1)
@@ -97,7 +92,6 @@ export function AddShoppingItemSlideIn({
       setQuantity(m ? m[1] : "1");
       const initialUnit = m ? m[2] || "stuk" : "stuk";
       setUnit(initialUnit);
-      setCustomUnit(!(UNIT_OPTIONS as readonly string[]).includes(initialUnit));
       setSelectedStore(
         editItem ? (editItem.store ?? null) : (initialStore ?? null),
       );
@@ -250,53 +244,12 @@ export function AddShoppingItemSlideIn({
           {/* Hoeveelheid — formulier-stepper + eenheidschips */}
           <div>
             <FieldLabel>Hoeveelheid</FieldLabel>
-            {/* Tablet+: compacte stepper met de eenheidschips ernaast */}
-            <div className="md:flex md:items-center md:gap-3.5">
-              <div className="md:w-[176px] md:shrink-0">
-                <Stepper
-                  value={parseInt(quantity, 10) || 1}
-                  min={1}
-                  onValueChange={(v) => setQuantity(String(v))}
-                />
-              </div>
-              <div
-                role="group"
-                aria-label="Eenheid"
-                className="mt-2.5 flex flex-wrap gap-1.5 md:mt-0"
-              >
-                {UNIT_OPTIONS.map((u) => (
-                  <FilterChip
-                    key={u}
-                    selected={!customUnit && unit === u}
-                    onClick={() => {
-                      setCustomUnit(false);
-                      setUnit(u);
-                    }}
-                  >
-                    {u}
-                  </FilterChip>
-                ))}
-                <FilterChip
-                  selected={customUnit}
-                  onClick={() => {
-                    setCustomUnit(true);
-                    setUnit("");
-                  }}
-                >
-                  Andere…
-                </FilterChip>
-              </div>
-            </div>
-            {customUnit ? (
-              <InputField
-                className="mt-2.5"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                placeholder="Eenheid, bv. doos"
-                aria-label="Eenheid"
-                autoFocus
-              />
-            ) : null}
+            <QuantityUnitField
+              value={parseInt(quantity, 10) || 1}
+              onValueChange={(v) => setQuantity(String(v))}
+              unit={unit}
+              onUnitChange={setUnit}
+            />
           </div>
 
           {/* Winkel — Algemeen + winkeltegels; zoeken via ronde knop */}
