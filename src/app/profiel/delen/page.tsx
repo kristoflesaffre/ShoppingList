@@ -360,10 +360,24 @@ function PersonSheet({
   onRemove: (person: Person) => Promise<void>;
 }) {
   const [busy, setBusy] = React.useState(false);
+  /** Tweede stap: «Weet je het zeker?» voor de verbinding echt verbroken wordt. */
+  const [confirming, setConfirming] = React.useState(false);
+  React.useEffect(() => {
+    setConfirming(false);
+  }, [person?.id]);
   const { data } = db.useQuery(
     person ? { lists: { memberships: {}, $: { where: { ownerId: person.id } } } } : null,
   );
   if (!person) return null;
+  const stop = async () => {
+    setBusy(true);
+    try {
+      await onRemove(person);
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
   const mine = myLists.filter((l) => (l.memberships ?? []).some((m) => m.instantUserId === person.id)).length;
   const theirs = ((data?.lists ?? []) as OwnedListRow[]).filter((l) =>
     (l.memberships ?? []).some((m) => m.instantUserId === myId),
@@ -379,25 +393,48 @@ function PersonSheet({
       className="md:!max-w-[540px]"
       cancelLabel={null}
       footer={
-        <Button
-          type="button"
-          variant="primary"
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            try {
-              await onRemove(person);
-              onClose();
-            } finally {
-              setBusy(false);
-            }
-          }}
-          className="!bg-[var(--error-500,#d92d20)] hover:!bg-[var(--error-600)]"
-        >
-          {busy ? "Bezig…" : "Stoppen met delen"}
-        </Button>
+        confirming ? (
+          <>
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => setConfirming(false)}>
+              Annuleer
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              disabled={busy}
+              onClick={() => void stop()}
+              className="!bg-[var(--error-500,#d92d20)] hover:!bg-[var(--error-600)]"
+            >
+              {busy ? "Bezig…" : "Ja, stop met delen"}
+            </Button>
+          </>
+        ) : (
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => setConfirming(true)}
+            className="!bg-[var(--error-500,#d92d20)] hover:!bg-[var(--error-600)]"
+          >
+            Stoppen met delen
+          </Button>
+        )
       }
     >
+      {confirming ? (
+        <div className="flex flex-col items-center gap-3 pb-4 pt-2 text-center md:pb-6">
+          <span className="flex size-14 items-center justify-center rounded-full bg-[var(--error-25)] text-[var(--error-600)]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-7">
+              <path d="M12 8v5M12 16.5h.01" />
+              <circle cx="12" cy="12" r="9" />
+            </svg>
+          </span>
+          <p className="text-xl font-bold leading-7 text-[var(--text-primary)]">Stoppen met delen met {person.name}?</p>
+          <p className="max-w-[340px] text-[14px] leading-5 text-[var(--text-secondary)]">
+            Jullie schrijven niet langer mee op elkaars lijstjes ({mine + theirs} in totaal). Je kan later opnieuw iemand
+            uitnodigen.
+          </p>
+        </div>
+      ) : (
       <div className="flex flex-col gap-[18px] pb-4 md:pb-6">
         <div className="flex flex-col items-center gap-3.5 pt-1.5 text-center">
           <span
@@ -437,6 +474,7 @@ function PersonSheet({
           automatisch gedeeld. {person.name} kan dit ook zelf doen.
         </p>
       </div>
+      )}
     </SlideInModal>
   );
 }
