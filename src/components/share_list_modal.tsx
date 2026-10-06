@@ -92,7 +92,7 @@ function ShareOption({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="group flex flex-1 flex-col items-center gap-1.5 rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-50"
+      className="group flex w-[84px] flex-col items-center gap-1.5 rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-50"
     >
       <span className="flex size-[52px] items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:group-active:scale-95 [@media(hover:hover)]:group-hover:bg-[var(--blue-100)]">
         {icon}
@@ -211,7 +211,7 @@ export function ShareListModal({
           </p>
         </div>
 
-        <div className="flex gap-2 px-2.5">
+        <div className="flex justify-center gap-3">
           <ShareOption icon={<ChatIcon />} label="WhatsApp" onClick={openWhatsApp} disabled={!ready} />
           <ShareOption icon={<MailIcon />} label="E-mail" onClick={openEmail} disabled={!ready} />
           {canNativeShare ? (
