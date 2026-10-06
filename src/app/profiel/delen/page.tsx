@@ -316,7 +316,7 @@ function PersonSheet({
     <SlideInModal
       open
       onClose={onClose}
-      title={person.name}
+      title={`Je deelt je lijstjes met ${person.name}`}
       footer={
         <Button
           type="button"
