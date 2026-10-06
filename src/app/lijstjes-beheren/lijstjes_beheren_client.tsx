@@ -601,7 +601,7 @@ export function LijstjesBeherenClient({
       <div className="flex flex-1 flex-col pb-[calc(80px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-4 px-[var(--space-4)] pt-6">
           {/* Canvas «05–07 · voorstel»: titel + aantal, schakelaar Lijstjes | Favorieten. */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex min-w-0 flex-1 items-start justify-between gap-4">
               <div className="flex min-w-0 flex-col gap-1">
                 <div className="flex min-w-0 items-center gap-2">
