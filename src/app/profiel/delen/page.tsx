@@ -833,8 +833,8 @@ export default function SamenDelenPage() {
         shareUrl={inviteUrl}
         urlReady={Boolean(inviteUrl)}
         title="Iemand uitnodigen"
-        listImageSrc="/images/ui/basket.png"
-        heading="Samen boodschappen doen"
+        listImageSrc="/images/ui/lijstje_160.webp"
+        heading="Samen lijstjes maken!"
         description="Wie de link opent, krijgt de soorten lijstjes die je hieronder aanzet, nu en later."
         shareMessage="Doe samen boodschappen met mij in Shopping list:"
         emailSubject="Uitnodiging: samen boodschappen doen"
