@@ -113,9 +113,9 @@ function PeopleCard({
                   type="button"
                   onClick={() => onSelect(p)}
                   aria-label={`Delen met ${p.name} beheren`}
-                  className="group flex w-full flex-col items-center gap-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] motion-safe:active:scale-95"
+                  className="group -m-1 flex w-[calc(100%+8px)] flex-col items-center gap-1.5 rounded-[14px] p-1 transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[var(--blue-50)]"
                 >
-                  <span className="relative rounded-full transition-shadow duration-fast [@media(hover:hover)]:group-hover:shadow-[0_0_0_5px_var(--blue-100)]">
+                  <span className="relative">
                     <PersonAvatar name={p.name} url={p.avatarUrl} index={i} />
                     <span
                       aria-hidden
@@ -138,7 +138,7 @@ function PeopleCard({
               type="button"
               onClick={onInvite}
               aria-label="Iemand uitnodigen"
-              className="flex size-[52px] items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[inset_0_0_0_2px_var(--blue-200)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--blue-25)]"
+              className="flex size-[52px] items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[inset_0_0_0_2px_var(--blue-200)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--blue-50)]"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-5">
                 <path d="M12 5v14M5 12h14" />
