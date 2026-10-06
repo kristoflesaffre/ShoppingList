@@ -511,7 +511,7 @@ export default function LijstInstellingenPage() {
           <h1 className="text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">Instellingen</h1>
         </div>
 
-        <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-[1fr_1.2fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-4">
+        <div className="flex flex-1 flex-col gap-3.5 lg:grid lg:flex-none lg:grid-cols-[1fr_1.2fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-4">
           {/* Lijstkaart: foto, naam (potlood), winkel + aantal — canvas «11 · instellingen — voorstel» */}
           <section className="rounded-[20px] bg-[var(--white)] p-[18px] shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:col-start-1 lg:row-start-1">
             {nameEditMode ? (
@@ -630,7 +630,7 @@ export default function LijstInstellingenPage() {
                       )
                     : null}
                 </section>
-                <section className="rounded-[20px] bg-[var(--white)] px-3.5 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:col-start-1 lg:row-start-2">
+                <section className="rounded-[20px] bg-[var(--white)] px-3.5 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04)] mt-auto lg:col-start-1 lg:row-start-2 lg:mt-0">
                   {actionRow(
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-[17px]"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" /></svg>,
                     deleteBusy ? "Bezig…" : "Lijstje verwijderen",
