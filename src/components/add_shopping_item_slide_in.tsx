@@ -13,7 +13,10 @@ import { InputField } from "@/components/ui/input_field";
 import { SearchBar } from "@/components/ui/search_bar";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { useItemPhotoUrl } from "@/lib/item-photos";
-import { TE_KOPEN_ALGEMEEN_RGB, teKopenMonogramStyle } from "@/lib/te-kopen-style";
+import {
+  TE_KOPEN_ALGEMEEN_RGB,
+  teKopenMonogramStyle,
+} from "@/lib/te-kopen-style";
 
 const STORE_FREQ_KEY = "te-kopen-store-freq";
 
@@ -22,7 +25,9 @@ function loadStoreFreq(): Record<string, number> {
   try {
     const raw = localStorage.getItem(STORE_FREQ_KEY);
     if (raw) return JSON.parse(raw) as Record<string, number>;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return {};
 }
 
@@ -35,10 +40,18 @@ function incrementStoreFreq(store: string | null): void {
 
 const UNIT_OPTIONS = ["stuk", "pak", "fles", "kg", "g"] as const;
 
-function FieldLabel({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+function FieldLabel({
+  children,
+  action,
+}: {
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="mb-2 flex min-h-7 items-center justify-between">
-      <span className="text-[13px] font-semibold leading-[18px] text-[var(--text-secondary)]">{children}</span>
+      <span className="text-[13px] font-semibold leading-[18px] text-[var(--text-secondary)]">
+        {children}
+      </span>
       {action}
     </div>
   );
@@ -85,7 +98,9 @@ export function AddShoppingItemSlideIn({
       const initialUnit = m ? m[2] || "stuk" : "stuk";
       setUnit(initialUnit);
       setCustomUnit(!(UNIT_OPTIONS as readonly string[]).includes(initialUnit));
-      setSelectedStore(editItem ? editItem.store ?? null : initialStore ?? null);
+      setSelectedStore(
+        editItem ? (editItem.store ?? null) : (initialStore ?? null),
+      );
       setSearchMode(false);
       setStoreSearch("");
       setSearchOpen(!editItem);
@@ -111,7 +126,9 @@ export function AddShoppingItemSlideIn({
     onClose();
   }, [onClose]);
 
-  const [storeFreq] = React.useState<Record<string, number>>(() => loadStoreFreq());
+  const [storeFreq] = React.useState<Record<string, number>>(() =>
+    loadStoreFreq(),
+  );
 
   const sortedStoreOptions = React.useMemo(() => {
     return [...TE_KOPEN_STORE_OPTIONS].sort(
@@ -119,11 +136,12 @@ export function AddShoppingItemSlideIn({
     );
   }, [storeFreq]);
 
-  const filteredStores = searchMode && storeSearch.trim()
-    ? sortedStoreOptions.filter((s) =>
-        s.label.toLowerCase().includes(storeSearch.toLowerCase()),
-      )
-    : sortedStoreOptions;
+  const filteredStores =
+    searchMode && storeSearch.trim()
+      ? sortedStoreOptions.filter((s) =>
+          s.label.toLowerCase().includes(storeSearch.toLowerCase()),
+        )
+      : sortedStoreOptions;
   const selectedStoreVisible = selectedStore
     ? filteredStores.some((s) => s.label === selectedStore)
     : false;
@@ -196,50 +214,78 @@ export function AddShoppingItemSlideIn({
               {name && getPhoto(name) ? (
                 <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--white)]">
                   {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
-                  <img src={getPhoto(name)!} alt="" width={34} height={34} className="size-[34px] object-contain" />
+                  <img
+                    src={getPhoto(name)!}
+                    alt=""
+                    width={34}
+                    height={34}
+                    className="size-[34px] object-contain"
+                  />
                 </span>
               ) : name ? (
-                <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] text-[17px] font-bold" style={teKopenMonogramStyle(name)} aria-hidden>
+                <span
+                  className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] text-[17px] font-bold"
+                  style={teKopenMonogramStyle(name)}
+                  aria-hidden
+                >
                   {name.trim().charAt(0).toUpperCase()}
                 </span>
               ) : null}
-              <span className={cn("min-w-0 flex-1 truncate text-base first-letter:uppercase", name ? "font-semibold text-[var(--text-primary)]" : "text-[var(--text-tertiary)]")}>
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate text-base first-letter:uppercase",
+                  name
+                    ? "font-semibold text-[var(--text-primary)]"
+                    : "text-[var(--text-tertiary)]",
+                )}
+              >
                 {name || "Kies een product"}
               </span>
-              <span className="shrink-0 text-[13px] font-semibold text-[var(--blue-500)]">Wijzig</span>
+              <span className="shrink-0 text-[13px] font-semibold text-[var(--blue-500)]">
+                Wijzig
+              </span>
             </button>
           </div>
 
           {/* Hoeveelheid — formulier-stepper + eenheidschips */}
           <div>
             <FieldLabel>Hoeveelheid</FieldLabel>
-            <Stepper
-              value={parseInt(quantity, 10) || 1}
-              min={1}
-              onValueChange={(v) => setQuantity(String(v))}
-            />
-            <div role="group" aria-label="Eenheid" className="mt-2.5 flex flex-wrap gap-1.5">
-              {UNIT_OPTIONS.map((u) => (
+            {/* Tablet+: compacte stepper met de eenheidschips ernaast */}
+            <div className="md:flex md:items-center md:gap-3.5">
+              <div className="md:w-[176px] md:shrink-0">
+                <Stepper
+                  value={parseInt(quantity, 10) || 1}
+                  min={1}
+                  onValueChange={(v) => setQuantity(String(v))}
+                />
+              </div>
+              <div
+                role="group"
+                aria-label="Eenheid"
+                className="mt-2.5 flex flex-wrap gap-1.5 md:mt-0"
+              >
+                {UNIT_OPTIONS.map((u) => (
+                  <FilterChip
+                    key={u}
+                    selected={!customUnit && unit === u}
+                    onClick={() => {
+                      setCustomUnit(false);
+                      setUnit(u);
+                    }}
+                  >
+                    {u}
+                  </FilterChip>
+                ))}
                 <FilterChip
-                  key={u}
-                  selected={!customUnit && unit === u}
+                  selected={customUnit}
                   onClick={() => {
-                    setCustomUnit(false);
-                    setUnit(u);
+                    setCustomUnit(true);
+                    setUnit("");
                   }}
                 >
-                  {u}
+                  Andere…
                 </FilterChip>
-              ))}
-              <FilterChip
-                selected={customUnit}
-                onClick={() => {
-                  setCustomUnit(true);
-                  setUnit("");
-                }}
-              >
-                Andere…
-              </FilterChip>
+              </div>
             </div>
             {customUnit ? (
               <InputField
@@ -260,7 +306,9 @@ export function AddShoppingItemSlideIn({
                 <RoundIconButton
                   tone={searchMode ? "primary" : "neutral"}
                   size={28}
-                  aria-label={searchMode ? "Winkel zoeken sluiten" : "Winkel zoeken"}
+                  aria-label={
+                    searchMode ? "Winkel zoeken sluiten" : "Winkel zoeken"
+                  }
                   aria-pressed={searchMode}
                   onClick={() => {
                     setSearchMode((v) => !v);
@@ -285,7 +333,7 @@ export function AddShoppingItemSlideIn({
             <div
               role="radiogroup"
               aria-label="Winkel"
-              className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 pt-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 pt-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:grid md:grid-cols-[repeat(6,84px)] md:justify-between md:gap-y-2.5 md:overflow-visible md:px-0"
             >
               {!searchMode || !storeSearch.trim() ? (
                 <StoreSelectionTile
@@ -295,7 +343,12 @@ export function AddShoppingItemSlideIn({
                   selected={selectedStore === null}
                   onClick={() => setSelectedStore(null)}
                   icon={
-                    <span className="flex size-8 items-center justify-center rounded-full" style={{ backgroundColor: `rgba(${TE_KOPEN_ALGEMEEN_RGB.join(",")},0.14)` }}>
+                    <span
+                      className="flex size-8 items-center justify-center rounded-full"
+                      style={{
+                        backgroundColor: `rgba(${TE_KOPEN_ALGEMEEN_RGB.join(",")},0.14)`,
+                      }}
+                    >
                       <span className="size-2.5 rounded-full bg-[var(--blue-500)]" />
                     </span>
                   }

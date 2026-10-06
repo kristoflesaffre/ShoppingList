@@ -1089,6 +1089,7 @@ export function NewItemModal({
       disableEscapeClose={ingredientSlideOpen}
       bodyFullWidth={!masterItemFormOnly}
       className={!masterItemFormOnly ? "h-[calc(100dvh-48px)]" : undefined}
+      size={!masterItemFormOnly ? "wide" : "dialog"}
     >
       <div className="overflow-hidden pb-2">
         <div

@@ -33,6 +33,13 @@ export interface SlideInModalProps {
   bodyFullWidth?: boolean;
   /** Extra classes on the scrollable body (merged last; e.g. `pb-0` to control padding in children only). */
   bodyClassName?: string;
+  /**
+   * Breedte als gecentreerd venster vanaf tablet (md, ≥768px). Op mobiel is het altijd een blad van onderen.
+   * `dialog` = 620px (standaard), `wide` = 956px voor brede/volle-hoogte bladen (items toevoegen, recept bewerken).
+   */
+  size?: "dialog" | "wide";
+  /** Label van de secundaire annuleerknop die vanaf tablet links van de footer-actie staat. `null` = geen. */
+  cancelLabel?: string | null;
 }
 
 /** Enter: drawer-curve (Emil: 380ms, snel decelererend). Exit is korter — de gebruiker wil weg. */
@@ -80,6 +87,8 @@ function BackArrowIcon({ className }: { className?: string }) {
 }
 
 /**
+ * Design system «Blad»: op mobiel een blad van onderen (greepje, hoeken 26),
+ * vanaf tablet (md) een gecentreerd venster (radius 26) met de acties rechts onderaan.
  * Slide-in modal from bottom with overlay. Figma 472:2235.
  * Paneelhoogte volgt de inhoud tot max. `100dvh − 48px`; lange inhoud scrollt in het body-gedeelte.
  */
@@ -96,6 +105,8 @@ export function SlideInModal({
   disableEscapeClose = false,
   bodyFullWidth = false,
   bodyClassName,
+  size = "dialog",
+  cancelLabel = "Annuleer",
 }: SlideInModalProps) {
   const [isAnimatingIn, setIsAnimatingIn] = React.useState(false);
   const [isClosing, setIsClosing] = React.useState(false);
@@ -134,7 +145,7 @@ export function SlideInModal({
 
   return (
     <div
-      className={cn("fixed inset-0 z-50 flex items-end justify-center", containerClassName)}
+      className={cn("fixed inset-0 z-50 flex items-end justify-center md:items-center md:p-6", containerClassName)}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -154,15 +165,19 @@ export function SlideInModal({
       {/* Panel: hoogte tot inhoud, max. viewport minus 48px; body scrollt bij overflow */}
       <div
         className={cn(
-          "relative z-10 flex max-h-[calc(100dvh-48px)] w-full max-w-[956px] flex-col overflow-hidden rounded-t-[26px] bg-[var(--white)] shadow-raised transition-transform will-change-transform",
-          isAnimatingIn && !isClosing ? "translate-y-0" : "translate-y-full",
+          "relative z-10 flex max-h-[calc(100dvh-48px)] w-full max-w-[956px] flex-col overflow-hidden rounded-t-[26px] bg-[var(--white)] shadow-raised transition-[transform,opacity] will-change-transform",
+          "md:rounded-[26px] md:shadow-[0_30px_60px_-20px_rgba(16,17,48,0.45)]",
+          size === "dialog" ? "md:max-w-[620px]" : "md:max-w-[956px]",
+          isAnimatingIn && !isClosing
+            ? "translate-y-0 md:scale-100 md:opacity-100"
+            : "translate-y-full md:translate-y-3 md:scale-[0.98] md:opacity-0",
           isClosing ? "ease-in-out-strong" : "ease-drawer",
           className
         )}
         style={{ transitionDuration: `${isClosing ? SLIDE_OUT_MS : SLIDE_IN_MS}ms` }}
       >
         {/* Design system «Blad»: greepje bovenaan, hoeken 26px. */}
-        <span aria-hidden className="mx-auto mt-2 block h-1 w-[38px] shrink-0 rounded-full bg-[var(--gray-100)]" />
+        <span aria-hidden className="mx-auto mt-2 block h-1 w-[38px] shrink-0 rounded-full bg-[var(--gray-100)] md:hidden" />
         <SlideInModalHeader
           title={title}
           onClose={handleClose}
@@ -177,7 +192,7 @@ export function SlideInModal({
               : "max-h-[calc(100dvh-48px-4.25rem)]",
             bodyFullWidth
               ? "w-full min-w-0 items-stretch px-0"
-              : "items-center px-4",
+              : "items-center px-4 md:px-6",
             bodyClassName,
           )}
         >
@@ -193,8 +208,14 @@ export function SlideInModal({
           )}
         </div>
         {footer ? (
-          <div className="shrink-0 px-4 pb-[24px] pt-4">
-            <div className="mx-auto flex w-full max-w-[320px] flex-col items-center gap-3 [&_button]:w-full [&_button]:max-w-full">
+          <div className="shrink-0 px-4 pb-[24px] pt-4 md:border-t md:border-[var(--border-subtle)] md:px-6 md:pb-5">
+            {/* Mobiel: brede knop(pen) gecentreerd. Tablet+: annuleer + actie rechts, maat md (42). */}
+            <div className="mx-auto flex w-full max-w-[320px] flex-col items-center gap-3 [&_button]:w-full [&_button]:max-w-full md:mx-0 md:max-w-none md:flex-row md:justify-end md:gap-2.5 md:[&_button]:h-[42px] md:[&_button]:w-auto md:[&_button]:min-w-[120px] md:[&_button]:px-6">
+              {cancelLabel ? (
+                <Button type="button" variant="secondary" onClick={handleClose} className="hidden md:inline-flex">
+                  {cancelLabel}
+                </Button>
+              ) : null}
               {footer}
             </div>
           </div>
@@ -220,7 +241,7 @@ export function SlideInModalHeader({
 }) {
   /* Design system: titel links, ronde grijze sluitknop rechts (RoundIconButton neutral 36). */
   return (
-    <div className="flex h-14 shrink-0 items-center justify-center px-4">
+    <div className="flex h-14 shrink-0 items-center justify-center px-4 md:h-16 md:px-6 md:pt-2">
       <div className="flex h-full w-full max-w-[768px] items-center gap-3">
         {onBack ? (
           <RoundIconButton tone="neutral" size={36} onClick={onBack} aria-label="Terug">

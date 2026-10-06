@@ -341,6 +341,7 @@ export function RecipeEditorSlideIn({
       disableEscapeClose={ingredientSlideOpen || linkSlideOpen || photoUploadSlideOpen}
       bodyFullWidth
       className="h-[calc(100dvh-48px)]"
+      size="wide"
       footer={
         !isAiTab ? (
           <Button

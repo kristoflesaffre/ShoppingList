@@ -220,6 +220,7 @@ export function NewFreezerItemModal({
       onClose={onClose}
       title="Item(s) toevoegen"
       className="h-[calc(100dvh-48px)]"
+      size="wide"
       bodyClassName={!isProductTab ? "pb-0" : undefined}
       footer={
         <Button
