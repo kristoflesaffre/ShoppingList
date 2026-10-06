@@ -511,9 +511,9 @@ export default function LijstInstellingenPage() {
           <h1 className="text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">Instellingen</h1>
         </div>
 
-        <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-[1fr_1.2fr] lg:items-start lg:gap-4">
+        <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-[1fr_1.2fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-4">
           {/* Lijstkaart: foto, naam (potlood), winkel + aantal — canvas «11 · instellingen — voorstel» */}
-          <section className="rounded-[20px] bg-[var(--white)] p-[18px] shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+          <section className="rounded-[20px] bg-[var(--white)] p-[18px] shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:col-start-1 lg:row-start-1">
             {nameEditMode ? (
               <div className="flex flex-col gap-3">
                 <InputField
@@ -594,10 +594,11 @@ export default function LijstInstellingenPage() {
             )}
           </section>
 
-          <div className="flex flex-col gap-3.5">
+          {/* «contents»: kaarten doen mee in het raster (desktop: verwijderen links onder de lijstkaart). */}
+          <div className="contents">
             {isListOwner ? (
               <>
-                <section className="rounded-[20px] bg-[var(--white)] px-3.5 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+                <section className="rounded-[20px] bg-[var(--white)] px-3.5 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:col-start-2 lg:row-span-2 lg:row-start-1">
                   {actionRow(
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-[17px]"><rect x="3.5" y="5" width="17" height="14" rx="3" /><circle cx="9" cy="10" r="1.6" /><path d="M20 16l-5-5-8 8" /></svg>,
                     photoUploading ? "Uploaden…" : customIconUrl ? "Foto wijzigen" : "Foto toevoegen",
@@ -629,7 +630,7 @@ export default function LijstInstellingenPage() {
                       )
                     : null}
                 </section>
-                <section className="rounded-[20px] bg-[var(--white)] px-3.5 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+                <section className="rounded-[20px] bg-[var(--white)] px-3.5 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:col-start-1 lg:row-start-2">
                   {actionRow(
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-[17px]"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" /></svg>,
                     deleteBusy ? "Bezig…" : "Lijstje verwijderen",
