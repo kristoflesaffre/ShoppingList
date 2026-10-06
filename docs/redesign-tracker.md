@@ -42,7 +42,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 9 | Nieuw lijstje · kies favorietenlijst | `/nieuw-lijstje/selecteer-master-lijstje` | ✅ vervallen (redirect naar Favorieten) |
 | 10 | Nieuw lijstje · vakantie | `/nieuw-lijstje/vakantie` | ✅ |
 | 10b | Nieuw lijstje · keuze (modal op home) | `page.tsx` (`blankVenueSlideOpen`) | ✅ (variant A) |
-| 11 | Lijstje · instellingen | `/lijstje/[id]/instellingen` | ⬜ |
+| 11 | Lijstje · instellingen | `/lijstje/[id]/instellingen` | 🔄 voorstel op canvas |
 | 12 | Lijstje delen | `share_list_modal.tsx` | ⬜ |
 | 13 | Startpagina aanpassen | `/beheer-homepagina` | ⬜ |
 | 14 | Klantenkaart toevoegen (kies winkel) | `/klantenkaarten/toevoegen` | ⬜ |
