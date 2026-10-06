@@ -9,6 +9,10 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PageBackButton } from "@/components/ui/page_back_button";
+import { TitleEditButton } from "@/components/ui/title_edit_button";
+import { homeListCardIconSrc } from "@/lib/list-product-icons";
+import { masterStoreLabelFromListIcon } from "@/lib/master-stores";
 import { db } from "@/lib/db";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import { isIPhoneDevice } from "@/lib/utils";
@@ -49,7 +53,7 @@ function ChevronRightIcon() {
   return (
     <span
       aria-hidden
-      className="inline-block size-6 shrink-0 bg-[var(--action-primary)]"
+      className="inline-block size-5 shrink-0 bg-[var(--gray-300)]"
       style={{
         WebkitMaskImage: "url(/icons/chevron.svg)",
         maskImage: "url(/icons/chevron.svg)",
@@ -423,116 +427,223 @@ export default function LijstInstellingenPage() {
           : "Vrienden";
   const isLandalSettingsList = !isMaster && isLandalListCard(customIconUrl);
 
+  const masterIconRaw = String((listData as Record<string, unknown>).masterIcon ?? "");
+  const storeIcon = masterIconRaw.startsWith("/logos/")
+    ? masterIconRaw
+    : String(listData.icon ?? "").startsWith("/logos/")
+      ? String(listData.icon)
+      : "";
+  const storeLabel = storeIcon ? masterStoreLabelFromListIcon(storeIcon) : "";
+  const itemCount = (listData.items ?? []).length;
+  const tileIcon =
+    customIconUrl ??
+    (isMaster
+      ? storeIcon || String(listData.icon ?? "")
+      : homeListCardIconSrc({
+          id: listId,
+          icon: String(listData.icon ?? ""),
+          displayVariant: storeIcon ? "from-master" : "default",
+          name: listName,
+        }));
+  const countLabel = isMaster
+    ? itemCount === 1
+      ? "1 favoriet"
+      : `${itemCount} favorieten`
+    : itemCount === 1
+      ? "1 product"
+      : `${itemCount} producten`;
+
+  const actionRow = (
+    icon: React.ReactNode,
+    title: string,
+    subtitle: string | null,
+    onClick: () => void,
+    opts: { first?: boolean; danger?: boolean; disabled?: boolean } = {},
+  ) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={opts.disabled}
+      className={cn(
+        "flex w-full items-center gap-3 px-1 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)] disabled:opacity-50",
+        !opts.first && "border-t border-[var(--border-subtle)]",
+      )}
+    >
+      <span
+        className={cn(
+          "flex size-[34px] shrink-0 items-center justify-center rounded-full",
+          opts.danger ? "bg-[var(--error-25)] text-[var(--error-600)]" : "bg-[var(--blue-50)] text-[var(--blue-500)]",
+        )}
+        aria-hidden
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1 leading-[19px]">
+        <span className={cn("block text-[15.5px] font-semibold", opts.danger ? "text-[var(--error-600)]" : "text-[var(--text-primary)]")}>
+          {title}
+        </span>
+        {subtitle ? <span className="block text-[13px] text-[var(--text-secondary)]">{subtitle}</span> : null}
+      </span>
+      {!opts.danger ? <ChevronRightIcon /> : null}
+    </button>
+  );
+
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--white)]">
-      {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
+    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)]">
+      {/* Mobiel: topbalk met terugpijl; desktop: ronde terugknop naast de titel. */}
+      <div className="fixed left-0 right-0 top-0 z-10 w-full bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] lg:hidden">
         <header className="relative mx-auto flex h-16 max-w-[956px] items-center px-4">
           <Link
             href={`/lijstje/${encodeURIComponent(listId)}`}
             aria-label="Terug naar lijstje"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full text-action-primary transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
             <BackArrowIcon className="size-6" />
           </Link>
-          <p className="flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
-            Instellingen
-          </p>
-          {/* Balans-spacer */}
+          <p className="flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">Instellingen</p>
           <span className="size-10 shrink-0" aria-hidden />
         </header>
       </div>
 
-      <main className="mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(80px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+env(safe-area-inset-top,0px))]">
-        {/* Lijstnaam */}
-        <div className="pt-8">
-          {nameEditMode ? (
-            <div className="flex flex-col gap-3">
-              <InputField
-                label="Naam lijstje"
-                value={nameInput}
-                autoComplete="off"
-                autoFocus
-                onChange={(e) => setNameInput(e.target.value)}
-                onFocus={selectListNameInputOnFocus}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void handleSaveName();
-                  if (e.key === "Escape") setNameEditMode(false);
-                }}
-              />
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="primary"
-                  disabled={!nameInput.trim() || nameSaving}
-                  onClick={() => void handleSaveName()}
-                >
-                  {nameSaving ? "Bewaren…" : "Bewaren"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setNameEditMode(false)}
-                >
-                  Annuleren
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <h1 className="text-[24px] font-bold leading-8 tracking-normal text-[var(--text-primary)]">
-              {listName}
-            </h1>
-          )}
-          {isMaster && !nameEditMode ? (
-            <p className="mt-1 text-sm leading-5 text-[var(--text-tertiary)]">
-              Favorietenlijst — items hier zijn templates voor nieuwe weeklijstjes.
-            </p>
-          ) : null}
+      <main className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-3.5 px-4 pb-[calc(40px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+12px+env(safe-area-inset-top,0px))] lg:pt-[calc(40px+env(safe-area-inset-top,0px))]">
+        <div className="mb-1 hidden items-center gap-3 lg:flex">
+          <PageBackButton href={`/lijstje/${encodeURIComponent(listId)}`} label="Terug naar lijstje" />
+          <h1 className="text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">Instellingen</h1>
         </div>
 
-        {/* Acties */}
-        {isListOwner ? (
-          <div className="mt-6 flex flex-col divide-y divide-[var(--gray-100)]">
-            {/* Naam wijzigen */}
-            <button
-              type="button"
-              onClick={handleOpenNameEdit}
-              className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-            >
-              <span className="flex-1 text-base font-medium leading-6 text-[var(--text-primary)]">
-                Naam wijzigen
-              </span>
-              <ChevronRightIcon />
-            </button>
+        <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-[1fr_1.2fr] lg:items-start lg:gap-4">
+          {/* Lijstkaart: foto, naam (potlood), winkel + aantal — canvas «11 · instellingen — voorstel» */}
+          <section className="rounded-[20px] bg-[var(--white)] p-[18px] shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+            {nameEditMode ? (
+              <div className="flex flex-col gap-3">
+                <InputField
+                  label="Naam lijstje"
+                  value={nameInput}
+                  autoComplete="off"
+                  autoFocus
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onFocus={selectListNameInputOnFocus}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleSaveName();
+                    if (e.key === "Escape") setNameEditMode(false);
+                  }}
+                />
+                <div className="flex gap-2">
+                  <Button type="button" variant="primary" size="md" disabled={!nameInput.trim() || nameSaving} onClick={() => void handleSaveName()}>
+                    {nameSaving ? "Bewaren…" : "Bewaren"}
+                  </Button>
+                  <Button type="button" variant="secondary" size="md" onClick={() => setNameEditMode(false)}>
+                    Annuleren
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  disabled={!isListOwner || photoUploading}
+                  onClick={() => photoInputRef.current?.click()}
+                  aria-label={customIconUrl ? "Foto wijzigen" : "Foto toevoegen"}
+                  className="relative shrink-0 rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:cursor-default"
+                >
+                  <span
+                    className={cn(
+                      "flex size-[72px] items-center justify-center overflow-hidden rounded-[20px]",
+                      isMaster ? "bg-[var(--gray-25)]" : "bg-[var(--blue-25)]",
+                    )}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- lijstfoto of illustratie */}
+                    <img
+                      src={tileIcon}
+                      alt=""
+                      width={72}
+                      height={72}
+                      className={customIconUrl ? "size-full object-cover" : "size-[54px] object-contain"}
+                    />
+                  </span>
+                  {isListOwner ? (
+                    <span className="absolute -bottom-1 -right-1 flex size-[26px] items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.18)]" aria-hidden>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
+                        <path d="M4 8h3l2-2.5h6L17 8h3v11H4z" />
+                        <circle cx="12" cy="13" r="3.5" />
+                      </svg>
+                    </span>
+                  ) : null}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h2 className="min-w-0 truncate text-2xl font-bold tracking-tight text-[var(--text-primary)]">{listName}</h2>
+                    {isListOwner ? <TitleEditButton aria-label="Naam wijzigen" onClick={handleOpenNameEdit} /> : null}
+                  </div>
+                  <p className="mt-1 flex min-w-0 items-center gap-[5px] text-[13px] text-[var(--text-secondary)]">
+                    {storeIcon && !isMaster ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- winkellogo
+                      <img src={storeIcon} alt="" width={14} height={14} className="size-3.5 shrink-0 object-contain" />
+                    ) : null}
+                    <span className="truncate">
+                      {[!isMaster ? storeLabel : null, countLabel].filter(Boolean).join(" · ")}
+                    </span>
+                  </p>
+                  {isMaster ? (
+                    <p className="mt-1 text-[12.5px] leading-[17px] text-[var(--text-tertiary)]">
+                      Favorietenlijst: hieruit maak je nieuwe lijstjes.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </section>
 
-            {/* Foto toevoegen / wijzigen */}
-            <button
-              type="button"
-              disabled={photoUploading}
-              onClick={() => photoInputRef.current?.click()}
-              className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus disabled:opacity-50"
-            >
-              <span className="flex flex-1 items-center gap-3 min-w-0">
-                {customIconUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={customIconUrl}
-                    alt=""
-                    width={40}
-                    height={40}
-                    className="size-10 shrink-0 rounded-[var(--radius-md)] object-cover"
-                  />
-                ) : null}
-                <span className="text-base font-medium leading-6 text-[var(--text-primary)]">
-                  {photoUploading
-                    ? "Uploaden…"
-                    : customIconUrl
-                      ? "Foto wijzigen"
-                      : "Foto toevoegen"}
-                </span>
-              </span>
-              <ChevronRightIcon />
-            </button>
+          <div className="flex flex-col gap-3.5">
+            {isListOwner ? (
+              <>
+                <section className="rounded-[20px] bg-[var(--white)] px-3.5 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+                  {actionRow(
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-[17px]"><rect x="3.5" y="5" width="17" height="14" rx="3" /><circle cx="9" cy="10" r="1.6" /><path d="M20 16l-5-5-8 8" /></svg>,
+                    photoUploading ? "Uploaden…" : customIconUrl ? "Foto wijzigen" : "Foto toevoegen",
+                    "Kies een eigen foto voor dit lijstje",
+                    () => photoInputRef.current?.click(),
+                    { first: true, disabled: photoUploading },
+                  )}
+                  {isLandalSettingsList
+                    ? actionRow(
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-[17px]"><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.4" /><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M15 14.6c2.6-.3 4.6 1.1 5.2 4.4" /></svg>,
+                        "Soort reis",
+                        `Nu: ${currentLandalTrip === "Gezin" ? "Gezin" : "Vrienden"}`,
+                        () => setLandalTripSlideOpen(true),
+                      )
+                    : null}
+                  {actionRow(
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-[17px]"><circle cx="18" cy="6" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6" /></svg>,
+                    "Lijstje delen",
+                    "Schrijf samen op hetzelfde lijstje",
+                    () => void handleShareInvitePress(),
+                  )}
+                  {!isMaster
+                    ? actionRow(
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-[17px]"><rect x="8" y="8" width="12" height="12" rx="2.5" /><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" /></svg>,
+                        duplicateBusy ? "Dupliceren…" : "Lijstje dupliceren",
+                        "Maak een kopie met dezelfde items",
+                        () => void handleDuplicateList(),
+                        { disabled: duplicateBusy },
+                      )
+                    : null}
+                </section>
+                <section className="rounded-[20px] bg-[var(--white)] px-3.5 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+                  {actionRow(
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-[17px]"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" /></svg>,
+                    deleteBusy ? "Bezig…" : "Lijstje verwijderen",
+                    null,
+                    handleDeleteList,
+                    { first: true, danger: true, disabled: deleteBusy },
+                  )}
+                </section>
+              </>
+            ) : (
+              <p className="rounded-[20px] bg-[var(--white)] p-4 text-sm leading-5 text-[var(--text-secondary)] shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+                Alleen de eigenaar kan dit lijstje aanpassen of delen.
+              </p>
+            )}
             <input
               ref={photoInputRef}
               type="file"
@@ -541,76 +652,9 @@ export default function LijstInstellingenPage() {
               tabIndex={-1}
               onChange={handlePhotoChange}
             />
-
-            {/* Landal: soort reis — zelfde slide-in als bij aanmaak */}
-            {isLandalSettingsList ? (
-              <button
-                type="button"
-                onClick={() => setLandalTripSlideOpen(true)}
-                className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-              >
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="text-base font-medium leading-6 text-[var(--text-primary)]">
-                    Soort reis wijzigen
-                  </span>
-                  <span className="text-sm font-normal leading-5 text-[var(--text-secondary)]">
-                    Nu: {currentLandalTrip === "Gezin" ? "Gezin" : "Vrienden"}
-                  </span>
-                </span>
-                <ChevronRightIcon />
-              </button>
-            ) : null}
-
-            {/* Lijstje delen */}
-            <button
-              type="button"
-              onClick={() => void handleShareInvitePress()}
-              className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-            >
-              <span className="flex-1 text-base font-medium leading-6 text-[var(--text-primary)]">
-                Lijstje delen
-              </span>
-              <ChevronRightIcon />
-            </button>
-
-            {/* Lijstje dupliceren */}
-            {!isMaster ? (
-              <button
-                type="button"
-                disabled={duplicateBusy}
-                onClick={() => void handleDuplicateList()}
-                className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus disabled:opacity-50"
-              >
-                <span className="flex-1 text-base font-medium leading-6 text-[var(--text-primary)]">
-                  {duplicateBusy ? "Dupliceren…" : "Lijstje dupliceren"}
-                </span>
-                <ChevronRightIcon />
-              </button>
-            ) : null}
           </div>
-        ) : (
-          <p className="mt-6 text-sm leading-5 text-[var(--text-secondary)]">
-            Alleen de eigenaar kan dit lijstje aanpassen of delen.
-          </p>
-        )}
-
-        {/* Spacer naar onderkant */}
-        <div className="flex-1" />
-      </main>
-
-      {/* Verwijder-knop onderaan */}
-      {isListOwner ? (
-        <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-[calc(24px+env(safe-area-inset-bottom,0px))] pt-4">
-          <button
-            type="button"
-            disabled={deleteBusy}
-            onClick={handleDeleteList}
-            className="w-[320px] rounded-[256px] border border-[var(--error-300)] bg-[var(--white)] px-4 py-[10px] text-base font-medium leading-6 text-[var(--error-600)] transition-colors hover:bg-[var(--error-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus disabled:opacity-50"
-          >
-            {deleteBusy ? "Bezig…" : "Lijstje verwijderen"}
-          </button>
         </div>
-      ) : null}
+      </main>
 
       <ShareListModal
         open={shareModalOpen}
