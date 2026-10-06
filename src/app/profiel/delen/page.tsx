@@ -113,9 +113,21 @@ function PeopleCard({
                   type="button"
                   onClick={() => onSelect(p)}
                   aria-label={`Delen met ${p.name} beheren`}
-                  className="flex w-full flex-col items-center gap-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] motion-safe:active:scale-95"
+                  className="group flex w-full flex-col items-center gap-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] motion-safe:active:scale-95"
                 >
-                  <PersonAvatar name={p.name} url={p.avatarUrl} index={i} />
+                  <span className="relative rounded-full transition-shadow duration-fast [@media(hover:hover)]:group-hover:shadow-[0_0_0_5px_var(--blue-100)]">
+                    <PersonAvatar name={p.name} url={p.avatarUrl} index={i} />
+                    <span
+                      aria-hidden
+                      className="absolute -bottom-0.5 -right-1 flex size-[22px] items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)] shadow-[0_0_0_2.5px_var(--white)]"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="size-3.5">
+                        <circle cx="5.5" cy="12" r="2" />
+                        <circle cx="12" cy="12" r="2" />
+                        <circle cx="18.5" cy="12" r="2" />
+                      </svg>
+                    </span>
+                  </span>
                   <span className="w-full truncate text-center text-[13px] font-semibold text-[var(--text-primary)]">{p.name}</span>
                 </button>
               )}
