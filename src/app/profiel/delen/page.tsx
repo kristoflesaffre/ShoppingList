@@ -660,7 +660,7 @@ export default function SamenDelenPage() {
               collapsed ? "opacity-100" : "opacity-0 motion-safe:translate-y-1",
             )}
           >
-            Samen delen
+            Lijstjes delen
           </p>
           <span className="size-6 shrink-0" aria-hidden />
         </header>
@@ -675,7 +675,7 @@ export default function SamenDelenPage() {
         <div className="flex items-center gap-3 lg:pb-2">
           <PageBackButton href="/profiel" label="Terug naar je profiel" />
           <h1 ref={titleRef} className="text-[30px] font-bold leading-9 tracking-tight text-[var(--text-primary)] lg:text-[34px] lg:leading-10">
-            Samen delen
+            Lijstjes delen
           </h1>
         </div>
 

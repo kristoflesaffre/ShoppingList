@@ -371,7 +371,7 @@ export default function ProfielPage() {
         <ProfileSettingsRow
           bare={bare}
           icon={shareIcon}
-          label="Samen delen"
+          label="Lijstjes delen"
           description={shareDescription}
           onClick={() => router.push("/profiel/delen")}
         />
