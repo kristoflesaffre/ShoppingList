@@ -38,7 +38,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 5 | Lijstjes beheren (overzicht) | `/lijstjes-beheren` → redirect naar 6 | ✅ |
 | 6 | Alle lijstjes | `/lijstjes-beheren/lijstjes` | ✅ |
 | 7 | Alle favorietenlijsten | `/lijstjes-beheren/favorieten` | ✅ |
-| 8 | Nieuw lijstje · kies winkel | `/nieuw-lijstje/selecteer-winkel` | ⬜ |
+| 8 | Nieuwe favorietenlijst · kies winkel | `/nieuw-lijstje/selecteer-winkel` | 🔄 voorstel op canvas |
 | 9 | Nieuw lijstje · kies favorietenlijst | `/nieuw-lijstje/selecteer-master-lijstje` | ⬜ |
 | 10 | Nieuw lijstje · vakantie | `/nieuw-lijstje/vakantie` | ⬜ |
 | 11 | Lijstje · instellingen | `/lijstje/[id]/instellingen` | ⬜ |
