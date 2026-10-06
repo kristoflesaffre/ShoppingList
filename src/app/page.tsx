@@ -4015,125 +4015,74 @@ export default function Home() {
         title="Nieuw lijstje"
         titleId="blank-list-venue-slide-title"
         containerClassName="z-[60]"
-        className="pb-0"
-        bodyClassName="px-[var(--space-4)] pb-[45px] pt-[var(--space-6)]"
+        className="!bg-[var(--bg-app)] pb-0"
+        bodyClassName="px-[var(--space-4)] pb-[34px] pt-[var(--space-2)] md:px-6 md:pb-6"
       >
-        <div className="grid w-full grid-cols-3 gap-[var(--space-4)]">
-          <button
-            type="button"
-            onClick={handleBlankVenuePickSupermarkt}
-            className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
-            )}
-          >
-            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={VENUE_TILE_ICON_SUPERMARKT}
-                alt=""
-                width={48}
-                height={48}
-                className="size-full object-cover"
-              />
+        {/* Canvas «Nieuw lijstje A»: favorieten als snelle start + soorten als witte kaarten met schaduw. */}
+        <div className="flex w-full flex-col gap-4">
+          {masterLists.some((m) => (m.items?.length ?? 0) > 0) ? (
+            <div>
+              <p className="mb-2 text-[13px] font-semibold text-[var(--text-secondary)]">Vanuit je favorieten</p>
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1.5 pt-0.5 [scrollbar-width:none] md:mx-0 md:flex-wrap md:overflow-visible md:px-0 [&::-webkit-scrollbar]:hidden">
+                {masterLists
+                  .filter((m) => (m.items?.length ?? 0) > 0)
+                  .map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        handleCloseBlankVenueStep();
+                        handleStartFromMaster(m.id);
+                      }}
+                      className="flex h-[46px] shrink-0 items-center gap-2 rounded-pill bg-[var(--white)] pl-1.5 pr-3 shadow-[0_1px_2px_rgba(16,17,48,0.06),0_6px_16px_-8px_rgba(16,17,48,0.18)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                      aria-label={`Nieuw lijstje uit favorieten ${m.name}`}
+                    >
+                      <span className="flex size-[34px] items-center justify-center rounded-full bg-[var(--gray-25)]">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- winkellogo */}
+                        <img src={m.masterIcon || m.icon} alt="" width={24} height={24} className="size-6 object-contain" />
+                      </span>
+                      <span className="text-sm font-semibold text-[var(--text-primary)]">{m.name}</span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-3.5 text-[var(--blue-500)]">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                    </button>
+                  ))}
+              </div>
             </div>
-            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
-              Supermarkt
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={handleBlankVenuePickFrituur}
-            className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
-            )}
-          >
-            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={VENUE_TILE_ICON_FRITUUR}
-                alt=""
-                width={48}
-                height={48}
-                className="size-full object-cover"
-              />
+          ) : null}
+          <div>
+            {masterLists.some((m) => (m.items?.length ?? 0) > 0) ? (
+              <p className="mb-2 text-[13px] font-semibold text-[var(--text-secondary)]">Of kies een soort lijstje</p>
+            ) : null}
+            <div className="flex flex-col gap-2.5 md:grid md:grid-cols-3 md:gap-3">
+              {(
+                [
+                  ["Supermarkt", "Boodschappen voor een dag of de week", VENUE_TILE_ICON_SUPERMARKT, handleBlankVenuePickSupermarkt],
+                  ["Frituur", "Iedereen kiest, jij bestelt", VENUE_TILE_ICON_FRITUUR, handleBlankVenuePickFrituur],
+                  ["Café", "Rondjes bijhouden met vrienden", VENUE_TILE_ICON_CAFE, handleBlankVenuePickCafe],
+                  ["Landal", "Voor je verblijf in een Landal-park", VENUE_TILE_ICON_LANDAL, handleBlankVenuePickLandal],
+                  ["Vakantie", "Paklijst op maat voor je reis", VENUE_TILE_ICON_VAKANTIE, handleBlankVenuePickVakantie],
+                ] as const
+              ).map(([title, description, icon, onPick]) => (
+                <button
+                  key={title}
+                  type="button"
+                  onClick={onPick}
+                  className="flex items-center gap-3 rounded-[18px] bg-[var(--white)] py-2.5 pl-2.5 pr-3.5 text-left shadow-[0_1px_2px_rgba(16,17,48,0.06),0_6px_16px_-8px_rgba(16,17,48,0.18)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] md:flex-col md:gap-1.5 md:px-3 md:pb-4 md:pt-[18px] md:text-center"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
+                  <img src={icon} alt="" width={56} height={56} className="size-11 shrink-0 object-contain md:size-14" />
+                  <span className="min-w-0 flex-1 leading-[19px] md:mt-1">
+                    <span className="block text-[15.5px] font-semibold text-[var(--text-primary)]">{title}</span>
+                    <span className="block text-[13px] text-[var(--text-secondary)] md:text-[12.5px] md:leading-[17px]">{description}</span>
+                  </span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px] shrink-0 text-[var(--gray-300)] md:hidden">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </button>
+              ))}
             </div>
-            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
-              Frituur
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={handleBlankVenuePickCafe}
-            className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
-            )}
-          >
-            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={VENUE_TILE_ICON_CAFE}
-                alt=""
-                width={48}
-                height={48}
-                className="size-full object-cover"
-              />
-            </div>
-            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
-              Café
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={handleBlankVenuePickLandal}
-            className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
-            )}
-          >
-            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={VENUE_TILE_ICON_LANDAL}
-                alt=""
-                width={48}
-                height={48}
-                className="size-full object-cover"
-              />
-            </div>
-            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
-              Landal
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={handleBlankVenuePickVakantie}
-            className={cn(
-              "flex min-w-0 flex-col items-center gap-[var(--space-2)] rounded-lg bg-[var(--white)] p-[var(--space-3)] text-center shadow-card transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-              "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
-            )}
-          >
-            <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={VENUE_TILE_ICON_VAKANTIE}
-                alt=""
-                width={48}
-                height={48}
-                className="size-full object-cover"
-              />
-            </div>
-            <p className="w-full truncate text-sm font-medium leading-20 tracking-normal text-[var(--text-primary)]">
-              Vakantie
-            </p>
-          </button>
+          </div>
         </div>
       </SlideInModal>
 
