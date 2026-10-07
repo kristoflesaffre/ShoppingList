@@ -196,6 +196,52 @@ function RecipePlateCard({ recipe }: { recipe: SavedRecipe }) {
   );
 }
 
+/** Canvas «Recepten leeg · A»: waaier van receptkaartjes, zelfde kanteling als de lege klantenkaarten. */
+const EMPTY_STATE_FAN = [
+  { name: "Rucolasoep", photo: "/images/recepten-leeg/rucolasoep_240.webp", category: "soep", count: 8, rotate: -12, dx: -74, dy: -6, z: 0 },
+  { name: "Paprikasoep", photo: "/images/recepten-leeg/paprikasoep_240.webp", category: "soep", count: 8, rotate: 10, dx: 74, dy: 4, z: 1 },
+  { name: "Spaghetti", photo: "/images/recepten-leeg/spaghetti_240.webp", category: "hoofdgerecht", count: 10, rotate: -2, dx: 0, dy: 10, z: 2 },
+] as const;
+
+function EmptyStateRecipeCard({ name, photo, category, count }: { name: string; photo: string; category: string; count: number }) {
+  const tint = recipeTintColors(useRecipeTint(photo), useIsDarkTheme());
+  const dot = RECIPE_CATEGORIES.find((c) => c.id === category)?.dot ?? null;
+  return (
+    <span
+      style={{ backgroundImage: `linear-gradient(180deg, ${tint.top} 0%, ${tint.mid} 55%, transparent 100%)` }}
+      className="flex w-[128px] flex-col gap-2.5 rounded-[18px] bg-[var(--white)] px-[9px] pb-3 pt-3.5 text-center shadow-[0_18px_34px_-18px_rgba(16,17,48,0.4),inset_0_0_0_1px_var(--border-subtle)]"
+    >
+      <span className="mx-auto flex aspect-square w-[84%] items-center justify-center overflow-hidden rounded-full">
+        {/* eslint-disable-next-line @next/next/no-img-element -- decoratieve gerechtfoto */}
+        <img src={photo} alt="" width={108} height={108} decoding="async" className="size-[108%] max-w-none object-cover" />
+      </span>
+      <span className="flex flex-col items-center">
+        <span className="text-[13px] font-semibold leading-[18px] text-text-primary">{name}</span>
+        <span className="flex items-center gap-[5px] pt-[3px] text-[11px] leading-4 text-[var(--gray-400)]">
+          {dot ? <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: dot }} /> : null}
+          {count} ingrediënten
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function EmptyStateRecipeFan() {
+  return (
+    <div aria-hidden className="relative mb-2 h-[200px] w-[300px] shrink-0">
+      {EMPTY_STATE_FAN.map((c) => (
+        <span
+          key={c.name}
+          className="absolute left-1/2 top-1/2 block"
+          style={{ transform: `translate(-50%, -50%) translate(${c.dx}px, ${c.dy}px) rotate(${c.rotate}deg)`, zIndex: c.z }}
+        >
+          <EmptyStateRecipeCard name={c.name} photo={c.photo} category={c.category} count={c.count} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Eén categorie als rij (canvas «Recepten 2»): mobiel een swipebare rij met «Alles»,
  * desktop zes kaarten naast elkaar met pijlknoppen.
@@ -616,17 +662,9 @@ export default function ReceptenPage() {
               )}
             </>
           ) : (
-            /* Figma 1199:11239 — Mijn recepten empty state */
+            /* Canvas «Recepten leeg · A» — waaier van receptkaartjes */
             <div className="flex flex-1 flex-col items-center justify-center gap-6 py-12">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/ui/recept_320.webp"
-                alt=""
-                width={96}
-                height={96}
-                className="size-24 shrink-0 object-cover"
-                decoding="async"
-              />
+              <EmptyStateRecipeFan />
               <p className="max-w-[358px] text-center text-base font-medium leading-6 tracking-normal text-[var(--text-tertiary)]">
                 Je hebt nog geen recepten
               </p>
