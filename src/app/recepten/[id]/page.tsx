@@ -718,7 +718,6 @@ export default function ReceptDetailPage() {
         onSubmit={editingIngredientId ? handleEditIngredient : handleAddIngredientFromFab}
         titleId="recept-detail-ingredient-form"
         containerClassName="z-[50]"
-        slideClassName="h-[calc(100dvh-48px)]"
       />
 
       <PhotoSourceSlideIn

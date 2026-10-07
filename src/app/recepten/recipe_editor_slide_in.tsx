@@ -4,25 +4,19 @@ import * as React from "react";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
-import { InputField } from "@/components/ui/input_field";
 import { Stepper } from "@/components/ui/stepper";
 import { Button } from "@/components/ui/button";
-import { MiniButton } from "@/components/ui/mini_button";
-import { TabGroup } from "@/components/ui/tab_group";
-import { TabElement } from "@/components/ui/tab_element";
 import { RecipeIngredientSortableList } from "@/app/recepten/recipe_ingredient_sortable_list";
 import {
   RecipeIngredientFormSlideIn,
   type RecipeIngredientFormDraft,
 } from "@/components/recipe_ingredient_form_slide_in";
-import { SelectTile } from "@/components/ui/select_tile";
 import { RecipeLinkSlideIn, type ExtractedRecipeLinkData } from "@/components/recipe_link_slide_in";
 import { RecipePhotoUploadSlideIn, type ExtractedRecipeData } from "@/components/recipe_photo_upload_slide_in";
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
-import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { useNormalizeIngredientName } from "@/lib/ingredient-photos";
 import { normalizeQuantity } from "@/lib/recipe_ingredient_quantity";
 
@@ -62,8 +56,6 @@ export function RecipeEditorSlideIn({
     string | null
   >(null);
   const [aiLoading, setAiLoading] = React.useState(false);
-  const [isEditingSteps, setIsEditingSteps] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<"manueel" | "ai">("manueel");
   const [aiError, setAiError] = React.useState<string | null>(null);
   const [linkSlideOpen, setLinkSlideOpen] = React.useState(false);
   const [photoUploadSlideOpen, setPhotoUploadSlideOpen] = React.useState(false);
@@ -73,7 +65,6 @@ export function RecipeEditorSlideIn({
     if (!open) return;
     setAiLoading(false);
     setAiError(null);
-    setActiveTab("manueel");
     setLinkSlideOpen(false);
     setPhotoUploadSlideOpen(false);
     if (recipeToEdit) {
@@ -277,7 +268,6 @@ export function RecipeEditorSlideIn({
 
   const handlePhotoUploadBack = React.useCallback(() => {
     setPhotoUploadSlideOpen(false);
-    setActiveTab("ai");
   }, []);
 
   const closePhotoUploadSlide = React.useCallback(() => {
@@ -298,7 +288,6 @@ export function RecipeEditorSlideIn({
           })),
         );
       }
-      setActiveTab("manueel");
     },
     [recipeName, normalizeIngredientName],
   );
@@ -321,7 +310,6 @@ export function RecipeEditorSlideIn({
           })),
         );
       }
-      setActiveTab("manueel");
     },
     [recipeName, normalizeIngredientName],
   );
@@ -330,7 +318,151 @@ export function RecipeEditorSlideIn({
     ? ingredients.find((i) => i.id === editingIngredientId) ?? null
     : null;
   const hasValidRecipeLink = isValidHttpUrl(recipeLink);
-  const isAiTab = activeTab === "ai";
+
+  const isNew = recipeToEdit == null;
+  const filledSteps = recipeStepsArray.filter((st) => st.trim()).length;
+
+  const basisCard = (
+    <div className="overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_0_0_1px_var(--border-subtle)]">
+      <label className="block px-4 pb-3 pt-3.5">
+        <span className="block text-xs font-semibold text-[var(--text-tertiary)]">Naam recept</span>
+        <input
+          type="text"
+          value={recipeName}
+          onChange={(e) => setRecipeName(e.target.value)}
+          placeholder="Bv. lasagne van oma"
+          className="mt-0.5 w-full bg-transparent text-[19px] font-bold tracking-[-0.01em] text-[var(--text-primary)] placeholder:font-semibold placeholder:text-[var(--text-placeholder)] focus-visible:outline-none"
+        />
+      </label>
+      <div className="flex items-center gap-3 border-t border-[var(--border-subtle)] py-2.5 pl-3.5 pr-2.5">
+        <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-[var(--blue-50)] text-[var(--blue-500)]">
+          <PeopleIcon />
+        </span>
+        <span id="recept-personen" className="flex-1 text-[15px] font-semibold text-[var(--text-primary)]">
+          Personen
+        </span>
+        <div className="w-[148px] shrink-0" role="group" aria-labelledby="recept-personen">
+          <Stepper value={recipePersons} onValueChange={setRecipePersons} min={1} />
+        </div>
+      </div>
+    </div>
+  );
+
+  const categorieSection = (
+    <section>
+      <SectionTitle>Categorie</SectionTitle>
+      <FilterChipRow wrap ariaLabel="Categorie">
+        {RECIPE_CATEGORIES.map((cat) => {
+          const isActive = recipeCategory === cat.id;
+          return (
+            <FilterChip
+              key={cat.id}
+              selected={isActive}
+              dotColor={cat.dot}
+              onClick={() => setRecipeCategory(isActive ? null : cat.id)}
+              className={cn(!isActive && "!bg-[var(--white)] !text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-subtle)] [@media(hover:hover)]:hover:!bg-[var(--gray-25)]")}
+            >
+              {cat.label}
+            </FilterChip>
+          );
+        })}
+      </FilterChipRow>
+    </section>
+  );
+
+  const bronSection = (
+    <section>
+      <SectionTitle>Bron</SectionTitle>
+      <div className="flex items-center gap-2.5 rounded-[20px] bg-[var(--white)] py-2 pl-3.5 pr-2 shadow-[0_0_0_1px_var(--border-subtle)] focus-within:shadow-[0_0_0_1.5px_var(--blue-300)]">
+        <span aria-hidden className="flex shrink-0 text-[var(--text-secondary)]">
+          <LinkIcon className="size-[18px]" />
+        </span>
+        <input
+          ref={recipeLinkInputRef}
+          type="url"
+          inputMode="url"
+          value={recipeLink}
+          onChange={(e) => setRecipeLink(e.target.value)}
+          placeholder="Plak een link naar het recept"
+          aria-label="Link recept"
+          className="h-9 min-w-0 flex-1 truncate bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] focus-visible:outline-none"
+        />
+        {hasValidRecipeLink ? (
+          <button
+            type="button"
+            onClick={handleGebruikAI}
+            disabled={aiLoading}
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-pill bg-[var(--blue-50)] px-3 text-[13px] font-bold text-[var(--blue-500)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-60 [@media(hover:hover)]:hover:bg-[var(--blue-100)]"
+          >
+            <SparkIcon className="size-4" />
+            {aiLoading ? "Bezig…" : "Vul aan met AI"}
+          </button>
+        ) : null}
+      </div>
+      {aiError ? <p className="px-1 pt-1.5 text-xs text-[var(--error-600)]">{aiError}</p> : null}
+    </section>
+  );
+
+  const ingredientenSection = (
+    <section>
+      <SectionTitle count={ingredients.length > 0 ? String(ingredients.length) : undefined}>Ingrediënten</SectionTitle>
+      <div className="overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_0_0_1px_var(--border-subtle)]">
+        {ingredients.length > 0 ? (
+          <RecipeIngredientSortableList
+            variant="rows"
+            ingredients={ingredients}
+            onDragEndReorder={(reordered) => setIngredients(reordered)}
+            onDelete={handleDeleteIngredient}
+            onEdit={openIngredientFormEdit}
+          />
+        ) : null}
+        <AddRow first={ingredients.length === 0} onClick={openIngredientFormAdd}>
+          Ingrediënt toevoegen
+        </AddRow>
+      </div>
+    </section>
+  );
+
+  const bereidingSection = (
+    <section>
+      <SectionTitle count={filledSteps > 0 ? `${filledSteps} ${filledSteps === 1 ? "stap" : "stappen"}` : undefined}>
+        Bereiding
+      </SectionTitle>
+      <div className="overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_0_0_1px_var(--border-subtle)]">
+        {recipeStepsArray.map((step, i) => (
+          <div key={i} className="group/stap flex items-start gap-3 border-b border-[var(--border-subtle)] py-3 pl-3.5 pr-2">
+            <span
+              aria-hidden
+              className="mt-px flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[13px] font-extrabold text-[var(--blue-500)]"
+            >
+              {i + 1}
+            </span>
+            <AutoGrowTextarea
+              value={step}
+              onChange={(next) => {
+                const updated = [...recipeStepsArray];
+                updated[i] = next;
+                setRecipeStepsArray(updated);
+              }}
+              placeholder="Beschrijf de stap"
+              aria-label={`Stap ${i + 1}`}
+            />
+            <button
+              type="button"
+              onClick={() => setRecipeStepsArray((prev) => prev.filter((_, idx) => idx !== i))}
+              aria-label={`Stap ${i + 1} verwijderen`}
+              className="flex size-7 shrink-0 items-center justify-center rounded-full text-[var(--text-tertiary)] opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] group-focus-within/stap:opacity-100 [@media(hover:hover)]:group-hover/stap:opacity-100 [@media(hover:hover)]:hover:text-[var(--error-600)]"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+        ))}
+        <AddRow first onClick={() => setRecipeStepsArray((prev) => [...prev, ""])}>
+          Stap toevoegen
+        </AddRow>
+      </div>
+    </section>
+  );
 
   return (
   <>
@@ -340,235 +472,34 @@ export function RecipeEditorSlideIn({
       title={recipeToEdit ? "Recept wijzigen" : "Nieuw recept"}
       disableEscapeClose={ingredientSlideOpen || linkSlideOpen || photoUploadSlideOpen}
       bodyFullWidth
-      className="h-[calc(100dvh-48px)]"
+      className="h-[calc(100dvh-48px)] !bg-[var(--bg-app)] md:h-[min(860px,calc(100dvh-80px))]"
+      bodyClassName="!pt-1"
       size="wide"
+      cancelLabel={null}
       footer={
-        !isAiTab ? (
-          <Button
-            type="submit"
-            form={RECIPE_EDITOR_FORM_ID}
-            variant="primary"
-            disabled={!recipeName.trim()}
-          >
-            Bewaren
-          </Button>
-        ) : undefined
+        <Button type="submit" form={RECIPE_EDITOR_FORM_ID} variant="primary" disabled={!recipeName.trim()}>
+          Bewaren
+        </Button>
       }
     >
-      <div className="mx-auto flex w-full max-w-[768px] flex-col gap-6 px-4">
-        <TabGroup
-          value={activeTab}
-          onValueChange={(v) => setActiveTab(v as "manueel" | "ai")}
-          aria-label="Recept invoermethode"
-        >
-          <TabElement value="manueel">Manueel ingeven</TabElement>
-          <TabElement value="ai">Toevoegen met AI</TabElement>
-        </TabGroup>
-
-        {isAiTab ? (
-          <div className="flex flex-col gap-4">
-            <p className="text-base font-light leading-24 tracking-normal text-[var(--text-primary)]">
-              Laat AI je recept voor je invullen. Selecteer hieronder de methode die je wilt gebruiken.
-            </p>
-            <button type="button" onClick={handlePickPhotosForAi} className="w-full bg-transparent p-0 text-left">
-              <SelectTile
-                title="Foto's opladen"
-                subtitle="Selecteer één of meerdere foto's"
-                icon={<AiOptionIcon maskUrl="/icons/image.svg" ariaLabel="Foto opladen" />}
-              />
-            </button>
-            <button type="button" onClick={handleUseLinkForAi} className="w-full bg-transparent p-0 text-left">
-              <SelectTile
-                title="Een link plakken"
-                subtitle="Plak een link van een website"
-                icon={<AiOptionIcon maskUrl="/icons/link.svg" ariaLabel="Link plakken" />}
-              />
-            </button>
-          </div>
-        ) : (
-          <form
-            id={RECIPE_EDITOR_FORM_ID}
-            className="flex flex-col gap-6"
-            onSubmit={handleSubmit}
-          >
-        <InputField
-          label="Naam recept"
-          placeholder="Naam recept"
-          value={recipeName}
-          onChange={(e) => setRecipeName(e.target.value)}
-        />
-        <Stepper
-          label="Aantal personen"
-          value={recipePersons}
-          onValueChange={setRecipePersons}
-          min={1}
-        />
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-            Categorie
-          </label>
-          <FilterChipRow wrap ariaLabel="Categorie">
-            {RECIPE_CATEGORIES.map((cat) => {
-              const isActive = recipeCategory === cat.id;
-              return (
-                <FilterChip key={cat.id} selected={isActive} dotColor={cat.dot} onClick={() => setRecipeCategory(isActive ? null : cat.id)}>
-                  {cat.label}
-                </FilterChip>
-              );
-            })}
-          </FilterChipRow>
+      {/* Canvas «17 · Recept wijzigen — voorstel»: kaarten op grijs, AI bovenaan bij een nieuw recept. */}
+      <form
+        id={RECIPE_EDITOR_FORM_ID}
+        onSubmit={handleSubmit}
+        className="mx-auto flex w-full max-w-[816px] flex-col gap-[22px] px-4 md:grid md:grid-cols-2 md:items-start md:gap-6 md:px-6"
+      >
+        <div className="flex flex-col gap-[22px]">
+          {isNew ? <AiFillBanner onPhoto={handlePickPhotosForAi} onLink={handleUseLinkForAi} /> : null}
+          {basisCard}
+          {categorieSection}
+          <div className="hidden md:block">{bronSection}</div>
         </div>
-        <div className="flex flex-col gap-2">
-          <InputField
-            label="Link recept"
-            placeholder="http://www.recept.com"
-            value={recipeLink}
-            ref={recipeLinkInputRef}
-            onChange={(e) => setRecipeLink(e.target.value)}
-          />
-          {hasValidRecipeLink ? (
-            <div className="flex flex-col items-end gap-1">
-              <MiniButton
-                type="button"
-                variant="secondary"
-                onClick={handleGebruikAI}
-                disabled={aiLoading}
-              >
-                {aiLoading ? "Bezig…" : "Gebruik AI"}
-              </MiniButton>
-              {aiError ? (
-                <p className="text-xs text-[var(--error-400)]">
-                  {aiError}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+        <div className="flex flex-col gap-[22px]">
+          {ingredientenSection}
+          {bereidingSection}
+          <div className="md:hidden">{bronSection}</div>
         </div>
-
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <label className="flex-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-              Bereidingsstappen
-            </label>
-            <button
-              type="button"
-              onClick={() => setIsEditingSteps((v) => !v)}
-              className="text-sm font-normal leading-20 tracking-normal text-[var(--blue-500)] underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              {isEditingSteps ? "Gereed" : "Wijzigen"}
-            </button>
-          </div>
-          {recipeStepsArray.map((step, i) => (
-            <div key={i} className="flex items-center gap-4">
-              <span className="w-4 shrink-0 text-2xl font-bold leading-24 tracking-normal text-[var(--text-primary)]">
-                {i + 1}
-              </span>
-              <div className="flex h-12 flex-1 items-center rounded-lg border border-[var(--border-default)] bg-[var(--white)] pl-4 pr-3 transition-colors focus-within:border-[var(--border-focus)]">
-                <input
-                  type="text"
-                  value={step}
-                  onChange={(e) => {
-                    const updated = [...recipeStepsArray];
-                    updated[i] = e.target.value;
-                    setRecipeStepsArray(updated);
-                  }}
-                  placeholder="Beschrijf de stap"
-                  className="flex-1 bg-transparent text-base font-light leading-24 tracking-normal text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] focus-visible:outline-none"
-                />
-                {isEditingSteps && (
-                  <>
-                    <div className="mx-3 h-6 w-px shrink-0 bg-[var(--border-default)]" />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setRecipeStepsArray((prev) => prev.filter((_, idx) => idx !== i))
-                      }
-                      aria-label="Stap verwijderen"
-                      className="flex size-6 shrink-0 items-center justify-center text-[var(--error-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      <BinIcon />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-          <div className="flex items-center gap-4">
-            <span className="w-4 shrink-0 text-2xl font-bold leading-24 tracking-normal text-[var(--gray-100)]">
-              {recipeStepsArray.length + 1}
-            </span>
-            <button
-              type="button"
-              onClick={() => setRecipeStepsArray((prev) => [...prev, ""])}
-              className="flex h-12 flex-1 items-center justify-between rounded-lg border border-dashed border-[var(--blue-200)] pl-4 pr-3 py-3 text-[var(--blue-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <span className="text-base font-normal leading-24 tracking-normal">
-                Stap toevoegen
-              </span>
-              <PlusCircleMaskIcon
-                className="size-[19px] shrink-0"
-                colorClassName="bg-[var(--blue-300,#9599f7)]"
-              />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-            Ingrediënten
-          </label>
-          {ingredients.length > 0 && (
-            <RecipeIngredientSortableList
-              ingredients={ingredients}
-              onDragEndReorder={(reordered) => setIngredients(reordered)}
-              onDelete={handleDeleteIngredient}
-              onEdit={openIngredientFormEdit}
-            />
-          )}
-          <button
-            type="button"
-            onClick={openIngredientFormAdd}
-            className="flex h-12 w-full items-center justify-between rounded-lg border border-dashed border-[var(--blue-200)] pl-4 pr-3 py-3 text-[var(--blue-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-          >
-            <span className="text-base font-normal leading-24 tracking-normal">
-              Ingrediënt toevoegen
-            </span>
-            <PlusCircleMaskIcon
-              className="size-[19px] shrink-0"
-              colorClassName="bg-[var(--blue-300,#9599f7)]"
-            />
-          </button>
-        </div>
-
-        <label className="flex cursor-pointer items-start gap-2">
-          <div
-            className={cn(
-              "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
-              canBeFrozen
-                ? "border-[var(--blue-500)] bg-[var(--blue-500)]"
-                : "border-[var(--blue-300,#9599f7)] bg-white",
-            )}
-            aria-hidden="true"
-          >
-            {canBeFrozen && (
-              <svg width="14" height="11" viewBox="0 0 14 11" fill="none">
-                <path d="M1.5 5.5L5.5 9.5L12.5 1.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </div>
-          <input
-            type="checkbox"
-            checked={canBeFrozen}
-            onChange={(e) => setCanBeFrozen(e.target.checked)}
-            className="sr-only"
-          />
-          <span className="text-base font-medium leading-6 tracking-normal text-[var(--text-primary)]">
-            Ik maak van dit recept meerdere porties om in te vriezen
-          </span>
-        </label>
-          </form>
-        )}
-      </div>
+      </form>
     </SlideInModal>
     <RecipeIngredientFormSlideIn
       open={ingredientSlideOpen}
@@ -577,7 +508,7 @@ export function RecipeEditorSlideIn({
       onSubmit={handleIngredientFormSubmit}
       titleId="recipe-editor-ingredient-form-slide-title"
       containerClassName="z-[60]"
-      slideClassName="h-[calc(100dvh-48px)]"
+      onDelete={handleDeleteIngredient}
     />
     <RecipeLinkSlideIn
       open={linkSlideOpen}
@@ -595,30 +526,123 @@ export function RecipeEditorSlideIn({
   );
 }
 
-function AiOptionIcon({ maskUrl, ariaLabel }: { maskUrl: string; ariaLabel: string }) {
+function SectionTitle({ children, count }: { children: React.ReactNode; count?: string }) {
   return (
-    <span
-      role="img"
-      aria-label={ariaLabel}
-      className="inline-block size-10 shrink-0 bg-[var(--action-primary)]"
-      style={{
-        WebkitMaskImage: `url("${maskUrl}")`,
-        maskImage: `url("${maskUrl}")`,
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
+    <h3 className="px-1 pb-2 text-[13px] font-bold tracking-[0.01em] text-[var(--text-secondary)]">
+      {children}
+      {count ? <span className="font-medium text-[var(--text-tertiary)]"> · {count}</span> : null}
+    </h3>
+  );
+}
+
+function AddRow({ children, first, onClick }: { children: React.ReactNode; first?: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-2.5 px-3.5 py-3 text-left text-[15px] font-semibold text-[var(--blue-500)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--blue-25)]",
+        !first && "border-t border-[var(--border-subtle)]",
+      )}
+    >
+      <span aria-hidden className="flex size-[26px] items-center justify-center rounded-full bg-[var(--blue-50)]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" className="size-4">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </span>
+      {children}
+    </button>
+  );
+}
+
+/** Nieuw recept: AI vult naam, ingrediënten en stappen in vanuit foto's of een link. */
+function AiFillBanner({ onPhoto, onLink }: { onPhoto: () => void; onLink: () => void }) {
+  const chip =
+    "inline-flex h-[34px] items-center gap-1.5 rounded-pill bg-[var(--white)] px-3.5 text-[13.5px] font-bold text-[var(--blue-500)] shadow-[0_1px_3px_rgba(79,85,241,0.18)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
+  return (
+    <div className="rounded-[20px] bg-[linear-gradient(135deg,#eef0ff_0%,#f6efff_100%)] py-3.5 pl-4 pr-3.5 shadow-[inset_0_0_0_1px_var(--blue-100)] dark:bg-[var(--blue-25)]">
+      <p className="flex items-center gap-2 text-[15px] font-bold text-[var(--blue-500)]">
+        <SparkIcon className="size-4" />
+        Snel invullen met AI
+      </p>
+      <p className="mb-3 mt-0.5 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
+        Wij halen naam, ingrediënten en stappen uit je foto of link.
+      </p>
+      <div className="flex gap-2">
+        <button type="button" onClick={onPhoto} className={chip}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+            <path d="M4 8h3l2-2.5h6L17 8h3v11H4z" />
+            <circle cx="12" cy="13" r="3.5" />
+          </svg>
+          Foto
+        </button>
+        <button type="button" onClick={onLink} className={chip}>
+          <LinkIcon className="size-4" />
+          Link
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Tekstvak dat meegroeit met de inhoud (bereidingsstap over meerdere regels). */
+function AutoGrowTextarea({
+  value,
+  onChange,
+  ...props
+}: { value: string; onChange: (next: string) => void } & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange">) {
+  const ref = React.useRef<HTMLTextAreaElement>(null);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="min-h-[26px] flex-1 resize-none overflow-hidden bg-transparent pt-[3px] text-[14.5px] leading-[21px] text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] focus-visible:outline-none"
+      {...props}
     />
   );
 }
 
-function BinIcon() {
+function PeopleIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M18.938 9.5933V19.2223C18.938 19.7893 18.717 20.3243 18.317 20.7253C17.916 21.1253 17.381 21.3463 16.814 21.3463H7.18595C6.61795 21.3463 6.08395 21.1253 5.68395 20.7253C5.28295 20.3233 5.06095 19.7893 5.06095 19.2223V9.5933C5.06095 9.3063 5.29395 9.0733 5.58095 9.0733C5.86795 9.0733 6.10095 9.3063 6.10095 9.5933V19.2223C6.10095 19.5073 6.21695 19.7873 6.41895 19.9893C6.62395 20.1943 6.89595 20.3073 7.18595 20.3073H16.815C17.105 20.3073 17.377 20.1943 17.582 19.9893C17.787 19.7853 17.9 19.5123 17.9 19.2223V9.5933C17.9 9.3063 18.132 9.0733 18.42 9.0733C18.708 9.0733 18.938 9.3063 18.938 9.5933ZM21.346 6.3843C21.346 6.6713 21.114 6.9043 20.826 6.9043H3.17295C2.88595 6.9043 2.65295 6.6713 2.65295 6.3843C2.65295 6.0973 2.88595 5.8643 3.17295 5.8643H8.26995V3.1743C8.26995 2.8873 8.50295 2.6543 8.78995 2.6543H15.209C15.496 2.6543 15.729 2.8873 15.729 3.1743V5.8643H20.826C21.113 5.8643 21.346 6.0973 21.346 6.3843ZM9.31095 5.8643H14.691V3.6943H9.31095V5.8643ZM14.659 16.8143V12.0003C14.659 11.7133 14.427 11.4803 14.139 11.4803C13.851 11.4803 13.619 11.7133 13.619 12.0003V16.8143C13.619 17.1013 13.851 17.3343 14.139 17.3343C14.427 17.3343 14.659 17.1023 14.659 16.8143ZM10.38 16.8143V12.0003C10.38 11.7133 10.147 11.4803 9.85995 11.4803C9.57295 11.4803 9.33995 11.7133 9.33995 12.0003V16.8143C9.33995 17.1013 9.57295 17.3343 9.85995 17.3343C10.147 17.3343 10.38 17.1023 10.38 16.8143Z" fill="currentColor"/>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M15.5 14.2A4.5 4.5 0 0 1 21 18.5" />
+    </svg>
+  );
+}
+
+function LinkIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />
+      <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+    </svg>
+  );
+}
+
+function SparkIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />
+      <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="size-4">
+      <path d="M6 6l12 12M18 6 6 18" />
     </svg>
   );
 }
