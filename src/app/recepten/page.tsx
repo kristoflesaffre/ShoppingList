@@ -40,6 +40,7 @@ import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
+import { EmptyStateFan } from "@/components/empty_state_fan";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 /** Snapshot voor Snackbar-undo na verwijderen (zelfde ids als InstantDB). */
@@ -198,9 +199,9 @@ function RecipePlateCard({ recipe }: { recipe: SavedRecipe }) {
 
 /** Canvas «Recepten leeg · A»: waaier van receptkaartjes, zelfde kanteling als de lege klantenkaarten. */
 const EMPTY_STATE_FAN = [
-  { name: "Rucolasoep", photo: "/images/recepten-leeg/rucolasoep_240.webp", category: "soep", count: 8, rotate: -12, dx: -74, dy: -6, z: 0 },
-  { name: "Paprikasoep", photo: "/images/recepten-leeg/paprikasoep_240.webp", category: "soep", count: 8, rotate: 10, dx: 74, dy: 4, z: 1 },
-  { name: "Spaghetti", photo: "/images/recepten-leeg/spaghetti_240.webp", category: "hoofdgerecht", count: 10, rotate: -2, dx: 0, dy: 10, z: 2 },
+  { name: "Rucolasoep", photo: "/images/recepten-leeg/rucolasoep_240.webp", category: "soep", count: 8, rotate: -12, dx: -74, dy: -6 },
+  { name: "Paprikasoep", photo: "/images/recepten-leeg/paprikasoep_240.webp", category: "soep", count: 8, rotate: 10, dx: 74, dy: 4 },
+  { name: "Spaghetti", photo: "/images/recepten-leeg/spaghetti_240.webp", category: "hoofdgerecht", count: 10, rotate: -2, dx: 0, dy: 10 },
 ] as const;
 
 function EmptyStateRecipeCard({ name, photo, category, count }: { name: string; photo: string; category: string; count: number }) {
@@ -228,17 +229,16 @@ function EmptyStateRecipeCard({ name, photo, category, count }: { name: string; 
 
 function EmptyStateRecipeFan() {
   return (
-    <div aria-hidden className="relative mb-2 h-[200px] w-[300px] shrink-0">
-      {EMPTY_STATE_FAN.map((c) => (
-        <span
-          key={c.name}
-          className="absolute left-1/2 top-1/2 block"
-          style={{ transform: `translate(-50%, -50%) translate(${c.dx}px, ${c.dy}px) rotate(${c.rotate}deg)`, zIndex: c.z }}
-        >
-          <EmptyStateRecipeCard name={c.name} photo={c.photo} category={c.category} count={c.count} />
-        </span>
-      ))}
-    </div>
+    <EmptyStateFan
+      className="mb-2 h-[200px] w-[300px]"
+      items={EMPTY_STATE_FAN.map((c) => ({
+        key: c.name,
+        dx: c.dx,
+        dy: c.dy,
+        rotate: c.rotate,
+        node: <EmptyStateRecipeCard name={c.name} photo={c.photo} category={c.category} count={c.count} />,
+      }))}
+    />
   );
 }
 

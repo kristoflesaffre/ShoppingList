@@ -16,6 +16,7 @@ import { MiniButton } from "@/components/ui/mini_button";
 import { LoyaltyCardGrid, LoyaltyCardViewer, LoyaltyWallet } from "@/components/loyalty_wallet";
 import { LoyaltyCardEditorSlideIn } from "@/components/loyalty_card_editor_slide_in";
 import { LoyaltyMiniCard } from "@/components/loyalty_mini_card";
+import { EmptyStateFan } from "@/components/empty_state_fan";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { Snackbar } from "@/components/ui/snackbar";
@@ -385,9 +386,9 @@ function ConfirmDeleteDialog({
 
 /** Lege staat: waaier van drie minikaarten (achteraan → vooraan). */
 const EMPTY_STATE_FAN = [
-  { slug: "lidl", rotate: -12, dx: -60, dy: -18, z: 0 },
-  { slug: "delhaize", rotate: 10, dx: 60, dy: -8, z: 1 },
-  { slug: "colruyt", rotate: -2, dx: 0, dy: 14, z: 2 },
+  { slug: "lidl", rotate: -12, dx: -60, dy: -18 },
+  { slug: "delhaize", rotate: 10, dx: 60, dy: -8 },
+  { slug: "colruyt", rotate: -2, dx: 0, dy: 14 },
 ].flatMap((c) => {
   const store = MASTER_STORE_OPTIONS.find((s) => s.slug === c.slug);
   return store ? [{ ...c, label: store.label, logoSrc: store.logoSrc }] : [];
@@ -692,20 +693,20 @@ export default function KlantenKaartenPage() {
             >
               <div className="flex w-full max-w-[358px] flex-col items-center gap-0 text-center">
                 {/* Canvas «14 · leuker B · Portemonnee»: waaier van drie minikaarten. */}
-                <div aria-hidden className="relative mb-4 h-[150px] w-[300px] shrink-0">
-                  {EMPTY_STATE_FAN.map((c) => (
-                    <span
-                      key={c.slug}
-                      className="absolute left-1/2 top-1/2 block w-[186px]"
-                      style={{
-                        transform: `translate(-50%, -50%) translate(${c.dx}px, ${c.dy}px) rotate(${c.rotate}deg)`,
-                        zIndex: c.z,
-                      }}
-                    >
-                      <LoyaltyMiniCard label={c.label} logoSrc={c.logoSrc} size="lg" />
-                    </span>
-                  ))}
-                </div>
+                <EmptyStateFan
+                  className="mb-4 h-[150px] w-[300px]"
+                  items={EMPTY_STATE_FAN.map((c) => ({
+                    key: c.slug,
+                    dx: c.dx,
+                    dy: c.dy,
+                    rotate: c.rotate,
+                    node: (
+                      <span className="block w-[186px]">
+                        <LoyaltyMiniCard label={c.label} logoSrc={c.logoSrc} size="lg" />
+                      </span>
+                    ),
+                  }))}
+                />
                 <p className="mt-0 w-full text-base font-medium leading-24 tracking-normal text-[var(--gray-500)]">
                   Je hebt nog geen klantenkaarten
                 </p>
