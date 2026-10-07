@@ -1339,195 +1339,8 @@ const WEEKDAY_ABBR = ["ZO", "MA", "DI", "WO", "DO", "VR", "ZA"] as const;
 /** Hoeveel dagen terug de kalenderstrip op de startpagina gaat (swipen naar rechts). */
 const HOME_CALENDAR_PAST_DAYS = 56;
 
-/**
- * Kalender op de startpagina: swimlane met dagknoppen, telkens zeven in beeld. Bij openen
- * staat vandaag in het midden (−3 … +3); naar rechts swipen toont oudere dagen en gerechten.
- * Een tik kiest de dag; daaronder de dagkaart van die dag (zonder datumblok, want
- * de dag staat al in de geselecteerde knop).
- */
-function HomeCalendarSection({
-  days,
-  todayIso,
-}: {
-  days: HomeWeekDay[];
-  todayIso: string;
-}) {
-  const [selectedIso, setSelectedIso] = React.useState(todayIso);
-  const laneRef = React.useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = React.useState({ atStart: false, atEnd: true });
-  const selected =
-    days.find((d) => d.isoDate === selectedIso) ??
-    days.find((d) => d.isoDate === todayIso) ??
-    days[days.length - 1];
 
-  const handleScroll = React.useCallback(() => {
-    const el = laneRef.current;
-    if (!el) return;
-    const atStart = el.scrollLeft <= 4;
-    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
-    setEdges((prev) =>
-      prev.atStart === atStart && prev.atEnd === atEnd
-        ? prev
-        : { atStart, atEnd },
-    );
-  }, []);
 
-  /* Start aan het einde van de strip: de laatste zeven dagen (vandaag in het midden). */
-  React.useLayoutEffect(() => {
-    const el = laneRef.current;
-    if (!el) return;
-    el.scrollLeft = el.scrollWidth;
-    handleScroll();
-  }, [days.length, handleScroll]);
-
-  const scrollByWeek = (dir: -1 | 1) => {
-    const el = laneRef.current;
-    const first = el?.children[0] as HTMLElement | undefined;
-    if (!el || !first) return;
-    const gap = parseFloat(getComputedStyle(el).columnGap || "0") || 0;
-    el.scrollBy({ left: dir * (first.offsetWidth + gap) * 7, behavior: "smooth" });
-  };
-  return (
-    <div className="flex flex-col gap-4">
-      <ListSectionHeader
-        icon="calendar"
-        label="Kalender"
-        showNaarOverzicht
-        naarOverzichtHref="/kalender"
-        overzichtLabel="Toon alle"
-        extra={
-          <span className="hidden gap-1.5 lg:flex">
-            <button type="button" aria-label="Vorige week" disabled={edges.atStart} onClick={() => scrollByWeek(-1)} className={HOME_SWIMLANE_ARROW_CLASS}>
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
-                <path d="M10 3.5 5.5 8 10 12.5" />
-              </svg>
-            </button>
-            <button type="button" aria-label="Volgende week" disabled={edges.atEnd} onClick={() => scrollByWeek(1)} className={HOME_SWIMLANE_ARROW_CLASS}>
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
-                <path d="M6 3.5 10.5 8 6 12.5" />
-              </svg>
-            </button>
-          </span>
-        }
-      />
-      <div
-        ref={laneRef}
-        onScroll={handleScroll}
-        role="group"
-        aria-label="Kies een dag"
-        className="-m-1 flex snap-x snap-mandatory scroll-px-1 gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {days.map((d) => (
-          <HomeDayTile
-            key={d.isoDate}
-            day={d}
-            selected={d.isoDate === selected.isoDate}
-            isToday={d.isoDate === todayIso}
-            onSelect={() => setSelectedIso(d.isoDate)}
-          />
-        ))}
-      </div>
-
-      <div aria-live="polite">
-        <HomeDaySelectedCard key={selected.isoDate} day={selected} isToday={selected.isoDate === todayIso} />
-      </div>
-    </div>
-  );
-}
-
-/**
- * Dagtegel in de mobiele weekstrip (canvas «Kalender home mobiel · M4»): zachte kleur van het
- * gerecht en een mini-bord; lege dagen blijven wit met een gestippeld bordje.
- */
-function HomeDayTile({
-  day,
-  selected,
-  isToday,
-  onSelect,
-}: {
-  day: HomeWeekDay;
-  selected: boolean;
-  isToday: boolean;
-  onSelect: () => void;
-}) {
-  const summary = homeDaySummary(day.isoDate, day.entry);
-  const loosePhotos = useLoosePhotos(summary?.loose);
-  const tintSrc = summary?.photo ?? loosePhotos.find(Boolean) ?? null;
-  const tint = recipeTintColors(useRecipeTint(tintSrc), useIsDarkTheme());
-  const fullLabel = day.date.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" });
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      aria-label={`${fullLabel}${isToday ? ", vandaag" : ""}${summary ? `, ${summary.title}` : ""}`}
-      onClick={onSelect}
-      style={summary ? { backgroundImage: `linear-gradient(180deg, ${tint.top} 0%, ${tint.mid} 60%, transparent 100%)` } : undefined}
-      className={cn(
-        "flex w-[calc((100%-24px)/7)] shrink-0 snap-start flex-col items-center gap-[5px] rounded-[14px] bg-[var(--white)] pb-2 pt-[7px] transition-[box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
-        selected
-          ? "shadow-[0_0_0_2px_var(--blue-500)]"
-          : isToday
-            ? "shadow-[inset_0_0_0_1.5px_var(--blue-300)]"
-            : "shadow-[inset_0_0_0_1px_var(--border-subtle)]",
-      )}
-    >
-      <span
-        className={cn(
-          "text-[10px] font-bold leading-none tracking-[0.04em]",
-          selected ? "text-[var(--blue-500)]" : "text-[var(--text-secondary)]",
-        )}
-      >
-        {WEEKDAY_ABBR[day.date.getDay()]}
-      </span>
-      <span className={cn("text-[15px] font-bold leading-4 tabular-nums", selected ? "text-[var(--blue-500)]" : "text-[var(--text-primary)]")}>
-        {day.date.getDate()}
-      </span>
-      {summary ? (
-        summary.loose ? (
-          <IngredientPlate photos={loosePhotos} size={30} className="bg-[var(--white)]" />
-        ) : (
-          <HomeDayPlate src={summary.photo} size={30} freeze={summary.fromStock} />
-        )
-      ) : (
-        <span aria-hidden className="size-[30px] rounded-full border-[1.5px] border-dashed border-[var(--gray-200)]" />
-      )}
-    </button>
-  );
-}
-
-/** Gekozen dag als witte kaart onder de strip (M4): bord, «Vandaag · zondag 4 okt», naam, chevron. */
-function HomeDaySelectedCard({ day, isToday }: { day: HomeWeekDay; isToday: boolean }) {
-  const summary = homeDaySummary(day.isoDate, day.entry);
-  const loosePhotos = useLoosePhotos(summary?.loose);
-  const dateLabel = day.date.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "short" }).replace(".", "");
-  const label = isToday ? `Vandaag · ${dateLabel}` : dateLabel;
-  return (
-    <Link
-      href={summary?.href ?? `/kalender?date=${day.isoDate}`}
-      className="flex items-center gap-3.5 rounded-[22px] bg-[var(--white)] p-4 no-underline shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-    >
-      {summary ? (
-        summary.loose ? (
-          <IngredientPlate photos={loosePhotos} size={64} />
-        ) : (
-          <HomeDayPlate src={summary.photo} size={64} freeze={summary.fromStock} />
-        )
-      ) : (
-        <span aria-hidden className="size-16 shrink-0 rounded-full border-[1.5px] border-dashed border-[var(--gray-200)]" />
-      )}
-      <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <span className="text-xs font-semibold leading-4 text-[var(--blue-500)] first-letter:uppercase">{label}</span>
-        <span className={cn("line-clamp-2 text-[17px] font-bold leading-[22px]", summary ? "text-[var(--text-primary)]" : "text-[var(--text-tertiary)]")}>
-          {summary?.title ?? "Nog niets gepland"}
-        </span>
-        {summary ? <span className="text-[13px] leading-[18px] text-[var(--text-secondary)]">{summary.sub}</span> : null}
-      </span>
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px] shrink-0 text-[var(--gray-300)]">
-        <path d="M6 3.5 10.5 8 6 12.5" />
-      </svg>
-    </Link>
-  );
-}
 
 /** Samenvatting van een kalenderdag voor de desktopweek (gerecht of losse items). */
 function homeDaySummary(isoDate: string, entry: DayEntry | null) {
@@ -1638,8 +1451,105 @@ function useLoosePhotos(loose: DayEntry["looseIngredients"] | null | undefined):
   );
 }
 
+/**
+ * Canvas «Kalender · D3»: lege dag = rauwe ingrediënten voor een maaltijd (zetmeel · groente ·
+ * vlees/vis), per weekdag een andere set zodat geen ingrediënt twee keer in een week voorkomt.
+ * Index = Date.getDay() (0 = zondag).
+ */
+const HOME_EMPTY_DAY_IDEAS: ReadonlyArray<readonly [string, string, string]> = [
+  ["krieltjes", "groene_asperges", "kabeljauwfilet"],
+  ["aardappelen", "wortelen", "kipfilet"],
+  ["spaghetti", "tomaten", "gehakt"],
+  ["rijst", "broccoli", "zalm"],
+  ["noedels", "paprika", "scampis"],
+  ["zoete_aardappelen", "spinazie", "kalkoenlapjes"],
+  ["kroketjes", "bloemkool", "worst"],
+];
+
+/* Achteraan links, achteraan rechts, vooraan in het midden (licht gekanteld). */
+const HOME_TRIO_SLOTS = [
+  { x: -20, y: -12, r: -10, s: 0.4, z: 1 },
+  { x: 21, y: -9, r: 9, s: 0.4, z: 2 },
+  { x: 0, y: 17, r: -3, s: 0.44, z: 3 },
+] as const;
+
+/** Drie ingrediëntfoto's gestapeld op een bord of in de lege-dagcirkel. */
+function HomeDayTrio({ photos, size, faded = false }: { photos: (string | null)[]; size: number; faded?: boolean }) {
+  return (
+    <>
+      {photos
+        .filter((src): src is string => Boolean(src))
+        .slice(0, 3)
+        .map((src, i) => {
+          const slot = HOME_TRIO_SLOTS[i];
+          const px = Math.round(size * slot.s);
+          const k = size / 100;
+          return (
+            // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediënt-webp
+            <img
+              key={src + i}
+              src={src}
+              alt=""
+              decoding="async"
+              loading="lazy"
+              className={cn(
+                "absolute left-1/2 top-1/2 object-contain drop-shadow-[0_3px_4px_rgba(16,17,48,0.16)]",
+                faded && "opacity-50",
+              )}
+              style={{
+                width: px,
+                height: px,
+                zIndex: slot.z,
+                transform: `translate(-50%, -50%) translate(${slot.x * k}px, ${slot.y * k}px) rotate(${slot.r}deg)`,
+              }}
+            />
+          );
+        })}
+    </>
+  );
+}
+
+/** Gekozen losse items: echt wit bord met de producten erop. */
+function HomeLoosePlate({ photos, size }: { photos: (string | null)[]; size: number }) {
+  return (
+    <span aria-hidden className="relative block shrink-0" style={{ width: size, height: size }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- lokale bordafbeelding */}
+      <img
+        src="/images/ui/bord_wit_240.webp"
+        alt=""
+        decoding="async"
+        className="absolute inset-0 size-full drop-shadow-[0_6px_10px_rgba(16,17,48,0.16)]"
+      />
+      <HomeDayTrio photos={photos} size={size} />
+    </span>
+  );
+}
+
+/** Lege dag: vervaagde rauwe ingrediënten in een lichtblauwe stippelcirkel. */
+function HomeEmptyDayIdea({ date, size }: { date: Date; size: number }) {
+  const idea = HOME_EMPTY_DAY_IDEAS[date.getDay()];
+  return (
+    <span
+      aria-hidden
+      className="relative block shrink-0 rounded-full border-[1.6px] border-dashed border-[var(--blue-200)] bg-[var(--blue-25)]"
+      style={{ width: size, height: size }}
+    >
+      <HomeDayTrio photos={idea.map((slug) => `/images/ingredients/${slug}_160.webp`)} size={size} faded />
+    </span>
+  );
+}
+
 /** Dagkolom in de desktopweek (canvas «Kalender home · D1»): gerecht meteen zichtbaar, in zijn kleur. */
-function HomeWeekColumn({ day, isToday }: { day: HomeWeekDay; isToday: boolean }) {
+function HomeWeekColumn({
+  day,
+  isToday,
+  lane = false,
+}: {
+  day: HomeWeekDay;
+  isToday: boolean;
+  /** Mobiele rij: vaste breedte en snappen i.p.v. de breedte te delen. */
+  lane?: boolean;
+}) {
   const summary = homeDaySummary(day.isoDate, day.entry);
   const loosePhotos = useLoosePhotos(summary?.loose);
   const tintSrc = summary?.photo ?? loosePhotos.find(Boolean) ?? null;
@@ -1651,7 +1561,8 @@ function HomeWeekColumn({ day, isToday }: { day: HomeWeekDay; isToday: boolean }
       aria-label={`${fullLabel}${isToday ? ", vandaag" : ""}: ${summary?.title ?? "niets gepland"}`}
       style={summary ? { backgroundImage: `linear-gradient(180deg, ${tint.mid} 0%, transparent 70%)` } : undefined}
       className={cn(
-        "flex min-w-0 flex-1 flex-col items-center rounded-[20px] bg-[var(--white)] px-2.5 pb-4 pt-3.5 no-underline transition-[transform,box-shadow] duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2",
+        lane ? "w-[124px] flex-none snap-start" : "min-w-0 flex-1",
+        "flex flex-col items-center rounded-[20px] bg-[var(--white)] px-2.5 pb-4 pt-3.5 no-underline transition-[transform,box-shadow] duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2",
         isToday
           ? "shadow-[0_0_0_2px_var(--blue-500),0_10px_24px_-14px_rgba(79,85,241,0.5)]"
           : "shadow-[inset_0_0_0_1px_var(--border-subtle)]",
@@ -1670,14 +1581,12 @@ function HomeWeekColumn({ day, isToday }: { day: HomeWeekDay; isToday: boolean }
       <span className="mt-3.5 flex h-24 w-full shrink-0 items-start justify-center">
         {summary ? (
           summary.loose ? (
-            <IngredientPlate photos={loosePhotos} size={96} className="bg-[var(--white)]" />
+            <HomeLoosePlate photos={loosePhotos} size={96} />
           ) : (
             <HomeDayPlate src={summary.photo} size={96} freeze={summary.fromStock} />
           )
         ) : (
-          <span aria-hidden className="flex size-24 items-center justify-center rounded-full border-[1.5px] border-dashed border-[var(--gray-200)] text-[13px] text-[var(--text-tertiary)]">
-            Vrij
-          </span>
+          <HomeEmptyDayIdea date={day.date} size={96} />
         )}
       </span>
       <span className="mt-3 flex h-9 w-full items-start justify-center">
@@ -1687,13 +1596,50 @@ function HomeWeekColumn({ day, isToday }: { day: HomeWeekDay; isToday: boolean }
             summary ? "font-semibold text-[var(--text-primary)]" : "text-[var(--text-tertiary)]",
           )}
         >
-          {summary?.title ?? "Niets gepland"}
+          {summary?.title ?? ""}
         </span>
       </span>
+      {/* Lege dag: «Wat eten we?» onderaan, in dezelfde stijl als «5 ingrediënten». */}
       <span className="mt-auto pt-2 text-xs leading-4 text-[var(--text-tertiary)]">
-        {summary?.sub ?? " "}
+        {summary?.sub ?? "Wat eten we?"}
       </span>
     </Link>
+  );
+}
+
+/** 30% van gisteren (124px) + de tussenruimte: zoveel staat er links van vandaag. */
+const HOME_LANE_LEAD_PX = Math.round(124 * 0.3) + 10;
+
+/**
+ * Mobiele kalender op de startpagina (canvas «Kalender · D3 mobiel»): dezelfde dagkolommen als op
+ * desktop in een swipebare rij. Bij het laden piept gisteren nog 30% binnen aan de rand en krijgen
+ * vandaag en de komende dagen de ruimte.
+ */
+function HomeCalendarLaneMobile({ days, todayIso }: { days: HomeWeekDay[]; todayIso: string }) {
+  const laneRef = React.useRef<HTMLDivElement>(null);
+  React.useLayoutEffect(() => {
+    const el = laneRef.current;
+    const today = el?.querySelector<HTMLElement>("[data-today]");
+    if (!el || !today) return;
+    el.scrollLeft = today.offsetLeft - HOME_LANE_LEAD_PX;
+  }, [days.length]);
+  return (
+    <div className="flex flex-col gap-4">
+      <ListSectionHeader icon="calendar" label="Kalender" showNaarOverzicht naarOverzichtHref="/kalender" overzichtLabel="Toon alle" />
+      <div
+        ref={laneRef}
+        role="group"
+        aria-label="Kalender, per dag"
+        className="relative -mx-4 -my-2 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ scrollPaddingLeft: HOME_LANE_LEAD_PX }}
+      >
+        {days.map((d) => (
+          <div key={d.isoDate} className="flex flex-none" data-today={d.isoDate === todayIso ? "" : undefined}>
+            <HomeWeekColumn day={d} isToday={d.isoDate === todayIso} lane />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -2231,7 +2177,7 @@ function HomeKalenderSection({
     return (
       <>
         <div className="lg:hidden">
-          <HomeCalendarSection days={weekDays} todayIso={todayIso} />
+          <HomeCalendarLaneMobile days={weekDays} todayIso={todayIso} />
         </div>
         <div className="hidden lg:block">
           <HomeCalendarWeekDesktop days={weekDays} todayIso={todayIso} />
