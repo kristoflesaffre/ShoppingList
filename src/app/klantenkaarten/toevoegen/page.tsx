@@ -8,7 +8,7 @@ import { LOYALTY_STANDALONE_STORE_OPTIONS } from "@/lib/loyalty-standalone-store
 import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { AddLoyaltyCardSheet } from "@/components/add_loyalty_card_sheet";
-import { cardColors, useIsDarkTheme, useLogoTint } from "@/components/loyalty_wallet";
+import { LoyaltyMiniCard } from "@/components/loyalty_mini_card";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { cn } from "@/lib/utils";
 
@@ -65,57 +65,33 @@ function CustomCardRow({ query, onPick }: { query: string; onPick: (name: string
   );
 }
 
-const BAR_WIDTHS = [2, 1, 1, 2, 1, 3, 1, 1, 2, 1, 2, 1, 1, 3, 1, 2];
-
-/** Decoratieve barcode-strook rechtsonder op de minikaart. */
-function DecorBarcode() {
-  return (
-    <span aria-hidden className="flex opacity-55">
-      {BAR_WIDTHS.map((w, i) => (
-        <span key={i} className="inline-block h-3" style={{ width: w * 1.3, background: i % 2 === 0 ? "#16181a" : "transparent" }} />
-      ))}
-    </span>
-  );
-}
-
-/**
- * Canvas «14 · leuker A · Kaartjesraster»: elke winkel als minikaart in de winkeltint
- * (zelfde logokleur als op de kaartenpagina), logo op wit tegeltje, naam + strook onderaan.
- */
+/** Canvas «14 · leuker A · Kaartjesraster»: elke winkel als minikaart (design system «Minikaart»). */
 function StoreMiniCard({
   label,
   logoSrc,
   added,
   ...props
 }: { label: string; logoSrc: string; added: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const dark = useIsDarkTheme();
-  const colors = cardColors(useLogoTint(logoSrc), dark);
   return (
     <button
       type="button"
       {...props}
-      className="relative flex aspect-[1.586] w-full min-w-0 flex-col justify-between overflow-hidden rounded-[14px] p-[11px] text-left transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:rounded-[16px] lg:p-3.5 [@media(hover:hover)]:hover:-translate-y-0.5"
-      style={{ background: colors.background, boxShadow: `inset 0 0 0 1px ${colors.edge}, 0 8px 18px -12px rgba(16,17,48,0.35)` }}
+      className="block w-full min-w-0 rounded-[14px] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:rounded-[16px] [@media(hover:hover)]:hover:-translate-y-0.5"
     >
-      <span aria-hidden className="absolute -right-6 -top-6 size-[90px] rounded-full" style={{ background: colors.edge, opacity: 0.45 }} />
-      <span className="relative flex items-start justify-between gap-2">
-        <span className="flex size-[30px] shrink-0 items-center justify-center rounded-[9px] bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.1)] lg:size-9">
-          {/* eslint-disable-next-line @next/next/no-img-element -- winkellogo */}
-          <img src={logoSrc} alt="" width={24} height={24} className="size-5 object-contain lg:size-6" />
-        </span>
-        {added ? (
-          <span className="inline-flex h-5 items-center gap-[3px] rounded-pill bg-[var(--white)] px-1.5 text-[10.5px] font-semibold text-[var(--blue-500)]">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-2.5">
-              <path d="M5 12.5l4.5 4.5L19 7.5" />
-            </svg>
-            Toegevoegd
-          </span>
-        ) : null}
-      </span>
-      <span className="relative flex items-end justify-between gap-2">
-        <span className="min-w-0 truncate text-[13px] font-bold text-[var(--text-primary)] lg:text-[14.5px]">{label}</span>
-        <DecorBarcode />
-      </span>
+      <LoyaltyMiniCard
+        label={label}
+        logoSrc={logoSrc}
+        badge={
+          added ? (
+            <span className="inline-flex h-5 items-center gap-[3px] rounded-pill bg-[var(--white)] px-1.5 text-[10.5px] font-semibold text-[var(--blue-500)]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-2.5">
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+              Toegevoegd
+            </span>
+          ) : null
+        }
+      />
     </button>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { LoyaltyMiniCard } from "@/components/loyalty_mini_card";
 import { CameraBarcodeScannerSlideIn } from "@/components/camera_barcode_scanner_slide_in";
 import { LoyaltyCardScanResultSlideIn } from "@/components/loyalty_card_scan_result_slide_in";
 import { decodeLoyaltyCard } from "@/lib/decode_loyalty_card";
@@ -118,15 +119,8 @@ export function AddLoyaltyCardSheet({ open, onClose, cardName, logoSrc }: AddLoy
       <SlideInModal open={open} onClose={onClose} title="" className="md:!max-w-[500px]" cancelLabel={null}>
         <div className="flex flex-col gap-4 pb-6 md:pb-2">
           <div className="flex flex-col items-center gap-2 pb-1.5 text-center">
-            <span className="flex size-14 items-center justify-center rounded-[17px] bg-[var(--white)] shadow-[0_0_0_1px_var(--border-subtle)]">
-              {logoSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element -- winkellogo
-                <img src={logoSrc} alt="" width={36} height={36} className="size-9 object-contain" />
-              ) : (
-                <span className="flex size-full items-center justify-center rounded-[17px] bg-[var(--blue-50)] text-xl font-bold text-[var(--blue-500)]">
-                  {cardName.trim().charAt(0).toUpperCase()}
-                </span>
-              )}
+            <span className="mb-2 mt-1 block w-[220px] -rotate-3">
+              <LoyaltyMiniCard label={cardName} logoSrc={logoSrc} size="lg" />
             </span>
             <p className="text-xl font-bold leading-7 text-[var(--text-primary)]">Kaart van {cardName}</p>
             <p className="text-[13.5px] leading-[19px] text-[var(--text-secondary)]">

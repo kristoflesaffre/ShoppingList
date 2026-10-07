@@ -28,6 +28,7 @@ Bouw schermen uit de gedeelde componenten in `src/components/ui/`. Style deze pa
 | Favorieten-promo | `FavoritesPromoBanner`, `FavoritesEmptyState` | Banner (lavendel→roze, productwaaier + hartje) voor wie nog geen favorietenlijst heeft; sluitbaar (localStorage). Lege staat met 3 stappen + grote knop. |
 | Schakelaar | `Switch` | Aan/uit voor een instelling die meteen geldt (geen bewaarknop): 46×28, aan = primair blauw, uit = lichtgrijs. Voor een keuze uit een lijst → Checkbox / ChoiceRow. |
 | Deelblad | `ShareListModal` | «Lijstje delen»: lijstfoto in lavendel cirkel met twee (fictieve) avatarfoto's eronder · titel «Samen op één lijstje» · ronde deelknoppen (WhatsApp, E-mail, Meer… enkel met Web Share) · witte linkbalk met «Kopieer» · optioneel kaart «Ook toekomstige lijstjes» met `Switch` (zie `src/lib/auto-share.ts`). Blad op `--bg-app`, desktop 540px. |
+| Minikaart | `LoyaltyMiniCard` | Klantenkaart in creditcardformaat in de winkeltint (logokleur via `useLogoTint` + `cardColors`), logo op wit tegeltje, naam + decoratieve barcode. `md` in het raster «Klantenkaart toevoegen», `lg` (licht gekanteld) in het blad «Kaart van …». |
 | Dagkaart / lijstkaarten | `ListCardsView` (`list_cards_view.tsx`) | Dag = datumtegel (mobiel) of gerechtfoto/ingrediëntenbord (desktop) + dag als titel + gerecht/items als sublabel. |
 
 ### Vormtaal (tokens)
