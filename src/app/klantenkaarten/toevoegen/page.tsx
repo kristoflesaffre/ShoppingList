@@ -101,10 +101,16 @@ export default function KlantenkaartToevoegenPage() {
   const { isLoading: authLoading, user } = db.useAuth();
   const [query, setQuery] = React.useState("");
   /** Canvas «15 · variant 1a»: winkel kiezen opent meteen het blad «Kaart van …». */
-  const [sheetCard, setSheetCard] = React.useState<{ name: string; logoSrc: string | null } | null>(null);
+  const [sheetCard, setSheetCard] = React.useState<{
+    name: string;
+    logoSrc: string | null;
+    /** Aangetikte minikaart: vliegt naar het blad; tot sluiten blijft haar plek leeg. */
+    origin: DOMRect | null;
+    slug: string | null;
+  } | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
-  const openSheet = (name: string, logoSrc: string | null) => {
-    setSheetCard({ name, logoSrc });
+  const openSheet = (name: string, logoSrc: string | null, from?: { el: HTMLElement; slug: string }) => {
+    setSheetCard({ name, logoSrc, origin: from ? from.el.getBoundingClientRect() : null, slug: from?.slug ?? null });
     setSheetOpen(true);
   };
 
@@ -204,11 +210,12 @@ export default function KlantenkaartToevoegenPage() {
                     aria-label={
                       existingId ? `${store.label}: kaart al toegevoegd, openen` : `Klantenkaart toevoegen: ${store.label}`
                     }
-                    onClick={() =>
+                    onClick={(e) =>
                       existingId
                         ? router.push(`/klantenkaarten?open=${encodeURIComponent(existingId)}`)
-                        : openSheet(store.label, store.logoSrc)
+                        : openSheet(store.label, store.logoSrc, { el: e.currentTarget, slug: store.slug })
                     }
+                    style={sheetOpen && sheetCard?.slug === store.slug ? { visibility: "hidden" } : undefined}
                   />
                 );
               })}
@@ -222,6 +229,7 @@ export default function KlantenkaartToevoegenPage() {
           onClose={() => setSheetOpen(false)}
           cardName={sheetCard.name}
           logoSrc={sheetCard.logoSrc}
+          originRect={sheetCard.origin}
         />
       ) : null}
     </div>
