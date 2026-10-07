@@ -17,6 +17,8 @@ const DURATION_MS = 720;
 const EASE_BOUNCE = "cubic-bezier(0.34, 1.45, 0.64, 1)";
 /** Startwaaier: breder en schuiner dan de eindstand. */
 const SPREAD = 1.7;
+/** De voorste kaart start zoveel lager. */
+const FRONT_RISE_PX = 16;
 
 function place(dx: number, dy: number, rotate: number, scale = 1) {
   return `translate(-50%, -50%) translate(${dx}px, ${dy}px) rotate(${rotate}deg) scale(${scale})`;
@@ -24,7 +26,8 @@ function place(dx: number, dy: number, rotate: number, scale = 1) {
 
 /**
  * Design system «Waaier (lege staat)»: kaartjes in een waaier (achterste eerst). Bij het laden
- * vertrekken ze uit een bredere, schuinere waaier en veren ze met een lichte bounce naar hun plek.
+ * vertrekken de achterste uit een bredere, schuinere waaier; de voorste staat er al en schuift van
+ * wat lager omhoog. Alles veert met een lichte bounce naar zijn plek.
  * Zonder animatie bij «verminderde beweging».
  */
 export function EmptyStateFan({ items, className }: { items: EmptyStateFanItem[]; className?: string }) {
@@ -36,12 +39,20 @@ export function EmptyStateFan({ items, className }: { items: EmptyStateFanItem[]
       const el = refs.current[i];
       if (!el) return null;
       const front = i === items.length - 1;
+      // Voorste kaart staat er meteen (geen fade) en schuift enkel van wat lager omhoog;
+      // de kaarten erachter waaieren vanuit een bredere stand in.
+      const keyframes = front
+        ? [
+            { transform: place(it.dx, it.dy + FRONT_RISE_PX, it.rotate * 0.4) },
+            { transform: place(it.dx, it.dy, it.rotate) },
+          ]
+        : [
+            { transform: place(it.dx * SPREAD, it.dy * 1.4 + 10, it.rotate * SPREAD, 0.96), opacity: 0 },
+            { opacity: 1, offset: 0.35 },
+            { transform: place(it.dx, it.dy, it.rotate), opacity: 1 },
+          ];
       return el.animate(
-        [
-          { transform: place(it.dx * SPREAD, it.dy * 1.4 + 10, it.rotate * SPREAD, front ? 0.92 : 0.96), opacity: 0 },
-          { opacity: 1, offset: 0.35 },
-          { transform: place(it.dx, it.dy, it.rotate), opacity: 1 },
-        ],
+        keyframes,
         { duration: DURATION_MS, delay: i * 50, easing: EASE_BOUNCE, fill: "backwards" },
       );
     });
