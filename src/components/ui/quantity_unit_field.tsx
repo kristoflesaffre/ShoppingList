@@ -9,7 +9,8 @@ export const DEFAULT_UNIT_OPTIONS = ["stuk", "pak", "fles", "kg", "g"] as const;
 
 /**
  * Design system «Aantal + eenheid»: formulier-stepper met eenheidschips (+ «Andere…» → vrij veld).
- * Mobiel: chips onder de stepper. Tablet+: compacte stepper (176px) met de chips ernaast.
+ * Mobiel: chips onder de stepper. Tablet+: compacte stepper (176px) met de chips ernaast;
+ * met `stacked` (lange eenhedenlijst) blijven de chips ook op tablet+ onder de stepper.
  * Zonder `onUnitChange` toont het alleen de stepper (bv. aantal porties).
  */
 export function QuantityUnitField({
@@ -19,6 +20,7 @@ export function QuantityUnitField({
   onUnitChange,
   units = DEFAULT_UNIT_OPTIONS,
   min = 1,
+  stacked = false,
 }: {
   value: number;
   onValueChange: (next: number) => void;
@@ -26,6 +28,8 @@ export function QuantityUnitField({
   onUnitChange?: (next: string) => void;
   units?: readonly string[];
   min?: number;
+  /** Chips altijd onder de stepper, ook op tablet+ (voor veel eenheden). */
+  stacked?: boolean;
 }) {
   const [custom, setCustom] = React.useState(
     () => unit != null && unit !== "" && !units.includes(unit),
@@ -39,12 +43,12 @@ export function QuantityUnitField({
 
   return (
     <div>
-      <div className="md:flex md:items-center md:gap-3.5">
+      <div className={stacked ? undefined : "md:flex md:items-center md:gap-3.5"}>
         <div className="md:w-[176px] md:shrink-0">
           <Stepper value={value} min={min} onValueChange={onValueChange} />
         </div>
         {onUnitChange ? (
-          <div role="group" aria-label="Eenheid" className="mt-2.5 flex flex-wrap gap-1.5 md:mt-0">
+          <div role="group" aria-label="Eenheid" className={stacked ? "mt-2.5 flex flex-wrap gap-1.5" : "mt-2.5 flex flex-wrap gap-1.5 md:mt-0"}>
             {units.map((u) => (
               <FilterChip
                 key={u}

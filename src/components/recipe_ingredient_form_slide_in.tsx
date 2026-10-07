@@ -122,6 +122,7 @@ export function RecipeIngredientFormSlideIn({
             unit={ingQtyDesc}
             onUnitChange={setIngQtyDesc}
             units={RECIPE_UNIT_OPTIONS}
+            stacked
           />
         </div>
         {isEdit && onDelete && initial ? (
