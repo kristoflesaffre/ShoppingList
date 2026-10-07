@@ -369,6 +369,7 @@ export default function MissingImagesAdminPage() {
 
       <section className="flex flex-col gap-4 rounded-xl bg-[var(--white)] p-4">
         <SearchBar
+          surface="app"
           value={query}
           onValueChange={setQuery}
           placeholder="Zoek op naam, bron of eigenaar"

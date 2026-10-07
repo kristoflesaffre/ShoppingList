@@ -25,6 +25,11 @@ export interface SearchBarProps
   onValueChange?: (value: string) => void;
   /** Only "default" is defined (h-12, px-4, py-2.5) */
   size?: SearchBarSize;
+  /**
+   * Ondergrond van het zoekveld. «sheet» (standaard): grijs vlak op wit (bladen, witte pagina's).
+   * «app»: op de grijze app-achtergrond — wit met een dun randje, anders valt het weg.
+   */
+  surface?: "sheet" | "app";
   /** When true, the single child replaces the default search UI and receives merged container props */
   asChild?: boolean;
   /** When asChild, the single child element to merge onto */
@@ -54,6 +59,10 @@ export function SearchIcon({ className }: { className?: string }) {
  * Design system «Zoekveld» (zacht grijs): grijs vlak zonder rand, vergrootglas links, radius 16, h 48.
  * Focus: wit vlak met lavendel rand. Zelfde look als de zoek-trigger in ItemNameAutocomplete.
  */
+/** Zoekveld op de grijze app-achtergrond: wit met een dun randje (focus-ring blijft). */
+export const SEARCH_FIELD_ON_APP_CLASS =
+  "!bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04),inset_0_0_0_1px_var(--border-subtle)]";
+
 export const SEARCH_FIELD_CLASS =
   "group flex h-12 w-full min-w-0 items-center gap-2.5 rounded-[16px] bg-[var(--gray-25)] px-3.5 transition-[background-color,box-shadow] duration-fast ease-out-strong focus-within:bg-[var(--white)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-300)]";
 
@@ -74,6 +83,7 @@ const SearchBar = React.forwardRef<HTMLDivElement, SearchBarProps>(
       onValueChange,
       onChange,
       size = "default",
+      surface = "sheet",
       placeholder = "Search",
       disabled = false,
       asChild = false,
@@ -103,6 +113,7 @@ const SearchBar = React.forwardRef<HTMLDivElement, SearchBarProps>(
 
     const containerClassName = cn(
       SEARCH_FIELD_CLASS,
+      surface === "app" && SEARCH_FIELD_ON_APP_CLASS,
       sizeStyles[size],
       disabled && "cursor-not-allowed opacity-60",
       className

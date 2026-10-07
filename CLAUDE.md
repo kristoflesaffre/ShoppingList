@@ -7,7 +7,7 @@ Bouw schermen uit de gedeelde componenten in `src/components/ui/`. Style deze pa
 
 | Patroon | Component | Regels |
 | --- | --- | --- |
-| Zoekveld | `SearchBar`, `ItemNameAutocomplete` | Zacht grijs vlak (gray-25), geen rand, vergrootglas links, radius 16, h 48. Op mobiel opent het zoekblad met de zoekbalk bovenaan + «Annuleer», filterchips, rijen met foto + naam (geen plussen). |
+| Zoekveld | `SearchBar`, `ItemNameAutocomplete` | Zacht grijs vlak (gray-25), geen rand, vergrootglas links, radius 16, h 48. **Op de grijze app-achtergrond altijd `surface="app"`** (wit met dun randje), anders valt het weg. Op mobiel opent het zoekblad met de zoekbalk bovenaan + «Annuleer», filterchips, rijen met foto + naam (geen plussen). |
 | Invoerveld | `InputField` | Zelfde vorm als het zoekveld; focus = wit + lavendel rand. |
 | Segmentknop | `SegmentedControl` (`PillTab` heeft dezelfde stijl) | 2–4 opties naast elkaar. Grijze trog (gray-50, radius 13), actief wit met donkere tekst. |
 | Tabs | `TabGroup` / `TabElement` | Onderlijn-tabs enkel voor navigatie tussen grotere secties. |

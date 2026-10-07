@@ -594,7 +594,7 @@ export default function TeKopenPage() {
           ) : null}
 
           {searchOpen && !isEditing && !isStoreOrderMode && allItems.length > 0 ? (
-            <SearchBar value={searchQuery} onValueChange={setSearchQuery} placeholder="Zoeken in te kopen…" />
+            <SearchBar surface="app" value={searchQuery} onValueChange={setSearchQuery} placeholder="Zoeken in te kopen…" />
           ) : null}
 
           {isStoreOrderMode ? (

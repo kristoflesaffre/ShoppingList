@@ -565,7 +565,7 @@ export default function ReceptenPage() {
                 <DoneButton onClick={() => setIsEditMode(false)} />
               ) : (
                 <div className="hidden w-[320px] shrink-0 md:block">
-                  <SearchBar placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
+                  <SearchBar surface="app" placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
                 </div>
               )}
             </div>
@@ -595,7 +595,7 @@ export default function ReceptenPage() {
                 </div>
               ) : null}
               <div className={cn("md:hidden", isEditMode && "hidden")}>
-                <SearchBar placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
+                <SearchBar surface="app" placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
               </div>
 
               {!isEditMode && filteredRecipes.length === 0 ? (

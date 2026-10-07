@@ -151,7 +151,8 @@ function SelecteerWinkelContent() {
               </div>
             </div>
             <SearchBar
-              className="!bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:w-[300px]"
+              surface="app"
+              className="lg:w-[300px]"
               value={query}
               onValueChange={setQuery}
               placeholder="Zoek een winkel"
