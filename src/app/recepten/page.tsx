@@ -39,6 +39,7 @@ import { APP_FAB_BOTTOM_CLASS, APP_SNACKBAR_FIXTURE_CLASS } from "@/lib/app-layo
 import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
+import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { EmptyStateFan } from "@/components/empty_state_fan";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
@@ -153,7 +154,10 @@ function SectionHeader({ section }: { section: { meta: typeof RECIPE_CATEGORIES[
 function RecipePlate({ recipe }: { recipe: SavedRecipe }) {
   const hasPhoto = typeof recipe.photoUrl === "string" && recipe.photoUrl.trim().length > 0;
   return (
-    <span className="mx-auto flex aspect-square w-[84%] items-center justify-center overflow-hidden rounded-full bg-[var(--blue-25)]">
+    <span
+      data-hero-plate
+      className="mx-auto flex aspect-square w-[84%] items-center justify-center overflow-hidden rounded-full bg-[var(--blue-25)]"
+    >
       {hasPhoto ? (
         // eslint-disable-next-line @next/next/no-img-element -- data-URL
         <img
@@ -182,6 +186,7 @@ function RecipePlateCard({ recipe }: { recipe: SavedRecipe }) {
   return (
     <Link
       href={`/recepten/${recipe.id}`}
+      onClick={recipeHeroClickHandler(recipe.id, recipe.photoUrl)}
       style={{ backgroundImage: `linear-gradient(180deg, ${tint.top} 0%, ${tint.mid} 55%, transparent 100%)` }}
       className="flex h-full flex-col gap-3 rounded-[18px] bg-[var(--white)] px-2.5 pb-3.5 pt-4 text-center no-underline shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
     >

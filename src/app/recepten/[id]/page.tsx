@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
 import Image from "next/image";
 import Link from "next/link";
@@ -39,6 +40,7 @@ import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
 import { recipeTintColors, scaleQuantity, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
+import { clearRecipeHeroTransition, peekRecipeHeroTransition } from "@/lib/recipe_hero_transition";
 
 function BackArrowIcon({ className }: { className?: string }) {
   return (
@@ -97,6 +99,10 @@ function MoreDotsIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+/** Bord vliegt licht doorschietend naar zijn plek (zelfde gevoel als de klantenkaart-vlucht). */
+const HERO_FLIGHT_MS = 560;
+const HERO_FLIGHT_EASE = "cubic-bezier(0.22, 1.12, 0.36, 1)";
 
 export default function ReceptDetailPage() {
   const router = useRouter();
@@ -173,7 +179,79 @@ export default function ReceptDetailPage() {
     };
   }, [recipeData, recipeId]);
 
-  const tint = recipeTintColors(useRecipeTint(savedRecipe?.photoUrl), useIsDarkTheme());
+  /* Gedeelde-elementovergang: bord komt aangevlogen van de startpagina / het overzicht. */
+  const [hero] = React.useState(() => peekRecipeHeroTransition(recipeId));
+  const heroPlateRef = React.useRef<HTMLDivElement>(null);
+  const heroFlyerRef = React.useRef<HTMLDivElement>(null);
+  const [heroTarget, setHeroTarget] = React.useState<DOMRect | null>(null);
+  const [heroLanded, setHeroLanded] = React.useState(() => hero == null);
+
+  React.useLayoutEffect(() => {
+    if (!hero) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setHeroLanded(true);
+      clearRecipeHeroTransition();
+      return;
+    }
+    // Eén frame wachten: de router zet de scrollpositie pas na het mounten terug naar boven.
+    const raf = requestAnimationFrame(() => {
+      const el = heroPlateRef.current;
+      if (!el) {
+        setHeroLanded(true);
+        clearRecipeHeroTransition();
+        return;
+      }
+      setHeroTarget(el.getBoundingClientRect());
+    });
+    return () => cancelAnimationFrame(raf);
+    // Alleen bij binnenkomen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  React.useLayoutEffect(() => {
+    const el = heroFlyerRef.current;
+    if (!hero || !heroTarget || !el) return;
+    const from = hero.rect;
+    const dx = from.left + from.width / 2 - (heroTarget.left + heroTarget.width / 2);
+    const dy = from.top + from.height / 2 - (heroTarget.top + heroTarget.height / 2);
+    const anim = el.animate(
+      [
+        { transform: `translate(${dx}px, ${dy}px) scale(${from.width / heroTarget.width})`, boxShadow: "0 0 0 rgba(120,80,20,0)" },
+        { transform: "translate(0, 0) scale(1)", boxShadow: "0 18px 40px -18px rgba(120,80,20,0.35)" },
+      ],
+      { duration: HERO_FLIGHT_MS, easing: HERO_FLIGHT_EASE, fill: "forwards" },
+    );
+    anim.onfinish = () => {
+      setHeroLanded(true);
+      setHeroTarget(null);
+      clearRecipeHeroTransition();
+    };
+    return () => {
+      anim.onfinish = null;
+      anim.cancel();
+    };
+  }, [hero, heroTarget]);
+
+  const heroFlyer =
+    hero && heroTarget
+      ? createPortal(
+          <div
+            ref={heroFlyerRef}
+            aria-hidden
+            className="pointer-events-none fixed z-[60] overflow-hidden rounded-full bg-[var(--white)] will-change-transform"
+            style={{ left: heroTarget.left, top: heroTarget.top, width: heroTarget.width, height: heroTarget.height }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB */}
+            <img src={hero.src} alt="" className="size-full scale-[1.08] object-cover" />
+          </div>,
+          document.body,
+        )
+      : null;
+  /** Na de vlucht komen titel, chips en inhoud gestaggerd binnen. */
+  const heroEnter = (delayMs: number) =>
+    hero ? { className: "motion-safe:animate-fade-up", style: { animationDelay: `${delayMs}ms` } } : { className: "", style: undefined };
+
+  const tint = recipeTintColors(useRecipeTint(savedRecipe?.photoUrl ?? hero?.src), useIsDarkTheme());
 
   const openEditor = React.useCallback(() => {
     setDetailPhotoEditMode(false);
@@ -393,6 +471,32 @@ export default function ReceptDetailPage() {
   );
 
   if (authLoading || !user || recipesLoading) {
+    if (hero) {
+      /* Zelfde opbouw als de pagina: het bord staat al op zijn plek terwijl het recept laadt. */
+      return (
+        <div className="relative min-h-dvh w-full bg-[var(--bg-app)]">
+          {/* Eerste kind, net als in de geladen pagina: zo blijft de vlucht doorlopen als de data binnenkomt. */}
+          {heroFlyer}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-[460px] lg:h-[520px]"
+            style={{ backgroundImage: `linear-gradient(180deg, ${tint.top} 0%, ${tint.mid} 55%, var(--bg-app) 100%)` }}
+          />
+          <main className="relative mx-auto w-full max-w-[1180px] px-4 pt-[calc(64px+env(safe-area-inset-top,0px))] lg:px-[150px] lg:pt-[48px]">
+            <section className="flex flex-col items-center">
+              <div
+                ref={heroPlateRef}
+                className="size-[200px] shrink-0 overflow-hidden rounded-full bg-[var(--white)] shadow-[0_18px_40px_-18px_rgba(120,80,20,0.35)] lg:size-[190px]"
+                style={heroLanded ? undefined : { opacity: 0 }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB */}
+                <img src={hero.src} alt="" width={200} height={200} className="size-full scale-[1.08] object-cover" />
+              </div>
+            </section>
+          </main>
+        </div>
+      );
+    }
     return <PageSpinner surface="white" />;
   }
 
@@ -423,6 +527,7 @@ export default function ReceptDetailPage() {
 
   return (
     <div className="relative min-h-dvh w-full bg-[var(--bg-app)]">
+      {heroFlyer}
       {/* Warme band in de kleur van het gerecht (canvas «Recept detail 2a»), automatisch uit de foto. */}
       <div
         aria-hidden
@@ -486,10 +591,12 @@ export default function ReceptDetailPage() {
         <section className="flex flex-col items-center">
           <div className="relative">
             <div
+              ref={heroPlateRef}
               className={cn(
                 "shrink-0 overflow-hidden rounded-full bg-[var(--white)] shadow-[0_18px_40px_-18px_rgba(120,80,20,0.35)]",
                 savedRecipe.photoUrl ? "size-[200px] lg:size-[190px]" : "size-[124px]",
               )}
+              style={heroLanded ? undefined : { opacity: 0 }}
             >
               {savedRecipe.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB
@@ -548,7 +655,7 @@ export default function ReceptDetailPage() {
             </MiniButton>
           ) : null}
 
-          <div className="mt-4 flex max-w-full items-center gap-2 px-2">
+          <div className={cn("mt-4 flex max-w-full items-center gap-2 px-2", heroEnter(300).className)} style={heroEnter(300).style}>
             <h1 className="min-w-0 text-center text-[28px] font-bold leading-[34px] tracking-[-0.015em] text-text-primary lg:text-[36px] lg:leading-[44px]">
               {savedRecipe.name}
             </h1>
@@ -558,7 +665,7 @@ export default function ReceptDetailPage() {
               <TitleEditButton onClick={toggleDetailPhotoEditMode} />
             )}
           </div>
-          <div className="mt-2.5 flex flex-wrap justify-center gap-2">
+          <div className={cn("mt-2.5 flex flex-wrap justify-center gap-2", heroEnter(380).className)} style={heroEnter(380).style}>
             <span className={chipClass}>
               <ListGlyph />
               {ingredientCount === 1 ? "1 ingrediënt" : `${ingredientCount} ingrediënten`}
@@ -578,7 +685,7 @@ export default function ReceptDetailPage() {
         </section>
 
         {/* Ingrediënten en bereiding: onder elkaar (mobiel), naast elkaar (desktop) */}
-        <div className="mt-[22px] flex flex-col gap-3.5 lg:mt-10 lg:flex-row lg:items-start lg:gap-[22px]">
+        <div className={cn("mt-[22px] flex flex-col gap-3.5 lg:mt-10 lg:flex-row lg:items-start lg:gap-[22px]", heroEnter(460).className)} style={heroEnter(460).style}>
           <section
             aria-label="Ingrediënten"
             className="rounded-[22px] bg-[var(--white)] px-4 pb-2 pt-[18px] shadow-[0_10px_30px_-18px_rgba(16,17,48,0.18)] lg:w-[430px] lg:shrink-0 lg:px-5"

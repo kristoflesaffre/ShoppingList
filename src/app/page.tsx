@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { SelectTile } from "@/components/ui/select_tile";
 import { StoreSelectionTile } from "@/components/ui/store_selection_tile";
 import { cn } from "@/lib/utils";
+import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import {
   defaultCafeListName,
   defaultFrituurListName,
@@ -1361,6 +1362,7 @@ function homeDaySummary(isoDate: string, entry: DayEntry | null) {
       loose: null as DayEntry["looseIngredients"] | null,
       fromStock: meal.fromStock === true,
       href: meal.recipeId ? `/recepten/${meal.recipeId}` : `/kalender?date=${isoDate}`,
+      recipeId: meal.recipeId ?? null,
     };
   }
   const items = entry.looseIngredients;
@@ -1375,6 +1377,7 @@ function homeDaySummary(isoDate: string, entry: DayEntry | null) {
     loose: previewItems,
     fromStock: first?.fromStock === true,
     href: `/kalender?date=${isoDate}`,
+    recipeId: null as string | null,
   };
 }
 
@@ -1418,6 +1421,7 @@ function HomeDayPlate({
   return (
     <span className="relative shrink-0" style={{ width: size, height: size }}>
       <span
+        data-hero-plate
         className={cn(
           "block size-full overflow-hidden rounded-full bg-[var(--gray-25)]",
           shadow && "shadow-[0_10px_24px_-12px_rgba(16,17,48,0.35)]",
@@ -1558,6 +1562,7 @@ function HomeWeekColumn({
   return (
     <Link
       href={summary?.href ?? `/kalender?date=${day.isoDate}`}
+      onClick={recipeHeroClickHandler(summary?.recipeId, summary?.photo)}
       aria-label={`${fullLabel}${isToday ? ", vandaag" : ""}: ${summary?.title ?? "niets gepland"}`}
       style={summary ? { backgroundImage: `linear-gradient(180deg, ${tint.mid} 0%, transparent 70%)` } : undefined}
       className={cn(
