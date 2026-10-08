@@ -197,6 +197,23 @@ export function YoutubeMark() {
   return <img src="/logos/logos-youtube.svg" alt="YouTube" className="h-[18px] w-auto" />;
 }
 
+/** IMDb-link als glazen chip op een donkere herokaart (naast de genres). */
+export function HeroImdbChip({ title, imdbId }: { title: string; imdbId: string | null }) {
+  const href = imdbId ? `https://www.imdb.com/title/${imdbId}/` : `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`${title} bekijken op IMDb`}
+      className="inline-flex h-7 items-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.14)] pl-[7px] pr-2.5 text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.24)]"
+    >
+      <ImdbMark />
+      <span className="opacity-75">{FilmIcons.external}</span>
+    </a>
+  );
+}
+
 export function ImdbMark() {
   return <span className="inline-flex h-[18px] items-center rounded-[4px] bg-[#f5c518] px-[5px] text-[11.5px] font-black text-black">IMDb</span>;
 }
@@ -580,15 +597,14 @@ export function DeckBody({
             <p className="text-xs font-extrabold uppercase tracking-[0.07em] text-[#c9cbff]">{eyebrow}</p>
             <h1 className="mt-2 line-clamp-2 text-[40px] font-extrabold leading-[1.05] tracking-[-0.02em]">{media.title}</h1>
             <p className="mt-2.5 flex items-center gap-1.5 text-sm text-[rgba(255,255,255,0.75)] [&_b]:text-white">{scoreLine}</p>
-            {media.genres.length > 0 ? (
-              <div className="mt-3.5 flex flex-wrap gap-1.5">
-                {media.genres.map((g) => (
-                  <span key={g} className="inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.14)] px-[11px] text-[12.5px] font-semibold">
-                    {g}
-                  </span>
-                ))}
-              </div>
-            ) : null}
+            <div className="mt-3.5 flex flex-wrap gap-1.5">
+              {media.genres.map((g) => (
+                <span key={g} className="inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.14)] px-[11px] text-[12.5px] font-semibold">
+                  {g}
+                </span>
+              ))}
+              <HeroImdbChip title={media.title} imdbId={media.imdbId} />
+            </div>
           </div>
         </div>
       </div>

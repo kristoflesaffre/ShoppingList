@@ -18,6 +18,7 @@ import {
   ExternalChip,
   FilmIcons,
   GlassIconButton,
+  HeroImdbChip,
   ImdbMark,
   ListCard,
   SeasonPills,
@@ -542,15 +543,14 @@ export default function FilmDetailPage() {
                   <p className="text-xs font-extrabold uppercase tracking-[0.07em] text-[#c9cbff]">{eyebrow}</p>
                   <h1 className="mt-2 line-clamp-2 text-[44px] font-extrabold leading-[1.05] tracking-[-0.02em]">{detail.title}</h1>
                   <p className="mt-2.5 flex items-center gap-1.5 text-sm text-[rgba(255,255,255,0.75)] [&_b]:text-white">{scoreLine}</p>
-                  {detail.genres.length > 0 ? (
-                    <div className="mt-3.5 flex flex-wrap gap-1.5">
-                      {detail.genres.map((g) => (
-                        <span key={g} className="inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.14)] px-[11px] text-[12.5px] font-semibold">
-                          {g}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
+                  <div className="mt-3.5 flex flex-wrap gap-1.5">
+                    {detail.genres.map((g) => (
+                      <span key={g} className="inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.14)] px-[11px] text-[12.5px] font-semibold">
+                        {g}
+                      </span>
+                    ))}
+                    <HeroImdbChip title={detail.title} imdbId={detail.imdbId} />
+                  </div>
                   <div className="mt-[22px] flex gap-2.5">
                     {watchlistPill(true)}
                     {seenPill(true)}
