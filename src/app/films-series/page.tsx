@@ -298,7 +298,7 @@ function FilmsOverviewSkeleton() {
       </section>
       <section className="flex flex-col gap-3">
         {head("w-32")}
-        <Shimmer className="h-[198px] rounded-[24px] lg:h-[280px] lg:rounded-[26px]" />
+        <Shimmer className="h-[400px] rounded-[24px] lg:h-[280px] lg:rounded-[26px]" />
       </section>
       <section className="flex flex-col gap-3">
         {head("w-36")}
@@ -308,10 +308,39 @@ function FilmsOverviewSkeleton() {
   );
 }
 
+/** ‹ n / N › voor «Nieuw voor jou»: op mobiel in de sectiekop, op desktop in de kaart. */
+function DiscoverNav({ position, total, onPrev, onNext, tone }: { position: number; total: number; onPrev: () => void; onNext: () => void; tone: "light" | "dark" }) {
+  if (total <= 1) return null;
+  const btn = cn(
+    "flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2",
+    tone === "dark"
+      ? "size-10 bg-[rgba(255,255,255,0.16)] text-white focus-visible:ring-white [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.26)]"
+      : "size-8 bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.12)] focus-visible:ring-[var(--border-focus)]",
+  );
+  const chev = (d: string) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+      <path d={d} />
+    </svg>
+  );
+  return (
+    <div className={cn("flex items-center gap-2 text-[13px] font-bold", tone === "dark" ? "text-white" : "text-[var(--text-secondary)]")}>
+      <button type="button" onClick={onPrev} aria-label="Vorige suggestie" className={btn}>
+        {chev("M15 6l-6 6 6 6")}
+      </button>
+      <span className={cn("tabular-nums", tone === "dark" && "opacity-80")} aria-live="polite">
+        {position} / {total}
+      </span>
+      <button type="button" onClick={onNext} aria-label="Volgende suggestie" className={btn}>
+        {chev("M9 6l6 6-6 6")}
+      </button>
+    </div>
+  );
+}
+
 /**
- * Canvas «20 · Nieuw voor jou 1»: donkere kaart met de backdrop rechts, poster met trailerknop,
- * titel, score en (desktop) de korte inhoud met «Lees meer». Acties: + Watchlist en Niet voor mij;
- * bladeren met ‹ n / N › rechtsboven.
+ * «Nieuw voor jou». Desktop = canvas «20 · Nieuw voor jou 1»: backdrop rechts, poster links, korte
+ * inhoud met «Lees meer», ‹ n/N › rechtsboven. Mobiel = canvas «… mobiel 1»: backdrop bovenaan met
+ * trailerknop, eronder titel, score, twee regels inhoud en de knoppen (pijlen in de sectiekop).
  */
 function DiscoverFeature({
   item,
@@ -357,112 +386,125 @@ function DiscoverFeature({
     };
   }, [item.type, item.tmdbId]);
 
-  const nav = total > 1 ? (
-    <div className="absolute right-3 top-3 z-[1] flex items-center gap-1.5 text-[12.5px] font-bold text-white lg:right-5 lg:top-5 lg:gap-2 lg:text-[13px]">
-      <button type="button" onClick={onPrev} aria-label="Vorige suggestie" className="flex size-8 items-center justify-center rounded-full bg-[rgba(255,255,255,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:size-10 [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.26)]">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4"><path d="M15 6l-6 6 6 6" /></svg>
-      </button>
-      <span className="tabular-nums opacity-80" aria-live="polite">{position} / {total}</span>
-      <button type="button" onClick={onNext} aria-label="Volgende suggestie" className="flex size-8 items-center justify-center rounded-full bg-[rgba(255,255,255,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:size-10 [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.26)]">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4"><path d="M9 6l6 6-6 6" /></svg>
-      </button>
-    </div>
-  ) : null;
+  const playBtn = (size: number, className: string) =>
+    extra?.trailerKey ? (
+      <SoftPlayButton size={size} onClick={() => setShowTrailer(true)} aria-label={`Trailer van ${item.title} afspelen`} className={className} />
+    ) : null;
 
-  return (
-    <div className="relative overflow-hidden rounded-[24px] bg-[#1b1d3a] lg:h-[280px] lg:rounded-[26px]">
-      {/* Mobiel: wazige poster als achtergrond; desktop: backdrop rechts met verloop. */}
-      {item.posterUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.posterUrl} alt="" aria-hidden className="absolute inset-0 size-full scale-[1.3] object-cover opacity-45 blur-[28px] saturate-[1.3] lg:hidden" />
-      ) : null}
-      {extra?.backdropUrl ? (
+  const metaLine = (
+    <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-[rgba(255,255,255,0.75)] lg:text-[13.5px]">
+      {item.score != null ? (
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={extra.backdropUrl} alt="" aria-hidden className="absolute right-0 top-0 hidden h-full w-[66%] object-cover lg:block" />
-          <div aria-hidden className="absolute inset-0 hidden bg-[linear-gradient(90deg,#1b1d3a_36%,rgba(27,29,58,0.7)_56%,rgba(27,29,58,0.05)_88%)] lg:block" />
+          <svg viewBox="0 0 24 24" aria-hidden className="size-3.5">
+            <path fill={scoreSource === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
+          </svg>
+          <b className="text-white">{item.score.toFixed(1)}</b>
+          <ScoreSourceLink source={scoreSource ?? "tmdb"} title={item.title} imdbId={extra?.imdbId} />
         </>
       ) : null}
-      {nav}
+      <span>
+        {item.score != null ? "· " : ""}
+        {[item.year, item.typeLabel, extra?.runtime].filter(Boolean).join(" · ")}
+      </span>
+    </p>
+  );
 
-      <div className="relative flex items-center gap-4 p-4 lg:h-full lg:gap-6 lg:p-6">
-        <div className="relative w-[110px] shrink-0 lg:w-[154px]">
-          <button
-            type="button"
-            onClick={onOpen}
-            className="block w-full rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:rounded-[14px]"
-            aria-label={`${item.title} bekijken`}
-          >
-            <Poster src={item.posterUrl} alt="" className="rounded-[12px] lg:rounded-[14px]" />
-          </button>
-          {extra?.trailerKey ? (
-            <SoftPlayButton
-              onClick={() => setShowTrailer(true)}
-              aria-label={`Trailer van ${item.title} afspelen`}
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+  const overview = (lines: number) =>
+    extra?.overview ? (
+      <InlineClampText
+        text={extra.overview}
+        lines={lines}
+        onMore={onOpen}
+        className="text-[13.5px] leading-5 text-[rgba(255,255,255,0.82)] lg:text-sm lg:leading-[21px]"
+        linkClassName="font-semibold text-white underline decoration-[rgba(255,255,255,0.6)] underline-offset-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:decoration-white"
+      />
+    ) : null;
+
+  const actions = (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onAdd}
+        className="inline-flex h-10 items-center gap-1.5 rounded-pill bg-white px-[17px] text-sm font-bold text-[#16181a] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1b1d3a]"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Watchlist
+      </button>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="inline-flex h-10 items-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.14)] px-[15px] text-sm font-bold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.24)]"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+        Niet voor mij
+      </button>
+    </div>
+  );
+
+  return (
+    <>
+      {/* ── Mobiel ── */}
+      <div className="overflow-hidden rounded-[24px] bg-[#1b1d3a] lg:hidden">
+        <div className="relative h-[190px]">
+          {extra?.backdropUrl || item.posterUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={extra?.backdropUrl ?? item.posterUrl ?? ""}
+              alt=""
+              aria-hidden
+              className={cn("absolute inset-0 size-full object-cover", !extra?.backdropUrl && "scale-110 blur-md")}
             />
           ) : null}
+          <div aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(27,29,58,0)_45%,#1b1d3a_100%)]" />
+          {playBtn(52, "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2")}
         </div>
-        {showTrailer && extra?.trailerKey ? <TrailerOverlay videoKey={extra.trailerKey} title={item.title} onClose={() => setShowTrailer(false)} /> : null}
-
-        <div className="relative min-w-0 flex-1 pt-8 text-white lg:max-w-[460px] lg:pt-0">
-          <p className="hidden text-[11.5px] font-extrabold tracking-[0.07em] text-[#c9cbff] lg:block">NIEUW VOOR JOU</p>
-          <button type="button" onClick={onOpen} className="block text-left focus-visible:outline-none lg:mt-2">
-            <span className="line-clamp-2 text-[19px] font-extrabold leading-[1.2] lg:text-[30px] lg:tracking-[-0.02em]">{item.title}</span>
+        <div className="flex flex-col gap-2 px-4 pb-4 pt-1 text-white">
+          <button type="button" onClick={onOpen} className="text-left focus-visible:outline-none">
+            <span className="line-clamp-2 text-[22px] font-extrabold leading-[1.2]">{item.title}</span>
           </button>
-          <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12.5px] text-[rgba(255,255,255,0.75)] lg:mt-2 lg:text-[13.5px]">
-            {item.score != null ? (
-              <>
-                <svg viewBox="0 0 24 24" aria-hidden className="size-3 lg:size-3.5">
-                  <path fill={scoreSource === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
-                </svg>
-                <b className="text-white">{item.score.toFixed(1)}</b>
-                <ScoreSourceLink source={scoreSource ?? "tmdb"} title={item.title} imdbId={extra?.imdbId} className="hidden lg:inline" />
-              </>
-            ) : null}
-            <span>
-              {item.score != null ? "· " : ""}
-              {[item.year, item.typeLabel].filter(Boolean).join(" · ")}
-              {extra?.runtime ? <span className="hidden lg:inline"> · {extra.runtime}</span> : null}
-            </span>
-          </p>
-          {extra?.overview ? (
-            <div className="mt-2.5 hidden lg:block">
-              <InlineClampText
-                text={extra.overview}
-                lines={3}
-                onMore={onOpen}
-                className="text-sm leading-[21px] text-[rgba(255,255,255,0.82)]"
-                linkClassName="font-semibold text-white underline decoration-[rgba(255,255,255,0.6)] underline-offset-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:decoration-white"
-              />
-            </div>
-          ) : null}
-          <div className="mt-3.5 flex items-center gap-2 lg:mt-4">
-            <button
-              type="button"
-              onClick={onAdd}
-              className="inline-flex h-[38px] items-center gap-1.5 rounded-pill bg-white px-4 text-sm font-bold text-[#16181a] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1b1d3a] lg:h-10 lg:px-[17px]"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              Watchlist
+          {metaLine}
+          {overview(2)}
+          <div className="mt-1">{actions}</div>
+        </div>
+      </div>
+
+      {/* ── Desktop ── */}
+      <div className="relative hidden h-[280px] overflow-hidden rounded-[26px] bg-[#1b1d3a] lg:block">
+        {extra?.backdropUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={extra.backdropUrl} alt="" aria-hidden className="absolute right-0 top-0 h-full w-[66%] object-cover" />
+            <div aria-hidden className="absolute inset-0 bg-[linear-gradient(90deg,#1b1d3a_36%,rgba(27,29,58,0.7)_56%,rgba(27,29,58,0.05)_88%)]" />
+          </>
+        ) : null}
+        <div className="absolute right-5 top-5 z-[1]">
+          <DiscoverNav position={position} total={total} onPrev={onPrev} onNext={onNext} tone="dark" />
+        </div>
+        <div className="relative flex h-full items-center gap-6 p-6">
+          <div className="relative w-[154px] shrink-0">
+            <button type="button" onClick={onOpen} className="block w-full rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={`${item.title} bekijken`}>
+              <Poster src={item.posterUrl} alt="" className="rounded-[14px]" />
             </button>
-            <button
-              type="button"
-              onClick={onDismiss}
-              aria-label="Niet voor mij"
-              className="inline-flex h-[38px] items-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.14)] px-3 text-sm font-bold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:h-10 lg:px-[15px] [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.24)]"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
-                <path d="M6 6l12 12M18 6 6 18" />
-              </svg>
-              <span className="hidden lg:inline">Niet voor mij</span>
+            {playBtn(44, "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2")}
+          </div>
+          <div className="relative min-w-0 max-w-[460px] flex-1 text-white">
+            <p className="text-[11.5px] font-extrabold tracking-[0.07em] text-[#c9cbff]">NIEUW VOOR JOU</p>
+            <button type="button" onClick={onOpen} className="mt-2 block text-left focus-visible:outline-none">
+              <span className="line-clamp-2 text-[30px] font-extrabold leading-[1.2] tracking-[-0.02em]">{item.title}</span>
             </button>
+            <div className="mt-2">{metaLine}</div>
+            <div className="mt-2.5">{overview(3)}</div>
+            <div className="mt-4">{actions}</div>
           </div>
         </div>
       </div>
-    </div>
+
+      {showTrailer && extra?.trailerKey ? <TrailerOverlay videoKey={extra.trailerKey} title={item.title} onClose={() => setShowTrailer(false)} /> : null}
+    </>
   );
 }
 
@@ -1067,9 +1109,27 @@ export default function FilmsSeriesPage() {
             {/* Nieuw voor jou — één suggestie uit «Te ontdekken» */}
             {hasDiscoverSection && (
               <section className="flex flex-col gap-3">
-                <SectionHead title="Nieuw voor jou" href="/films-series/discover" linkLabel="Meer ontdekken" />
+                <div className="lg:hidden">
+                  <SectionHead
+                    title="Nieuw voor jou"
+                    extra={
+                      discoverFeature && !discoverLoading ? (
+                        <DiscoverNav
+                          position={(discoverIndex % discoverVisible.length) + 1}
+                          total={discoverVisible.length}
+                          onPrev={() => setDiscoverIndex((i) => (i - 1 + discoverVisible.length) % discoverVisible.length)}
+                          onNext={() => setDiscoverIndex((i) => (i + 1) % discoverVisible.length)}
+                          tone="light"
+                        />
+                      ) : null
+                    }
+                  />
+                </div>
+                <div className="hidden lg:block">
+                  <SectionHead title="Nieuw voor jou" href="/films-series/discover" linkLabel="Meer ontdekken" />
+                </div>
                 {discoverLoading || !discoverFeature ? (
-                  <Shimmer className="h-[198px] rounded-[24px] lg:h-[280px] lg:rounded-[26px]" />
+                  <Shimmer className="h-[400px] rounded-[24px] lg:h-[280px] lg:rounded-[26px]" />
                 ) : (
                   <DiscoverFeature
                     item={discoverFeature}
@@ -1086,6 +1146,13 @@ export default function FilmsSeriesPage() {
                     onNext={() => setDiscoverIndex((i) => (i + 1) % discoverVisible.length)}
                   />
                 )}
+                <button
+                  type="button"
+                  onClick={() => router.push("/films-series/discover")}
+                  className="self-center text-sm font-semibold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] lg:hidden"
+                >
+                  Meer ontdekken
+                </button>
               </section>
             )}
 
