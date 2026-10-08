@@ -298,7 +298,7 @@ function FilmsOverviewSkeleton() {
       </section>
       <section className="flex flex-col gap-3">
         {head("w-32")}
-        <Shimmer className="h-[198px] rounded-[24px] lg:h-[227px]" />
+        <Shimmer className="h-[198px] rounded-[24px] lg:h-[280px] lg:rounded-[26px]" />
       </section>
       <section className="flex flex-col gap-3">
         {head("w-36")}
@@ -308,29 +308,47 @@ function FilmsOverviewSkeleton() {
   );
 }
 
-/** Canvas «20 · Nieuw voor jou»: één suggestie op een donkere kaart met de poster wazig erachter. */
+/**
+ * Canvas «20 · Nieuw voor jou 1»: donkere kaart met de backdrop rechts, poster met trailerknop,
+ * titel, score en (desktop) de korte inhoud met «Lees meer». Acties: + Watchlist en Niet voor mij;
+ * bladeren met ‹ n / N › rechtsboven.
+ */
 function DiscoverFeature({
   item,
   scoreSource,
+  position,
+  total,
   onOpen,
   onAdd,
+  onDismiss,
+  onPrev,
   onNext,
 }: {
   item: SearchResult;
   scoreSource?: "imdb" | "tmdb";
+  position: number;
+  total: number;
   onOpen: () => void;
   onAdd: () => void;
+  onDismiss: () => void;
+  onPrev: () => void;
   onNext: () => void;
 }) {
-  const [trailerKey, setTrailerKey] = React.useState<string | null>(null);
+  const [extra, setExtra] = React.useState<{ trailerKey: string | null; backdropUrl: string | null; overview: string; runtime: string } | null>(null);
   const [showTrailer, setShowTrailer] = React.useState(false);
   React.useEffect(() => {
-    setTrailerKey(null);
+    setExtra(null);
     let cancelled = false;
     fetch(`/api/films/detail?type=${item.type}&id=${item.tmdbId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (!cancelled) setTrailerKey((d?.trailerKey as string | null) ?? null);
+        if (cancelled || !d) return;
+        setExtra({
+          trailerKey: (d.trailerKey as string | null) ?? null,
+          backdropUrl: (d.backdropUrl as string | null) ?? null,
+          overview: (d.overview as string) ?? "",
+          runtime: (d.runtime as string) ?? "",
+        });
       })
       .catch(() => {});
     return () => {
@@ -338,69 +356,110 @@ function DiscoverFeature({
     };
   }, [item.type, item.tmdbId]);
 
+  const nav = total > 1 ? (
+    <div className="absolute right-3 top-3 z-[1] flex items-center gap-1.5 text-[12.5px] font-bold text-white lg:right-5 lg:top-5 lg:gap-2 lg:text-[13px]">
+      <button type="button" onClick={onPrev} aria-label="Vorige suggestie" className="flex size-8 items-center justify-center rounded-full bg-[rgba(255,255,255,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:size-10 [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.26)]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4"><path d="M15 6l-6 6 6 6" /></svg>
+      </button>
+      <span className="tabular-nums opacity-80" aria-live="polite">{position} / {total}</span>
+      <button type="button" onClick={onNext} aria-label="Volgende suggestie" className="flex size-8 items-center justify-center rounded-full bg-[rgba(255,255,255,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:size-10 [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.26)]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4"><path d="M9 6l6 6-6 6" /></svg>
+      </button>
+    </div>
+  ) : null;
+
   return (
-    <div className="relative flex items-center gap-4 overflow-hidden rounded-[24px] bg-[#1b1d3a] p-4">
+    <div className="relative overflow-hidden rounded-[24px] bg-[#1b1d3a] lg:h-[280px] lg:rounded-[26px]">
+      {/* Mobiel: wazige poster als achtergrond; desktop: backdrop rechts met verloop. */}
       {item.posterUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.posterUrl} alt="" aria-hidden className="absolute inset-0 size-full scale-[1.3] object-cover opacity-45 blur-[28px] saturate-[1.3]" />
+        <img src={item.posterUrl} alt="" aria-hidden className="absolute inset-0 size-full scale-[1.3] object-cover opacity-45 blur-[28px] saturate-[1.3] lg:hidden" />
       ) : null}
-      <div className="relative w-[110px] shrink-0 lg:w-[130px]">
-        <button
-          type="button"
-          onClick={onOpen}
-          className="block w-full rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-          aria-label={`${item.title} bekijken`}
-        >
-          <Poster src={item.posterUrl} alt="" className="rounded-[12px]" />
-        </button>
-        {trailerKey ? (
-          <SoftPlayButton
-            onClick={() => setShowTrailer(true)}
-            aria-label={`Trailer van ${item.title} afspelen`}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-          />
-        ) : null}
-      </div>
-      {showTrailer && trailerKey ? <TrailerOverlay videoKey={trailerKey} title={item.title} onClose={() => setShowTrailer(false)} /> : null}
-      <div className="relative min-w-0 flex-1 text-white">
-        <button type="button" onClick={onOpen} className="block text-left focus-visible:outline-none">
-          <span className="line-clamp-2 text-[19px] font-extrabold leading-[1.2] lg:text-2xl">{item.title}</span>
-        </button>
-        <p className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-white/75">
-          {item.score != null ? (
-            <>
-              <svg viewBox="0 0 24 24" aria-hidden className="size-3">
-                <path fill={scoreSource === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
-              </svg>
-              <b className="text-white">{item.score.toFixed(1)}</b>
-            </>
+      {extra?.backdropUrl ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={extra.backdropUrl} alt="" aria-hidden className="absolute right-0 top-0 hidden h-full w-[66%] object-cover lg:block" />
+          <div aria-hidden className="absolute inset-0 hidden bg-[linear-gradient(90deg,#1b1d3a_36%,rgba(27,29,58,0.7)_56%,rgba(27,29,58,0.05)_88%)] lg:block" />
+        </>
+      ) : null}
+      {nav}
+
+      <div className="relative flex items-center gap-4 p-4 lg:h-full lg:gap-6 lg:p-6">
+        <div className="relative w-[110px] shrink-0 lg:w-[154px]">
+          <button
+            type="button"
+            onClick={onOpen}
+            className="block w-full rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:rounded-[14px]"
+            aria-label={`${item.title} bekijken`}
+          >
+            <Poster src={item.posterUrl} alt="" className="rounded-[12px] lg:rounded-[14px]" />
+          </button>
+          {extra?.trailerKey ? (
+            <SoftPlayButton
+              onClick={() => setShowTrailer(true)}
+              aria-label={`Trailer van ${item.title} afspelen`}
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            />
           ) : null}
-          <span>
-            {item.score != null ? "· " : ""}
-            {[item.year, item.typeLabel].filter(Boolean).join(" · ")}
-          </span>
-        </p>
-        <div className="mt-3.5 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onAdd}
-            className="inline-flex h-[38px] items-center gap-1.5 rounded-pill bg-white px-4 text-sm font-bold text-[#16181a] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1b1d3a]"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Watchlist
+        </div>
+        {showTrailer && extra?.trailerKey ? <TrailerOverlay videoKey={extra.trailerKey} title={item.title} onClose={() => setShowTrailer(false)} /> : null}
+
+        <div className="relative min-w-0 flex-1 pt-8 text-white lg:max-w-[460px] lg:pt-0">
+          <p className="hidden text-[11.5px] font-extrabold tracking-[0.07em] text-[#c9cbff] lg:block">NIEUW VOOR JOU</p>
+          <button type="button" onClick={onOpen} className="block text-left focus-visible:outline-none lg:mt-2">
+            <span className="line-clamp-2 text-[19px] font-extrabold leading-[1.2] lg:text-[30px] lg:tracking-[-0.02em]">{item.title}</span>
           </button>
-          <button
-            type="button"
-            onClick={onNext}
-            aria-label="Volgende suggestie"
-            className="flex size-[38px] items-center justify-center rounded-full bg-white/15 text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:bg-white/25"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
-              <path d="M9 6l6 6-6 6" />
-            </svg>
-          </button>
+          <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12.5px] text-[rgba(255,255,255,0.75)] lg:mt-2 lg:text-[13.5px]">
+            {item.score != null ? (
+              <>
+                <svg viewBox="0 0 24 24" aria-hidden className="size-3 lg:size-3.5">
+                  <path fill={scoreSource === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
+                </svg>
+                <b className="text-white">{item.score.toFixed(1)}</b>
+                <span className="hidden lg:inline">{scoreSource === "imdb" ? "IMDb" : "TMDB"}</span>
+              </>
+            ) : null}
+            <span>
+              {item.score != null ? "· " : ""}
+              {[item.year, item.typeLabel].filter(Boolean).join(" · ")}
+              {extra?.runtime ? <span className="hidden lg:inline"> · {extra.runtime}</span> : null}
+            </span>
+          </p>
+          {extra?.overview ? (
+            <p className="mt-2.5 hidden text-sm leading-[21px] text-[rgba(255,255,255,0.82)] lg:block">
+              <span className="line-clamp-3">{extra.overview}</span>
+              <button
+                type="button"
+                onClick={onOpen}
+                className="mt-0.5 font-semibold text-white underline decoration-[rgba(255,255,255,0.6)] underline-offset-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:decoration-white"
+              >
+                Lees meer
+              </button>
+            </p>
+          ) : null}
+          <div className="mt-3.5 flex items-center gap-2 lg:mt-4">
+            <button
+              type="button"
+              onClick={onAdd}
+              className="inline-flex h-[38px] items-center gap-1.5 rounded-pill bg-white px-4 text-sm font-bold text-[#16181a] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1b1d3a] lg:h-10 lg:px-[17px]"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Watchlist
+            </button>
+            <button
+              type="button"
+              onClick={onDismiss}
+              aria-label="Niet voor mij"
+              className="inline-flex h-[38px] items-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.14)] px-3 text-sm font-bold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:h-10 lg:px-[15px] [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.24)]"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+              <span className="hidden lg:inline">Niet voor mij</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -418,6 +477,8 @@ export default function FilmsSeriesPage() {
     partnerAvatarUrl,
     watchedIds,
     discoverDismissedIds,
+    dismissDiscoverItem,
+    restoreDiscoverItem,
     isInWatchlist,
     addToWatchlist,
     removeFromWatchlist,
@@ -1008,14 +1069,21 @@ export default function FilmsSeriesPage() {
               <section className="flex flex-col gap-3">
                 <SectionHead title="Nieuw voor jou" href="/films-series/discover" linkLabel="Meer ontdekken" />
                 {discoverLoading || !discoverFeature ? (
-                  <Shimmer className="h-[198px] rounded-[24px] lg:h-[227px]" />
+                  <Shimmer className="h-[198px] rounded-[24px] lg:h-[280px] lg:rounded-[26px]" />
                 ) : (
                   <DiscoverFeature
                     item={discoverFeature}
                     scoreSource={scoreSourceMap[discoverFeature.id] ?? discoverFeature.scoreSource}
                     onOpen={() => handleViewDetail(discoverFeature.id)}
+                    position={(discoverIndex % discoverVisible.length) + 1}
+                    total={discoverVisible.length}
                     onAdd={() => handleAdd(discoverFeature)}
-                    onNext={() => setDiscoverIndex((i) => i + 1)}
+                    onDismiss={() => {
+                      void dismissDiscoverItem(discoverFeature.id);
+                      showSnackbar(`${discoverFeature.title} komt niet meer terug`, () => void restoreDiscoverItem(discoverFeature.id));
+                    }}
+                    onPrev={() => setDiscoverIndex((i) => (i - 1 + discoverVisible.length) % discoverVisible.length)}
+                    onNext={() => setDiscoverIndex((i) => (i + 1) % discoverVisible.length)}
                   />
                 )}
               </section>
