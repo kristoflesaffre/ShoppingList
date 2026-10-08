@@ -4,14 +4,14 @@ import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
-
-function joinGuardKey(listId: string, userId: string) {
-  return `shoppinglist-deel-join:${listId}:${userId}`;
-}
+import { homeListCardIconSrc } from "@/lib/list-product-icons";
+import { masterStoreLabelFromListIcon } from "@/lib/master-stores";
+import { InviteTile, ShareInvite } from "@/components/share_invite";
 
 /**
- * Uitnodiging accepteren: na inloggen wordt de gebruiker gekoppeld als
- * listMember aan het lijstje en doorgestuurd naar /lijstje/[id].
+ * Uitnodiging voor een lijstje (canvas «24 · Uitnodiging lijstje»): eerst zien welk lijstje het
+ * is, dan «Meedoen» → gekoppeld als listMember en door naar /lijstje/[id]. Eigenaar of al lid →
+ * meteen door.
  */
 export default function DeelUitnodigingPage() {
   const router = useRouter();
@@ -21,30 +21,32 @@ export default function DeelUitnodigingPage() {
   const { isLoading: authLoading, user } = db.useAuth();
 
   /** Lege token: query die nooit matcht (hooks blijven stabiel). */
-  const inviteQuery =
-    token.length > 0
-      ? {
-          lists: {
-            memberships: {},
-            $: { where: { shareToken: token } },
-          },
-        }
-      : {
-          lists: {
-            memberships: {},
-            $: { where: { ownerId: "__deel_page_no_token__" } },
-          },
-        };
+  const inviteQuery = {
+    lists: {
+      memberships: {},
+      items: {},
+      $: { where: token.length > 0 ? { shareToken: token } : { ownerId: "__deel_page_no_token__" } },
+    },
+  };
 
   // Instant typed queries verwachten NonEmpty strings; dynamische route-token casten we.
   const { isLoading, error, data } = db.useQuery(
-    inviteQuery as unknown as Parameters<typeof db.useQuery>[0],
+    (user ? inviteQuery : null) as unknown as Parameters<typeof db.useQuery>[0],
   );
 
-  const list = data?.lists?.[0];
+  const list = data?.lists?.[0] as
+    | (Record<string, unknown> & {
+        id: string;
+        name?: string;
+        icon?: string;
+        ownerId?: string;
+        memberships?: { instantUserId?: string }[];
+        items?: unknown[];
+      })
+    | undefined;
   const listId = list?.id;
+  const [state, setState] = React.useState<"ready" | "busy">("ready");
   const [joinError, setJoinError] = React.useState<string | null>(null);
-  const [joining, setJoining] = React.useState(false);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -53,109 +55,62 @@ export default function DeelUitnodigingPage() {
     }
   }, [authLoading, user, router, token]);
 
-  const alreadyMember = React.useMemo(() => {
-    if (!user || !list?.memberships) return false;
-    return list.memberships.some((m) => m.instantUserId === user.id);
-  }, [list?.memberships, user]);
+  const alreadyMember = Boolean(user && list?.memberships?.some((m) => m.instantUserId === user.id));
+  const isOwner = Boolean(user && list?.ownerId === user.id);
 
   React.useEffect(() => {
-    if (authLoading || !user || !token) return;
-    if (isLoading) return;
-    if (error) {
-      setJoinError(error.message);
-      return;
-    }
-    if (!list || !listId) {
-      setJoinError("Deze uitnodigingslink is ongeldig of verlopen.");
-      return;
-    }
+    if (listId && (isOwner || alreadyMember)) router.replace(`/lijstje/${listId}`);
+  }, [listId, isOwner, alreadyMember, router]);
 
-    if (list.ownerId === user.id) {
-      router.replace(`/lijstje/${listId}`);
-      return;
-    }
-
-    if (alreadyMember) {
-      router.replace(`/lijstje/${listId}`);
-      return;
-    }
-
-    const guard = joinGuardKey(listId, user.id);
-    if (typeof window !== "undefined") {
-      if (sessionStorage.getItem(guard)) {
-        /** Strict Mode / dubbele effect: join al gestart; wacht tot membership in query zit. */
-        return;
-      }
-      sessionStorage.setItem(guard, "1");
-    }
-
-    if (joining) return;
-    setJoining(true);
+  async function handleJoin() {
+    if (!user || !listId || state === "busy") return;
+    setState("busy");
     setJoinError(null);
-
-    /** Instant vereist een UUID als entity-id (geen custom string). */
-    const memberId = iid();
-    db.transact(
-      db.tx.listMembers[memberId]
-        .update({ instantUserId: user.id })
-        .link({ list: listId }),
-    )
-      .then(() => {
-        router.replace(`/lijstje/${listId}`);
-      })
-      .catch((e: unknown) => {
-        if (typeof window !== "undefined") {
-          sessionStorage.removeItem(guard);
-        }
-        setJoining(false);
-        setJoinError(
-          e instanceof Error ? e.message : "Kon niet deelnemen aan dit lijstje.",
-        );
-      });
-  }, [
-    authLoading,
-    user,
-    token,
-    isLoading,
-    error,
-    list,
-    listId,
-    alreadyMember,
-    joining,
-    router,
-  ]);
-
-  if (!token) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
-        <p className="text-center text-base text-[var(--text-secondary)]">
-          Ontbrekende uitnodiging.
-        </p>
-      </div>
-    );
+    try {
+      /** Instant vereist een UUID als entity-id (geen custom string). */
+      await db.transact(db.tx.listMembers[iid()].update({ instantUserId: user.id }).link({ list: listId }));
+      router.replace(`/lijstje/${listId}`);
+    } catch (e) {
+      setState("ready");
+      setJoinError(e instanceof Error ? e.message : "Kon niet deelnemen aan dit lijstje.");
+    }
   }
 
+  const loading = !token ? false : authLoading || !user || isLoading || isOwner || alreadyMember;
+  const invalid = !token || Boolean(error) || (!loading && !list);
+
+  const masterIcon = String(list?.masterIcon ?? "");
+  const storeIcon = masterIcon.startsWith("/logos/") ? masterIcon : String(list?.icon ?? "").startsWith("/logos/") ? String(list?.icon) : "";
+  const customIconUrl = typeof list?.customIconUrl === "string" ? (list.customIconUrl as string) : null;
+  const tileIcon =
+    customIconUrl ??
+    (list
+      ? homeListCardIconSrc({
+          id: list.id,
+          icon: String(list.icon ?? ""),
+          displayVariant: storeIcon ? "from-master" : "default",
+          name: list.name ?? "",
+        })
+      : "");
+  const itemCount = list?.items?.length ?? 0;
+  const subtitle = [storeIcon ? masterStoreLabelFromListIcon(storeIcon) : null, `${itemCount} ${itemCount === 1 ? "item" : "items"}`]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[var(--white)] px-4">
-      <p className="text-center text-base font-medium text-[var(--text-primary)]">
-        {joining || (user && isLoading)
-          ? "Uitnodiging verwerken…"
-          : "Even geduld…"}
-      </p>
-      {joinError ? (
-        <p className="max-w-md text-center text-sm text-[var(--error-600)]">
-          {joinError}
-        </p>
-      ) : null}
-      {joinError ? (
-        <button
-          type="button"
-          className="text-sm font-medium text-[var(--blue-500)] underline"
-          onClick={() => router.replace("/")}
-        >
-          Naar start
-        </button>
-      ) : null}
-    </div>
+    <ShareInvite
+      state={invalid ? "error" : loading ? "loading" : state}
+      visual={tileIcon ? <InviteTile src={tileIcon} /> : null}
+      title={list?.name ?? "Lijstje"}
+      subtitle={subtitle}
+      note="Je ziet en bewerkt dit lijstje samen. Wat de een afvinkt, ziet de ander meteen."
+      acceptLabel="Meedoen"
+      busyLabel="Je doet mee…"
+      onAccept={() => void handleJoin()}
+      onDecline={() => router.replace("/")}
+      errorText={error?.message ?? "Misschien werd het delen gestopt. Vraag om een nieuwe link."}
+      onErrorAction={() => router.replace("/")}
+      acceptError={joinError}
+    />
   );
 }

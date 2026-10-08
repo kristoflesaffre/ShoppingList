@@ -1,44 +1,36 @@
 "use client";
 
 import * as React from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
+import { InviteTile, ShareInvite } from "@/components/share_invite";
 
-function joinGuardKey(shareId: string, userId: string) {
-  return `shoppinglist-te-kopen-deel-join:${shareId}:${userId}`;
-}
-
+/**
+ * Uitnodiging voor «Te kopen» (canvas «24 · Gedeelde link»): eerst zien wat het is, dan «Meedoen».
+ * Eigenaar of al lid → meteen door naar /te-kopen.
+ */
 export default function DeelTeKopenUitnodigingPage() {
   const router = useRouter();
   const params = useParams();
   const token = typeof params.token === "string" ? params.token : "";
-
   const { isLoading: authLoading, user } = db.useAuth();
 
-  const inviteQuery =
-    token.length > 0
-      ? {
-          shoppingShares: {
-            memberships: {},
-            $: { where: { shareToken: token } },
-          },
-        }
-      : {
-          shoppingShares: {
-            memberships: {},
-            $: { where: { ownerId: "__deel_te_kopen_no_token__" } },
-          },
-        };
-
+  const query = {
+    shoppingShares: {
+      memberships: {},
+      $: { where: token.length > 0 ? { shareToken: token } : { ownerId: "__deel_te_kopen_no_token__" } },
+    },
+  };
   const { isLoading, error, data } = db.useQuery(
-    inviteQuery as unknown as Parameters<typeof db.useQuery>[0],
+    (user ? query : null) as unknown as Parameters<typeof db.useQuery>[0],
   );
-
-  const share = data?.shoppingShares?.[0];
+  const share = data?.shoppingShares?.[0] as
+    | { id: string; ownerId?: string; memberships?: { instantUserId?: string }[] }
+    | undefined;
   const shareId = share?.id;
+  const [state, setState] = React.useState<"ready" | "busy">("ready");
   const [joinError, setJoinError] = React.useState<string | null>(null);
-  const [joining, setJoining] = React.useState(false);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -47,99 +39,43 @@ export default function DeelTeKopenUitnodigingPage() {
     }
   }, [authLoading, user, router, token]);
 
-  const alreadyMember = React.useMemo(() => {
-    if (!user || !share?.memberships) return false;
-    return share.memberships.some((m) => m.instantUserId === user.id);
-  }, [share?.memberships, user]);
+  const alreadyMember = Boolean(user && share?.memberships?.some((m) => m.instantUserId === user.id));
+  const isOwner = Boolean(user && share?.ownerId === user.id);
 
   React.useEffect(() => {
-    if (authLoading || !user || !token) return;
-    if (isLoading) return;
-    if (error) {
-      setJoinError(error.message);
-      return;
-    }
-    if (!share || !shareId) {
-      setJoinError("Deze uitnodigingslink is ongeldig of verlopen.");
-      return;
-    }
+    if (shareId && (isOwner || alreadyMember)) router.replace("/te-kopen");
+  }, [shareId, isOwner, alreadyMember, router]);
 
-    if (share.ownerId === user.id || alreadyMember) {
-      router.replace("/te-kopen");
-      return;
-    }
-
-    const guard = joinGuardKey(shareId, user.id);
-    if (typeof window !== "undefined") {
-      if (sessionStorage.getItem(guard)) return;
-      sessionStorage.setItem(guard, "1");
-    }
-
-    if (joining) return;
-    setJoining(true);
+  async function handleJoin() {
+    if (!user || !shareId || state === "busy") return;
+    setState("busy");
     setJoinError(null);
-
-    db.transact(
-      db.tx.shoppingShareMembers[iid()]
-        .update({ instantUserId: user.id })
-        .link({ shoppingShare: shareId }),
-    )
-      .then(() => {
-        router.replace("/te-kopen");
-      })
-      .catch((e: unknown) => {
-        if (typeof window !== "undefined") {
-          sessionStorage.removeItem(guard);
-        }
-        setJoining(false);
-        setJoinError(
-          e instanceof Error ? e.message : "Kon niet deelnemen aan dit lijstje.",
-        );
-      });
-  }, [
-    authLoading,
-    user,
-    token,
-    isLoading,
-    error,
-    share,
-    shareId,
-    alreadyMember,
-    joining,
-    router,
-  ]);
-
-  if (!token) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
-        <p className="text-center text-base text-[var(--text-secondary)]">
-          Ontbrekende uitnodiging.
-        </p>
-      </div>
-    );
+    try {
+      await db.transact(db.tx.shoppingShareMembers[iid()].update({ instantUserId: user.id }).link({ shoppingShare: shareId }));
+      router.replace("/te-kopen");
+    } catch (e) {
+      setState("ready");
+      setJoinError(e instanceof Error ? e.message : "Kon niet deelnemen aan dit lijstje.");
+    }
   }
 
+  const loading = !token ? false : authLoading || !user || isLoading || isOwner || alreadyMember;
+  const invalid = !token || Boolean(error) || (!loading && !share);
+
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[var(--white)] px-4">
-      <p className="text-center text-base font-medium text-[var(--text-primary)]">
-        {joining || (user && isLoading)
-          ? "Uitnodiging verwerken…"
-          : "Even geduld…"}
-      </p>
-      {joinError ? (
-        <p className="max-w-md text-center text-sm text-[var(--error-600)]">
-          {joinError}
-        </p>
-      ) : null}
-      {joinError ? (
-        <button
-          type="button"
-          className="text-sm font-medium text-[var(--blue-500)] underline"
-          onClick={() => router.replace("/")}
-        >
-          Naar start
-        </button>
-      ) : null}
-    </div>
+    <ShareInvite
+      state={invalid ? "error" : loading ? "loading" : state}
+      visual={<InviteTile src="/images/ui/kopen_160.webp" tint />}
+      title="Te kopen"
+      subtitle="Een gedeeld lijstje met dingen om te kopen"
+      note="Wat de een toevoegt of koopt, ziet de ander meteen."
+      acceptLabel="Meedoen"
+      busyLabel="Je doet mee…"
+      onAccept={() => void handleJoin()}
+      onDecline={() => router.replace("/")}
+      errorText={error?.message ?? "Misschien werd het delen gestopt. Vraag om een nieuwe link."}
+      onErrorAction={() => router.replace("/")}
+      acceptError={joinError}
+    />
   );
 }

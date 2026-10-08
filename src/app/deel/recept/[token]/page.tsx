@@ -4,10 +4,11 @@ import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
+import { InviteIcons, InvitePlate, InviteTile, ShareInvite } from "@/components/share_invite";
 
 /**
- * Recept-uitnodiging accepteren: recept wordt gekopieerd naar de receptenlijst
- * van de ingelogde gebruiker en doorgestuurd naar /recepten/[id].
+ * Recept-uitnodiging (canvas «24 · Recept gedeeld»): recept bekijken en met «Recept bewaren»
+ * kopiëren naar de eigen recepten; daarna door naar /recepten/[id].
  */
 export default function DeelReceptPage() {
   const router = useRouter();
@@ -87,89 +88,33 @@ export default function DeelReceptPage() {
     }
   }, [recipe, copying, done, router]);
 
-  if (!token) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
-        <p className="text-center text-base text-[var(--text-secondary)]">
-          Ontbrekende deellink.
-        </p>
-      </div>
-    );
-  }
-
-  if (authLoading || (user && isLoading)) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
-        <p className="text-center text-base text-[var(--text-secondary)]">Even geduld…</p>
-      </div>
-    );
-  }
-
-  if (error || (!isLoading && !recipe)) {
-    return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4">
-        <p className="text-center text-base text-[var(--text-secondary)]">
-          {error?.message ?? "Deze deellink is ongeldig of verlopen."}
-        </p>
-        <button
-          type="button"
-          className="text-sm font-medium text-[var(--blue-500)] underline"
-          onClick={() => router.replace("/recepten")}
-        >
-          Naar recepten
-        </button>
-      </div>
-    );
-  }
+  const ingredientCount = (recipe?.ingredients ?? []).length;
+  const persons = typeof recipe?.persons === "number" ? recipe.persons : null;
+  const loading = Boolean(token) && (authLoading || !user || isLoading);
+  const invalid = !token || Boolean(error) || (!loading && !recipe);
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-[var(--white)] px-4">
-      {recipe ? (
-        <>
-          {recipe.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={recipe.photoUrl}
-              alt=""
-              className="size-[120px] rounded-full object-cover shadow-md"
-            />
-          ) : null}
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-xl font-bold text-[var(--text-primary)]">
-              {recipe.name}
-            </h1>
-            <p className="text-sm text-[var(--text-secondary)]">
-              {(recipe.ingredients ?? []).length > 0
-                ? `${(recipe.ingredients ?? []).length} ingrediënten`
-                : null}
-            </p>
-          </div>
-
-          {copyError ? (
-            <p className="max-w-xs text-center text-sm text-[var(--error-600)]">
-              {copyError}
-            </p>
-          ) : null}
-
-          <button
-            type="button"
-            disabled={copying || done}
-            onClick={() => void handleCopy()}
-            className="min-w-[200px] rounded-full bg-[var(--blue-500)] px-6 py-3 text-base font-semibold text-white shadow-md transition-opacity active:opacity-80 disabled:opacity-50"
-          >
-            {copying ? "Recept toevoegen…" : "Recept toevoegen"}
-          </button>
-          <button
-            type="button"
-            className="text-sm text-[var(--text-tertiary)] underline"
-            onClick={() => router.replace("/recepten")}
-          >
-            Annuleren
-          </button>
-        </>
-      ) : (
-        <p className="text-center text-base text-[var(--text-secondary)]">Even geduld…</p>
-      )}
-    </div>
+    <ShareInvite
+      state={invalid ? "error" : loading ? "loading" : copying || done ? "busy" : "ready"}
+      eyebrow="Recept gedeeld"
+      visual={recipe?.photoUrl ? <InvitePlate src={recipe.photoUrl} /> : <InviteTile src="/images/ui/recept_160.webp" tint />}
+      title={recipe?.name ?? "Recept"}
+      subtitle={[
+        ingredientCount > 0 ? `${ingredientCount} ${ingredientCount === 1 ? "ingrediënt" : "ingrediënten"}` : null,
+        persons ? `${persons} ${persons === 1 ? "persoon" : "personen"}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")}
+      note="Je krijgt een eigen kopie in je recepten. Aanpassen kan zonder dat het origineel verandert."
+      noteIcon={InviteIcons.copy}
+      acceptLabel="Recept bewaren"
+      busyLabel="Recept bewaren…"
+      onAccept={() => void handleCopy()}
+      onDecline={() => router.replace("/recepten")}
+      errorText={error?.message ?? "Misschien werd het delen gestopt. Vraag om een nieuwe link."}
+      errorActionLabel="Naar recepten"
+      onErrorAction={() => router.replace("/recepten")}
+      acceptError={copyError}
+    />
   );
 }
