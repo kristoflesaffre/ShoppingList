@@ -289,6 +289,15 @@ function RatingChip({ score, source }: { score: number; source?: "imdb" | "tmdb"
   );
 }
 
+/** Film of serie op de poster: de score betekent iets anders bij een serie dan bij een film. */
+function TypeChip({ type }: { type: "movie" | "tv" }) {
+  return (
+    <span className="absolute left-[7px] top-[7px] inline-flex h-[22px] items-center rounded-pill bg-[rgba(16,17,48,0.62)] px-2 text-[11px] font-bold uppercase tracking-[0.04em] text-white backdrop-blur-md">
+      {type === "movie" ? "Film" : "Serie"}
+    </span>
+  );
+}
+
 function PosterTile({
   item,
   scoreSource,
@@ -1102,6 +1111,7 @@ export default function FilmsSeriesPage() {
                           className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 rounded-[14px]"
                         >
                           <Poster src={item.posterUrl} alt="">
+                            <TypeChip type={item.type} />
                             {item.score != null ? <RatingChip score={item.score} source={scoreSourceMap[item.id]} /> : null}
                           </Poster>
                           <p className="mt-2 truncate text-[13.5px] font-bold leading-[18px] text-[var(--text-primary)]">{item.title}</p>
