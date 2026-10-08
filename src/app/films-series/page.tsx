@@ -308,6 +308,42 @@ function FilmsOverviewSkeleton() {
   );
 }
 
+type DiscoverExtra = { trailerKey: string | null; backdropUrl: string | null; overview: string; runtime: string; imdbId: string | null };
+
+/** Detailgegevens van suggesties, één keer opgehaald en bewaard (ook vooraf voor vorige/volgende). */
+const discoverExtraCache = new Map<string, DiscoverExtra>();
+const discoverExtraInflight = new Map<string, Promise<DiscoverExtra | null>>();
+
+function loadDiscoverExtra(item: { id: string; type: string; tmdbId: number; posterUrl: string | null }): Promise<DiscoverExtra | null> {
+  const hit = discoverExtraCache.get(item.id);
+  if (hit) return Promise.resolve(hit);
+  const pending = discoverExtraInflight.get(item.id);
+  if (pending) return pending;
+  const p = fetch(`/api/films/detail?type=${item.type}&id=${item.tmdbId}`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      if (!d) return null;
+      const extra: DiscoverExtra = {
+        trailerKey: (d.trailerKey as string | null) ?? null,
+        backdropUrl: (d.backdropUrl as string | null) ?? null,
+        overview: (d.overview as string) ?? "",
+        runtime: (d.runtime as string) ?? "",
+        imdbId: (d.imdbId as string | null) ?? null,
+      };
+      discoverExtraCache.set(item.id, extra);
+      // Beelden alvast in de browsercache, zodat de kaart meteen compleet verschijnt.
+      if (typeof window !== "undefined") {
+        if (extra.backdropUrl) new Image().src = extra.backdropUrl;
+        if (item.posterUrl) new Image().src = item.posterUrl;
+      }
+      return extra;
+    })
+    .catch(() => null)
+    .finally(() => discoverExtraInflight.delete(item.id));
+  discoverExtraInflight.set(item.id, p);
+  return p;
+}
+
 /** ‹ n / N › voor «Nieuw voor jou»: op mobiel in de sectiekop, op desktop in de kaart. */
 function DiscoverNav({ position, total, onPrev, onNext, tone }: { position: number; total: number; onPrev: () => void; onNext: () => void; tone: "light" | "dark" }) {
   if (total <= 1) return null;
@@ -363,28 +399,60 @@ function DiscoverFeature({
   onPrev: () => void;
   onNext: () => void;
 }) {
-  const [extra, setExtra] = React.useState<{ trailerKey: string | null; backdropUrl: string | null; overview: string; runtime: string; imdbId: string | null } | null>(null);
+  const [extra, setExtra] = React.useState<DiscoverExtra | null>(() => discoverExtraCache.get(item.id) ?? null);
   const [showTrailer, setShowTrailer] = React.useState(false);
   React.useEffect(() => {
-    setExtra(null);
     let cancelled = false;
-    fetch(`/api/films/detail?type=${item.type}&id=${item.tmdbId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (cancelled || !d) return;
-        setExtra({
-          trailerKey: (d.trailerKey as string | null) ?? null,
-          backdropUrl: (d.backdropUrl as string | null) ?? null,
-          overview: (d.overview as string) ?? "",
-          runtime: (d.runtime as string) ?? "",
-          imdbId: (d.imdbId as string | null) ?? null,
-        });
-      })
-      .catch(() => {});
+    void loadDiscoverExtra(item).then((d) => {
+      if (!cancelled) setExtra(d);
+    });
     return () => {
       cancelled = true;
     };
-  }, [item.type, item.tmdbId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
+
+  // Swipen op mobiel: kaart volgt de vinger; voorbij de drempel → volgende/vorige.
+  const swipeRef = React.useRef<HTMLDivElement>(null);
+  const drag = React.useRef<{ x: number; y: number; dx: number; axis: "x" | "y" | null } | null>(null);
+  const setX = (dx: number, animate: boolean) => {
+    const el = swipeRef.current;
+    if (!el) return;
+    el.style.transition = animate ? "transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease-out" : "none";
+    el.style.transform = dx ? `translateX(${dx}px) rotate(${dx / 60}deg)` : "";
+    el.style.opacity = dx ? String(Math.max(0.55, 1 - Math.abs(dx) / 500)) : "";
+  };
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (total <= 1) return;
+    drag.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, axis: null };
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.touches[0].clientX - d.x;
+    const dy = e.touches[0].clientY - d.y;
+    if (!d.axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    if (d.axis !== "x") return;
+    d.dx = dx;
+    setX(dx, false);
+  };
+  const onTouchEnd = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || d.axis !== "x") return;
+    if (Math.abs(d.dx) > 70) {
+      const el = swipeRef.current;
+      const out = d.dx < 0 ? -420 : 420;
+      if (el) {
+        el.style.transition = "transform 180ms ease-in, opacity 180ms ease-in";
+        el.style.transform = `translateX(${out}px) rotate(${out / 60}deg)`;
+        el.style.opacity = "0";
+      }
+      window.setTimeout(() => (d.dx < 0 ? onNext() : onPrev()), 170);
+    } else {
+      setX(0, true);
+    }
+  };
 
   const playBtn = (size: number, className: string) =>
     extra?.trailerKey ? (
@@ -448,7 +516,17 @@ function DiscoverFeature({
   return (
     <>
       {/* ── Mobiel ── */}
-      <div className="overflow-hidden rounded-[24px] bg-[#1b1d3a] lg:hidden">
+      <div
+        ref={swipeRef}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={() => {
+          drag.current = null;
+          setX(0, true);
+        }}
+        className="touch-pan-y overflow-hidden rounded-[24px] bg-[#1b1d3a] will-change-transform lg:hidden"
+      >
         <div className="relative h-[190px]">
           {extra?.backdropUrl || item.posterUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -531,6 +609,8 @@ export default function FilmsSeriesPage() {
   const { watchingItems, markNextEpisode, markSeasonWatched, markSeriesWatched, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
   const [watchMenuFor, setWatchMenuFor] = React.useState<string | null>(null);
   const [discoverIndex, setDiscoverIndex] = React.useState(0);
+  /** Richting van de laatste blader-actie, voor de inschuif-animatie. */
+  const [discoverDir, setDiscoverDir] = React.useState<"next" | "prev" | null>(null);
   const [mounted, setMounted] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
@@ -926,6 +1006,22 @@ export default function FilmsSeriesPage() {
   );
 
   const discoverFeature = discoverVisible.length > 0 ? discoverVisible[discoverIndex % discoverVisible.length] : null;
+  // Vorige en volgende suggestie (en de twee daarna) vooraf ophalen, inclusief beelden.
+  React.useEffect(() => {
+    const n = discoverVisible.length;
+    if (n === 0) return;
+    const at = discoverIndex % n;
+    for (const off of [0, 1, -1, 2]) {
+      const it = discoverVisible[(at + off + n) % n];
+      if (it) void loadDiscoverExtra(it);
+    }
+  }, [discoverIndex, discoverVisible]);
+
+  const discoverStep = (dir: "next" | "prev") => {
+    if (discoverVisible.length === 0) return;
+    setDiscoverDir(dir);
+    setDiscoverIndex((i) => (dir === "next" ? i + 1 : i - 1 + discoverVisible.length) % discoverVisible.length);
+  };
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col">
@@ -1117,8 +1213,8 @@ export default function FilmsSeriesPage() {
                         <DiscoverNav
                           position={(discoverIndex % discoverVisible.length) + 1}
                           total={discoverVisible.length}
-                          onPrev={() => setDiscoverIndex((i) => (i - 1 + discoverVisible.length) % discoverVisible.length)}
-                          onNext={() => setDiscoverIndex((i) => (i + 1) % discoverVisible.length)}
+                          onPrev={() => discoverStep("prev")}
+                          onNext={() => discoverStep("next")}
                           tone="light"
                         />
                       ) : null
@@ -1131,20 +1227,23 @@ export default function FilmsSeriesPage() {
                 {discoverLoading || !discoverFeature ? (
                   <Shimmer className="h-[400px] rounded-[24px] lg:h-[280px] lg:rounded-[26px]" />
                 ) : (
-                  <DiscoverFeature
-                    item={discoverFeature}
-                    scoreSource={scoreSourceMap[discoverFeature.id] ?? discoverFeature.scoreSource}
-                    onOpen={() => handleViewDetail(discoverFeature.id)}
-                    position={(discoverIndex % discoverVisible.length) + 1}
-                    total={discoverVisible.length}
-                    onAdd={() => handleAdd(discoverFeature)}
-                    onDismiss={() => {
-                      void dismissDiscoverItem(discoverFeature.id);
-                      showSnackbar(`${discoverFeature.title} komt niet meer terug`, () => void restoreDiscoverItem(discoverFeature.id));
-                    }}
-                    onPrev={() => setDiscoverIndex((i) => (i - 1 + discoverVisible.length) % discoverVisible.length)}
-                    onNext={() => setDiscoverIndex((i) => (i + 1) % discoverVisible.length)}
-                  />
+                  <div key={discoverFeature.id} className={discoverDir === "next" ? "discover-in-next" : discoverDir === "prev" ? "discover-in-prev" : undefined}>
+                    <DiscoverFeature
+                      item={discoverFeature}
+                      scoreSource={scoreSourceMap[discoverFeature.id] ?? discoverFeature.scoreSource}
+                      onOpen={() => handleViewDetail(discoverFeature.id)}
+                      position={(discoverIndex % discoverVisible.length) + 1}
+                      total={discoverVisible.length}
+                      onAdd={() => handleAdd(discoverFeature)}
+                      onDismiss={() => {
+                        setDiscoverDir("next");
+                        void dismissDiscoverItem(discoverFeature.id);
+                        showSnackbar(`${discoverFeature.title} komt niet meer terug`, () => void restoreDiscoverItem(discoverFeature.id));
+                      }}
+                      onPrev={() => discoverStep("prev")}
+                      onNext={() => discoverStep("next")}
+                    />
+                  </div>
                 )}
                 <button
                   type="button"
