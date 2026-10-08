@@ -222,9 +222,6 @@ const FILTER_CHIPS: { id: FilterOption; label: string }[] = [
   { id: "tv", label: "Series" },
 ];
 
-/** Breedte van een poster in de watchlist-rijen (mobiel). */
-const POSTER_W = 120;
-
 function SettingsButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -1104,7 +1101,9 @@ export default function FilmsSeriesPage() {
                           onClick={() => router.push(`/films-series/partner/${item.id}`)}
                           className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 rounded-[14px]"
                         >
-                          <Poster src={item.posterUrl} alt="" />
+                          <Poster src={item.posterUrl} alt="">
+                            {item.score != null ? <RatingChip score={item.score} source={scoreSourceMap[item.id]} /> : null}
+                          </Poster>
                           <p className="mt-2 truncate text-[13.5px] font-bold leading-[18px] text-[var(--text-primary)]">{item.title}</p>
                         </button>
                         <div className="mt-2 flex gap-1.5">
@@ -1158,11 +1157,11 @@ export default function FilmsSeriesPage() {
                       return (
                         <div
                           key={item.id}
-                          className="shrink-0 overflow-hidden"
+                          /* Breedte = poster + tussenruimte (mobiel 120+12, desktop 140+16); 0 tijdens weghalen. */
+                          className="w-[132px] shrink-0 overflow-hidden pr-3 lg:w-[156px] lg:pr-4"
                           style={{
-                            width: isCollapsed ? 0 : POSTER_W + 12,
+                            ...(isCollapsed ? { width: 0 } : null),
                             opacity: isCollapsed ? 0 : 1,
-                            paddingRight: 12,
                             transition: "width 420ms cubic-bezier(0.4, 0, 0.2, 1), opacity 260ms ease-out",
                           }}
                         >
