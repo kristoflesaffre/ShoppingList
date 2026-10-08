@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
+import { SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
 import { MiniButton } from "@/components/ui/mini_button";
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
@@ -503,59 +504,6 @@ function WatchingCard({
   );
 }
 
-/** Trailer van YouTube over het hele scherm; sluiten met ✕, Escape of een tik naast de video. */
-function TrailerOverlay({ videoKey, title, onClose }: { videoKey: string; title: string; onClose: () => void }) {
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [onClose]);
-  return createPortal(
-    <div role="dialog" aria-modal="true" aria-label={`Trailer van ${title}`} onClick={onClose} className="fixed inset-0 z-[80] flex flex-col items-center justify-center gap-4 bg-[rgba(8,9,24,0.92)] p-4">
-      <div className="aspect-video w-full max-w-[1000px] overflow-hidden rounded-[16px] bg-black" onClick={(e) => e.stopPropagation()}>
-        <iframe
-          src={`https://www.youtube.com/embed/${videoKey}?autoplay=1&rel=0&playsinline=1`}
-          allow="autoplay; fullscreen; encrypted-media"
-          allowFullScreen
-          title={`Trailer van ${title}`}
-          className="size-full"
-        />
-      </div>
-      {/* Sommige trailers mogen niet ingesloten worden; dan blijft YouTube zelf over. */}
-      <a
-        href={`https://www.youtube.com/watch?v=${videoKey}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => e.stopPropagation()}
-        className="inline-flex h-9 items-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.14)] px-4 text-[13px] font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.22)]"
-      >
-        Speelt niet af? Bekijk op YouTube
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3.5">
-          <path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4" />
-        </svg>
-      </a>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Trailer sluiten"
-        className="absolute right-4 top-[calc(env(safe-area-inset-top,0px)+16px)] flex size-10 items-center justify-center rounded-full bg-[rgba(255,255,255,0.14)] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-4">
-          <path d="M6 6l12 12M18 6L6 18" />
-        </svg>
-      </button>
-    </div>,
-    document.body,
-  );
-}
-
 /** Canvas «20 · Nieuw voor jou»: één suggestie op een donkere kaart met de poster wazig erachter. */
 function DiscoverFeature({
   item,
@@ -602,17 +550,11 @@ function DiscoverFeature({
           <Poster src={item.posterUrl} alt="" className="rounded-[12px]" />
         </button>
         {trailerKey ? (
-          <button
-            type="button"
+          <SoftPlayButton
             onClick={() => setShowTrailer(true)}
             aria-label={`Trailer van ${item.title} afspelen`}
-            className="absolute left-1/2 top-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(16,17,48,0.22)] text-[rgba(255,255,255,0.95)] shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.45),0_6px_16px_-6px_rgba(0,0,0,0.45)] backdrop-blur-[10px] transition-[transform,background-color] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:scale-105 [@media(hover:hover)]:hover:bg-[rgba(16,17,48,0.34)]"
-          >
-            {/* Driehoek optisch gecentreerd: zwaartepunt iets rechts van het midden van het rondje. */}
-            <svg viewBox="0 0 24 24" aria-hidden className="size-[18px]">
-              <path d="M7.5 5.6v12.8a1 1 0 0 0 1.52.85l10.2-6.4a1 1 0 0 0 0-1.7L9.02 4.75A1 1 0 0 0 7.5 5.6z" transform="translate(-0.9 0)" fill="currentColor" />
-            </svg>
-          </button>
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+          />
         ) : null}
       </div>
       {showTrailer && trailerKey ? <TrailerOverlay videoKey={trailerKey} title={item.title} onClose={() => setShowTrailer(false)} /> : null}
@@ -626,10 +568,13 @@ function DiscoverFeature({
               <svg viewBox="0 0 24 24" aria-hidden className="size-3">
                 <path fill={scoreSource === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
               </svg>
-              <b className="text-white">{item.score.toFixed(1)}</b> ·
+              <b className="text-white">{item.score.toFixed(1)}</b>
             </>
           ) : null}
-          {[item.year, item.typeLabel].filter(Boolean).join(" · ")}
+          <span>
+            {item.score != null ? "· " : ""}
+            {[item.year, item.typeLabel].filter(Boolean).join(" · ")}
+          </span>
         </p>
         <div className="mt-3.5 flex items-center gap-2">
           <button

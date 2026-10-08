@@ -6,6 +6,24 @@ import { cn } from "@/lib/utils";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
+import {
+  ActionPill,
+  CastRound,
+  CastRow,
+  DetailSectionHead,
+  EpisodeRow,
+  EpisodeRowSkeleton,
+  ExternalChip,
+  FilmIcons,
+  GlassIconButton,
+  ImdbMark,
+  ListCard,
+  SeasonPills,
+  SoftPlayButton,
+  StarGlyph,
+  TrailerOverlay,
+  type EpisodeRowData,
+} from "@/components/films/film_detail_ui";
 
 type CastMember = {
   name: string;
@@ -50,6 +68,9 @@ type FilmDetail = {
 type PartnerFeedback = "up" | "down" | "seen";
 type FeedbackAvatar = { url: string | null; name: string | null };
 
+/** Afleveringen die de detailpagina toont (de rest staat op /episodes). */
+const PREVIEW_EPISODES = 3;
+
 function imdbUrl(title: string, imdbId: string | null): string {
   if (imdbId) return `https://www.imdb.com/title/${imdbId}/`;
   return `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`;
@@ -58,35 +79,6 @@ function imdbUrl(title: string, imdbId: string | null): string {
 function youtubeTrailerSearchUrl(title: string, season?: number): string {
   const q = season ? `${title} seizoen ${season} trailer` : `${title} trailer`;
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
-}
-
-function MaskIcon({ src, className }: { src: string; className?: string }) {
-  return (
-    <span
-      className={cn("inline-block shrink-0", className)}
-      style={{
-        WebkitMaskImage: `url(${src})`,
-        maskImage: `url(${src})`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-      aria-hidden
-    />
-  );
-}
-
-function ThreeDotsIcon({ className }: { className?: string }) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <circle cx="5" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="19" cy="12" r="1.5" fill="currentColor" />
-    </svg>
-  );
 }
 
 function CloseIcon() {
@@ -99,21 +91,14 @@ function CloseIcon() {
 
 function AvatarCircle({ person, className }: { person: FeedbackAvatar; className?: string }) {
   return (
-    <div
-      className={cn(
-        "size-6 shrink-0 overflow-hidden rounded-full border border-[var(--blue-50)] bg-white",
-        className,
-      )}
-    >
+    <span className={cn("flex size-[26px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] shadow-[0_0_0_2px_var(--white)]", className)}>
       {person.url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={person.url} alt={person.name ?? ""} className="size-full object-cover" />
+        <img src={person.url} alt="" className="size-full object-cover" />
       ) : (
-        <div className="flex size-full items-center justify-center">
-          <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[var(--blue-500)]" />
-        </div>
+        <span className="text-[11px] font-bold text-[var(--blue-500)]">{(person.name ?? "?").slice(0, 1).toUpperCase()}</span>
       )}
-    </div>
+    </span>
   );
 }
 
@@ -148,42 +133,26 @@ function PartnerFeedbackBanner({
   partnerAvatar: FeedbackAvatar;
   onClick?: () => void;
 }) {
-  const showTogetherAvatars = reaction === "up";
-  const interactive = Boolean(onClick);
-
   const content = (
     <>
-      {showTogetherAvatars ? (
-        <div className="flex isolate shrink-0 items-start">
-          <AvatarCircle person={userAvatar} className="z-[2] -mr-3" />
-          <AvatarCircle person={partnerAvatar} className="z-[1]" />
-        </div>
+      {reaction === "up" ? (
+        <span className="flex shrink-0">
+          <AvatarCircle person={userAvatar} className="z-[1]" />
+          <AvatarCircle person={partnerAvatar} className="-ml-[9px]" />
+        </span>
       ) : (
         <AvatarCircle person={partnerAvatar} />
       )}
-      <p className="min-w-0 flex-1 text-left text-xs font-normal leading-4 text-[var(--blue-500)]">
+      <span className="min-w-0 flex-1 text-left text-[13.5px] font-semibold leading-[18px] text-[var(--text-primary)]">
         {feedbackText({ reaction, mediaType, partnerName })}
-      </p>
-      {interactive ? (
-        <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[var(--blue-500)]" aria-hidden />
-      ) : null}
+      </span>
+      {onClick ? <span className="text-[var(--blue-500)]">{FilmIcons.chevron}</span> : null}
     </>
   );
-
-  if (!interactive) {
-    return (
-      <div className="flex w-full items-center gap-4 rounded-[8px] bg-[var(--blue-50)] p-3">
-        {content}
-      </div>
-    );
-  }
-
+  const cls = "flex w-full items-center gap-3 rounded-[18px] bg-[var(--blue-25)] px-3.5 py-3 shadow-[inset_0_0_0_1px_var(--blue-50)]";
+  if (!onClick) return <div className={cls}>{content}</div>;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-4 rounded-[8px] bg-[var(--blue-50)] p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-    >
+    <button type="button" onClick={onClick} className={cn(cls, "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]")}>
       {content}
     </button>
   );
@@ -191,24 +160,19 @@ function PartnerFeedbackBanner({
 
 function DetailSkeleton() {
   return (
-    <div className="flex animate-pulse flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <div className="h-8 w-2/3 rounded bg-[var(--gray-100)]" />
-          <div className="h-6 w-16 rounded bg-[var(--gray-100)]" />
+    <div className="flex animate-pulse flex-col">
+      <div className="h-[300px] bg-[var(--gray-100)] lg:mx-auto lg:mt-[88px] lg:h-[400px] lg:w-full lg:max-w-[956px] lg:rounded-[28px]" />
+      <div className="mx-auto flex w-full max-w-[956px] flex-col gap-4 px-4 pt-5">
+        <div className="h-7 w-2/3 rounded bg-[var(--gray-100)]" />
+        <div className="h-4 w-1/2 rounded bg-[var(--gray-100)]" />
+        <div className="flex gap-2.5">
+          <div className="h-11 flex-1 rounded-full bg-[var(--gray-100)]" />
+          <div className="h-11 flex-1 rounded-full bg-[var(--gray-100)]" />
         </div>
-        <div className="h-5 w-40 rounded bg-[var(--gray-100)]" />
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-4 rounded bg-[var(--gray-100)]" style={{ width: i % 2 === 0 ? "100%" : "83%" }} />
+        ))}
       </div>
-      <div className="-mx-4 h-[172px] bg-[var(--gray-100)]" />
-      <div className="flex gap-6">
-        <div className="h-[191px] w-[128px] shrink-0 rounded bg-[var(--gray-100)]" />
-        <div className="flex flex-1 flex-col gap-2">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-4 rounded bg-[var(--gray-100)]" style={{ width: i % 2 === 0 ? "100%" : "83%" }} />
-          ))}
-        </div>
-      </div>
-      <div className="h-12 rounded-lg bg-[var(--gray-100)]" />
     </div>
   );
 }
@@ -220,6 +184,7 @@ export default function FilmDetailPage() {
   const {
     isInWatchlist,
     isWatched,
+    watchedSet,
     addToWatchlist,
     removeFromWatchlist,
     updateWatchlistScore,
@@ -241,10 +206,9 @@ export default function FilmDetailPage() {
   const [showTrailer, setShowTrailer] = React.useState(false);
   const [posterFullscreen, setPosterFullscreen] = React.useState(false);
   const [overviewExpanded, setOverviewExpanded] = React.useState(false);
-  const [overviewNeedsTruncation, setOverviewNeedsTruncation] = React.useState(false);
-  const overviewRef = React.useRef<HTMLParagraphElement>(null);
   const [selectedSeason, setSelectedSeason] = React.useState(1);
   const [seasonData, setSeasonData] = React.useState<SeasonData | null>(null);
+  const [episodes, setEpisodes] = React.useState<EpisodeRowData[] | null>(null);
   const [showBekendenModal, setShowBekendenModal] = React.useState(false);
   const [showAskAgainSlideIn, setShowAskAgainSlideIn] = React.useState(false);
   const [askAgainLoading, setAskAgainLoading] = React.useState(false);
@@ -290,38 +254,49 @@ export default function FilmDetailPage() {
     if (isInWatchlist(detail.id)) void updateWatchlistScore(detail.id, detail.score);
   }, [detail?.id, detail?.score, isInWatchlist, updateWatchlistScore]);
 
-  // Initialiseer selectedSeason op het eerste seizoen zodra detail geladen is
+  const seasonProgress = React.useCallback(
+    (seasonNumber: number) => {
+      const prefix = `ep-${tmdbId}-s${seasonNumber}e`;
+      let n = 0;
+      watchedSet.forEach((id) => {
+        if (id.startsWith(prefix)) n += 1;
+      });
+      return n;
+    },
+    [watchedSet, tmdbId],
+  );
+
+  // Start op het seizoen waar je mee bezig bent (eerste dat nog niet helemaal gezien is).
   React.useEffect(() => {
     if (!detail || detail.type !== "tv" || detail.seasons.length === 0) return;
-    setSelectedSeason(detail.seasons[0].seasonNumber);
+    const busy = detail.seasons.find((s) => seasonProgress(s.seasonNumber) < s.episodeCount);
+    setSelectedSeason((busy ?? detail.seasons[0]).seasonNumber);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail?.id]);
 
-  // Haal seizoenspecifieke data op zodra seizoen of show verandert
+  // Seizoenspecifieke data (beschrijving, trailer) en afleveringen
   React.useEffect(() => {
     if (!detail || detail.type !== "tv") return;
-    const dashIdx = rawId.indexOf("-");
-    const tmdbId = rawId.slice(dashIdx + 1);
     setSeasonData(null);
+    setEpisodes(null);
     setOverviewExpanded(false);
+    let cancelled = false;
     fetch(`/api/films/season?id=${tmdbId}&season=${selectedSeason}`)
       .then((r) => r.json())
-      .then((d: SeasonData) => setSeasonData(d))
+      .then((d: SeasonData) => !cancelled && setSeasonData(d))
       .catch(() => {});
+    fetch(`/api/films/episodes?id=${tmdbId}&season=${selectedSeason}`)
+      .then((r) => r.json())
+      .then((d: { episodes: EpisodeRowData[] }) => !cancelled && setEpisodes(d.episodes ?? []))
+      .catch(() => !cancelled && setEpisodes([]));
+    return () => {
+      cancelled = true;
+    };
   }, [detail?.id, selectedSeason]);
 
-  // Meet of de overview-tekst de posterhoogte overschrijdt met minstens één volledige regel (24px)
-  React.useEffect(() => {
-    if (!overviewRef.current) return;
-    setOverviewNeedsTruncation(overviewRef.current.scrollHeight > 191 + 24);
-  }, [detail?.overview, seasonData?.overview]);
-
   const isTV = detail?.type === "tv";
-  const activeTrailerKey = isTV
-    ? (seasonData?.trailerKey ?? detail?.trailerKey ?? null)
-    : (detail?.trailerKey ?? null);
-  const activeOverview = isTV
-    ? (seasonData?.overview || detail?.overview || "")
-    : (detail?.overview || "");
+  const activeTrailerKey = isTV ? (seasonData?.trailerKey ?? detail?.trailerKey ?? null) : (detail?.trailerKey ?? null);
+  const activeOverview = isTV ? seasonData?.overview || detail?.overview || "" : detail?.overview || "";
 
   const inWatchlist = detail ? isInWatchlist(detail.id) : false;
   const watched = detail ? isWatched(detail.id) : false;
@@ -342,418 +317,350 @@ export default function FilmDetailPage() {
       setAskAgainLoading(false);
     }
   }
-  const userAvatar = React.useMemo(
-    (): FeedbackAvatar => ({ url: userAvatarUrl, name: userName }),
-    [userAvatarUrl, userName],
-  );
-  const partnerAvatar = React.useMemo(
-    (): FeedbackAvatar => ({ url: partnerAvatarUrl, name: partnerName }),
-    [partnerAvatarUrl, partnerName],
+  const userAvatar = React.useMemo((): FeedbackAvatar => ({ url: userAvatarUrl, name: userName }), [userAvatarUrl, userName]);
+  const partnerAvatar = React.useMemo((): FeedbackAvatar => ({ url: partnerAvatarUrl, name: partnerName }), [partnerAvatarUrl, partnerName]);
+
+  function goBack() {
+    const returnUrl = sessionStorage.getItem("films-watchlist-return");
+    if (returnUrl) {
+      sessionStorage.removeItem("films-watchlist-return");
+      router.push(returnUrl, { scroll: false });
+    } else if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/films-series");
+    }
+  }
+
+  function toggleWatchlist() {
+    if (!detail) return;
+    if (inWatchlist) {
+      void removeFromWatchlist(detail.id);
+    } else {
+      void addToWatchlist({
+        id: detail.id,
+        type: detail.type,
+        title: detail.title,
+        year: detail.year,
+        posterUrl: detail.posterUrl,
+        score: detail.score,
+        overview: detail.overview ?? null,
+      });
+    }
+  }
+
+  function handleSeen() {
+    if (!detail) return;
+    if (isTV) setShowBekendenModal(true);
+    else if (watched) void unmarkWatched(detail.id);
+    else void markWatched(detail.id);
+  }
+
+  const epId = (season: number, ep: number) => `ep-${tmdbId}-s${season}e${ep}`;
+  function toggleEpisode(ep: number) {
+    const id = epId(selectedSeason, ep);
+    if (watchedSet.has(id)) void unmarkWatched(id);
+    else void markWatched(id);
+  }
+
+  // Toon de afleveringen vanaf de eerste die je nog niet zag.
+  const previewEpisodes = React.useMemo(() => {
+    if (!episodes) return null;
+    const firstOpen = episodes.findIndex((e) => !watchedSet.has(epId(selectedSeason, e.episodeNumber)));
+    const start = firstOpen < 0 ? 0 : Math.min(firstOpen, Math.max(0, episodes.length - PREVIEW_EPISODES));
+    return episodes.slice(start, start + PREVIEW_EPISODES);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [episodes, selectedSeason, tmdbId]);
+
+  const seasonPills = (detail?.seasons ?? []).map((s) => ({
+    seasonNumber: s.seasonNumber,
+    label: s.name,
+    total: s.episodeCount,
+    watched: seasonProgress(s.seasonNumber),
+  }));
+
+  const eyebrow = detail
+    ? [isTV ? "Serie" : "Film", detail.year, detail.certification].filter(Boolean).join(" · ")
+    : "";
+  const scoreLine = detail ? (
+    <>
+      {detail.score != null ? (
+        <>
+          <StarGlyph source={detail.scoreSource} />
+          <b className="font-bold">{detail.score.toFixed(1)}</b>
+          <span className="opacity-70">{detail.scoreSource === "imdb" ? "IMDb" : "TMDB"}</span>
+        </>
+      ) : null}
+      {detail.runtime ? <span>{detail.score != null ? "· " : ""}{detail.runtime}</span> : null}
+    </>
+  ) : null;
+
+  const seenPill = (onDark: boolean) =>
+    isTV ? (
+      <ActionPill tone={onDark ? "glass" : "surface"} icon={FilmIcons.eye} onClick={handleSeen} className="flex-1 lg:flex-none">
+        Gezien…
+      </ActionPill>
+    ) : (
+      <ActionPill
+        tone={watched ? (onDark ? "white" : "soft") : onDark ? "glass" : "surface"}
+        icon={watched ? FilmIcons.check : FilmIcons.eye}
+        aria-pressed={watched}
+        onClick={handleSeen}
+        className="flex-1 lg:flex-none"
+      >
+        Gezien
+      </ActionPill>
+    );
+  const watchlistPill = (onDark: boolean) => (
+    <ActionPill
+      tone={inWatchlist ? (onDark ? "white" : "soft") : "primary"}
+      icon={inWatchlist ? FilmIcons.check : FilmIcons.plus}
+      aria-pressed={inWatchlist}
+      aria-label={inWatchlist ? "Van je watchlist halen" : "Op je watchlist zetten"}
+      onClick={toggleWatchlist}
+      className="flex-1 lg:flex-none"
+    >
+      {inWatchlist ? "Op je watchlist" : "Watchlist"}
+    </ActionPill>
   );
 
-  const metaParts = [detail?.year, detail?.certification, detail?.runtime].filter(Boolean);
-  const genrePart = detail?.genres?.join(" - ") ?? "";
-  const metaLine = genrePart
-    ? `${metaParts.join("  ")}  /  ${genrePart}`
-    : metaParts.join("  ");
+  const playButton = (size: number) =>
+    activeTrailerKey ? <SoftPlayButton size={size} aria-label={`Trailer van ${detail?.title ?? ""} afspelen`} onClick={() => setShowTrailer(true)} /> : null;
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-white">
-      {/* Vaste header */}
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <div className="flex justify-center">
-          <header className="flex h-16 w-full max-w-[956px] items-center gap-4 px-4">
-            <button
-              type="button"
-              aria-label="Terug"
-              onClick={() => {
-                const returnUrl = sessionStorage.getItem("films-watchlist-return");
-                if (returnUrl) {
-                  sessionStorage.removeItem("films-watchlist-return");
-                  router.push(returnUrl, { scroll: false });
-                } else {
-                  router.back();
-                }
-              }}
-              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
-            </button>
-            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[var(--text-primary)]">
-              {detail?.title ?? ""}
-            </p>
-            <button
-              type="button"
-              aria-label="Instellingen"
-              onClick={() => router.push("/films-series/instellingen")}
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <ThreeDotsIcon />
-            </button>
-          </header>
+    <div className="relative flex min-h-dvh w-full flex-col pb-[calc(env(safe-area-inset-bottom,0px)+40px)]">
+      {loading ? (
+        <DetailSkeleton />
+      ) : !detail ? (
+        <div className="mx-auto w-full max-w-[956px] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)]">
+          <button type="button" aria-label="Terug" onClick={goBack} className="-ml-2 flex size-10 items-center justify-center text-[var(--blue-500)]">
+            {FilmIcons.back}
+          </button>
+          <p className="py-8 text-center text-sm text-[var(--text-secondary)]">Kan details niet laden.</p>
         </div>
-      </div>
-
-      {/* Scrollbare inhoud */}
-      <div
-        className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4 pt-8 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]"
-        style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
-      >
-        {loading ? (
-          <DetailSkeleton />
-        ) : !detail ? (
-          <p className="py-8 text-center text-sm text-[var(--gray-400)]">Kan details niet laden.</p>
-        ) : (
-          <>
-            {partnerFeedback && (
-              <PartnerFeedbackBanner
-                reaction={partnerFeedback}
-                mediaType={detail.type}
-                partnerName={partnerName}
-                userAvatar={userAvatar}
-                partnerAvatar={partnerAvatar}
-                onClick={
-                  canAskPartnerAgain ? () => setShowAskAgainSlideIn(true) : undefined
-                }
-              />
+      ) : (
+        <>
+          {/* ── Mobiel: backdrop die in de achtergrond overloopt, poster erover ── */}
+          <div className="relative h-[300px] lg:hidden">
+            {detail.backdropUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={detail.backdropUrl} alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
+            ) : (
+              <div aria-hidden className="absolute inset-0 bg-[#1b1d3a]" />
             )}
-
-            {/* Titel + score + externe links */}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <h1 className="min-w-0 flex-1 truncate text-2xl font-bold leading-8 text-[var(--text-primary)]">
-                    {detail.title}
-                  </h1>
-                  {detail.score !== null && (
-                    <div className="flex shrink-0 items-center gap-1">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden className="size-6 shrink-0">
-                        <path
-                          d="M12 2l2.75 5.57 6.15.9-4.45 4.33 1.05 6.11L12 15.9l-5.5 2.89 1.05-6.11L3.1 8.47l6.15-.9L12 2z"
-                          fill={detail.scoreSource === "imdb" ? "#FBBF24" : "var(--blue-500)"}
-                          stroke={detail.scoreSource === "imdb" ? "#F59E0B" : "var(--blue-500)"}
-                          strokeWidth="0.5"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <p className="font-medium text-[var(--text-primary)]">
-                        <span className="text-base leading-6">{detail.score.toFixed(1)}</span>
-                        <span className="text-xs font-normal leading-none">/10</span>
-                      </p>
-                    </div>
-                  )}
-                </div>
-                {metaLine && (
-                  <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                    <p className="whitespace-nowrap text-sm leading-5 text-[var(--gray-400)]">{metaLine}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Figma 1675:73093 — IMDb + YouTube links (links) + afleveringen (rechts) */}
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-6">
-                  <a
-                    href={imdbUrl(detail.title, detail.imdbId)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`${detail.title} bekijken op IMDb`}
-                    className="flex h-6 w-12 shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/logos/logos-imdb.svg" alt="" className="h-6 w-auto max-w-full object-contain" />
-                  </a>
-                  <a
-                    href={youtubeTrailerSearchUrl(detail.title, isTV ? selectedSeason : undefined)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Trailer van ${detail.title} zoeken op YouTube`}
-                    className="flex h-6 w-[108px] shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/logos/logos-youtube.svg" alt="" className="h-6 w-auto max-w-full object-contain" />
-                  </a>
-                </div>
-                {isTV && detail.totalEpisodes !== null && (
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/films-series/${rawId}/episodes`)}
-                    className="flex shrink-0 items-center gap-1 focus-visible:outline-none"
-                  >
-                    <span className="text-sm font-normal leading-5 text-[var(--blue-500)]">
-                      {detail.totalEpisodes} afleveringen
-                    </span>
-                    <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[var(--blue-500)]" />
-                  </button>
-                )}
-              </div>
+            <div
+              aria-hidden
+              className="absolute inset-0"
+              style={{ background: "linear-gradient(180deg, rgba(16,17,48,0.28) 0%, rgba(16,17,48,0) 34%, rgba(16,17,48,0) 58%, var(--bg-app) 100%)" }}
+            />
+            <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top,0px)+12px)] flex justify-between">
+              <GlassIconButton aria-label="Terug" onClick={goBack}>
+                {FilmIcons.back}
+              </GlassIconButton>
+              <GlassIconButton aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")}>
+                {FilmIcons.dots}
+              </GlassIconButton>
             </div>
+            <div className="absolute left-1/2 top-[128px] -translate-x-1/2">{playButton(52)}</div>
+          </div>
+          <div className="relative -mt-[92px] flex items-end gap-4 px-4 lg:hidden">
+            <button
+              type="button"
+              aria-label="Poster vergroten"
+              onClick={() => detail.posterUrl && setPosterFullscreen(true)}
+              className="h-[168px] w-28 shrink-0 overflow-hidden rounded-[14px] bg-[var(--gray-100)] shadow-[0_18px_30px_-16px_rgba(16,17,48,0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              {detail.posterUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={detail.posterUrl} alt={`Poster van ${detail.title}`} className="size-full object-cover" />
+              ) : null}
+            </button>
+            <div className="min-w-0 flex-1 pb-1">
+              <p className="text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-[var(--blue-500)]">{eyebrow}</p>
+              <h1 className="mt-1 line-clamp-3 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em] text-[var(--text-primary)]">{detail.title}</h1>
+              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[13.5px] text-[var(--text-secondary)] [&_b]:text-[var(--text-primary)]">{scoreLine}</p>
+            </div>
+          </div>
 
-            {/* Seizoentabs — alleen voor TV-series */}
-            {isTV && detail.seasons.length > 0 && (
-              <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                <div className="flex gap-6 border-b border-[var(--gray-100)]" style={{ width: "max-content" }}>
-                  {detail.seasons.map((s) => {
-                    const active = s.seasonNumber === selectedSeason;
-                    return (
-                      <button
-                        key={s.seasonNumber}
-                        type="button"
-                        onClick={() => setSelectedSeason(s.seasonNumber)}
-                        className={cn(
-                          "flex shrink-0 flex-col gap-2 pb-0 focus-visible:outline-none",
-                          active
-                            ? "font-medium text-[var(--gray-900)]"
-                            : "font-normal text-[var(--gray-400)]",
-                        )}
-                      >
-                        <span className="whitespace-nowrap text-base leading-6">{s.name}</span>
-                        <div
-                          className="h-[2px] w-full rounded-full bg-[var(--blue-500)]"
-                          style={{ opacity: active ? 1 : 0 }}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Op large: trailer links naast poster+beschrijving; op mobile: trailer boven */}
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
-
-              {/* Trailer thumbnail */}
-              <div className="relative h-[172px] shrink-0 overflow-hidden rounded-lg bg-[var(--gray-100)] lg:h-[191px] lg:w-auto lg:[aspect-ratio:16/9]">
-                {detail.backdropUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={detail.backdropUrl}
-                    alt=""
-                    className="absolute inset-0 size-full object-cover"
-                    aria-hidden
-                  />
-                )}
-                <div className="absolute inset-0 bg-black/20" aria-hidden />
-                {activeTrailerKey && (
-                  <button
-                    type="button"
-                    aria-label="Trailer afspelen"
-                    onClick={() => setShowTrailer(true)}
-                    className="absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-fixed-white bg-black/20 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-                      <path d="M8 5v14l11-7L8 5z" fill="white" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-
-              {/* Poster + beschrijving */}
-              <div className="flex items-start gap-6">
+          {/* ── Desktop: donkere herokaart ── */}
+          <div className="mx-auto hidden w-full max-w-[956px] px-4 pt-10 lg:block lg:px-0">
+            <div className="mb-5 flex justify-between">
+              <button
+                type="button"
+                aria-label="Terug"
+                onClick={goBack}
+                className="flex size-10 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                {FilmIcons.back}
+              </button>
+              <button
+                type="button"
+                aria-label="Instellingen"
+                onClick={() => router.push("/films-series/instellingen")}
+                className="flex size-10 items-center justify-center rounded-full bg-[var(--white)] text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                {FilmIcons.dots}
+              </button>
+            </div>
+            <div className="relative h-[400px] overflow-hidden rounded-[28px] bg-[#1b1d3a]">
+              {detail.backdropUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={detail.backdropUrl} alt="" aria-hidden className="absolute right-0 top-0 h-full w-[72%] object-cover" />
+              ) : null}
+              <div aria-hidden className="absolute inset-0 bg-[linear-gradient(90deg,#1b1d3a_30%,rgba(27,29,58,0.75)_52%,rgba(27,29,58,0.05)_85%)]" />
+              <div className="absolute right-[190px] top-1/2 -translate-y-1/2">{playButton(60)}</div>
+              <div className="absolute inset-y-10 left-9 flex items-center gap-7">
                 <button
                   type="button"
                   aria-label="Poster vergroten"
                   onClick={() => detail.posterUrl && setPosterFullscreen(true)}
-                  className={cn(
-                    "relative h-[191px] w-[128px] shrink-0 overflow-hidden rounded bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                    !detail.posterUrl && "pointer-events-none",
-                  )}
+                  className="h-80 w-[213px] shrink-0 overflow-hidden rounded-[16px] bg-[rgba(255,255,255,0.08)] shadow-[0_20px_40px_-18px_rgba(0,0,0,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
                   {detail.posterUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={detail.posterUrl}
-                      alt={`Poster van ${detail.title}`}
-                      className="absolute inset-0 size-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex size-full items-center justify-center">
-                      <MaskIcon src="/icons/films.svg" className="size-10 bg-[var(--gray-200)]" />
-                    </div>
-                  )}
+                    <img src={detail.posterUrl} alt={`Poster van ${detail.title}`} className="size-full object-cover" />
+                  ) : null}
                 </button>
-
-                {/* Beschrijving: zelfde hoogte als poster, uitbreidbaar indien nodig */}
-                <div className="relative min-w-0 flex-1">
-                  <div
-                    className={cn(
-                      "overflow-hidden",
-                      !overviewExpanded && overviewNeedsTruncation && "h-[191px]",
-                    )}
-                  >
-                    <p ref={overviewRef} className="text-base font-medium leading-6 text-[var(--text-primary)]">
-                      {activeOverview || "Geen beschrijving beschikbaar."}
-                    </p>
-                  </div>
-                  {!overviewExpanded && overviewNeedsTruncation && (
-                    <div className="absolute bottom-0 right-0 flex items-baseline gap-1 bg-white">
-                      <span className="text-base font-medium leading-6 text-[var(--text-primary)]">…</span>
-                      <button
-                        type="button"
-                        onClick={() => setOverviewExpanded(true)}
-                        className="text-base font-medium leading-6 text-[var(--blue-500)] underline decoration-solid underline-offset-2 focus-visible:outline-none"
-                      >
-                        toon meer
-                      </button>
+                <div className="w-[360px] text-white">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.07em] text-[#c9cbff]">{eyebrow}</p>
+                  <h1 className="mt-2 line-clamp-2 text-[44px] font-extrabold leading-[1.05] tracking-[-0.02em]">{detail.title}</h1>
+                  <p className="mt-2.5 flex items-center gap-1.5 text-sm text-[rgba(255,255,255,0.75)] [&_b]:text-white">{scoreLine}</p>
+                  {detail.genres.length > 0 ? (
+                    <div className="mt-3.5 flex flex-wrap gap-1.5">
+                      {detail.genres.map((g) => (
+                        <span key={g} className="inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.14)] px-[11px] text-[12.5px] font-semibold">
+                          {g}
+                        </span>
+                      ))}
                     </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Watchlist + bekeken knoppen */}
-            <div className="flex w-full gap-3 lg:max-w-[358px] lg:self-end">
-              {/* Bekeken — links */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (!detail) return;
-                  if (isTV) {
-                    setShowBekendenModal(true);
-                  } else if (watched) {
-                    void unmarkWatched(detail.id);
-                  } else {
-                    void markWatched(detail.id);
-                  }
-                }}
-                className={cn(
-                  "flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[8px] p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                  watched ? "border border-[var(--gray-600)] bg-transparent" : "border border-[var(--blue-500)] bg-transparent",
-                )}
-              >
-                <p className={cn(
-                  "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-center text-base font-medium",
-                  watched ? "text-[var(--gray-600)]" : "text-[var(--blue-500)]",
-                )}>
-                  {watched ? "Bekeken" : "Bekeken"}
-                </p>
-                <MaskIcon
-                  src={watched ? "/icons/checkmark.svg" : "/icons/visible.svg"}
-                  className={cn("size-6 shrink-0", watched ? "bg-[var(--gray-600)]" : "bg-[var(--blue-500)]")}
-                />
-              </button>
-
-              {/* Watchlist — rechts */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (!detail) return;
-                  if (inWatchlist) {
-                    void removeFromWatchlist(detail.id);
-                  } else {
-                    void addToWatchlist({
-                      id: detail.id,
-                      type: detail.type,
-                      title: detail.title,
-                      year: detail.year,
-                      posterUrl: detail.posterUrl,
-                      score: detail.score,
-                      overview: detail.overview ?? null,
-                    });
-                  }
-                }}
-                className={cn(
-                  "flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[8px] p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                  inWatchlist ? "bg-[var(--error-400)]" : "bg-[var(--blue-500)]",
-                )}
-              >
-                <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-center text-base font-medium text-white">
-                  {inWatchlist ? "Verwijderen" : "Watchlist"}
-                </p>
-                <MaskIcon
-                  src={inWatchlist ? "/icons/recycle_bin.svg" : "/icons/plus-circle.svg"}
-                  className="size-6 shrink-0 bg-white"
-                />
-              </button>
-            </div>
-
-            {/* Cast */}
-            {detail.cast.length > 0 && (
-              <div className="flex w-full flex-col gap-4">
-                <div className="flex items-center gap-6 lg:gap-4">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)] lg:flex-none">Cast</h2>
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/films-series/${rawId}/cast`)}
-                    className="shrink-0 text-xs font-medium text-[var(--blue-500)] focus-visible:outline-none"
-                  >
-                    Toon alle
-                  </button>
-                </div>
-                <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-                    {detail.cast.map((member, i) => (
-                      <div key={i} className="flex w-[87px] flex-col gap-2">
-                        <div
-                          className="relative w-full overflow-hidden rounded bg-[var(--gray-50)]"
-                          style={{ aspectRatio: "2/3" }}
-                        >
-                          {member.profileUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={member.profileUrl}
-                              alt={member.name}
-                              className="absolute inset-0 size-full object-cover"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          ) : (
-                            <div className="flex size-full items-center justify-center">
-                              <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col">
-                          <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[var(--gray-900)]">
-                            {member.name}
-                          </p>
-                          <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
-                            {member.character}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                  ) : null}
+                  <div className="mt-[22px] flex gap-2.5">
+                    {watchlistPill(true)}
+                    {seenPill(true)}
                   </div>
                 </div>
               </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Trailer modal */}
-      {showTrailer && activeTrailerKey && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black"
-          onClick={() => setShowTrailer(false)}
-        >
-          <button
-            type="button"
-            aria-label="Sluiten"
-            onClick={() => setShowTrailer(false)}
-            className="absolute right-4 top-[calc(env(safe-area-inset-top,0px)+16px)] flex size-8 items-center justify-center rounded-full bg-fixed-white/20 text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
-          >
-            <CloseIcon />
-          </button>
-          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-          <div className="aspect-video w-full" onClick={(e) => e.stopPropagation()}>
-            <iframe
-              src={`https://www.youtube.com/embed/${activeTrailerKey}?autoplay=1`}
-              className="size-full"
-              allow="autoplay; encrypted-media; fullscreen"
-              allowFullScreen
-              title={`Trailer: ${detail?.title ?? ""}`}
-            />
+            </div>
           </div>
-        </div>
+
+          <div className="mx-auto flex w-full max-w-[956px] flex-col px-4 lg:px-0">
+            {/* Mobiel: genres + acties */}
+            <div className="flex flex-col gap-4 pt-[18px] lg:hidden">
+              {detail.genres.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {detail.genres.map((g) => (
+                    <span key={g} className="inline-flex h-7 items-center rounded-pill bg-[var(--white)] px-[11px] text-[12.5px] font-semibold text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle)]">
+                      {g}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <div className="flex gap-2.5">
+                {watchlistPill(false)}
+                {seenPill(false)}
+              </div>
+            </div>
+
+            {partnerFeedback ? (
+              <div className="mt-4 lg:mt-[18px]">
+                <PartnerFeedbackBanner
+                  reaction={partnerFeedback}
+                  mediaType={detail.type}
+                  partnerName={partnerName}
+                  userAvatar={userAvatar}
+                  partnerAvatar={partnerAvatar}
+                  onClick={canAskPartnerAgain ? () => setShowAskAgainSlideIn(true) : undefined}
+                />
+              </div>
+            ) : null}
+
+            <div className="mt-4 flex flex-col gap-[30px] lg:mt-[30px] lg:flex-row lg:items-start lg:gap-9">
+              <div className="flex min-w-0 flex-1 flex-col gap-[30px] lg:gap-[34px]">
+                {/* Over */}
+                <section>
+                  <h2 className="mb-2.5 hidden text-[19px] font-bold leading-6 text-[var(--text-primary)] lg:block">Over</h2>
+                  <p className={cn("text-[15px] leading-[22px] text-[var(--text-primary)] lg:text-[15.5px] lg:leading-6", !overviewExpanded && "line-clamp-4 lg:line-clamp-none")}>
+                    {activeOverview || "Geen beschrijving beschikbaar."}
+                  </p>
+                  {!overviewExpanded && activeOverview.length > 180 ? (
+                    <button type="button" onClick={() => setOverviewExpanded(true)} className="mt-1 text-[15px] font-bold text-[var(--blue-500)] focus-visible:outline-none lg:hidden">
+                      Meer lezen
+                    </button>
+                  ) : null}
+                  <div className="mt-3.5 flex gap-2">
+                    <ExternalChip href={imdbUrl(detail.title, detail.imdbId)} label={`${detail.title} bekijken op IMDb`}>
+                      <ImdbMark />
+                    </ExternalChip>
+                    <ExternalChip href={youtubeTrailerSearchUrl(detail.title, isTV ? selectedSeason : undefined)} label={`Trailer van ${detail.title} zoeken op YouTube`}>
+                      YouTube
+                    </ExternalChip>
+                  </div>
+                </section>
+
+                {/* Afleveringen */}
+                {isTV && detail.seasons.length > 0 ? (
+                  <section>
+                    <DetailSectionHead
+                      title="Afleveringen"
+                      action={detail.totalEpisodes ? `Alle ${detail.totalEpisodes}` : "Alle"}
+                      onAction={() => router.push(`/films-series/${rawId}/episodes?s=${selectedSeason}`)}
+                    />
+                    <SeasonPills seasons={seasonPills} selected={selectedSeason} onSelect={setSelectedSeason} className="mb-3.5" />
+                    <ListCard>
+                      {previewEpisodes === null
+                        ? [1, 2, 3].map((i) => <EpisodeRowSkeleton key={i} />)
+                        : previewEpisodes.map((ep) => (
+                            <EpisodeRow
+                              key={ep.episodeNumber}
+                              ep={ep}
+                              watched={watchedSet.has(epId(selectedSeason, ep.episodeNumber))}
+                              showOverview={false}
+                              onOpen={() => router.push(`/films-series/${rawId}/episodes/s${selectedSeason}e${ep.episodeNumber}`)}
+                              onToggle={() => toggleEpisode(ep.episodeNumber)}
+                            />
+                          ))}
+                    </ListCard>
+                  </section>
+                ) : null}
+
+                {/* Cast — mobiel als rij ronde foto's */}
+                {detail.cast.length > 0 ? (
+                  <section className="lg:hidden">
+                    <DetailSectionHead title="Cast" action="Alles" onAction={() => router.push(`/films-series/${rawId}/cast`)} />
+                    <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                      <div className="flex w-max gap-2">
+                        {detail.cast.slice(0, 12).map((m, i) => (
+                          <CastRound key={i} person={m} />
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+                ) : null}
+              </div>
+
+              {/* Cast — desktop als lijst rechts */}
+              {detail.cast.length > 0 ? (
+                <aside className="hidden w-80 shrink-0 lg:block">
+                  <DetailSectionHead title="Cast" action="Alles" onAction={() => router.push(`/films-series/${rawId}/cast`)} />
+                  <ListCard>
+                    {detail.cast.slice(0, 6).map((m, i) => (
+                      <CastRow key={i} person={m} />
+                    ))}
+                  </ListCard>
+                </aside>
+              ) : null}
+            </div>
+          </div>
+        </>
       )}
 
-      {/* Poster fullscreen modal */}
+      {showTrailer && activeTrailerKey ? (
+        <TrailerOverlay videoKey={activeTrailerKey} title={detail?.title ?? ""} onClose={() => setShowTrailer(false)} />
+      ) : null}
+
+      {/* Poster fullscreen */}
       {posterFullscreen && detail?.posterUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black"
-          onClick={() => setPosterFullscreen(false)}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black" onClick={() => setPosterFullscreen(false)}>
           <button
             type="button"
             aria-label="Sluiten"
@@ -797,11 +704,11 @@ export default function FilmDetailPage() {
         <></>
       </SlideInModal>
 
-      {/* Slide-in: kies hoe je bekeken wil markeren (alleen TV) */}
+      {/* Slide-in: kies hoe je gezien wil markeren (alleen TV) */}
       <SlideInModal
         open={showBekendenModal}
         onClose={() => setShowBekendenModal(false)}
-        title="Bekeken"
+        title="Gezien"
         footer={
           <>
             <Button
@@ -809,8 +716,7 @@ export default function FilmDetailPage() {
               onClick={() => {
                 if (!detail) return;
                 const firstSeason = detail.seasons[0]?.seasonNumber ?? 1;
-                const epId = `ep-${tmdbId}-s${firstSeason}e1`;
-                void markWatched(epId);
+                void markWatched(epId(firstSeason, 1));
                 void markWatched(detail.id);
                 setShowBekendenModal(false);
               }}

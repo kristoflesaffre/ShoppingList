@@ -3,7 +3,7 @@
 import * as React from "react";
 import { flushSync } from "react-dom";
 import { useRouter, useParams } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { ActionPill, CastRound, DetailSectionHead, FilmIcons, GlassIconButton, StarGlyph, formatAirDate } from "@/components/films/film_detail_ui";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 
 type CastMember = {
@@ -45,108 +45,56 @@ type AdjData = {
   nextData: EpisodeDetail | null;
 };
 
-function MaskIcon({ src, className }: { src: string; className?: string }) {
-  return (
-    <span
-      className={cn("inline-block shrink-0", className)}
-      style={{
-        WebkitMaskImage: `url(${src})`,
-        maskImage: `url(${src})`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-      aria-hidden
-    />
-  );
-}
-
-function ThreeDotsIcon({ className }: { className?: string }) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <circle cx="5" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="19" cy="12" r="1.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-function StarIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden className="size-6 shrink-0">
-      <path
-        d="M12 2l2.75 5.57 6.15.9-4.45 4.33 1.05 6.11L12 15.9l-5.5 2.89 1.05-6.11L3.1 8.47l6.15-.9L12 2z"
-        fill="#FBBF24"
-        stroke="#F59E0B"
-        strokeWidth="0.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function formatDate(airDate: string | null): string {
-  if (!airDate) return "";
-  const d = new Date(airDate);
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
-}
-
 function DetailSkeleton() {
   return (
-    <div className="flex animate-pulse flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <div className="h-8 w-2/3 rounded bg-[var(--gray-100)]" />
-          <div className="h-6 w-16 rounded bg-[var(--gray-100)]" />
-        </div>
-        <div className="h-5 w-40 rounded bg-[var(--gray-100)]" />
-      </div>
-      <div className="-mx-4 h-[172px] bg-[var(--gray-100)]" />
-      <div className="flex gap-6">
-        <div className="h-[191px] w-[128px] shrink-0 rounded bg-[var(--gray-100)]" />
-        <div className="flex flex-1 flex-col gap-2">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-4 rounded bg-[var(--gray-100)]" style={{ width: i % 2 === 0 ? "100%" : "83%" }} />
-          ))}
-        </div>
-      </div>
-      <div className="flex gap-3">
-        <div className="h-12 flex-1 rounded-[8px] bg-[var(--gray-100)]" />
-        <div className="h-12 flex-1 rounded-[8px] bg-[var(--gray-100)]" />
+    <div className="flex animate-pulse flex-col">
+      <div className="-mx-4 h-[260px] bg-[var(--gray-100)] lg:mx-0 lg:h-[300px] lg:rounded-[24px]" />
+      <div className="flex flex-col gap-3 pt-5">
+        <div className="h-3 w-1/2 rounded bg-[var(--gray-100)]" />
+        <div className="h-7 w-3/4 rounded bg-[var(--gray-100)]" />
+        <div className="h-4 w-2/3 rounded bg-[var(--gray-100)]" />
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-4 rounded bg-[var(--gray-100)]" style={{ width: i % 2 === 0 ? "100%" : "83%" }} />
+        ))}
       </div>
     </div>
   );
 }
 
+function EpisodeHero({ stillUrl }: { stillUrl: string | null }) {
+  return (
+    <div className="relative -mx-4 h-[260px] overflow-hidden bg-[#1b1d3a] lg:mx-0 lg:h-[340px] lg:rounded-[24px]">
+      {stillUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={stillUrl.replace("/w300/", "/w780/")} alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
+      ) : null}
+      <div
+        aria-hidden
+        className="absolute inset-0 lg:hidden"
+        style={{ background: "linear-gradient(180deg, rgba(16,17,48,0.3) 0%, rgba(16,17,48,0) 40%, rgba(16,17,48,0) 62%, var(--bg-app) 100%)" }}
+      />
+    </div>
+  );
+}
+
+function Eyebrow({ series, season, ep }: { series: string; season: number; ep: number }) {
+  return (
+    <p className="text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-[var(--blue-500)]">
+      {[series, `Seizoen ${season}`, `Aflevering ${ep}`].filter(Boolean).join(" · ")}
+    </p>
+  );
+}
+
 // Ghost panel: shown during swipe drag for adjacent episodes
-function GhostContent({ episode, season, ep }: { episode: EpisodeDetail | null; season: number; ep: number }) {
+function GhostContent({ episode, season, ep, series }: { episode: EpisodeDetail | null; season: number; ep: number; series: string }) {
   if (!episode) return <DetailSkeleton />;
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold leading-8 text-[var(--gray-900)]">{episode.title}</h1>
-        <p className="text-sm leading-5 text-[var(--gray-400)]">Seizoen {season} aflevering {ep}</p>
-      </div>
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
-        <div className="-mx-4 h-[172px] shrink-0 overflow-hidden bg-[var(--gray-100)] lg:mx-0 lg:h-[191px] lg:w-auto lg:rounded-lg lg:[aspect-ratio:16/9]">
-          {episode.stillUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={episode.stillUrl} alt="" className="size-full object-cover object-center" aria-hidden />
-          )}
-        </div>
-        <div className="min-w-0 lg:flex-1">
-          <p className="text-base font-medium leading-6 text-[var(--text-primary)] line-clamp-6">
-            {episode.overview || "Geen beschrijving beschikbaar."}
-          </p>
-        </div>
-      </div>
-      <div className="flex gap-3">
-        <div className="h-12 flex-1 rounded-[8px] border border-[var(--blue-500)]" />
-        <div className="h-12 flex-1 rounded-[8px] bg-[var(--blue-500)]" />
+    <div className="flex flex-col">
+      <EpisodeHero stillUrl={episode.stillUrl} />
+      <div className="relative -mt-[30px] lg:mt-6">
+        <Eyebrow series={series} season={season} ep={ep} />
+        <h1 className="mt-1.5 text-[26px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[var(--text-primary)]">{episode.title}</h1>
+        <p className="mt-4 line-clamp-6 text-[15px] leading-[22px] text-[var(--text-primary)]">{episode.overview || "Geen beschrijving beschikbaar."}</p>
       </div>
     </div>
   );
@@ -175,9 +123,6 @@ export default function EpisodeDetailPage() {
   const [episode, setEpisode] = React.useState<EpisodeDetail | null>(null);
   const [seriesInfo, setSeriesInfo] = React.useState<SeriesInfo | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [overviewExpanded, setOverviewExpanded] = React.useState(false);
-  const [overviewNeedsTruncation, setOverviewNeedsTruncation] = React.useState(false);
-  const overviewRef = React.useRef<HTMLParagraphElement>(null);
 
   // Adjacent episode data for ghost panels
   const [adjData, setAdjData] = React.useState<AdjData | null>(null);
@@ -228,9 +173,6 @@ export default function EpisodeDetailPage() {
   // Fetch episode detail when season/ep changes — check cache first
   React.useEffect(() => {
     if (!tmdbId) return;
-    setOverviewExpanded(false);
-    setOverviewNeedsTruncation(false);
-
     const key = `${tmdbId}-s${currentSeason}e${currentEp}`;
     const cached = episodeCache.current.get(key);
     if (cached) {
@@ -317,11 +259,6 @@ export default function EpisodeDetailPage() {
     }
   }, [tmdbId, currentSeason, currentEp, seriesInfo]);
 
-  React.useEffect(() => {
-    if (!overviewRef.current) return;
-    setOverviewNeedsTruncation(overviewRef.current.scrollHeight > 191 + 24);
-  }, [episode?.overview]);
-
   const watchedId = `ep-${tmdbId}-s${currentSeason}e${currentEp}`;
   const watched = isWatched(watchedId);
 
@@ -336,15 +273,9 @@ export default function EpisodeDetailPage() {
   React.useEffect(() => { hasPrevRef.current = hasPrev; }, [hasPrev]);
   React.useEffect(() => { hasNextRef.current = hasNext; }, [hasNext]);
 
-  const metaParts = React.useMemo(() => {
+  const metaLine = React.useMemo(() => {
     if (!episode) return "";
-    const parts: string[] = [];
-    parts.push(`Seizoen ${episode.seasonNumber} aflevering ${episode.episodeNumber}`);
-    const dateStr = formatDate(episode.airDate);
-    if (dateStr) parts.push(dateStr);
-    if (seriesInfo?.certification) parts.push(seriesInfo.certification);
-    if (episode.runtime) parts.push(episode.runtime);
-    return parts.join("  •  ");
+    return [formatAirDate(episode.airDate), episode.runtime, seriesInfo?.certification].filter(Boolean).join(" · ");
   }, [episode, seriesInfo]);
 
   // ─── Core animation: commit a navigation in given direction ─────────────────
@@ -422,8 +353,6 @@ export default function EpisodeDetailPage() {
         setCurrentEp(nextEp);
         setEpisode(cached ?? null);
         setLoading(!cached);
-        setOverviewExpanded(false);
-        setOverviewNeedsTruncation(false);
       });
 
       window.history.replaceState(null, "", `/films-series/${rawId}/episodes/s${nextSeason}e${nextEp}`);
@@ -559,262 +488,144 @@ export default function EpisodeDetailPage() {
     commitNavigationRef.current?.(dir);
   }
 
+  const seriesTitle = seriesInfo?.title ?? "";
+  const next = adjData && adjData.nextSeason ? adjData : null;
+
   return (
     <div
       ref={containerRef}
-      className="relative flex min-h-dvh w-full flex-col overflow-x-hidden bg-white"
+      className="relative flex min-h-dvh w-full flex-col overflow-x-hidden"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Fixed header */}
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <div className="flex justify-center">
-          <header className="flex h-16 w-full max-w-[956px] items-center gap-4 px-4">
-            <button
-              type="button"
-              aria-label="Terug"
-              onClick={() => router.back()}
-              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
-            </button>
-            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[var(--text-primary)]">
-              {seriesInfo?.title ?? ""}
-            </p>
-            <button
-              type="button"
-              aria-label="Meer opties"
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <ThreeDotsIcon />
-            </button>
-          </header>
-        </div>
+      {/* Terug / meer: glas op de still (mobiel), los erboven (desktop) */}
+      <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top,0px)+12px)] z-20 flex justify-between lg:hidden">
+        <GlassIconButton aria-label="Terug" onClick={() => router.back()}>
+          {FilmIcons.back}
+        </GlassIconButton>
+        <GlassIconButton aria-label="Naar alle afleveringen" onClick={() => router.push(`/films-series/${rawId}/episodes?s=${currentSeason}`)}>
+          {FilmIcons.dots}
+        </GlassIconButton>
       </div>
 
-      {/* Scrollable content */}
-      <div
-        className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4 pt-8 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]"
-        style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
-      >
-        {/* Episode navigator */}
-        <div className="flex shrink-0 items-center gap-4 lg:justify-center lg:gap-4">
+      {/* Canvas «21 · Aflevering — voorstel» */}
+      <div className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] lg:pt-10">
+        <div className="mb-5 hidden items-center justify-between lg:flex">
           <button
             type="button"
-            aria-label="Vorige aflevering"
-            onClick={() => navigateEpisode("prev")}
-            disabled={!hasPrev}
-            className={cn(
-              "flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] transition-opacity",
-              !hasPrev && "opacity-25 pointer-events-none",
-            )}
+            aria-label="Terug"
+            onClick={() => router.back()}
+            className="flex size-10 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
-            <MaskIcon src="/icons/chevron.svg" className="size-6 bg-[var(--blue-500)] rotate-90" />
+            {FilmIcons.back}
           </button>
-          <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--gray-900)] lg:flex-none">
-            Seizoen {currentSeason} aflevering {currentEp}
-          </p>
-          <button
-            type="button"
-            aria-label="Volgende aflevering"
-            onClick={() => navigateEpisode("next")}
-            disabled={!hasNext}
-            className={cn(
-              "flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] transition-opacity",
-              !hasNext && "opacity-25 pointer-events-none",
-            )}
-          >
-            <MaskIcon src="/icons/chevron.svg" className="size-6 bg-[var(--blue-500)] -rotate-90" />
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              aria-label="Vorige aflevering"
+              onClick={() => navigateEpisode("prev")}
+              disabled={!hasPrev}
+              className="flex size-10 rotate-180 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] disabled:opacity-40"
+            >
+              {FilmIcons.chevron}
+            </button>
+            <button
+              type="button"
+              aria-label="Volgende aflevering"
+              onClick={() => navigateEpisode("next")}
+              disabled={!hasNext}
+              className="flex size-10 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] disabled:opacity-40"
+            >
+              {FilmIcons.chevron}
+            </button>
+          </div>
         </div>
 
         {/* Sliding panel wrapper — current + ghost panels are siblings here */}
         <div className="relative">
-          {/* Prev ghost panel — positioned off-screen left, tracks drag */}
-          <div
-            ref={prevPanelRef}
-            className="pointer-events-none absolute left-0 top-0 w-full"
-            aria-hidden
-          >
-            <GhostContent
-              episode={adjData?.prevData ?? null}
-              season={adjData?.prevSeason ?? 0}
-              ep={adjData?.prevEp ?? 0}
-            />
+          <div ref={prevPanelRef} className="pointer-events-none absolute left-0 top-0 w-full" aria-hidden>
+            <GhostContent episode={adjData?.prevData ?? null} season={adjData?.prevSeason ?? 0} ep={adjData?.prevEp ?? 0} series={seriesTitle} />
           </div>
-
-          {/* Next ghost panel — positioned off-screen right, tracks drag */}
-          <div
-            ref={nextPanelRef}
-            className="pointer-events-none absolute left-0 top-0 w-full"
-            aria-hidden
-          >
-            <GhostContent
-              episode={adjData?.nextData ?? null}
-              season={adjData?.nextSeason ?? 0}
-              ep={adjData?.nextEp ?? 0}
-            />
+          <div ref={nextPanelRef} className="pointer-events-none absolute left-0 top-0 w-full" aria-hidden>
+            <GhostContent episode={adjData?.nextData ?? null} season={adjData?.nextSeason ?? 0} ep={adjData?.nextEp ?? 0} series={seriesTitle} />
           </div>
 
           {/* Current content — this div is what slides during swipe */}
-          <div ref={contentRef} className="flex flex-col gap-6">
+          <div ref={contentRef} className="flex flex-col">
             {loading ? (
               <DetailSkeleton />
             ) : !episode ? (
-              <p className="py-8 text-center text-sm text-[var(--gray-400)]">Kan afleveringsdetails niet laden.</p>
+              <p className="pt-[calc(env(safe-area-inset-top,0px)+80px)] text-center text-sm text-[var(--text-secondary)]">Kan afleveringsdetails niet laden.</p>
             ) : (
               <>
-                {/* Title + rating */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <h1 className="min-w-0 flex-1 text-2xl font-bold leading-8 text-[var(--gray-900)]">
-                      {episode.title}
-                    </h1>
-                    {episode.rating != null && (
-                      <div className="flex shrink-0 items-center gap-1">
-                        <StarIcon />
-                        <p className="font-medium text-[var(--text-primary)]">
-                          <span className="text-base leading-6">{episode.rating.toFixed(1)}</span>
-                          <span className="text-xs font-normal leading-none">/10</span>
-                        </p>
-                      </div>
-                    )}
+                <div className="lg:flex lg:items-start lg:gap-8">
+                  <div className="lg:w-[52%] lg:shrink-0">
+                    <EpisodeHero stillUrl={episode.stillUrl} />
                   </div>
-                  {metaParts && (
-                    <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                      <p className="whitespace-nowrap text-sm leading-5 text-[var(--gray-400)]">{metaParts}</p>
+                  <div className="relative -mt-[30px] min-w-0 flex-1 lg:mt-1">
+                    <Eyebrow series={seriesTitle} season={currentSeason} ep={currentEp} />
+                    <h1 className="mt-1.5 text-[26px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[var(--text-primary)] lg:text-[30px]">{episode.title}</h1>
+                    <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[13.5px] text-[var(--text-secondary)]">
+                      {episode.rating != null ? (
+                        <>
+                          <StarGlyph />
+                          <b className="text-[var(--text-primary)]">{episode.rating.toFixed(1)}</b>
+                        </>
+                      ) : null}
+                      {metaLine ? <span>{episode.rating != null ? "· " : ""}{metaLine}</span> : null}
+                    </p>
+                    <p className="mt-4 text-[15px] leading-[22px] text-[var(--text-primary)]">{episode.overview || "Geen beschrijving beschikbaar."}</p>
+                    <div className="mt-[18px] flex">
+                      <ActionPill
+                        tone={watched ? "soft" : "primary"}
+                        icon={watched ? FilmIcons.check : FilmIcons.eye}
+                        aria-pressed={watched}
+                        onClick={() => {
+                          if (watched) void unmarkWatched(watchedId);
+                          else void markWatched(watchedId);
+                        }}
+                        className="flex-1 lg:flex-none lg:px-6"
+                      >
+                        Gezien
+                      </ActionPill>
                     </div>
-                  )}
-                </div>
-
-                {/* Still + poster+overview: side by side on lg (matches film detail layout) */}
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
-                  {/* Still — full width on mobile, 16:9 on lg */}
-                  <div className="-mx-4 relative h-[172px] shrink-0 overflow-hidden bg-[var(--gray-100)] lg:mx-0 lg:h-[191px] lg:w-auto lg:rounded-lg lg:[aspect-ratio:16/9]">
-                    {episode.stillUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={episode.stillUrl}
-                        alt=""
-                        className="absolute inset-0 size-full object-cover object-center"
-                        aria-hidden
-                      />
-                    ) : null}
-                    <div className="absolute inset-0 bg-black/10" aria-hidden />
-                  </div>
-
-                  {/* Overview */}
-                  <div className="relative min-w-0 lg:flex-1">
-                    <div
-                      className={cn(
-                        "overflow-hidden",
-                        !overviewExpanded && overviewNeedsTruncation && "h-[191px]",
-                      )}
-                    >
-                      <p ref={overviewRef} className="text-base font-medium leading-6 text-[var(--text-primary)]">
-                        {episode.overview || "Geen beschrijving beschikbaar."}
-                      </p>
-                    </div>
-                    {!overviewExpanded && overviewNeedsTruncation && (
-                      <div className="absolute bottom-0 right-0 flex items-baseline gap-1 bg-white">
-                        <span className="text-base font-medium leading-6 text-[var(--text-primary)]">…</span>
-                        <button
-                          type="button"
-                          onClick={() => setOverviewExpanded(true)}
-                          className="text-base font-medium leading-6 text-[var(--blue-500)] underline decoration-solid underline-offset-2 focus-visible:outline-none"
-                        >
-                          toon meer
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Two action buttons */}
-                <div className="flex gap-3 lg:max-w-[358px] lg:self-end">
-                  {/* Bekeken — outline */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (watched) void unmarkWatched(watchedId);
-                      else void markWatched(watchedId);
-                    }}
-                    className={cn(
-                      "flex h-12 flex-1 items-center gap-3 rounded-[8px] border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                      watched ? "border-[#34C759]" : "border-[var(--blue-500)]",
-                    )}
-                  >
-                    <span className={cn(
-                      "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium",
-                      watched ? "text-[#34C759]" : "text-[var(--blue-500)]",
-                    )}>
-                      Bekeken
-                    </span>
-                    <MaskIcon
-                      src={watched ? "/icons/checkmark.svg" : "/icons/visible.svg"}
-                      className={cn("size-6 shrink-0", watched ? "bg-[#34C759]" : "bg-[var(--blue-500)]")}
-                    />
-                  </button>
-
-                  {/* Naar overzicht — filled */}
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/films-series/${rawId}/episodes`)}
-                    className="flex h-12 flex-1 items-center justify-center rounded-[8px] bg-[var(--blue-500)] px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                  >
-                    <span className="whitespace-nowrap text-base font-medium text-white">Naar overzicht</span>
-                  </button>
-                </div>
-
-                {/* Cast */}
-                {episode.cast.length > 0 && (
-                  <div className="flex w-full flex-col gap-4">
-                    <div className="flex items-center gap-6 lg:gap-4">
-                      <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)] lg:flex-none">Cast</h2>
+                    {next ? (
                       <button
                         type="button"
-                        onClick={() => router.push(`/films-series/${rawId}/cast`)}
-                        className="shrink-0 text-xs font-medium text-[var(--blue-500)] focus-visible:outline-none"
+                        onClick={() => navigateEpisode("next")}
+                        className="mt-3.5 flex w-full items-center gap-3 rounded-[18px] bg-[var(--white)] py-2.5 pl-2.5 pr-3 text-left shadow-[inset_0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
                       >
-                        Toon alle
+                        <span className="h-12 w-[84px] shrink-0 overflow-hidden rounded-[9px] bg-[var(--gray-100)]">
+                          {next.nextData?.stillUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={next.nextData.stillUrl} alt="" className="size-full object-cover" />
+                          ) : null}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[11.5px] font-extrabold uppercase tracking-[0.05em] text-[var(--text-tertiary)]">
+                            {next.nextSeason !== currentSeason ? `Volgende · seizoen ${next.nextSeason}` : "Volgende"}
+                          </span>
+                          <span className="block truncate text-sm font-bold text-[var(--text-primary)]">
+                            {next.nextEp}. {next.nextData?.title ?? "…"}
+                          </span>
+                        </span>
+                        <span className="text-[var(--blue-500)]">{FilmIcons.chevron}</span>
                       </button>
-                    </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                {episode.cast.length > 0 && (
+                  <section className="mt-[30px]">
+                    <DetailSectionHead title="Cast" action="Alles" onAction={() => router.push(`/films-series/${rawId}/cast`)} />
                     <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                      <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-                        {episode.cast.map((member, i) => (
-                          <div key={i} className="flex w-[87px] flex-col gap-2">
-                            <div
-                              className="relative w-full overflow-hidden rounded bg-[var(--gray-50)]"
-                              style={{ aspectRatio: "2/3" }}
-                            >
-                              {member.profileUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={member.profileUrl}
-                                  alt={member.name}
-                                  className="absolute inset-0 size-full object-cover"
-                                  loading="lazy"
-                                  decoding="async"
-                                />
-                              ) : (
-                                <div className="flex size-full items-center justify-center">
-                                  <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex flex-col">
-                              <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[var(--gray-900)]">
-                                {member.name}
-                              </p>
-                              <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
-                                {member.character}
-                              </p>
-                            </div>
-                          </div>
+                      <div className="flex w-max gap-2">
+                        {episode.cast.map((m, i) => (
+                          <CastRound key={i} person={m} />
                         ))}
                       </div>
                     </div>
-                  </div>
+                  </section>
                 )}
               </>
             )}

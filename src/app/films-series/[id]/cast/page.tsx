@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
-import { cn } from "@/lib/utils";
+import { CastRow, ListCard, SubpageHeader } from "@/components/films/film_detail_ui";
 
 type CastMember = {
   name: string;
@@ -18,48 +18,6 @@ type CastData = {
   type: "movie" | "tv";
   cast: CastMember[];
 };
-
-function MaskIcon({ src, className }: { src: string; className?: string }) {
-  return (
-    <span
-      className={cn("inline-block shrink-0", className)}
-      style={{
-        WebkitMaskImage: `url(${src})`,
-        maskImage: `url(${src})`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-      aria-hidden
-    />
-  );
-}
-
-function ThreeDotsIcon({ className }: { className?: string }) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <circle cx="5" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="19" cy="12" r="1.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-function CastRowSkeleton() {
-  return (
-    <div className="flex animate-pulse items-start gap-7">
-      <div className="h-[131px] w-[87px] shrink-0 rounded bg-[var(--gray-100)]" />
-      <div className="flex flex-1 flex-col gap-2 pt-2">
-        <div className="h-4 w-2/3 rounded bg-[var(--gray-100)]" />
-        <div className="h-4 w-1/2 rounded bg-[var(--gray-100)]" />
-        <div className="h-4 w-3/4 rounded bg-[var(--gray-100)]" />
-      </div>
-    </div>
-  );
-}
 
 export default function CastPage() {
   const router = useRouter();
@@ -98,113 +56,52 @@ export default function CastPage() {
     );
   }, [data, query]);
 
+  const subtitle = data
+    ? [data.title, data.cast.length ? `${data.cast.length} ${data.cast.length === 1 ? "acteur" : "acteurs"}` : null].filter(Boolean).join(" · ")
+    : undefined;
+
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-white">
-
-      {/* Vaste header */}
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <div className="flex justify-center px-4">
-          <header className="flex h-16 w-full max-w-[956px] items-center gap-4">
-            <button
-              type="button"
-              aria-label="Terug"
-              onClick={() => router.back()}
-              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
-            </button>
-            <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
-              Cast
-            </p>
-            <button
-              type="button"
-              aria-label="Meer opties"
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <ThreeDotsIcon />
-            </button>
-          </header>
+    <div className="relative flex min-h-dvh w-full flex-col">
+      {/* Canvas «21 · Cast — voorstel»: grote titel, wit zoekveld, lijstkaart met ronde foto's. */}
+      <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-4 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:pt-10">
+        <div>
+          <SubpageHeader title="Cast" subtitle={subtitle} onBack={() => router.back()} />
         </div>
-      </div>
+        <SearchBar surface="app" placeholder="Zoek op naam of rol" value={query} onValueChange={setQuery} />
 
-      {/* Scrollbare inhoud */}
-      <div
-        className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pt-8 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]"
-        style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
-      >
-        {/* Heading + subtitle */}
-        <div className="mb-4 flex flex-col gap-1">
-          <h1 className="text-2xl font-bold leading-8 text-[var(--gray-900)]">Cast</h1>
-          {data?.title && (
-            <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">{data.title}</p>
-          )}
-        </div>
-
-        {/* Zoekbalk */}
-        <div className="mb-6">
-          <SearchBar
-            placeholder="Zoek op naam of karakter"
-            value={query}
-            onValueChange={setQuery}
-          />
-        </div>
-
-        {/* Cast lijst */}
         {loading ? (
-          <div className="flex flex-col gap-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <CastRowSkeleton key={i} />
-            ))}
-          </div>
-        ) : filteredCast.length === 0 ? (
-          <p className="py-8 text-center text-sm text-[var(--gray-400)]">
-            {query ? `Geen resultaten voor "${query}"` : "Geen cast gevonden."}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {filteredCast.map((member, i) => (
-              <div key={i} className="flex items-center gap-7">
-                {/* Foto */}
-                <div
-                  className="relative h-[131px] w-[87px] shrink-0 overflow-hidden rounded bg-[var(--gray-50)]"
-                >
-                  {member.profileUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={member.profileUrl}
-                      alt={member.name}
-                      className="absolute inset-0 size-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <div className="flex size-full items-center justify-center">
-                      <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Tekst */}
-                <div className="flex flex-col gap-0.5">
-                  <p className="text-[16px] font-medium leading-6 text-[var(--gray-900)]">
-                    {member.name}
-                  </p>
-                  {member.character && (
-                    <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
-                      {member.character}
-                    </p>
-                  )}
-                  {data?.type === "tv" && member.episodeCount != null && (
-                    <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
-                      ({member.episodeCount}{" "}
-                      {member.episodeCount === 1 ? "aflevering" : "afleveringen"}
-                      {member.yearRange ? `, ${member.yearRange}` : ""})
-                    </p>
-                  )}
+          <ListCard>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex animate-pulse items-center gap-3 border-t border-[var(--border-subtle)] px-3.5 py-2.5 first:border-t-0">
+                <div className="size-12 rounded-full bg-[var(--gray-100)]" />
+                <div className="flex flex-1 flex-col gap-2">
+                  <div className="h-4 w-1/2 rounded bg-[var(--gray-100)]" />
+                  <div className="h-3 w-1/3 rounded bg-[var(--gray-100)]" />
                 </div>
               </div>
             ))}
-          </div>
+          </ListCard>
+        ) : filteredCast.length === 0 ? (
+          <p className="py-8 text-center text-sm text-[var(--text-secondary)]">
+            {query ? `Geen resultaten voor "${query}"` : "Geen cast gevonden."}
+          </p>
+        ) : (
+          <ListCard className="lg:grid lg:grid-cols-2 lg:[&>*:nth-child(2)]:border-t-0">
+            {filteredCast.map((member, i) => (
+              <CastRow
+                key={i}
+                person={member}
+                extra={
+                  data?.type === "tv" && member.episodeCount != null ? (
+                    <span className="shrink-0 whitespace-nowrap text-right text-xs font-semibold leading-4 text-[var(--text-tertiary)]">
+                      {member.episodeCount} afl.
+                      {member.yearRange ? <span className="block font-medium">{member.yearRange}</span> : null}
+                    </span>
+                  ) : null
+                }
+              />
+            ))}
+          </ListCard>
         )}
       </div>
     </div>
