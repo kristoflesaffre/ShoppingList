@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
@@ -412,48 +412,6 @@ function DiscoverFeature({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id]);
 
-  // Swipen op mobiel: kaart volgt de vinger; voorbij de drempel → volgende/vorige.
-  const swipeRef = React.useRef<HTMLDivElement>(null);
-  const drag = React.useRef<{ x: number; y: number; dx: number; axis: "x" | "y" | null } | null>(null);
-  const setX = (dx: number, animate: boolean) => {
-    const el = swipeRef.current;
-    if (!el) return;
-    el.style.transition = animate ? "transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease-out" : "none";
-    el.style.transform = dx ? `translateX(${dx}px) rotate(${dx / 60}deg)` : "";
-    el.style.opacity = dx ? String(Math.max(0.55, 1 - Math.abs(dx) / 500)) : "";
-  };
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (total <= 1) return;
-    drag.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, axis: null };
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    const d = drag.current;
-    if (!d) return;
-    const dx = e.touches[0].clientX - d.x;
-    const dy = e.touches[0].clientY - d.y;
-    if (!d.axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-    if (d.axis !== "x") return;
-    d.dx = dx;
-    setX(dx, false);
-  };
-  const onTouchEnd = () => {
-    const d = drag.current;
-    drag.current = null;
-    if (!d || d.axis !== "x") return;
-    if (Math.abs(d.dx) > 70) {
-      const el = swipeRef.current;
-      const out = d.dx < 0 ? -420 : 420;
-      if (el) {
-        el.style.transition = "transform 180ms ease-in, opacity 180ms ease-in";
-        el.style.transform = `translateX(${out}px) rotate(${out / 60}deg)`;
-        el.style.opacity = "0";
-      }
-      window.setTimeout(() => (d.dx < 0 ? onNext() : onPrev()), 170);
-    } else {
-      setX(0, true);
-    }
-  };
-
   const playBtn = (size: number, className: string) =>
     extra?.trailerKey ? (
       <SoftPlayButton size={size} onClick={() => setShowTrailer(true)} aria-label={`Trailer van ${item.title} afspelen`} className={className} />
@@ -516,17 +474,7 @@ function DiscoverFeature({
   return (
     <>
       {/* ── Mobiel ── */}
-      <div
-        ref={swipeRef}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={() => {
-          drag.current = null;
-          setX(0, true);
-        }}
-        className="touch-pan-y overflow-hidden rounded-[24px] bg-[#1b1d3a] will-change-transform lg:hidden"
-      >
+      <div className="overflow-hidden rounded-[24px] bg-[#1b1d3a] lg:hidden">
         <div className="relative h-[190px]">
           {extra?.backdropUrl || item.posterUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -586,6 +534,110 @@ function DiscoverFeature({
   );
 }
 
+export type DiscoverCarouselHandle = { go: (dir: "next" | "prev", commit?: () => void) => void };
+
+/**
+ * Carrousel voor «Nieuw voor jou»: vorige, huidige en volgende kaart naast elkaar; bladeren schuift
+ * het hele spoor opzij (slide in / slide out). Op mobiel volgt het spoor de vinger.
+ */
+const DiscoverCarousel = React.forwardRef<
+  DiscoverCarouselHandle,
+  {
+    count: number;
+    onStep: (dir: "next" | "prev") => void;
+    renderAt: (offset: -1 | 0 | 1) => React.ReactNode;
+  }
+>(function DiscoverCarousel({ count, onStep, renderAt }, ref) {
+  const GAP = 16;
+  const trackRef = React.useRef<HTMLDivElement>(null);
+  const busy = React.useRef(false);
+  const drag = React.useRef<{ x: number; y: number; dx: number; axis: "x" | "y" | null } | null>(null);
+
+  const place = (px: number | null, ms: number) => {
+    const el = trackRef.current;
+    if (!el) return;
+    el.style.transition = ms ? `transform ${ms}ms cubic-bezier(0.32, 0.72, 0, 1)` : "none";
+    el.style.transform = px == null ? "" : `translateX(${px}px)`;
+  };
+
+  const go = React.useCallback(
+    (dir: "next" | "prev", commit?: () => void, fromPx = 0) => {
+      const el = trackRef.current;
+      if (!el || busy.current || count <= 1) {
+        if (commit) commit();
+        else if (count > 1) onStep(dir);
+        return;
+      }
+      busy.current = true;
+      const w = el.offsetWidth + GAP;
+      const target = dir === "next" ? -w : w;
+      const ms = Math.round(240 + 200 * (1 - Math.min(1, Math.abs(fromPx) / w)));
+      const onEnd = (e: TransitionEvent) => {
+        if (e.target !== el || e.propertyName !== "transform") return;
+        el.removeEventListener("transitionend", onEnd);
+        // Inhoud wisselen en het spoor in dezelfde frame terugzetten: geen flits.
+        flushSync(() => (commit ? commit() : onStep(dir)));
+        place(null, 0);
+        busy.current = false;
+      };
+      el.addEventListener("transitionend", onEnd);
+      place(target, ms);
+    },
+    [count, onStep],
+  );
+
+  React.useImperativeHandle(ref, () => ({ go: (dir, commit) => go(dir, commit) }), [go]);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (count <= 1 || busy.current) return;
+    drag.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, axis: null };
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.touches[0].clientX - d.x;
+    const dy = e.touches[0].clientY - d.y;
+    if (!d.axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    if (d.axis !== "x") return;
+    d.dx = dx;
+    place(dx, 0);
+  };
+  const onTouchEnd = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || d.axis !== "x") return;
+    if (Math.abs(d.dx) > 60) go(d.dx < 0 ? "next" : "prev", undefined, d.dx);
+    else place(0, 260);
+  };
+
+  return (
+    <div
+      className="relative touch-pan-y overflow-hidden"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={() => {
+        drag.current = null;
+        place(0, 260);
+      }}
+    >
+      <div ref={trackRef} className="relative will-change-transform">
+        {count > 1 ? (
+          <div aria-hidden className="pointer-events-none absolute top-0 w-full" style={{ right: `calc(100% + ${GAP}px)` }}>
+            {renderAt(-1)}
+          </div>
+        ) : null}
+        {renderAt(0)}
+        {count > 1 ? (
+          <div aria-hidden className="pointer-events-none absolute top-0 w-full" style={{ left: `calc(100% + ${GAP}px)` }}>
+            {renderAt(1)}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+});
+
 export default function FilmsSeriesPage() {
   const router = useRouter();
   const {
@@ -609,8 +661,7 @@ export default function FilmsSeriesPage() {
   const { watchingItems, markNextEpisode, markSeasonWatched, markSeriesWatched, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
   const [watchMenuFor, setWatchMenuFor] = React.useState<string | null>(null);
   const [discoverIndex, setDiscoverIndex] = React.useState(0);
-  /** Richting van de laatste blader-actie, voor de inschuif-animatie. */
-  const [discoverDir, setDiscoverDir] = React.useState<"next" | "prev" | null>(null);
+  const discoverCarouselRef = React.useRef<DiscoverCarouselHandle>(null);
   const [mounted, setMounted] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
@@ -1017,10 +1068,18 @@ export default function FilmsSeriesPage() {
     }
   }, [discoverIndex, discoverVisible]);
 
+  const discoverStepNow = React.useCallback(
+    (dir: "next" | "prev") => {
+      const n = discoverVisible.length;
+      if (n === 0) return;
+      setDiscoverIndex((i) => (dir === "next" ? i + 1 : i - 1 + n) % n);
+    },
+    [discoverVisible.length],
+  );
+  /** Bladeren met schuifanimatie (pijlen); swipen loopt via de carrousel zelf. */
   const discoverStep = (dir: "next" | "prev") => {
-    if (discoverVisible.length === 0) return;
-    setDiscoverDir(dir);
-    setDiscoverIndex((i) => (dir === "next" ? i + 1 : i - 1 + discoverVisible.length) % discoverVisible.length);
+    if (discoverCarouselRef.current) discoverCarouselRef.current.go(dir);
+    else discoverStepNow(dir);
   };
 
   return (
@@ -1227,8 +1286,15 @@ export default function FilmsSeriesPage() {
                 {discoverLoading || !discoverFeature ? (
                   <Shimmer className="h-[400px] rounded-[24px] lg:h-[280px] lg:rounded-[26px]" />
                 ) : (
-                  <div key={discoverFeature.id} className={discoverDir === "next" ? "discover-in-next" : discoverDir === "prev" ? "discover-in-prev" : undefined}>
+                  <DiscoverCarousel
+                    ref={discoverCarouselRef}
+                    count={discoverVisible.length}
+                    onStep={discoverStepNow}
+                    renderAt={(offset) => {
+                      if (offset === 0) {
+                        return (
                     <DiscoverFeature
+                      key={discoverFeature.id}
                       item={discoverFeature}
                       scoreSource={scoreSourceMap[discoverFeature.id] ?? discoverFeature.scoreSource}
                       onOpen={() => handleViewDetail(discoverFeature.id)}
@@ -1236,14 +1302,39 @@ export default function FilmsSeriesPage() {
                       total={discoverVisible.length}
                       onAdd={() => handleAdd(discoverFeature)}
                       onDismiss={() => {
-                        setDiscoverDir("next");
-                        void dismissDiscoverItem(discoverFeature.id);
-                        showSnackbar(`${discoverFeature.title} komt niet meer terug`, () => void restoreDiscoverItem(discoverFeature.id));
+                        const gone = discoverFeature;
+                        const commit = () => {
+                          void dismissDiscoverItem(gone.id);
+                          showSnackbar(`${gone.title} komt niet meer terug`, () => void restoreDiscoverItem(gone.id));
+                        };
+                        // De volgende schuift in; daarna verdwijnt deze uit de lijst (index blijft gelijk).
+                        if (discoverCarouselRef.current) discoverCarouselRef.current.go("next", commit);
+                        else commit();
                       }}
                       onPrev={() => discoverStep("prev")}
                       onNext={() => discoverStep("next")}
                     />
-                  </div>
+                        );
+                      }
+                      const n = discoverVisible.length;
+                      const at = ((discoverIndex % n) + offset + n) % n;
+                      const it = discoverVisible[at];
+                      return (
+                        <DiscoverFeature
+                          key={it.id}
+                          item={it}
+                          scoreSource={scoreSourceMap[it.id] ?? it.scoreSource}
+                          position={at + 1}
+                          total={n}
+                          onOpen={() => {}}
+                          onAdd={() => {}}
+                          onDismiss={() => {}}
+                          onPrev={() => {}}
+                          onNext={() => {}}
+                        />
+                      );
+                    }}
+                  />
                 )}
                 <button
                   type="button"
