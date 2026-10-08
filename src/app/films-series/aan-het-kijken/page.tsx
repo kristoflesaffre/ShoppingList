@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { SwipeToAdd } from "@/components/ui/swipe_to_add";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { Snackbar } from "@/components/ui/snackbar";
 import {
@@ -12,123 +11,13 @@ import {
 } from "@/hooks/use_watching_tv_items";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 import { cn } from "@/lib/utils";
+import { useFilmsLibrary } from "@/hooks/use_films_library";
+import { RoundIconButton } from "@/components/ui/round_icon_button";
+import { PageBackButton } from "@/components/ui/page_back_button";
+import { Shimmer } from "@/components/ui/shimmer";
+import { FilmIcons } from "@/components/films/film_detail_ui";
+import { WatchingCard } from "@/components/films/film_tiles";
 
-function MaskIcon({ src, className }: { src: string; className?: string }) {
-  return (
-    <span
-      className={cn("inline-block shrink-0", className)}
-      style={{
-        WebkitMaskImage: `url(${src})`,
-        maskImage: `url(${src})`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-      aria-hidden
-    />
-  );
-}
-
-function ThreeDotsIcon({ className }: { className?: string }) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <circle cx="5" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="19" cy="12" r="1.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-function WatchingSkeleton() {
-  return (
-    <div className="flex w-full animate-pulse items-start gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3">
-      <div className="h-[108px] w-[72px] shrink-0 rounded-[4px] bg-[var(--gray-100)]" />
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div className="h-5 w-3/4 rounded bg-[var(--gray-100)]" />
-        <div className="h-4 w-1/2 rounded bg-[var(--gray-100)]" />
-        <div className="flex gap-2 pt-1">
-          <div className="h-6 w-20 rounded bg-[var(--gray-100)]" />
-          <div className="h-6 w-24 rounded bg-[var(--gray-100)]" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function WatchingCard({
-  item,
-  onOpen,
-  onMarkNextEpisode,
-}: {
-  item: WatchingTvItem;
-  onOpen: () => void;
-  onMarkNextEpisode: () => void;
-}) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      className="flex w-full cursor-pointer items-start gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-    >
-      <div className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
-        {item.posterUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.posterUrl}
-            alt=""
-            className="absolute inset-0 size-full object-cover"
-            loading="lazy"
-            decoding="async"
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center">
-            <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
-          </div>
-        )}
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex w-full flex-col">
-          <div className="flex w-full items-center gap-3">
-            <p className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[var(--gray-900)]">
-              {item.title}
-            </p>
-            <button
-              type="button"
-              aria-label={`Markeer ${item.title}, seizoen ${item.nextSeason} aflevering ${item.nextEpisode}, als bekeken`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onMarkNextEpisode();
-              }}
-              className="flex size-6 shrink-0 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <MaskIcon src="/icons/visible.svg" className="size-6 bg-[var(--blue-500)]" />
-            </button>
-          </div>
-          <p className="text-sm leading-5 text-[var(--gray-400)]">{item.year} TV Serie</p>
-        </div>
-        <div className="flex flex-nowrap items-center gap-2">
-          <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[var(--blue-50)] px-2 py-1 text-xs leading-4 text-[var(--blue-500)]">
-            Seizoen {item.nextSeason}
-          </span>
-          <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[var(--blue-50)] px-2 py-1 text-xs leading-4 text-[var(--blue-500)]">
-            Aflevering {item.nextEpisode}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 type SnackbarModel =
   | {
@@ -151,10 +40,25 @@ export default function WatchingOverviewPage() {
   const {
     watchingItems,
     markNextEpisode,
+    markSeasonWatched,
+    markSeriesWatched,
+    unmarkEpisodes,
     removeWatchingItem,
     restoreWatchingItem,
     unmarkWatchedEpisode,
   } = useWatchingTvItems();
+  const { addToWatchlist, dataLoading } = useFilmsLibrary();
+  const [menuFor, setMenuFor] = React.useState<string | null>(null);
+
+  // Menu sluiten bij een tik ernaast.
+  React.useEffect(() => {
+    if (!menuFor) return;
+    const close = (e: PointerEvent) => {
+      if (!(e.target as Element | null)?.closest("[data-watch-menu]")) setMenuFor(null);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [menuFor]);
   const [mounted, setMounted] = React.useState(false);
   const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(() => new Set());
   const [snackbar, setSnackbar] = React.useState<SnackbarModel | null>(null);
@@ -212,6 +116,27 @@ export default function WatchingOverviewPage() {
     [markNextEpisode, showSnackbar, unmarkWatchedEpisode],
   );
 
+  async function handleMarkSeason(item: WatchingTvItem) {
+    setMenuFor(null);
+    const res = await markSeasonWatched(item);
+    if (!res) return;
+    showSnackbar({ message: `Seizoen ${res.season} als bekeken gemarkeerd`, actionLabel: "Zet terug", undoFn: () => void unmarkEpisodes(res.ids) });
+  }
+
+  async function handleMarkSeries(item: WatchingTvItem) {
+    setMenuFor(null);
+    const res = await markSeriesWatched(item);
+    if (!res) return;
+    showSnackbar({
+      message: `${item.title} helemaal gezien`,
+      actionLabel: "Zet terug",
+      undoFn: () => {
+        void unmarkEpisodes(res.ids);
+        if (res.watchlistItem) void addToWatchlist(res.watchlistItem);
+      },
+    });
+  }
+
   const handleRemove = React.useCallback(
     (item: WatchingTvItem) => {
       setDismissedIds((prev) => new Set(prev).add(item.id));
@@ -256,51 +181,52 @@ export default function WatchingOverviewPage() {
     setSnackbar(null);
   }, [restoreWatchingItem, snackbar]);
 
+  const count = visibleItems.length;
+
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-white">
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <div className="mx-auto w-full max-w-[956px] px-4">
-          <header className="flex h-16 w-full items-center gap-4">
-            <button
-              type="button"
-              aria-label="Terug"
-              onClick={() => router.push("/films-series")}
-              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
-            </button>
-            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[var(--gray-900)]">
-              Aan het kijken
-            </p>
-            <button
-              type="button"
-              aria-label="Instellingen"
-              onClick={() => router.push("/films-series/instellingen")}
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <ThreeDotsIcon />
-            </button>
-          </header>
+    <div className="relative flex min-h-dvh w-full flex-col">
+      {/* Canvas «22 · Aan het kijken — voorstel»: grote titel, dezelfde kaarten als op het overzicht. */}
+      <main className="mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:pt-12">
+        <div className="flex items-center justify-between lg:hidden">
+          <button
+            type="button"
+            aria-label="Terug"
+            onClick={() => router.push("/films-series")}
+            className="-ml-2 flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            {FilmIcons.back}
+          </button>
+          <RoundIconButton tone="surface" size={36} aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")}>
+            {FilmIcons.dots}
+          </RoundIconButton>
         </div>
-      </div>
+        <div className="mt-1 flex items-center gap-3 lg:mt-0">
+          <PageBackButton href="/films-series" label="Terug" />
+          <div>
+            <h1 className="text-[30px] font-bold leading-9 tracking-tight text-[var(--text-primary)] lg:text-[32px]">Aan het kijken</h1>
+            {mounted && !dataLoading && count > 0 ? (
+              <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{count} {count === 1 ? "serie" : "series"}</p>
+            ) : null}
+          </div>
+        </div>
 
-      <main
-        className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4 pt-8 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]"
-        style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
-      >
-        <h1 className="truncate text-2xl font-bold leading-8 text-[var(--gray-900)]">Aan het kijken</h1>
-
-        <div className="flex flex-col gap-3">
-          {!mounted ? (
-            <>
-              <WatchingSkeleton />
-              <WatchingSkeleton />
-              <WatchingSkeleton />
-            </>
-          ) : visibleItems.length === 0 ? (
-            <p className="py-8 text-center text-sm text-[var(--gray-400)]">
-              Je kijkt momenteel geen series.
-            </p>
+        <div className="mt-[18px] flex flex-col gap-2.5 lg:mt-6 lg:grid lg:grid-cols-2 lg:gap-3.5">
+          {!mounted || dataLoading ? (
+            [0, 1, 2].map((i) => (
+              <div key={i} className="flex gap-3 rounded-[20px] bg-[var(--white)] p-2.5 shadow-[inset_0_0_0_1px_var(--border-subtle)]">
+                <Shimmer className="h-[104px] w-[70px] shrink-0 rounded-[12px]" />
+                <div className="flex flex-1 flex-col justify-between py-0.5">
+                  <div>
+                    <Shimmer className="h-4 w-3/4 rounded-md" />
+                    <Shimmer className="mt-2 h-3 w-1/2 rounded-md" />
+                    <Shimmer className="mt-3 h-1 w-full rounded-full" />
+                  </div>
+                  <Shimmer className="h-7 w-2/5 rounded-full" />
+                </div>
+              </div>
+            ))
+          ) : count === 0 ? (
+            <p className="py-8 text-center text-sm text-[var(--text-secondary)] lg:col-span-2">Je kijkt momenteel geen series.</p>
           ) : (
             visibleItems.map((item) => (
               <SwipeToDelete
@@ -308,17 +234,19 @@ export default function WatchingOverviewPage() {
                 onDelete={() => handleRemove(item)}
                 deleteActionLabel={`Veeg naar links om ${item.title} te verwijderen`}
               >
-                <SwipeToAdd
-                  onAdd={() => handleMarkNextEpisode(item)}
-                  addActionLabel={`Veeg naar rechts om ${item.title}, seizoen ${item.nextSeason} aflevering ${item.nextEpisode}, als bekeken te markeren`}
-                  actionIcon={<MaskIcon src="/icons/visible.svg" className="size-6 bg-white" />}
-                >
-                  <WatchingCard
-                    item={item}
-                    onOpen={() => handleOpen(item)}
-                    onMarkNextEpisode={() => handleMarkNextEpisode(item)}
-                  />
-                </SwipeToAdd>
+                <WatchingCard
+                  item={item}
+                  className="w-full"
+                  menuOpen={menuFor === item.id}
+                  onToggleMenu={() => setMenuFor((v) => (v === item.id ? null : item.id))}
+                  onOpen={() => handleOpen(item)}
+                  onNext={(e) => {
+                    e.stopPropagation();
+                    handleMarkNextEpisode(item);
+                  }}
+                  onSeason={() => void handleMarkSeason(item)}
+                  onSeries={() => void handleMarkSeries(item)}
+                />
               </SwipeToDelete>
             ))
           )}

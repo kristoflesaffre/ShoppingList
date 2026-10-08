@@ -4,8 +4,13 @@ import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
 import { Snackbar } from "@/components/ui/snackbar";
-import { TabElement } from "@/components/ui/tab_element";
-import { TabGroup } from "@/components/ui/tab_group";
+import { SegmentedControl } from "@/components/ui/segmented_control";
+import { RoundIconButton } from "@/components/ui/round_icon_button";
+import { PageBackButton } from "@/components/ui/page_back_button";
+import { Shimmer } from "@/components/ui/shimmer";
+import { FilmIcons } from "@/components/films/film_detail_ui";
+import { PosterTile } from "@/components/films/film_tiles";
+import { getScoreSourceCache } from "@/lib/score_source_cache";
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
@@ -56,192 +61,6 @@ type EnrichedItem = WatchlistItem & {
 
 type ListTab = "alleen" | "samen";
 
-type AvatarPerson = { url: string | null; name: string | null };
-
-/** Figma 1715:76796 — overlappende avatars (16px) of en enkele bij Alleen. */
-function MemberAvatars({
-  mode,
-  user: self,
-  partner,
-}: {
-  mode: "solo" | "together";
-  user: AvatarPerson;
-  partner: AvatarPerson;
-}) {
-  const sizeClass = "size-[15.333px]";
-
-  function AvatarCircle({ person, className }: { person: AvatarPerson; className?: string }) {
-    return (
-      <div
-        className={cn(
-          "shrink-0 overflow-hidden rounded-full border border-white bg-[var(--blue-50)]",
-          sizeClass,
-          className,
-        )}
-      >
-        {person.url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={person.url} alt={person.name ?? ""} className="size-full object-cover" />
-        ) : (
-          <div className="flex size-full items-center justify-center">
-            <MaskIcon src="/icons/avatar.svg" className="size-[10px] bg-[var(--blue-500)]" />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (mode === "solo") {
-    return <AvatarCircle person={self} />;
-  }
-
-  return (
-    <div className="flex isolate shrink-0 items-start">
-      <AvatarCircle person={self} className="z-[2] -mr-[7.667px]" />
-      <AvatarCircle person={partner} className="z-[1]" />
-    </div>
-  );
-}
-
-function MaskIcon({ src, className }: { src: string; className?: string }) {
-  return (
-    <span
-      className={cn("inline-block shrink-0", className)}
-      style={{
-        WebkitMaskImage: `url(${src})`,
-        maskImage: `url(${src})`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-      aria-hidden
-    />
-  );
-}
-
-function ThreeDotsIcon({ className }: { className?: string }) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <circle cx="5" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="19" cy="12" r="1.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-function StarIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className="size-4 shrink-0">
-      <path
-        d="M8 1.5l1.545 3.13 3.455.503-2.5 2.437.59 3.44L8 9.387l-3.09 1.623.59-3.44L3 5.133l3.455-.503L8 1.5z"
-        fill="#FBBF24"
-        stroke="#F59E0B"
-        strokeWidth="0.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ImdbLogo() {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/logos/logos-imdb.svg"
-      alt="IMDb"
-      width={32}
-      height={16}
-      className="h-[16px] w-[32px] shrink-0 object-contain"
-    />
-  );
-}
-
-function PlayIcon() {
-  return (
-    <svg width="10" height="12" viewBox="0 0 10 12" fill="white" aria-hidden>
-      <path d="M1 0.5L9.5 6L1 11.5V0.5Z" />
-    </svg>
-  );
-}
-
-function TrailerModal({ trailerKey, onClose }: { trailerKey: string; onClose: () => void }) {
-  const iframeWrapperRef = React.useRef<HTMLDivElement>(null);
-  const onCloseRef = React.useRef(onClose);
-  React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
-
-  React.useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      try {
-        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-        if (data?.event === "onStateChange" && data?.info === 0) onCloseRef.current();
-      } catch { /* ignore */ }
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, []);
-
-  React.useEffect(() => {
-    const handleOrientation = () => {
-      const isLandscape = window.innerWidth > window.innerHeight;
-      const wrapper = iframeWrapperRef.current;
-      if (isLandscape && wrapper && !document.fullscreenElement) {
-        wrapper.requestFullscreen?.().catch(() => {});
-      } else if (!isLandscape && document.fullscreenElement) {
-        document.exitFullscreen?.().catch(() => {});
-      }
-    };
-    window.addEventListener("orientationchange", handleOrientation);
-    window.addEventListener("resize", handleOrientation);
-    handleOrientation();
-    return () => {
-      window.removeEventListener("orientationchange", handleOrientation);
-      window.removeEventListener("resize", handleOrientation);
-    };
-  }, []);
-
-  React.useEffect(() => {
-    const handler = () => {
-      if (!document.fullscreenElement && window.innerWidth > window.innerHeight) onCloseRef.current();
-    };
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
-
-  const src = `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=0&enablejsapi=1&rel=0&playsinline=1&modestbranding=1`;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black" onClick={onClose}>
-      <div
-        ref={iframeWrapperRef}
-        className="relative w-full bg-black"
-        style={{ maxHeight: "100%", aspectRatio: "16/9" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <iframe
-          src={src}
-          className="absolute inset-0 size-full"
-          allow="autoplay; fullscreen"
-          allowFullScreen
-          title="Trailer"
-        />
-      </div>
-      <button
-        type="button"
-        aria-label="Sluit trailer"
-        onClick={onClose}
-        className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full bg-black/60 text-fixed-white focus-visible:outline-none"
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="white" aria-hidden>
-          <path d="M1 1l12 12M13 1L1 13" stroke="white" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      </button>
-    </div>
-  );
-}
-
 function buildMetaLine(year: string, genres: string[]): string {
   const genrePart = genres.join(" - ");
   if (year && genrePart) return `${year} / ${genrePart}`;
@@ -275,274 +94,6 @@ function toEnriched(
   };
 }
 
-function CardSkeleton() {
-  return (
-    <div className="flex w-full animate-pulse items-start gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3">
-      <div className="h-[130px] w-[87px] shrink-0 rounded-[4px] bg-[var(--gray-100)]" />
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div className="h-6 w-3/4 rounded bg-[var(--gray-100)]" />
-        <div className="h-4 w-1/2 rounded bg-[var(--gray-100)]" />
-        <div className="h-4 w-full rounded bg-[var(--gray-100)]" />
-        <div className="mt-1 h-16 w-full rounded bg-[var(--gray-100)]" />
-      </div>
-    </div>
-  );
-}
-
-/** Figma 1715:76243 — watchlist item card */
-function SwipeableCard({
-  mediaType,
-  onDelete,
-  onWatching,
-  children,
-}: {
-  mediaType: "movie" | "tv";
-  onDelete: () => void;
-  onWatching: () => void;
-  children: React.ReactNode;
-}) {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const cardRef = React.useRef<HTMLDivElement>(null);
-  const bgRef = React.useRef<HTMLDivElement>(null);
-  const iconDeleteRef = React.useRef<HTMLDivElement>(null);
-  const iconWatchRef = React.useRef<HTMLDivElement>(null);
-  const drag = React.useRef({ startX: 0, startY: 0, axis: null as "x" | "y" | null, active: false, currentX: 0 });
-
-  React.useEffect(() => {
-    const card = cardRef.current!;
-    if (!card) return;
-
-    function setBg(dir: "left" | "right" | null) {
-      const bg = bgRef.current;
-      if (!bg) return;
-      if (dir === "left") {
-        bg.style.background = "var(--error-400)";
-        if (iconDeleteRef.current) iconDeleteRef.current.style.display = "flex";
-        if (iconWatchRef.current) iconWatchRef.current.style.display = "none";
-      } else if (dir === "right") {
-        bg.style.background = "var(--blue-500)";
-        if (iconDeleteRef.current) iconDeleteRef.current.style.display = "none";
-        if (iconWatchRef.current) iconWatchRef.current.style.display = "flex";
-      } else {
-        bg.style.background = "transparent";
-        if (iconDeleteRef.current) iconDeleteRef.current.style.display = "none";
-        if (iconWatchRef.current) iconWatchRef.current.style.display = "none";
-      }
-    }
-
-    function onTouchStart(e: TouchEvent) {
-      const t = e.touches[0];
-      drag.current = { startX: t.clientX, startY: t.clientY, axis: null, active: true, currentX: 0 };
-      setBg(null);
-    }
-
-    function onTouchMove(e: TouchEvent) {
-      if (!drag.current.active) return;
-      const t = e.touches[0];
-      const dx = t.clientX - drag.current.startX;
-      const dy = t.clientY - drag.current.startY;
-      if (!drag.current.axis) {
-        if (Math.abs(dx) > 8 || Math.abs(dy) > 8)
-          drag.current.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-        return;
-      }
-      if (drag.current.axis !== "x") return;
-      e.preventDefault();
-      const MAX = 110;
-      const clamped = Math.max(-MAX, Math.min(MAX, dx));
-      drag.current.currentX = clamped;
-      card.style.transform = `translateX(${clamped}px)`;
-      if (clamped < -10) setBg("left");
-      else if (clamped > 10) setBg("right");
-      else setBg(null);
-    }
-
-    function onTouchEnd() {
-      if (!drag.current.active) return;
-      drag.current.active = false;
-      const cardWidth = containerRef.current?.offsetWidth ?? 300;
-      const x = drag.current.currentX;
-      const threshold = cardWidth * 0.3;
-      card.style.transition = "transform 0.2s ease";
-      if (x < -threshold) {
-        card.style.transform = `translateX(-${cardWidth}px)`;
-        setTimeout(() => { card.style.transition = ""; card.style.transform = ""; setBg(null); onDelete(); }, 220);
-      } else if (x > threshold) {
-        card.style.transform = `translateX(${cardWidth}px)`;
-        setTimeout(() => { card.style.transition = ""; card.style.transform = ""; setBg(null); onWatching(); }, 220);
-      } else {
-        card.style.transform = "translateX(0)";
-        setTimeout(() => { card.style.transition = ""; setBg(null); }, 220);
-      }
-      drag.current.currentX = 0;
-    }
-
-    card.addEventListener("touchstart", onTouchStart, { passive: true });
-    card.addEventListener("touchmove", onTouchMove, { passive: false });
-    card.addEventListener("touchend", onTouchEnd, { passive: true });
-    return () => {
-      card.removeEventListener("touchstart", onTouchStart);
-      card.removeEventListener("touchmove", onTouchMove);
-      card.removeEventListener("touchend", onTouchEnd);
-    };
-  }, [mediaType, onDelete, onWatching]);
-
-  return (
-    <div ref={containerRef} className="relative overflow-hidden rounded-[8px]">
-      {/* Enkele achtergrond — kleur en icoon worden imperatief geupdate */}
-      <div ref={bgRef} className="absolute inset-0 rounded-[8px]" style={{ background: "transparent" }}>
-        <div ref={iconWatchRef} className="absolute inset-y-0 left-0 hidden items-center px-5">
-          <MaskIcon src="/icons/visible.svg" className="size-7 bg-white" />
-        </div>
-        <div ref={iconDeleteRef} className="absolute inset-y-0 right-0 hidden items-center px-5">
-          <MaskIcon src="/icons/recycle_bin.svg" className="size-7 bg-white" />
-        </div>
-      </div>
-      <div ref={cardRef} className="relative">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function WatchlistItemCard({
-  item,
-  onOpen,
-  onMarkSeen,
-  onStartWatching,
-  onPlay,
-  showAvatars,
-  avatarMode,
-  userAvatar,
-  partnerAvatar,
-}: {
-  item: EnrichedItem;
-  onOpen: () => void;
-  onMarkSeen: (e: React.MouseEvent) => void;
-  onStartWatching?: () => void;
-  onPlay?: () => void;
-  showAvatars: boolean;
-  avatarMode: "solo" | "together";
-  userAvatar: AvatarPerson;
-  partnerAvatar: AvatarPerson;
-}) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(); }}
-      className="flex w-full cursor-pointer items-start gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-    >
-      {item.trailerKey && onPlay ? (
-        <button
-          type="button"
-          aria-label={`Trailer afspelen voor ${item.title}`}
-          onClick={(e) => { e.stopPropagation(); onPlay(); }}
-          className="relative h-[130px] w-[87px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-        >
-          {item.posterUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={item.posterUrl}
-              alt=""
-              className="absolute inset-0 size-full object-cover"
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center">
-              <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
-            </div>
-          )}
-          <div className="absolute left-1/2 top-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-fixed-white bg-black/40">
-            <PlayIcon />
-          </div>
-        </button>
-      ) : (
-        <div className="relative h-[130px] w-[87px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
-          {item.posterUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={item.posterUrl}
-              alt=""
-              className="absolute inset-0 size-full object-cover"
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center">
-              <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div className="flex w-full flex-col">
-          <div className="flex w-full items-center gap-2">
-            <span className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[var(--gray-900)]">
-              {item.title}
-            </span>
-            <div className="flex shrink-0 items-center gap-3">
-              {/* IMDb logo: altijd zichtbaar, opent IMDb pagina */}
-              <a
-                href={item.imdbId ? `https://www.imdb.com/title/${item.imdbId}/` : `https://www.imdb.com/find?q=${encodeURIComponent(item.title)}&s=tt`}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Bekijk ${item.title} op IMDb`}
-                onClick={(e) => e.stopPropagation()}
-                className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded-sm"
-              >
-                <ImdbLogo />
-              </a>
-              {/* Eye icon: alleen op grote schermen, rechts van IMDb */}
-              <button
-                type="button"
-                aria-label={`Markeer ${item.title} als bekeken`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (item.type === "tv" && onStartWatching) {
-                    onStartWatching();
-                  } else {
-                    onMarkSeen(e);
-                  }
-                }}
-                className="hidden sm:flex items-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
-              >
-                <MaskIcon src="/icons/visible.svg" className="size-6 bg-[var(--blue-500)]" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex w-full items-center gap-2">
-            {showAvatars && (
-              <MemberAvatars mode={avatarMode} user={userAvatar} partner={partnerAvatar} />
-            )}
-            {item.score != null && (
-              <div className="flex shrink-0 items-center gap-1">
-                <StarIcon />
-                <span className="text-xs font-medium leading-4 text-[var(--gray-900)]">{item.score.toFixed(1)}</span>
-              </div>
-            )}
-            {item.metaLine && (
-              <p className="min-w-0 flex-1 truncate text-sm leading-5 text-[var(--gray-400)]">{item.metaLine}</p>
-            )}
-          </div>
-
-          {item.castNames && (
-            <p className="truncate text-xs leading-4 text-[var(--gray-400)]">{item.castNames}</p>
-          )}
-        </div>
-
-        {item.overview && (
-          <p className="line-clamp-4 text-xs leading-4 text-[var(--gray-600)]">{item.overview}</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function WatchlistKindPage() {
   const router = useRouter();
   const params = useParams();
@@ -556,9 +107,6 @@ export default function WatchlistKindPage() {
     togetherWatchlist,
     ownWatchlist,
     isFilmsListShared,
-    userAvatarUrl,
-    userName,
-    partnerAvatarUrl,
     partnerName,
     removeFromWatchlist,
     addToWatchlist,
@@ -581,7 +129,6 @@ export default function WatchlistKindPage() {
   const [query, setQuery] = React.useState("");
   const [listTab, setListTab] = React.useState<ListTab>("alleen");
   const [genreFilter, setGenreFilter] = React.useState<string>("Alles");
-  const [trailerKey, setTrailerKey] = React.useState<string | null>(null);
   const [watchingSlide, setWatchingSlide] = React.useState<{
     item: EnrichedItem;
     seasons: { seasonNumber: number; name: string; episodeCount: number }[];
@@ -590,6 +137,8 @@ export default function WatchlistKindPage() {
   } | null>(null);
 
   const hasScrolledRef = React.useRef(false);
+  const [scoreSources, setScoreSources] = React.useState<Record<string, "imdb" | "tmdb">>({});
+  React.useEffect(() => setScoreSources(getScoreSourceCache()), []);
 
   // Restore tab and scroll anchor on mount
   React.useEffect(() => {
@@ -638,14 +187,6 @@ export default function WatchlistKindPage() {
     dismissedIdsRef.current = dismissedIds;
   }, [dismissedIds]);
 
-  const userAvatar = React.useMemo(
-    (): AvatarPerson => ({ url: userAvatarUrl, name: userName }),
-    [userAvatarUrl, userName],
-  );
-  const partnerAvatar = React.useMemo(
-    (): AvatarPerson => ({ url: partnerAvatarUrl, name: partnerName }),
-    [partnerAvatarUrl, partnerName],
-  );
 
   const listSourceItems = React.useMemo(() => {
     if (!config) return [];
@@ -788,12 +329,14 @@ export default function WatchlistKindPage() {
 
   // Cache genre chips in sessionStorage to avoid layout shift on re-visit
   const genreCacheKey = `watchlist-${kindParam}-genres`;
-  const [cachedGenreChips] = React.useState<string[]>(() => {
+  // Na het mounten lezen: sessionStorage bestaat niet op de server (anders hydratiefout).
+  const [cachedGenreChips, setCachedGenreChips] = React.useState<string[]>([]);
+  React.useEffect(() => {
     try {
       const raw = sessionStorage.getItem(genreCacheKey);
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    } catch { return []; }
-  });
+      if (raw) setCachedGenreChips(JSON.parse(raw) as string[]);
+    } catch { /* ignore */ }
+  }, [genreCacheKey]);
   React.useEffect(() => {
     if (genreChips.length > 1) {
       try { sessionStorage.setItem(genreCacheKey, JSON.stringify(genreChips)); } catch { /* ignore */ }
@@ -868,22 +411,6 @@ export default function WatchlistKindPage() {
     [removeFromWatchlist],
   );
 
-  function handleSwipeDelete(item: EnrichedItem) {
-    if (removingIds.has(item.id)) return;
-    removalSnapshotsRef.current.set(item.id, item);
-    setRemovingIds((prev) => new Set(prev).add(item.id));
-    const timer = setTimeout(() => {
-      commitRemoval(item.id);
-      setSnackbar({
-        message: `${item.title} verwijderd`,
-        undoItem: { ...item },
-        undoEnriched: item,
-        undoFn: () => {},
-      });
-      snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
-    }, REMOVE_ANIM_MS);
-    removalTimersRef.current.set(item.id, timer);
-  }
 
   function handleSwipeWatching(item: EnrichedItem) {
     const tmdbId = item.id.replace(/^tv-/, "");
@@ -907,23 +434,6 @@ export default function WatchlistKindPage() {
       });
   }
 
-  function handleSwipeMarkSeen(item: EnrichedItem) {
-    if (removingIds.has(item.id)) return;
-    removalSnapshotsRef.current.set(item.id, item);
-    setRemovingIds((prev) => new Set(prev).add(item.id));
-    const timer = setTimeout(() => {
-      commitRemoval(item.id);
-      if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
-      setSnackbar({
-        message: `${item.title} als gezien gemarkeerd`,
-        undoItem: { ...item },
-        undoEnriched: item,
-        undoFn: () => {},
-      });
-      snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
-    }, REMOVE_ANIM_MS);
-    removalTimersRef.current.set(item.id, timer);
-  }
 
   function handleWatchingConfirm() {
     if (!watchingSlide) return;
@@ -958,20 +468,6 @@ export default function WatchlistKindPage() {
     removalTimersRef.current.set(item.id, timer);
   }
 
-  async function handlePlay(item: EnrichedItem) {
-    if (item.trailerKey) {
-      setTrailerKey(item.trailerKey);
-      return;
-    }
-    const dashIdx = item.id.indexOf("-");
-    const tmdbId = item.id.slice(dashIdx + 1);
-    try {
-      const res = await fetch(`/api/films/detail?type=${item.type}&id=${tmdbId}`);
-      if (!res.ok) return;
-      const data = (await res.json()) as { trailerKey?: string | null };
-      if (data.trailerKey) setTrailerKey(data.trailerKey);
-    } catch { /* ignore */ }
-  }
 
   function handleSnackbarUndo() {
     if (!snackbar) return;
@@ -1008,152 +504,144 @@ export default function WatchlistKindPage() {
 
   if (!kind || !config) return null;
 
+  const count = displayItems.length;
+  const countLabel = `${baseItems.length} ${config.mediaType === "movie" ? (baseItems.length === 1 ? "film" : "films") : baseItems.length === 1 ? "serie" : "series"}`;
+
   return (
     <>
     <div className="relative flex min-h-dvh w-full flex-col">
-      {/* Blauwe gradient achtergrond */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0"
-        style={{ background: "var(--bg-app)" }}
-      />
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <div className="mx-auto w-full max-w-[956px] px-4">
-          <header className="flex h-16 w-full items-center gap-4">
-            <button
-              type="button"
-              aria-label="Terug"
-              onClick={() => router.push("/films-series")}
-              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
-            </button>
-            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[var(--gray-900)]">
-              {config.pageTitle}
-            </p>
-            <button
-              type="button"
-              aria-label="Instellingen"
-              onClick={() => router.push("/films-series/instellingen")}
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <ThreeDotsIcon />
-            </button>
-          </header>
+      {/* Canvas «22 · Watchlist — voorstel»: grote titel, wit zoekveld, segmentknop, genres, posterraster. */}
+      <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:pt-12">
+        <div className="flex items-center justify-between lg:hidden">
+          <button
+            type="button"
+            aria-label="Terug"
+            onClick={() => router.push("/films-series")}
+            className="-ml-2 flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            {FilmIcons.back}
+          </button>
+          <RoundIconButton tone="surface" size={36} aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")}>
+            {FilmIcons.dots}
+          </RoundIconButton>
         </div>
-      </div>
 
-      <div
-        className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4 pt-8 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]"
-        style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
-      >
-        <div className="flex flex-col gap-4">
-          <h1 className="text-[18px] font-bold leading-6 text-[var(--blue-900)]">{config.sectionTitle}</h1>
+        <div className="mt-1 flex flex-col gap-4 lg:mt-0 lg:flex-row lg:items-center lg:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <PageBackButton href="/films-series" label="Terug" />
+            <div className="min-w-0">
+              <h1 className="flex items-baseline gap-2 text-[30px] font-bold leading-9 tracking-tight text-[var(--text-primary)] lg:text-[32px]">
+                {config.sectionTitle}
+                <span className="hidden text-lg font-semibold text-[var(--text-tertiary)] lg:inline">{baseItems.length}</span>
+              </h1>
+              <p className="mt-0.5 text-sm text-[var(--text-secondary)] lg:hidden">{countLabel}</p>
+            </div>
+          </div>
+          <SearchBar
+            surface="app"
+            placeholder="Zoek in je watchlist"
+            value={query}
+            onValueChange={setQuery}
+            className="lg:w-[300px] lg:shrink-0"
+          />
+        </div>
 
-          <SearchBar placeholder="Zoek" value={query} onValueChange={setQuery} />
-
-          {isFilmsListShared && (
-            <TabGroup
+        <div className="mt-3 flex flex-col gap-3 lg:mt-6 lg:flex-row lg:items-center lg:gap-4">
+          {isFilmsListShared ? (
+            <SegmentedControl
+              ariaLabel="Watchlist weergave"
               value={listTab}
-              onValueChange={(v) => {
-                const tab = v as ListTab;
+              onChange={(tab) => {
                 setListTab(tab);
                 sessionStorage.setItem(`watchlist-${kindParam}-tab`, tab);
               }}
-              aria-label="Watchlist weergave"
-            >
-              <TabElement value="alleen">Alleen</TabElement>
-              <TabElement value="samen">Samen</TabElement>
-            </TabGroup>
-          )}
+              options={[
+                { value: "alleen", label: "Alleen" },
+                { value: "samen", label: partnerName ? `Samen met ${partnerName}` : "Samen" },
+              ]}
+              className="lg:w-[300px] lg:shrink-0"
+            />
+          ) : null}
 
-          {(visibleGenreChips.length > 1 || showGenreSkeleton) && (
-            <div className="relative -mx-4">
+          {visibleGenreChips.length > 1 || showGenreSkeleton ? (
+            <div className="-mx-4 min-w-0 overflow-x-auto px-4 lg:mx-0 lg:flex-1 lg:px-0" style={{ scrollbarWidth: "none" }}>
               {visibleGenreChips.length > 1 ? (
-                <div className="overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-                    {visibleGenreChips.map((chip) => (
-                      <button
-                        key={chip}
-                        type="button"
-                        onClick={() => setGenreFilter(chip)}
-                        className={cn(
-                          "h-8 shrink-0 rounded-full px-3 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                          genreFilter === chip
-                            ? "bg-[var(--blue-500)] font-semibold text-white"
-                            : "bg-white font-normal text-[var(--gray-500)] shadow-[0px_1px_2px_rgba(0,0,0,0.04)]",
-                        )}
-                      >
-                        {chip}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex w-max gap-1.5 py-0.5">
+                  {visibleGenreChips.map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      aria-pressed={genreFilter === chip}
+                      onClick={() => setGenreFilter(chip)}
+                      className={cn(
+                        "h-8 shrink-0 rounded-pill px-[13px] text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                        genreFilter === chip
+                          ? "bg-[var(--blue-500)] font-bold text-white"
+                          : "bg-[var(--white)] font-semibold text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle)]",
+                      )}
+                    >
+                      {chip}
+                    </button>
+                  ))}
                 </div>
               ) : (
-                <div className="flex gap-2 px-4 pb-1">
-                  {[72, 80, 88, 76].map((w) => (
-                    <div key={w} className="h-8 animate-pulse rounded-full bg-[var(--gray-100)]" style={{ width: w }} />
+                <div className="flex gap-1.5 py-0.5">
+                  {[56, 72, 80, 64].map((w) => (
+                    <Shimmer key={w} className="h-8 rounded-full" style={{ width: w }} />
                   ))}
                 </div>
               )}
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent" />
             </div>
-          )}
+          ) : null}
+        </div>
 
-          <div className="flex flex-col gap-3">
-            {loadingDetails && baseItems.length > 0 && Object.keys(enriched).length === 0 ? (
-              <>
-                <CardSkeleton />
-                <CardSkeleton />
-                <CardSkeleton />
-              </>
-            ) : displayItems.length === 0 ? (
-              <p className="py-8 text-center text-sm text-[var(--gray-400)]">
-                {baseItems.length === 0
-                  ? "Je watchlist is nog leeg."
-                  : "Geen resultaten voor je zoekopdracht."}
-              </p>
-            ) : (
-              displayItems.map((item) => {
+        <div className="mt-[18px] lg:mt-6">
+          {loadingDetails && baseItems.length > 0 && Object.keys(enriched).length === 0 ? (
+            <div className="grid grid-cols-3 gap-x-2 gap-y-[18px] lg:grid-cols-6 lg:gap-x-[23px] lg:gap-y-6">
+              {Array.from({ length: Math.min(baseItems.length, 12) }).map((_, i) => (
+                <div key={i}>
+                  <Shimmer className="aspect-[2/3] w-full rounded-[14px]" />
+                  <Shimmer className="mt-2.5 h-3.5 w-4/5 rounded-md" />
+                  <Shimmer className="mt-1.5 h-3 w-1/3 rounded-md" />
+                </div>
+              ))}
+            </div>
+          ) : count === 0 ? (
+            <p className="py-8 text-center text-sm text-[var(--text-secondary)]">
+              {baseItems.length === 0 ? "Je watchlist is nog leeg." : "Geen resultaten voor je zoekopdracht."}
+            </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-x-2 gap-y-[18px] lg:grid-cols-6 lg:gap-x-[23px] lg:gap-y-6">
+              {displayItems.map((item) => {
                 const isRemoving = removingIds.has(item.id);
                 return (
                   <div
                     id={`watchlist-item-${item.id}`}
                     key={item.id}
-                    className="grid transition-[grid-template-rows,opacity,margin] duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
-                    style={{
-                      gridTemplateRows: isRemoving ? "0fr" : "1fr",
-                      opacity: isRemoving ? 0 : 1,
-                      marginBottom: isRemoving ? 0 : undefined,
-                    }}
+                    className="transition-[opacity,transform] duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{ opacity: isRemoving ? 0 : 1, transform: isRemoving ? "scale(0.85)" : undefined }}
                   >
-                    <div className="min-h-0 overflow-hidden">
-                      <SwipeableCard
-                        mediaType={config.mediaType}
-                        onDelete={() => handleSwipeDelete(item)}
-                        onWatching={config.mediaType === "tv" ? () => handleSwipeWatching(item) : () => handleSwipeMarkSeen(item)}
-                      >
-                        <WatchlistItemCard
-                          item={item}
-                          onOpen={() => {
-                            sessionStorage.setItem(`watchlist-${kindParam}-anchor`, item.id);
-                            sessionStorage.setItem("films-watchlist-return", `/films-series/watchlist/${kindParam}`);
-                            router.push(`/films-series/${item.id}`);
-                          }}
-                          onMarkSeen={(e) => handleMarkSeen(e, item)}
-                          onStartWatching={config.mediaType === "tv" ? () => handleSwipeWatching(item) : undefined}
-                          onPlay={item.trailerKey ? () => void handlePlay(item) : undefined}
-                          showAvatars={isFilmsListShared}
-                          avatarMode={listTab === "samen" ? "together" : "solo"}
-                          userAvatar={userAvatar}
-                          partnerAvatar={partnerAvatar}
-                        />
-                      </SwipeableCard>
-                    </div>
+                    <PosterTile
+                      item={item}
+                      scoreSource={scoreSources[item.id]}
+                      className="w-full"
+                      onOpen={() => {
+                        sessionStorage.setItem(`watchlist-${kindParam}-anchor`, item.id);
+                        sessionStorage.setItem("films-watchlist-return", `/films-series/watchlist/${kindParam}`);
+                        router.push(`/films-series/${item.id}`);
+                      }}
+                      seenLabel={config.mediaType === "tv" ? `Begin met kijken naar ${item.title}` : `${item.title} gezien`}
+                      onSeen={(e) => {
+                        e.stopPropagation();
+                        if (config.mediaType === "tv") handleSwipeWatching(item);
+                        else handleMarkSeen(e, item);
+                      }}
+                    />
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1222,9 +710,6 @@ export default function WatchlistKindPage() {
       </SlideInModal>
     </div>
 
-    {trailerKey && (
-      <TrailerModal trailerKey={trailerKey} onClose={() => setTrailerKey(null)} />
-    )}
     </>
   );
 }
