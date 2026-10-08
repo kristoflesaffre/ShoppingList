@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
+import { PageBackButton } from "@/components/ui/page_back_button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
@@ -24,9 +26,6 @@ type SearchResult = {
   scoreSource?: "imdb" | "tmdb";
   cast: string;
 };
-
-/** Klikbare actie-iconen in watchlist-kaarten (Figma primary 200). */
-const CARD_ACTION_ICON = "bg-[var(--blue-200)]";
 
 function MaskIcon({ src, className }: { src: string; className?: string }) {
   return (
@@ -223,6 +222,363 @@ const FILTER_CHIPS: { id: FilterOption; label: string }[] = [
   { id: "tv", label: "Series" },
 ];
 
+/** Breedte van een poster in de watchlist-rijen (mobiel). */
+const POSTER_W = 120;
+
+function SettingsButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label="Instellingen"
+      onClick={onClick}
+      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(16,17,48,0.1)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:text-[var(--blue-500)]"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z" />
+      </svg>
+    </button>
+  );
+}
+
+function EyeIcon({ className = "size-[15px]" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className = "size-3" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
+/** Poster 2:3 met afgeronde hoeken; zonder beeld een filmicoon. */
+function Poster({ src, alt, children, className }: { src: string | null; alt: string; children?: React.ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "relative block aspect-[2/3] w-full overflow-hidden rounded-[14px] bg-[var(--gray-50)] shadow-[0_10px_20px_-14px_rgba(16,17,48,0.6)]",
+        className,
+      )}
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={alt} className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
+      ) : (
+        <span className="flex size-full items-center justify-center">
+          <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
+        </span>
+      )}
+      {children}
+    </span>
+  );
+}
+
+/** Score als donker glazen labeltje linksonder op de poster. */
+function RatingChip({ score, source }: { score: number; source?: "imdb" | "tmdb" | null }) {
+  return (
+    <span className="absolute bottom-[7px] left-[7px] inline-flex h-[22px] items-center gap-[3px] rounded-pill bg-[rgba(16,17,48,0.62)] px-[7px] text-[11.5px] font-bold text-white backdrop-blur-md">
+      <svg viewBox="0 0 24 24" aria-hidden className="size-3">
+        <path fill={source === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
+      </svg>
+      {score.toFixed(1)}
+    </span>
+  );
+}
+
+function PosterTile({
+  item,
+  scoreSource,
+  buttonRef,
+  onOpen,
+  onSeen,
+}: {
+  item: WatchlistItem;
+  scoreSource?: "imdb" | "tmdb";
+  buttonRef?: (el: HTMLButtonElement | null) => void;
+  onOpen: () => void;
+  onSeen?: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <div className="relative w-[120px] shrink-0 lg:w-[140px]">
+      <button
+        type="button"
+        ref={buttonRef}
+        onClick={onOpen}
+        className="block w-full rounded-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      >
+        <Poster src={item.posterUrl} alt={item.title}>
+          {item.score != null ? <RatingChip score={item.score} source={scoreSource} /> : null}
+        </Poster>
+        <p className="mt-2 truncate text-[13.5px] font-bold leading-[18px] text-[var(--text-primary)]">{item.title}</p>
+        <p className="text-xs leading-4 text-[var(--text-tertiary)]">{item.year}</p>
+      </button>
+      {onSeen ? (
+        <button
+          type="button"
+          aria-label={`Markeer ${item.title} als bekeken`}
+          onClick={onSeen}
+          className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-[rgba(16,17,48,0.5)] text-white backdrop-blur-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:bg-[rgba(16,17,48,0.7)]"
+        >
+          <EyeIcon className="size-3.5" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function PartnerAction({
+  label,
+  tone = "gray",
+  onClick,
+  children,
+}: {
+  label: string;
+  tone?: "blue" | "gray";
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className={cn(
+        "flex h-8 flex-1 items-center justify-center rounded-pill transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        tone === "blue"
+          ? "bg-[var(--blue-50)] text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--blue-100)]"
+          : "bg-[var(--gray-50)] text-[var(--text-secondary)] [@media(hover:hover)]:hover:bg-[var(--gray-100)]",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Canvas «20 · Aan het kijken»: poster, titel, seizoen · aflevering, voortgang; klein knopje
+ * «Aflevering n gezien» en een ⋯-menu voor het hele seizoen of de hele serie.
+ */
+function WatchingCard({
+  item,
+  menuOpen,
+  onToggleMenu,
+  onOpen,
+  onNext,
+  onSeason,
+  onSeries,
+}: {
+  item: WatchingTvItem;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onOpen: () => void;
+  onNext: (e: React.MouseEvent) => void;
+  onSeason: () => void;
+  onSeries: () => void;
+}) {
+  const progress = Math.min(95, Math.max(6, (item.lastWatched.episode / Math.max(item.nextEpisode, item.lastWatched.episode + 1)) * 100));
+  const menuItem =
+    "flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:bg-[var(--gray-25)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]";
+  const menuIcon = "flex size-[30px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)]";
+  /* Het menu hangt in een portal (vast onder de ⋯-knop): de horizontale rij zou het anders afsnijden. */
+  const dotsRef = React.useRef<HTMLButtonElement>(null);
+  const [anchor, setAnchor] = React.useState<{ top: number; right: number } | null>(null);
+  React.useLayoutEffect(() => {
+    if (!menuOpen) return;
+    const place = () => {
+      const r = dotsRef.current?.getBoundingClientRect();
+      if (r) setAnchor({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right - 6) });
+    };
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [menuOpen]);
+  return (
+    <div data-watch-menu className="relative w-[300px] shrink-0 lg:w-auto">
+      <div className="flex gap-3 rounded-[20px] bg-[var(--white)] p-2.5 shadow-[inset_0_0_0_1px_var(--border-subtle)]">
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`${item.title}: seizoen ${item.nextSeason}, aflevering ${item.nextEpisode}`}
+          className="w-[70px] shrink-0 rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          <Poster src={item.posterUrl} alt="" className="rounded-[12px]" />
+        </button>
+        <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
+          <button type="button" onClick={onOpen} className="min-w-0 text-left focus-visible:outline-none">
+            <p className="truncate text-[15px] font-bold leading-5 text-[var(--text-primary)]">{item.title}</p>
+            <p className="mt-0.5 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
+              Seizoen {item.nextSeason} · Aflevering {item.nextEpisode}
+            </p>
+            <span aria-hidden className="mt-2 block h-1 overflow-hidden rounded-sm bg-[var(--gray-50)]">
+              <span className="block h-full rounded-sm bg-[var(--blue-500)]" style={{ width: `${progress}%` }} />
+            </span>
+          </button>
+          <div className="mt-2 flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onNext}
+              className="inline-flex h-7 min-w-0 items-center gap-1 rounded-pill bg-[var(--blue-50)] px-2.5 text-xs font-bold text-[var(--blue-500)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--blue-100)]"
+            >
+              <CheckIcon />
+              <span className="truncate">Aflevering {item.nextEpisode} gezien</span>
+            </button>
+            <button
+              ref={dotsRef}
+              type="button"
+              aria-label="Meer opties"
+              aria-expanded={menuOpen}
+              onClick={onToggleMenu}
+              className={cn(
+                "flex size-7 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                menuOpen ? "bg-[var(--blue-50)] text-[var(--blue-500)]" : "bg-[var(--gray-50)] text-[var(--text-secondary)]",
+              )}
+            >
+              <ThreeDotsIcon className="size-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+      {menuOpen && anchor
+        ? createPortal(
+        <div
+          role="menu"
+          data-watch-menu
+          style={{ top: anchor.top, right: anchor.right }}
+          className="fixed z-[60] w-[250px] overflow-hidden rounded-[18px] bg-[var(--white)] shadow-[0_18px_40px_-14px_rgba(16,17,48,0.4),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up"
+        >
+          <button type="button" role="menuitem" onClick={onNext} className={menuItem}>
+            <span className={menuIcon}><CheckIcon className="size-4" /></span>
+            <span>
+              <span className="block text-sm font-semibold text-[var(--text-primary)]">Aflevering {item.nextEpisode} gezien</span>
+              <span className="block text-[11.5px] text-[var(--text-secondary)]">Volgende: aflevering {item.nextEpisode + 1}</span>
+            </span>
+          </button>
+          <button type="button" role="menuitem" onClick={onSeason} className={cn(menuItem, "border-t border-[var(--border-subtle)]")}>
+            <span className={menuIcon}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                <rect x="4" y="5" width="16" height="14" rx="2.5" />
+                <path d="M8.5 12.2l2.3 2.3 4.7-4.7" />
+              </svg>
+            </span>
+            <span>
+              <span className="block text-sm font-semibold text-[var(--text-primary)]">Seizoen {item.nextSeason} helemaal gezien</span>
+              <span className="block text-[11.5px] text-[var(--text-secondary)]">Verder met seizoen {item.nextSeason + 1}</span>
+            </span>
+          </button>
+          <button type="button" role="menuitem" onClick={onSeries} className={cn(menuItem, "border-t border-[var(--border-subtle)]")}>
+            <span className={menuIcon}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                <path d="M3.5 12.5l3.5 3.5 7-7.5" />
+                <path d="M10.5 15l1 1 8.5-9" />
+              </svg>
+            </span>
+            <span>
+              <span className="block text-sm font-semibold text-[var(--text-primary)]">Hele serie gezien</span>
+              <span className="block text-[11.5px] text-[var(--text-secondary)]">Uit «Aan het kijken» halen</span>
+            </span>
+          </button>
+        </div>,
+            document.body,
+          )
+        : null}
+    </div>
+  );
+}
+
+/** Canvas «20 · Nieuw voor jou»: één suggestie op een donkere kaart met de poster wazig erachter. */
+function DiscoverFeature({
+  item,
+  scoreSource,
+  onOpen,
+  onAdd,
+  onNext,
+  onMore,
+}: {
+  item: SearchResult;
+  scoreSource?: "imdb" | "tmdb";
+  onOpen: () => void;
+  onAdd: () => void;
+  onNext: () => void;
+  onMore: () => void;
+}) {
+  return (
+    <div className="relative flex items-center gap-4 overflow-hidden rounded-[24px] bg-[#1b1d3a] p-4">
+      {item.posterUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={item.posterUrl} alt="" aria-hidden className="absolute inset-0 size-full scale-[1.3] object-cover opacity-45 blur-[28px] saturate-[1.3]" />
+      ) : null}
+      <button
+        type="button"
+        onClick={onOpen}
+        className="relative w-[110px] shrink-0 rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:w-[130px]"
+        aria-label={`${item.title} bekijken`}
+      >
+        <Poster src={item.posterUrl} alt="" className="rounded-[12px]" />
+      </button>
+      <div className="relative min-w-0 flex-1 text-white">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11.5px] font-bold tracking-[0.06em] text-[#c9cbff]">NIEUW VOOR JOU</p>
+          <button
+            type="button"
+            onClick={onMore}
+            className="hidden text-[13px] font-semibold text-[#c9cbff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:block"
+          >
+            Meer ontdekken
+          </button>
+        </div>
+        <button type="button" onClick={onOpen} className="mt-1 block text-left focus-visible:outline-none">
+          <span className="line-clamp-2 text-[19px] font-extrabold leading-[1.2] lg:text-2xl">{item.title}</span>
+        </button>
+        <p className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-white/75">
+          {item.score != null ? (
+            <>
+              <svg viewBox="0 0 24 24" aria-hidden className="size-3">
+                <path fill={scoreSource === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
+              </svg>
+              <b className="text-white">{item.score.toFixed(1)}</b> ·
+            </>
+          ) : null}
+          {[item.year, item.typeLabel].filter(Boolean).join(" · ")}
+        </p>
+        <div className="mt-3.5 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onAdd}
+            className="inline-flex h-[38px] items-center gap-1.5 rounded-pill bg-white px-4 text-sm font-bold text-[#16181a] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1b1d3a]"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Watchlist
+          </button>
+          <button
+            type="button"
+            onClick={onNext}
+            aria-label="Volgende suggestie"
+            className="flex size-[38px] items-center justify-center rounded-full bg-white/15 text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:bg-white/25"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+              <path d="M9 6l6 6-6 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FilmsSeriesPage() {
   const router = useRouter();
   const {
@@ -240,7 +596,9 @@ export default function FilmsSeriesPage() {
     unmarkWatched,
     reactToPartnerItem,
   } = useFilmsLibrary();
-  const { watchingItems, markNextEpisode } = useWatchingTvItems();
+  const { watchingItems, markNextEpisode, markSeasonWatched, markSeriesWatched, unmarkEpisodes } = useWatchingTvItems();
+  const [watchMenuFor, setWatchMenuFor] = React.useState<string | null>(null);
+  const [discoverIndex, setDiscoverIndex] = React.useState(0);
   const [mounted, setMounted] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
@@ -258,8 +616,6 @@ export default function FilmsSeriesPage() {
   const seriesScrollRef = React.useRef<HTMLDivElement>(null);
   const lastAddedItemRef = React.useRef<HTMLButtonElement | null>(null);
   const scrollPendingRef = React.useRef(false);
-  // Overviews voor partner-items die nog geen overview in de DB hebben (legacy items)
-  const [partnerOverviews, setPartnerOverviews] = React.useState<Record<string, string>>({});
   const [discoverItems, setDiscoverItems] = React.useState<SearchResult[]>([]);
   const [discoverLoading, setDiscoverLoading] = React.useState(true);
   const [scoreSourceMap, setScoreSourceMap] = React.useState<Record<string, "imdb" | "tmdb">>({});
@@ -283,7 +639,7 @@ export default function FilmsSeriesPage() {
 
   React.useEffect(() => {
     const cache = getScoreSourceCache();
-    const missing = partnerWatchlist.filter((item) => !item.overview || !cache[item.id]);
+    const missing = partnerWatchlist.filter((item) => !cache[item.id]);
     if (missing.length === 0) return;
     void Promise.all(
       missing.map(async (item) => {
@@ -292,23 +648,20 @@ export default function FilmsSeriesPage() {
         const tmdbId = item.id.slice(dash + 1);
         try {
           const res = await fetch(`/api/films/detail?type=${type}&id=${tmdbId}`);
-          const data = (await res.json()) as { overview?: string | null; scoreSource?: "imdb" | "tmdb" };
-          return { id: item.id, overview: data.overview ?? "", scoreSource: data.scoreSource };
+          const data = (await res.json()) as { scoreSource?: "imdb" | "tmdb" };
+          return { id: item.id, scoreSource: data.scoreSource };
         } catch {
-          return { id: item.id, overview: "", scoreSource: undefined };
+          return { id: item.id, scoreSource: undefined };
         }
       }),
     ).then((results) => {
-      const overviewMap: Record<string, string> = {};
       const sourceUpdates: Record<string, "imdb" | "tmdb"> = {};
       for (const r of results) {
-        if (r.overview) overviewMap[r.id] = r.overview;
         if (r.scoreSource) {
           setScoreSource(r.id, r.scoreSource);
           sourceUpdates[r.id] = r.scoreSource;
         }
       }
-      if (Object.keys(overviewMap).length > 0) setPartnerOverviews((prev) => ({ ...prev, ...overviewMap }));
       if (Object.keys(sourceUpdates).length > 0) setScoreSourceMap((prev) => ({ ...prev, ...sourceUpdates }));
     });
   }, [partnerWatchlist]);
@@ -440,6 +793,7 @@ export default function FilmsSeriesPage() {
 
   function handleMarkNextEpisode(e: React.MouseEvent, item: WatchingTvItem) {
     e.stopPropagation();
+    setWatchMenuFor(null);
     void markNextEpisode(item).then((result) => {
       if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
       if (result.completed) {
@@ -460,6 +814,39 @@ export default function FilmsSeriesPage() {
       snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
     });
   }
+
+  function showSnackbar(message: string, undoFn: () => void, undoItem?: WatchlistItem) {
+    if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
+    setSnackbar({ message, undoFn, undoItem });
+    snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+  }
+
+  async function handleMarkSeason(item: WatchingTvItem) {
+    setWatchMenuFor(null);
+    const res = await markSeasonWatched(item);
+    if (!res) return;
+    showSnackbar(`Seizoen ${res.season} als bekeken gemarkeerd`, () => void unmarkEpisodes(res.ids));
+  }
+
+  async function handleMarkSeries(item: WatchingTvItem) {
+    setWatchMenuFor(null);
+    const res = await markSeriesWatched(item);
+    if (!res) return;
+    showSnackbar(`${item.title} helemaal gezien`, () => {
+      void unmarkEpisodes(res.ids);
+      if (res.watchlistItem) void addToWatchlist(res.watchlistItem);
+    });
+  }
+
+  // Menu «Aan het kijken» sluiten bij een tik ernaast.
+  React.useEffect(() => {
+    if (!watchMenuFor) return;
+    const close = (e: PointerEvent) => {
+      if (!(e.target as Element | null)?.closest("[data-watch-menu]")) setWatchMenuFor(null);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [watchMenuFor]);
 
   function handleSnackbarUndo() {
     if (!snackbar) return;
@@ -573,47 +960,58 @@ export default function FilmsSeriesPage() {
     return () => cancelAnimationFrame(raf);
   }, [restoringFilmId, watchlistFilms]);
 
+  const SectionHead = ({ title, href, linkLabel = "Alles", count, avatar }: { title: string; href?: string; linkLabel?: string; count?: number; avatar?: React.ReactNode }) => (
+    <div className="flex items-center gap-3">
+      <h2 className="flex min-w-0 flex-1 items-center gap-2 text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
+        {avatar}
+        <span className="truncate">{title}</span>
+        {count != null ? <span className="text-[15px] font-medium text-[var(--text-tertiary)] tabular-nums">{count}</span> : null}
+      </h2>
+      {href ? (
+        <button
+          type="button"
+          onClick={() => router.push(href)}
+          className="shrink-0 text-sm font-semibold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          {linkLabel}
+        </button>
+      ) : null}
+    </div>
+  );
+
+  const discoverFeature = discoverVisible.length > 0 ? discoverVisible[discoverIndex % discoverVisible.length] : null;
+
   return (
     <div className="relative flex min-h-dvh w-full flex-col">
-
-      {/* Vaste header */}
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <div className="mx-auto w-full max-w-[956px] px-4">
-          <header className="flex h-16 w-full items-center gap-4">
-            <button
-              type="button"
-              aria-label="Terug"
-              onClick={() => router.push("/")}
-              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
-            </button>
-            <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
-              Films en series
-            </p>
-            <button
-              type="button"
-              aria-label="Instellingen"
-              onClick={() => router.push("/films-series/instellingen")}
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <ThreeDotsIcon />
-            </button>
-          </header>
+      {/* Canvas «20 · Films & series — voorstel»: grote titel, wit zoekveld, «Aan het kijken» bovenaan. */}
+      <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:pt-12">
+        <div className="flex items-center justify-between lg:hidden">
+          <button
+            type="button"
+            aria-label="Terug"
+            onClick={() => router.push("/")}
+            className="-ml-2 flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
+          </button>
+          <SettingsButton onClick={() => router.push("/films-series/instellingen")} />
         </div>
-      </div>
-
-      {/* Scrollbare inhoud */}
-      <div
-        className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pt-8"
-        style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
-      >
-        {/* Zoekbalk — Figma 1652:46676 */}
-        <SearchBar
-          placeholder="Zoek film of serie"
-          value={query}
-          onValueChange={setQuery}
-        />
+        <div className="mt-1 flex flex-col gap-4 lg:mt-0 lg:flex-row lg:items-center lg:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <PageBackButton href="/" label="Terug" />
+            <h1 className="text-[30px] font-bold leading-9 tracking-tight text-[var(--text-primary)] lg:text-[32px]">Films &amp; series</h1>
+          </div>
+          <SearchBar
+            surface="app"
+            className="lg:w-[300px]"
+            placeholder="Zoek film of serie"
+            value={query}
+            onValueChange={setQuery}
+          />
+          <span className="hidden lg:block">
+            <SettingsButton onClick={() => router.push("/films-series/instellingen")} />
+          </span>
+        </div>
 
         {/* Filter chips — Figma 1652:46667 */}
         {hasQuery && (
@@ -655,121 +1053,74 @@ export default function FilmsSeriesPage() {
           </div>
         )}
 
-        {/* Niet-lege staat: watchlist secties */}
         {mounted && !hasQuery && (hasWatchlistItems || hasPartnerItems || watchingItems.length > 0 || hasDiscoverSection) && (
-          <div className="mt-6 flex flex-col gap-6 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]">
-            {/* Watchlist partner — bovenaan getoond wanneer er items zijn */}
-            {hasPartnerItems && (
-              <section className="flex flex-col gap-4">
-                <div className="flex items-center gap-6">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)]">
-                    Watchlist {partnerName ?? "Partner"}
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/films-series/partner-watchlist")}
-                    className="shrink-0 text-xs font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                  >
-                    Toon alle
-                  </button>
-                </div>
-                <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex gap-3 pb-1" style={{ width: "max-content" }}>
-                    {partnerWatchlist.map((item) => (
-                      <div
+          <div className="mt-7 flex flex-col gap-7 lg:mt-8 lg:gap-8">
+            {/* Aan het kijken — bovenaan: wat je het vaakst gebruikt */}
+            {watchingItems.length > 0 && (
+              <section className="flex flex-col gap-3">
+                <SectionHead title="Aan het kijken" href="/films-series/aan-het-kijken" />
+                <div className="-mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:overflow-visible lg:px-0" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex w-max gap-2.5 lg:grid lg:w-full lg:grid-cols-3 lg:gap-3.5">
+                    {watchingItems.map((item) => (
+                      <WatchingCard
                         key={item.id}
-                        className="flex w-[300px] shrink-0 gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3"
-                      >
-                        {/* Poster */}
+                        item={item}
+                        menuOpen={watchMenuFor === item.id}
+                        onToggleMenu={() => setWatchMenuFor((v) => (v === item.id ? null : item.id))}
+                        onOpen={() => router.push(`/films-series/${item.id}/episodes/s${item.nextSeason}e${item.nextEpisode}`)}
+                        onNext={(e) => handleMarkNextEpisode(e, item)}
+                        onSeason={() => void handleMarkSeason(item)}
+                        onSeries={() => void handleMarkSeries(item)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Watchlist partner */}
+            {hasPartnerItems && (
+              <section className="flex flex-col gap-3">
+                <SectionHead
+                  title={`Watchlist ${partnerName ?? "partner"}`}
+                  href="/films-series/partner-watchlist"
+                  avatar={
+                    <span className="flex size-[26px] shrink-0 overflow-hidden rounded-full bg-[var(--blue-50)] shadow-[0_0_0_2px_var(--white)]">
+                      {partnerAvatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={partnerAvatarUrl} alt="" className="size-full object-cover" />
+                      ) : (
+                        <MaskIcon src="/icons/avatar.svg" className="m-auto size-4 bg-[var(--blue-500)]" />
+                      )}
+                    </span>
+                  }
+                />
+                <div className="-mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex gap-3 lg:gap-4" style={{ width: "max-content" }}>
+                    {partnerWatchlist.map((item) => (
+                      <div key={item.id} className="w-32 shrink-0 lg:w-[140px]">
                         <button
                           type="button"
                           onClick={() => router.push(`/films-series/partner/${item.id}`)}
-                          className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                          className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 rounded-[14px]"
                         >
-                          {item.posterUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={item.posterUrl} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
-                          ) : (
-                            <div className="flex size-full items-center justify-center">
-                              <MaskIcon src="/icons/films.svg" className="size-6 bg-[var(--gray-200)]" />
-                            </div>
-                          )}
+                          <Poster src={item.posterUrl} alt="" />
+                          <p className="mt-2 truncate text-[13.5px] font-bold leading-[18px] text-[var(--text-primary)]">{item.title}</p>
                         </button>
-
-                        {/* Info + acties */}
-                        <div className="flex min-w-0 flex-1 flex-col justify-between">
-                          {/* Tekst-blok: titel/avatar + ondertitel + beschrijving */}
-                          <div className="flex flex-col gap-1">
-                            <div className="flex flex-col">
-                              {/* Titel + partner avatar */}
-                              <div className="flex w-full items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => router.push(`/films-series/partner/${item.id}`)}
-                                  className="min-w-0 flex-1 truncate text-left text-base font-medium leading-6 text-[var(--gray-900)] focus-visible:outline-none"
-                                >
-                                  {item.title}
-                                </button>
-                                {/* Partner avatar */}
-                                <div className="size-6 shrink-0 overflow-hidden rounded-full border border-white bg-[var(--blue-50)]">
-                                  {partnerAvatarUrl ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={partnerAvatarUrl} alt={partnerName ?? ""} className="size-full object-cover" />
-                                  ) : (
-                                    <div className="flex size-full items-center justify-center">
-                                      <MaskIcon src="/icons/avatar.svg" className="size-4 bg-[var(--blue-500)]" />
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
-                                {item.year} {item.type === "movie" ? "Film" : "TV Serie"}
-                              </p>
-                            </div>
-                            {(item.overview ?? partnerOverviews[item.id]) && (
-                              <p className="line-clamp-2 text-[10px] font-normal leading-3 text-[var(--gray-600)]">
-                                {item.overview ?? partnerOverviews[item.id]}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Score + actie-knoppen */}
-                          <div className="flex w-full items-center justify-between">
-                            {item.score != null ? (
-                              <div className="flex shrink-0 items-center gap-[4px]">
-                                <StarIcon source={scoreSourceMap[item.id]} />
-                                <span className="text-[12px] font-medium leading-4 text-[var(--gray-900)]">{item.score.toFixed(1)}</span>
-                              </div>
-                            ) : (
-                              <div />
-                            )}
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                aria-label="Toevoegen aan mijn watchlist"
-                                onClick={() => void reactToPartnerItem(item.id, "up")}
-                                className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                              >
-                                <MaskIcon src="/icons/thumb_up.svg" className={cn("size-6", CARD_ACTION_ICON)} />
-                              </button>
-                              <button
-                                type="button"
-                                aria-label="Niet interessant"
-                                onClick={() => void reactToPartnerItem(item.id, "down")}
-                                className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                              >
-                                <MaskIcon src="/icons/thumb_down.svg" className={cn("size-6", CARD_ACTION_ICON)} />
-                              </button>
-                              <button
-                                type="button"
-                                aria-label="Al gezien"
-                                onClick={() => void reactToPartnerItem(item.id, "seen")}
-                                className="flex size-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                              >
-                                <MaskIcon src="/icons/visible.svg" className={cn("size-6", CARD_ACTION_ICON)} />
-                              </button>
-                            </div>
-                          </div>
+                        <div className="mt-2 flex gap-1.5">
+                          <PartnerAction label="Ook op mijn watchlist" tone="blue" onClick={() => void reactToPartnerItem(item.id, "up")}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
+                              <path d="M12 5v14M5 12h14" />
+                            </svg>
+                          </PartnerAction>
+                          <PartnerAction label="Al gezien" onClick={() => void reactToPartnerItem(item.id, "seen")}>
+                            <EyeIcon />
+                          </PartnerAction>
+                          <PartnerAction label="Niet voor mij" onClick={() => void reactToPartnerItem(item.id, "down")}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-3.5">
+                              <path d="M6 6l12 12M18 6 6 18" />
+                            </svg>
+                          </PartnerAction>
                         </div>
                       </div>
                     ))}
@@ -778,148 +1129,51 @@ export default function FilmsSeriesPage() {
               </section>
             )}
 
-            {/* Aan het kijken */}
-            {watchingItems.length > 0 && (
-              <section className="flex flex-col gap-4">
-                <div className="flex items-center gap-6">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)]">Aan het kijken</h2>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/films-series/aan-het-kijken")}
-                    className="shrink-0 text-xs font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                  >
-                    Toon alle
-                  </button>
-                </div>
-                <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex gap-3 pb-1" style={{ width: "max-content" }}>
-                    {watchingItems.map((item) => {
-                      const { id, title, posterUrl, year, nextSeason, nextEpisode } = item;
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => router.push(`/films-series/${id}/episodes/s${nextSeason}e${nextEpisode}`)}
-                          className="flex w-[300px] shrink-0 items-start gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                        >
-                          <div className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)]">
-                            {posterUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={posterUrl} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
-                            ) : (
-                              <div className="flex size-full items-center justify-center">
-                                <MaskIcon src="/icons/films.svg" className="size-6 bg-[var(--gray-200)]" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex min-w-0 flex-1 flex-col gap-1">
-                            <div className="flex w-full flex-col">
-                              <div className="flex w-full items-center gap-3">
-                                <p className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[var(--gray-900)]">{title}</p>
-                                <span
-                                  role="button"
-                                  tabIndex={0}
-                                  aria-label="Markeer volgende aflevering als bekeken"
-                                  onClick={(e) => handleMarkNextEpisode(e, item)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleMarkNextEpisode(e as unknown as React.MouseEvent, item);
-                                    }
-                                  }}
-                                  className="shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded"
-                                >
-                                  <MaskIcon src="/icons/visible.svg" className={cn("size-6", CARD_ACTION_ICON)} />
-                                </span>
-                              </div>
-                              <p className="text-sm leading-5 text-[var(--gray-400)]">{year} TV Serie</p>
-                            </div>
-                            <div className="flex flex-nowrap items-center gap-2">
-                              <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[var(--blue-50)] px-2 py-1 text-xs leading-4 text-[var(--blue-500)]">
-                                Seizoen {nextSeason}
-                              </span>
-                              <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[4px] bg-[var(--blue-50)] px-2 py-1 text-xs leading-4 text-[var(--blue-500)]">
-                                Aflevering {nextEpisode}
-                              </span>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+            {/* Nieuw voor jou — één suggestie uit «Te ontdekken» */}
+            {hasDiscoverSection && (
+              <section aria-label="Nieuw voor jou">
+                {discoverLoading || !discoverFeature ? (
+                  <div className="h-[198px] animate-pulse rounded-[24px] bg-[var(--gray-100)] lg:h-[227px]" />
+                ) : (
+                  <DiscoverFeature
+                    item={discoverFeature}
+                    scoreSource={scoreSourceMap[discoverFeature.id] ?? discoverFeature.scoreSource}
+                    onOpen={() => handleViewDetail(discoverFeature.id)}
+                    onAdd={() => handleAdd(discoverFeature)}
+                    onNext={() => setDiscoverIndex((i) => i + 1)}
+                    onMore={() => router.push("/films-series/discover")}
+                  />
+                )}
               </section>
             )}
 
             {/* Watchlist films */}
             {watchlistFilms.length > 0 && (
-              <section ref={filmsSectionRef} className="flex flex-col gap-4">
-                <div className="flex items-center gap-6">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)]">Watchlist films</h2>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/films-series/watchlist/films")}
-                    className="shrink-0 text-xs font-medium text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                  >
-                    Toon alle
-                  </button>
-                </div>
-                <div ref={filmsScrollRef} className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex pb-1" style={{ width: "max-content" }}>
+              <section ref={filmsSectionRef} className="flex flex-col gap-3">
+                <SectionHead title="Watchlist films" href="/films-series/watchlist/films" count={watchlistFilms.length} />
+                <div ref={filmsScrollRef} className="-mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex" style={{ width: "max-content" }}>
                     {watchlistFilms.map((item) => {
                       const isCollapsed = removingFilmId === item.id || restoringFilmId === item.id;
                       return (
-                      <div
-                        key={item.id}
-                        className="shrink-0 overflow-hidden"
-                        style={{
-                          width: isCollapsed ? 0 : 95,
-                          opacity: isCollapsed ? 0 : 1,
-                          paddingRight: 8,
-                          transition: "width 420ms cubic-bezier(0.4, 0, 0.2, 1), opacity 260ms ease-out",
-                        }}
-                      >
-                      <button
-                        type="button"
-                        ref={(el) => { if (item.id === lastAddedId) lastAddedItemRef.current = el; }}
-                        onClick={() => handleViewDetail(item.id)}
-                        className="flex w-[87px] flex-col gap-2 text-left focus-visible:outline-none"
-                      >
-                        <div className="relative w-full overflow-hidden rounded-[4px] bg-[var(--gray-50)]" style={{ aspectRatio: "2/3" }}>
-                          {item.posterUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={item.posterUrl} alt={item.title} className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
-                          ) : (
-                            <div className="flex size-full items-center justify-center">
-                              <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
-                            </div>
-                          )}
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            aria-label={`Markeer ${item.title} als bekeken`}
-                            className="absolute right-[4px] top-[4px] size-4 cursor-pointer focus-visible:outline-none"
-                            onClick={(e) => handleRemoveFilm(e, item)}
-                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRemoveFilm(e as unknown as React.MouseEvent, item); } }}
-                          >
-                            <MaskIcon src="/icons/visible.svg" className={cn("size-4", CARD_ACTION_ICON)} />
-                          </span>
+                        <div
+                          key={item.id}
+                          className="shrink-0 overflow-hidden"
+                          style={{
+                            width: isCollapsed ? 0 : POSTER_W + 12,
+                            opacity: isCollapsed ? 0 : 1,
+                            paddingRight: 12,
+                            transition: "width 420ms cubic-bezier(0.4, 0, 0.2, 1), opacity 260ms ease-out",
+                          }}
+                        >
+                          <PosterTile
+                            item={item}
+                            scoreSource={scoreSourceMap[item.id]}
+                            buttonRef={(el) => { if (item.id === lastAddedId) lastAddedItemRef.current = el; }}
+                            onOpen={() => handleViewDetail(item.id)}
+                            onSeen={(e) => handleRemoveFilm(e, item)}
+                          />
                         </div>
-                        <div className="flex flex-col gap-0">
-                          <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[var(--gray-900)]">{item.title}</p>
-                          <div className="flex items-center justify-between">
-                            <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">{item.year}</p>
-                            {item.score != null && (
-                              <div className="flex items-center gap-1">
-                                <StarIcon source={scoreSourceMap[item.id]} />
-                                <span className="text-[12px] font-medium leading-4 text-[var(--gray-900)]">{item.score.toFixed(1)}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                      </div>
                       );
                     })}
                   </div>
@@ -929,142 +1183,19 @@ export default function FilmsSeriesPage() {
 
             {/* Watchlist series */}
             {watchlistSeries.length > 0 && (
-              <section ref={seriesSectionRef} className="flex flex-col gap-4">
-                <div className="flex items-center gap-6">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)]">Watchlist series</h2>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/films-series/watchlist/series")}
-                    className="shrink-0 text-xs font-medium text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                  >
-                    Toon alle
-                  </button>
-                </div>
-                <div ref={seriesScrollRef} className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+              <section ref={seriesSectionRef} className="flex flex-col gap-3">
+                <SectionHead title="Watchlist series" href="/films-series/watchlist/series" count={watchlistSeries.length} />
+                <div ref={seriesScrollRef} className="-mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex gap-3" style={{ width: "max-content" }}>
                     {watchlistSeries.map((item) => (
-                      <button
+                      <PosterTile
                         key={item.id}
-                        type="button"
-                        ref={(el) => { if (item.id === lastAddedId) lastAddedItemRef.current = el; }}
-                        onClick={() => handleViewDetail(item.id)}
-                        className="flex w-[87px] flex-col gap-2 text-left focus-visible:outline-none"
-                      >
-                        <div className="relative w-full overflow-hidden rounded-[4px] bg-[var(--gray-50)]" style={{ aspectRatio: "2/3" }}>
-                          {item.posterUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={item.posterUrl} alt={item.title} className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
-                          ) : (
-                            <div className="flex size-full items-center justify-center">
-                              <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-0">
-                          <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[var(--gray-900)]">{item.title}</p>
-                          <div className="flex items-center justify-between">
-                            <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">{item.year}</p>
-                            {item.score != null && (
-                              <div className="flex items-center gap-1">
-                                <StarIcon source={scoreSourceMap[item.id]} />
-                                <span className="text-[12px] font-medium leading-4 text-[var(--gray-900)]">{item.score.toFixed(1)}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </button>
+                        item={item}
+                        scoreSource={scoreSourceMap[item.id]}
+                        buttonRef={(el) => { if (item.id === lastAddedId) lastAddedItemRef.current = el; }}
+                        onOpen={() => handleViewDetail(item.id)}
+                      />
                     ))}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Te ontdekken */}
-            {hasDiscoverSection && (
-              <section className="flex flex-col gap-4">
-                <div className="flex items-center gap-6">
-                  <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)]">Te ontdekken</h2>
-                  {discoverVisible.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => router.push("/films-series/discover")}
-                      className="shrink-0 text-xs font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      Toon carousel
-                    </button>
-                  )}
-                </div>
-                <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-                    {discoverLoading ? (
-                      [1, 2, 3, 4].map((i) => (
-                        <div
-                          key={i}
-                          className="h-[130px] w-[87px] shrink-0 animate-pulse rounded-[4px] bg-[var(--gray-100)]"
-                        />
-                      ))
-                    ) : (
-                      discoverVisible.slice(0, 14).map((item) => (
-                        <div key={item.id} className="flex w-[87px] shrink-0 flex-col gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleViewDetail(item.id)}
-                            className="relative w-full overflow-hidden rounded-[4px] bg-[var(--gray-50)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                            style={{ aspectRatio: "2/3" }}
-                          >
-                            {item.posterUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={item.posterUrl}
-                                alt=""
-                                className="absolute inset-0 size-full object-cover"
-                                loading="lazy"
-                                decoding="async"
-                              />
-                            ) : (
-                              <div className="flex size-full items-center justify-center">
-                                <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
-                              </div>
-                            )}
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              aria-label={`${item.title} toevoegen aan watchlist`}
-                              className="absolute right-[4px] top-[4px] size-4 cursor-pointer focus-visible:outline-none"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAdd(item);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleAdd(item);
-                                }
-                              }}
-                            >
-                              <MaskIcon src="/icons/plus-circle.svg" className="size-4 bg-white" />
-                            </span>
-                          </button>
-                          <div className="flex flex-col gap-0">
-                            <p className="line-clamp-2 h-8 text-[14px] font-medium leading-4 text-[var(--gray-900)]">
-                              {item.title}
-                            </p>
-                            <div className="flex items-center justify-between gap-1">
-                              <p className="truncate text-[12px] leading-4 text-[var(--gray-400)]">{item.year}</p>
-                              {item.score != null && (
-                                <div className="flex shrink-0 items-center gap-0.5">
-                                  <StarIcon source={scoreSourceMap[item.id] ?? item.scoreSource} />
-                                  <span className="text-[10px] font-medium leading-4 text-[var(--gray-900)]">
-                                    {item.score.toFixed(1)}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
                   </div>
                 </div>
               </section>

@@ -693,6 +693,45 @@ export function useFilmsLibrary() {
     [user, groupOwnerId, libraryData?.filmsWatchedMarks, personalData?.filmsWatchedMarks, bumpLocal],
   );
 
+  /** Meerdere items tegelijk als bekeken markeren (één transactie), bv. een heel seizoen. */
+  const markWatchedMany = React.useCallback(
+    async (contentIds: string[]) => {
+      const todo = contentIds.filter((id) => !watchedSet.has(id));
+      if (todo.length === 0) return;
+      if (!user || !groupOwnerId) {
+        const { markWatched: markLocal } = await import("@/lib/watched");
+        todo.forEach((id) => markLocal(id));
+        bumpLocal();
+        return;
+      }
+      await db.transact(
+        todo.map((contentId) => db.tx.filmsWatchedMarks[instantId()].update({ contentId, groupOwnerId })),
+      );
+    },
+    [user, groupOwnerId, watchedSet, bumpLocal],
+  );
+
+  /** Tegenhanger van markWatchedMany (ongedaan maken). */
+  const unmarkWatchedMany = React.useCallback(
+    async (contentIds: string[]) => {
+      if (contentIds.length === 0) return;
+      if (!user || !groupOwnerId) {
+        const { unmarkWatched: unmarkLocal } = await import("@/lib/watched");
+        contentIds.forEach((id) => unmarkLocal(id));
+        bumpLocal();
+        return;
+      }
+      const wanted = new Set(contentIds);
+      const rows = [
+        ...((libraryData?.filmsWatchedMarks ?? []) as DbWatchedRow[]),
+        ...((personalData?.filmsWatchedMarks ?? []) as DbWatchedRow[]),
+      ].filter((r) => r.id && wanted.has(r.contentId));
+      if (rows.length === 0) return;
+      await db.transact(rows.map((r) => db.tx.filmsWatchedMarks[r.id].delete()));
+    },
+    [user, groupOwnerId, libraryData?.filmsWatchedMarks, personalData?.filmsWatchedMarks, bumpLocal],
+  );
+
   const saveSeriesMeta = React.useCallback(
     async (tmdbId: string, meta: SeriesMeta) => {
       const { saveSeriesMeta: saveLocal, getAllSeriesMeta } = await import("@/lib/watched");
@@ -824,6 +863,8 @@ export function useFilmsLibrary() {
     updateWatchlistScore,
     markWatched,
     unmarkWatched,
+    markWatchedMany,
+    unmarkWatchedMany,
     dismissDiscoverItem,
     restoreDiscoverItem,
     saveSeriesMeta,

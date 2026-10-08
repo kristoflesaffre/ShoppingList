@@ -51,7 +51,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 17 | Recept bewerken | `recipe_editor_slide_in.tsx`, `recipe_ingredient_form_slide_in.tsx` | ✅ |
 | 18 | Recept toevoegen via link / AI / foto | `recipe_link_slide_in.tsx`, `recipe_photo_upload_slide_in.tsx`, `photo_source_slide_in.tsx` (`recipe_ai_source_slide_in.tsx` verwijderd) | ✅ |
 | 19 | Recept delen | `recipe_share_slide_in.tsx` | ✅ |
-| 20 | Films & series · overzicht | `/films-series` | ⬜ |
+| 20 | Films & series · overzicht | `/films-series` | ✅ |
 | 21 | Films & series · detail, cast, afleveringen | `/films-series/[id]/…` | ⬜ |
 | 22 | Films & series · watchlist, aan het kijken, ontdekken, partner | `/films-series/watchlist/[kind]`, `/aan-het-kijken`, `/discover`, `/partner-watchlist`, `/partner/[id]` | ⬜ |
 | 23 | Films & series · instellingen | `/films-series/instellingen` | ⬜ |

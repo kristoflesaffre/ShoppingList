@@ -10,6 +10,7 @@ import {
   isSeriesFullyWatched,
   mapSeasonsFromDetail,
   mergeTvSeasons,
+  normalizeTvSeasons,
   parseEpisodeWatchedId,
   type TvSeasonInfo,
   type WatchingTvItem,
@@ -30,6 +31,8 @@ export function useWatchingTvItems() {
     removeFromWatchlist,
     markWatched,
     unmarkWatched,
+    markWatchedMany,
+    unmarkWatchedMany,
     isInWatchlist,
   } = useFilmsLibrary();
 
@@ -137,6 +140,43 @@ export function useWatchingTvItems() {
     [getSeasonsFor, removeFromWatchlist, markWatched],
   );
 
+  /**
+   * Rest van het huidige seizoen als bekeken (canvas «20 · menu»). Geeft de gemarkeerde ids terug
+   * (voor «ongedaan maken»), of null als de seizoensdata nog ontbreekt.
+   */
+  const markSeasonWatched = React.useCallback(
+    async (item: WatchingTvItem): Promise<{ ids: string[]; season: number } | null> => {
+      const season = normalizeTvSeasons(getSeasonsFor(item.tmdbId)).find((s) => s.seasonNumber === item.nextSeason);
+      if (!season) return null;
+      const ids: string[] = [];
+      for (let e = item.nextEpisode; e <= season.episodeCount; e++) ids.push(`ep-${item.tmdbId}-s${season.seasonNumber}e${e}`);
+      await markWatchedMany(ids);
+      return { ids, season: season.seasonNumber };
+    },
+    [getSeasonsFor, markWatchedMany],
+  );
+
+  /** Alle resterende afleveringen als bekeken; de serie verdwijnt dan uit «Aan het kijken» en de watchlist. */
+  const markSeriesWatched = React.useCallback(
+    async (item: WatchingTvItem): Promise<{ ids: string[]; watchlistItem: WatchlistItem | null } | null> => {
+      const seasons = normalizeTvSeasons(getSeasonsFor(item.tmdbId));
+      if (seasons.length === 0) return null;
+      const ids: string[] = [];
+      for (const s of seasons) {
+        if (s.seasonNumber < item.nextSeason) continue;
+        const start = s.seasonNumber === item.nextSeason ? item.nextEpisode : 1;
+        for (let e = start; e <= s.episodeCount; e++) ids.push(`ep-${item.tmdbId}-s${s.seasonNumber}e${e}`);
+      }
+      const watchlistItem: WatchlistItem | null = isInWatchlist(item.id)
+        ? { id: item.id, type: "tv", title: item.title, year: item.year, posterUrl: item.posterUrl, score: null }
+        : null;
+      await markWatchedMany(ids);
+      if (watchlistItem) await removeFromWatchlist(item.id);
+      return { ids, watchlistItem };
+    },
+    [getSeasonsFor, markWatchedMany, isInWatchlist, removeFromWatchlist],
+  );
+
   const getWatchedEpisodeIdsFor = React.useCallback(
     (tmdbId: string) =>
       watchedIds.filter((id) => parseEpisodeWatchedId(id)?.tmdbId === tmdbId),
@@ -174,6 +214,9 @@ export function useWatchingTvItems() {
   return {
     watchingItems,
     markNextEpisode,
+    markSeasonWatched,
+    markSeriesWatched,
+    unmarkEpisodes: unmarkWatchedMany,
     removeWatchingItem,
     restoreWatchingItem,
     unmarkWatchedEpisode: unmarkWatched,
