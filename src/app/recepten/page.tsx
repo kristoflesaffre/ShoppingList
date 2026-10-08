@@ -40,6 +40,7 @@ import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
+import { LongAgoSection, MostEatenSection, useRecipeStats } from "@/app/recepten/recipe_stats_sections";
 import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { EmptyStateFan } from "@/components/empty_state_fan";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
@@ -334,6 +335,7 @@ export default function ReceptenPage() {
   const { isLoading: dataLoading, data: recipeData } = db.useQuery({
     recipes: { ingredients: {} },
   });
+  const recipeStats = useRecipeStats(user?.id ?? null);
 
   const savedRecipes: SavedRecipe[] = React.useMemo(() => {
     if (!recipeData?.recipes) return [];
@@ -541,6 +543,8 @@ export default function ReceptenPage() {
   }
 
   const hasRecipes = savedRecipes.length > 0;
+  /* Statistieken enkel in het gewone overzicht (niet bij zoeken, één categorie of bewerken). */
+  const showStats = !isEditMode && !activeCategory && recipeSearch.trim() === "";
 
   return (
     <div
@@ -597,6 +601,13 @@ export default function ReceptenPage() {
               <div className={cn("md:hidden", isEditMode && "hidden")}>
                 <SearchBar surface="app" placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
               </div>
+
+              {showStats ? (
+                <>
+                  <MostEatenSection ranked={recipeStats.ranked} todayIso={recipeStats.todayIso} />
+                  <LongAgoSection ranked={recipeStats.ranked} todayIso={recipeStats.todayIso} />
+                </>
+              ) : null}
 
               {!isEditMode && filteredRecipes.length === 0 ? (
                 <p className="py-8 text-center text-base font-medium leading-24 text-[var(--text-tertiary)]">
