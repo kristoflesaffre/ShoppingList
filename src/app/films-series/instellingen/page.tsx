@@ -8,6 +8,8 @@ import { id as instantId } from "@instantdb/react";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { db } from "@/lib/db";
 import { cn, isIPhoneDevice } from "@/lib/utils";
+import { PageBackButton } from "@/components/ui/page_back_button";
+import { useFilmsLibrary } from "@/hooks/use_films_library";
 
 const ShareListModal = dynamic(
   () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
@@ -33,30 +35,13 @@ function BackArrowIcon({ className }: { className?: string }) {
   );
 }
 
-function ChevronRightIcon() {
-  return (
-    <span
-      aria-hidden
-      className="inline-block size-6 shrink-0 bg-[var(--action-primary)]"
-      style={{
-        WebkitMaskImage: "url(/icons/chevron.svg)",
-        maskImage: "url(/icons/chevron.svg)",
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-        transform: "rotate(-90deg)",
-      }}
-    />
-  );
-}
-
 export default function FilmsSeriesInstellingenPage() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
   const [shareModalOpen, setShareModalOpen] = React.useState(false);
+  const { ownWatchlist, isFilmsListShared, partnerName, partnerAvatarUrl, userName, userAvatarUrl } = useFilmsLibrary();
+  const filmCount = ownWatchlist.filter((i) => i.type === "movie").length;
+  const seriesCount = ownWatchlist.filter((i) => i.type === "tv").length;
   const [localShareToken, setLocalShareToken] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -134,49 +119,101 @@ export default function FilmsSeriesInstellingenPage() {
   }, [ownedShare?.shareToken, localShareToken]);
 
   if (authLoading || !user || isLoading) {
-    return <PageSpinner surface="white" />;
+    return <PageSpinner />;
   }
 
+  const avatar = (url: string | null | undefined, name: string | null | undefined, extra?: string) => (
+    <span className={cn("flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] shadow-[0_0_0_2px_var(--white)]", extra)}>
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" className="size-full object-cover" />
+      ) : (
+        <span className="text-[11px] font-bold text-[var(--blue-500)]">{(name ?? "?").slice(0, 1).toUpperCase()}</span>
+      )}
+    </span>
+  );
+  const shared = isFilmsListShared && Boolean(partnerName);
+
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-[var(--white)]">
-      <div className="fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
+    <div className="relative flex min-h-dvh w-full flex-col">
+      {/* Mobiel: topbalk met terugpijl; desktop: ronde terugknop naast de titel (zoals «11 · instellingen»). */}
+      <div className="fixed left-0 right-0 top-0 z-10 w-full bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] lg:hidden">
         <header className="relative mx-auto flex h-16 max-w-[956px] items-center px-4">
           <Link
             href="/films-series"
             aria-label="Terug naar films en series"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full text-action-primary transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
             <BackArrowIcon className="size-6" />
           </Link>
-          <p className="flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
-            Instellingen
-          </p>
+          <p className="flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">Instellingen</p>
           <span className="size-10 shrink-0" aria-hidden />
         </header>
       </div>
 
-      <main className="mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+env(safe-area-inset-top,0px))]">
-        <div className="pt-8">
-          <h1 className="text-[24px] font-bold leading-8 tracking-normal text-[var(--text-primary)]">
-            Films en series
-          </h1>
+      <main className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-3.5 px-4 pb-[calc(40px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+12px+env(safe-area-inset-top,0px))] lg:pt-[calc(40px+env(safe-area-inset-top,0px))]">
+        <div className="mb-1 hidden items-center gap-3 lg:flex">
+          <PageBackButton href="/films-series" label="Terug naar films en series" />
+          <h1 className="text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">Instellingen</h1>
         </div>
 
-        <div className="mt-6 flex flex-col divide-y divide-[var(--gray-100)]">
-          <button
-            type="button"
-            onClick={() => void handleShareInvitePress()}
-            className={cn(
-              "flex w-full items-center gap-4 py-3 text-left transition-colors",
-              "[@media(hover:hover)]:hover:bg-[var(--gray-50)]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
-            )}
-          >
-            <span className="flex-1 text-base font-medium leading-6 text-[var(--text-primary)]">
-              Lijstje delen
-            </span>
-            <ChevronRightIcon />
-          </button>
+        {/* Canvas «23 · Films-instellingen — voorstel» */}
+        <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-[1fr_1.2fr] lg:items-start lg:gap-4">
+          <section className="rounded-[20px] bg-[var(--white)] p-[18px] shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+            <div className="flex items-center gap-4">
+              <span className="flex size-[72px] shrink-0 items-center justify-center rounded-[20px] bg-[var(--blue-25)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/ui/films_160.webp" alt="" width={54} height={54} className="size-[54px] object-contain" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Films &amp; series</h2>
+                <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
+                  {filmCount} {filmCount === 1 ? "film" : "films"} · {seriesCount} {seriesCount === 1 ? "serie" : "series"} op je watchlist
+                </p>
+              </div>
+            </div>
+            <div className="mt-3.5 flex items-center gap-2.5 border-t border-[var(--border-subtle)] pt-3.5">
+              <span className="flex">
+                {avatar(userAvatarUrl, userName, "z-[1]")}
+                {shared ? avatar(partnerAvatarUrl, partnerName, "-ml-[9px]") : null}
+              </span>
+              <span className="text-[13.5px] text-[var(--text-secondary)]">
+                {shared ? (
+                  <>
+                    Je deelt dit met <b className="font-bold text-[var(--text-primary)]">{partnerName}</b>
+                  </>
+                ) : (
+                  "Nog niet gedeeld"
+                )}
+              </span>
+            </div>
+          </section>
+
+          <section className="rounded-[20px] bg-[var(--white)] px-3.5 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+            <button
+              type="button"
+              onClick={() => void handleShareInvitePress()}
+              className="flex w-full items-center gap-3 px-1 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+            >
+              <span className="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)]" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-[17px]">
+                  <circle cx="18" cy="6" r="2.5" />
+                  <circle cx="6" cy="12" r="2.5" />
+                  <circle cx="18" cy="18" r="2.5" />
+                  <path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6" />
+                </svg>
+              </span>
+              <span className="min-w-0 flex-1 leading-[19px]">
+                <span className="block text-[15.5px] font-semibold text-[var(--text-primary)]">Lijstje delen</span>
+                <span className="block text-[13px] text-[var(--text-secondary)]">
+                  {shared ? `Kijk samen met ${partnerName}` : "Nodig iemand uit om samen te kijken"}
+                </span>
+              </span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4 shrink-0 text-[var(--text-tertiary)]">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </button>
+          </section>
         </div>
       </main>
 
