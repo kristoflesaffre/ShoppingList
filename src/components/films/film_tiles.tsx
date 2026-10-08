@@ -324,35 +324,63 @@ export function WatchingCard({
 }
 
 
-/** Kaartenstapel-icoon voor «één voor één» door een lijst gaan. */
-export function StackIcon({ className = "size-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
-      <rect x="6" y="7" width="12" height="14" rx="2.5" />
-      <path d="M8.5 4h7M10.5 1.8h3" />
-    </svg>
-  );
-}
-
 /**
- * Ingang naar de swipe-stapel van je partner: titels één voor één fullscreen bekijken
- * (canvas «22 · Actiebalk B»).
+ * Canvas «22 · Ingang wizard A»: eerste tegel in de rij van je partner — een waaier van haar
+ * posters met «Start». Opent de swipe-stapel om de voorstellen één voor één te bekijken.
  */
-export function OneByOneButton({ onClick, size = "sm", className }: { onClick: () => void; size?: "sm" | "lg"; className?: string }) {
+export function OneByOneTile({
+  posters,
+  count,
+  onClick,
+  className,
+}: {
+  posters: (string | null)[];
+  count: number;
+  onClick: () => void;
+  className?: string;
+}) {
+  const fan = posters.filter(Boolean).slice(0, 3) as string[];
+  // Achterste kaarten eerst; de voorste (eerste voorstel) ligt recht bovenop.
+  const layout = [
+    { rot: -10, dx: -14 },
+    { rot: 8, dx: 14 },
+    { rot: 0, dx: 0 },
+  ];
+  const ordered = fan.length === 3 ? [fan[2], fan[1], fan[0]] : fan.slice().reverse();
   return (
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-pill font-bold transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-        size === "sm"
-          ? "h-8 bg-[var(--blue-50)] px-3 text-[13px] text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--blue-100)]"
-          : "h-11 bg-[var(--blue-500)] px-5 text-[15px] text-white [@media(hover:hover)]:hover:bg-[var(--blue-600,#3f45e0)]",
-        className,
-      )}
+      aria-label={`${count} voorstellen één voor één bekijken`}
+      className={cn("group block shrink-0 self-start text-left focus-visible:outline-none", className ?? "w-[120px] lg:w-[140px]")}
     >
-      <StackIcon className={size === "sm" ? "size-[15px]" : "size-[18px]"} />
-      {size === "sm" ? "Eén voor één" : "Eén voor één bekijken"}
+      <span className="relative block aspect-[2/3] w-full overflow-hidden rounded-[14px] bg-[linear-gradient(160deg,var(--blue-50),#dfe0fd)] shadow-[0_10px_20px_-14px_rgba(16,17,48,0.6)] group-focus-visible:ring-2 group-focus-visible:ring-[var(--border-focus)] group-focus-visible:ring-offset-2">
+        {ordered.map((src, i) => {
+          const l = layout[layout.length - ordered.length + i];
+          return (
+            <span
+              key={src + i}
+              className="absolute left-1/2 top-[42%] block aspect-[2/3] w-[60%] overflow-hidden rounded-[10px] shadow-[0_10px_18px_-8px_rgba(16,17,48,0.45),0_0_0_2px_#fff] transition-transform duration-300 ease-out-strong"
+              style={{ transform: `translate(-50%, -50%) translateX(${l.dx}px) rotate(${l.rot}deg)` }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt="" className="size-full object-cover" loading="lazy" decoding="async" />
+            </span>
+          );
+        })}
+        <span className="absolute inset-x-0 bottom-2.5 flex justify-center">
+          <span className="inline-flex h-7 items-center gap-[5px] rounded-pill bg-[var(--blue-500)] px-[11px] text-xs font-bold text-white shadow-[0_6px_14px_-6px_rgba(79,85,241,0.7)] transition-transform duration-fast ease-out-strong motion-safe:group-active:scale-95">
+            <svg viewBox="0 0 24 24" aria-hidden className="size-3">
+              <path d="M7.5 5.6v12.8a1 1 0 0 0 1.52.85l10.2-6.4a1 1 0 0 0 0-1.7L9.02 4.75A1 1 0 0 0 7.5 5.6z" transform="translate(-0.9 0)" fill="currentColor" />
+            </svg>
+            Start
+          </span>
+        </span>
+      </span>
+      <span className="mt-2 block truncate text-[13.5px] font-bold leading-[18px] text-[var(--text-primary)]">Eén voor één</span>
+      <span className="block text-xs leading-4 text-[var(--text-tertiary)]">
+        {count} {count === 1 ? "voorstel" : "voorstellen"}
+      </span>
     </button>
   );
 }

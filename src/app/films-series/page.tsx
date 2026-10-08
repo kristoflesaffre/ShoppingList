@@ -8,7 +8,7 @@ import { PageBackButton } from "@/components/ui/page_back_button";
 import { SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
-import { CheckIcon, EyeIcon, OneByOneButton, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard } from "@/components/films/film_tiles";
+import { CheckIcon, EyeIcon, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard } from "@/components/films/film_tiles";
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
@@ -916,7 +916,6 @@ export default function FilmsSeriesPage() {
                 <SectionHead
                   title={`Watchlist ${partnerName ?? "partner"}`}
                   href="/films-series/partner-watchlist"
-                  extra={<OneByOneButton onClick={() => router.push(`/films-series/partner/${partnerWatchlist[0].id}`)} />}
                   avatar={
                     <span className="flex size-[26px] shrink-0 overflow-hidden rounded-full bg-[var(--blue-50)] shadow-[0_0_0_2px_var(--white)]">
                       {partnerAvatarUrl ? (
@@ -930,6 +929,12 @@ export default function FilmsSeriesPage() {
                 />
                 <div className="-mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-3 lg:gap-4" style={{ width: "max-content" }}>
+                    <OneByOneTile
+                      posters={partnerWatchlist.map((p) => p.posterUrl)}
+                      count={partnerWatchlist.length}
+                      onClick={() => router.push(`/films-series/partner/${partnerWatchlist[0].id}`)}
+                      className="w-32 lg:w-[140px]"
+                    />
                     {partnerWatchlist.map((item) => (
                       <div key={item.id} className="w-32 shrink-0 lg:w-[140px]">
                         <button
