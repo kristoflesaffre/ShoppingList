@@ -23,6 +23,7 @@ import {
   SoftPlayButton,
   StarGlyph,
   TrailerOverlay,
+  YoutubeMark,
   type EpisodeRowData,
 } from "@/components/films/film_detail_ui";
 
@@ -591,7 +592,7 @@ export default function FilmDetailPage() {
                       <ImdbMark />
                     </ExternalChip>
                     <ExternalChip href={youtubeTrailerSearchUrl(detail.title, isTV ? selectedSeason : undefined)} label={`Trailer van ${detail.title} zoeken op YouTube`}>
-                      YouTube
+                      <YoutubeMark />
                     </ExternalChip>
                   </div>
                 </section>

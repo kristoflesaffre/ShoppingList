@@ -191,6 +191,12 @@ export function ExternalChip({ href, label, children }: { href: string; label: s
   );
 }
 
+/** Het echte YouTube-logo (rode knop + woordmerk) in de link-chip. */
+export function YoutubeMark() {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/logos/logos-youtube.svg" alt="YouTube" className="h-[18px] w-auto" />;
+}
+
 export function ImdbMark() {
   return <span className="inline-flex h-[18px] items-center rounded-[4px] bg-[#f5c518] px-[5px] text-[11.5px] font-black text-black">IMDb</span>;
 }
@@ -604,7 +610,7 @@ export function DeckBody({
             <ImdbMark />
           </ExternalChip>
           <ExternalChip href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${media.title} trailer`)}`} label={`Trailer van ${media.title} zoeken op YouTube`}>
-            YouTube
+            <YoutubeMark />
           </ExternalChip>
         </div>
         {media.cast.length > 0 ? (
