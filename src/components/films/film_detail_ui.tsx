@@ -455,3 +455,203 @@ export function SubpageHeader({ title, subtitle, onBack, right }: { title: strin
     </>
   );
 }
+
+export type DeckMedia = {
+  title: string;
+  type: "movie" | "tv";
+  year: string;
+  certification?: string;
+  runtime?: string;
+  score: number | null;
+  scoreSource?: "imdb" | "tmdb" | null;
+  genres: string[];
+  overview: string;
+  posterUrl: string | null;
+  backdropUrl: string | null;
+  imdbId: string | null;
+  cast: CastPerson[];
+  trailerKey?: string | null;
+};
+
+function deckImdbUrl(title: string, imdbId: string | null) {
+  return imdbId ? `https://www.imdb.com/title/${imdbId}/` : `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`;
+}
+
+/**
+ * Canvas «22 · Te ontdekken / partner — voorstel»: één titel in een swipe-stapel, in dezelfde
+ * stijl als de detailpagina (backdrop die overloopt, poster erover, chips, beschrijving, links).
+ * Wordt ook gebruikt voor de panelen links/rechts tijdens het swipen.
+ */
+export function DeckBody({
+  media,
+  banner,
+  onPlay,
+  onAllCast,
+}: {
+  media: DeckMedia;
+  banner?: React.ReactNode;
+  onPlay?: () => void;
+  onAllCast?: () => void;
+}) {
+  const [expanded, setExpanded] = React.useState(false);
+  const eyebrow = [media.type === "tv" ? "Serie" : "Film", media.year, media.certification].filter(Boolean).join(" · ");
+  const scoreLine = (
+    <>
+      {media.score != null ? (
+        <>
+          <StarGlyph source={media.scoreSource} />
+          <b className="font-bold">{media.score.toFixed(1)}</b>
+          <span className="opacity-70">{media.scoreSource === "tmdb" ? "TMDB" : "IMDb"}</span>
+        </>
+      ) : null}
+      {media.runtime ? <span>{media.score != null ? "· " : ""}{media.runtime}</span> : null}
+    </>
+  );
+  return (
+    <div className="flex flex-col">
+      {/* Mobiel: backdrop + poster erover */}
+      <div className="relative -mx-4 h-[300px] lg:hidden">
+        {media.backdropUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={media.backdropUrl} alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
+        ) : (
+          <div aria-hidden className="absolute inset-0 bg-[#1b1d3a]" />
+        )}
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(180deg, rgba(16,17,48,0.28) 0%, rgba(16,17,48,0) 34%, rgba(16,17,48,0) 58%, var(--bg-app) 100%)" }}
+        />
+        {onPlay && media.trailerKey ? (
+          <div className="absolute left-1/2 top-[128px] -translate-x-1/2">
+            <SoftPlayButton size={52} aria-label={`Trailer van ${media.title} afspelen`} onClick={onPlay} />
+          </div>
+        ) : null}
+      </div>
+      <div className="relative -mt-[92px] flex items-end gap-4 lg:hidden">
+        <div className="h-[168px] w-28 shrink-0 overflow-hidden rounded-[14px] bg-[var(--gray-100)] shadow-[0_18px_30px_-16px_rgba(16,17,48,0.6)]">
+          {media.posterUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={media.posterUrl} alt={`Poster van ${media.title}`} className="size-full object-cover" />
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1 pb-1">
+          <p className="text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-[var(--blue-500)]">{eyebrow}</p>
+          <h1 className="mt-1 line-clamp-3 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em] text-[var(--text-primary)]">{media.title}</h1>
+          <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[13.5px] text-[var(--text-secondary)] [&_b]:text-[var(--text-primary)]">{scoreLine}</p>
+        </div>
+      </div>
+
+      {/* Desktop: donkere herokaart */}
+      <div className="relative hidden h-[360px] overflow-hidden rounded-[28px] bg-[#1b1d3a] lg:block">
+        {media.backdropUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={media.backdropUrl} alt="" aria-hidden className="absolute right-0 top-0 h-full w-[72%] object-cover" />
+        ) : null}
+        <div aria-hidden className="absolute inset-0 bg-[linear-gradient(90deg,#1b1d3a_30%,rgba(27,29,58,0.75)_52%,rgba(27,29,58,0.05)_85%)]" />
+        {onPlay && media.trailerKey ? (
+          <div className="absolute right-[170px] top-1/2 -translate-y-1/2">
+            <SoftPlayButton size={60} aria-label={`Trailer van ${media.title} afspelen`} onClick={onPlay} />
+          </div>
+        ) : null}
+        <div className="absolute inset-y-9 left-9 flex items-center gap-7">
+          <div className="h-72 w-48 shrink-0 overflow-hidden rounded-[16px] bg-[rgba(255,255,255,0.08)] shadow-[0_20px_40px_-18px_rgba(0,0,0,0.7)]">
+            {media.posterUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={media.posterUrl} alt={`Poster van ${media.title}`} className="size-full object-cover" />
+            ) : null}
+          </div>
+          <div className="w-[360px] text-white">
+            <p className="text-xs font-extrabold uppercase tracking-[0.07em] text-[#c9cbff]">{eyebrow}</p>
+            <h1 className="mt-2 line-clamp-2 text-[40px] font-extrabold leading-[1.05] tracking-[-0.02em]">{media.title}</h1>
+            <p className="mt-2.5 flex items-center gap-1.5 text-sm text-[rgba(255,255,255,0.75)] [&_b]:text-white">{scoreLine}</p>
+            {media.genres.length > 0 ? (
+              <div className="mt-3.5 flex flex-wrap gap-1.5">
+                {media.genres.map((g) => (
+                  <span key={g} className="inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.14)] px-[11px] text-[12.5px] font-semibold">
+                    {g}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 pt-[18px] lg:pt-5">
+        {media.genres.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 lg:hidden">
+            {media.genres.map((g) => (
+              <span key={g} className="inline-flex h-7 items-center rounded-pill bg-[var(--white)] px-[11px] text-[12.5px] font-semibold text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle)]">
+                {g}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {banner}
+        {media.overview ? (
+          <div>
+            <p className={cn("text-[15px] leading-[22px] text-[var(--text-primary)] lg:max-w-[680px]", !expanded && "line-clamp-4")}>{media.overview}</p>
+            {!expanded && media.overview.length > 180 ? (
+              <button type="button" onClick={() => setExpanded(true)} className="mt-1 text-[15px] font-bold text-[var(--blue-500)] focus-visible:outline-none">
+                Meer lezen
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="flex gap-2">
+          <ExternalChip href={deckImdbUrl(media.title, media.imdbId)} label={`${media.title} bekijken op IMDb`}>
+            <ImdbMark />
+          </ExternalChip>
+          <ExternalChip href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${media.title} trailer`)}`} label={`Trailer van ${media.title} zoeken op YouTube`}>
+            YouTube
+          </ExternalChip>
+        </div>
+        {media.cast.length > 0 ? (
+          <section className="mt-3">
+            <DetailSectionHead title="Cast" action={onAllCast ? "Alles" : undefined} onAction={onAllCast} />
+            <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+              <div className="flex w-max gap-2">
+                {media.cast.slice(0, 12).map((m, i) => (
+                  <CastRound key={i} person={m} />
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export function DeckSkeleton() {
+  return (
+    <div className="flex flex-col">
+      <div className="shimmer -mx-4 h-[300px] lg:mx-0 lg:h-[360px] lg:rounded-[28px]" />
+      <div className="flex flex-col gap-3 pt-5">
+        <div className="shimmer h-7 w-2/3 rounded" />
+        <div className="shimmer h-4 w-1/2 rounded" />
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="shimmer h-4 rounded" style={{ width: i % 2 === 0 ? "100%" : "83%" }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Ronde actieknop met label eronder, voor de vaste actiebalk onderaan een swipe-stapel. */
+export function DeckRoundAction({ label, icon, onClick, disabled }: { label: string; icon: React.ReactNode; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="group flex w-[72px] flex-col items-center gap-[5px] text-[11.5px] font-semibold leading-[14px] text-[var(--text-secondary)] focus-visible:outline-none disabled:opacity-40"
+    >
+      <span className="flex size-[52px] items-center justify-center rounded-full bg-[var(--white)] text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle),0_6px_16px_-10px_rgba(16,17,48,0.35)] transition-transform duration-fast ease-out-strong group-focus-visible:ring-2 group-focus-visible:ring-[var(--border-focus)] motion-safe:group-active:scale-90">
+        {icon}
+      </span>
+      <span className="text-center">{label}</span>
+    </button>
+  );
+}

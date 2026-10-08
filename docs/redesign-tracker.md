@@ -53,7 +53,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 19 | Recept delen | `recipe_share_slide_in.tsx` | ✅ |
 | 20 | Films & series · overzicht | `/films-series` | ✅ |
 | 21 | Films & series · detail, cast, afleveringen | `/films-series/[id]/…` | ✅ |
-| 22 | Films & series · watchlist, aan het kijken, ontdekken, partner | `/films-series/watchlist/[kind]`, `/aan-het-kijken`, `/discover`, `/partner-watchlist`, `/partner/[id]` | ⬜ |
+| 22 | Films & series · watchlist, aan het kijken, ontdekken, partner | `/films-series/watchlist/[kind]`, `/aan-het-kijken`, `/discover`, `/partner-watchlist`, `/partner/[id]` | ✅ |
 | 23 | Films & series · instellingen | `/films-series/instellingen` | ⬜ |
 | 24 | Gedeelde pagina's (link) | `/deel/[token]`, `/deel/recept/…`, `/deel/te-kopen/…`, `/deel/films-series/…` | ⬜ |
 | 25 | Beheer · ontbrekende afbeeldingen | `/admin/ontbrekende-afbeeldingen` | ⬜ |

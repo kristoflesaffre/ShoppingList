@@ -3,7 +3,18 @@
 import * as React from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { RoundIconButton } from "@/components/ui/round_icon_button";
+import { PageBackButton } from "@/components/ui/page_back_button";
+import {
+  ActionPill,
+  DeckBody,
+  DeckRoundAction,
+  DeckSkeleton,
+  FilmIcons,
+  GlassIconButton,
+  TrailerOverlay,
+  type DeckMedia,
+} from "@/components/films/film_detail_ui";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { Snackbar } from "@/components/ui/snackbar";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
@@ -49,126 +60,6 @@ type FilmDetail = {
   trailerKey: string | null;
 };
 
-function MaskIcon({ src, className }: { src: string; className?: string }) {
-  return (
-    <span
-      className={cn("inline-block shrink-0", className)}
-      style={{
-        WebkitMaskImage: `url(${src})`,
-        maskImage: `url(${src})`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-      aria-hidden
-    />
-  );
-}
-
-function ThreeDotsIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="5" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="19" cy="12" r="1.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-function StarIcon({ source = "tmdb" }: { source?: "imdb" | "tmdb" }) {
-  const fill = source === "imdb" ? "#FBBF24" : "var(--blue-500)";
-  const stroke = source === "imdb" ? "#F59E0B" : "var(--blue-500)";
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden className="size-6 shrink-0">
-      <path
-        d="M12 2l2.75 5.57 6.15.9-4.45 4.33 1.05 6.11L12 15.9l-5.5 2.89 1.05-6.11L3.1 8.47l6.15-.9L12 2z"
-        fill={fill}
-        stroke={stroke}
-        strokeWidth="0.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function imdbUrl(title: string, imdbId: string | null): string {
-  if (imdbId) return `https://www.imdb.com/title/${imdbId}/`;
-  return `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`;
-}
-
-function youtubeSearchUrl(title: string): string {
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(title + " trailer")}`;
-}
-
-function DetailSkeleton() {
-  return (
-    <div className="flex animate-pulse flex-col gap-6">
-      <div className="h-8 w-3/4 rounded bg-[var(--gray-100)]" />
-      <div className="h-5 w-1/2 rounded bg-[var(--gray-100)]" />
-      <div className="h-16 rounded bg-[var(--gray-100)]" />
-      <div className="flex gap-3">
-        <div className="h-14 flex-1 rounded-lg bg-[var(--gray-100)]" />
-        <div className="h-14 flex-1 rounded-lg bg-[var(--gray-100)]" />
-        <div className="h-14 flex-1 rounded-lg bg-[var(--gray-100)]" />
-      </div>
-      <div className="w-full rounded-lg bg-[var(--gray-100)]" style={{ aspectRatio: "16/9" }} />
-      <div className="w-full rounded-[4px] bg-[var(--gray-100)]" style={{ aspectRatio: "2/3" }} />
-    </div>
-  );
-}
-
-function GhostContent({
-  item,
-  detail,
-}: {
-  item: DiscoverItem | null;
-  detail: FilmDetail | null;
-}) {
-  if (!item) return <DetailSkeleton />;
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-start gap-2">
-        <h1 className="min-w-0 flex-1 text-2xl font-bold leading-8 text-[var(--text-primary)]">
-          {item.title}
-        </h1>
-        {(detail?.score ?? item.score) !== null && (
-          <div className="flex shrink-0 items-center gap-1 pt-1">
-            <StarIcon source={detail?.scoreSource ?? item.scoreSource ?? "tmdb"} />
-            <p className="font-medium text-[var(--text-primary)]">
-              <span className="text-base leading-6">{((detail?.score ?? item.score)!).toFixed(1)}</span>
-              <span className="text-xs font-normal leading-none">/10</span>
-            </p>
-          </div>
-        )}
-      </div>
-      <div className="h-16 rounded bg-[var(--gray-100)]" />
-      <div className="flex gap-3">
-        <div className="h-14 flex-1 rounded-lg border border-[var(--blue-500)]" />
-        <div className="h-14 flex-1 rounded-lg bg-[var(--blue-500)]" />
-        <div className="h-14 flex-1 rounded-lg bg-[var(--error-400)]" />
-      </div>
-      <div
-        className="relative w-full overflow-hidden rounded-lg bg-[var(--gray-100)]"
-        style={{ aspectRatio: "16/9" }}
-      >
-        {detail?.backdropUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={detail.backdropUrl}
-            alt=""
-            className="absolute inset-0 size-full object-cover"
-            aria-hidden
-          />
-        )}
-        <div className="absolute inset-0 bg-black/20" aria-hidden />
-      </div>
-    </div>
-  );
-}
-
 export default function DiscoverCarouselPage() {
   const router = useRouter();
   const {
@@ -186,10 +77,6 @@ export default function DiscoverCarouselPage() {
   const [detail, setDetail] = React.useState<FilmDetail | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [showTrailer, setShowTrailer] = React.useState(false);
-  const [overviewExpanded, setOverviewExpanded] = React.useState(false);
-  const [overviewNeedsTruncation, setOverviewNeedsTruncation] = React.useState(false);
-  const overviewRef = React.useRef<HTMLParagraphElement>(null);
-  const fullscreenDivRef = React.useRef<HTMLDivElement>(null);
   const detailCacheRef = React.useRef<Map<string, FilmDetail>>(new Map());
   const [snackbar, setSnackbar] = React.useState<{ message: string } | null>(null);
   const snackbarTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -344,12 +231,10 @@ export default function DiscoverCarouselPage() {
     const cached = detailCacheRef.current.get(currentItem.id);
     if (cached) {
       setDetail(cached);
-      setOverviewExpanded(false);
       return;
     }
     setDetailLoading(true);
     setDetail(null);
-    setOverviewExpanded(false);
     fetchDetail(currentItem.id).then((data) => {
       if (data) setDetail(data);
       setDetailLoading(false);
@@ -377,10 +262,6 @@ export default function DiscoverCarouselPage() {
     }
   }, [currentIndex, items]);
 
-  React.useEffect(() => {
-    if (!overviewRef.current || !detail?.overview) return;
-    setOverviewNeedsTruncation(overviewRef.current.scrollHeight > 80);
-  }, [detail?.overview]);
 
   React.useEffect(() => {
     function onFullscreenChange() {
@@ -454,8 +335,6 @@ export default function DiscoverCarouselPage() {
         setCurrentIndex(nextIndex);
         setDetail(cached);
         setDetailLoading(!cached);
-        setOverviewExpanded(false);
-        setOverviewNeedsTruncation(false);
       });
 
       el.style.transition = "none";
@@ -595,8 +474,6 @@ export default function DiscoverCarouselPage() {
     setItems((currentItems) => currentItems.filter((item) => item.id !== mediaId));
     setDetail(null);
     setDetailLoading(true);
-    setOverviewExpanded(false);
-    setOverviewNeedsTruncation(false);
   }
 
   function handleLike() {
@@ -629,7 +506,7 @@ export default function DiscoverCarouselPage() {
   function handleDislike() {
     if (!currentItem) return;
     void dismissDiscoverItem(currentItem.id);
-    showSnackbar(`${currentItem.title} gedisliket`);
+    showSnackbar(`${currentItem.title} komt niet meer terug`);
     removeFromCarousel(currentItem.id);
   }
 
@@ -652,381 +529,140 @@ export default function DiscoverCarouselPage() {
 
   function handlePlay() {
     if (!detail?.trailerKey) return;
-    fullscreenDivRef.current?.requestFullscreen?.().catch(() => {});
     setShowTrailer(true);
   }
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < items.length - 1;
 
-  const metaParts = [detail?.year, detail?.certification, detail?.runtime].filter(Boolean);
-  const genrePart = detail?.genres?.join(" - ") ?? "";
-  const metaLine = genrePart ? `${metaParts.join("  ")}  /  ${genrePart}` : metaParts.join("  ");
+
+  const toDeck = (d: FilmDetail | null, it: DiscoverItem | null): DeckMedia | null => {
+    if (!d) return null;
+    return {
+      title: d.title,
+      type: d.type,
+      year: d.year,
+      certification: d.certification,
+      runtime: d.runtime,
+      score: d.score ?? it?.score ?? null,
+      scoreSource: d.scoreSource ?? it?.scoreSource,
+      genres: d.genres,
+      overview: d.overview,
+      posterUrl: d.posterUrl,
+      backdropUrl: d.backdropUrl,
+      imdbId: d.imdbId,
+      cast: d.cast,
+      trailerKey: d.trailerKey,
+    };
+  };
+  const ghost = (d: FilmDetail | null, it: DiscoverItem | null) => {
+    const m = toDeck(d, it);
+    return m ? <DeckBody media={m} /> : <DeckSkeleton />;
+  };
+  const currentMedia = toDeck(detail, currentItem ?? null);
+  const counter = items.length > 0 ? `${currentIndex + 1} / ${items.length}` : "";
 
   return (
     <div
       ref={containerRef}
-      className="relative flex min-h-dvh w-full flex-col overflow-x-hidden bg-white"
+      className="relative flex min-h-dvh w-full flex-col overflow-x-hidden"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Vaste header */}
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <div className="flex justify-center">
-          <header className="flex h-16 w-full max-w-[956px] items-center gap-4 px-4">
-            <button
-              type="button"
-              aria-label="Terug"
-              onClick={() => router.push("/films-series")}
-              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
-            </button>
-            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[var(--text-primary)]">
-              Te ontdekken
-            </p>
-            <button
-              type="button"
-              aria-label="Instellingen"
-              onClick={() => router.push("/films-series/instellingen")}
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <ThreeDotsIcon />
-            </button>
-          </header>
-        </div>
+      {/* Mobiel: glazen knoppen en teller boven op de backdrop */}
+      <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top,0px)+12px)] z-20 flex items-center justify-between lg:hidden">
+        <GlassIconButton aria-label="Terug" onClick={() => router.push("/films-series")}>
+          {FilmIcons.back}
+        </GlassIconButton>
+        {counter ? (
+          <span className="inline-flex h-[30px] items-center rounded-pill bg-[rgba(16,17,48,0.32)] px-3 text-[13px] font-bold text-white backdrop-blur-[10px]">{counter}</span>
+        ) : null}
+        <GlassIconButton aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")}>
+          {FilmIcons.dots}
+        </GlassIconButton>
       </div>
 
-      {/* Trailer fullscreen overlay — altijd in DOM zodat requestFullscreen() synchroon werkt */}
-      <div
-        ref={fullscreenDivRef}
-        className={cn(
-          "fixed inset-0 z-50 flex items-center justify-center bg-black",
-          showTrailer ? "pointer-events-auto" : "pointer-events-none opacity-0",
-        )}
-        aria-hidden={!showTrailer}
-      >
-        {showTrailer && detail?.trailerKey && (
-          <iframe
-            key={detail.trailerKey}
-            src={`https://www.youtube.com/embed/${detail.trailerKey}?autoplay=1&mute=0&enablejsapi=1&rel=0&playsinline=0&fs=1`}
-            allow="autoplay; fullscreen"
-            allowFullScreen
-            className="h-full w-full"
-            title="Trailer"
-          />
-        )}
-        <button
-          type="button"
-          aria-label="Sluiten"
-          onClick={() => {
-            if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-            setShowTrailer(false);
-          }}
-          className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-black/60 text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-            <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Scrollbare inhoud */}
-      <div
-        className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+48px)]"
-        style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
-      >
-        {listLoading ? (
-          <div className="flex animate-pulse flex-col gap-6 pt-4">
-            <div className="flex items-center gap-4">
-              <div className="size-10 rounded-full bg-[var(--gray-100)]" />
-              <div className="h-5 flex-1 rounded bg-[var(--gray-100)]" />
-              <div className="size-10 rounded-full bg-[var(--gray-100)]" />
-            </div>
-            <DetailSkeleton />
+      {/* Canvas «22 · Te ontdekken — voorstel» */}
+      <div className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+128px)] lg:pt-10">
+        <div className="mb-5 hidden items-center justify-between lg:flex">
+          <div className="flex items-center gap-3">
+            <PageBackButton href="/films-series" label="Terug" className="lg:flex" />
+            <h1 className="text-[32px] font-bold leading-9 tracking-tight text-[var(--text-primary)]">Te ontdekken</h1>
+            {counter ? <span className="text-lg font-semibold text-[var(--text-tertiary)]">{counter}</span> : null}
           </div>
+          <div className="flex gap-2">
+            <RoundIconButton tone="surface" size={36} aria-label="Vorige" disabled={!hasPrev} onClick={() => navigateTo("prev")} className="rotate-180 text-[var(--blue-500)]">
+              {FilmIcons.chevron}
+            </RoundIconButton>
+            <RoundIconButton tone="surface" size={36} aria-label="Volgende" disabled={!hasNext} onClick={() => navigateTo("next")} className="text-[var(--blue-500)]">
+              {FilmIcons.chevron}
+            </RoundIconButton>
+          </div>
+        </div>
+
+        {listLoading ? (
+          <DeckSkeleton />
         ) : items.length === 0 ? (
-          <p className="py-16 text-center text-sm text-[var(--gray-400)]">Geen suggesties gevonden.</p>
+          <p className="pt-[calc(env(safe-area-inset-top,0px)+96px)] text-center text-sm text-[var(--text-secondary)]">Geen suggesties gevonden.</p>
         ) : (
-          <>
-            {/* Navigatierij */}
-            <div className="flex shrink-0 items-center gap-4 pt-4">
-              <button
-                type="button"
-                aria-label="Vorige"
-                onClick={() => navigateTo("prev")}
-                disabled={!hasPrev}
-                className={cn(
-                  "flex size-6 shrink-0 items-center justify-center transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                  !hasPrev && "pointer-events-none opacity-25",
-                )}
-              >
-                <MaskIcon src="/icons/chevron.svg" className="size-6 rotate-90 bg-[var(--blue-500)]" />
-              </button>
-              <p className="min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">
-                {currentIndex + 1} van {items.length}
-              </p>
-              <button
-                type="button"
-                aria-label="Volgende"
-                onClick={() => navigateTo("next")}
-                disabled={!hasNext}
-                className={cn(
-                  "flex size-6 shrink-0 items-center justify-center transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                  !hasNext && "pointer-events-none opacity-25",
-                )}
-              >
-                <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[var(--blue-500)]" />
-              </button>
+          <div className="relative overflow-hidden">
+            <div ref={prevPanelRef} style={{ transform: "translateX(-200vw)" }} className="pointer-events-none absolute left-0 top-0 w-full px-4 lg:px-0" aria-hidden>
+              {ghost(prevGhost, items[currentIndex - 1] ?? null)}
             </div>
-
-            {/* Sliding panel wrapper — overflow-hidden clips ghost panels during swipe */}
-            <div className="relative overflow-hidden">
-              {/* Vorig item ghost panel — off-screen links (inline transform zorgt dat het direct verborgen is vóór de useEffect) */}
-              <div
-                ref={prevPanelRef}
-                style={{ transform: "translateX(-200vw)" }}
-                className="pointer-events-none absolute left-0 top-0 w-full"
-                aria-hidden
-              >
-                <GhostContent
-                  item={items[currentIndex - 1] ?? null}
-                  detail={prevGhost}
-                />
-              </div>
-
-              {/* Volgend item ghost panel — off-screen rechts */}
-              <div
-                ref={nextPanelRef}
-                style={{ transform: "translateX(200vw)" }}
-                className="pointer-events-none absolute left-0 top-0 w-full"
-                aria-hidden
-              >
-                <GhostContent
-                  item={items[currentIndex + 1] ?? null}
-                  detail={nextGhost}
-                />
-              </div>
-
-              {/* Huidig item — dit panel schuift tijdens swipe */}
-              <div ref={contentRef} className="flex flex-col gap-6">
-                {detailLoading && !detail ? (
-                  <DetailSkeleton />
-                ) : detail ? (
-                  <>
-                    {/* Titel + score */}
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-start gap-2">
-                        <h1 className="min-w-0 flex-1 text-2xl font-bold leading-8 text-[var(--text-primary)]">
-                          {detail.title}
-                        </h1>
-                        {detail.score !== null && (
-                          <div className="flex shrink-0 items-center gap-1 pt-1">
-                            <StarIcon source={detail.scoreSource ?? currentItem.scoreSource} />
-                            <p className="font-medium text-[var(--text-primary)]">
-                              <span className="text-base leading-6">{detail.score.toFixed(1)}</span>
-                              <span className="text-xs font-normal leading-none">/10</span>
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      {metaLine && (
-                        <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                          <p className="whitespace-nowrap text-sm leading-5 text-[var(--gray-400)]">{metaLine}</p>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-6 pt-1">
-                        <a
-                          href={imdbUrl(detail.title, detail.imdbId)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`${detail.title} bekijken op IMDb`}
-                          className="flex h-6 w-12 shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src="/logos/logos-imdb.svg" alt="IMDb" className="h-6 w-auto max-w-full object-contain" />
-                        </a>
-                        <a
-                          href={youtubeSearchUrl(detail.title)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`Trailer van ${detail.title} zoeken op YouTube`}
-                          className="flex h-6 w-[108px] shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src="/logos/logos-youtube.svg" alt="YouTube" className="h-6 w-auto max-w-full object-contain" />
-                        </a>
-                      </div>
-                    </div>
-
-                    {/* Overview */}
-                    {detail.overview ? (
-                      <div className="flex flex-col gap-1">
-                        <p
-                          ref={overviewRef}
-                          className={cn(
-                            "text-sm leading-5 text-[var(--text-primary)]",
-                            !overviewExpanded && overviewNeedsTruncation && "line-clamp-4",
-                          )}
-                        >
-                          {detail.overview}
-                        </p>
-                        {overviewNeedsTruncation && (
-                          <button
-                            type="button"
-                            onClick={() => setOverviewExpanded((v) => !v)}
-                            className="self-start text-sm font-medium leading-5 text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                          >
-                            {overviewExpanded ? "Toon minder" : "Toon meer"}
-                          </button>
-                        )}
-                      </div>
-                    ) : null}
-
-                    {/* Actieknoppen */}
-                    <div className="flex flex-col gap-3">
-                      <div className="flex gap-3">
-                        <button
-                          type="button"
-                          aria-label="Als gezien markeren"
-                          onClick={handleSeen}
-                          className="flex flex-1 items-center justify-center rounded-lg border border-[var(--blue-500)] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                        >
-                          <MaskIcon src="/icons/visible.svg" className="size-6 bg-[var(--blue-500)]" />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Liken en toevoegen aan watchlist"
-                          onClick={handleLike}
-                          className="flex flex-1 items-center justify-center rounded-lg bg-[var(--blue-500)] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                        >
-                          <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-white" />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Disliken"
-                          onClick={handleDislike}
-                          className="flex flex-1 items-center justify-center rounded-lg bg-[var(--error-400)] py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                        >
-                          <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />
-                        </button>
-                      </div>
-                      {currentItem?.type === "tv" && (
-                        <button
-                          type="button"
-                          aria-label="Ik ben dit nu aan het kijken"
-                          onClick={handleWatching}
-                          className="flex w-full items-center gap-3 rounded-lg border border-[var(--blue-500)] p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                        >
-                          <span className="flex-1 text-left text-base font-medium leading-6 text-[var(--blue-500)]">
-                            Ik ben dit nu aan het kijken
-                          </span>
-                          <MaskIcon src="/icons/visible.svg" className="size-6 shrink-0 bg-[var(--blue-500)]" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Backdrop met playknop */}
-                    <div
-                      className="relative w-full overflow-hidden rounded-lg bg-[var(--gray-100)]"
-                      style={{ aspectRatio: "16/9" }}
-                    >
-                      {detail.backdropUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={detail.backdropUrl}
-                          alt=""
-                          className="absolute inset-0 size-full object-cover"
-                          aria-hidden
-                        />
-                      )}
-                      <div className="absolute inset-0 bg-black/20" aria-hidden />
-                      {detail.trailerKey && (
-                        <button
-                          type="button"
-                          aria-label="Trailer afspelen"
-                          onClick={handlePlay}
-                          className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[2.75px] border-fixed-white bg-black/20 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
-                          style={{ width: 51, height: 51 }}
-                        >
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-                            <path d="M8 5v14l11-7L8 5z" fill="white" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Poster */}
-                    {detail.posterUrl && (
-                      <div
-                        className="w-full overflow-hidden rounded-[4px] bg-[var(--gray-100)]"
-                        style={{ aspectRatio: "2/3" }}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={detail.posterUrl}
-                          alt={detail.title}
-                          className="size-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      </div>
-                    )}
-
-                    {/* Cast */}
-                    {detail.cast.length > 0 && (
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-center justify-between">
-                          <h2 className="text-base font-bold leading-6 text-[var(--text-primary)]">Cast</h2>
-                          <button
-                            type="button"
-                            onClick={() => router.push(`/films-series/${detail.id}`)}
-                            className="text-xs font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                          >
-                            Toon alle
-                          </button>
-                        </div>
-                        <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                          <div className="flex gap-3" style={{ width: "max-content" }}>
-                            {detail.cast.slice(0, 10).map((member, i) => (
-                              <div key={i} className="flex w-16 shrink-0 flex-col gap-1">
-                                <div className="size-16 overflow-hidden rounded-full bg-[var(--gray-100)]">
-                                  {member.profileUrl ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                      src={member.profileUrl}
-                                      alt=""
-                                      className="size-full object-cover"
-                                      loading="lazy"
-                                      decoding="async"
-                                    />
-                                  ) : (
-                                    <div className="flex size-full items-center justify-center">
-                                      <MaskIcon src="/icons/avatar.svg" className="size-8 bg-[var(--gray-300)]" />
-                                    </div>
-                                  )}
-                                </div>
-                                <p className="line-clamp-2 text-center text-[11px] font-medium leading-4 text-[var(--text-primary)]">
-                                  {member.name}
-                                </p>
-                                <p className="line-clamp-1 text-center text-[10px] leading-3 text-[var(--gray-400)]">
-                                  {member.character}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : null}
-              </div>
+            <div ref={nextPanelRef} style={{ transform: "translateX(200vw)" }} className="pointer-events-none absolute left-0 top-0 w-full px-4 lg:px-0" aria-hidden>
+              {ghost(nextGhost, items[currentIndex + 1] ?? null)}
             </div>
-          </>
+            <div ref={contentRef} className="px-4 lg:px-0">
+              {detailLoading && !detail ? (
+                <DeckSkeleton />
+              ) : currentMedia ? (
+                <DeckBody
+                  key={currentItem?.id}
+                  media={currentMedia}
+                  onPlay={handlePlay}
+                  onAllCast={detail ? () => router.push(`/films-series/${detail.id}/cast`) : undefined}
+                />
+              ) : null}
+            </div>
+          </div>
         )}
       </div>
+
+      {/* Vaste actiebalk */}
+      {currentItem && !listLoading ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 bg-[linear-gradient(180deg,rgba(245,246,250,0),var(--bg-app)_30%)] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+18px)] pt-3.5">
+          <div className="mx-auto flex max-w-[956px] items-start justify-center gap-3">
+            <DeckRoundAction
+              label="Niet voor mij"
+              onClick={handleDislike}
+              icon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-5">
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              }
+            />
+            <DeckRoundAction label="Al gezien" onClick={handleSeen} icon={FilmIcons.eye} />
+            {currentItem.type === "tv" ? (
+              <DeckRoundAction
+                label="Ik kijk dit nu"
+                onClick={handleWatching}
+                icon={
+                  <svg viewBox="0 0 24 24" aria-hidden className="size-[18px]">
+                    <path d="M7.5 5.6v12.8a1 1 0 0 0 1.52.85l10.2-6.4a1 1 0 0 0 0-1.7L9.02 4.75A1 1 0 0 0 7.5 5.6z" transform="translate(-0.9 0)" fill="currentColor" />
+                  </svg>
+                }
+              />
+            ) : null}
+            <ActionPill tone="primary" icon={FilmIcons.plus} onClick={handleLike} className="h-[52px] px-[22px]">
+              Watchlist
+            </ActionPill>
+          </div>
+        </div>
+      ) : null}
+
+      {showTrailer && detail?.trailerKey ? (
+        <TrailerOverlay videoKey={detail.trailerKey} title={detail.title} onClose={() => setShowTrailer(false)} />
+      ) : null}
 
       {/* Snackbar */}
       {snackbar && (

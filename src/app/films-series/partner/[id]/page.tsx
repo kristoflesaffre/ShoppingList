@@ -3,7 +3,18 @@
 import * as React from "react";
 import { flushSync } from "react-dom";
 import { useRouter, useParams } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { RoundIconButton } from "@/components/ui/round_icon_button";
+import { PageBackButton } from "@/components/ui/page_back_button";
+import {
+  ActionPill,
+  DeckBody,
+  DeckRoundAction,
+  DeckSkeleton,
+  FilmIcons,
+  GlassIconButton,
+  TrailerOverlay,
+  type DeckMedia,
+} from "@/components/films/film_detail_ui";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import type { WatchlistItem } from "@/lib/watchlist";
 
@@ -39,173 +50,12 @@ type AdjData = {
   nextDetail: FilmDetail | null;
 };
 
-function MaskIcon({ src, className }: { src: string; className?: string }) {
-  return (
-    <span
-      className={cn("inline-block shrink-0", className)}
-      style={{
-        WebkitMaskImage: `url(${src})`,
-        maskImage: `url(${src})`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-      aria-hidden
-    />
-  );
-}
-
-function ThreeDotsIcon({ className }: { className?: string }) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <circle cx="5" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="19" cy="12" r="1.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-function StarIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden className="size-6 shrink-0">
-      <path
-        d="M12 2l2.75 5.57 6.15.9-4.45 4.33 1.05 6.11L12 15.9l-5.5 2.89 1.05-6.11L3.1 8.47l6.15-.9L12 2z"
-        fill="#FBBF24"
-        stroke="#F59E0B"
-        strokeWidth="0.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function DetailSkeleton() {
-  return (
-    <div className="flex animate-pulse flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <div className="h-8 w-2/3 rounded bg-[var(--gray-100)]" />
-          <div className="h-6 w-16 rounded bg-[var(--gray-100)]" />
-        </div>
-        <div className="h-5 w-48 rounded bg-[var(--gray-100)]" />
-        <div className="flex gap-4">
-          <div className="h-6 w-12 rounded bg-[var(--gray-100)]" />
-          <div className="h-6 w-28 rounded bg-[var(--gray-100)]" />
-        </div>
-      </div>
-      <div className="flex flex-col gap-2">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-4 rounded bg-[var(--gray-100)]" style={{ width: i === 3 ? "60%" : "100%" }} />
-        ))}
-      </div>
-      <div className="flex gap-3">
-        <div className="h-12 flex-1 rounded-[8px] bg-[var(--gray-100)]" />
-        <div className="h-12 flex-1 rounded-[8px] bg-[var(--gray-100)]" />
-        <div className="h-12 flex-1 rounded-[8px] bg-[var(--gray-100)]" />
-      </div>
-      <div className="w-full rounded bg-[var(--gray-100)]" style={{ aspectRatio: "2/3" }} />
-      <div className="w-full rounded-lg bg-[var(--gray-100)]" style={{ aspectRatio: "16/9" }} />
-    </div>
-  );
-}
-
-/** Ghost panel rendered off-screen during swipe — matches the real layout exactly to avoid jumps. */
-function GhostPanel({ item, detail }: { item: WatchlistItem | null; detail: FilmDetail | null }) {
-  if (!item) return <DetailSkeleton />;
-
-  // If we don't have the full detail yet, render a layout that approximates the real one
-  // using the watchlist data we already have (title, poster, score).
-  const score = detail?.score ?? item.score ?? null;
-  const posterUrl = detail?.posterUrl ?? item.posterUrl ?? null;
-  const metaParts = detail ? [detail.year, detail.certification, detail.runtime].filter(Boolean) : [];
-  const genrePart = detail?.genres?.join(" - ") ?? "";
-  const metaLine = genrePart ? `${metaParts.join("  ")}  /  ${genrePart}` : metaParts.join("  ");
-
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Title + score */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <h1 className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-2xl font-bold leading-8 text-[var(--gray-900)]">
-              {item.title}
-            </h1>
-            {score != null && (
-              <div className="flex shrink-0 items-center gap-1">
-                <StarIcon />
-                <p className="font-medium text-[var(--gray-900)]">
-                  <span className="text-base leading-6">{score.toFixed(1)}</span>
-                  <span className="text-xs font-normal leading-none text-[var(--gray-400)]">/10</span>
-                </p>
-              </div>
-            )}
-          </div>
-          {metaLine ? (
-            <p className="whitespace-nowrap text-sm leading-5 text-[var(--gray-400)]">{metaLine}</p>
-          ) : (
-            // Placeholder so layout height matches when meta loads
-            <div className="h-5 w-48 rounded bg-[var(--gray-100)]" />
-          )}
-        </div>
-        {/* IMDb + YouTube logo placeholders */}
-        <div className="flex items-center gap-6 opacity-20">
-          <div className="h-6 w-12 rounded bg-[var(--gray-300)]" />
-          <div className="h-6 w-[108px] rounded bg-[var(--gray-300)]" />
-        </div>
-      </div>
-
-      {/* Overview */}
-      {detail?.overview ? (
-        <p className="line-clamp-5 text-base font-medium leading-6 text-[var(--gray-900)]">
-          {detail.overview}
-        </p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-4 rounded bg-[var(--gray-100)]" style={{ width: i === 2 ? "60%" : "100%" }} />
-          ))}
-        </div>
-      )}
-
-      {/* Action buttons */}
-      <div className="flex gap-3">
-        <div className="h-12 flex-1 rounded-[8px] border border-[var(--blue-500)]" />
-        <div className="h-12 flex-1 rounded-[8px] bg-[var(--blue-500)]" />
-        <div className="h-12 flex-1 rounded-[8px] bg-[var(--error-400)]" />
-      </div>
-
-      {/* Poster */}
-      <div className="relative w-full overflow-hidden rounded bg-[var(--gray-50)]" style={{ aspectRatio: "2/3" }}>
-        {posterUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={posterUrl} alt="" className="absolute inset-0 size-full object-cover" aria-hidden />
-        ) : (
-          <div className="flex size-full items-center justify-center">
-            <MaskIcon src="/icons/films.svg" className="size-12 bg-[var(--gray-200)]" />
-          </div>
-        )}
-      </div>
-
-      {/* Trailer placeholder */}
-      <div className="w-full rounded-lg bg-[var(--gray-100)]" style={{ aspectRatio: "16/9" }}>
-        {detail?.backdropUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={detail.backdropUrl} alt="" className="size-full rounded-lg object-cover" aria-hidden />
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function PartnerFilmDetailPage() {
   const router = useRouter();
   const params = useParams();
   const rawId = params.id as string;
 
-  const { partnerWatchlist, partnerName, reactToPartnerItem } = useFilmsLibrary();
+  const { partnerWatchlist, partnerName, partnerAvatarUrl, reactToPartnerItem } = useFilmsLibrary();
 
   const [currentId, setCurrentId] = React.useState(rawId);
 
@@ -222,16 +72,11 @@ export default function PartnerFilmDetailPage() {
 
   const [detail, setDetail] = React.useState<FilmDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [overviewExpanded, setOverviewExpanded] = React.useState(false);
-  const [overviewOverflows, setOverviewOverflows] = React.useState(false);
-  const overviewRef = React.useRef<HTMLParagraphElement>(null);
   const [showTrailer, setShowTrailer] = React.useState(false);
   const [adjData, setAdjData] = React.useState<AdjData>({
     prevItem: null, prevDetail: null, nextItem: null, nextDetail: null,
   });
 
-  const LINE_HEIGHT = 24;
-  const MAX_HEIGHT = LINE_HEIGHT * 5;
 
   const detailCache = React.useRef<Map<string, FilmDetail>>(new Map());
 
@@ -269,8 +114,6 @@ export default function PartnerFilmDetailPage() {
   // Fetch detail for current item — check cache first
   React.useEffect(() => {
     if (!currentId) return;
-    setOverviewExpanded(false);
-    setOverviewOverflows(false);
 
     const cached = detailCache.current.get(currentId);
     if (cached) {
@@ -328,17 +171,6 @@ export default function PartnerFilmDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentId, prevItem?.id, nextItem?.id]);
 
-  // Measure overview overflow after detail loads
-  const overviewFull = detail?.overview ?? "";
-  React.useEffect(() => {
-    if (!overviewFull) { setOverviewOverflows(false); return; }
-    const id = requestAnimationFrame(() => {
-      const el = overviewRef.current;
-      if (el) setOverviewOverflows(el.scrollHeight > MAX_HEIGHT + 1);
-    });
-    return () => cancelAnimationFrame(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overviewFull, overviewExpanded]);
 
   function handleReact(reaction: "up" | "down" | "seen") {
     // Animate immediately — don't wait for the DB write, which would remove the item
@@ -354,9 +186,6 @@ export default function PartnerFilmDetailPage() {
     void reactToPartnerItem(currentId, reaction);
   }
 
-  const metaParts = [detail?.year, detail?.certification, detail?.runtime].filter(Boolean);
-  const genrePart = detail?.genres?.join(" - ") ?? "";
-  const metaLine = genrePart ? `${metaParts.join("  ")}  /  ${genrePart}` : metaParts.join("  ");
 
   // ─── Core swipe animation ────────────────────────────────────────────────────
 
@@ -408,8 +237,6 @@ export default function PartnerFilmDetailPage() {
         setCurrentId(targetItem.id);
         setDetail(cached ?? null);
         setLoading(!cached);
-        setOverviewExpanded(false);
-        setOverviewOverflows(false);
       });
 
       // Update URL without triggering a Next.js navigation (avoids re-mount flash on [id] change)
@@ -539,415 +366,132 @@ export default function PartnerFilmDetailPage() {
     commitNavigationRef.current?.(dir);
   }
 
+  const toDeck = (d: FilmDetail | null): DeckMedia | null =>
+    d
+      ? {
+          title: d.title,
+          type: d.type,
+          year: d.year,
+          certification: d.certification,
+          runtime: d.runtime,
+          score: d.score,
+          scoreSource: "imdb",
+          genres: d.genres,
+          overview: d.overview,
+          posterUrl: d.posterUrl,
+          backdropUrl: d.backdropUrl,
+          imdbId: d.imdbId,
+          cast: d.cast,
+          trailerKey: d.trailerKey,
+        }
+      : null;
+  const name = partnerName ?? "Je partner";
+  const banner = (
+    <div className="flex items-center gap-3 rounded-[18px] bg-[var(--blue-25)] px-3.5 py-3 shadow-[inset_0_0_0_1px_var(--blue-50)]">
+      <span className="flex size-[26px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)]">
+        {partnerAvatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={partnerAvatarUrl} alt="" className="size-full object-cover" />
+        ) : (
+          <span className="text-[11px] font-bold text-[var(--blue-500)]">{name.slice(0, 1).toUpperCase()}</span>
+        )}
+      </span>
+      <span className="flex-1 text-[13.5px] font-semibold text-[var(--text-primary)]">{name} zette dit op de watchlist</span>
+    </div>
+  );
+  const ghost = (d: FilmDetail | null) => {
+    const m = toDeck(d);
+    return m ? <DeckBody media={m} banner={banner} /> : <DeckSkeleton />;
+  };
+  const currentMedia = toDeck(detail);
+  const counter = currentIndex >= 0 && totalCount > 0 ? `${currentIndex + 1} / ${totalCount}` : "";
+  const goBack = () => router.push("/films-series/partner-watchlist");
+
   return (
     <div
       ref={containerRef}
-      className="relative flex min-h-dvh w-full flex-col overflow-x-hidden bg-white"
+      className="relative flex min-h-dvh w-full flex-col overflow-x-hidden"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Vaste header */}
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
-        <div className="flex justify-center">
-          <header className="flex h-16 w-full max-w-[956px] items-center gap-4 px-4">
-            <button
-              type="button"
-              aria-label="Terug"
-              onClick={() => router.push("/films-series/partner-watchlist")}
-              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
-            </button>
-            <p className="min-w-0 flex-1 truncate text-center text-base font-medium leading-6 text-[var(--gray-900)]">
-              Watchlist {partnerName ?? "Partner"}
-            </p>
-            <button
-              type="button"
-              aria-label="Opties"
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--gray-900)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <ThreeDotsIcon />
-            </button>
-          </header>
-        </div>
+      <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top,0px)+12px)] z-20 flex items-center justify-between lg:hidden">
+        <GlassIconButton aria-label="Terug" onClick={goBack}>
+          {FilmIcons.back}
+        </GlassIconButton>
+        {counter ? (
+          <span className="inline-flex h-[30px] items-center rounded-pill bg-[rgba(16,17,48,0.32)] px-3 text-[13px] font-bold text-white backdrop-blur-[10px]">{counter}</span>
+        ) : null}
+        <GlassIconButton aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")}>
+          {FilmIcons.dots}
+        </GlassIconButton>
       </div>
 
-      {/* Scrollbare inhoud */}
-      <div
-        className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 px-4 pt-8 pb-[calc(env(safe-area-inset-bottom,0px)+32px)]"
-        style={{ marginTop: "calc(64px + env(safe-area-inset-top, 0px))" }}
-      >
-        {/* Navigatie "X van Y" */}
-        {totalCount > 0 && (
-          <div className="flex shrink-0 items-center gap-4 lg:justify-center lg:gap-4">
-            <button
-              type="button"
-              aria-label="Vorig item"
-              disabled={!prevItem}
-              onClick={() => navigateItem("prev")}
-              className={cn(
-                "flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                !prevItem && "pointer-events-none opacity-30",
-              )}
-            >
-              <MaskIcon src="/icons/chevron.svg" className="size-6 rotate-90 bg-[var(--blue-500)]" />
-            </button>
-            <p className="flex-1 text-center text-base font-medium leading-6 text-[var(--gray-900)] lg:flex-none">
-              {currentIndex >= 0 ? `${currentIndex + 1} van ${totalCount}` : `van ${totalCount}`}
-            </p>
-            <button
-              type="button"
-              aria-label="Volgend item"
-              disabled={!nextItem}
-              onClick={() => navigateItem("next")}
-              className={cn(
-                "flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                !nextItem && "pointer-events-none opacity-30",
-              )}
-            >
-              <MaskIcon src="/icons/chevron.svg" className="size-6 -rotate-90 bg-[var(--blue-500)]" />
-            </button>
+      {/* Canvas «22 · Partner — één titel — voorstel» */}
+      <div className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+128px)] lg:pt-10">
+        <div className="mb-5 hidden items-center justify-between lg:flex">
+          <div className="flex items-center gap-3">
+            <PageBackButton href="/films-series/partner-watchlist" label="Terug" className="lg:flex" />
+            <h1 className="text-[32px] font-bold leading-9 tracking-tight text-[var(--text-primary)]">Watchlist {name}</h1>
+            {counter ? <span className="text-lg font-semibold text-[var(--text-tertiary)]">{counter}</span> : null}
           </div>
-        )}
-
-        {/* Sliding panel wrapper */}
-        <div className="relative">
-          {/* Prev ghost panel — off-screen left, full layout to avoid jumps on commit */}
-          <div
-            ref={prevPanelRef}
-            className="pointer-events-none absolute left-0 top-0 w-full"
-            aria-hidden
-          >
-            <GhostPanel item={adjData.prevItem} detail={adjData.prevDetail} />
+          <div className="flex gap-2">
+            <RoundIconButton tone="surface" size={36} aria-label="Vorige" disabled={!hasPrev} onClick={() => navigateItem("prev")} className="rotate-180 text-[var(--blue-500)]">
+              {FilmIcons.chevron}
+            </RoundIconButton>
+            <RoundIconButton tone="surface" size={36} aria-label="Volgende" disabled={!hasNext} onClick={() => navigateItem("next")} className="text-[var(--blue-500)]">
+              {FilmIcons.chevron}
+            </RoundIconButton>
           </div>
+        </div>
 
-          {/* Next ghost panel — off-screen right */}
-          <div
-            ref={nextPanelRef}
-            className="pointer-events-none absolute left-0 top-0 w-full"
-            aria-hidden
-          >
-            <GhostPanel item={adjData.nextItem} detail={adjData.nextDetail} />
+        <div className="relative overflow-hidden">
+          <div ref={prevPanelRef} style={{ transform: "translateX(-200vw)" }} className="pointer-events-none absolute left-0 top-0 w-full px-4 lg:px-0" aria-hidden>
+            {ghost(adjData.prevDetail)}
           </div>
-
-          {/* Current content — slides during swipe */}
-          <div ref={contentRef} className="flex flex-col gap-6">
+          <div ref={nextPanelRef} style={{ transform: "translateX(200vw)" }} className="pointer-events-none absolute left-0 top-0 w-full px-4 lg:px-0" aria-hidden>
+            {ghost(adjData.nextDetail)}
+          </div>
+          <div ref={contentRef} className="px-4 lg:px-0">
             {loading ? (
-              <DetailSkeleton />
-            ) : !detail ? (
-              <p className="py-8 text-center text-sm text-[var(--gray-400)]">Kan details niet laden.</p>
+              <DeckSkeleton />
+            ) : currentMedia ? (
+              <DeckBody
+                key={currentId}
+                media={currentMedia}
+                banner={hasReacted ? undefined : banner}
+                onPlay={() => setShowTrailer(true)}
+                onAllCast={() => router.push(`/films-series/${currentId}/cast`)}
+              />
             ) : (
-              <>
-                {/* Titel + score + meta + externe links */}
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <h1 className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-2xl font-bold leading-8 text-[var(--gray-900)]">
-                        {detail.title}
-                      </h1>
-                      {detail.score !== null && (
-                        <div className="flex shrink-0 items-center gap-1">
-                          <StarIcon />
-                          <p className="font-medium text-[var(--gray-900)]">
-                            <span className="text-base leading-6">{detail.score.toFixed(1)}</span>
-                            <span className="text-xs font-normal leading-none text-[var(--gray-400)]">/10</span>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    {metaLine && (
-                      <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                        <p className="whitespace-nowrap text-sm leading-5 text-[var(--gray-400)]">{metaLine}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* IMDb + YouTube links */}
-                  <div className="flex items-center gap-6">
-                    <a
-                      href={detail.imdbId ? `https://www.imdb.com/title/${detail.imdbId}/` : `https://www.imdb.com/find/?q=${encodeURIComponent(detail.title)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`${detail.title} op IMDb`}
-                      className="flex h-6 w-12 shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/logos/logos-imdb.svg" alt="" className="h-6 w-auto max-w-full object-contain" />
-                    </a>
-                    <a
-                      href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${detail.title} trailer`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Trailer van ${detail.title} op YouTube`}
-                      className="flex h-6 w-[108px] shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/logos/logos-youtube.svg" alt="" className="h-6 w-auto max-w-full object-contain" />
-                    </a>
-                  </div>
-                </div>
-
-                {/* Overview — mobile only (on lg it appears in the flex-row beside the poster) */}
-                {overviewFull && (
-                  <div className="relative lg:hidden">
-                    <p
-                      ref={overviewRef}
-                      className="text-base font-medium leading-6 text-[var(--gray-900)]"
-                      style={
-                        !overviewExpanded && overviewOverflows
-                          ? { overflow: "hidden", maxHeight: `${MAX_HEIGHT}px` }
-                          : undefined
-                      }
-                    >
-                      {overviewFull}
-                    </p>
-                    {!overviewExpanded && overviewOverflows && (
-                      <div className="absolute bottom-0 right-0 flex items-end">
-                        <div
-                          aria-hidden
-                          style={{
-                            width: 48,
-                            height: LINE_HEIGHT,
-                            background: "linear-gradient(to right, transparent, var(--white))",
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setOverviewExpanded(true)}
-                          className="bg-white text-base font-medium leading-6 text-[var(--blue-500)] underline decoration-solid underline-offset-2 focus-visible:outline-none"
-                        >
-                          ... toon meer
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Actie-knoppen — mobile only */}
-                {!hasReacted && (
-                  <div className="flex gap-3 lg:hidden">
-                    <button
-                      type="button"
-                      aria-label="Al gezien"
-                      onClick={() => void handleReact("seen")}
-                      className="flex h-12 flex-1 items-center justify-center rounded-[8px] border border-[var(--blue-500)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      <MaskIcon src="/icons/visible.svg" className="size-6 bg-[var(--blue-500)]" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Toevoegen aan mijn watchlist"
-                      onClick={() => void handleReact("up")}
-                      className="flex h-12 flex-1 items-center justify-center rounded-[8px] bg-[var(--blue-500)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-white" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Niet interessant"
-                      onClick={() => void handleReact("down")}
-                      className="flex h-12 flex-1 items-center justify-center rounded-[8px] bg-[var(--error-400)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Media row: trailer + [poster + overview] side by side on lg */}
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
-                  {/* Trailer: full 16:9 on mobile, 191px tall on lg */}
-                  <div
-                    className="relative shrink-0 overflow-hidden rounded-lg bg-[var(--gray-100)] lg:h-[191px] lg:w-auto lg:[aspect-ratio:16/9]"
-                    style={{ aspectRatio: "16/9" }}
-                  >
-                    {detail.backdropUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={detail.backdropUrl}
-                        alt=""
-                        className="absolute inset-0 size-full object-cover"
-                        aria-hidden
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-black/20" aria-hidden />
-                    {detail.trailerKey && (
-                      <button
-                        type="button"
-                        aria-label="Trailer afspelen"
-                        onClick={() => setShowTrailer(true)}
-                        className="absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-fixed-white bg-black/20 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
-                      >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-                          <path d="M8 5v14l11-7L8 5z" fill="white" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Poster + overview — lg only */}
-                  <div className="hidden items-start gap-6 lg:flex lg:flex-1">
-                    <div className="relative h-[191px] w-[128px] shrink-0 overflow-hidden rounded bg-[var(--gray-50)]">
-                      {detail.posterUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={detail.posterUrl}
-                          alt={`Poster van ${detail.title}`}
-                          className="absolute inset-0 size-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex size-full items-center justify-center">
-                          <MaskIcon src="/icons/films.svg" className="size-12 bg-[var(--gray-200)]" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="relative min-w-0 flex-1">
-                      <div className={cn("overflow-hidden", !overviewExpanded && "h-[191px]")}>
-                        <p className="text-base font-medium leading-6 text-[var(--gray-900)]">
-                          {overviewFull || "Geen beschrijving beschikbaar."}
-                        </p>
-                      </div>
-                      {!overviewExpanded && overviewFull && (
-                        <div className="absolute bottom-0 right-0 flex items-baseline gap-1 bg-white">
-                          <span className="text-base font-medium leading-6 text-[var(--gray-900)]">…</span>
-                          <button
-                            type="button"
-                            onClick={() => setOverviewExpanded(true)}
-                            className="text-base font-medium leading-6 text-[var(--blue-500)] underline decoration-solid underline-offset-2 focus-visible:outline-none"
-                          >
-                            toon meer
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Poster — mobile only (full 2:3) */}
-                <div
-                  className="relative w-full overflow-hidden rounded bg-[var(--gray-50)] lg:hidden"
-                  style={{ aspectRatio: "2/3" }}
-                >
-                  {detail.posterUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={detail.posterUrl}
-                      alt={`Poster van ${detail.title}`}
-                      className="absolute inset-0 size-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex size-full items-center justify-center">
-                      <MaskIcon src="/icons/films.svg" className="size-12 bg-[var(--gray-200)]" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Actie-knoppen — lg only, right-aligned */}
-                {!hasReacted && (
-                  <div className="hidden gap-3 lg:flex lg:self-end">
-                    <button
-                      type="button"
-                      aria-label="Al gezien"
-                      onClick={() => void handleReact("seen")}
-                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] border border-[var(--blue-500)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      <MaskIcon src="/icons/visible.svg" className="size-6 bg-[var(--blue-500)]" />
-                      <span className="text-base font-medium text-[var(--blue-500)]">Gezien</span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Toevoegen aan mijn watchlist"
-                      onClick={() => void handleReact("up")}
-                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] bg-[var(--blue-500)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      <MaskIcon src="/icons/thumb_up.svg" className="size-6 bg-white" />
-                      <span className="text-base font-medium text-white">Toevoegen</span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Niet interessant"
-                      onClick={() => void handleReact("down")}
-                      className="flex h-12 w-40 items-center justify-center gap-2 rounded-[8px] bg-[var(--error-400)] transition-opacity active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      <MaskIcon src="/icons/thumb_down.svg" className="size-6 bg-white" />
-                      <span className="text-base font-medium text-white">Overslaan</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Cast */}
-                {detail.cast.length > 0 && (
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-6 lg:gap-4">
-                      <h2 className="flex-1 text-[18px] font-bold leading-6 text-[var(--blue-900)] lg:flex-none">Cast</h2>
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/films-series/${currentId}/cast`)}
-                        className="shrink-0 text-xs font-medium leading-4 text-[var(--blue-500)] focus-visible:outline-none"
-                      >
-                        Toon alle
-                      </button>
-                    </div>
-                    <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                      <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-                        {detail.cast.map((member, i) => (
-                          <div key={i} className="flex w-[87px] flex-col gap-2">
-                            <div
-                              className="relative w-full overflow-hidden rounded bg-[var(--gray-50)]"
-                              style={{ aspectRatio: "2/3" }}
-                            >
-                              {member.profileUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={member.profileUrl}
-                                  alt={member.name}
-                                  className="absolute inset-0 size-full object-cover"
-                                  loading="lazy"
-                                  decoding="async"
-                                />
-                              ) : (
-                                <div className="flex size-full items-center justify-center">
-                                  <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex flex-col">
-                              <p className="line-clamp-2 text-[14px] font-medium leading-4 text-[var(--gray-900)]">
-                                {member.name}
-                              </p>
-                              <p className="text-[14px] font-normal leading-5 text-[var(--gray-400)]">
-                                {member.character}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
+              <p className="pt-[calc(env(safe-area-inset-top,0px)+96px)] text-center text-sm text-[var(--text-secondary)]">Kan details niet laden.</p>
             )}
           </div>
         </div>
       </div>
 
-      {/* Trailer modal */}
-      {showTrailer && detail?.trailerKey && (
-        <div
-          role="dialog"
-          aria-modal
-          aria-label="Trailer"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
-          onClick={() => setShowTrailer(false)}
-        >
-          <iframe
-            src={`https://www.youtube.com/embed/${detail.trailerKey}?autoplay=1`}
-            allow="autoplay; fullscreen"
-            className="w-full max-w-2xl"
-            style={{ aspectRatio: "16/9", border: "none" }}
-            title={`Trailer van ${detail.title}`}
-          />
+      {!hasReacted && !loading && detail ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 bg-[linear-gradient(180deg,rgba(245,246,250,0),var(--bg-app)_30%)] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+18px)] pt-3.5">
+          <div className="mx-auto flex max-w-[956px] items-start justify-center gap-3">
+            <DeckRoundAction
+              label="Niet voor mij"
+              onClick={() => handleReact("down")}
+              icon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-5">
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              }
+            />
+            <DeckRoundAction label="Al gezien" onClick={() => handleReact("seen")} icon={FilmIcons.eye} />
+            <ActionPill tone="primary" icon={FilmIcons.plus} onClick={() => handleReact("up")} className="h-[52px] px-[22px]">
+              Ook voor mij
+            </ActionPill>
+          </div>
         </div>
-      )}
+      ) : null}
+
+      {showTrailer && detail?.trailerKey ? (
+        <TrailerOverlay videoKey={detail.trailerKey} title={detail.title} onClose={() => setShowTrailer(false)} />
+      ) : null}
     </div>
   );
 }
