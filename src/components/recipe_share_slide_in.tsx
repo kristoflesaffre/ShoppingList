@@ -3,41 +3,10 @@
 import * as React from "react";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
-import { SlideInModal } from "@/components/ui/slide_in_modal";
-import { SelectTile } from "@/components/ui/select_tile";
-import { Snackbar } from "@/components/ui/snackbar";
+import { ShareListModal } from "@/components/share_list_modal";
 import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 import type { SavedRecipe } from "@/lib/recipe_library";
 
-// ─── Icons (mask-image van /icons/*.svg, kleur via CSS) ───────────────────────
-
-function MaskIcon({ src, ariaLabel }: { src: string; ariaLabel: string }) {
-  return (
-    <span
-      role="img"
-      aria-label={ariaLabel}
-      className="inline-block size-10 shrink-0 bg-[var(--action-primary)]"
-      style={{
-        WebkitMaskImage: `url("${src}")`,
-        maskImage: `url("${src}")`,
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-    />
-  );
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Replaces near-white pixels (all channels > 235) with the given hex bg color.
- * Used to remove the white JPEG background from AI-generated recipe photos so
- * they blend into the export's colored background.
- */
 async function replaceWhiteWithBg(src: string, bgHex: string): Promise<string> {
   return new Promise<string>((resolve) => {
     const img = new Image();
@@ -384,7 +353,6 @@ export function RecipeShareSlideIn({
   existingShareToken,
 }: RecipeShareSlideInProps) {
   const pdfContainerRef = React.useRef<HTMLDivElement>(null);
-  const [linkHint, setLinkHint] = React.useState<string | null>(null);
   const [generating, setGenerating] = React.useState(false);
   const [pdfError, setPdfError] = React.useState<string | null>(null);
   const [exportPhotoUrl, setExportPhotoUrl] = React.useState<string | null>(null);
@@ -407,30 +375,23 @@ export function RecipeShareSlideIn({
   );
 
   React.useEffect(() => {
-    if (!open) {
-      setLinkHint(null);
-      setPdfError(null);
-    }
+    if (!open) setPdfError(null);
   }, [open]);
 
-  const handleLinkShare = React.useCallback(async () => {
-    try {
-      let token = existingShareToken ?? null;
-      if (!token) {
-        token = iid();
-        await db.transact(
-          db.tx.recipes[recipe.id].update({ shareToken: token }),
-        );
-      }
-      const url = `${window.location.origin}/deel/recept/${encodeURIComponent(token)}`;
-      await navigator.clipboard.writeText(url);
-      setLinkHint("Link gekopieerd");
-      window.setTimeout(() => setLinkHint(null), 2500);
-    } catch {
-      setLinkHint("Kopiëren mislukt");
-      window.setTimeout(() => setLinkHint(null), 2500);
-    }
-  }, [existingShareToken, recipe.id]);
+  /* Deellink: bestaand token, of één aanmaken zodra het blad opent (zoals bij lijstjes). */
+  const [token, setToken] = React.useState<string | null>(existingShareToken ?? null);
+  React.useEffect(() => {
+    if (existingShareToken) setToken(existingShareToken);
+  }, [existingShareToken]);
+  React.useEffect(() => {
+    if (!open || token) return;
+    const next = iid();
+    setToken(next);
+    void db.transact(db.tx.recipes[recipe.id].update({ shareToken: next }));
+  }, [open, token, recipe.id]);
+  const [origin, setOrigin] = React.useState("");
+  React.useEffect(() => setOrigin(window.location.origin), []);
+  const shareUrl = token && origin ? `${origin}/deel/recept/${encodeURIComponent(token)}` : "";
 
   const handlePngShare = React.useCallback(async () => {
     setGenerating(true);
@@ -498,53 +459,58 @@ export function RecipeShareSlideIn({
     }
   }, [recipe, ingredientPhotoUrls]);
 
+  /* Canvas «19 · Recept delen»: zelfde deelblad als lijstjes, met het bord in de kop en de receptkaart eronder. */
   return (
     <>
-      {linkHint ? (
-        <div className="fixed inset-x-0 top-[calc(env(safe-area-inset-top,0px)+12px)] z-[70] flex justify-center px-4 pointer-events-none">
-          <Snackbar message={linkHint} actionLabel={null} />
-        </div>
-      ) : null}
-
-      <SlideInModal
+      <ShareListModal
         open={open}
         onClose={onClose}
-        title="Recept delen"
-        bodyClassName="pb-0"
-      >
-        <div className="flex w-full flex-col gap-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-          <button
-            type="button"
-            onClick={() => void handleLinkShare()}
-            className="w-full bg-transparent p-0 text-left"
-          >
-            <SelectTile
-              title="Link delen"
-              subtitle="om het recept toe te voegen in de app"
-              icon={<MaskIcon src="/icons/link.svg" ariaLabel="Link" />}
-            />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => void handlePngShare()}
-            disabled={generating}
-            className="w-full bg-transparent p-0 text-left disabled:opacity-50"
-          >
-            <SelectTile
-              title={isLg ? "Afbeelding downloaden" : "Afbeelding delen"}
-              subtitle={generating ? "Afbeelding genereren…" : "Genereer een PNG die je kan delen"}
-              icon={<MaskIcon src="/icons/image.svg" ariaLabel="Afbeelding" />}
-              state={generating ? "disabled" : "default"}
-            />
-          </button>
-          {pdfError ? (
-            <p className="text-center text-xs text-[var(--error-600)]" role="alert">
-              {pdfError}
-            </p>
-          ) : null}
-        </div>
-      </SlideInModal>
+        shareUrl={shareUrl}
+        urlReady={Boolean(shareUrl)}
+        title=""
+        heading={`${recipe.name} delen`}
+        description="Wie de link opent, kan het recept in de app bewaren."
+        shareMessage={`Bekijk het recept «${recipe.name}» in Shopping list:`}
+        emailSubject={`Recept: ${recipe.name}`}
+        headerMedia={
+          <span className="mx-auto block size-[104px] overflow-hidden rounded-full bg-[var(--white)] shadow-[0_14px_26px_-14px_rgba(16,17,48,0.45)]">
+            {recipe.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB
+              <img src={recipe.photoUrl} alt="" className="size-full scale-[1.08] object-cover" />
+            ) : null}
+          </span>
+        }
+        extra={
+          <>
+            <div aria-hidden className="h-px bg-[var(--border-subtle)]" />
+            <div className="flex items-center gap-3.5 rounded-[20px] bg-[var(--white)] py-3.5 pl-4 pr-3.5 shadow-[0_0_0_1px_var(--border-subtle)]">
+              <RecipeCardPreview recipe={recipe} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-bold leading-5 text-[var(--text-primary)]">Als receptkaart</p>
+                <p className="mb-2.5 mt-0.5 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
+                  Een mooie afbeelding met foto, ingrediënten en stappen.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void handlePngShare()}
+                  disabled={generating}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-pill bg-[var(--blue-50)] px-3.5 text-[13.5px] font-bold text-[var(--blue-500)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-60 [@media(hover:hover)]:hover:bg-[var(--blue-100)]"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                    {isLg ? <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 20h14" /> : <path d="M12 3v12M8 7l4-4 4 4M6 11v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-8" />}
+                  </svg>
+                  {generating ? "Afbeelding maken…" : isLg ? "Downloaden" : "Afbeelding delen"}
+                </button>
+                {pdfError ? (
+                  <p role="alert" className="mt-2 text-xs text-[var(--error-600)]">
+                    {pdfError}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </>
+        }
+      />
 
       {/* Off-screen layout captured by html2canvas */}
       <div
@@ -566,5 +532,28 @@ export function RecipeShareSlideIn({
         </div>
       </div>
     </>
+  );
+}
+
+/** Kleine voorvertoning van de receptkaart-afbeelding (licht gekanteld). */
+function RecipeCardPreview({ recipe }: { recipe: SavedRecipe }) {
+  return (
+    <span
+      aria-hidden
+      className="flex h-[98px] w-[74px] shrink-0 -rotate-[4deg] flex-col items-center gap-1 rounded-[12px] bg-[linear-gradient(180deg,#fbf3df,#fffaf0)] px-2 pt-2 shadow-[0_8px_16px_-10px_rgba(16,17,48,0.35),inset_0_0_0_1px_rgba(16,17,48,0.06)]"
+    >
+      <span className="block size-[38px] overflow-hidden rounded-full bg-[var(--white)]">
+        {recipe.photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB
+          <img src={recipe.photoUrl} alt="" className="size-full scale-[1.08] object-cover" />
+        ) : null}
+      </span>
+      <span className="w-full truncate text-center text-[7px] font-extrabold text-[#16181a]">{recipe.name}</span>
+      <span className="flex w-full flex-col gap-[3px]">
+        <span className="block h-1 w-[90%] rounded-sm bg-[#e7d9c4]" />
+        <span className="block h-1 w-[70%] rounded-sm bg-[#e7d9c4]" />
+        <span className="block h-1 w-[80%] rounded-sm bg-[#e7d9c4]" />
+      </span>
+    </span>
   );
 }

@@ -37,31 +37,41 @@ export interface ShareListModalProps {
   emailSubject?: string;
   /** Extra inhoud onderaan het blad (bv. soorten kiezen). */
   extra?: React.ReactNode;
+  /** Eigen beeld in de kop i.p.v. lijstfoto met twee mensen (bv. het bord van een recept). */
+  headerMedia?: React.ReactNode;
 }
 
 const AVATARS = ["/images/delen/avatar-man-160.jpg", "/images/delen/avatar-vrouw-160.jpg"] as const;
 
-function ChatIcon() {
+/** WhatsApp-logo in zijn eigen groen (zoals de app het kent). */
+function WhatsAppIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
-      <path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z" />
+    <svg viewBox="0 0 24 24" aria-hidden className="size-6">
+      <path
+        fill="#25d366"
+        d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.5 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.9s.7-2.1 1-2.4c.3-.3.6-.3.8-.3h.6c.2 0 .4 0 .6.5l.9 2c.1.2.1.4 0 .6l-.3.5-.4.4c-.1.1-.3.3-.1.6.2.3.7 1.2 1.6 1.9 1.1 1 2 1.3 2.3 1.4.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.7-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3z"
+      />
     </svg>
   );
 }
 
+/** Gevulde envelop in zacht lavendel met witte klep, in dezelfde stijl als het WhatsApp-logo. */
 function MailIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
-      <rect x="3.5" y="5.5" width="17" height="13" rx="2.5" />
-      <path d="M4 7l8 6 8-6" />
+    <svg viewBox="0 0 24 24" aria-hidden className="size-6">
+      <rect x="1.5" y="4" width="21" height="16" rx="3.4" fill="#a9adf4" />
+      <path d="M5 7.9 12 12.9l7-5" fill="none" stroke="#fff" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function ShareIcon() {
+/** Drie puntjes: het deelmenu van het toestel. */
+function MoreIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
-      <path d="M12 4v11M8 8l4-4 4 4M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-6">
+      <circle cx="5" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="19" cy="12" r="1.6" />
     </svg>
   );
 }
@@ -103,10 +113,10 @@ function ShareOption({
       disabled={disabled}
       className="group flex w-[84px] flex-col items-center gap-1.5 rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-50"
     >
-      <span className="flex size-[52px] items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:group-active:scale-95 [@media(hover:hover)]:group-hover:bg-[var(--blue-100)]">
+      <span className="flex size-[52px] items-center justify-center rounded-full bg-[var(--white)] text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:group-active:scale-95 [@media(hover:hover)]:group-hover:bg-[var(--gray-25)]">
         {icon}
       </span>
-      <span className="text-[12.5px] font-semibold leading-4 text-[var(--text-primary)]">{label}</span>
+      <span className="text-[12.5px] font-semibold leading-4 text-[var(--text-secondary)]">{label}</span>
     </button>
   );
 }
@@ -130,6 +140,7 @@ export function ShareListModal({
   shareMessage = "Schrijf mee op dit lijstje in Shopping list:",
   emailSubject = "Uitnodiging: meeschrijven op een lijstje",
   extra,
+  headerMedia,
 }: ShareListModalProps) {
   const [copied, setCopied] = React.useState<"ok" | "fail" | null>(null);
   const [canNativeShare, setCanNativeShare] = React.useState(false);
@@ -170,7 +181,7 @@ export function ShareListModal({
   const openNativeShare = async () => {
     if (!ready) return;
     try {
-      await navigator.share({ title, text: shareMessage, url: shareUrl });
+      await navigator.share({ title: title || heading, text: shareMessage, url: shareUrl });
     } catch {
       /* geannuleerd */
     }
@@ -189,6 +200,7 @@ export function ShareListModal({
     >
       <div className="mx-auto flex w-full max-w-[480px] flex-col gap-4 px-4 pb-[calc(30px+env(safe-area-inset-bottom,0px))] md:px-6 md:pb-6">
         <div className="flex flex-col items-center gap-2.5 pb-0.5 pt-1.5 text-center">
+          {headerMedia ?? (
           <div className="relative h-[110px] w-24">
             <span className="mx-auto flex size-[88px] items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] text-[var(--blue-500)]">
               {listImageSrc ? (
@@ -219,15 +231,16 @@ export function ShareListModal({
               ))}
             </span>
           </div>
+          )}
           <h3 className="mt-1 text-[17px] font-bold leading-6 text-[var(--text-primary)]">{heading}</h3>
           <p className="max-w-[310px] text-[13.5px] leading-[19px] text-[var(--text-secondary)]">{description}</p>
         </div>
 
-        <div className="flex justify-center gap-3">
-          <ShareOption icon={<ChatIcon />} label="WhatsApp" onClick={openWhatsApp} disabled={!ready} />
+        <div className="flex justify-center gap-1">
+          <ShareOption icon={<WhatsAppIcon />} label="WhatsApp" onClick={openWhatsApp} disabled={!ready} />
           <ShareOption icon={<MailIcon />} label="E-mail" onClick={openEmail} disabled={!ready} />
           {canNativeShare ? (
-            <ShareOption icon={<ShareIcon />} label="Meer…" onClick={() => void openNativeShare()} disabled={!ready} />
+            <ShareOption icon={<MoreIcon />} label="Meer…" onClick={() => void openNativeShare()} disabled={!ready} />
           ) : null}
         </div>
 

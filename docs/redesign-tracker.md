@@ -50,7 +50,7 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 16 | Klantenkaart bewerken / scanresultaat | `loyalty_card_editor_slide_in.tsx`, `loyalty_card_scan_result_slide_in.tsx` + `loyalty_card_preview.tsx` | ✅ kaartpreview in winkeltint, Code vervangen (2 gelijke tegels), Kaart verwijderen; scanresultaat met vinkje + Kaart bewaren / Opnieuw scannen |
 | 17 | Recept bewerken | `recipe_editor_slide_in.tsx`, `recipe_ingredient_form_slide_in.tsx` | ✅ |
 | 18 | Recept toevoegen via link / AI / foto | `recipe_link_slide_in.tsx`, `recipe_photo_upload_slide_in.tsx`, `photo_source_slide_in.tsx` (`recipe_ai_source_slide_in.tsx` verwijderd) | ✅ |
-| 19 | Recept delen | `recipe_share_slide_in.tsx` | ⬜ |
+| 19 | Recept delen | `recipe_share_slide_in.tsx` | ✅ |
 | 20 | Films & series · overzicht | `/films-series` | ⬜ |
 | 21 | Films & series · detail, cast, afleveringen | `/films-series/[id]/…` | ⬜ |
 | 22 | Films & series · watchlist, aan het kijken, ontdekken, partner | `/films-series/watchlist/[kind]`, `/aan-het-kijken`, `/discover`, `/partner-watchlist`, `/partner/[id]` | ⬜ |
