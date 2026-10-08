@@ -14,12 +14,14 @@ function ImageIcon() {
   );
 }
 
-function MagicWandIcon() {
+/** Hetzelfde foto-icoon met een AI-sterretje in de hoek rechtsboven. */
+function AiImageIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-7">
-      <path d="M4 20l10-10" />
-      <path d="M15 4v2M15 10v2M11 8h2M17 8h2" />
-      <path d="M18.5 13.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" />
+      <path d="M15 5H6.5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h11a3 3 0 0 0 3-3v-6" />
+      <circle cx="9" cy="10" r="1.6" />
+      <path d="M20 16l-5-5-8 8" />
+      <path d="M20 .9l.85 2.25 2.25.85-2.25.85L20 7.1l-.85-2.25L16.9 4l2.25-.85z" />
     </svg>
   );
 }
@@ -63,7 +65,7 @@ export function PhotoSourceSlideIn({
         ) : null}
         <div className="flex gap-2.5">
           <OptionTile icon={<ImageIcon />} title="Foto uploaden" subtitle="Van je toestel" onClick={onPickFromDevice} />
-          <OptionTile icon={<MagicWandIcon />} title="Laat AI maken" subtitle="Een mooie foodfoto" onClick={onGenerateWithAi} />
+          <OptionTile icon={<AiImageIcon />} title="Laat AI maken" subtitle="Een mooie foodfoto" onClick={onGenerateWithAi} />
         </div>
       </div>
     </SlideInModal>
