@@ -37,14 +37,6 @@ type SeriesInfo = {
   seasons: SeasonMeta[];
 };
 
-type AdjData = {
-  prevSeason: number;
-  prevEp: number;
-  prevData: EpisodeDetail | null;
-  nextSeason: number;
-  nextEp: number;
-  nextData: EpisodeDetail | null;
-};
 
 function DetailSkeleton() {
   return (
@@ -86,18 +78,107 @@ function Eyebrow({ series, season, ep }: { series: string; season: number; ep: n
   );
 }
 
-// Ghost panel: shown during swipe drag for adjacent episodes
-function GhostContent({ episode, season, ep, series }: { episode: EpisodeDetail | null; season: number; ep: number; series: string }) {
-  if (!episode) return <DetailSkeleton />;
+type EpisodeRef = { s: number; e: number };
+
+/**
+ * Volledige inhoud van één aflevering. Zowel de huidige pagina als de panelen links/rechts
+ * (zichtbaar tijdens het swipen) gebruiken dit, zodat er bij het wisselen niets verspringt.
+ */
+function EpisodeBody({
+  episode,
+  at,
+  series,
+  certification,
+  watched,
+  next,
+  nextData,
+  onToggleWatched,
+  onNext,
+  onAllCast,
+}: {
+  episode: EpisodeDetail;
+  at: EpisodeRef;
+  series: string;
+  certification: string;
+  watched: boolean;
+  next: EpisodeRef | null;
+  nextData: EpisodeDetail | null;
+  onToggleWatched?: () => void;
+  onNext?: () => void;
+  onAllCast?: () => void;
+}) {
+  const metaLine = [formatAirDate(episode.airDate), episode.runtime, certification].filter(Boolean).join(" · ");
   return (
-    <div className="flex flex-col">
-      <EpisodeHero stillUrl={episode.stillUrl} />
-      <div className="relative -mt-[30px] lg:mt-6">
-        <Eyebrow series={series} season={season} ep={ep} />
-        <h1 className="mt-1.5 text-[26px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[var(--text-primary)]">{episode.title}</h1>
-        <p className="mt-4 line-clamp-6 text-[15px] leading-[22px] text-[var(--text-primary)]">{episode.overview || "Geen beschrijving beschikbaar."}</p>
+    <>
+      <div className="lg:flex lg:items-start lg:gap-8">
+        <div className="lg:w-[52%] lg:shrink-0">
+          <EpisodeHero stillUrl={episode.stillUrl} />
+        </div>
+        <div className="relative -mt-[30px] min-w-0 flex-1 lg:mt-1">
+          <Eyebrow series={series} season={at.s} ep={at.e} />
+          <h1 className="mt-1.5 text-[26px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[var(--text-primary)] lg:text-[30px]">{episode.title}</h1>
+          <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[13.5px] text-[var(--text-secondary)]">
+            {episode.rating != null ? (
+              <>
+                <StarGlyph />
+                <b className="text-[var(--text-primary)]">{episode.rating.toFixed(1)}</b>
+              </>
+            ) : null}
+            {metaLine ? <span>{episode.rating != null ? "· " : ""}{metaLine}</span> : null}
+          </p>
+          <p className="mt-4 text-[15px] leading-[22px] text-[var(--text-primary)]">{episode.overview || "Geen beschrijving beschikbaar."}</p>
+          <div className="mt-[18px] flex">
+            <ActionPill
+              tone={watched ? "soft" : "primary"}
+              icon={watched ? FilmIcons.check : FilmIcons.eye}
+              aria-pressed={watched}
+              onClick={onToggleWatched}
+              tabIndex={onToggleWatched ? undefined : -1}
+              className="flex-1 lg:flex-none lg:px-6"
+            >
+              Gezien
+            </ActionPill>
+          </div>
+          {next ? (
+            <button
+              type="button"
+              onClick={onNext}
+              tabIndex={onNext ? undefined : -1}
+              className="mt-3.5 flex w-full items-center gap-3 rounded-[18px] bg-[var(--white)] py-2.5 pl-2.5 pr-3 text-left shadow-[inset_0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
+            >
+              <span className="h-12 w-[84px] shrink-0 overflow-hidden rounded-[9px] bg-[var(--gray-100)]">
+                {nextData?.stillUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={nextData.stillUrl} alt="" className="size-full object-cover" />
+                ) : null}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11.5px] font-extrabold uppercase tracking-[0.05em] text-[var(--text-tertiary)]">
+                  {next.s !== at.s ? `Volgende · seizoen ${next.s}` : "Volgende"}
+                </span>
+                <span className="block truncate text-sm font-bold text-[var(--text-primary)]">
+                  {next.e}. {nextData?.title ?? "\u00a0"}
+                </span>
+              </span>
+              <span className="text-[var(--blue-500)]">{FilmIcons.chevron}</span>
+            </button>
+          ) : null}
+        </div>
       </div>
-    </div>
+
+      {episode.cast.length > 0 && (
+        <section className="mt-[30px]">
+          <DetailSectionHead title="Cast" action="Alles" onAction={onAllCast ?? (() => {})} />
+          <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+            <div className="flex w-max gap-2">
+              {episode.cast.map((m, i) => (
+                <CastRound key={i} person={m} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+    </>
   );
 }
 
@@ -125,8 +206,6 @@ export default function EpisodeDetailPage() {
   const [seriesInfo, setSeriesInfo] = React.useState<SeriesInfo | null>(null);
   const [loading, setLoading] = React.useState(true);
 
-  // Adjacent episode data for ghost panels
-  const [adjData, setAdjData] = React.useState<AdjData | null>(null);
 
   // Refs for imperative animation (no React state involved)
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -193,71 +272,57 @@ export default function EpisodeDetailPage() {
       .catch(() => setLoading(false));
   }, [tmdbId, currentSeason, currentEp]);
 
-  // Pre-fetch adjacent episodes and populate ghost panels
+  // Buren berekenen (over seizoensgrenzen heen) uit de seizoensinfo.
+  const epAfter = React.useCallback(
+    (at: EpisodeRef): EpisodeRef | null => {
+      const count = seriesInfo?.seasons.find((x) => x.seasonNumber === at.s)?.episodeCount ?? at.e;
+      if (at.e < count) return { s: at.s, e: at.e + 1 };
+      if (seriesInfo?.seasons.some((x) => x.seasonNumber === at.s + 1)) return { s: at.s + 1, e: 1 };
+      return null;
+    },
+    [seriesInfo],
+  );
+  const epBefore = React.useCallback(
+    (at: EpisodeRef): EpisodeRef | null => {
+      if (at.e > 1) return { s: at.s, e: at.e - 1 };
+      if (at.s <= 1) return null;
+      const prev = seriesInfo?.seasons.find((x) => x.seasonNumber === at.s - 1);
+      return { s: at.s - 1, e: prev?.episodeCount ?? 1 };
+    },
+    [seriesInfo],
+  );
+
+  // Hertekenen zodra een vooraf opgehaalde aflevering in de cache komt.
+  const [, setCacheTick] = React.useState(0);
+  const cached = (at: EpisodeRef | null) => (at ? (episodeCache.current.get(`${tmdbId}-s${at.s}e${at.e}`) ?? null) : null);
+
+  const here: EpisodeRef = { s: currentSeason, e: currentEp };
+  const prevAt = epBefore(here);
+  const nextAt = seriesInfo ? epAfter(here) : null;
+  const nextNextAt = nextAt ? epAfter(nextAt) : null;
+
+  // Vorige, volgende én de aflevering daarna vooraf ophalen (tekst + beelden), zodat zowel het
+  // swipepaneel als de «Volgende»-kaart na het wisselen meteen gevuld zijn.
   React.useEffect(() => {
     if (!tmdbId) return;
-
-    const curInfo = seriesInfo?.seasons.find((s) => s.seasonNumber === currentSeason);
-    const epCount = curInfo?.episodeCount ?? currentEp;
-
-    // Compute prev target
-    let prevS = currentSeason, prevE = currentEp - 1;
-    const hasPrevT = currentEp > 1 || currentSeason > 1;
-    if (currentEp <= 1 && currentSeason > 1) {
-      const ps = seriesInfo?.seasons.find((s) => s.seasonNumber === currentSeason - 1);
-      prevS = currentSeason - 1;
-      prevE = ps?.episodeCount ?? 1;
-    }
-
-    // Compute next target
-    let nextS = currentSeason, nextE = currentEp + 1;
-    const hasNextT = currentEp < epCount || (seriesInfo !== null
-      ? seriesInfo.seasons.some((s) => s.seasonNumber > currentSeason)
-      : true);
-    if (currentEp >= epCount && seriesInfo?.seasons.some((s) => s.seasonNumber > currentSeason)) {
-      nextS = currentSeason + 1;
-      nextE = 1;
-    }
-
-    const prevKey = `${tmdbId}-s${prevS}e${prevE}`;
-    const nextKey = `${tmdbId}-s${nextS}e${nextE}`;
-
-    setAdjData({
-      prevSeason: hasPrevT ? prevS : 0,
-      prevEp: hasPrevT ? prevE : 0,
-      prevData: hasPrevT ? (episodeCache.current.get(prevKey) ?? null) : null,
-      nextSeason: hasNextT ? nextS : 0,
-      nextEp: hasNextT ? nextE : 0,
-      nextData: hasNextT ? (episodeCache.current.get(nextKey) ?? null) : null,
-    });
-
-    if (hasPrevT && !episodeCache.current.has(prevKey)) {
-      fetch(`/api/films/episode?id=${tmdbId}&season=${prevS}&episode=${prevE}`)
+    for (const at of [prevAt, nextAt, nextNextAt]) {
+      if (!at) continue;
+      const key = `${tmdbId}-s${at.s}e${at.e}`;
+      if (episodeCache.current.has(key)) continue;
+      fetch(`/api/films/episode?id=${tmdbId}&season=${at.s}&episode=${at.e}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((data: EpisodeDetail | null) => {
-          if (data?.title) {
-            episodeCache.current.set(prevKey, data);
-            setAdjData((d) =>
-              d && d.prevSeason === prevS && d.prevEp === prevE ? { ...d, prevData: data } : d,
-            );
+          if (!data?.title) return;
+          episodeCache.current.set(key, data);
+          if (data.stillUrl) {
+            new Image().src = data.stillUrl.replace("/w300/", "/w780/");
+            new Image().src = data.stillUrl;
           }
+          setCacheTick((t) => t + 1);
         })
         .catch(() => {});
     }
-
-    if (hasNextT && !episodeCache.current.has(nextKey)) {
-      fetch(`/api/films/episode?id=${tmdbId}&season=${nextS}&episode=${nextE}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data: EpisodeDetail | null) => {
-          if (data?.title) {
-            episodeCache.current.set(nextKey, data);
-            setAdjData((d) =>
-              d && d.nextSeason === nextS && d.nextEp === nextE ? { ...d, nextData: data } : d,
-            );
-          }
-        })
-        .catch(() => {});
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tmdbId, currentSeason, currentEp, seriesInfo]);
 
   const watchedId = `ep-${tmdbId}-s${currentSeason}e${currentEp}`;
@@ -274,10 +339,6 @@ export default function EpisodeDetailPage() {
   React.useEffect(() => { hasPrevRef.current = hasPrev; }, [hasPrev]);
   React.useEffect(() => { hasNextRef.current = hasNext; }, [hasNext]);
 
-  const metaLine = React.useMemo(() => {
-    if (!episode) return "";
-    return [formatAirDate(episode.airDate), episode.runtime, seriesInfo?.certification].filter(Boolean).join(" · ");
-  }, [episode, seriesInfo]);
 
   // ─── Core animation: commit a navigation in given direction ─────────────────
 
@@ -490,7 +551,23 @@ export default function EpisodeDetailPage() {
   }
 
   const seriesTitle = seriesInfo?.title ?? "";
-  const next = adjData && adjData.nextSeason ? adjData : null;
+  const certification = seriesInfo?.certification ?? "";
+  const watchedAt = (at: EpisodeRef) => isWatched(`ep-${tmdbId}-s${at.s}e${at.e}`);
+  const ghost = (at: EpisodeRef | null, after: EpisodeRef | null) => {
+    const data = cached(at);
+    if (!at || !data) return <DetailSkeleton />;
+    return (
+      <EpisodeBody
+        episode={data}
+        at={at}
+        series={seriesTitle}
+        certification={certification}
+        watched={watchedAt(at)}
+        next={after}
+        nextData={cached(after)}
+      />
+    );
+  };
 
   return (
     <div
@@ -545,10 +622,10 @@ export default function EpisodeDetailPage() {
         {/* Sliding panel wrapper — current + ghost panels are siblings here */}
         <div className="relative">
           <div ref={prevPanelRef} className="pointer-events-none absolute left-0 top-0 w-full" aria-hidden>
-            <GhostContent episode={adjData?.prevData ?? null} season={adjData?.prevSeason ?? 0} ep={adjData?.prevEp ?? 0} series={seriesTitle} />
+            {ghost(prevAt, here)}
           </div>
           <div ref={nextPanelRef} className="pointer-events-none absolute left-0 top-0 w-full" aria-hidden>
-            <GhostContent episode={adjData?.nextData ?? null} season={adjData?.nextSeason ?? 0} ep={adjData?.nextEp ?? 0} series={seriesTitle} />
+            {ghost(nextAt, nextNextAt)}
           </div>
 
           {/* Current content — this div is what slides during swipe */}
@@ -558,77 +635,21 @@ export default function EpisodeDetailPage() {
             ) : !episode ? (
               <p className="pt-[calc(env(safe-area-inset-top,0px)+80px)] text-center text-sm text-[var(--text-secondary)]">Kan afleveringsdetails niet laden.</p>
             ) : (
-              <>
-                <div className="lg:flex lg:items-start lg:gap-8">
-                  <div className="lg:w-[52%] lg:shrink-0">
-                    <EpisodeHero stillUrl={episode.stillUrl} />
-                  </div>
-                  <div className="relative -mt-[30px] min-w-0 flex-1 lg:mt-1">
-                    <Eyebrow series={seriesTitle} season={currentSeason} ep={currentEp} />
-                    <h1 className="mt-1.5 text-[26px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[var(--text-primary)] lg:text-[30px]">{episode.title}</h1>
-                    <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[13.5px] text-[var(--text-secondary)]">
-                      {episode.rating != null ? (
-                        <>
-                          <StarGlyph />
-                          <b className="text-[var(--text-primary)]">{episode.rating.toFixed(1)}</b>
-                        </>
-                      ) : null}
-                      {metaLine ? <span>{episode.rating != null ? "· " : ""}{metaLine}</span> : null}
-                    </p>
-                    <p className="mt-4 text-[15px] leading-[22px] text-[var(--text-primary)]">{episode.overview || "Geen beschrijving beschikbaar."}</p>
-                    <div className="mt-[18px] flex">
-                      <ActionPill
-                        tone={watched ? "soft" : "primary"}
-                        icon={watched ? FilmIcons.check : FilmIcons.eye}
-                        aria-pressed={watched}
-                        onClick={() => {
-                          if (watched) void unmarkWatched(watchedId);
-                          else void markWatched(watchedId);
-                        }}
-                        className="flex-1 lg:flex-none lg:px-6"
-                      >
-                        Gezien
-                      </ActionPill>
-                    </div>
-                    {next ? (
-                      <button
-                        type="button"
-                        onClick={() => navigateEpisode("next")}
-                        className="mt-3.5 flex w-full items-center gap-3 rounded-[18px] bg-[var(--white)] py-2.5 pl-2.5 pr-3 text-left shadow-[inset_0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
-                      >
-                        <span className="h-12 w-[84px] shrink-0 overflow-hidden rounded-[9px] bg-[var(--gray-100)]">
-                          {next.nextData?.stillUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={next.nextData.stillUrl} alt="" className="size-full object-cover" />
-                          ) : null}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[11.5px] font-extrabold uppercase tracking-[0.05em] text-[var(--text-tertiary)]">
-                            {next.nextSeason !== currentSeason ? `Volgende · seizoen ${next.nextSeason}` : "Volgende"}
-                          </span>
-                          <span className="block truncate text-sm font-bold text-[var(--text-primary)]">
-                            {next.nextEp}. {next.nextData?.title ?? "…"}
-                          </span>
-                        </span>
-                        <span className="text-[var(--blue-500)]">{FilmIcons.chevron}</span>
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-
-                {episode.cast.length > 0 && (
-                  <section className="mt-[30px]">
-                    <DetailSectionHead title="Cast" action="Alles" onAction={() => router.push(`/films-series/${rawId}/cast`)} />
-                    <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                      <div className="flex w-max gap-2">
-                        {episode.cast.map((m, i) => (
-                          <CastRound key={i} person={m} />
-                        ))}
-                      </div>
-                    </div>
-                  </section>
-                )}
-              </>
+              <EpisodeBody
+                episode={episode}
+                at={here}
+                series={seriesTitle}
+                certification={certification}
+                watched={watched}
+                next={nextAt}
+                nextData={cached(nextAt)}
+                onToggleWatched={() => {
+                  if (watched) void unmarkWatched(watchedId);
+                  else void markWatched(watchedId);
+                }}
+                onNext={() => navigateEpisode("next")}
+                onAllCast={() => router.push(`/films-series/${rawId}/cast`)}
+              />
             )}
           </div>
         </div>
