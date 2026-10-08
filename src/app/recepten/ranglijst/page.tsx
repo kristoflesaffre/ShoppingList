@@ -28,53 +28,65 @@ function ClockIcon() {
   );
 }
 
-/** Bord met vork en mes: gekookte maaltijden. */
-function MealIcon({ className }: { className?: string }) {
+/* Drie iconen in één stijl: 24×24, lijndikte 1.8, ronde uiteinden. */
+const ICON_PROPS = {
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": true,
+} as const;
+
+/** Kookpot met stoom: gekookte maaltijden. */
+function PotIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
-      <circle cx="12" cy="12" r="5.5" />
-      <circle cx="12" cy="12" r="2.6" />
-      <path d="M3 4v4.5a1.5 1.5 0 0 0 3 0V4M4.5 9.5V20M21 4c-1.6 1-2.2 3-2.2 5.5V12H21V4zM21 12v8" />
+    <svg {...ICON_PROPS} className={className}>
+      <path d="M4 11h16v4.5a4.5 4.5 0 0 1-4.5 4.5h-7A4.5 4.5 0 0 1 4 15.5z" />
+      <path d="M2 11h2M20 11h2" />
+      <path d="M9 7.5c0-1.2 1-1.8 1-3M13.5 7.5c0-1.2 1-1.8 1-3" />
     </svg>
   );
 }
 
-/** Koksmuts (zelfde icoon als de tab «Recepten»). */
+/** Koksmuts: recepten. */
 function ChefHatIcon({ className }: { className?: string }) {
   return (
-    <span
-      aria-hidden
-      className={cn("inline-block bg-current", className)}
-      style={{
-        WebkitMaskImage: "url(/icons/chef_hat.svg)",
-        maskImage: "url(/icons/chef_hat.svg)",
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-    />
+    <svg {...ICON_PROPS} className={className}>
+      <path d="M7 14a3.75 3.75 0 0 1-.9-7.4A4.6 4.6 0 0 1 12 3.5a4.6 4.6 0 0 1 5.9 3.1A3.75 3.75 0 0 1 17 14v6H7z" />
+      <path d="M7 17h10" />
+    </svg>
   );
 }
 
-/** Leeg bord met stippelrand (zoals een lege dag in de kalender): nooit gegeten. */
-function EmptyPlateIcon({ className }: { className?: string }) {
+/** Serveerklok: nog nooit gegeten, nog te ontdekken. */
+function ClocheIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden className={className}>
-      <circle cx="12" cy="12" r="8.5" strokeDasharray="2.6 2.6" />
-      <circle cx="12" cy="12" r="4" />
+    <svg {...ICON_PROPS} className={className}>
+      <path d="M4.5 17a7.5 7.5 0 0 1 15 0" />
+      <path d="M3 17h18M5 20h14" />
+      <path d="M12 9.5V8M10.5 8h3" />
     </svg>
   );
 }
 
 /** Tegel met een getal; klein icoon links van het getal (geen extra hoogte). */
-function StatTile({ value, label, icon }: { value: number; label: string; icon: React.ReactNode }) {
+function StatTile({
+  value,
+  label,
+  icon,
+  color,
+}: {
+  value: number;
+  label: string;
+  icon: React.ReactNode;
+  color: string;
+}) {
   return (
     <div className="min-w-0 flex-1 rounded-[18px] bg-[var(--white)] px-3.5 py-3 shadow-[inset_0_0_0_1px_var(--border-subtle)]">
       <p className="flex items-center gap-1.5 text-[22px] font-extrabold leading-7 tracking-[-0.02em] text-[var(--text-primary)] tabular-nums">
-        <span className="flex shrink-0 text-[var(--blue-500)]">{icon}</span>
+        <span className="flex shrink-0" style={{ color }}>{icon}</span>
         {value}
       </p>
       <p className="text-xs leading-4 text-[var(--text-secondary)]">{label}</p>
@@ -128,9 +140,9 @@ export default function RanglijstPage() {
         </div>
 
         <div className="flex gap-2.5">
-          <StatTile value={summary.meals} label="maaltijden gekookt" icon={<MealIcon className="size-5" />} />
-          <StatTile value={ranked.length} label="recepten" icon={<ChefHatIcon className="size-5" />} />
-          <StatTile value={summary.never} label="nooit gegeten" icon={<EmptyPlateIcon className="size-5" />} />
+          <StatTile value={summary.meals} label="maaltijden gekookt" icon={<PotIcon className="size-5" />} color="#e07a1f" />
+          <StatTile value={ranked.length} label="recepten" icon={<ChefHatIcon className="size-5" />} color="var(--blue-500)" />
+          <StatTile value={summary.never} label="nooit gegeten" icon={<ClocheIcon className="size-5" />} color="#2f9a52" />
         </div>
 
         <div role="radiogroup" aria-label="Volgorde" className="flex rounded-pill bg-[var(--gray-50)] p-1 lg:w-[320px]">
