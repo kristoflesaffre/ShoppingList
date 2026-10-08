@@ -28,59 +28,56 @@ function ClockIcon() {
   );
 }
 
-function PotIcon() {
+/** Bord met vork en mes: gekookte maaltijden. */
+function MealIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
-      <path d="M4 10h16v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z" />
-      <path d="M2 10h2M20 10h2M9 7c0-1 .8-1.6.8-2.6M12.5 7c0-1 .8-1.6.8-2.6" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <circle cx="12" cy="12" r="5.5" />
+      <circle cx="12" cy="12" r="2.6" />
+      <path d="M3 4v4.5a1.5 1.5 0 0 0 3 0V4M4.5 9.5V20M21 4c-1.6 1-2.2 3-2.2 5.5V12H21V4zM21 12v8" />
     </svg>
   );
 }
 
-function BookIcon() {
+/** Koksmuts (zelfde icoon als de tab «Recepten»). */
+function ChefHatIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
-      <path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z" />
-      <path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19M9 7.5h6M9 11h4" />
+    <span
+      aria-hidden
+      className={cn("inline-block bg-current", className)}
+      style={{
+        WebkitMaskImage: "url(/icons/chef_hat.svg)",
+        maskImage: "url(/icons/chef_hat.svg)",
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+      }}
+    />
+  );
+}
+
+/** Leeg bord met stippelrand (zoals een lege dag in de kalender): nooit gegeten. */
+function EmptyPlateIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden className={className}>
+      <circle cx="12" cy="12" r="8.5" strokeDasharray="2.6 2.6" />
+      <circle cx="12" cy="12" r="4" />
     </svg>
   );
 }
 
-function SparkleIcon() {
+/** Tegel met een getal; klein icoon links van het getal (geen extra hoogte). */
+function StatTile({ value, label, icon }: { value: number; label: string; icon: React.ReactNode }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
-      <path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z" />
-      <path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" />
-    </svg>
-  );
-}
-
-/** Tegel met een getal; kleurig icoon links (desktop) of erboven (mobiel, smalle tegels). */
-function StatTile({
-  value,
-  label,
-  icon,
-  tone,
-}: {
-  value: number;
-  label: string;
-  icon: React.ReactNode;
-  tone: "orange" | "blue" | "green";
-}) {
-  const tones = {
-    orange: "bg-[#fff1e3] text-[#e07a1f]",
-    blue: "bg-[var(--blue-50)] text-[var(--blue-500)]",
-    green: "bg-[#e6f6ea] text-[#2f9a52]",
-  } as const;
-  return (
-    <div className="flex min-w-0 flex-1 flex-col gap-2 rounded-[18px] bg-[var(--white)] px-3.5 py-3 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:flex-row lg:items-center lg:gap-3 lg:px-4 lg:py-3.5">
-      <span aria-hidden className={cn("flex size-10 shrink-0 items-center justify-center rounded-[12px]", tones[tone])}>
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[22px] font-extrabold leading-7 tracking-[-0.02em] text-[var(--text-primary)] tabular-nums">{value}</span>
-        <span className="block text-xs leading-4 text-[var(--text-secondary)]">{label}</span>
-      </span>
+    <div className="min-w-0 flex-1 rounded-[18px] bg-[var(--white)] px-3.5 py-3 shadow-[inset_0_0_0_1px_var(--border-subtle)]">
+      <p className="flex items-center gap-1.5 text-[22px] font-extrabold leading-7 tracking-[-0.02em] text-[var(--text-primary)] tabular-nums">
+        <span className="flex shrink-0 text-[var(--blue-500)]">{icon}</span>
+        {value}
+      </p>
+      <p className="text-xs leading-4 text-[var(--text-secondary)]">{label}</p>
     </div>
   );
 }
@@ -131,9 +128,9 @@ export default function RanglijstPage() {
         </div>
 
         <div className="flex gap-2.5">
-          <StatTile value={summary.meals} label="maaltijden gekookt" icon={<PotIcon />} tone="orange" />
-          <StatTile value={ranked.length} label="recepten" icon={<BookIcon />} tone="blue" />
-          <StatTile value={summary.never} label="nooit gegeten" icon={<SparkleIcon />} tone="green" />
+          <StatTile value={summary.meals} label="maaltijden gekookt" icon={<MealIcon className="size-5" />} />
+          <StatTile value={ranked.length} label="recepten" icon={<ChefHatIcon className="size-5" />} />
+          <StatTile value={summary.never} label="nooit gegeten" icon={<EmptyPlateIcon className="size-5" />} />
         </div>
 
         <div role="radiogroup" aria-label="Volgorde" className="flex rounded-pill bg-[var(--gray-50)] p-1 lg:w-[320px]">
