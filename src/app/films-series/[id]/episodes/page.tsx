@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
+import { backOr } from "@/lib/in_app_history";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
@@ -128,7 +129,7 @@ export default function EpisodesPage() {
     <div className="relative flex min-h-dvh w-full flex-col">
       {/* Canvas «21 · Afleveringen — voorstel C»: grote titel, seizoenpillen met ringetje, lijstkaart. */}
       <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:pt-10">
-        <SubpageHeader title="Afleveringen" subtitle={subtitle} onBack={() => router.back()} />
+        <SubpageHeader title="Afleveringen" subtitle={subtitle} onBack={() => backOr(router, `/films-series/${rawId}`)} />
 
         {seriesInfo && seriesInfo.seasons.length > 0 ? (
           <SeasonPills seasons={seasonPills} selected={selectedSeason} onSelect={setSelectedSeason} className="mt-[18px]" />

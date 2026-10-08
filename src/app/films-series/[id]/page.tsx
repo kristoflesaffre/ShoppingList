@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
+import { backOr } from "@/lib/in_app_history";
 import { cn } from "@/lib/utils";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
@@ -325,10 +326,8 @@ export default function FilmDetailPage() {
     if (returnUrl) {
       sessionStorage.removeItem("films-watchlist-return");
       router.push(returnUrl, { scroll: false });
-    } else if (window.history.length > 1) {
-      router.back();
     } else {
-      router.push("/films-series");
+      backOr(router, "/films-series");
     }
   }
 

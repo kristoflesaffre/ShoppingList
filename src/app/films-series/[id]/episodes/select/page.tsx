@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
+import { backOr } from "@/lib/in_app_history";
 import { cn } from "@/lib/utils";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
@@ -169,7 +170,7 @@ export default function SelectEpisodePage() {
       setPendingEp({ id: epId, number: epNumber });
     } else {
       void markWatched(epId);
-      router.back();
+      backOr(router, `/films-series/${rawId}`);
     }
   }
 
@@ -183,7 +184,7 @@ export default function SelectEpisodePage() {
             <button
               type="button"
               aria-label="Terug"
-              onClick={() => router.back()}
+              onClick={() => backOr(router, `/films-series/${rawId}`)}
               className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
             >
               <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
@@ -336,7 +337,7 @@ export default function SelectEpisodePage() {
                 if (!pendingEp) return;
                 void markWatched(pendingEp.id);
                 setPendingEp(null);
-                router.back();
+                backOr(router, `/films-series/${rawId}`);
               }}
             >
               Deze aflevering
@@ -349,7 +350,7 @@ export default function SelectEpisodePage() {
                   .filter((e) => e.episodeNumber <= pendingEp.number)
                   .forEach((e) => void markWatched(`ep-${tmdbId}-s${selectedSeason}e${e.episodeNumber}`));
                 setPendingEp(null);
-                router.back();
+                backOr(router, `/films-series/${rawId}`);
               }}
             >
               Deze en voorgaande afleveringen

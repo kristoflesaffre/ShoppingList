@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { AppPersistentBottomNav } from "@/components/app_chrome";
 import { ThemeSync } from "@/components/theme_sync";
+import { InAppHistoryTracker } from "@/components/in_app_history_tracker";
 import { THEME_COLORS, THEME_INIT_SCRIPT } from "@/lib/theme";
 
 const HEAD_CLEANUP_SCRIPT = `(function(){var n=document.head.firstChild;while(n){var x=n.nextSibling;if(n.nodeType===8||(n.nodeType===3&&!n.textContent.trim()))n.remove();n=x;}})();`;
@@ -52,6 +53,7 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeSync />
+        <InAppHistoryTracker />
         {children}
         <Suspense fallback={null}>
           <AppPersistentBottomNav />

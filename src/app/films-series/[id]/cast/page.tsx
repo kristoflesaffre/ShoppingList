@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
+import { backOr } from "@/lib/in_app_history";
 import { SearchBar } from "@/components/ui/search_bar";
 import { CastRow, ListCard, SubpageHeader } from "@/components/films/film_detail_ui";
 
@@ -65,7 +66,7 @@ export default function CastPage() {
       {/* Canvas «21 · Cast — voorstel»: grote titel, wit zoekveld, lijstkaart met ronde foto's. */}
       <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-4 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:pt-10">
         <div>
-          <SubpageHeader title="Cast" subtitle={subtitle} onBack={() => router.back()} />
+          <SubpageHeader title="Cast" subtitle={subtitle} onBack={() => backOr(router, `/films-series/${rawId}`)} />
         </div>
         <SearchBar surface="app" placeholder="Zoek op naam of rol" value={query} onValueChange={setQuery} />
 

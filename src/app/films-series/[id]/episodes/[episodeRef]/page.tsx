@@ -3,6 +3,7 @@
 import * as React from "react";
 import { flushSync } from "react-dom";
 import { useRouter, useParams } from "next/navigation";
+import { backOr } from "@/lib/in_app_history";
 import { ActionPill, CastRound, DetailSectionHead, FilmIcons, GlassIconButton, StarGlyph, formatAirDate } from "@/components/films/film_detail_ui";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 
@@ -500,7 +501,7 @@ export default function EpisodeDetailPage() {
     >
       {/* Terug / meer: glas op de still (mobiel), los erboven (desktop) */}
       <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top,0px)+12px)] z-20 flex justify-between lg:hidden">
-        <GlassIconButton aria-label="Terug" onClick={() => router.back()}>
+        <GlassIconButton aria-label="Terug" onClick={() => backOr(router, `/films-series/${rawId}/episodes?s=${currentSeason}`)}>
           {FilmIcons.back}
         </GlassIconButton>
         <GlassIconButton aria-label="Naar alle afleveringen" onClick={() => router.push(`/films-series/${rawId}/episodes?s=${currentSeason}`)}>
@@ -514,7 +515,7 @@ export default function EpisodeDetailPage() {
           <button
             type="button"
             aria-label="Terug"
-            onClick={() => router.back()}
+            onClick={() => backOr(router, `/films-series/${rawId}/episodes?s=${currentSeason}`)}
             className="flex size-10 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
             {FilmIcons.back}
