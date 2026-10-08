@@ -606,10 +606,11 @@ function DiscoverFeature({
             type="button"
             onClick={() => setShowTrailer(true)}
             aria-label={`Trailer van ${item.title} afspelen`}
-            className="absolute left-1/2 top-1/2 flex size-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(16,17,48,0.5)] text-white shadow-[inset_0_0_0_2px_rgba(255,255,255,0.9)] backdrop-blur-md transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:scale-105"
+            className="absolute left-1/2 top-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(16,17,48,0.22)] text-[rgba(255,255,255,0.95)] shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.45),0_6px_16px_-6px_rgba(0,0,0,0.45)] backdrop-blur-[10px] transition-[transform,background-color] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:scale-105 [@media(hover:hover)]:hover:bg-[rgba(16,17,48,0.34)]"
           >
-            <svg viewBox="0 0 24 24" aria-hidden className="ml-0.5 size-5">
-              <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor" />
+            {/* Driehoek optisch gecentreerd: zwaartepunt iets rechts van het midden van het rondje. */}
+            <svg viewBox="0 0 24 24" aria-hidden className="size-[18px]">
+              <path d="M7.5 5.6v12.8a1 1 0 0 0 1.52.85l10.2-6.4a1 1 0 0 0 0-1.7L9.02 4.75A1 1 0 0 0 7.5 5.6z" transform="translate(-0.9 0)" fill="currentColor" />
             </svg>
           </button>
         ) : null}
