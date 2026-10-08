@@ -775,3 +775,87 @@ export function DeckActionBar({
     </div>
   );
 }
+
+/**
+ * Tekst afgekapt op `lines` regels met «… Lees meer» inline aan het einde van de laatste regel.
+ * Meet de beschikbare breedte en zoekt (binair) hoeveel tekens er passen.
+ */
+export function InlineClampText({
+  text,
+  lines,
+  moreLabel = "Lees meer",
+  onMore,
+  className,
+  linkClassName,
+}: {
+  text: string;
+  lines: number;
+  moreLabel?: string;
+  onMore: () => void;
+  className?: string;
+  linkClassName?: string;
+}) {
+  const boxRef = React.useRef<HTMLParagraphElement>(null);
+  const measureRef = React.useRef<HTMLParagraphElement>(null);
+  const [cut, setCut] = React.useState<number | null>(null);
+
+  const fit = React.useCallback(() => {
+    const m = measureRef.current;
+    const box = boxRef.current;
+    if (!m || !box) return;
+    const lh = parseFloat(getComputedStyle(box).lineHeight) || 21;
+    const max = lh * lines + 1;
+    const render = (n: number | null) => {
+      m.textContent = "";
+      m.append(document.createTextNode(n == null ? text : `${text.slice(0, n).trimEnd()}… `));
+      if (n != null) {
+        const a = document.createElement("span");
+        a.className = "font-semibold";
+        a.textContent = moreLabel;
+        m.append(a);
+      }
+      return m.scrollHeight <= max;
+    };
+    if (render(null)) {
+      setCut(null);
+      return;
+    }
+    let lo = 0;
+    let hi = text.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (render(mid)) lo = mid;
+      else hi = mid - 1;
+    }
+    // Niet midden in een woord afbreken.
+    const space = text.lastIndexOf(" ", lo);
+    setCut(space > lo - 18 && space > 0 ? space : lo);
+  }, [text, lines, moreLabel]);
+
+  React.useLayoutEffect(() => {
+    fit();
+    const box = boxRef.current;
+    if (!box || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => fit());
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [fit]);
+
+  return (
+    <div className="relative">
+      <p ref={boxRef} className={className}>
+        {cut == null ? (
+          text
+        ) : (
+          <>
+            {text.slice(0, cut).trimEnd()}…{" "}
+            <button type="button" onClick={onMore} className={linkClassName}>
+              {moreLabel}
+            </button>
+          </>
+        )}
+      </p>
+      <p ref={measureRef} aria-hidden className={cn(className, "pointer-events-none invisible absolute inset-x-0 top-0")} />
+    </div>
+  );
+}

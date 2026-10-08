@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
-import { SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
+import { InlineClampText, SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
 import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard } from "@/components/films/film_tiles";
@@ -426,16 +426,15 @@ function DiscoverFeature({
             </span>
           </p>
           {extra?.overview ? (
-            <p className="mt-2.5 hidden text-sm leading-[21px] text-[rgba(255,255,255,0.82)] lg:block">
-              <span className="line-clamp-3">{extra.overview}</span>
-              <button
-                type="button"
-                onClick={onOpen}
-                className="mt-0.5 font-semibold text-white underline decoration-[rgba(255,255,255,0.6)] underline-offset-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:decoration-white"
-              >
-                Lees meer
-              </button>
-            </p>
+            <div className="mt-2.5 hidden lg:block">
+              <InlineClampText
+                text={extra.overview}
+                lines={3}
+                onMore={onOpen}
+                className="text-sm leading-[21px] text-[rgba(255,255,255,0.82)]"
+                linkClassName="font-semibold text-white underline decoration-[rgba(255,255,255,0.6)] underline-offset-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:decoration-white"
+              />
+            </div>
           ) : null}
           <div className="mt-3.5 flex items-center gap-2 lg:mt-4">
             <button
