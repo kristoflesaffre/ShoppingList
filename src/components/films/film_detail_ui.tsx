@@ -223,7 +223,7 @@ export function ProgressRing({ value, className, track, color }: { value: number
 
 export type SeasonPill = { seasonNumber: number; label: string; watched: number; total: number };
 
-/** Canvas «21 · Voortgang C»: seizoenpillen met een klein voortgangsringetje; helemaal gezien = vinkje. */
+/** Canvas «21 · Seizoenpillen A»: niets zolang je niet begon, ringetje als je bezig bent, vinkje als het seizoen gezien is. */
 export function SeasonPills({ seasons, selected, onSelect, className }: { seasons: SeasonPill[]; selected: number; onSelect: (n: number) => void; className?: string }) {
   return (
     <div className={cn("-mx-4 overflow-x-auto px-4", className)} style={{ scrollbarWidth: "none" }}>
@@ -259,7 +259,7 @@ export function SeasonPills({ seasons, selected, onSelect, className }: { season
                     <path d="M5 12.5l4.5 4.5L19 7.5" />
                   </svg>
                 </span>
-              ) : s.total > 0 ? (
+              ) : s.total > 0 && s.watched > 0 ? (
                 <ProgressRing
                   value={value}
                   track={active ? "rgba(255,255,255,0.35)" : "var(--gray-50)"}
