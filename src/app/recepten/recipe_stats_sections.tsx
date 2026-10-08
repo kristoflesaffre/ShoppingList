@@ -305,7 +305,7 @@ function Postcard({ item, todayIso }: { item: RankedRecipe; todayIso: string }) 
         <img src={recipe.photoUrl} alt="" decoding="async" loading="lazy" className="absolute inset-0 size-full scale-[1.35] object-cover" />
       ) : null}
       <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(16,17,48,0)_35%,rgba(16,17,48,0.72)_100%)]" />
-      <span className="absolute left-2.5 top-2.5 inline-flex h-6 items-center gap-1 rounded-pill bg-white/90 px-2 text-[11.5px] font-bold text-[#16181a]">
+      <span className="absolute left-2.5 top-2.5 inline-flex h-6 items-center gap-1 rounded-pill bg-[rgba(255,255,255,0.92)] px-2 shadow-[0_1px_3px_rgba(16,17,48,0.12)] text-[11.5px] font-bold text-[#16181a]">
         <ClockIcon className="size-3 shrink-0" />
         {stat.lastIso ? agoLabel(stat.lastIso, todayIso) : ""}
       </span>
