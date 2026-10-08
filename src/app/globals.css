@@ -75,3 +75,31 @@ body::before {
     scroll-behavior: auto;
   }
 }
+
+/* Design system «Shimmer»: laadvlak met een lichte glans die van links naar rechts schuift. */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--gray-100);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
+  animation: shimmer-sweep 1.35s ease-in-out infinite;
+}
+:root[data-theme="dark"] .shimmer::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
+}
+@keyframes shimmer-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after {
+    animation: none;
+  }
+}

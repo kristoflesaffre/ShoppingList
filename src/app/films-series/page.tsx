@@ -7,6 +7,7 @@ import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
 import { MiniButton } from "@/components/ui/mini_button";
+import { Shimmer } from "@/components/ui/shimmer";
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
@@ -258,16 +259,34 @@ function CheckIcon({ className = "size-3" }: { className?: string }) {
 
 /** Poster 2:3 met afgeronde hoeken; zonder beeld een filmicoon. */
 function Poster({ src, alt, children, className }: { src: string | null; alt: string; children?: React.ReactNode; className?: string }) {
+  // Shimmer tot de poster binnen is; daarna zacht invloeien.
+  const [loadedSrc, setLoadedSrc] = React.useState<string | null>(null);
+  const loaded = loadedSrc === src;
+  const imgRef = React.useCallback(
+    (el: HTMLImageElement | null) => {
+      if (el?.complete && el.naturalWidth > 0) setLoadedSrc(src);
+    },
+    [src],
+  );
   return (
     <span
       className={cn(
         "relative block aspect-[2/3] w-full overflow-hidden rounded-[14px] bg-[var(--gray-50)] shadow-[0_10px_20px_-14px_rgba(16,17,48,0.6)]",
+        src && !loaded && "shimmer",
         className,
       )}
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={alt} className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
+        <img
+          ref={imgRef}
+          src={src}
+          alt={alt}
+          onLoad={() => setLoadedSrc(src)}
+          className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0")}
+          loading="lazy"
+          decoding="async"
+        />
       ) : (
         <span className="flex size-full items-center justify-center">
           <MaskIcon src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
@@ -504,6 +523,73 @@ function WatchingCard({
   );
 }
 
+/** Shimmer-versie van het hele overzicht zolang de bibliotheek laadt. */
+function FilmsOverviewSkeleton() {
+  const head = (w: string) => (
+    <div className="flex items-center justify-between">
+      <Shimmer className={cn("h-5 rounded-md", w)} />
+      <Shimmer className="h-3.5 w-10 rounded-md" />
+    </div>
+  );
+  const posterRow = (withActions: boolean) => (
+    <div className="-mx-4 overflow-hidden px-4">
+      <div className="flex w-max gap-3 lg:gap-4">
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="w-[120px] shrink-0 lg:w-[140px]">
+            <Shimmer className="aspect-[2/3] w-full rounded-[14px]" />
+            <Shimmer className="mt-2.5 h-3.5 w-4/5 rounded-md" />
+            {withActions ? (
+              <div className="mt-2.5 flex gap-1.5">
+                <Shimmer className="h-8 flex-1 rounded-full" />
+                <Shimmer className="h-8 flex-1 rounded-full" />
+                <Shimmer className="h-8 flex-1 rounded-full" />
+              </div>
+            ) : (
+              <Shimmer className="mt-1.5 h-3 w-1/3 rounded-md" />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <div aria-busy="true" aria-label="Films en series laden" className="mt-7 flex flex-col gap-7 lg:mt-8 lg:gap-8">
+      <section className="flex flex-col gap-3">
+        {head("w-36")}
+        <div className="-mx-4 overflow-hidden px-4 lg:mx-0 lg:px-0">
+          <div className="flex w-max gap-2.5 lg:grid lg:w-full lg:grid-cols-3 lg:gap-3.5">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex w-[300px] shrink-0 gap-3 rounded-[20px] bg-[var(--white)] p-2.5 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:w-auto">
+                <Shimmer className="h-[104px] w-[70px] shrink-0 rounded-[12px]" />
+                <div className="flex flex-1 flex-col justify-between py-0.5">
+                  <div>
+                    <Shimmer className="h-4 w-3/4 rounded-md" />
+                    <Shimmer className="mt-2 h-3 w-1/2 rounded-md" />
+                    <Shimmer className="mt-3 h-1 w-full rounded-full" />
+                  </div>
+                  <Shimmer className="h-7 w-3/5 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="flex flex-col gap-3">
+        {head("w-40")}
+        {posterRow(true)}
+      </section>
+      <section className="flex flex-col gap-3">
+        {head("w-32")}
+        <Shimmer className="h-[198px] rounded-[24px] lg:h-[227px]" />
+      </section>
+      <section className="flex flex-col gap-3">
+        {head("w-36")}
+        {posterRow(false)}
+      </section>
+    </div>
+  );
+}
+
 /** Canvas «20 · Nieuw voor jou»: één suggestie op een donkere kaart met de poster wazig erachter. */
 function DiscoverFeature({
   item,
@@ -607,6 +693,7 @@ export default function FilmsSeriesPage() {
   const router = useRouter();
   const {
     watchlist,
+    dataLoading,
     ownWatchlist,
     partnerWatchlist,
     partnerName,
@@ -1077,7 +1164,9 @@ export default function FilmsSeriesPage() {
           </div>
         )}
 
-        {mounted && !hasQuery && (hasWatchlistItems || hasPartnerItems || watchingItems.length > 0 || hasDiscoverSection) && (
+        {!hasQuery && (!mounted || dataLoading) ? <FilmsOverviewSkeleton /> : null}
+
+        {mounted && !dataLoading && !hasQuery && (hasWatchlistItems || hasPartnerItems || watchingItems.length > 0 || hasDiscoverSection) && (
           <div className="mt-7 flex flex-col gap-7 lg:mt-8 lg:gap-8">
             {/* Aan het kijken — bovenaan: wat je het vaakst gebruikt */}
             {watchingItems.length > 0 && (
@@ -1161,7 +1250,7 @@ export default function FilmsSeriesPage() {
               <section className="flex flex-col gap-3">
                 <SectionHead title="Nieuw voor jou" href="/films-series/discover" linkLabel="Meer ontdekken" />
                 {discoverLoading || !discoverFeature ? (
-                  <div className="h-[198px] animate-pulse rounded-[24px] bg-[var(--gray-100)] lg:h-[227px]" />
+                  <Shimmer className="h-[198px] rounded-[24px] lg:h-[227px]" />
                 ) : (
                   <DiscoverFeature
                     item={discoverFeature}
@@ -1243,7 +1332,7 @@ export default function FilmsSeriesPage() {
       )}
 
       {/* Empty state — alleen zichtbaar zonder zoekterm en zonder watchlist items en zonder watching items */}
-      {mounted && !hasQuery && !hasWatchlistItems && !hasPartnerItems && watchingItems.length === 0 && !hasDiscoverSection && (
+      {mounted && !dataLoading && !hasQuery && !hasWatchlistItems && !hasPartnerItems && watchingItems.length === 0 && !hasDiscoverSection && (
         <div className="absolute inset-x-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
