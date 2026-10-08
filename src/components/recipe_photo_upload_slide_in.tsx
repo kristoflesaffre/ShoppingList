@@ -3,6 +3,8 @@
 import * as React from "react";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
+import { OptionTile, SheetIntro } from "@/components/ui/option_tile";
+import { ProgressSteps, useProgressSteps } from "@/components/ui/progress_steps";
 
 export type ExtractedRecipeData = {
   name: string | null;
@@ -28,6 +30,7 @@ export function RecipePhotoUploadSlideIn({
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (!open) return;
@@ -100,30 +103,33 @@ export function RecipePhotoUploadSlideIn({
     }
   }, [images, onExtracted, onClose]);
 
+  const step = useProgressSteps(loading, [1200, 4500]);
+  const hasImages = images.length > 0;
+
+  /* Canvas «18 · Recept uit foto's»: kiezen met twee tegels, daarna genummerde miniaturen. */
   return (
     <SlideInModal
       open={open}
       onClose={onClose}
       onBack={onBack}
-      title="Foto's opladen"
+      title={hasImages && !loading ? "Recept uit foto's" : ""}
       titleId="recipe-photo-upload-slide-title"
       containerClassName="z-[70]"
+      className="md:!max-w-[500px]"
+      cancelLabel={null}
       footer={
-        <div className="flex w-full flex-col items-center gap-3">
-          {error ? (
-            <p className="text-center text-xs text-[var(--error-400)]">
-              {error}
-            </p>
-          ) : null}
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleExtract}
-            disabled={images.length === 0 || loading}
-          >
-            {loading ? "Bezig met extraheren…" : "Extraheer recept"}
-          </Button>
-        </div>
+        hasImages && !loading ? (
+          <div className="flex w-full flex-col items-center gap-3">
+            {error ? (
+              <p role="alert" className="text-center text-xs text-[var(--error-600)]">
+                {error}
+              </p>
+            ) : null}
+            <Button type="button" variant="primary" onClick={handleExtract}>
+              Recept herkennen
+            </Button>
+          </div>
+        ) : undefined
       }
     >
       <input
@@ -138,58 +144,79 @@ export function RecipePhotoUploadSlideIn({
           e.target.value = "";
         }}
       />
-      <div className="flex flex-col gap-6 px-4">
-        {images.length === 0 ? (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--border-default)] bg-[var(--bg-elevated)] px-4 py-12 text-center transition-colors hover:border-[var(--blue-500)] hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-          >
-            <span
-              aria-hidden="true"
-              className="inline-block size-10 shrink-0 bg-[var(--blue-500)]"
-              style={{
-                WebkitMaskImage: 'url("/icons/image.svg")',
-                maskImage: 'url("/icons/image.svg")',
-                WebkitMaskRepeat: "no-repeat",
-                maskRepeat: "no-repeat",
-                WebkitMaskSize: "contain",
-                maskSize: "contain",
-                WebkitMaskPosition: "center",
-                maskPosition: "center",
-              }}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        tabIndex={-1}
+        onChange={(e) => {
+          addFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      <div className="flex w-full flex-col gap-[18px] pb-2">
+        {loading ? (
+          <>
+            <SheetIntro
+              icon={<ImageIcon className="size-7" />}
+              title="Recept herkennen…"
+              text={`${images.length} foto${images.length > 1 ? "'s" : ""}`}
             />
-            <div className="flex flex-col gap-1">
-              <p className="text-base font-medium leading-24 text-[var(--text-primary)]">
-                Tik om foto&apos;s te kiezen
-              </p>
-              <p className="text-sm leading-20 text-[var(--text-secondary)]">
-                Kies één of meerdere foto&apos;s (max. 10)
-              </p>
+            <ProgressSteps steps={["Foto's gelezen", "Ingrediënten herkennen", "Stappen omzetten"]} current={step} />
+          </>
+        ) : !hasImages ? (
+          <>
+            <SheetIntro
+              icon={<ImageIcon className="size-7" />}
+              title="Recept uit foto's"
+              text="Van een kookboek, een tijdschrift of een handgeschreven briefje."
+            />
+            <div className="flex gap-2.5">
+              <OptionTile
+                icon={<CameraIcon className="size-7" />}
+                title="Foto nemen"
+                subtitle="Met je camera"
+                onClick={() => cameraInputRef.current?.click()}
+              />
+              <OptionTile
+                icon={<ImageIcon className="size-7" />}
+                title="Uit je foto's"
+                subtitle="Tot 10 foto's"
+                onClick={() => fileInputRef.current?.click()}
+              />
             </div>
-          </button>
-        ) : (
-          <div className="flex flex-col gap-4">
-            <p className="text-sm leading-20 text-[var(--text-secondary)]">
-              {images.length} foto{images.length > 1 ? "s" : ""} geselecteerd
+            <p className="px-2.5 text-center text-xs leading-[17px] text-[var(--text-tertiary)]">
+              Wij herkennen naam, ingrediënten en stappen en vertalen naar het Nederlands.
             </p>
-            <div className="grid grid-cols-3 gap-3">
+          </>
+        ) : (
+          <>
+            <div className="flex items-baseline justify-between px-0.5">
+              <span className="text-[15px] font-bold text-[var(--text-primary)]">
+                {images.length} foto{images.length > 1 ? "'s" : ""}
+              </span>
+              {images.length > 1 ? (
+                <span className="text-[12.5px] text-[var(--text-secondary)]">In deze volgorde gelezen</span>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-3 gap-2.5">
               {images.map((img, i) => (
-                <div
-                  key={img.preview}
-                  className="relative aspect-square overflow-hidden rounded-lg bg-[var(--bg-elevated)]"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img.preview}
-                    alt={`Foto ${i + 1}`}
-                    className="size-full object-cover"
-                  />
+                <div key={img.preview} className="relative aspect-square overflow-hidden rounded-[14px] bg-[var(--gray-50)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- lokale preview */}
+                  <img src={img.preview} alt={`Foto ${i + 1}`} className="size-full object-cover" />
+                  <span
+                    aria-hidden
+                    className="absolute left-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-[var(--white)] text-[11px] font-extrabold text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+                  >
+                    {i + 1}
+                  </span>
                   <button
                     type="button"
                     aria-label={`Foto ${i + 1} verwijderen`}
                     onClick={() => removeImage(i)}
-                    className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/50 text-fixed-white hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
+                    className="absolute right-1.5 top-1.5 flex size-[22px] items-center justify-center rounded-full bg-[rgba(16,17,48,0.55)] text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:bg-[rgba(16,17,48,0.75)]"
                   >
                     <SmallCrossIcon />
                   </button>
@@ -199,23 +226,39 @@ export function RecipePhotoUploadSlideIn({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  aria-label="Meer foto's toevoegen"
-                  className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-[var(--border-default)] bg-[var(--bg-elevated)] transition-colors hover:border-[var(--blue-500)] hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  className="flex aspect-square flex-col items-center justify-center gap-1 rounded-[14px] border-[1.6px] border-dashed border-[var(--blue-200)] text-xs font-bold text-[var(--blue-500)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--blue-25)]"
                 >
                   <PlusIcon />
+                  Foto
                 </button>
               ) : null}
             </div>
-          </div>
+            <p className="px-2.5 text-center text-xs leading-[17px] text-[var(--text-tertiary)]">
+              Tip: één foto per pagina, recht van boven, zonder schaduw.
+            </p>
+          </>
         )}
-
-        <p className="text-center text-xs leading-18 text-[var(--text-tertiary)]">
-          AI herkent ingrediënten, bereidingsstappen en de receptnaam. Amerikaanse
-          maateenheden worden automatisch omgezet naar metrisch, en recepten worden
-          naar het Nederlands vertaald.
-        </p>
       </div>
     </SlideInModal>
+  );
+}
+
+function CameraIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <path d="M4 8h3l2-2.5h6L17 8h3v11H4z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </svg>
+  );
+}
+
+function ImageIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <rect x="3.5" y="5" width="17" height="14" rx="3" />
+      <circle cx="9" cy="10" r="1.6" />
+      <path d="M20 16l-5-5-8 8" />
+    </svg>
   );
 }
 
@@ -277,18 +320,17 @@ function SmallCrossIcon() {
 function PlusIcon() {
   return (
     <svg
-      width="24"
-      height="24"
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
-      className="text-[var(--blue-500)]"
     >
       <path
         d="M12 5V19M5 12H19"
         stroke="currentColor"
-        strokeWidth="1.5"
+        strokeWidth="2.2"
         strokeLinecap="round"
       />
     </svg>

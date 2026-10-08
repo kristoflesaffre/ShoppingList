@@ -831,6 +831,7 @@ export default function ReceptDetailPage() {
         open={photoSourceSlideOpen}
         onClose={closePhotoSourceSlide}
         title={photoSourceSlideTitle}
+        currentPhotoSrc={savedRecipe?.photoUrl ?? null}
         onPickFromDevice={handlePickPhotoFromDevice}
         onGenerateWithAi={openAiFoodImageSlide}
       />

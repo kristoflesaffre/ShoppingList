@@ -8,6 +8,7 @@ import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { LoyaltyMiniCard } from "@/components/loyalty_mini_card";
+import { OptionTile } from "@/components/ui/option_tile";
 import { CameraBarcodeScannerSlideIn } from "@/components/camera_barcode_scanner_slide_in";
 import { LoyaltyCardScanResultSlideIn } from "@/components/loyalty_card_scan_result_slide_in";
 import { decodeLoyaltyCard } from "@/lib/decode_loyalty_card";
@@ -52,23 +53,6 @@ function ImageIcon() {
       <circle cx="9" cy="10" r="1.6" />
       <path d="M20 16l-5-5-8 8" />
     </svg>
-  );
-}
-
-/** Canvas «15 · variant 1a»: twee gelijke tegels, zelfde gewicht. */
-function OptionTile({ icon, title, subtitle, onClick }: { icon: React.ReactNode; title: string; subtitle: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex flex-1 flex-col items-center gap-2.5 rounded-[20px] bg-[var(--blue-25)] px-2.5 py-[18px] shadow-[inset_0_0_0_1px_var(--blue-100)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--blue-50)]"
-    >
-      <span className="flex size-[52px] items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_4px_10px_-6px_rgba(79,85,241,0.5)]">
-        {icon}
-      </span>
-      <span className="text-[15px] font-bold leading-5 text-[var(--text-primary)]">{title}</span>
-      <span className="text-center text-xs leading-4 text-[var(--text-secondary)]">{subtitle}</span>
-    </button>
   );
 }
 
