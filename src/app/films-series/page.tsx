@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
-import { InlineClampText, SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
+import { InlineClampText, ScoreSourceLink, SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
 import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard } from "@/components/films/film_tiles";
@@ -334,7 +334,7 @@ function DiscoverFeature({
   onPrev: () => void;
   onNext: () => void;
 }) {
-  const [extra, setExtra] = React.useState<{ trailerKey: string | null; backdropUrl: string | null; overview: string; runtime: string } | null>(null);
+  const [extra, setExtra] = React.useState<{ trailerKey: string | null; backdropUrl: string | null; overview: string; runtime: string; imdbId: string | null } | null>(null);
   const [showTrailer, setShowTrailer] = React.useState(false);
   React.useEffect(() => {
     setExtra(null);
@@ -348,6 +348,7 @@ function DiscoverFeature({
           backdropUrl: (d.backdropUrl as string | null) ?? null,
           overview: (d.overview as string) ?? "",
           runtime: (d.runtime as string) ?? "",
+          imdbId: (d.imdbId as string | null) ?? null,
         });
       })
       .catch(() => {});
@@ -416,7 +417,7 @@ function DiscoverFeature({
                   <path fill={scoreSource === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
                 </svg>
                 <b className="text-white">{item.score.toFixed(1)}</b>
-                <span className="hidden lg:inline">{scoreSource === "imdb" ? "IMDb" : "TMDB"}</span>
+                <ScoreSourceLink source={scoreSource ?? "tmdb"} title={item.title} imdbId={extra?.imdbId} className="hidden lg:inline" />
               </>
             ) : null}
             <span>

@@ -19,6 +19,7 @@ import {
   FilmIcons,
   GlassIconButton,
   HeroImdbChip,
+  ScoreSourceLink,
   ImdbMark,
   ListCard,
   SeasonPills,
@@ -406,7 +407,7 @@ export default function FilmDetailPage() {
         <>
           <StarGlyph source={detail.scoreSource} />
           <b className="font-bold">{detail.score.toFixed(1)}</b>
-          <span className="opacity-70">{detail.scoreSource === "imdb" ? "IMDb" : "TMDB"}</span>
+          <ScoreSourceLink source={detail.scoreSource} title={detail.title} imdbId={detail.imdbId} />
         </>
       ) : null}
       {detail.runtime ? <span>{detail.score != null ? "· " : ""}{detail.runtime}</span> : null}

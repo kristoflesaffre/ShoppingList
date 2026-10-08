@@ -197,6 +197,36 @@ export function YoutubeMark() {
   return <img src="/logos/logos-youtube.svg" alt="YouTube" className="h-[18px] w-auto" />;
 }
 
+/** «IMDb» naast de score als link naar de IMDb-pagina; bij een TMDB-score gewoon tekst. */
+export function ScoreSourceLink({
+  source,
+  title,
+  imdbId,
+  className,
+}: {
+  source?: "imdb" | "tmdb" | null;
+  title: string;
+  imdbId: string | null | undefined;
+  className?: string;
+}) {
+  if (source === "tmdb") return <span className={cn("opacity-70", className)}>TMDB</span>;
+  const href = imdbId ? `https://www.imdb.com/title/${imdbId}/` : `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`${title} bekijken op IMDb`}
+      className={cn(
+        "underline [text-decoration-color:color-mix(in_srgb,currentColor_45%,transparent)] decoration-1 underline-offset-[3px] opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current [@media(hover:hover)]:hover:opacity-100 [@media(hover:hover)]:hover:[text-decoration-color:currentColor]",
+        className,
+      )}
+    >
+      IMDb
+    </a>
+  );
+}
+
 /** IMDb-link als glazen chip op een donkere herokaart (naast de genres). */
 export function HeroImdbChip({ title, imdbId }: { title: string; imdbId: string | null }) {
   const href = imdbId ? `https://www.imdb.com/title/${imdbId}/` : `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`;
@@ -533,7 +563,7 @@ export function DeckBody({
         <>
           <StarGlyph source={media.scoreSource} />
           <b className="font-bold">{media.score.toFixed(1)}</b>
-          <span className="opacity-70">{media.scoreSource === "tmdb" ? "TMDB" : "IMDb"}</span>
+          <ScoreSourceLink source={media.scoreSource ?? "imdb"} title={media.title} imdbId={media.imdbId} />
         </>
       ) : null}
       {media.runtime ? <span>{media.score != null ? "· " : ""}{media.runtime}</span> : null}
