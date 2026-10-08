@@ -323,3 +323,36 @@ export function WatchingCard({
   );
 }
 
+
+/** Kaartenstapel-icoon voor «één voor één» door een lijst gaan. */
+export function StackIcon({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <rect x="6" y="7" width="12" height="14" rx="2.5" />
+      <path d="M8.5 4h7M10.5 1.8h3" />
+    </svg>
+  );
+}
+
+/**
+ * Ingang naar de swipe-stapel van je partner: titels één voor één fullscreen bekijken
+ * (canvas «22 · Actiebalk B»).
+ */
+export function OneByOneButton({ onClick, size = "sm", className }: { onClick: () => void; size?: "sm" | "lg"; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-pill font-bold transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+        size === "sm"
+          ? "h-8 bg-[var(--blue-50)] px-3 text-[13px] text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--blue-100)]"
+          : "h-11 bg-[var(--blue-500)] px-5 text-[15px] text-white [@media(hover:hover)]:hover:bg-[var(--blue-600,#3f45e0)]",
+        className,
+      )}
+    >
+      <StackIcon className={size === "sm" ? "size-[15px]" : "size-[18px]"} />
+      {size === "sm" ? "Eén voor één" : "Eén voor één bekijken"}
+    </button>
+  );
+}

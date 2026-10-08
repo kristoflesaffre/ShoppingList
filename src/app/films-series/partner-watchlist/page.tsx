@@ -13,7 +13,7 @@ import { RoundIconButton } from "@/components/ui/round_icon_button";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { Shimmer } from "@/components/ui/shimmer";
 import { FilmIcons } from "@/components/films/film_detail_ui";
-import { EyeIcon, PartnerAction, Poster, RatingChip, TypeChip } from "@/components/films/film_tiles";
+import { EyeIcon, OneByOneButton, PartnerAction, Poster, RatingChip, TypeChip } from "@/components/films/film_tiles";
 
 const SNACKBAR_MS = 4500;
 
@@ -300,6 +300,14 @@ export default function PartnerWatchlistPage() {
             className="lg:w-[300px] lg:shrink-0"
           />
         </div>
+
+        {baseItems.length > 0 ? (
+          <OneByOneButton
+            size="lg"
+            onClick={() => router.push(`/films-series/partner/${(displayItems[0] ?? baseItems[0]).id}`)}
+            className="mt-3 w-full lg:mt-5 lg:w-auto lg:self-start"
+          />
+        ) : null}
 
         <SegmentedControl
           ariaLabel="Soort"

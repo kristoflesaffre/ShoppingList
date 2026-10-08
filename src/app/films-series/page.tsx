@@ -8,7 +8,7 @@ import { PageBackButton } from "@/components/ui/page_back_button";
 import { SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
-import { CheckIcon, EyeIcon, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard } from "@/components/films/film_tiles";
+import { CheckIcon, EyeIcon, OneByOneButton, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard } from "@/components/films/film_tiles";
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
@@ -789,13 +789,14 @@ export default function FilmsSeriesPage() {
     return () => cancelAnimationFrame(raf);
   }, [restoringFilmId, watchlistFilms]);
 
-  const SectionHead = ({ title, href, linkLabel = "Alles", count, avatar }: { title: string; href?: string; linkLabel?: string; count?: number; avatar?: React.ReactNode }) => (
+  const SectionHead = ({ title, href, linkLabel = "Alles", count, avatar, extra }: { title: string; href?: string; linkLabel?: string; count?: number; avatar?: React.ReactNode; extra?: React.ReactNode }) => (
     <div className="flex items-center gap-3">
       <h2 className="flex min-w-0 flex-1 items-center gap-2 text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
         {avatar}
         <span className="truncate">{title}</span>
         {count != null ? <span className="text-[15px] font-medium text-[var(--text-tertiary)] tabular-nums">{count}</span> : null}
       </h2>
+      {extra}
       {href ? (
         <button
           type="button"
@@ -915,6 +916,7 @@ export default function FilmsSeriesPage() {
                 <SectionHead
                   title={`Watchlist ${partnerName ?? "partner"}`}
                   href="/films-series/partner-watchlist"
+                  extra={<OneByOneButton onClick={() => router.push(`/films-series/partner/${partnerWatchlist[0].id}`)} />}
                   avatar={
                     <span className="flex size-[26px] shrink-0 overflow-hidden rounded-full bg-[var(--blue-50)] shadow-[0_0_0_2px_var(--white)]">
                       {partnerAvatarUrl ? (
