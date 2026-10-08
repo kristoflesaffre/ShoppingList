@@ -8,11 +8,11 @@ import { PageBackButton } from "@/components/ui/page_back_button";
 import { SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
-import { CheckIcon, EyeIcon, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard } from "@/components/films/film_tiles";
+import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard } from "@/components/films/film_tiles";
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
-import { useWatchingTvItems, type WatchingTvItem } from "@/hooks/use_watching_tv_items";
+import { useWatchingTvItems, type NewSeasonItem, type WatchingTvItem } from "@/hooks/use_watching_tv_items";
 import { Snackbar } from "@/components/ui/snackbar";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 import { getScoreSourceCache, setScoreSource } from "@/lib/score_source_cache";
@@ -425,7 +425,7 @@ export default function FilmsSeriesPage() {
     unmarkWatched,
     reactToPartnerItem,
   } = useFilmsLibrary();
-  const { watchingItems, markNextEpisode, markSeasonWatched, markSeriesWatched, unmarkEpisodes } = useWatchingTvItems();
+  const { watchingItems, markNextEpisode, markSeasonWatched, markSeriesWatched, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
   const [watchMenuFor, setWatchMenuFor] = React.useState<string | null>(null);
   const [discoverIndex, setDiscoverIndex] = React.useState(0);
   const [mounted, setMounted] = React.useState(false);
@@ -648,6 +648,19 @@ export default function FilmsSeriesPage() {
     if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
     setSnackbar({ message, undoFn, undoItem });
     snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+  }
+
+  function handleAddNewSeason(item: NewSeasonItem) {
+    void addToWatchlist({ id: item.id, type: "tv", title: item.title, year: item.year, posterUrl: item.posterUrl, score: null });
+    showSnackbar(
+      item.released ? `${item.title} staat weer op je watchlist` : `${item.title} staat alvast op je watchlist`,
+      () => void removeFromWatchlist(item.id),
+    );
+  }
+
+  function handleDismissNewSeason(item: NewSeasonItem) {
+    dismissNewSeason(item);
+    showSnackbar(`Seizoen ${item.season} van ${item.title} verborgen`, () => restoreNewSeason(item));
   }
 
   async function handleMarkSeason(item: WatchingTvItem) {
@@ -885,8 +898,28 @@ export default function FilmsSeriesPage() {
 
         {!hasQuery && (!mounted || dataLoading) ? <FilmsOverviewSkeleton /> : null}
 
-        {mounted && !dataLoading && !hasQuery && (hasWatchlistItems || hasPartnerItems || watchingItems.length > 0 || hasDiscoverSection) && (
+        {mounted && !dataLoading && !hasQuery && (hasWatchlistItems || hasPartnerItems || watchingItems.length > 0 || hasDiscoverSection || newSeasonItems.length > 0) && (
           <div className="mt-7 flex flex-col gap-7 lg:mt-8 lg:gap-8">
+            {/* Nieuw seizoen — canvas «22 · Nieuw seizoen A»: series die je zag met een nieuw (of aangekondigd) seizoen */}
+            {newSeasonItems.length > 0 && (
+              <section className="flex flex-col gap-3">
+                <SectionHead title="Nieuw seizoen" />
+                <div className="-mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:overflow-visible lg:px-0" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex w-max gap-2.5 lg:grid lg:w-full lg:grid-cols-3 lg:gap-3.5">
+                    {newSeasonItems.map((item) => (
+                      <NewSeasonCard
+                        key={`${item.id}-s${item.season}`}
+                        item={item}
+                        onOpen={() => router.push(`/films-series/${item.id}`)}
+                        onAdd={() => handleAddNewSeason(item)}
+                        onDismiss={() => handleDismissNewSeason(item)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
             {/* Aan het kijken — bovenaan: wat je het vaakst gebruikt */}
             {watchingItems.length > 0 && (
               <section className="flex flex-col gap-3">
@@ -1057,7 +1090,7 @@ export default function FilmsSeriesPage() {
       )}
 
       {/* Empty state — alleen zichtbaar zonder zoekterm en zonder watchlist items en zonder watching items */}
-      {mounted && !dataLoading && !hasQuery && !hasWatchlistItems && !hasPartnerItems && watchingItems.length === 0 && !hasDiscoverSection && (
+      {mounted && !dataLoading && !hasQuery && !hasWatchlistItems && !hasPartnerItems && watchingItems.length === 0 && !hasDiscoverSection && newSeasonItems.length === 0 && (
         <div className="absolute inset-x-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

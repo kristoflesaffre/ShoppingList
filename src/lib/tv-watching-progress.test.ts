@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildNewSeasonItems,
   getHighestWatchedProgress,
   getNextEpisodeToWatch,
   isSeriesFullyWatched,
@@ -133,5 +134,37 @@ describe("getHighestWatchedProgress", () => {
     expect(
       getHighestWatchedProgress(["ep-1-s1e3", "ep-1-s1e8", "ep-1-s2e1"], "1"),
     ).toEqual({ season: 2, episode: 1 });
+  });
+});
+
+describe("buildNewSeasonItems", () => {
+  const meta = { "42": { title: "Serie", posterUrl: null, year: "2020" } };
+  const raw = {
+    "42": [
+      { seasonNumber: 1, episodeCount: 8, airDate: "2020-01-01" },
+      { seasonNumber: 2, episodeCount: 6, airDate: "2026-09-01" },
+    ],
+  };
+  const watched = ["ep-42-s1e8"];
+
+  it("meldt een uitgezonden volgend seizoen als je het vorige helemaal zag", () => {
+    const items = buildNewSeasonItems({ watchedIds: watched, watchlist: [], seriesMeta: meta, rawSeasonsByTmdbId: raw, dismissed: new Set(), today: "2026-10-08" });
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ season: 2, released: true, watchedThrough: 1 });
+  });
+
+  it("toont een aangekondigd seizoen als binnenkort", () => {
+    const items = buildNewSeasonItems({ watchedIds: watched, watchlist: [], seriesMeta: meta, rawSeasonsByTmdbId: raw, dismissed: new Set(), today: "2026-05-01" });
+    expect(items[0]).toMatchObject({ season: 2, released: false });
+  });
+
+  it("niet als de serie al op de watchlist staat of weggeklikt is", () => {
+    const wl = [{ id: "tv-42", type: "tv", title: "Serie", year: "2020", posterUrl: null }];
+    expect(buildNewSeasonItems({ watchedIds: watched, watchlist: wl, seriesMeta: meta, rawSeasonsByTmdbId: raw, dismissed: new Set(), today: "2026-10-08" })).toHaveLength(0);
+    expect(buildNewSeasonItems({ watchedIds: watched, watchlist: [], seriesMeta: meta, rawSeasonsByTmdbId: raw, dismissed: new Set(["42-s2"]), today: "2026-10-08" })).toHaveLength(0);
+  });
+
+  it("niet als je midden in een seizoen zit", () => {
+    expect(buildNewSeasonItems({ watchedIds: ["ep-42-s1e5"], watchlist: [], seriesMeta: meta, rawSeasonsByTmdbId: raw, dismissed: new Set(), today: "2026-10-08" })).toHaveLength(0);
   });
 });

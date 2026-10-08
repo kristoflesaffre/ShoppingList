@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
           name: string;
           episode_count: number;
           poster_path?: string | null;
+          air_date?: string | null;
         }[]) ?? [])
           .filter((s) => s.season_number > 0)
           .map((s) => ({
@@ -133,6 +134,7 @@ export async function GET(request: NextRequest) {
             name: s.name,
             episodeCount: s.episode_count,
             posterUrl: s.poster_path ? `${TMDB_IMG_POSTER}${s.poster_path}` : null,
+            airDate: s.air_date || null,
           }))
       : [];
 

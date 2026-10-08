@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { backOr } from "@/lib/in_app_history";
 import { cn } from "@/lib/utils";
+import { buildNewSeasonItems } from "@/lib/tv-watching-progress";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
@@ -62,7 +63,7 @@ type FilmDetail = {
   imdbId: string | null;
   totalEpisodes: number | null;
   genres: string[];
-  seasons: Season[];
+  seasons: (Season & { airDate?: string | null })[];
   cast: CastMember[];
   trailerKey: string | null;
 };
@@ -201,6 +202,7 @@ export default function FilmDetailPage() {
     isMediaAddedByCurrentUser,
     askPartnerToReviewAgain,
     isFilmsListShared,
+    watchedIds,
   } = useFilmsLibrary();
 
   const [detail, setDetail] = React.useState<FilmDetail | null>(null);
@@ -372,7 +374,22 @@ export default function FilmDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episodes, selectedSeason, tmdbId]);
 
+  // Canvas «22 · Nieuw seizoen — detail»: serie helemaal gezien en er is een volgend seizoen.
+  const newSeason = React.useMemo(() => {
+    if (!detail || detail.type !== "tv") return null;
+    return (
+      buildNewSeasonItems({
+        watchedIds,
+        watchlist: inWatchlist ? [{ id: detail.id, type: "tv", title: detail.title, year: detail.year, posterUrl: detail.posterUrl }] : [],
+        seriesMeta: { [tmdbId]: { title: detail.title, year: detail.year, posterUrl: detail.posterUrl } },
+        rawSeasonsByTmdbId: { [tmdbId]: detail.seasons },
+        dismissed: new Set(),
+      })[0] ?? null
+    );
+  }, [detail, watchedIds, inWatchlist, tmdbId]);
+
   const seasonPills = (detail?.seasons ?? []).map((s) => ({
+    isNew: newSeason?.released === true && newSeason.season === s.seasonNumber,
     seasonNumber: s.seasonNumber,
     label: s.name,
     total: s.episodeCount,
@@ -571,6 +588,27 @@ export default function FilmDetailPage() {
                   partnerAvatar={partnerAvatar}
                   onClick={canAskPartnerAgain ? () => setShowAskAgainSlideIn(true) : undefined}
                 />
+              </div>
+            ) : null}
+
+            {newSeason ? (
+              <div className="mt-4 flex items-center gap-3 rounded-[18px] bg-[#eef9f2] p-3.5 shadow-[inset_0_0_0_1px_#d3f0de] lg:mt-[18px]">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[#1f9d55]" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="size-[18px]">
+                    <path d="M12 2.5l2.1 6.1 6.4.3-5 4 1.8 6.2L12 15.4l-5.3 3.7 1.8-6.2-5-4 6.4-.3z" />
+                  </svg>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14.5px] font-bold text-[var(--text-primary)]">
+                    Seizoen {newSeason.season} {newSeason.released ? "is uit" : `komt op ${new Date(`${newSeason.airDate}T12:00:00`).toLocaleDateString("nl-BE", { day: "numeric", month: "long", year: "numeric" })}`}
+                  </p>
+                  <p className="text-[12.5px] text-[var(--text-secondary)]">
+                    {newSeason.watchedThrough === 1 ? "Je zag seizoen 1 al helemaal" : `Je zag seizoen 1 tot ${newSeason.watchedThrough} al helemaal`}
+                  </p>
+                </div>
+                <ActionPill tone={newSeason.released ? "primary" : "soft"} icon={FilmIcons.plus} onClick={toggleWatchlist} className="h-[34px] shrink-0 px-[13px] text-[13px]">
+                  {newSeason.released ? "Watchlist" : "Alvast"}
+                </ActionPill>
               </div>
             ) : null}
 

@@ -2,6 +2,8 @@ export type TvSeasonInfo = {
   seasonNumber: number;
   episodeCount: number;
   name?: string;
+  /** Eerste uitzenddatum (YYYY-MM-DD) volgens TMDB; ontbreekt bij oude metadata. */
+  airDate?: string | null;
 };
 
 export type WatchedProgress = {
@@ -55,15 +57,21 @@ export function getHighestWatchedProgress(
 }
 
 export function mapSeasonsFromDetail(
-  seasons: readonly { seasonNumber: number; episodeCount: number; name?: string }[] | undefined,
+  seasons: readonly { seasonNumber: number; episodeCount: number; name?: string; airDate?: string | null }[] | undefined,
 ): TvSeasonInfo[] {
   return normalizeTvSeasons(
     (seasons ?? []).map((s) => ({
       seasonNumber: s.seasonNumber,
       episodeCount: s.episodeCount,
       name: s.name,
+      airDate: s.airDate ?? null,
     })),
   );
+}
+
+/** Seizoen dat (volgens de uitzenddatum) nog niet begonnen is. */
+export function isSeasonUpcoming(season: TvSeasonInfo | undefined, today: string): boolean {
+  return Boolean(season?.airDate && season.airDate > today);
 }
 
 /** Seizoenen > 0, gesorteerd op nummer. */
@@ -85,7 +93,10 @@ export function mergeTvSeasons(
       if (season.seasonNumber <= 0) continue;
       const existing = byNumber.get(season.seasonNumber);
       if (!existing || season.episodeCount > existing.episodeCount) {
-        byNumber.set(season.seasonNumber, season);
+        const airDate = season.airDate ?? existing?.airDate;
+        byNumber.set(season.seasonNumber, airDate ? { ...season, airDate } : season);
+      } else if (!existing.airDate && season.airDate) {
+        byNumber.set(season.seasonNumber, { ...existing, airDate: season.airDate });
       }
     }
   }
@@ -159,7 +170,10 @@ export function buildWatchingTvItems(input: {
     { title: string; posterUrl: string | null; year: string; seasons?: TvSeasonInfo[] }
   >;
   seasonsByTmdbId?: Record<string, TvSeasonInfo[] | undefined>;
+  /** Vandaag (YYYY-MM-DD); nodig om nog niet uitgezonden seizoenen over te slaan. */
+  today?: string;
 }): WatchingTvItem[] {
+  const today = input.today ?? new Date().toISOString().slice(0, 10);
   const tmdbIds = new Set<string>();
   for (const id of input.watchedIds) {
     const parsed = parseEpisodeWatchedId(id);
@@ -192,6 +206,12 @@ export function buildWatchingTvItems(input: {
     const meta = input.seriesMeta[tmdbId];
     if (!wlItem && !meta) continue;
 
+    // Volgende aflevering zit in een seizoen dat nog niet uit is: niet «aan het kijken».
+    if (isSeasonUpcoming(seasons.find((s) => s.seasonNumber === next.season), today)) continue;
+    // Seizoen helemaal gezien en de serie staat niet meer op de watchlist: dat is een
+    // «nieuw seizoen» (zie buildNewSeasonItems), niet iets waar je mee bezig bent.
+    if (!wlItem && next.season > lastWatched.season) continue;
+
     items.push({
       tmdbId,
       id: `tv-${tmdbId}`,
@@ -205,4 +225,73 @@ export function buildWatchingTvItems(input: {
   }
 
   return items;
+}
+
+export type NewSeasonItem = {
+  tmdbId: string;
+  id: string;
+  title: string;
+  posterUrl: string | null;
+  year: string;
+  /** Het nieuwe seizoen (eerste na het laatst gekeken seizoen). */
+  season: number;
+  airDate: string;
+  /** Al uitgezonden (true) of aangekondigd met datum (false). */
+  released: boolean;
+  /** Seizoenen die je al helemaal zag. */
+  watchedThrough: number;
+};
+
+/**
+ * Series die je helemaal zag (laatste aflevering van een seizoen gemarkeerd), die niet meer op
+ * de watchlist staan, en waarvan TMDB intussen een volgend seizoen met een uitzenddatum kent.
+ */
+export function buildNewSeasonItems(input: {
+  watchedIds: readonly string[];
+  watchlist: readonly { id: string; type: string; title: string; year: string; posterUrl: string | null }[];
+  seriesMeta: Record<string, { title: string; posterUrl: string | null; year: string; seasons?: TvSeasonInfo[] }>;
+  /** Seizoenen zoals TMDB ze nu kent (ook aangekondigde zonder afleveringen). */
+  rawSeasonsByTmdbId: Record<string, TvSeasonInfo[] | undefined>;
+  dismissed: ReadonlySet<string>;
+  today?: string;
+}): NewSeasonItem[] {
+  const today = input.today ?? new Date().toISOString().slice(0, 10);
+  const onWatchlist = new Set(input.watchlist.filter((i) => i.type === "tv").map((i) => i.id.replace(/^tv-/, "")));
+  const tmdbIds = new Set<string>();
+  for (const id of input.watchedIds) {
+    const parsed = parseEpisodeWatchedId(id);
+    if (parsed) tmdbIds.add(parsed.tmdbId);
+  }
+  const items: NewSeasonItem[] = [];
+  for (const tmdbId of Array.from(tmdbIds)) {
+    if (onWatchlist.has(tmdbId)) continue;
+    const raw = input.rawSeasonsByTmdbId[tmdbId];
+    if (!raw?.length) continue;
+    const last = getHighestWatchedProgress(input.watchedIds, tmdbId);
+    if (!last) continue;
+    const current = raw.find((s) => s.seasonNumber === last.season);
+    if (!current || current.episodeCount <= 0 || last.episode < current.episodeCount) continue;
+    const next = raw
+      .filter((s) => s.seasonNumber > last.season && s.airDate)
+      .sort((a, b) => a.seasonNumber - b.seasonNumber)[0];
+    if (!next?.airDate) continue;
+    if (input.dismissed.has(`${tmdbId}-s${next.seasonNumber}`)) continue;
+    const meta = input.seriesMeta[tmdbId];
+    if (!meta) continue;
+    items.push({
+      tmdbId,
+      id: `tv-${tmdbId}`,
+      title: meta.title,
+      posterUrl: meta.posterUrl,
+      year: meta.year,
+      season: next.seasonNumber,
+      airDate: next.airDate,
+      released: next.airDate <= today && next.episodeCount > 0,
+      watchedThrough: last.season,
+    });
+  }
+  // Eerst wat al uit is (nieuwste bovenaan), dan wat binnenkort komt (eerstvolgende eerst).
+  return items.sort((a, b) =>
+    a.released !== b.released ? (a.released ? -1 : 1) : a.released ? b.airDate.localeCompare(a.airDate) : a.airDate.localeCompare(b.airDate),
+  );
 }

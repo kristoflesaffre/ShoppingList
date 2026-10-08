@@ -384,3 +384,77 @@ export function OneByOneTile({
     </button>
   );
 }
+
+function formatShortDate(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  if (isNaN(d.getTime())) return iso;
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString("nl-BE", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) }).replace(".", "");
+}
+
+/**
+ * Canvas «22 · Nieuw seizoen A»: kaart voor een serie die je helemaal zag en waarvan een
+ * volgend seizoen uit is (groen NIEUW) of aangekondigd (grijs BINNENKORT).
+ */
+export function NewSeasonCard({
+  item,
+  onOpen,
+  onAdd,
+  onDismiss,
+  className,
+}: {
+  item: { title: string; posterUrl: string | null; season: number; airDate: string; released: boolean };
+  onOpen: () => void;
+  onAdd: () => void;
+  onDismiss: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex shrink-0 gap-3 rounded-[20px] bg-[var(--white)] p-2.5 shadow-[inset_0_0_0_1px_var(--border-subtle)]", className ?? "w-[300px] lg:w-auto")}>
+      <button type="button" onClick={onOpen} aria-label={`${item.title} bekijken`} className="w-[70px] shrink-0 rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]">
+        <Poster src={item.posterUrl} alt="" className="rounded-[12px]" />
+      </button>
+      <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
+        <button type="button" onClick={onOpen} className="min-w-0 text-left focus-visible:outline-none">
+          <span
+            className={cn(
+              "inline-flex h-5 items-center rounded-pill px-[7px] text-[10.5px] font-extrabold tracking-[0.05em]",
+              item.released ? "bg-[#e9f9ef] text-[#1f9d55]" : "bg-[var(--gray-50)] text-[var(--text-secondary)]",
+            )}
+          >
+            {item.released ? "NIEUW" : "BINNENKORT"}
+          </span>
+          <span className="mt-[5px] block truncate text-[15px] font-bold leading-5 text-[var(--text-primary)]">{item.title}</span>
+          <span className="mt-px block text-[12.5px] text-[var(--text-secondary)]">
+            Seizoen {item.season} · {item.released ? "sinds" : "vanaf"} {formatShortDate(item.airDate)}
+          </span>
+        </button>
+        <div className="mt-2 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onAdd}
+            className={cn(
+              "inline-flex h-[30px] items-center gap-[5px] rounded-pill px-3 text-[12.5px] font-bold transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+              item.released ? "bg-[var(--blue-500)] text-white" : "bg-[var(--blue-50)] text-[var(--blue-500)]",
+            )}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-3.5">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            {item.released ? "Watchlist" : "Alvast op watchlist"}
+          </button>
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label={`Seizoen ${item.season} van ${item.title} verbergen`}
+            className="flex size-[30px] items-center justify-center rounded-full bg-[var(--gray-50)] text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-100)]"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-3.5">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

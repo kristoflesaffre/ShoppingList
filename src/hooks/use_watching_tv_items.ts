@@ -4,6 +4,7 @@ import * as React from "react";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import type { WatchlistItem } from "@/lib/watchlist";
 import {
+  buildNewSeasonItems,
   buildWatchingTvItems,
   getEpisodeIdAfterWatchingNext,
   getHighestWatchedProgress,
@@ -12,9 +13,21 @@ import {
   mergeTvSeasons,
   normalizeTvSeasons,
   parseEpisodeWatchedId,
+  type NewSeasonItem,
   type TvSeasonInfo,
   type WatchingTvItem,
 } from "@/lib/tv-watching-progress";
+
+const NEW_SEASON_DISMISSED_KEY = "films_new_season_dismissed_v1";
+
+function readDismissedNewSeasons(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    return new Set(JSON.parse(localStorage.getItem(NEW_SEASON_DISMISSED_KEY) ?? "[]") as string[]);
+  } catch {
+    return new Set();
+  }
+}
 
 export type RemovedWatchingTvItemSnapshot = {
   watchlistItem: WatchlistItem;
@@ -37,6 +50,10 @@ export function useWatchingTvItems() {
   } = useFilmsLibrary();
 
   const [fetchedSeasons, setFetchedSeasons] = React.useState<Record<string, TvSeasonInfo[]>>({});
+  /** Seizoenen zoals TMDB ze nu kent, ook aangekondigde zonder afleveringen (voor «Nieuw seizoen»). */
+  const [rawSeasons, setRawSeasons] = React.useState<Record<string, TvSeasonInfo[]>>({});
+  const [dismissedNewSeasons, setDismissedNewSeasons] = React.useState<Set<string>>(() => new Set());
+  React.useEffect(() => setDismissedNewSeasons(readDismissedNewSeasons()), []);
   const fetchingRef = React.useRef<Set<string>>(new Set());
   const cleanedRef = React.useRef<Set<string>>(new Set());
 
@@ -50,6 +67,33 @@ export function useWatchingTvItems() {
       }),
     [watchedIds, watchlist, seriesMeta, fetchedSeasons],
   );
+
+  const newSeasonItems = React.useMemo(
+    (): NewSeasonItem[] =>
+      buildNewSeasonItems({
+        watchedIds,
+        watchlist,
+        seriesMeta,
+        rawSeasonsByTmdbId: rawSeasons,
+        dismissed: dismissedNewSeasons,
+      }),
+    [watchedIds, watchlist, seriesMeta, rawSeasons, dismissedNewSeasons],
+  );
+
+  const setNewSeasonDismissed = React.useCallback((item: NewSeasonItem, dismissed: boolean) => {
+    setDismissedNewSeasons((prev) => {
+      const next = new Set(prev);
+      const key = `${item.tmdbId}-s${item.season}`;
+      if (dismissed) next.add(key);
+      else next.delete(key);
+      try {
+        localStorage.setItem(NEW_SEASON_DISMISSED_KEY, JSON.stringify(Array.from(next)));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
 
   const watchingTmdbIds = React.useMemo(() => {
     const ids = new Set<string>();
@@ -80,8 +124,14 @@ export function useWatchingTvItems() {
             title: string;
             year: string;
             posterUrl: string | null;
-            seasons?: { seasonNumber: number; episodeCount: number; name?: string }[];
+            seasons?: { seasonNumber: number; episodeCount: number; name?: string; airDate?: string | null }[];
           }) => {
+            setRawSeasons((prev) => ({
+              ...prev,
+              [tmdbId]: (data.seasons ?? [])
+                .filter((x) => x.seasonNumber > 0)
+                .map((x) => ({ seasonNumber: x.seasonNumber, episodeCount: x.episodeCount, name: x.name, airDate: x.airDate ?? null })),
+            }));
             const remoteSeasons = mapSeasonsFromDetail(data.seasons);
             if (remoteSeasons.length === 0) return;
             const seasons = mergeTvSeasons(seriesMeta[tmdbId]?.seasons, remoteSeasons);
@@ -220,7 +270,10 @@ export function useWatchingTvItems() {
     removeWatchingItem,
     restoreWatchingItem,
     unmarkWatchedEpisode: unmarkWatched,
+    newSeasonItems,
+    dismissNewSeason: (item: NewSeasonItem) => setNewSeasonDismissed(item, true),
+    restoreNewSeason: (item: NewSeasonItem) => setNewSeasonDismissed(item, false),
   };
 }
 
-export type { WatchingTvItem };
+export type { NewSeasonItem, WatchingTvItem };

@@ -227,7 +227,7 @@ export function ProgressRing({ value, className, track, color }: { value: number
   );
 }
 
-export type SeasonPill = { seasonNumber: number; label: string; watched: number; total: number };
+export type SeasonPill = { seasonNumber: number; label: string; watched: number; total: number; isNew?: boolean };
 
 /** Canvas «21 · Seizoenpillen A»: niets zolang je niet begon, ringetje als je bezig bent, vinkje als het seizoen gezien is. */
 export function SeasonPills({ seasons, selected, onSelect, className }: { seasons: SeasonPill[]; selected: number; onSelect: (n: number) => void; className?: string }) {
@@ -253,7 +253,16 @@ export function SeasonPills({ seasons, selected, onSelect, className }: { season
               )}
             >
               {s.label}
-              {s.total > 0 && s.watched >= s.total ? (
+              {s.isNew ? (
+                <span
+                  className={cn(
+                    "inline-flex h-[18px] items-center rounded-pill px-1.5 text-[10px] font-extrabold tracking-[0.05em]",
+                    active ? "bg-white text-[#1f9d55]" : "bg-[#e9f9ef] text-[#1f9d55]",
+                  )}
+                >
+                  NIEUW
+                </span>
+              ) : s.total > 0 && s.watched >= s.total ? (
                 <span
                   aria-hidden
                   className={cn(
