@@ -661,3 +661,92 @@ export function DeckRoundAction({ label, icon, onClick, disabled }: { label: str
     </button>
   );
 }
+
+const THUMB_UP = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-7">
+    <path d="M7 10.5V20H4.6a1.1 1.1 0 0 1-1.1-1.1v-7.3a1.1 1.1 0 0 1 1.1-1.1H7z" />
+    <path d="M7 10.5 10.6 3.6a2.3 2.3 0 0 1 3.1 2.6l-.7 3.3h5.4a2 2 0 0 1 2 2.4l-1.4 6.4A2.2 2.2 0 0 1 16.9 20H7" />
+  </svg>
+);
+
+function DeckCircle({
+  label,
+  icon,
+  onClick,
+  primary,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "group flex w-[84px] flex-col items-center gap-1.5 text-[11.5px] font-bold leading-[14px] focus-visible:outline-none",
+        primary ? "text-[var(--blue-500)]" : "text-[var(--text-secondary)]",
+      )}
+    >
+      <span
+        className={cn(
+          "flex items-center justify-center rounded-full transition-transform duration-fast ease-out-strong group-focus-visible:ring-2 group-focus-visible:ring-[var(--border-focus)] group-focus-visible:ring-offset-2 motion-safe:group-active:scale-90 [@media(hover:hover)]:group-hover:scale-105",
+          primary
+            ? "size-[70px] bg-[var(--blue-500)] text-white shadow-[0_10px_24px_-10px_rgba(79,85,241,0.7)]"
+            : "size-[54px] bg-[var(--white)] text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle),0_10px_24px_-12px_rgba(16,17,48,0.45)]",
+        )}
+      >
+        {icon}
+      </span>
+      <span className="text-center">{label}</span>
+    </button>
+  );
+}
+
+/**
+ * Canvas «22 · Actiebalk B»: vaste balk onderaan een swipe-stapel — grote blauwe duim omhoog in
+ * het midden, kleinere ✕ en 👁 ernaast, labels eronder, op een zachte overloop naar de achtergrond.
+ */
+export function DeckActionBar({
+  upLabel,
+  onUp,
+  onDown,
+  onSeen,
+  extra,
+}: {
+  upLabel: string;
+  onUp: () => void;
+  onDown: () => void;
+  onSeen: () => void;
+  /** Optionele vierde knop (bv. «Ik kijk dit nu» bij een serie). */
+  extra?: { label: string; icon: React.ReactNode; onClick: () => void };
+}) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-[linear-gradient(180deg,rgba(245,246,250,0),var(--bg-app)_38%)] pb-[calc(env(safe-area-inset-bottom,0px)+20px)] pt-10">
+      <div className="pointer-events-auto mx-auto flex max-w-[956px] items-end justify-center gap-2.5">
+        <DeckCircle
+          label="Niet voor mij"
+          onClick={onDown}
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-5">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          }
+        />
+        <DeckCircle label={upLabel} onClick={onUp} icon={THUMB_UP} primary />
+        <DeckCircle
+          label="Al gezien"
+          onClick={onSeen}
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
+              <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+              <circle cx="12" cy="12" r="2.8" />
+            </svg>
+          }
+        />
+        {extra ? <DeckCircle label={extra.label} onClick={extra.onClick} icon={extra.icon} /> : null}
+      </div>
+    </div>
+  );
+}

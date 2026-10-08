@@ -6,9 +6,8 @@ import { useRouter, useParams } from "next/navigation";
 import { RoundIconButton } from "@/components/ui/round_icon_button";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import {
-  ActionPill,
+  DeckActionBar,
   DeckBody,
-  DeckRoundAction,
   DeckSkeleton,
   FilmIcons,
   GlassIconButton,
@@ -427,7 +426,7 @@ export default function PartnerFilmDetailPage() {
       </div>
 
       {/* Canvas «22 · Partner — één titel — voorstel» */}
-      <div className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+128px)] lg:pt-10">
+      <div className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col pb-[calc(env(safe-area-inset-bottom,0px)+150px)] lg:px-4 lg:pt-10 xl:px-0">
         <div className="mb-5 hidden items-center justify-between lg:flex">
           <div className="flex items-center gap-3">
             <PageBackButton href="/films-series/partner-watchlist" label="Terug" className="lg:flex" />
@@ -470,23 +469,7 @@ export default function PartnerFilmDetailPage() {
       </div>
 
       {!hasReacted && !loading && detail ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 bg-[linear-gradient(180deg,rgba(245,246,250,0),var(--bg-app)_30%)] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+18px)] pt-3.5">
-          <div className="mx-auto flex max-w-[956px] items-start justify-center gap-3">
-            <DeckRoundAction
-              label="Niet voor mij"
-              onClick={() => handleReact("down")}
-              icon={
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-5">
-                  <path d="M6 6l12 12M18 6 6 18" />
-                </svg>
-              }
-            />
-            <DeckRoundAction label="Al gezien" onClick={() => handleReact("seen")} icon={FilmIcons.eye} />
-            <ActionPill tone="primary" icon={FilmIcons.plus} onClick={() => handleReact("up")} className="h-[52px] px-[22px]">
-              Ook voor mij
-            </ActionPill>
-          </div>
-        </div>
+        <DeckActionBar upLabel="Ook voor mij" onUp={() => handleReact("up")} onDown={() => handleReact("down")} onSeen={() => handleReact("seen")} />
       ) : null}
 
       {showTrailer && detail?.trailerKey ? (
