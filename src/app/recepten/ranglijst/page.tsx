@@ -28,11 +28,59 @@ function ClockIcon() {
   );
 }
 
-function StatTile({ value, label }: { value: number; label: string }) {
+function PotIcon() {
   return (
-    <div className="min-w-0 flex-1 rounded-[18px] bg-[var(--white)] px-3.5 py-3 shadow-[inset_0_0_0_1px_var(--border-subtle)]">
-      <p className="text-[22px] font-extrabold leading-7 tracking-[-0.02em] text-[var(--text-primary)] tabular-nums">{value}</p>
-      <p className="text-xs leading-4 text-[var(--text-secondary)]">{label}</p>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
+      <path d="M4 10h16v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z" />
+      <path d="M2 10h2M20 10h2M9 7c0-1 .8-1.6.8-2.6M12.5 7c0-1 .8-1.6.8-2.6" />
+    </svg>
+  );
+}
+
+function BookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
+      <path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z" />
+      <path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19M9 7.5h6M9 11h4" />
+    </svg>
+  );
+}
+
+function SparkleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
+      <path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z" />
+      <path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" />
+    </svg>
+  );
+}
+
+/** Tegel met een getal; kleurig icoon links (desktop) of erboven (mobiel, smalle tegels). */
+function StatTile({
+  value,
+  label,
+  icon,
+  tone,
+}: {
+  value: number;
+  label: string;
+  icon: React.ReactNode;
+  tone: "orange" | "blue" | "green";
+}) {
+  const tones = {
+    orange: "bg-[#fff1e3] text-[#e07a1f]",
+    blue: "bg-[var(--blue-50)] text-[var(--blue-500)]",
+    green: "bg-[#e6f6ea] text-[#2f9a52]",
+  } as const;
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-2 rounded-[18px] bg-[var(--white)] px-3.5 py-3 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:flex-row lg:items-center lg:gap-3 lg:px-4 lg:py-3.5">
+      <span aria-hidden className={cn("flex size-10 shrink-0 items-center justify-center rounded-[12px]", tones[tone])}>
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[22px] font-extrabold leading-7 tracking-[-0.02em] text-[var(--text-primary)] tabular-nums">{value}</span>
+        <span className="block text-xs leading-4 text-[var(--text-secondary)]">{label}</span>
+      </span>
     </div>
   );
 }
@@ -83,9 +131,9 @@ export default function RanglijstPage() {
         </div>
 
         <div className="flex gap-2.5">
-          <StatTile value={summary.meals} label="maaltijden gekookt" />
-          <StatTile value={ranked.length} label="recepten" />
-          <StatTile value={summary.never} label="nooit gegeten" />
+          <StatTile value={summary.meals} label="maaltijden gekookt" icon={<PotIcon />} tone="orange" />
+          <StatTile value={ranked.length} label="recepten" icon={<BookIcon />} tone="blue" />
+          <StatTile value={summary.never} label="nooit gegeten" icon={<SparkleIcon />} tone="green" />
         </div>
 
         <div role="radiogroup" aria-label="Volgorde" className="flex rounded-pill bg-[var(--gray-50)] p-1 lg:w-[320px]">
