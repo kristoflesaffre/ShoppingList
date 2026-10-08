@@ -73,11 +73,11 @@ export default function CastPage() {
         {loading ? (
           <ListCard>
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="flex animate-pulse items-center gap-3 border-t border-[var(--border-subtle)] px-3.5 py-2.5 first:border-t-0">
-                <div className="size-12 rounded-full bg-[var(--gray-100)]" />
+              <div key={i} className="flex items-center gap-3 border-t border-[var(--border-subtle)] px-3.5 py-2.5 first:border-t-0">
+                <div className="size-12 rounded-full shimmer" />
                 <div className="flex flex-1 flex-col gap-2">
-                  <div className="h-4 w-1/2 rounded bg-[var(--gray-100)]" />
-                  <div className="h-3 w-1/3 rounded bg-[var(--gray-100)]" />
+                  <div className="h-4 w-1/2 rounded shimmer" />
+                  <div className="h-3 w-1/3 rounded shimmer" />
                 </div>
               </div>
             ))}

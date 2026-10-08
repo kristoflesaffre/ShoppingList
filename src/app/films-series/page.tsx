@@ -162,13 +162,13 @@ function ResultsSkeleton() {
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="flex h-[88px] items-center gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3 animate-pulse"
+          className="flex h-[88px] items-center gap-3 rounded-[8px] border border-[var(--gray-100)] bg-white py-3 pl-4 pr-3"
         >
-          <div className="h-16 w-[43px] shrink-0 rounded-[4px] bg-[var(--gray-100)]" />
+          <div className="h-16 w-[43px] shrink-0 rounded-[4px] shimmer" />
           <div className="flex flex-1 flex-col gap-2">
-            <div className="h-4 w-3/4 rounded bg-[var(--gray-100)]" />
-            <div className="h-3 w-1/2 rounded bg-[var(--gray-100)]" />
-            <div className="h-3 w-2/3 rounded bg-[var(--gray-100)]" />
+            <div className="h-4 w-3/4 rounded shimmer" />
+            <div className="h-3 w-1/2 rounded shimmer" />
+            <div className="h-3 w-2/3 rounded shimmer" />
           </div>
         </div>
       ))}

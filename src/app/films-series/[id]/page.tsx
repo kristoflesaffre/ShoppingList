@@ -161,17 +161,17 @@ function PartnerFeedbackBanner({
 
 function DetailSkeleton() {
   return (
-    <div className="flex animate-pulse flex-col">
-      <div className="h-[300px] bg-[var(--gray-100)] lg:mx-auto lg:mt-[88px] lg:h-[400px] lg:w-full lg:max-w-[956px] lg:rounded-[28px]" />
+    <div className="flex flex-col">
+      <div className="h-[300px] shimmer lg:mx-auto lg:mt-[88px] lg:h-[400px] lg:w-full lg:max-w-[956px] lg:rounded-[28px]" />
       <div className="mx-auto flex w-full max-w-[956px] flex-col gap-4 px-4 pt-5">
-        <div className="h-7 w-2/3 rounded bg-[var(--gray-100)]" />
-        <div className="h-4 w-1/2 rounded bg-[var(--gray-100)]" />
+        <div className="h-7 w-2/3 rounded shimmer" />
+        <div className="h-4 w-1/2 rounded shimmer" />
         <div className="flex gap-2.5">
-          <div className="h-11 flex-1 rounded-full bg-[var(--gray-100)]" />
-          <div className="h-11 flex-1 rounded-full bg-[var(--gray-100)]" />
+          <div className="h-11 flex-1 rounded-full shimmer" />
+          <div className="h-11 flex-1 rounded-full shimmer" />
         </div>
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-4 rounded bg-[var(--gray-100)]" style={{ width: i % 2 === 0 ? "100%" : "83%" }} />
+          <div key={i} className="h-4 rounded shimmer" style={{ width: i % 2 === 0 ? "100%" : "83%" }} />
         ))}
       </div>
     </div>

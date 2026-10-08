@@ -357,13 +357,13 @@ export function EpisodeRow({
 
 export function EpisodeRowSkeleton() {
   return (
-    <div className="flex animate-pulse items-center gap-3 border-t border-[var(--border-subtle)] px-3.5 py-3 first:border-t-0">
-      <div className="h-14 w-24 shrink-0 rounded-[10px] bg-[var(--gray-100)] lg:h-[68px] lg:w-[120px]" />
+    <div className="flex items-center gap-3 border-t border-[var(--border-subtle)] px-3.5 py-3 first:border-t-0">
+      <div className="h-14 w-24 shrink-0 rounded-[10px] shimmer lg:h-[68px] lg:w-[120px]" />
       <div className="flex flex-1 flex-col gap-2">
-        <div className="h-4 w-3/4 rounded bg-[var(--gray-100)]" />
-        <div className="h-3 w-1/2 rounded bg-[var(--gray-100)]" />
+        <div className="h-4 w-3/4 rounded shimmer" />
+        <div className="h-3 w-1/2 rounded shimmer" />
       </div>
-      <div className="size-9 rounded-full bg-[var(--gray-100)]" />
+      <div className="size-9 rounded-full shimmer" />
     </div>
   );
 }

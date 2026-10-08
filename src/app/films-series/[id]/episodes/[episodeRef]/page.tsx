@@ -40,14 +40,14 @@ type SeriesInfo = {
 
 function DetailSkeleton() {
   return (
-    <div className="flex animate-pulse flex-col">
-      <div className="-mx-4 h-[260px] bg-[var(--gray-100)] lg:mx-0 lg:h-[300px] lg:rounded-[24px]" />
+    <div className="flex flex-col">
+      <div className="-mx-4 h-[260px] shimmer lg:mx-0 lg:h-[300px] lg:rounded-[24px]" />
       <div className="flex flex-col gap-3 pt-5">
-        <div className="h-3 w-1/2 rounded bg-[var(--gray-100)]" />
-        <div className="h-7 w-3/4 rounded bg-[var(--gray-100)]" />
-        <div className="h-4 w-2/3 rounded bg-[var(--gray-100)]" />
+        <div className="h-3 w-1/2 rounded shimmer" />
+        <div className="h-7 w-3/4 rounded shimmer" />
+        <div className="h-4 w-2/3 rounded shimmer" />
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-4 rounded bg-[var(--gray-100)]" style={{ width: i % 2 === 0 ? "100%" : "83%" }} />
+          <div key={i} className="h-4 rounded shimmer" style={{ width: i % 2 === 0 ? "100%" : "83%" }} />
         ))}
       </div>
     </div>
