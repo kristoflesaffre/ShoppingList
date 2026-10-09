@@ -27,6 +27,7 @@ import {
   type TripPersonTab,
 } from "@/lib/trip-person";
 import type { ItemStore } from "@/lib/item-store";
+import { StoreChip, StoreChoiceTiles, StoreMarkMenu } from "./store_mark";
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
@@ -73,6 +74,16 @@ export type ListItem = {
   tripPerson?: TripPersonTab;
   /** Lidl / Delhaize-lijstje: winkelkeuze (eigen keuze of overgenomen van de favoriet). */
   store?: ItemStore;
+  /** Waar een overgenomen winkel vandaan komt (geen eigen keuze op dit item). */
+  storeOrigin?: "favorite" | "history";
+};
+
+/** Lidl / Delhaize-lijstje: winkelkeuze in het toevoeg- en wijzigscherm. */
+export type StoreChoiceConfig = {
+  /** Voorstel voor een product: favoriet met dezelfde naam, anders de vorige keer. */
+  suggest: (name: string) => { store: ItemStore; origin: "favorite" | "history" } | undefined;
+  /** Weeklijstje: bestaat er een favoriet met deze naam (voor «Ook in je favorieten aanpassen»)? */
+  hasFavorite?: (name: string) => boolean;
 };
 
 type Ingredient = RecipeIngredient;
@@ -201,6 +212,14 @@ function FishIcon({ className }: { className?: string }) {
   );
 }
 
+function StarHintIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3.5 shrink-0 text-[var(--blue-500)]">
+      <path d="M12 4l2.3 4.8 5.2.7-3.8 3.6.9 5.2L12 15.8 7.4 18.3l.9-5.2-3.8-3.6 5.2-.7z" />
+    </svg>
+  );
+}
+
 export function NewItemModal({
   open,
   onClose,
@@ -217,6 +236,7 @@ export function NewItemModal({
   initialTripPerson,
   groupingMode = "day",
   listDateStr = "",
+  storeChoice = null,
 }: {
   open: boolean;
   onClose: () => void;
@@ -228,9 +248,10 @@ export function NewItemModal({
     fromStock?: boolean;
     stockPhotoUrl?: string;
     tripPerson?: TripPersonTab;
+    store?: ItemStore;
   }) => void;
   editingItem?: ListItem | null;
-  onSave?: (item: ListItem) => void;
+  onSave?: (item: ListItem, options?: { alsoFavorite?: boolean }) => void;
   initialSection?: string | null;
   /** Bij groepering "per categorie": vooringestelde winkel-categorie voor het nieuwe item. */
   initialItemCategory?: string | null;
@@ -246,6 +267,8 @@ export function NewItemModal({
   groupingMode?: "day" | "category";
   /** Datum van het lijstje (dd-mm-jjjj): voor de datum op de dagkaartjes. */
   listDateStr?: string;
+  /** Alleen op een Lidl / Delhaize-lijstje: «Waar koop je dit?». */
+  storeChoice?: StoreChoiceConfig | null;
 }) {
   const isEditMode = editingItem != null;
   const isSmall = useIsSmallScreen();
@@ -263,6 +286,10 @@ export function NewItemModal({
   const [stepperValue, setStepperValue] = React.useState(1);
   const [quantityDesc, setQuantityDesc] = React.useState("stuk");
   const [batchEntries, setBatchEntries] = React.useState<BatchEntry[]>([]);
+  const [itemStore, setItemStore] = React.useState<ItemStore | undefined>(undefined);
+  const [itemStoreOrigin, setItemStoreOrigin] = React.useState<"favorite" | "history" | undefined>(undefined);
+  const [alsoFavorite, setAlsoFavorite] = React.useState(false);
+  const [batchStoreMenu, setBatchStoreMenu] = React.useState<{ entryId: string; anchor: DOMRect } | null>(null);
   const [editingBatchEntryId, setEditingBatchEntryId] = React.useState<string | null>(null);
   const [activeCategory, setActiveCategory] = React.useState<RecipeCategory | null>(null);
   const [showRecipeForm, setShowRecipeForm] = React.useState(false);
@@ -381,6 +408,10 @@ export function NewItemModal({
       setQuantityDesc("stuk");
       setBatchEntries([]);
       setEditingBatchEntryId(null);
+      setItemStore(undefined);
+      setItemStoreOrigin(undefined);
+      setAlsoFavorite(false);
+      setBatchStoreMenu(null);
       setFreezerSearch("");
       setActiveCategory(null);
       setShowRecipeForm(false);
@@ -393,6 +424,9 @@ export function NewItemModal({
       setEditingIngredientId(null);
     } else if (editingItem) {
       setItemName(editingItem.name);
+      setItemStore(editingItem.store);
+      setItemStoreOrigin(editingItem.storeOrigin);
+      setAlsoFavorite(false);
       const { stepperValue: sv, quantityDesc: qd } =
         parseRecipeIngredientQuantity(editingItem.quantity);
       setStepperValue(sv);
@@ -450,6 +484,14 @@ export function NewItemModal({
     if (open) setActiveCategory(null);
   }, [open]);
 
+  /** Nieuw product in de editor: winkel voorkiezen uit favorieten of de vorige keer. */
+  React.useEffect(() => {
+    if (!open || !storeChoice || isEditMode || editingBatchEntryId) return;
+    const s = storeChoice.suggest(itemName.trim());
+    setItemStore(s?.store);
+    setItemStoreOrigin(s?.origin);
+  }, [open, storeChoice, isEditMode, editingBatchEntryId, itemName]);
+
   React.useEffect(() => {
     if (!open || !isVacationList || isEditMode || initialItemCategory != null) return;
     const trimmed = itemName.trim();
@@ -479,20 +521,23 @@ export function NewItemModal({
     const isPreDeparture = isVacationList && vacationCategory === "Te regelen";
     const vacationSection = isPreDeparture ? "Voor vertrek" : "Algemeen";
     if (isEditMode && editingItem && onSave) {
+      const storeChanged = storeChoice != null && itemStore !== editingItem.store;
       onSave({
         ...editingItem,
+        ...(storeChoice ? { store: itemStore, storeOrigin: storeChanged ? undefined : editingItem.storeOrigin } : {}),
         name: itemName.trim(),
         quantity: qty,
         section: isVacationList ? vacationSection : section,
         itemCategory: isVacationList ? vacationCategory : resolveItemCategoryFromName(itemName.trim()),
         ...(isVacationList && !isPreDeparture ? { tripPerson: normalizeTripPerson(tripPerson) } : {}),
-      });
+      }, { alsoFavorite: storeChoice != null && alsoFavorite });
     } else {
       onAdd({
         name: itemName.trim(),
         quantity: qty,
         section: isVacationList ? vacationSection : section,
         itemCategory,
+        ...(storeChoice && itemStore ? { store: itemStore } : {}),
         ...(isVacationList && !isPreDeparture ? { tripPerson: normalizeTripPerson(tripPerson) } : {}),
       });
     }
@@ -505,6 +550,8 @@ export function NewItemModal({
     setStepperValue(1);
     setQuantityDesc("stuk");
     setEditingBatchEntryId(null);
+    setItemStore(undefined);
+    setItemStoreOrigin(undefined);
   }, []);
 
   /** Bouwt het item dat momenteel in de batch-editor staat (of null als er geen is). */
@@ -524,9 +571,10 @@ export function NewItemModal({
         checked: false,
         section,
         itemCategory: resolveItemCategoryFromName(name),
+        ...(storeChoice && itemStore ? { store: itemStore } : {}),
       },
     };
-  }, [batchMode, editingBatchEntryId, itemName, quantityDesc, selectedDay, stepperValue]);
+  }, [batchMode, editingBatchEntryId, itemName, quantityDesc, selectedDay, stepperValue, storeChoice, itemStore]);
 
   const mergeBatchEntry = React.useCallback(
     (previous: BatchEntry[], nextEntry: BatchEntry): BatchEntry[] =>
@@ -556,6 +604,8 @@ export function NewItemModal({
     setSelectedDay(
       entry.item.section === "Algemeen" ? "Geen" : entry.item.section,
     );
+    setItemStore(entry.item.store);
+    setItemStoreOrigin(entry.item.storeOrigin);
     setEditingBatchEntryId(entry.id);
   }, []);
 
@@ -599,13 +649,28 @@ export function NewItemModal({
               checked: false,
               section: selectedDay === "Geen" ? "Algemeen" : selectedDay,
               itemCategory: resolveItemCategoryFromName(name),
+              ...(() => {
+                const s = storeChoice?.suggest(name);
+                return s ? { store: s.store, storeOrigin: s.origin } : {};
+              })(),
             },
           },
         ];
       });
     },
-    [selectedDay],
+    [selectedDay, storeChoice],
   );
+
+  const setBatchItemStore = React.useCallback((entryId: string, store: ItemStore) => {
+    setBatchEntries((previous) =>
+      previous.map((entry) =>
+        entry.id === entryId && entry.kind === "item"
+          ? { ...entry, item: { ...entry.item, store, storeOrigin: undefined } }
+          : entry,
+      ),
+    );
+    setBatchStoreMenu(null);
+  }, []);
 
   const setBatchItemCount = React.useCallback((entryId: string, count: number) => {
     setBatchEntries((previous) =>
@@ -897,6 +962,35 @@ export function NewItemModal({
       />
     ) : null;
 
+  const storeOriginHint =
+    itemStoreOrigin === "favorite" ? (
+      <>
+        <StarHintIcon />
+        {batchMode ? "Voorgekozen uit je favorieten" : "Zoals in je favorieten"}
+      </>
+    ) : itemStoreOrigin === "history" ? (
+      <>
+        <StarHintIcon />
+        Zoals de vorige keer
+      </>
+    ) : isMasterList ? (
+      "Elk nieuw lijstje neemt deze winkel over."
+    ) : null;
+  const storeTiles = (onWhite: boolean) =>
+    storeChoice ? (
+      <StoreChoiceTiles
+        value={itemStore}
+        onWhite={onWhite}
+        hint={storeOriginHint}
+        onChange={(next) => {
+          setItemStore(next);
+          setItemStoreOrigin(undefined);
+        }}
+      />
+    ) : null;
+  const showAlsoFavorite =
+    storeChoice != null && isEditMode && !isMasterList && storeChoice.hasFavorite?.(itemName.trim()) === true;
+
   const activeBatchItemPhotoUrl = itemName.trim()
     ? getItemPhotoUrl(itemName.trim(), 160)
     : null;
@@ -957,6 +1051,7 @@ export function NewItemModal({
           />
         </div>
       </div>
+      {storeTiles(true)}
     </section>
   ) : null;
 
@@ -1011,6 +1106,11 @@ export function NewItemModal({
                     ? entry.item.quantity
                     : `Recept · ${entry.items.length} ${entry.items.length === 1 ? "ingrediënt" : "ingrediënten"}`}
                 </span>
+                {isItem && storeChoice ? (
+                  <span className="mt-1 flex">
+                    <StoreChip store={entry.item.store} onClick={(anchor) => setBatchStoreMenu({ entryId: entry.id, anchor })} />
+                  </span>
+                ) : null}
               </span>
               {isItem ? (
                 <CountStepper name={title} value={count} onChange={(next) => setBatchItemCount(entry.id, next)} />
@@ -1028,6 +1128,19 @@ export function NewItemModal({
           );
         })}
       </ul>
+      {batchStoreMenu
+        ? (() => {
+            const entry = batchEntries.find((e) => e.id === batchStoreMenu.entryId);
+            return entry && entry.kind === "item" ? (
+              <StoreMarkMenu
+                item={entry.item}
+                anchor={batchStoreMenu.anchor}
+                onPick={(store) => setBatchItemStore(entry.id, store)}
+                onClose={() => setBatchStoreMenu(null)}
+              />
+            ) : null;
+          })()
+        : null}
     </section>
   ) : null;
 
@@ -1346,6 +1459,18 @@ export function NewItemModal({
                     />
                   </div>
                   )}
+                  {!isVacationList && !batchMode ? storeTiles(false) : null}
+                  {showAlsoFavorite ? (
+                    <label className="-mt-1 flex cursor-pointer items-center gap-2.5 text-[13.5px] text-[var(--text-secondary)]">
+                      <input
+                        type="checkbox"
+                        checked={alsoFavorite}
+                        onChange={(e) => setAlsoFavorite(e.target.checked)}
+                        className="size-5 shrink-0 cursor-pointer rounded-[6px] accent-[var(--blue-500)]"
+                      />
+                      Ook in je favorieten aanpassen
+                    </label>
+                  ) : null}
                 </div>
               )}
 

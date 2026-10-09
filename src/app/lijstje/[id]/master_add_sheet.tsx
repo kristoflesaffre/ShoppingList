@@ -14,6 +14,8 @@ import {
   resolveItemCategoryFromName,
 } from "@/lib/item-ingredient-category";
 import { cn } from "@/lib/utils";
+import type { ItemStore } from "@/lib/item-store";
+import { StoreLogos } from "./store_mark";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 
 type CatalogItem = { slug: string; name: string; photo: string; category: string };
@@ -98,6 +100,7 @@ export function MasterAddSheet({
   existingNames,
   initialCategory,
   onAddItems,
+  storeChoice = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -108,11 +111,14 @@ export function MasterAddSheet({
   /** Geopend via «+» bij een categorie: die categorie staat open / is gekozen. */
   initialCategory?: string | null;
   onAddItems: (items: ListItem[]) => void;
+  /** Lidl / Delhaize: «Kopen bij» voor de gekozen producten. */
+  storeChoice?: boolean;
 }) {
   const isDesktop = useIsDesktop();
   const catalog = useGroceryCatalog();
   const getPhotoUrl = useItemPhotoUrl(160);
   const [selected, setSelected] = React.useState<string[]>([]);
+  const [store, setStore] = React.useState<ItemStore | undefined>(undefined);
   const [query, setQuery] = React.useState("");
   const [openCats, setOpenCats] = React.useState<Set<string>>(new Set());
   const [activeCat, setActiveCat] = React.useState<string | null>(null);
@@ -136,6 +142,7 @@ export function MasterAddSheet({
   React.useEffect(() => {
     if (!open) {
       setSelected([]);
+      setStore(undefined);
       setQuery("");
       setActiveCat(null);
       return;
@@ -179,6 +186,7 @@ export function MasterAddSheet({
         checked: false,
         section: "Algemeen",
         itemCategory: resolveItemCategoryFromName(name),
+        ...(storeChoice && store ? { store } : {}),
       })),
     );
     onClose();
@@ -260,13 +268,44 @@ export function MasterAddSheet({
     />
   );
 
+  const storeRow = storeChoice ? (
+    <div role="radiogroup" aria-label="Kopen bij" className="flex items-center gap-1.5 px-1 pb-2">
+      <span className="mr-0.5 shrink-0 text-xs font-semibold opacity-70">Kopen bij</span>
+      {([
+        ["lidl", "Lidl"],
+        ["delhaize", "Delhaize"],
+        ["both", "Allebei"],
+      ] as const).map(([value, label]) => {
+        const on = store === value;
+        return (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => setStore(on ? undefined : value)}
+            className={cn(
+              "inline-flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-pill text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+              on ? "bg-[var(--white)] text-text-primary" : "bg-[rgba(255,255,255,0.12)] text-[var(--white)]",
+            )}
+          >
+            <StoreLogos store={value} size={18} ring={value === "both"} />
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
   const tray = (
     <div
       className={cn(
-        "pointer-events-auto flex items-center gap-2.5 rounded-[24px] bg-[var(--text-primary)] py-2 pl-3 pr-2 text-[var(--white)] shadow-[0_14px_30px_-12px_rgba(16,17,48,0.6)] motion-safe:animate-fade-up",
+        "pointer-events-auto flex flex-col rounded-[24px] bg-[var(--text-primary)] py-2 pl-3 pr-2 text-[var(--white)] shadow-[0_14px_30px_-12px_rgba(16,17,48,0.6)] motion-safe:animate-fade-up",
         isDesktop ? "absolute bottom-6 right-6 w-[440px]" : "absolute inset-x-3 bottom-[calc(20px+env(safe-area-inset-bottom,0px))]",
       )}
     >
+      {storeRow}
+      <div className="flex items-center gap-2.5">
       <span className="flex shrink-0" aria-hidden>
         {selected.slice(-3).map((name, i) => {
           const src = getPhotoUrl(name, 160);
@@ -294,6 +333,7 @@ export function MasterAddSheet({
         <CheckIcon className="size-3.5" />
         Toevoegen
       </button>
+      </div>
     </div>
   );
 

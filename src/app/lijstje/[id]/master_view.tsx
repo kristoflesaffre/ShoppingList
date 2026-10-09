@@ -260,7 +260,7 @@ function MasterItemRow({
   const { className: pressCls, ...press } = useStoreLongPress(item);
   const photo = item.stockPhotoUrl ?? getPhotoUrl(item.name, 80) ?? null;
   return (
-    <div className="relative">
+    <div className="relative isolate">
       <SwipeToDelete onDelete={() => onDelete(item.id)} deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}>
         <button
           {...press}
@@ -291,7 +291,7 @@ function MasterItemRow({
         <button
           type="button"
           onClick={(e) => storeMark.openMenu(item, (e.currentTarget.closest("li") ?? e.currentTarget).getBoundingClientRect())}
-          className="absolute right-1 top-1/2 z-10 inline-flex h-7 bg-[var(--white)] -translate-y-1/2 items-center rounded-pill px-2.5 text-xs font-bold text-[var(--text-secondary)] shadow-[inset_0_0_0_1.2px_var(--gray-200)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          className="absolute right-1 top-1/2 z-[2] inline-flex h-7 bg-[var(--white)] -translate-y-1/2 items-center rounded-pill px-2.5 text-xs font-bold text-[var(--text-secondary)] shadow-[inset_0_0_0_1.2px_var(--gray-200)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
           + winkel
         </button>

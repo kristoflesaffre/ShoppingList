@@ -147,7 +147,7 @@ import {
   listIsCafeVenueList,
   listIsFrituurVenueList,
 } from "@/lib/list-product-icons";
-import type { ListItem } from "./new_item_modal";
+import type { ListItem, StoreChoiceConfig } from "./new_item_modal";
 import { RECIPE_BLOCK_PREFIX,
   ListCardsView,
   ListGroupingMenuChip,
@@ -3424,6 +3424,50 @@ export default function ListDetailPage({
     return map;
   }, [categoryOrderMasterData?.lists]);
 
+  /** Id van elke favoriet op naam (voor «Ook in je favorieten aanpassen»). */
+  const masterItemIdByName = React.useMemo(() => {
+    const map = new Map<string, string>();
+    const masterItems = (categoryOrderMasterData?.lists?.[0] as { items?: unknown[] } | undefined)?.items ?? [];
+    for (const raw of masterItems) {
+      const row = raw as Record<string, unknown>;
+      if (typeof row.name === "string" && typeof row.id === "string") map.set(storeNameKey(row.name), row.id);
+    }
+    return map;
+  }, [categoryOrderMasterData?.lists]);
+
+  /**
+   * Geheugen: de laatste winkel die je ooit voor een product koos, over al je lijstjes heen
+   * (nieuwste lijstje eerst — nieuwe lijstjes krijgen de laagste `order`).
+   */
+  const rememberedStoreByName = React.useMemo(() => {
+    const map = new Map<string, ItemStore>();
+    const lists = [...((ownerVenueHistoryData?.lists ?? []) as Array<{ id: string; order?: number; items?: unknown[] }>)].sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0),
+    );
+    for (const l of lists) {
+      for (const raw of l.items ?? []) {
+        const row = raw as Record<string, unknown>;
+        const store = parseItemStore(row.store);
+        if (!store || typeof row.name !== "string") continue;
+        const key = storeNameKey(row.name);
+        if (!map.has(key)) map.set(key, store);
+      }
+    }
+    return map;
+  }, [ownerVenueHistoryData?.lists]);
+
+  const suggestItemStore = React.useCallback(
+    (name: string): { store: ItemStore; origin: "favorite" | "history" } | undefined => {
+      const key = storeNameKey(name);
+      if (!key) return undefined;
+      const fav = masterStoreByName.get(key);
+      if (fav) return { store: fav, origin: "favorite" };
+      const prev = rememberedStoreByName.get(key);
+      return prev ? { store: prev, origin: "history" } : undefined;
+    },
+    [masterStoreByName, rememberedStoreByName],
+  );
+
   const items: ListItem[] = React.useMemo(() => {
     if (!listData?.items) return [];
     return [...listData.items]
@@ -3458,10 +3502,15 @@ export default function ListDetailPage({
             }
             return normalizeTripPerson(rawTp);
           })(),
-          store: parseItemStore(row.store) ?? masterStoreByName.get(storeNameKey(it.name)),
+          ...(() => {
+            const own = parseItemStore(row.store);
+            if (own) return { store: own };
+            const s = suggestItemStore(it.name);
+            return s ? { store: s.store, storeOrigin: s.origin } : {};
+          })(),
         };
       });
-  }, [listData, masterStoreByName]);
+  }, [listData, suggestItemStore]);
 
   React.useEffect(() => {
     if (!isVakantieList || !isListOwner || !listData?.items?.length) return;
@@ -4482,6 +4531,7 @@ export default function ListDetailPage({
                 ...(item.tripPerson !== undefined
                   ? { tripPerson: normalizeTripPerson(item.tripPerson) }
                   : {}),
+                ...(item.store ? { store: item.store } : {}),
                 ...(computedItemDate != null ? { itemDate: computedItemDate } : {}),
               })
               .link({ list: listId });
@@ -4767,6 +4817,7 @@ export default function ListDetailPage({
       fromStock?: boolean;
       stockPhotoUrl?: string;
       tripPerson?: TripPersonTab;
+      store?: ItemStore;
     }) => {
       const newId = iid();
       const itemCategory =
@@ -4832,6 +4883,7 @@ export default function ListDetailPage({
             order: idx,
             ...(newItem.fromStock ? { fromStock: true } : {}),
             ...(newItem.stockPhotoUrl ? { stockPhotoUrl: newItem.stockPhotoUrl } : {}),
+            ...(newItem.store ? { store: newItem.store } : {}),
             ...(computeSectionAbsoluteDate(newItem.section) != null
               ? { itemDate: computeSectionAbsoluteDate(newItem.section)! }
               : {}),
@@ -4866,7 +4918,7 @@ export default function ListDetailPage({
     ],
   );
 
-  const handleSaveEditedItem = React.useCallback((updatedItem: ListItem) => {
+  const handleSaveEditedItem = React.useCallback((updatedItem: ListItem, options?: { alsoFavorite?: boolean }) => {
     const itemCategory = updatedItem.itemCategory ?? resolveListItemCategory(updatedItem.name);
     const isPreDepartureItem = isLandalOrVakantieList && itemCategory === "Te regelen";
     const effectiveSection = isPreDepartureItem ? "Voor vertrek" : updatedItem.section;
@@ -4883,8 +4935,16 @@ export default function ListDetailPage({
           : {}),
       }),
     );
+    // Winkel: alleen een eigen keuze opslaan (een overgenomen winkel blijft overgenomen).
+    if (isLidlDelhaizeList && updatedItem.storeOrigin == null) {
+      db.transact(db.tx.items[updatedItem.id].update({ store: updatedItem.store ?? null }));
+    }
+    const favoriteId = masterItemIdByName.get(storeNameKey(updatedItem.name));
+    if (options?.alsoFavorite && favoriteId && updatedItem.store) {
+      db.transact(db.tx.items[favoriteId].update({ store: updatedItem.store }));
+    }
     setEditingItem(null);
-  }, [isLandalOrVakantieList, resolveListItemCategory]);
+  }, [isLandalOrVakantieList, resolveListItemCategory, isLidlDelhaizeList, masterItemIdByName]);
 
   const effectiveListGroupingMode: "day" | "category" = isMasterList
     ? "day"
@@ -4904,6 +4964,14 @@ export default function ListDetailPage({
     [itemsForListSections, activeStoreFilter],
   );
   const hiddenByStoreFilter = itemsForListSections.length - itemsForStoreView.length;
+
+  const storeChoiceConfig = React.useMemo<StoreChoiceConfig | null>(
+    () =>
+      isLidlDelhaizeList
+        ? { suggest: suggestItemStore, hasFavorite: (name: string) => masterItemIdByName.has(storeNameKey(name)) }
+        : null,
+    [isLidlDelhaizeList, suggestItemStore, masterItemIdByName],
+  );
 
   const storeMarkApi = React.useMemo(
     () =>
@@ -6192,6 +6260,7 @@ export default function ListDetailPage({
           existingNames={items.map((i) => i.name)}
           initialCategory={initialItemCategory}
           onAddItems={handleAddItemsFromRecipe}
+          storeChoice={isLidlDelhaizeList}
         />
       ) : null}
       <NewItemModal
@@ -6221,6 +6290,7 @@ export default function ListDetailPage({
             : undefined
         }
         groupingMode="day"
+        storeChoice={storeChoiceConfig}
       />
 
       <LandalPuddyFeedSlideIn

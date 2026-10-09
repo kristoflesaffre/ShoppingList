@@ -252,3 +252,89 @@ export function StoreHiddenNote({
     </div>
   );
 }
+
+/**
+ * Canvas «Winkel per item»: «Waar koop je dit?» met drie tegels in het toevoeg- en wijzigscherm.
+ * Nog eens tikken op de gekozen tegel maakt de keuze leeg.
+ */
+export function StoreChoiceTiles({
+  value,
+  onChange,
+  hint,
+  onWhite = false,
+  label = "Waar koop je dit?",
+}: {
+  value?: ItemStore;
+  onChange: (value: ItemStore | undefined) => void;
+  hint?: React.ReactNode;
+  /** Op een gekleurde achtergrond (blauw vak): tegels wit met rand. */
+  onWhite?: boolean;
+  label?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm font-normal leading-20 text-[var(--text-primary)]">{label}</span>
+      <div role="radiogroup" aria-label={label} className="flex gap-2">
+        {STORE_OPTIONS.map((o) => {
+          const on = value === o.value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => onChange(on ? undefined : o.value)}
+              className={cn(
+                "relative flex h-[76px] flex-1 flex-col items-center justify-center gap-1.5 rounded-[16px] text-sm font-bold text-text-primary transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                on
+                  ? "bg-[var(--blue-25)] shadow-[inset_0_0_0_2px_var(--blue-500)]"
+                  : onWhite
+                    ? "bg-[var(--white)] shadow-[inset_0_0_0_1px_var(--border-subtle)]"
+                    : "bg-[var(--gray-25)]",
+              )}
+            >
+              {on ? (
+                <span aria-hidden className="absolute right-[7px] top-[7px] flex size-[18px] items-center justify-center rounded-full bg-[var(--blue-500)] text-white">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="size-[11px]">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                </span>
+              ) : null}
+              <StoreLogos store={o.value} size={28} ring={o.value === "both"} />
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+      {hint ? <p className="flex items-center gap-1.5 text-[12.5px] text-[var(--text-secondary)]">{hint}</p> : null}
+    </div>
+  );
+}
+
+/** Klein label onder een gekozen item: logo + winkel, of «+ winkel». Tik = winkelmenu. */
+export function StoreChip({ store, onClick }: { store?: ItemStore; onClick: (anchor: DOMRect) => void }) {
+  const label = store === "lidl" ? "Lidl" : store === "delhaize" ? "Delhaize" : store === "both" ? "Allebei" : null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => onClick((e.currentTarget.closest("li") ?? e.currentTarget).getBoundingClientRect())}
+      aria-label={label ? `Winkel: ${label}. Wijzigen` : "Winkel kiezen"}
+      className={cn(
+        "inline-flex h-6 items-center gap-1 self-start rounded-pill text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        store ? "bg-[var(--gray-25)] pl-1 pr-2 text-text-primary" : "px-2.5 text-[var(--text-secondary)] shadow-[inset_0_0_0_1.2px_var(--gray-200)]",
+      )}
+    >
+      {store ? (
+        <>
+          <StoreLogos store={store} size={16} ring={store === "both"} />
+          {label}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[11px]">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </>
+      ) : (
+        "+ winkel"
+      )}
+    </button>
+  );
+}
