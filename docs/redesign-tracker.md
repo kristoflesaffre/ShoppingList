@@ -56,6 +56,6 @@ Status: ✅ klaar · 🔄 bezig · ⬜ nog te doen
 | 22 | Films & series · watchlist, aan het kijken, ontdekken, partner | `/films-series/watchlist/[kind]`, `/aan-het-kijken`, `/discover`, `/partner-watchlist`, `/partner/[id]` | ✅ |
 | 23 | Films & series · instellingen | `/films-series/instellingen` | ✅ |
 | 24 | Gedeelde pagina's (link) | `/deel/[token]`, `/deel/recept/…`, `/deel/te-kopen/…`, `/deel/films-series/…` | ✅ |
-| 25 | Beheer · ontbrekende afbeeldingen | `/admin/ontbrekende-afbeeldingen` | ⬜ |
+| 25 | Beheer · ontbrekende afbeeldingen | ~~`/admin/ontbrekende-afbeeldingen`~~ verwijderd (niet meer nodig) | ✅ |
 | 26 | Beheer · foto-generator | `/food-image-generator`, `food_image_generator_slide_in.tsx` | ⬜ |
 | 27 | Barcode scannen | `camera_barcode_scanner_slide_in.tsx` | ⬜ |

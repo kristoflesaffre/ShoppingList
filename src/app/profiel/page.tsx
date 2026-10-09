@@ -160,36 +160,11 @@ export default function ProfielPage() {
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
-
-  React.useEffect(() => {
-    if (!adminUser?.id) {
-      setIsAdmin(false);
-      return;
-    }
-    let cancelled = false;
-    void fetch("/api/admin/me", {
-      headers: {
-        "x-admin-user-id": adminUser.id,
-        "x-admin-email": adminUser.email ?? "",
-      },
-    })
-      .then((response) => response.json() as Promise<{ isAdmin?: boolean }>)
-      .then((data) => {
-        if (!cancelled) setIsAdmin(data.isAdmin === true);
-      })
-      .catch(() => {
-        if (!cancelled) setIsAdmin(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [adminUser?.email, adminUser?.id]);
 
   const displayUrl = previewUrl ?? profileAvatarUrl;
 
@@ -274,13 +249,6 @@ export default function ProfielPage() {
   const homeIcon = (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="size-5">
       <path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" />
-    </svg>
-  );
-  const imageIcon = (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="size-5">
-      <rect x="3" y="4" width="18" height="16" rx="3" />
-      <circle cx="9" cy="10" r="2" />
-      <path d="m21 16-5-5-9 9" />
     </svg>
   );
 
@@ -376,17 +344,6 @@ export default function ProfielPage() {
           onClick={() => router.push("/profiel/delen")}
         />
       </li>
-      {isAdmin ? (
-        <li>
-          <ProfileSettingsRow
-            bare={bare}
-            icon={imageIcon}
-            label="Ontbrekende afbeeldingen beheren"
-            description="Beheerder: productfoto's aanvullen"
-            onClick={() => router.push("/admin/ontbrekende-afbeeldingen")}
-          />
-        </li>
-      ) : null}
     </>
   );
 
