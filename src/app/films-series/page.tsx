@@ -15,7 +15,7 @@ import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { useWatchingTvItems, type NewSeasonItem, type WatchingTvItem } from "@/hooks/use_watching_tv_items";
 import { Snackbar } from "@/components/ui/snackbar";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
-import { getScoreSourceCache, setScoreSource } from "@/lib/score_source_cache";
+import { getMissingTitles, getScoreSourceCache, markTitleMissing, setScoreSource } from "@/lib/score_source_cache";
 
 type SearchResult = {
   id: string;
@@ -702,7 +702,8 @@ export default function FilmsSeriesPage() {
 
   React.useEffect(() => {
     const cache = getScoreSourceCache();
-    const missing = partnerWatchlist.filter((item) => !cache[item.id]);
+    const gone = getMissingTitles();
+    const missing = partnerWatchlist.filter((item) => !cache[item.id] && !gone.has(item.id));
     if (missing.length === 0) return;
     void Promise.all(
       missing.map(async (item) => {
@@ -711,6 +712,7 @@ export default function FilmsSeriesPage() {
         const tmdbId = item.id.slice(dash + 1);
         try {
           const res = await fetch(`/api/films/detail?type=${type}&id=${tmdbId}`);
+          if (res.status === 404) markTitleMissing(item.id);
           const data = (await res.json()) as { scoreSource?: "imdb" | "tmdb" };
           return { id: item.id, scoreSource: data.scoreSource };
         } catch {
@@ -731,15 +733,19 @@ export default function FilmsSeriesPage() {
 
   React.useEffect(() => {
     const cache = getScoreSourceCache();
+    const gone = getMissingTitles();
     const needsScore = watchlist.filter(
-      (i) => i.score == null || !cache[i.id],
+      (i) => (i.score == null || !cache[i.id]) && !gone.has(i.id),
     );
     if (needsScore.length === 0) return;
     void Promise.all(
       needsScore.map((item) => {
         const tmdbId = item.id.replace(/^(movie|tv)-/, "");
         return fetch(`/api/films/detail?type=${item.type}&id=${tmdbId}`)
-          .then((r) => r.json())
+          .then((r) => {
+            if (r.status === 404) markTitleMissing(item.id);
+            return r.json();
+          })
           .then((data: { score: number | null; scoreSource?: "imdb" | "tmdb" }) => ({ id: item.id, score: data.score, scoreSource: data.scoreSource }))
           .catch(() => ({ id: item.id, score: null, scoreSource: undefined }));
       }),
@@ -806,13 +812,17 @@ export default function FilmsSeriesPage() {
   React.useEffect(() => {
     if (discoverVisible.length === 0) return;
     const cache = getScoreSourceCache();
-    const missing = discoverVisible.filter((item) => item.score != null && !cache[item.id]);
+    const gone = getMissingTitles();
+    const missing = discoverVisible.filter((item) => item.score != null && !cache[item.id] && !gone.has(item.id));
     if (missing.length === 0) return;
     void Promise.all(
       missing.map((item) => {
         const tmdbId = item.id.replace(/^(movie|tv)-/, "");
         return fetch(`/api/films/detail?type=${item.type}&id=${tmdbId}`)
-          .then((r) => r.json())
+          .then((r) => {
+            if (r.status === 404) markTitleMissing(item.id);
+            return r.json();
+          })
           .then((data: { scoreSource?: "imdb" | "tmdb" }) => ({ id: item.id, scoreSource: data.scoreSource }))
           .catch(() => ({ id: item.id, scoreSource: undefined }));
       }),

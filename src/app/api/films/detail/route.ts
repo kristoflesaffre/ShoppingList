@@ -37,7 +37,11 @@ export async function GET(request: NextRequest) {
       { headers: tmdbHeaders, next: { revalidate: 3600 } },
     ),
   ]);
-  if (!detailRes.ok) return NextResponse.json({ error: "not found" }, { status: 502 });
+  if (!detailRes.ok) {
+    // 404 = titel bestaat niet (meer) bij TMDB; al de rest is een tijdelijke fout.
+    const status = detailRes.status === 404 ? 404 : 502;
+    return NextResponse.json({ error: status === 404 ? "not found" : "upstream error" }, { status });
+  }
 
   const data = (await detailRes.json()) as Record<string, unknown>;
   const creditsData = creditsRes.ok
