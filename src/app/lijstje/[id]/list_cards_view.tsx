@@ -13,6 +13,8 @@ import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { IngredientPlate } from "@/components/ingredient_plate";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { StoreBadge, StoreLogos, useStoreLongPress } from "./store_mark";
+import { storeFilterLabel, type StoreFilter } from "@/lib/item-store";
 
 /** Weergave van de items in een kaart: rijen, twee kolommen of vierkante tegels (canvas «Lijstje 6b» + «Lijstje 2»). */
 export type ListCardLayout = "one" | "two" | "tiles";
@@ -123,7 +125,7 @@ function ItemPhoto({ item, getPhotoUrl, size, boxed = true }: { item: ListItem; 
   const src = item.stockPhotoUrl ?? getPhotoUrl?.(item.name, size >= 56 ? 160 : 80) ?? null;
   return (
     <span
-      className={cn("flex shrink-0 items-center justify-center", boxed && "rounded-[10px] bg-[var(--gray-25)]")}
+      className={cn("relative flex shrink-0 items-center justify-center", boxed && "rounded-[10px] bg-[var(--gray-25)]")}
       style={{ width: size, height: size }}
     >
       {src ? (
@@ -135,6 +137,7 @@ function ItemPhoto({ item, getPhotoUrl, size, boxed = true }: { item: ListItem; 
           style={{ width: Math.round(size * 0.82), height: Math.round(size * 0.82) }}
         />
       ) : null}
+      <StoreBadge store={item.store} size={size >= 56 ? 18 : 14} />
     </span>
   );
 }
@@ -161,14 +164,16 @@ function itemLabel(item: ListItem) {
 
 /** 1 kolom: rij met foto, naam/hoeveelheid en rond vinkje rechts. */
 function ItemRow({ item, getPhotoUrl, onToggle }: ItemProps) {
+  const { className: pressCls, ...press } = useStoreLongPress(item);
   return (
     <button
+      {...press}
       type="button"
       role="checkbox"
       aria-checked={item.checked}
       aria-label={itemLabel(item)}
       onClick={onToggle}
-      className="flex w-full items-center gap-3 border-t border-[var(--border-subtle)] px-1 py-2.5 text-left first:border-t-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+      className={cn(pressCls, "flex w-full items-center gap-3 border-t border-[var(--border-subtle)] px-1 py-2.5 text-left first:border-t-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]")}
     >
       <ItemPhoto item={item} getPhotoUrl={getPhotoUrl} size={42} />
       <span className="min-w-0 flex-1 leading-[19px]">
@@ -182,14 +187,17 @@ function ItemRow({ item, getPhotoUrl, onToggle }: ItemProps) {
 
 /** 2 kolommen: compacte kaart met foto, naam, hoeveelheid en rond vinkje. */
 function ItemChip({ item, getPhotoUrl, onToggle }: ItemProps) {
+  const { className: pressCls, ...press } = useStoreLongPress(item);
   return (
     <button
+      {...press}
       type="button"
       role="checkbox"
       aria-checked={item.checked}
       aria-label={itemLabel(item)}
       onClick={onToggle}
       className={cn(
+        pressCls,
         "flex min-w-0 items-center gap-2 rounded-[12px] p-[7px] text-left transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
         item.checked ? "bg-[var(--gray-25)]" : "bg-[var(--white)] shadow-[inset_0_0_0_1px_var(--border-subtle)]",
       )}
@@ -206,14 +214,17 @@ function ItemChip({ item, getPhotoUrl, onToggle }: ItemProps) {
 
 /** Tegels (canvas «Lijstje 2»): vierkante tegel met grote foto, vinkje als badge. */
 function ItemTile({ item, getPhotoUrl, onToggle }: ItemProps) {
+  const { className: pressCls, ...press } = useStoreLongPress(item);
   return (
     <button
+      {...press}
       type="button"
       role="checkbox"
       aria-checked={item.checked}
       aria-label={itemLabel(item)}
       onClick={onToggle}
       className={cn(
+        pressCls,
         "relative flex aspect-[1/1.12] min-w-0 flex-col items-center justify-center gap-1 rounded-[16px] px-1 py-2 transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
         item.checked ? "bg-[var(--gray-25)]" : "bg-[var(--white)] shadow-[inset_0_0_0_1px_var(--border-subtle)]",
       )}
@@ -1116,7 +1127,7 @@ export function ListGroupingToggle({
 }
 
 const CHIP_CLASS =
-  "inline-flex h-[34px] shrink-0 items-center rounded-pill bg-[var(--white)] text-[13px] font-semibold text-text-primary transition-[box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
+  "inline-flex h-[34px] shrink-0 items-center whitespace-nowrap rounded-pill bg-[var(--white)] text-[13px] font-semibold text-text-primary transition-[box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 
 /** «Per dag ▾»-chip met een klein menu (canvas «Open eerst · O1», mobiel). */
 export function ListGroupingMenuChip({
@@ -1221,5 +1232,98 @@ export function OpenFirstChip({ value, onChange }: { value: boolean; onChange: (
         />
       </span>
     </button>
+  );
+}
+
+/** Canvas «Concept D»: winkelknop tussen «Per dag» en «Open eerst» op een Lidl / Delhaize-lijstje. */
+export function StoreFilterChip({
+  value,
+  onChange,
+  counts,
+  showLabelWhenAll = false,
+}: {
+  value: StoreFilter;
+  onChange: (value: StoreFilter) => void;
+  /** Aantal zichtbare items per keuze (voor in het menu). */
+  counts?: Record<StoreFilter, number>;
+  /** Favorieten: «Alle winkels» uitgeschreven (daar staat de knop alleen). */
+  showLabelWhenAll?: boolean;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  const options: { value: StoreFilter; icon: React.ReactNode }[] = [
+    { value: "all", icon: <StoreLogos store="both" size={20} /> },
+    { value: "lidl", icon: <StoreLogos store="lidl" size={22} ring={false} /> },
+    { value: "delhaize", icon: <StoreLogos store="delhaize" size={22} ring={false} /> },
+  ];
+  const active = value !== "all";
+  const current = options.find((o) => o.value === value) ?? options[0];
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Winkel: ${storeFilterLabel(value)}`}
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          CHIP_CLASS,
+          "gap-1.5 pl-2 pr-2.5",
+          active
+            ? "bg-[var(--text-primary)] text-[var(--white)] shadow-none"
+            : "shadow-[inset_0_0_0_1px_var(--gray-100)]",
+        )}
+      >
+        {active ? <span className="flex rounded-full bg-[var(--white)]">{current.icon}</span> : current.icon}
+        {active || showLabelWhenAll ? storeFilterLabel(value) : null}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn("size-3.5 transition-transform", open && "rotate-180")}>
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open ? (
+        <div role="menu" className="absolute left-0 top-[40px] z-30 w-[220px] rounded-[14px] bg-[var(--white)] p-1.5 shadow-[0_14px_34px_-10px_rgba(16,17,48,0.32)] motion-safe:animate-fade-up">
+          <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-bold uppercase tracking-[0.05em] text-[var(--text-tertiary)]">Wat wil je zien?</p>
+          {options.map((o) => {
+            const on = o.value === value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="menuitemradio"
+                aria-checked={on}
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
+                  on ? "bg-[var(--bg-app)] font-semibold text-text-primary" : "text-text-primary [@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+                )}
+              >
+                <span className="flex w-7 justify-center">{o.icon}</span>
+                <span className="flex-1">{storeFilterLabel(o.value)}</span>
+                {counts ? <span className="text-xs font-semibold tabular-nums text-[var(--text-tertiary)]">{counts[o.value]}</span> : null}
+                {on ? <CheckIcon className="size-3.5 text-[var(--blue-500)]" /> : <span className="w-3.5" />}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }

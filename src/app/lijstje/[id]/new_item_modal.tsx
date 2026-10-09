@@ -26,6 +26,7 @@ import {
   normalizeTripPerson,
   type TripPersonTab,
 } from "@/lib/trip-person";
+import type { ItemStore } from "@/lib/item-store";
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
@@ -70,6 +71,8 @@ export type ListItem = {
   itemDate?: string;
   /** Landal/vakantie: wie het item betreft. */
   tripPerson?: TripPersonTab;
+  /** Lidl / Delhaize-lijstje: winkelkeuze (eigen keuze of overgenomen van de favoriet). */
+  store?: ItemStore;
 };
 
 type Ingredient = RecipeIngredient;

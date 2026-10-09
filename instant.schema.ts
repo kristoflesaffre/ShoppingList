@@ -93,6 +93,11 @@ const schema = i.schema({
        * Landal/vakantie: «Samen» | «Kristof» | «Chloé» | «Noë». Ontbreekt → UI toont «Samen».
        */
       tripPerson: i.string().optional(),
+      /**
+       * Lidl / Delhaize-lijstje: waar dit item gekocht wordt — «lidl» | «delhaize» | «both».
+       * Ontbreekt → geen keuze (telt als allebei; weeklijstjes nemen de keuze van de favoriet over).
+       */
+      store: i.string().optional(),
     }),
     recipes: i.entity({
       name: i.string(),

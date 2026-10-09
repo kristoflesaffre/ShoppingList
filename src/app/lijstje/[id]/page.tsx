@@ -154,11 +154,21 @@ import { RECIPE_BLOCK_PREFIX,
   ListGroupingToggle,
   ListLayoutToggle,
   OpenFirstChip,
+  StoreFilterChip,
   type ListCardLayout,
 } from "./list_cards_view";
 import { ListSuggestions, type Suggestion } from "./list_suggestions";
 import { MasterCategoryCards, MasterLoyaltyLine } from "./master_view";
 import { MasterAddSheet } from "./master_add_sheet";
+import { StoreHiddenNote, StoreMarkMenu, StoreMarkProvider } from "./store_mark";
+import {
+  itemMatchesStoreFilter,
+  parseItemStore,
+  parseStoreFilter,
+  storeNameKey,
+  type ItemStore,
+  type StoreFilter,
+} from "@/lib/item-store";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 
@@ -3131,6 +3141,7 @@ export default function ListDetailPage({
   const categoryOrderMasterQuery = React.useMemo(
     () => ({
       lists: {
+        items: {},
         $: { where: { id: categoryOrderMasterListQueryId } },
       },
     }),
@@ -3401,6 +3412,18 @@ export default function ListDetailPage({
     void db.transact(db.tx.lists[listId].update({ name: label }));
   }, [isListOwner, listId, listData, isMasterList, listIcon]);
 
+  /** Winkelkeuze van de favorieten (bron-master), op naam: weeklijstjes nemen die over. */
+  const masterStoreByName = React.useMemo(() => {
+    const map = new Map<string, ItemStore>();
+    const masterItems = (categoryOrderMasterData?.lists?.[0] as { items?: unknown[] } | undefined)?.items ?? [];
+    for (const raw of masterItems) {
+      const row = raw as Record<string, unknown>;
+      const store = parseItemStore(row.store);
+      if (store && typeof row.name === "string") map.set(storeNameKey(row.name), store);
+    }
+    return map;
+  }, [categoryOrderMasterData?.lists]);
+
   const items: ListItem[] = React.useMemo(() => {
     if (!listData?.items) return [];
     return [...listData.items]
@@ -3435,9 +3458,10 @@ export default function ListDetailPage({
             }
             return normalizeTripPerson(rawTp);
           })(),
+          store: parseItemStore(row.store) ?? masterStoreByName.get(storeNameKey(it.name)),
         };
       });
-  }, [listData]);
+  }, [listData, masterStoreByName]);
 
   React.useEffect(() => {
     if (!isVakantieList || !isListOwner || !listData?.items?.length) return;
@@ -3641,6 +3665,8 @@ export default function ListDetailPage({
   const [isListGroupingHydrated, setIsListGroupingHydrated] =
     React.useState(false);
   const [showUncheckedFirst, setShowUncheckedFirst] = React.useState(false);
+  const [storeFilter, setStoreFilter] = React.useState<StoreFilter>("all");
+  const [storeMenu, setStoreMenu] = React.useState<{ item: ListItem; anchor: DOMRect } | null>(null);
   const [isShowUncheckedFirstHydrated, setIsShowUncheckedFirstHydrated] =
     React.useState(false);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string | null>(
@@ -4864,10 +4890,38 @@ export default function ListDetailPage({
     ? "day"
     : listGroupingMode;
 
+  /** Canvas «Concept D»: winkelfilter, alleen op een Lidl / Delhaize-lijstje. */
+  const activeStoreFilter: StoreFilter = isLidlDelhaizeList ? storeFilter : "all";
+  const storeFilterCounts = React.useMemo(() => {
+    const count = (f: StoreFilter) => itemsForListSections.filter((i) => itemMatchesStoreFilter(i.store, f)).length;
+    return { all: itemsForListSections.length, lidl: count("lidl"), delhaize: count("delhaize") };
+  }, [itemsForListSections]);
+  const itemsForStoreView = React.useMemo(
+    () =>
+      activeStoreFilter === "all"
+        ? itemsForListSections
+        : itemsForListSections.filter((i) => itemMatchesStoreFilter(i.store, activeStoreFilter)),
+    [itemsForListSections, activeStoreFilter],
+  );
+  const hiddenByStoreFilter = itemsForListSections.length - itemsForStoreView.length;
+
+  const storeMarkApi = React.useMemo(
+    () =>
+      isLidlDelhaizeList && !isEditMode
+        ? { openMenu: (item: ListItem, anchor: DOMRect) => setStoreMenu({ item, anchor }) }
+        : null,
+    [isLidlDelhaizeList, isEditMode],
+  );
+
+  const handlePickItemStore = React.useCallback((itemId: string, store: ItemStore) => {
+    void db.transact(db.tx.items[itemId].update({ store }));
+    setStoreMenu(null);
+  }, []);
+
   const sections = React.useMemo(() => {
     if (isVakantieList && tripPersonTab === "Voor vertrek") {
-      const unchecked = itemsForListSections.filter((i) => !i.checked);
-      const checked = itemsForListSections.filter((i) => i.checked);
+      const unchecked = itemsForStoreView.filter((i) => !i.checked);
+      const checked = itemsForStoreView.filter((i) => i.checked);
       const result: { title: string; displayTitle?: string; items: ListItem[]; isGroupHeader?: boolean; noAddButton?: boolean }[] = [];
       if (unchecked.length > 0) {
         result.push({ title: "Te regelen", displayTitle: undefined, items: unchecked, isGroupHeader: false });
@@ -4882,7 +4936,7 @@ export default function ListDetailPage({
       !isMasterList && effectiveListGroupingMode === "day";
     if (useDaySections) {
       const grouped = new Map<string, ListItem[]>();
-      for (const item of itemsForListSections) {
+      for (const item of itemsForStoreView) {
         const existing = grouped.get(item.section) ?? [];
         existing.push(item);
         grouped.set(item.section, existing);
@@ -4894,7 +4948,7 @@ export default function ListDetailPage({
       }));
     }
     const grouped = new Map<string, ListItem[]>();
-    for (const item of itemsForListSections) {
+    for (const item of itemsForStoreView) {
       const cat = effectiveListItemCategory(item);
       const existing = grouped.get(cat) ?? [];
       existing.push(item);
@@ -4929,7 +4983,7 @@ export default function ListDetailPage({
     }
     return result;
   }, [
-    itemsForListSections,
+    itemsForStoreView,
     effectiveListGroupingMode,
     isMasterList,
     isLandalOrVakantieList,
@@ -5187,6 +5241,27 @@ export default function ListDetailPage({
       setIsShowUncheckedFirstHydrated(true);
     }
   }, [listId]);
+
+  React.useEffect(() => {
+    if (!listId) return;
+    try {
+      setStoreFilter(parseStoreFilter(window.localStorage.getItem(`list-store-filter:${listId}`)));
+    } catch {
+      setStoreFilter("all");
+    }
+  }, [listId]);
+
+  const handleStoreFilterChange = React.useCallback(
+    (value: StoreFilter) => {
+      setStoreFilter(value);
+      try {
+        window.localStorage.setItem(`list-store-filter:${listId}`, value);
+      } catch {
+        // no-op
+      }
+    },
+    [listId],
+  );
 
   React.useEffect(() => {
     if (!listId || !isShowUncheckedFirstHydrated) return;
@@ -5588,6 +5663,11 @@ export default function ListDetailPage({
                 (!isVenueCounterList ||
                   (isCafeList && !isMasterList && !isEditMode)) ? (
                 <div className="flex shrink-0 items-center gap-2">
+                  {showListGroupingControl && isLidlDelhaizeList ? (
+                    <div className="hidden lg:block">
+                      <StoreFilterChip value={storeFilter} onChange={handleStoreFilterChange} counts={storeFilterCounts} showLabelWhenAll />
+                    </div>
+                  ) : null}
                   {showListGroupingControl ? (
                     <div className="hidden lg:block">
                       <ListGroupingToggle
@@ -5682,8 +5762,19 @@ export default function ListDetailPage({
           {showListGroupingControl ? (
             /* Canvas «Open eerst · O1»: groepering als chip links, «Open eerst» met schuifje rechts. */
             <div className="flex w-full min-w-0 items-center justify-between gap-3 lg:hidden">
-              <ListGroupingMenuChip value={listGroupingMode} onChange={setListGroupingMode} />
+              <div className="flex min-w-0 items-center gap-2">
+                <ListGroupingMenuChip value={listGroupingMode} onChange={setListGroupingMode} />
+                {isLidlDelhaizeList ? (
+                  <StoreFilterChip value={storeFilter} onChange={handleStoreFilterChange} counts={storeFilterCounts} />
+                ) : null}
+              </div>
               {!isEditMode ? <OpenFirstChip value={showUncheckedFirst} onChange={setShowUncheckedFirst} /> : null}
+            </div>
+          ) : null}
+
+          {isMasterList && isLidlDelhaizeList && hasItems && !isEditMode && !isMasterCategoryOrderMode ? (
+            <div className="flex w-full min-w-0 items-center">
+              <StoreFilterChip value={storeFilter} onChange={handleStoreFilterChange} counts={storeFilterCounts} showLabelWhenAll />
             </div>
           ) : null}
 
@@ -5848,6 +5939,7 @@ export default function ListDetailPage({
               />
             ) : null}
             {isMasterList && !isEditMode ? (
+              <StoreMarkProvider value={storeMarkApi}>
               <MasterCategoryCards
                 sections={sectionsForDisplay}
                 getPhotoUrl={getPhotoUrl}
@@ -5860,6 +5952,14 @@ export default function ListDetailPage({
                 onEdit={(item) => setEditingItem(item)}
                 onDelete={handleDeleteItem}
               />
+              {hiddenByStoreFilter > 0 ? (
+                <StoreHiddenNote
+                  count={hiddenByStoreFilter}
+                  otherStore={activeStoreFilter === "lidl" ? "delhaize" : "lidl"}
+                  onShowAll={() => handleStoreFilterChange("all")}
+                />
+              ) : null}
+              </StoreMarkProvider>
             ) : useCardEditView ? (
               <div className="flex flex-col gap-3">
                 <DndContext
@@ -5893,6 +5993,7 @@ export default function ListDetailPage({
                 </DndContext>
               </div>
             ) : useCardView ? (
+              <StoreMarkProvider value={storeMarkApi}>
               <ListCardsView
                 sections={sectionsForDisplay}
                 groupingMode={effectiveListGroupingMode}
@@ -5915,6 +6016,14 @@ export default function ListDetailPage({
                   setIsNewItemOpen(true);
                 }}
               />
+              {hiddenByStoreFilter > 0 ? (
+                <StoreHiddenNote
+                  count={hiddenByStoreFilter}
+                  otherStore={activeStoreFilter === "lidl" ? "delhaize" : "lidl"}
+                  onShowAll={() => handleStoreFilterChange("all")}
+                />
+              ) : null}
+              </StoreMarkProvider>
             ) : !isPuddyTabSelected ? (
               <DndContext
                 sensors={sensors}
@@ -6053,6 +6162,22 @@ export default function ListDetailPage({
 
   const listModals = (
     <>
+      {storeMenu ? (
+        <StoreMarkMenu
+          item={storeMenu.item}
+          anchor={storeMenu.anchor}
+          onPick={(store) => handlePickItemStore(storeMenu.item.id, store)}
+          onEdit={() => {
+            setEditingItem(storeMenu.item);
+            setStoreMenu(null);
+          }}
+          onDelete={() => {
+            handleDeleteItem(storeMenu.item.id);
+            setStoreMenu(null);
+          }}
+          onClose={() => setStoreMenu(null)}
+        />
+      ) : null}
       {isMasterList ? (
         /* Canvas «Favorieten toevoegen»: zoeken of bladeren in producten die nog ontbreken. */
         <MasterAddSheet

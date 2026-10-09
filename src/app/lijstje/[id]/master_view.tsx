@@ -9,6 +9,7 @@ import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { cn } from "@/lib/utils";
 import { CategoryCard } from "@/components/ui/category_card";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
+import { StoreBadge, useStoreLongPress, useStoreMark } from "./store_mark";
 
 type Section = { title: string; displayTitle?: string; items: ListItem[] };
 type GetPhotoUrl = (name: string, size?: number, options?: ItemPhotoLookupOptions) => string | null;
@@ -230,37 +231,71 @@ export function MasterCategoryCards({
             }
           >
             <ul className="px-2.5 pb-1 pt-0.5">
-              {groupMeatSubtypes(s.title, s.items, (i) => i.name).map((item, k) => {
-                const photo = item.stockPhotoUrl ?? getPhotoUrl(item.name, 80) ?? null;
-                return (
-                  <li key={item.id} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>
-                    <SwipeToDelete onDelete={() => onDelete(item.id)} deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}>
-                      <button
-                        type="button"
-                        onClick={() => onEdit(item)}
-                        className="flex w-full items-center gap-3 bg-[var(--white)] px-1 py-[9px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
-                      >
-                        <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--gray-25)]">
-                          {photo ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
-                            <img src={photo} alt="" width={34} height={34} className="size-[34px] object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />
-                          ) : (
-                            <span className="text-sm font-semibold text-[var(--blue-400)]">{item.name.trim().charAt(0).toUpperCase()}</span>
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1 leading-[19px]">
-                          <span className="block truncate text-[15px] font-medium text-text-primary first-letter:uppercase">{item.name}</span>
-                          <span className="block truncate text-[13px] text-[var(--text-tertiary)]">{item.quantity}</span>
-                        </span>
-                      </button>
-                    </SwipeToDelete>
-                  </li>
-                );
-              })}
+              {groupMeatSubtypes(s.title, s.items, (i) => i.name).map((item, k) => (
+                <li key={item.id} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>
+                  <MasterItemRow item={item} getPhotoUrl={getPhotoUrl} onEdit={onEdit} onDelete={onDelete} />
+                </li>
+              ))}
             </ul>
           </CategoryCard>
         );
       })}
+    </div>
+  );
+}
+
+/** Eén favoriet: tik = bewerken, veeg = verwijderen; op Lidl / Delhaize ook winkellogo en lang drukken = winkel kiezen. */
+function MasterItemRow({
+  item,
+  getPhotoUrl,
+  onEdit,
+  onDelete,
+}: {
+  item: ListItem;
+  getPhotoUrl: GetPhotoUrl;
+  onEdit: (item: ListItem) => void;
+  onDelete: (itemId: string) => void;
+}) {
+  const storeMark = useStoreMark();
+  const { className: pressCls, ...press } = useStoreLongPress(item);
+  const photo = item.stockPhotoUrl ?? getPhotoUrl(item.name, 80) ?? null;
+  return (
+    <div className="relative">
+      <SwipeToDelete onDelete={() => onDelete(item.id)} deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}>
+        <button
+          {...press}
+          type="button"
+          onClick={() => onEdit(item)}
+          className={cn(
+            pressCls,
+            "flex w-full items-center gap-3 bg-[var(--white)] px-1 py-[9px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
+          )}
+        >
+          <span className="relative flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--gray-25)]">
+            {photo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
+              <img src={photo} alt="" width={34} height={34} className="size-[34px] object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />
+            ) : (
+              <span className="text-sm font-semibold text-[var(--blue-400)]">{item.name.trim().charAt(0).toUpperCase()}</span>
+            )}
+            <StoreBadge store={item.store} size={15} />
+          </span>
+          <span className="min-w-0 flex-1 leading-[19px]">
+            <span className="block truncate text-[15px] font-medium text-text-primary first-letter:uppercase">{item.name}</span>
+            <span className="block truncate text-[13px] text-[var(--text-tertiary)]">{item.quantity}</span>
+          </span>
+          {storeMark && !item.store ? <span aria-hidden className="w-[74px] shrink-0" /> : null}
+        </button>
+      </SwipeToDelete>
+      {storeMark && !item.store ? (
+        <button
+          type="button"
+          onClick={(e) => storeMark.openMenu(item, (e.currentTarget.closest("li") ?? e.currentTarget).getBoundingClientRect())}
+          className="absolute right-1 top-1/2 z-10 inline-flex h-7 bg-[var(--white)] -translate-y-1/2 items-center rounded-pill px-2.5 text-xs font-bold text-[var(--text-secondary)] shadow-[inset_0_0_0_1.2px_var(--gray-200)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          + winkel
+        </button>
+      ) : null}
     </div>
   );
 }
