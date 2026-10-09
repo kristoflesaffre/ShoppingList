@@ -131,7 +131,7 @@ export function FoodImageGeneratorSlideIn({
           type="button"
           disabled={phase === "applying"}
           onClick={() => void generate()}
-          className="inline-flex h-11 items-center gap-1.5 self-center rounded-pill px-4 text-[15px] font-bold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-50"
+          className="inline-flex h-11 items-center justify-center gap-1.5 self-center rounded-pill px-4 text-[15px] font-bold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
             <path d="M4 12a8 8 0 1 0 2.4-5.7" />

@@ -269,6 +269,10 @@ export function AddLoyaltyCardSheet({
       <CameraBarcodeScannerSlideIn
         open={cameraOpen}
         onClose={() => setCameraOpen(false)}
+        onPickScreenshot={() => {
+          setCameraOpen(false);
+          photoInputRef.current?.click();
+        }}
         onDecoded={(result) => {
           setCameraOpen(false);
           setDecodeResult(result);

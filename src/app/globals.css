@@ -103,3 +103,22 @@ body::before {
     animation: none;
   }
 }
+
+/* «Kaart scannen»: blauwe scanlijn die op en neer beweegt in de scanzone. */
+@keyframes scan-line-sweep {
+  0%,
+  100% {
+    transform: translateY(-34px);
+  }
+  50% {
+    transform: translateY(34px);
+  }
+}
+.scan-line {
+  animation: scan-line-sweep 2.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-line {
+    animation: none;
+  }
+}
