@@ -68,6 +68,10 @@ import {
   ListSectionHeader,
 } from "@/components/list_section_header";
 import { HomeHeader } from "@/components/home_header";
+import {
+  HomeDashboardInventory,
+  HomeDashboardQuickActions,
+} from "@/components/home_dashboard";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
 import type { MasterStoreSlug } from "@/lib/master-stores";
@@ -82,6 +86,7 @@ import {
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { CountBadge } from "@/components/ui/count_badge";
 import { isEmptyDraftMasterList, useCleanupDraftMasterLists } from "@/lib/draft-master-lists";
+import { findMergeTarget } from "@/lib/list-item-merge";
 import { FavoritesPromoBanner, useFavoritesPromo } from "@/components/favorites_promo_banner";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
@@ -1964,6 +1969,7 @@ function HomeLijstjesSection({
   onOpenCreateModal,
   onQuickAdd,
   onNewListLike,
+  dashboardLayout = false,
 }: {
   normalLists: HomeList[];
   onOpenCreateModal: () => void;
@@ -1971,6 +1977,8 @@ function HomeLijstjesSection({
   onQuickAdd: (list: HomeList, name: string) => void;
   /** Nieuw lijstje voor dezelfde winkel (vanaf de masterlijst). */
   onNewListLike: (list: HomeList) => void;
+  /** Laat op het tablet-dashboard twee kaarten per rijbreedte zien. */
+  dashboardLayout?: boolean;
 }) {
   const laneRef = React.useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
@@ -2094,7 +2102,15 @@ function HomeLijstjesSection({
         className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:gap-4 lg:scroll-px-0 lg:px-0"
       >
         {activeLists.map((list) => (
-          <div key={list.id} className="w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start lg:w-[calc((100%-32px)/3)] lg:max-w-none">
+          <div
+            key={list.id}
+            className={cn(
+              "w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start",
+              dashboardLayout
+                ? "min-[1050px]:w-[calc((100%-16px)/2)] min-[1050px]:max-w-none"
+                : "lg:w-[calc((100%-32px)/3)] lg:max-w-none",
+            )}
+          >
             <HomeListSwimCard
               list={list}
               onAddItem={(l) => {
@@ -2665,7 +2681,33 @@ export default function Home() {
   }, [lists, masterLists]);
   /** Snel toevoegen vanop home: zelfde itemvorm als «Items toevoegen» in het lijstje (sectie Algemeen). */
   const handleQuickAddToList = React.useCallback((list: HomeList, name: string) => {
-    const items = (list.items ?? []) as Array<{ order?: number }>;
+    const items = (list.items ?? []) as Array<{
+      id: string;
+      order?: number;
+      name?: string;
+      quantity?: string;
+      section?: string;
+      checked?: boolean;
+      recipeGroupId?: string;
+      fromStock?: boolean;
+    }>;
+    // Staat het product er al op? Dan dat kaartje ophogen i.p.v. een tweede.
+    const merge = findMergeTarget(
+      items.map((it) => ({
+        id: it.id,
+        name: it.name ?? "",
+        quantity: it.quantity ?? "1 stuk",
+        section: it.section ?? "Algemeen",
+        checked: it.checked === true,
+        recipeGroupId: it.recipeGroupId || undefined,
+        fromStock: it.fromStock,
+      })),
+      { name, quantity: "1 stuk", section: "Algemeen" },
+    );
+    if (merge) {
+      void db.transact(db.tx.items[merge.id].update({ quantity: merge.quantity, ...(merge.reopen ? { checked: false } : {}) }));
+      return;
+    }
     const maxOrder = items.reduce((m, it) => Math.max(m, typeof it.order === "number" ? it.order : 0), -1);
     void db.transact(
       db.tx.items[iid()]
@@ -3710,7 +3752,7 @@ export default function Home() {
   return (
     <div className={cn("relative flex min-h-dvh w-full flex-col px-[var(--space-4)]", !hasLists && "bg-[var(--bg-app)]")}>
       <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]">
-        <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col">
+        <div className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col">
           <HomeHeader
             ownerId={ownerId}
             className="pt-[var(--space-6)] motion-safe:animate-fade-up"
@@ -3719,15 +3761,15 @@ export default function Home() {
                 aria-label="Nieuw lijstje"
                 desktopLabel="Nieuw lijstje"
                 elevated={false}
-                className="hidden h-12 gap-2 px-5 py-0 lg:inline-flex"
+                className="hidden h-12 gap-2 px-5 py-0 md:inline-flex md:[&_span]:!inline"
                 onClick={handleOpenCreateModal}
               />
             }
           />
-          {/* Secties komen gestaggerd binnen (60ms per sectie, max 4 stappen) — geeft ritme zonder te vertragen */}
+          {/* Telefoon behoudt de compacte, configureerbare verticale flow. */}
           <div
             className={cn(
-              "flex flex-col",
+              "flex flex-col md:hidden",
               !hasLists ? "gap-8 pt-8 pb-2" : "gap-10 pt-8",
             )}
           >
@@ -3746,6 +3788,62 @@ export default function Home() {
                 </div>
               );
             })}
+          </div>
+
+          {/* Tablet: actieve lijstjes en context krijgen elk een vaste, scanbare zone. */}
+          <div className="hidden flex-col gap-10 pt-8 md:flex">
+            <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-[minmax(0,2fr)_minmax(280px,0.92fr)] min-[1050px]:items-start min-[1050px]:gap-8">
+              <div className="min-w-0">
+                {favoritesPromo.show ? (
+                  <FavoritesPromoBanner
+                    className="mb-6"
+                    onSetUp={() => router.push("/nieuw-lijstje/selecteer-winkel")}
+                    onDismiss={favoritesPromo.dismiss}
+                  />
+                ) : null}
+                <HomeLijstjesSection
+                  normalLists={normalLists}
+                  onOpenCreateModal={handleOpenCreateModal}
+                  onQuickAdd={handleQuickAddToList}
+                  onNewListLike={handleNewListLike}
+                  dashboardLayout
+                />
+              </div>
+
+              <aside className="grid min-w-0 grid-cols-2 gap-8 min-[1050px]:grid-cols-1">
+                <HomeDashboardQuickActions
+                  onNewList={handleOpenCreateModal}
+                  onAddProduct={() => {
+                    primeKeyboard();
+                    setTeKopenSlideOpen(true);
+                  }}
+                />
+                {!homeSectionConfig.hidden.includes("diepvries") ? (
+                  <HomeDashboardInventory items={homeFreezerItems} />
+                ) : null}
+              </aside>
+            </div>
+
+            {homeSectionConfig.order
+              .filter(
+                (sectionId) =>
+                  sectionId !== "lijstjes" &&
+                  sectionId !== "diepvries" &&
+                  !homeSectionConfig.hidden.includes(sectionId),
+              )
+              .map((sectionId, index) => {
+                const section = renderHomeSection(sectionId);
+                if (section == null) return null;
+                return (
+                  <div
+                    key={sectionId}
+                    className="motion-safe:animate-fade-up"
+                    style={{ animationDelay: `${Math.min(index + 2, 4) * 60}ms` }}
+                  >
+                    {section}
+                  </div>
+                );
+              })}
           </div>
           <div className="mt-10 flex justify-center pb-4">
             <Link
@@ -4173,7 +4271,7 @@ export default function Home() {
 
       <div
         className={cn(
-          "pointer-events-none fixed inset-x-0 z-20 lg:hidden",
+          "pointer-events-none fixed inset-x-0 z-20 md:hidden",
           APP_FAB_BOTTOM_CLASS,
         )}
       >

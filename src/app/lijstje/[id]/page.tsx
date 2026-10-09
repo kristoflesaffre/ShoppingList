@@ -161,6 +161,7 @@ import { ListSuggestions, type Suggestion } from "./list_suggestions";
 import { MasterCategoryCards, MasterLoyaltyLine } from "./master_view";
 import { MasterAddSheet } from "./master_add_sheet";
 import { StoreHiddenNote, StoreMarkMenu, StoreMarkProvider } from "./store_mark";
+import { findMergeTarget } from "@/lib/list-item-merge";
 import {
   itemMatchesStoreFilter,
   parseItemStore,
@@ -4488,7 +4489,42 @@ export default function ListDetailPage({
   );
 
   const handleAddItemsFromRecipe = React.useCallback(
-    (templateItems: ListItem[]) => {
+    (incomingItems: ListItem[]) => {
+      // Al op het lijstje (zelfde naam en dag)? Dan het bestaande kaartje ophogen i.p.v. een tweede.
+      const pool = items.map((i) => ({ ...i }));
+      const mergeTxns: Parameters<typeof db.transact>[0] = [];
+      let lastMergedId: string | null = null;
+      const templateItems: ListItem[] = [];
+      for (const t of incomingItems) {
+        const target = isMasterList || isLandalOrVakantieList ? null : findMergeTarget(pool, t);
+        if (!target) {
+          templateItems.push(t);
+          pool.push({ ...t, id: `__new-${templateItems.length - 1}` });
+          continue;
+        }
+        if (target.id.startsWith("__new-")) {
+          // Twee keer hetzelfde in één keer toegevoegd: samen als één nieuw item.
+          const idx = Number(target.id.slice("__new-".length));
+          templateItems[idx] = { ...templateItems[idx], quantity: target.quantity };
+          pool.find((p) => p.id === target.id)!.quantity = target.quantity;
+          continue;
+        }
+        const row = pool.find((p) => p.id === target.id)!;
+        row.quantity = target.quantity;
+        row.checked = false;
+        lastMergedId = target.id;
+        mergeTxns.push(
+          db.tx.items[target.id].update({
+            quantity: target.quantity,
+            ...(target.reopen ? { checked: false } : {}),
+            ...(t.store && !row.store ? { store: t.store } : {}),
+          }),
+        );
+      }
+      if (mergeTxns.length > 0) {
+        db.transact(mergeTxns);
+        if (templateItems.length === 0 && lastMergedId) setAddingId(lastMergedId);
+      }
       if (templateItems.length > 0) {
         const section = templateItems[0].section;
         const sectionStart = items.findIndex((i) => i.section === section);
@@ -4552,7 +4588,7 @@ export default function ListDetailPage({
       setInitialSection(null);
       setInitialItemCategory(null);
     },
-    [items, listId, resolveListItemCategory],
+    [items, listId, resolveListItemCategory, isMasterList, isLandalOrVakantieList],
   );
 
   React.useEffect(() => {
@@ -4819,6 +4855,20 @@ export default function ListDetailPage({
       tripPerson?: TripPersonTab;
       store?: ItemStore;
     }) => {
+      const merge =
+        isMasterList || isLandalOrVakantieList ? null : findMergeTarget(items, newItem);
+      if (merge) {
+        db.transact(
+          db.tx.items[merge.id].update({
+            quantity: merge.quantity,
+            ...(merge.reopen ? { checked: false } : {}),
+          }),
+        );
+        setAddingId(merge.id);
+        setIsNewItemOpen(false);
+        setInitialItemCategory(null);
+        return;
+      }
       const newId = iid();
       const itemCategory =
         newItem.itemCategory ?? resolveListItemCategory(newItem.name);
