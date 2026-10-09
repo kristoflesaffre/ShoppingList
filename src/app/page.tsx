@@ -3808,9 +3808,19 @@ export default function Home() {
                   onNewListLike={handleNewListLike}
                   dashboardLayout
                 />
+                {!homeSectionConfig.hidden.includes("te-kopen") ? (
+                  <div className="hidden pt-10 min-[1050px]:block">
+                    {renderHomeSection("te-kopen")}
+                  </div>
+                ) : null}
               </div>
 
-              <aside className="grid min-w-0 grid-cols-2 gap-8 min-[1050px]:grid-cols-1">
+              <aside
+                className={cn(
+                  "grid min-w-0 gap-8 min-[1050px]:grid-cols-1",
+                  homeSectionConfig.hidden.includes("diepvries") ? "grid-cols-1" : "grid-cols-2",
+                )}
+              >
                 <HomeDashboardQuickActions
                   onNewList={handleOpenCreateModal}
                   onAddProduct={() => {
@@ -3837,7 +3847,10 @@ export default function Home() {
                 return (
                   <div
                     key={sectionId}
-                    className="motion-safe:animate-fade-up"
+                    className={cn(
+                      "motion-safe:animate-fade-up",
+                      sectionId === "te-kopen" && "min-[1050px]:hidden",
+                    )}
                     style={{ animationDelay: `${Math.min(index + 2, 4) * 60}ms` }}
                   >
                     {section}
