@@ -776,9 +776,10 @@ function SectionDot({ color, done, progress }: { color: string; done: boolean; p
   const r = 9;
   const circumference = 2 * Math.PI * r;
   const label = done ? "Alles gekocht" : total > 0 ? `${progress?.done ?? 0} van ${total} gekocht` : undefined;
+  const showRing = !done && total > 0;
   return (
     <span className="relative flex size-[22px] shrink-0 items-center justify-center" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
-      {!done && total > 0 ? (
+      {showRing ? (
         <svg viewBox="0 0 22 22" className="absolute inset-0 size-full -rotate-90" aria-hidden>
           <circle cx="11" cy="11" r={r} fill="none" strokeWidth="2.5" style={{ stroke: `color-mix(in srgb, ${color} 22%, transparent)` }} />
           <circle
@@ -798,7 +799,8 @@ function SectionDot({ color, done, progress }: { color: string; done: boolean; p
       <span
         className={cn(
           "relative flex items-center justify-center rounded-full text-white transition-[width,height,box-shadow] duration-base ease-out-strong",
-          done ? "size-5" : "size-2.5",
+          // Met voortgangsring geen bolletje in het midden; zonder ring (bewerkstand) het gewone bolletje.
+          done ? "size-5" : showRing ? "size-0" : "size-2.5",
         )}
         style={{ backgroundColor: color, boxShadow: done ? `0 0 0 3px color-mix(in srgb, ${color} 22%, transparent)` : undefined }}
       >
