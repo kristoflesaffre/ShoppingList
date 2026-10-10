@@ -28,12 +28,10 @@ function StorePicker({
   value,
   onChange,
   name,
-  small = false,
 }: {
   value?: ItemStore;
   onChange: (value: ItemStore | undefined) => void;
   name: string;
-  small?: boolean;
 }) {
   return (
     <span role="radiogroup" aria-label={`Winkel voor ${name}`} className="flex shrink-0 gap-1">
@@ -50,13 +48,13 @@ function StorePicker({
             onClick={() => onChange(on ? undefined : o.value)}
             className={cn(
               "flex items-center justify-center rounded-full transition-[background-color,box-shadow,opacity] duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-              small ? "h-7 min-w-7 px-1" : "h-9 min-w-9 px-1.5",
+              "h-9 min-w-9 px-1.5",
               on
                 ? "bg-[var(--blue-25)] shadow-[inset_0_0_0_2px_var(--blue-500)]"
                 : "bg-[var(--gray-25)] opacity-60 grayscale-[60%] [@media(hover:hover)]:hover:opacity-100 [@media(hover:hover)]:hover:grayscale-0",
             )}
           >
-            <StoreLogos store={o.value} size={small ? 16 : 20} ring={o.value === "both"} />
+            <StoreLogos store={o.value} size={20} ring={o.value === "both"} />
           </button>
         );
       })}
@@ -258,15 +256,6 @@ export function IngredientStoreSheet({
                 >
                   <span className="size-[9px] shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb.join(",")})` }} aria-hidden />
                   <span className="min-w-0 flex-1 truncate text-[14.5px] font-bold text-text-primary">{title}</span>
-                  <span className="hidden text-xs font-semibold text-[var(--text-secondary)] sm:inline">Alles:</span>
-                  <StorePicker
-                    small
-                    name={`alles in ${title}`}
-                    value={g.items.every((e) => storeFor(e.name) === "lidl") ? "lidl" : g.items.every((e) => storeFor(e.name) === "delhaize") ? "delhaize" : g.items.every((e) => storeFor(e.name) === "both") ? "both" : undefined}
-                    onChange={(store) => {
-                      if (store) setStores(g.items.map((e) => e.name), store);
-                    }}
-                  />
                 </div>
                 <ul className="m-0 list-none px-2.5 pl-0">
                   {g.items.map((e, i) => (
