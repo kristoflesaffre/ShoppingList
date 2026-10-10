@@ -97,6 +97,14 @@ function LoyaltyBrandCard({ pane }: { pane: LoyaltySwipePane }) {
   );
 }
 
+const CARD_OUT_MS = 240;
+const CARD_IN_MS = 520;
+
+/** Afstand tot net buiten het scherm (kaart is max. 400px breed en gecentreerd). */
+function cardTravelPx() {
+  return typeof window === "undefined" ? 480 : Math.min(window.innerWidth, 400) / 2 + window.innerWidth / 2 + 24;
+}
+
 /** Zachte achtergrond in de kaartkleur. */
 function useCardBackdrop(pane: LoyaltySwipePane | undefined): string {
   const measured = useLogoTint(pane && !pane.brandColor ? pane.footerLogoSrc : "");
@@ -361,8 +369,8 @@ export function LoyaltyCardSwipeShell({
   }, [dragExtraPx]);
 
   /*
-   * Tabwissel: het witte vlak schuift mee, de oude kaart vliegt weg en de nieuwe schuift binnen
-   * (richting volgt de tab). Enkel bij tikken; openen op een tab via de filter blijft rustig.
+   * Tabwissel: het witte vlak schuift mee; de oude kaart schuift horizontaal het scherm uit, daarna
+   * schuift de nieuwe binnen (richting volgt de tab). Enkel bij tikken; openen via de filter blijft rustig.
    */
   const activeIndex = comboPillValue === "first" ? 0 : 1;
   const [leaving, setLeaving] = React.useState<{ index: number; dir: 1 | -1; key: number } | null>(null);
@@ -384,25 +392,23 @@ export function LoyaltyCardSwipeShell({
     const dir = enterDirRef.current;
     enterDirRef.current = 0;
     if (!dir || !enterRef.current) return;
-    enterRef.current.animate(
-      [
-        { transform: `translateX(${dir * 115}%) rotate(${dir * 4}deg)`, opacity: 0 },
-        { transform: "none", opacity: 1 },
-      ],
-      { duration: 460, easing: "cubic-bezier(0.22, 1, 0.36, 1)", delay: 40, fill: "backwards" },
-    );
+    // Pas binnen als de oude kaart weg is: ze kruisen elkaar niet.
+    enterRef.current.animate([{ transform: `translateX(${dir * cardTravelPx()}px)` }, { transform: "none" }], {
+      duration: CARD_IN_MS,
+      delay: CARD_OUT_MS,
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+      fill: "backwards",
+    });
   }, [activeIndex]);
 
   React.useLayoutEffect(() => {
     const el = leaveRef.current;
     if (!leaving || !el) return;
-    const anim = el.animate(
-      [
-        { transform: "none", opacity: 1 },
-        { transform: `translateX(${-leaving.dir * 115}%) rotate(${-leaving.dir * 4}deg)`, opacity: 0 },
-      ],
-      { duration: 340, easing: "cubic-bezier(0.55, 0, 0.75, 0.3)", fill: "forwards" },
-    );
+    const anim = el.animate([{ transform: "none" }, { transform: `translateX(${-leaving.dir * cardTravelPx()}px)` }], {
+      duration: CARD_OUT_MS,
+      easing: "cubic-bezier(0.5, 0, 0.75, 0)",
+      fill: "forwards",
+    });
     anim.onfinish = () => setLeaving((cur) => (cur?.key === leaving.key ? null : cur));
     return () => anim.cancel();
   }, [leaving]);
