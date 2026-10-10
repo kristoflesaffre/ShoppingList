@@ -40,7 +40,7 @@ import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
-import { LongAgoSection, MostEatenSection, useRecipeStats } from "@/app/recepten/recipe_stats_sections";
+import { LongAgoSection, MostEatenSection, RecipeStatsSkeleton, useRecipeStats } from "@/app/recepten/recipe_stats_sections";
 import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { EmptyStateFan } from "@/components/empty_state_fan";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
@@ -602,7 +602,9 @@ export default function ReceptenPage() {
                 <SearchBar surface="app" placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
               </div>
 
-              {showStats ? (
+              {showStats && recipeStats.isLoading ? (
+                <RecipeStatsSkeleton />
+              ) : showStats ? (
                 <>
                   <MostEatenSection ranked={recipeStats.ranked} todayIso={recipeStats.todayIso} />
                   <LongAgoSection ranked={recipeStats.ranked} todayIso={recipeStats.todayIso} />

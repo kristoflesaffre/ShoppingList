@@ -5,6 +5,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { buildCalendarEntries } from "@/lib/calendar-utils";
 import { cn } from "@/lib/utils";
+import { Shimmer } from "@/components/ui/shimmer";
 import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import {
@@ -334,5 +335,53 @@ export function LongAgoSection({ ranked, todayIso }: { ranked: RankedRecipe[]; t
         ))}
       </div>
     </section>
+  );
+}
+
+/* ---------------- Laden ---------------- */
+
+function SectionHeadSkeleton({ withRight = false }: { withRight?: boolean }) {
+  return (
+    <div className="mb-3 flex items-end justify-between gap-3">
+      <div className="min-w-0">
+        {/* Zelfde regelhoogtes als SectionHead (24px titel + 18px ondertitel). */}
+        <div className="flex h-6 items-center">
+          <Shimmer className="h-[18px] w-[150px] rounded-[8px]" />
+        </div>
+        <div className="mt-0.5 flex h-[18px] items-center">
+          <Shimmer className="h-3 w-[120px] rounded-[6px]" />
+        </div>
+      </div>
+      {withRight ? <Shimmer className="h-[16px] w-[70px] rounded-[6px]" /> : null}
+    </div>
+  );
+}
+
+/**
+ * Zelfde maten als «Meest gegeten» en «Lang niet meer gegeten», zodat de pagina niet verspringt
+ * terwijl de statistieken (lijstjes + kalender) nog laden.
+ */
+export function RecipeStatsSkeleton() {
+  return (
+    <>
+      <section aria-busy="true" aria-label="Meest gegeten laden">
+        <SectionHeadSkeleton withRight />
+        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-stretch lg:gap-3.5">
+          <Shimmer className="h-[164px] rounded-[24px] lg:h-[245px] lg:w-[58%] lg:shrink-0" />
+          <div className="flex gap-2.5 lg:flex-1 lg:flex-col lg:gap-3.5">
+            <Shimmer className="h-[143px] min-w-0 flex-1 rounded-[20px] lg:h-auto" />
+            <Shimmer className="h-[143px] min-w-0 flex-1 rounded-[20px] lg:h-auto" />
+          </div>
+        </div>
+      </section>
+      <section aria-busy="true" aria-label="Lang niet meer gegeten laden">
+        <SectionHeadSkeleton />
+        <div className="-mx-4 flex gap-2.5 overflow-hidden px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-3.5 lg:px-0">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Shimmer key={i} className="h-[196px] w-[150px] shrink-0 rounded-[22px] lg:h-[214px] lg:w-auto" />
+          ))}
+        </div>
+      </section>
+    </>
   );
 }
