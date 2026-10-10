@@ -787,7 +787,7 @@ export default function ReceptDetailPage() {
                 ) : null}
                 {usedIngredients.length > 0 ? (
                   <>
-                    <IngredientGroupLabel tone="blue">Gebruikt · {usedIngredients.length}</IngredientGroupLabel>
+                    <IngredientGroupLabel tone="gray">Gebruikt · {usedIngredients.length}</IngredientGroupLabel>
                     <ul>
                       {usedIngredients.map((ing, i) => (
                         <IngredientRow key={ing.id} name={ing.name} quantity={scaleQuantity(ing.quantity, factor)} photo={getPhotoUrl(ing.name, ing.quantity)} state="used" divider={i > 0} />
@@ -1087,7 +1087,7 @@ function IngredientRow({
     >
       <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--gray-25)]">
         {photo ? (
-          <Image src={photo} alt="" width={38} height={38} className={cn("size-[38px] object-contain", used && "opacity-45 grayscale-[60%]")} aria-hidden />
+          <Image src={photo} alt="" width={38} height={38} className={cn("size-[38px] object-contain", used && "opacity-55 grayscale")} aria-hidden />
         ) : null}
       </span>
       <span className={cn("min-w-0 flex-1 text-[15px] font-medium leading-5", used ? "text-[var(--text-tertiary)] line-through" : "text-text-primary")}>
@@ -1095,7 +1095,7 @@ function IngredientRow({
       </span>
       <span className={cn("whitespace-nowrap text-sm leading-5", used ? "text-[var(--text-tertiary)]" : "text-[var(--text-secondary)]")}>{quantity}</span>
       {used ? (
-        <span aria-label="Gebruikt" className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] text-white">
+        <span aria-label="Gebruikt" className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--gray-300)] text-white">
           <CheckGlyph />
         </span>
       ) : null}
@@ -1131,12 +1131,16 @@ function RecipeStepItem({
         <span
           className={cn(
             "flex size-[30px] shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors duration-base",
-            selected ? "bg-[var(--blue-500)] text-white" : "bg-[var(--blue-50)] text-[var(--blue-500)]",
+            selected
+              ? "bg-[var(--blue-500)] text-white"
+              : done
+                ? "bg-[var(--gray-50)] text-[var(--gray-300)]"
+                : "bg-[var(--blue-50)] text-[var(--blue-500)]",
           )}
         >
           {done && !selected ? <CheckGlyph /> : index + 1}
         </span>
-        {!last ? <span className={cn("my-1 w-0.5 flex-1 rounded-full", done ? "bg-[var(--blue-100)]" : "bg-[var(--border-subtle)]")} /> : null}
+        {!last ? <span className={cn("my-1 w-0.5 flex-1 rounded-full", done ? "bg-[var(--gray-100)]" : "bg-[var(--border-subtle)]")} /> : null}
       </div>
       <div
         role="button"
@@ -1180,8 +1184,9 @@ function RecipeStepItem({
               aria-hidden
               className={cn(
                 "flex size-[26px] items-center justify-center rounded-full transition-[background-color,box-shadow,transform] duration-fast group-active:scale-90 group-focus-visible:ring-2 group-focus-visible:ring-[var(--border-focus)]",
+                // Klaar: uitgewassen grijs (niet het actieve blauw), zodat het duidelijk «afgevinkt» leest.
                 done
-                  ? "bg-[var(--blue-500)] text-white"
+                  ? "bg-[var(--gray-300)] text-white"
                   : "bg-[var(--white)] text-transparent shadow-[inset_0_0_0_1.5px_var(--gray-200)] [@media(hover:hover)]:group-hover:shadow-[inset_0_0_0_1.5px_var(--blue-300)]",
               )}
             >
@@ -1202,7 +1207,7 @@ function RecipeStepItem({
               >
                 <span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--white)]">
                   {ing.photo ? (
-                    <Image src={ing.photo} alt="" width={22} height={22} className="size-[22px] object-contain" aria-hidden />
+                    <Image src={ing.photo} alt="" width={22} height={22} className={cn("size-[22px] object-contain", done && "grayscale")} aria-hidden />
                   ) : (
                     <span className="text-[11px] font-bold text-[var(--blue-500)]">{ing.name.charAt(0).toUpperCase()}</span>
                   )}
