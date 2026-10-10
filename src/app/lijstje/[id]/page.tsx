@@ -5560,6 +5560,8 @@ export default function ListDetailPage({
           rawValue: lidlCard.rawValue,
           footerLogoSrc: LOYALTY_COMBO_SECONDARY_LOGO_SRC,
           pillTabLabel: "Lidl",
+          name: "Lidl",
+          brandColor: "#0050aa",
         });
       }
       const delhaizeCard = existingLoyaltyCard ?? delhaizeLoyaltyCardFromStoreName;
@@ -5575,6 +5577,8 @@ export default function ListDetailPage({
           rawValue: delhaizeCard.rawValue,
           footerLogoSrc: LOYALTY_COMBO_PRIMARY_LOGO_SRC,
           pillTabLabel: "Delhaize",
+          name: "Delhaize",
+          brandColor: "#c4292f",
         });
       }
     } else {
@@ -5594,6 +5598,7 @@ export default function ListDetailPage({
         codeFormat: String(card.codeFormat ?? ""),
         rawValue: card.rawValue,
         footerLogoSrc: effectiveStoreIcon,
+        name: label || undefined,
       });
     }
     return panes;
