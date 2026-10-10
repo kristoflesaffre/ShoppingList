@@ -26,6 +26,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { mergeCategoryOrder, parseCategoryOrderByStore, serializeCategoryOrderByStore } from "@/lib/category-order";
 import { CSS } from "@dnd-kit/utilities";
 import { InstantError } from "@instantdb/core";
 import { id as iid } from "@instantdb/react";
@@ -90,6 +91,7 @@ import {
 import {
   categoryHeadingDisplay,
   effectiveItemCategory,
+  orderedCategorySectionTitles,
   orderedCategorySectionTitlesWithMasterOverride,
   parseMasterCategoryOrderJson,
   resolveItemCategoryFromName,
@@ -152,6 +154,7 @@ import {
 import type { ListItem, StoreChoiceConfig } from "./new_item_modal";
 import { RECIPE_BLOCK_PREFIX,
   ListCardsView,
+  CATEGORY_DRAG_PREFIX,
   ListGroupingMenuChip,
   ListGroupingToggle,
   ListLayoutToggle,
@@ -5017,6 +5020,22 @@ export default function ListDetailPage({
   /** Canvas «Concept D»: winkelfilter, alleen op een Lidl / Delhaize-lijstje. */
   // Winkelfilter enkel op echte lijstjes, niet op de favorieten.
   const activeStoreFilter: StoreFilter = isLidlDelhaizeList && !isMasterList ? storeFilter : "all";
+
+  /*
+   * Categorievolgorde per winkel (zoals de winkel ingedeeld is), bewaard op het favorietenlijstje.
+   * Lidl/Delhaize: de gekozen winkel; «allebei» volgt de eerste winkel (Lidl). Andere lijstjes: één volgorde.
+   */
+  const categoryOrderStoreKey: string | null = isLidlDelhaizeList ? (activeStoreFilter === "delhaize" ? "delhaize" : "lidl") : null;
+  const categoryOrderTargetId =
+    isMasterList || categoryOrderMasterListQueryId === CATEGORY_ORDER_MASTER_QUERY_NONE ? listId : categoryOrderMasterListQueryId;
+  const categoryOrderFromOwnList = categoryOrderTargetId === listId;
+  const categoryOrderByStoreJson =
+    ((categoryOrderFromOwnList ? listData : categoryOrderMasterData?.lists?.[0]) as { categoryOrderByStoreJson?: string } | undefined)
+      ?.categoryOrderByStoreJson ?? "";
+  const categoryOrderByStore = React.useMemo(() => parseCategoryOrderByStore(categoryOrderByStoreJson), [categoryOrderByStoreJson]);
+  const effectiveCategoryOrder: string[] | null =
+    (categoryOrderStoreKey ? categoryOrderByStore[categoryOrderStoreKey] : undefined) ??
+    (categoryOrderFromOwnList ? parsedMasterCategoryOrder : parsedInheritedMasterCategoryOrder);
   const storeFilterCounts = React.useMemo(() => {
     const count = (f: StoreFilter) => itemsForListSections.filter((i) => itemMatchesStoreFilter(i.store, f)).length;
     return { all: itemsForListSections.length, lidl: count("lidl"), delhaize: count("delhaize") };
@@ -5148,7 +5167,7 @@ export default function ListDetailPage({
       ? orderVacationCategorySections(keys)
       : orderedCategorySectionTitlesWithMasterOverride(
           keys,
-          isMasterList ? parsedMasterCategoryOrder : parsedInheritedMasterCategoryOrder,
+          effectiveCategoryOrder,
         );
     const normalSections = titles
       .filter((t) => grouped.has(t))
@@ -5179,8 +5198,7 @@ export default function ListDetailPage({
     isVakantieList,
     tripPersonTab,
     effectiveListItemCategory,
-    parsedMasterCategoryOrder,
-    parsedInheritedMasterCategoryOrder,
+    effectiveCategoryOrder,
     showUncheckedFirst,
     isEditMode,
   ]);
@@ -5461,9 +5479,46 @@ export default function ListDetailPage({
     }
   }, [listId, showUncheckedFirst, isShowUncheckedFirstHydrated]);
 
+  /** Categorie verslepen (bewerkstand per categorie): eerst alles inklappen, volgorde per winkel bewaren. */
+  const [categoryReorderArmed, setCategoryReorderArmed] = React.useState(false);
+  const armCategoryReorder = React.useCallback(() => {
+    setCategoryReorderArmed(true);
+    // Losgelaten zonder te slepen → meteen weer openklappen.
+    const release = () => {
+      window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", release);
+      window.setTimeout(() => setCategoryReorderArmed(false), 0);
+    };
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", release);
+  }, []);
+
+  const saveCategoryOrder = React.useCallback(
+    (visibleNew: string[]) => {
+      if (!categoryOrderTargetId) return;
+      const previous = effectiveCategoryOrder ?? orderedCategorySectionTitles(visibleNew);
+      const next = mergeCategoryOrder(previous, visibleNew);
+      const update = categoryOrderStoreKey
+        ? { categoryOrderByStoreJson: serializeCategoryOrderByStore({ ...categoryOrderByStore, [categoryOrderStoreKey]: next }) }
+        : { masterCategoryOrderJson: JSON.stringify(next) };
+      db.transact(db.tx.lists[categoryOrderTargetId].update(update)).catch(() => undefined);
+    },
+    [categoryOrderTargetId, effectiveCategoryOrder, categoryOrderStoreKey, categoryOrderByStore],
+  );
+
   const handleReorderItems = React.useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
+      if (String(active.id).startsWith(CATEGORY_DRAG_PREFIX)) {
+        setCategoryReorderArmed(false);
+        if (over == null || active.id === over.id || !String(over.id).startsWith(CATEGORY_DRAG_PREFIX)) return;
+        const titles = sectionsForDisplay.map((s) => s.title);
+        const from = titles.indexOf(String(active.id).slice(CATEGORY_DRAG_PREFIX.length));
+        const to = titles.indexOf(String(over.id).slice(CATEGORY_DRAG_PREFIX.length));
+        if (from < 0 || to < 0) return;
+        saveCategoryOrder(arrayMove(titles, from, to));
+        return;
+      }
       if (over == null || active.id === over.id) return;
       const movedId = String(active.id);
       const overId = String(over.id);
@@ -5498,7 +5553,7 @@ export default function ListDetailPage({
       const txns = reordered.map((item, i) => db.tx.items[item.id].update({ order: i }));
       db.transact(txns as Parameters<typeof db.transact>[0]);
     },
-    [items],
+    [items, sectionsForDisplay, saveCategoryOrder],
   );
 
   const sensors = useSensors(
@@ -5533,6 +5588,12 @@ export default function ListDetailPage({
 
   const sectionAwareCollision = React.useCallback<typeof closestCenter>(
     (args) => {
+      if (String(args.active.id).startsWith(CATEGORY_DRAG_PREFIX)) {
+        return closestCenter({
+          ...args,
+          droppableContainers: args.droppableContainers.filter((c) => String(c.id).startsWith(CATEGORY_DRAG_PREFIX)),
+        });
+      }
       const activeGroup = itemSectionMap.get(String(args.active.id));
       if (!activeGroup) return closestCenter(args);
       const filtered = args.droppableContainers.filter((c) =>
@@ -6205,7 +6266,9 @@ export default function ListDetailPage({
                   sensors={sensors}
                   collisionDetection={sectionAwareCollision}
                   onDragEnd={handleReorderItems}
-                  modifiers={[restrictToVerticalAxis]}
+                  onDragCancel={() => setCategoryReorderArmed(false)}
+                  // Categorieën kunnen op desktop ook naar een andere kolom.
+                  modifiers={categoryReorderArmed ? [] : [restrictToVerticalAxis]}
                 >
                   <SortableContext
                     items={sectionsForDisplay.flatMap((s) => s.items).map((i) => i.id)}
@@ -6226,6 +6289,10 @@ export default function ListDetailPage({
                         onDelete: handleDeleteItem,
                         onDeleteSection: handleDeleteSection,
                         onDeleteRecipeGroup: handleDeleteRecipeGroup,
+                        categoryReorder:
+                          effectiveListGroupingMode === "category" && !isLandalOrVakantieList
+                            ? { collapsed: categoryReorderArmed, onArm: armCategoryReorder }
+                            : undefined,
                       }}
                     />
                   </SortableContext>

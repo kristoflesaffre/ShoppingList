@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { IngredientPlate } from "@/components/ingredient_plate";
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, rectSortingStrategy, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { StoreBadge, StoreLogos, useStoreLongPress } from "./store_mark";
 import { storeFilterLabel, type StoreFilter } from "@/lib/item-store";
@@ -336,7 +336,85 @@ export type ListCardsEditHandlers = {
   onDelete: (id: string) => void;
   onDeleteSection: (sectionTitle: string) => void;
   onDeleteRecipeGroup: (groupId: string) => void;
+  /** Per categorie: categorieën verslepen. `collapsed` = alles ingeklapt zodra je de greep vastneemt. */
+  categoryReorder?: { collapsed: boolean; onArm: () => void };
 };
+
+/** Sleep-id's van categoriekaarten (los van de item-id's in dezelfde DndContext). */
+export const CATEGORY_DRAG_PREFIX = "cat:";
+
+/** Dichtstbijzijnde scrollcontainer (op het lijstje scrollt een paneel, niet altijd het venster). */
+function scrollParentOf(el: HTMLElement): { scrollBy: (x: number, y: number) => void } {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const oy = getComputedStyle(p).overflowY;
+    if ((oy === "auto" || oy === "scroll") && p.scrollHeight > p.clientHeight) return p;
+  }
+  return window;
+}
+
+/**
+ * Versleepbare categoriekaart (bewerkstand). Greep vastnemen klapt eerst alle kaarten in; de pagina
+ * schuift mee zodat deze kaart onder je vinger blijft. Daarna pas start het slepen.
+ */
+function SortableCategoryShell({
+  title,
+  collapsed,
+  onArm,
+  onResidual,
+  children,
+}: {
+  title: string;
+  collapsed: boolean;
+  onArm: () => void;
+  /** Wat scrollen niet kon opvangen (lijst korter dan het scherm): verschuiving van de hele lijst. */
+  onResidual: (px: number) => void;
+  children: (handle: React.ReactNode) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `${CATEGORY_DRAG_PREFIX}${title}` });
+  const nodeRef = React.useRef<HTMLDivElement | null>(null);
+  const anchorTop = React.useRef<number | null>(null);
+  React.useLayoutEffect(() => {
+    if (!collapsed || anchorTop.current == null || !nodeRef.current) return;
+    const anchor = anchorTop.current;
+    anchorTop.current = null;
+    const diff = nodeRef.current.getBoundingClientRect().top - anchor;
+    if (Math.abs(diff) > 1) scrollParentOf(nodeRef.current).scrollBy(0, diff);
+    const residual = nodeRef.current.getBoundingClientRect().top - anchor;
+    if (Math.abs(residual) > 1) onResidual(residual);
+  }, [collapsed, onResidual]);
+  const handle = (
+    <button
+      type="button"
+      aria-label={`Verplaats ${categoryHeadingDisplay(title)}`}
+      className={cn(
+        "-ml-1 flex h-8 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-[8px] active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        isDragging ? "text-[var(--blue-500)]" : "text-[var(--gray-300)] [@media(hover:hover)]:hover:text-[var(--blue-500)]",
+      )}
+      {...attributes}
+      {...listeners}
+      onPointerDown={(e) => {
+        anchorTop.current = nodeRef.current?.getBoundingClientRect().top ?? null;
+        onArm();
+        listeners?.onPointerDown?.(e);
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <GripIcon />
+    </button>
+  );
+  return (
+    <div
+      ref={(el) => {
+        nodeRef.current = el;
+        setNodeRef(el);
+      }}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn("break-inside-avoid", isDragging && "relative z-20 [&>section]:shadow-[0_18px_36px_-12px_rgba(16,17,48,0.35),0_0_0_2px_var(--blue-200)]")}
+    >
+      {children(handle)}
+    </div>
+  );
+}
 
 function TrashButton({ label, onClick, className }: { label: string; onClick: () => void; className?: string }) {
   return (
@@ -754,6 +832,7 @@ function Card({
   collapsible,
   headerClassName,
   reserveChevronSpace = false,
+  forceCollapsed = false,
 }: {
   header: React.ReactNode;
   gradient: string;
@@ -762,6 +841,8 @@ function Card({
   collapsible: boolean;
   headerClassName?: string;
   reserveChevronSpace?: boolean;
+  /** Categorieën verslepen: enkel de kop tonen. */
+  forceCollapsed?: boolean;
 }) {
   const allDone = items.length > 0 && items.every((i) => i.checked);
   const [open, setOpen] = React.useState(!allDone);
@@ -803,7 +884,7 @@ function Card({
           <span aria-hidden className="size-4 shrink-0" />
         ) : null}
       </div>
-      {!canCollapse || open ? children : null}
+      {!forceCollapsed && (!canCollapse || open) ? children : null}
     </section>
   );
 }
@@ -1092,6 +1173,13 @@ function DateChip({ date }: { date: Date | null }) {
 
 function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedFirst, onCheckedChange, onAddToSection, edit }: ListCardsViewProps) {
   const isDesktop = useIsDesktop();
+  // Tijdens het verslepen: lijst verschuiven zodat de vastgenomen kaart onder de vinger blijft.
+  const [reorderShift, setReorderShift] = React.useState(0);
+  const addReorderShift = React.useCallback((px: number) => setReorderShift((v) => v - px), []);
+  const reorderCollapsed = edit?.categoryReorder?.collapsed ?? false;
+  React.useEffect(() => {
+    if (!reorderCollapsed) setReorderShift(0);
+  }, [reorderCollapsed]);
   // Afhaalgerechten koop je niet in de winkel: per categorie geen kaart daarvoor (per dag blijven ze staan).
   const cards = sections.filter(
     (s) =>
@@ -1106,22 +1194,35 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
     const isTakeoutCategory = title === TAKEOUT_MEAL_CATEGORY;
     const rgb = isTakeoutCategory ? ([232, 181, 67] satisfies Rgb) : categoryColor(title);
     if (edit) {
-      return (
+      const reorder = edit.categoryReorder;
+      const card = (handle: React.ReactNode) => (
         <Card
-          key={s.title}
           gradient={`linear-gradient(90deg, rgba(${rgb.join(",")},0.16), rgba(${rgb.join(",")},0.05))`}
           items={s.items}
           collapsible={false}
+          forceCollapsed={reorder?.collapsed}
           header={
             <>
+              {handle}
               <SectionDot color={`rgb(${rgb.join(",")})`} done={false} />
               <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
-              <TrashButton label={`${title} verwijderen`} onClick={() => edit.onDeleteSection(s.title)} className="mr-0.5" />
+              {reorder?.collapsed ? (
+                <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--text-tertiary)]">{s.items.length}</span>
+              ) : (
+                <TrashButton label={`${title} verwijderen`} onClick={() => edit.onDeleteSection(s.title)} className="mr-0.5" />
+              )}
             </>
           }
         >
           <EditCardBody items={s.items} savedRecipes={savedRecipes} getPhotoUrl={getPhotoUrl} edit={edit} />
         </Card>
+      );
+      return reorder ? (
+        <SortableCategoryShell key={s.title} title={s.title} collapsed={reorder.collapsed} onArm={reorder.onArm} onResidual={addReorderShift}>
+          {card}
+        </SortableCategoryShell>
+      ) : (
+        <React.Fragment key={s.title}>{card(null)}</React.Fragment>
       );
     }
     return (
@@ -1147,10 +1248,21 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
     );
   };
   if (edit) {
-    return isDesktop ? (
+    const body = isDesktop ? (
       <div className="columns-3 gap-4 [&>*]:mb-4">{cards.map((s) => render(s, false))}</div>
     ) : (
       <div className="flex flex-col gap-3">{cards.map((s) => render(s, false))}</div>
+    );
+    if (!edit.categoryReorder) return body;
+    return (
+      <>
+        {edit.categoryReorder.collapsed ? (
+          <p className="-mb-1 text-[13px] font-semibold text-[var(--text-secondary)]">Sleep naar de plek waar je ze in de winkel tegenkomt</p>
+        ) : null}
+        <SortableContext items={cards.map((s) => `${CATEGORY_DRAG_PREFIX}${s.title}`)} strategy={rectSortingStrategy}>
+          <div style={reorderCollapsed && reorderShift !== 0 ? { transform: `translateY(${reorderShift}px)` } : undefined}>{body}</div>
+        </SortableContext>
+      </>
     );
   }
   return (

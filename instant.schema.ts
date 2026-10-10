@@ -28,6 +28,11 @@ const schema = i.schema({
        * Ontbreekt → standaordvolgorde uit ingredient_categories.json.
        */
       masterCategoryOrderJson: i.string().optional(),
+      /**
+       * Masterlijst: categorievolgorde per winkel (JSON `{ "lidl": [...], "delhaize": [...] }`),
+       * zoals de winkel ingedeeld is. Valt terug op `masterCategoryOrderJson`.
+       */
+      categoryOrderByStoreJson: i.string().optional(),
       /** Eigen geüploade foto als lijstjedicoon (legacy data-URL of blob-URL). */
       customIconUrl: i.string().optional(),
       /**
