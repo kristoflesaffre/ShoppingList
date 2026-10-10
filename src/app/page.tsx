@@ -1974,7 +1974,6 @@ function HomeLijstjesSection({
   onOpenCreateModal,
   onQuickAdd,
   onNewListLike,
-  dashboardLayout = false,
 }: {
   normalLists: HomeList[];
   onOpenCreateModal: () => void;
@@ -1982,8 +1981,6 @@ function HomeLijstjesSection({
   onQuickAdd: (list: HomeList, name: string) => void;
   /** Nieuw lijstje voor dezelfde winkel (vanaf de masterlijst). */
   onNewListLike: (list: HomeList) => void;
-  /** Laat in het brede overzicht twee kaarten in de primaire kolom zien. */
-  dashboardLayout?: boolean;
 }) {
   const laneRef = React.useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
@@ -2111,9 +2108,7 @@ function HomeLijstjesSection({
             key={list.id}
             className={cn(
               "w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start",
-              dashboardLayout
-                ? "min-[1050px]:w-[calc((100%-16px)/2)] min-[1050px]:max-w-none"
-                : "lg:w-[calc((100%-32px)/3)] lg:max-w-none",
+              "lg:w-[calc((100%-32px)/3)] lg:max-w-none",
             )}
           >
             <HomeListSwimCard
@@ -3857,41 +3852,42 @@ export default function Home() {
           <div className="hidden md:block">
             {tabletHomeView === "overview" ? (
               <div className="flex flex-col gap-10 pt-8">
-                <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-[minmax(0,2fr)_minmax(280px,0.92fr)] min-[1050px]:items-stretch min-[1050px]:gap-8">
-                  <div className="min-w-0">
-                    {favoritesPromo.show ? (
-                      <FavoritesPromoBanner
-                        className="mb-6"
-                        onSetUp={() => router.push("/nieuw-lijstje/selecteer-winkel")}
-                        onDismiss={favoritesPromo.dismiss}
-                      />
-                    ) : null}
-                    <HomeLijstjesSection
-                      normalLists={normalLists}
-                      onOpenCreateModal={handleOpenCreateModal}
-                      onQuickAdd={handleQuickAddToList}
-                      onNewListLike={handleNewListLike}
-                      dashboardLayout
+                {/* Lijstjes over de volle breedte (drie kaartjes), daaronder Te kopen en de diepvries even hoog. */}
+                <div className="min-w-0">
+                  {favoritesPromo.show ? (
+                    <FavoritesPromoBanner
+                      className="mb-6"
+                      onSetUp={() => router.push("/nieuw-lijstje/selecteer-winkel")}
+                      onDismiss={favoritesPromo.dismiss}
                     />
-                    {!homeSectionConfig.hidden.includes("te-kopen") ? (
-                      <div className="hidden pt-10 min-[1050px]:block">
-                        {/* Canvas «Combinatie 1»: één gedeelde Te kopen-lijst. */}
-                        <HomeDashboardShoppingList
-                          items={dashboardShoppingItems}
-                          addedByFor={(item) => {
-                            const row = homeShoppingItems.find((i) => i.id === item.id);
-                            return row ? teKopenAddedByFor(row) : null;
-                          }}
-                          onAdd={() => {
-                            primeKeyboard();
-                            setTeKopenSlideOpen(true);
-                          }}
-                          onBought={(id) => void db.transact(db.tx.shoppingItems[id].delete())}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-
+                  ) : null}
+                  <HomeLijstjesSection
+                    normalLists={normalLists}
+                    onOpenCreateModal={handleOpenCreateModal}
+                    onQuickAdd={handleQuickAddToList}
+                    onNewListLike={handleNewListLike}
+                  />
+                </div>
+                <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-[minmax(0,2fr)_minmax(280px,0.92fr)] min-[1050px]:items-stretch min-[1050px]:gap-8">
+                  {!homeSectionConfig.hidden.includes("te-kopen") ? (
+                    <div className="hidden min-w-0 min-[1050px]:block">
+                      {/* Canvas «Combinatie 1»: één gedeelde Te kopen-lijst. */}
+                      <HomeDashboardShoppingList
+                        items={dashboardShoppingItems}
+                        addedByFor={(item) => {
+                          const row = homeShoppingItems.find((i) => i.id === item.id);
+                          return row ? teKopenAddedByFor(row) : null;
+                        }}
+                        onAdd={() => {
+                          primeKeyboard();
+                          setTeKopenSlideOpen(true);
+                        }}
+                        onBought={(id) => void db.transact(db.tx.shoppingItems[id].delete())}
+                      />
+                    </div>
+                  ) : (
+                    <div className="hidden min-[1050px]:block" />
+                  )}
                   <aside className="flex min-w-0 flex-col">
                     {!homeSectionConfig.hidden.includes("diepvries") ? (
                       <HomeDashboardFreezerColumn items={homeFreezerItems} />

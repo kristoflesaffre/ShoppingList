@@ -61,6 +61,8 @@ function FreezerThumb({ item }: { item: DashboardFreezerItem }) {
   );
 }
 
+const MAX_FREEZER_ROWS = 5;
+
 export type DashboardFreezerRow = DashboardFreezerItem & { quantityPerPackage?: number; unit?: string; recipePersons?: number };
 
 /**
@@ -71,6 +73,10 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
   const dishes = items.filter((i) => i.type === "gerecht");
   const products = items.filter((i) => i.type !== "gerecht");
   const portions = dishes.reduce((sum, i) => sum + Math.max(0, i.packages || 0), 0);
+  // Even hoog als Te kopen: maximaal vijf items, de rest via «Diepvries openen».
+  const shownDishes = dishes.slice(0, MAX_FREEZER_ROWS);
+  const shownProducts = products.slice(0, Math.max(0, MAX_FREEZER_ROWS - shownDishes.length));
+  const hiddenCount = items.length - shownDishes.length - shownProducts.length;
   const stats = [plural(items.length, "item", "items"), portions > 0 ? plural(portions, "portie", "porties") : null]
     .filter(Boolean)
     .join(" · ");
@@ -123,31 +129,58 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
           Diepvries{items.length > 0 ? ` · ${stats}` : ""}
         </p>
         {items.length === 0 ? (
-          <p className="mt-4 text-sm leading-5 text-[var(--text-secondary)]">
-            Je diepvries is leeg. Voeg een gerecht of product toe, dan zie je hier wat je in huis hebt.
-          </p>
+          /* Lege diepvries: vriendelijke illustratie met één duidelijke actie. */
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-2 py-4 text-center">
+            <span className="relative flex size-[132px] items-center justify-center" aria-hidden>
+              <span className="absolute inset-2 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0)_70%)]" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
+              <img
+                src="/images/ui/empty_state_diepvries.png"
+                alt=""
+                width={112}
+                height={112}
+                className="relative size-28 object-contain drop-shadow-[0_14px_18px_rgba(47,95,179,0.25)] motion-safe:animate-fade-up"
+              />
+            </span>
+            <span>
+              <span className="block text-lg font-extrabold text-text-primary">Je diepvries is leeg</span>
+              <span className="mt-1 block text-[13.5px] leading-5 text-[var(--text-secondary)] [text-wrap:balance]">
+                Kook je wat te veel? Vries het in, dan zie je hier wat je nog in huis hebt.
+              </span>
+            </span>
+            <Link
+              href="/diepvriesvoorraad"
+              className="mt-1 inline-flex h-10 items-center gap-1.5 rounded-pill bg-[var(--blue-500)] px-4 text-sm font-bold text-white no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+            >
+              {PLUS_ICON}
+              Iets invriezen
+            </Link>
+          </div>
         ) : (
           <>
-            {group("GERECHTEN", dishes)}
-            {group("PRODUCTEN", products)}
+            {group("GERECHTEN", shownDishes)}
+            {group("PRODUCTEN", shownProducts)}
+            {hiddenCount > 0 ? (
+              <p className="mt-2 text-[13px] font-semibold text-[#4d79c7]">+ {hiddenCount} meer in de diepvries</p>
+            ) : null}
+            <div className="min-h-4 flex-1" />
+            <div className="flex gap-2">
+              <Link
+                href="/diepvriesvoorraad"
+                className="flex h-10 flex-1 items-center justify-center rounded-pill bg-[var(--white)] text-sm font-bold text-[var(--blue-500)] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+              >
+                Diepvries openen
+              </Link>
+              <Link
+                href="/diepvriesvoorraad"
+                aria-label="Iets in de diepvries leggen"
+                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+              >
+                {PLUS_ICON}
+              </Link>
+            </div>
           </>
         )}
-        <div className="min-h-4 flex-1" />
-        <div className="flex gap-2">
-          <Link
-            href="/diepvriesvoorraad"
-            className="flex h-10 flex-1 items-center justify-center rounded-pill bg-[var(--white)] text-sm font-bold text-[var(--blue-500)] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-          >
-            Diepvries openen
-          </Link>
-          <Link
-            href="/diepvriesvoorraad"
-            aria-label="Iets in de diepvries leggen"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-          >
-            {PLUS_ICON}
-          </Link>
-        </div>
       </div>
     </section>
   );
@@ -242,7 +275,7 @@ export function HomeDashboardShoppingList({
         </button>
       </div>
       <div className="rounded-[22px] bg-[var(--white)] px-5 pb-2 pt-4 shadow-card">
-        <div className="mb-1 flex items-center gap-2.5">
+        <div className={cn("mb-1 flex items-center gap-2.5", items.length === 0 && "hidden")}>
           {others.size > 0 ? (
             <span className="flex" aria-hidden>
               {Array.from(others.values()).map((p, i) => (
@@ -254,7 +287,26 @@ export function HomeDashboardShoppingList({
           <span className="text-[13px] font-bold tabular-nums text-[var(--text-tertiary)]">{items.length}</span>
         </div>
         {items.length === 0 ? (
-          <p className="py-4 text-sm text-[var(--text-secondary)]">Niets te kopen. Voeg iets toe wat je niet mag vergeten.</p>
+          /* Lege lijst: alles gekocht, met één duidelijke actie. */
+          <div className="flex items-center gap-4 py-4">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#e8f6ee] text-[#2a9d63] [[data-theme=dark]_&]:bg-[rgba(47,191,113,0.15)]" aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" className="size-[22px]">
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[17px] font-extrabold text-text-primary">Alles gekocht</span>
+              <span className="block text-[13.5px] leading-5 text-[var(--text-secondary)]">Niets meer op jullie lijst. Wat mag je niet vergeten?</span>
+            </span>
+            <button
+              type="button"
+              onClick={onAdd}
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-pill bg-[var(--blue-500)] px-4 text-sm font-bold text-white transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+            >
+              {PLUS_ICON}
+              Product toevoegen
+            </button>
+          </div>
         ) : (
           <ul className="m-0 list-none pl-0">
             {shown.map((item, i) => {
@@ -279,7 +331,7 @@ export function HomeDashboardShoppingList({
                       </svg>
                     ) : null}
                   </button>
-                  <span className={cn("min-w-0 flex-1 truncate text-[15px] font-semibold", done ? "text-[var(--gray-300)] line-through" : "text-text-primary")}>
+                  <span className={cn("min-w-0 flex-1 truncate text-[15px] font-semibold first-letter:uppercase", done ? "text-[var(--gray-300)] line-through" : "text-text-primary")}>
                     {item.name}
                   </span>
                   {done ? (
