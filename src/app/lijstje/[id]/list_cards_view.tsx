@@ -1283,7 +1283,7 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
     return (
       <>
         {edit.categoryReorder.collapsed ? (
-          <p className="-mb-1 text-[13px] font-semibold text-[var(--text-secondary)]">Sleep naar de plek waar je ze in de winkel tegenkomt</p>
+          <p className="-mb-1 text-[13px] font-semibold text-[var(--text-secondary)]">Sleep in de volgorde van de winkel · tik op Gereed om items te wijzigen</p>
         ) : null}
         <SortableContext items={cards.map((s) => `${CATEGORY_DRAG_PREFIX}${s.title}`)} strategy={rectSortingStrategy}>
           <div style={reorderCollapsed && reorderShift !== 0 ? { transform: `translateY(${reorderShift}px)` } : undefined}>{body}</div>

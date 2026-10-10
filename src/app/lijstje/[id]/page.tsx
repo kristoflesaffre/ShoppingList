@@ -5510,17 +5510,11 @@ export default function ListDetailPage({
 
   /** Categorie verslepen (bewerkstand per categorie): eerst alles inklappen, volgorde per winkel bewaren. */
   const [categoryReorderArmed, setCategoryReorderArmed] = React.useState(false);
-  const armCategoryReorder = React.useCallback(() => {
-    setCategoryReorderArmed(true);
-    // Losgelaten zonder te slepen → meteen weer openklappen.
-    const release = () => {
-      window.removeEventListener("pointerup", release);
-      window.removeEventListener("pointercancel", release);
-      window.setTimeout(() => setCategoryReorderArmed(false), 0);
-    };
-    window.addEventListener("pointerup", release);
-    window.addEventListener("pointercancel", release);
-  }, []);
+  // Eenmaal een categorie vastgenomen: ingeklapt blijven tot «Gereed» (items verslepen = opnieuw bewerken).
+  const armCategoryReorder = React.useCallback(() => setCategoryReorderArmed(true), []);
+  React.useEffect(() => {
+    if (!isEditMode) setCategoryReorderArmed(false);
+  }, [isEditMode]);
 
   const saveCategoryOrder = React.useCallback(
     (visibleNew: string[]) => {
@@ -5539,7 +5533,6 @@ export default function ListDetailPage({
     (event: DragEndEvent) => {
       const { active, over } = event;
       if (String(active.id).startsWith(CATEGORY_DRAG_PREFIX)) {
-        setCategoryReorderArmed(false);
         if (over == null || active.id === over.id || !String(over.id).startsWith(CATEGORY_DRAG_PREFIX)) return;
         const titles = sectionsForDisplay.map((s) => s.title);
         const from = titles.indexOf(String(active.id).slice(CATEGORY_DRAG_PREFIX.length));
@@ -6295,7 +6288,6 @@ export default function ListDetailPage({
                   sensors={sensors}
                   collisionDetection={sectionAwareCollision}
                   onDragEnd={handleReorderItems}
-                  onDragCancel={() => setCategoryReorderArmed(false)}
                   // Categorieën kunnen op desktop ook naar een andere kolom.
                   modifiers={categoryReorderArmed ? [] : [restrictToVerticalAxis]}
                 >
