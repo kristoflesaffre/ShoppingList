@@ -1254,13 +1254,19 @@ const recipeTitleClass =
 function RecipeTitleEditor({ name, onSave }: { name: string; onSave: (name: string) => Promise<unknown> }) {
   const [draft, setDraft] = React.useState(name);
   const ref = React.useRef<HTMLTextAreaElement>(null);
+  const measureRef = React.useRef<HTMLSpanElement>(null);
+  const [textWidth, setTextWidth] = React.useState<number | null>(null);
+  // Desktop: kader zo breed als de naam (+ ruimte voor het potlood); mobiel: volle breedte.
+  React.useLayoutEffect(() => {
+    if (measureRef.current) setTextWidth(Math.ceil(measureRef.current.getBoundingClientRect().width));
+  }, [draft]);
   // Groeit mee zoals de gewone titel (lange namen lopen over twee regels).
   React.useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = "0px";
     el.style.height = `${el.scrollHeight}px`;
-  }, [draft]);
+  }, [draft, textWidth]);
   const commit = () => {
     const v = draft.trim();
     if (!v) {
@@ -1270,8 +1276,14 @@ function RecipeTitleEditor({ name, onSave }: { name: string; onSave: (name: stri
     if (v !== name) void onSave(v);
   };
   return (
-    <label className="relative block w-full max-w-[640px]">
+    <label
+      className="relative block w-full max-w-[640px] lg:w-[var(--title-w)]"
+      style={{ "--title-w": textWidth != null ? `${textWidth + 76}px` : "100%" } as React.CSSProperties}
+    >
       <span className="sr-only">Naam van het recept</span>
+      <span ref={measureRef} aria-hidden className={cn(recipeTitleClass, "pointer-events-none invisible absolute left-0 top-0 whitespace-pre")}>
+        {draft || " "}
+      </span>
       <span
         aria-hidden
         className="pointer-events-none absolute -inset-x-1 -inset-y-1.5 rounded-[14px] bg-[rgba(255,255,255,0.6)] shadow-[inset_0_0_0_1.5px_var(--blue-500)] lg:-inset-y-2"
