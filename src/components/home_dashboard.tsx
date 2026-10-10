@@ -4,13 +4,6 @@ import Link from "next/link";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { cn } from "@/lib/utils";
 
-type QuickAction = {
-  label: string;
-  iconSrc: string;
-  href?: string;
-  onClick?: () => void;
-};
-
 function DashboardActionIcon({ src }: { src: string }) {
   return (
     <span
@@ -27,69 +20,6 @@ function DashboardActionIcon({ src }: { src: string }) {
         maskPosition: "center",
       }}
     />
-  );
-}
-
-function QuickActionTile({ action }: { action: QuickAction }) {
-  const className = cn(
-    "flex min-h-14 min-w-0 items-center gap-3 rounded-md bg-[var(--white)] px-3.5 py-3 text-left no-underline shadow-card",
-    "transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.98]",
-    "[@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-  );
-  const content = (
-    <>
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)]">
-        <DashboardActionIcon src={action.iconSrc} />
-      </span>
-      <span className="min-w-0 text-sm font-semibold leading-5 text-[var(--text-primary)]">
-        {action.label}
-      </span>
-    </>
-  );
-
-  if (action.href) {
-    return (
-      <Link href={action.href} className={className}>
-        {content}
-      </Link>
-    );
-  }
-
-  return (
-    <button type="button" className={className} onClick={action.onClick}>
-      {content}
-    </button>
-  );
-}
-
-export function HomeDashboardQuickActions({
-  onNewList,
-  onAddProduct,
-}: {
-  onNewList: () => void;
-  onAddProduct: () => void;
-}) {
-  const actions: QuickAction[] = [
-    { label: "Nieuw lijstje", iconSrc: "/icons/list.svg", onClick: onNewList },
-    { label: "Product toevoegen", iconSrc: "/icons/plus-circle.svg", onClick: onAddProduct },
-    { label: "Klantenkaarten", iconSrc: "/icons/card.svg", href: "/klantenkaarten" },
-    { label: "Diepvries", iconSrc: "/icons/freeze.svg", href: "/diepvriesvoorraad" },
-  ];
-
-  return (
-    <section aria-labelledby="dashboard-quick-actions" className="flex min-w-0 flex-col gap-3">
-      <h2
-        id="dashboard-quick-actions"
-        className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]"
-      >
-        Snelle acties
-      </h2>
-      <div className="grid grid-cols-2 gap-2.5 min-[1050px]:grid-cols-1 min-[1180px]:grid-cols-2">
-        {actions.map((action) => (
-          <QuickActionTile key={action.label} action={action} />
-        ))}
-      </div>
-    </section>
   );
 }
 

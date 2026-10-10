@@ -70,7 +70,6 @@ import {
 import { HomeHeader } from "@/components/home_header";
 import {
   HomeDashboardInventory,
-  HomeDashboardQuickActions,
 } from "@/components/home_dashboard";
 import {
   HomeTodayDashboard,
@@ -3872,18 +3871,8 @@ export default function Home() {
                   </div>
 
                   <aside
-                    className={cn(
-                      "grid min-w-0 gap-8 min-[1050px]:grid-cols-1",
-                      homeSectionConfig.hidden.includes("diepvries") ? "grid-cols-1" : "grid-cols-2",
-                    )}
+                    className="grid min-w-0 grid-cols-1 gap-8"
                   >
-                    <HomeDashboardQuickActions
-                      onNewList={handleOpenCreateModal}
-                      onAddProduct={() => {
-                        primeKeyboard();
-                        setTeKopenSlideOpen(true);
-                      }}
-                    />
                     {!homeSectionConfig.hidden.includes("diepvries") ? (
                       <HomeDashboardInventory items={homeFreezerItems} />
                     ) : null}
