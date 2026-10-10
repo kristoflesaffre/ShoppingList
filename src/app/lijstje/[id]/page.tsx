@@ -5904,7 +5904,7 @@ export default function ListDetailPage({
                 <div className="flex shrink-0 items-center gap-2">
                   {showListGroupingControl && isLidlDelhaizeList ? (
                     <div className="hidden lg:block">
-                      <StoreFilterChip value={storeFilter} onChange={handleStoreFilterChange} counts={storeFilterCounts} showLabelWhenAll />
+                      <StoreFilterChip value={storeFilter} onChange={handleStoreFilterChange} counts={storeFilterCounts} />
                     </div>
                   ) : null}
                   {showListGroupingControl ? (

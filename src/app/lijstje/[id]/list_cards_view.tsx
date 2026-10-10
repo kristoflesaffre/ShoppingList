@@ -15,6 +15,11 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { StoreBadge, StoreLogos, useStoreLongPress } from "./store_mark";
 import { storeFilterLabel, type StoreFilter } from "@/lib/item-store";
+import {
+  isTakeoutMealName,
+  TAKEOUT_MEAL_CATEGORY,
+  TAKEOUT_MEAL_PHOTO_URL,
+} from "@/lib/takeout-meal";
 
 /** Weergave van de items in een kaart: rijen, twee kolommen of vierkante tegels (canvas «Lijstje 6b» + «Lijstje 2»). */
 export type ListCardLayout = "one" | "two" | "tiles";
@@ -57,9 +62,12 @@ type Recipe = { groupId: string; name: string; link?: string; photo: string | nu
 function splitDay(items: ListItem[], savedRecipes: SavedRecipe[]) {
   const recipes: Recipe[] = [];
   const stockDishes: ListItem[] = [];
+  const takeoutDishes: ListItem[] = [];
   const loose: ListItem[] = [];
   for (const item of items) {
-    if (item.fromStock) {
+    if (isTakeoutMealName(item.name)) {
+      takeoutDishes.push(item);
+    } else if (item.fromStock) {
       stockDishes.push(item);
     } else if (item.recipeGroupId && item.recipeName) {
       let r = recipes.find((x) => x.groupId === item.recipeGroupId);
@@ -76,7 +84,7 @@ function splitDay(items: ListItem[], savedRecipes: SavedRecipe[]) {
       loose.push(item);
     }
   }
-  return { recipes, stockDishes, loose };
+  return { recipes, stockDishes, takeoutDishes, loose };
 }
 
 /* ─── Categoriekleuren (canvas «Lijstje 6») ─── */
@@ -90,6 +98,7 @@ const CATEGORY_COLORS: Array<[RegExp, Rgb]> = [
   [/drank|water|frisdrank/i, [47, 143, 224]],
   [/snack|chips|snoep|koek/i, [224, 120, 47]],
   [/diepvries/i, [63, 181, 214]],
+  [/afhaal/i, [232, 181, 67]],
   [/baby|kind/i, [224, 90, 160]],
   [/verzorg|huishoud|schoonmaak|drogist/i, [43, 179, 163]],
 ];
@@ -241,6 +250,38 @@ function ItemTile({ item, getPhotoUrl, onToggle }: ItemProps) {
   );
 }
 
+/** Afhaalgerecht: statische maaltijdweergave zonder boodschappencheckbox. */
+function TakeoutMealItem({ item, layout }: { item: ListItem; layout: ListCardLayout }) {
+  if (layout === "tiles") {
+    return (
+      <div className="relative flex aspect-[1/1.12] min-w-0 flex-col items-center justify-center gap-1 rounded-[16px] bg-[var(--white)] px-2 py-2 shadow-[inset_0_0_0_1px_var(--border-subtle)]">
+        <span className="absolute right-[7px] top-[7px]"><CompleteIndicator /></span>
+        <Plate src={TAKEOUT_MEAL_PHOTO_URL} size={58} />
+        <span className="w-full text-center leading-[15px]">
+          <span className="block truncate text-xs font-semibold text-text-primary">{item.name}</span>
+          <span className="block text-[11px] text-[#8a6518]">Afhalen</span>
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn(
+      "flex min-w-0 items-center gap-3 text-left",
+      layout === "one"
+        ? "border-t border-[var(--border-subtle)] px-1 py-2.5 first:border-t-0"
+        : "rounded-[12px] bg-[var(--white)] p-[7px] shadow-[inset_0_0_0_1px_var(--border-subtle)]",
+    )}>
+      <Plate src={TAKEOUT_MEAL_PHOTO_URL} size={layout === "one" ? 42 : 34} />
+      <span className="min-w-0 flex-1 leading-[18px]">
+        <span className="block truncate text-[15px] font-medium text-text-primary">{item.name}</span>
+        <span className="block text-[12px] font-medium text-[#8a6518]">Afhalen</span>
+      </span>
+      <CompleteIndicator />
+    </div>
+  );
+}
+
 function ItemsLayout({
   items,
   layout,
@@ -259,7 +300,9 @@ function ItemsLayout({
   if (layout === "one") {
     return (
       <div className="px-2.5 pb-1.5 pt-1">
-        {items.map((it) => (
+        {items.map((it) => isTakeoutMealName(it.name) ? (
+          <TakeoutMealItem key={it.id} item={it} layout={layout} />
+        ) : (
           <ItemRow key={it.id} item={it} getPhotoUrl={getPhotoUrl} onToggle={() => onCheckedChange(it.id, !it.checked)} />
         ))}
       </div>
@@ -268,7 +311,9 @@ function ItemsLayout({
   if (layout === "tiles") {
     return (
       <div className={cn("grid gap-1.5 p-2.5", wide ? "grid-cols-3 lg:grid-cols-4" : "grid-cols-3")}>
-        {items.map((it) => (
+        {items.map((it) => isTakeoutMealName(it.name) ? (
+          <TakeoutMealItem key={it.id} item={it} layout={layout} />
+        ) : (
           <ItemTile key={it.id} item={it} getPhotoUrl={getPhotoUrl} onToggle={() => onCheckedChange(it.id, !it.checked)} />
         ))}
       </div>
@@ -276,7 +321,9 @@ function ItemsLayout({
   }
   return (
     <div className="grid grid-cols-2 gap-1.5 p-2.5">
-      {items.map((it) => (
+      {items.map((it) => isTakeoutMealName(it.name) ? (
+        <TakeoutMealItem key={it.id} item={it} layout={layout} />
+      ) : (
         <ItemChip key={it.id} item={it} getPhotoUrl={getPhotoUrl} onToggle={() => onCheckedChange(it.id, !it.checked)} />
       ))}
     </div>
@@ -453,7 +500,7 @@ function EditCardBody({
   recipesMovable?: boolean;
 }) {
   const split = splitDay(items, savedRecipes);
-  const others = [...split.loose, ...split.stockDishes];
+  const others = [...split.loose, ...split.stockDishes, ...split.takeoutDishes];
   const showRecipeHeads = split.recipes.length > 1 || (split.recipes.length === 1 && others.length > 0);
   if (!showRecipeHeads) {
     return (
@@ -640,6 +687,18 @@ function Counter({ items }: { items: ListItem[] }) {
   return <span className="shrink-0 text-xs font-bold tabular-nums text-[var(--text-secondary)]">{done}/{items.length}</span>;
 }
 
+function CompleteIndicator() {
+  return (
+    <span
+      role="img"
+      aria-label="Afgerond"
+      className="inline-flex size-6 shrink-0 items-center justify-center text-[#2f8a4a]"
+    >
+      <CheckIcon className="size-4" />
+    </span>
+  );
+}
+
 function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <RoundIconButton
@@ -774,6 +833,7 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
       if (d.isGeneral) continue;
       for (const r of d.split.recipes) if (r.photo) out.add(r.photo);
       for (const s of d.split.stockDishes) if (s.stockPhotoUrl) out.add(s.stockPhotoUrl);
+      if (d.split.takeoutDishes.length > 0) out.add(TAKEOUT_MEAL_PHOTO_URL);
       for (const it of d.split.loose.slice(0, 4)) {
         const p = photoFor(it);
         if (p) out.add(p);
@@ -789,6 +849,12 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
     const used: Rgb[] = [];
     for (const d of days) {
       if (d.isGeneral) continue;
+      if (d.split.recipes.length === 0 && d.split.takeoutDishes.length > 0) {
+        const takeoutColor: Rgb = [232, 181, 67];
+        map.set(d.section.title, takeoutColor);
+        used.push(takeoutColor);
+        continue;
+      }
       const src = d.split.recipes.find((r) => r.photo)?.photo ?? d.split.stockDishes.find((s) => s.stockPhotoUrl)?.stockPhotoUrl;
       const rgb = src ? tints.get(src) : undefined;
       if (rgb) {
@@ -866,18 +932,21 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
     const label = dayLabel(section, listDateStr);
     const color = dayColor.get(section.title) ?? LAVENDER;
     const mainRecipe = split.recipes[0] ?? null;
-    const stock = !mainRecipe ? split.stockDishes[0] ?? null : null;
+    const takeout = !mainRecipe ? split.takeoutDishes[0] ?? null : null;
+    const stock = !mainRecipe && !takeout ? split.stockDishes[0] ?? null : null;
     const restItems = [
       ...(mainRecipe ? mainRecipe.items : []),
       ...split.recipes.slice(1).flatMap((r) => r.items),
       ...split.loose,
       ...split.stockDishes.filter((s) => s !== stock),
     ];
-    const countable = section.items.filter((i) => i !== stock);
+    const countable = section.items.filter(
+      (item) => item !== stock && !isTakeoutMealName(item.name),
+    );
     /* Elke dag: datumtegel + dag als titel; het gerecht (recept of diepvries) als sublabel.
        Desktop: ook de gerechtfoto, en bij dagen zonder gerecht de items als sublabel. */
-    const dishName = mainRecipe?.name ?? stock?.name ?? null;
-    const dishPhoto = mainRecipe?.photo ?? stock?.stockPhotoUrl ?? null;
+    const dishName = mainRecipe?.name ?? takeout?.name ?? stock?.name ?? null;
+    const dishPhoto = mainRecipe?.photo ?? (takeout ? TAKEOUT_MEAL_PHOTO_URL : null) ?? stock?.stockPhotoUrl ?? null;
     const extraRecipes = mainRecipe ? split.recipes.length - 1 : 0;
     const looseNames = !dishName && wide ? section.items.map((i) => i.name).join(", ") : null;
     const header = (
@@ -886,7 +955,7 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
         {!wide ? (
           <DateChip date={d.date} />
         ) : dishName ? (
-          <Plate src={dishPhoto} size={46} freeze={!mainRecipe} />
+          <Plate src={dishPhoto} size={46} freeze={Boolean(stock)} />
         ) : (
           <IngredientPlate
             photos={section.items
@@ -912,7 +981,11 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
           <TrashButton label={`${label} verwijderen`} onClick={() => edit.onDeleteSection(section.title)} className="mr-0.5" />
         ) : (
           <>
-            <Counter items={countable} />
+            {takeout && countable.length === 0 ? (
+              <CompleteIndicator />
+            ) : (
+              <Counter items={countable} />
+            )}
             <AddButton label={`Item toevoegen aan ${label}`} onClick={() => onAddToSection(section.title)} />
           </>
         )}
@@ -1000,7 +1073,10 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
   const cards = sections.filter((s) => s.items.length > 0);
   const render = (s: Section, wide: boolean) => {
     const title = categoryHeadingDisplay(s.displayTitle ?? s.title);
-    const rgb = categoryColor(title);
+    const takeoutItems = s.items.filter((item) => isTakeoutMealName(item.name));
+    const countableItems = s.items.filter((item) => !isTakeoutMealName(item.name));
+    const isTakeoutCategory = title === TAKEOUT_MEAL_CATEGORY;
+    const rgb = isTakeoutCategory ? ([232, 181, 67] satisfies Rgb) : categoryColor(title);
     if (edit) {
       return (
         <Card
@@ -1024,13 +1100,17 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
       <Card
         key={s.title}
         gradient={`linear-gradient(90deg, rgba(${rgb.join(",")},0.16), rgba(${rgb.join(",")},0.05))`}
-        items={s.items}
-        collapsible
+        items={countableItems}
+        collapsible={countableItems.length > 0}
         header={
           <>
             <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb.join(",")})` }} aria-hidden />
             <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
-            <Counter items={s.items} />
+            {takeoutItems.length > 0 && countableItems.length === 0 ? (
+              <CompleteIndicator />
+            ) : (
+              <Counter items={countableItems} />
+            )}
             <AddButton label={`Item toevoegen aan ${title}`} onClick={() => onAddToSection(s.title)} />
           </>
         }
@@ -1289,8 +1369,11 @@ export function StoreFilterChip({
             : "shadow-[inset_0_0_0_1px_var(--gray-100)]",
         )}
       >
-        {active ? <span className="flex rounded-full bg-[var(--white)]">{current.icon}</span> : current.icon}
-        {active || showLabelWhenAll ? storeFilterLabel(value) : null}
+        {/* Vaste iconbreedte: de knop blijft even breed, wat je ook kiest (geen winkelnaam ernaast). */}
+        <span className="flex h-6 w-7 shrink-0 items-center justify-center">
+          {active ? <span className="flex rounded-full bg-[var(--white)]">{current.icon}</span> : current.icon}
+        </span>
+        {showLabelWhenAll && !active ? storeFilterLabel(value) : null}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn("size-3.5 transition-transform", open && "rotate-180")}>
           <path d="M6 9l6 6 6-6" />
         </svg>
