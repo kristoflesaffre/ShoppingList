@@ -40,6 +40,8 @@ export type LoyaltyCardSwipeShellProps = {
   /** Minstens één paneel met geldige rawValue (lijst-detail bepaalt welke). */
   loyaltyPanes: LoyaltySwipePane[];
   onPanelChange?: (panel: "list" | "loyalty") => void;
+  /** Combi: lijstje gefilterd op één winkel → die kaart eerst (0 = eerste, 1 = tweede). */
+  preferredPaneIndex?: 0 | 1 | null;
 };
 
 type DragSession = {
@@ -65,6 +67,7 @@ export function LoyaltyCardSwipeShell({
   children,
   loyaltyPanes,
   onPanelChange,
+  preferredPaneIndex = null,
 }: LoyaltyCardSwipeShellProps) {
   const swipeAreaRef = React.useRef<HTMLDivElement>(null);
   const sessionRef = React.useRef<DragSession | null>(null);
@@ -93,13 +96,19 @@ export function LoyaltyCardSwipeShell({
     if (prev === "loyalty" && panel === "list") {
       loyaltyReopenCycleRef.current += 1;
     }
-    if (panel === "loyalty" && useComboPillTabs) {
+    if (panel === "loyalty" && prev !== "loyalty" && useComboPillTabs) {
       setComboPillValue(
-        loyaltyReopenCycleRef.current % 2 === 0 ? "first" : "second",
+        preferredPaneIndex != null
+          ? preferredPaneIndex === 0
+            ? "first"
+            : "second"
+          : loyaltyReopenCycleRef.current % 2 === 0
+            ? "first"
+            : "second",
       );
     }
     prevPanelForCycleRef.current = panel;
-  }, [panel, useComboPillTabs]);
+  }, [panel, useComboPillTabs, preferredPaneIndex]);
 
   React.useEffect(() => {
     panelRef.current = panel;

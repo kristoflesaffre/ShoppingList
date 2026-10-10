@@ -6725,6 +6725,15 @@ export default function ListDetailPage({
           bottomChrome={listBottomChrome}
           loyaltyPanes={loyaltySwipePanes}
           onPanelChange={setLoyaltyPanel}
+          preferredPaneIndex={
+            loyaltySwipePanes.length === 2
+              ? activeStoreFilter === "lidl"
+                ? 0
+                : activeStoreFilter === "delhaize"
+                  ? 1
+                  : null
+              : null
+          }
         >
           {listMain}
         </LoyaltyCardSwipeShell>
