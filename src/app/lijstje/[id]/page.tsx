@@ -1939,6 +1939,10 @@ const LIJSTJE_QUERY_PLACEHOLDER_ID = "__lijst_detail_missing_route_id__";
 /** Placeholder-id: geen bron-master voor categorievolgorde (secondaire query uitschakelen). */
 const CATEGORY_ORDER_MASTER_QUERY_NONE = "__category_order_master_none__";
 
+/** Ronde witte kopknop (zelfde als recept-detail). */
+const listRoundHeaderBtn =
+  "flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
+
 function resolvedRouteListId(
   propsId: string | undefined,
   paramFromHook: string | string[] | undefined,
@@ -5780,12 +5784,17 @@ export default function ListDetailPage({
   const listAppHeader = (
       <div
         className={cn(
-          "fixed top-0 left-0 right-0 z-10 w-full bg-[var(--white)] pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
-          /* Hairline pas zichtbaar zodra content onder de balk schuift */
+          // Zelfde patroon als recept-detail: geen witte balk, ronde witte knoppen op de achtergrond;
+          // pas bij scrollen een zachte, wazige balk met hairline.
+          "fixed top-0 left-0 right-0 z-10 w-full pt-[env(safe-area-inset-top,0px)] transition-[background-color,box-shadow,backdrop-filter] duration-200",
           isLargeTitleCollapsed || isMasterCategoryOrderMode
-            ? "shadow-[0_1px_0_var(--border-subtle)]"
+            ? "shadow-[0_1px_0_var(--border-subtle)] backdrop-blur-md"
             : "shadow-none",
         )}
+        style={{
+          backgroundColor:
+            isLargeTitleCollapsed || isMasterCategoryOrderMode ? "color-mix(in srgb, var(--bg-app) 86%, transparent)" : "transparent",
+        }}
       >
         <header className="relative mx-auto flex h-14 max-w-[956px] items-center px-4">
           {isMasterCategoryOrderMode ? (
@@ -5793,17 +5802,17 @@ export default function ListDetailPage({
               type="button"
               aria-label="Terug naar lijst"
               onClick={() => setIsMasterCategoryOrderMode(false)}
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              className={listRoundHeaderBtn}
             >
-              <BackArrowIcon />
+              <BackArrowIcon className="size-5" />
             </button>
           ) : (
             <Link
               href="/"
               aria-label="Terug naar lijstjes"
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              className={listRoundHeaderBtn}
             >
-              <BackArrowIcon />
+              <BackArrowIcon className="size-5" />
             </Link>
           )}
           <h1
@@ -5829,9 +5838,9 @@ export default function ListDetailPage({
             <Link
               href={`/lijstje/${encodeURIComponent(listId)}/instellingen`}
               aria-label="Instellingen"
-              className="flex size-10 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              className={listRoundHeaderBtn}
             >
-              <MoreDotsIcon className="size-6" />
+              <MoreDotsIcon className="size-5" />
             </Link>
           ) : (
             <span className="size-10 shrink-0" aria-hidden />
