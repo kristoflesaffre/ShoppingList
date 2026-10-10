@@ -5061,12 +5061,12 @@ export default function ListDetailPage({
     (name: string) => ownStoreByName.get(storeNameKey(name)) ?? ingredientStoreMap.get(storeNameKey(name)),
     [ownStoreByName, ingredientStoreMap],
   );
-  const handleSetIngredientStores = React.useCallback(
-    (names: string[], store: ItemStore | undefined) => {
-      if (!isMasterList || names.length === 0) return;
+  /** Bewaart een reeks keuzes uit «Winkel per product» in één transactie (null = wissen). */
+  const commitIngredientStores = React.useCallback(
+    (changes: Map<string, ItemStore | null>, attempt = 0) => {
+      if (!isMasterList || changes.size === 0) return;
       const next = new Map(ingredientStoreMap);
-      const keys = new Set(names.map(storeNameKey));
-      for (const key of Array.from(keys)) {
+      for (const [key, store] of Array.from(changes.entries())) {
         if (store) next.set(key, store);
         else next.delete(key);
       }
@@ -5074,10 +5074,13 @@ export default function ListDetailPage({
         db.tx.lists[listId].update({ ingredientStoresJson: serializeIngredientStores(next) }),
         // Favorieten met dezelfde naam meteen mee aanpassen.
         ...items
-          .filter((it) => keys.has(storeNameKey(it.name)))
-          .map((it) => db.tx.items[it.id].update({ store: store ?? null })),
+          .filter((it) => changes.has(storeNameKey(it.name)))
+          .map((it) => db.tx.items[it.id].update({ store: changes.get(storeNameKey(it.name)) ?? null })),
       ];
-      void db.transact(txs);
+      db.transact(txs).catch(() => {
+        // Netwerk/time-out: nog één keer proberen, zonder foutscherm.
+        if (attempt < 1) window.setTimeout(() => commitIngredientStores(changes, attempt + 1), 2000);
+      });
     },
     [isMasterList, ingredientStoreMap, items, listId],
   );
@@ -6372,8 +6375,7 @@ export default function ListDetailPage({
           onClose={() => setIngredientStoreOpen(false)}
           entries={ingredientStoreEntries}
           storeFor={storeForIngredient}
-          onSet={(name, store) => handleSetIngredientStores([name], store)}
-          onSetMany={(names, store) => handleSetIngredientStores(names, store)}
+          onCommit={commitIngredientStores}
         />
       ) : null}
       {storeMenu ? (

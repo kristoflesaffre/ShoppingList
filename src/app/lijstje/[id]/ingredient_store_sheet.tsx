@@ -64,29 +64,107 @@ function StorePicker({
   );
 }
 
+const IngredientRow = React.memo(function IngredientRow({
+  name,
+  photo,
+  value,
+  first,
+  onSet,
+}: {
+  name: string;
+  photo: string | null;
+  value?: ItemStore;
+  first: boolean;
+  onSet: (name: string, store: ItemStore | undefined) => void;
+}) {
+  return (
+    <li className={cn("ml-2.5 flex items-center gap-3 py-2", !first && "border-t border-[var(--border-subtle)]")}>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--gray-25)]">
+        {photo ? (
+          // eslint-disable-next-line @next/next/no-img-element -- lokale productfoto
+          <img src={photo} alt="" width={30} height={30} className="size-[30px] object-contain" loading="lazy" decoding="async" />
+        ) : (
+          <span className="text-sm font-bold text-[var(--blue-400)]" aria-hidden>
+            {name.trim().charAt(0).toUpperCase()}
+          </span>
+        )}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-text-primary first-letter:uppercase">{name}</span>
+      <StorePicker name={name} value={value} onChange={(store) => onSet(name, store)} />
+    </li>
+  );
+});
+
 export function IngredientStoreSheet({
   open,
   onClose,
   entries,
-  storeFor,
-  onSet,
-  onSetMany,
+  storeFor: storeForSaved,
+  onCommit,
 }: {
   open: boolean;
   onClose: () => void;
   entries: IngredientStoreEntry[];
   storeFor: (name: string) => ItemStore | undefined;
-  onSet: (name: string, store: ItemStore | undefined) => void;
-  onSetMany: (names: string[], store: ItemStore) => void;
+  /** Bewaart een reeks keuzes (genormaliseerde naam → winkel, null = wissen). */
+  onCommit: (changes: Map<string, ItemStore | null>) => void;
 }) {
   const getPhotoUrl = useItemPhotoUrl(160);
   const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState<Filter>("all");
+  /*
+   * Keuzes staan meteen in beeld (lokaal in dit blad) en gaan na een pauze van 1,5 s in één keer
+   * naar de database — snel tikken blijft vlot, zonder wachtrij van schrijfacties.
+   */
+  const [local, setLocal] = React.useState<Map<string, ItemStore | null>>(() => new Map());
+  const pending = React.useRef<Map<string, ItemStore | null>>(new Map());
+  const timer = React.useRef<number | null>(null);
+  const onCommitRef = React.useRef(onCommit);
+  onCommitRef.current = onCommit;
+
+  const flush = React.useCallback(() => {
+    if (timer.current != null) window.clearTimeout(timer.current);
+    timer.current = null;
+    if (pending.current.size === 0) return;
+    const changes = pending.current;
+    pending.current = new Map();
+    onCommitRef.current(changes);
+  }, []);
+
+  const setStores = React.useCallback(
+    (names: string[], store: ItemStore | undefined) => {
+      setLocal((prev) => {
+        const next = new Map(prev);
+        for (const n of names) next.set(storeNameKey(n), store ?? null);
+        return next;
+      });
+      for (const n of names) pending.current.set(storeNameKey(n), store ?? null);
+      if (timer.current != null) window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(flush, 1500);
+    },
+    [flush],
+  );
+  const stableOnSet = React.useCallback((name: string, store: ItemStore | undefined) => setStores([name], store), [setStores]);
+
+  // Blad dicht of weg → wat nog wacht meteen bewaren.
+  React.useEffect(() => {
+    if (!open) flush();
+  }, [open, flush]);
+  React.useEffect(() => flush, [flush]);
+
+  const storeFor = React.useCallback(
+    (name: string) => {
+      const key = storeNameKey(name);
+      return local.has(key) ? local.get(key) ?? undefined : storeForSaved(name);
+    },
+    [local, storeForSaved],
+  );
 
   React.useEffect(() => {
     if (open) {
       setQuery("");
       setFilter("all");
+      setLocal(new Map());
     }
   }, [open]);
 
@@ -186,30 +264,21 @@ export function IngredientStoreSheet({
                     name={`alles in ${title}`}
                     value={g.items.every((e) => storeFor(e.name) === "lidl") ? "lidl" : g.items.every((e) => storeFor(e.name) === "delhaize") ? "delhaize" : g.items.every((e) => storeFor(e.name) === "both") ? "both" : undefined}
                     onChange={(store) => {
-                      if (store) onSetMany(g.items.map((e) => e.name), store);
+                      if (store) setStores(g.items.map((e) => e.name), store);
                     }}
                   />
                 </div>
                 <ul className="m-0 list-none px-2.5 pl-0">
-                  {g.items.map((e, i) => {
-                    const photo = e.photo ?? getPhotoUrl(e.name);
-                    return (
-                      <li key={e.name} className={cn("ml-2.5 flex items-center gap-3 py-2", i > 0 && "border-t border-[var(--border-subtle)]")}>
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--gray-25)]">
-                          {photo ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- lokale productfoto
-                            <img src={photo} alt="" width={30} height={30} className="size-[30px] object-contain" loading="lazy" decoding="async" />
-                          ) : (
-                            <span className="text-sm font-bold text-[var(--blue-400)]" aria-hidden>
-                              {e.name.trim().charAt(0).toUpperCase()}
-                            </span>
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-text-primary first-letter:uppercase">{e.name}</span>
-                        <StorePicker name={e.name} value={storeFor(e.name)} onChange={(store) => onSet(e.name, store)} />
-                      </li>
-                    );
-                  })}
+                  {g.items.map((e, i) => (
+                    <IngredientRow
+                      key={e.name}
+                      name={e.name}
+                      photo={e.photo ?? getPhotoUrl(e.name)}
+                      value={storeFor(e.name)}
+                      first={i === 0}
+                      onSet={stableOnSet}
+                    />
+                  ))}
                 </ul>
               </section>
             );
