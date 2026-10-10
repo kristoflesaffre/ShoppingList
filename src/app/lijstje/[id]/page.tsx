@@ -5011,7 +5011,8 @@ export default function ListDetailPage({
     : listGroupingMode;
 
   /** Canvas «Concept D»: winkelfilter, alleen op een Lidl / Delhaize-lijstje. */
-  const activeStoreFilter: StoreFilter = isLidlDelhaizeList ? storeFilter : "all";
+  // Winkelfilter enkel op echte lijstjes, niet op de favorieten.
+  const activeStoreFilter: StoreFilter = isLidlDelhaizeList && !isMasterList ? storeFilter : "all";
   const storeFilterCounts = React.useMemo(() => {
     const count = (f: StoreFilter) => itemsForListSections.filter((i) => itemMatchesStoreFilter(i.store, f)).length;
     return { all: itemsForListSections.length, lidl: count("lidl"), delhaize: count("delhaize") };
@@ -5978,11 +5979,6 @@ export default function ListDetailPage({
 
           {isMasterList && isLidlDelhaizeList && !isEditMode && !isMasterCategoryOrderMode ? (
             <div className="flex w-full min-w-0 flex-col gap-3">
-              {hasItems ? (
-                <div className="flex w-full min-w-0 items-center">
-                  <StoreFilterChip value={storeFilter} onChange={handleStoreFilterChange} counts={storeFilterCounts} showLabelWhenAll />
-                </div>
-              ) : null}
               {/* Canvas «Favorieten · pillen C»: winkel per product en klantenkaarten als getinte pillen;
                   mobiel onder elkaar, vanaf tablet naast elkaar. */}
               <div className="grid w-full grid-cols-1 items-start gap-2 md:grid-cols-2 md:gap-3">
