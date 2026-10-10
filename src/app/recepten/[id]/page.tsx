@@ -38,6 +38,7 @@ const RecipeShareSlideIn = dynamic(
 import { uploadUserImageFile } from "@/lib/image-storage";
 import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
+import { matchStepIngredients } from "@/lib/recipe-step-ingredients";
 import { recipeTintColors, scaleQuantity, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { clearRecipeHeroTransition, peekRecipeHeroTransition } from "@/lib/recipe_hero_transition";
@@ -126,16 +127,48 @@ export default function ReceptDetailPage() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-  /** Afgevinkte ingrediënten tijdens het koken (enkel lokaal). */
-  const [checked, setChecked] = React.useState<Set<string>>(() => new Set());
-  const toggleChecked = React.useCallback((id: string) => {
-    setChecked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+  /*
+   * Koken (canvas «Recept · 2A»): stappen afvinken (bewaard op dit toestel) en één stap kiezen om de
+   * ingrediënten erop te filteren. Ingrediënten van afgewerkte stappen zakken naar «Gebruikt».
+   */
+  const [doneSteps, setDoneSteps] = React.useState<Set<number>>(() => new Set());
+  const [selectedStep, setSelectedStep] = React.useState<number | null>(null);
+  const doneStorageKey = recipeId ? `recipe-steps-done:${recipeId}` : "";
+  React.useEffect(() => {
+    if (!doneStorageKey) return;
+    try {
+      const raw = window.localStorage.getItem(doneStorageKey);
+      const list = raw ? (JSON.parse(raw) as unknown) : [];
+      setDoneSteps(new Set(Array.isArray(list) ? list.filter((n): n is number => typeof n === "number") : []));
+    } catch {
+      setDoneSteps(new Set());
+    }
+  }, [doneStorageKey]);
+  const toggleStepDone = React.useCallback(
+    (index: number, stepCount: number) => {
+      setDoneSteps((prev) => {
+        const next = new Set(prev);
+        const nowDone = !next.has(index);
+        if (nowDone) next.add(index);
+        else next.delete(index);
+        try {
+          window.localStorage.setItem(doneStorageKey, JSON.stringify(Array.from(next)));
+        } catch {
+          /* geen opslag: enkel deze sessie */
+        }
+        // Gekozen stap klaar → meteen door naar de volgende open stap.
+        if (nowDone) {
+          setSelectedStep((sel) => {
+            if (sel !== index) return sel;
+            for (let i = index + 1; i < stepCount; i += 1) if (!next.has(i)) return i;
+            return null;
+          });
+        }
+        return next;
+      });
+    },
+    [doneStorageKey],
+  );
   const getPhotoUrl = useIngredientPhotoUrl();
   const [shareSlideOpen, setShareSlideOpen] = React.useState(false);
   const [recipeEditorOpen, setRecipeEditorOpen] = React.useState(false);
@@ -519,6 +552,18 @@ export default function ReceptDetailPage() {
     .split(/\r?\n/)
     .map((s) => s.trim().replace(/^\d+[.)]\s*/, ""))
     .filter((s) => s.length > 0);
+  const stepIngredientIds = matchStepIngredients(recipeSteps, savedRecipe.ingredients);
+  const activeStep = selectedStep != null && selectedStep < recipeSteps.length ? selectedStep : null;
+  const nowNeededIds = new Set(activeStep != null ? stepIngredientIds[activeStep] : []);
+  const usedIds = new Set<string>();
+  doneSteps.forEach((i) => stepIngredientIds[i]?.forEach((id) => usedIds.add(id)));
+  // Een ingrediënt dat de gekozen stap nog nodig heeft, telt niet als gebruikt.
+  nowNeededIds.forEach((id) => usedIds.delete(id));
+  const nowNeeded = savedRecipe.ingredients.filter((ing) => nowNeededIds.has(ing.id));
+  const stillNeeded = savedRecipe.ingredients.filter((ing) => !nowNeededIds.has(ing.id) && !usedIds.has(ing.id));
+  const usedIngredients = savedRecipe.ingredients.filter((ing) => usedIds.has(ing.id));
+  const ingredientById = new Map(savedRecipe.ingredients.map((ing) => [ing.id, ing]));
+  const doneCount = recipeSteps.reduce((n, _s, i) => n + (doneSteps.has(i) ? 1 : 0), 0);
   const recipeLink = savedRecipe.link.trim();
   const ingredientCount = savedRecipe.ingredients.length;
   const basePersons = savedRecipe.persons > 0 ? savedRecipe.persons : 0;
@@ -586,7 +631,13 @@ export default function ReceptDetailPage() {
         onChange={handleRecipePhotoChange}
       />
 
-      <main className="relative mx-auto w-full max-w-[1180px] px-4 pb-[calc(48px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+env(safe-area-inset-top,0px))] lg:px-[150px] lg:pt-[48px]">
+      <main
+        className={cn(
+          "relative mx-auto w-full max-w-[1180px] px-4 pt-[calc(64px+env(safe-area-inset-top,0px))] lg:px-[150px] lg:pb-[calc(48px+env(safe-area-inset-bottom,0px))] lg:pt-[48px]",
+          // Ruimte voor de «Nodig voor stap»-balk op mobiel.
+          selectedStep != null ? "pb-[calc(130px+env(safe-area-inset-bottom,0px))]" : "pb-[calc(48px+env(safe-area-inset-bottom,0px))]",
+        )}
+      >
         {/* Kop: rond bord, titel met potlood, chips */}
         <section className="flex flex-col items-center">
           <div className="relative">
@@ -709,51 +760,42 @@ export default function ReceptDetailPage() {
                 />
               </div>
             ) : (
-              <ul className="mt-1.5">
-                {savedRecipe.ingredients.map((ing, i) => {
-                  const photo = getPhotoUrl(ing.name, ing.quantity);
-                  const done = checked.has(ing.id);
-                  return (
-                    <li key={ing.id} className={cn(i < ingredientCount - 1 && "border-b border-[var(--border-subtle)]")}>
-                      <button
-                        type="button"
-                        role="checkbox"
-                        aria-checked={done}
-                        onClick={() => toggleChecked(ing.id)}
-                        className="flex w-full items-center gap-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
-                      >
-                        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--gray-25)]">
-                          {photo ? (
-                            <Image src={photo} alt="" width={38} height={38} className="size-[38px] object-contain" aria-hidden />
-                          ) : null}
-                        </span>
-                        <span
-                          className={cn(
-                            "min-w-0 flex-1 text-[15px] font-medium leading-5 text-text-primary transition-opacity",
-                            done && "opacity-50",
-                          )}
-                        >
-                          {ing.name}
-                        </span>
-                        <span className={cn("whitespace-nowrap text-sm leading-5 text-[var(--text-secondary)]", done && "opacity-50")}>
-                          {scaleQuantity(ing.quantity, factor)}
-                        </span>
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "flex size-[26px] shrink-0 items-center justify-center rounded-full transition-colors",
-                            done
-                              ? "bg-[var(--blue-500)] text-white"
-                              : "text-transparent shadow-[inset_0_0_0_1.5px_var(--gray-200)]",
-                          )}
-                        >
-                          <CheckGlyph />
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="mt-1.5">
+                {activeStep != null ? (
+                  <>
+                    <IngredientGroupLabel tone="blue">Nu nodig · stap {activeStep + 1}</IngredientGroupLabel>
+                    {nowNeeded.length > 0 ? (
+                      <ul className="flex flex-col gap-1">
+                        {nowNeeded.map((ing) => (
+                          <IngredientRow key={ing.id} name={ing.name} quantity={scaleQuantity(ing.quantity, factor)} photo={getPhotoUrl(ing.name, ing.quantity)} state="now" />
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="rounded-[14px] bg-[var(--blue-25)] px-3 py-2.5 text-sm text-[var(--text-secondary)]">Voor deze stap heb je geen extra ingrediënten nodig.</p>
+                    )}
+                  </>
+                ) : null}
+                {stillNeeded.length > 0 ? (
+                  <>
+                    {activeStep != null || usedIngredients.length > 0 ? <IngredientGroupLabel tone="gray">Nog nodig</IngredientGroupLabel> : null}
+                    <ul>
+                      {stillNeeded.map((ing, i) => (
+                        <IngredientRow key={ing.id} name={ing.name} quantity={scaleQuantity(ing.quantity, factor)} photo={getPhotoUrl(ing.name, ing.quantity)} state="rest" divider={i > 0} />
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+                {usedIngredients.length > 0 ? (
+                  <>
+                    <IngredientGroupLabel tone="blue">Gebruikt · {usedIngredients.length}</IngredientGroupLabel>
+                    <ul>
+                      {usedIngredients.map((ing, i) => (
+                        <IngredientRow key={ing.id} name={ing.name} quantity={scaleQuantity(ing.quantity, factor)} photo={getPhotoUrl(ing.name, ing.quantity)} state="used" divider={i > 0} />
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </div>
             )}
             <div className="flex justify-center pb-2.5 pt-1.5">
               <button type="button" onClick={openFabAddIngredient} className={ghostBtn}>
@@ -766,7 +808,12 @@ export default function ReceptDetailPage() {
           <section aria-label="Bereiding" className="flex-1 rounded-[22px] bg-[var(--white)] px-4 pb-5 pt-[18px] lg:px-6">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-xl font-bold leading-7 text-text-primary">Bereiding</h2>
-              {recipeLink ? (
+              {doneCount > 0 ? (
+                <span className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-pill bg-[var(--blue-50)] px-3 text-[13px] font-bold text-[var(--blue-500)]">
+                  <CheckGlyph />
+                  {doneCount} van {recipeSteps.length} klaar
+                </span>
+              ) : recipeLink ? (
                 <a
                   href={recipeLink}
                   target="_blank"
@@ -779,16 +826,34 @@ export default function ReceptDetailPage() {
               ) : null}
             </div>
             {recipeSteps.length > 0 ? (
-              <ol className="flex flex-col gap-[18px]">
+              <>
+              <ol className="flex flex-col">
                 {recipeSteps.map((step, index) => (
-                  <li key={`${index}-${step}`} className="flex items-start gap-3.5">
-                    <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-sm font-bold text-[var(--blue-500)]">
-                      {index + 1}
-                    </span>
-                    <p className="mt-1 min-w-0 flex-1 text-[15px] leading-[23px] text-[var(--text-secondary)]">{step}</p>
-                  </li>
+                  <RecipeStepItem
+                    key={`${index}-${step}`}
+                    index={index}
+                    text={step}
+                    last={index === recipeSteps.length - 1}
+                    done={doneSteps.has(index)}
+                    selected={activeStep === index}
+                    onSelect={() => setSelectedStep((cur) => (cur === index ? null : index))}
+                    onToggleDone={() => toggleStepDone(index, recipeSteps.length)}
+                    ingredients={(stepIngredientIds[index] ?? []).flatMap((id) => {
+                      const ing = ingredientById.get(id);
+                      return ing ? [{ id, name: ing.name, quantity: scaleQuantity(ing.quantity, factor), photo: getPhotoUrl(ing.name, ing.quantity) }] : [];
+                    })}
+                  />
                 ))}
               </ol>
+              {recipeLink && doneCount > 0 ? (
+                <div className="mt-2 flex justify-center">
+                  <a href={recipeLink} target="_blank" rel="noopener noreferrer" className={ghostBtn}>
+                    <LinkGlyph />
+                    Origineel recept
+                  </a>
+                </div>
+              ) : null}
+              </>
             ) : (
               <div className="flex flex-col items-center gap-3 py-3 text-center">
                 <p className="text-sm leading-5 text-[var(--text-tertiary)]">Nog geen bereiding toegevoegd.</p>
@@ -801,6 +866,34 @@ export default function ReceptDetailPage() {
           </section>
         </div>
       </main>
+
+      {/* Mobiel: wat je nu nodig hebt voor de gekozen stap (de lijst staat hoger op de pagina). */}
+      {activeStep != null && nowNeeded.length > 0 && !detailPhotoEditMode ? (
+        <div className="fixed inset-x-3 bottom-[calc(14px+env(safe-area-inset-bottom,0px))] z-20 rounded-[22px] bg-[#101130] px-3.5 py-3 text-white shadow-[0_18px_40px_-16px_rgba(16,17,48,0.6)] lg:hidden">
+          <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.04em] text-[rgba(255,255,255,0.7)]">
+            <span>Nodig voor stap {activeStep + 1}</span>
+            <button type="button" onClick={() => setSelectedStep(null)} className="text-[13px] normal-case tracking-normal text-white underline-offset-2 [@media(hover:hover)]:hover:underline">
+              Alles tonen
+            </button>
+          </div>
+          <ul className="mt-2 flex gap-3.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {nowNeeded.map((ing) => {
+              const photo = getPhotoUrl(ing.name, ing.quantity);
+              return (
+                <li key={ing.id} className="flex shrink-0 items-center gap-2">
+                  <span className="flex size-[30px] items-center justify-center overflow-hidden rounded-full bg-[#fff]">
+                    {photo ? <Image src={photo} alt="" width={26} height={26} className="size-[26px] object-contain" aria-hidden /> : <span className="text-xs font-bold text-[var(--blue-500)]">{ing.name.charAt(0).toUpperCase()}</span>}
+                  </span>
+                  <span className="leading-4">
+                    <span className="block text-[13px] font-bold">{ing.name}</span>
+                    <span className="text-xs text-[rgba(255,255,255,0.7)]">{scaleQuantity(ing.quantity, factor)}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
 
       <RecipeShareSlideIn
         open={shareSlideOpen}
@@ -949,5 +1042,167 @@ function PersonsStepper({ value, onChange }: { value: number; onChange: (n: numb
         </svg>
       </button>
     </div>
+  );
+}
+
+function IngredientGroupLabel({ tone, children }: { tone: "blue" | "gray"; children: React.ReactNode }) {
+  return (
+    <p
+      className={cn(
+        "mb-1.5 mt-3.5 text-xs font-extrabold uppercase tracking-[0.05em]",
+        tone === "blue" ? "text-[var(--blue-500)]" : "text-[var(--text-tertiary)]",
+      )}
+    >
+      {children}
+    </p>
+  );
+}
+
+function IngredientRow({
+  name,
+  quantity,
+  photo,
+  state,
+  divider = false,
+}: {
+  name: string;
+  quantity: string;
+  photo: string | null;
+  state: "now" | "rest" | "used";
+  divider?: boolean;
+}) {
+  const used = state === "used";
+  return (
+    <li
+      className={cn(
+        "flex items-center gap-3",
+        state === "now" ? "rounded-[14px] bg-[var(--blue-25)] px-2.5 py-2" : "py-2.5",
+        divider && state !== "now" && "border-t border-[var(--border-subtle)]",
+      )}
+    >
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--gray-25)]">
+        {photo ? (
+          <Image src={photo} alt="" width={38} height={38} className={cn("size-[38px] object-contain", used && "opacity-45 grayscale-[60%]")} aria-hidden />
+        ) : null}
+      </span>
+      <span className={cn("min-w-0 flex-1 text-[15px] font-medium leading-5", used ? "text-[var(--text-tertiary)] line-through" : "text-text-primary")}>
+        {name}
+      </span>
+      <span className={cn("whitespace-nowrap text-sm leading-5", used ? "text-[var(--text-tertiary)]" : "text-[var(--text-secondary)]")}>{quantity}</span>
+      {used ? (
+        <span aria-label="Gebruikt" className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] text-white">
+          <CheckGlyph />
+        </span>
+      ) : null}
+    </li>
+  );
+}
+
+type StepIngredient = { id: string; name: string; quantity: string; photo: string | null };
+
+/** Canvas «Recept · 2A»: tijdlijn met stapkaarten; tik = kiezen (filtert de ingrediënten), rondje = klaar. */
+function RecipeStepItem({
+  index,
+  text,
+  last,
+  done,
+  selected,
+  onSelect,
+  onToggleDone,
+  ingredients,
+}: {
+  index: number;
+  text: string;
+  last: boolean;
+  done: boolean;
+  selected: boolean;
+  onSelect: () => void;
+  onToggleDone: () => void;
+  ingredients: StepIngredient[];
+}) {
+  return (
+    <li className="flex gap-3">
+      <div className="flex flex-col items-center pt-3.5" aria-hidden>
+        <span
+          className={cn(
+            "flex size-[30px] shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors duration-base",
+            selected ? "bg-[var(--blue-500)] text-white" : "bg-[var(--blue-50)] text-[var(--blue-500)]",
+          )}
+        >
+          {done && !selected ? <CheckGlyph /> : index + 1}
+        </span>
+        {!last ? <span className={cn("my-1 w-0.5 flex-1 rounded-full", done ? "bg-[var(--blue-100)]" : "bg-[var(--border-subtle)]")} /> : null}
+      </div>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-pressed={selected}
+        aria-label={`Stap ${index + 1}${selected ? ", gekozen" : ""}${done ? ", klaar" : ""}`}
+        onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect();
+          }
+        }}
+        className={cn(
+          "mb-3 min-w-0 flex-1 cursor-pointer rounded-[20px] py-3.5 pl-4 pr-3 text-left transition-[box-shadow,background-color] duration-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+          selected
+            ? "bg-[var(--white)] shadow-[0_0_0_2px_var(--blue-500),0_10px_24px_-12px_rgba(79,85,241,0.45)]"
+            : done
+              ? "bg-[var(--gray-25)] shadow-[0_0_0_1px_var(--border-subtle)]"
+              : "bg-[var(--white)] shadow-[0_0_0_1px_var(--border-subtle),0_2px_6px_-2px_rgba(16,17,48,0.10)] [@media(hover:hover)]:hover:shadow-[0_0_0_1px_var(--blue-200),0_6px_14px_-6px_rgba(16,17,48,0.16)]",
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <p className={cn("min-w-0 flex-1 text-[15px] leading-[23px] lg:text-base lg:leading-6", done ? "text-[var(--text-tertiary)]" : "text-text-primary")}>
+            {text}
+          </p>
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={done}
+            aria-label={done ? `Stap ${index + 1} niet meer klaar` : `Stap ${index + 1} klaar`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleDone();
+            }}
+            className={cn(
+              "-my-0.5 flex size-10 shrink-0 items-center justify-center rounded-full transition-[background-color,box-shadow,transform] duration-fast motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+              done
+                ? "bg-[var(--blue-500)] text-white"
+                : "bg-[var(--white)] text-transparent shadow-[inset_0_0_0_2px_var(--gray-200)] [@media(hover:hover)]:hover:shadow-[inset_0_0_0_2px_var(--blue-300)]",
+            )}
+          >
+            <CheckGlyph />
+          </button>
+        </div>
+        {ingredients.length > 0 ? (
+          <ul className="mt-2.5 flex flex-wrap gap-1.5">
+            {ingredients.map((ing) => (
+              <li
+                key={ing.id}
+                className={cn(
+                  "inline-flex h-[30px] items-center gap-1.5 rounded-pill pl-[3px] pr-2.5 text-[13px] font-semibold text-text-primary",
+                  selected ? "bg-[var(--blue-25)]" : "bg-[var(--gray-25)]",
+                  done && "opacity-60",
+                )}
+              >
+                <span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--white)]">
+                  {ing.photo ? (
+                    <Image src={ing.photo} alt="" width={22} height={22} className="size-[22px] object-contain" aria-hidden />
+                  ) : (
+                    <span className="text-[11px] font-bold text-[var(--blue-500)]">{ing.name.charAt(0).toUpperCase()}</span>
+                  )}
+                </span>
+                {ing.name}
+                <span className="font-medium text-[var(--text-secondary)]">{ing.quantity}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </li>
   );
 }
