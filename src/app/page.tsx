@@ -3811,29 +3811,30 @@ export default function Home() {
             ownerId={ownerId}
             className="pt-[var(--space-6)] motion-safe:animate-fade-up"
             action={
-              tabletHomeView === "overview" ? (
-                <FloatingActionButton
-                  aria-label="Nieuw lijstje"
-                  desktopLabel="Nieuw lijstje"
-                  elevated={false}
-                  className="hidden h-12 gap-2 px-5 py-0 md:inline-flex md:[&_span]:!inline"
-                  onClick={handleOpenCreateModal}
+              /* Weergavetoggle links van «Nieuw lijstje», allebei even hoog. */
+              <div className="hidden items-center gap-3 md:flex">
+                <SegmentedControl
+                  ariaLabel="Startweergave"
+                  fill={false}
+                  value={tabletHomeView}
+                  onChange={handleTabletHomeViewChange}
+                  options={[
+                    { value: "overview", label: "Overzicht" },
+                    { value: "dashboard", label: "Dashboard" },
+                  ]}
                 />
-              ) : null
+                {tabletHomeView === "overview" ? (
+                  <FloatingActionButton
+                    aria-label="Nieuw lijstje"
+                    desktopLabel="Nieuw lijstje"
+                    elevated={false}
+                    className="hidden h-[38px] min-h-0 gap-2 px-4 py-0 text-[15px] md:inline-flex md:[&_span]:!inline"
+                    onClick={handleOpenCreateModal}
+                  />
+                ) : null}
+              </div>
             }
           />
-          <div className="hidden justify-end pt-4 md:flex">
-            <SegmentedControl
-              ariaLabel="Startweergave"
-              fill={false}
-              value={tabletHomeView}
-              onChange={handleTabletHomeViewChange}
-              options={[
-                { value: "overview", label: "Overzicht" },
-                { value: "dashboard", label: "Dashboard" },
-              ]}
-            />
-          </div>
           {/* Telefoon behoudt de compacte, configureerbare verticale flow. */}
           <div
             className={cn(
