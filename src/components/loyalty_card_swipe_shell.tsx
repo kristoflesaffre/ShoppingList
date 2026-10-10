@@ -360,6 +360,53 @@ export function LoyaltyCardSwipeShell({
     window.addEventListener("pointercancel", onUp);
   }, [dragExtraPx]);
 
+  /*
+   * Tabwissel: het witte vlak schuift mee, de oude kaart vliegt weg en de nieuwe schuift binnen
+   * (richting volgt de tab). Enkel bij tikken; openen op een tab via de filter blijft rustig.
+   */
+  const activeIndex = comboPillValue === "first" ? 0 : 1;
+  const [leaving, setLeaving] = React.useState<{ index: number; dir: 1 | -1; key: number } | null>(null);
+  const enterDirRef = React.useRef<0 | 1 | -1>(0);
+  const enterRef = React.useRef<HTMLDivElement>(null);
+  const leaveRef = React.useRef<HTMLDivElement>(null);
+
+  const selectTab = (i: number) => {
+    if (i === activeIndex) return;
+    const dir: 1 | -1 = i > activeIndex ? 1 : -1;
+    if (!reduceMotion) {
+      setLeaving({ index: activeIndex, dir, key: Date.now() });
+      enterDirRef.current = dir;
+    }
+    setComboPillValue(i === 0 ? "first" : "second");
+  };
+
+  React.useLayoutEffect(() => {
+    const dir = enterDirRef.current;
+    enterDirRef.current = 0;
+    if (!dir || !enterRef.current) return;
+    enterRef.current.animate(
+      [
+        { transform: `translateX(${dir * 115}%) rotate(${dir * 4}deg)`, opacity: 0 },
+        { transform: "none", opacity: 1 },
+      ],
+      { duration: 460, easing: "cubic-bezier(0.22, 1, 0.36, 1)", delay: 40, fill: "backwards" },
+    );
+  }, [activeIndex]);
+
+  React.useLayoutEffect(() => {
+    const el = leaveRef.current;
+    if (!leaving || !el) return;
+    const anim = el.animate(
+      [
+        { transform: "none", opacity: 1 },
+        { transform: `translateX(${-leaving.dir * 115}%) rotate(${-leaving.dir * 4}deg)`, opacity: 0 },
+      ],
+      { duration: 340, easing: "cubic-bezier(0.55, 0, 0.75, 0.3)", fill: "forwards" },
+    );
+    anim.onfinish = () => setLeaving((cur) => (cur?.key === leaving.key ? null : cur));
+    return () => anim.cancel();
+  }, [leaving]);
+
   const backdrop = useCardBackdrop(
     useComboPillTabs ? loyaltyPanes[comboPillValue === "first" ? 0 : 1] : loyaltyPanes[0],
   );
@@ -402,8 +449,16 @@ export function LoyaltyCardSwipeShell({
                   role="tablist"
                   aria-label="Kies je klantenkaart"
                   data-swipe-ignore=""
-                  className="mx-auto mt-12 flex w-full max-w-[400px] shrink-0 gap-1 rounded-pill bg-[var(--gray-50)] p-1"
+                  className="relative mx-auto mt-12 flex w-full max-w-[400px] shrink-0 gap-1 rounded-pill bg-[var(--gray-50)] p-1"
                 >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-6px)] rounded-pill bg-[var(--white)] shadow-[0_2px_8px_-2px_rgba(16,17,48,0.18)]",
+                      !reduceMotion && "transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+                    )}
+                    style={{ transform: activeIndex === 1 ? "translateX(calc(100% + 4px))" : "none" }}
+                  />
                   {loyaltyPanes.slice(0, 2).map((pane, i) => {
                     const value: PillTabVariant = i === 0 ? "first" : "second";
                     const on = comboPillValue === value;
@@ -413,12 +468,10 @@ export function LoyaltyCardSwipeShell({
                         type="button"
                         role="tab"
                         aria-selected={on}
-                        onClick={() => setComboPillValue(value)}
+                        onClick={() => selectTab(i)}
                         className={cn(
-                          "flex h-11 flex-1 items-center justify-center gap-2 rounded-pill text-[15px] transition-[background-color,box-shadow,color] duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                          on
-                            ? "bg-[var(--white)] font-extrabold text-text-primary shadow-[0_2px_8px_-2px_rgba(16,17,48,0.18)]"
-                            : "font-semibold text-[var(--text-secondary)]",
+                          "relative flex h-11 flex-1 items-center justify-center gap-2 rounded-pill text-[15px] transition-colors duration-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                          on ? "font-extrabold text-text-primary" : "font-semibold text-[var(--text-secondary)]",
                         )}
                       >
                         {pane.footerLogoSrc ? (
@@ -431,12 +484,25 @@ export function LoyaltyCardSwipeShell({
                   })}
                 </div>
               ) : null}
-              <div className="flex flex-1 flex-col items-center justify-center gap-6 py-7">
-                {(useComboPillTabs ? [loyaltyPanes[comboPillValue === "first" ? 0 : 1]!] : loyaltyPanes).map((pane, idx) => (
-                  <div key={`${pane.heading}-${idx}`} className="w-full max-w-[400px]">
-                    <LoyaltyBrandCard pane={pane} />
+              <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-x-clip py-7">
+                {useComboPillTabs ? (
+                  <div className="grid w-full max-w-[400px] items-center">
+                    {leaving && loyaltyPanes[leaving.index] ? (
+                      <div key={`leave-${leaving.key}`} ref={leaveRef} aria-hidden className="pointer-events-none [grid-area:1/1]">
+                        <LoyaltyBrandCard pane={loyaltyPanes[leaving.index]!} />
+                      </div>
+                    ) : null}
+                    <div key={`card-${activeIndex}`} ref={enterRef} className="[grid-area:1/1]">
+                      <LoyaltyBrandCard pane={loyaltyPanes[activeIndex]!} />
+                    </div>
                   </div>
-                ))}
+                ) : (
+                  loyaltyPanes.map((pane, idx) => (
+                    <div key={`${pane.heading}-${idx}`} className="w-full max-w-[400px]">
+                      <LoyaltyBrandCard pane={pane} />
+                    </div>
+                  ))
+                )}
               </div>
               <p className="flex shrink-0 items-center justify-center gap-1.5 text-[13px] font-semibold text-[var(--text-secondary)]">
                 <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
