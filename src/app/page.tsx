@@ -69,7 +69,8 @@ import {
 } from "@/components/list_section_header";
 import { HomeHeader } from "@/components/home_header";
 import {
-  HomeDashboardInventory,
+  HomeDashboardFreezerColumn,
+  HomeDashboardShoppingList,
 } from "@/components/home_dashboard";
 import {
   HomeTodayDashboard,
@@ -3028,6 +3029,15 @@ export default function Home() {
     return orderedKeys.flatMap((key) => groups.get(key) ?? []);
   }, [data, user?.id, homeStoreOrder]);
 
+  /** Desktop-dashboard: laatst toegevoegd eerst, met nette hoeveelheid. */
+  const dashboardShoppingItems = React.useMemo(
+    () =>
+      [...homeShoppingItems]
+        .sort((a, b) => b.order - a.order)
+        .map((i) => ({ id: i.id, name: i.name, quantity: pluralizeShoppingQuantity(i.quantity) })),
+    [homeShoppingItems],
+  );
+
   const [hasUsedTeKopen, setHasUsedTeKopen] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("te-kopen-used") === "1";
@@ -3847,7 +3857,7 @@ export default function Home() {
           <div className="hidden md:block">
             {tabletHomeView === "overview" ? (
               <div className="flex flex-col gap-10 pt-8">
-                <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-[minmax(0,2fr)_minmax(280px,0.92fr)] min-[1050px]:items-start min-[1050px]:gap-8">
+                <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-[minmax(0,2fr)_minmax(280px,0.92fr)] min-[1050px]:items-stretch min-[1050px]:gap-8">
                   <div className="min-w-0">
                     {favoritesPromo.show ? (
                       <FavoritesPromoBanner
@@ -3865,16 +3875,26 @@ export default function Home() {
                     />
                     {!homeSectionConfig.hidden.includes("te-kopen") ? (
                       <div className="hidden pt-10 min-[1050px]:block">
-                        {renderHomeSection("te-kopen")}
+                        {/* Canvas «Combinatie 1»: één gedeelde Te kopen-lijst. */}
+                        <HomeDashboardShoppingList
+                          items={dashboardShoppingItems}
+                          addedByFor={(item) => {
+                            const row = homeShoppingItems.find((i) => i.id === item.id);
+                            return row ? teKopenAddedByFor(row) : null;
+                          }}
+                          onAdd={() => {
+                            primeKeyboard();
+                            setTeKopenSlideOpen(true);
+                          }}
+                          onBought={(id) => void db.transact(db.tx.shoppingItems[id].delete())}
+                        />
                       </div>
                     ) : null}
                   </div>
 
-                  <aside
-                    className="grid min-w-0 grid-cols-1 gap-8"
-                  >
+                  <aside className="flex min-w-0 flex-col">
                     {!homeSectionConfig.hidden.includes("diepvries") ? (
-                      <HomeDashboardInventory items={homeFreezerItems} />
+                      <HomeDashboardFreezerColumn items={homeFreezerItems} />
                     ) : null}
                   </aside>
                 </div>
