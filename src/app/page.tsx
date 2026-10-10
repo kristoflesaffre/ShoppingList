@@ -78,6 +78,7 @@ import {
 } from "@/components/home_today_dashboard";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
+import { HomeDiscoverBanners, type DiscoverBanner } from "@/components/home_discover_banners";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
 import type { MasterStoreSlug } from "@/lib/master-stores";
 import {
@@ -2251,10 +2252,16 @@ function HomeKlantenkaartSection({
 }
 
 /** Startpagina: films en series — poster strip wanneer items aanwezig, anders empty state. */
-function HomeFilmsSeriesSection({ onHide }: { onHide?: () => void }) {
+function HomeFilmsSeriesSection({
+  onHide,
+  ownWatchlist,
+  watchingItems,
+}: {
+  onHide?: () => void;
+  ownWatchlist: ReturnType<typeof useFilmsLibrary>["ownWatchlist"];
+  watchingItems: ReturnType<typeof useWatchingTvItems>["watchingItems"];
+}) {
   const router = useRouter();
-  const { ownWatchlist } = useFilmsLibrary();
-  const { watchingItems } = useWatchingTvItems();
 
   const posterItems = React.useMemo(() => {
     const watchingIds = new Set(watchingItems.map((i) => i.id));
@@ -3728,6 +3735,64 @@ export default function Home() {
     router.push("/nieuw-lijstje/vakantie");
   }, [router]);
 
+  const { ownWatchlist: homeOwnWatchlist, dataLoading: homeFilmsLoading } = useFilmsLibrary();
+  const { watchingItems: homeWatchingItems } = useWatchingTvItems();
+
+  /** Lege secties die we samen als «Ontdek meer»-banners tonen (canvas «Lege staten 3»). */
+  const discoverBanners = React.useMemo((): DiscoverBanner[] => {
+    const empty: Partial<Record<HomeSectionId, DiscoverBanner>> = {};
+    if (!(homeCalendarEntries.length > 0 || hasEverUsedCalendar)) {
+      empty.kalender = {
+        id: "kalender",
+        label: "Kalender",
+        title: "Plan wat jullie eten",
+        text: "Wat eten we vandaag? Zet gerechten op de week en de boodschappen volgen vanzelf.",
+        cta: "Naar kalender",
+        href: "/kalender",
+        illustrationSrc: "/images/ui/kalender_320.webp",
+        tint: "#ffeef0",
+        accent: "#e65a6e",
+      };
+    }
+    if (homeLoyaltyCards.length === 0) {
+      empty.klantenkaarten = {
+        id: "klantenkaarten",
+        label: "Klantenkaarten",
+        title: "Al je kaarten bij de hand",
+        text: "Scan je klantenkaarten één keer en toon ze aan de kassa vanop je gsm.",
+        cta: "Kaart toevoegen",
+        href: "/klantenkaarten",
+        illustrationSrc: "/images/ui/klantenkaart_320.webp",
+        tint: "#fff6d9",
+        accent: "#b8860b",
+      };
+    }
+    if (!homeFilmsLoading && homeOwnWatchlist.length === 0 && homeWatchingItems.length === 0) {
+      empty["films-series"] = {
+        id: "films-series",
+        label: "Films en series",
+        title: "Wat kijken we vanavond?",
+        text: "Hou bij wat jullie kijken en wat nog op jullie lijstje staat.",
+        cta: "Iets toevoegen",
+        href: "/films-series",
+        illustrationSrc: "/images/ui/films_320.webp",
+        tint: "#eeecff",
+        accent: "#5b56c9",
+      };
+    }
+    return homeSectionConfig.order
+      .filter((id) => !homeSectionConfig.hidden.includes(id))
+      .map((id) => empty[id])
+      .filter((b): b is DiscoverBanner => b != null);
+  }, [homeCalendarEntries.length, hasEverUsedCalendar, homeLoyaltyCards.length, homeFilmsLoading, homeOwnWatchlist.length, homeWatchingItems.length, homeSectionConfig]);
+  const discoverIds = new Set(discoverBanners.map((b) => b.id));
+  /** Sectie-id → inhoud; lege «ontdek»-secties worden één bannerrij op de plek van de eerste. */
+  const renderHomeSlot = (sectionId: HomeSectionId): React.ReactNode => {
+    if (!discoverIds.has(sectionId)) return renderHomeSection(sectionId);
+    if (discoverBanners[0]?.id !== sectionId) return null;
+    return <HomeDiscoverBanners items={discoverBanners} onHide={(id) => hideSection(id as HomeSectionId)} />;
+  };
+
   const renderHomeSection = (sectionId: HomeSectionId): React.ReactNode => {
     const onHide = sectionId !== "lijstjes" ? () => hideSection(sectionId) : undefined;
     switch (sectionId) {
@@ -3783,7 +3848,7 @@ export default function Home() {
           />
         );
       case "films-series":
-        return <HomeFilmsSeriesSection onHide={onHide} />;
+        return <HomeFilmsSeriesSection onHide={onHide} ownWatchlist={homeOwnWatchlist} watchingItems={homeWatchingItems} />;
       default:
         return null;
     }
@@ -3845,7 +3910,7 @@ export default function Home() {
             {homeSectionConfig.order
               .filter((sectionId) => !homeSectionConfig.hidden.includes(sectionId))
               .map((sectionId, index) => {
-              const section = renderHomeSection(sectionId);
+              const section = renderHomeSlot(sectionId);
               if (section == null) return null;
               return (
                 <div
@@ -3914,7 +3979,7 @@ export default function Home() {
                       !homeSectionConfig.hidden.includes(sectionId),
                   )
                   .map((sectionId, index) => {
-                    const section = renderHomeSection(sectionId);
+                    const section = renderHomeSlot(sectionId);
                     if (section == null) return null;
                     return (
                       <div
