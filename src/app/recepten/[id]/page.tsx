@@ -1241,13 +1241,35 @@ function RecipeTitleEditor({ name, onSave }: { name: string; onSave: (name: stri
   React.useLayoutEffect(() => {
     if (measureRef.current) setTextWidth(Math.ceil(measureRef.current.getBoundingClientRect().width));
   }, [draft]);
-  // Groeit mee zoals de gewone titel (lange namen lopen over twee regels).
-  React.useLayoutEffect(() => {
+  // Groeit mee zoals de gewone titel (lange namen lopen over twee regels). Ook bij een andere
+  // breedte opnieuw meten: de regelhoogte verschilt tussen mobiel (34px) en desktop (44px).
+  const fitHeight = React.useCallback(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = "0px";
     el.style.height = `${el.scrollHeight}px`;
-  }, [draft, textWidth]);
+  }, []);
+  React.useLayoutEffect(fitHeight, [draft, textWidth, fitHeight]);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let lastWidth = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth === lastWidth) return;
+      lastWidth = el.clientWidth;
+      fitHeight();
+    });
+    ro.observe(el);
+    const onResize = () => {
+      if (measureRef.current) setTextWidth(Math.ceil(measureRef.current.getBoundingClientRect().width));
+      fitHeight();
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", onResize);
+    };
+  }, [fitHeight]);
   const commit = () => {
     const v = draft.trim();
     if (!v) {
