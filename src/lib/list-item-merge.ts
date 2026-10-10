@@ -56,3 +56,36 @@ export function findMergeTarget(
   if (done) return { id: done.id, quantity: incoming.quantity, reopen: true };
   return null;
 }
+
+type DisplayItem = MergeCandidate & { mergedIds?: string[] };
+
+/**
+ * Weergave per categorie: hetzelfde losse product op verschillende dagen (bv. «Kroketjes» bij
+ * Algemeen én Zaterdag) als één kaartje met de opgetelde hoeveelheid. Receptingrediënten en
+ * diepvries blijven apart. `mergedIds` = alle onderliggende items (afvinken/verwijderen doet ze allemaal).
+ */
+export function mergeLooseDuplicates<T extends DisplayItem>(items: readonly T[]): T[] {
+  const out: T[] = [];
+  const byName = new Map<string, number>();
+  for (const item of items) {
+    const loose = !item.recipeGroupId && !item.fromStock;
+    const key = item.name.trim().toLowerCase();
+    const at = loose && key ? byName.get(key) : undefined;
+    if (at != null) {
+      const base = out[at];
+      const sum = addQuantities(base.quantity, item.quantity);
+      if (sum != null) {
+        out[at] = {
+          ...base,
+          quantity: sum,
+          checked: base.checked && item.checked,
+          mergedIds: [...(base.mergedIds ?? [base.id]), item.id],
+        };
+        continue;
+      }
+    }
+    if (loose && key && !byName.has(key)) byName.set(key, out.length);
+    out.push(item);
+  }
+  return out;
+}

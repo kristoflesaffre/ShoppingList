@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addQuantities, findMergeTarget } from "./list-item-merge";
+import { addQuantities, findMergeTarget, mergeLooseDuplicates } from "./list-item-merge";
 
 const base = { section: "Algemeen", checked: false };
 
@@ -38,5 +38,32 @@ describe("findMergeTarget", () => {
       quantity: "1 stuk",
       reopen: true,
     });
+  });
+});
+
+describe("mergeLooseDuplicates", () => {
+  const it0 = (id: string, name: string, quantity: string, section: string, extra: Partial<{ checked: boolean; recipeGroupId: string; fromStock: boolean }> = {}) => ({
+    id, name, quantity, section, checked: false, ...extra,
+  });
+
+  it("voegt hetzelfde losse product over dagen samen", () => {
+    const out = mergeLooseDuplicates([it0("a", "Kroketjes", "1 stuk", "Algemeen"), it0("b", "kroketjes", "1 stuk", "Zaterdag")]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ id: "a", quantity: "2 stuks", mergedIds: ["a", "b"] });
+  });
+
+  it("afgevinkt enkel als alles afgevinkt is", () => {
+    const out = mergeLooseDuplicates([it0("a", "Melk", "1 stuk", "A", { checked: true }), it0("b", "Melk", "1 stuk", "B")]);
+    expect(out[0].checked).toBe(false);
+  });
+
+  it("laat receptingrediënten, diepvries en andere eenheden apart", () => {
+    const out = mergeLooseDuplicates([
+      it0("a", "Look", "1 stuk", "A"),
+      it0("b", "Look", "2 stuks", "B", { recipeGroupId: "r1" }),
+      it0("c", "Look", "200 gram", "C"),
+      it0("d", "Look", "1 stuk", "D", { fromStock: true }),
+    ]);
+    expect(out.map((i) => i.id)).toEqual(["a", "b", "c", "d"]);
   });
 });

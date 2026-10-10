@@ -168,7 +168,7 @@ import { MasterAddSheet } from "./master_add_sheet";
 import { StoreHiddenNote, StoreLogos, StoreMarkMenu, StoreMarkProvider } from "./store_mark";
 import { IngredientStoreSheet, type IngredientStoreEntry } from "./ingredient_store_sheet";
 import { useGroceryCatalog } from "./master_add_sheet";
-import { findMergeTarget } from "@/lib/list-item-merge";
+import { findMergeTarget, mergeLooseDuplicates } from "@/lib/list-item-merge";
 import {
   itemMatchesStoreFilter,
   parseIngredientStores,
@@ -4617,8 +4617,23 @@ export default function ListDetailPage({
     return () => window.clearTimeout(timeout);
   }, [snackbarMessage]);
 
+  /** Samengevoegde kaartjes (per categorie): id van het kaartje → alle onderliggende items. */
+  const mergedIdsRef = React.useRef<Map<string, string[]>>(new Map());
+
   const handleCheckedChange = React.useCallback(
     (itemId: string, checked: boolean) => {
+      const merged = mergedIdsRef.current.get(itemId);
+      if (merged && merged.length > 1) {
+        db.transact(
+          merged.flatMap((id) => [
+            db.tx.items[id].update({ checked }),
+            ...(checked && items.find((i) => i.id === id)?.claimedByInstantUserId
+              ? [db.tx.items[id].merge({ claimedByInstantUserId: null, claimedByDisplayName: null } as never)]
+              : []),
+          ]) as Parameters<typeof db.transact>[0],
+        );
+        return;
+      }
       if (checked) {
         const row = items.find((i) => i.id === itemId);
         /** Geen `null` in één `update()` met checked — kan in InstantDB verkeerd op gelinkte items landen. */
@@ -4690,7 +4705,10 @@ export default function ListDetailPage({
           setRemovingId(null);
           return;
         }
-        db.transact(db.tx.items[itemId].delete());
+        const merged = mergedIdsRef.current.get(itemId);
+        db.transact(
+          (merged && merged.length > 1 ? merged : [itemId]).map((id) => db.tx.items[id].delete()) as Parameters<typeof db.transact>[0],
+        );
         setLastDeleted({ item, index });
         setSnackbarMessage(`'${item.name}' verwijderd`);
         setRemovingId(null);
@@ -5006,6 +5024,11 @@ export default function ListDetailPage({
     if (isLidlDelhaizeList && updatedItem.storeOrigin == null) {
       db.transact(db.tx.items[updatedItem.id].update({ store: updatedItem.store ?? null }));
     }
+    // Samengevoegd kaartje gewijzigd: de nieuwe hoeveelheid geldt voor het geheel → de rest opruimen.
+    const mergedOthers = (mergedIdsRef.current.get(updatedItem.id) ?? []).filter((id) => id !== updatedItem.id);
+    if (mergedOthers.length > 0) {
+      db.transact(mergedOthers.map((id) => db.tx.items[id].delete()) as Parameters<typeof db.transact>[0]);
+    }
     const favoriteId = masterItemIdByName.get(storeNameKey(updatedItem.name));
     if (options?.alsoFavorite && favoriteId && updatedItem.store) {
       db.transact(db.tx.items[favoriteId].update({ store: updatedItem.store }));
@@ -5156,7 +5179,9 @@ export default function ListDetailPage({
       }));
     }
     const grouped = new Map<string, ListItem[]>();
-    for (const item of itemsForStoreView) {
+    // Per categorie: hetzelfde losse product op meerdere dagen als één kaartje (opgetelde hoeveelheid).
+    const categoryItems = isMasterList || isLandalOrVakantieList ? itemsForStoreView : mergeLooseDuplicates(itemsForStoreView);
+    for (const item of categoryItems) {
       const cat = effectiveListItemCategory(item);
       const existing = grouped.get(cat) ?? [];
       existing.push(item);
@@ -5202,6 +5227,10 @@ export default function ListDetailPage({
     showUncheckedFirst,
     isEditMode,
   ]);
+
+  mergedIdsRef.current = new Map(
+    sections.flatMap((s) => s.items.filter((i) => i.mergedIds && i.mergedIds.length > 1).map((i) => [i.id, i.mergedIds!] as const)),
+  );
 
   const hasItems = items.length > 0;
   const isMasterEmpty = isMasterList && !hasItems;

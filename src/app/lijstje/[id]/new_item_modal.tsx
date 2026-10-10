@@ -72,6 +72,8 @@ export type ListItem = {
   itemDate?: string;
   /** Landal/vakantie: wie het item betreft. */
   tripPerson?: TripPersonTab;
+  /** Per categorie samengevoegd kaartje: alle onderliggende item-id's (zelfde product op meerdere dagen). */
+  mergedIds?: string[];
   /** Lidl / Delhaize-lijstje: winkelkeuze (eigen keuze of overgenomen van de favoriet). */
   store?: ItemStore;
   /** Waar een overgenomen winkel vandaan komt (geen eigen keuze op dit item). */
