@@ -37,7 +37,6 @@ import { cn } from "@/lib/utils";
 import { matchStepIngredients } from "@/lib/recipe-step-ingredients";
 import { RecipeStepsEditor, TrashGlyph } from "@/app/recepten/recipe_steps_editor";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
-import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { recipeTintColors, scaleQuantity, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { clearRecipeHeroTransition, peekRecipeHeroTransition } from "@/lib/recipe_hero_transition";
@@ -609,7 +608,10 @@ export default function ReceptDetailPage() {
           </button>
           <span className="flex-1" />
           {detailPhotoEditMode ? (
-            <DoneButton onClick={toggleDetailPhotoEditMode} className="hidden h-11 px-5 text-[15px] shadow-[0_8px_18px_-8px_rgba(79,85,241,0.7)] lg:inline-flex" />
+            <div className="hidden items-center gap-2.5 lg:flex">
+              <RecipeCategorySelect value={savedRecipe.category ?? null} onChange={(category) => saveRecipeFields({ category })} />
+              <DoneButton onClick={toggleDetailPhotoEditMode} className="h-11 px-5 text-[15px] shadow-[0_8px_18px_-8px_rgba(79,85,241,0.7)]" />
+            </div>
           ) : (
             <>
               <button
@@ -715,30 +717,19 @@ export default function ReceptDetailPage() {
             ) : null}
           </div>
           {photoError ? <p className="mt-2 text-center text-xs text-[var(--error-600)]">{photoError}</p> : null}
-          {!detailPhotoEditMode && !savedRecipe.photoUrl ? (
+          {!savedRecipe.photoUrl ? (
             <MiniButton type="button" variant="secondary" disabled={photoSaving} onClick={openPhotoSourceSlide} className="mt-3">
               {photoSaving ? "Bezig…" : "Foto toevoegen"}
             </MiniButton>
           ) : null}
 
-          {detailPhotoEditMode ? (
-            <RecipeHeaderEditor
-              key={savedRecipe.id}
-              name={savedRecipe.name}
-              persons={basePersons > 0 ? basePersons : 2}
-              link={savedRecipe.link}
-              category={savedRecipe.category ?? null}
-              onSave={saveRecipeFields}
-            />
-          ) : (
-            <>
-              <div className={cn("mt-4 flex max-w-full items-center gap-2 px-2", heroEnter(300).className)} style={heroEnter(300).style}>
-                <h1 className="min-w-0 text-center text-[28px] font-bold leading-[34px] tracking-[-0.015em] text-text-primary lg:text-[36px] lg:leading-[44px]">
-                  {savedRecipe.name}
-                </h1>
-              </div>
-            </>
-          )}
+          <div className={cn("mt-4 flex w-full max-w-full justify-center px-2", heroEnter(300).className)} style={heroEnter(300).style}>
+            {detailPhotoEditMode ? (
+              <RecipeTitleEditor key={savedRecipe.id} name={savedRecipe.name} onSave={(name) => saveRecipeFields({ name })} />
+            ) : (
+              <h1 className={recipeTitleClass}>{savedRecipe.name}</h1>
+            )}
+          </div>
         </section>
 
         {/* Ingrediënten en bereiding: onder elkaar (mobiel), naast elkaar (desktop) */}
@@ -750,7 +741,14 @@ export default function ReceptDetailPage() {
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl font-bold leading-7 text-text-primary">Ingrediënten</h2>
               {detailPhotoEditMode ? (
-                ingredientCount > 1 ? <span className="hidden text-[13px] text-[var(--text-secondary)] lg:inline">Sleep om te ordenen</span> : null
+                // Bewerkstand: zelfde stepper, maar hij past het recept zelf aan.
+                <PersonsStepper
+                  value={basePersons > 0 ? basePersons : 2}
+                  onChange={(n) => {
+                    setPersons(null);
+                    void saveRecipeFields({ persons: n });
+                  }}
+                />
               ) : basePersons > 0 ? (
                 <PersonsStepper value={shownPersons} onChange={setPersons} />
               ) : null}
@@ -759,7 +757,7 @@ export default function ReceptDetailPage() {
             {ingredientCount === 0 ? (
               <p className="py-5 text-center text-sm leading-5 text-[var(--text-tertiary)]">Nog geen ingrediënten.</p>
             ) : detailPhotoEditMode ? (
-              <div className="pt-2">
+              <div className="mt-1.5">
                 <RecipeIngredientSortableList
                   variant="edit"
                   ingredients={savedRecipe.ingredients}
@@ -818,7 +816,7 @@ export default function ReceptDetailPage() {
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-xl font-bold leading-7 text-text-primary">Bereiding</h2>
               {detailPhotoEditMode ? (
-                <span className="hidden text-[13px] text-[var(--text-secondary)] lg:inline">Tik op een stap om te typen</span>
+                <RecipeLinkEditor key={savedRecipe.id} link={savedRecipe.link} onSave={(link) => saveRecipeFields({ link })} />
               ) : doneCount > 0 ? (
                 <span className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-pill bg-[var(--blue-50)] px-3 text-[13px] font-bold text-[var(--blue-500)]">
                   <CheckGlyph />
@@ -829,7 +827,7 @@ export default function ReceptDetailPage() {
                   href={recipeLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--blue-500)] no-underline"
+                  className="inline-flex h-8 items-center gap-1.5 text-sm font-semibold text-[var(--blue-500)] no-underline"
                 >
                   <LinkGlyph />
                   Origineel recept
@@ -900,13 +898,10 @@ export default function ReceptDetailPage() {
       {detailPhotoEditMode ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 lg:hidden">
           <div aria-hidden className="h-[120px] bg-gradient-to-b from-transparent to-[var(--bg-app)] to-45%" />
-          <div className="pointer-events-auto absolute inset-x-4 bottom-[calc(26px+env(safe-area-inset-bottom,0px))] flex items-center gap-3 rounded-pill bg-[var(--white)] py-[7px] pl-4 pr-[7px] shadow-[0_10px_30px_-10px_rgba(16,17,48,0.35),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up">
-            <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)]">
-              <PencilIcon small />
-            </span>
-            <span className="min-w-0 flex-1 truncate text-sm text-[var(--text-secondary)]">
-              <b className="font-semibold text-text-primary">Recept</b> bewerken
-            </span>
+          <div className="pointer-events-auto absolute inset-x-4 bottom-[calc(26px+env(safe-area-inset-bottom,0px))] flex items-center gap-3 rounded-pill bg-[var(--white)] py-[7px] pl-[7px] pr-[7px] shadow-[0_10px_30px_-10px_rgba(16,17,48,0.35),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up">
+            <div className="min-w-0 flex-1">
+              <RecipeCategorySelect value={savedRecipe.category ?? null} onChange={(category) => saveRecipeFields({ category })} compact />
+            </div>
             <DoneButton onClick={toggleDetailPhotoEditMode} className="h-[42px] px-5 text-[15px] shadow-[0_6px_16px_-6px_rgba(79,85,241,0.6)]" />
           </div>
         </div>
@@ -1248,114 +1243,195 @@ function CameraGlyph() {
   );
 }
 
-/** Bewerkstand van de kop: naam (blauw kader), personen, link en categorie — bewaart meteen. */
-function RecipeHeaderEditor({
-  name,
-  persons,
-  link,
-  category,
-  onSave,
-}: {
-  name: string;
-  persons: number;
-  link: string;
-  category: RecipeCategory | null;
-  onSave: (fields: { name?: string; link?: string; persons?: number; category?: RecipeCategory | null }) => Promise<unknown>;
-}) {
-  const [draftName, setDraftName] = React.useState(name);
-  const [draftLink, setDraftLink] = React.useState(link);
-  const [draftPersons, setDraftPersons] = React.useState(persons);
-  const [draftCategory, setDraftCategory] = React.useState<RecipeCategory | null>(category);
 
-  const commitName = () => {
-    const v = draftName.trim();
+const recipeTitleClass =
+  "min-w-0 text-center text-[28px] font-bold leading-[34px] tracking-[-0.015em] text-text-primary lg:text-[36px] lg:leading-[44px]";
+
+/**
+ * Titel in de bewerkstand: zelfde letter en regelhoogte als de gewone titel; het blauwe kader wordt
+ * er buiten getekend, zodat niets verspringt tussen gewone en bewerkstand.
+ */
+function RecipeTitleEditor({ name, onSave }: { name: string; onSave: (name: string) => Promise<unknown> }) {
+  const [draft, setDraft] = React.useState(name);
+  const ref = React.useRef<HTMLTextAreaElement>(null);
+  // Groeit mee zoals de gewone titel (lange namen lopen over twee regels).
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [draft]);
+  const commit = () => {
+    const v = draft.trim();
     if (!v) {
-      setDraftName(name);
+      setDraft(name);
       return;
     }
-    if (v !== name) void onSave({ name: v });
+    if (v !== name) void onSave(v);
   };
-  const commitLink = () => {
-    const v = draftLink.trim();
-    if (v !== link.trim()) void onSave({ link: v });
+  return (
+    <label className="relative block w-full max-w-[640px]">
+      <span className="sr-only">Naam van het recept</span>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -inset-x-1 -inset-y-1.5 rounded-[14px] bg-[rgba(255,255,255,0.6)] shadow-[inset_0_0_0_1.5px_var(--blue-500)] lg:-inset-y-2"
+      />
+      <textarea
+        ref={ref}
+        rows={1}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value.replace(/\n/g, " "))}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
+        className={cn(recipeTitleClass, "relative block w-full resize-none overflow-hidden bg-transparent px-7 outline-none lg:px-9")}
+      />
+      <span aria-hidden className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--blue-500)] lg:right-2.5">
+        <PencilIcon small />
+      </span>
+    </label>
+  );
+}
+
+/** Link naar het originele recept, op de plek van «Origineel recept»: knop met klein invulvenster. */
+function RecipeLinkEditor({ link, onSave }: { link: string; onSave: (link: string) => Promise<unknown> }) {
+  const [open, setOpen] = React.useState(false);
+  const [draft, setDraft] = React.useState(link);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const hasLink = link.trim().length > 0;
+
+  React.useEffect(() => {
+    if (!open) return;
+    setDraft(link);
+    requestAnimationFrame(() => inputRef.current?.select());
+    const onDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, link]);
+
+  const save = (value: string) => {
+    void onSave(value.trim());
+    setOpen(false);
   };
-  const changePersons = (n: number) => {
-    const v = Math.min(24, Math.max(1, n));
-    setDraftPersons(v);
-    void onSave({ persons: v });
-  };
-  const blurOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") e.currentTarget.blur();
-  };
-  const stepBtn =
-    "flex size-7 items-center justify-center rounded-full bg-[var(--bg-app)] transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 
   return (
-    <div className="mt-4 flex w-full max-w-[640px] flex-col items-center gap-3">
-      <label className="flex w-full max-w-full items-center gap-2 rounded-[16px] bg-[rgba(255,255,255,0.72)] px-3.5 py-1 shadow-[inset_0_0_0_1.5px_var(--blue-500)] focus-within:bg-[var(--white)]">
-        <span className="sr-only">Naam van het recept</span>
-        <input
-          value={draftName}
-          onChange={(e) => setDraftName(e.target.value)}
-          onBlur={commitName}
-          onKeyDown={blurOnEnter}
-          className="min-w-0 flex-1 bg-transparent text-center text-[26px] font-bold leading-[38px] tracking-[-0.015em] text-text-primary outline-none lg:text-[34px] lg:leading-[48px]"
-        />
-        <span aria-hidden className="text-[var(--blue-500)]">
-          <PencilIcon small />
-        </span>
-      </label>
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <div className="inline-flex h-9 items-center gap-1 rounded-pill bg-[var(--white)] px-1 shadow-[inset_0_0_0_1px_var(--border-subtle)]" role="group" aria-label="Personen">
-          <button type="button" aria-label="Minder personen" disabled={draftPersons <= 1} onClick={() => changePersons(draftPersons - 1)} className={cn(stepBtn, "text-[var(--text-secondary)]")}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="size-4">
-              <path d="M6 12h12" />
-            </svg>
-          </button>
-          <span className="min-w-[78px] text-center text-sm font-semibold tabular-nums text-text-primary" aria-live="polite">
-            {draftPersons} {draftPersons === 1 ? "persoon" : "personen"}
-          </span>
-          <button type="button" aria-label="Meer personen" disabled={draftPersons >= 24} onClick={() => changePersons(draftPersons + 1)} className={cn(stepBtn, "text-[var(--blue-500)]")}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="size-4">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
-        </div>
-        <label className="inline-flex h-9 w-[260px] max-w-full items-center gap-1.5 rounded-pill bg-[var(--white)] pl-3 pr-3 text-[var(--blue-500)] shadow-[inset_0_0_0_1px_var(--border-subtle)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-500)]">
-          <LinkGlyph />
-          <span className="sr-only">Link naar het recept</span>
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex h-8 items-center gap-1.5 rounded-pill bg-[var(--blue-50)] px-3 text-[13px] font-semibold text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        <LinkGlyph />
+        {hasLink ? "Link wijzigen" : "Link toevoegen"}
+      </button>
+      {open ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            save(draft);
+          }}
+          className="absolute right-0 top-[calc(100%+8px)] z-30 w-[min(340px,calc(100vw-48px))] rounded-[18px] bg-[var(--white)] p-3 shadow-[0_18px_40px_-14px_rgba(16,17,48,0.35),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up"
+        >
+          <label className="block text-xs font-bold text-[var(--text-secondary)]" htmlFor="recipe-link-input">
+            Link naar het originele recept
+          </label>
           <input
+            id="recipe-link-input"
+            ref={inputRef}
             type="url"
             inputMode="url"
-            value={draftLink}
-            placeholder="Link naar recept"
-            onChange={(e) => setDraftLink(e.target.value)}
-            onBlur={commitLink}
-            onKeyDown={blurOnEnter}
-            className="min-w-0 flex-1 bg-transparent text-[13px] font-medium text-text-primary outline-none placeholder:text-[var(--blue-500)]"
+            value={draft}
+            placeholder="https://…"
+            onChange={(e) => setDraft(e.target.value)}
+            className="mt-1.5 h-11 w-full rounded-[12px] bg-[var(--gray-25)] px-3 text-sm text-text-primary outline-none transition-shadow focus:bg-[var(--white)] focus:shadow-[0_0_0_1.5px_var(--blue-500)]"
           />
-        </label>
-      </div>
-      <FilterChipRow wrap ariaLabel="Categorie" className="justify-center">
-        {RECIPE_CATEGORIES.map((cat) => {
-          const on = draftCategory === cat.id;
-          return (
-            <FilterChip
-              key={cat.id}
-              selected={on}
-              dotColor={cat.dot}
-              onClick={() => {
-                const next = on ? null : cat.id;
-                setDraftCategory(next);
-                void onSave({ category: next });
-              }}
-              className={cn(!on && "!bg-[var(--white)] !text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-subtle)] [@media(hover:hover)]:hover:!bg-[var(--gray-25)]")}
+          <div className="mt-2.5 flex items-center gap-2">
+            {hasLink ? (
+              <a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[13px] font-semibold text-[var(--blue-500)] no-underline [@media(hover:hover)]:hover:underline"
+              >
+                Openen
+              </a>
+            ) : null}
+            {hasLink ? (
+              <button type="button" onClick={() => save("")} className="text-[13px] font-semibold text-[var(--error-400)] [@media(hover:hover)]:hover:underline">
+                Verwijderen
+              </button>
+            ) : null}
+            <span className="flex-1" />
+            <button
+              type="submit"
+              className="inline-flex h-9 items-center rounded-pill bg-[var(--blue-500)] px-4 text-sm font-semibold text-white transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
             >
-              {cat.label}
-            </FilterChip>
-          );
-        })}
-      </FilterChipRow>
+              Bewaar
+            </button>
+          </div>
+        </form>
+      ) : null}
     </div>
+  );
+}
+
+/** Kleine dropdown voor het type gerecht (native select onder een pil met kleurbolletje). */
+function RecipeCategorySelect({
+  value,
+  onChange,
+  compact = false,
+}: {
+  value: RecipeCategory | null;
+  onChange: (value: RecipeCategory | null) => Promise<unknown>;
+  compact?: boolean;
+}) {
+  const [current, setCurrent] = React.useState<RecipeCategory | null>(value);
+  React.useEffect(() => setCurrent(value), [value]);
+  const meta = RECIPE_CATEGORIES.find((c) => c.id === current) ?? null;
+  return (
+    <label
+      className={cn(
+        "relative inline-flex max-w-full items-center gap-2 rounded-pill bg-[var(--white)] pl-3 pr-2.5 text-sm font-semibold text-text-primary shadow-[inset_0_0_0_1px_var(--border-subtle)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+        compact ? "h-[42px] bg-[var(--gray-25)] shadow-none" : "h-11",
+      )}
+    >
+      <span className="sr-only">Type gerecht</span>
+      <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: meta?.dot ?? "var(--gray-300)" }} />
+      <span className={cn("truncate", !meta && "text-[var(--text-secondary)]")}>{meta?.label ?? "Type gerecht"}</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4 shrink-0 text-[var(--text-secondary)]">
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+      <select
+        value={current ?? ""}
+        onChange={(e) => {
+          const next = (e.target.value || null) as RecipeCategory | null;
+          setCurrent(next);
+          void onChange(next);
+        }}
+        className="absolute inset-0 cursor-pointer appearance-none opacity-0"
+      >
+        <option value="">Geen type</option>
+        {RECIPE_CATEGORIES.map((cat) => (
+          <option key={cat.id} value={cat.id}>
+            {cat.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

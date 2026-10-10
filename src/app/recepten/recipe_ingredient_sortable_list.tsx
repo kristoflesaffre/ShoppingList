@@ -156,7 +156,7 @@ function SortableIngredientEditRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "relative flex items-center gap-2 bg-[var(--white)] py-2",
+        "relative flex items-center gap-2 bg-[var(--white)] py-2.5",
         !first && !isDragging && "border-t border-[var(--border-subtle)]",
         isDragging && "z-10 rounded-[16px] shadow-[0_14px_28px_-10px_rgba(16,17,48,0.28),0_0_0_1px_var(--blue-100)]",
       )}
