@@ -685,10 +685,9 @@ export default function ReceptDetailPage() {
                 aria-label="Recept bewerken"
                 onClick={toggleDetailPhotoEditMode}
                 className={cn(
-                  "absolute bottom-1.5 right-0 flex size-11 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_6px_16px_-6px_rgba(16,17,48,0.3),0_0_0_1px_rgba(16,17,48,0.04)] transition-[background-color,color,box-shadow,transform] duration-base ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                  // Desktop: blauw gevuld en iets groter bij hover.
-                  "[@media(hover:hover)]:hover:scale-[1.06] [@media(hover:hover)]:hover:bg-[var(--blue-500)] [@media(hover:hover)]:hover:text-white [@media(hover:hover)]:hover:shadow-[0_10px_22px_-8px_rgba(79,85,241,0.65)]",
-                  !savedRecipe.photoUrl && "-bottom-1 -right-2 size-10",
+                  plateActionBtn,
+                  "size-11",
+                  !savedRecipe.photoUrl && "!-bottom-1 !-right-2 !size-10",
                   heroEnter(300).className,
                 )}
                 style={heroEnter(300).style}
@@ -702,7 +701,8 @@ export default function ReceptDetailPage() {
                 disabled={photoSaving}
                 onClick={openPhotoSourceSlide}
                 aria-label={savedRecipe.photoUrl ? "Foto wijzigen" : "Foto toevoegen"}
-                className="absolute -right-1 bottom-1.5 inline-flex size-10 items-center justify-center gap-1.5 rounded-pill bg-[var(--white)] text-sm font-bold text-[var(--blue-500)] shadow-[0_6px_16px_-6px_rgba(16,17,48,0.3)] transition-transform duration-fast motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-60 lg:right-0 lg:h-[38px] lg:w-auto lg:px-3.5"
+                // Mobiel identiek aan de potloodknop (zelfde plek, maat en schaduw); desktop een pil met «Foto».
+                className={cn(plateActionBtn, "size-11 gap-1.5 text-sm font-bold disabled:opacity-60 lg:w-auto lg:px-4", !savedRecipe.photoUrl && "!-bottom-1 !-right-2 !size-10")}
               >
                 <CameraGlyph />
                 <span className="hidden lg:inline">{photoSaving ? "Bezig…" : "Foto"}</span>
@@ -990,6 +990,9 @@ export default function ReceptDetailPage() {
   );
 }
 
+/** Ronde actieknop rechtsonder op het fotobord (potlood en, in de bewerkstand, foto). */
+const plateActionBtn =
+  "absolute bottom-1.5 right-0 inline-flex items-center justify-center rounded-pill bg-[var(--white)] text-[var(--blue-500)] shadow-[0_6px_16px_-6px_rgba(16,17,48,0.3),0_0_0_1px_rgba(16,17,48,0.04)] transition-[background-color,color,box-shadow,transform] duration-base ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:scale-[1.06] [@media(hover:hover)]:hover:bg-[var(--blue-500)] [@media(hover:hover)]:hover:text-white [@media(hover:hover)]:hover:shadow-[0_10px_22px_-8px_rgba(79,85,241,0.65)]";
 const roundHeaderBtn =
   "flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 const ghostBtn =
@@ -1217,7 +1220,7 @@ function RecipeStepItem({
 
 function CameraGlyph() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
       <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
       <circle cx="12" cy="13" r="3.5" />
     </svg>
