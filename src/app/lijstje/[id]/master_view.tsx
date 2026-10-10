@@ -74,6 +74,23 @@ export function MasterLoyaltyLine({
   onLink: (slot: LoyaltySlot) => void;
 }) {
   const [open, setOpen] = React.useState(false);
+  const popRef = React.useRef<HTMLDivElement>(null);
+  // Zwevend paneel: sluit bij klikken ernaast of Escape.
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!popRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
   const shell = "flex w-full items-center gap-2.5 rounded-[16px] px-3 py-2.5";
   const white = "bg-[var(--white)] shadow-card";
 
@@ -150,9 +167,10 @@ export function MasterLoyaltyLine({
     );
   }
 
-  /* Canvas «Favorieten · pillen C»: getinte pil «2 klantenkaarten» met «Tonen» (klapt de kaarten open). */
+  /* Canvas «Favorieten · pillen C»: getinte pil «2 klantenkaarten» met «Tonen»; de kaarten klappen
+     open als zwevend paneel over de inhoud eronder (niets verschuift). */
   return (
-    <div className="w-full">
+    <div ref={popRef} className="relative w-full">
       <div className="flex h-14 w-full items-center gap-3 rounded-pill bg-[linear-gradient(100deg,#e7efff,#f1ecff)] pl-3 pr-2.5 [[data-theme=dark]_&]:bg-[linear-gradient(100deg,#1e2a48,#272241)]">
         <span className="flex shrink-0">
           <Logo src={primaryLogo} />
@@ -172,7 +190,7 @@ export function MasterLoyaltyLine({
         </button>
       </div>
       {open ? (
-        <div className="mt-2 rounded-[16px] bg-[var(--white)] px-3 py-1 shadow-card motion-safe:animate-fade-up">
+        <div className="absolute inset-x-0 top-full z-30 mt-2 rounded-[16px] bg-[var(--white)] px-3 py-1 shadow-[0_14px_34px_-10px_rgba(16,17,48,0.32),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up">
           {([
             ["delhaize", primaryLogo, "Delhaize-kaart"],
             ["lidl", secondaryLogo, "Lidl-kaart"],
