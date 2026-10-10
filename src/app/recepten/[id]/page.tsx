@@ -1131,14 +1131,17 @@ function RecipeStepItem({
         <span
           className={cn(
             "flex size-[30px] shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors duration-base",
+            // Tijdlijn: afgewerkte stap grijs (het aanklikbare vinkje rechts blijft blauw).
             selected
               ? "bg-[var(--blue-500)] text-white"
-              : "bg-[var(--blue-50)] text-[var(--blue-500)]",
+              : done
+                ? "bg-[var(--gray-50)] text-[var(--gray-300)]"
+                : "bg-[var(--blue-50)] text-[var(--blue-500)]",
           )}
         >
           {done && !selected ? <CheckGlyph /> : index + 1}
         </span>
-        {!last ? <span className={cn("my-1 w-0.5 flex-1 rounded-full", done ? "bg-[var(--blue-100)]" : "bg-[var(--border-subtle)]")} /> : null}
+        {!last ? <span className={cn("my-1 w-0.5 flex-1 rounded-full", done ? "bg-[var(--gray-100)]" : "bg-[var(--border-subtle)]")} /> : null}
       </div>
       <div
         role="button"
