@@ -263,7 +263,7 @@ export function HomeDashboardShoppingList({
   const shown = items.slice(0, limit);
 
   return (
-    <section aria-labelledby="dashboard-shopping" className="flex min-w-0 flex-col gap-4">
+    <section aria-labelledby="dashboard-shopping" className="flex h-full min-w-0 flex-col gap-3">
       <div className="flex min-h-8 items-center justify-between gap-3">
         <h2 id="dashboard-shopping" className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
           Te kopen
@@ -277,7 +277,7 @@ export function HomeDashboardShoppingList({
           Toevoegen
         </button>
       </div>
-      <div className="rounded-[22px] bg-[var(--white)] px-5 pb-2 pt-4 shadow-card">
+      <div className="flex flex-1 flex-col rounded-[22px] bg-[var(--white)] px-5 pb-2 pt-4 shadow-card">
         <div className={cn("mb-1 flex items-center gap-2.5", items.length === 0 && "hidden")}>
           {others.size > 0 ? (
             <span className="flex" aria-hidden>
@@ -291,7 +291,7 @@ export function HomeDashboardShoppingList({
         </div>
         {items.length === 0 ? (
           /* Lege lijst: alles gekocht, met één duidelijke actie. */
-          <div className="flex items-center gap-4 py-4">
+          <div className="my-auto flex items-center gap-4 py-4">
             <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#e8f6ee] text-[#2a9d63] [[data-theme=dark]_&]:bg-[rgba(47,191,113,0.15)]" aria-hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" className="size-[22px]">
                 <path d="M5 12.5l4.5 4.5L19 7.5" />

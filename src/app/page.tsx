@@ -3877,9 +3877,9 @@ export default function Home() {
                     onNewListLike={handleNewListLike}
                   />
                 </div>
-                <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-[minmax(0,2fr)_minmax(280px,0.92fr)] min-[1050px]:items-stretch min-[1050px]:gap-8">
+                <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-2 min-[1050px]:items-stretch min-[1050px]:gap-8">
                   {!homeSectionConfig.hidden.includes("te-kopen") ? (
-                    <div className="hidden min-w-0 min-[1050px]:block">
+                    <div className="hidden min-w-0 min-[1050px]:flex min-[1050px]:flex-col">
                       {/* Canvas «Combinatie 1»: één gedeelde Te kopen-lijst. */}
                       <HomeDashboardShoppingList
                         items={dashboardShoppingItems}
