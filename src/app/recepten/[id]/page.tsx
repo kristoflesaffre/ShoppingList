@@ -610,7 +610,7 @@ export default function ReceptDetailPage() {
           {detailPhotoEditMode ? (
             <div className="hidden items-center gap-2.5 lg:flex">
               <RecipeCategorySelect value={savedRecipe.category ?? null} onChange={(category) => saveRecipeFields({ category })} />
-              <DoneButton onClick={toggleDetailPhotoEditMode} className="h-11 px-5 text-[15px] shadow-[0_8px_18px_-8px_rgba(79,85,241,0.7)]" />
+              <DoneButton onClick={toggleDetailPhotoEditMode} className="!h-10 px-4 text-[15px] shadow-[0_8px_18px_-8px_rgba(79,85,241,0.7)]" />
             </div>
           ) : (
             <>
@@ -1407,7 +1407,8 @@ function RecipeCategorySelect({
     <label
       className={cn(
         "relative inline-flex max-w-full items-center gap-2 rounded-pill bg-[var(--white)] pl-3 pr-2.5 text-sm font-semibold text-text-primary shadow-[inset_0_0_0_1px_var(--border-subtle)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]",
-        compact ? "h-[42px] bg-[var(--gray-25)] shadow-none" : "h-11",
+        // Even hoog als «Gereed» ernaast: 40px in de kop, 42px in de mobiele balk.
+        compact ? "h-[42px] bg-[var(--gray-25)] shadow-none" : "h-10",
       )}
     >
       <span className="sr-only">Type gerecht</span>
