@@ -891,12 +891,7 @@ export default function ReceptDetailPage() {
       {/* Mobiel: wat je nu nodig hebt voor de gekozen stap (de lijst staat hoger op de pagina). */}
       {activeStep != null && nowNeeded.length > 0 && !detailPhotoEditMode ? (
         <div className="fixed inset-x-3 bottom-[calc(14px+env(safe-area-inset-bottom,0px))] z-20 rounded-[22px] bg-[#101130] px-3.5 py-3 text-white shadow-[0_18px_40px_-16px_rgba(16,17,48,0.6)] lg:hidden">
-          <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.04em] text-[rgba(255,255,255,0.7)]">
-            <span>Nodig voor stap {activeStep + 1}</span>
-            <button type="button" onClick={() => setSelectedStep(null)} className="text-[13px] normal-case tracking-normal text-white underline-offset-2 [@media(hover:hover)]:hover:underline">
-              Alles tonen
-            </button>
-          </div>
+          <p className="text-xs font-bold uppercase tracking-[0.04em] text-[rgba(255,255,255,0.7)]">Nodig voor stap {activeStep + 1}</p>
           <ul className="mt-2 flex gap-3.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {nowNeeded.map((ing) => {
               const photo = getPhotoUrl(ing.name, ing.quantity);
