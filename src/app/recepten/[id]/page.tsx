@@ -745,7 +745,7 @@ export default function ReceptDetailPage() {
         <div className={cn("mt-[22px] flex flex-col gap-3.5 lg:mt-10 lg:flex-row lg:items-start lg:gap-[22px]", heroEnter(460).className)} style={heroEnter(460).style}>
           <section
             aria-label="Ingrediënten"
-            className="rounded-[22px] bg-[var(--white)] px-4 pb-2 pt-[18px] shadow-[0_10px_30px_-18px_rgba(16,17,48,0.18)] lg:w-[430px] lg:shrink-0 lg:px-5"
+            className="rounded-[22px] bg-[var(--white)] px-4 pb-2 pt-[18px] shadow-[0_10px_30px_-18px_rgba(16,17,48,0.18)] lg:w-[350px] lg:shrink-0 lg:px-5"
           >
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl font-bold leading-7 text-text-primary">Ingrediënten</h2>
