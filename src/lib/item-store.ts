@@ -7,6 +7,8 @@ export type StoreFilter = "all" | "lidl" | "delhaize";
 
 export const LIDL_LOGO_SRC = "/logos/logos-lidl.svg";
 export const DELHAIZE_LOGO_SRC = "/logos/logos-delhaize.svg";
+/** Eigen icoon voor «allebei»: Lidl en Delhaize samen in één beeld. */
+export const LIDL_DELHAIZE_LOGO_SRC = "/logos/logos-lidl-delhaize.svg";
 
 export function parseItemStore(value: unknown): ItemStore | undefined {
   return value === "lidl" || value === "delhaize" || value === "both" ? value : undefined;

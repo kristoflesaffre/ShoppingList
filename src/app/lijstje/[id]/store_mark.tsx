@@ -4,7 +4,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import type { ListItem } from "./new_item_modal";
 import { cn } from "@/lib/utils";
-import { DELHAIZE_LOGO_SRC, LIDL_LOGO_SRC, type ItemStore } from "@/lib/item-store";
+import { DELHAIZE_LOGO_SRC, LIDL_DELHAIZE_LOGO_SRC, LIDL_LOGO_SRC, type ItemStore } from "@/lib/item-store";
 
 /**
  * Canvas «Concept D · Winkelknop in de rij»: winkelkeuze per item op een Lidl / Delhaize-lijstje.
@@ -34,16 +34,25 @@ function Logo({ src, size, className }: { src: string; size: number; className?:
   );
 }
 
-/** Eén of twee overlappende winkellogo's. */
+/** Logo van één winkel, of het gecombineerde «Lidl Delhaize»-icoon. */
 export function StoreLogos({ store, size = 14, ring = true }: { store: ItemStore; size?: number; ring?: boolean }) {
   const ringCls = ring ? "shadow-[0_0_0_1.5px_var(--white)]" : undefined;
   if (store === "lidl") return <Logo src={LIDL_LOGO_SRC} size={size} className={ringCls} />;
   if (store === "delhaize") return <Logo src={DELHAIZE_LOGO_SRC} size={size} className={ringCls} />;
+  // Allebei: het eigen «Lidl Delhaize»-icoon. Elk rondje beslaat ±70% van het beeld, dus iets groter
+  // tonen zodat de rondjes even groot zijn als een los logo; negatieve marge houdt de regelhoogte gelijk.
+  const big = Math.round(size * 1.4);
+  const pull = -Math.round((big - size) / 2);
   return (
-    <span className="flex shrink-0">
-      <Logo src={LIDL_LOGO_SRC} size={size} className={ringCls} />
-      <Logo src={DELHAIZE_LOGO_SRC} size={size} className={cn(ringCls, "-ml-[5px]")} />
-    </span>
+    // eslint-disable-next-line @next/next/no-img-element -- winkellogo uit /public/logos
+    <img
+      src={LIDL_DELHAIZE_LOGO_SRC}
+      alt=""
+      width={big}
+      height={big}
+      className="shrink-0 object-contain"
+      style={{ width: big, height: big, marginTop: pull, marginBottom: pull }}
+    />
   );
 }
 
