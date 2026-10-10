@@ -1092,7 +1092,13 @@ function DateChip({ date }: { date: Date | null }) {
 
 function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedFirst, onCheckedChange, onAddToSection, edit }: ListCardsViewProps) {
   const isDesktop = useIsDesktop();
-  const cards = sections.filter((s) => s.items.length > 0);
+  // Afhaalgerechten koop je niet in de winkel: per categorie geen kaart daarvoor (per dag blijven ze staan).
+  const cards = sections.filter(
+    (s) =>
+      s.items.length > 0 &&
+      categoryHeadingDisplay(s.displayTitle ?? s.title) !== TAKEOUT_MEAL_CATEGORY &&
+      !s.items.every((item) => isTakeoutMealName(item.name)),
+  );
   const render = (s: Section, wide: boolean) => {
     const title = categoryHeadingDisplay(s.displayTitle ?? s.title);
     const takeoutItems = s.items.filter((item) => isTakeoutMealName(item.name));
