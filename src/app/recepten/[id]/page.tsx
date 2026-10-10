@@ -622,14 +622,7 @@ export default function ReceptDetailPage() {
               >
                 <ShareIcon />
               </button>
-              <button
-                type="button"
-                aria-label="Meer opties (beschikbaar binnenkort)"
-                disabled
-                className={cn(roundHeaderBtn, "!text-[var(--gray-300)] disabled:opacity-70")}
-              >
-                <MoreDotsIcon />
-              </button>
+              <RecipeMoreMenu onEdit={toggleDetailPhotoEditMode} onDelete={() => setDeleteConfirmOpen(true)} />
             </>
           )}
         </header>
@@ -880,18 +873,6 @@ export default function ReceptDetailPage() {
             )}
           </section>
         </div>
-        {detailPhotoEditMode ? (
-          <div className="mt-6 flex justify-center">
-            <button
-              type="button"
-              onClick={() => setDeleteConfirmOpen(true)}
-              className="inline-flex h-10 items-center gap-1.5 rounded-pill bg-[var(--error-25)] px-4 text-sm font-semibold text-[var(--error-400)] transition-colors [@media(hover:hover)]:hover:bg-[rgba(214,64,64,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <TrashGlyph />
-              Recept verwijderen
-            </button>
-          </div>
-        ) : null}
       </main>
 
       {/* Mobiel: «Gereed» zwevend onderaan (zelfde patroon als items kiezen voor een nieuw lijstje). */}
@@ -1446,5 +1427,76 @@ function RecipeCategorySelect({
         ))}
       </select>
     </label>
+  );
+}
+
+/** «…» rechtsboven: bewerken en (rood, onderaan) het recept verwijderen. */
+function RecipeMoreMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  const [open, setOpen] = React.useState(false);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  const item =
+    "flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left text-[15px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]";
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-label="Meer opties"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={roundHeaderBtn}
+      >
+        <MoreDotsIcon />
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+8px)] z-30 w-[220px] rounded-[18px] bg-[var(--white)] p-1.5 shadow-[0_18px_40px_-14px_rgba(16,17,48,0.35),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onEdit();
+            }}
+            className={cn(item, "text-text-primary [@media(hover:hover)]:hover:bg-[var(--gray-25)]")}
+          >
+            <span className="text-[var(--blue-500)]">
+              <PencilIcon small />
+            </span>
+            Recept bewerken
+          </button>
+          <div aria-hidden className="mx-3 my-1 h-px bg-[var(--border-subtle)]" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onDelete();
+            }}
+            className={cn(item, "text-[var(--error-400)] [@media(hover:hover)]:hover:bg-[var(--error-25)]")}
+          >
+            <TrashGlyph />
+            Recept verwijderen
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
