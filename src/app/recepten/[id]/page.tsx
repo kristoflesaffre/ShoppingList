@@ -1194,14 +1194,20 @@ function RecipeStepItem({
               e.stopPropagation();
               onToggleDone();
             }}
-            className={cn(
-              "-my-0.5 flex size-10 shrink-0 items-center justify-center rounded-full transition-[background-color,box-shadow,transform] duration-fast motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-              done
-                ? "bg-[var(--blue-500)] text-white"
-                : "bg-[var(--white)] text-transparent shadow-[inset_0_0_0_2px_var(--gray-200)] [@media(hover:hover)]:hover:shadow-[inset_0_0_0_2px_var(--blue-300)]",
-            )}
+            // Zichtbaar rondje van 26px (zoals de andere vinkjes in de app), onzichtbaar tikvlak van 44px.
+            className="group -my-[9px] -mr-[9px] flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-none"
           >
-            <CheckGlyph />
+            <span
+              aria-hidden
+              className={cn(
+                "flex size-[26px] items-center justify-center rounded-full transition-[background-color,box-shadow,transform] duration-fast group-active:scale-90 group-focus-visible:ring-2 group-focus-visible:ring-[var(--border-focus)]",
+                done
+                  ? "bg-[var(--blue-500)] text-white"
+                  : "bg-[var(--white)] text-transparent shadow-[inset_0_0_0_1.5px_var(--gray-200)] [@media(hover:hover)]:group-hover:shadow-[inset_0_0_0_1.5px_var(--blue-300)]",
+              )}
+            >
+              <CheckGlyph />
+            </span>
           </button>
         </div>
         {ingredients.length > 0 ? (
