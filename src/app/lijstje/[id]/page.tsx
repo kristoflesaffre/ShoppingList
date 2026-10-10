@@ -5608,6 +5608,26 @@ export default function ListDetailPage({
   const showLoyaltySwipe = !isMasterList && loyaltySwipePanes.length > 0;
   /** Alleen op masterlijsten (Figma): koppel-/wijzig-rijen; gewone lijstjes enkel swipe-naar-QR. */
   const showLoyaltyLinkRows = isMasterList;
+  const loyaltyLine = (
+    <MasterLoyaltyLine
+      combo={isLidlDelhaizeList}
+      storeLogo={listIcon}
+      storeLabel={masterStoreLabel || "winkel"}
+      primaryLogo={LOYALTY_COMBO_PRIMARY_LOGO_SRC}
+      secondaryLogo={LOYALTY_COMBO_SECONDARY_LOGO_SRC}
+      hasPrimary={existingLoyaltyCard != null}
+      hasSecondary={existingLoyaltyCardSecondary != null}
+      onView={(slot) => {
+        setLoyaltyViewSlot(slot);
+        setLoyaltyCardViewSlideOpen(true);
+      }}
+      onLink={(slot) => {
+        setLoyaltySlot(slot);
+        setLoyaltyCardSlideOpen(true);
+      }}
+    />
+  );
+
   const hideFabOnLoyaltyPanel = showLoyaltySwipe && loyaltyPanel === "loyalty";
 
   if (authLoading || !user || isLoading) {
@@ -5963,47 +5983,29 @@ export default function ListDetailPage({
                   <StoreFilterChip value={storeFilter} onChange={handleStoreFilterChange} counts={storeFilterCounts} showLabelWhenAll />
                 </div>
               ) : null}
-              {/* Winkel per product: ook voor producten die geen favoriet zijn (bv. ingrediënten). */}
-              <button
-                type="button"
-                onClick={() => setIngredientStoreOpen(true)}
-                className="flex w-full items-center gap-3 rounded-[16px] bg-[var(--white)] px-3 py-2.5 text-left shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)]">
-                  <StoreLogos store="both" size={18} />
-                </span>
-                <span className="min-w-0 flex-1 leading-[18px]">
-                  <span className="block text-sm font-semibold text-text-primary">Winkel per product</span>
-                  <span className="block truncate text-xs text-[var(--text-tertiary)]">
-                    {ingredientStoreEntries.length > 0
-                      ? `${ingredientStoreChosen} van ${ingredientStoreEntries.length} producten ingesteld`
-                      : "Kies waar je elk product koopt"}
-                  </span>
-                </span>
-                <span className="shrink-0 text-[13px] font-semibold text-[var(--blue-500)]">Instellen</span>
-              </button>
+              {/* Canvas «Favorieten · pillen C»: winkel per product en klantenkaarten als getinte pillen;
+                  mobiel onder elkaar, vanaf tablet naast elkaar. */}
+              <div className="grid w-full grid-cols-1 items-start gap-2 md:grid-cols-2 md:gap-3">
+                <div className="flex h-14 w-full items-center gap-3 rounded-pill bg-[linear-gradient(100deg,#fff6d6,#fdebea)] pl-3 pr-2.5 [[data-theme=dark]_&]:bg-[linear-gradient(100deg,#3a3420,#3a2426)]">
+                  <StoreLogos store="both" size={22} />
+                  <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">Winkel per product</span>
+                  <button
+                    type="button"
+                    onClick={() => setIngredientStoreOpen(true)}
+                    className="inline-flex h-9 shrink-0 items-center gap-1 rounded-pill bg-[var(--white)] pl-3.5 pr-2.5 text-[13.5px] font-bold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  >
+                    {ingredientStoreEntries.length - ingredientStoreChosen > 0 ? `${ingredientStoreEntries.length - ingredientStoreChosen} open` : "Bekijk"}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                      <path d="M9 6l6 6-6 6" />
+                    </svg>
+                  </button>
+                </div>
+                {showLoyaltyLinkRows ? loyaltyLine : null}
+              </div>
             </div>
           ) : null}
 
-          {!isMasterCategoryOrderMode && showLoyaltyLinkRows ? (
-            <MasterLoyaltyLine
-              combo={isLidlDelhaizeList}
-              storeLogo={listIcon}
-              storeLabel={masterStoreLabel || "winkel"}
-              primaryLogo={LOYALTY_COMBO_PRIMARY_LOGO_SRC}
-              secondaryLogo={LOYALTY_COMBO_SECONDARY_LOGO_SRC}
-              hasPrimary={existingLoyaltyCard != null}
-              hasSecondary={existingLoyaltyCardSecondary != null}
-              onView={(slot) => {
-                setLoyaltyViewSlot(slot);
-                setLoyaltyCardViewSlideOpen(true);
-              }}
-              onLink={(slot) => {
-                setLoyaltySlot(slot);
-                setLoyaltyCardSlideOpen(true);
-              }}
-            />
-          ) : null}
+          {!isMasterCategoryOrderMode && showLoyaltyLinkRows && !(isLidlDelhaizeList && !isEditMode) ? loyaltyLine : null}
 
           {listSuggestions && !embedSuggestionsInDayCards ? listSuggestions : null}
 

@@ -150,23 +150,29 @@ export function MasterLoyaltyLine({
     );
   }
 
+  /* Canvas «Favorieten · pillen C»: getinte pil «2 klantenkaarten» met «Tonen» (klapt de kaarten open). */
   return (
-    <div className={cn("w-full overflow-hidden rounded-[16px]", white)}>
-      <div className="flex items-center gap-2.5 px-3 py-2.5">
+    <div className="w-full">
+      <div className="flex h-14 w-full items-center gap-3 rounded-pill bg-[linear-gradient(100deg,#e7efff,#f1ecff)] pl-3 pr-2.5 [[data-theme=dark]_&]:bg-[linear-gradient(100deg,#1e2a48,#272241)]">
         <span className="flex shrink-0">
           <Logo src={primaryLogo} />
           <Logo src={secondaryLogo} overlap />
         </span>
-        <span className="min-w-0 flex-1 leading-[17px]">
-          <span className="block text-sm font-semibold text-text-primary">2 klantenkaarten gekoppeld</span>
-          <span className="block truncate text-xs text-[var(--text-tertiary)]">Delhaize · Lidl</span>
-        </span>
-        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className={LINK_CLASS}>
-          {open ? "Klaar" : "Beheren"}
+        <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">2 klantenkaarten</span>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="inline-flex h-9 shrink-0 items-center gap-1 rounded-pill bg-[var(--white)] pl-3.5 pr-2.5 text-[13.5px] font-bold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          {open ? "Klaar" : "Tonen"}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn("size-4 transition-transform", open && "rotate-90")}>
+            <path d="M9 6l6 6-6 6" />
+          </svg>
         </button>
       </div>
       {open ? (
-        <div className="border-t border-[var(--border-subtle)] px-3 py-1 motion-safe:animate-fade-up">
+        <div className="mt-2 rounded-[16px] bg-[var(--white)] px-3 py-1 shadow-card motion-safe:animate-fade-up">
           {([
             ["delhaize", primaryLogo, "Delhaize-kaart"],
             ["lidl", secondaryLogo, "Lidl-kaart"],
