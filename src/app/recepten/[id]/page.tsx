@@ -690,8 +690,10 @@ export default function ReceptDetailPage() {
                 aria-label="Recept bewerken"
                 onClick={toggleDetailPhotoEditMode}
                 className={cn(
-                  "absolute right-0 top-1 flex size-11 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_6px_16px_-6px_rgba(16,17,48,0.3),0_0_0_1px_rgba(16,17,48,0.04)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 [@media(hover:hover)]:hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                  !savedRecipe.photoUrl && "-right-2 -top-1 size-10",
+                  "absolute bottom-1.5 right-0 flex size-11 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_6px_16px_-6px_rgba(16,17,48,0.3),0_0_0_1px_rgba(16,17,48,0.04)] transition-[background-color,color,box-shadow,transform] duration-base ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                  // Desktop: blauw gevuld en iets groter bij hover.
+                  "[@media(hover:hover)]:hover:scale-[1.06] [@media(hover:hover)]:hover:bg-[var(--blue-500)] [@media(hover:hover)]:hover:text-white [@media(hover:hover)]:hover:shadow-[0_10px_22px_-8px_rgba(79,85,241,0.65)]",
+                  !savedRecipe.photoUrl && "-bottom-1 -right-2 size-10",
                   heroEnter(300).className,
                 )}
                 style={heroEnter(300).style}
