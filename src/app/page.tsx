@@ -72,6 +72,11 @@ import {
   HomeDashboardInventory,
   HomeDashboardQuickActions,
 } from "@/components/home_dashboard";
+import {
+  HomeTodayDashboard,
+  type DashboardMeal,
+} from "@/components/home_today_dashboard";
+import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
 import type { MasterStoreSlug } from "@/lib/master-stores";
@@ -1977,7 +1982,7 @@ function HomeLijstjesSection({
   onQuickAdd: (list: HomeList, name: string) => void;
   /** Nieuw lijstje voor dezelfde winkel (vanaf de masterlijst). */
   onNewListLike: (list: HomeList) => void;
-  /** Laat op het tablet-dashboard twee kaarten per rijbreedte zien. */
+  /** Laat in het brede overzicht twee kaarten in de primaire kolom zien. */
   dashboardLayout?: boolean;
 }) {
   const laneRef = React.useRef<HTMLDivElement>(null);
@@ -2726,6 +2731,15 @@ export default function Home() {
   const [homeSectionConfig, setHomeSectionConfig] = React.useState<HomeSectionConfig>(
     () => loadHomeSectionConfig(),
   );
+  const [tabletHomeView, setTabletHomeView] = React.useState<"overview" | "dashboard">(() => {
+    if (typeof window === "undefined") return "overview";
+    return localStorage.getItem("tablet-home-view") === "dashboard" ? "dashboard" : "overview";
+  });
+
+  const handleTabletHomeViewChange = React.useCallback((view: "overview" | "dashboard") => {
+    setTabletHomeView(view);
+    localStorage.setItem("tablet-home-view", view);
+  }, []);
 
   React.useEffect(() => {
     const handler = () => setHomeSectionConfig(loadHomeSectionConfig());
@@ -3064,6 +3078,33 @@ export default function Home() {
     }
     return { homeCalendarEntries: result, hasEverUsedCalendar, homeWeekDays: weekDays, todayIso };
   }, [data]);
+
+  const todayDashboard = React.useMemo(() => {
+    const todayIndex = homeWeekDays.findIndex((day) => day.isoDate === todayIso);
+    const dashboardMeal = (day: HomeWeekDay | undefined): DashboardMeal | null => {
+      if (!day) return null;
+      const summary = homeDaySummary(day.isoDate, day.entry);
+      if (!summary) return null;
+      return {
+        title: summary.title,
+        subtitle: summary.sub,
+        href: summary.href,
+        photoUrl: summary.photo,
+        fromStock: summary.fromStock,
+        items: (summary.loose ?? []).map((item) => ({
+          name: item.name,
+          photoUrl: item.photoUrl ?? null,
+        })),
+      };
+    };
+    const today = todayIndex >= 0 ? homeWeekDays[todayIndex] : undefined;
+    const tomorrow = todayIndex >= 0 ? homeWeekDays[todayIndex + 1] : undefined;
+    return {
+      todayMeal: dashboardMeal(today),
+      tomorrowMeal: dashboardMeal(tomorrow),
+      tomorrowIso: tomorrow?.isoDate ?? "",
+    };
+  }, [homeWeekDays, todayIso]);
 
   /** Eénmalige herberekening van lijst-decor-iconen: min duplicaten binnen de product-icon-pool. */
   React.useEffect(() => {
@@ -3757,15 +3798,29 @@ export default function Home() {
             ownerId={ownerId}
             className="pt-[var(--space-6)] motion-safe:animate-fade-up"
             action={
-              <FloatingActionButton
-                aria-label="Nieuw lijstje"
-                desktopLabel="Nieuw lijstje"
-                elevated={false}
-                className="hidden h-12 gap-2 px-5 py-0 md:inline-flex md:[&_span]:!inline"
-                onClick={handleOpenCreateModal}
-              />
+              tabletHomeView === "overview" ? (
+                <FloatingActionButton
+                  aria-label="Nieuw lijstje"
+                  desktopLabel="Nieuw lijstje"
+                  elevated={false}
+                  className="hidden h-12 gap-2 px-5 py-0 md:inline-flex md:[&_span]:!inline"
+                  onClick={handleOpenCreateModal}
+                />
+              ) : null
             }
           />
+          <div className="hidden justify-end pt-4 md:flex">
+            <SegmentedControl
+              ariaLabel="Startweergave"
+              fill={false}
+              value={tabletHomeView}
+              onChange={handleTabletHomeViewChange}
+              options={[
+                { value: "overview", label: "Overzicht" },
+                { value: "dashboard", label: "Dashboard" },
+              ]}
+            />
+          </div>
           {/* Telefoon behoudt de compacte, configureerbare verticale flow. */}
           <div
             className={cn(
@@ -3790,75 +3845,86 @@ export default function Home() {
             })}
           </div>
 
-          {/* Tablet: actieve lijstjes en context krijgen elk een vaste, scanbare zone. */}
-          <div className="hidden flex-col gap-10 pt-8 md:flex">
-            <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-[minmax(0,2fr)_minmax(280px,0.92fr)] min-[1050px]:items-start min-[1050px]:gap-8">
-              <div className="min-w-0">
-                {favoritesPromo.show ? (
-                  <FavoritesPromoBanner
-                    className="mb-6"
-                    onSetUp={() => router.push("/nieuw-lijstje/selecteer-winkel")}
-                    onDismiss={favoritesPromo.dismiss}
-                  />
-                ) : null}
-                <HomeLijstjesSection
-                  normalLists={normalLists}
-                  onOpenCreateModal={handleOpenCreateModal}
-                  onQuickAdd={handleQuickAddToList}
-                  onNewListLike={handleNewListLike}
-                  dashboardLayout
-                />
-                {!homeSectionConfig.hidden.includes("te-kopen") ? (
-                  <div className="hidden pt-10 min-[1050px]:block">
-                    {renderHomeSection("te-kopen")}
+          <div className="hidden md:block">
+            {tabletHomeView === "overview" ? (
+              <div className="flex flex-col gap-10 pt-8">
+                <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-[minmax(0,2fr)_minmax(280px,0.92fr)] min-[1050px]:items-start min-[1050px]:gap-8">
+                  <div className="min-w-0">
+                    {favoritesPromo.show ? (
+                      <FavoritesPromoBanner
+                        className="mb-6"
+                        onSetUp={() => router.push("/nieuw-lijstje/selecteer-winkel")}
+                        onDismiss={favoritesPromo.dismiss}
+                      />
+                    ) : null}
+                    <HomeLijstjesSection
+                      normalLists={normalLists}
+                      onOpenCreateModal={handleOpenCreateModal}
+                      onQuickAdd={handleQuickAddToList}
+                      onNewListLike={handleNewListLike}
+                      dashboardLayout
+                    />
+                    {!homeSectionConfig.hidden.includes("te-kopen") ? (
+                      <div className="hidden pt-10 min-[1050px]:block">
+                        {renderHomeSection("te-kopen")}
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
 
-              <aside
-                className={cn(
-                  "grid min-w-0 gap-8 min-[1050px]:grid-cols-1",
-                  homeSectionConfig.hidden.includes("diepvries") ? "grid-cols-1" : "grid-cols-2",
-                )}
-              >
-                <HomeDashboardQuickActions
-                  onNewList={handleOpenCreateModal}
-                  onAddProduct={() => {
-                    primeKeyboard();
-                    setTeKopenSlideOpen(true);
-                  }}
-                />
-                {!homeSectionConfig.hidden.includes("diepvries") ? (
-                  <HomeDashboardInventory items={homeFreezerItems} />
-                ) : null}
-              </aside>
-            </div>
-
-            {homeSectionConfig.order
-              .filter(
-                (sectionId) =>
-                  sectionId !== "lijstjes" &&
-                  sectionId !== "diepvries" &&
-                  !homeSectionConfig.hidden.includes(sectionId),
-              )
-              .map((sectionId, index) => {
-                const section = renderHomeSection(sectionId);
-                if (section == null) return null;
-                return (
-                  <div
-                    key={sectionId}
+                  <aside
                     className={cn(
-                      "motion-safe:animate-fade-up",
-                      sectionId === "te-kopen" && "min-[1050px]:hidden",
+                      "grid min-w-0 gap-8 min-[1050px]:grid-cols-1",
+                      homeSectionConfig.hidden.includes("diepvries") ? "grid-cols-1" : "grid-cols-2",
                     )}
-                    style={{ animationDelay: `${Math.min(index + 2, 4) * 60}ms` }}
                   >
-                    {section}
-                  </div>
-                );
-              })}
+                    <HomeDashboardQuickActions
+                      onNewList={handleOpenCreateModal}
+                      onAddProduct={() => {
+                        primeKeyboard();
+                        setTeKopenSlideOpen(true);
+                      }}
+                    />
+                    {!homeSectionConfig.hidden.includes("diepvries") ? (
+                      <HomeDashboardInventory items={homeFreezerItems} />
+                    ) : null}
+                  </aside>
+                </div>
+
+                {homeSectionConfig.order
+                  .filter(
+                    (sectionId) =>
+                      sectionId !== "lijstjes" &&
+                      sectionId !== "diepvries" &&
+                      !homeSectionConfig.hidden.includes(sectionId),
+                  )
+                  .map((sectionId, index) => {
+                    const section = renderHomeSection(sectionId);
+                    if (section == null) return null;
+                    return (
+                      <div
+                        key={sectionId}
+                        className={cn(
+                          "motion-safe:animate-fade-up",
+                          sectionId === "te-kopen" && "min-[1050px]:hidden",
+                        )}
+                        style={{ animationDelay: `${Math.min(index + 2, 4) * 60}ms` }}
+                      >
+                        {section}
+                      </div>
+                    );
+                  })}
+              </div>
+            ) : (
+              <HomeTodayDashboard
+                todayIso={todayIso}
+                tomorrowIso={todayDashboard.tomorrowIso}
+                todayMeal={todayDashboard.todayMeal}
+                tomorrowMeal={todayDashboard.tomorrowMeal}
+                shoppingCount={homeShoppingItems.length}
+              />
+            )}
           </div>
-          <div className="mt-10 flex justify-center pb-4">
+          <div className={cn("mt-10 flex justify-center pb-4", tabletHomeView === "dashboard" && "md:hidden")}>
             <Link
               href="/beheer-homepagina"
               className="rounded-pill bg-[var(--white)] px-4 py-2 text-sm font-medium leading-5 text-action-primary shadow-card transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
