@@ -73,6 +73,34 @@ function FreezerThumb({ item }: { item: DashboardFreezerItem }) {
   );
 }
 
+/** Frost: zachte glans, fijne ijskristallen in de hoek en een grote vage sneeuwvlok. */
+function FrostDecor() {
+  return (
+    <>
+    <span aria-hidden className="pointer-events-none absolute -left-16 -top-20 -z-10 size-64 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.85)_0%,rgba(255,255,255,0)_70%)] [[data-theme=dark]_&]:opacity-10" />
+    <span
+      aria-hidden
+      className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1.6px)] bg-[length:13px_13px] opacity-70 [mask-image:radial-gradient(120%_80%_at_100%_0%,black_0%,transparent_55%)] [[data-theme=dark]_&]:opacity-20"
+    />
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.1}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="pointer-events-none absolute -right-7 -top-7 -z-10 size-40 rotate-12 text-[rgba(255,255,255,0.75)] [[data-theme=dark]_&]:text-[rgba(255,255,255,0.06)]"
+    >
+      <path d="M12 2v20M3.3 7l17.4 10M3.3 17l17.4-10M9 3.5 12 6l3-2.5M9 20.5 12 18l3 2.5M2.8 10.2 6.3 9l-.8-3.6M21.2 13.8 17.7 15l.8 3.6M2.8 13.8 6.3 15l-.8 3.6M21.2 10.2 17.7 9l.8-3.6" />
+    </svg>
+    </>
+  );
+}
+
+const FROST_CARD_CLASS =
+  "relative isolate overflow-hidden rounded-[24px] bg-[linear-gradient(145deg,#cfe2ff_0%,#e3edff_42%,#efe9ff_100%)] [[data-theme=dark]_&]:bg-[linear-gradient(145deg,#1b2a4a_0%,#1a2240_55%,#231f40_100%)]";
+
 const MAX_FREEZER_ROWS = 4;
 
 export type DashboardFreezerRow = DashboardFreezerItem & { quantityPerPackage?: number; unit?: string; recipePersons?: number };
@@ -129,25 +157,8 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
           Voorraad
         </h2>
       </div>
-      <div className="relative isolate flex flex-1 flex-col overflow-hidden rounded-[24px] bg-[linear-gradient(145deg,#cfe2ff_0%,#e3edff_42%,#efe9ff_100%)] p-5 [[data-theme=dark]_&]:bg-[linear-gradient(145deg,#1b2a4a_0%,#1a2240_55%,#231f40_100%)]">
-        {/* Frost: zachte glans, fijne ijskristallen in de hoek en een grote vage sneeuwvlok. */}
-        <span aria-hidden className="pointer-events-none absolute -left-16 -top-20 -z-10 size-64 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.85)_0%,rgba(255,255,255,0)_70%)] [[data-theme=dark]_&]:opacity-10" />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1.6px)] bg-[length:13px_13px] opacity-70 [mask-image:radial-gradient(120%_80%_at_100%_0%,black_0%,transparent_55%)] [[data-theme=dark]_&]:opacity-20"
-        />
-        <svg
-          aria-hidden
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.1}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="pointer-events-none absolute -right-7 -top-7 -z-10 size-40 rotate-12 text-[rgba(255,255,255,0.75)] [[data-theme=dark]_&]:text-[rgba(255,255,255,0.06)]"
-        >
-          <path d="M12 2v20M3.3 7l17.4 10M3.3 17l17.4-10M9 3.5 12 6l3-2.5M9 20.5 12 18l3 2.5M2.8 10.2 6.3 9l-.8-3.6M21.2 13.8 17.7 15l.8 3.6M2.8 13.8 6.3 15l-.8 3.6M21.2 10.2 17.7 9l.8-3.6" />
-        </svg>
+      <div className={cn(FROST_CARD_CLASS, "flex flex-1 flex-col p-5")}>
+        <FrostDecor />
         <p className="relative flex items-center gap-2 text-[12.5px] font-extrabold uppercase tracking-[0.06em] text-[#3f6dc0] [[data-theme=dark]_&]:text-[#9db8ee]">
           {SNOWFLAKE}
           Diepvries{items.length > 0 ? ` · ${stats}` : ""}
@@ -400,5 +411,73 @@ export function HomeDashboardShoppingList({
         ) : null}
       </div>
     </section>
+  );
+}
+
+/**
+ * Canvas «Diepvries mobiel 2»: bordenrij in een frostkaart (mobiel startscherm). Gerechten als
+ * rond bord, producten als foto op wit; teller rechtsboven, op het einde «Invriezen».
+ */
+export function HomeFreezerPlatesCard({ items }: { items: DashboardFreezerRow[] }) {
+  const getPhotoUrl = useItemPhotoUrl(160);
+  const dishes = items.filter((i) => i.type === "gerecht");
+  const portions = dishes.reduce((sum, i) => sum + Math.max(0, i.packages || 0), 0);
+  const stats = [plural(items.length, "item", "items"), portions > 0 ? plural(portions, "portie", "porties") : null]
+    .filter(Boolean)
+    .join(" · ");
+  // Gerechten eerst, dan producten; binnen elke groep eerst items met een foto.
+  const ordered = items
+    .map((item) => ({ item, photo: item.recipePhotoUrl ?? (item.type === "gerecht" ? null : getPhotoUrl(item.name)) }))
+    .sort((a, b) => Number(b.item.type === "gerecht") - Number(a.item.type === "gerecht") || Number(!!b.photo) - Number(!!a.photo));
+
+  return (
+    <div className={cn(FROST_CARD_CLASS, "py-4")}>
+      <FrostDecor />
+      <p className="relative flex items-center gap-2 px-4 text-xs font-extrabold uppercase tracking-[0.06em] text-[#3f6dc0] [[data-theme=dark]_&]:text-[#9db8ee]">
+        {SNOWFLAKE}
+        {stats}
+      </p>
+      <ul className="relative m-0 mt-4 flex list-none gap-1.5 overflow-x-auto px-4 pb-1 pl-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {ordered.map(({ item, photo }) => {
+          const isDish = item.type === "gerecht";
+          return (
+            <li key={item.id} className="w-[92px] shrink-0">
+              <Link href="/diepvriesvoorraad" className="flex flex-col items-center gap-1.5 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus rounded-[14px]">
+                <span className="relative">
+                  <span className="flex size-[76px] items-center justify-center overflow-hidden rounded-full bg-[var(--white)] shadow-[0_0_0_4px_rgba(255,255,255,0.7),0_12px_20px_-12px_rgba(30,60,120,0.5)]">
+                    {photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- receptfoto of lokale productfoto
+                      <img
+                        src={photo}
+                        alt=""
+                        width={76}
+                        height={76}
+                        className={isDish ? "size-full object-cover" : "size-[60px] object-contain"}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <span className="text-[28px] font-extrabold text-[#c26b2b]" aria-hidden>
+                        {item.name.trim().charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </span>
+                  <span className="absolute -right-1 -top-0.5 flex h-[22px] items-center rounded-pill bg-[var(--white)] px-[7px] text-xs font-extrabold text-[#2f5fb3] shadow-[0_2px_6px_rgba(0,0,0,0.1)]">
+                    {item.packages}×
+                  </span>
+                </span>
+                <span className="line-clamp-2 text-center text-[13px] font-bold leading-4 text-text-primary first-letter:uppercase">{item.name}</span>
+              </Link>
+            </li>
+          );
+        })}
+        <li className="w-[92px] shrink-0">
+          <Link href="/diepvriesvoorraad" className="flex flex-col items-center gap-1.5 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus rounded-[14px]">
+            <span className="flex size-[76px] items-center justify-center rounded-full border-2 border-dashed border-[rgba(77,121,199,0.45)] text-[#4d79c7]">{PLUS_ICON}</span>
+            <span className="text-[13px] font-bold leading-4 text-[#3f6dc0]">Invriezen</span>
+          </Link>
+        </li>
+      </ul>
+    </div>
   );
 }
