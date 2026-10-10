@@ -128,12 +128,6 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
         <h2 id="dashboard-freezer" className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
           Voorraad
         </h2>
-        <Link
-          href="/diepvriesvoorraad"
-          className="rounded-pill px-2 py-1 text-[13px] font-medium leading-[18px] text-action-primary no-underline [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-        >
-          Open
-        </Link>
       </div>
       <div className="relative isolate flex flex-1 flex-col overflow-hidden rounded-[24px] bg-[linear-gradient(145deg,#cfe2ff_0%,#e3edff_42%,#efe9ff_100%)] p-5 [[data-theme=dark]_&]:bg-[linear-gradient(145deg,#1b2a4a_0%,#1a2240_55%,#231f40_100%)]">
         {/* Frost: zachte glans, fijne ijskristallen in de hoek en een grote vage sneeuwvlok. */}
@@ -180,7 +174,7 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
             </span>
             <Link
               href="/diepvriesvoorraad"
-              className="mt-1 inline-flex h-10 items-center gap-1.5 rounded-pill bg-[var(--blue-500)] px-4 text-sm font-bold text-white no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+              className="mt-1 inline-flex h-[34px] items-center gap-1.5 rounded-pill bg-[var(--blue-500)] px-3.5 text-sm font-semibold text-white no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
             >
               {PLUS_ICON}
               Iets invriezen
@@ -297,14 +291,16 @@ export function HomeDashboardShoppingList({
         <h2 id="dashboard-shopping" className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
           Te kopen
         </h2>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="inline-flex items-center gap-1 rounded-pill px-2 py-1 text-[13px] font-semibold text-action-primary [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-        >
-          {PLUS_ICON}
-          Toevoegen
-        </button>
+        {items.length > 0 ? (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="inline-flex items-center gap-1 rounded-pill px-2 py-1 text-[13px] font-semibold text-action-primary [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+          >
+            {PLUS_ICON}
+            Toevoegen
+          </button>
+        ) : null}
       </div>
       <div className="flex flex-1 flex-col rounded-[22px] bg-[var(--white)] px-5 pb-2 pt-4 shadow-card">
         <div className={cn("mb-1 flex items-center gap-2.5", items.length === 0 && "hidden")}>
@@ -341,7 +337,7 @@ export function HomeDashboardShoppingList({
             <button
               type="button"
               onClick={onAdd}
-              className="mt-1 inline-flex h-10 items-center gap-1.5 rounded-pill bg-[var(--blue-500)] px-4 text-sm font-bold text-white transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+              className="mt-1 inline-flex h-[34px] items-center gap-1.5 rounded-pill bg-[var(--blue-500)] px-3.5 text-sm font-semibold text-white transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
             >
               {PLUS_ICON}
               Product toevoegen
