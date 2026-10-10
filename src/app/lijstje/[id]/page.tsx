@@ -43,6 +43,8 @@ import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { SearchBar } from "@/components/ui/search_bar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { LoyaltyCardViewer, type WalletCard } from "@/components/loyalty_wallet";
+import { ConfirmDeleteCardDialog } from "@/components/confirm_delete_card_dialog";
 import { SelectTile } from "@/components/ui/select_tile";
 import { TabGroup } from "@/components/ui/tab_group";
 import { TabElement } from "@/components/ui/tab_element";
@@ -3767,6 +3769,8 @@ export default function ListDetailPage({
   const existingLoyaltyCard = data?.lists?.[0]?.loyaltyCard ?? null;
   const existingLoyaltyCardSecondary =
     data?.lists?.[0]?.loyaltyCardSecondary ?? null;
+  const [loyaltyConfirmDelete, setLoyaltyConfirmDelete] = React.useState<WalletCard | null>(null);
+  const [loyaltyDeletingId, setLoyaltyDeletingId] = React.useState<string | null>(null);
 
   const openLandalPuddySlide = React.useCallback(() => {
     setLandalPuddyDraftName(landalPuddyFedBy);
@@ -5606,6 +5610,31 @@ export default function ListDetailPage({
     lidlLoyaltyCardFromStoreName,
   ]);
 
+  /** Gekoppelde kaarten van dit (favorieten)lijstje voor de kaartweergave (zelfde viewer als Klantenkaarten). */
+  const viewerLoyaltyCards = React.useMemo<WalletCard[]>(() => {
+    const out: WalletCard[] = [];
+    const push = (c: typeof existingLoyaltyCard, cardName: string, logoSrc: string) => {
+      if (!c || typeof c.rawValue !== "string" || c.rawValue.length === 0) return;
+      out.push({
+        id: c.id,
+        codeType: String(c.codeType ?? "barcode"),
+        codeFormat: String(c.codeFormat ?? ""),
+        rawValue: c.rawValue,
+        cardName,
+        logoSrc,
+      });
+    };
+    if (isLidlDelhaizeList) {
+      push(existingLoyaltyCardSecondary, "Lidl", LOYALTY_COMBO_SECONDARY_LOGO_SRC);
+      push(existingLoyaltyCard, "Delhaize", LOYALTY_COMBO_PRIMARY_LOGO_SRC);
+    } else {
+      const label =
+        masterStoreLabelFromListIcon(masterIcon) || masterStoreLabelFromListIcon(listIcon) || existingLoyaltyCard?.cardName || "Klantenkaart";
+      push(existingLoyaltyCard, String(label), masterIcon);
+    }
+    return out;
+  }, [existingLoyaltyCard, existingLoyaltyCardSecondary, isLidlDelhaizeList, listIcon, masterIcon]);
+
   const showLoyaltySwipe = !isMasterList && loyaltySwipePanes.length > 0;
   /** Alleen op masterlijsten (Figma): koppel-/wijzig-rijen; gewone lijstjes enkel swipe-naar-QR. */
   const showLoyaltyLinkRows = isMasterList;
@@ -6578,81 +6607,53 @@ export default function ListDetailPage({
         }}
       />
 
-      <SlideInModal
-        open={loyaltyCardViewSlideOpen}
-        onClose={() => setLoyaltyCardViewSlideOpen(false)}
-        title="Klantenkaart"
-        titleId="loyalty-card-view-slide-title"
-        disableEscapeClose={loyaltyCardScanResultOpen || loyaltyCameraScanOpen}
-        footer={
-          <div className="flex w-full flex-col items-center gap-3">
-            {loyaltyDecodeError ? (
-              <p className="text-center text-xs text-[var(--error-400)]">
-                {loyaltyDecodeError}
-              </p>
-            ) : null}
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => {
-                setLoyaltyDecodeError(null);
-                setLoyaltySlot(loyaltyViewSlot);
-                setLoyaltyCameraScanOpen(true);
-              }}
-            >
-              Scan met camera
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setLoyaltyDecodeError(null);
-                setLoyaltySlot(loyaltyViewSlot);
-                loyaltyCardPhotoInputRef.current?.click();
-              }}
-            >
-              Screenshot opladen
-            </Button>
-          </div>
+      {/* Kaart bekijken: zelfde weergave als op Klantenkaarten (kaartkleur, grote code, potlood om de
+          code te vervangen, «Verwijderen»); bij Lidl / Delhaize opzij vegen naar de andere kaart. */}
+      <LoyaltyCardViewer
+        cards={viewerLoyaltyCards}
+        openId={
+          loyaltyCardViewSlideOpen
+            ? ((isLidlDelhaizeList && loyaltyViewSlot === "lidl" ? existingLoyaltyCardSecondary : existingLoyaltyCard)?.id ?? null)
+            : null
         }
-      >
-        <div className="flex flex-col items-center gap-6 px-4">
-          {(() => {
-            const cardForView =
-              isLidlDelhaizeList && loyaltyViewSlot === "lidl"
-                ? existingLoyaltyCardSecondary
-                : existingLoyaltyCard;
-            const viewLogoSrc = isLidlDelhaizeList
-              ? loyaltyViewSlot === "lidl"
-                ? LOYALTY_COMBO_SECONDARY_LOGO_SRC
-                : LOYALTY_COMBO_PRIMARY_LOGO_SRC
-              : masterStoreLabelFromListIcon(masterIcon)
-                ? masterIcon
-                : "";
-            return cardForView ? (
-              <>
-                <div className="flex items-center justify-center rounded-xl bg-white p-4 shadow-sm">
-                  <LoyaltyCardDisplay
-                    codeType={cardForView.codeType as "qr" | "barcode"}
-                    codeFormat={cardForView.codeFormat}
-                    rawValue={cardForView.rawValue}
-                  />
-                </div>
-                {viewLogoSrc ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- winkel-SVG uit /public/logos
-                  <img
-                    src={viewLogoSrc}
-                    alt=""
-                    width={64}
-                    height={64}
-                    className="pointer-events-none size-16 shrink-0 object-contain"
-                  />
-                ) : null}
-              </>
-            ) : null;
-          })()}
-        </div>
-      </SlideInModal>
+        deletingId={loyaltyDeletingId}
+        onClose={() => setLoyaltyCardViewSlideOpen(false)}
+        onSaveDecoded={async (card, result) => {
+          await db.transact(
+            db.tx.loyaltyCards[card.id].update({
+              codeType: result.codeType,
+              codeFormat: result.codeFormat,
+              rawValue: result.rawValue,
+            }),
+          );
+        }}
+        onDelete={(card) => setLoyaltyConfirmDelete(card)}
+      />
+      {loyaltyConfirmDelete ? (
+        <ConfirmDeleteCardDialog
+          cardName={loyaltyConfirmDelete.cardName}
+          listName={listName}
+          deleting={loyaltyDeletingId === loyaltyConfirmDelete.id}
+          description={
+            <>
+              De <span className="font-medium text-[var(--text-primary)]">{loyaltyConfirmDelete.cardName}</span>-kaart wordt
+              verwijderd uit je klantenkaarten en van dit favorietenlijstje. Je kan ze later opnieuw scannen.
+            </>
+          }
+          onConfirm={async () => {
+            const card = loyaltyConfirmDelete;
+            setLoyaltyDeletingId(card.id);
+            try {
+              await db.transact(db.tx.loyaltyCards[card.id].delete());
+              setLoyaltyConfirmDelete(null);
+              setLoyaltyCardViewSlideOpen(false);
+            } finally {
+              setLoyaltyDeletingId(null);
+            }
+          }}
+          onCancel={() => setLoyaltyConfirmDelete(null)}
+        />
+      ) : null}
 
       <LoyaltyCardScanResultSlideIn
         open={loyaltyCardScanResultOpen}
