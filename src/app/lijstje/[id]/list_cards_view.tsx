@@ -670,10 +670,12 @@ function Plate({ src, size, freeze }: { src: string | null; size: number; freeze
   );
 }
 
-function Counter({ items }: { items: ListItem[] }) {
+function Counter({ items, hideDone = false }: { items: ListItem[]; hideDone?: boolean }) {
   if (items.length === 0) return null;
   const done = items.filter((i) => i.checked).length;
   if (done === items.length) {
+    // Kaarten met een kleurbolletje tonen «klaar» in dat bolletje (SectionDot).
+    if (hideDone) return null;
     return (
       <span
         role="img"
@@ -685,6 +687,26 @@ function Counter({ items }: { items: ListItem[] }) {
     );
   }
   return <span className="shrink-0 text-xs font-bold tabular-nums text-[var(--text-secondary)]">{done}/{items.length}</span>;
+}
+
+/**
+ * Kleurbolletje voor de categorienaam. Klaar → groeit uit tot een gevuld rondje in dezelfde kleur
+ * met een wit vinkje (vervangt het losse groene vinkje rechts). Vaste breedte: de titel verspringt niet.
+ */
+function SectionDot({ color, done }: { color: string; done: boolean }) {
+  return (
+    <span className="relative flex size-5 shrink-0 items-center justify-center" role={done ? "img" : undefined} aria-label={done ? "Alles gekocht" : undefined} aria-hidden={done ? undefined : true}>
+      <span
+        className={cn(
+          "flex items-center justify-center rounded-full text-white transition-[width,height,box-shadow] duration-base ease-out-strong",
+          done ? "size-5" : "size-2.5",
+        )}
+        style={{ backgroundColor: color, boxShadow: done ? `0 0 0 3px color-mix(in srgb, ${color} 22%, transparent)` : undefined }}
+      >
+        {done ? <CheckIcon className="size-3 motion-safe:animate-fade-up" /> : null}
+      </span>
+    </span>
+  );
 }
 
 function CompleteIndicator() {
@@ -887,7 +909,7 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
           collapsible={false}
           header={
             <>
-              <span className="size-2.5 shrink-0 rounded-full bg-[var(--blue-500)]" aria-hidden />
+              <SectionDot color="var(--blue-500)" done={false} />
               <h3 className="text-[15px] font-bold text-text-primary">Algemeen</h3>
               <span className="text-xs text-[var(--text-tertiary)]">· altijd nodig</span>
               <span className="flex-1" />
@@ -908,11 +930,11 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
           collapsible
           header={
             <>
-              <span className="size-2.5 shrink-0 rounded-full bg-[var(--blue-500)]" aria-hidden />
+              <SectionDot color="var(--blue-500)" done={section.items.length > 0 && section.items.every((i) => i.checked)} />
               <h3 className="text-[15px] font-bold text-text-primary">Algemeen</h3>
               <span className="text-xs text-[var(--text-tertiary)]">· altijd nodig</span>
               <span className="flex-1" />
-              <Counter items={section.items} />
+              <Counter items={section.items} hideDone />
               <AddButton label="Item toevoegen aan Algemeen" onClick={() => onAddToSection(section.title)} />
             </>
           }
@@ -1086,7 +1108,7 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
           collapsible={false}
           header={
             <>
-              <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb.join(",")})` }} aria-hidden />
+              <SectionDot color={`rgb(${rgb.join(",")})`} done={false} />
               <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
               <TrashButton label={`${title} verwijderen`} onClick={() => edit.onDeleteSection(s.title)} className="mr-0.5" />
             </>
@@ -1104,13 +1126,12 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
         collapsible={countableItems.length > 0}
         header={
           <>
-            <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb.join(",")})` }} aria-hidden />
+            <SectionDot
+              color={`rgb(${rgb.join(",")})`}
+              done={countableItems.length === 0 ? takeoutItems.length > 0 : countableItems.every((i) => i.checked)}
+            />
             <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
-            {takeoutItems.length > 0 && countableItems.length === 0 ? (
-              <CompleteIndicator />
-            ) : (
-              <Counter items={countableItems} />
-            )}
+            <Counter items={countableItems} hideDone />
             <AddButton label={`Item toevoegen aan ${title}`} onClick={() => onAddToSection(s.title)} />
           </>
         }
