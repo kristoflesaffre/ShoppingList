@@ -212,12 +212,15 @@ export function HomeDashboardShoppingList({
   onAdd,
   onBought,
   limit = 8,
+  me,
 }: {
   items: DashboardShoppingItem[];
   addedByFor: (item: DashboardShoppingItem) => DashboardAddedBy | null;
   onAdd: () => void;
   onBought: (id: string) => void;
   limit?: number;
+  /** Jouw naam en foto, naast die van wie meedoet. */
+  me?: DashboardAddedBy;
 }) {
   const [pending, setPending] = React.useState<Record<string, number>>({});
   const onBoughtRef = React.useRef(onBought);
@@ -278,7 +281,7 @@ export function HomeDashboardShoppingList({
         <div className={cn("mb-1 flex items-center gap-2.5", items.length === 0 && "hidden")}>
           {others.size > 0 ? (
             <span className="flex" aria-hidden>
-              {Array.from(others.values()).map((p, i) => (
+              {[...(me ? [me] : []), ...Array.from(others.values())].map((p, i) => (
                 <Initial key={p.firstName} name={p.firstName} avatarUrl={p.avatarUrl} className={cn("size-7 text-xs shadow-[0_0_0_2px_var(--white)]", i > 0 && "-ml-2")} />
               ))}
             </span>

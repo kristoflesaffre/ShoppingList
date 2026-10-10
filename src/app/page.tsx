@@ -2468,6 +2468,15 @@ export default function Home() {
     shareProfilesQuery as unknown as Parameters<typeof db.useQuery>[0],
   );
 
+  /** Eigen profiel: naam en foto voor «Samen» in Te kopen. */
+  const { data: ownProfileData } = db.useQuery({
+    profiles: { $: { where: { instantUserId: user?.id ?? "__own_profile_none__" } } },
+  });
+  const ownProfile = React.useMemo(() => {
+    const p = ownProfileData?.profiles?.[0] as { firstName?: string; avatarUrl?: string } | undefined;
+    return { firstName: (p?.firstName ?? "").trim() || "Jij", avatarUrl: (p?.avatarUrl ?? "").trim() || null };
+  }, [ownProfileData?.profiles]);
+
   /** Bestaande masterlijsten: naam gelijkzetten aan winkel uit het logo (Lidl, Delhaize, …). */
   React.useEffect(() => {
     if (!user || authLoading || isLoading || !data?.lists) return;
@@ -3883,6 +3892,7 @@ export default function Home() {
                           setTeKopenSlideOpen(true);
                         }}
                         onBought={(id) => void db.transact(db.tx.shoppingItems[id].delete())}
+                        me={ownProfile}
                       />
                     </div>
                   ) : (
