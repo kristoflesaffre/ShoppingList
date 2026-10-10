@@ -25,8 +25,9 @@ import { ItemCard } from "@/components/ui/item_card";
 import type { RecipeIngredient } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
+import { DragGlyph, TrashGlyph, deleteTone, editIconBtn } from "@/app/recepten/recipe_steps_editor";
 
-type ListVariant = "cards" | "rows";
+type ListVariant = "cards" | "rows" | "edit";
 
 function SortableIngredientCard({
   ingredient,
@@ -135,6 +136,72 @@ function SortableIngredientRow({
   );
 }
 
+/** Canvas «Recept bewerken · 1 · inline»: zelfde rij als bij het koken + greep, potlood en prullenbak. */
+function SortableIngredientEditRow({
+  ingredient,
+  first,
+  photoUrl,
+  onEdit,
+  onDelete,
+}: {
+  ingredient: RecipeIngredient;
+  first: boolean;
+  photoUrl: string | null;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ingredient.id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "relative flex items-center gap-2 bg-[var(--white)] py-2",
+        !first && !isDragging && "border-t border-[var(--border-subtle)]",
+        isDragging && "z-10 rounded-[16px] shadow-[0_14px_28px_-10px_rgba(16,17,48,0.28),0_0_0_1px_var(--blue-100)]",
+      )}
+    >
+      <button
+        type="button"
+        aria-label={`Verplaats ${ingredient.name}`}
+        className={cn(
+          "flex h-11 w-6 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+          isDragging ? "text-[var(--blue-500)]" : "text-[var(--gray-300)] [@media(hover:hover)]:hover:text-[var(--blue-500)]",
+        )}
+        {...attributes}
+        {...listeners}
+      >
+        <DragGlyph />
+      </button>
+      <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--gray-25)]">
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediëntfoto
+          <img src={photoUrl} alt="" width={38} height={38} className="size-[38px] object-contain" decoding="async" />
+        ) : (
+          <span className="text-sm font-bold text-[var(--blue-500)]">{ingredient.name.trim().charAt(0).toUpperCase()}</span>
+        )}
+      </span>
+      <span className="min-w-0 flex-1 pl-1">
+        <span className="block truncate text-[15px] font-semibold leading-5 text-[var(--text-primary)]">{ingredient.name}</span>
+        <span className="block truncate text-[13px] leading-[18px] text-[var(--text-secondary)]">{ingredient.quantity}</span>
+      </span>
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label={`${ingredient.name} wijzigen`}
+        className={cn(editIconBtn, "bg-[var(--blue-25)] text-[var(--blue-500)] shadow-[inset_0_0_0_1px_var(--blue-50)] [@media(hover:hover)]:hover:bg-[var(--blue-50)]")}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[17px]">
+          <path d="M4 20h4L18.5 9.5a2.1 2.1 0 00-4-4L4 16v4z" />
+        </svg>
+      </button>
+      <button type="button" onClick={onDelete} aria-label={`${ingredient.name} verwijderen`} className={cn(editIconBtn, deleteTone)}>
+        <TrashGlyph />
+      </button>
+    </div>
+  );
+}
+
 function RecipeIngredientsSortableBody({
   ingredients,
   onDelete,
@@ -149,6 +216,25 @@ function RecipeIngredientsSortableBody({
   const { active } = useDndContext();
   const isDndActive = active != null;
   const getPhotoUrl = useIngredientPhotoUrl(160);
+
+  if (variant === "edit") {
+    return (
+      <SortableContext items={ingredients.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <div>
+          {ingredients.map((ing, i) => (
+            <SortableIngredientEditRow
+              key={ing.id}
+              ingredient={ing}
+              first={i === 0}
+              photoUrl={getPhotoUrl(ing.name, ing.quantity)}
+              onEdit={() => onEdit(ing.id)}
+              onDelete={() => onDelete(ing.id)}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    );
+  }
 
   if (variant === "rows") {
     return (
@@ -203,7 +289,7 @@ export function RecipeIngredientSortableList({
   onEdit,
   variant = "cards",
 }: {
-  /** «rows» = rijen in één kaart (recept-editor); «cards» = losse itemkaarten. */
+  /** «rows» = rijen in één kaart (recept-editor); «edit» = rijen met potlood/prullenbak (detailpagina); «cards» = losse itemkaarten. */
   variant?: ListVariant;
   ingredients: RecipeIngredient[];
   onDragEndReorder: (reordered: RecipeIngredient[]) => void;

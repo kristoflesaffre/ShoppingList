@@ -10,15 +10,11 @@ import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { MiniButton } from "@/components/ui/mini_button";
 import dynamic from "next/dynamic";
-import type { RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
+import type { RecipeCategory, RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
 import { RecipeIngredientSortableList } from "@/app/recepten/recipe_ingredient_sortable_list";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
 import type { FoodImageGenerationResult } from "@/components/food-image-generator";
 
-const RecipeEditorSlideIn = dynamic(
-  () => import("@/app/recepten/recipe_editor_slide_in").then((m) => m.RecipeEditorSlideIn),
-  { ssr: false },
-);
 const RecipeIngredientFormSlideIn = dynamic(
   () => import("@/components/recipe_ingredient_form_slide_in").then((m) => m.RecipeIngredientFormSlideIn),
   { ssr: false },
@@ -39,6 +35,9 @@ import { uploadUserImageFile } from "@/lib/image-storage";
 import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 import { cn } from "@/lib/utils";
 import { matchStepIngredients } from "@/lib/recipe-step-ingredients";
+import { RecipeStepsEditor, TrashGlyph } from "@/app/recepten/recipe_steps_editor";
+import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
+import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { recipeTintColors, scaleQuantity, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { clearRecipeHeroTransition, peekRecipeHeroTransition } from "@/lib/recipe_hero_transition";
@@ -171,8 +170,7 @@ export default function ReceptDetailPage() {
   );
   const getPhotoUrl = useIngredientPhotoUrl();
   const [shareSlideOpen, setShareSlideOpen] = React.useState(false);
-  const [recipeEditorOpen, setRecipeEditorOpen] = React.useState(false);
-  /** Figma 863:5339 — na tik op Wijzigen: knop Gereed, foto 10%, overlay «Foto wijzigen». */
+  /** Canvas «Recept bewerken · 1 · inline»: alles bewerkbaar op de pagina zelf; «Gereed» sluit af. */
   const [detailPhotoEditMode, setDetailPhotoEditMode] =
     React.useState(false);
   const [photoError, setPhotoError] = React.useState<string | null>(null);
@@ -202,6 +200,7 @@ export default function ReceptDetailPage() {
       steps: r.steps ?? "",
       persons: r.persons,
       photoUrl: r.photoUrl ?? null,
+      category: (r.category as RecipeCategory | undefined) ?? null,
       ingredients: [...(r.ingredients ?? [])]
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         .map((ing) => ({
@@ -286,18 +285,24 @@ export default function ReceptDetailPage() {
 
   const tint = recipeTintColors(useRecipeTint(savedRecipe?.photoUrl ?? hero?.src), useIsDarkTheme());
 
-  const openEditor = React.useCallback(() => {
-    setDetailPhotoEditMode(false);
-    setRecipeEditorOpen(true);
-  }, []);
-
   const toggleDetailPhotoEditMode = React.useCallback(() => {
     setDetailPhotoEditMode((v) => !v);
+    setSelectedStep(null);
   }, []);
 
-  const closeEditor = React.useCallback(() => {
-    setRecipeEditorOpen(false);
-  }, []);
+  const saveRecipeFields = React.useCallback(
+    (fields: { name?: string; link?: string; persons?: number; steps?: string; category?: RecipeCategory | null }): Promise<void> => {
+      if (!recipeId) return Promise.resolve();
+      const { category, ...rest } = fields;
+      const patch: Record<string, unknown> = { ...rest };
+      if (category !== undefined) patch.category = category ?? null;
+      return db.transact(db.tx.recipes[recipeId].update(patch)).then(
+        () => undefined,
+        () => undefined,
+      );
+    },
+    [recipeId],
+  );
 
   const handleDeleteRecipe = React.useCallback(async () => {
     if (!recipeId || !savedRecipe) return;
@@ -603,22 +608,28 @@ export default function ReceptDetailPage() {
             <BackArrowIcon />
           </button>
           <span className="flex-1" />
-          <button
-            type="button"
-            aria-label="Recept delen"
-            onClick={() => setShareSlideOpen(true)}
-            className={roundHeaderBtn}
-          >
-            <ShareIcon />
-          </button>
-          <button
-            type="button"
-            aria-label="Meer opties (beschikbaar binnenkort)"
-            disabled
-            className={cn(roundHeaderBtn, "!text-[var(--gray-300)] disabled:opacity-70")}
-          >
-            <MoreDotsIcon />
-          </button>
+          {detailPhotoEditMode ? (
+            <DoneButton onClick={toggleDetailPhotoEditMode} className="hidden h-11 px-5 text-[15px] shadow-[0_8px_18px_-8px_rgba(79,85,241,0.7)] lg:inline-flex" />
+          ) : (
+            <>
+              <button
+                type="button"
+                aria-label="Recept delen"
+                onClick={() => setShareSlideOpen(true)}
+                className={roundHeaderBtn}
+              >
+                <ShareIcon />
+              </button>
+              <button
+                type="button"
+                aria-label="Meer opties (beschikbaar binnenkort)"
+                disabled
+                className={cn(roundHeaderBtn, "!text-[var(--gray-300)] disabled:opacity-70")}
+              >
+                <MoreDotsIcon />
+              </button>
+            </>
+          )}
         </header>
       </div>
 
@@ -635,7 +646,7 @@ export default function ReceptDetailPage() {
         className={cn(
           "relative mx-auto w-full max-w-[1180px] px-4 pt-[calc(64px+env(safe-area-inset-top,0px))] lg:px-[150px] lg:pb-[calc(48px+env(safe-area-inset-bottom,0px))] lg:pt-[48px]",
           // Ruimte voor de «Nodig voor stap»-balk op mobiel.
-          selectedStep != null ? "pb-[calc(130px+env(safe-area-inset-bottom,0px))]" : "pb-[calc(48px+env(safe-area-inset-bottom,0px))]",
+          selectedStep != null || detailPhotoEditMode ? "pb-[calc(130px+env(safe-area-inset-bottom,0px))]" : "pb-[calc(48px+env(safe-area-inset-bottom,0px))]",
         )}
       >
         {/* Kop: rond bord, titel met potlood, chips */}
@@ -659,7 +670,6 @@ export default function ReceptDetailPage() {
                   className={cn(
                     /* iets ingezoomd zodat het bord de cirkel vult (zoals in het overzicht) */
                     "size-full scale-[1.08] object-cover transition-opacity duration-150",
-                    detailPhotoEditMode ? "opacity-10" : "opacity-100",
                   )}
                 />
               ) : (
@@ -670,33 +680,21 @@ export default function ReceptDetailPage() {
                   height={124}
                   className={cn(
                     "size-[124px] object-cover transition-opacity duration-150",
-                    detailPhotoEditMode ? "opacity-10" : "opacity-100",
                   )}
                 />
               )}
             </div>
             {detailPhotoEditMode ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                <MiniButton
-                  type="button"
-                  variant="secondary"
-                  disabled={photoSaving}
-                  onClick={openPhotoSourceSlide}
-                  className="w-[124px]"
-                >
-                  {photoSaving ? "Bezig…" : savedRecipe.photoUrl ? "Foto wijzigen" : "Foto toevoegen"}
-                </MiniButton>
-                <MiniButton type="button" variant="secondary" onClick={openEditor} className="w-[124px]">
-                  Recept wijzigen
-                </MiniButton>
-                <button
-                  type="button"
-                  onClick={() => setDeleteConfirmOpen(true)}
-                  className="text-[12px] font-medium leading-4 text-[var(--error-400)] underline underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  Recept verwijderen
-                </button>
-              </div>
+              <button
+                type="button"
+                disabled={photoSaving}
+                onClick={openPhotoSourceSlide}
+                aria-label={savedRecipe.photoUrl ? "Foto wijzigen" : "Foto toevoegen"}
+                className="absolute -right-1 bottom-1.5 inline-flex size-10 items-center justify-center gap-1.5 rounded-pill bg-[var(--white)] text-sm font-bold text-[var(--blue-500)] shadow-[0_6px_16px_-6px_rgba(16,17,48,0.3)] transition-transform duration-fast motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-60 lg:right-0 lg:h-[38px] lg:w-auto lg:px-3.5"
+              >
+                <CameraGlyph />
+                <span className="hidden lg:inline">{photoSaving ? "Bezig…" : "Foto"}</span>
+              </button>
             ) : null}
           </div>
           {photoError ? <p className="mt-2 text-center text-xs text-[var(--error-600)]">{photoError}</p> : null}
@@ -706,33 +704,42 @@ export default function ReceptDetailPage() {
             </MiniButton>
           ) : null}
 
-          <div className={cn("mt-4 flex max-w-full items-center gap-2 px-2", heroEnter(300).className)} style={heroEnter(300).style}>
-            <h1 className="min-w-0 text-center text-[28px] font-bold leading-[34px] tracking-[-0.015em] text-text-primary lg:text-[36px] lg:leading-[44px]">
-              {savedRecipe.name}
-            </h1>
-            {detailPhotoEditMode ? (
-              <DoneButton onClick={toggleDetailPhotoEditMode} />
-            ) : (
-              <TitleEditButton onClick={toggleDetailPhotoEditMode} />
-            )}
-          </div>
-          <div className={cn("mt-2.5 flex flex-wrap justify-center gap-2", heroEnter(380).className)} style={heroEnter(380).style}>
-            <span className={chipClass}>
-              <ListGlyph />
-              {ingredientCount === 1 ? "1 ingrediënt" : `${ingredientCount} ingrediënten`}
-            </span>
-            {recipeLink ? (
-              <a href={recipeLink} target="_blank" rel="noopener noreferrer" className={cn(chipClass, "!text-[var(--blue-500)] no-underline")}>
-                <LinkGlyph />
-                Recept
-              </a>
-            ) : (
-              <button type="button" onClick={openEditor} className={cn(chipClass, "!text-[var(--blue-500)]")}>
-                <LinkGlyph />
-                Link toevoegen
-              </button>
-            )}
-          </div>
+          {detailPhotoEditMode ? (
+            <RecipeHeaderEditor
+              key={savedRecipe.id}
+              name={savedRecipe.name}
+              persons={basePersons > 0 ? basePersons : 2}
+              link={savedRecipe.link}
+              category={savedRecipe.category ?? null}
+              onSave={saveRecipeFields}
+            />
+          ) : (
+            <>
+              <div className={cn("mt-4 flex max-w-full items-center gap-2 px-2", heroEnter(300).className)} style={heroEnter(300).style}>
+                <h1 className="min-w-0 text-center text-[28px] font-bold leading-[34px] tracking-[-0.015em] text-text-primary lg:text-[36px] lg:leading-[44px]">
+                  {savedRecipe.name}
+                </h1>
+                <TitleEditButton onClick={toggleDetailPhotoEditMode} />
+              </div>
+              <div className={cn("mt-2.5 flex flex-wrap justify-center gap-2", heroEnter(380).className)} style={heroEnter(380).style}>
+                <span className={chipClass}>
+                  <ListGlyph />
+                  {ingredientCount === 1 ? "1 ingrediënt" : `${ingredientCount} ingrediënten`}
+                </span>
+                {recipeLink ? (
+                  <a href={recipeLink} target="_blank" rel="noopener noreferrer" className={cn(chipClass, "!text-[var(--blue-500)] no-underline")}>
+                    <LinkGlyph />
+                    Recept
+                  </a>
+                ) : (
+                  <button type="button" onClick={toggleDetailPhotoEditMode} className={cn(chipClass, "!text-[var(--blue-500)]")}>
+                    <LinkGlyph />
+                    Link toevoegen
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </section>
 
         {/* Ingrediënten en bereiding: onder elkaar (mobiel), naast elkaar (desktop) */}
@@ -743,7 +750,9 @@ export default function ReceptDetailPage() {
           >
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl font-bold leading-7 text-text-primary">Ingrediënten</h2>
-              {basePersons > 0 && !detailPhotoEditMode ? (
+              {detailPhotoEditMode ? (
+                ingredientCount > 1 ? <span className="hidden text-[13px] text-[var(--text-secondary)] lg:inline">Sleep om te ordenen</span> : null
+              ) : basePersons > 0 ? (
                 <PersonsStepper value={shownPersons} onChange={setPersons} />
               ) : null}
             </div>
@@ -751,8 +760,9 @@ export default function ReceptDetailPage() {
             {ingredientCount === 0 ? (
               <p className="py-5 text-center text-sm leading-5 text-[var(--text-tertiary)]">Nog geen ingrediënten.</p>
             ) : detailPhotoEditMode ? (
-              <div className="pt-3">
+              <div className="pt-2">
                 <RecipeIngredientSortableList
+                  variant="edit"
                   ingredients={savedRecipe.ingredients}
                   onDragEndReorder={handleLijstjeIngredientReorder}
                   onDelete={handleLijstjeIngredientDelete}
@@ -808,7 +818,9 @@ export default function ReceptDetailPage() {
           <section aria-label="Bereiding" className="flex-1 rounded-[22px] bg-[var(--white)] px-4 pb-5 pt-[18px] lg:px-6">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-xl font-bold leading-7 text-text-primary">Bereiding</h2>
-              {doneCount > 0 ? (
+              {detailPhotoEditMode ? (
+                <span className="hidden text-[13px] text-[var(--text-secondary)] lg:inline">Tik op een stap om te typen</span>
+              ) : doneCount > 0 ? (
                 <span className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-pill bg-[var(--blue-50)] px-3 text-[13px] font-bold text-[var(--blue-500)]">
                   <CheckGlyph />
                   {doneCount} van {recipeSteps.length} klaar
@@ -825,7 +837,13 @@ export default function ReceptDetailPage() {
                 </a>
               ) : null}
             </div>
-            {recipeSteps.length > 0 ? (
+            {detailPhotoEditMode ? (
+              <RecipeStepsEditor
+                key={savedRecipe.id}
+                steps={recipeSteps}
+                onSave={(next) => saveRecipeFields({ steps: next.join("\n") })}
+              />
+            ) : recipeSteps.length > 0 ? (
               <>
               <ol className="flex flex-col">
                 {recipeSteps.map((step, index) => (
@@ -857,7 +875,7 @@ export default function ReceptDetailPage() {
             ) : (
               <div className="flex flex-col items-center gap-3 py-3 text-center">
                 <p className="text-sm leading-5 text-[var(--text-tertiary)]">Nog geen bereiding toegevoegd.</p>
-                <button type="button" onClick={openEditor} className={ghostBtn}>
+                <button type="button" onClick={toggleDetailPhotoEditMode} className={ghostBtn}>
                   <PencilIcon small />
                   Bereiding toevoegen
                 </button>
@@ -865,7 +883,35 @@ export default function ReceptDetailPage() {
             )}
           </section>
         </div>
+        {detailPhotoEditMode ? (
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmOpen(true)}
+              className="inline-flex h-10 items-center gap-1.5 rounded-pill bg-[var(--error-25)] px-4 text-sm font-semibold text-[var(--error-400)] transition-colors [@media(hover:hover)]:hover:bg-[rgba(214,64,64,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            >
+              <TrashGlyph />
+              Recept verwijderen
+            </button>
+          </div>
+        ) : null}
       </main>
+
+      {/* Mobiel: «Gereed» zwevend onderaan (zelfde patroon als items kiezen voor een nieuw lijstje). */}
+      {detailPhotoEditMode ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 lg:hidden">
+          <div aria-hidden className="h-[120px] bg-gradient-to-b from-transparent to-[var(--bg-app)] to-45%" />
+          <div className="pointer-events-auto absolute inset-x-4 bottom-[calc(26px+env(safe-area-inset-bottom,0px))] flex items-center gap-3 rounded-pill bg-[var(--white)] py-[7px] pl-4 pr-[7px] shadow-[0_10px_30px_-10px_rgba(16,17,48,0.35),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up">
+            <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)]">
+              <PencilIcon small />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm text-[var(--text-secondary)]">
+              <b className="font-semibold text-text-primary">Recept</b> bewerken
+            </span>
+            <DoneButton onClick={toggleDetailPhotoEditMode} className="h-[42px] px-5 text-[15px] shadow-[0_6px_16px_-6px_rgba(79,85,241,0.6)]" />
+          </div>
+        </div>
+      ) : null}
 
       {/* Mobiel: wat je nu nodig hebt voor de gekozen stap (de lijst staat hoger op de pagina). */}
       {activeStep != null && nowNeeded.length > 0 && !detailPhotoEditMode ? (
@@ -902,13 +948,6 @@ export default function ReceptDetailPage() {
         existingShareToken={
           recipeData?.recipes?.find((r) => r.id === recipeId)?.shareToken ?? null
         }
-      />
-
-      <RecipeEditorSlideIn
-        open={recipeEditorOpen}
-        onClose={closeEditor}
-        recipeToEdit={savedRecipe}
-        recipeData={recipeData}
       />
 
       <RecipeIngredientFormSlideIn
@@ -1204,5 +1243,126 @@ function RecipeStepItem({
         ) : null}
       </div>
     </li>
+  );
+}
+
+function CameraGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
+      <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </svg>
+  );
+}
+
+/** Bewerkstand van de kop: naam (blauw kader), personen, link en categorie — bewaart meteen. */
+function RecipeHeaderEditor({
+  name,
+  persons,
+  link,
+  category,
+  onSave,
+}: {
+  name: string;
+  persons: number;
+  link: string;
+  category: RecipeCategory | null;
+  onSave: (fields: { name?: string; link?: string; persons?: number; category?: RecipeCategory | null }) => Promise<unknown>;
+}) {
+  const [draftName, setDraftName] = React.useState(name);
+  const [draftLink, setDraftLink] = React.useState(link);
+  const [draftPersons, setDraftPersons] = React.useState(persons);
+  const [draftCategory, setDraftCategory] = React.useState<RecipeCategory | null>(category);
+
+  const commitName = () => {
+    const v = draftName.trim();
+    if (!v) {
+      setDraftName(name);
+      return;
+    }
+    if (v !== name) void onSave({ name: v });
+  };
+  const commitLink = () => {
+    const v = draftLink.trim();
+    if (v !== link.trim()) void onSave({ link: v });
+  };
+  const changePersons = (n: number) => {
+    const v = Math.min(24, Math.max(1, n));
+    setDraftPersons(v);
+    void onSave({ persons: v });
+  };
+  const blurOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") e.currentTarget.blur();
+  };
+  const stepBtn =
+    "flex size-7 items-center justify-center rounded-full bg-[var(--bg-app)] transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
+
+  return (
+    <div className="mt-4 flex w-full max-w-[640px] flex-col items-center gap-3">
+      <label className="flex w-full max-w-full items-center gap-2 rounded-[16px] bg-[rgba(255,255,255,0.72)] px-3.5 py-1 shadow-[inset_0_0_0_1.5px_var(--blue-500)] focus-within:bg-[var(--white)]">
+        <span className="sr-only">Naam van het recept</span>
+        <input
+          value={draftName}
+          onChange={(e) => setDraftName(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={blurOnEnter}
+          className="min-w-0 flex-1 bg-transparent text-center text-[26px] font-bold leading-[38px] tracking-[-0.015em] text-text-primary outline-none lg:text-[34px] lg:leading-[48px]"
+        />
+        <span aria-hidden className="text-[var(--blue-500)]">
+          <PencilIcon small />
+        </span>
+      </label>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <div className="inline-flex h-9 items-center gap-1 rounded-pill bg-[var(--white)] px-1 shadow-[inset_0_0_0_1px_var(--border-subtle)]" role="group" aria-label="Personen">
+          <button type="button" aria-label="Minder personen" disabled={draftPersons <= 1} onClick={() => changePersons(draftPersons - 1)} className={cn(stepBtn, "text-[var(--text-secondary)]")}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="size-4">
+              <path d="M6 12h12" />
+            </svg>
+          </button>
+          <span className="min-w-[78px] text-center text-sm font-semibold tabular-nums text-text-primary" aria-live="polite">
+            {draftPersons} {draftPersons === 1 ? "persoon" : "personen"}
+          </span>
+          <button type="button" aria-label="Meer personen" disabled={draftPersons >= 24} onClick={() => changePersons(draftPersons + 1)} className={cn(stepBtn, "text-[var(--blue-500)]")}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="size-4">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        </div>
+        <label className="inline-flex h-9 w-[260px] max-w-full items-center gap-1.5 rounded-pill bg-[var(--white)] pl-3 pr-3 text-[var(--blue-500)] shadow-[inset_0_0_0_1px_var(--border-subtle)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-500)]">
+          <LinkGlyph />
+          <span className="sr-only">Link naar het recept</span>
+          <input
+            type="url"
+            inputMode="url"
+            value={draftLink}
+            placeholder="Link naar recept"
+            onChange={(e) => setDraftLink(e.target.value)}
+            onBlur={commitLink}
+            onKeyDown={blurOnEnter}
+            className="min-w-0 flex-1 bg-transparent text-[13px] font-medium text-text-primary outline-none placeholder:text-[var(--blue-500)]"
+          />
+        </label>
+      </div>
+      <FilterChipRow wrap ariaLabel="Categorie" className="justify-center">
+        {RECIPE_CATEGORIES.map((cat) => {
+          const on = draftCategory === cat.id;
+          return (
+            <FilterChip
+              key={cat.id}
+              selected={on}
+              dotColor={cat.dot}
+              onClick={() => {
+                const next = on ? null : cat.id;
+                setDraftCategory(next);
+                void onSave({ category: next });
+              }}
+              className={cn(!on && "!bg-[var(--white)] !text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-subtle)] [@media(hover:hover)]:hover:!bg-[var(--gray-25)]")}
+            >
+              {cat.label}
+            </FilterChip>
+          );
+        })}
+      </FilterChipRow>
+    </div>
   );
 }
