@@ -5570,12 +5570,12 @@ export default function ListDetailPage({
       const newIndex = items.findIndex((i) => i.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return;
       // Items binnen een recept blijven in dat recept; losse items blijven los (zie dragGroupCollision).
-      if (dragGroupKey(items[oldIndex]) !== dragGroupKey(items[newIndex])) return;
+      if (effectiveListGroupingMode !== "category" && dragGroupKey(items[oldIndex]) !== dragGroupKey(items[newIndex])) return;
       const reordered = arrayMove(items, oldIndex, newIndex);
       const txns = reordered.map((item, i) => db.tx.items[item.id].update({ order: i }));
       db.transact(txns as Parameters<typeof db.transact>[0]);
     },
-    [items, sectionsForDisplay, saveCategoryOrder],
+    [items, sectionsForDisplay, saveCategoryOrder, effectiveListGroupingMode],
   );
 
   const sensors = useSensors(
@@ -5595,6 +5595,11 @@ export default function ListDetailPage({
   const itemSectionMap = React.useMemo(() => {
     const map = new Map<string, string>();
     for (const section of sections) {
+      // Per categorie: geen receptgroepen, alles binnen de categorie vrij versleepbaar.
+      if (effectiveListGroupingMode === "category") {
+        for (const item of section.items) map.set(item.id, section.title);
+        continue;
+      }
       // Algemeen: recepten als geheel versleepbaar tussen de losse items (zelfde «top»-groep).
       const isGeneral = section.title === "Algemeen";
       for (const item of section.items) {
@@ -5606,7 +5611,7 @@ export default function ListDetailPage({
       }
     }
     return map;
-  }, [sections]);
+  }, [sections, effectiveListGroupingMode]);
 
   const sectionAwareCollision = React.useCallback<typeof closestCenter>(
     (args) => {

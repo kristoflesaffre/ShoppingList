@@ -1240,7 +1240,10 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
             </>
           }
         >
-          <EditCardBody items={s.items} savedRecipes={savedRecipes} getPhotoUrl={getPhotoUrl} edit={edit} />
+          {/* Per categorie: gewoon de producten, zonder receptkoppen of «Losse items». */}
+          <div className="px-3 pb-1.5 pt-0.5">
+            <EditRows items={s.items} getPhotoUrl={getPhotoUrl} edit={edit} />
+          </div>
         </Card>
       );
       return reorder ? (
