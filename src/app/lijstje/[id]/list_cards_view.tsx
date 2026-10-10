@@ -748,12 +748,10 @@ function Plate({ src, size, freeze }: { src: string | null; size: number; freeze
   );
 }
 
-function Counter({ items, hideDone = false }: { items: ListItem[]; hideDone?: boolean }) {
+function Counter({ items }: { items: ListItem[] }) {
   if (items.length === 0) return null;
   const done = items.filter((i) => i.checked).length;
   if (done === items.length) {
-    // Kaarten met een kleurbolletje tonen «klaar» in dat bolletje (SectionDot).
-    if (hideDone) return null;
     return (
       <span
         role="img"
@@ -768,15 +766,38 @@ function Counter({ items, hideDone = false }: { items: ListItem[]; hideDone?: bo
 }
 
 /**
- * Kleurbolletje voor de categorienaam. Klaar → groeit uit tot een gevuld rondje in dezelfde kleur
- * met een wit vinkje (vervangt het losse groene vinkje rechts). Vaste breedte: de titel verspringt niet.
+ * Kleurbolletje voor de categorienaam met een voortgangsring eromheen (vervaagde kleur als spoor,
+ * volle kleur voor wat al gekocht is). Alles gekocht → gevuld rondje met wit vinkje.
+ * Vaste breedte: de titel verspringt niet.
  */
-function SectionDot({ color, done }: { color: string; done: boolean }) {
+function SectionDot({ color, done, progress }: { color: string; done: boolean; progress?: { done: number; total: number } }) {
+  const total = progress?.total ?? 0;
+  const fraction = total > 0 ? Math.min(1, (progress?.done ?? 0) / total) : 0;
+  const r = 9;
+  const circumference = 2 * Math.PI * r;
+  const label = done ? "Alles gekocht" : total > 0 ? `${progress?.done ?? 0} van ${total} gekocht` : undefined;
   return (
-    <span className="relative flex size-5 shrink-0 items-center justify-center" role={done ? "img" : undefined} aria-label={done ? "Alles gekocht" : undefined} aria-hidden={done ? undefined : true}>
+    <span className="relative flex size-[22px] shrink-0 items-center justify-center" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
+      {!done && total > 0 ? (
+        <svg viewBox="0 0 22 22" className="absolute inset-0 size-full -rotate-90" aria-hidden>
+          <circle cx="11" cy="11" r={r} fill="none" strokeWidth="2.5" style={{ stroke: `color-mix(in srgb, ${color} 22%, transparent)` }} />
+          <circle
+            cx="11"
+            cy="11"
+            r={r}
+            fill="none"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - fraction)}
+            className="transition-[stroke-dashoffset] duration-slow ease-out-strong"
+            style={{ stroke: color, opacity: fraction > 0 ? 1 : 0 }}
+          />
+        </svg>
+      ) : null}
       <span
         className={cn(
-          "flex items-center justify-center rounded-full text-white transition-[width,height,box-shadow] duration-base ease-out-strong",
+          "relative flex items-center justify-center rounded-full text-white transition-[width,height,box-shadow] duration-base ease-out-strong",
           done ? "size-5" : "size-2.5",
         )}
         style={{ backgroundColor: color, boxShadow: done ? `0 0 0 3px color-mix(in srgb, ${color} 22%, transparent)` : undefined }}
@@ -1011,11 +1032,14 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
           collapsible
           header={
             <>
-              <SectionDot color="var(--blue-500)" done={section.items.length > 0 && section.items.every((i) => i.checked)} />
+              <SectionDot
+                color="var(--blue-500)"
+                done={section.items.length > 0 && section.items.every((i) => i.checked)}
+                progress={{ done: section.items.filter((i) => i.checked).length, total: section.items.length }}
+              />
               <h3 className="text-[15px] font-bold text-text-primary">Algemeen</h3>
               <span className="text-xs text-[var(--text-tertiary)]">· altijd nodig</span>
               <span className="flex-1" />
-              <Counter items={section.items} hideDone />
               <AddButton label="Item toevoegen aan Algemeen" onClick={() => onAddToSection(section.title)} />
             </>
           }
@@ -1236,9 +1260,9 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
             <SectionDot
               color={`rgb(${rgb.join(",")})`}
               done={countableItems.length === 0 ? takeoutItems.length > 0 : countableItems.every((i) => i.checked)}
+              progress={{ done: countableItems.filter((i) => i.checked).length, total: countableItems.length }}
             />
             <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
-            <Counter items={countableItems} hideDone />
             <AddButton label={`Item toevoegen aan ${title}`} onClick={() => onAddToSection(s.title)} />
           </>
         }
