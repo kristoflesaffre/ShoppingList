@@ -61,7 +61,7 @@ function FreezerThumb({ item }: { item: DashboardFreezerItem }) {
   );
 }
 
-const MAX_FREEZER_ROWS = 5;
+const MAX_FREEZER_ROWS = 4;
 
 export type DashboardFreezerRow = DashboardFreezerItem & { quantityPerPackage?: number; unit?: string; recipePersons?: number };
 
@@ -92,23 +92,23 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
         : "Product";
     const count = isDish ? plural(item.packages, "portie", "porties") : plural(item.packages, "pak", "pakken");
     return (
-      <li key={item.id} className={cn("flex items-center gap-3 py-2.5", !first && "border-t border-[rgba(77,121,199,0.14)]")}>
+      <li
+        key={item.id}
+        className={cn(
+          "flex items-center gap-3 rounded-[16px] bg-[rgba(255,255,255,0.58)] py-2 pl-2 pr-3.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.75),0_6px_16px_-12px_rgba(47,95,179,0.45)] backdrop-blur-[6px] [[data-theme=dark]_&]:bg-[rgba(255,255,255,0.06)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]",
+          !first && "mt-2",
+        )}
+      >
         <FreezerThumb item={item} />
         <span className="min-w-0 flex-1 leading-[18px]">
           <span className="block truncate text-[15px] font-semibold text-text-primary first-letter:uppercase">{item.name}</span>
           <span className="block truncate text-[12.5px] text-[var(--text-secondary)]">{sub}</span>
         </span>
-        <span className="shrink-0 text-sm font-extrabold text-[#2f5fb3]">{count}</span>
+        <span className="shrink-0 text-sm font-extrabold text-[#2f5fb3] [[data-theme=dark]_&]:text-[#9db8ee]">{count}</span>
       </li>
     );
   };
-  const group = (title: string, list: DashboardFreezerRow[]) =>
-    list.length > 0 ? (
-      <div className="mt-3.5">
-        <p className="text-xs font-extrabold tracking-[0.06em] text-[#6c8cc8]">{title}</p>
-        <ul className="m-0 list-none pl-0">{list.map((item, i) => row(item, i === 0))}</ul>
-      </div>
-    ) : null;
+  const shown = [...shownDishes, ...shownProducts];
 
   return (
     <section aria-labelledby="dashboard-freezer" className="flex h-full min-w-0 flex-col gap-3">
@@ -123,8 +123,26 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
           Open
         </Link>
       </div>
-      <div className="flex flex-1 flex-col rounded-[24px] bg-[linear-gradient(160deg,#e6f0ff_0%,#dde9fd_55%,#f2f6ff_100%)] p-5 [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#1c2640_0%,#18213a_100%)]">
-        <p className="flex items-center gap-2 text-[12.5px] font-extrabold uppercase tracking-[0.06em] text-[#4d79c7]">
+      <div className="relative isolate flex flex-1 flex-col overflow-hidden rounded-[24px] bg-[linear-gradient(145deg,#cfe2ff_0%,#e3edff_42%,#efe9ff_100%)] p-5 [[data-theme=dark]_&]:bg-[linear-gradient(145deg,#1b2a4a_0%,#1a2240_55%,#231f40_100%)]">
+        {/* Frost: zachte glans, fijne ijskristallen in de hoek en een grote vage sneeuwvlok. */}
+        <span aria-hidden className="pointer-events-none absolute -left-16 -top-20 -z-10 size-64 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.85)_0%,rgba(255,255,255,0)_70%)] [[data-theme=dark]_&]:opacity-10" />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1.6px)] bg-[length:13px_13px] opacity-70 [mask-image:radial-gradient(120%_80%_at_100%_0%,black_0%,transparent_55%)] [[data-theme=dark]_&]:opacity-20"
+        />
+        <svg
+          aria-hidden
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.1}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="pointer-events-none absolute -right-7 -top-7 -z-10 size-40 rotate-12 text-[rgba(255,255,255,0.75)] [[data-theme=dark]_&]:text-[rgba(255,255,255,0.06)]"
+        >
+          <path d="M12 2v20M3.3 7l17.4 10M3.3 17l17.4-10M9 3.5 12 6l3-2.5M9 20.5 12 18l3 2.5M2.8 10.2 6.3 9l-.8-3.6M21.2 13.8 17.7 15l.8 3.6M2.8 13.8 6.3 15l-.8 3.6M21.2 10.2 17.7 9l.8-3.6" />
+        </svg>
+        <p className="relative flex items-center gap-2 text-[12.5px] font-extrabold uppercase tracking-[0.06em] text-[#3f6dc0] [[data-theme=dark]_&]:text-[#9db8ee]">
           {SNOWFLAKE}
           Diepvries{items.length > 0 ? ` · ${stats}` : ""}
         </p>
@@ -158,10 +176,9 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
           </div>
         ) : (
           <>
-            {group("GERECHTEN", shownDishes)}
-            {group("PRODUCTEN", shownProducts)}
+            <ul className="relative m-0 mt-3.5 list-none pl-0">{shown.map((item, i) => row(item, i === 0))}</ul>
             {hiddenCount > 0 ? (
-              <p className="mt-2 text-[13px] font-semibold text-[#4d79c7]">+ {hiddenCount} meer in de diepvries</p>
+              <p className="relative mt-2.5 text-[13px] font-semibold text-[#4d79c7]">+ {hiddenCount} meer in de diepvries</p>
             ) : null}
             <div className="min-h-4 flex-1" />
             <div className="flex gap-2">
@@ -211,7 +228,7 @@ export function HomeDashboardShoppingList({
   addedByFor,
   onAdd,
   onBought,
-  limit = 8,
+  limit = 5,
   me,
 }: {
   items: DashboardShoppingItem[];
@@ -290,21 +307,29 @@ export function HomeDashboardShoppingList({
           <span className="text-[13px] font-bold tabular-nums text-[var(--text-tertiary)]">{items.length}</span>
         </div>
         {items.length === 0 ? (
-          /* Lege lijst: alles gekocht, met één duidelijke actie. */
-          <div className="my-auto flex items-center gap-4 py-4">
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#e8f6ee] text-[#2a9d63] [[data-theme=dark]_&]:bg-[rgba(47,191,113,0.15)]" aria-hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" className="size-[22px]">
-                <path d="M5 12.5l4.5 4.5L19 7.5" />
-              </svg>
+          /* Lege lijst: zelfde illustratiestijl als de lege diepvries, gecentreerd. */
+          <div className="relative flex flex-1 flex-col items-center justify-center gap-3 px-2 py-4 text-center">
+            <span className="relative flex size-[120px] items-center justify-center" aria-hidden>
+              <span className="absolute inset-1 rounded-full bg-[radial-gradient(circle,#fff1e3_0%,rgba(255,241,227,0)_70%)] [[data-theme=dark]_&]:opacity-20" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
+              <img
+                src="/images/ui/kopen_320.webp"
+                alt=""
+                width={96}
+                height={96}
+                className="relative size-24 object-contain drop-shadow-[0_14px_18px_rgba(160,110,60,0.22)] motion-safe:animate-fade-up"
+              />
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[17px] font-extrabold text-text-primary">Alles gekocht</span>
-              <span className="block text-[13.5px] leading-5 text-[var(--text-secondary)]">Niets meer op jullie lijst. Wat mag je niet vergeten?</span>
+            <span>
+              <span className="block text-lg font-extrabold text-text-primary">Alles gekocht</span>
+              <span className="mt-1 block text-[13.5px] leading-5 text-[var(--text-secondary)] [text-wrap:balance]">
+                Niets meer op jullie lijst. Wat mag je niet vergeten?
+              </span>
             </span>
             <button
               type="button"
               onClick={onAdd}
-              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-pill bg-[var(--blue-500)] px-4 text-sm font-bold text-white transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+              className="mt-1 inline-flex h-10 items-center gap-1.5 rounded-pill bg-[var(--blue-500)] px-4 text-sm font-bold text-white transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
             >
               {PLUS_ICON}
               Product toevoegen
@@ -316,7 +341,7 @@ export function HomeDashboardShoppingList({
               const by = addedByFor(item);
               const done = pending[item.id] != null;
               return (
-                <li key={item.id} className={cn("flex items-center gap-3 py-[11px]", i > 0 && "border-t border-[var(--border-subtle)]")}>
+                <li key={item.id} className={cn("flex items-center gap-3 py-[9px]", i > 0 && "border-t border-[var(--border-subtle)]")}>
                   <button
                     type="button"
                     role="checkbox"
