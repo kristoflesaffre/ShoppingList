@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useDraftMasterListOpen } from "@/lib/draft-master-lists";
-import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
+import { DoneButton } from "@/components/ui/title_edit_button";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -5834,6 +5834,12 @@ export default function ListDetailPage({
                   : listName}
           </h1>
           <div className="flex-1" />
+          {/* Bewerken naast «…» (zelfde ronde witte knop), zodat de titel meer ruimte krijgt. */}
+          {showListDetailHeader && !isMasterCategoryOrderMode && !isMasterEmpty && !isEditMode ? (
+            <button type="button" aria-label="Bewerken" onClick={() => setIsEditMode(true)} className={cn(listRoundHeaderBtn, "mr-2 [&_svg]:size-[18px]")}>
+              {RoundIcons.pencil}
+            </button>
+          ) : null}
           {!isMasterCategoryOrderMode ? (
             <Link
               href={`/lijstje/${encodeURIComponent(listId)}/instellingen`}
@@ -5946,9 +5952,6 @@ export default function ListDetailPage({
                     >
                       {listName}
                     </h2>
-                    {!isMasterEmpty && !isEditMode ? (
-                      <TitleEditButton onClick={() => setIsEditMode(true)} />
-                    ) : null}
                   </div>
                 </div>
                 {showSharedDetailRow ? (
