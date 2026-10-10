@@ -19,3 +19,16 @@ describe("item-store", () => {
     expect(itemMatchesStoreFilter("delhaize", "all")).toBe(true);
   });
 });
+
+import { parseIngredientStores, serializeIngredientStores } from "./item-store";
+
+describe("ingredient stores", () => {
+  it("round-trips and normalises names", () => {
+    const map = parseIngredientStores(JSON.stringify({ " Hamburgers": "lidl", Melk: "both", Fout: "aldi" }));
+    expect(map.get("hamburgers")).toBe("lidl");
+    expect(map.get("melk")).toBe("both");
+    expect(map.has("fout")).toBe(false);
+    expect(parseIngredientStores(serializeIngredientStores(map))).toEqual(map);
+    expect(parseIngredientStores("{kapot").size).toBe(0);
+  });
+});

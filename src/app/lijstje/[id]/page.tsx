@@ -160,11 +160,15 @@ import { RECIPE_BLOCK_PREFIX,
 import { ListSuggestions, type Suggestion } from "./list_suggestions";
 import { MasterCategoryCards, MasterLoyaltyLine } from "./master_view";
 import { MasterAddSheet } from "./master_add_sheet";
-import { StoreHiddenNote, StoreMarkMenu, StoreMarkProvider } from "./store_mark";
+import { StoreHiddenNote, StoreLogos, StoreMarkMenu, StoreMarkProvider } from "./store_mark";
+import { IngredientStoreSheet, type IngredientStoreEntry } from "./ingredient_store_sheet";
+import { useGroceryCatalog } from "./master_add_sheet";
 import { findMergeTarget } from "@/lib/list-item-merge";
 import {
   itemMatchesStoreFilter,
+  parseIngredientStores,
   parseItemStore,
+  serializeIngredientStores,
   parseStoreFilter,
   storeNameKey,
   type ItemStore,
@@ -3457,16 +3461,22 @@ export default function ListDetailPage({
     return map;
   }, [ownerVenueHistoryData?.lists]);
 
+  /** «Winkel per product» van de Lidl / Delhaize-favorieten (ook voor niet-favorieten). */
+  const ingredientStoresJson = isMasterList
+    ? (listData as { ingredientStoresJson?: string } | undefined)?.ingredientStoresJson
+    : (categoryOrderMasterData?.lists?.[0] as { ingredientStoresJson?: string } | undefined)?.ingredientStoresJson;
+  const ingredientStoreMap = React.useMemo(() => parseIngredientStores(ingredientStoresJson), [ingredientStoresJson]);
+
   const suggestItemStore = React.useCallback(
     (name: string): { store: ItemStore; origin: "favorite" | "history" } | undefined => {
       const key = storeNameKey(name);
       if (!key) return undefined;
-      const fav = masterStoreByName.get(key);
+      const fav = masterStoreByName.get(key) ?? ingredientStoreMap.get(key);
       if (fav) return { store: fav, origin: "favorite" };
       const prev = rememberedStoreByName.get(key);
       return prev ? { store: prev, origin: "history" } : undefined;
     },
-    [masterStoreByName, rememberedStoreByName],
+    [masterStoreByName, ingredientStoreMap, rememberedStoreByName],
   );
 
   const items: ListItem[] = React.useMemo(() => {
@@ -5023,6 +5033,59 @@ export default function ListDetailPage({
     [isLidlDelhaizeList, suggestItemStore, masterItemIdByName],
   );
 
+  /* ── Winkel per product (favorieten Lidl / Delhaize) ── */
+  const [ingredientStoreOpen, setIngredientStoreOpen] = React.useState(false);
+  const groceryCatalog = useGroceryCatalog();
+  const ingredientStoreEntries = React.useMemo((): IngredientStoreEntry[] => {
+    if (!isMasterList || !isLidlDelhaizeList) return [];
+    const byKey = new Map<string, IngredientStoreEntry>();
+    const add = (name: string, photo?: string | null) => {
+      const key = storeNameKey(name);
+      if (!key || byKey.has(key)) return;
+      byKey.set(key, { name: name.trim(), photo });
+    };
+    for (const it of items) add(it.name);
+    for (const r of savedRecipes) for (const ing of r.ingredients ?? []) add(ing.name);
+    for (const c of groceryCatalog) add(c.name, c.photo);
+    return Array.from(byKey.values());
+  }, [isMasterList, isLidlDelhaizeList, items, savedRecipes, groceryCatalog]);
+  const ownStoreByName = React.useMemo(() => {
+    const map = new Map<string, ItemStore>();
+    for (const it of items) {
+      const own = it.storeOrigin == null ? it.store : undefined;
+      if (own) map.set(storeNameKey(it.name), own);
+    }
+    return map;
+  }, [items]);
+  const storeForIngredient = React.useCallback(
+    (name: string) => ownStoreByName.get(storeNameKey(name)) ?? ingredientStoreMap.get(storeNameKey(name)),
+    [ownStoreByName, ingredientStoreMap],
+  );
+  const handleSetIngredientStores = React.useCallback(
+    (names: string[], store: ItemStore | undefined) => {
+      if (!isMasterList || names.length === 0) return;
+      const next = new Map(ingredientStoreMap);
+      const keys = new Set(names.map(storeNameKey));
+      for (const key of Array.from(keys)) {
+        if (store) next.set(key, store);
+        else next.delete(key);
+      }
+      const txs: Parameters<typeof db.transact>[0] = [
+        db.tx.lists[listId].update({ ingredientStoresJson: serializeIngredientStores(next) }),
+        // Favorieten met dezelfde naam meteen mee aanpassen.
+        ...items
+          .filter((it) => keys.has(storeNameKey(it.name)))
+          .map((it) => db.tx.items[it.id].update({ store: store ?? null })),
+      ];
+      void db.transact(txs);
+    },
+    [isMasterList, ingredientStoreMap, items, listId],
+  );
+  const ingredientStoreChosen = React.useMemo(
+    () => ingredientStoreEntries.filter((e) => storeForIngredient(e.name)).length,
+    [ingredientStoreEntries, storeForIngredient],
+  );
+
   const storeMarkApi = React.useMemo(
     () =>
       isLidlDelhaizeList && !isEditMode
@@ -5890,9 +5953,32 @@ export default function ListDetailPage({
             </div>
           ) : null}
 
-          {isMasterList && isLidlDelhaizeList && hasItems && !isEditMode && !isMasterCategoryOrderMode ? (
-            <div className="flex w-full min-w-0 items-center">
-              <StoreFilterChip value={storeFilter} onChange={handleStoreFilterChange} counts={storeFilterCounts} showLabelWhenAll />
+          {isMasterList && isLidlDelhaizeList && !isEditMode && !isMasterCategoryOrderMode ? (
+            <div className="flex w-full min-w-0 flex-col gap-3">
+              {hasItems ? (
+                <div className="flex w-full min-w-0 items-center">
+                  <StoreFilterChip value={storeFilter} onChange={handleStoreFilterChange} counts={storeFilterCounts} showLabelWhenAll />
+                </div>
+              ) : null}
+              {/* Winkel per product: ook voor producten die geen favoriet zijn (bv. ingrediënten). */}
+              <button
+                type="button"
+                onClick={() => setIngredientStoreOpen(true)}
+                className="flex w-full items-center gap-3 rounded-[16px] bg-[var(--white)] px-3 py-2.5 text-left shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)]">
+                  <StoreLogos store="both" size={18} />
+                </span>
+                <span className="min-w-0 flex-1 leading-[18px]">
+                  <span className="block text-sm font-semibold text-text-primary">Winkel per product</span>
+                  <span className="block truncate text-xs text-[var(--text-tertiary)]">
+                    {ingredientStoreEntries.length > 0
+                      ? `${ingredientStoreChosen} van ${ingredientStoreEntries.length} producten ingesteld`
+                      : "Kies waar je elk product koopt"}
+                  </span>
+                </span>
+                <span className="shrink-0 text-[13px] font-semibold text-[var(--blue-500)]">Instellen</span>
+              </button>
             </div>
           ) : null}
 
@@ -6280,6 +6366,16 @@ export default function ListDetailPage({
 
   const listModals = (
     <>
+      {isMasterList && isLidlDelhaizeList ? (
+        <IngredientStoreSheet
+          open={ingredientStoreOpen}
+          onClose={() => setIngredientStoreOpen(false)}
+          entries={ingredientStoreEntries}
+          storeFor={storeForIngredient}
+          onSet={(name, store) => handleSetIngredientStores([name], store)}
+          onSetMany={(names, store) => handleSetIngredientStores(names, store)}
+        />
+      ) : null}
       {storeMenu ? (
         <StoreMarkMenu
           item={storeMenu.item}

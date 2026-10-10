@@ -47,6 +47,11 @@ const schema = i.schema({
        * Gebruikt o.a. om `masterCategoryOrderJson` van de master te volgen bij groepering per categorie.
        */
       sourceMasterListId: i.string().optional().indexed(),
+      /**
+       * Lidl / Delhaize-favorieten: winkel per product als JSON `{ "<naam>": "lidl" | "delhaize" | "both" }`,
+       * ook voor producten die geen favoriet zijn. Weeklijstjes nemen dit over.
+       */
+      ingredientStoresJson: i.string().optional(),
     }),
     /** Koppeling: gebruiker is deelnemer aan een gedeeld lijstje (realtime samenwerking). */
     listMembers: i.entity({

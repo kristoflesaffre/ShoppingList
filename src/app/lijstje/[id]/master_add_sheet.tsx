@@ -18,7 +18,7 @@ import type { ItemStore } from "@/lib/item-store";
 import { StoreLogos } from "./store_mark";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 
-type CatalogItem = { slug: string; name: string; photo: string; category: string };
+export type CatalogItem = { slug: string; name: string; photo: string; category: string };
 
 function slugToDisplayName(slug: string): string {
   return slug
@@ -28,7 +28,7 @@ function slugToDisplayName(slug: string): string {
 }
 
 /** Winkelproducten met foto (enkel /images/items, geen vakantie-items). */
-function useGroceryCatalog(): CatalogItem[] {
+export function useGroceryCatalog(): CatalogItem[] {
   const [catalog, setCatalog] = React.useState<CatalogItem[]>([]);
   React.useEffect(() => {
     let cancelled = false;
