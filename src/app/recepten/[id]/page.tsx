@@ -737,23 +737,6 @@ export default function ReceptDetailPage() {
                   {savedRecipe.name}
                 </h1>
               </div>
-              <div className={cn("mt-2.5 flex flex-wrap justify-center gap-2", heroEnter(380).className)} style={heroEnter(380).style}>
-                <span className={chipClass}>
-                  <ListGlyph />
-                  {ingredientCount === 1 ? "1 ingrediënt" : `${ingredientCount} ingrediënten`}
-                </span>
-                {recipeLink ? (
-                  <a href={recipeLink} target="_blank" rel="noopener noreferrer" className={cn(chipClass, "!text-[var(--blue-500)] no-underline")}>
-                    <LinkGlyph />
-                    Recept
-                  </a>
-                ) : (
-                  <button type="button" onClick={toggleDetailPhotoEditMode} className={cn(chipClass, "!text-[var(--blue-500)]")}>
-                    <LinkGlyph />
-                    Link toevoegen
-                  </button>
-                )}
-              </div>
             </>
           )}
         </section>
@@ -1033,8 +1016,6 @@ export default function ReceptDetailPage() {
 
 const roundHeaderBtn =
   "flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
-const chipClass =
-  "inline-flex h-8 items-center gap-1.5 rounded-pill bg-[var(--white)] px-3 text-[13px] font-medium text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 const ghostBtn =
   "inline-flex h-9 items-center gap-1.5 rounded-pill bg-[var(--blue-50)] px-3.5 text-sm font-semibold text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 
@@ -1042,16 +1023,6 @@ function PencilIcon({ small = false }: { small?: boolean }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={small ? "size-4" : "size-5"}>
       <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4" />
-    </svg>
-  );
-}
-function ListGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden className="size-4 text-[var(--gray-400)]">
-      <path d="M9 6h11M9 12h11M9 18h11" />
-      <circle cx="4.5" cy="6" r="1" fill="currentColor" />
-      <circle cx="4.5" cy="12" r="1" fill="currentColor" />
-      <circle cx="4.5" cy="18" r="1" fill="currentColor" />
     </svg>
   );
 }
