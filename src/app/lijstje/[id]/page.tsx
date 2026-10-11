@@ -5043,6 +5043,8 @@ export default function ListDetailPage({
   const effectiveListGroupingMode: "day" | "category" = isMasterList
     ? "day"
     : listGroupingMode;
+  /** Kaartweergave/bewerkkaarten: favorieten zijn altijd per categorie ingedeeld. */
+  const cardGroupingMode: "day" | "category" = isMasterList ? "category" : effectiveListGroupingMode;
 
   /** Canvas «Concept D»: winkelfilter, alleen op een Lidl / Delhaize-lijstje. */
   // Winkelfilter enkel op echte lijstjes, niet op de favorieten.
@@ -5404,8 +5406,9 @@ export default function ListDetailPage({
   const useCardView =
     !isEditMode && !isMasterList && !isLandalOrVakantieList && !isPuddyTabSelected && !isVenueCounterList;
   /** Canvas «Lijstje · bewerkmodus in kaarten»: zelfde kaarten, met greep en vuilbakjes. */
+  // Ook favorietenlijstjes (altijd per categorie): zelfde bewerkkaarten, categorieën verslepen met de greep.
   const useCardEditView =
-    isEditMode && !isMasterList && !isLandalOrVakantieList && !isPuddyTabSelected && !isVenueCounterList;
+    isEditMode && !isLandalOrVakantieList && !isPuddyTabSelected && !isVenueCounterList;
 
   React.useEffect(() => {
     if (!listId) return;
@@ -5584,12 +5587,12 @@ export default function ListDetailPage({
       const newIndex = items.findIndex((i) => i.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return;
       // Items binnen een recept blijven in dat recept; losse items blijven los (zie dragGroupCollision).
-      if (effectiveListGroupingMode !== "category" && dragGroupKey(items[oldIndex]) !== dragGroupKey(items[newIndex])) return;
+      if (cardGroupingMode !== "category" && dragGroupKey(items[oldIndex]) !== dragGroupKey(items[newIndex])) return;
       const reordered = arrayMove(items, oldIndex, newIndex);
       const txns = reordered.map((item, i) => db.tx.items[item.id].update({ order: i }));
       db.transact(txns as Parameters<typeof db.transact>[0]);
     },
-    [items, sectionsForDisplay, saveCategoryOrder, effectiveListGroupingMode],
+    [items, sectionsForDisplay, saveCategoryOrder, cardGroupingMode],
   );
 
   const sensors = useSensors(
@@ -5610,7 +5613,7 @@ export default function ListDetailPage({
     const map = new Map<string, string>();
     for (const section of sections) {
       // Per categorie: geen receptgroepen, alles binnen de categorie vrij versleepbaar.
-      if (effectiveListGroupingMode === "category") {
+      if (cardGroupingMode === "category") {
         for (const item of section.items) map.set(item.id, section.title);
         continue;
       }
@@ -5625,7 +5628,7 @@ export default function ListDetailPage({
       }
     }
     return map;
-  }, [sections, effectiveListGroupingMode]);
+  }, [sections, cardGroupingMode]);
 
   const sectionAwareCollision = React.useCallback<typeof closestCenter>(
     (args) => {
@@ -6325,7 +6328,7 @@ export default function ListDetailPage({
                   >
                     <ListCardsView
                       sections={sectionsForDisplay}
-                      groupingMode={effectiveListGroupingMode}
+                      groupingMode={cardGroupingMode}
                       layout="one"
                       listDateStr={listDateStr}
                       savedRecipes={savedRecipes}
@@ -6339,7 +6342,7 @@ export default function ListDetailPage({
                         onDeleteSection: handleDeleteSection,
                         onDeleteRecipeGroup: handleDeleteRecipeGroup,
                         categoryReorder:
-                          effectiveListGroupingMode === "category" && !isLandalOrVakantieList
+                          cardGroupingMode === "category" && !isLandalOrVakantieList
                             ? { collapsed: categoryReorderArmed, onArm: armCategoryReorder }
                             : undefined,
                       }}
@@ -6474,7 +6477,7 @@ export default function ListDetailPage({
             <span className="min-w-0 flex-1 leading-4">
               <span className="block text-sm font-bold">Lijstje bewerken</span>
               <span className="block truncate text-xs opacity-70">
-                {effectiveListGroupingMode === "category" ? "Sleep of tik om te wijzigen" : "Tik op een item om te wijzigen"}
+                {cardGroupingMode === "category" ? "Sleep of tik om te wijzigen" : "Tik op een item om te wijzigen"}
               </span>
             </span>
             <button
