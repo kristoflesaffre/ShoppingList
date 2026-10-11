@@ -126,22 +126,22 @@ export default function ReceptDetailPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
   /*
-   * Koken (canvas «Recept · 2A»): stappen afvinken (bewaard op dit toestel) en één stap kiezen om de
-   * ingrediënten erop te filteren. Ingrediënten van afgewerkte stappen zakken naar «Gebruikt».
+   * Koken (canvas «Recept · 2A»): stappen afvinken en één stap kiezen om de ingrediënten erop te
+   * filteren. Ingrediënten van afgewerkte stappen zakken naar «Gebruikt». Enkel zolang je op de pagina
+   * blijft: wie terugkomt, begint opnieuw met alles uitgevinkt.
    */
   const [doneSteps, setDoneSteps] = React.useState<Set<number>>(() => new Set());
   const [selectedStep, setSelectedStep] = React.useState<number | null>(null);
-  const doneStorageKey = recipeId ? `recipe-steps-done:${recipeId}` : "";
   React.useEffect(() => {
-    if (!doneStorageKey) return;
+    setDoneSteps(new Set());
+    setSelectedStep(null);
+    // Opruimen: vroeger werd de voortgang per recept op dit toestel bewaard.
     try {
-      const raw = window.localStorage.getItem(doneStorageKey);
-      const list = raw ? (JSON.parse(raw) as unknown) : [];
-      setDoneSteps(new Set(Array.isArray(list) ? list.filter((n): n is number => typeof n === "number") : []));
+      if (recipeId) window.localStorage.removeItem(`recipe-steps-done:${recipeId}`);
     } catch {
-      setDoneSteps(new Set());
+      /* geen opslag */
     }
-  }, [doneStorageKey]);
+  }, [recipeId]);
   const toggleStepDone = React.useCallback(
     (index: number, stepCount: number) => {
       setDoneSteps((prev) => {
@@ -149,11 +149,6 @@ export default function ReceptDetailPage() {
         const nowDone = !next.has(index);
         if (nowDone) next.add(index);
         else next.delete(index);
-        try {
-          window.localStorage.setItem(doneStorageKey, JSON.stringify(Array.from(next)));
-        } catch {
-          /* geen opslag: enkel deze sessie */
-        }
         // Gekozen stap klaar → meteen door naar de volgende open stap.
         if (nowDone) {
           setSelectedStep((sel) => {
@@ -165,7 +160,7 @@ export default function ReceptDetailPage() {
         return next;
       });
     },
-    [doneStorageKey],
+    [],
   );
   const getPhotoUrl = useIngredientPhotoUrl();
   const [shareSlideOpen, setShareSlideOpen] = React.useState(false);
