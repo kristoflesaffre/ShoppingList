@@ -57,6 +57,43 @@ describe("selectCalendarPreviewItems", () => {
 });
 
 describe("buildCalendarEntries", () => {
+  it("toont bij een diepvriesgerecht de huidige receptfoto, niet de oude kopie", () => {
+    const entries = buildCalendarEntries(
+      [
+        {
+          date: "10-10-2026",
+          items: [
+            {
+              name: "Rucolasoep",
+              quantity: "1 portie",
+              section: "Maandag",
+              itemDate: "2026-10-12",
+              recipeGroupId: "recipe-0b6f1e2a-1111-4c3d-9e8f-123456789abc-1791000000000",
+              recipeName: "Rucolasoep",
+              fromStock: true,
+              stockPhotoUrl: "data:image/jpeg;base64,oud",
+            },
+            {
+              name: "Noedelsoep (diepvries)",
+              quantity: "1 portie",
+              section: "Maandag",
+              itemDate: "2026-10-12",
+              fromStock: true,
+              stockPhotoUrl: "data:image/jpeg;base64,oud2",
+            },
+          ],
+        },
+      ],
+      [
+        { id: "0b6f1e2a-1111-4c3d-9e8f-123456789abc", name: "Rucolasoep", photoUrl: "https://foto/rucola.webp" },
+        { id: "r2", name: "Noedelsoep", photoUrl: "https://foto/noedel.webp" },
+      ],
+    );
+    const day = entries.get("2026-10-12");
+    expect(day?.meals[0]).toMatchObject({ photoUrl: "https://foto/rucola.webp", fromStock: true });
+    expect(day?.looseIngredients[0]).toMatchObject({ photoUrl: "https://foto/noedel.webp" });
+  });
+
   it("neemt Frituur op als afhaalgerecht en niet als los item", () => {
     const entries = buildCalendarEntries(
       [

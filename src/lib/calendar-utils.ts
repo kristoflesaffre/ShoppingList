@@ -242,12 +242,16 @@ export function buildCalendarEntries(
         let meal = entry.meals.find((m) => m.recipeGroupId === item.recipeGroupId);
         if (!meal) {
           const recipeId = parseRecipeId(item.recipeGroupId);
-          const recipe = recipeId ? recipeMap.get(recipeId) : null;
+          const recipe =
+            (recipeId ? recipeMap.get(recipeId) : null) ??
+            (item.recipeName ? recipeByName.get(item.recipeName.trim().toLowerCase()) : null) ??
+            null;
           meal = {
             recipeGroupId: item.recipeGroupId,
             recipeName: item.recipeName ?? "Recept",
             recipeId: recipeId ?? null,
-            photoUrl: item.stockPhotoUrl ?? recipe?.photoUrl ?? null,
+            /* Eerst de huidige receptfoto (transparant); de diepvriesfoto is een oude kopie van toen. */
+            photoUrl: recipe?.photoUrl ?? item.stockPhotoUrl ?? null,
             ingredientCount: 0,
             fromStock: item.fromStock === true || undefined,
           };
@@ -255,17 +259,18 @@ export function buildCalendarEntries(
         }
         if (item.fromStock) {
           meal.fromStock = true;
-          if (item.stockPhotoUrl) meal.photoUrl = item.stockPhotoUrl;
+          if (!meal.photoUrl && item.stockPhotoUrl) meal.photoUrl = item.stockPhotoUrl;
         } else {
           meal.ingredientCount++;
         }
       } else {
         let loosePhotoUrl: string | null = null;
-        if (item.fromStock && item.stockPhotoUrl) {
+        const baseName = item.name.replace(/\s*\(diepvries\)$/, "").trim().toLowerCase();
+        const recipePhoto = item.fromStock || item.name.endsWith(" (diepvries)") ? recipeByName.get(baseName)?.photoUrl ?? null : null;
+        if (recipePhoto) {
+          loosePhotoUrl = recipePhoto;
+        } else if (item.fromStock && item.stockPhotoUrl) {
           loosePhotoUrl = item.stockPhotoUrl;
-        } else if (item.name.endsWith(" (diepvries)")) {
-          const baseName = item.name.slice(0, -" (diepvries)".length).trim().toLowerCase();
-          loosePhotoUrl = recipeByName.get(baseName)?.photoUrl ?? null;
         }
         entry.looseIngredients.push({
           name: item.name,
