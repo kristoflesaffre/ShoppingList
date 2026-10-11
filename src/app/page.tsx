@@ -1228,8 +1228,7 @@ function HomeTeKopenSection({
           </div>
         ) : null}
       </div>
-      <div className="-mt-3 flex flex-col gap-3 lg:hidden">
-        <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">Laatst toegevoegd</p>
+      <div className="flex flex-col gap-3 lg:hidden">
         <HomeTeKopenSwimlane
           items={recentItems.slice(0, TE_KOPEN_SWIM_COUNT)}
           total={recentItems.length}
