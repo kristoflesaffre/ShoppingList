@@ -902,148 +902,120 @@ function pluralizeShoppingQuantity(quantity: string): string {
 
 type ShoppingAddedBy = { firstName: string; avatarUrl: string | null };
 
-/** Monogramkleuren voor producten zonder foto (canvas «Te kopen 6c»): zacht vlak, letter in dezelfde tint. */
-function teKopenStoreLogo(store?: string | null): string | null {
-  if (!store) return null;
-  return MASTER_STORE_OPTIONS.find((s) => s.label === store)?.logoSrc ?? null;
-}
+/** Aantal producten in de Te kopen-afvinklijst op mobiel. */
+const TE_KOPEN_CHECKLIST_COUNT = 3;
 
-/** Aantal producten in de Te kopen-swimlane (mobiel): kolommen van twee tegels. */
-const TE_KOPEN_SWIM_COUNT = 8;
-
-/** Te kopen 6c · brede tegel (227px) in een kolom van twee: foto of monogram, naam, winkel + aantal, wie. */
-function HomeTeKopenSwimTile({
-  item,
-  addedBy,
-}: {
-  item: HomeShoppingItem;
-  addedBy: ShoppingAddedBy | null;
-}) {
-  const getPhotoUrl = useItemPhotoUrl(160);
-  const photoSrc = getPhotoUrl(item.name);
-  const quantity = pluralizeShoppingQuantity(item.quantity);
-  const storeLogo = teKopenStoreLogo(item.store);
-  const initial = item.name.trim().charAt(0).toUpperCase();
-
-  return (
-    <Link
-      href="/te-kopen"
-      className="flex h-20 w-[227px] items-center gap-3 rounded-[18px] bg-[var(--white)] px-3 no-underline shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-    >
-      {photoSrc ? (
-        <span className="flex size-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[var(--gray-25)]" aria-hidden>
-          {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
-          <img src={photoSrc} alt="" width={40} height={40} className="size-10 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />
-        </span>
-      ) : (
-        <span
-          className="flex size-[52px] shrink-0 items-center justify-center rounded-[14px] text-xl font-bold leading-none"
-          style={teKopenMonogramStyle(item.name)}
-          aria-hidden
-        >
-          {initial}
-        </span>
-      )}
-      <span className="flex min-w-0 flex-1 flex-col leading-[18px]">
-        <span className="truncate text-[15px] font-semibold text-[var(--text-primary)] first-letter:uppercase">
-          {item.name}
-        </span>
-        <span className="flex min-w-0 items-center gap-[5px] text-[12.5px] text-[var(--gray-400)] tabular-nums">
-          {storeLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element -- winkellogo
-            <img src={storeLogo} alt="" width={13} height={13} className="size-[13px] shrink-0 object-contain" />
-          ) : null}
-          <span className="truncate">{quantity}</span>
-        </span>
-        {addedBy ? (
-          <span className="mt-0.5 flex min-w-0 items-center gap-[5px] text-xs text-[var(--gray-400)]">
-            <span className="flex size-3.5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--secondary-100)] text-[7px] font-bold text-[var(--secondary-800)]" aria-hidden>
-              {addedBy.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- profielfoto (data-URL of blob)
-                <img src={addedBy.avatarUrl} alt="" className="size-full object-cover" />
-              ) : (
-                addedBy.firstName.charAt(0).toUpperCase()
-              )}
-            </span>
-            <span className="truncate">door {addedBy.firstName}</span>
-          </span>
-        ) : null}
-      </span>
-    </Link>
-  );
-}
-
-/** Te kopen 6c · swimlane met kolommen van twee brede tegels, «+N · Alle M» als laatste kaart, bolletjes eronder. */
-function HomeTeKopenSwimlane({
+/**
+ * Canvas «Home · Te kopen · 6 · afvinklijst» (mobiel): de laatste producten als rijen met een rondje
+ * om af te vinken (gekocht), «Product toevoegen» als laatste rij. Afvinken toont even het vinkje
+ * (nog eens tikken = ongedaan), daarna verdwijnt het product.
+ */
+function HomeTeKopenChecklist({
   items,
-  total,
-  addedByFor,
+  onBought,
+  onAddProduct,
 }: {
   items: HomeShoppingItem[];
-  total: number;
-  addedByFor: (item: HomeShoppingItem) => ShoppingAddedBy | null;
+  onBought?: (id: string) => void;
+  onAddProduct?: () => void;
 }) {
-  const laneRef = React.useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = React.useState(0);
-  const columns = chunkArray(items, 2);
-  const rest = total - items.length;
-  const pageCount = columns.length + (rest > 0 ? 1 : 0);
-
-  const handleScroll = React.useCallback(() => {
-    const el = laneRef.current;
-    if (!el) return;
-    const cols = Array.from(el.children) as HTMLElement[];
-    let best = 0;
-    let bestDist = Infinity;
-    cols.forEach((c, i) => {
-      const d = Math.abs(c.offsetLeft - el.offsetLeft - el.scrollLeft);
-      if (d < bestDist) {
-        bestDist = d;
-        best = i;
-      }
-    });
-    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 4) best = cols.length - 1;
-    setActiveIndex(best);
+  const getPhotoUrl = useItemPhotoUrl(160);
+  const [pending, setPending] = React.useState<Set<string>>(() => new Set());
+  const timers = React.useRef(new Map<string, number>());
+  React.useEffect(() => {
+    const map = timers.current;
+    return () => map.forEach((t) => window.clearTimeout(t));
   }, []);
-
-  const scrollToPage = (index: number) => {
-    const el = laneRef.current;
-    const col = el?.children[index] as HTMLElement | undefined;
-    if (!el || !col) return;
-    el.scrollTo({ left: col.offsetLeft - el.offsetLeft, behavior: "smooth" });
+  const toggle = (id: string) => {
+    const t = timers.current.get(id);
+    if (t != null) {
+      window.clearTimeout(t);
+      timers.current.delete(id);
+      setPending((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      return;
+    }
+    setPending((prev) => new Set(prev).add(id));
+    timers.current.set(
+      id,
+      window.setTimeout(() => {
+        timers.current.delete(id);
+        onBought?.(id);
+      }, 1200),
+    );
   };
-
   return (
-    <div className="flex flex-col gap-3.5">
-      <div
-        ref={laneRef}
-        onScroll={handleScroll}
-        className="-mx-4 -my-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-px-4 px-4 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    <div className="rounded-[22px] bg-[var(--white)] px-3.5 pb-2.5 pt-1 shadow-card">
+      <ul>
+        {items.map((item, i) => {
+          const done = pending.has(item.id);
+          const photoSrc = getPhotoUrl(item.name);
+          return (
+            <li key={item.id} className={cn(i > 0 && "border-t border-[var(--border-subtle)]")}>
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={done}
+                aria-label={`${item.name}, ${pluralizeShoppingQuantity(item.quantity)}${done ? ", gekocht" : ""}`}
+                onClick={() => toggle(item.id)}
+                className="flex w-full items-center gap-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "flex size-[22px] shrink-0 items-center justify-center rounded-full transition-colors duration-fast",
+                    done ? "bg-[var(--blue-500)] text-white" : "text-transparent shadow-[inset_0_0_0_1.5px_var(--gray-200)]",
+                  )}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                </span>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-[15px] first-letter:uppercase",
+                    done ? "font-normal text-[var(--gray-300)] line-through" : "font-semibold text-[var(--text-primary)]",
+                  )}
+                >
+                  {item.name}
+                </span>
+                <span className={cn("shrink-0 text-[13px] tabular-nums", done ? "text-[var(--gray-300)] line-through" : "text-[var(--text-secondary)]")}>
+                  {pluralizeShoppingQuantity(item.quantity)}
+                </span>
+                {photoSrc ? (
+                  <span className="flex size-[30px] shrink-0 items-center justify-center rounded-[9px] bg-[var(--gray-25)]" aria-hidden>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
+                    <img src={photoSrc} alt="" width={24} height={24} className={cn("size-6 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal", done && "opacity-50 grayscale")} />
+                  </span>
+                ) : (
+                  <span
+                    className="flex size-[30px] shrink-0 items-center justify-center rounded-[9px] text-[13px] font-bold leading-none"
+                    style={teKopenMonogramStyle(item.name)}
+                    aria-hidden
+                  >
+                    {item.name.trim().charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <button
+        type="button"
+        onClick={onAddProduct}
+        className="flex w-full items-center gap-3 border-t border-[var(--border-subtle)] pb-1 pt-3 text-left text-[15px] font-semibold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
       >
-        {columns.map((col) => (
-          <ul key={col[0].id} className="m-0 flex shrink-0 snap-start list-none flex-col gap-2.5 pl-0">
-            {col.map((item) => (
-              <li key={item.id}>
-                <HomeTeKopenSwimTile item={item} addedBy={addedByFor(item)} />
-              </li>
-            ))}
-          </ul>
-        ))}
-        {rest > 0 ? (
-          <Link
-            href="/te-kopen"
-            className="flex w-24 shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-[18px] bg-[var(--blue-25)] text-[13px] font-semibold text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-          >
-            <span className="text-xl font-bold tabular-nums">+{rest}</span>
-            <span className="inline-flex items-center gap-0.5">
-              Alle {total}
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3">
-                <path d="M6 3.5 10.5 8 6 12.5" />
-              </svg>
-            </span>
-          </Link>
-        ) : null}
-      </div>
+        <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] text-white" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" className="size-3.5">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </span>
+        Product toevoegen
+      </button>
     </div>
   );
 }
@@ -1106,6 +1078,7 @@ function HomeTeKopenSection({
   hasUsedBefore,
   addedByFor,
   onAddProduct,
+  onBought,
   onHide,
 }: {
   shoppingItems: HomeShoppingItem[];
@@ -1113,6 +1086,8 @@ function HomeTeKopenSection({
   /** Wie een item toevoegde (alleen voor items van een gedeelde lijst, niet van jezelf). */
   addedByFor: (item: HomeShoppingItem) => ShoppingAddedBy | null;
   onAddProduct?: () => void;
+  /** Gekocht (afgevinkt in de lijst op mobiel). */
+  onBought?: (id: string) => void;
   onHide?: () => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
@@ -1191,15 +1166,26 @@ function HomeTeKopenSection({
         label="Te kopen"
         showNaarOverzicht={false}
         action={
-          // Zelfde tekstknop als «Toon alle» (rechts uitgelijnd op dezelfde lijn).
+          // Mobiel: «Alle N ›» (toevoegen zit in de lijst); desktop: «Toevoegen».
+          <>
+          <Link
+            href="/te-kopen"
+            className="-mr-1 inline-flex shrink-0 items-center gap-0.5 rounded-pill px-2 py-1 text-[13px] font-medium leading-[18px] text-action-primary no-underline transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus lg:hidden"
+          >
+            Alle {recentItems.length}
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3">
+              <path d="M6 3.5 10.5 8 6 12.5" />
+            </svg>
+          </Link>
           <button
             type="button"
             onClick={onAddProduct}
-            className="-mr-1 inline-flex shrink-0 items-center gap-1 rounded-pill px-2 py-1 text-[13px] font-medium leading-[18px] text-action-primary transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+            className="-mr-1 hidden shrink-0 items-center gap-1 rounded-pill lg:inline-flex px-2 py-1 text-[13px] font-medium leading-[18px] text-action-primary transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
           >
             <HomeSoftPillPlusIcon />
             Toevoegen
           </button>
+          </>
         }
       />
       {/* Desktop 1 · raster van tegels (3 kolommen), twee rijen dichtgeklapt. */}
@@ -1229,11 +1215,7 @@ function HomeTeKopenSection({
         ) : null}
       </div>
       <div className="flex flex-col gap-3 lg:hidden">
-        <HomeTeKopenSwimlane
-          items={recentItems.slice(0, TE_KOPEN_SWIM_COUNT)}
-          total={recentItems.length}
-          addedByFor={addedByFor}
-        />
+        <HomeTeKopenChecklist items={recentItems.slice(0, TE_KOPEN_CHECKLIST_COUNT)} onBought={onBought} onAddProduct={onAddProduct} />
       </div>
     </div>
   );
@@ -3718,6 +3700,7 @@ export default function Home() {
               primeKeyboard();
               setTeKopenSlideOpen(true);
             }}
+            onBought={(id) => void db.transact(db.tx.shoppingItems[id].delete()).catch(() => undefined)}
             onHide={onHide}
           />
         );
