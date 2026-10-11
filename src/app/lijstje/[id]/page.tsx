@@ -5074,7 +5074,9 @@ export default function ListDetailPage({
         : itemsForListSections.filter((i) => itemMatchesStoreFilter(i.store, activeStoreFilter)),
     [itemsForListSections, activeStoreFilter],
   );
-  const hiddenByStoreFilter = itemsForListSections.length - itemsForStoreView.length;
+  // Enkel nog open items tellen: wat al afgevinkt is bij de andere winkel hoeft geen melding.
+  const hiddenByStoreFilter =
+    itemsForListSections.filter((i) => !i.checked).length - itemsForStoreView.filter((i) => !i.checked).length;
 
   const storeChoiceConfig = React.useMemo<StoreChoiceConfig | null>(
     () =>

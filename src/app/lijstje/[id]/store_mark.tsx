@@ -247,9 +247,10 @@ export function StoreHiddenNote({
 }) {
   return (
     <div className="mt-3 flex items-center gap-2.5 rounded-[16px] bg-[var(--white)] px-3.5 py-3 text-[13px] leading-[18px] text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle)]">
-      <StoreLogos store={otherStore} size={18} ring={false} />
+      {/* Even groot als de bolletjes/vinkjes in de categoriekoppen. */}
+      <StoreLogos store={otherStore} size={22} ring={false} />
       <span className="min-w-0 flex-1">
-        {count} {count === 1 ? "item" : "items"} alleen bij {otherStore === "lidl" ? "Lidl" : "Delhaize"} verborgen
+        {count} open {count === 1 ? "item" : "items"} alleen bij {otherStore === "lidl" ? "Lidl" : "Delhaize"} verborgen
       </span>
       <button
         type="button"
