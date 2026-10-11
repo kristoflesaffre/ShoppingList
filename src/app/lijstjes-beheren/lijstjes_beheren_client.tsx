@@ -1,9 +1,9 @@
 "use client";
 
-import { headerRoundButtonClass } from "@/components/ui/header_round_button";
+import { HeaderEditButton, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { PageBackButton } from "@/components/ui/page_back_button";
-import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
+import { DoneButton } from "@/components/ui/title_edit_button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -572,6 +572,8 @@ export function LijstjesBeherenClient({
   const normalCount = lists.filter((l) => inSectionList("lijstjes", l)).length;
   const masterCount = lists.filter((l) => inSectionList("favorieten", l)).length;
 
+  const editLabel = section === "lijstjes" ? "Lijstjes bewerken" : "Favorietenlijsten bewerken";
+
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)]">
       {/* Topbalk in paginakleur; compacte titel pas zodra de grote titel wegscrolt. */}
@@ -598,7 +600,11 @@ export function LijstjesBeherenClient({
           >
             {pageTitle}
           </p>
-          <span className="size-10" aria-hidden />
+          {!isCardsEditMode && hasSectionLists ? (
+            <HeaderEditButton label={editLabel} onClick={() => setIsCardsEditMode(true)} />
+          ) : (
+            <span className="size-10" aria-hidden />
+          )}
         </header>
       </div>
 
@@ -614,12 +620,6 @@ export function LijstjesBeherenClient({
                   <h1 ref={largeTitleRef} className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-text-primary">
                     {pageTitle}
                   </h1>
-                  {!isCardsEditMode && hasSectionLists ? (
-                    <TitleEditButton
-                      aria-label={section === "lijstjes" ? "Lijstjes bewerken" : "Favorietenlijsten bewerken"}
-                      onClick={() => setIsCardsEditMode(true)}
-                    />
-                  ) : null}
                 </div>
                 <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
                   {isCardsEditMode
@@ -638,8 +638,9 @@ export function LijstjesBeherenClient({
               ) : null}
             </div>
             {!isCardsEditMode ? (
+              <div className="flex items-center gap-3">
               <SegmentedControl
-                className="md:w-[300px]"
+                className="flex-1 md:w-[300px] md:flex-none"
                 ariaLabel="Soort lijstjes"
                 value={section}
                 onChange={(v) => {
@@ -650,6 +651,10 @@ export function LijstjesBeherenClient({
                   { value: "favorieten", label: <>Favorieten <span className="ml-1 font-medium opacity-60">{masterCount}</span></> },
                 ]}
               />
+              {hasSectionLists ? (
+                <HeaderEditButton label={editLabel} onClick={() => setIsCardsEditMode(true)} className="!hidden lg:!flex" />
+              ) : null}
+              </div>
             ) : null}
           </div>
 

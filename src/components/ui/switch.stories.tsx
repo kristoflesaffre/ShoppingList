@@ -17,9 +17,12 @@ type Story = StoryObj<typeof Switch>;
 export const On: Story = {};
 export const Off: Story = { args: { checked: false } };
 export const Disabled: Story = { args: { disabled: true } };
+
+function InteractiveSwitch(args: React.ComponentProps<typeof Switch>) {
+  const [on, setOn] = React.useState(false);
+  return <Switch {...args} checked={on} onCheckedChange={setOn} />;
+}
+
 export const Interactive: Story = {
-  render: (args) => {
-    const [on, setOn] = React.useState(false);
-    return <Switch {...args} checked={on} onCheckedChange={setOn} />;
-  },
+  render: (args) => <InteractiveSwitch {...args} />,
 };

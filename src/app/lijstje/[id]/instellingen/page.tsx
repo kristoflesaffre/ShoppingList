@@ -1,6 +1,6 @@
 "use client";
 
-import { headerBarSurfaceClass, headerRoundButtonClass } from "@/components/ui/header_round_button";
+import { HeaderEditButton, headerBarSurfaceClass, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -11,7 +11,6 @@ import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PageBackButton } from "@/components/ui/page_back_button";
-import { TitleEditButton } from "@/components/ui/title_edit_button";
 import { homeListCardIconSrc } from "@/lib/list-product-icons";
 import { masterStoreLabelFromListIcon } from "@/lib/master-stores";
 import { db } from "@/lib/db";
@@ -509,7 +508,11 @@ export default function LijstInstellingenPage() {
             <BackArrowIcon className="size-6" />
           </Link>
           <p className="flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]">Instellingen</p>
-          <span className="size-10 shrink-0" aria-hidden />
+          {isListOwner && !nameEditMode ? (
+            <HeaderEditButton label="Naam wijzigen" onClick={handleOpenNameEdit} />
+          ) : (
+            <span className="size-10 shrink-0" aria-hidden />
+          )}
         </header>
       </div>
 
@@ -517,6 +520,8 @@ export default function LijstInstellingenPage() {
         <div className="mb-1 hidden items-center gap-3 lg:flex">
           <PageBackButton href={`/lijstje/${encodeURIComponent(listId)}`} label="Terug naar lijstje" />
           <h1 className="text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">Instellingen</h1>
+          <span className="flex-1" />
+          {isListOwner && !nameEditMode ? <HeaderEditButton label="Naam wijzigen" onClick={handleOpenNameEdit} /> : null}
         </div>
 
         <div className="flex flex-1 flex-col gap-3.5 lg:grid lg:flex-none lg:grid-cols-[1fr_1.2fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-4">
@@ -581,7 +586,6 @@ export default function LijstInstellingenPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-center gap-2">
                     <h2 className="min-w-0 truncate text-2xl font-bold tracking-tight text-[var(--text-primary)]">{listName}</h2>
-                    {isListOwner ? <TitleEditButton aria-label="Naam wijzigen" onClick={handleOpenNameEdit} /> : null}
                   </div>
                   <p className="mt-1 flex min-w-0 items-center gap-[5px] text-[13px] text-[var(--text-secondary)]">
                     {storeIcon && !isMaster ? (

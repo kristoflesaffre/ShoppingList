@@ -130,3 +130,25 @@ export async function fileToAvatarDataUrl(file: File): Promise<string> {
   }
   return dataUrl;
 }
+
+/** Behoud alpha voor receptfoto's; de server centreert en maskeert het gerecht. */
+export async function fileToRecipeImageDataUrl(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const max = 512;
+  const scale = Math.min(max / bitmap.width, max / bitmap.height, 1);
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas niet beschikbaar");
+  ctx.clearRect(0, 0, w, h);
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+  const dataUrl = canvas.toDataURL("image/webp", 0.9);
+  if (dataUrl.length > 650_000) {
+    throw new Error("Afbeelding is nog te groot na compressie. Kies een kleinere foto.");
+  }
+  return dataUrl;
+}

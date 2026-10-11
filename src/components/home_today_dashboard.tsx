@@ -23,19 +23,10 @@ type GoogleEvent = {
   allDay: boolean;
 };
 
-type GoogleEmail = {
-  id: string;
-  subject: string;
-  from: string;
-  date: string;
-  snippet: string;
-};
-
 type GoogleDashboardState = {
   configured: boolean;
   connected: boolean;
   events: GoogleEvent[];
-  emails: GoogleEmail[];
 };
 
 function DashboardMaskIcon({ src, className }: { src: string; className?: string }) {
@@ -170,13 +161,30 @@ function eventTime(event: GoogleEvent) {
   );
 }
 
-function GoogleTodayPanel({ todayIso, tomorrowIso }: { todayIso: string; tomorrowIso: string }) {
+function GoogleTodayPanel({
+  ownerId,
+  todayIso,
+  tomorrowIso,
+}: {
+  ownerId: string;
+  todayIso: string;
+  tomorrowIso: string;
+}) {
   const [state, setState] = React.useState<GoogleDashboardState | null>(null);
   const [failed, setFailed] = React.useState(false);
+  const [disconnecting, setDisconnecting] = React.useState(false);
 
   React.useEffect(() => {
     let active = true;
-    fetch("/api/google/dashboard", { cache: "no-store" })
+    const start = new Date(`${todayIso}T00:00:00`);
+    const end = new Date(`${tomorrowIso}T00:00:00`);
+    end.setDate(end.getDate() + 1);
+    const params = new URLSearchParams({
+      ownerId,
+      timeMin: start.toISOString(),
+      timeMax: end.toISOString(),
+    });
+    fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Google dashboard request failed");
         return (await response.json()) as GoogleDashboardState;
@@ -190,6 +198,23 @@ function GoogleTodayPanel({ todayIso, tomorrowIso }: { todayIso: string; tomorro
     return () => {
       active = false;
     };
+  }, [ownerId, todayIso, tomorrowIso]);
+
+  const disconnect = React.useCallback(async () => {
+    setDisconnecting(true);
+    try {
+      const response = await fetch("/api/google/disconnect", { method: "POST" });
+      if (!response.ok) throw new Error("Google disconnect failed");
+      setState((current) => ({
+        configured: current?.configured ?? true,
+        connected: false,
+        events: [],
+      }));
+    } catch {
+      setFailed(true);
+    } finally {
+      setDisconnecting(false);
+    }
   }, []);
 
   return (
@@ -215,26 +240,62 @@ function GoogleTodayPanel({ todayIso, tomorrowIso }: { todayIso: string; tomorro
         <p className="mt-8 text-sm leading-5 text-[var(--text-secondary)]">De Google-agenda kon niet worden geladen.</p>
       ) : !state?.configured ? (
         <div className="mt-8">
-          <p className="text-base font-semibold text-[var(--text-primary)]">Google-koppeling nog niet ingesteld</p>
+          <p className="text-base font-semibold text-[var(--text-primary)]">Google Calendar instellen</p>
           <p className="mt-2 text-sm leading-5 text-[var(--text-secondary)]">
-            Zodra de OAuth-configuratie beschikbaar is, verschijnen agenda en Gmail hier.
+            Maak eenmalig een OAuth-client aan in Google Cloud. Daarna kan elke gebruiker hier diens agenda koppelen.
+          </p>
+          <a
+            href="https://console.cloud.google.com/auth/clients"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-pill bg-[var(--blue-500)] px-5 text-sm font-semibold text-[var(--white)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+          >
+            <DashboardMaskIcon src="/icons/calendar.svg" className="size-4" />
+            Naar Google OAuth
+          </a>
+          <p className="mt-3 text-xs leading-5 text-[var(--text-secondary)]">
+            Activeer ook de{" "}
+            <a
+              href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-action-primary underline underline-offset-2"
+            >
+              Google Calendar API
+            </a>
+            .
           </p>
         </div>
       ) : !state.connected ? (
         <div className="mt-8">
-          <p className="text-base font-semibold text-[var(--text-primary)]">Verbind je dagplanning</p>
+          <p className="text-base font-semibold text-[var(--text-primary)]">Koppel Google Calendar</p>
           <p className="mt-2 text-sm leading-5 text-[var(--text-secondary)]">
-            Lees afspraken en belangrijke ongelezen e-mails rechtstreeks uit Google.
+            Toon je afspraken van vandaag en morgen. De app krijgt alleen leestoegang tot agenda-items.
           </p>
           <Link
-            href="/api/google/connect"
-            className="mt-5 inline-flex min-h-11 items-center rounded-pill bg-[var(--blue-500)] px-5 text-sm font-semibold text-[var(--white)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+            href={`/api/google/connect?ownerId=${encodeURIComponent(ownerId)}`}
+            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-pill bg-[var(--blue-500)] px-5 text-sm font-semibold text-[var(--white)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
           >
-            Google koppelen
+            <DashboardMaskIcon src="/icons/calendar.svg" className="size-4" />
+            Google Calendar koppelen
           </Link>
         </div>
       ) : (
         <>
+          <div className="mt-5 flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-4">
+            <span className="inline-flex min-h-7 items-center gap-1.5 rounded-pill bg-[var(--success-soft-bg)] px-3 text-xs font-semibold text-[var(--success-soft-fg)]">
+              <span aria-hidden className="size-1.5 rounded-full bg-current" />
+              Alleen-lezen verbonden
+            </span>
+            <button
+              type="button"
+              onClick={() => void disconnect()}
+              disabled={disconnecting}
+              className="min-h-9 rounded-pill px-3 text-xs font-semibold text-action-primary transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            >
+              {disconnecting ? "Ontkoppelen…" : "Ontkoppelen"}
+            </button>
+          </div>
           <div className="mt-6 flex flex-col">
             {state.events.length > 0 ? (
               state.events.map((event, index) => {
@@ -264,22 +325,6 @@ function GoogleTodayPanel({ todayIso, tomorrowIso }: { todayIso: string; tomorro
             )}
           </div>
 
-          {state.emails.length > 0 ? (
-            <div className="mt-6 border-t border-[var(--border-subtle)] pt-5">
-              <div className="flex items-center justify-between gap-4">
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">Belangrijke mail</h3>
-                <span className="text-xs font-medium text-[var(--text-secondary)]">{state.emails.length} ongelezen</span>
-              </div>
-              <div className="mt-3 flex flex-col gap-3">
-                {state.emails.slice(0, 3).map((email) => (
-                  <div key={email.id} className="min-w-0">
-                    <p className="truncate text-sm font-semibold leading-5 text-[var(--text-primary)]">{email.subject}</p>
-                    <p className="truncate text-xs leading-5 text-[var(--text-secondary)]">{email.from}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </>
       )}
     </section>
@@ -310,12 +355,14 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
 }
 
 export function HomeTodayDashboard({
+  ownerId,
   todayIso,
   tomorrowIso,
   todayMeal,
   tomorrowMeal,
   shoppingCount,
 }: {
+  ownerId: string;
   todayIso: string;
   tomorrowIso: string;
   todayMeal: DashboardMeal | null;
@@ -326,7 +373,7 @@ export function HomeTodayDashboard({
     <div className="flex flex-col gap-8 pt-8">
       <div className="grid min-w-0 grid-cols-1 gap-6 min-[1050px]:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.85fr)] min-[1050px]:items-stretch">
         <TodayMealCard meal={todayMeal} />
-        <GoogleTodayPanel todayIso={todayIso} tomorrowIso={tomorrowIso} />
+        <GoogleTodayPanel ownerId={ownerId} todayIso={todayIso} tomorrowIso={tomorrowIso} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 min-[720px]:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">

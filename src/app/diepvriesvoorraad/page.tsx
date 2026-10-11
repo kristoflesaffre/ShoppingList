@@ -1,9 +1,9 @@
 "use client";
 
-import { headerRoundButtonClass } from "@/components/ui/header_round_button";
+import { HeaderEditButton, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { PageBackButton } from "@/components/ui/page_back_button";
-import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
+import { DoneButton } from "@/components/ui/title_edit_button";
 import { useRouter } from "next/navigation";
 import { MiniButton } from "@/components/ui/mini_button";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
@@ -295,7 +295,11 @@ export default function DiepvriesvoorraadPage() {
             >
               Diepvriesvoorraad
             </p>
-            <div className="size-6 shrink-0" aria-hidden />
+            {hasItems && !isEditing ? (
+              <HeaderEditButton onClick={() => setIsEditing(true)} />
+            ) : (
+              <div className="size-10 shrink-0" aria-hidden />
+            )}
           </header>
         </div>
       </div>
@@ -319,7 +323,6 @@ export default function DiepvriesvoorraadPage() {
                 <h1 ref={largeTitleRef} className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
                   Diepvriesvoorraad
                 </h1>
-                {!isEditing ? <TitleEditButton onClick={() => setIsEditing(true)} /> : null}
               </div>
               <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
                 {[
@@ -332,7 +335,11 @@ export default function DiepvriesvoorraadPage() {
               </p>
             </div>
             </div>
-            {isEditing ? <DoneButton onClick={() => setIsEditing(false)} /> : null}
+            {isEditing ? (
+              <DoneButton onClick={() => setIsEditing(false)} />
+            ) : (
+              <HeaderEditButton onClick={() => setIsEditing(true)} className="!hidden lg:!flex" />
+            )}
           </div>
 
           <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">

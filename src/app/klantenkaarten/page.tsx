@@ -1,8 +1,9 @@
 "use client";
 
+import { HeaderEditButton } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { ConfirmDeleteCardDialog as ConfirmDeleteDialog } from "@/components/confirm_delete_card_dialog";
-import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
+import { DoneButton } from "@/components/ui/title_edit_button";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
 import {
@@ -511,13 +512,12 @@ export default function KlantenKaartenPage() {
                   <h1 className="min-w-0 truncate text-page-title font-bold leading-32 tracking-normal text-text-primary">
                     Klantenkaarten
                   </h1>
-                  {!isEditMode ? (
-                    <TitleEditButton onClick={() => setIsEditMode(true)} />
-                  ) : null}
                 </div>
                 {isEditMode ? (
                   <DoneButton onClick={() => setIsEditMode(false)} />
-                ) : null}
+                ) : (
+                  <HeaderEditButton onClick={() => setIsEditMode(true)} />
+                )}
               </div>
 
               {isEditMode ? (

@@ -1,4 +1,8 @@
 import ingredientCategories from "@/lib/data/ingredient_categories.json";
+import {
+  isTakeoutMealName,
+  TAKEOUT_MEAL_CATEGORY,
+} from "@/lib/takeout-meal";
 
 type IngredientCategoriesFile = {
   categoryOrder: string[];
@@ -103,7 +107,7 @@ const DEFAULT_CATEGORY_HINTS: Record<string, string> = {
   nutella: BE,
   hagelslag: BE,
   pindakaas: BE,
-  krabsla: BE,
+  krabsla: V,
   honing: BE,
   jam: BE,
   rijst: D,
@@ -202,6 +206,7 @@ function categoryFromDefaultHints(normalizedFull: string): string | null {
 
 /** Categorie: eerst Excel-mapping, dan ingebouwde hints, anders `Overig`. */
 export function resolveItemCategoryFromName(name: string): string {
+  if (isTakeoutMealName(name)) return TAKEOUT_MEAL_CATEGORY;
   const key = normalizeIngredientKey(name);
   for (const k of excelLookupKeysForName(name)) {
     const fromExcel = data.ingredientToCategory[k];
@@ -216,6 +221,8 @@ export function effectiveItemCategory(item: {
   name: string;
   itemCategory?: string | null;
 }): string {
+  // Afhaalgerechten zijn semantisch sterker dan een eerder opgeslagen itemcategorie.
+  if (isTakeoutMealName(item.name)) return TAKEOUT_MEAL_CATEGORY;
   const stored =
     typeof item.itemCategory === "string" ? item.itemCategory.trim() : "";
   if (stored.length > 0) return stored;
@@ -224,7 +231,14 @@ export function effectiveItemCategory(item: {
 
 /** Sorteert categorieën volgens `categoryOrder` in JSON; onbekende sleutels achteraan. */
 export function orderedCategorySectionTitles(keys: string[]): string[] {
-  const order = data.categoryOrder;
+  const order = [
+    ...data.categoryOrder.filter(
+      (category) =>
+        category !== ITEM_CATEGORY_OVERIG && category !== TAKEOUT_MEAL_CATEGORY,
+    ),
+    TAKEOUT_MEAL_CATEGORY,
+    ITEM_CATEGORY_OVERIG,
+  ];
   const seen = new Set<string>();
   const out: string[] = [];
   for (const c of order) {

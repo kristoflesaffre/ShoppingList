@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { selectCalendarPreviewItems } from "@/lib/calendar-utils";
+import {
+  buildCalendarEntries,
+  selectCalendarPreviewItems,
+} from "@/lib/calendar-utils";
 
 describe("selectCalendarPreviewItems", () => {
   it("geeft vlees, aardappelen en een groente voorrang", () => {
@@ -50,5 +53,38 @@ describe("selectCalendarPreviewItems", () => {
       "Krieltjes",
       "Radijsjes",
     ]);
+  });
+});
+
+describe("buildCalendarEntries", () => {
+  it("neemt Frituur op als afhaalgerecht en niet als los item", () => {
+    const entries = buildCalendarEntries(
+      [
+        {
+          date: "10-10-2026",
+          items: [
+            {
+              name: "Frituur",
+              quantity: "1 stuk",
+              section: "Dinsdag",
+              itemDate: "2026-10-13",
+            },
+          ],
+        },
+      ],
+      [],
+    );
+
+    expect(entries.get("2026-10-13")).toMatchObject({
+      meals: [
+        {
+          recipeName: "Frituur",
+          ingredientCount: 0,
+          takeout: true,
+          photoUrl: "/images/frituur/frieten_groot_320.webp",
+        },
+      ],
+      looseIngredients: [],
+    });
   });
 });

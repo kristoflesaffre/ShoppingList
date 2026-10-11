@@ -1,9 +1,9 @@
 "use client";
 
-import { headerRoundButtonClass } from "@/components/ui/header_round_button";
+import { HeaderEditButton, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { PageBackButton } from "@/components/ui/page_back_button";
-import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
+import { DoneButton } from "@/components/ui/title_edit_button";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { id as instantId } from "@instantdb/react";
@@ -521,6 +521,9 @@ export default function TeKopenPage() {
             >
               {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
             </p>
+            {!isEditing && !isStoreOrderMode && allItems.length > 0 ? (
+              <HeaderEditButton onClick={() => setIsEditing(true)} className="-mr-2" />
+            ) : null}
             <button
               type="button"
               aria-label="Instellingen"
@@ -551,9 +554,6 @@ export default function TeKopenPage() {
                 <h1 ref={largeTitleRef} className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
                   {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
                 </h1>
-                {!isEditing && !isStoreOrderMode && allItems.length > 0 && (
-                  <TitleEditButton onClick={() => setIsEditing(true)} />
-                )}
               </div>
               {!isStoreOrderMode && allItems.length > 0 ? (
                 <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
@@ -579,6 +579,9 @@ export default function TeKopenPage() {
               >
                 {RoundIcons.search}
               </RoundIconButton>
+            ) : null}
+            {!isEditing && !isStoreOrderMode && allItems.length > 0 ? (
+              <HeaderEditButton onClick={() => setIsEditing(true)} className="!hidden lg:!flex" />
             ) : null}
             {!isEditing && !isStoreOrderMode ? (
               /* Desktop: «⋯» uit de topbalk staat naast de titel (canvas «Terugnavigatie A»). */

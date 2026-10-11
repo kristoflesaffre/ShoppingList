@@ -8,3 +8,22 @@ export const headerRoundButtonClass =
 
 /** Achtergrond van een vaste kopbalk: pagina-achtergrond, licht doorschijnend met blur. */
 export const headerBarSurfaceClass = "bg-[color-mix(in_srgb,var(--bg-app)_86%,transparent)] backdrop-blur-md";
+
+/** Ronde witte potloodknop rechts in de kopbalk (bewerken / naam wijzigen). */
+export function HeaderEditButton({
+  onClick,
+  label = "Bewerken",
+  className,
+}: {
+  onClick?: () => void;
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <button type="button" aria-label={label} onClick={onClick} className={className ? `${headerRoundButtonClass} ${className}` : headerRoundButtonClass}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
+        <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4" />
+      </svg>
+    </button>
+  );
+}

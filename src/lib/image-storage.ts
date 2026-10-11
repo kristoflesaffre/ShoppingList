@@ -1,6 +1,9 @@
 "use client";
 
-import { fileToAvatarDataUrl } from "@/lib/profile_crypto";
+import {
+  fileToAvatarDataUrl,
+  fileToRecipeImageDataUrl,
+} from "@/lib/profile_crypto";
 
 export type UserImageKind =
   | "list-icon"
@@ -56,6 +59,9 @@ export async function uploadUserImageFile({
   ownerId: string;
   kind: UserImageKind;
 }): Promise<StoredUserImage> {
-  const dataUrl = await fileToAvatarDataUrl(file);
+  const dataUrl =
+    kind === "recipe-photo" || kind === "generated-recipe-photo"
+      ? await fileToRecipeImageDataUrl(file)
+      : await fileToAvatarDataUrl(file);
   return uploadUserImageDataUrl({ dataUrl, ownerId, kind });
 }

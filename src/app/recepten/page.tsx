@@ -1,8 +1,8 @@
 "use client";
 
-import { headerRoundButtonClass } from "@/components/ui/header_round_button";
+import { HeaderEditButton, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
-import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
+import { DoneButton } from "@/components/ui/title_edit_button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -563,15 +563,17 @@ export default function ReceptenPage() {
                 <h1 className="text-page-title font-bold leading-32 tracking-normal text-text-primary">
                   Recepten
                 </h1>
-                {!isEditMode ? <TitleEditButton onClick={() => setIsEditMode(true)} /> : null}
               </div>
               {/* Rechts: toggle (normaal) of Gereed-knop (edit mode) */}
               {isEditMode ? (
                 <DoneButton onClick={() => setIsEditMode(false)} />
               ) : (
-                <div className="hidden w-[320px] shrink-0 md:block">
-                  <SearchBar surface="app" placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
-                </div>
+                <>
+                  <div className="hidden w-[320px] shrink-0 md:block">
+                    <SearchBar surface="app" placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
+                  </div>
+                  <HeaderEditButton onClick={() => setIsEditMode(true)} />
+                </>
               )}
             </div>
           ) : null}

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
+import {
+  effectiveItemCategory,
+  resolveItemCategoryFromName,
+} from "@/lib/item-ingredient-category";
 
 describe("resolveItemCategoryFromName", () => {
   it.each(["Ananas", "perziken", "Perzik"])(
@@ -29,7 +32,19 @@ describe("resolveItemCategoryFromName", () => {
     );
   });
 
-  it("deelt krabsla in bij beleg", () => {
-    expect(resolveItemCategoryFromName("Krabsla")).toBe("Beleg");
+  it("deelt krabsla in bij vlees en charcuterie", () => {
+    expect(resolveItemCategoryFromName("Krabsla")).toBe(
+      "Vlees & Charcuterie",
+    );
+  });
+
+  it("deelt frituur in als afhaalgerecht", () => {
+    expect(resolveItemCategoryFromName("Frituur")).toBe("Afhaalgerechten");
+  });
+
+  it("overschrijft voor frituur een oude opgeslagen itemcategorie", () => {
+    expect(
+      effectiveItemCategory({ name: "Frituur", itemCategory: "Overig" }),
+    ).toBe("Afhaalgerechten");
   });
 });

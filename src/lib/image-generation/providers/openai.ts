@@ -26,6 +26,8 @@ async function openaiImageEditsGptMultiRef(
   form.set("prompt", input.prompt);
   form.set("size", input.config.imageSize);
   form.set("response_format", "b64_json");
+  form.set("background", "transparent");
+  form.set("output_format", "png");
 
   input.references.forEach((ref) => {
     const uint8 = new Uint8Array(ref.bytes);
@@ -81,6 +83,8 @@ async function openaiImageGenerationsGpt(
       prompt: input.prompt,
       size: input.config.imageSize,
       n: 1,
+      background: "transparent",
+      output_format: "png",
     }),
   });
 

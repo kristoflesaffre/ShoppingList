@@ -3,6 +3,7 @@ import { put } from "@vercel/blob";
 import { init } from "@instantdb/admin";
 import schema from "../../../../../instant.schema";
 import { INSTANT_APP_ID } from "@/lib/instant_app_id";
+import { normalizeRecipeImage } from "@/lib/server/normalize-recipe-image.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,11 +34,16 @@ function parseDataUrl(dataUrl: string): {
   if (!match) throw new Error("Ongeldige data-URL.");
   const mimeType = match[1];
   const bytes = Buffer.from(match[2], "base64");
-  const extension = mimeType === "image/png" ? "png" : "jpg";
+  const extension =
+    mimeType === "image/png"
+      ? "png"
+      : mimeType === "image/webp"
+        ? "webp"
+        : "jpg";
   if (!mimeType.startsWith("image/")) {
     throw new Error("Alleen afbeeldingsbestanden zijn toegestaan.");
   }
-  if (bytes.length > 500_000) {
+  if (bytes.length > 700_000) {
     throw new Error("Afbeelding is te groot na compressie.");
   }
   return { mimeType, bytes, extension };
@@ -59,7 +65,14 @@ export async function POST(req: Request) {
     if (!ALLOWED_KINDS.has(kind)) throw new Error("Ongeldig afbeeldingstype.");
     if (!dataUrl) throw new Error("dataUrl is verplicht.");
 
-    const { mimeType, bytes, extension } = parseDataUrl(dataUrl);
+    const parsed = parseDataUrl(dataUrl);
+    const isRecipePhoto =
+      kind === "recipe-photo" || kind === "generated-recipe-photo";
+    const bytes = isRecipePhoto
+      ? await normalizeRecipeImage(parsed.bytes)
+      : parsed.bytes;
+    const mimeType = isRecipePhoto ? "image/webp" : parsed.mimeType;
+    const extension = isRecipePhoto ? "webp" : parsed.extension;
 
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
       return NextResponse.json({

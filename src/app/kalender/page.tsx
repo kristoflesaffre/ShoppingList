@@ -121,6 +121,8 @@ function MealRow({ meal }: { meal: CalendarMeal }) {
         <span className="truncate text-[15px] font-semibold leading-5 text-text-primary">{meal.recipeName}</span>
         {meal.fromStock ? (
           <FreezerPill />
+        ) : meal.takeout ? (
+          <span className="text-xs font-medium leading-4 text-[#8a6518]">Afhalen</span>
         ) : (
           <span className="text-xs leading-4 text-[var(--gray-400)]">{ingredientCountLabel(meal.ingredientCount)}</span>
         )}

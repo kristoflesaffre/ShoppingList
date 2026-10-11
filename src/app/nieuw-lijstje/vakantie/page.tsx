@@ -1,9 +1,8 @@
 "use client";
 
-import { headerBarSurfaceClass, headerRoundButtonClass } from "@/components/ui/header_round_button";
+import { HeaderEditButton, headerBarSurfaceClass, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import { autoShareMembershipTransactions, useAutoShare } from "@/lib/auto-share";
 import * as React from "react";
-import { TitleEditButton } from "@/components/ui/title_edit_button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
@@ -305,7 +304,7 @@ function VacationTopBar({
       <div
         className={cn(
           "grid h-16 items-center gap-4 px-4",
-          showActions ? "grid-cols-[40px_1fr_64px]" : "grid-cols-[40px_1fr_40px]",
+          showActions ? "grid-cols-[auto_1fr_auto]" : "grid-cols-[40px_1fr_40px]",
         )}
       >
         {backControl}
@@ -313,7 +312,7 @@ function VacationTopBar({
           {title}
         </h1>
         {showActions ? (
-          <div className="flex items-center justify-end gap-4 text-[var(--blue-500)]">
+          <div className="flex items-center justify-end gap-2 text-[var(--blue-500)]">
             <button
               type="button"
               aria-label="Persoon toevoegen"
@@ -321,6 +320,7 @@ function VacationTopBar({
             >
               <MaskIcon src="/icons/add_person.svg" />
             </button>
+            <HeaderEditButton label="Naam wijzigen" />
             <button
               type="button"
               aria-label="Meer opties"
@@ -345,7 +345,6 @@ function VacationListHeader() {
           <h2 className="text-page-title font-bold leading-32 tracking-normal text-[var(--text-primary)]">
             Vakantie
           </h2>
-          <TitleEditButton aria-label="Naam wijzigen" />
         </div>
         <div className="flex w-full items-center gap-1">
           <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--gray-100)]">

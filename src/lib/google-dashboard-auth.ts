@@ -7,6 +7,12 @@ export type GoogleAuthPayload = {
   accessToken: string;
   refreshToken?: string;
   expiresAt: number;
+  ownerId: string;
+};
+
+export type GoogleOAuthStatePayload = {
+  state: string;
+  ownerId: string;
 };
 
 export function googleOAuthConfig(origin: string) {
@@ -26,7 +32,7 @@ function encryptionKey(secret: string): Buffer {
   return createHash("sha256").update(secret).digest();
 }
 
-export function sealGoogleAuth(payload: GoogleAuthPayload, secret: string): string {
+function sealPayload(payload: object, secret: string): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(secret), iv);
   const encrypted = Buffer.concat([
@@ -37,7 +43,7 @@ export function sealGoogleAuth(payload: GoogleAuthPayload, secret: string): stri
   return Buffer.concat([iv, tag, encrypted]).toString("base64url");
 }
 
-export function unsealGoogleAuth(value: string, secret: string): GoogleAuthPayload | null {
+function unsealPayload(value: string, secret: string): unknown {
   try {
     const packed = Buffer.from(value, "base64url");
     if (packed.length < 29) return null;
@@ -47,12 +53,50 @@ export function unsealGoogleAuth(value: string, secret: string): GoogleAuthPaylo
     const decipher = createDecipheriv("aes-256-gcm", encryptionKey(secret), iv);
     decipher.setAuthTag(tag);
     const decoded = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
-    const payload = JSON.parse(decoded) as GoogleAuthPayload;
-    if (!payload.accessToken || !Number.isFinite(payload.expiresAt)) return null;
-    return payload;
+    return JSON.parse(decoded) as unknown;
   } catch {
     return null;
   }
+}
+
+export function sealGoogleAuth(payload: GoogleAuthPayload, secret: string): string {
+  return sealPayload(payload, secret);
+}
+
+export function unsealGoogleAuth(value: string, secret: string): GoogleAuthPayload | null {
+  const payload = unsealPayload(value, secret) as Partial<GoogleAuthPayload> | null;
+  if (
+    !payload?.accessToken ||
+    !Number.isFinite(payload.expiresAt) ||
+    typeof payload.ownerId !== "string" ||
+    !payload.ownerId
+  ) {
+    return null;
+  }
+  return payload as GoogleAuthPayload;
+}
+
+export function sealGoogleOAuthState(
+  payload: GoogleOAuthStatePayload,
+  secret: string,
+): string {
+  return sealPayload(payload, secret);
+}
+
+export function unsealGoogleOAuthState(
+  value: string,
+  secret: string,
+): GoogleOAuthStatePayload | null {
+  const payload = unsealPayload(value, secret) as Partial<GoogleOAuthStatePayload> | null;
+  if (
+    typeof payload?.state !== "string" ||
+    !payload.state ||
+    typeof payload.ownerId !== "string" ||
+    !payload.ownerId
+  ) {
+    return null;
+  }
+  return payload as GoogleOAuthStatePayload;
 }
 
 export function googleCookieOptions(secure: boolean) {

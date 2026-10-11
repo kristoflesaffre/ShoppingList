@@ -793,6 +793,8 @@ function HomeCalendarCard({
               <p className="text-xs leading-5 text-[var(--gray-400)]">
                 {firstMeal?.fromStock
                   ? "Diepvries"
+                  : firstMeal?.takeout
+                    ? "Afhalen"
                   : firstMeal?.ingredientCount === 1
                     ? "1 ingrediënt"
                     : `${firstMeal?.ingredientCount ?? 0} ingrediënten`}
@@ -1258,6 +1260,8 @@ function homeDaySummary(isoDate: string, entry: DayEntry | null) {
       title: meal.recipeName,
       sub: meal.fromStock
         ? "Uit de diepvries"
+        : meal.takeout
+          ? "Afhalen"
         : extra > 0
           ? `+ ${extra} ${extra === 1 ? "gerecht" : "gerechten"}`
           : meal.ingredientCount === 1
@@ -3875,6 +3879,7 @@ export default function Home() {
               </div>
             ) : (
               <HomeTodayDashboard
+                ownerId={ownerId}
                 todayIso={todayIso}
                 tomorrowIso={todayDashboard.tomorrowIso}
                 todayMeal={todayDashboard.todayMeal}

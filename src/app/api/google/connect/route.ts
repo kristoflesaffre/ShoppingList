@@ -4,14 +4,19 @@ import {
   GOOGLE_STATE_COOKIE,
   googleCookieOptions,
   googleOAuthConfig,
+  sealGoogleOAuthState,
 } from "@/lib/google-dashboard-auth";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const config = googleOAuthConfig(request.nextUrl.origin);
+  const ownerId = request.nextUrl.searchParams.get("ownerId")?.trim() ?? "";
   if (!config.configured) {
     return NextResponse.redirect(new URL("/?google=not-configured", request.url));
+  }
+  if (!ownerId) {
+    return NextResponse.redirect(new URL("/?google=connection-failed", request.url));
   }
 
   const state = randomBytes(24).toString("base64url");
@@ -21,20 +26,17 @@ export async function GET(request: NextRequest) {
   authorizeUrl.searchParams.set("response_type", "code");
   authorizeUrl.searchParams.set("access_type", "offline");
   authorizeUrl.searchParams.set("prompt", "consent");
-  authorizeUrl.searchParams.set("include_granted_scopes", "true");
+  authorizeUrl.searchParams.set("include_granted_scopes", "false");
   authorizeUrl.searchParams.set("state", state);
   authorizeUrl.searchParams.set(
     "scope",
     [
-      "openid",
-      "email",
-      "https://www.googleapis.com/auth/calendar.readonly",
-      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/calendar.events.readonly",
     ].join(" "),
   );
 
   const response = NextResponse.redirect(authorizeUrl);
-  response.cookies.set(GOOGLE_STATE_COOKIE, state, {
+  response.cookies.set(GOOGLE_STATE_COOKIE, sealGoogleOAuthState({ state, ownerId }, config.cookieSecret), {
     ...googleCookieOptions(request.nextUrl.protocol === "https:"),
     maxAge: 60 * 10,
   });

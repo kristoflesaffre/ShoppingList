@@ -50,3 +50,17 @@ npm run build-storybook  # Storybook statische build
   - Zonder deze variabele geeft de API `503` en zie je een duidelijke foutmelding op het inlogscherm.
 
 Meer achtergrond: [InstantDB-docs](https://instantdb.com/docs).
+
+### Google Calendar op het dashboard
+
+De dashboardweergave kan afspraken van vandaag en morgen uit de primaire Google-agenda tonen. De koppeling gebruikt uitsluitend de read-only scope `calendar.events.readonly`.
+
+1. Schakel de [Google Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com) in binnen een Google Cloud-project.
+2. Open [Google Auth Platform > Clients](https://console.cloud.google.com/auth/clients), configureer het OAuth-toestemmingsscherm en maak een OAuth 2.0-client van het type **Web application**.
+3. Voeg de redirect-URI's toe die je gebruikt:
+   - lokaal: `http://localhost:3000/api/google/callback`
+   - lokale Codex-preview: `http://127.0.0.1:3000/api/google/callback`
+   - productie: `https://<jouw-domein>/api/google/callback`
+4. Vul `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` en `GOOGLE_OAUTH_COOKIE_SECRET` in `.env.local` en in de productieomgeving in.
+
+Maak een cookiesleutel met bijvoorbeeld `openssl rand -base64 32`. Na configuratie kan iedere ingelogde gebruiker vanuit de tab **Dashboard** diens eigen Google Calendar koppelen of ontkoppelen.

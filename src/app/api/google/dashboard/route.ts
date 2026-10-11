@@ -19,14 +19,6 @@ type GoogleCalendarEvent = {
   end?: { date?: string; dateTime?: string };
 };
 
-type GmailMessage = {
-  id?: string;
-  snippet?: string;
-  payload?: {
-    headers?: Array<{ name?: string; value?: string }>;
-  };
-};
-
 async function refreshGoogleToken(
   payload: GoogleAuthPayload,
   clientId: string,
@@ -53,10 +45,24 @@ async function refreshGoogleToken(
     accessToken: refreshed.access_token,
     refreshToken: payload.refreshToken,
     expiresAt: Date.now() + (refreshed.expires_in ?? 3600) * 1000,
+    ownerId: payload.ownerId,
   };
 }
 
-function localDayBounds() {
+function localDayBounds(request: NextRequest) {
+  const requestedStart = request.nextUrl.searchParams.get("timeMin");
+  const requestedEnd = request.nextUrl.searchParams.get("timeMax");
+  const parsedStart = requestedStart ? new Date(requestedStart) : null;
+  const parsedEnd = requestedEnd ? new Date(requestedEnd) : null;
+  if (
+    parsedStart &&
+    parsedEnd &&
+    Number.isFinite(parsedStart.getTime()) &&
+    Number.isFinite(parsedEnd.getTime()) &&
+    parsedEnd > parsedStart
+  ) {
+    return { start: parsedStart.toISOString(), end: parsedEnd.toISOString() };
+  }
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const end = new Date(start);
@@ -64,33 +70,31 @@ function localDayBounds() {
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
-function header(message: GmailMessage, name: string): string {
-  return (
-    message.payload?.headers?.find((entry) => entry.name?.toLowerCase() === name.toLowerCase())?.value ?? ""
-  );
-}
-
 export async function GET(request: NextRequest) {
   const config = googleOAuthConfig(request.nextUrl.origin);
+  const ownerId = request.nextUrl.searchParams.get("ownerId")?.trim() ?? "";
   if (!config.configured) {
-    return NextResponse.json({ configured: false, connected: false, events: [], emails: [] });
+    return NextResponse.json({ configured: false, connected: false, events: [] });
+  }
+  if (!ownerId) {
+    return NextResponse.json({ configured: true, connected: false, events: [] }, { status: 400 });
   }
 
   const sealed = request.cookies.get(GOOGLE_AUTH_COOKIE)?.value;
   const stored = sealed ? unsealGoogleAuth(sealed, config.cookieSecret) : null;
-  if (!stored) {
-    return NextResponse.json({ configured: true, connected: false, events: [], emails: [] });
+  if (!stored || stored.ownerId !== ownerId) {
+    return NextResponse.json({ configured: true, connected: false, events: [] });
   }
 
   const auth = await refreshGoogleToken(stored, config.clientId, config.clientSecret);
   if (!auth) {
-    const response = NextResponse.json({ configured: true, connected: false, events: [], emails: [] });
+    const response = NextResponse.json({ configured: true, connected: false, events: [] });
     response.cookies.delete(GOOGLE_AUTH_COOKIE);
     return response;
   }
 
   const headers = { authorization: `Bearer ${auth.accessToken}` };
-  const bounds = localDayBounds();
+  const bounds = localDayBounds(request);
   const calendarUrl = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
   calendarUrl.searchParams.set("timeMin", bounds.start);
   calendarUrl.searchParams.set("timeMax", bounds.end);
@@ -98,34 +102,21 @@ export async function GET(request: NextRequest) {
   calendarUrl.searchParams.set("orderBy", "startTime");
   calendarUrl.searchParams.set("maxResults", "12");
 
-  const gmailUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
-  gmailUrl.searchParams.set("q", "is:unread newer_than:2d -category:promotions -category:social");
-  gmailUrl.searchParams.set("maxResults", "4");
+  const calendarResponse = await fetch(calendarUrl, { headers, cache: "no-store" });
 
-  const [calendarResponse, gmailResponse] = await Promise.all([
-    fetch(calendarUrl, { headers, cache: "no-store" }),
-    fetch(gmailUrl, { headers, cache: "no-store" }),
-  ]);
+  if (calendarResponse.status === 401 || calendarResponse.status === 403) {
+    const response = NextResponse.json({ configured: true, connected: false, events: [] });
+    response.cookies.delete(GOOGLE_AUTH_COOKIE);
+    return response;
+  }
+  if (!calendarResponse.ok) {
+    return NextResponse.json(
+      { configured: true, connected: true, events: [], unavailable: true },
+      { status: 502 },
+    );
+  }
 
-  const calendarJson = calendarResponse.ok
-    ? ((await calendarResponse.json()) as { items?: GoogleCalendarEvent[] })
-    : { items: [] };
-  const gmailList = gmailResponse.ok
-    ? ((await gmailResponse.json()) as { messages?: Array<{ id?: string }> })
-    : { messages: [] };
-
-  const messages = await Promise.all(
-    (gmailList.messages ?? []).flatMap((message) =>
-      message.id
-        ? [
-            fetch(
-              `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(message.id)}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
-              { headers, cache: "no-store" },
-            ).then(async (response) => (response.ok ? ((await response.json()) as GmailMessage) : null)),
-          ]
-        : [],
-    ),
-  );
+  const calendarJson = (await calendarResponse.json()) as { items?: GoogleCalendarEvent[] };
 
   const response = NextResponse.json({
     configured: true,
@@ -138,19 +129,6 @@ export async function GET(request: NextRequest) {
       end: event.end?.dateTime ?? event.end?.date ?? null,
       allDay: Boolean(event.start?.date && !event.start?.dateTime),
     })),
-    emails: messages.flatMap((message) =>
-      message
-        ? [
-            {
-              id: message.id ?? "",
-              subject: header(message, "Subject") || "Zonder onderwerp",
-              from: header(message, "From"),
-              date: header(message, "Date"),
-              snippet: message.snippet ?? "",
-            },
-          ]
-        : [],
-    ),
   });
 
   if (auth.accessToken !== stored.accessToken || auth.expiresAt !== stored.expiresAt) {

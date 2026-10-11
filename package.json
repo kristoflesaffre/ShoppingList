@@ -40,6 +40,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-qr-code": "^2.0.21",
+    "sharp": "^0.33.5",
     "zxing-wasm": "^3.0.2"
   },
   "overrides": {

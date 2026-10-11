@@ -4,6 +4,10 @@
  */
 
 import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
+import {
+  isTakeoutMealName,
+  TAKEOUT_MEAL_PHOTO_URL,
+} from "@/lib/takeout-meal";
 
 export type CalendarMeal = {
   recipeGroupId: string;
@@ -14,6 +18,8 @@ export type CalendarMeal = {
   ingredientCount: number;
   /** Gerecht uit de diepvries: geen ingrediënten om te kopen. */
   fromStock?: boolean;
+  /** Afhaalgerecht: gepland eten zonder afvinkbare ingrediënten. */
+  takeout?: boolean;
 };
 
 export type DayEntry = {
@@ -197,7 +203,9 @@ export function buildCalendarEntries(
     if (!listDate) continue;
     const monday = getMondayOfWeek(listDate);
 
-    for (const item of list.items ?? []) {
+    const listItems = list.items ?? [];
+    for (let itemIndex = 0; itemIndex < listItems.length; itemIndex++) {
+      const item = listItems[itemIndex];
       const offset = dutchDayToOffset(item.section ?? "");
       if (offset === null) continue;
 
@@ -221,7 +229,16 @@ export function buildCalendarEntries(
       }
       const entry = result.get(iso)!;
 
-      if (item.recipeGroupId) {
+      if (isTakeoutMealName(item.name)) {
+        entry.meals.push({
+          recipeGroupId: `takeout-${iso}-${itemIndex}`,
+          recipeName: item.name,
+          recipeId: null,
+          photoUrl: TAKEOUT_MEAL_PHOTO_URL,
+          ingredientCount: 0,
+          takeout: true,
+        });
+      } else if (item.recipeGroupId) {
         let meal = entry.meals.find((m) => m.recipeGroupId === item.recipeGroupId);
         if (!meal) {
           const recipeId = parseRecipeId(item.recipeGroupId);
