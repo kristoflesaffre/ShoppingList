@@ -1044,24 +1044,6 @@ function HomeTeKopenSwimlane({
           </Link>
         ) : null}
       </div>
-      {pageCount > 1 ? (
-        <div className="flex justify-center gap-1.5" role="tablist" aria-label="Te kopen">
-          {Array.from({ length: pageCount }, (_, i) => (
-            <button
-              key={i}
-              type="button"
-              role="tab"
-              aria-selected={i === activeIndex}
-              aria-label={i < columns.length ? `Producten ${i * 2 + 1}–${Math.min(i * 2 + 2, items.length)}` : `Alle ${total} producten`}
-              onClick={() => scrollToPage(i)}
-              className={cn(
-                "h-1.5 rounded-full transition-[width,background-color] duration-base ease-out-strong",
-                i === activeIndex ? "w-[18px] bg-[var(--blue-500)]" : "w-1.5 bg-[var(--gray-200)]",
-              )}
-            />
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -2072,24 +2054,6 @@ function HomeLijstjesSection({
         </Link>
       </div>
 
-      {pageCount > 1 ? (
-        <div className="flex justify-center gap-1.5 lg:hidden" role="tablist" aria-label="Lijstjes">
-          {Array.from({ length: pageCount }, (_, i) => (
-            <button
-              key={i}
-              type="button"
-              role="tab"
-              aria-selected={i === activeIndex}
-              aria-label={i < activeLists.length ? activeLists[i].name : `Alle ${normalLists.length} lijstjes`}
-              onClick={() => scrollToPage(i)}
-              className={cn(
-                "h-1.5 rounded-full transition-[width,background-color] duration-base ease-out-strong",
-                i === activeIndex ? "w-[18px] bg-[var(--blue-500)]" : "w-1.5 bg-[var(--gray-200)]",
-              )}
-            />
-          ))}
-        </div>
-      ) : null}
 
       <ItemNameSearchSlideIn
         open={searchTarget != null}
@@ -3830,7 +3794,8 @@ export default function Home() {
           <div
             className={cn(
               "flex flex-col md:hidden",
-              !hasLists ? "gap-8 pt-8 pb-2" : "gap-10 pt-8",
+              // Compacter (zonder paginabolletjes onder de veegrijen): meer past op één scherm.
+              !hasLists ? "gap-6 pt-6 pb-2" : "gap-7 pt-6",
             )}
           >
             {homeSectionConfig.order
