@@ -558,11 +558,12 @@ export default function ReceptenPage() {
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-6 motion-safe:animate-fade-up">
           {hasRecipes ? (
             <div className="flex items-center gap-3">
-              {/* Titel + potlood */}
-              <div className="flex min-w-0 flex-1 items-center gap-2">
+              {/* Titel (+ hint in bewerkstand) */}
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <h1 className="text-page-title font-bold leading-32 tracking-normal text-text-primary">
                   Recepten
                 </h1>
+                {isEditMode ? <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">Sleep om te ordenen</p> : null}
               </div>
               {/* Rechts: toggle (normaal) of Gereed-knop (edit mode) */}
               {isEditMode ? (
@@ -715,7 +716,7 @@ export default function ReceptenPage() {
         </div>
       )}
 
-      {!snackbarMessage && hasRecipes ? (
+      {!snackbarMessage && hasRecipes && !isEditMode ? (
         <div
           className={cn(
             "pointer-events-none fixed inset-x-0 z-20 lg:bottom-[38px]",
