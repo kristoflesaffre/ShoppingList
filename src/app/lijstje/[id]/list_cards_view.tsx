@@ -1267,8 +1267,8 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
               done={countableItems.length === 0 ? takeoutItems.length > 0 : countableItems.every((i) => i.checked)}
               progress={{ done: countableItems.filter((i) => i.checked).length, total: countableItems.length }}
             />
+            {/* Per categorie geen «+»: toevoegen doe je per dag (of met de grote knop). */}
             <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h3>
-            <AddButton label={`Item toevoegen aan ${title}`} onClick={() => onAddToSection(s.title)} />
           </>
         }
       >

@@ -5440,34 +5440,42 @@ export default function ListDetailPage({
     }
   }, [listId, listLayoutMode, cardLayout, isListLayoutHydrated]);
 
+  /*
+   * Groepering: standaard per categorie op mobiel en per dag op desktop. Kiest de gebruiker zelf,
+   * dan onthouden we dat per toesteltype (mobiel/desktop) voor alle lijstjes.
+   */
+  const groupingPrefKey = () =>
+    `list-grouping-mode:${typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches ? "desktop" : "mobile"}`;
   React.useEffect(() => {
     if (!listId) return;
     setIsListGroupingHydrated(false);
-    try {
-      const raw = window.localStorage.getItem(`list-grouping-mode:${listId}`);
-      if (raw === "category" || raw === "day") {
-        setListGroupingMode(isLandalOrVakantieList ? "category" : raw);
-      } else {
-        setListGroupingMode(isLandalOrVakantieList ? "category" : "day");
-      }
-    } catch {
-      setListGroupingMode(isLandalOrVakantieList ? "category" : "day");
-    } finally {
+    if (isLandalOrVakantieList) {
+      setListGroupingMode("category");
       setIsListGroupingHydrated(true);
+      return;
     }
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    let mode: "day" | "category" = isDesktop ? "day" : "category";
+    try {
+      const raw = window.localStorage.getItem(groupingPrefKey());
+      if (raw === "category" || raw === "day") mode = raw;
+    } catch {
+      // geen opslag: standaard
+    }
+    setListGroupingMode(mode);
+    setIsListGroupingHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- enkel bij een ander lijstje opnieuw bepalen
   }, [listId, isLandalOrVakantieList]);
 
-  React.useEffect(() => {
-    if (!listId || !isListGroupingHydrated) return;
+  const handleListGroupingChange = React.useCallback((mode: "day" | "category") => {
+    setListGroupingMode(mode);
     try {
-      window.localStorage.setItem(
-        `list-grouping-mode:${listId}`,
-        listGroupingMode,
-      );
+      window.localStorage.setItem(groupingPrefKey(), mode);
     } catch {
       // no-op
     }
-  }, [listId, listGroupingMode, isListGroupingHydrated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- groupingPrefKey leest enkel de schermbreedte
+  }, []);
 
   React.useEffect(() => {
     if (!listId) return;
@@ -6011,7 +6019,7 @@ export default function ListDetailPage({
                     <div className="hidden lg:block">
                       <ListGroupingToggle
                         value={listGroupingMode}
-                        onChange={setListGroupingMode}
+                        onChange={handleListGroupingChange}
                       />
                     </div>
                   ) : null}
@@ -6102,7 +6110,7 @@ export default function ListDetailPage({
             /* Canvas «Open eerst · O1»: groepering als chip links, «Open eerst» met schuifje rechts. */
             <div className="flex w-full min-w-0 items-center justify-between gap-3 lg:hidden">
               <div className="flex min-w-0 items-center gap-2">
-                <ListGroupingMenuChip value={listGroupingMode} onChange={setListGroupingMode} />
+                <ListGroupingMenuChip value={listGroupingMode} onChange={handleListGroupingChange} />
                 {isLidlDelhaizeList ? (
                   <StoreFilterChip value={storeFilter} onChange={handleStoreFilterChange} counts={storeFilterCounts} />
                 ) : null}
