@@ -1294,11 +1294,17 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
       </>
     );
   }
+  // Volledig gekochte categorieën zakken naar onder; open en klaar behouden elk de winkelvolgorde.
+  const isCardDone = (s: Section) => {
+    const countable = s.items.filter((item) => !isTakeoutMealName(item.name));
+    return countable.length > 0 ? countable.every((i) => i.checked) : s.items.length > 0;
+  };
+  const shoppingOrder = [...cards.filter((s) => !isCardDone(s)), ...cards.filter(isCardDone)];
   return (
     <>
-      <div className="flex flex-col gap-3 lg:hidden">{cards.map((s) => render(s, false))}</div>
+      <div className="flex flex-col gap-3 lg:hidden">{shoppingOrder.map((s) => render(s, false))}</div>
       {/* Desktop: drie kolommen (canvas «Lijstje 6 · desktop»). */}
-      <div className="hidden gap-4 lg:block lg:columns-3 [&>*]:mb-4">{cards.map((s) => render(s, false))}</div>
+      <div className="hidden gap-4 lg:block lg:columns-3 [&>*]:mb-4">{shoppingOrder.map((s) => render(s, false))}</div>
     </>
   );
 }
