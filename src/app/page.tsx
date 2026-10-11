@@ -909,7 +909,7 @@ const TE_KOPEN_CHECKLIST_COUNT = 3;
 
 /**
  * Canvas «Home · Te kopen · 6 · afvinklijst» (mobiel): de laatste producten als rijen met een rondje
- * om af te vinken (gekocht), «Product toevoegen» als laatste rij. Afvinken toont even het vinkje
+ * om af te vinken (gekocht), «+ Product» rechts onderaan (zoals «+ Lijstje» op de lijstkaarten). Afvinken toont even het vinkje
  * (nog eens tikken = ongedaan), daarna verdwijnt het product.
  */
 function HomeTeKopenChecklist({
@@ -1006,18 +1006,12 @@ function HomeTeKopenChecklist({
           );
         })}
       </ul>
-      <button
-        type="button"
-        onClick={onAddProduct}
-        className="flex w-full items-center gap-3 border-t border-[var(--border-subtle)] pb-1 pt-3 text-left text-[15px] font-semibold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
-      >
-        <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-500)] text-white" aria-hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" className="size-3.5">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </span>
-        Product toevoegen
-      </button>
+      <div className="flex justify-end border-t border-[var(--border-subtle)] pt-3">
+        <button type="button" onClick={onAddProduct} className={HOME_SOFT_PILL_CLASS} aria-label="Product toevoegen">
+          <HomeSoftPillPlusIcon />
+          Product
+        </button>
+      </div>
     </div>
   );
 }
