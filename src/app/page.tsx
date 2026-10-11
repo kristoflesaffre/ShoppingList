@@ -1191,7 +1191,12 @@ function HomeTeKopenSection({
         label="Te kopen"
         showNaarOverzicht={false}
         action={
-          <button type="button" onClick={onAddProduct} className={HOME_SOFT_PILL_CLASS}>
+          // Zelfde tekstknop als «Toon alle» (rechts uitgelijnd op dezelfde lijn).
+          <button
+            type="button"
+            onClick={onAddProduct}
+            className="-mr-1 inline-flex shrink-0 items-center gap-1 rounded-pill px-2 py-1 text-[13px] font-medium leading-[18px] text-action-primary transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+          >
             <HomeSoftPillPlusIcon />
             Toevoegen
           </button>
@@ -2388,7 +2393,7 @@ export default function Home() {
       })
       .filter((tx): tx is NonNullable<typeof tx> => tx != null);
     if (txs.length > 0) {
-      void db.transact(txs);
+      void db.transact(txs).catch(() => undefined);
     }
   }, [user, authLoading, isLoading, data?.lists]);
 
@@ -2611,7 +2616,7 @@ export default function Home() {
       { name, quantity: "1 stuk", section: "Algemeen" },
     );
     if (merge) {
-      void db.transact(db.tx.items[merge.id].update({ quantity: merge.quantity, ...(merge.reopen ? { checked: false } : {}) }));
+      void db.transact(db.tx.items[merge.id].update({ quantity: merge.quantity, ...(merge.reopen ? { checked: false } : {}) })).catch(() => undefined);
       return;
     }
     const maxOrder = items.reduce((m, it) => Math.max(m, typeof it.order === "number" ? it.order : 0), -1);
@@ -2626,7 +2631,7 @@ export default function Home() {
           order: maxOrder + 1,
         })
         .link({ list: list.id }),
-    );
+    ).catch(() => undefined);
   }, []);
 
   const [homeSectionConfig, setHomeSectionConfig] = React.useState<HomeSectionConfig>(
@@ -2678,7 +2683,7 @@ export default function Home() {
       });
       txs.push(db.tx.lists[id].update({ landalTripLabel: inferred }));
     }
-    if (txs.length > 0) void db.transact(txs);
+    if (txs.length > 0) void db.transact(txs).catch(() => undefined);
   }, [user?.id, authLoading, isLoading, data?.lists]);
 
   /** Landal-gezin: beide vaste gezinsleden zien het lijstje zonder expliciete deellink. */
@@ -2712,7 +2717,7 @@ export default function Home() {
         ),
       );
     }
-    if (txs.length > 0) void db.transact(txs);
+    if (txs.length > 0) void db.transact(txs).catch(() => undefined);
   }, [user?.id, authLoading, isLoading, data?.lists]);
 
   const savedListIconImages = React.useMemo((): SavedListIconImage[] => {
@@ -3038,7 +3043,7 @@ export default function Home() {
     if (plans.length === 0) return;
     void db.transact(
       plans.map((p) => db.tx.lists[p.listId].update({ icon: p.nextIcon })),
-    );
+    ).catch(() => undefined);
   }, [user?.id, authLoading, isLoading, data?.lists]);
 
   const [teKopenSlideOpen, setTeKopenSlideOpen] = React.useState(false);
@@ -3147,7 +3152,7 @@ export default function Home() {
           ...itemIds.map((itemId) => db.tx.items[itemId].delete()),
           ...membershipIds.map((mid) => db.tx.listMembers[mid].delete()),
           db.tx.lists[listId].delete(),
-        ] as Parameters<typeof db.transact>[0]);
+        ] as Parameters<typeof db.transact>[0]).catch(() => undefined);
         setRemovingId(null);
       }, DELETE_ANIMATION_MS);
     },
@@ -3443,7 +3448,7 @@ export default function Home() {
         }
       }
 
-      db.transact(txs as Parameters<typeof db.transact>[0]);
+      db.transact(txs as Parameters<typeof db.transact>[0]).catch(() => undefined);
       handleCloseNewListFormState();
       if (startFrituurWizard) {
         router.push(`/lijstje/${newId}?frituurWizard=1`);
@@ -3848,7 +3853,7 @@ export default function Home() {
                           primeKeyboard();
                           setTeKopenSlideOpen(true);
                         }}
-                        onBought={(id) => void db.transact(db.tx.shoppingItems[id].delete())}
+                        onBought={(id) => void db.transact(db.tx.shoppingItems[id].delete()).catch(() => undefined)}
                         me={ownProfile}
                       />
                     </div>
