@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { normalizeQuantity, parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
 
 /** Eenheden die in recepten het vaakst voorkomen; «Andere…» geeft een vrij veld. */
-export const RECIPE_UNIT_OPTIONS = ["stuk", "g", "kg", "ml", "l", "el", "tl", "snuifje"] as const;
+export const RECIPE_UNIT_OPTIONS = ["stuk", "gram", "kilogram", "ml", "l", "el", "tl", "snuifje"] as const;
 
 export type RecipeIngredientFormDraft = {
   id?: string;

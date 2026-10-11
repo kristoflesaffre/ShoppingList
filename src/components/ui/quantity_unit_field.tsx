@@ -5,7 +5,16 @@ import { Stepper } from "@/components/ui/stepper";
 import { FilterChip } from "@/components/ui/filter_chip";
 import { InputField } from "@/components/ui/input_field";
 
-export const DEFAULT_UNIT_OPTIONS = ["stuk", "pak", "fles", "kg", "g"] as const;
+export const DEFAULT_UNIT_OPTIONS = ["stuk", "pak", "fles", "kilogram", "gram"] as const;
+
+/** Afkortingen die als de voluit geschreven chip gelden («g» → «gram»), als die chip bestaat. */
+const UNIT_ALIASES: Record<string, string> = { g: "gram", gr: "gram", kg: "kilogram", kilo: "kilogram" };
+
+function canonicalUnit(unit: string | undefined, units: readonly string[]): string | undefined {
+  if (unit == null) return unit;
+  const target = UNIT_ALIASES[unit.trim().toLowerCase()];
+  return target && units.includes(target) ? target : unit;
+}
 
 /**
  * Design system «Aantal + eenheid»: formulier-stepper met eenheidschips (+ «Andere…» → vrij veld).
@@ -31,15 +40,21 @@ export function QuantityUnitField({
   /** Chips altijd onder de stepper, ook op tablet+ (voor veel eenheden). */
   stacked?: boolean;
 }) {
+  const shownUnit = canonicalUnit(unit, units);
   const [custom, setCustom] = React.useState(
-    () => unit != null && unit !== "" && !units.includes(unit),
+    () => shownUnit != null && shownUnit !== "" && !units.includes(shownUnit),
   );
 
-  // Volg een eenheid die van buitenaf gezet wordt (bv. bij bewerken van een bestaand item).
+  // Volg een eenheid die van buitenaf gezet wordt (bv. bij bewerken van een bestaand item);
+  // een oude afkorting («g», «kg») wordt meteen de voluit geschreven chip.
   React.useEffect(() => {
     if (unit == null || unit === "") return;
+    if (shownUnit !== unit && onUnitChange && shownUnit) {
+      onUnitChange(shownUnit);
+      return;
+    }
     setCustom(!units.includes(unit));
-  }, [unit, units]);
+  }, [unit, shownUnit, units, onUnitChange]);
 
   return (
     <div>
@@ -52,7 +67,7 @@ export function QuantityUnitField({
             {units.map((u) => (
               <FilterChip
                 key={u}
-                selected={!custom && unit === u}
+                selected={!custom && shownUnit === u}
                 onClick={() => {
                   setCustom(false);
                   onUnitChange(u);
