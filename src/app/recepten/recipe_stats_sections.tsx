@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { buildCalendarEntries } from "@/lib/calendar-utils";
 import { cn } from "@/lib/utils";
 import { Shimmer } from "@/components/ui/shimmer";
-import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
+import { mixWithWhite, RECIPE_TINT_FALLBACK, recipeTintColors, useIsDarkTheme, useRecipeTint, type Rgb } from "@/lib/recipe-tint";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import {
   computeRecipeStats,
@@ -138,10 +138,49 @@ export function StatPlate({ src, size, shadow = true }: { src: string | null; si
   );
 }
 
-/** Zachte achtergrond in de kleur van het gerecht (zoals de receptkaart). */
-function useDishBackground(src: string | null): React.CSSProperties {
-  const tint = recipeTintColors(useRecipeTint(src), useIsDarkTheme());
-  return { backgroundImage: `linear-gradient(120deg, ${tint.mid} 0%, ${tint.top} 100%)` };
+/** Kleur met verschoven tint (graden op het kleurenwiel), voor een tweede, verwante kleur. */
+function shiftHue([r, g, b]: Rgb, degrees: number): Rgb {
+  const max = Math.max(r, g, b) / 255;
+  const min = Math.min(r, g, b) / 255;
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return [r, g, b];
+  const s = d / (1 - Math.abs(2 * l - 1));
+  let h = max === r / 255 ? ((g - b) / 255 / d) % 6 : max === g / 255 ? (b - r) / 255 / d + 2 : (r - g) / 255 / d + 4;
+  h = (h * 60 + degrees + 360) % 360;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  const [r1, g1, b1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return [Math.round((r1 + m) * 255), Math.round((g1 + m) * 255), Math.round((b1 + m) * 255)];
+}
+
+/**
+ * Achtergrond in de kleur van het gerecht, met diepte: een gloed achter het bord, een zacht licht
+ * in de andere hoek en een verwante tweede kleur, over de zachte basis van de receptkaart.
+ * `plateSide` = aan welke kant het bord staat.
+ */
+function useDishBackground(src: string | null, plateSide: "left" | "right"): React.CSSProperties {
+  const rgb = useRecipeTint(src);
+  const dark = useIsDarkTheme();
+  const tint = recipeTintColors(rgb, dark);
+  const base = rgb ?? RECIPE_TINT_FALLBACK;
+  const [r, g, b] = base;
+  const [r2, g2, b2] = shiftHue(base, 28);
+  const strength = rgb ? 1 : 0.4;
+  const glow = dark ? `rgba(${r}, ${g}, ${b}, ${0.42 * strength})` : mixWithWhite(base, 0.5 * strength);
+  const second = dark ? `rgba(${r2}, ${g2}, ${b2}, ${0.22 * strength})` : `rgba(${r2}, ${g2}, ${b2}, ${0.2 * strength})`;
+  const sheen = dark ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.7)";
+  const plateAt = plateSide === "right" ? "88% 50%" : "12% 50%";
+  const sheenAt = plateSide === "right" ? "0% 0%" : "100% 0%";
+  return {
+    backgroundImage: [
+      `radial-gradient(60% 90% at ${plateAt}, ${glow} 0%, transparent 70%)`,
+      `radial-gradient(55% 80% at ${sheenAt}, ${sheen} 0%, transparent 70%)`,
+      `radial-gradient(70% 100% at 50% 110%, ${second} 0%, transparent 70%)`,
+      `linear-gradient(120deg, ${tint.mid} 0%, ${tint.top} 100%)`,
+    ].join(", "),
+  };
 }
 
 const cardLink =
@@ -163,7 +202,7 @@ function SectionHead({ title, sub, right }: { title: string; sub?: string; right
 
 function FavoriteCard({ item, todayIso }: { item: RankedRecipe; todayIso: string }) {
   const { recipe, stat } = item;
-  const bg = useDishBackground(recipe.photoUrl);
+  const bg = useDishBackground(recipe.photoUrl, "right");
   return (
     <Link
       href={`/recepten/${recipe.id}`}
@@ -205,7 +244,7 @@ function FavoriteCard({ item, todayIso }: { item: RankedRecipe; todayIso: string
 
 function RunnerCard({ item, rank, todayIso }: { item: RankedRecipe; rank: 2 | 3; todayIso: string }) {
   const { recipe, stat } = item;
-  const bg = useDishBackground(recipe.photoUrl);
+  const bg = useDishBackground(recipe.photoUrl, "left");
   return (
     <Link
       href={`/recepten/${recipe.id}`}
