@@ -281,7 +281,7 @@ function FocusDay({
       <span className="hidden lg:block">{plateBlock(330, 110, "-bottom-1 -right-5")}</span>
       <div className="flex min-w-0 flex-col items-center lg:flex-1 lg:items-start">
         {isToday ? (
-          <span className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--blue-500)] px-2.5 text-[11.5px] font-extrabold tracking-[0.04em] text-white">
+          <span className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold tracking-[0.04em] text-[var(--blue-500)] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]">
             VANDAAG
           </span>
         ) : null}
