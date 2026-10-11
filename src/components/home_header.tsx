@@ -79,8 +79,11 @@ export function HomeHeader({ ownerId, className, action }: HomeHeaderProps) {
           className="absolute -bottom-0.5 -right-0.5 flex size-[22px] items-center justify-center rounded-full bg-[var(--blue-500)] text-[var(--white)] shadow-[0_0_0_2px_var(--white)]"
         >
           {avatarUrl ? (
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-3">
-              <path d="M6 3.5 10.5 8 6 12.5" />
+            // Drie puntjes: profiel en instellingen.
+            <svg viewBox="0 0 24 24" fill="currentColor" className="size-3.5">
+              <circle cx="5.5" cy="12" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="18.5" cy="12" r="2" />
             </svg>
           ) : (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="size-3">
