@@ -523,7 +523,7 @@ export default function ReceptDetailPage() {
             <section className="flex flex-col items-center">
               <div
                 ref={heroPlateRef}
-                className="size-[200px] shrink-0 overflow-hidden rounded-full shadow-[0_18px_40px_-18px_rgba(120,80,20,0.35)] lg:size-[190px]"
+                className="size-[200px] shrink-0 overflow-hidden rounded-full shadow-[4px_6px_10px_-2px_rgba(80,50,10,0.26),18px_22px_34px_-8px_rgba(110,70,20,0.4)] lg:size-[190px]"
                 style={heroLanded ? undefined : { opacity: 0 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB */}
@@ -650,7 +650,7 @@ export default function ReceptDetailPage() {
             <div
               ref={heroPlateRef}
               className={cn(
-                "shrink-0 overflow-hidden rounded-full shadow-[0_18px_40px_-18px_rgba(120,80,20,0.35)]",
+                "shrink-0 overflow-hidden rounded-full shadow-[4px_6px_10px_-2px_rgba(80,50,10,0.26),18px_22px_34px_-8px_rgba(110,70,20,0.4)]",
                 savedRecipe.photoUrl ? "size-[200px] lg:size-[190px]" : "size-[124px] bg-[var(--white)]",
               )}
               style={heroLanded ? undefined : { opacity: 0 }}
