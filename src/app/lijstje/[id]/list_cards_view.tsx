@@ -868,13 +868,18 @@ function Card({
   forceCollapsed?: boolean;
 }) {
   const allDone = items.length > 0 && items.every((i) => i.checked);
+  // Desktop: genoeg ruimte, dus ook volledig gekochte kaarten staan standaard open.
+  const isDesktop = useIsDesktop();
   const [open, setOpen] = React.useState(!allDone);
   const prevAllDone = React.useRef(allDone);
   React.useEffect(() => {
-    // Net alles afgevinkt: rustig dichtklappen; weer iets open: opnieuw tonen.
-    if (allDone !== prevAllDone.current) setOpen(!allDone);
+    if (isDesktop) setOpen(true);
+  }, [isDesktop]);
+  React.useEffect(() => {
+    // Mobiel: net alles afgevinkt → rustig dichtklappen; weer iets open → opnieuw tonen.
+    if (allDone !== prevAllDone.current && !isDesktop) setOpen(!allDone);
     prevAllDone.current = allDone;
-  }, [allDone]);
+  }, [allDone, isDesktop]);
   const canCollapse = collapsible && items.length > 0;
   return (
     <section className="break-inside-avoid overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
