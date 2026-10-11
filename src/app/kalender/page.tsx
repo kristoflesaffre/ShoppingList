@@ -27,8 +27,8 @@ import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 
 /**
  * Kalender (canvas «Kalender · C · Podium»): de bovenkant kleurt mee met het gerecht van de gekozen dag
- * (standaard vandaag), groot bord in het midden; daaronder de drie volgende dagen als gekleurde
- * kaarten in een rij waarin je naar links terug in de tijd schuift.
+ * (standaard vandaag), groot bord in het midden; daaronder «Overzicht»: die dag (blauwe rand) en de drie
+ * volgende dagen als gekleurde kaarten in een rij waarin je naar links terug in de tijd schuift.
  */
 
 /** Hoeveel dagen je in de rij terug kunt schuiven. */
@@ -325,7 +325,20 @@ function FocusDay({
 }
 
 /** Dagkaart in de rij: dag en datum linksboven, bord rechts uit de kaart, gerecht onderaan. */
-function DayCard({ isoDate, date, entry, past }: { isoDate: string; date: Date; entry: DayEntry | null; past: boolean }) {
+function DayCard({
+  isoDate,
+  date,
+  entry,
+  past,
+  selected,
+}: {
+  isoDate: string;
+  date: Date;
+  entry: DayEntry | null;
+  past: boolean;
+  /** De dag die bovenaan groot staat: blauwe selectierand. */
+  selected: boolean;
+}) {
   const visual = dayVisual(isoDate, entry);
   const loosePhotos = useLoosePhotos(visual?.summary.loose ?? visual?.sideLoose);
   const rgb = useRecipeTint(visual?.photo ?? loosePhotos.find(Boolean) ?? null);
@@ -344,11 +357,16 @@ function DayCard({ isoDate, date, entry, past }: { isoDate: string; date: Date; 
   const cardClass = cn(
     "relative block h-[190px] w-[150px] flex-none snap-start overflow-hidden rounded-[26px] lg:h-[230px] lg:w-[220px]",
     past && "opacity-55",
+    selected && "shadow-[0_0_0_2px_var(--blue-500),0_0_0_5px_var(--blue-50)]",
   );
 
   if (!visual) {
     return (
-      <div aria-label={`${full}: niets gepland`} className={cn(cardClass, "bg-[var(--white)]/60 shadow-[inset_0_0_0_1px_var(--border-subtle)]")}>
+      <div
+        aria-label={`${full}: niets gepland`}
+        aria-current={selected ? "date" : undefined}
+        className={cn(cardClass, "bg-[var(--white)]/60", !selected && "shadow-[inset_0_0_0_1px_var(--border-subtle)]")}
+      >
         {head}
         <span className="absolute inset-x-3.5 bottom-3.5 text-[13px] leading-[18px] text-[var(--text-tertiary)]">Nog niets gepland</span>
       </div>
@@ -364,6 +382,7 @@ function DayCard({ isoDate, date, entry, past }: { isoDate: string; date: Date; 
       scroll={!summary.recipeId ? false : undefined}
       onClick={summary.recipeId ? recipeHeroClickHandler(summary.recipeId, visual.photo) : undefined}
       aria-label={`${full}: ${summary.title}`}
+      aria-current={selected ? "date" : undefined}
       style={{ backgroundImage: `linear-gradient(180deg, ${colors.top} 0%, ${colors.bottom} 100%)` }}
       className={cn(
         cardClass,
@@ -447,13 +466,12 @@ export default function KalenderPage() {
     [calendarMap],
   );
 
-  /** Rij: eerdere dagen (links, terug te schuiven) en de drie dagen na de gekozen dag. */
+  /** Rij «Overzicht»: eerdere dagen (links, terug te schuiven), de gekozen dag en de drie dagen erna. */
   const laneDays = React.useMemo(() => {
-    const out: { iso: string; date: Date; past: boolean }[] = [];
+    const out: { iso: string; date: Date; past: boolean; selected: boolean }[] = [];
     for (let i = -PAST_DAYS; i <= NEXT_DAYS; i++) {
-      if (i === 0) continue;
       const d = startOfDay(addDays(focusDate, i));
-      out.push({ iso: toIsoDate(d), date: d, past: i < 0 });
+      out.push({ iso: toIsoDate(d), date: d, past: i < 0, selected: i === 0 });
     }
     return out;
     // focusIso dekt focusDate
@@ -466,7 +484,7 @@ export default function KalenderPage() {
   const focusRgb = useRecipeTint(focusSummary?.photo ?? focusLoosePhotos.find(Boolean) ?? null);
   const band = tintColors(focusSummary ? focusRgb : null, dark, 0.42, 0.2);
 
-  // Bij laden (en bij een andere gekozen dag): de eerste volgende dag links, gisteren piept nog binnen.
+  // Bij laden (en bij een andere gekozen dag): de gekozen dag links, de dag ervoor piept nog binnen.
   const laneRef = React.useRef<HTMLDivElement>(null);
   const [canScroll, setCanScroll] = React.useState({ back: true, forward: false });
   const updateArrows = React.useCallback(() => {
@@ -477,7 +495,7 @@ export default function KalenderPage() {
   React.useLayoutEffect(() => {
     const el = laneRef.current;
     if (!el) return;
-    const next = el.querySelector<HTMLElement>(`[data-lane-day="${toIsoDate(addDays(focusDate, 1))}"]`);
+    const next = el.querySelector<HTMLElement>(`[data-lane-day="${focusIso}"]`);
     if (!next) return;
     const card = next.offsetWidth;
     const peek = Math.round(card * 0.4) + 12;
@@ -541,8 +559,8 @@ export default function KalenderPage() {
               ) : null}
             </div>
 
-            <div className="mb-3 mt-8 flex items-center justify-between lg:mt-10">
-              <h2 className="text-[19px] font-bold tracking-[-0.01em] text-text-primary">Volgende dagen</h2>
+            <div className="mb-1.5 mt-8 flex items-center justify-between lg:mt-10">
+              <h2 className="text-[19px] font-bold tracking-[-0.01em] text-text-primary">Overzicht</h2>
               <span className="flex items-center gap-2 max-lg:hidden">
                 <button type="button" aria-label="Eerdere dagen" disabled={!canScroll.back} onClick={() => scrollLane(-1)} className={cn(headerRoundButtonClass, "disabled:opacity-40")}>
                   <ChevronIcon direction="left" />
@@ -563,11 +581,11 @@ export default function KalenderPage() {
             <div
               ref={laneRef}
               onScroll={updateArrows}
-              className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:scroll-px-0 lg:gap-4 lg:px-0 [&::-webkit-scrollbar]:hidden"
+              className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 pt-1.5 [scrollbar-width:none] lg:mx-0 lg:scroll-px-0 lg:gap-4 lg:px-0 [&::-webkit-scrollbar]:hidden"
             >
               {laneDays.map((d) => (
                 <div key={d.iso} data-lane-day={d.iso} className="flex-none">
-                  <DayCard isoDate={d.iso} date={d.date} entry={calendarMap.get(d.iso) ?? null} past={d.past} />
+                  <DayCard isoDate={d.iso} date={d.date} entry={calendarMap.get(d.iso) ?? null} past={d.past} selected={d.selected} />
                 </div>
               ))}
             </div>
