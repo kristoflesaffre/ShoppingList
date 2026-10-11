@@ -1,5 +1,6 @@
 "use client";
 
+import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
@@ -756,7 +757,7 @@ export default function SamenDelenPage() {
             type="button"
             aria-label="Terug naar je profiel"
             onClick={() => router.push("/profiel")}
-            className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className={headerRoundButtonClass}
           >
             <BackArrowIcon />
           </button>

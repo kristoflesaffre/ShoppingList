@@ -1,5 +1,6 @@
 "use client";
 
+import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
 import Link from "next/link";
@@ -583,7 +584,7 @@ export default function ReceptenPage() {
                     type="button"
                     onClick={() => setActiveCategory(null)}
                     aria-label="Terug naar alle recepten"
-                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    className={headerRoundButtonClass}
                   >
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
                       <path d="M10 3.5 5.5 8 10 12.5" />

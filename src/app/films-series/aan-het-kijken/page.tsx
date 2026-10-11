@@ -1,5 +1,6 @@
 "use client";
 
+import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
@@ -12,7 +13,6 @@ import {
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 import { cn } from "@/lib/utils";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
-import { RoundIconButton } from "@/components/ui/round_icon_button";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { Shimmer } from "@/components/ui/shimmer";
 import { FilmIcons } from "@/components/films/film_detail_ui";
@@ -192,13 +192,13 @@ export default function WatchingOverviewPage() {
             type="button"
             aria-label="Terug"
             onClick={() => router.push("/films-series")}
-            className="-ml-2 flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className={headerRoundButtonClass}
           >
             {FilmIcons.back}
           </button>
-          <RoundIconButton tone="surface" size={36} aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")}>
+          <button type="button" aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")} className={headerRoundButtonClass}>
             {FilmIcons.dots}
-          </RoundIconButton>
+          </button>
         </div>
         <div className="mt-1 flex items-center gap-3 lg:mt-0">
           <PageBackButton href="/films-series" label="Terug" />

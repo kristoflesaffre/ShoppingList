@@ -1,5 +1,6 @@
 "use client";
 
+import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
@@ -584,7 +585,7 @@ export function LijstjesBeherenClient({
           <Link
             href="/"
             aria-label="Terug naar mijn lijstjes"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full text-action-primary transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            className={headerRoundButtonClass}
           >
             <BackArrowIcon className="size-6" />
           </Link>

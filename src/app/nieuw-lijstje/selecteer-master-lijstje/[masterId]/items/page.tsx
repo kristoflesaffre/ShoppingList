@@ -1,5 +1,6 @@
 "use client";
 
+import { headerBarSurfaceClass, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { isoToListDate } from "@/lib/list-date";
 import Link from "next/link";
@@ -748,13 +749,13 @@ export default function SelecteerMasterItemsPage() {
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)]">
-      <div className="fixed inset-x-0 top-0 z-20 bg-[var(--white)] pt-[env(safe-area-inset-top,0px)]">
+      <div className={`fixed inset-x-0 top-0 z-20 pt-[env(safe-area-inset-top,0px)] ${headerBarSurfaceClass}`}>
         <header className="flex h-16 px-4">
           <div className="mx-auto flex w-full max-w-[956px] items-center gap-4">
             <Link
               href={`/nieuw-lijstje/selecteer-master-lijstje?naam=${encodeURIComponent(listName)}`}
               aria-label="Terug naar favorietenlijsten"
-              className="relative z-[1] flex !min-w-0 !w-10 size-10 shrink-0 items-center justify-center p-0 text-[var(--blue-500)] hover:bg-[var(--blue-25)] hover:text-[var(--blue-600)] focus-visible:ring-2 focus-visible:ring-border-focus rounded-md"
+              className={headerRoundButtonClass}
             >
               <BackArrowIcon className="size-6 shrink-0" />
             </Link>

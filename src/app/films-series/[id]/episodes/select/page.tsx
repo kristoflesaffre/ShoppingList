@@ -1,5 +1,6 @@
 "use client";
 
+import { headerBarSurfaceClass, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { backOr } from "@/lib/in_app_history";
@@ -178,14 +179,14 @@ export default function SelectEpisodePage() {
     <div className="relative flex min-h-dvh w-full flex-col bg-white">
 
       {/* Vaste header */}
-      <div className="fixed left-0 right-0 top-0 z-20 bg-white pt-[env(safe-area-inset-top,0px)]">
+      <div className={`fixed left-0 right-0 top-0 z-20 pt-[env(safe-area-inset-top,0px)] ${headerBarSurfaceClass}`}>
         <div className="flex justify-center">
           <header className="flex h-16 w-full max-w-[956px] items-center gap-4 px-4">
             <button
               type="button"
               aria-label="Terug"
               onClick={() => backOr(router, `/films-series/${rawId}`)}
-              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              className={headerRoundButtonClass}
             >
               <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
             </button>
@@ -195,7 +196,7 @@ export default function SelectEpisodePage() {
             <button
               type="button"
               aria-label="Meer opties"
-              className="flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              className={headerRoundButtonClass}
             >
               <ThreeDotsIcon />
             </button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { headerBarSurfaceClass, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import { autoShareMembershipTransactions, useAutoShare } from "@/lib/auto-share";
 import * as React from "react";
 import { TitleEditButton } from "@/components/ui/title_edit_button";
@@ -285,7 +286,7 @@ function VacationTopBar({
       type="button"
       aria-label="Terug"
       onClick={onBack}
-      className="flex size-10 items-center justify-start text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      className={headerRoundButtonClass}
     >
       <BackArrowIcon className="size-6" />
     </button>
@@ -293,7 +294,7 @@ function VacationTopBar({
     <Link
       href="/"
       aria-label="Terug"
-      className="flex size-10 items-center justify-start text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      className={headerRoundButtonClass}
     >
       <BackArrowIcon className="size-6" />
     </Link>
@@ -316,14 +317,14 @@ function VacationTopBar({
             <button
               type="button"
               aria-label="Persoon toevoegen"
-              className="flex size-6 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              className={headerRoundButtonClass}
             >
               <MaskIcon src="/icons/add_person.svg" />
             </button>
             <button
               type="button"
               aria-label="Meer opties"
-              className="flex size-6 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              className={headerRoundButtonClass}
             >
               <MaskIcon src="/icons/dots.svg" />
             </button>
@@ -750,12 +751,12 @@ export default function NieuwVakantielijstjePage() {
   return (
     <main className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)] px-4">
       {/* Mobiel: topbalk met terugpijl; desktop: ronde terugknop naast de titel. */}
-      <div className="fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] lg:hidden">
+      <div className={`fixed left-0 right-0 top-0 z-20 pt-[env(safe-area-inset-top,0px)] lg:hidden ${headerBarSurfaceClass}`}>
         <header className="mx-auto flex h-16 max-w-[956px] items-center px-4">
           <Link
             href="/"
             aria-label="Terug"
-            className="flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className={headerRoundButtonClass}
           >
             <BackArrowIcon className="size-6" />
           </Link>

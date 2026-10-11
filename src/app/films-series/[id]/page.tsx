@@ -1,5 +1,6 @@
 "use client";
 
+import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { backOr } from "@/lib/in_app_history";
@@ -452,7 +453,7 @@ export default function FilmDetailPage() {
         <DetailSkeleton />
       ) : !detail ? (
         <div className="mx-auto w-full max-w-[956px] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)]">
-          <button type="button" aria-label="Terug" onClick={goBack} className="-ml-2 flex size-10 items-center justify-center text-[var(--blue-500)]">
+          <button type="button" aria-label="Terug" onClick={goBack} className={headerRoundButtonClass}>
             {FilmIcons.back}
           </button>
           <p className="py-8 text-center text-sm text-[var(--text-secondary)]">Kan details niet laden.</p>
@@ -508,7 +509,7 @@ export default function FilmDetailPage() {
                 type="button"
                 aria-label="Terug"
                 onClick={goBack}
-                className="flex size-10 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                className={headerRoundButtonClass}
               >
                 {FilmIcons.back}
               </button>

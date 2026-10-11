@@ -1,5 +1,6 @@
 "use client";
 
+import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
@@ -506,7 +507,7 @@ export default function TeKopenPage() {
               type="button"
               aria-label="Terug"
               onClick={() => router.push("/")}
-              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              className={headerRoundButtonClass}
             >
               <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
             </button>
@@ -524,7 +525,7 @@ export default function TeKopenPage() {
               type="button"
               aria-label="Instellingen"
               onClick={() => setSettingsOpen(true)}
-              className="flex size-6 shrink-0 items-center justify-center rounded-full text-[var(--blue-500)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              className={headerRoundButtonClass}
             >
               <MaskIcon src="/icons/dots.svg" className="size-6 bg-current" />
             </button>
@@ -581,9 +582,9 @@ export default function TeKopenPage() {
             ) : null}
             {!isEditing && !isStoreOrderMode ? (
               /* Desktop: «⋯» uit de topbalk staat naast de titel (canvas «Terugnavigatie A»). */
-              <RoundIconButton tone="surface" size={36} className="hidden lg:flex" aria-label="Instellingen" onClick={() => setSettingsOpen(true)}>
+              <button type="button" aria-label="Instellingen" onClick={() => setSettingsOpen(true)} className={`${headerRoundButtonClass} !hidden lg:!flex`}>
                 {RoundIcons.more}
-              </RoundIconButton>
+              </button>
             ) : null}
           </div>
 

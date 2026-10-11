@@ -1,5 +1,6 @@
 "use client";
 
+import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
@@ -278,7 +279,7 @@ export default function DiepvriesvoorraadPage() {
               type="button"
               aria-label="Terug"
               onClick={() => router.push("/")}
-              className="flex size-6 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              className={headerRoundButtonClass}
             >
               <MaskIcon
                 src="/icons/arrow.svg"

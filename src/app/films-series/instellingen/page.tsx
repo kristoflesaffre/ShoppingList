@@ -1,5 +1,6 @@
 "use client";
 
+import { headerBarSurfaceClass, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -137,12 +138,12 @@ export default function FilmsSeriesInstellingenPage() {
   return (
     <div className="relative flex min-h-dvh w-full flex-col">
       {/* Mobiel: topbalk met terugpijl; desktop: ronde terugknop naast de titel (zoals «11 · instellingen»). */}
-      <div className="fixed left-0 right-0 top-0 z-10 w-full bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] lg:hidden">
+      <div className={`fixed left-0 right-0 top-0 z-10 w-full pt-[env(safe-area-inset-top,0px)] lg:hidden ${headerBarSurfaceClass}`}>
         <header className="relative mx-auto flex h-16 max-w-[956px] items-center px-4">
           <Link
             href="/films-series"
             aria-label="Terug naar films en series"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            className={headerRoundButtonClass}
           >
             <BackArrowIcon className="size-6" />
           </Link>

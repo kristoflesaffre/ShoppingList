@@ -1,5 +1,6 @@
 "use client";
 
+import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
@@ -9,7 +10,6 @@ import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 import { getScoreSourceCache } from "@/lib/score_source_cache";
 import { SegmentedControl } from "@/components/ui/segmented_control";
-import { RoundIconButton } from "@/components/ui/round_icon_button";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { Shimmer } from "@/components/ui/shimmer";
 import { FilmIcons } from "@/components/films/film_detail_ui";
@@ -261,13 +261,13 @@ export default function PartnerWatchlistPage() {
             type="button"
             aria-label="Terug"
             onClick={() => router.push("/films-series")}
-            className="-ml-2 flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className={headerRoundButtonClass}
           >
             {FilmIcons.back}
           </button>
-          <RoundIconButton tone="surface" size={36} aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")}>
+          <button type="button" aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")} className={headerRoundButtonClass}>
             {FilmIcons.dots}
-          </RoundIconButton>
+          </button>
         </div>
 
         <div className="mt-1 flex flex-col gap-4 lg:mt-0 lg:flex-row lg:items-center lg:gap-3">

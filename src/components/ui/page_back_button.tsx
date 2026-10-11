@@ -2,12 +2,13 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
+import { RoundIcons } from "@/components/ui/round_icon_button";
+import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import { cn } from "@/lib/utils";
 
 /**
  * Design system «Terugknop naast de titel» (canvas «Terugnavigatie A»): alleen op desktop (lg+).
- * Ronde witte knop (surface 36) links van de grote paginatitel; op mobiel blijft de topbalk met pijl.
+ * Ronde witte kopknop (40px, blauw icoon) links van de grote paginatitel; op mobiel blijft de topbalk met pijl.
  */
 export function PageBackButton({
   href = "/",
@@ -20,15 +21,14 @@ export function PageBackButton({
 }) {
   const router = useRouter();
   return (
-    <RoundIconButton
-      tone="surface"
-      size={36}
+    <button
+      type="button"
       aria-label={label}
       onClick={() => router.push(href)}
-      className={cn("hidden shrink-0 lg:flex", className)}
+      className={cn(headerRoundButtonClass, "!hidden lg:!flex", className)}
     >
       {RoundIcons.back}
-    </RoundIconButton>
+    </button>
   );
 }
 

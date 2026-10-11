@@ -14,7 +14,7 @@ const TONES: Record<RoundIconButtonTone, string> = {
   /** Lichtgrijs: sluiten. */
   neutral: "bg-[var(--gray-50)] text-[var(--text-secondary)] [@media(hover:hover)]:hover:bg-[var(--gray-100)]",
   /** Wit met schaduw, los op de pagina (zoeken). */
-  surface: "bg-[var(--white)] text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(16,17,48,0.10)]",
+  surface: "bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)]",
   /** Wit op een gekleurde kaartkop (+ in kaartkop). */
   onColor: "bg-[rgba(255,255,255,0.75)] text-[var(--blue-500)]",
 };

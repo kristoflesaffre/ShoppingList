@@ -1,5 +1,6 @@
 "use client";
 
+import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
@@ -504,7 +505,7 @@ export function SubpageHeader({ title, subtitle, onBack, right }: { title: strin
           type="button"
           aria-label="Terug"
           onClick={onBack}
-          className="-ml-2 flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] lg:ml-0 lg:bg-[var(--white)] lg:text-[var(--text-secondary)] lg:shadow-[0_1px_3px_rgba(16,17,48,0.10)]"
+          className={headerRoundButtonClass}
         >
           {FilmIcons.back}
         </button>

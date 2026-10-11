@@ -1,5 +1,6 @@
 "use client";
 
+import { headerBarSurfaceClass, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -116,12 +117,12 @@ export default function RanglijstPage() {
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)]">
-      <div className="fixed inset-x-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] lg:hidden">
+      <div className={`fixed inset-x-0 top-0 z-20 pt-[env(safe-area-inset-top,0px)] lg:hidden ${headerBarSurfaceClass}`}>
         <header className="mx-auto flex h-16 max-w-[620px] items-center px-4">
           <Link
             href="/recepten"
             aria-label="Terug naar recepten"
-            className="flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className={headerRoundButtonClass}
           >
             <BackArrowIcon />
           </Link>

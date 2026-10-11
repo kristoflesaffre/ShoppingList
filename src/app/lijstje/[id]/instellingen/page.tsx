@@ -1,5 +1,6 @@
 "use client";
 
+import { headerBarSurfaceClass, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -498,12 +499,12 @@ export default function LijstInstellingenPage() {
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-[var(--bg-app)]">
       {/* Mobiel: topbalk met terugpijl; desktop: ronde terugknop naast de titel. */}
-      <div className="fixed left-0 right-0 top-0 z-10 w-full bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] lg:hidden">
+      <div className={`fixed left-0 right-0 top-0 z-10 w-full pt-[env(safe-area-inset-top,0px)] lg:hidden ${headerBarSurfaceClass}`}>
         <header className="relative mx-auto flex h-16 max-w-[956px] items-center px-4">
           <Link
             href={`/lijstje/${encodeURIComponent(listId)}`}
             aria-label="Terug naar lijstje"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            className={headerRoundButtonClass}
           >
             <BackArrowIcon className="size-6" />
           </Link>

@@ -1,5 +1,6 @@
 "use client";
 
+import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { createPortal, flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -1101,7 +1102,7 @@ export default function FilmsSeriesPage() {
             type="button"
             aria-label="Terug"
             onClick={() => router.push("/")}
-            className="-ml-2 flex size-10 items-center justify-center rounded-full text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className={headerRoundButtonClass}
           >
             <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
           </button>
