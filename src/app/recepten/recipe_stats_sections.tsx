@@ -126,7 +126,7 @@ export function StatPlate({ src, size, shadow = true }: { src: string | null; si
       className={cn(
         "block shrink-0 overflow-hidden rounded-full",
         !src && "bg-[var(--white)]",
-        shadow && src && "shadow-[2px_4px_6px_-1px_rgba(80,50,10,0.24),10px_13px_20px_-6px_rgba(110,70,20,0.36)]",
+        shadow && src && "[filter:drop-shadow(2px_3px_3px_rgba(80,50,10,0.22))_drop-shadow(8px_11px_10px_rgba(110,70,20,0.3))]",
       )}
       style={{ width: size, height: size }}
     >

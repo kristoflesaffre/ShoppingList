@@ -160,7 +160,7 @@ function RecipePlate({ recipe }: { recipe: SavedRecipe }) {
       data-hero-plate
       className={cn(
         "mx-auto flex aspect-square w-[84%] items-center justify-center overflow-hidden rounded-full",
-        hasPhoto ? "shadow-[2px_4px_6px_-1px_rgba(80,50,10,0.24),10px_13px_20px_-6px_rgba(110,70,20,0.36)]" : "bg-[var(--blue-25)]",
+        hasPhoto ? "[filter:drop-shadow(2px_3px_3px_rgba(80,50,10,0.22))_drop-shadow(8px_11px_10px_rgba(110,70,20,0.3))]" : "bg-[var(--blue-25)]",
       )}
     >
       {hasPhoto ? (
