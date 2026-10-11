@@ -46,6 +46,12 @@ describe("matchStepIngredients", () => {
     expect(stepMentionsIngredient("Voeg de steeltjes toe aan de blender en mix fijn.", "Naan brood mix")).toBe(false);
   });
 
+  it("ziet een gerechtnaam niet als ingrediënt", () => {
+    expect(stepMentionsIngredient("Laat de tikka masala ongeveer 20 minuten zacht pruttelen.", "Garam masala")).toBe(false);
+    expect(stepMentionsIngredient("Roer de garam masala door de tikka masala.", "Garam masala")).toBe(true);
+    expect(stepMentionsIngredient("Laat de chili con carne pruttelen.", "Chili")).toBe(false);
+  });
+
   it("negeert bijvoeglijke woorden", () => {
     expect(stepMentionsIngredient("Leg de rode paprika op het bord.", "Rode currypasta")).toBe(false);
   });

@@ -27,6 +27,12 @@ const SYNONYMS: Record<string, string[]> = {
   chilipepers: ["chili", "chilipeper", "pepers"],
 };
 
+/**
+ * Gerechtnamen die woorden van een ingrediënt bevatten: «laat de tikka masala pruttelen» gaat over het
+ * gerecht, niet over de garam masala. Worden uit de staptekst gehaald vóór losse woorden matchen.
+ */
+const DISH_PHRASES = ["chicken tikka masala", "tikka masala", "butter chicken", "chili con carne", "chili sin carne"];
+
 export function normalizeStepText(text: string): string {
   return text
     .toLowerCase()
@@ -87,7 +93,8 @@ export function stepMentionsIngredient(step: string, ingredientName: string): bo
   const { phrase, words, exact } = ingredientKeys(ingredientName);
   if (!phrase) return false;
   if (phrase.includes(" ") && ` ${text} `.includes(` ${phrase} `)) return true;
-  const stepWords = text.split(" ");
+  const withoutDishes = DISH_PHRASES.reduce((t, dish) => ` ${t} `.replace(` ${dish} `, " ").trim(), text);
+  const stepWords = withoutDishes.split(" ").filter(Boolean);
   if (exact.some((key) => stepWords.includes(key))) return true;
   return words.some((key) => stepWords.some((w) => wordMatches(w, key)));
 }
