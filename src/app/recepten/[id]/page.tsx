@@ -329,13 +329,12 @@ export default function ReceptDetailPage() {
   );
 
   const handleLijstjeIngredientEdit = React.useCallback((id: string) => {
+    // Bewerkstand blijft open: enkel «Gereed» sluit hem.
     setEditingIngredientId(id);
-    setDetailPhotoEditMode(false);
     setIngredientSlideOpen(true);
   }, []);
 
   const openFabAddIngredient = React.useCallback(() => {
-    setDetailPhotoEditMode(false);
     setEditingIngredientId(null);
     setIngredientSlideOpen(true);
   }, []);
@@ -456,7 +455,6 @@ export default function ReceptDetailPage() {
         await db.transact(
           db.tx.recipes[savedRecipe.id].update({ photoUrl: image.url }),
         );
-        setDetailPhotoEditMode(false);
         setAiFoodImageSlideOpen(false);
       } catch (err) {
         const msg =
