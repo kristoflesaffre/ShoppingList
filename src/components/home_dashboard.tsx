@@ -444,7 +444,7 @@ export function HomeFreezerPlatesCard({ items }: { items: DashboardFreezerRow[] 
             <li key={item.id} className="w-[92px] shrink-0">
               <Link href="/diepvriesvoorraad" className="flex flex-col items-center gap-1.5 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus rounded-[14px]">
                 <span className="relative">
-                  <span className="flex size-[76px] items-center justify-center overflow-hidden rounded-full bg-[var(--white)] shadow-[0_0_0_4px_rgba(255,255,255,0.7),0_12px_20px_-12px_rgba(30,60,120,0.5)]">
+                  <span className={cn("flex size-[76px] items-center justify-center overflow-hidden rounded-full", isDish && photo ? "shadow-[0_12px_20px_-12px_rgba(30,60,120,0.5)]" : "bg-[var(--white)] shadow-[0_0_0_4px_rgba(255,255,255,0.7),0_12px_20px_-12px_rgba(30,60,120,0.5)]")}>
                     {photo ? (
                       // eslint-disable-next-line @next/next/no-img-element -- receptfoto of lokale productfoto
                       <img
@@ -452,7 +452,7 @@ export function HomeFreezerPlatesCard({ items }: { items: DashboardFreezerRow[] 
                         alt=""
                         width={76}
                         height={76}
-                        className={isDish ? "size-full object-cover" : "size-[60px] object-contain"}
+                        className={isDish ? "size-full scale-[1.08] object-cover" : "size-[60px] object-contain"}
                         loading="lazy"
                         decoding="async"
                       />

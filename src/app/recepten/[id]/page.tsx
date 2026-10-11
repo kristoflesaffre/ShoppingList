@@ -269,7 +269,7 @@ export default function ReceptDetailPage() {
           <div
             ref={heroFlyerRef}
             aria-hidden
-            className="pointer-events-none fixed z-[60] overflow-hidden rounded-full bg-[var(--white)] will-change-transform"
+            className="pointer-events-none fixed z-[60] overflow-hidden rounded-full will-change-transform"
             style={{ left: heroTarget.left, top: heroTarget.top, width: heroTarget.width, height: heroTarget.height }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB */}
@@ -523,7 +523,7 @@ export default function ReceptDetailPage() {
             <section className="flex flex-col items-center">
               <div
                 ref={heroPlateRef}
-                className="size-[200px] shrink-0 overflow-hidden rounded-full bg-[var(--white)] shadow-[0_18px_40px_-18px_rgba(120,80,20,0.35)] lg:size-[190px]"
+                className="size-[200px] shrink-0 overflow-hidden rounded-full shadow-[0_18px_40px_-18px_rgba(120,80,20,0.35)] lg:size-[190px]"
                 style={heroLanded ? undefined : { opacity: 0 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB */}
@@ -650,8 +650,8 @@ export default function ReceptDetailPage() {
             <div
               ref={heroPlateRef}
               className={cn(
-                "shrink-0 overflow-hidden rounded-full bg-[var(--white)] shadow-[0_18px_40px_-18px_rgba(120,80,20,0.35)]",
-                savedRecipe.photoUrl ? "size-[200px] lg:size-[190px]" : "size-[124px]",
+                "shrink-0 overflow-hidden rounded-full shadow-[0_18px_40px_-18px_rgba(120,80,20,0.35)]",
+                savedRecipe.photoUrl ? "size-[200px] lg:size-[190px]" : "size-[124px] bg-[var(--white)]",
               )}
               style={heroLanded ? undefined : { opacity: 0 }}
             >
@@ -1200,7 +1200,7 @@ function RecipeStepItem({
                   done && "opacity-60",
                 )}
               >
-                <span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--white)]">
+                <span className={cn("flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full", !ing.photo && "bg-[var(--white)]")}>
                   {ing.photo ? (
                     <Image src={ing.photo} alt="" width={22} height={22} className={cn("size-[22px] object-contain", done && "grayscale")} aria-hidden />
                   ) : (

@@ -473,7 +473,7 @@ export function RecipeShareSlideIn({
         shareMessage={`Bekijk het recept «${recipe.name}» in Shopping list:`}
         emailSubject={`Recept: ${recipe.name}`}
         headerMedia={
-          <span className="mx-auto block size-[104px] overflow-hidden rounded-full bg-[var(--white)] shadow-[0_14px_26px_-14px_rgba(16,17,48,0.45)]">
+          <span className={`mx-auto block size-[104px] overflow-hidden rounded-full shadow-[0_14px_26px_-14px_rgba(16,17,48,0.45)]${recipe.photoUrl ? "" : " bg-[var(--white)]"}`}>
             {recipe.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB
               <img src={recipe.photoUrl} alt="" className="size-full scale-[1.08] object-cover" />
@@ -542,7 +542,7 @@ function RecipeCardPreview({ recipe }: { recipe: SavedRecipe }) {
       aria-hidden
       className="flex h-[98px] w-[74px] shrink-0 -rotate-[4deg] flex-col items-center gap-1 rounded-[12px] bg-[linear-gradient(180deg,#fbf3df,#fffaf0)] px-2 pt-2 shadow-[0_8px_16px_-10px_rgba(16,17,48,0.35),inset_0_0_0_1px_rgba(16,17,48,0.06)]"
     >
-      <span className="block size-[38px] overflow-hidden rounded-full bg-[var(--white)]">
+      <span className={`block size-[38px] overflow-hidden rounded-full${recipe.photoUrl ? "" : " bg-[var(--white)]"}`}>
         {recipe.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB
           <img src={recipe.photoUrl} alt="" className="size-full scale-[1.08] object-cover" />

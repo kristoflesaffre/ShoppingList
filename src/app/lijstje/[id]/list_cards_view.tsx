@@ -744,7 +744,7 @@ function headerGradient(rgb: Rgb) {
 function Plate({ src, size, freeze }: { src: string | null; size: number; freeze?: boolean }) {
   return (
     <span className="relative shrink-0" style={{ width: size, height: size }}>
-      <span className="block size-full overflow-hidden rounded-full bg-[var(--gray-25)]">
+      <span className={cn("block size-full overflow-hidden rounded-full", !src && "bg-[var(--gray-25)]")}>
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto
           <img src={src} alt="" className="size-full scale-[1.08] object-cover" />

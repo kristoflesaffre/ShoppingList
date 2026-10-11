@@ -59,7 +59,7 @@ function MealVisual({ meal, large = false }: { meal: DashboardMeal; large?: bool
   if (meal.photoUrl) {
     return (
       <span className={cn("relative block shrink-0", sizeClass)}>
-        <span className="block size-full overflow-hidden rounded-full bg-[var(--gray-25)] shadow-[0_18px_42px_-24px_rgba(16,17,48,0.45)]">
+        <span className={cn("block size-full overflow-hidden rounded-full shadow-[0_18px_42px_-24px_rgba(16,17,48,0.45)]", !meal.photoUrl && "bg-[var(--gray-25)]")}>
           {/* eslint-disable-next-line @next/next/no-img-element -- bestaande receptfoto uit de appdata */}
           <img src={meal.photoUrl} alt="" className="size-full scale-[1.04] object-cover" decoding="async" />
         </span>

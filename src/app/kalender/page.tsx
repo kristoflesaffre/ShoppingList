@@ -189,7 +189,7 @@ function LooseIngredientsRow({
               key={`${ing.name}-${i}`}
               className="inline-flex h-8 items-center gap-1.5 rounded-pill bg-[var(--gray-25)] pl-1 pr-2.5 text-[13px] text-text-primary"
             >
-              <span className="flex size-6 items-center justify-center rounded-full bg-[var(--white)]">
+              <span className={cn("flex size-6 items-center justify-center rounded-full", !ing.photo && "bg-[var(--white)]")}>
                 {ing.photo ? (
                   // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediënt-webp
                   <img src={ing.photo} alt="" className="size-5 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />

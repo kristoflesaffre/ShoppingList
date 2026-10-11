@@ -58,7 +58,7 @@ export function PhotoSourceSlideIn({
     >
       <div className="flex w-full flex-col gap-[18px] pb-6 md:pb-2">
         {currentPhotoSrc ? (
-          <span aria-hidden className="mx-auto block size-[116px] overflow-hidden rounded-full bg-[var(--white)] shadow-[0_14px_26px_-14px_rgba(16,17,48,0.45)]">
+          <span aria-hidden className="mx-auto block size-[116px] overflow-hidden rounded-full shadow-[0_14px_26px_-14px_rgba(16,17,48,0.45)]">
             {/* eslint-disable-next-line @next/next/no-img-element -- data-URL uit InstantDB */}
             <img src={currentPhotoSrc} alt="" className="size-full scale-[1.08] object-cover" />
           </span>

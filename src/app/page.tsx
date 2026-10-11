@@ -1332,7 +1332,8 @@ function HomeDayPlate({
       <span
         data-hero-plate
         className={cn(
-          "block size-full overflow-hidden rounded-full bg-[var(--gray-25)]",
+          "block size-full overflow-hidden rounded-full",
+          !src && "bg-[var(--gray-25)]",
           shadow && "shadow-[0_10px_24px_-12px_rgba(16,17,48,0.35)]",
         )}
       >

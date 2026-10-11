@@ -52,7 +52,7 @@ export function InviteTile({ src, tint }: { src: string; tint?: boolean }) {
 /** Rond bord met de receptfoto. */
 export function InvitePlate({ src }: { src: string }) {
   return (
-    <span className="block size-[132px] overflow-hidden rounded-full bg-[var(--white)] shadow-[0_18px_30px_-14px_rgba(16,17,48,0.45),0_0_0_6px_var(--white)]">
+    <span className="block size-[132px] overflow-hidden rounded-full shadow-[0_18px_30px_-14px_rgba(16,17,48,0.45)]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt="" className="size-full scale-[1.08] object-cover" />
     </span>

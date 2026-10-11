@@ -166,7 +166,7 @@ export function FoodImageGeneratorSlideIn({
           </>
         ) : (phase === "result" || phase === "applying") && result ? (
           <>
-            <span className="mx-auto block size-[220px] overflow-hidden rounded-full bg-[var(--white)] shadow-[0_22px_40px_-18px_rgba(16,17,48,0.5)]">
+            <span className="mx-auto block size-[220px] overflow-hidden rounded-full shadow-[0_22px_40px_-18px_rgba(16,17,48,0.5)]">
               {/* eslint-disable-next-line @next/next/no-img-element -- gegenereerde afbeelding */}
               <img src={result.imageUrl} alt={`Gemaakte foto van ${dishName.trim()}`} className="size-full scale-[1.08] object-cover" />
             </span>

@@ -124,7 +124,8 @@ export function StatPlate({ src, size, shadow = true }: { src: string | null; si
       data-hero-plate
       aria-hidden
       className={cn(
-        "block shrink-0 overflow-hidden rounded-full bg-[var(--white)]",
+        "block shrink-0 overflow-hidden rounded-full",
+        !src && "bg-[var(--white)]",
         shadow && "shadow-[0_14px_26px_-14px_rgba(16,17,48,0.45)]",
       )}
       style={{ width: size, height: size }}
