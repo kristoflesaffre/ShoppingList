@@ -18,7 +18,7 @@ export type Suggestion = {
 function SuggestionRow({ s, onAdd, onDismiss }: { s: Suggestion; onAdd: () => void; onDismiss: () => void }) {
   return (
     <li className="flex items-center gap-3 border-t border-[var(--border-subtle)] py-2.5">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--gray-25)]">
+      <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-[10px]", !s.photo && "bg-[var(--gray-25)]")}>
         {s.photo ? (
           // eslint-disable-next-line @next/next/no-img-element -- lokale productfoto
           <img src={s.photo} alt="" className="size-8 object-contain" />

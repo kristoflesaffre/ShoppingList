@@ -234,7 +234,7 @@ export function MasterAddSheet({
           sel && "bg-[var(--blue-25)]",
         )}
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--gray-25)]">
+        <span className="flex size-10 shrink-0 items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element -- lokale productfoto */}
           <img src={item.photo} alt="" width={32} height={32} className="size-8 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" loading="lazy" decoding="async" />
         </span>

@@ -134,7 +134,7 @@ function ItemPhoto({ item, getPhotoUrl, size, boxed = true }: { item: ListItem; 
   const src = item.stockPhotoUrl ?? getPhotoUrl?.(item.name, size >= 56 ? 160 : 80) ?? null;
   return (
     <span
-      className={cn("relative flex shrink-0 items-center justify-center", boxed && "rounded-[10px] bg-[var(--gray-25)]")}
+      className={cn("relative flex shrink-0 items-center justify-center", boxed && !src && "rounded-[10px] bg-[var(--gray-25)]")}
       style={{ width: size, height: size }}
     >
       {src ? (

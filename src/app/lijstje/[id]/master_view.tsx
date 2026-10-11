@@ -295,7 +295,7 @@ function MasterItemRow({
             "flex w-full items-center gap-3 bg-[var(--white)] px-1 py-[9px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
           )}
         >
-          <span className="relative flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--gray-25)]">
+          <span className={cn("relative flex size-[42px] shrink-0 items-center justify-center rounded-[12px]", !photo && "bg-[var(--gray-25)]")}>
             {photo ? (
               // eslint-disable-next-line @next/next/no-img-element -- lokale item-webp
               <img src={photo} alt="" width={34} height={34} className="size-[34px] object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />

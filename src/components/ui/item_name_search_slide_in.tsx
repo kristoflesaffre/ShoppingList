@@ -358,7 +358,7 @@ export function ItemNameSearchSlideIn({
             {suggestions.map((slug, i) => (
               <li key={slug} role="option" aria-selected={false} className={i > 0 ? "border-t border-[var(--border-subtle)]" : undefined}>
                 <button type="button" onClick={() => handleSelect(slug)} className={rowClass}>
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-[var(--gray-25)]" aria-hidden>
+                  <span className="flex size-11 shrink-0 items-center justify-center" aria-hidden>
                     {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp */}
                     <img
                       src={photoCatalog === "ingredients" ? `/images/ingredients/${slug}_160.webp` : itemPhotoUrlFromSlug(slug, 160)}

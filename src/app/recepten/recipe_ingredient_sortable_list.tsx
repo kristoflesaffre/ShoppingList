@@ -121,7 +121,7 @@ function SortableIngredientRow({
         aria-label={`${ingredient.name}, ${ingredient.quantity} — wijzigen`}
         className="flex min-w-0 flex-1 items-center gap-3 py-2 pl-1 pr-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
       >
-        <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--gray-25)]">
+        <span aria-hidden className={cn("flex size-10 shrink-0 items-center justify-center rounded-[12px]", !photoUrl && "bg-[var(--gray-25)]")}>
           {photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediëntfoto
             <img src={photoUrl} alt="" width={32} height={32} className="size-8 object-contain" decoding="async" />
@@ -173,7 +173,7 @@ function SortableIngredientEditRow({
       >
         <DragGlyph />
       </button>
-      <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--gray-25)]">
+      <span aria-hidden className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", !photoUrl && "bg-[var(--gray-25)]")}>
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediëntfoto
           <img src={photoUrl} alt="" width={38} height={38} className="size-[38px] object-contain" decoding="async" />

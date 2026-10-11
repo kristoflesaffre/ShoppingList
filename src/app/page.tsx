@@ -988,7 +988,7 @@ function HomeTeKopenChecklist({
                   {pluralizeShoppingQuantity(item.quantity)}
                 </span>
                 {photoSrc ? (
-                  <span className="flex size-[30px] shrink-0 items-center justify-center rounded-[9px] bg-[var(--gray-25)]" aria-hidden>
+                  <span className="flex size-[30px] shrink-0 items-center justify-center" aria-hidden>
                     {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
                     <img src={photoSrc} alt="" width={24} height={24} className={cn("size-6 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal", done && "opacity-50 grayscale")} />
                   </span>

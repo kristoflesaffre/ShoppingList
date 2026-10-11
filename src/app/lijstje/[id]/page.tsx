@@ -1871,7 +1871,7 @@ function VacationClaimableDetailItem({
 
   return (
     <div className="flex min-h-[68px] w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white py-3 pl-4 pr-3">
-      <div className="relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--gray-25)]">
+      <div className={cn("relative size-11 shrink-0 overflow-hidden rounded-[var(--radius-md)]", !photoUrl && "bg-[var(--gray-25)]")}>
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- lokale vakantie-webp
           <img

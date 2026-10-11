@@ -77,7 +77,7 @@ const IngredientRow = React.memo(function IngredientRow({
 }) {
   return (
     <li className={cn("ml-2.5 flex items-center gap-3 py-2", !first && "border-t border-[var(--border-subtle)]")}>
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--gray-25)]">
+      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-[10px]", !photo && "bg-[var(--gray-25)]")}>
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element -- lokale productfoto
           <img src={photo} alt="" width={30} height={30} className="size-[30px] object-contain" loading="lazy" decoding="async" />

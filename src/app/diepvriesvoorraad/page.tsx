@@ -93,7 +93,7 @@ function FreezerRow({
         // eslint-disable-next-line @next/next/no-img-element -- receptfoto
         <img src={photo} alt="" width={42} height={42} className="size-[42px] shrink-0 rounded-full object-cover" />
       ) : photo ? (
-        <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--gray-25)]">
+        <span className="flex size-[42px] shrink-0 items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
           <img src={photo} alt="" width={34} height={34} className="size-[34px] object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />
         </span>

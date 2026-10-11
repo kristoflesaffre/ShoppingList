@@ -1080,7 +1080,7 @@ function IngredientRow({
         divider && state !== "now" && "border-t border-[var(--border-subtle)]",
       )}
     >
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--gray-25)]">
+      <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", !photo && "bg-[var(--gray-25)]")}>
         {photo ? (
           <Image src={photo} alt="" width={38} height={38} className={cn("size-[38px] object-contain", used && "opacity-55 grayscale")} aria-hidden />
         ) : null}
