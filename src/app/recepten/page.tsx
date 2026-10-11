@@ -152,13 +152,16 @@ function SectionHeader({ section }: { section: { meta: typeof RECIPE_CATEGORIES[
   );
 }
 
-/** Ronde gerechtfoto (canvas «Recepten 2»): cirkelvormige crop, geen schaduw. */
+/** Ronde gerechtfoto (canvas «Recepten 2»): cirkelvormige crop, schaduw naar rechtsonder zoals op de receptpagina. */
 function RecipePlate({ recipe }: { recipe: SavedRecipe }) {
   const hasPhoto = typeof recipe.photoUrl === "string" && recipe.photoUrl.trim().length > 0;
   return (
     <span
       data-hero-plate
-      className="mx-auto flex aspect-square w-[84%] items-center justify-center overflow-hidden rounded-full bg-[var(--blue-25)]"
+      className={cn(
+        "mx-auto flex aspect-square w-[84%] items-center justify-center overflow-hidden rounded-full",
+        hasPhoto ? "shadow-[2px_4px_6px_-1px_rgba(80,50,10,0.24),10px_13px_20px_-6px_rgba(110,70,20,0.36)]" : "bg-[var(--blue-25)]",
+      )}
     >
       {hasPhoto ? (
         // eslint-disable-next-line @next/next/no-img-element -- data-URL
