@@ -156,11 +156,26 @@ function ItemName({ item, className }: { item: ListItem; className?: string }) {
     <span
       className={cn(
         "block truncate font-semibold",
-        item.checked ? "text-[var(--gray-300)] line-through" : "text-[var(--text-primary)]",
         className,
+        // Gehaald: lichter gewicht, grijs en doorgestreept (zelfde stijl als de hoeveelheid).
+        item.checked ? "!font-normal text-[var(--gray-300)] line-through" : "text-[var(--text-primary)]",
       )}
     >
       {item.name}
+    </span>
+  );
+}
+
+function ItemQuantity({ item, className }: { item: ListItem; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "block truncate",
+        className,
+        item.checked ? "font-normal text-[var(--gray-300)] line-through" : "text-[var(--text-tertiary)]",
+      )}
+    >
+      {item.quantity}
     </span>
   );
 }
@@ -187,7 +202,7 @@ function ItemRow({ item, getPhotoUrl, onToggle }: ItemProps) {
       <ItemPhoto item={item} getPhotoUrl={getPhotoUrl} size={42} />
       <span className="min-w-0 flex-1 leading-[19px]">
         <ItemName item={item} className="text-[15px] font-medium" />
-        <span className={cn("block truncate text-[13px]", item.checked ? "text-[var(--gray-200)]" : "text-[var(--text-tertiary)]")}>{item.quantity}</span>
+        <ItemQuantity item={item} className="text-[13px]" />
       </span>
       <RoundCheck done={item.checked} size={24} />
     </button>
@@ -214,7 +229,7 @@ function ItemChip({ item, getPhotoUrl, onToggle }: ItemProps) {
       <ItemPhoto item={item} getPhotoUrl={getPhotoUrl} size={34} boxed={false} />
       <span className="min-w-0 flex-1 leading-[15px]">
         <ItemName item={item} className="text-[13px]" />
-        <span className="block truncate text-[11px] text-[var(--text-tertiary)]">{item.quantity}</span>
+        <ItemQuantity item={item} className="text-[11px]" />
       </span>
       <RoundCheck done={item.checked} size={20} />
     </button>
@@ -244,7 +259,7 @@ function ItemTile({ item, getPhotoUrl, onToggle }: ItemProps) {
       <ItemPhoto item={item} getPhotoUrl={getPhotoUrl} size={58} boxed={false} />
       <span className="w-full px-1 text-center leading-[15px]">
         <ItemName item={item} className="text-xs" />
-        <span className="block truncate text-[11px] text-[var(--text-tertiary)]">{item.quantity}</span>
+        <ItemQuantity item={item} className="text-[11px]" />
       </span>
     </button>
   );
