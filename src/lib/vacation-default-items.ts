@@ -64,6 +64,7 @@ const ITEMS: RawItem[] = [
   { slug: "deodorant_man", name: "Deodorant", section: "Kristof", category: "Toiletartikelen", households: ["man"] },
   { slug: "deodorant_vrouw", name: "Deodorant", section: "Chloé", category: "Toiletartikelen", households: ["vrouw"] },
   { slug: "douchegel", name: "Douchegel", section: "Kristof", category: "Toiletartikelen", households: ["man"], accommodations: ["appartement"] },
+  { slug: "eend", name: "Eend", section: "Kristof", category: "Slaapspullen", households: ["man"] },
   { slug: "e-reader", name: "E-reader", section: "Kristof", category: "Elektronica", households: ["man"] },
   { slug: "e-reader", name: "E-reader", section: "Chloé", category: "Elektronica", households: ["vrouw"] },
   { slug: "ehbo_kit", name: "Ehbo-kit", section: "Samen", category: "Toiletartikelen" },

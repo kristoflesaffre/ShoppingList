@@ -30,6 +30,22 @@ describe("buildVacationDefaultItems", () => {
     expect(items.some((item) => item.name === "Aftersun")).toBe(false);
   });
 
+  it("voegt Eend standaard toe aan de tab Kristof", () => {
+    const items = buildVacationDefaultItems({
+      season: "winter",
+      transport: "auto",
+      accommodation: "hotel",
+      household: new Set(["man"] as const),
+    });
+
+    expect(items.find((item) => item.name === "Eend")).toEqual({
+      name: "Eend",
+      imageSrc: "/images/vakantie/eend_160.webp",
+      tripPerson: "Kristof",
+      itemCategory: "Slaapspullen",
+    });
+  });
+
   it("zet Immodium, bril en zonnebril correct neer", () => {
     const household = new Set(["man", "vrouw", "jongens"] as const);
     const items = buildVacationDefaultItems({
