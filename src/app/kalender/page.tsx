@@ -416,7 +416,7 @@ function DayCard({
         </span>
       ) : null}
       <span className="absolute inset-x-3.5 bottom-3.5 z-[1] flex flex-col items-start gap-1.5">
-        <span className="line-clamp-2 text-[15px] font-bold leading-[18px] text-text-primary first-letter:uppercase">{summary.title}</span>
+        <span className="block w-full truncate text-[13.5px] font-bold leading-[18px] text-text-primary first-letter:uppercase lg:text-[15px]">{summary.title}</span>
         <DaySubLabel kind={visual.kind} text={summary.sub} />
       </span>
     </Link>
