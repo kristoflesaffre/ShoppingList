@@ -2126,20 +2126,43 @@ function HomeKlantenkaartSection({
   );
 }
 
-/** Startpagina: films en series — poster strip wanneer items aanwezig, anders empty state. */
+type HomeFilmPosterItem = {
+  id: string;
+  title: string;
+  posterUrl: string | null;
+  href: string;
+  meta: string;
+  /** Aan het kijken: volgende aflevering op de poster («S5 · A3»). */
+  episodeLabel?: string;
+  /** Nieuw seizoen uitgekomen. */
+  isNew?: boolean;
+  score?: number | null;
+};
+
+function filmMetaLine(type: "movie" | "tv", year: string): string {
+  return [type === "tv" ? "Serie" : "Film", year].filter(Boolean).join(" · ");
+}
+
+/**
+ * Startpagina: films en series (canvas «Home · Films · 2 posters met status»). Eerst wat je aan het kijken bent
+ * met de volgende aflevering op de poster, daarna je hele watchlist met score; titel en soort onder elke poster.
+ */
 function HomeFilmsSeriesSection({
   onHide,
   ownWatchlist,
   watchingItems,
+  newSeasonItems,
 }: {
   onHide?: () => void;
   ownWatchlist: ReturnType<typeof useFilmsLibrary>["ownWatchlist"];
   watchingItems: ReturnType<typeof useWatchingTvItems>["watchingItems"];
+  newSeasonItems: ReturnType<typeof useWatchingTvItems>["newSeasonItems"];
 }) {
   const router = useRouter();
 
-  const posterItems = React.useMemo(() => {
+  const posterItems = React.useMemo((): HomeFilmPosterItem[] => {
     const watchingIds = new Set(watchingItems.map((i) => i.id));
+    const newIds = new Set(newSeasonItems.filter((i) => i.released).map((i) => i.id));
     const remaining = ownWatchlist.filter((i) => !watchingIds.has(i.id));
     return [
       ...watchingItems.map((i) => ({
@@ -2147,15 +2170,21 @@ function HomeFilmsSeriesSection({
         title: i.title,
         posterUrl: i.posterUrl,
         href: `/films-series/${i.id}/episodes/s${i.nextSeason}e${i.nextEpisode}`,
+        meta: filmMetaLine("tv", i.year),
+        episodeLabel: `S${i.nextSeason} · A${i.nextEpisode}`,
+        isNew: newIds.has(i.id),
       })),
       ...remaining.map((i) => ({
         id: i.id,
         title: i.title,
         posterUrl: i.posterUrl,
         href: `/films-series/${i.id}`,
+        meta: filmMetaLine(i.type, i.year),
+        isNew: newIds.has(i.id),
+        score: i.score,
       })),
     ];
-  }, [watchingItems, ownWatchlist]);
+  }, [watchingItems, ownWatchlist, newSeasonItems]);
 
   if (posterItems.length === 0) {
     return (
@@ -2199,23 +2228,47 @@ function HomeFilmsSeriesSection({
             key={item.id}
             type="button"
             onClick={() => router.push(item.href)}
-            aria-label={item.title}
-            className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-[4px] bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            aria-label={item.episodeLabel ? `${item.title}, verder met ${item.episodeLabel}` : item.title}
+            className="group flex w-[128px] shrink-0 flex-col gap-2 rounded-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
           >
-            {item.posterUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={item.posterUrl}
-                alt=""
-                className="absolute inset-0 size-full object-cover"
-                loading="lazy"
-                decoding="async"
-              />
-            ) : (
-              <div className="flex size-full items-center justify-center">
-                <IconPrimaryMask src="/icons/films.svg" className="size-6 bg-[var(--gray-200)]" />
-              </div>
-            )}
+            <span className="relative block h-[192px] w-full overflow-hidden rounded-[14px] bg-[var(--gray-50)] shadow-[0_10px_22px_-14px_rgba(16,17,48,0.7)] transition-transform duration-fast ease-out-strong motion-safe:group-active:scale-[0.97]">
+              {item.posterUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.posterUrl.replace("/w185/", "/w342/")}
+                  alt=""
+                  className="absolute inset-0 size-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <span className="flex size-full items-center justify-center">
+                  <IconPrimaryMask src="/icons/films.svg" className="size-8 bg-[var(--gray-200)]" />
+                </span>
+              )}
+              {item.isNew ? (
+                <span className="absolute left-2 top-2 flex h-[22px] items-center rounded-full bg-[#ff5a4e] px-2 text-[11px] font-extrabold tracking-[0.02em] text-white">
+                  NIEUW
+                </span>
+              ) : null}
+              {item.score != null && item.score > 0 ? (
+                <span className="absolute right-2 top-2 flex h-[22px] items-center gap-[3px] rounded-full bg-[rgba(255,255,255,0.94)] px-[7px] text-[11.5px] font-bold text-text-primary">
+                  <svg viewBox="0 0 24 24" fill="#f5b400" aria-hidden className="size-[11px]">
+                    <path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z" />
+                  </svg>
+                  {item.score.toFixed(1)}
+                </span>
+              ) : null}
+              {item.episodeLabel ? (
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-black/80 px-2 pb-2 pt-6 text-xs font-bold text-white">
+                  {item.episodeLabel}
+                </span>
+              ) : null}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[13.5px] font-bold leading-[18px] text-text-primary">{item.title}</span>
+              <span className="block truncate text-xs leading-4 text-[var(--text-secondary)]">{item.meta}</span>
+            </span>
           </button>
         ))}
       </div>
@@ -3611,7 +3664,7 @@ export default function Home() {
   }, [router]);
 
   const { ownWatchlist: homeOwnWatchlist, dataLoading: homeFilmsLoading } = useFilmsLibrary();
-  const { watchingItems: homeWatchingItems } = useWatchingTvItems();
+  const { watchingItems: homeWatchingItems, newSeasonItems: homeNewSeasonItems } = useWatchingTvItems();
 
   /** Lege secties die we samen als «Ontdek meer»-banners tonen (canvas «Lege staten 3»). */
   const discoverBanners = React.useMemo((): DiscoverBanner[] => {
@@ -3724,7 +3777,7 @@ export default function Home() {
           />
         );
       case "films-series":
-        return <HomeFilmsSeriesSection onHide={onHide} ownWatchlist={homeOwnWatchlist} watchingItems={homeWatchingItems} />;
+        return <HomeFilmsSeriesSection onHide={onHide} ownWatchlist={homeOwnWatchlist} watchingItems={homeWatchingItems} newSeasonItems={homeNewSeasonItems} />;
       default:
         return null;
     }
