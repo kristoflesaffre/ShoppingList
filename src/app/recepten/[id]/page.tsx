@@ -797,12 +797,14 @@ export default function ReceptDetailPage() {
                 ) : null}
               </div>
             )}
-            <div className="flex justify-center pb-2.5 pt-1.5">
-              <button type="button" onClick={openFabAddIngredient} className={ghostBtn}>
-                <PlusGlyph />
-                Ingrediënt toevoegen
-              </button>
-            </div>
+            {detailPhotoEditMode ? (
+              <div className="flex justify-center pb-2.5 pt-1.5">
+                <button type="button" onClick={openFabAddIngredient} className={ghostBtn}>
+                  <PlusGlyph />
+                  Ingrediënt toevoegen
+                </button>
+              </div>
+            ) : null}
           </section>
 
           <section aria-label="Bereiding" className="flex-1 rounded-[22px] bg-[var(--white)] px-4 pb-5 pt-[18px] lg:px-6">
