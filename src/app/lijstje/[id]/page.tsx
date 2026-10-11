@@ -6007,7 +6007,8 @@ export default function ListDetailPage({
                 ) : null}
               </div>
               {isEditMode ? (
-                <DoneButton onClick={() => setIsEditMode(false)} />
+                // Mobiel: «Gereed» zit in de zwevende balk onderaan.
+                <DoneButton onClick={() => setIsEditMode(false)} className="max-lg:!hidden" />
               ) : hasItems &&
                 (!isVenueCounterList ||
                   (isCafeList && !isMasterList && !isEditMode)) ? (
@@ -6463,6 +6464,32 @@ export default function ListDetailPage({
 
   const listBottomChrome = (
     <>
+      {/* Bewerkstand op mobiel: zwevende donkere balk met «Gereed» (zelfde patroon als «Favorieten toevoegen»). */}
+      {isEditMode && !isMasterCategoryOrderMode ? (
+        <div className="pointer-events-none fixed inset-x-3 bottom-[calc(20px+env(safe-area-inset-bottom,0px))] z-30 lg:hidden">
+          <div className="pointer-events-auto flex items-center gap-2.5 rounded-[24px] bg-[var(--text-primary)] py-2 pl-3 pr-2 text-[var(--white)] shadow-[0_14px_30px_-12px_rgba(16,17,48,0.6)] motion-safe:animate-fade-up">
+            <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.14)] [&_svg]:size-4">
+              {RoundIcons.pencil}
+            </span>
+            <span className="min-w-0 flex-1 leading-4">
+              <span className="block text-sm font-bold">Lijstje bewerken</span>
+              <span className="block truncate text-xs opacity-70">
+                {effectiveListGroupingMode === "category" ? "Sleep of tik om te wijzigen" : "Tik op een item om te wijzigen"}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsEditMode(false)}
+              className="inline-flex h-[42px] shrink-0 items-center gap-1.5 rounded-pill bg-[var(--blue-500)] px-[18px] text-[15px] font-semibold text-white transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3.5">
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+              Gereed
+            </button>
+          </div>
+        </div>
+      ) : null}
       {snackbarMessage && (
         <div
           className={APP_SNACKBAR_NO_NAV_FIXTURE_CLASS}
@@ -6490,6 +6517,7 @@ export default function ListDetailPage({
           className={cn(
             "pointer-events-none fixed inset-x-0 z-20 transition-[bottom] duration-200",
             snackbarMessage ? "bottom-[80px]" : APP_FAB_BOTTOM_NO_NAV_CLASS,
+            isEditMode && "max-lg:hidden",
           )}
         >
           <div className={APP_FAB_INNER_PX4_CLASS}>
