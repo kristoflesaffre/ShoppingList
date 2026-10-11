@@ -146,12 +146,12 @@ function useDishBackground(src: string | null): React.CSSProperties {
 const cardLink =
   "no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
 
-function SectionHead({ title, sub, right }: { title: string; sub: string; right?: React.ReactNode }) {
+function SectionHead({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) {
   return (
     <div className="mb-3 flex items-end justify-between gap-3">
       <div className="min-w-0">
         <h2 className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">{title}</h2>
-        <p className="mt-0.5 text-[13px] leading-[18px] text-[var(--text-secondary)]">{sub}</p>
+        {sub ? <p className="mt-0.5 text-[13px] leading-[18px] text-[var(--text-secondary)]">{sub}</p> : null}
       </div>
       {right}
     </div>
@@ -260,7 +260,6 @@ export function MostEatenSection({ ranked, todayIso }: { ranked: RankedRecipe[];
     <section aria-label="Meest gegeten">
       <SectionHead
         title="Meest gegeten"
-        sub="Jullie vaste waarden"
         right={
           <Link
             href="/recepten/ranglijst"
@@ -340,7 +339,7 @@ export function LongAgoSection({ ranked, todayIso }: { ranked: RankedRecipe[]; t
 
 /* ---------------- Laden ---------------- */
 
-function SectionHeadSkeleton({ withRight = false }: { withRight?: boolean }) {
+function SectionHeadSkeleton({ withRight = false, withSub = true }: { withRight?: boolean; withSub?: boolean }) {
   return (
     <div className="mb-3 flex items-end justify-between gap-3">
       <div className="min-w-0">
@@ -348,9 +347,11 @@ function SectionHeadSkeleton({ withRight = false }: { withRight?: boolean }) {
         <div className="flex h-6 items-center">
           <Shimmer className="h-[18px] w-[150px] rounded-[8px]" />
         </div>
-        <div className="mt-0.5 flex h-[18px] items-center">
-          <Shimmer className="h-3 w-[120px] rounded-[6px]" />
-        </div>
+        {withSub ? (
+          <div className="mt-0.5 flex h-[18px] items-center">
+            <Shimmer className="h-3 w-[120px] rounded-[6px]" />
+          </div>
+        ) : null}
       </div>
       {withRight ? <Shimmer className="h-[16px] w-[70px] rounded-[6px]" /> : null}
     </div>
@@ -365,7 +366,7 @@ export function RecipeStatsSkeleton() {
   return (
     <>
       <section aria-busy="true" aria-label="Meest gegeten laden">
-        <SectionHeadSkeleton withRight />
+        <SectionHeadSkeleton withRight withSub={false} />
         <div className="flex flex-col gap-2.5 lg:flex-row lg:items-stretch lg:gap-3.5">
           <Shimmer className="h-[164px] rounded-[24px] lg:h-[245px] lg:w-[58%] lg:shrink-0" />
           <div className="flex gap-2.5 lg:flex-1 lg:flex-col lg:gap-3.5">
