@@ -125,6 +125,8 @@ import {
 import { normalizeTripPerson } from "@/lib/trip-person";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { useWatchingTvItems } from "@/hooks/use_watching_tv_items";
+import { isVastList } from "@/lib/vaste-lijstjes";
+import { VasteLijstjesLane } from "@/components/vaste_lijstjes";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -1703,8 +1705,11 @@ function HomeLijstjesSection({
   onOpenCreateModal,
   onQuickAdd,
   onNewListLike,
+  after,
 }: {
   normalLists: HomeList[];
+  /** Onder de boodschappen: rij «Vaste lijstjes». */
+  after?: React.ReactNode;
   onOpenCreateModal: () => void;
   /** Voegt een product toe aan het gegeven lijstje. */
   onQuickAdd: (list: HomeList, name: string) => void;
@@ -1798,6 +1803,7 @@ function HomeLijstjesSection({
             </MiniButton>
           }
         />
+        {after}
       </div>
     );
   }
@@ -1827,6 +1833,7 @@ function HomeLijstjesSection({
         }
       />
 
+      <h3 className="-mb-1 text-[17px] font-bold leading-6 text-text-primary">Boodschappen</h3>
       <div
         ref={laneRef}
         onScroll={handleScroll}
@@ -1873,6 +1880,7 @@ function HomeLijstjesSection({
           <span className="text-[15px] font-semibold leading-5 text-action-primary">Alle {normalLists.length} lijstjes</span>
         </Link>
       </div>
+      {after ? <div className="mt-3">{after}</div> : null}
 
 
       <ItemNameSearchSlideIn
@@ -2298,7 +2306,8 @@ export default function Home() {
   );
 
   const lists: HomeList[] = React.useMemo(() => {
-    const owned: HomeList[] = (data?.lists ?? []).filter((l) => !isEmptyDraftMasterList(l)).map((l) => {
+    // Vaste lijstjes (kado's, to do) staan apart onder «Vaste lijstjes», niet tussen de boodschappen.
+    const owned: HomeList[] = (data?.lists ?? []).filter((l) => !isEmptyDraftMasterList(l) && !isVastList(l)).map((l) => {
       const isMaster = listIsMasterTemplate(l);
       const memberIds = ((l.memberships ?? []) as ListMembershipRow[])
         .map((m) => m.instantUserId)
@@ -2362,7 +2371,7 @@ export default function Home() {
       .map((row) => row.list)
       .filter(
         (l): l is NonNullable<typeof l> =>
-          l != null && typeof l === "object" && "id" in l,
+          l != null && typeof l === "object" && "id" in l && !isVastList(l),
       )
       .map((l) => {
         const isMaster = listIsMasterTemplate(l);
@@ -2897,7 +2906,8 @@ export default function Home() {
       (l) =>
         l &&
         typeof l === "object" &&
-        String((l as { ownerId?: string }).ownerId ?? "") === user.id,
+        String((l as { ownerId?: string }).ownerId ?? "") === user.id &&
+        !isVastList(l as { listKind?: unknown }),
     ) as { id: string; icon?: string }[];
     if (mine.length === 0) return;
     const plans = planOwnerListDecorIconUpdates(
@@ -3574,10 +3584,13 @@ export default function Home() {
               onOpenCreateModal={handleOpenCreateModal}
               onQuickAdd={handleQuickAddToList}
               onNewListLike={handleNewListLike}
+              after={user ? <VasteLijstjesLane userId={user.id} /> : null}
             />
           </>
         );
       case "te-kopen":
+        // Te kopen is een vaste tegel geworden (rij «Vaste lijstjes»); enkel de lege/ontdek-staat blijft.
+        if (homeShoppingItems.length > 0 || hasUsedTeKopen) return null;
         return (
           <HomeTeKopenSection
             shoppingItems={homeShoppingItems}
@@ -3706,6 +3719,7 @@ export default function Home() {
                     onOpenCreateModal={handleOpenCreateModal}
                     onQuickAdd={handleQuickAddToList}
                     onNewListLike={handleNewListLike}
+                    after={user ? <VasteLijstjesLane userId={user.id} /> : null}
                   />
                 </div>
                 <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-2 min-[1050px]:items-stretch min-[1050px]:gap-8">

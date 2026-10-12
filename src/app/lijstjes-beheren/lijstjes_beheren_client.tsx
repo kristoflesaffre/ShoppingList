@@ -57,6 +57,18 @@ import {
   APP_FAB_INNER_PX4_CLASS,
   APP_SNACKBAR_NO_NAV_FIXTURE_CLASS,
 } from "@/lib/app-layout";
+import { isVastList } from "@/lib/vaste-lijstjes";
+import {
+  NewVastTile,
+  TeKopenTile,
+  VastListSheet,
+  VastTile,
+  deleteVastList,
+  useVasteLijstjes,
+} from "@/components/vaste_lijstjes";
+
+/** Zoveel boodschappenlijstjes tonen vóór «Toon meer». */
+const SHOP_LISTS_PREVIEW = 5;
 
 export type LijstjesBeherenSection = "lijstjes" | "favorieten";
 
@@ -194,7 +206,8 @@ export function LijstjesBeherenClient({
   }, [shareProfilesData?.profiles]);
 
   const lists: HomeOverviewList[] = React.useMemo(() => {
-    const owned: HomeOverviewList[] = (data?.lists ?? []).filter((l) => !isEmptyDraftMasterList(l)).map((l) => {
+    // Vaste lijstjes hebben een eigen raster onderaan.
+    const owned: HomeOverviewList[] = (data?.lists ?? []).filter((l) => !isEmptyDraftMasterList(l) && !isVastList(l)).map((l) => {
       const isMaster = listIsMasterTemplate(l);
       const memberIds = ((l.memberships ?? []) as ListMembershipRow[])
         .map((m) => m.instantUserId)
@@ -257,7 +270,7 @@ export function LijstjesBeherenClient({
       .map((row) => row.list)
       .filter(
         (l): l is NonNullable<typeof l> =>
-          l != null && typeof l === "object" && "id" in l,
+          l != null && typeof l === "object" && "id" in l && !isVastList(l),
       )
       .map((l) => {
         const isMaster = listIsMasterTemplate(l);
@@ -332,7 +345,8 @@ export function LijstjesBeherenClient({
       (l) =>
         l &&
         typeof l === "object" &&
-        String((l as { ownerId?: string }).ownerId ?? "") === user.id,
+        String((l as { ownerId?: string }).ownerId ?? "") === user.id &&
+        !isVastList(l as { listKind?: unknown }),
     ) as { id: string; icon?: string }[];
     if (mine.length === 0) return;
     const plans = planOwnerListDecorIconUpdates(
@@ -373,6 +387,9 @@ export function LijstjesBeherenClient({
   const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
   /** Figma 1148:9665 — potlood: sorteer- en verwijder-chrome op de kaarten. */
   const [isCardsEditMode, setIsCardsEditMode] = React.useState(defaultEditMode);
+  const [showAllShopLists, setShowAllShopLists] = React.useState(false);
+  const [vastSheetOpen, setVastSheetOpen] = React.useState(false);
+  const vaste = useVasteLijstjes(user?.id);
   const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
   const prevSectionRef = React.useRef<LijstjesBeherenSection | null>(null);
 
@@ -608,7 +625,7 @@ export function LijstjesBeherenClient({
         </header>
       </div>
 
-      <div className="flex flex-1 flex-col pb-[calc(80px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+env(safe-area-inset-top,0px))] lg:pt-[env(safe-area-inset-top,0px)]">
+      <div className={cn("flex flex-1 flex-col pt-[calc(64px+env(safe-area-inset-top,0px))] lg:pt-[env(safe-area-inset-top,0px)]", isCardsEditMode ? "pb-[calc(130px+env(safe-area-inset-bottom,0px))]" : "pb-[calc(80px+env(safe-area-inset-bottom,0px))]")}>
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-4 px-[var(--space-4)] pt-6 lg:pt-10">
           {/* Canvas «05–07 · voorstel»: titel + aantal, schakelaar Lijstjes | Favorieten. */}
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -634,7 +651,9 @@ export function LijstjesBeherenClient({
 
               </div>
               {isCardsEditMode ? (
-                <GereedEditButton onPress={exitCardsEditMode} ariaLabel="Gereed met bewerken" />
+                <span className="hidden lg:block">
+                  <GereedEditButton onPress={exitCardsEditMode} ariaLabel="Gereed met bewerken" />
+                </span>
               ) : null}
             </div>
             {!isCardsEditMode ? (
@@ -673,7 +692,10 @@ export function LijstjesBeherenClient({
                 Naar de startpagina
               </MiniButton>
             </div>
-          ) : isCardsEditMode ? (
+          ) : section === "lijstjes" ? (
+            <h2 className="-mb-1 text-[17px] font-bold leading-6 text-text-primary">Boodschappen</h2>
+          ) : null}
+          {(section === "favorieten" && !hasSectionLists) || !hasSectionLists ? null : isCardsEditMode ? (
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -695,7 +717,7 @@ export function LijstjesBeherenClient({
             </DndContext>
           ) : (
             <StaticStackedHomeListSections
-              lists={sectionLists}
+              lists={section === "lijstjes" && !showAllShopLists ? sectionLists.slice(0, SHOP_LISTS_PREVIEW) : sectionLists}
               removingId={removingId}
               addingId={addingId}
               addingIdExpanded={addingIdExpanded}
@@ -705,6 +727,46 @@ export function LijstjesBeherenClient({
               columns
             />
           )}
+          {section === "lijstjes" && hasSectionLists && !isCardsEditMode && !showAllShopLists && sectionLists.length > SHOP_LISTS_PREVIEW ? (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowAllShopLists(true)}
+                className="inline-flex h-10 items-center rounded-pill bg-[var(--white)] px-4 text-sm font-semibold text-action-primary shadow-[0_0_0_1px_var(--border-subtle)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              >
+                Toon meer · {sectionLists.length - SHOP_LISTS_PREVIEW}
+              </button>
+            </div>
+          ) : null}
+
+          {section === "lijstjes" ? (
+            <section aria-label="Vaste lijstjes" className="mt-4 flex flex-col gap-3">
+              <h2 className="text-[17px] font-bold leading-6 text-text-primary">Vaste lijstjes</h2>
+              <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">
+                <TeKopenTile count={vaste.teKopenOpen} className="!w-full" />
+                {vaste.lists.map((l) => (
+                  <VastTile
+                    key={l.id}
+                    href={`/vast/${l.id}`}
+                    name={l.name}
+                    count={l.openCount}
+                    icon={l.icon}
+                    color={l.color}
+                    className="!w-full"
+                    onDelete={
+                      isCardsEditMode && l.isOwner
+                        ? () => {
+                            if (window.confirm(`«${l.name}» en alles erop verwijderen?`)) deleteVastList(l);
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+                {!isCardsEditMode ? <NewVastTile onClick={() => setVastSheetOpen(true)} className="!w-full" /> : null}
+              </div>
+            </section>
+          ) : null}
+
           {section === "favorieten" && hasSectionLists && !isCardsEditMode ? (
             <p className="text-center text-[12.5px] text-[var(--text-tertiary)]">
               Tik «+ Lijstje» om een nieuw lijstje uit je favorieten te maken
@@ -753,6 +815,28 @@ export function LijstjesBeherenClient({
             onAction={handleUndoDelete}
           />
         </div>
+      ) : null}
+
+      {isCardsEditMode ? (
+        /* Mobiel: «Gereed» zwevend onderaan (zelfde patroon als de receptpagina). */
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 lg:hidden">
+          <div aria-hidden className="h-[120px] bg-gradient-to-b from-transparent to-[var(--bg-app)] to-45%" />
+          <div className="pointer-events-auto absolute inset-x-4 bottom-[calc(26px+env(safe-area-inset-bottom,0px))] flex items-center gap-3 rounded-pill bg-[var(--white)] py-[7px] pl-[18px] pr-[7px] shadow-[0_10px_30px_-10px_rgba(16,17,48,0.35),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up">
+            <span className="min-w-0 flex-1 truncate text-sm text-[var(--text-secondary)]">
+              {section === "lijstjes" ? `${sectionLists.length + vaste.lists.length} lijstjes` : `${sectionLists.length} favorieten`}
+            </span>
+            <DoneButton onClick={exitCardsEditMode} aria-label="Gereed met bewerken" className="h-[42px] px-5 text-[15px] shadow-[0_6px_16px_-6px_rgba(79,85,241,0.6)]" />
+          </div>
+        </div>
+      ) : null}
+
+      {user ? (
+        <VastListSheet
+          open={vastSheetOpen}
+          onClose={() => setVastSheetOpen(false)}
+          ownerId={user.id}
+          nextOrder={vaste.lists.length > 0 ? Math.max(...vaste.lists.map((l) => l.order)) + 1 : 0}
+        />
       ) : null}
 
       {!snackbarMessage && !isCardsEditMode && !(section === "favorieten" && !hasSectionLists) ? (

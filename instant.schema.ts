@@ -57,6 +57,17 @@ const schema = i.schema({
        * ook voor producten die geen favoriet zijn. Weeklijstjes nemen dit over.
        */
       ingredientStoresJson: i.string().optional(),
+      /**
+       * Soort lijstje: ontbreekt = boodschappenlijstje (met datum); «vast» = blijvend lijstje zonder
+       * datum (kado's per persoon, to do, …), apart getoond onder «Vaste lijstjes».
+       */
+      listKind: i.string().optional(),
+      /** Vast lijstje: «kado» | «todo» | «anders». */
+      vastType: i.string().optional(),
+      /** Vast lijstje: kleursleutel van de tegel (zie `VAST_COLORS`). */
+      colorKey: i.string().optional(),
+      /** Vast lijstje (kado's): datum van de gelegenheid, ISO «YYYY-MM-DD» (bv. verjaardag). */
+      eventDate: i.string().optional(),
     }),
     /** Koppeling: gebruiker is deelnemer aan een gedeeld lijstje (realtime samenwerking). */
     listMembers: i.entity({
