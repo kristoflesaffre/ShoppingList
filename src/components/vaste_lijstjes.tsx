@@ -440,7 +440,6 @@ export { deepRgb, mixWithWhiteRgb };
  */
 export function VasteLijstjesLane({ userId }: { userId: string }) {
   const { lists, teKopenOpen, favoritesCount } = useVasteLijstjes(userId);
-  const [sheetOpen, setSheetOpen] = React.useState(false);
   return (
     <div className="flex flex-col gap-3">
       <h3 className="text-[17px] font-bold leading-6 text-text-primary">Vaste lijstjes</h3>
@@ -450,14 +449,7 @@ export function VasteLijstjesLane({ userId }: { userId: string }) {
         {lists.map((l) => (
           <VastTile key={l.id} href={`/vast/${l.id}`} name={l.name} count={l.openCount} icon={l.icon} color={l.color} className="snap-start" />
         ))}
-        <NewVastTile onClick={() => setSheetOpen(true)} className="snap-start" />
       </div>
-      <VastListSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        ownerId={userId}
-        nextOrder={lists.length > 0 ? Math.max(...lists.map((l) => l.order)) + 1 : 0}
-      />
     </div>
   );
 }

@@ -59,16 +59,11 @@ import {
 import { isVastList } from "@/lib/vaste-lijstjes";
 import {
   FavorietenTile,
-  NewVastTile,
   TeKopenTile,
-  VastListSheet,
   VastTile,
   deleteVastList,
   useVasteLijstjes,
 } from "@/components/vaste_lijstjes";
-
-/** Zoveel boodschappenlijstjes tonen vóór «Toon meer». */
-const SHOP_LISTS_PREVIEW = 5;
 
 export type LijstjesBeherenSection = "lijstjes" | "favorieten";
 
@@ -387,8 +382,6 @@ export function LijstjesBeherenClient({
   const [addingIdExpanded, setAddingIdExpanded] = React.useState(false);
   /** Figma 1148:9665 — potlood: sorteer- en verwijder-chrome op de kaarten. */
   const [isCardsEditMode, setIsCardsEditMode] = React.useState(defaultEditMode);
-  const [showAllShopLists, setShowAllShopLists] = React.useState(false);
-  const [vastSheetOpen, setVastSheetOpen] = React.useState(false);
   const vaste = useVasteLijstjes(user?.id);
   const removeTimeoutRef = React.useRef<number | NodeJS.Timeout | null>(null);
   const prevSectionRef = React.useRef<LijstjesBeherenSection | null>(null);
@@ -689,7 +682,6 @@ export function LijstjesBeherenClient({
                     }
                   />
                 ))}
-                {!isCardsEditMode ? <NewVastTile onClick={() => setVastSheetOpen(true)} className="!w-full" /> : null}
               </div>
             </section>
           ) : null}
@@ -730,7 +722,7 @@ export function LijstjesBeherenClient({
             </DndContext>
           ) : (
             <StaticStackedHomeListSections
-              lists={section === "lijstjes" && !showAllShopLists ? sectionLists.slice(0, SHOP_LISTS_PREVIEW) : sectionLists}
+              lists={sectionLists}
               removingId={removingId}
               addingId={addingId}
               addingIdExpanded={addingIdExpanded}
@@ -740,17 +732,6 @@ export function LijstjesBeherenClient({
               columns
             />
           )}
-          {section === "lijstjes" && hasSectionLists && !isCardsEditMode && !showAllShopLists && sectionLists.length > SHOP_LISTS_PREVIEW ? (
-            <div className="flex justify-center">
-              <button
-                type="button"
-                onClick={() => setShowAllShopLists(true)}
-                className="inline-flex h-10 items-center rounded-pill bg-[var(--white)] px-4 text-sm font-semibold text-action-primary shadow-[0_0_0_1px_var(--border-subtle)] transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                Toon meer · {sectionLists.length - SHOP_LISTS_PREVIEW}
-              </button>
-            </div>
-          ) : null}
 
 
           {section === "favorieten" && hasSectionLists && !isCardsEditMode ? (
@@ -816,14 +797,6 @@ export function LijstjesBeherenClient({
         </div>
       ) : null}
 
-      {user ? (
-        <VastListSheet
-          open={vastSheetOpen}
-          onClose={() => setVastSheetOpen(false)}
-          ownerId={user.id}
-          nextOrder={vaste.lists.length > 0 ? Math.max(...vaste.lists.map((l) => l.order)) + 1 : 0}
-        />
-      ) : null}
 
       {!snackbarMessage && !isCardsEditMode && !(section === "favorieten" && !hasSectionLists) ? (
         <div
@@ -836,7 +809,7 @@ export function LijstjesBeherenClient({
             <FloatingActionButton
               aria-label="Nieuw lijstje"
               className="pointer-events-auto"
-              onClick={handleFabNewList}
+              onClick={section === "lijstjes" ? () => router.push("/?nieuw=1") : handleFabNewList}
             />
           </div>
         </div>

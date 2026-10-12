@@ -126,7 +126,7 @@ import { normalizeTripPerson } from "@/lib/trip-person";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { useWatchingTvItems } from "@/hooks/use_watching_tv_items";
 import { isVastList } from "@/lib/vaste-lijstjes";
-import { VasteLijstjesDesktopTiles, VasteLijstjesLane } from "@/components/vaste_lijstjes";
+import { VastListSheet, VasteLijstjesDesktopTiles, VasteLijstjesLane } from "@/components/vaste_lijstjes";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -226,6 +226,7 @@ const VENUE_TILE_ICON_FRITUUR = "/images/ui/product_icons/frieten_160.webp";
 const VENUE_TILE_ICON_CAFE = "/images/ui/cafe_160.webp";
 const VENUE_TILE_ICON_LANDAL = "/images/ui/landal_160.webp";
 const VENUE_TILE_ICON_VAKANTIE = "/images/ui/vakantie_160.webp";
+const VENUE_TILE_ICON_VAST = "/images/ui/kado_160.webp";
 const VENUE_TILE_ICON_GEZIN = "/images/ui/gezin_160.webp";
 const VENUE_TILE_ICON_VRIENDEN = "/images/ui/vrienden_160.webp";
 
@@ -3504,6 +3505,21 @@ export default function Home() {
     router.push("/nieuw-lijstje/vakantie");
   }, [router]);
 
+  /** Vast lijstje (kado's, to do, …): eigen formulier. */
+  const [vastSheetOpen, setVastSheetOpen] = React.useState(false);
+  const handleBlankVenuePickVast = React.useCallback(() => {
+    setBlankVenueSlideOpen(false);
+    setVastSheetOpen(true);
+  }, []);
+
+  /** «+» op het lijstjes-overzicht stuurt naar «/?nieuw=1»: meteen de keuze «Nieuw lijstje» openen. */
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("nieuw") !== "1") return;
+    handleOpenCreateModal();
+    router.replace("/");
+  }, [handleOpenCreateModal, router]);
+
   const { ownWatchlist: homeOwnWatchlist, dataLoading: homeFilmsLoading } = useFilmsLibrary();
   const { watchingItems: homeWatchingItems, newSeasonItems: homeNewSeasonItems } = useWatchingTvItems();
 
@@ -3972,6 +3988,7 @@ export default function Home() {
                   ["Café", "Rondjes bijhouden met vrienden", VENUE_TILE_ICON_CAFE, handleBlankVenuePickCafe],
                   ["Landal", "Voor je verblijf in een Landal-park", VENUE_TILE_ICON_LANDAL, handleBlankVenuePickLandal],
                   ["Vakantie", "Paklijst op maat voor je reis", VENUE_TILE_ICON_VAKANTIE, handleBlankVenuePickVakantie],
+                  ["Vast lijstje", "Kado's per persoon, to do, …", VENUE_TILE_ICON_VAST, handleBlankVenuePickVast],
                 ] as const
               ).map(([title, description, icon, onPick]) => (
                 <button
@@ -3995,6 +4012,10 @@ export default function Home() {
           </div>
         </div>
       </SlideInModal>
+
+      {user ? (
+        <VastListSheet open={vastSheetOpen} onClose={() => setVastSheetOpen(false)} ownerId={user.id} nextOrder={Date.now()} />
+      ) : null}
 
       <SlideInModal
         open={pendingFrituurChoice != null}
