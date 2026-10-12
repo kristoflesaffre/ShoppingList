@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import { useAutoShare } from "@/lib/auto-share";
 import { isoToListDate, todayIsoDate } from "@/lib/list-date";
+import { listIsMasterTemplate } from "@/lib/list-master";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { FilterChip } from "@/components/ui/filter_chip";
@@ -111,7 +112,23 @@ export function useVasteLijstjes(userId: string | null | undefined) {
     ).length;
   }, [data?.shoppingItems, data?.shoppingShares, data?.shoppingShareMembers, userId]);
 
-  return { isLoading, lists, teKopenOpen };
+  // Favorietenlijsten (master-templates) tellen voor de tegel «Favorieten».
+  const { data: favData } = db.useQuery({
+    lists: { $: { where: { ownerId: uid } } },
+    listMembers: { list: {}, $: { where: { instantUserId: uid } } },
+  });
+  const favoritesCount = React.useMemo(() => {
+    const ids = new Set<string>();
+    for (const row of (favData?.lists ?? []) as (ListRow & { isMasterTemplate?: boolean })[]) {
+      if (listIsMasterTemplate(row)) ids.add(row.id);
+    }
+    for (const m of (favData?.listMembers ?? []) as { list?: (ListRow & { isMasterTemplate?: boolean }) | null }[]) {
+      if (m.list && listIsMasterTemplate(m.list)) ids.add(m.list.id);
+    }
+    return ids.size;
+  }, [favData?.lists, favData?.listMembers]);
+
+  return { isLoading, lists, teKopenOpen, favoritesCount };
 }
 
 const TRASH_PATH = "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13";
@@ -129,6 +146,7 @@ export function VastTile({
   className,
   onDelete,
   wide = false,
+  countLabel = "open",
 }: {
   href: string;
   name: string;
@@ -138,6 +156,8 @@ export function VastTile({
   className?: string;
   /** Brede tegel (enige vaste tegel op desktop): groter cijfer, naam en illustratie. */
   wide?: boolean;
+  /** Wat het getal telt, voor de schermlezer («open», «lijstjes»). */
+  countLabel?: string;
   /** Bewerkstand: verwijderen (ontbreekt = niet verwijderbaar). */
   onDelete?: () => void;
 }) {
@@ -191,7 +211,7 @@ export function VastTile({
     );
   }
   return (
-    <Link href={href} aria-label={`${name}, ${count} open`} className={cls} style={style}>
+    <Link href={href} aria-label={`${name}, ${count} ${countLabel}`} className={cls} style={style}>
       {body}
     </Link>
   );
@@ -213,6 +233,13 @@ export function NewVastTile({ onClick, className }: { onClick: () => void; class
       </svg>
       Nieuw
     </button>
+  );
+}
+
+/** «Favorieten» als vaste tegel: de favorietenlijsten (per winkel), met het aantal lijsten. */
+export function FavorietenTile({ count, className, wide }: { count: number; className?: string; wide?: boolean }) {
+  return (
+    <VastTile href="/lijstjes-beheren/favorieten" name="Favorieten" count={count} countLabel="lijstjes" icon="/images/ui/ster_240.webp" color={VAST_COLORS.geel} className={className} wide={wide} />
   );
 }
 
@@ -418,13 +445,14 @@ export { deepRgb, mixWithWhiteRgb };
  * Rij «Vaste lijstjes» op de startpagina: «Te kopen», de eigen vaste lijstjes en een tegel «Nieuw».
  */
 export function VasteLijstjesLane({ userId }: { userId: string }) {
-  const { lists, teKopenOpen } = useVasteLijstjes(userId);
+  const { lists, teKopenOpen, favoritesCount } = useVasteLijstjes(userId);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   return (
     <div className="flex flex-col gap-3">
       <h3 className="text-[17px] font-bold leading-6 text-text-primary">Vaste lijstjes</h3>
       <div className="-mx-4 flex snap-x gap-2.5 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
         <TeKopenTile count={teKopenOpen} className="snap-start" />
+        <FavorietenTile count={favoritesCount} className="snap-start" />
         {lists.map((l) => (
           <VastTile key={l.id} href={`/vast/${l.id}`} name={l.name} count={l.openCount} icon={l.icon} color={l.color} className="snap-start" />
         ))}
@@ -456,9 +484,10 @@ export function deleteVastList(list: Pick<VastListSummary, "id" | "itemIds" | "m
  * boodschappenkaarten; met minder tegels vullen ze samen de rest van de rij.
  */
 export function VasteLijstjesDesktopTiles({ userId, max = 3 }: { userId: string; max?: number }) {
-  const { lists, teKopenOpen } = useVasteLijstjes(userId);
+  const { lists, teKopenOpen, favoritesCount } = useVasteLijstjes(userId);
   const tiles = [
     { id: "te-kopen", href: "/te-kopen", name: "Te kopen", count: teKopenOpen, icon: "/images/ui/kopen_240.webp", color: VAST_COLORS.blauw },
+    { id: "favorieten", href: "/lijstjes-beheren/favorieten", name: "Favorieten", count: favoritesCount, icon: "/images/ui/ster_240.webp", color: VAST_COLORS.geel, countLabel: "lijstjes" },
     ...lists.map((l) => ({ id: l.id, href: `/vast/${l.id}`, name: l.name, count: l.openCount, icon: l.icon, color: l.color })),
   ].slice(0, max);
   const wide = tiles.length === 1;
@@ -472,6 +501,7 @@ export function VasteLijstjesDesktopTiles({ userId, max = 3 }: { userId: string;
           count={t.count}
           icon={t.icon}
           color={t.color}
+          countLabel={"countLabel" in t ? t.countLabel : "open"}
           wide={wide}
           className="!h-auto min-h-[150px] !w-auto min-w-0 flex-1"
         />

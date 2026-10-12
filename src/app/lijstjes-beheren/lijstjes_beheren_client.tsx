@@ -28,7 +28,6 @@ import { Button } from "@/components/ui/button";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Snackbar } from "@/components/ui/snackbar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
-import { SegmentedControl } from "@/components/ui/segmented_control";
 import { FavoritesEmptyState, FavoritesPromoBanner, useFavoritesPromo } from "@/components/favorites_promo_banner";
 import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
 import { isEmptyDraftMasterList, useCleanupDraftMasterLists } from "@/lib/draft-master-lists";
@@ -59,6 +58,7 @@ import {
 } from "@/lib/app-layout";
 import { isVastList } from "@/lib/vaste-lijstjes";
 import {
+  FavorietenTile,
   NewVastTile,
   TeKopenTile,
   VastListSheet,
@@ -586,8 +586,6 @@ export function LijstjesBeherenClient({
   }
 
 
-  const normalCount = lists.filter((l) => inSectionList("lijstjes", l)).length;
-  const masterCount = lists.filter((l) => inSectionList("favorieten", l)).length;
 
   const editLabel = section === "lijstjes" ? "Lijstjes bewerken" : "Favorietenlijsten bewerken";
 
@@ -602,8 +600,8 @@ export function LijstjesBeherenClient({
       >
         <header className="mx-auto grid h-16 max-w-[956px] grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-4 px-[var(--space-4)]">
           <Link
-            href="/"
-            aria-label="Terug naar mijn lijstjes"
+            href={section === "favorieten" ? "/lijstjes-beheren/lijstjes" : "/"}
+            aria-label={section === "favorieten" ? "Terug naar je lijstjes" : "Terug naar mijn lijstjes"}
             className={headerRoundButtonClass}
           >
             <BackArrowIcon className="size-6" />
@@ -627,11 +625,14 @@ export function LijstjesBeherenClient({
 
       <div className={cn("flex flex-1 flex-col pt-[calc(64px+env(safe-area-inset-top,0px))] lg:pt-[env(safe-area-inset-top,0px)]", isCardsEditMode ? "pb-[calc(130px+env(safe-area-inset-bottom,0px))]" : "pb-[calc(80px+env(safe-area-inset-bottom,0px))]")}>
         <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-4 px-[var(--space-4)] pt-6 lg:pt-10">
-          {/* Canvas «05–07 · voorstel»: titel + aantal, schakelaar Lijstjes | Favorieten. */}
+          {/* Titel; favorieten zijn een vaste tegel geworden (geen schakelaar Lijstjes | Favorieten meer). */}
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex min-w-0 flex-1 items-start justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
-                <PageBackButton href="/" label="Terug naar de startpagina" />
+                <PageBackButton
+                  href={section === "favorieten" ? "/lijstjes-beheren/lijstjes" : "/"}
+                  label={section === "favorieten" ? "Terug naar je lijstjes" : "Terug naar de startpagina"}
+                />
               <div className="flex min-w-0 flex-col gap-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <h1 ref={largeTitleRef} className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-text-primary">
@@ -653,18 +654,6 @@ export function LijstjesBeherenClient({
             </div>
             {!isCardsEditMode ? (
               <div className="flex items-center gap-3">
-              <SegmentedControl
-                className="flex-1 md:w-[300px] md:flex-none"
-                ariaLabel="Soort lijstjes"
-                value={section}
-                onChange={(v) => {
-                  if (v !== section) router.push(v === "lijstjes" ? "/lijstjes-beheren/lijstjes" : "/lijstjes-beheren/favorieten");
-                }}
-                options={[
-                  { value: "lijstjes", label: <>Lijstjes <span className="ml-1 font-medium opacity-60">{normalCount}</span></> },
-                  { value: "favorieten", label: <>Favorieten <span className="ml-1 font-medium opacity-60">{masterCount}</span></> },
-                ]}
-              />
               {hasSectionLists ? (
                 <HeaderEditButton label={editLabel} onClick={() => setIsCardsEditMode(true)} className="!hidden lg:!flex" />
               ) : null}
@@ -681,6 +670,7 @@ export function LijstjesBeherenClient({
               <h2 className="text-[17px] font-bold leading-6 text-text-primary">Vaste lijstjes</h2>
               <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">
                 <TeKopenTile count={vaste.teKopenOpen} className="!w-full" />
+                <FavorietenTile count={vaste.favoritesCount} className="!w-full" />
                 {vaste.lists.map((l) => (
                   <VastTile
                     key={l.id}
