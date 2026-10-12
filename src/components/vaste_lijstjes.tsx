@@ -553,9 +553,9 @@ export function HomeListsDesktopRow({
       </div>
     );
   }
-  // Meer dan 3 elementen: boodschappen de linkerhelft, vaste tegels de rechterhelft, elk in gelijke kolommen.
+  // Meer dan 3 elementen: boodschappen 60% links, vaste tegels 40% rechts, elk in gelijke kolommen.
   return (
-    <div className="grid grid-cols-2 items-stretch gap-3.5">
+    <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-stretch gap-3.5">
       <div className="grid items-stretch gap-3.5" style={{ gridTemplateColumns: `repeat(${Math.max(1, shopping.length)}, minmax(0, 1fr))` }}>
         {shopping.map((card, i) => (
           <div key={i} className="min-w-0 [&>*]:h-full">
