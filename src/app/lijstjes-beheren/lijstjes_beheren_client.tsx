@@ -681,6 +681,34 @@ export function LijstjesBeherenClient({
             <FavoritesPromoBanner onSetUp={handleFabNewList} onDismiss={favoritesPromo.dismiss} />
           ) : null}
 
+          {section === "lijstjes" ? (
+            <section aria-label="Vaste lijstjes" className="mb-2 flex flex-col gap-3">
+              <h2 className="text-[17px] font-bold leading-6 text-text-primary">Vaste lijstjes</h2>
+              <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">
+                <TeKopenTile count={vaste.teKopenOpen} className="!w-full" />
+                {vaste.lists.map((l) => (
+                  <VastTile
+                    key={l.id}
+                    href={`/vast/${l.id}`}
+                    name={l.name}
+                    count={l.openCount}
+                    icon={l.icon}
+                    color={l.color}
+                    className="!w-full"
+                    onDelete={
+                      isCardsEditMode && l.isOwner
+                        ? () => {
+                            if (window.confirm(`«${l.name}» en alles erop verwijderen?`)) deleteVastList(l);
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+                {!isCardsEditMode ? <NewVastTile onClick={() => setVastSheetOpen(true)} className="!w-full" /> : null}
+              </div>
+            </section>
+          ) : null}
+
           {section === "favorieten" && !hasSectionLists ? (
             <FavoritesEmptyState onCreate={handleFabNewList} />
           ) : !hasSectionLists ? (
@@ -739,33 +767,6 @@ export function LijstjesBeherenClient({
             </div>
           ) : null}
 
-          {section === "lijstjes" ? (
-            <section aria-label="Vaste lijstjes" className="mt-4 flex flex-col gap-3">
-              <h2 className="text-[17px] font-bold leading-6 text-text-primary">Vaste lijstjes</h2>
-              <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">
-                <TeKopenTile count={vaste.teKopenOpen} className="!w-full" />
-                {vaste.lists.map((l) => (
-                  <VastTile
-                    key={l.id}
-                    href={`/vast/${l.id}`}
-                    name={l.name}
-                    count={l.openCount}
-                    icon={l.icon}
-                    color={l.color}
-                    className="!w-full"
-                    onDelete={
-                      isCardsEditMode && l.isOwner
-                        ? () => {
-                            if (window.confirm(`«${l.name}» en alles erop verwijderen?`)) deleteVastList(l);
-                          }
-                        : undefined
-                    }
-                  />
-                ))}
-                {!isCardsEditMode ? <NewVastTile onClick={() => setVastSheetOpen(true)} className="!w-full" /> : null}
-              </div>
-            </section>
-          ) : null}
 
           {section === "favorieten" && hasSectionLists && !isCardsEditMode ? (
             <p className="text-center text-[12.5px] text-[var(--text-tertiary)]">
