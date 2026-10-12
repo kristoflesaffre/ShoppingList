@@ -535,7 +535,7 @@ export function HomeListsDesktopRow({
       icon={t.icon}
       color={t.color}
       wide={!equal && tiles.length === 1}
-      className="!h-auto min-h-[150px] !w-auto min-w-0 flex-1 basis-0"
+      className="!h-auto min-h-[150px] !w-auto min-w-0"
       onAdd={t.id === "te-kopen" ? onAddTeKopen : undefined}
       addLabel={t.id === "te-kopen" ? "Product toevoegen aan Te kopen" : undefined}
     />
@@ -553,14 +553,19 @@ export function HomeListsDesktopRow({
       </div>
     );
   }
+  // Meer dan 3 elementen: boodschappen de linkerhelft, vaste tegels de rechterhelft, elk in gelijke kolommen.
   return (
-    <div className="flex items-stretch gap-3.5">
-      {shopping.map((card, i) => (
-        <div key={i} className="min-w-0 flex-1 basis-0 [&>*]:h-full">
-          {card}
-        </div>
-      ))}
-      <div className="flex min-w-0 flex-[1.2] basis-0 gap-3">{tileEls}</div>
+    <div className="grid grid-cols-2 items-stretch gap-3.5">
+      <div className="grid items-stretch gap-3.5" style={{ gridTemplateColumns: `repeat(${Math.max(1, shopping.length)}, minmax(0, 1fr))` }}>
+        {shopping.map((card, i) => (
+          <div key={i} className="min-w-0 [&>*]:h-full">
+            {card}
+          </div>
+        ))}
+      </div>
+      <div className="grid items-stretch gap-3" style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}>
+        {tileEls}
+      </div>
     </div>
   );
 }

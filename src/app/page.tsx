@@ -1681,7 +1681,11 @@ function HomeListSwimCard({
             <span
               key={p.id}
               className={cn(
-                "relative flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--gray-50)] shadow-[0_0_0_2px_var(--white)]",
+                "relative flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full",
+                // Op een gekleurde kaart: witte bolletjes met een zachte schaduw i.p.v. grijs met witte rand.
+                cardTint
+                  ? "bg-[var(--white)] shadow-[0_0_0_1.5px_rgba(16,17,48,0.05),0_1px_3px_rgba(16,17,48,0.12)]"
+                  : "bg-[var(--gray-50)] shadow-[0_0_0_2px_var(--white)]",
                 index > 0 && "-ml-2",
               )}
               style={{ zIndex: index + 1 }}
@@ -1704,7 +1708,12 @@ function HomeListSwimCard({
           ))}
           {rest > 0 ? (
             <span
-              className="relative -ml-2 flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)] text-xs font-medium text-[var(--blue-400)] shadow-[0_0_0_2px_var(--white)] tabular-nums"
+              className={cn(
+                "relative -ml-2 flex size-[34px] shrink-0 items-center justify-center rounded-full text-xs font-medium text-[var(--blue-400)] tabular-nums",
+                cardTint
+                  ? "bg-[var(--white)] shadow-[0_0_0_1.5px_rgba(16,17,48,0.05),0_1px_3px_rgba(16,17,48,0.12)]"
+                  : "bg-[var(--blue-25)] shadow-[0_0_0_2px_var(--white)]",
+              )}
               style={{ zIndex: shown.length + 1 }}
             >
               +{rest}
