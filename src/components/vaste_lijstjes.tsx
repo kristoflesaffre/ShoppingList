@@ -466,32 +466,52 @@ export function deleteVastList(list: Pick<VastListSummary, "id" | "itemIds" | "m
 }
 
 /**
- * Desktop-startpagina (canvas «Home desktop · Lijstjes op één rij»): maximaal 3 vaste tegels naast de
- * boodschappenkaarten; met minder tegels vullen ze samen de rest van de rij.
+ * Desktoprij «Lijstjes» op de startpagina: boodschappenkaarten + vaste tegels. Met samen hoogstens
+ * 3 elementen krijgt elk element een gelijk deel van de breedte; anders blijven de kaarten breed en
+ * delen de vaste tegels de rest.
  */
-export function VasteLijstjesDesktopTiles({ userId, max = 3 }: { userId: string; max?: number }) {
+export function HomeListsDesktopRow({ userId, shopping }: { userId: string; shopping: React.ReactNode[] }) {
   const { lists, teKopenOpen, favoritesCount } = useVasteLijstjes(userId);
   const tiles = [
-    { id: "te-kopen", href: "/te-kopen", name: "Te kopen", count: teKopenOpen, icon: "/images/ui/kopen_240.webp", color: VAST_COLORS.blauw },
+    { id: "te-kopen", href: "/te-kopen", name: "Te kopen", count: teKopenOpen, icon: "/images/ui/kopen_240.webp", color: VAST_COLORS.blauw, countLabel: "open" },
     { id: "favorieten", href: "/lijstjes-beheren/favorieten", name: "Favorieten", count: favoritesCount, icon: "/images/ui/ster_240.webp", color: VAST_COLORS.geel, countLabel: "lijstjes" },
-    ...lists.map((l) => ({ id: l.id, href: `/vast/${l.id}`, name: l.name, count: l.openCount, icon: l.icon, color: l.color })),
-  ].slice(0, max);
-  const wide = tiles.length === 1;
+    ...lists.map((l) => ({ id: l.id, href: `/vast/${l.id}`, name: l.name, count: l.openCount, icon: l.icon, color: l.color, countLabel: "open" })),
+  ].slice(0, 3);
+  const equal = shopping.length + tiles.length <= 3;
+  const tileEls = tiles.map((t) => (
+    <VastTile
+      key={t.id}
+      href={t.href}
+      name={t.name}
+      count={t.count}
+      countLabel={t.countLabel}
+      icon={t.icon}
+      color={t.color}
+      wide={!equal && tiles.length === 1}
+      className="!h-auto min-h-[150px] !w-auto min-w-0 flex-1 basis-0"
+    />
+  ));
+  if (equal) {
+    // Gelijke kolommen (raster), zodat padding van de tegels de verdeling niet scheeftrekt.
+    return (
+      <div className="grid items-stretch gap-3.5" style={{ gridTemplateColumns: `repeat(${shopping.length + tiles.length}, minmax(0, 1fr))` }}>
+        {shopping.map((card, i) => (
+          <div key={i} className="min-w-0 [&>*]:h-full">
+            {card}
+          </div>
+        ))}
+        {tileEls}
+      </div>
+    );
+  }
   return (
-    <>
-      {tiles.map((t) => (
-        <VastTile
-          key={t.id}
-          href={t.href}
-          name={t.name}
-          count={t.count}
-          icon={t.icon}
-          color={t.color}
-          countLabel={"countLabel" in t ? t.countLabel : "open"}
-          wide={wide}
-          className="!h-auto min-h-[150px] !w-auto min-w-0 flex-1"
-        />
+    <div className="flex items-stretch gap-3.5">
+      {shopping.map((card, i) => (
+        <div key={i} className="min-w-0 flex-1 basis-0 [&>*]:h-full">
+          {card}
+        </div>
       ))}
-    </>
+      <div className="flex min-w-0 flex-[1.2] basis-0 gap-3">{tileEls}</div>
+    </div>
   );
 }

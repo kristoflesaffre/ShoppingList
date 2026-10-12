@@ -126,7 +126,7 @@ import { normalizeTripPerson } from "@/lib/trip-person";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { useWatchingTvItems } from "@/hooks/use_watching_tv_items";
 import { isVastList } from "@/lib/vaste-lijstjes";
-import { VastListSheet, VasteLijstjesDesktopTiles, VasteLijstjesLane } from "@/components/vaste_lijstjes";
+import { HomeListsDesktopRow, VastListSheet, VasteLijstjesLane } from "@/components/vaste_lijstjes";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -1707,13 +1707,13 @@ function HomeLijstjesSection({
   onQuickAdd,
   onNewListLike,
   after,
-  desktopFixed,
+  renderDesktopRow,
 }: {
   normalLists: HomeList[];
   /** Onder de boodschappen: rij «Vaste lijstjes» (mobiel). */
   after?: React.ReactNode;
-  /** Desktop: vaste tegels rechts naast de boodschappenkaarten. */
-  desktopFixed?: React.ReactNode;
+  /** Desktop: één rij met de boodschappenkaarten en de vaste tegels. */
+  renderDesktopRow?: (shopping: React.ReactNode[]) => React.ReactNode;
   onOpenCreateModal: () => void;
   /** Voegt een product toe aan het gegeven lijstje. */
   onQuickAdd: (list: HomeList, name: string) => void;
@@ -1863,21 +1863,23 @@ function HomeLijstjesSection({
       </div>
       {after ? <div className="mt-3 lg:hidden">{after}</div> : null}
       {/* Desktop: alles op één rij — 2 boodschappenkaarten + max. 3 vaste tegels (canvas «Lijstjes op één rij»). */}
-      <div className="hidden gap-3.5 lg:flex lg:items-stretch">
-        {activeLists.slice(0, 2).map((list) => (
-          <div key={list.id} className="min-w-0 flex-1 [&>*]:h-full">
-            <HomeListSwimCard
-              list={list}
-              onAddItem={(l) => {
-                primeKeyboard();
-                setSearchTarget(l);
-              }}
-              onNewList={onNewListLike}
-            />
-          </div>
-        ))}
-        {desktopFixed ? <div className="flex min-w-0 flex-[1.2] gap-3">{desktopFixed}</div> : null}
-      </div>
+      {renderDesktopRow ? (
+        <div className="hidden lg:block">
+          {renderDesktopRow(
+            activeLists.slice(0, 2).map((list) => (
+              <HomeListSwimCard
+                key={list.id}
+                list={list}
+                onAddItem={(l) => {
+                  primeKeyboard();
+                  setSearchTarget(l);
+                }}
+                onNewList={onNewListLike}
+              />
+            )),
+          )}
+        </div>
+      ) : null}
 
 
       <ItemNameSearchSlideIn
@@ -3597,7 +3599,7 @@ export default function Home() {
               onQuickAdd={handleQuickAddToList}
               onNewListLike={handleNewListLike}
               after={user ? <VasteLijstjesLane userId={user.id} /> : null}
-              desktopFixed={user ? <VasteLijstjesDesktopTiles userId={user.id} /> : null}
+              renderDesktopRow={user ? (shopping) => <HomeListsDesktopRow userId={user.id} shopping={shopping} /> : undefined}
             />
           </>
         );
@@ -3733,7 +3735,7 @@ export default function Home() {
                     onQuickAdd={handleQuickAddToList}
                     onNewListLike={handleNewListLike}
                     after={user ? <VasteLijstjesLane userId={user.id} /> : null}
-                    desktopFixed={user ? <VasteLijstjesDesktopTiles userId={user.id} /> : null}
+                    renderDesktopRow={user ? (shopping) => <HomeListsDesktopRow userId={user.id} shopping={shopping} /> : undefined}
                   />
                 </div>
                 <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-2 min-[1050px]:items-stretch min-[1050px]:gap-8">
