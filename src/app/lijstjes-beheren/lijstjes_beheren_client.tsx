@@ -638,15 +638,10 @@ export function LijstjesBeherenClient({
                     {pageTitle}
                   </h1>
                 </div>
-                <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
-                  {isCardsEditMode
-                    ? "Sleep om te ordenen"
-                    : section === "lijstjes"
-                      ? `${normalCount} ${normalCount === 1 ? "lijstje" : "lijstjes"}`
-                      : masterCount === 0
-                        ? "Nog geen favorietenlijsten"
-                        : `${masterCount} ${masterCount === 1 ? "favorietenlijst" : "favorietenlijsten"}`}
-                </p>
+                {/* Enkel in bewerkstand een hint; het aantal staat al in de schakelaar eronder. */}
+                {isCardsEditMode ? (
+                  <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">Sleep om te ordenen</p>
+                ) : null}
               </div>
 
               </div>
