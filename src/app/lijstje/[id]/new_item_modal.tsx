@@ -906,9 +906,10 @@ export function NewItemModal({
     (entry) => entry.kind === "recipe",
   );
   const batchDaySuffix = selectedDay !== "Geen" ? ` op ${selectedDay.toLowerCase()}` : "";
+  // Het aantal staat al in het bolletje ervoor; hier enkel het woord.
   const batchFooterLabel = batchContainsRecipe
-    ? `${effectiveBatchCount} ${effectiveBatchCount === 1 ? "selectie" : "selecties"} toevoegen${batchDaySuffix}`
-    : `${effectiveBatchCount} ${effectiveBatchCount === 1 ? "item" : "items"} toevoegen${batchDaySuffix}`;
+    ? `${effectiveBatchCount === 1 ? "Selectie" : "Selecties"} toevoegen${batchDaySuffix}`
+    : `${effectiveBatchCount === 1 ? "Item" : "Items"} toevoegen${batchDaySuffix}`;
 
   const itemFooter = batchMode ? (
     <Button
