@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { normalizeQuantity } from "@/lib/recipe_ingredient_quantity";
 import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
@@ -394,7 +395,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
     {
       className,
       itemName = "Item name",
-      quantity,
+      quantity: quantityProp,
       claimedByLabel,
       avatar,
       checked,
@@ -423,6 +424,8 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
     },
     ref,
   ) => {
+    // Altijd «1 stuk» / «2 stuks», ook bij oudere gegevens met «2 stuk».
+    const quantity = typeof quantityProp === "string" ? normalizeQuantity(quantityProp) : quantityProp;
     const [internalChecked, setInternalChecked] = React.useState(
       checked ?? defaultChecked ?? false,
     );

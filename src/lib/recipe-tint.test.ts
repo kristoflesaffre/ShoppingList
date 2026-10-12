@@ -38,6 +38,11 @@ describe("recipeTintColors", () => {
 });
 
 describe("scaleQuantity", () => {
+  it("zet stuk en stuks juist na het herrekenen", () => {
+    expect(scaleQuantity("1 stuk", 2)).toBe("2 stuks");
+    expect(scaleQuantity("2 stuks", 0.5)).toBe("1 stuk");
+  });
+
   it("schaalt het getal vooraan", () => {
     expect(scaleQuantity("2 pakken", 1.5)).toBe("3 pakken");
     expect(scaleQuantity("1,5 pak", 2)).toBe("3 pak");

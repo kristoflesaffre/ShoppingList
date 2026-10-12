@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { normalizeQuantity } from "@/lib/recipe_ingredient_quantity";
 
 /**
  * Receptkleur automatisch uit de foto (canvas «Receptkleur · automatisch uit de foto»).
@@ -173,7 +174,7 @@ export function scaleQuantity(quantity: string, factor: number): string {
   if (!m) return quantity;
   const value = Number(m[1].replace(",", ".")) * factor;
   const rounded = value >= 10 ? Math.round(value) : Math.round(value * 10) / 10;
-  return `${String(rounded).replace(".", ",")}${m[2]}`;
+  return normalizeQuantity(`${String(rounded).replace(".", ",")}${m[2]}`);
 }
 
 /** Gemeten kleur voor een foto (zelfde cache als useRecipeTint); voor meerdere foto's tegelijk. */

@@ -19,7 +19,7 @@ import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
-import { parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
+import { normalizeQuantity, parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
 import {
   DEFAULT_TRIP_PERSON_TAB,
   TRIP_PERSON_TABS,
@@ -514,7 +514,7 @@ export function NewItemModal({
     const section = selectedStore
       ? selectedStore
       : selectedDay === "Geen" ? "Algemeen" : selectedDay;
-    const qty = `${stepperValue} ${quantityDesc}`;
+    const qty = normalizeQuantity(`${stepperValue} ${quantityDesc}`);
     const itemCategory = isVacationList
       ? vacationCategory
       : initialItemCategory && initialItemCategory.trim().length > 0
@@ -569,7 +569,7 @@ export function NewItemModal({
       item: {
         id: `draft-${entryId}`,
         name,
-        quantity: `${stepperValue} ${quantityDesc}`.trim(),
+        quantity: normalizeQuantity(`${stepperValue} ${quantityDesc}`.trim()),
         checked: false,
         section,
         itemCategory: resolveItemCategoryFromName(name),

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TE_KOPEN_STORE_OPTIONS } from "@/lib/master-stores";
 import { ItemNameSearchSlideIn } from "@/components/ui/item_name_search_slide_in";
+import { normalizeQuantity } from "@/lib/recipe_ingredient_quantity";
 import { QuantityUnitField } from "@/components/ui/quantity_unit_field";
 import { SearchBar } from "@/components/ui/search_bar";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
@@ -143,7 +144,7 @@ export function AddShoppingItemSlideIn({
   const handleAdd = () => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const qty = `${quantity.trim() || "1"} ${unit.trim() || "stuk"}`.trim();
+    const qty = normalizeQuantity(`${quantity.trim() || "1"} ${unit.trim() || "stuk"}`.trim());
     incrementStoreFreq(selectedStore);
     onAdd(trimmed, qty, selectedStore);
     onClose();
