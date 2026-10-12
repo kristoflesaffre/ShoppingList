@@ -95,3 +95,40 @@ export function daysUntilLabel(days: number | null): string | null {
   if (days === 1) return "morgen";
   return `nog ${days} dagen`;
 }
+
+/**
+ * Zichtbaar deel van elke illustratie binnen het 240×240-beeld (links, boven, rechts, onder), gemeten
+ * op de alfa. Zo krijgt elke illustratie op een tegel dezelfde zichtbare grootte, ook al hebben de
+ * bestanden verschillende witruimte (het kado vult het beeld, de ster en het tasje niet).
+ */
+const ICON_BOXES: Record<string, [number, number, number, number]> = {
+  kopen: [41, 14, 206, 221],
+  ster: [23, 30, 217, 210],
+  kado: [4, 0, 236, 240],
+  hart: [13, 41, 228, 215],
+  meisje: [24, 35, 216, 215],
+  jongen: [48, 18, 190, 222],
+  man: [30, 0, 208, 239],
+  gezin: [27, 13, 222, 229],
+  lijstje: [38, 18, 204, 230],
+  supermarkt: [35, 15, 213, 228],
+};
+/** Onbekende illustratie: ~12% witruimte rondom. */
+const DEFAULT_BOX: [number, number, number, number] = [14, 14, 226, 226];
+
+/**
+ * Plaatsing van de illustratie op een tegel: het zichtbare deel wordt `size` px (grootste zijde) en
+ * steekt `overhang` px voorbij de rechter- en onderrand (wordt door de tegel afgesneden).
+ */
+export function tileIconPlacement(icon: string, size: number, overhang: number) {
+  const key = /\/([a-z]+)_\d+\.webp$/.exec(icon)?.[1] ?? "";
+  const [l, t, r, b] = ICON_BOXES[key] ?? DEFAULT_BOX;
+  const scale = size / Math.max(r - l, b - t);
+  const px = 240 * scale;
+  return {
+    width: px,
+    height: px,
+    right: -overhang - (240 - r) * scale,
+    bottom: -overhang - (240 - b) * scale,
+  };
+}

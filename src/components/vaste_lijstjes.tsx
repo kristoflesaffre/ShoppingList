@@ -23,6 +23,7 @@ import {
   deepRgb,
   isVastList,
   mixWithWhiteRgb,
+  tileIconPlacement,
   vastColor,
   vastIcon,
   vastType,
@@ -162,7 +163,8 @@ export function VastTile({
   onDelete?: () => void;
 }) {
   const editing = onDelete != null;
-  const person = /\/(meisje|jongen|man|gezin)_/.test(icon);
+  // Zelfde zichtbare grootte voor elke illustratie, deels van de tegel af (rechtsonder).
+  const placement = tileIconPlacement(icon, wide ? 104 : 84, wide ? 10 : 14);
   const body = (
     <>
       <span className={cn("font-extrabold leading-none tabular-nums", wide ? "text-[34px]" : "text-[28px]")} style={{ color: deepRgb(color) }}>
@@ -174,16 +176,8 @@ export function VastTile({
         src={icon}
         alt=""
         aria-hidden
-        className={cn(
-          "pointer-events-none absolute object-contain",
-          wide
-            ? person
-              ? "bottom-3 right-3 size-[88px] rounded-full bg-[var(--white)]"
-              : "bottom-2 right-3 size-24"
-            : person
-              ? "-bottom-1 -right-1 size-[62px] rounded-full bg-[var(--white)]"
-              : "-bottom-2 -right-2 size-[70px]",
-        )}
+        className="pointer-events-none absolute max-w-none object-contain"
+        style={placement}
       />
     </>
   );
