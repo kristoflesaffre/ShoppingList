@@ -103,7 +103,7 @@ import { CountBadge } from "@/components/ui/count_badge";
 import { isEmptyDraftMasterList, useCleanupDraftMasterLists } from "@/lib/draft-master-lists";
 import { findMergeTarget } from "@/lib/list-item-merge";
 import { FavoritesPromoBanner, useFavoritesPromo } from "@/components/favorites_promo_banner";
-import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
+import { mixWithWhite, recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { IngredientPlate } from "@/components/ingredient_plate";
 import { frituurItemIconSrc } from "@/lib/frituur-item-icons";
 import { uploadUserImageFile } from "@/lib/image-storage";
@@ -1549,13 +1549,26 @@ function HomeListSwimCard({
   /* 10.3: lijsticoon als herkenningsteken in een zacht verlopend vierkant; eigen foto vult het vlak. */
   const customIcon = list.customIconUrl ?? null;
   const iconSrc = customIcon ?? venueImage ?? homeListCardIconSrc(list);
+  /* Kleurverloop in de kleur van het lijsticoon, zoals de vaste tegels eronder. */
+  const iconRgb = useRecipeTint(iconSrc);
+  const dark = useIsDarkTheme();
+  const cardTint: React.CSSProperties | undefined = iconRgb
+    ? {
+        backgroundImage: dark
+          ? `linear-gradient(160deg, rgba(${iconRgb.join(", ")}, 0.24) 0%, rgba(${iconRgb.join(", ")}, 0.08) 100%)`
+          : `linear-gradient(160deg, ${mixWithWhite(iconRgb, 0.26)} 0%, ${mixWithWhite(iconRgb, 0.08)} 100%)`,
+      }
+    : undefined;
 
   const header = (
     <span className="flex items-start gap-3">
       <span className="pointer-events-none relative shrink-0">
         <span
           aria-hidden
-          className="flex size-12 items-center justify-center overflow-hidden rounded-[14px] bg-gradient-to-br from-[var(--blue-25)] to-[var(--blue-50)]"
+          className={cn(
+            "flex size-12 items-center justify-center overflow-hidden rounded-[14px]",
+            cardTint ? "bg-[rgba(255,255,255,0.72)]" : "bg-gradient-to-br from-[var(--blue-25)] to-[var(--blue-50)]",
+          )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp of eigen foto */}
           <img
@@ -1599,7 +1612,13 @@ function HomeListSwimCard({
 
   /* Hele tegel klikbaar via een link die de kaart bedekt; de knop ligt erboven (geen knop in een link). */
   const cardShell = (children: React.ReactNode) => (
-    <div className="relative flex h-full w-full flex-col gap-3.5 rounded-lg bg-[var(--white)] p-4 shadow-card transition-transform duration-fast ease-out-strong has-[a:active]:motion-safe:scale-[0.98]">
+    <div
+      className={cn(
+        "relative flex h-full w-full flex-col gap-3.5 rounded-lg bg-[var(--white)] p-4 transition-transform duration-fast ease-out-strong has-[a:active]:motion-safe:scale-[0.98]",
+        cardTint ? "" : "shadow-card",
+      )}
+      style={cardTint}
+    >
       <Link
         href={`/lijstje/${list.id}`}
         aria-label={`${displayName} openen`}
