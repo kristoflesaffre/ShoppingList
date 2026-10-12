@@ -42,7 +42,7 @@ export function ListSectionHeaderIcon({
 }
 
 const sectionActionClass =
-  "inline-flex shrink-0 items-center rounded-pill px-2 py-1 -mr-1 text-[13px] font-medium leading-[18px] tracking-normal text-action-primary no-underline transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover [@media(hover:hover)]:hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
+  "inline-flex shrink-0 items-center rounded-pill px-2 py-1 -mr-1 text-[15px] font-semibold leading-5 tracking-normal text-action-primary no-underline transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover [@media(hover:hover)]:hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
 
 /**
  * Sectiekop voor home-secties (stijl 1 · Helder): sectietitel (18px, sentence case) met
@@ -80,7 +80,7 @@ export function ListSectionHeader({
 }) {
   return (
     <div className="flex min-h-8 items-center justify-between gap-3">
-      <h2 className="flex min-w-0 items-baseline gap-2 text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
+      <h2 className="flex min-w-0 items-baseline gap-2 text-[22px] font-bold leading-7 tracking-[-0.01em] text-[var(--text-primary)]">
         <span className="min-w-0 truncate">{label}</span>
         {count ? (
           <span className="shrink-0 text-sm font-medium leading-20 tracking-normal text-[var(--text-secondary)] tabular-nums">
