@@ -1482,6 +1482,10 @@ function homeListProductItems(list: HomeList): HomeListItemRow[] {
 const HOME_LIST_PHOTO_SLOTS = 7;
 
 /** Zachte pil (8.4): zelfde knopstijl voor «+ Item», «+ Lijstje» en Te kopen «Toevoegen». */
+/** Op een gekleurde lijstkaart: witte pil met schaduw, zoals de «+» op de tegel Te kopen. */
+const HOME_WHITE_PILL_CLASS =
+  "relative z-[1] inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-pill bg-[var(--white)] pl-3 pr-3.5 text-sm font-semibold text-[var(--blue-500)] shadow-[0_2px_6px_-2px_rgba(16,17,48,0.25)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+
 const HOME_SOFT_PILL_CLASS =
   /* Design system «Knop sm · secundair» (34px, zacht lavendel). */
   "relative z-[1] inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-pill bg-[var(--blue-25)] pl-3 pr-3.5 text-sm font-semibold text-[var(--blue-500)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[var(--blue-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
@@ -1535,12 +1539,12 @@ function HomeListSwimCard({
   const meta = [storeName, list.sharedWithFirstName ?? ""].filter(Boolean).join(" · ");
 
   const action = completed ? (
-    <button type="button" onClick={() => onNewList(list)} className={HOME_SOFT_PILL_CLASS} aria-label={`Nieuw lijstje maken zoals ${list.name}`}>
+    <button type="button" onClick={() => onNewList(list)} className={HOME_WHITE_PILL_CLASS} aria-label={`Nieuw lijstje maken zoals ${list.name}`}>
       <HomeSoftPillPlusIcon />
       Lijstje
     </button>
   ) : (
-    <button type="button" onClick={() => onAddItem(list)} className={HOME_SOFT_PILL_CLASS} aria-label={`Item toevoegen aan ${list.name}`}>
+    <button type="button" onClick={() => onAddItem(list)} className={HOME_WHITE_PILL_CLASS} aria-label={`Item toevoegen aan ${list.name}`}>
       <HomeSoftPillPlusIcon />
       Item
     </button>
