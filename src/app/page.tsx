@@ -1804,6 +1804,7 @@ function HomeLijstjesSection({
   }
 
   const otherLists = normalLists.filter((l) => !activeLists.some((a) => a.id === l.id)).slice(0, 3);
+  const fitLists = activeLists.length <= 2;
   return (
     <div className="flex flex-col gap-4">
       <ListSectionHeader
@@ -1814,18 +1815,20 @@ function HomeLijstjesSection({
         overzichtLabel="Toon alle"
       />
 
-      <h3 className="-mb-1 text-[17px] font-bold leading-6 text-text-primary lg:hidden">Boodschappen</h3>
+      {/* Mobiel: 1 lijstje = volle breedte, 2 = elk de helft, meer = swimlane. */}
       <div
         ref={laneRef}
         onScroll={handleScroll}
-        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden"
+        className={cn(
+          "flex gap-3 lg:hidden",
+          !fitLists && "-mx-4 snap-x snap-mandatory overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        )}
       >
         {activeLists.map((list) => (
           <div
             key={list.id}
             className={cn(
-              "w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start",
-              "lg:w-[calc((100%-32px)/3)] lg:max-w-none",
+              fitLists ? "min-w-0 flex-1 [&>*]:h-full" : "w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start",
             )}
           >
             <HomeListSwimCard
@@ -1838,6 +1841,7 @@ function HomeLijstjesSection({
             />
           </div>
         ))}
+        {fitLists ? null : (
         <Link
           href="/lijstjes-beheren/lijstjes"
           className="flex w-40 shrink-0 snap-start flex-col items-center justify-center gap-2.5 rounded-lg bg-[var(--white)] p-4 no-underline shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
@@ -1860,8 +1864,9 @@ function HomeLijstjesSection({
           </span>
           <span className="text-[15px] font-semibold leading-5 text-action-primary">Alle {normalLists.length} lijstjes</span>
         </Link>
+        )}
       </div>
-      {after ? <div className="mt-3 lg:hidden">{after}</div> : null}
+      {after ? <div className="lg:hidden">{after}</div> : null}
       {/* Desktop: alles op één rij — 2 boodschappenkaarten + max. 3 vaste tegels (canvas «Lijstjes op één rij»). */}
       {renderDesktopRow ? (
         <div className="hidden lg:block">
@@ -2924,6 +2929,11 @@ export default function Home() {
   }, [user?.id, authLoading, isLoading, data?.lists]);
 
   const [teKopenSlideOpen, setTeKopenSlideOpen] = React.useState(false);
+  /** «+» op de tegel Te kopen: meteen het formulier om een product toe te voegen. */
+  const openTeKopenAdd = React.useCallback(() => {
+    primeKeyboard();
+    setTeKopenSlideOpen(true);
+  }, []);
 
   const handleAddShoppingItem = React.useCallback(
     async (name: string, quantity: string, store: string | null) => {
@@ -3598,8 +3608,8 @@ export default function Home() {
               onOpenCreateModal={handleOpenCreateModal}
               onQuickAdd={handleQuickAddToList}
               onNewListLike={handleNewListLike}
-              after={user ? <VasteLijstjesLane userId={user.id} /> : null}
-              renderDesktopRow={user ? (shopping) => <HomeListsDesktopRow userId={user.id} shopping={shopping} /> : undefined}
+              after={user ? <VasteLijstjesLane userId={user.id} onAddTeKopen={openTeKopenAdd} /> : null}
+              renderDesktopRow={user ? (shopping) => <HomeListsDesktopRow userId={user.id} shopping={shopping} onAddTeKopen={openTeKopenAdd} /> : undefined}
             />
           </>
         );
@@ -3734,8 +3744,8 @@ export default function Home() {
                     onOpenCreateModal={handleOpenCreateModal}
                     onQuickAdd={handleQuickAddToList}
                     onNewListLike={handleNewListLike}
-                    after={user ? <VasteLijstjesLane userId={user.id} /> : null}
-                    renderDesktopRow={user ? (shopping) => <HomeListsDesktopRow userId={user.id} shopping={shopping} /> : undefined}
+                    after={user ? <VasteLijstjesLane userId={user.id} onAddTeKopen={openTeKopenAdd} /> : null}
+                    renderDesktopRow={user ? (shopping) => <HomeListsDesktopRow userId={user.id} shopping={shopping} onAddTeKopen={openTeKopenAdd} /> : undefined}
                   />
                 </div>
                 <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-2 min-[1050px]:items-stretch min-[1050px]:gap-8">

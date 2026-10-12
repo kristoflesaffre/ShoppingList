@@ -148,6 +148,8 @@ export function VastTile({
   onDelete,
   wide = false,
   countLabel = "open",
+  onAdd,
+  addLabel,
 }: {
   href: string;
   name: string;
@@ -159,6 +161,9 @@ export function VastTile({
   wide?: boolean;
   /** Wat het getal telt, voor de schermlezer («open», «lijstjes»). */
   countLabel?: string;
+  /** Ronde «+» rechtsboven om meteen iets toe te voegen (bv. aan Te kopen). */
+  onAdd?: () => void;
+  addLabel?: string;
   /** Bewerkstand: verwijderen (ontbreekt = niet verwijderbaar). */
   onDelete?: () => void;
 }) {
@@ -181,11 +186,9 @@ export function VastTile({
       />
     </>
   );
-  const cls = cn(
-    "relative flex h-[150px] w-[124px] shrink-0 flex-col overflow-hidden rounded-[22px] p-3 no-underline",
-    "transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-    className,
-  );
+  const surface =
+    "relative flex flex-col overflow-hidden rounded-[22px] p-3 no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+  const cls = cn("h-[150px] w-[124px] shrink-0", surface, className);
   const style = { backgroundImage: `linear-gradient(160deg, ${mixWithWhiteRgb(color, 0.3)} 0%, ${mixWithWhiteRgb(color, 0.1)} 100%)` };
   if (editing) {
     return (
@@ -204,10 +207,31 @@ export function VastTile({
       </div>
     );
   }
+  if (!onAdd) {
+    return (
+      <Link href={href} aria-label={`${name}, ${count} ${countLabel}`} className={cls} style={style}>
+        {body}
+      </Link>
+    );
+  }
+  // Met «+»: de knop staat naast de link (geen knop in een link); de buitenste laag krijgt de maat.
   return (
-    <Link href={href} aria-label={`${name}, ${count} ${countLabel}`} className={cls} style={style}>
-      {body}
-    </Link>
+    <div className={cn("relative h-[150px] w-[124px] shrink-0", className)}>
+      <Link href={href} aria-label={`${name}, ${count} ${countLabel}`} className={cn(surface, "size-full")} style={style}>
+        {body}
+      </Link>
+      <button
+        type="button"
+        aria-label={addLabel ?? `Toevoegen aan ${name}`}
+        onClick={onAdd}
+        className="absolute right-2.5 top-2.5 z-[1] flex size-9 items-center justify-center rounded-full bg-[var(--white)] shadow-[0_2px_6px_-2px_rgba(16,17,48,0.25)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        style={{ color: deepRgb(color, 0.85) }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[18px]">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
+    </div>
   );
 }
 
@@ -238,8 +262,19 @@ export function FavorietenTile({ count, className, wide }: { count: number; clas
 }
 
 /** «Te kopen» als vaste tegel (eigen lijst, altijd aanwezig, niet verwijderbaar). */
-export function TeKopenTile({ count, className }: { count: number; className?: string }) {
-  return <VastTile href="/te-kopen" name="Te kopen" count={count} icon="/images/ui/kopen_240.webp" color={VAST_COLORS.blauw} className={className} />;
+export function TeKopenTile({ count, className, onAdd }: { count: number; className?: string; onAdd?: () => void }) {
+  return (
+    <VastTile
+      href="/te-kopen"
+      name="Te kopen"
+      count={count}
+      icon="/images/ui/kopen_240.webp"
+      color={VAST_COLORS.blauw}
+      className={className}
+      onAdd={onAdd}
+      addLabel="Product toevoegen aan Te kopen"
+    />
+  );
 }
 
 export type VastListDraft = {
@@ -438,18 +473,22 @@ export { deepRgb, mixWithWhiteRgb };
 /**
  * Rij «Vaste lijstjes» op de startpagina: «Te kopen», de eigen vaste lijstjes en een tegel «Nieuw».
  */
-export function VasteLijstjesLane({ userId }: { userId: string }) {
+export function VasteLijstjesLane({ userId, onAddTeKopen }: { userId: string; onAddTeKopen?: () => void }) {
   const { lists, teKopenOpen, favoritesCount } = useVasteLijstjes(userId);
+  const count = 2 + lists.length;
+  const fit = count <= 2;
+  const tileClass = fit ? "!w-auto min-w-0" : "snap-start";
   return (
-    <div className="flex flex-col gap-3">
-      <h3 className="text-[17px] font-bold leading-6 text-text-primary">Vaste lijstjes</h3>
-      <div className="-mx-4 flex snap-x gap-2.5 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
-        <TeKopenTile count={teKopenOpen} className="snap-start" />
-        <FavorietenTile count={favoritesCount} className="snap-start" />
-        {lists.map((l) => (
-          <VastTile key={l.id} href={`/vast/${l.id}`} name={l.name} count={l.openCount} icon={l.icon} color={l.color} className="snap-start" />
-        ))}
-      </div>
+    <div
+      className={cn(
+        fit ? "grid grid-cols-2 gap-2.5" : "-mx-4 flex snap-x gap-2.5 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+      )}
+    >
+      <TeKopenTile count={teKopenOpen} className={tileClass} onAdd={onAddTeKopen} />
+      <FavorietenTile count={favoritesCount} className={tileClass} />
+      {lists.map((l) => (
+        <VastTile key={l.id} href={`/vast/${l.id}`} name={l.name} count={l.openCount} icon={l.icon} color={l.color} className={tileClass} />
+      ))}
     </div>
   );
 }
@@ -470,7 +509,15 @@ export function deleteVastList(list: Pick<VastListSummary, "id" | "itemIds" | "m
  * 3 elementen krijgt elk element een gelijk deel van de breedte; anders blijven de kaarten breed en
  * delen de vaste tegels de rest.
  */
-export function HomeListsDesktopRow({ userId, shopping }: { userId: string; shopping: React.ReactNode[] }) {
+export function HomeListsDesktopRow({
+  userId,
+  shopping,
+  onAddTeKopen,
+}: {
+  userId: string;
+  shopping: React.ReactNode[];
+  onAddTeKopen?: () => void;
+}) {
   const { lists, teKopenOpen, favoritesCount } = useVasteLijstjes(userId);
   const tiles = [
     { id: "te-kopen", href: "/te-kopen", name: "Te kopen", count: teKopenOpen, icon: "/images/ui/kopen_240.webp", color: VAST_COLORS.blauw, countLabel: "open" },
@@ -489,6 +536,8 @@ export function HomeListsDesktopRow({ userId, shopping }: { userId: string; shop
       color={t.color}
       wide={!equal && tiles.length === 1}
       className="!h-auto min-h-[150px] !w-auto min-w-0 flex-1 basis-0"
+      onAdd={t.id === "te-kopen" ? onAddTeKopen : undefined}
+      addLabel={t.id === "te-kopen" ? "Product toevoegen aan Te kopen" : undefined}
     />
   ));
   if (equal) {
