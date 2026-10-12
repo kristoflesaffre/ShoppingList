@@ -128,6 +128,7 @@ export function VastTile({
   color,
   className,
   onDelete,
+  wide = false,
 }: {
   href: string;
   name: string;
@@ -135,6 +136,8 @@ export function VastTile({
   icon: string;
   color: [number, number, number];
   className?: string;
+  /** Brede tegel (enige vaste tegel op desktop): groter cijfer, naam en illustratie. */
+  wide?: boolean;
   /** Bewerkstand: verwijderen (ontbreekt = niet verwijderbaar). */
   onDelete?: () => void;
 }) {
@@ -142,10 +145,10 @@ export function VastTile({
   const person = /\/(meisje|jongen|man|gezin)_/.test(icon);
   const body = (
     <>
-      <span className="text-[28px] font-extrabold leading-none tabular-nums" style={{ color: deepRgb(color) }}>
+      <span className={cn("font-extrabold leading-none tabular-nums", wide ? "text-[34px]" : "text-[28px]")} style={{ color: deepRgb(color) }}>
         {count}
       </span>
-      <span className="mt-1.5 line-clamp-2 pr-1 text-[13.5px] font-extrabold leading-[17px] text-text-primary">{name}</span>
+      <span className={cn("mt-1.5 line-clamp-2 pr-1 font-extrabold text-text-primary", wide ? "max-w-[60%] text-base leading-5" : "text-[13.5px] leading-[17px]")}>{name}</span>
       {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
       <img
         src={icon}
@@ -153,7 +156,13 @@ export function VastTile({
         aria-hidden
         className={cn(
           "pointer-events-none absolute object-contain",
-          person ? "-bottom-1 -right-1 size-[62px] rounded-full bg-[var(--white)]" : "-bottom-2 -right-2 size-[70px]",
+          wide
+            ? person
+              ? "bottom-3 right-3 size-[88px] rounded-full bg-[var(--white)]"
+              : "bottom-2 right-3 size-24"
+            : person
+              ? "-bottom-1 -right-1 size-[62px] rounded-full bg-[var(--white)]"
+              : "-bottom-2 -right-2 size-[70px]",
         )}
       />
     </>
@@ -440,4 +449,33 @@ export function deleteVastList(list: Pick<VastListSummary, "id" | "itemIds" | "m
       db.tx.lists[list.id].delete(),
     ])
     .catch(() => undefined);
+}
+
+/**
+ * Desktop-startpagina (canvas «Home desktop · Lijstjes op één rij»): maximaal 3 vaste tegels naast de
+ * boodschappenkaarten; met minder tegels vullen ze samen de rest van de rij.
+ */
+export function VasteLijstjesDesktopTiles({ userId, max = 3 }: { userId: string; max?: number }) {
+  const { lists, teKopenOpen } = useVasteLijstjes(userId);
+  const tiles = [
+    { id: "te-kopen", href: "/te-kopen", name: "Te kopen", count: teKopenOpen, icon: "/images/ui/kopen_240.webp", color: VAST_COLORS.blauw },
+    ...lists.map((l) => ({ id: l.id, href: `/vast/${l.id}`, name: l.name, count: l.openCount, icon: l.icon, color: l.color })),
+  ].slice(0, max);
+  const wide = tiles.length === 1;
+  return (
+    <>
+      {tiles.map((t) => (
+        <VastTile
+          key={t.id}
+          href={t.href}
+          name={t.name}
+          count={t.count}
+          icon={t.icon}
+          color={t.color}
+          wide={wide}
+          className="!h-auto min-h-[150px] !w-auto min-w-0 flex-1"
+        />
+      ))}
+    </>
+  );
 }

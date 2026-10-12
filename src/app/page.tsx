@@ -126,7 +126,7 @@ import { normalizeTripPerson } from "@/lib/trip-person";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { useWatchingTvItems } from "@/hooks/use_watching_tv_items";
 import { isVastList } from "@/lib/vaste-lijstjes";
-import { VasteLijstjesLane } from "@/components/vaste_lijstjes";
+import { VasteLijstjesDesktopTiles, VasteLijstjesLane } from "@/components/vaste_lijstjes";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -1706,10 +1706,13 @@ function HomeLijstjesSection({
   onQuickAdd,
   onNewListLike,
   after,
+  desktopFixed,
 }: {
   normalLists: HomeList[];
-  /** Onder de boodschappen: rij «Vaste lijstjes». */
+  /** Onder de boodschappen: rij «Vaste lijstjes» (mobiel). */
   after?: React.ReactNode;
+  /** Desktop: vaste tegels rechts naast de boodschappenkaarten. */
+  desktopFixed?: React.ReactNode;
   onOpenCreateModal: () => void;
   /** Voegt een product toe aan het gegeven lijstje. */
   onQuickAdd: (list: HomeList, name: string) => void;
@@ -1718,7 +1721,7 @@ function HomeLijstjesSection({
 }) {
   const laneRef = React.useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
-  const [edges, setEdges] = React.useState({ atStart: true, atEnd: false });
+  const [, setEdges] = React.useState({ atStart: true, atEnd: false });
   const [searchTarget, setSearchTarget] = React.useState<HomeList | null>(null);
 
   const activeLists = React.useMemo(() => {
@@ -1766,15 +1769,6 @@ function HomeLijstjesSection({
     handleScroll();
   }, [handleScroll, activeLists.length]);
 
-  /* Desktop 3 · pijlknoppen schuiven één kaart (breedte + gap) per klik. */
-  const scrollByCard = (dir: -1 | 1) => {
-    const el = laneRef.current;
-    const first = el?.children[0] as HTMLElement | undefined;
-    if (!el || !first) return;
-    const gap = parseFloat(getComputedStyle(el).columnGap || "0") || 0;
-    el.scrollBy({ left: dir * (first.offsetWidth + gap), behavior: "smooth" });
-  };
-
   const scrollToPage = (index: number) => {
     const el = laneRef.current;
     const card = el?.children[index] as HTMLElement | undefined;
@@ -1817,27 +1811,13 @@ function HomeLijstjesSection({
         showNaarOverzicht
         naarOverzichtHref="/lijstjes-beheren/lijstjes"
         overzichtLabel="Toon alle"
-        extra={
-          <span className="hidden gap-1.5 lg:flex">
-            <button type="button" aria-label="Vorige lijstjes" disabled={edges.atStart} onClick={() => scrollByCard(-1)} className={HOME_SWIMLANE_ARROW_CLASS}>
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
-                <path d="M10 3.5 5.5 8 10 12.5" />
-              </svg>
-            </button>
-            <button type="button" aria-label="Volgende lijstjes" disabled={edges.atEnd} onClick={() => scrollByCard(1)} className={HOME_SWIMLANE_ARROW_CLASS}>
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
-                <path d="M6 3.5 10.5 8 6 12.5" />
-              </svg>
-            </button>
-          </span>
-        }
       />
 
-      <h3 className="-mb-1 text-[17px] font-bold leading-6 text-text-primary">Boodschappen</h3>
+      <h3 className="-mb-1 text-[17px] font-bold leading-6 text-text-primary lg:hidden">Boodschappen</h3>
       <div
         ref={laneRef}
         onScroll={handleScroll}
-        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:gap-4 lg:scroll-px-0 lg:px-0"
+        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden"
       >
         {activeLists.map((list) => (
           <div
@@ -1880,7 +1860,23 @@ function HomeLijstjesSection({
           <span className="text-[15px] font-semibold leading-5 text-action-primary">Alle {normalLists.length} lijstjes</span>
         </Link>
       </div>
-      {after ? <div className="mt-3">{after}</div> : null}
+      {after ? <div className="mt-3 lg:hidden">{after}</div> : null}
+      {/* Desktop: alles op één rij — 2 boodschappenkaarten + max. 3 vaste tegels (canvas «Lijstjes op één rij»). */}
+      <div className="hidden gap-3.5 lg:flex lg:items-stretch">
+        {activeLists.slice(0, 2).map((list) => (
+          <div key={list.id} className="min-w-0 flex-1 [&>*]:h-full">
+            <HomeListSwimCard
+              list={list}
+              onAddItem={(l) => {
+                primeKeyboard();
+                setSearchTarget(l);
+              }}
+              onNewList={onNewListLike}
+            />
+          </div>
+        ))}
+        {desktopFixed ? <div className="flex min-w-0 flex-[1.2] gap-3">{desktopFixed}</div> : null}
+      </div>
 
 
       <ItemNameSearchSlideIn
@@ -3585,6 +3581,7 @@ export default function Home() {
               onQuickAdd={handleQuickAddToList}
               onNewListLike={handleNewListLike}
               after={user ? <VasteLijstjesLane userId={user.id} /> : null}
+              desktopFixed={user ? <VasteLijstjesDesktopTiles userId={user.id} /> : null}
             />
           </>
         );
@@ -3720,6 +3717,7 @@ export default function Home() {
                     onQuickAdd={handleQuickAddToList}
                     onNewListLike={handleNewListLike}
                     after={user ? <VasteLijstjesLane userId={user.id} /> : null}
+                    desktopFixed={user ? <VasteLijstjesDesktopTiles userId={user.id} /> : null}
                   />
                 </div>
                 <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-2 min-[1050px]:items-stretch min-[1050px]:gap-8">
