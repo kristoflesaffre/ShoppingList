@@ -246,6 +246,12 @@ export default function ProfielPage() {
           kindCount === 0 ? "niets automatisch" : kindCount === 1 ? "1 soort" : `${kindCount} soorten`
         }`;
 
+  const agendaIcon = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="size-5">
+      <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </svg>
+  );
   const homeIcon = (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="size-5">
       <path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" />
@@ -342,6 +348,15 @@ export default function ProfielPage() {
           label="Lijstjes delen"
           description={shareDescription}
           onClick={() => router.push("/profiel/delen")}
+        />
+      </li>
+      <li>
+        <ProfileSettingsRow
+          bare={bare}
+          icon={agendaIcon}
+          label="Agenda's"
+          description="Google-accounts koppelen of ontkoppelen"
+          onClick={() => router.push("/profiel/agenda")}
         />
       </li>
     </>

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { ListSectionHeader } from "@/components/list_section_header";
 import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { googleAuthHeaders, startGoogleConnect, useGoogleAuthToken } from "@/lib/google-client";
 
@@ -165,7 +164,7 @@ function Timeline({ rows, nowMin, nowLabel, showNow = true }: { rows: Row[]; now
 function AllDayChips({ rows }: { rows: Row[] }) {
   if (rows.length === 0) return null;
   return (
-    <div className="mb-1.5 flex flex-wrap gap-1.5">
+    <div className="mb-3 flex flex-wrap gap-1.5">
       {rows.map((r) => (
         <span
           key={r.id}
@@ -180,6 +179,103 @@ function AllDayChips({ rows }: { rows: Row[] }) {
   );
 }
 
+/** Tegel (canvas «Agenda B · tegels»): tijd groot, titel onderaan, «Nu bezig» met gekleurde rand. */
+function AgendaTile({ row }: { row: Row }) {
+  const now = row.state === "now";
+  return (
+    <li
+      data-now={now ? "true" : undefined}
+      className={cn("relative flex h-[176px] w-[150px] shrink-0 snap-start flex-col rounded-[20px] p-3.5 md:w-[171px]", row.state === "past" && "opacity-50")}
+      style={{
+        backgroundImage: `linear-gradient(170deg, ${mixWithWhiteRgb(row.color, 0.18)} 0%, #fff 70%)`,
+        backgroundColor: "#fff",
+        boxShadow: now ? `0 0 0 2px ${rgb(row.color)}, 0 12px 24px -14px ${rgb(row.color, 0.7)}` : "inset 0 0 0 1px var(--border-subtle)",
+      }}
+    >
+      {now ? (
+        <span className="absolute -top-[11px] left-1/2 inline-flex h-[22px] -translate-x-1/2 items-center whitespace-nowrap rounded-pill px-2.5 text-[11px] font-bold text-white" style={{ backgroundColor: rgb(row.color) }}>
+          Nu bezig
+        </span>
+      ) : null}
+      <span className="absolute right-3 top-3.5 size-[9px] rounded-full" style={{ backgroundColor: rgb(row.color) }} aria-hidden />
+      <span className="text-2xl font-extrabold leading-7 tracking-[-0.02em]" style={{ color: deep(row.color) }}>
+        {timeLabel(row.start)}
+      </span>
+      <span className="text-xs font-semibold text-[var(--text-tertiary)]">tot {timeLabel(row.end)}</span>
+      <span className="mt-auto line-clamp-2 text-[15px] font-extrabold leading-[19px] text-text-primary">{row.title}</span>
+      {row.location || row.account ? (
+        <span className="mt-1 flex min-w-0 items-center gap-1 text-xs text-[var(--text-secondary)]">
+          {row.location ? <PinIcon /> : null}
+          <span className="truncate">{row.location ?? row.account}</span>
+        </span>
+      ) : null}
+    </li>
+  );
+}
+
+/** Horizontale rij tegels; scrolt bij het openen naar wat nu bezig is (of het eerstvolgende). */
+function TileLane({ rows }: { rows: Row[] }) {
+  const ref = React.useRef<HTMLUListElement>(null);
+  const focusIndex = Math.max(0, rows.findIndex((r) => r.state !== "past"));
+  React.useEffect(() => {
+    const lane = ref.current;
+    const tile = lane?.children[focusIndex] as HTMLElement | undefined;
+    if (lane && tile) lane.scrollLeft = Math.max(0, tile.offsetLeft - lane.offsetLeft - 16 - (focusIndex > 0 ? 60 : 0));
+  }, [focusIndex, rows.length]);
+  return (
+    <ul
+      ref={ref}
+      className="-mx-4 m-0 flex list-none snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 pt-3.5 [scrollbar-width:none] md:mx-0 md:gap-4 md:px-0 md:scroll-px-0 [&::-webkit-scrollbar]:hidden"
+    >
+      {rows.map((row) => (
+        <AgendaTile key={row.id} row={row} />
+      ))}
+    </ul>
+  );
+}
+
+type AgendaView = "overzicht" | "tegels";
+const VIEW_KEY = "home-agenda-view";
+
+/** Schakelaar met enkel iconen naast de titel: overzicht (tijdlijn/dagdelen) of tegels. */
+function ViewToggle({ view, onChange }: { view: AgendaView; onChange: (v: AgendaView) => void }) {
+  const opt = (v: AgendaView, label: string, icon: React.ReactNode) => (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={view === v}
+      aria-label={label}
+      title={label}
+      onClick={() => onChange(v)}
+      className={cn(
+        "flex h-7 w-8 items-center justify-center rounded-pill transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        view === v ? "bg-[var(--white)] text-text-primary shadow-[0_1px_2px_rgba(16,17,48,0.14)]" : "text-[var(--text-tertiary)] [@media(hover:hover)]:hover:text-text-primary",
+      )}
+    >
+      {icon}
+    </button>
+  );
+  return (
+    <span role="radiogroup" aria-label="Weergave agenda" className="flex items-center gap-0.5 rounded-pill bg-[var(--gray-50)] p-[3px]">
+      {opt(
+        "overzicht",
+        "Overzicht",
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-4">
+          <path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
+        </svg>,
+      )}
+      {opt(
+        "tegels",
+        "Tegels",
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" aria-hidden className="size-4">
+          <rect x="3" y="5" width="7.5" height="14" rx="2.2" />
+          <rect x="13.5" y="5" width="7.5" height="14" rx="2.2" />
+        </svg>,
+      )}
+    </span>
+  );
+}
+
 const cardClass = "rounded-[22px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]";
 
 export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () => void }) {
@@ -188,7 +284,27 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
   const [failed, setFailed] = React.useState(false);
   const [now, setNow] = React.useState(() => new Date());
   const [feedback, setFeedback] = React.useState<string | null>(null);
-  const [disconnecting, setDisconnecting] = React.useState(false);
+  const [view, setView] = React.useState<AgendaView>("overzicht");
+  React.useEffect(() => {
+    try {
+      if (window.localStorage.getItem(VIEW_KEY) === "tegels") setView("tegels");
+    } catch {
+      /* geen opslag: standaard overzicht */
+    }
+    // Mobiele en desktopversie van de sectie volgen dezelfde keuze.
+    const onChange = (e: Event) => setView((e as CustomEvent<AgendaView>).detail);
+    window.addEventListener(VIEW_KEY, onChange);
+    return () => window.removeEventListener(VIEW_KEY, onChange);
+  }, []);
+  const changeView = (v: AgendaView) => {
+    setView(v);
+    window.dispatchEvent(new CustomEvent<AgendaView>(VIEW_KEY, { detail: v }));
+    try {
+      window.localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* niet bewaren */
+    }
+  };
 
   React.useEffect(() => {
     const url = new URL(window.location.href);
@@ -264,65 +380,24 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
 
   const dayRaw = now.toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "short" }).replace(".", "");
   const dayLabel = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1);
-  const accountAvatars = (
-    <span className="flex items-center">
-      {accounts.slice(0, 4).map((a, i) => (
-        <span
-          key={a.id}
-          title={a.email ?? undefined}
-          className={cn("flex size-[26px] items-center justify-center rounded-full text-[11px] font-extrabold text-white ring-2 ring-[var(--bg-app)]", i > 0 && "-ml-1.5")}
-          style={{ backgroundColor: rgb(ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]) }}
-        >
-          {(a.email ?? "?").charAt(0).toUpperCase()}
-        </span>
-      ))}
-      <button
-        type="button"
-        onClick={connect}
-        aria-label="Nog een Google-account koppelen"
-        className="-ml-1.5 flex size-[26px] items-center justify-center rounded-full bg-[var(--white)] text-action-primary shadow-[inset_0_0_0_1.5px_var(--border-subtle)] ring-2 ring-[var(--bg-app)]"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-3">
-          <path d="M12 6v12M6 12h12" />
-        </svg>
-      </button>
-    </span>
-  );
   const connected = !!state?.connected;
-  const headerAction = connected ? (
-    <span className="flex shrink-0 items-center gap-4">
-      <span className="hidden text-[13.5px] font-semibold text-[var(--text-secondary)] md:inline">{dayLabel}</span>
-      {accountAvatars}
-      <button
-        type="button"
-        disabled={disconnecting}
-        className="text-sm font-semibold text-action-primary disabled:opacity-50"
-        onClick={async () => {
-          setDisconnecting(true);
-          try {
-            const response = await fetch("/api/google/disconnect", { method: "POST", headers: googleAuthHeaders(token) });
-            if (!response.ok) throw new Error("Disconnect failed");
-            setState({ configured: true, connected: false, events: [], accounts: [] });
-            setFeedback("Je Google-agenda is ontkoppeld.");
-          } catch {
-            setFeedback("Ontkoppelen is niet gelukt. Probeer het opnieuw.");
-          } finally {
-            setDisconnecting(false);
-          }
-        }}
-      >
-        {disconnecting ? "Ontkoppelen…" : "Ontkoppelen"}
-      </button>
-      <a
-        href="https://calendar.google.com/calendar/r/day"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="hidden text-[15px] font-semibold text-action-primary no-underline md:inline"
-      >
+  const hasEvents = connected && allRows.length > 0;
+  const headerRight = connected ? (
+    <span className="hidden shrink-0 items-center gap-4 md:flex">
+      <span className="text-[13.5px] font-semibold text-[var(--text-secondary)]">{dayLabel}</span>
+      <a href="https://calendar.google.com/calendar/r/day" target="_blank" rel="noopener noreferrer" className="text-[15px] font-semibold text-action-primary no-underline">
         Open agenda
       </a>
     </span>
-  ) : undefined;
+  ) : !onHide ? null : (
+    <button
+      type="button"
+      onClick={onHide}
+      className="shrink-0 text-[15px] font-semibold text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+    >
+      Sectie verbergen
+    </button>
+  );
 
   let body: React.ReactNode;
   if (!state && !failed) {
@@ -358,6 +433,17 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
       <div className={cn(cardClass, "px-5 py-6 text-center")}>
         <p className="text-base font-bold text-text-primary">{failed ? "Agenda tijdelijk niet beschikbaar" : "Niets gepland vandaag"}</p>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">{failed ? "De agenda kon niet geladen worden." : "Een vrije dag — geniet ervan."}</p>
+      </div>
+    );
+  } else if (view === "tegels") {
+    body = (
+      <div>
+        <AllDayChips rows={allDay} />
+        {timed.length > 0 ? (
+          <TileLane rows={timed} />
+        ) : (
+          <p className={cn(cardClass, "px-5 py-4 text-sm text-[var(--text-secondary)]")}>Verder niets gepland vandaag.</p>
+        )}
       </div>
     );
   } else {
@@ -421,7 +507,13 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
 
   return (
     <section aria-label="Agenda" className="flex flex-col gap-3">
-      <ListSectionHeader label="Agenda" showNaarOverzicht={false} onHide={connected ? undefined : onHide} action={headerAction} />
+      <div className="flex min-h-8 items-center justify-between gap-3">
+        <span className="flex min-w-0 items-center gap-3">
+          <h2 className="truncate text-[22px] font-bold leading-7 tracking-[-0.01em] text-[var(--text-primary)]">Agenda</h2>
+          {hasEvents ? <ViewToggle view={view} onChange={changeView} /> : null}
+        </span>
+        {headerRight}
+      </div>
       {feedback ? <p role="status" className="text-sm text-[var(--text-secondary)]">{feedback}</p> : null}
       {failed || state?.unavailable ? (
         <div role="status" className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-secondary)]">
