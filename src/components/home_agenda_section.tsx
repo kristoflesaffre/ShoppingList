@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { googleAuthHeaders, startGoogleConnect, useGoogleAuthToken } from "@/lib/google-client";
+import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
 
 /**
  * Agenda op de startpagina (canvas «Agenda A · Tijdlijn» + desktop «2 · Dagdelen»): de Google-afspraken
@@ -249,8 +250,10 @@ const VIEW_KEY = "home-agenda-view";
 
 /** Schakelaar met enkel iconen naast de titel: overzicht (tijdlijn/dagdelen) of tegels. */
 function ViewToggle({ view, onChange }: { view: AgendaView; onChange: (v: AgendaView) => void }) {
+  const { containerRef, indicatorStyle } = useSlidingIndicator<HTMLSpanElement>(view === "tegels" ? 1 : 0);
   const opt = (v: AgendaView, label: string, icon: React.ReactNode) => (
     <button
+      data-segment
       type="button"
       role="radio"
       aria-checked={view === v}
@@ -259,14 +262,20 @@ function ViewToggle({ view, onChange }: { view: AgendaView; onChange: (v: Agenda
       onClick={() => onChange(v)}
       className={cn(
         "flex h-7 w-8 items-center justify-center rounded-pill transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-        view === v ? "bg-[var(--white)] text-text-primary shadow-[0_1px_2px_rgba(16,17,48,0.14)]" : "text-[var(--text-tertiary)] [@media(hover:hover)]:hover:text-text-primary",
+        view === v ? "text-text-primary" : "text-[var(--text-tertiary)] [@media(hover:hover)]:hover:text-text-primary",
       )}
     >
       {icon}
     </button>
   );
   return (
-    <span role="radiogroup" aria-label="Weergave agenda" className="flex items-center gap-0.5 rounded-pill bg-[var(--gray-50)] p-[3px]">
+    <span ref={containerRef} role="radiogroup" aria-label="Weergave agenda" className="relative isolate flex items-center gap-0.5 rounded-pill bg-[var(--gray-50)] p-[3px]">
+      {/* Witte pil die met een easing naar de gekozen weergave schuift. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-0 -z-10 rounded-pill bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.14)] motion-reduce:!transition-none"
+        style={indicatorStyle}
+      />
       {opt(
         "overzicht",
         "Overzicht",
