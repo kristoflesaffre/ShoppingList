@@ -1,9 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { GET as connect } from "@/app/api/google/connect/route";
+import { POST as connect } from "@/app/api/google/connect/route";
 import { GET as callback } from "@/app/api/google/callback/route";
 import { GOOGLE_CALENDAR_SCOPES } from "./google-calendar";
 import { GOOGLE_STATE_COOKIE, sealGoogleOAuthState } from "./google-dashboard-auth";
+
+// De koppeling hoort bij de ingelogde gebruiker; het Instant-token wordt op de server geverifieerd.
+vi.mock("@/lib/server/google-connection-store", () => ({
+  verifiedUserId: async (request: Request) => (request.headers.get("authorization") === "Bearer good-token" ? "user-1" : null),
+  loadGoogleConnection: async () => null,
+  saveGoogleConnection: async () => undefined,
+}));
 
 const secret = "a-local-test-secret-that-is-long-enough";
 beforeEach(() => {
@@ -15,8 +22,8 @@ afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("Google OAuth routes", () => {
   it("redirects to Google with only read scopes and the exact callback origin", async () => {
-    const response = await connect(new NextRequest("http://127.0.0.1:3000/api/google/connect?ownerId=user-1", { headers: { host: "127.0.0.1:3000" } }));
-    const location = new URL(response.headers.get("location")!);
+    const response = await connect(new NextRequest("http://127.0.0.1:3000/api/google/connect", { method: "POST", headers: { host: "127.0.0.1:3000", authorization: "Bearer good-token" } }));
+    const location = new URL(((await response.json()) as { url: string }).url);
     expect(location.origin).toBe("https://accounts.google.com");
     expect(location.searchParams.get("scope")?.split(" ")).toEqual(GOOGLE_CALENDAR_SCOPES);
     expect(location.searchParams.get("redirect_uri")).toBe("http://127.0.0.1:3000/api/google/callback");
@@ -42,7 +49,13 @@ describe("Google OAuth routes", () => {
 
   it("does not start OAuth without server credentials", async () => {
     vi.stubEnv("GOOGLE_CLIENT_ID", "");
-    const response = await connect(new NextRequest("http://127.0.0.1:3000/api/google/connect?ownerId=user-1"));
-    expect(new URL(response.headers.get("location")!).searchParams.get("google")).toBe("not-configured");
+    const response = await connect(new NextRequest("http://127.0.0.1:3000/api/google/connect", { method: "POST", headers: { authorization: "Bearer good-token" } }));
+    expect(response.status).toBe(503);
+  });
+
+  it("does not start OAuth for someone who is not signed in", async () => {
+    const response = await connect(new NextRequest("http://127.0.0.1:3000/api/google/connect", { method: "POST", headers: { authorization: "Bearer forged" } }));
+    expect(response.status).toBe(401);
+    expect(response.cookies.get(GOOGLE_STATE_COOKIE)).toBeUndefined();
   });
 });

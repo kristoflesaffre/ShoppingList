@@ -8,18 +8,24 @@ import {
   googleRequestOrigin,
   sealGoogleOAuthState,
 } from "@/lib/google-dashboard-auth";
+import { verifiedUserId } from "@/lib/server/google-connection-store";
 
 export const runtime = "nodejs";
 
-export async function GET(request: NextRequest) {
+/**
+ * Start de koppeling voor de ingelogde gebruiker (Instant-token in `Authorization`).
+ * Geeft `{ url }` terug; de app stuurt de browser daarheen. De gebruiker zit verzegeld in de
+ * state-cookie, zodat de callback de tokens bij het juiste account bewaart.
+ */
+export async function POST(request: NextRequest) {
   const origin = googleRequestOrigin(request);
   const config = googleOAuthConfig(origin);
-  const ownerId = request.nextUrl.searchParams.get("ownerId")?.trim() ?? "";
   if (!config.configured) {
-    return NextResponse.redirect(new URL("/?google=not-configured", origin));
+    return NextResponse.json({ error: "not-configured" }, { status: 503 });
   }
+  const ownerId = await verifiedUserId(request);
   if (!ownerId) {
-    return NextResponse.redirect(new URL("/?google=connection-failed", origin));
+    return NextResponse.json({ error: "not-signed-in" }, { status: 401 });
   }
 
   const state = randomBytes(24).toString("base64url");
@@ -32,12 +38,9 @@ export async function GET(request: NextRequest) {
   authorizeUrl.searchParams.set("prompt", "consent select_account");
   authorizeUrl.searchParams.set("include_granted_scopes", "false");
   authorizeUrl.searchParams.set("state", state);
-  authorizeUrl.searchParams.set(
-    "scope",
-    GOOGLE_CALENDAR_SCOPES.join(" "),
-  );
+  authorizeUrl.searchParams.set("scope", GOOGLE_CALENDAR_SCOPES.join(" "));
 
-  const response = NextResponse.redirect(authorizeUrl);
+  const response = NextResponse.json({ url: authorizeUrl.toString() });
   response.cookies.set(GOOGLE_STATE_COOKIE, sealGoogleOAuthState({ state, ownerId }, config.cookieSecret), {
     ...googleCookieOptions(request.nextUrl.protocol === "https:"),
     maxAge: 60 * 10,

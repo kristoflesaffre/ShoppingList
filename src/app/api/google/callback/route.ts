@@ -4,14 +4,13 @@ import {
   GOOGLE_AUTH_COOKIE,
   GOOGLE_MAX_ACCOUNTS,
   GOOGLE_STATE_COOKIE,
-  googleCookieOptions,
   googleOAuthConfig,
   googleRequestOrigin,
   readGoogleAccounts,
-  sealGoogleAccounts,
   unsealGoogleOAuthState,
   type GoogleAccount,
 } from "@/lib/google-dashboard-auth";
+import { loadGoogleConnection, saveGoogleConnection } from "@/lib/server/google-connection-store";
 
 export const runtime = "nodejs";
 
@@ -85,27 +84,30 @@ export async function GET(request: NextRequest) {
     email: await primaryCalendarName(tokens.access_token),
   };
 
-  // Bij de bestaande accounts van dezelfde gebruiker voegen; hetzelfde account vervangt het oude.
+  // Bij de bestaande accounts van dezelfde gebruiker voegen (server, en een oudere cookie van deze
+  // browser); hetzelfde account vervangt het oude.
+  const ownerId = expectedState.ownerId;
+  const stored = await loadGoogleConnection(ownerId, config.cookieSecret).catch(() => null);
   const sealed = request.cookies.get(GOOGLE_AUTH_COOKIE)?.value;
-  const existing = sealed ? readGoogleAccounts(sealed, config.cookieSecret) : null;
-  const others =
-    existing && existing.ownerId === expectedState.ownerId
-      ? existing.accounts.filter((a) => !account.email || a.email !== account.email)
-      : [];
+  const fromCookie = sealed ? readGoogleAccounts(sealed, config.cookieSecret) : null;
+  const previous = [...(stored?.accounts ?? []), ...(fromCookie?.ownerId === ownerId ? fromCookie.accounts : [])];
+  const others = previous.filter(
+    (a, i) => (!account.email || a.email !== account.email) && previous.findIndex((b) => b.email && b.email === a.email) === i,
+  );
   const accounts = [...others, account];
-  const encryptedAccounts = sealGoogleAccounts({ ownerId: expectedState.ownerId, accounts }, config.cookieSecret);
-  if (accounts.length > GOOGLE_MAX_ACCOUNTS || encryptedAccounts.length > 3800) {
+  if (accounts.length > GOOGLE_MAX_ACCOUNTS) {
     const response = NextResponse.redirect(new URL("/?google=account-limit", origin));
     response.cookies.delete(GOOGLE_STATE_COOKIE);
     return response;
   }
+  try {
+    await saveGoogleConnection({ ownerId, accounts }, config.cookieSecret);
+  } catch {
+    return NextResponse.redirect(new URL("/?google=connection-failed", origin));
+  }
 
   const response = NextResponse.redirect(new URL("/?google=connected", origin));
   response.cookies.delete(GOOGLE_STATE_COOKIE);
-  response.cookies.set(
-    GOOGLE_AUTH_COOKIE,
-    encryptedAccounts,
-    googleCookieOptions(request.nextUrl.protocol === "https:"),
-  );
+  response.cookies.delete(GOOGLE_AUTH_COOKIE);
   return response;
 }

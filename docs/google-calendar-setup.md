@@ -24,9 +24,17 @@ een permanente kopie van de volledige agendageschiedenis opgeslagen.
 6. Open de app, kies Google-agenda koppelen en sta de twee alleen-lezen rechten toe:
    `calendar.events.readonly` en `calendar.calendarlist.readonly`.
 
-De koppeling wordt versleuteld in een HttpOnly-cookie van deze browser bewaard.
-Een ander apparaat of browser moet apart gekoppeld worden. Ontkoppelen verwijdert
-de lokale koppeling en trekt de Google-toestemming in.
+De koppeling wordt versleuteld (met `GOOGLE_OAUTH_COOKIE_SECRET`) op de server bewaard
+bij je gebruikersaccount (InstantDB-entiteit `googleConnections`, enkel via de
+`/api/google/*`-routes met `INSTANT_APP_ADMIN_TOKEN`). Eén keer koppelen werkt dus op
+elke browser en elk toestel waarop je ingelogd bent. Elke aanvraag stuurt het
+Instant-token mee; de server controleert daarmee wie je bent. Een oudere koppeling in
+een browsercookie verhuist automatisch naar de server zodra je de app in die browser
+opent. Ontkoppelen verwijdert de koppeling en trekt de Google-toestemming in.
+
+Zet in het InstantDB-dashboard voor `googleConnections` de rechten op «niemand»
+(view/create/update/delete: `false`); de server gebruikt de admin-token en heeft
+die rechten niet nodig.
 
 Voor algemeen gebruik moet de OAuth-app gepubliceerd worden en kan Google
 verificatie vereisen. In Google's External Testing-modus verlopen refresh tokens

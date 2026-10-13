@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { cn } from "@/lib/utils";
+import { googleAuthHeaders, startGoogleConnect, useGoogleAuthToken } from "@/lib/google-client";
 
 export type DashboardMeal = {
   title: string;
@@ -162,29 +163,28 @@ function eventTime(event: GoogleEvent) {
 }
 
 function GoogleTodayPanel({
-  ownerId,
   todayIso,
   tomorrowIso,
 }: {
-  ownerId: string;
   todayIso: string;
   tomorrowIso: string;
 }) {
+  const token = useGoogleAuthToken();
   const [state, setState] = React.useState<GoogleDashboardState | null>(null);
   const [failed, setFailed] = React.useState(false);
   const [disconnecting, setDisconnecting] = React.useState(false);
 
   React.useEffect(() => {
+    if (!token) return;
     let active = true;
     const start = new Date(`${todayIso}T00:00:00`);
     const end = new Date(`${tomorrowIso}T00:00:00`);
     end.setDate(end.getDate() + 1);
     const params = new URLSearchParams({
-      ownerId,
       timeMin: start.toISOString(),
       timeMax: end.toISOString(),
     });
-    fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store" })
+    fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store", headers: googleAuthHeaders(token) })
       .then(async (response) => {
         if (!response.ok) throw new Error("Google dashboard request failed");
         return (await response.json()) as GoogleDashboardState;
@@ -198,12 +198,12 @@ function GoogleTodayPanel({
     return () => {
       active = false;
     };
-  }, [ownerId, todayIso, tomorrowIso]);
+  }, [token, todayIso, tomorrowIso]);
 
   const disconnect = React.useCallback(async () => {
     setDisconnecting(true);
     try {
-      const response = await fetch("/api/google/disconnect", { method: "POST" });
+      const response = await fetch("/api/google/disconnect", { method: "POST", headers: googleAuthHeaders(token) });
       if (!response.ok) throw new Error("Google disconnect failed");
       setState((current) => ({
         configured: current?.configured ?? true,
@@ -215,7 +215,7 @@ function GoogleTodayPanel({
     } finally {
       setDisconnecting(false);
     }
-  }, []);
+  }, [token]);
 
   return (
     <section aria-labelledby="today-agenda-title" className="flex min-w-0 flex-col rounded-lg bg-[var(--white)] p-6 shadow-card">
@@ -251,13 +251,14 @@ function GoogleTodayPanel({
           <p className="mt-2 text-sm leading-5 text-[var(--text-secondary)]">
             Toon je afspraken van vandaag en morgen. De app krijgt alleen leestoegang tot agenda-items.
           </p>
-          <Link
-            href={`/api/google/connect?ownerId=${encodeURIComponent(ownerId)}`}
+          <button
+            type="button"
+            onClick={() => void startGoogleConnect(token)}
             className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-pill bg-[var(--blue-500)] px-5 text-sm font-semibold text-[var(--white)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
           >
             <DashboardMaskIcon src="/icons/calendar.svg" className="size-4" />
             Google Calendar koppelen
-          </Link>
+          </button>
         </div>
       ) : (
         <>
@@ -352,7 +353,7 @@ export function HomeTodayDashboard({
     <div className="flex flex-col gap-8 pt-8">
       <div className="grid min-w-0 grid-cols-1 gap-6 min-[1050px]:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.85fr)] min-[1050px]:items-stretch">
         <TodayMealCard meal={todayMeal} />
-        <GoogleTodayPanel ownerId={ownerId} todayIso={todayIso} tomorrowIso={tomorrowIso} />
+        <GoogleTodayPanel todayIso={todayIso} tomorrowIso={tomorrowIso} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 min-[720px]:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">

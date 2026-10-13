@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { ListSectionHeader } from "@/components/list_section_header";
 import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
+import { googleAuthHeaders, startGoogleConnect, useGoogleAuthToken } from "@/lib/google-client";
 
 /**
  * Agenda op de startpagina (canvas «Agenda A · Tijdlijn» + desktop «2 · Dagdelen»): de Google-afspraken
@@ -77,18 +78,19 @@ function GoogleG({ className }: { className?: string }) {
   );
 }
 
-function ConnectButton({ href, disabled = false }: { href: string; disabled?: boolean }) {
+function ConnectButton({ onConnect, disabled = false }: { onConnect: () => void; disabled?: boolean }) {
   return (
-    <a
-      href={disabled ? undefined : href}
-      aria-disabled={disabled}
+    <button
+      type="button"
+      onClick={onConnect}
+      disabled={disabled}
       className={cn("inline-flex h-[46px] items-center gap-2.5 rounded-pill bg-action-primary pl-1.5 pr-5 text-[15px] font-bold text-white no-underline shadow-[0_10px_22px_-10px_rgba(79,85,241,0.8)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2", disabled && "cursor-not-allowed opacity-50")}
     >
       <span className="flex size-[34px] items-center justify-center rounded-full bg-[var(--white)]">
         <GoogleG className="size-[18px]" />
       </span>
       Google-agenda koppelen
-    </a>
+    </button>
   );
 }
 
@@ -180,7 +182,8 @@ function AllDayChips({ rows }: { rows: Row[] }) {
 
 const cardClass = "rounded-[22px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]";
 
-export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide?: () => void }) {
+export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () => void }) {
+  const token = useGoogleAuthToken();
   const [state, setState] = React.useState<AgendaState | null>(null);
   const [failed, setFailed] = React.useState(false);
   const [now, setNow] = React.useState(() => new Date());
@@ -210,15 +213,16 @@ export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide
     start.setHours(0, 0, 0, 0);
     const end = new Date(start);
     end.setDate(end.getDate() + 1);
-    const params = new URLSearchParams({ ownerId, timeMin: start.toISOString(), timeMax: end.toISOString() });
-    fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store" })
+    if (!token) return;
+    const params = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString() });
+    fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store", headers: googleAuthHeaders(token) })
       .then(async (r) => {
         const json = (await r.json()) as AgendaState;
         setState(json);
         setFailed(!r.ok);
       })
       .catch(() => setFailed(true));
-  }, [ownerId]);
+  }, [token]);
 
   React.useEffect(() => {
     load();
@@ -233,7 +237,7 @@ export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide
     };
   }, [load]);
 
-  const connectHref = `/api/google/connect?ownerId=${encodeURIComponent(ownerId)}`;
+  const connect = () => void startGoogleConnect(token);
   const accounts = state?.accounts ?? [];
   const colorOf = (accountId?: string): Rgb => {
     const i = accounts.findIndex((a) => a.id === accountId);
@@ -272,15 +276,16 @@ export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide
           {(a.email ?? "?").charAt(0).toUpperCase()}
         </span>
       ))}
-      <a
-        href={connectHref}
+      <button
+        type="button"
+        onClick={connect}
         aria-label="Nog een Google-account koppelen"
         className="-ml-1.5 flex size-[26px] items-center justify-center rounded-full bg-[var(--white)] text-action-primary shadow-[inset_0_0_0_1.5px_var(--border-subtle)] ring-2 ring-[var(--bg-app)]"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-3">
           <path d="M12 6v12M6 12h12" />
         </svg>
-      </a>
+      </button>
     </span>
   );
   const connected = !!state?.connected;
@@ -295,7 +300,7 @@ export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide
         onClick={async () => {
           setDisconnecting(true);
           try {
-            const response = await fetch("/api/google/disconnect", { method: "POST" });
+            const response = await fetch("/api/google/disconnect", { method: "POST", headers: googleAuthHeaders(token) });
             if (!response.ok) throw new Error("Disconnect failed");
             setState({ configured: true, connected: false, events: [], accounts: [] });
             setFeedback("Je Google-agenda is ontkoppeld.");
@@ -331,7 +336,7 @@ export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide
           <p className="text-[19px] font-extrabold leading-tight text-text-primary">Je dag in één oogopslag</p>
           <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">Bekijk je afspraken van vandaag. Je agenda blijft alleen-lezen.</p>
           <div className="mt-3.5">
-            <ConnectButton href={connectHref} disabled={state?.configured !== true} />
+            <ConnectButton onConnect={connect} disabled={state?.configured !== true} />
           </div>
           {state && !state.configured ? (
             <p className="mt-2.5 text-xs leading-4 text-[var(--text-tertiary)]">Nog niet beschikbaar. De appbeheerder moet Google-agenda eenmalig activeren.</p>
@@ -421,7 +426,7 @@ export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide
       {failed || state?.unavailable ? (
         <div role="status" className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-secondary)]">
           <span>{state?.reconnectRequired ? "Koppel je Google-account opnieuw om alle agenda's te bekijken." : "Niet alle afspraken konden worden geladen."}</span>
-          {state?.reconnectRequired ? <a href={connectHref} className="font-semibold text-action-primary">Opnieuw koppelen</a> : <button type="button" onClick={load} className="font-semibold text-action-primary">Opnieuw proberen</button>}
+          {state?.reconnectRequired ? <button type="button" onClick={connect} className="font-semibold text-action-primary">Opnieuw koppelen</button> : <button type="button" onClick={load} className="font-semibold text-action-primary">Opnieuw proberen</button>}
         </div>
       ) : null}
       {body}

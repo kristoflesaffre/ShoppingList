@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleCalendarError, loadGoogleCalendarEvents, type GoogleCalendarEvent } from "@/lib/google-calendar";
 import {
   GOOGLE_AUTH_COOKIE,
-  googleCookieOptions,
+  GOOGLE_MAX_ACCOUNTS,
   googleOAuthConfig,
   readGoogleAccounts,
   refreshGoogleAccount,
-  sealGoogleAccounts,
   type GoogleAccount,
 } from "@/lib/google-dashboard-auth";
+import { loadGoogleConnection, saveGoogleConnection, verifiedUserId } from "@/lib/server/google-connection-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,24 +36,39 @@ function localDayBounds(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const config = googleOAuthConfig(request.nextUrl.origin);
-  const ownerId = request.nextUrl.searchParams.get("ownerId")?.trim() ?? "";
   if (!config.configured) {
     return NextResponse.json({ configured: false, connected: false, events: [] });
   }
+  // Enkel de ingelogde gebruiker (geverifieerd Instant-token), nooit een id uit de URL.
+  const ownerId = await verifiedUserId(request);
   if (!ownerId) {
-    return NextResponse.json({ configured: true, connected: false, events: [] }, { status: 400 });
+    return NextResponse.json({ configured: true, connected: false, events: [], accounts: [] }, { status: 401 });
   }
 
+  // De koppeling staat op de server; een oudere koppeling in een cookie van deze browser verhuist mee.
+  let stored = await loadGoogleConnection(ownerId, config.cookieSecret).catch(() => null);
   const sealed = request.cookies.get(GOOGLE_AUTH_COOKIE)?.value;
-  const stored = sealed ? readGoogleAccounts(sealed, config.cookieSecret) : null;
-  if (!stored || stored.ownerId !== ownerId || stored.accounts.length === 0) {
-    return NextResponse.json({ configured: true, connected: false, events: [], accounts: [] });
+  const fromCookie = sealed ? readGoogleAccounts(sealed, config.cookieSecret) : null;
+  let migrated = false;
+  if (fromCookie && fromCookie.ownerId === ownerId && fromCookie.accounts.length > 0) {
+    const known = new Set((stored?.accounts ?? []).map((a) => a.email).filter(Boolean));
+    const extra = fromCookie.accounts.filter((a) => !a.email || !known.has(a.email));
+    if (extra.length > 0) {
+      stored = { ownerId, accounts: [...(stored?.accounts ?? []), ...extra].slice(0, GOOGLE_MAX_ACCOUNTS) };
+      migrated = true;
+    }
   }
+  if (!stored || stored.accounts.length === 0) {
+    const empty = NextResponse.json({ configured: true, connected: false, events: [], accounts: [] });
+    if (sealed) empty.cookies.delete(GOOGLE_AUTH_COOKIE);
+    return empty;
+  }
+  const storedAccounts = stored.accounts;
 
   const bounds = localDayBounds(request);
   // Alle gekoppelde accounts ophalen; een account dat niet meer werkt valt weg.
   const results = await Promise.all(
-    stored.accounts.map(async (stale) => {
+    storedAccounts.map(async (stale) => {
       try {
       const account = await refreshGoogleAccount(stale, config.clientId, config.clientSecret);
       if (!account) return { account: null, stale, events: [] as GoogleCalendarEvent[], name: undefined, failed: false };
@@ -96,16 +111,10 @@ export async function GET(request: NextRequest) {
     { status: unavailable && events.length === 0 && kept.length > 0 ? 502 : 200 },
   );
   const changed =
-    kept.length !== stored.accounts.length ||
-    kept.some((a, i) => a.accessToken !== stored.accounts[i]?.accessToken || a.email !== stored.accounts[i]?.email);
-  if (kept.length === 0) {
-    response.cookies.delete(GOOGLE_AUTH_COOKIE);
-  } else if (changed) {
-    response.cookies.set(
-      GOOGLE_AUTH_COOKIE,
-      sealGoogleAccounts({ ownerId: stored.ownerId, accounts: kept }, config.cookieSecret),
-      googleCookieOptions(request.nextUrl.protocol === "https:"),
-    );
-  }
+    migrated ||
+    kept.length !== storedAccounts.length ||
+    kept.some((a, i) => a.accessToken !== storedAccounts[i]?.accessToken || a.email !== storedAccounts[i]?.email);
+  if (changed) await saveGoogleConnection({ ownerId, accounts: kept }, config.cookieSecret).catch(() => undefined);
+  if (sealed) response.cookies.delete(GOOGLE_AUTH_COOKIE);
   return response;
 }

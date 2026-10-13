@@ -282,6 +282,15 @@ const schema = i.schema({
     shoppingShareMembers: i.entity({
       instantUserId: i.string().indexed(),
     }),
+    /**
+     * Google-agendakoppeling per gebruiker (enkel via de server-routes /api/google/*). `sealedAccounts`
+     * is versleuteld met GOOGLE_OAUTH_COOKIE_SECRET; de app zelf leest of schrijft dit nooit.
+     */
+    googleConnections: i.entity({
+      ownerId: i.string().unique().indexed(),
+      sealedAccounts: i.string(),
+      updatedAt: i.number(),
+    }),
     shoppingItems: i.entity({
       name: i.string(),
       quantity: i.string(),
