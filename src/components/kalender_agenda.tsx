@@ -44,6 +44,7 @@ const CALENDAR_COLORS: Rgb[] = [
 ];
 
 const DAYS_AHEAD = 7;
+const DAYS_BEFORE = 3;
 
 function dayIso(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -87,6 +88,8 @@ function useAgendaWeek() {
     start.setHours(0, 0, 0, 0);
     const end = new Date(start);
     end.setDate(end.getDate() + DAYS_AHEAD);
+    // Ook de vorige dagen, zodat er links van de volgende afspraak iets te zien is.
+    start.setDate(start.getDate() - DAYS_BEFORE);
     const params = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString() });
     fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store", headers: googleAuthHeaders(token) })
       .then(async (r) => {
@@ -130,6 +133,7 @@ function dayLabel(d: Date, now: Date): string {
   const diff = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - today.getTime()) / 86_400_000);
   if (diff === 0) return "VANDAAG";
   if (diff === 1) return "MORGEN";
+  if (diff === -1) return "GISTEREN";
   return d.toLocaleDateString("nl-BE", { weekday: "short", day: "numeric" }).replace(".", "").toUpperCase();
 }
 
@@ -279,9 +283,8 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
   const upcoming = events.filter((e) => e.endAt.getTime() > nowMs);
   const current = upcoming.find((e) => !e.allDay && e.startAt.getTime() <= nowMs) ?? null;
   const next = upcoming.find((e) => e.startAt.getTime() > nowMs) ?? null;
-  // In de rij: vandaag (ook wat al voorbij is) en de rest van de week.
-  const todayIso = dayIso(now);
-  const lane = events.filter((e) => e.dayIso >= todayIso);
+  // In de rij: de vorige dagen (vervaagd), vandaag en de rest van de week.
+  const lane = events;
 
   React.useEffect(() => {
     onTint(next?.color ?? current?.color ?? null);
@@ -300,7 +303,8 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
     const el = laneRef.current;
     if (!el) return;
     const tile = el.querySelector<HTMLElement>('[data-next="true"]');
-    if (tile) el.scrollLeft = Math.max(0, tile.offsetLeft - el.offsetLeft - Math.round(tile.offsetWidth * 0.4) - 12);
+    // Zelfde plaats als het snappunt: scroll-padding laat een derde van de vorige tegel zien.
+    if (tile) el.scrollLeft = Math.max(0, tile.offsetLeft - el.offsetLeft - (parseFloat(getComputedStyle(el).scrollPaddingLeft) || 0));
     updateArrows();
   }, [nextId, lane.length, updateArrows]);
   const scrollLane = (dir: -1 | 1) => {
@@ -374,7 +378,7 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
         <div
           ref={laneRef}
           onScroll={updateArrows}
-          className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 pt-3.5 [scrollbar-width:none] lg:mx-0 lg:scroll-px-0 lg:gap-4 lg:px-0 [&::-webkit-scrollbar]:hidden"
+          className="-mx-4 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-3.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[87px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden"
         >
           {lane.map((e) => (
             <EventTile key={e.id} e={e} now={now} isNext={e.id === next?.id} />
