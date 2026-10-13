@@ -24,7 +24,10 @@ function LiveClock({ className }: { className?: string }) {
   }, []);
   return (
     <time dateTime={now.toISOString()} className={className}>
-      {now.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })}
+      {/* Dubbele punt apart: knippert zacht in het always-on-scherm. */}
+      {String(now.getHours()).padStart(2, "0")}
+      <span className="aod-colon">:</span>
+      {String(now.getMinutes()).padStart(2, "0")}
     </time>
   );
 }
@@ -111,7 +114,7 @@ export function HomeHeader({ ownerId, className, action, clock = false }: HomeHe
         </span>
       </Link>
       {clock ? (
-        <LiveClock className="col-start-2 row-span-2 row-start-1 hidden self-center text-[64px] font-extrabold leading-[0.9] tracking-[-0.05em] text-text-primary md:block" />
+        <LiveClock className="aod-clock col-start-2 row-span-2 row-start-1 hidden self-center text-[64px] font-extrabold leading-[0.9] tracking-[-0.05em] text-text-primary md:block" />
       ) : null}
       <p className={cn("col-start-2 row-start-1 self-end text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)]", clock && "md:col-start-3")}>
         <time dateTime={now.toISOString().slice(0, 10)}>{dateLabel}</time>

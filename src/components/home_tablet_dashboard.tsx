@@ -37,20 +37,25 @@ const CLOUD = "M25 60h52a18 18 0 0 0 0-36 26 26 0 0 0-49-6A20 20 0 0 0 25 60z";
 export function WeatherIcon({ kind, size, className }: { kind: WeatherKind; size: number; className?: string }) {
   const id = React.useId().replace(/:/g, "");
   const sun = (
-    <>
+    <g className="aod-sun">
       <circle cx="38" cy="38" r="30" fill="#ffd34d" opacity=".25" />
       <circle cx="38" cy="38" r="22" fill="#ffc531" />
-    </>
+    </g>
   );
-  const cloud = (x: number, y: number, sc: number, fill: string) => <path transform={`translate(${x} ${y}) scale(${sc})`} d={CLOUD} fill={fill} />;
+  // Wolken in een eigen groep: de groep drijft (always-on), de path houdt zijn eigen transform.
+  const cloud = (x: number, y: number, sc: number, fill: string) => (
+    <g className="aod-cloud">
+      <path transform={`translate(${x} ${y}) scale(${sc})`} d={CLOUD} fill={fill} />
+    </g>
+  );
   const drops = [36, 52, 68].map((x) => <path key={x} d={`M${x} 78 l-4 12`} stroke="#4b8df8" strokeWidth={5} strokeLinecap="round" />);
   const flakes = [36, 52, 68].map((x) => <circle key={x} cx={x} cy={84} r={3.5} fill="#9cc6ff" />);
   const body: Record<WeatherKind, React.ReactNode> = {
     zon: (
-      <>
+      <g className="aod-sun">
         <circle cx="50" cy="50" r="40" fill="#ffd34d" opacity=".25" />
         <circle cx="50" cy="50" r="28" fill="#ffc531" />
-      </>
+      </g>
     ),
     half: (
       <>
@@ -182,7 +187,7 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
     <>
       {photo ? (
         // eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app
-        <img src={photo} alt="" className="absolute -right-[30px] -top-1.5 size-[250px] object-contain drop-shadow-[0_18px_24px_rgba(120,60,0,0.35)] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" />
+        <img src={photo} alt="" className="aod-kenburns absolute -right-[30px] -top-1.5 size-[250px] object-contain drop-shadow-[0_18px_24px_rgba(120,60,0,0.35)] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element -- lokale illustratie
         <img src="/images/ui/kalender_320.webp" alt="" className="absolute -bottom-4 -right-4 size-[180px] object-contain opacity-90" />
@@ -225,8 +230,10 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
         MORGEN
       </span>
       {photo ? (
-        // eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app
-        <img src={photo} alt="" className="size-[76px] rounded-full bg-white object-cover shadow-[0_12px_20px_-12px_rgba(120,40,0,0.6)] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" />
+        <span className="block size-[76px] overflow-hidden rounded-full bg-white shadow-[0_12px_20px_-12px_rgba(120,40,0,0.6)]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app */}
+          <img src={photo} alt="" className="aod-kenburns size-full object-cover [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" />
+        </span>
       ) : (
         <span className="flex size-[76px] items-center justify-center rounded-full border-[1.5px] border-dashed border-[#e8cdb8] text-2xl text-[#d9b49a]">?</span>
       )}

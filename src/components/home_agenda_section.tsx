@@ -102,12 +102,22 @@ const PinIcon = () => (
 
 export type AgendaRow = AgendaEvent & { color: Rgb; account: string | null; startMin: number; endMin: number; state: "past" | "now" | "next" };
 
-function TimelineRow({ row }: { row: AgendaRow }) {
+/** Hoe lang geleden voorbij: in het always-on-scherm vervaagt een afspraak stap voor stap. */
+function pastOpacity(minutesAgo: number): number {
+  if (minutesAgo < 60) return 0.45;
+  if (minutesAgo < 180) return 0.3;
+  return 0.2;
+}
+
+function TimelineRow({ row, nowMin }: { row: AgendaRow; nowMin: number }) {
   const now = row.state === "now";
+  const style: React.CSSProperties = {};
+  if (now) style.backgroundColor = rgb(row.color, 0.11);
+  if (row.state === "past") (style as Record<string, string>)["--past-op"] = String(pastOpacity(nowMin - row.endMin));
   return (
     <li
-      className={cn("flex gap-3", now ? "-mx-2.5 rounded-[16px] px-2.5 py-2.5" : "py-2", row.state === "past" && "opacity-[0.45]")}
-      style={now ? { backgroundColor: rgb(row.color, 0.11) } : undefined}
+      className={cn("flex gap-3", now ? "-mx-2.5 rounded-[16px] px-2.5 py-2.5" : "py-2", row.state === "past" && "aod-past opacity-[0.45]")}
+      style={style}
     >
       <span className="w-11 shrink-0 text-right">
         <span className="block text-sm font-extrabold leading-5 text-text-primary">{timeLabel(row.start)}</span>
@@ -155,7 +165,7 @@ export function Timeline({ rows, nowMin, nowLabel, showNow = true }: { rows: Age
       items.push(<NowLine key="__nu" label={nowLabel} />);
       drawn = true;
     }
-    items.push(<TimelineRow key={row.id} row={row} />);
+    items.push(<TimelineRow key={row.id} row={row} nowMin={nowMin} />);
   }
   if (!drawn && rows.length > 0 && rows[rows.length - 1].endMin <= nowMin) items.push(<NowLine key="__nu" label={nowLabel} />);
   return <ul className="m-0 list-none p-0">{items}</ul>;

@@ -7,15 +7,16 @@ import { applyTheme, readThemePreference } from "@/lib/theme";
  * Always-on-scherm voor het tablet-dashboard (AMOLED): na `idleMs` zonder aanraking wordt het
  * dashboard donker (canvas «Always-on · 2 Schemering»). Exact dezelfde opbouw — enkel kleuren wijzigen.
  *
- * Tegen inbranden en voor minder verbruik:
- * - donker thema op een zwarte achtergrond (`html[data-aod]`, zie globals.css);
- * - de hele pagina schuift ongemerkt mee in een lus van ± 24 × 16 px (elke minuut een stapje,
- *   één rondje per uur), zodat geen pixel uren op dezelfde plek staat;
+ * Tegen inbranden en voor minder verbruik (details in globals.css, «Always-on-scherm»):
+ * - donker thema op een zwarte achtergrond (`html[data-aod]`);
+ * - pixelbaan: het scherm springt onzichtbaar 2 px per 2,5 min in een 3×3-raster;
+ * - pixelrust: elk uur 2 s naar zwart; tabbalk verborgen;
  * - nachtstand 22–7 u: alles extra gedimd (`data-aod="night"`);
+ * - elementen leven: foto's zoomen traag, wolken drijven, de klok knippert, voorbije afspraken vervagen;
  * - het scherm blijft aan via Screen Wake Lock zolang het dashboard open en zichtbaar is.
  * Een tik eender waar zet het gewone dashboard terug; die eerste tik opent niets.
  * Met `?aod=1` in de adresbalk start het meteen (handig om te testen). Met `?aod=demo` start het meteen
- * én doorloopt de verschuiving één lus per minuut in plaats van per uur, zodat je ze ziet bewegen.
+ * én loopt alles versneld (pixelbaan elke 3 s, pixelrust elke 30 s), zodat je ziet dat het werkt.
  */
 export function useAlwaysOn(enabled: boolean, idleMs = 2 * 60_000): boolean {
   const [active, setActive] = React.useState(false);
@@ -98,30 +99,27 @@ export function useAlwaysOn(enabled: boolean, idleMs = 2 * 60_000): boolean {
     };
   }, [active]);
 
-  // Donker thema, zwarte achtergrond, verschuiving en nachtstand.
+  // Donker thema en nachtstand. Pixelbaan, pixelrust en de animaties zijn pure CSS (globals.css),
+  // zodat ze blijven lopen ook als JavaScript-timers vertragen of stilvallen.
   React.useEffect(() => {
     if (!active) return;
     const root = document.documentElement;
     const demo = new URLSearchParams(window.location.search).get("aod") === "demo";
-    const tick = () => {
-      const now = new Date();
-      const h = now.getHours();
+    const updateNight = () => {
+      const h = new Date().getHours();
       root.dataset.aod = h >= 22 || h < 7 ? "night" : "on";
-      // Eén lus per uur; in de demo één lus per minuut.
-      const phase = demo ? (now.getSeconds() + now.getMilliseconds() / 1000) / 60 : (now.getMinutes() + now.getSeconds() / 60) / 60;
-      const t = phase * 2 * Math.PI;
-      root.style.setProperty("--aod-x", `${(24 * Math.sin(3 * t)).toFixed(1)}px`);
-      root.style.setProperty("--aod-y", `${(16 * Math.sin(2 * t)).toFixed(1)}px`);
     };
     root.dataset.theme = "dark";
+    if (demo) root.dataset.aodDemo = "";
     document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", "#000000"));
-    tick();
-    const interval = window.setInterval(tick, demo ? 2_000 : 60_000);
+    updateNight();
+    const interval = window.setInterval(updateNight, 60_000);
+    document.addEventListener("visibilitychange", updateNight);
     return () => {
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", updateNight);
       delete root.dataset.aod;
-      root.style.removeProperty("--aod-x");
-      root.style.removeProperty("--aod-y");
+      delete root.dataset.aodDemo;
       applyTheme(readThemePreference());
     };
   }, [active]);

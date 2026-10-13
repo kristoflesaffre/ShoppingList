@@ -124,16 +124,52 @@ body::before {
 }
 
 /*
- * Always-on-scherm (tablet-dashboard, zie `src/lib/use_always_on.ts`): donker thema op puur zwart
- * (AMOLED-pixels uit), de hele pagina schuift langzaam mee tegen inbranden, ’s nachts extra gedimd.
+ * Always-on-scherm (tablet-dashboard, zie `src/lib/use_always_on.ts`). Alles hieronder is pure CSS-
+ * animatie: die draait in de compositor, los van JavaScript-timers, en blijft dus lopen (faalveilig).
+ *
+ * Tegen inbranden:
+ * 1. Puur zwarte achtergrond (AMOLED-pixels uit).
+ * 2. Pixelbaan: het hele scherm springt elke 2,5 min 2 px naar een volgende positie in een 3×3-raster
+ *    (zonder animatie, dus onzichtbaar); één ronde = 22,5 min.
+ * 3. Pixelrust: één keer per uur 2 s naar zwart en terug.
+ * 4. Vaste tabbalk verborgen; ’s nachts (22–7 u) alles extra gedimd.
+ * Tot leven: foto’s zoomen en schuiven traag, wolken drijven, de zon ademt, de dubbele punt van de
+ * klok knippert zacht, voorbije afspraken vervagen stap voor stap.
+ * `data-aod-demo` (via `?aod=demo`) versnelt alles zodat je het ziet werken.
  */
 :root[data-aod] {
   --bg-app: #000000 !important;
   background-color: #000000;
 }
 html[data-aod] body {
-  transform: translate(var(--aod-x, 0px), var(--aod-y, 0px));
-  transition: transform 3s ease-in-out, filter 2s ease;
+  animation: aod-orbit 1350s steps(1, end) infinite;
+}
+@keyframes aod-orbit {
+  0% { transform: translate(0, 0); }
+  11.11% { transform: translate(2px, 0); }
+  22.22% { transform: translate(2px, 2px); }
+  33.33% { transform: translate(0, 2px); }
+  44.44% { transform: translate(-2px, 2px); }
+  55.55% { transform: translate(-2px, 0); }
+  66.66% { transform: translate(-2px, -2px); }
+  77.77% { transform: translate(0, -2px); }
+  88.88% { transform: translate(2px, -2px); }
+}
+/* Pixelrust: zwarte laag die elk uur 2 s opkomt en weer verdwijnt. */
+html[data-aod]::after {
+  content: "";
+  position: fixed;
+  inset: -8px;
+  z-index: 2147483647;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  animation: aod-rest 3600s linear infinite;
+}
+@keyframes aod-rest {
+  0%, 99.9% { opacity: 0; }
+  99.95% { opacity: 1; }
+  100% { opacity: 0; }
 }
 /* Vaste elementen (tabbalk) verdwijnen: ze zouden altijd op dezelfde plek branden. */
 :root[data-aod] [data-app-bottom-nav] {
@@ -144,8 +180,64 @@ html[data-aod] body {
 html[data-aod="night"] body {
   filter: brightness(0.55);
 }
+
+/* Tot leven: foto’s zoomen en schuiven traag binnen hun tegel (Ken Burns). */
+:root[data-aod] .aod-kenburns {
+  animation: aod-kenburns 240s ease-in-out infinite alternate;
+}
+@keyframes aod-kenburns {
+  from { transform: scale(1) translate(0, 0); }
+  to { transform: scale(1.06) translate(-6px, 4px); }
+}
+/* Wolken drijven heen en weer; de zon ademt. */
+:root[data-aod] .aod-cloud {
+  transform-box: fill-box;
+  animation: aod-cloud 40s ease-in-out infinite alternate;
+}
+@keyframes aod-cloud {
+  from { translate: -3px 0; }
+  to { translate: 4px 0; }
+}
+:root[data-aod] .aod-sun {
+  animation: aod-sun 12s ease-in-out infinite alternate;
+}
+@keyframes aod-sun {
+  from { opacity: 1; }
+  to { opacity: 0.7; }
+}
+/* De dubbele punt van de klok knippert zacht; de cijfers zijn wat gedimd. */
+:root[data-aod] .aod-clock {
+  opacity: 0.82;
+}
+:root[data-aod] .aod-colon {
+  animation: aod-colon 2s ease-in-out infinite alternate;
+}
+@keyframes aod-colon {
+  from { opacity: 1; }
+  to { opacity: 0.2; }
+}
+/* Voorbije afspraken vervagen stap voor stap (--past-op: 0,45 → 0,3 → 0,2). */
+:root[data-aod] .aod-past {
+  opacity: var(--past-op, 0.45) !important;
+}
+
+/* Demo: alles versneld om te tonen dat het werkt. */
+:root[data-aod-demo] body { animation-duration: 27s; }
+:root[data-aod-demo]::after { animation: aod-rest-demo 30s linear infinite; }
+@keyframes aod-rest-demo {
+  0%, 93% { opacity: 0; }
+  96.5% { opacity: 1; }
+  100% { opacity: 0; }
+}
+:root[data-aod-demo] .aod-kenburns { animation-duration: 6s; }
+:root[data-aod-demo] .aod-cloud { animation-duration: 3s; }
+:root[data-aod-demo] .aod-sun { animation-duration: 2s; }
+
 @media (prefers-reduced-motion: reduce) {
-  html[data-aod] body {
-    transition: none;
+  :root[data-aod] .aod-kenburns,
+  :root[data-aod] .aod-cloud,
+  :root[data-aod] .aod-sun,
+  :root[data-aod] .aod-colon {
+    animation: none;
   }
 }
