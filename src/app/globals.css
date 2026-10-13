@@ -135,6 +135,12 @@ html[data-aod] body {
   transform: translate(var(--aod-x, 0px), var(--aod-y, 0px));
   transition: transform 3s ease-in-out, filter 2s ease;
 }
+/* Vaste elementen (tabbalk) verdwijnen: ze zouden altijd op dezelfde plek branden. */
+:root[data-aod] [data-app-bottom-nav] {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 1s ease, visibility 0s linear 1s;
+}
 html[data-aod="night"] body {
   filter: brightness(0.55);
 }

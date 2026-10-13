@@ -14,7 +14,8 @@ import { applyTheme, readThemePreference } from "@/lib/theme";
  * - nachtstand 22–7 u: alles extra gedimd (`data-aod="night"`);
  * - het scherm blijft aan via Screen Wake Lock zolang het dashboard open en zichtbaar is.
  * Een tik eender waar zet het gewone dashboard terug; die eerste tik opent niets.
- * Met `?aod=1` in de adresbalk start het meteen (handig om te testen).
+ * Met `?aod=1` in de adresbalk start het meteen (handig om te testen). Met `?aod=demo` start het meteen
+ * én doorloopt de verschuiving één lus per minuut in plaats van per uur, zodat je ze ziet bewegen.
  */
 export function useAlwaysOn(enabled: boolean, idleMs = 2 * 60_000): boolean {
   const [active, setActive] = React.useState(false);
@@ -60,7 +61,8 @@ export function useAlwaysOn(enabled: boolean, idleMs = 2 * 60_000): boolean {
       setActive(false);
       return;
     }
-    if (new URLSearchParams(window.location.search).get("aod") === "1") setActive(true);
+    const forced = new URLSearchParams(window.location.search).get("aod");
+    if (forced === "1" || forced === "demo") setActive(true);
     let timer = window.setTimeout(() => setActive(true), idleMs);
     const reset = () => {
       window.clearTimeout(timer);
@@ -100,18 +102,21 @@ export function useAlwaysOn(enabled: boolean, idleMs = 2 * 60_000): boolean {
   React.useEffect(() => {
     if (!active) return;
     const root = document.documentElement;
+    const demo = new URLSearchParams(window.location.search).get("aod") === "demo";
     const tick = () => {
       const now = new Date();
       const h = now.getHours();
       root.dataset.aod = h >= 22 || h < 7 ? "night" : "on";
-      const t = ((now.getMinutes() + now.getSeconds() / 60) / 60) * 2 * Math.PI;
+      // Eén lus per uur; in de demo één lus per minuut.
+      const phase = demo ? (now.getSeconds() + now.getMilliseconds() / 1000) / 60 : (now.getMinutes() + now.getSeconds() / 60) / 60;
+      const t = phase * 2 * Math.PI;
       root.style.setProperty("--aod-x", `${(24 * Math.sin(3 * t)).toFixed(1)}px`);
       root.style.setProperty("--aod-y", `${(16 * Math.sin(2 * t)).toFixed(1)}px`);
     };
     root.dataset.theme = "dark";
     document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", "#000000"));
     tick();
-    const interval = window.setInterval(tick, 60_000);
+    const interval = window.setInterval(tick, demo ? 2_000 : 60_000);
     return () => {
       window.clearInterval(interval);
       delete root.dataset.aod;

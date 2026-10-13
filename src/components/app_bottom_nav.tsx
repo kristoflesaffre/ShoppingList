@@ -220,6 +220,7 @@ export function AppBottomNav({ active }: AppBottomNavProps) {
   return (
     /* Houd 32px afstand tot de onderrand en respecteer grotere native safe areas. */
     <div
+      data-app-bottom-nav
       className="pointer-events-none fixed inset-x-3 z-20 flex justify-center"
       style={{
         bottom: "max(32px, env(safe-area-inset-bottom, 0px))",
