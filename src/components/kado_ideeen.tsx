@@ -41,7 +41,7 @@ type Preview = {
   blocked?: boolean;
 };
 
-/** Eerste http(s)-link in een tekst (plakken of slepen); ook «bol.com/…» zonder schema. */
+/** Eerste http(s)-link in een tekst (plakken); ook «bol.com/…» zonder schema. */
 export function findLink(text: string | null | undefined): string | null {
   if (!text) return null;
   const m =
@@ -300,7 +300,7 @@ function CheckDot({
   );
 }
 
-/** Galerij + plakbalk + slepen (desktop) + «Gekocht» onderaan. */
+/** Galerij + plakbalk (ook ⌘V op de pagina) + «Gekocht» onderaan. */
 export function KadoIdeeen({
   listId,
   listName,
@@ -323,10 +323,9 @@ export function KadoIdeeen({
   const done = items.filter((i) => i.checked);
   const [draft, setDraft] = React.useState("");
   const [sheetUrl, setSheetUrl] = React.useState<string | null>(null);
-  const [dragging, setDragging] = React.useState(false);
   const [showDone, setShowDone] = React.useState(false);
   const [pasteHint, setPasteHint] = React.useState<string | null>(null);
-  const dragDepth = React.useRef(0);
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   const nextOrder = () =>
     items.length > 0 ? Math.max(...items.map((i) => i.order ?? 0)) + 1 : 0;
@@ -356,18 +355,32 @@ export function KadoIdeeen({
     setDraft("");
   };
 
+  /**
+   * Klembord lezen kan geweigerd worden (browserinstelling, ingebedde browser, geen toestemming).
+   * Dan het veld focussen: gewoon plakken (⌘V / Ctrl+V of lang drukken) werkt altijd.
+   */
   const pasteFromClipboard = async () => {
+    const pasteKeys = /Mac|iPhone|iPad/i.test(navigator.userAgent) ? "⌘V" : "Ctrl+V";
+    let text: string | null = null;
     try {
-      const text = await navigator.clipboard.readText();
-      if (findLink(text)) submit(text);
-      else setPasteHint("Geen link gevonden op het klembord.");
+      text = navigator.clipboard?.readText ? await navigator.clipboard.readText() : null;
     } catch {
-      setPasteHint("Plakken mag niet; plak de link in het veld.");
+      text = null;
     }
+    if (text != null && findLink(text)) {
+      submit(text);
+      return;
+    }
+    inputRef.current?.focus();
+    setPasteHint(
+      text == null
+        ? `Je browser laat de knop niet in het klembord kijken. Druk ${pasteKeys} om de link te plakken.`
+        : "Geen link op het klembord. Kopieer eerst de link van het product.",
+    );
   };
   React.useEffect(() => {
     if (!pasteHint) return;
-    const t = setTimeout(() => setPasteHint(null), 3500);
+    const t = setTimeout(() => setPasteHint(null), 6000);
     return () => clearTimeout(t);
   }, [pasteHint]);
 
@@ -413,11 +426,6 @@ export function KadoIdeeen({
     return () => document.removeEventListener("paste", onPaste);
   }, [sheetOpen]);
 
-  const hasLinkData = (e: React.DragEvent) => {
-    const types = Array.from(e.dataTransfer.types);
-    return types.includes("text/uri-list") || types.includes("text/plain");
-  };
-
   const accent = deepRgb(color, 0.72);
   const total = open.reduce((sum, i) => {
     const n = Number(
@@ -430,32 +438,7 @@ export function KadoIdeeen({
   }, 0);
 
   return (
-    <div
-      className="relative"
-      onDragEnter={(e) => {
-        if (!hasLinkData(e)) return;
-        dragDepth.current += 1;
-        setDragging(true);
-      }}
-      onDragOver={(e) => {
-        if (!hasLinkData(e)) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "copy";
-      }}
-      onDragLeave={() => {
-        dragDepth.current = Math.max(0, dragDepth.current - 1);
-        if (dragDepth.current === 0) setDragging(false);
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        dragDepth.current = 0;
-        setDragging(false);
-        const link =
-          findLink(e.dataTransfer.getData("text/uri-list")) ??
-          findLink(e.dataTransfer.getData("text/plain"));
-        if (link) setSheetUrl(link);
-      }}
-    >
+    <div className="relative">
       <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
         {header}
         <form
@@ -467,6 +450,7 @@ export function KadoIdeeen({
         >
           <LinkIcon className="size-[18px] shrink-0 text-[var(--text-tertiary)]" />
           <input
+            ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onPaste={(e) => {
@@ -513,7 +497,7 @@ export function KadoIdeeen({
         </form>
       </div>
       {pasteHint ? (
-        <p className="mx-4 mt-2 text-[13px] text-[var(--text-secondary)] lg:text-right">
+        <p role="status" className="mx-4 mt-2 text-[13px] font-semibold text-action-primary lg:ml-auto lg:w-[440px]">
           {pasteHint}
         </p>
       ) : null}
@@ -545,29 +529,10 @@ export function KadoIdeeen({
             emptyIcon={emptyIcon}
           />
         ))}
-        <div
-          aria-hidden
-          className={cn(
-            "flex min-h-[220px] flex-col items-center justify-center gap-2 rounded-[22px] border-2 border-dashed p-4 text-center transition-colors",
-            dragging
-              ? "flex border-action-primary bg-[var(--blue-25)]"
-              : "hidden border-[#c9cbe6] lg:flex",
-          )}
-        >
-          <span className="flex size-12 items-center justify-center rounded-full bg-[var(--white)] text-action-primary shadow-[0_6px_14px_-8px_rgba(79,85,241,0.6)]">
-            <LinkIcon className="size-5" />
-          </span>
-          <span className="text-[15px] font-extrabold leading-5 text-action-primary">
-            {dragging ? "Laat los om toe te voegen" : "Sleep een link hierheen"}
-          </span>
-          <span className="text-[12.5px] text-[var(--text-secondary)]">
-            of plak een link (⌘V)
-          </span>
-        </div>
       </div>
-      {open.length === 0 && !dragging ? (
-        <p className="mt-3 px-2 text-center text-sm text-[var(--text-tertiary)] lg:hidden">
-          Plak een link uit een webwinkel; foto en prijs komen er vanzelf bij.
+      {open.length === 0 ? (
+        <p className="mt-3 px-2 text-center text-sm text-[var(--text-tertiary)]">
+          Kopieer de link van een product en plak hem hier; foto en prijs komen er vanzelf bij.
         </p>
       ) : null}
 
