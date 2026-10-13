@@ -208,10 +208,22 @@ function ShoppingRow({
     </>
   );
 
+  /** Hele rij opent het wijzigblad (naam, hoeveelheid, sectie, winkel) — ook in bewerkstand. */
+  const editButton = (
+    <button
+      type="button"
+      onClick={() => onEdit(item)}
+      aria-label={`${item.name} wijzigen`}
+      className="-my-1 -ml-1.5 -mr-2 flex min-w-0 flex-1 items-center gap-3 rounded-[14px] py-1 pl-1.5 pr-2 text-left transition-colors duration-fast [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+    >
+      {content}
+    </button>
+  );
+
   if (isEditing) {
     return (
       <div className="flex w-full items-center gap-3 py-[9px]">
-        {content}
+        {editButton}
         <RoundIconButton tone="danger" size={28} onClick={() => onDelete(item.id)} aria-label={`${item.name} verwijderen`}>
           {RoundIcons.trash}
         </RoundIconButton>
@@ -223,13 +235,7 @@ function ShoppingRow({
     <SwipeToDelete onDelete={() => onDelete(item.id)} deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}>
       <div className="flex w-full items-center gap-3 bg-[var(--white)] py-[9px]">
         <CheckCircle checked={false} onClick={() => onToggle(item)} label={`${item.name} afvinken`} />
-        <button
-          type="button"
-          onClick={() => onEdit(item)}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
-        >
-          {content}
-        </button>
+        {editButton}
       </div>
     </SwipeToDelete>
   );
