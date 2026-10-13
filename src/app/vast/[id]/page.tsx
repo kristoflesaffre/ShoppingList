@@ -75,11 +75,33 @@ export default function VastLijstjePage() {
   }, [authLoading, user, router]);
 
   const list = (data?.lists?.[0] ?? null) as
-    | { id: string; name: string; items?: ItemRow[]; memberships?: { id: string }[]; ownerId?: string; eventDate?: string; colorKey?: string; listKind?: string; vastType?: string; icon?: string }
+    | { id: string; name: string; items?: ItemRow[]; memberships?: { id: string; instantUserId?: string }[]; ownerId?: string; eventDate?: string; colorKey?: string; listKind?: string; vastType?: string; icon?: string }
     | null;
   const items = React.useMemo(() => [...((list?.items ?? []) as ItemRow[])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)), [list?.items]);
   const open = items.filter((i) => !i.checked);
   const done = items.filter((i) => i.checked);
+
+  // Met wie het lijstje gedeeld is (eigenaar + deelnemers, zonder jezelf): naam en profielfoto.
+  const otherIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    if (list?.ownerId) ids.add(list.ownerId);
+    for (const m of list?.memberships ?? []) if (m.instantUserId) ids.add(m.instantUserId);
+    if (user?.id) ids.delete(user.id);
+    return Array.from(ids);
+  }, [list?.ownerId, list?.memberships, user?.id]);
+  const { data: peopleData } = db.useQuery({
+    profiles: { $: { where: otherIds.length > 0 ? { or: otherIds.map((id) => ({ instantUserId: id })) } : { instantUserId: "__vast_geen_deelnemers__" } } },
+  } as unknown as Parameters<typeof db.useQuery>[0]);
+  const people = React.useMemo(() => {
+    const rows = ((peopleData as { profiles?: { instantUserId?: string; firstName?: string; avatarUrl?: string }[] } | undefined)?.profiles ?? []);
+    return otherIds.map((id) => {
+      const p = rows.find((r) => r.instantUserId === id);
+      return { id, name: p?.firstName?.trim() || null, avatarUrl: p?.avatarUrl?.trim() || null };
+    });
+  }, [peopleData, otherIds]);
+  const named = people.filter((p) => p.name).map((p) => p.name as string);
+  const sharedLabel =
+    named.length === 0 ? "Gedeeld" : `Gedeeld met ${named.length === 1 ? named[0] : `${named.slice(0, -1).join(", ")} en ${named[named.length - 1]}`}`;
 
   if (authLoading || !user || isLoading) return <PageSpinner />;
   if (!list || !isVastList(list)) {
@@ -196,7 +218,27 @@ export default function VastLijstjePage() {
                       </span>
                     ) : null}
                     {shared ? (
-                      <span className="inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.85)] px-2.5 text-[12.5px] font-bold text-[var(--text-secondary)]">Gedeeld</span>
+                      <span className="inline-flex h-7 items-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.85)] pl-1 pr-2.5 text-[12.5px] font-bold text-[var(--text-secondary)]">
+                        <span className="flex">
+                          {people.slice(0, 3).map((p, i) => (
+                            <span
+                              key={p.id}
+                              className={cn(
+                                "flex size-5 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] text-[10px] font-extrabold text-action-primary ring-2 ring-white",
+                                i > 0 && "-ml-1.5",
+                              )}
+                            >
+                              {p.avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element -- profielfoto (data-URL of extern)
+                                <img src={p.avatarUrl} alt="" className="size-full object-cover" />
+                              ) : (
+                                (p.name ?? "?").charAt(0).toUpperCase()
+                              )}
+                            </span>
+                          ))}
+                        </span>
+                        {sharedLabel}
+                      </span>
                     ) : null}
                   </div>
                 </div>
@@ -221,7 +263,7 @@ export default function VastLijstjePage() {
             </span>
             <h1 className="mt-3 text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-text-primary">{list.name}</h1>
             <p className="mt-0.5 text-[13.5px] text-[var(--text-secondary)]">
-              {shared ? "Gedeeld · " : ""}
+              {shared ? `${sharedLabel} · ` : ""}
               {countLabel}
             </p>
             {eventLabel ? (
