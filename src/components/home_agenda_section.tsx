@@ -225,7 +225,8 @@ function AgendaTile({ row, focus = false }: { row: AgendaRow; focus?: boolean })
     <li
       data-now={now ? "true" : undefined}
       data-focus={focus ? "true" : undefined}
-      className={cn("relative flex h-[176px] w-[150px] shrink-0 snap-start flex-col rounded-[20px] p-3.5 md:w-[171px]", row.state === "past" && "opacity-50")}
+      // Mobiel: voorbije afspraken niet meer tonen; desktop: vervaagd.
+      className={cn("relative flex h-[176px] w-[150px] shrink-0 snap-start flex-col rounded-[20px] p-3.5 md:w-[171px]", row.state === "past" && "opacity-50 max-md:hidden")}
       style={{
         backgroundImage: `linear-gradient(170deg, ${mixWithWhiteRgb(row.color, 0.18)} 0%, #fff 70%)`,
         backgroundColor: "#fff",
@@ -344,14 +345,18 @@ function RestOfDayTile({ nowMin, wholeDay }: { nowMin: number; wholeDay: boolean
 }
 
 /** Alle hele-dagitems van één dag samen in één tegel vooraan die dag (canvas «Hele dag · 2»). */
-function AllDayStackTile({ rows }: { rows: AgendaRow[] }) {
+function AllDayStackTile({ rows, sticky = false }: { rows: AgendaRow[]; sticky?: boolean }) {
   const c = rows[0].color;
   const shown = rows.slice(0, 3);
   return (
     <li
       aria-label={`Hele dag: ${rows.map((r) => r.title).join(", ")}`}
-      className="relative flex h-[176px] w-[150px] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] px-3.5 pb-3 pt-3 md:w-[171px]"
-      style={{ backgroundImage: `linear-gradient(170deg, ${mixWithWhiteRgb(c, 0.14)} 0%, #fff 60%)`, backgroundColor: "#fff", boxShadow: "inset 0 0 0 1px var(--border-subtle)" }}
+      className={cn(
+        "relative flex h-[176px] w-[150px] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] px-3.5 pb-3 pt-3 shadow-[inset_0_0_0_1px_var(--border-subtle)] md:w-[171px]",
+        // Mobiel: blijft links staan terwijl de rij eronder schuift.
+        sticky && "max-md:sticky max-md:left-0 max-md:z-[4] max-md:snap-align-none max-md:shadow-[inset_0_0_0_1px_var(--border-subtle),12px_0_20px_-14px_rgba(16,17,48,0.45)]",
+      )}
+      style={{ backgroundImage: `linear-gradient(170deg, ${mixWithWhiteRgb(c, 0.14)} 0%, #fff 60%)`, backgroundColor: "#fff" }}
     >
       <span className="flex items-center justify-between">
         <span className="text-[11px] font-extrabold tracking-[0.08em]" style={{ color: deep(c, 0.6) }}>
@@ -410,14 +415,24 @@ function TileLane({
     const lane = ref.current;
     const tile = lane?.querySelector<HTMLElement>('[data-focus="true"]');
     const first = lane?.firstElementChild;
-    if (lane && tile) lane.scrollLeft = Math.max(0, tile.offsetLeft - lane.offsetLeft - 16 - (tile !== first ? 60 : 0));
+    if (!lane) return;
+    // Mobiel: voorbije tegels zijn verborgen en de hele-dagtegel blijft links staan, dus de rij begint vooraan.
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      lane.scrollLeft = 0;
+      return;
+    }
+    if (tile) lane.scrollLeft = Math.max(0, tile.offsetLeft - lane.offsetLeft - 16 - (tile !== first ? 60 : 0));
   }, [focusId, rows.length, allDay.length]);
   return (
     <ul
       ref={ref}
-      className="-mx-4 m-0 flex list-none snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 pt-3.5 [scrollbar-width:none] md:mx-0 md:gap-4 md:px-0 md:scroll-px-0 [&::-webkit-scrollbar]:hidden"
+      className={cn(
+        "-mx-4 m-0 flex list-none snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 pt-3.5 [scrollbar-width:none] md:mx-0 md:gap-4 md:px-0 md:scroll-px-0 [&::-webkit-scrollbar]:hidden",
+        // Mobiel met vaste hele-dagtegel: tegels klikken vast net rechts ervan (16 + 150 + 10 px).
+        allDay.length > 0 && "max-md:scroll-pl-[176px]",
+      )}
     >
-      {allDay.length > 0 ? <AllDayStackTile rows={allDay} /> : null}
+      {allDay.length > 0 ? <AllDayStackTile rows={allDay} sticky /> : null}
       {rows.map((row) => (
         <AgendaTile key={row.id} row={row} focus={row.id === focusId} />
       ))}
