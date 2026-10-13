@@ -293,7 +293,7 @@ export function VastTile({
     </>
   );
   const surface =
-    "relative flex flex-col overflow-clip rounded-[22px] p-3 no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+    "relative flex flex-col overflow-clip rounded-[22px] p-3 no-underline after:pointer-events-none after:absolute after:inset-0 after:z-[1] after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_var(--border-subtle)] after:content-[''] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
   const cls = cn("h-[150px] w-[124px] shrink-0", surface, className);
   const style = { backgroundImage: `linear-gradient(160deg, ${mixWithWhiteRgb(color, 0.3)} 0%, ${mixWithWhiteRgb(color, 0.1)} 100%)` };
   if (onRestore) {

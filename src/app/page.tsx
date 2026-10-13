@@ -1619,7 +1619,7 @@ function HomeListSwimCard({
     <div
       className={cn(
         "relative flex h-full w-full flex-col gap-3.5 rounded-lg bg-[var(--white)] p-4 transition-transform duration-fast ease-out-strong has-[a:active]:motion-safe:scale-[0.98]",
-        cardTint ? "" : "shadow-card",
+        cardTint ? "shadow-[inset_0_0_0_1px_var(--border-subtle)]" : "shadow-card",
       )}
       style={cardTint}
     >
