@@ -159,17 +159,17 @@ function TomorrowWeather({ weather }: { weather: Weather | null }) {
   return (
     <section
       aria-label={t ? `Weer morgen: ${t.label}, ${t.max} tot ${t.min} graden` : "Weer morgen"}
-      className={cn(tile, "flex w-[124px] shrink-0 flex-col items-center justify-center gap-1.5 bg-[linear-gradient(170deg,#e4ecfb,#f1f5fd)] text-center shadow-[0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[linear-gradient(170deg,#141c33,#0d1222)] [[data-aod]_&]:shadow-[0_0_0_1px_#1d2742]")}
+      className={cn(tile, "flex w-[124px] shrink-0 flex-col items-center justify-center gap-1.5 bg-[linear-gradient(165deg,#7ea7ee,#a9c6f6_60%,#cadcfa)] text-center shadow-[0_14px_32px_-24px_rgba(40,100,220,0.7)] [[data-aod]_&]:bg-[linear-gradient(170deg,#141c33,#0d1222)] [[data-aod]_&]:shadow-[0_0_0_1px_#1d2742]")}
     >
-      <span className="text-[11px] font-extrabold tracking-[0.08em] text-[#4a5f8f] [[data-aod]_&]:text-[#9db7e6]">MORGEN</span>
+      <span className="text-[11px] font-extrabold tracking-[0.08em] text-white/90 [[data-aod]_&]:text-[#9db7e6]">MORGEN</span>
       {t ? (
         <>
           <WeatherIcon kind={t.kind} size={64} />
-          <span className="text-2xl font-extrabold leading-none text-[#1d2f5c] [[data-aod]_&]:text-[#e4e9f7]">{t.max}°</span>
-          <span className="text-[13px] font-bold text-[#7b8bb0] [[data-aod]_&]:text-[#7d8aa8]">{t.min}°</span>
+          <span className="text-2xl font-extrabold leading-none text-white [[data-aod]_&]:text-[#e4e9f7]">{t.max}°</span>
+          <span className="text-[13px] font-bold text-white/80 [[data-aod]_&]:text-[#7d8aa8]">{t.min}°</span>
         </>
       ) : (
-        <span className="size-16 animate-pulse rounded-full bg-white/70" />
+        <span className="size-16 animate-pulse rounded-full bg-white/40" />
       )}
     </section>
   );
@@ -223,7 +223,7 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
       aria-label={meal ? `Morgen: ${meal.title}` : "Morgen: nog niets gepland"}
       className={cn(
         tile,
-        "flex w-[124px] shrink-0 flex-col items-center justify-center gap-2 bg-[linear-gradient(170deg,#ffeadd,#fff6ef)] px-2.5 py-3 text-center no-underline shadow-[0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[linear-gradient(170deg,#2a1a10,#160e09)] [[data-aod]_&]:shadow-[0_0_0_1px_#3a2612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        "flex w-[124px] shrink-0 flex-col items-center justify-center gap-2 bg-[linear-gradient(165deg,#ffb48c,#ffcfae_60%,#ffe2cc)] px-2.5 py-3 text-center no-underline shadow-[0_14px_32px_-24px_rgba(230,120,60,0.8)] [[data-aod]_&]:bg-[linear-gradient(170deg,#2a1a10,#160e09)] [[data-aod]_&]:shadow-[0_0_0_1px_#3a2612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
       )}
     >
       <span className="text-[11px] font-extrabold tracking-[0.08em] text-[rgb(139,87,29)] [[data-aod]_&]:text-[#d8a874]">
@@ -235,7 +235,7 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
           <img src={photo} alt="" className="aod-kenburns size-full object-cover [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" />
         </span>
       ) : (
-        <span className="flex size-[76px] items-center justify-center rounded-full border-[1.5px] border-dashed border-[#e8cdb8] text-2xl text-[#d9b49a]">?</span>
+        <span className="flex size-[76px] items-center justify-center rounded-full border-[1.5px] border-dashed border-[rgba(120,55,15,0.3)] bg-white/25 text-2xl text-[rgba(120,55,15,0.55)]">?</span>
       )}
       <span className="line-clamp-2 text-[13.5px] font-extrabold leading-tight text-[#3d1d00] [[data-aod]_&]:text-[#e4e6ef]">{meal?.title ?? "Nog niets"}</span>
       {meal?.fromStock ? (
@@ -259,7 +259,7 @@ function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; 
   return (
     <section
       aria-label="Agenda vandaag"
-      className="flex min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] px-5 py-4 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[#0b0c12] [[data-aod]_&]:shadow-[0_0_0_1px_#191b25]"
+      className="flex min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] bg-[linear-gradient(170deg,#e3e6ff_0%,#f3f2ff_38%,#ffffff_70%)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(79,85,241,0.55),0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[#0b0c12] [[data-aod]_&]:bg-none [[data-aod]_&]:shadow-[0_0_0_1px_#191b25]"
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-xl font-extrabold text-text-primary">Vandaag</h2>
