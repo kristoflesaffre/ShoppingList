@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { startGoogleConnect } from "@/lib/google-client";
 import { localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
+import { agendaPhotoFor } from "@/lib/agenda_photos";
 import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
 
 /**
@@ -231,6 +232,8 @@ export function AllDayChips({ rows }: { rows: AgendaRow[] }) {
 /** Tegel (canvas «Agenda B · tegels»): tijd groot, titel onderaan, «Nu bezig» met gekleurde rand. */
 function AgendaTile({ row, focus = false }: { row: AgendaRow; focus?: boolean }) {
   const now = row.state === "now";
+  const photo = row.allDay ? null : agendaPhotoFor(row.title, row.location);
+  if (photo) return <PhotoAgendaTile row={row} focus={focus} photo={photo} />;
   return (
     <li
       data-now={now ? "true" : undefined}
@@ -264,6 +267,62 @@ function AgendaTile({ row, focus = false }: { row: AgendaRow; focus?: boolean })
           <span className="truncate">{row.location ?? row.account}</span>
         </span>
       ) : null}
+    </li>
+  );
+}
+
+/**
+ * Tegel met foto (canvas «Fototegel blur · 2»): volle foto, naar onder progressief wazig en ingekleurd
+ * in de lichte agendakleur; uur als glazen pil, titel en uur · plaats in een donkere tint van die kleur.
+ */
+function PhotoAgendaTile({ row, focus, photo }: { row: AgendaRow; focus: boolean; photo: string }) {
+  const now = row.state === "now";
+  const c = row.color;
+  const light = c.map((v) => Math.round(255 - (255 - v) * 0.2));
+  const tint = (a: number) => `rgba(${light[0]},${light[1]},${light[2]},${a})`;
+  const mask = "linear-gradient(180deg, transparent 40%, #000 68%)";
+  const meta = [`${timeLabel(row.start)} – ${timeLabel(row.end)}`, row.location ?? row.account].filter(Boolean).join(" · ");
+  return (
+    <li
+      data-now={now ? "true" : undefined}
+      data-focus={focus ? "true" : undefined}
+      className={cn("relative h-[176px] w-[150px] shrink-0 snap-start rounded-[20px] md:w-[171px]", row.state === "past" && "opacity-50 max-md:hidden")}
+      style={{ boxShadow: now ? `0 0 0 2px ${rgb(c)}, 0 12px 24px -14px ${rgb(c, 0.7)}` : "0 12px 24px -18px rgba(16,17,48,0.45)" }}
+    >
+      <span className="absolute inset-0 isolate overflow-hidden rounded-[20px]" aria-hidden>
+        <Image src={`${photo}_480.webp`} alt="" fill sizes="171px" className="object-cover" />
+        <Image
+          src={`${photo}_240.webp`}
+          alt=""
+          fill
+          sizes="171px"
+          className="scale-110 object-cover blur-[14px] saturate-[1.1]"
+          style={{ WebkitMaskImage: mask, maskImage: mask }}
+        />
+        <span className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${tint(0)} 42%, ${tint(0.72)} 78%, ${tint(0.85)} 100%)` }} />
+      </span>
+      {now ? (
+        <span className="absolute -top-[11px] left-1/2 z-[2] inline-flex h-[22px] -translate-x-1/2 items-center whitespace-nowrap rounded-pill px-2.5 text-[11px] font-bold text-white" style={{ backgroundColor: rgb(c) }}>
+          Nu bezig
+        </span>
+      ) : null}
+      <span
+        className="absolute left-2.5 top-2.5 z-[2] inline-flex h-7 items-center rounded-pill bg-white/70 px-2.5 text-sm font-extrabold shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)] backdrop-blur-md"
+        style={{ color: deep(c, 0.6) }}
+      >
+        {timeLabel(row.start)}
+      </span>
+      {row.location && row.state !== "past" ? <RouteButton location={row.location} color={c} /> : null}
+      <span className="absolute inset-x-3.5 bottom-3 z-[1] flex flex-col">
+        <span className="line-clamp-2 text-[15px] font-extrabold leading-[19px]" style={{ color: deep(c, 0.35) }}>
+          {row.title}
+        </span>
+        {meta ? (
+          <span className="mt-0.5 truncate text-xs font-medium" style={{ color: deep(c, 0.5) }}>
+            {meta}
+          </span>
+        ) : null}
+      </span>
     </li>
   );
 }
