@@ -12,6 +12,7 @@ import { QuantityUnitField } from "@/components/ui/quantity_unit_field";
 import { SearchBar } from "@/components/ui/search_bar";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { useItemPhotoUrl } from "@/lib/item-photos";
+import { FilterChip } from "@/components/ui/filter_chip";
 import {
   TE_KOPEN_ALGEMEEN_RGB,
   teKopenMonogramStyle,
@@ -58,11 +59,15 @@ function FieldLabel({
 export interface AddShoppingItemSlideInProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (name: string, quantity: string, store: string | null) => void;
+  onAdd: (name: string, quantity: string, store: string | null, section: string | null) => void;
   /** Pre-select a store when opening from a section header */
   initialStore?: string | null;
   /** Bestaand product wijzigen: slaat het zoekblad over en vult alles in. */
-  editItem?: { name: string; quantity: string; store?: string | null } | null;
+  editItem?: { name: string; quantity: string; store?: string | null; section?: string | null } | null;
+  /** Eigen secties (Te kopen); ontbreekt = geen sectiekeuze. */
+  sections?: string[];
+  /** Sectie voorselecteren (vanaf de «+» van een eigen sectie). */
+  initialSection?: string | null;
 }
 
 export function AddShoppingItemSlideIn({
@@ -71,11 +76,14 @@ export function AddShoppingItemSlideIn({
   onAdd,
   initialStore,
   editItem,
+  sections,
+  initialSection,
 }: AddShoppingItemSlideInProps) {
   const [name, setName] = React.useState("");
   const [quantity, setQuantity] = React.useState("1");
   const [unit, setUnit] = React.useState("stuk");
   const [selectedStore, setSelectedStore] = React.useState<string | null>(null);
+  const [selectedSection, setSelectedSection] = React.useState<string | null>(null);
   const [searchMode, setSearchMode] = React.useState(false);
   const getPhoto = useItemPhotoUrl(80);
   const [storeSearch, setStoreSearch] = React.useState("");
@@ -96,13 +104,14 @@ export function AddShoppingItemSlideIn({
       setSelectedStore(
         editItem ? (editItem.store ?? null) : (initialStore ?? null),
       );
+      setSelectedSection(editItem ? (editItem.section ?? null) : (initialSection ?? null));
       setSearchMode(false);
       setStoreSearch("");
       setSearchOpen(!editItem);
     } else {
       setSearchOpen(false);
     }
-  }, [open, initialStore, editItem]);
+  }, [open, initialStore, initialSection, editItem]);
 
   // User picked a name from autocomplete → close search, show main slide-in
   const handleNameSelected = React.useCallback((picked: string) => {
@@ -146,7 +155,7 @@ export function AddShoppingItemSlideIn({
     if (!trimmed) return;
     const qty = normalizeQuantity(`${quantity.trim() || "1"} ${unit.trim() || "stuk"}`.trim());
     incrementStoreFreq(selectedStore);
-    onAdd(trimmed, qty, selectedStore);
+    onAdd(trimmed, qty, selectedStore, selectedSection);
     onClose();
   };
 
@@ -252,6 +261,23 @@ export function AddShoppingItemSlideIn({
               onUnitChange={setUnit}
             />
           </div>
+
+          {/* Sectie — enkel als er eigen secties zijn (Te kopen) */}
+          {sections && sections.length > 0 ? (
+            <div>
+              <FieldLabel>Sectie</FieldLabel>
+              <div role="radiogroup" aria-label="Sectie" className="flex flex-wrap gap-2">
+                <FilterChip selected={selectedSection === null} onClick={() => setSelectedSection(null)}>
+                  Volgens winkel
+                </FilterChip>
+                {sections.map((sec) => (
+                  <FilterChip key={sec} selected={selectedSection === sec} onClick={() => setSelectedSection(sec)}>
+                    {sec}
+                  </FilterChip>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {/* Winkel — Algemeen + winkeltegels; zoeken via ronde knop */}
           <div>

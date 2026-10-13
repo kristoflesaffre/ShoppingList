@@ -2,7 +2,6 @@
 
 import { HeaderEditButton, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
-import { PageBackButton } from "@/components/ui/page_back_button";
 import { DoneButton } from "@/components/ui/title_edit_button";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -10,10 +9,11 @@ import { id as instantId } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { cn, isIPhoneDevice } from "@/lib/utils";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
-import { FloatingActionButton } from "@/components/ui/floating_action_button";
+import { InputField } from "@/components/ui/input_field";
+import { Button } from "@/components/ui/button";
 import { Snackbar } from "@/components/ui/snackbar";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
-import { APP_FAB_BOTTOM_NO_NAV_CLASS, APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
+import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 import { primeKeyboard } from "@/lib/keyboard_focus";
 import { AddShoppingItemSlideIn } from "@/components/add_shopping_item_slide_in";
 import {
@@ -22,14 +22,13 @@ import {
 } from "@/lib/master-stores";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { MiniButton } from "@/components/ui/mini_button";
-import { CategoryCard } from "@/components/ui/category_card";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { SearchBar } from "@/components/ui/search_bar";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
-import { teKopenMonogramStyle, teKopenStoreGradient, teKopenStoreRgb } from "@/lib/te-kopen-style";
+import { teKopenMonogramStyle, teKopenStoreRgb } from "@/lib/te-kopen-style";
 import { StoreOrderPanel, loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
-import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
+import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 
 const ShareListModal = dynamic(
   () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
@@ -43,6 +42,7 @@ type ShoppingItem = {
   name: string;
   quantity: string;
   store?: string | null;
+  section?: string | null;
   checked: boolean;
   order: number;
   ownerId?: string | null;
@@ -102,21 +102,65 @@ function ChevronRightIcon() {
   );
 }
 
-// ─── Winkelkaart ──────────────────────────────────────────────────────────────
+// ─── Rij en secties (canvas «Te kopen · redesign 1 · als vast lijstje») ─────────
 
 type AddedBy = { firstName: string; avatarUrl?: string | null };
 
-/** Canvas «01 · Te kopen — voorstel»: rij met foto of monogram, naam, aantal en wie het toevoegde. */
+const BLUE: [number, number, number] = [79, 85, 241];
+
+function CheckCircle({ checked, onClick, label }: { checked: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onClick}
+      className="-my-2 -ml-1.5 flex size-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+    >
+      <span className={cn("flex size-[22px] items-center justify-center rounded-full transition-colors duration-fast", checked ? "bg-[var(--blue-500)]" : "shadow-[inset_0_0_0_1.6px_#c6c8ce]")}>
+        {checked ? (
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3">
+            <path d="M5 12.5l4.2 4L19 7" />
+          </svg>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
+function StoreLogo({ store, size = 20 }: { store: string; size?: number }) {
+  const info = findTeKopenStoreByLabelOrSlug(store);
+  if (!info) {
+    return (
+      <span
+        className="flex shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold text-white"
+        style={{ width: size, height: size, backgroundColor: `rgb(${teKopenStoreRgb(store).join(",")})` }}
+        aria-hidden
+      >
+        {store.charAt(0).toUpperCase()}
+      </span>
+    );
+  }
+  // eslint-disable-next-line @next/next/no-img-element -- winkellogo uit /public/logos
+  return <img src={info.logoSrc} alt="" width={size} height={size} className="shrink-0 object-contain" style={{ width: size, height: size }} />;
+}
+
+/** Rij: afvinken · foto of monogram · naam · aantal (+ wie) · winkellogo als het product aan een winkel hangt. */
 function ShoppingRow({
   item,
   isEditing,
   addedBy,
+  showStore,
+  onToggle,
   onEdit,
   onDelete,
 }: {
   item: ShoppingItem;
   isEditing: boolean;
   addedBy?: AddedBy | null;
+  showStore: boolean;
+  onToggle: (item: ShoppingItem) => void;
   onEdit: (item: ShoppingItem) => void;
   onDelete: (id: string) => void;
 }) {
@@ -131,16 +175,12 @@ function ShoppingRow({
           <img src={photoSrc} alt="" width={34} height={34} className="size-[34px] object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />
         </span>
       ) : (
-        <span
-          className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] text-[17px] font-bold"
-          style={teKopenMonogramStyle(item.name)}
-          aria-hidden
-        >
+        <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] text-[17px] font-bold" style={teKopenMonogramStyle(item.name)} aria-hidden>
           {item.name.trim().charAt(0).toUpperCase()}
         </span>
       )}
       <span className="min-w-0 flex-1 leading-[19px]">
-        <span className="block truncate text-[15px] font-medium text-text-primary first-letter:uppercase">{item.name}</span>
+        <span className="block truncate text-[15px] font-semibold text-text-primary first-letter:uppercase">{item.name}</span>
         <span className="flex min-w-0 items-center gap-[5px] text-[13px] text-[var(--text-tertiary)]">
           <span className="shrink-0">{item.quantity}</span>
           {addedBy ? (
@@ -159,12 +199,18 @@ function ShoppingRow({
           ) : null}
         </span>
       </span>
+      {showStore && item.store ? (
+        <span className="flex shrink-0 items-center" title={`Te kopen bij ${item.store}`}>
+          <StoreLogo store={item.store} size={22} />
+          <span className="sr-only">bij {item.store}</span>
+        </span>
+      ) : null}
     </>
   );
 
   if (isEditing) {
     return (
-      <div className="flex w-full items-center gap-3 px-1 py-[9px]">
+      <div className="flex w-full items-center gap-3 py-[9px]">
         {content}
         <RoundIconButton tone="danger" size={28} onClick={() => onDelete(item.id)} aria-label={`${item.name} verwijderen`}>
           {RoundIcons.trash}
@@ -175,71 +221,101 @@ function ShoppingRow({
 
   return (
     <SwipeToDelete onDelete={() => onDelete(item.id)} deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}>
-      <button
-        type="button"
-        onClick={() => onEdit(item)}
-        className="flex w-full items-center gap-3 bg-[var(--white)] px-1 py-[9px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
-      >
-        {content}
-      </button>
+      <div className="flex w-full items-center gap-3 bg-[var(--white)] py-[9px]">
+        <CheckCircle checked={false} onClick={() => onToggle(item)} label={`${item.name} afvinken`} />
+        <button
+          type="button"
+          onClick={() => onEdit(item)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+        >
+          {content}
+        </button>
+      </div>
     </SwipeToDelete>
   );
 }
 
-/** Winkel als CategoryCard: logo (of bolletje voor Algemeen) · naam · aantal · plus. */
-function StoreCard({
-  store,
-  items,
+type Group = { key: string; kind: "section" | "store" | "algemeen"; title: string; store: string | null; section: string | null; items: ShoppingItem[] };
+
+function GroupBlock({
+  group,
   isEditing,
   addedByFor,
   onAdd,
+  onToggle,
   onEdit,
   onDelete,
+  onRemoveSection,
 }: {
-  store: string | null;
-  items: ShoppingItem[];
+  group: Group;
   isEditing: boolean;
   addedByFor: (item: ShoppingItem) => AddedBy | null;
   onAdd: () => void;
+  onToggle: (item: ShoppingItem) => void;
   onEdit: (item: ShoppingItem) => void;
   onDelete: (id: string) => void;
+  onRemoveSection?: () => void;
 }) {
-  const storeInfo = store ? findTeKopenStoreByLabelOrSlug(store) : null;
-  const rgb = teKopenStoreRgb(store);
-  const title = store ?? "Algemeen";
-
   return (
-    <CategoryCard
-      className="mb-3 lg:mb-4"
-      rgb={rgb}
-      gradient={teKopenStoreGradient(store)}
-      header={
-        <>
-          {storeInfo ? (
-            // eslint-disable-next-line @next/next/no-img-element -- winkellogo uit /public/logos
-            <img src={storeInfo.logoSrc} alt="" width={22} height={22} className="size-[22px] shrink-0 object-contain" />
-          ) : (
-            <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `rgb(${rgb.join(",")})` }} aria-hidden />
-          )}
-          <h2 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{title}</h2>
-          <span className="shrink-0 text-xs font-bold tabular-nums text-[var(--text-secondary)]">{items.length}</span>
-          {!isEditing ? (
-            <RoundIconButton tone="onColor" size={28} onClick={onAdd} aria-label={`Product toevoegen aan ${title}`}>
-              {RoundIcons.plus}
-            </RoundIconButton>
-          ) : null}
-        </>
-      }
-    >
-      <ul className="px-2.5 pb-1 pt-0.5">
-        {items.map((item, k) => (
-          <li key={item.id} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>
-            <ShoppingRow item={item} isEditing={isEditing} addedBy={addedByFor(item)} onEdit={onEdit} onDelete={onDelete} />
-          </li>
-        ))}
-      </ul>
-    </CategoryCard>
+    <section aria-label={group.title}>
+      <div className="mb-2 flex min-h-8 items-center gap-2.5 px-1">
+        {group.kind === "store" && group.store ? (
+          <StoreLogo store={group.store} size={22} />
+        ) : group.kind === "section" ? (
+          <span className="flex size-[22px] shrink-0 items-center justify-center rounded-[7px] bg-[var(--blue-50)] text-action-primary" aria-hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
+              <path d="M4 7h16M4 12h16M4 17h10" />
+            </svg>
+          </span>
+        ) : (
+          <span className="ml-1.5 mr-1 size-2.5 shrink-0 rounded-full bg-[var(--blue-500)]" aria-hidden />
+        )}
+        <h2 className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">{group.title}</h2>
+        <span className="shrink-0 text-xs font-bold tabular-nums text-[var(--text-secondary)]">{group.items.length}</span>
+        {isEditing && onRemoveSection ? (
+          <RoundIconButton tone="danger" size={28} onClick={onRemoveSection} aria-label={`Sectie ${group.title} verwijderen`}>
+            {RoundIcons.trash}
+          </RoundIconButton>
+        ) : !isEditing ? (
+          <RoundIconButton tone="surface" size={28} onClick={onAdd} aria-label={`Product toevoegen aan ${group.title}`}>
+            {RoundIcons.plus}
+          </RoundIconButton>
+        ) : null}
+      </div>
+      <div className="rounded-[22px] bg-[var(--white)] px-4 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]">
+        {group.items.length > 0 ? (
+          <ul className="m-0 list-none p-0">
+            {group.items.map((item, k) => (
+              <li key={item.id} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>
+                <ShoppingRow
+                  item={item}
+                  isEditing={isEditing}
+                  addedBy={addedByFor(item)}
+                  showStore={group.kind !== "store"}
+                  onToggle={onToggle}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <button type="button" onClick={onAdd} className="w-full py-3.5 text-center text-sm text-[var(--text-tertiary)]">
+            Nog leeg · tik om iets toe te voegen
+          </button>
+        )}
+      </div>
+    </section>
   );
+}
+
+function parseSections(raw: string | null | undefined): string[] {
+  try {
+    const v: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0) : [];
+  } catch {
+    return [];
+  }
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -249,13 +325,11 @@ export default function TeKopenPage() {
   const { user, isLoading: authLoading } = db.useAuth();
   const [addOpen, setAddOpen] = React.useState(false);
   const [preselectedStore, setPreselectedStore] = React.useState<string | null>(null);
+  const [preselectedSection, setPreselectedSection] = React.useState<string | null>(null);
   const [editingItem, setEditingItem] = React.useState<ShoppingItem | null>(null);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isEditing, setIsEditing] = React.useState(false);
-  /** Large-title-patroon (zoals favorieten): compacte titel pas zodra de grote titel wegscrolt. */
-  const { titleRef: largeTitleRef, collapsed: isLargeTitleCollapsed } =
-    useLargeTitleCollapse<HTMLHeadingElement>(64);
   const [isStoreOrderMode, setIsStoreOrderMode] = React.useState(false);
   const [storeOrder, setStoreOrder] = React.useState<string[] | null>(() => loadStoreOrder());
   const [lastDeletedItem, setLastDeletedItem] = React.useState<ShoppingItem | null>(null);
@@ -263,6 +337,8 @@ export default function TeKopenPage() {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [shareModalOpen, setShareModalOpen] = React.useState(false);
   const [localShareToken, setLocalShareToken] = React.useState<string | null>(null);
+  const [sectionSheetOpen, setSectionSheetOpen] = React.useState(false);
+  const [sectionDraft, setSectionDraft] = React.useState("");
 
   const { data, isLoading: dataLoading } = db.useQuery(
     user
@@ -279,6 +355,15 @@ export default function TeKopenPage() {
         }
       : null,
   );
+  const { data: myProfileData } = db.useQuery({ profiles: { $: { where: { instantUserId: user?.id ?? "__te_kopen_geen__" } } } });
+  const myProfile = (myProfileData?.profiles?.[0] ?? null) as { id: string; teKopenSectionsJson?: string | null } | null;
+  const serverSections = React.useMemo(() => parseSections(myProfile?.teKopenSectionsJson), [myProfile?.teKopenSectionsJson]);
+  // Optimistisch: eigen wijziging meteen tonen tot de server ze terugstuurt.
+  const [localSections, setLocalSections] = React.useState<string[] | null>(null);
+  React.useEffect(() => {
+    setLocalSections((cur) => (cur && JSON.stringify(cur) === (myProfile?.teKopenSectionsJson ?? "") ? null : cur));
+  }, [myProfile?.teKopenSectionsJson]);
+  const savedSections = localSections ?? serverSections;
 
   React.useEffect(() => {
     if (!snackbarMessage) return;
@@ -345,19 +430,28 @@ export default function TeKopenPage() {
   const allItems: ShoppingItem[] = ((data?.shoppingItems ?? []) as ShoppingItem[])
     .filter((item) => item.ownerId != null && visibleShoppingOwnerIds.has(item.ownerId))
     .sort((a, b) => (b.order ?? 0) - (a.order ?? 0));
+  const openItems = allItems.filter((i) => !i.checked);
+  const boughtItems = allItems.filter((i) => i.checked);
 
-  // Group by store (null = geen winkel, represented as "" in storeOrder)
-  const storeGroups = new Map<string | null, ShoppingItem[]>();
   const query = searchQuery.trim().toLowerCase();
-  const visibleItems = query ? allItems.filter((i) => i.name.toLowerCase().includes(query)) : allItems;
-  for (const item of visibleItems) {
-    const key = item.store ?? null;
-    if (!storeGroups.has(key)) storeGroups.set(key, []);
-    storeGroups.get(key)!.push(item);
-  }
+  const visibleItems = query ? openItems.filter((i) => i.name.toLowerCase().includes(query)) : openItems;
 
-  // Build the ordered list of store keys ("" for null/Algemeen), applying custom order if saved
-  const rawStoreKeys = Array.from(storeGroups.keys()).map((k) => k ?? "");
+  // Eigen secties (bewaarde volgorde + secties die alleen op producten staan), dan winkels, dan Algemeen.
+  const sectionNames = Array.from(new Set([...savedSections, ...allItems.map((i) => i.section?.trim()).filter((x): x is string => !!x)]));
+  const bySection = new Map<string, ShoppingItem[]>();
+  const byStore = new Map<string, ShoppingItem[]>();
+  for (const item of visibleItems) {
+    const sec = item.section?.trim();
+    if (sec) {
+      if (!bySection.has(sec)) bySection.set(sec, []);
+      bySection.get(sec)!.push(item);
+    } else {
+      const key = item.store ?? "";
+      if (!byStore.has(key)) byStore.set(key, []);
+      byStore.get(key)!.push(item);
+    }
+  }
+  const rawStoreKeys = Array.from(byStore.keys());
   const defaultOrder = rawStoreKeys.slice().sort((a, b) => {
     if (a === "") return 1;
     if (b === "") return -1;
@@ -369,16 +463,55 @@ export default function TeKopenPage() {
     return ia - ib;
   });
   const orderedStoreKeys = applySavedStoreOrder(defaultOrder, storeOrder);
-  const sortedGroups: [string | null, ShoppingItem[]][] = orderedStoreKeys.map((key) => [
-    key === "" ? null : key,
-    storeGroups.get(key === "" ? null : key) ?? [],
-  ]);
+  const groups: Group[] = [
+    ...sectionNames
+      .filter((name) => !query || bySection.has(name))
+      .map((name): Group => ({ key: `sectie:${name}`, kind: "section", title: name, store: null, section: name, items: bySection.get(name) ?? [] })),
+    ...orderedStoreKeys.map(
+      (key): Group => ({
+        key: `winkel:${key}`,
+        kind: key === "" ? "algemeen" : "store",
+        title: key === "" ? "Algemeen" : key,
+        store: key === "" ? null : key,
+        section: null,
+        items: byStore.get(key) ?? [],
+      }),
+    ),
+  ];
 
-  async function handleAdd(name: string, quantity: string, store: string | null) {
+  const saveSections = (next: string[]) => {
+    if (!user) return;
+    const json = JSON.stringify(next);
+    setLocalSections(next);
+    void db
+      .transact(
+        myProfile
+          ? db.tx.profiles[myProfile.id].update({ teKopenSectionsJson: json })
+          : db.tx.profiles[instantId()].update({ instantUserId: user.id, teKopenSectionsJson: json }),
+      )
+      .catch(() => undefined);
+  };
+  const addSection = () => {
+    const name = sectionDraft.trim();
+    if (!name) return;
+    if (!sectionNames.some((s) => s.toLowerCase() === name.toLowerCase())) saveSections([...sectionNames, name]);
+    setSectionDraft("");
+    setSectionSheetOpen(false);
+  };
+  /** Sectie weg: producten blijven, ze vallen terug op hun winkel (of Algemeen). */
+  const removeSection = (name: string) => {
+    const inSection = allItems.filter((i) => i.section?.trim() === name);
+    void db
+      .transact(inSection.map((i) => db.tx.shoppingItems[i.id].update({ section: "" })))
+      .catch(() => undefined);
+    saveSections(sectionNames.filter((s) => s !== name));
+  };
+
+  async function handleAdd(name: string, quantity: string, store: string | null, section: string | null) {
     if (!user) return;
     if (editingItem) {
       await db.transact(
-        db.tx.shoppingItems[editingItem.id].update({ name, quantity, store: store ?? null }),
+        db.tx.shoppingItems[editingItem.id].update({ name, quantity, store: store ?? null, section: section ?? "" }),
       );
       return;
     }
@@ -388,12 +521,16 @@ export default function TeKopenPage() {
         name,
         quantity,
         ...(store ? { store } : {}),
+        ...(section ? { section } : {}),
         checked: false,
         order: maxOrder + 1,
         ownerId: user.id,
       }),
     );
   }
+
+  const toggleBought = (item: ShoppingItem) => void db.transact(db.tx.shoppingItems[item.id].update({ checked: !item.checked })).catch(() => undefined);
+  const clearBought = () => void db.transact(boughtItems.map((i) => db.tx.shoppingItems[i.id].delete())).catch(() => undefined);
 
   async function handleDelete(id: string) {
     const item = allItems.find((i) => i.id === id);
@@ -412,6 +549,7 @@ export default function TeKopenPage() {
         name: item.name,
         quantity: item.quantity,
         ...(item.store ? { store: item.store } : {}),
+        ...(item.section ? { section: item.section } : {}),
         checked: item.checked,
         order: item.order,
         ownerId: item.ownerId ?? user.id,
@@ -421,9 +559,10 @@ export default function TeKopenPage() {
     setSnackbarMessage(null);
   }
 
-  function openAddForStore(store: string | null) {
+  function openAdd(group?: Group) {
     setEditingItem(null);
-    setPreselectedStore(store);
+    setPreselectedStore(group?.store ?? null);
+    setPreselectedSection(group?.section ?? null);
     primeKeyboard();
     setAddOpen(true);
   }
@@ -491,201 +630,207 @@ export default function TeKopenPage() {
     return null;
   }
 
+  const sharedNames = otherShoppingOwnerIds.map((id) => shoppingFirstNameByUserId.get(id)).filter((n): n is string => !!n);
+  const sharedLabel =
+    otherShoppingOwnerIds.length === 0
+      ? null
+      : sharedNames.length === 0
+        ? "Gedeeld"
+        : `Gedeeld met ${sharedNames.length === 1 ? sharedNames[0] : `${sharedNames.slice(0, -1).join(", ")} en ${sharedNames[sharedNames.length - 1]}`}`;
+  const addedByFor = (item: ShoppingItem): AddedBy | null =>
+    item.ownerId && item.ownerId !== user.id
+      ? { firstName: shoppingFirstNameByUserId.get(item.ownerId) ?? "deelnemer", avatarUrl: shoppingAvatarByUserId.get(item.ownerId) }
+      : null;
+  const countLabel = `${openItems.length} ${openItems.length === 1 ? "product" : "producten"}`;
+
+  const intro = (
+    <section className="mb-5 flex flex-col items-center text-center lg:sticky lg:top-10 lg:mb-0 lg:items-start lg:text-left">
+      <span
+        className="flex size-[104px] items-center justify-center rounded-[30px] bg-[rgba(255,255,255,0.75)]"
+        style={{ boxShadow: `0 14px 28px -18px rgb(${BLUE.join(",")})` }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
+        <img src="/images/ui/kopen_240.webp" alt="" className="size-20 object-contain" />
+      </span>
+      <h1 className="mt-3 text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-text-primary lg:mt-4 lg:text-[34px]">
+        {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
+      </h1>
+      <p className="mt-0.5 text-[13.5px] text-[var(--text-secondary)] lg:mt-1 lg:text-[14.5px]">
+        <span className="lg:hidden">{countLabel}</span>
+        <span className="hidden lg:inline">
+          {countLabel} · dingen die je niet wil vergeten,
+          <br />
+          bij de winkel of online.
+        </span>
+      </p>
+      {sharedLabel ? (
+        <span className="mt-2.5 inline-flex h-[30px] items-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.85)] pl-1 pr-3 text-[12.5px] font-bold text-[var(--text-secondary)]">
+          <span className="flex">
+            {otherShoppingOwnerIds.slice(0, 3).map((id, i) => {
+              const avatar = shoppingAvatarByUserId.get(id);
+              const name = shoppingFirstNameByUserId.get(id) ?? "?";
+              return (
+                <span key={id} className={cn("flex size-[22px] items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] text-[10px] font-extrabold text-action-primary ring-2 ring-white", i > 0 && "-ml-1.5")}>
+                  {avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- profielfoto (data-URL of extern)
+                    <img src={avatar} alt="" className="size-full object-cover" />
+                  ) : (
+                    name.charAt(0).toUpperCase()
+                  )}
+                </span>
+              );
+            })}
+          </span>
+          {sharedLabel}
+        </span>
+      ) : null}
+    </section>
+  );
+
   return (
-    <div className="relative flex min-h-dvh w-full flex-col">
-
-      {/* Fixed header */}
+    <div className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)]">
       <div
-        className={cn(
-          "fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] lg:hidden pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
-          isLargeTitleCollapsed || isStoreOrderMode ? "shadow-[0_1px_0_var(--border-subtle)]" : "shadow-none",
-        )}
-      >
-        <div className="flex justify-center px-4">
-          <header className="flex h-16 w-full max-w-[956px] items-center gap-4">
-            <button
-              type="button"
-              aria-label="Terug"
-              onClick={() => router.push("/")}
-              className={headerRoundButtonClass}
-            >
-              <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
-            </button>
-            <p
-              className={cn(
-                "min-w-0 flex-1 text-center text-base font-medium leading-6 text-[var(--text-primary)]",
-                "motion-safe:transition-[opacity,transform] motion-safe:duration-200 motion-safe:ease-out",
-                isLargeTitleCollapsed ? "translate-y-0 opacity-100" : "opacity-0 motion-safe:translate-y-1",
-              )}
-              aria-hidden={!isLargeTitleCollapsed}
-            >
-              {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
-            </p>
-            {!isEditing && !isStoreOrderMode && allItems.length > 0 ? (
-              <HeaderEditButton onClick={() => setIsEditing(true)} className="-mr-2" />
-            ) : null}
-            <button
-              type="button"
-              aria-label="Instellingen"
-              onClick={() => setSettingsOpen(true)}
-              className={headerRoundButtonClass}
-            >
-              <MaskIcon src="/icons/dots.svg" className="size-6 bg-current" />
-            </button>
-          </header>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div
-        className={cn(
-          "relative z-10 flex flex-1 justify-center px-4",
-          "pb-[calc(88px+env(safe-area-inset-bottom,0px))]",
-          "pt-[calc(64px+32px+env(safe-area-inset-top,0px))] lg:pt-[calc(40px+env(safe-area-inset-top,0px))]",
-        )}
-      >
-        <div className="flex w-full max-w-[956px] flex-col gap-6">
-          {/* Page heading — canvas «01 · Te kopen — voorstel» */}
-          <div className="flex w-full min-w-0 items-start justify-between gap-2">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <PageBackButton href="/" label="Terug naar de startpagina" />
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <div className="flex min-w-0 items-center gap-2">
-                <h1 ref={largeTitleRef} className="min-w-0 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
-                  {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
-                </h1>
-              </div>
-              {!isStoreOrderMode && allItems.length > 0 ? (
-                <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
-                  {allItems.length} {allItems.length === 1 ? "product" : "producten"} · voor je volgende lijstje
-                </p>
-              ) : null}
-            </div>
-            </div>
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[340px]"
+        style={{ backgroundImage: `linear-gradient(180deg, ${mixWithWhiteRgb(BLUE, 0.3)} 0%, ${mixWithWhiteRgb(BLUE, 0.1)} 60%, var(--bg-app) 100%)` }}
+      />
+      <div className="relative mx-auto flex w-full max-w-[1120px] flex-1 flex-col px-4 pb-[calc(48px+env(safe-area-inset-bottom,0px))] pt-[env(safe-area-inset-top,0px)] motion-safe:animate-fade-up">
+        <header className="flex h-16 items-center justify-between gap-2 lg:mt-6">
+          <button type="button" aria-label="Terug naar de startpagina" onClick={() => router.push("/")} className={headerRoundButtonClass}>
+            <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
+          </button>
+          <span className="flex items-center gap-2">
             {isStoreOrderMode ? (
               <DoneButton onClick={() => setIsStoreOrderMode(false)} />
             ) : isEditing ? (
               <DoneButton onClick={() => setIsEditing(false)} />
-            ) : allItems.length > 0 ? (
-              <RoundIconButton
-                tone={searchOpen ? "primary" : "surface"}
-                size={36}
-                onClick={() => {
-                  setSearchOpen((v) => !v);
-                  setSearchQuery("");
-                }}
-                aria-label={searchOpen ? "Zoeken sluiten" : "Zoeken in te kopen"}
-                aria-pressed={searchOpen}
-              >
-                {RoundIcons.search}
-              </RoundIconButton>
-            ) : null}
-            {!isEditing && !isStoreOrderMode && allItems.length > 0 ? (
-              <HeaderEditButton onClick={() => setIsEditing(true)} className="!hidden lg:!flex" />
-            ) : null}
-            {!isEditing && !isStoreOrderMode ? (
-              /* Desktop: «⋯» uit de topbalk staat naast de titel (canvas «Terugnavigatie A»). */
-              <button type="button" aria-label="Instellingen" onClick={() => setSettingsOpen(true)} className={`${headerRoundButtonClass} !hidden lg:!flex`}>
-                {RoundIcons.more}
-              </button>
-            ) : null}
+            ) : (
+              <>
+                {allItems.length > 0 ? (
+                  <button
+                    type="button"
+                    aria-label={searchOpen ? "Zoeken sluiten" : "Zoeken in te kopen"}
+                    aria-pressed={searchOpen}
+                    onClick={() => {
+                      setSearchOpen((v) => !v);
+                      setSearchQuery("");
+                    }}
+                    className={cn(headerRoundButtonClass, searchOpen && "!bg-[var(--blue-500)] !text-white")}
+                  >
+                    {RoundIcons.search}
+                  </button>
+                ) : null}
+                {allItems.length > 0 || sectionNames.length > 0 ? <HeaderEditButton onClick={() => setIsEditing(true)} /> : null}
+                <button type="button" aria-label="Instellingen" onClick={() => setSettingsOpen(true)} className={headerRoundButtonClass}>
+                  {RoundIcons.more}
+                </button>
+              </>
+            )}
+          </span>
+        </header>
+
+        <div className="lg:grid lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start lg:gap-14">
+          {intro}
+
+          <div className="flex min-w-0 flex-col gap-5">
+            {isStoreOrderMode ? (
+              <StoreOrderPanel storeKeys={orderedStoreKeys} onChange={(next) => setStoreOrder(next)} />
+            ) : (
+              <>
+                {searchOpen ? (
+                  <SearchBar surface="app" value={searchQuery} onValueChange={setSearchQuery} placeholder="Zoeken in te kopen…" />
+                ) : !isEditing ? (
+                  <button
+                    type="button"
+                    onClick={() => openAdd()}
+                    className="flex h-[52px] items-center gap-2.5 rounded-pill bg-[var(--white)] pl-4 pr-1.5 text-left shadow-[0_0_0_1px_var(--border-subtle),0_6px_16px_-10px_rgba(16,17,48,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-[15px] text-[var(--text-tertiary)]">Wat moet je nog kopen?</span>
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-action-primary text-white" aria-hidden>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" className="size-[18px]">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                    </span>
+                    <span className="sr-only">Product toevoegen</span>
+                  </button>
+                ) : null}
+
+                {isEditing && orderedStoreKeys.length > 1 ? (
+                  <MiniButton variant="secondary" className="self-start" onClick={() => setIsStoreOrderMode(true)}>
+                    Volgorde winkels wijzigen
+                  </MiniButton>
+                ) : null}
+
+                {openItems.length === 0 && sectionNames.length === 0 ? (
+                  <p className="py-6 text-center text-[15px] text-[var(--text-tertiary)]">
+                    Niets meer te kopen. Voeg iets toe dat je niet wil vergeten.
+                  </p>
+                ) : groups.length === 0 ? (
+                  <p className="py-8 text-center text-[15px] text-[var(--text-tertiary)]">Geen producten gevonden voor «{searchQuery.trim()}».</p>
+                ) : (
+                  groups.map((group) => (
+                    <GroupBlock
+                      key={group.key}
+                      group={group}
+                      isEditing={isEditing}
+                      addedByFor={addedByFor}
+                      onAdd={() => openAdd(group)}
+                      onToggle={toggleBought}
+                      onEdit={(item) => {
+                        setEditingItem(item);
+                        setAddOpen(true);
+                      }}
+                      onDelete={handleDelete}
+                      onRemoveSection={group.kind === "section" ? () => removeSection(group.title) : undefined}
+                    />
+                  ))
+                )}
+
+                {!searchOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSectionDraft("");
+                      setSectionSheetOpen(true);
+                    }}
+                    className="flex h-12 items-center justify-center gap-1.5 rounded-[18px] border-[1.5px] border-dashed border-[#c9cbe6] text-sm font-bold text-action-primary transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-4">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Nieuwe sectie
+                  </button>
+                ) : null}
+
+                {boughtItems.length > 0 && !searchOpen ? (
+                  <div>
+                    <div className="mx-1 mb-1.5 flex items-center justify-between">
+                      <span className="text-xs font-extrabold tracking-[0.05em] text-[var(--text-tertiary)]">GEKOCHT · {boughtItems.length}</span>
+                      <button type="button" onClick={clearBought} className="rounded-pill px-1 text-[13px] font-semibold text-action-primary">
+                        Wis
+                      </button>
+                    </div>
+                    <ul className="m-0 list-none rounded-[22px] bg-[var(--white)] px-4 py-0.5 opacity-75 shadow-[0_0_0_1px_var(--border-subtle)]">
+                      {boughtItems.map((item, i) => (
+                        <li key={item.id} className={cn("flex items-center gap-3 py-2.5", i > 0 && "border-t border-[var(--border-subtle)]")}>
+                          <CheckCircle checked onClick={() => toggleBought(item)} label={`${item.name} terugzetten`} />
+                          <span className="min-w-0 flex-1 truncate text-[15px] text-[var(--text-tertiary)] line-through first-letter:uppercase">{item.name}</span>
+                          {item.store ? <StoreLogo store={item.store} size={18} /> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
-
-          {isEditing && !isStoreOrderMode && sortedGroups.length > 1 ? (
-            <MiniButton variant="secondary" className="self-start" onClick={() => setIsStoreOrderMode(true)}>
-              Volgorde winkels wijzigen
-            </MiniButton>
-          ) : null}
-
-          {searchOpen && !isEditing && !isStoreOrderMode && allItems.length > 0 ? (
-            <SearchBar surface="app" value={searchQuery} onValueChange={setSearchQuery} placeholder="Zoeken in te kopen…" />
-          ) : null}
-
-          {isStoreOrderMode ? (
-            <StoreOrderPanel
-              storeKeys={orderedStoreKeys}
-              onChange={(next) => setStoreOrder(next)}
-            />
-          ) : allItems.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-6 py-12 text-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/ui/kopen_320.webp"
-                alt=""
-                width={96}
-                height={96}
-                className="size-24 object-contain"
-                aria-hidden
-              />
-              <p className="text-base font-medium leading-6 text-[var(--gray-500)]">
-                Je hebt geen producten om te kopen
-              </p>
-              <MiniButton variant="primary" onClick={() => { primeKeyboard(); setEditingItem(null); setPreselectedStore(null); setAddOpen(true); }}>
-                Voeg product toe
-              </MiniButton>
-            </div>
-          ) : (
-            <div className="lg:columns-3 lg:gap-4">
-              {sortedGroups.length === 0 ? (
-                <p className="py-8 text-center text-[15px] text-[var(--text-tertiary)]">
-                  Geen producten gevonden voor «{searchQuery.trim()}».
-                </p>
-              ) : null}
-              {sortedGroups.map(([store, items]) => (
-                <StoreCard
-                  key={store ?? "__algemeen"}
-                  store={store}
-                  items={items}
-                  isEditing={isEditing}
-                  addedByFor={(item) =>
-                    item.ownerId && item.ownerId !== user.id
-                      ? {
-                          firstName: shoppingFirstNameByUserId.get(item.ownerId) ?? "deelnemer",
-                          avatarUrl: shoppingAvatarByUserId.get(item.ownerId),
-                        }
-                      : null
-                  }
-                  onAdd={() => openAddForStore(store)}
-                  onEdit={(item) => {
-                    setEditingItem(item);
-                    setAddOpen(true);
-                  }}
-                  onDelete={handleDelete}
-                />
-              ))}
-              {!isEditing ? (
-                <p className="mt-1 text-center text-[12.5px] text-[var(--text-tertiary)] lg:hidden">
-                  Tik om te wijzigen · veeg naar links om te verwijderen
-                </p>
-              ) : null}
-            </div>
-          )}
         </div>
       </div>
 
       {/* Snackbar */}
       {snackbarMessage && (
         <div className={APP_SNACKBAR_NO_NAV_FIXTURE_CLASS} role="region" aria-label="Melding">
-          <Snackbar
-            message={snackbarMessage}
-            actionLabel="Zet terug"
-            onAction={handleUndo}
-          />
-        </div>
-      )}
-
-      {/* FAB — verborgen in bewerkmodus, lege staat en wanneer snackbar zichtbaar is */}
-      {!isEditing && !snackbarMessage && allItems.length > 0 && (
-        <div className={cn("pointer-events-none fixed inset-x-0 z-20", APP_FAB_BOTTOM_NO_NAV_CLASS)}>
-          <div className="px-4">
-            <div className="mx-auto flex w-full max-w-[956px] justify-end">
-              <FloatingActionButton
-                aria-label="Product toevoegen"
-                className="pointer-events-auto"
-                onClick={() => { primeKeyboard(); setEditingItem(null); setPreselectedStore(null); setAddOpen(true); }}
-              />
-            </div>
-          </div>
+          <Snackbar message={snackbarMessage} actionLabel="Zet terug" onAction={handleUndo} />
         </div>
       )}
 
@@ -694,8 +839,30 @@ export default function TeKopenPage() {
         onClose={() => setAddOpen(false)}
         onAdd={handleAdd}
         initialStore={preselectedStore}
+        initialSection={preselectedSection}
+        sections={sectionNames}
         editItem={editingItem}
       />
+
+      <SlideInModal
+        open={sectionSheetOpen}
+        onClose={() => setSectionSheetOpen(false)}
+        title="Nieuwe sectie"
+        footer={
+          <Button variant="primary" disabled={!sectionDraft.trim()} onClick={addSection}>
+            Maak sectie
+          </Button>
+        }
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            addSection();
+          }}
+        >
+          <InputField label="Naam" value={sectionDraft} onChange={(e) => setSectionDraft(e.target.value)} placeholder="bv. Badkamer, Online, Verjaardag Noë" autoFocus />
+        </form>
+      </SlideInModal>
 
       <SlideInModal
         open={settingsOpen}

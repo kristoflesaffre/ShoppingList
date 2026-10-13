@@ -220,6 +220,8 @@ const schema = i.schema({
        * Ids: «te-kopen», «favorieten» of een lijst-id (zie `src/components/vaste_lijstjes.tsx`).
        */
       vasteLijstjesJson: i.string().optional(),
+      /** Eigen secties op «Te kopen» (JSON-array van namen, in volgorde); ook lege secties blijven zo staan. */
+      teKopenSectionsJson: i.string().optional(),
     }),
     /** Vaste deelgenoot van een gebruiker (via de algemene uitnodigingslink). */
     sharePartners: i.entity({
@@ -285,6 +287,8 @@ const schema = i.schema({
       quantity: i.string(),
       /** Winkel-label (bv. "Lidl", "Colruyt"); ontbreekt = geen specifieke winkel. */
       store: i.string().optional(),
+      /** Eigen sectie (bv. «Badkamer»); ontbreekt = gegroepeerd volgens winkel. */
+      section: i.string().optional(),
       checked: i.boolean(),
       order: i.number(),
       ownerId: i.string().optional().indexed(),

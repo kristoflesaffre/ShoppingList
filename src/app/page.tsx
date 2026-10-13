@@ -2808,13 +2808,15 @@ export default function Home() {
       store?: unknown;
       order?: unknown;
       ownerId?: unknown;
+      checked?: unknown;
     }>;
     const items = raw
       .filter(
         (i) =>
           typeof i.ownerId === "string" &&
           visibleShoppingOwnerIds.has(i.ownerId) &&
-          typeof i.name === "string",
+          typeof i.name === "string" &&
+          i.checked !== true,
       )
       .map((i) => ({
         id: String(i.id),
