@@ -662,47 +662,43 @@ export default function TeKopenPage() {
       : null;
   const countLabel = `${openItems.length} ${openItems.length === 1 ? "product" : "producten"}`;
 
+  /** Kop zoals bij «Kado's»: kleine illustratie links, naam, pillen met aantal en met wie gedeeld. */
+  const pill = "inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.85)] px-2.5 text-[12.5px] font-bold";
   const intro = (
-    <section className="mb-5 flex flex-col items-center text-center lg:sticky lg:top-10 lg:mb-0 lg:items-start lg:text-left">
-      <span
-        className="flex size-[104px] items-center justify-center rounded-[30px] bg-[rgba(255,255,255,0.75)]"
-        style={{ boxShadow: `0 14px 28px -18px rgb(${BLUE.join(",")})` }}
-      >
+    <section className="mb-3 flex min-w-0 items-center gap-3.5 lg:mb-0">
+      <span className="flex size-[72px] shrink-0 items-center justify-center overflow-hidden rounded-[22px] bg-[rgba(255,255,255,0.75)]">
         {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
-        <img src="/images/ui/kopen_240.webp" alt="" className="size-20 object-contain" />
+        <img src="/images/ui/kopen_240.webp" alt="" className="size-[58px] object-contain" />
       </span>
-      <h1 className="mt-3 text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-text-primary lg:mt-4 lg:text-[34px]">
-        {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
-      </h1>
-      <p className="mt-0.5 text-[13.5px] text-[var(--text-secondary)] lg:mt-1 lg:text-[14.5px]">
-        <span className="lg:hidden">{countLabel}</span>
-        <span className="hidden lg:inline">
-          {countLabel} · dingen die je niet wil vergeten,
-          <br />
-          bij de winkel of online.
-        </span>
-      </p>
-      {sharedLabel ? (
-        <span className="mt-2.5 inline-flex h-[30px] items-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.85)] pl-1 pr-3 text-[12.5px] font-bold text-[var(--text-secondary)]">
-          <span className="flex">
-            {otherShoppingOwnerIds.slice(0, 3).map((id, i) => {
-              const avatar = shoppingAvatarByUserId.get(id);
-              const name = shoppingFirstNameByUserId.get(id) ?? "?";
-              return (
-                <span key={id} className={cn("flex size-[22px] items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] text-[10px] font-extrabold text-action-primary ring-2 ring-white", i > 0 && "-ml-1.5")}>
-                  {avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- profielfoto (data-URL of extern)
-                    <img src={avatar} alt="" className="size-full object-cover" />
-                  ) : (
-                    name.charAt(0).toUpperCase()
-                  )}
-                </span>
-              );
-            })}
-          </span>
-          {sharedLabel}
-        </span>
-      ) : null}
+      <div className="min-w-0">
+        <h1 className="truncate text-[26px] font-extrabold leading-tight tracking-[-0.02em] text-text-primary lg:text-[30px]">
+          {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
+        </h1>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <span className={cn(pill, "text-text-primary")}>{countLabel}</span>
+          {sharedLabel ? (
+            <span className={cn(pill, "gap-1.5 pl-1 text-[var(--text-secondary)]")}>
+              <span className="flex">
+                {otherShoppingOwnerIds.slice(0, 3).map((id, i) => {
+                  const avatar = shoppingAvatarByUserId.get(id);
+                  const name = shoppingFirstNameByUserId.get(id) ?? "?";
+                  return (
+                    <span key={id} className={cn("flex size-5 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] text-[10px] font-extrabold text-action-primary ring-2 ring-white", i > 0 && "-ml-1.5")}>
+                      {avatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- profielfoto (data-URL of extern)
+                        <img src={avatar} alt="" className="size-full object-cover" />
+                      ) : (
+                        name.charAt(0).toUpperCase()
+                      )}
+                    </span>
+                  );
+                })}
+              </span>
+              {sharedLabel}
+            </span>
+          ) : null}
+        </div>
+      </div>
     </section>
   );
 
@@ -748,32 +744,35 @@ export default function TeKopenPage() {
           </span>
         </header>
 
-        <div className="lg:grid lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start lg:gap-14">
-          {intro}
+        <div>
+          <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+            {intro}
+            {!isStoreOrderMode ? (
+              searchOpen ? (
+                <SearchBar surface="app" value={searchQuery} onValueChange={setSearchQuery} placeholder="Zoeken in te kopen…" className="lg:w-[440px] lg:shrink-0" />
+              ) : !isEditing ? (
+                <button
+                  type="button"
+                  onClick={() => openAdd()}
+                  className="flex h-[52px] items-center gap-2.5 rounded-pill bg-[var(--white)] pl-4 pr-1.5 text-left shadow-[0_0_0_1px_var(--border-subtle),0_6px_16px_-10px_rgba(16,17,48,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] lg:w-[440px] lg:shrink-0"
+                >
+                  <span className="min-w-0 flex-1 truncate text-[15px] text-[var(--text-tertiary)]">Wat moet je nog kopen?</span>
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-action-primary text-white" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" className="size-[18px]">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                  </span>
+                  <span className="sr-only">Product toevoegen</span>
+                </button>
+              ) : null
+            ) : null}
+          </div>
 
-          <div className="flex min-w-0 flex-col gap-5">
+          <div className="mt-5 flex min-w-0 flex-col gap-5">
             {isStoreOrderMode ? (
               <StoreOrderPanel storeKeys={orderedStoreKeys} onChange={(next) => setStoreOrder(next)} />
             ) : (
               <>
-                {searchOpen ? (
-                  <SearchBar surface="app" value={searchQuery} onValueChange={setSearchQuery} placeholder="Zoeken in te kopen…" />
-                ) : !isEditing ? (
-                  <button
-                    type="button"
-                    onClick={() => openAdd()}
-                    className="flex h-[52px] items-center gap-2.5 rounded-pill bg-[var(--white)] pl-4 pr-1.5 text-left shadow-[0_0_0_1px_var(--border-subtle),0_6px_16px_-10px_rgba(16,17,48,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-[15px] text-[var(--text-tertiary)]">Wat moet je nog kopen?</span>
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-action-primary text-white" aria-hidden>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" className="size-[18px]">
-                        <path d="M12 5v14M5 12h14" />
-                      </svg>
-                    </span>
-                    <span className="sr-only">Product toevoegen</span>
-                  </button>
-                ) : null}
-
                 {isEditing && orderedStoreKeys.length > 1 ? (
                   <MiniButton variant="secondary" className="self-start" onClick={() => setIsStoreOrderMode(true)}>
                     Volgorde winkels wijzigen
@@ -787,7 +786,8 @@ export default function TeKopenPage() {
                 ) : groups.length === 0 ? (
                   <p className="py-8 text-center text-[15px] text-[var(--text-tertiary)]">Geen producten gevonden voor «{searchQuery.trim()}».</p>
                 ) : (
-                  groups.map((group) => (
+                  <div className="flex flex-col gap-5 lg:block lg:columns-2 lg:gap-6 [&>*]:break-inside-avoid lg:[&>*]:mb-5">
+                  {groups.map((group) => (
                     <GroupBlock
                       key={group.key}
                       group={group}
@@ -802,7 +802,8 @@ export default function TeKopenPage() {
                       onDelete={handleDelete}
                       onRemoveSection={group.kind === "section" ? () => removeSection(group.title) : undefined}
                     />
-                  ))
+                  ))}
+                  </div>
                 )}
 
                 {!searchOpen ? (
