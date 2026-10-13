@@ -236,9 +236,9 @@ function AgendaTile({ row }: { row: AgendaRow }) {
         <span className="absolute right-3 top-3.5 size-[9px] rounded-full" style={{ backgroundColor: rgb(row.color) }} aria-hidden />
       )}
       <span className="text-2xl font-extrabold leading-7 tracking-[-0.02em]" style={{ color: deep(row.color) }}>
-        {timeLabel(row.start)}
+        {row.allDay ? "Hele dag" : timeLabel(row.start)}
       </span>
-      <span className="text-xs font-semibold text-[var(--text-tertiary)]">tot {timeLabel(row.end)}</span>
+      {row.allDay ? null : <span className="text-xs font-semibold text-[var(--text-tertiary)]">tot {timeLabel(row.end)}</span>}
       <span className="mt-auto line-clamp-2 text-[15px] font-extrabold leading-[19px] text-text-primary">{row.title}</span>
       {row.location || row.account ? (
         <span className="mt-1 flex min-w-0 items-center gap-1 text-xs text-[var(--text-secondary)]">
@@ -335,8 +335,20 @@ function RestOfDayTile({ nowMin, wholeDay }: { nowMin: number; wholeDay: boolean
   );
 }
 
+/** Verticale scheiding in de tegelrij: «Morgen · wo 14». */
+function DayDivider({ date }: { date: Date }) {
+  const label = `Morgen · ${date.toLocaleDateString("nl-BE", { weekday: "short", day: "numeric" }).replace(".", "")}`;
+  return (
+    <li aria-label={label} className="flex h-[176px] w-7 shrink-0 flex-col items-center gap-2">
+      <span className="w-[1.5px] flex-1 bg-[repeating-linear-gradient(var(--border-subtle)_0_6px,transparent_6px_11px)]" aria-hidden />
+      <span className="rotate-180 whitespace-nowrap text-[11px] font-extrabold uppercase tracking-[0.1em] text-[var(--text-tertiary)] [writing-mode:vertical-rl]">{label}</span>
+      <span className="w-[1.5px] flex-1 bg-[repeating-linear-gradient(var(--border-subtle)_0_6px,transparent_6px_11px)]" aria-hidden />
+    </li>
+  );
+}
+
 /** Horizontale rij tegels; scrolt bij het openen naar wat nu bezig is (of het eerstvolgende). */
-function TileLane({ rows, nowMin }: { rows: AgendaRow[]; nowMin: number }) {
+function TileLane({ rows, nowMin, tomorrow = [], tomorrowDate }: { rows: AgendaRow[]; nowMin: number; tomorrow?: AgendaRow[]; tomorrowDate?: Date }) {
   const ref = React.useRef<HTMLUListElement>(null);
   // Niets meer te komen vandaag: extra tegel «rest van de dag vrij» achteraan, die krijgt de focus.
   const restFree = rows.every((r) => r.state === "past");
@@ -356,6 +368,14 @@ function TileLane({ rows, nowMin }: { rows: AgendaRow[]; nowMin: number }) {
         <AgendaTile key={row.id} row={row} />
       ))}
       {restFree ? <RestOfDayTile nowMin={nowMin} wholeDay={rows.length === 0} /> : null}
+      {tomorrow.length > 0 && tomorrowDate ? (
+        <>
+          <DayDivider date={tomorrowDate} />
+          {tomorrow.map((row) => (
+            <AgendaTile key={`morgen-${row.id}`} row={row} />
+          ))}
+        </>
+      ) : null}
     </ul>
   );
 }
@@ -499,8 +519,16 @@ function todayRange() {
   const timeMin = new Date();
   timeMin.setHours(0, 0, 0, 0);
   const timeMax = new Date(timeMin);
-  timeMax.setDate(timeMax.getDate() + 1);
-  return { key: `today:${localDayIso(timeMin)}`, timeMin, timeMax };
+  // Vandaag én morgen: de tegelrij loopt door naar morgen.
+  timeMax.setDate(timeMax.getDate() + 2);
+  return { key: `today:${localDayIso(timeMin)}:2d`, timeMin, timeMax };
+}
+
+function eventDayIso(e: AgendaEvent): string | null {
+  if (!e.start) return null;
+  if (e.allDay) return e.start.slice(0, 10);
+  const d = new Date(e.start);
+  return Number.isFinite(d.getTime()) ? localDayIso(d) : null;
 }
 
 export function useTodayAgenda() {
@@ -514,7 +542,23 @@ export function useTodayAgenda() {
   };
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const nowLabel = now.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
-  const allRows: AgendaRow[] = (state?.events ?? []).map((e) => {
+  const todayIso = localDayIso(now);
+  const tomorrowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const tomorrowIso = localDayIso(tomorrowDate);
+  const events = state?.events ?? [];
+  const todayEvents = events.filter((e) => (eventDayIso(e) ?? todayIso) <= todayIso);
+  const tomorrow: AgendaRow[] = events
+    .filter((e) => eventDayIso(e) === tomorrowIso)
+    .map((e) => ({
+      ...e,
+      color: colorOf(e.accountId),
+      account: accounts.length > 1 ? accountName(accounts.find((a) => a.id === e.accountId)?.email) : null,
+      startMin: e.allDay ? 0 : minutesOfDay(e.start) ?? 0,
+      endMin: e.allDay ? 24 * 60 : minutesOfDay(e.end) ?? 0,
+      state: "next" as const,
+    }))
+    .sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.startMin - b.startMin);
+  const allRows: AgendaRow[] = todayEvents.map((e) => {
     const startMin = e.allDay ? 0 : minutesOfDay(e.start) ?? 0;
     const endMin = e.allDay ? 24 * 60 : minutesOfDay(e.end) ?? startMin;
     const account = accounts.length > 1 ? accountName(accounts.find((a) => a.id === e.accountId)?.email) : null;
@@ -539,12 +583,14 @@ export function useTodayAgenda() {
     connected: !!state?.connected,
     allDay: allRows.filter((r) => r.allDay),
     timed: allRows.filter((r) => !r.allDay).sort((a, b) => a.startMin - b.startMin),
+    tomorrow,
+    tomorrowDate,
     connect: () => void startGoogleConnect(token),
   };
 }
 
 export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () => void }) {
-  const { state, failed, load, now, nowMin, nowLabel, connected, allDay, timed, connect } = useTodayAgenda();
+  const { state, failed, load, now, nowMin, nowLabel, connected, allDay, timed, tomorrow, tomorrowDate, connect } = useTodayAgenda();
   const [feedback, setFeedback] = React.useState<string | null>(null);
   // Meteen de bewaarde weergave, zodat ook het laadskelet de juiste opbouw toont.
   const [view, setView] = React.useState<AgendaView>(() => {
@@ -592,7 +638,7 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
 
   const dayRaw = now.toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "short" }).replace(".", "");
   const dayLabel = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1);
-  const hasEvents = connected && allRows.length > 0;
+  const hasEvents = connected && (allRows.length > 0 || tomorrow.length > 0);
   const headerRight = connected ? (
     <span className="flex shrink-0 items-center gap-4">
       <span className="hidden text-[13.5px] font-semibold text-[var(--text-secondary)] md:inline">{dayLabel}</span>
@@ -639,7 +685,7 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
         </ul>
       </div>
     );
-  } else if (timed.length === 0 && allDay.length === 0) {
+  } else if (timed.length === 0 && allDay.length === 0 && !(view === "tegels" && tomorrow.length > 0)) {
     body = (
       <div className={cn(cardClass, "px-5 py-6 text-center")}>
         <p className="text-base font-bold text-text-primary">{failed ? "Agenda tijdelijk niet beschikbaar" : "Niets gepland vandaag"}</p>
@@ -650,7 +696,7 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
     body = (
       <div>
         <AllDayChips rows={allDay} />
-        <TileLane rows={timed} nowMin={nowMin} />
+        <TileLane rows={timed} nowMin={nowMin} tomorrow={tomorrow} tomorrowDate={tomorrowDate} />
       </div>
     );
   } else {
