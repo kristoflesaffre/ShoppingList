@@ -219,11 +219,12 @@ export function AllDayChips({ rows }: { rows: AgendaRow[] }) {
 }
 
 /** Tegel (canvas «Agenda B · tegels»): tijd groot, titel onderaan, «Nu bezig» met gekleurde rand. */
-function AgendaTile({ row }: { row: AgendaRow }) {
+function AgendaTile({ row, focus = false }: { row: AgendaRow; focus?: boolean }) {
   const now = row.state === "now";
   return (
     <li
       data-now={now ? "true" : undefined}
+      data-focus={focus ? "true" : undefined}
       className={cn("relative flex h-[176px] w-[150px] shrink-0 snap-start flex-col rounded-[20px] p-3.5 md:w-[171px]", row.state === "past" && "opacity-50")}
       style={{
         backgroundImage: `linear-gradient(170deg, ${mixWithWhiteRgb(row.color, 0.18)} 0%, #fff 70%)`,
@@ -317,6 +318,7 @@ function RestOfDayTile({ nowMin, wholeDay }: { nowMin: number; wholeDay: boolean
   return (
     <li
       data-now="true"
+      data-focus="true"
       className="relative flex h-[176px] w-[150px] shrink-0 snap-start flex-col items-center rounded-[20px] p-3.5 text-center md:w-[171px]"
       style={{
         backgroundImage: `linear-gradient(170deg, ${mixWithWhiteRgb(part.color, 0.2)} 0%, #fff 75%)`,
@@ -341,6 +343,37 @@ function RestOfDayTile({ nowMin, wholeDay }: { nowMin: number; wholeDay: boolean
   );
 }
 
+/** Alle hele-dagitems van één dag samen in één tegel vooraan die dag (canvas «Hele dag · 2»). */
+function AllDayStackTile({ rows }: { rows: AgendaRow[] }) {
+  const c = rows[0].color;
+  const shown = rows.slice(0, 3);
+  return (
+    <li
+      aria-label={`Hele dag: ${rows.map((r) => r.title).join(", ")}`}
+      className="relative flex h-[176px] w-[150px] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] px-3.5 pb-3 pt-3 md:w-[171px]"
+      style={{ backgroundImage: `linear-gradient(170deg, ${mixWithWhiteRgb(c, 0.14)} 0%, #fff 60%)`, backgroundColor: "#fff", boxShadow: "inset 0 0 0 1px var(--border-subtle)" }}
+    >
+      <span className="flex items-center justify-between">
+        <span className="text-[11px] font-extrabold tracking-[0.08em]" style={{ color: deep(c, 0.6) }}>
+          HELE DAG
+        </span>
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-pill px-1.5 text-[11px] font-extrabold" style={{ backgroundColor: rgb(c, 0.16), color: deep(c, 0.55) }}>
+          {rows.length}
+        </span>
+      </span>
+      <span className="mt-1 flex min-h-0 flex-col">
+        {shown.map((r, i) => (
+          <span key={r.id} className={cn("flex gap-2 py-[7px]", i > 0 && "border-t border-[var(--border-subtle)]")}>
+            <span className="w-1 shrink-0 rounded-sm" style={{ backgroundColor: rgb(r.color) }} aria-hidden />
+            <span className="line-clamp-2 text-[13px] font-bold leading-4 text-text-primary">{r.title}</span>
+          </span>
+        ))}
+      </span>
+      {rows.length > shown.length ? <span className="mt-auto text-xs font-semibold text-[var(--text-tertiary)]">+ {rows.length - shown.length} meer</span> : null}
+    </li>
+  );
+}
+
 /** Verticale scheiding in de tegelrij: «Morgen · wo 14». */
 function DayDivider({ date }: { date: Date }) {
   const label = `Morgen · ${date.toLocaleDateString("nl-BE", { weekday: "short", day: "numeric" }).replace(".", "")}`;
@@ -354,30 +387,46 @@ function DayDivider({ date }: { date: Date }) {
 }
 
 /** Horizontale rij tegels; scrolt bij het openen naar wat nu bezig is (of het eerstvolgende). */
-function TileLane({ rows, nowMin, tomorrow = [], tomorrowDate }: { rows: AgendaRow[]; nowMin: number; tomorrow?: AgendaRow[]; tomorrowDate?: Date }) {
+function TileLane({
+  rows,
+  allDay = [],
+  nowMin,
+  tomorrow = [],
+  tomorrowDate,
+}: {
+  rows: AgendaRow[];
+  allDay?: AgendaRow[];
+  nowMin: number;
+  tomorrow?: AgendaRow[];
+  tomorrowDate?: Date;
+}) {
   const ref = React.useRef<HTMLUListElement>(null);
   // Niets meer te komen vandaag: extra tegel «rest van de dag vrij» achteraan, die krijgt de focus.
   const restFree = rows.every((r) => r.state === "past");
-  const firstOpen = rows.findIndex((r) => r.state !== "past");
-  const focusIndex = restFree ? rows.length : Math.max(0, firstOpen);
+  const focusId = restFree ? "rest" : (rows.find((r) => r.state !== "past")?.id ?? null);
+  const tomorrowAllDay = tomorrow.filter((r) => r.allDay);
+  const tomorrowTimed = tomorrow.filter((r) => !r.allDay);
   React.useEffect(() => {
     const lane = ref.current;
-    const tile = lane?.children[focusIndex] as HTMLElement | undefined;
-    if (lane && tile) lane.scrollLeft = Math.max(0, tile.offsetLeft - lane.offsetLeft - 16 - (focusIndex > 0 ? 60 : 0));
-  }, [focusIndex, rows.length]);
+    const tile = lane?.querySelector<HTMLElement>('[data-focus="true"]');
+    const first = lane?.firstElementChild;
+    if (lane && tile) lane.scrollLeft = Math.max(0, tile.offsetLeft - lane.offsetLeft - 16 - (tile !== first ? 60 : 0));
+  }, [focusId, rows.length, allDay.length]);
   return (
     <ul
       ref={ref}
       className="-mx-4 m-0 flex list-none snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 pt-3.5 [scrollbar-width:none] md:mx-0 md:gap-4 md:px-0 md:scroll-px-0 [&::-webkit-scrollbar]:hidden"
     >
+      {allDay.length > 0 ? <AllDayStackTile rows={allDay} /> : null}
       {rows.map((row) => (
-        <AgendaTile key={row.id} row={row} />
+        <AgendaTile key={row.id} row={row} focus={row.id === focusId} />
       ))}
-      {restFree ? <RestOfDayTile nowMin={nowMin} wholeDay={rows.length === 0} /> : null}
+      {restFree ? <RestOfDayTile nowMin={nowMin} wholeDay={rows.length === 0 && allDay.length === 0} /> : null}
       {tomorrow.length > 0 && tomorrowDate ? (
         <>
           <DayDivider date={tomorrowDate} />
-          {tomorrow.map((row) => (
+          {tomorrowAllDay.length > 0 ? <AllDayStackTile rows={tomorrowAllDay} /> : null}
+          {tomorrowTimed.map((row) => (
             <AgendaTile key={`morgen-${row.id}`} row={row} />
           ))}
         </>
@@ -705,8 +754,7 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
   } else if (view === "tegels") {
     body = (
       <div>
-        <AllDayChips rows={allDay} />
-        <TileLane rows={timed} nowMin={nowMin} tomorrow={tomorrow} tomorrowDate={tomorrowDate} />
+        <TileLane rows={timed} allDay={allDay} nowMin={nowMin} tomorrow={tomorrow} tomorrowDate={tomorrowDate} />
       </div>
     );
   } else {
