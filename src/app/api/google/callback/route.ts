@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GOOGLE_CALENDAR_SCOPES } from "@/lib/google-calendar";
 import {
   GOOGLE_AUTH_COOKIE,
   GOOGLE_MAX_ACCOUNTS,
   GOOGLE_STATE_COOKIE,
   googleCookieOptions,
   googleOAuthConfig,
+  googleRequestOrigin,
   readGoogleAccounts,
   sealGoogleAccounts,
   unsealGoogleOAuthState,
@@ -20,8 +22,6 @@ type TokenResponse = {
   scope?: string;
 };
 
-const CALENDAR_READ_SCOPE = "https://www.googleapis.com/auth/calendar.events.readonly";
-
 /** E-mailadres = naam van de hoofdagenda (zit in de events-lijst; geen extra scope nodig). */
 async function primaryCalendarName(accessToken: string): Promise<string | undefined> {
   const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
@@ -34,7 +34,8 @@ async function primaryCalendarName(accessToken: string): Promise<string | undefi
 }
 
 export async function GET(request: NextRequest) {
-  const config = googleOAuthConfig(request.nextUrl.origin);
+  const origin = googleRequestOrigin(request);
+  const config = googleOAuthConfig(origin);
   const state = request.nextUrl.searchParams.get("state");
   const sealedState = request.cookies.get(GOOGLE_STATE_COOKIE)?.value;
   const expectedState = sealedState
@@ -42,8 +43,14 @@ export async function GET(request: NextRequest) {
     : null;
   const code = request.nextUrl.searchParams.get("code");
 
+  if (state && state === expectedState?.state && request.nextUrl.searchParams.get("error") === "access_denied") {
+    const response = NextResponse.redirect(new URL("/?google=cancelled", origin));
+    response.cookies.delete(GOOGLE_STATE_COOKIE);
+    return response;
+  }
+
   if (!config.configured || !state || state !== expectedState?.state || !code) {
-    return NextResponse.redirect(new URL("/?google=connection-failed", request.url));
+    return NextResponse.redirect(new URL("/?google=connection-failed", origin));
   }
 
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -57,16 +64,17 @@ export async function GET(request: NextRequest) {
       grant_type: "authorization_code",
     }),
     cache: "no-store",
-  });
+    signal: AbortSignal.timeout(15_000),
+  }).catch(() => null);
 
-  if (!tokenResponse.ok) {
-    return NextResponse.redirect(new URL("/?google=connection-failed", request.url));
+  if (!tokenResponse?.ok) {
+    return NextResponse.redirect(new URL("/?google=connection-failed", origin));
   }
 
   const tokens = (await tokenResponse.json()) as TokenResponse;
   const grantedScopes = new Set((tokens.scope ?? "").split(/\s+/).filter(Boolean));
-  if (!tokens.access_token || !grantedScopes.has(CALENDAR_READ_SCOPE)) {
-    return NextResponse.redirect(new URL("/?google=connection-failed", request.url));
+  if (!tokens.access_token || !GOOGLE_CALENDAR_SCOPES.every((scope) => grantedScopes.has(scope))) {
+    return NextResponse.redirect(new URL("/?google=permission-required", origin));
   }
 
   const account: GoogleAccount = {
@@ -84,13 +92,19 @@ export async function GET(request: NextRequest) {
     existing && existing.ownerId === expectedState.ownerId
       ? existing.accounts.filter((a) => !account.email || a.email !== account.email)
       : [];
-  const accounts = [...others, account].slice(-GOOGLE_MAX_ACCOUNTS);
+  const accounts = [...others, account];
+  const encryptedAccounts = sealGoogleAccounts({ ownerId: expectedState.ownerId, accounts }, config.cookieSecret);
+  if (accounts.length > GOOGLE_MAX_ACCOUNTS || encryptedAccounts.length > 3800) {
+    const response = NextResponse.redirect(new URL("/?google=account-limit", origin));
+    response.cookies.delete(GOOGLE_STATE_COOKIE);
+    return response;
+  }
 
-  const response = NextResponse.redirect(new URL("/?google=connected", request.url));
+  const response = NextResponse.redirect(new URL("/?google=connected", origin));
   response.cookies.delete(GOOGLE_STATE_COOKIE);
   response.cookies.set(
     GOOGLE_AUTH_COOKIE,
-    sealGoogleAccounts({ ownerId: expectedState.ownerId, accounts }, config.cookieSecret),
+    encryptedAccounts,
     googleCookieOptions(request.nextUrl.protocol === "https:"),
   );
   return response;

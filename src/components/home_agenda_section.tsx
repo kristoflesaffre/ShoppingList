@@ -21,6 +21,7 @@ type AgendaEvent = {
   end: string | null;
   allDay: boolean;
   accountId?: string;
+  calendarName?: string;
 };
 
 type AgendaState = {
@@ -28,6 +29,8 @@ type AgendaState = {
   connected: boolean;
   events: AgendaEvent[];
   accounts?: { id: string; email: string | null }[];
+  unavailable?: boolean;
+  reconnectRequired?: boolean;
 };
 
 const ACCOUNT_COLORS: Rgb[] = [
@@ -74,16 +77,17 @@ function GoogleG({ className }: { className?: string }) {
   );
 }
 
-function ConnectButton({ href }: { href: string }) {
+function ConnectButton({ href, disabled = false }: { href: string; disabled?: boolean }) {
   return (
     <a
-      href={href}
-      className="inline-flex h-[46px] items-center gap-2.5 rounded-pill bg-action-primary pl-1.5 pr-5 text-[15px] font-bold text-white no-underline shadow-[0_10px_22px_-10px_rgba(79,85,241,0.8)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      href={disabled ? undefined : href}
+      aria-disabled={disabled}
+      className={cn("inline-flex h-[46px] items-center gap-2.5 rounded-pill bg-action-primary pl-1.5 pr-5 text-[15px] font-bold text-white no-underline shadow-[0_10px_22px_-10px_rgba(79,85,241,0.8)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2", disabled && "cursor-not-allowed opacity-50")}
     >
       <span className="flex size-[34px] items-center justify-center rounded-full bg-[var(--white)]">
         <GoogleG className="size-[18px]" />
       </span>
-      Accounts koppelen
+      Google-agenda koppelen
     </a>
   );
 }
@@ -180,6 +184,26 @@ export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide
   const [state, setState] = React.useState<AgendaState | null>(null);
   const [failed, setFailed] = React.useState(false);
   const [now, setNow] = React.useState(() => new Date());
+  const [feedback, setFeedback] = React.useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = React.useState(false);
+
+  React.useEffect(() => {
+    const url = new URL(window.location.href);
+    const status = url.searchParams.get("google");
+    const messages: Record<string, string> = {
+      connected: "Je Google-agenda is gekoppeld.",
+      cancelled: "Koppelen geannuleerd. Je kunt het later opnieuw proberen.",
+      "permission-required": "Geef toestemming om je agenda's en afspraken te bekijken en probeer opnieuw.",
+      "connection-failed": "Koppelen is niet gelukt. Probeer het opnieuw.",
+      "not-configured": "Google-agenda koppelen is nog niet beschikbaar. De appbeheerder moet dit eenmalig activeren.",
+      "account-limit": "Er zijn al meerdere accounts gekoppeld. Ontkoppel een account voordat je een ander toevoegt.",
+    };
+    if (status && messages[status]) {
+      setFeedback(messages[status]);
+      url.searchParams.delete("google");
+      window.history.replaceState(window.history.state, "", url);
+    }
+  }, []);
 
   const load = React.useCallback(() => {
     const start = new Date();
@@ -264,6 +288,26 @@ export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide
     <span className="flex shrink-0 items-center gap-4">
       <span className="hidden text-[13.5px] font-semibold text-[var(--text-secondary)] md:inline">{dayLabel}</span>
       {accountAvatars}
+      <button
+        type="button"
+        disabled={disconnecting}
+        className="text-sm font-semibold text-action-primary disabled:opacity-50"
+        onClick={async () => {
+          setDisconnecting(true);
+          try {
+            const response = await fetch("/api/google/disconnect", { method: "POST" });
+            if (!response.ok) throw new Error("Disconnect failed");
+            setState({ configured: true, connected: false, events: [], accounts: [] });
+            setFeedback("Je Google-agenda is ontkoppeld.");
+          } catch {
+            setFeedback("Ontkoppelen is niet gelukt. Probeer het opnieuw.");
+          } finally {
+            setDisconnecting(false);
+          }
+        }}
+      >
+        {disconnecting ? "Ontkoppelen…" : "Ontkoppelen"}
+      </button>
       <a
         href="https://calendar.google.com/calendar/r/day"
         target="_blank"
@@ -285,12 +329,12 @@ export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide
         <img src="/images/ui/kalender_320.webp" alt="" className="hidden size-[120px] shrink-0 object-contain md:block" />
         <div className="min-w-0 flex-1">
           <p className="text-[19px] font-extrabold leading-tight text-text-primary">Je dag in één oogopslag</p>
-          <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">Koppel je Google-agenda en zie hier wat er vandaag gepland staat.</p>
+          <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">Bekijk je afspraken van vandaag. Je agenda blijft alleen-lezen.</p>
           <div className="mt-3.5">
-            <ConnectButton href={connectHref} />
+            <ConnectButton href={connectHref} disabled={state?.configured !== true} />
           </div>
           {state && !state.configured ? (
-            <p className="mt-2.5 text-xs leading-4 text-[var(--text-tertiary)]">De Google-koppeling is op deze server nog niet ingesteld.</p>
+            <p className="mt-2.5 text-xs leading-4 text-[var(--text-tertiary)]">Nog niet beschikbaar. De appbeheerder moet Google-agenda eenmalig activeren.</p>
           ) : null}
         </div>
         <ul aria-hidden className="m-0 hidden w-[300px] shrink-0 list-none p-0 opacity-50 lg:block">
@@ -307,7 +351,7 @@ export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide
   } else if (timed.length === 0 && allDay.length === 0) {
     body = (
       <div className={cn(cardClass, "px-5 py-6 text-center")}>
-        <p className="text-base font-bold text-text-primary">Niets gepland vandaag</p>
+        <p className="text-base font-bold text-text-primary">{failed ? "Agenda tijdelijk niet beschikbaar" : "Niets gepland vandaag"}</p>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">{failed ? "De agenda kon niet geladen worden." : "Een vrije dag — geniet ervan."}</p>
       </div>
     );
@@ -373,6 +417,13 @@ export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide
   return (
     <section aria-label="Agenda" className="flex flex-col gap-3">
       <ListSectionHeader label="Agenda" showNaarOverzicht={false} onHide={connected ? undefined : onHide} action={headerAction} />
+      {feedback ? <p role="status" className="text-sm text-[var(--text-secondary)]">{feedback}</p> : null}
+      {failed || state?.unavailable ? (
+        <div role="status" className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-secondary)]">
+          <span>{state?.reconnectRequired ? "Koppel je Google-account opnieuw om alle agenda's te bekijken." : "Niet alle afspraken konden worden geladen."}</span>
+          {state?.reconnectRequired ? <a href={connectHref} className="font-semibold text-action-primary">Opnieuw koppelen</a> : <button type="button" onClick={load} className="font-semibold text-action-primary">Opnieuw proberen</button>}
+        </div>
+      ) : null}
       {body}
     </section>
   );

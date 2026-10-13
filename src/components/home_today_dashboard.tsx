@@ -240,30 +240,9 @@ function GoogleTodayPanel({
         <p className="mt-8 text-sm leading-5 text-[var(--text-secondary)]">De Google-agenda kon niet worden geladen.</p>
       ) : !state?.configured ? (
         <div className="mt-8">
-          <p className="text-base font-semibold text-[var(--text-primary)]">Google Calendar instellen</p>
+          <p className="text-base font-semibold text-[var(--text-primary)]">Google-agenda binnenkort beschikbaar</p>
           <p className="mt-2 text-sm leading-5 text-[var(--text-secondary)]">
-            Maak eenmalig een OAuth-client aan in Google Cloud. Daarna kan elke gebruiker hier diens agenda koppelen.
-          </p>
-          <a
-            href="https://console.cloud.google.com/auth/clients"
-            target="_blank"
-            rel="noreferrer"
-            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-pill bg-[var(--blue-500)] px-5 text-sm font-semibold text-[var(--white)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
-          >
-            <DashboardMaskIcon src="/icons/calendar.svg" className="size-4" />
-            Naar Google OAuth
-          </a>
-          <p className="mt-3 text-xs leading-5 text-[var(--text-secondary)]">
-            Activeer ook de{" "}
-            <a
-              href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com"
-              target="_blank"
-              rel="noreferrer"
-              className="font-semibold text-action-primary underline underline-offset-2"
-            >
-              Google Calendar API
-            </a>
-            .
+            De appbeheerder moet Google-agenda eenmalig activeren. Daarna kies je hier eenvoudig je Google-account.
           </p>
         </div>
       ) : !state.connected ? (

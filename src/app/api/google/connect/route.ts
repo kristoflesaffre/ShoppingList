@@ -1,22 +1,25 @@
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { GOOGLE_CALENDAR_SCOPES } from "@/lib/google-calendar";
 import {
   GOOGLE_STATE_COOKIE,
   googleCookieOptions,
   googleOAuthConfig,
+  googleRequestOrigin,
   sealGoogleOAuthState,
 } from "@/lib/google-dashboard-auth";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  const config = googleOAuthConfig(request.nextUrl.origin);
+  const origin = googleRequestOrigin(request);
+  const config = googleOAuthConfig(origin);
   const ownerId = request.nextUrl.searchParams.get("ownerId")?.trim() ?? "";
   if (!config.configured) {
-    return NextResponse.redirect(new URL("/?google=not-configured", request.url));
+    return NextResponse.redirect(new URL("/?google=not-configured", origin));
   }
   if (!ownerId) {
-    return NextResponse.redirect(new URL("/?google=connection-failed", request.url));
+    return NextResponse.redirect(new URL("/?google=connection-failed", origin));
   }
 
   const state = randomBytes(24).toString("base64url");
@@ -31,9 +34,7 @@ export async function GET(request: NextRequest) {
   authorizeUrl.searchParams.set("state", state);
   authorizeUrl.searchParams.set(
     "scope",
-    [
-      "https://www.googleapis.com/auth/calendar.events.readonly",
-    ].join(" "),
+    GOOGLE_CALENDAR_SCOPES.join(" "),
   );
 
   const response = NextResponse.redirect(authorizeUrl);

@@ -3,6 +3,12 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 export const GOOGLE_AUTH_COOKIE = "shopping_google_auth";
 export const GOOGLE_STATE_COOKIE = "shopping_google_state";
 
+/** NextURL normalizes loopback hosts; OAuth must return to the cookie's exact host. */
+export function googleRequestOrigin(request: { headers: Headers; nextUrl: { protocol: string; origin: string } }): string {
+  const host = request.headers.get("host");
+  return host ? new URL(`${request.nextUrl.protocol}//${host}`).origin : request.nextUrl.origin;
+}
+
 export type GoogleAuthPayload = {
   accessToken: string;
   refreshToken?: string;
@@ -161,8 +167,13 @@ export async function refreshGoogleAccount(
       grant_type: "refresh_token",
     }),
     cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
   });
-  if (!response.ok) return null;
+  if (!response.ok) {
+    const error = await response.json().catch(() => null) as { error?: string } | null;
+    if (error?.error === "invalid_grant") return null;
+    throw new Error("Google token refresh temporarily unavailable");
+  }
   const refreshed = (await response.json()) as { access_token?: string; expires_in?: number };
   if (!refreshed.access_token) return null;
   return { ...account, accessToken: refreshed.access_token, expiresAt: Date.now() + (refreshed.expires_in ?? 3600) * 1000 };

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GoogleCalendarError, loadGoogleCalendarEvents, type GoogleCalendarEvent } from "@/lib/google-calendar";
 import {
   GOOGLE_AUTH_COOKIE,
   googleCookieOptions,
@@ -11,14 +12,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-type GoogleCalendarEvent = {
-  id?: string;
-  summary?: string;
-  location?: string;
-  start?: { date?: string; dateTime?: string };
-  end?: { date?: string; dateTime?: string };
-};
 
 function localDayBounds(request: NextRequest) {
   const requestedStart = request.nextUrl.searchParams.get("timeMin");
@@ -61,32 +54,32 @@ export async function GET(request: NextRequest) {
   // Alle gekoppelde accounts ophalen; een account dat niet meer werkt valt weg.
   const results = await Promise.all(
     stored.accounts.map(async (stale) => {
+      try {
       const account = await refreshGoogleAccount(stale, config.clientId, config.clientSecret);
       if (!account) return { account: null, stale, events: [] as GoogleCalendarEvent[], name: undefined, failed: false };
-      const calendarUrl = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
-      calendarUrl.searchParams.set("timeMin", bounds.start);
-      calendarUrl.searchParams.set("timeMax", bounds.end);
-      calendarUrl.searchParams.set("singleEvents", "true");
-      calendarUrl.searchParams.set("orderBy", "startTime");
-      calendarUrl.searchParams.set("maxResults", "25");
-      const res = await fetch(calendarUrl, { headers: { authorization: `Bearer ${account.accessToken}` }, cache: "no-store" }).catch(() => null);
-      if (res && (res.status === 401 || res.status === 403)) return { account: null, stale, events: [], name: undefined, failed: false };
-      if (!res?.ok) return { account, stale, events: [], name: undefined, failed: true };
-      const json = (await res.json()) as { items?: GoogleCalendarEvent[]; summary?: string };
-      return { account, stale, events: json.items ?? [], name: json.summary?.trim() || undefined, failed: false };
+      const result = await loadGoogleCalendarEvents(account.accessToken, bounds);
+      return { account, stale, events: result.events, name: undefined, failed: result.unavailable };
+      } catch (error) {
+        const reconnect = error instanceof GoogleCalendarError && (error.status === 401 || error.status === 403);
+        return { account: stale, stale, events: [] as GoogleCalendarEvent[], name: undefined, failed: true, reconnect };
+      }
     }),
   );
 
   const kept: GoogleAccount[] = results
     .filter((r) => r.account)
     .map((r) => ({ ...(r.account as GoogleAccount), email: (r.account as GoogleAccount).email ?? r.name }));
-  const accounts = kept.map((a, index) => ({ id: a.email ?? `account-${index + 1}`, email: a.email ?? null }));
+  const accounts = results.flatMap((result, index) => result.account ? [{
+    id: result.account.email ?? result.name ?? `account-${index + 1}`,
+    email: result.account.email ?? result.name ?? null,
+  }] : []);
   const events = results
-    .flatMap((r) => {
+    .flatMap((r, index) => {
       if (!r.account) return [];
-      const accountId = (r.account.email ?? r.name) || `account-${kept.indexOf(r.account) + 1}`;
+      const accountId = (r.account.email ?? r.name) || `account-${index + 1}`;
       return r.events.map((event) => ({
-        id: `${accountId}:${event.id ?? ""}`,
+        id: `${accountId}:${event.calendarId}:${event.id ?? ""}`,
+        calendarName: event.calendarName,
         title: event.summary?.trim() || "Zonder titel",
         location: event.location?.trim() || null,
         start: event.start?.dateTime ?? event.start?.date ?? null,
@@ -99,7 +92,7 @@ export async function GET(request: NextRequest) {
   const unavailable = results.some((r) => r.failed);
 
   const response = NextResponse.json(
-    { configured: true, connected: kept.length > 0, events, accounts, ...(unavailable ? { unavailable: true } : {}) },
+    { configured: true, connected: kept.length > 0, events, accounts, reconnectRequired: results.some((r) => "reconnect" in r && r.reconnect), ...(unavailable ? { unavailable: true } : {}) },
     { status: unavailable && events.length === 0 && kept.length > 0 ? 502 : 200 },
   );
   const changed =
