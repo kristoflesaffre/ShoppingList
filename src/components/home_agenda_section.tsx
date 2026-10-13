@@ -230,7 +230,11 @@ function AgendaTile({ row }: { row: AgendaRow }) {
           Nu bezig
         </span>
       ) : null}
-      <span className="absolute right-3 top-3.5 size-[9px] rounded-full" style={{ backgroundColor: rgb(row.color) }} aria-hidden />
+      {row.location && row.state !== "past" ? (
+        <RouteButton location={row.location} color={row.color} />
+      ) : (
+        <span className="absolute right-3 top-3.5 size-[9px] rounded-full" style={{ backgroundColor: rgb(row.color) }} aria-hidden />
+      )}
       <span className="text-2xl font-extrabold leading-7 tracking-[-0.02em]" style={{ color: deep(row.color) }}>
         {timeLabel(row.start)}
       </span>
@@ -246,10 +250,98 @@ function AgendaTile({ row }: { row: AgendaRow }) {
   );
 }
 
+/** Mini-knop «Route» (enkel voor afspraken die nog komen): kies Google Maps of Waze, opent de app op de gsm. */
+function RouteButton({ location, color }: { location: string; color: Rgb }) {
+  const [open, setOpen] = React.useState(false);
+  const menuRef = React.useRef<HTMLSpanElement>(null);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  // Tik ernaast: menu sluiten.
+  React.useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!menuRef.current?.contains(t) && !buttonRef.current?.contains(t)) setOpen(false);
+    };
+    window.addEventListener("pointerdown", close);
+    return () => window.removeEventListener("pointerdown", close);
+  }, [open]);
+  const q = encodeURIComponent(location);
+  const links = [
+    { label: "Google Maps", href: `https://www.google.com/maps/dir/?api=1&destination=${q}` },
+    { label: "Waze", href: `https://waze.com/ul?q=${q}&navigate=yes` },
+  ];
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label={`Route naar ${location}`}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="absolute right-2.5 top-2.5 z-[2] flex size-8 items-center justify-center rounded-full bg-[var(--white)] shadow-[0_4px_12px_-6px_rgba(16,17,48,0.35)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        style={{ color: deep(color, 0.75) }}
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-[15px]">
+          <path d="M20.6 3.4 3.9 10.2c-.8.3-.7 1.5.1 1.7l6.6 1.5 1.5 6.6c.2.8 1.4.9 1.7.1l6.8-16.7c.3-.7-.4-1.4-1.1-1.1z" />
+        </svg>
+      </button>
+      {open ? (
+        <span ref={menuRef} className="absolute inset-x-2 bottom-2 z-[3] flex flex-col gap-1 rounded-[14px] bg-[var(--white)] p-1.5 shadow-[0_10px_28px_-10px_rgba(16,17,48,0.45)]">
+          {links.map((l) => (
+            <a
+              key={l.label}
+              href={l.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="flex h-9 items-center justify-center rounded-[10px] text-[13px] font-bold text-text-primary no-underline [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
+            >
+              {l.label}
+            </a>
+          ))}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+/** Extra tegel als er vandaag niets meer komt: «rest van de dag vrij», met het figuurtje van het dagdeel. */
+function RestOfDayTile({ nowMin, wholeDay }: { nowMin: number; wholeDay: boolean }) {
+  const part = PARTS.find((p) => nowMin >= p.from && nowMin < p.to) ?? PARTS[2];
+  return (
+    <li
+      data-now="true"
+      className="relative flex h-[176px] w-[150px] shrink-0 snap-start flex-col items-center rounded-[20px] p-3.5 text-center md:w-[171px]"
+      style={{
+        backgroundImage: `linear-gradient(170deg, ${mixWithWhiteRgb(part.color, 0.2)} 0%, #fff 75%)`,
+        backgroundColor: "#fff",
+        boxShadow: `0 0 0 2px ${rgb(part.color, 0.6)}, 0 12px 24px -14px ${rgb(part.color, 0.7)}`,
+      }}
+    >
+      <span className="absolute -top-[11px] left-1/2 inline-flex h-[22px] -translate-x-1/2 items-center whitespace-nowrap rounded-pill px-2.5 text-[11px] font-bold text-white" style={{ backgroundColor: rgb(part.color) }}>
+        Nu
+      </span>
+      <span className="relative mt-1 block size-[72px]">
+        <Image src={part.free.image} alt="" width={240} height={240} className="relative z-[1] size-full object-contain motion-safe:animate-[agenda-bob_4.5s_ease-in-out_infinite]" />
+        <span
+          aria-hidden
+          className="absolute inset-x-[18px] -bottom-1 h-2 rounded-[50%] blur-[3px] motion-safe:animate-[agenda-bob-shadow_4.5s_ease-in-out_infinite]"
+          style={{ backgroundColor: rgb(part.color, 0.28) }}
+        />
+      </span>
+      <span className="mt-auto text-[15px] font-extrabold leading-[19px] text-text-primary">{wholeDay ? "Vandaag vrij" : "Rest van de dag vrij"}</span>
+      <span className="mt-1 text-xs text-[var(--text-secondary)]">{part.free.text}</span>
+    </li>
+  );
+}
+
 /** Horizontale rij tegels; scrolt bij het openen naar wat nu bezig is (of het eerstvolgende). */
-function TileLane({ rows }: { rows: AgendaRow[] }) {
+function TileLane({ rows, nowMin }: { rows: AgendaRow[]; nowMin: number }) {
   const ref = React.useRef<HTMLUListElement>(null);
-  const focusIndex = Math.max(0, rows.findIndex((r) => r.state !== "past"));
+  // Niets meer te komen vandaag: extra tegel «rest van de dag vrij» achteraan, die krijgt de focus.
+  const restFree = rows.every((r) => r.state === "past");
+  const firstOpen = rows.findIndex((r) => r.state !== "past");
+  const focusIndex = restFree ? rows.length : Math.max(0, firstOpen);
   React.useEffect(() => {
     const lane = ref.current;
     const tile = lane?.children[focusIndex] as HTMLElement | undefined;
@@ -263,6 +355,7 @@ function TileLane({ rows }: { rows: AgendaRow[] }) {
       {rows.map((row) => (
         <AgendaTile key={row.id} row={row} />
       ))}
+      {restFree ? <RestOfDayTile nowMin={nowMin} wholeDay={rows.length === 0} /> : null}
     </ul>
   );
 }
@@ -557,11 +650,7 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
     body = (
       <div>
         <AllDayChips rows={allDay} />
-        {timed.length > 0 ? (
-          <TileLane rows={timed} />
-        ) : (
-          <p className={cn(cardClass, "px-5 py-4 text-sm text-[var(--text-secondary)]")}>Verder niets gepland vandaag.</p>
-        )}
+        <TileLane rows={timed} nowMin={nowMin} />
       </div>
     );
   } else {
