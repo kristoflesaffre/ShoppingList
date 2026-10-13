@@ -11,6 +11,22 @@ export interface HomeHeaderProps {
   className?: string;
   /** Optionele actie rechts naast de paginatitel. */
   action?: React.ReactNode;
+  /** Tablet-dashboard: grote klok vóór datum en begroeting (vanaf md). */
+  clock?: boolean;
+}
+
+/** Klok die elke 15 s bijwerkt (uu:mm). */
+function LiveClock({ className }: { className?: string }) {
+  const [now, setNow] = React.useState(() => new Date());
+  React.useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 15_000);
+    return () => window.clearInterval(t);
+  }, []);
+  return (
+    <time dateTime={now.toISOString()} className={className}>
+      {now.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })}
+    </time>
+  );
 }
 
 /** Dagdeel-begroeting (lokale tijd). */
@@ -35,7 +51,7 @@ function formatTodayLabel(date: Date): string {
  * Geeft de home dezelfde typografische rang als «Mijn recepten» / «Klantenkaarten»
  * en laat de eerste sectiekop niet meer als paginatitel fungeren.
  */
-export function HomeHeader({ ownerId, className, action }: HomeHeaderProps) {
+export function HomeHeader({ ownerId, className, action, clock = false }: HomeHeaderProps) {
   const { data } = db.useQuery({
     profiles: {
       $: { where: { instantUserId: ownerId } },
@@ -53,6 +69,7 @@ export function HomeHeader({ ownerId, className, action }: HomeHeaderProps) {
     <header
       className={cn(
         "grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-0.5",
+        clock && "md:grid-cols-[auto_auto_minmax(0,1fr)_auto] md:gap-x-4",
         className,
       )}
     >
@@ -93,15 +110,23 @@ export function HomeHeader({ ownerId, className, action }: HomeHeaderProps) {
           )}
         </span>
       </Link>
-      <p className="col-start-2 row-start-1 self-end text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)]">
+      {clock ? (
+        <LiveClock className="col-start-2 row-span-2 row-start-1 hidden self-center text-[64px] font-extrabold leading-[0.9] tracking-[-0.05em] text-text-primary md:block" />
+      ) : null}
+      <p className={cn("col-start-2 row-start-1 self-end text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)]", clock && "md:col-start-3")}>
         <time dateTime={now.toISOString().slice(0, 10)}>{dateLabel}</time>
       </p>
-      <h1 className="col-start-2 row-start-2 self-start truncate text-[24px] font-bold leading-[30px] tracking-tight text-[var(--text-primary)] md:text-page-title md:leading-32">
+      <h1
+        className={cn(
+          "col-start-2 row-start-2 self-start truncate text-[24px] font-bold leading-[30px] tracking-tight text-[var(--text-primary)] md:text-page-title md:leading-32",
+          clock && "md:col-start-3",
+        )}
+      >
         {greeting}
         {firstName ? `, ${firstName}` : ""}
       </h1>
       {action ? (
-        <div className="col-start-3 row-span-2 row-start-1 self-center">{action}</div>
+        <div className={cn("col-start-3 row-span-2 row-start-1 self-center", clock && "md:col-start-4")}>{action}</div>
       ) : null}
     </header>
   );

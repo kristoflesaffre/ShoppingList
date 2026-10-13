@@ -100,9 +100,9 @@ const PinIcon = () => (
   </svg>
 );
 
-type Row = AgendaEvent & { color: Rgb; account: string | null; startMin: number; endMin: number; state: "past" | "now" | "next" };
+export type AgendaRow = AgendaEvent & { color: Rgb; account: string | null; startMin: number; endMin: number; state: "past" | "now" | "next" };
 
-function TimelineRow({ row }: { row: Row }) {
+function TimelineRow({ row }: { row: AgendaRow }) {
   const now = row.state === "now";
   return (
     <li
@@ -147,7 +147,7 @@ function NowLine({ label }: { label: string }) {
 }
 
 /** Tijdlijn met de «nu»-lijn vóór de eerste afspraak die nog moet beginnen. */
-function Timeline({ rows, nowMin, nowLabel, showNow = true }: { rows: Row[]; nowMin: number; nowLabel: string; showNow?: boolean }) {
+export function Timeline({ rows, nowMin, nowLabel, showNow = true }: { rows: AgendaRow[]; nowMin: number; nowLabel: string; showNow?: boolean }) {
   const items: React.ReactNode[] = [];
   let drawn = !showNow;
   for (const row of rows) {
@@ -161,7 +161,7 @@ function Timeline({ rows, nowMin, nowLabel, showNow = true }: { rows: Row[]; now
   return <ul className="m-0 list-none p-0">{items}</ul>;
 }
 
-function AllDayChips({ rows }: { rows: Row[] }) {
+export function AllDayChips({ rows }: { rows: AgendaRow[] }) {
   if (rows.length === 0) return null;
   return (
     <div className="mb-3 flex flex-wrap gap-1.5">
@@ -180,7 +180,7 @@ function AllDayChips({ rows }: { rows: Row[] }) {
 }
 
 /** Tegel (canvas «Agenda B · tegels»): tijd groot, titel onderaan, «Nu bezig» met gekleurde rand. */
-function AgendaTile({ row }: { row: Row }) {
+function AgendaTile({ row }: { row: AgendaRow }) {
   const now = row.state === "now";
   return (
     <li
@@ -214,7 +214,7 @@ function AgendaTile({ row }: { row: Row }) {
 }
 
 /** Horizontale rij tegels; scrolt bij het openen naar wat nu bezig is (of het eerstvolgende). */
-function TileLane({ rows }: { rows: Row[] }) {
+function TileLane({ rows }: { rows: AgendaRow[] }) {
   const ref = React.useRef<HTMLUListElement>(null);
   const focusIndex = Math.max(0, rows.findIndex((r) => r.state !== "past"));
   React.useEffect(() => {
@@ -278,11 +278,83 @@ function ViewToggle({ view, onChange }: { view: AgendaView; onChange: (v: Agenda
 
 const cardClass = "rounded-[22px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]";
 
-export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () => void }) {
+/**
+ * Afspraken van vandaag (gedeeld door de Agenda-sectie en het tablet-dashboard): laadt via
+ * /api/google/dashboard, ververst bij focus en elke 5 min, en houdt «nu» bij.
+ */
+export function useTodayAgenda() {
   const token = useGoogleAuthToken();
   const [state, setState] = React.useState<AgendaState | null>(null);
   const [failed, setFailed] = React.useState(false);
   const [now, setNow] = React.useState(() => new Date());
+
+  const load = React.useCallback(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    if (!token) return;
+    const params = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString() });
+    fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store", headers: googleAuthHeaders(token) })
+      .then(async (r) => {
+        const json = (await r.json()) as AgendaState;
+        setState(json);
+        setFailed(!r.ok);
+      })
+      .catch(() => setFailed(true));
+  }, [token]);
+
+  React.useEffect(() => {
+    load();
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    const refresh = window.setInterval(load, 5 * 60_000);
+    const tick = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(refresh);
+      window.clearInterval(tick);
+    };
+  }, [load]);
+
+  const accounts = state?.accounts ?? [];
+  const colorOf = (accountId?: string): Rgb => {
+    const i = accounts.findIndex((a) => a.id === accountId);
+    return ACCOUNT_COLORS[(i < 0 ? 0 : i) % ACCOUNT_COLORS.length];
+  };
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowLabel = now.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
+  const allRows: AgendaRow[] = (state?.events ?? []).map((e) => {
+    const startMin = e.allDay ? 0 : minutesOfDay(e.start) ?? 0;
+    const endMin = e.allDay ? 24 * 60 : minutesOfDay(e.end) ?? startMin;
+    const account = accounts.length > 1 ? accountName(accounts.find((a) => a.id === e.accountId)?.email) : null;
+    return {
+      ...e,
+      color: colorOf(e.accountId),
+      account,
+      startMin,
+      endMin,
+      state: endMin <= nowMin ? "past" : startMin <= nowMin ? "now" : "next",
+    };
+  });
+  return {
+    token,
+    state,
+    setState,
+    failed,
+    load,
+    now,
+    nowMin,
+    nowLabel,
+    connected: !!state?.connected,
+    allDay: allRows.filter((r) => r.allDay),
+    timed: allRows.filter((r) => !r.allDay).sort((a, b) => a.startMin - b.startMin),
+    connect: () => void startGoogleConnect(token),
+  };
+}
+
+export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () => void }) {
+  const { state, failed, load, now, nowMin, nowLabel, connected, allDay, timed, connect } = useTodayAgenda();
   const [feedback, setFeedback] = React.useState<string | null>(null);
   const [view, setView] = React.useState<AgendaView>("overzicht");
   React.useEffect(() => {
@@ -324,63 +396,10 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
     }
   }, []);
 
-  const load = React.useCallback(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-    if (!token) return;
-    const params = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString() });
-    fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store", headers: googleAuthHeaders(token) })
-      .then(async (r) => {
-        const json = (await r.json()) as AgendaState;
-        setState(json);
-        setFailed(!r.ok);
-      })
-      .catch(() => setFailed(true));
-  }, [token]);
-
-  React.useEffect(() => {
-    load();
-    const onFocus = () => load();
-    window.addEventListener("focus", onFocus);
-    const refresh = window.setInterval(load, 5 * 60_000);
-    const tick = window.setInterval(() => setNow(new Date()), 30_000);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      window.clearInterval(refresh);
-      window.clearInterval(tick);
-    };
-  }, [load]);
-
-  const connect = () => void startGoogleConnect(token);
-  const accounts = state?.accounts ?? [];
-  const colorOf = (accountId?: string): Rgb => {
-    const i = accounts.findIndex((a) => a.id === accountId);
-    return ACCOUNT_COLORS[(i < 0 ? 0 : i) % ACCOUNT_COLORS.length];
-  };
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-  const nowLabel = now.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
-
-  const allRows: Row[] = (state?.events ?? []).map((e) => {
-    const startMin = e.allDay ? 0 : minutesOfDay(e.start) ?? 0;
-    const endMin = e.allDay ? 24 * 60 : minutesOfDay(e.end) ?? startMin;
-    const account = accounts.length > 1 ? accountName(accounts.find((a) => a.id === e.accountId)?.email) : null;
-    return {
-      ...e,
-      color: colorOf(e.accountId),
-      account,
-      startMin,
-      endMin,
-      state: endMin <= nowMin ? "past" : startMin <= nowMin ? "now" : "next",
-    };
-  });
-  const allDay = allRows.filter((r) => r.allDay);
-  const timed = allRows.filter((r) => !r.allDay).sort((a, b) => a.startMin - b.startMin);
+  const allRows = [...allDay, ...timed];
 
   const dayRaw = now.toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "short" }).replace(".", "");
   const dayLabel = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1);
-  const connected = !!state?.connected;
   const hasEvents = connected && allRows.length > 0;
   const headerRight = connected ? (
     <span className="hidden shrink-0 items-center gap-4 md:flex">

@@ -82,9 +82,11 @@ import {
   HomeDashboardShoppingList,
 } from "@/components/home_dashboard";
 import {
-  HomeTodayDashboard,
+  DashboardReminders,
+  HomeTabletDashboard,
   type DashboardMeal,
-} from "@/components/home_today_dashboard";
+  type DashboardShopping,
+} from "@/components/home_tablet_dashboard";
 import { HomeAgendaSection } from "@/components/home_agenda_section";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
@@ -2937,6 +2939,23 @@ export default function Home() {
     };
   }, [homeWeekDays, todayIso]);
 
+  /** Eerstvolgende boodschappenlijstje (vandaag of later) voor het tablet-dashboard. */
+  const dashboardNextShopping = React.useMemo((): DashboardShopping => {
+    const upcoming = normalLists
+      .map((l) => ({ l, iso: listDateToIso(l.date) }))
+      .filter((x): x is { l: HomeList; iso: string } => !!x.iso && x.iso >= todayIso)
+      .sort((a, b) => a.iso.localeCompare(b.iso))[0];
+    if (!upcoming) return null;
+    const d = new Date(`${upcoming.iso}T12:00:00`);
+    const raw = d.toLocaleDateString("nl-BE", { weekday: "short", day: "numeric", month: "short" }).replace(/\./g, "");
+    const count = upcoming.l.items?.length ?? 0;
+    return {
+      label: upcoming.iso === todayIso ? "Vandaag" : raw.charAt(0).toUpperCase() + raw.slice(1),
+      sub: `boodschappen${count > 0 ? ` · ${count} ${count === 1 ? "product" : "producten"}` : ""}`,
+      href: `/lijstje/${upcoming.l.id}`,
+    };
+  }, [normalLists, todayIso]);
+
   /** Eénmalige herberekening van lijst-decor-iconen: min duplicaten binnen de product-icon-pool. */
   React.useEffect(() => {
     if (!user?.id || authLoading || isLoading) return;
@@ -3713,14 +3732,22 @@ export default function Home() {
 
   return (
     <div className={cn("relative flex min-h-dvh w-full flex-col px-[var(--space-4)]", !hasLists && "bg-[var(--bg-app)]")}>
-      <div className="flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]">
+      <div
+        className={cn(
+          "flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]",
+          // Dashboard vult het tabletscherm: enkel ruimte voor de zwevende tabbalk.
+          tabletHomeView === "dashboard" && "md:pb-[calc(84px+env(safe-area-inset-bottom,0px))]",
+        )}
+      >
         <div className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col">
           <HomeHeader
             ownerId={ownerId}
+            clock={tabletHomeView === "dashboard"}
             className="pt-[var(--space-6)] motion-safe:animate-fade-up"
             action={
               /* Weergavetoggle links van «Nieuw lijstje», allebei even hoog. */
               <div className="hidden items-center gap-3 md:flex">
+                {tabletHomeView === "dashboard" && user ? <DashboardReminders userId={user.id} /> : null}
                 <SegmentedControl
                   ariaLabel="Startweergave"
                   fill={false}
@@ -3845,13 +3872,11 @@ export default function Home() {
                   })}
               </div>
             ) : (
-              <HomeTodayDashboard
-                ownerId={ownerId}
-                todayIso={todayIso}
-                tomorrowIso={todayDashboard.tomorrowIso}
+              <HomeTabletDashboard
                 todayMeal={todayDashboard.todayMeal}
                 tomorrowMeal={todayDashboard.tomorrowMeal}
                 shoppingCount={homeShoppingItems.length}
+                nextShopping={dashboardNextShopping}
               />
             )}
           </div>

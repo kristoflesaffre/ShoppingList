@@ -1,0 +1,392 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { useItemPhotoUrl } from "@/lib/item-photos";
+import { useWeather, type Weather, type WeatherKind } from "@/lib/weather";
+import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
+import { useVasteLijstjes } from "@/components/vaste_lijstjes";
+import { AllDayChips, Timeline, useTodayAgenda } from "@/components/home_agenda_section";
+
+/**
+ * Tablet-dashboard (canvas «Dashboard tablet · B iteratie»), gemaakt voor een Galaxy Tab liggend
+ * (≈1138 × 712): links weer en eten — vandaag groot, morgen als smalle tegel — en rechts de dag als
+ * tijdlijn. Beide kolommen zijn even hoog en vullen het scherm.
+ */
+
+export type DashboardMeal = {
+  title: string;
+  subtitle: string;
+  href: string;
+  photoUrl: string | null;
+  fromStock: boolean;
+  items: Array<{ name: string; photoUrl?: string | null }>;
+};
+
+export type DashboardShopping = { label: string; sub: string; href: string } | null;
+
+type Rgb = [number, number, number];
+const ORANGE: Rgb = [224, 140, 47];
+const YELLOW: Rgb = [240, 180, 40];
+const deep = (c: Rgb, f = 0.62) => `rgb(${Math.round(c[0] * f)},${Math.round(c[1] * f)},${Math.round(c[2] * f)})`;
+
+// ─── Weericonen (zelfde stijl als het canvas) ───────────────────────────────
+
+const CLOUD = "M25 60h52a18 18 0 0 0 0-36 26 26 0 0 0-49-6A20 20 0 0 0 25 60z";
+
+export function WeatherIcon({ kind, size, className }: { kind: WeatherKind; size: number; className?: string }) {
+  const id = React.useId().replace(/:/g, "");
+  const sun = (
+    <>
+      <circle cx="38" cy="38" r="30" fill="#ffd34d" opacity=".25" />
+      <circle cx="38" cy="38" r="22" fill="#ffc531" />
+    </>
+  );
+  const cloud = (x: number, y: number, sc: number, fill: string) => <path transform={`translate(${x} ${y}) scale(${sc})`} d={CLOUD} fill={fill} />;
+  const drops = [36, 52, 68].map((x) => <path key={x} d={`M${x} 78 l-4 12`} stroke="#4b8df8" strokeWidth={5} strokeLinecap="round" />);
+  const flakes = [36, 52, 68].map((x) => <circle key={x} cx={x} cy={84} r={3.5} fill="#9cc6ff" />);
+  const body: Record<WeatherKind, React.ReactNode> = {
+    zon: (
+      <>
+        <circle cx="50" cy="50" r="40" fill="#ffd34d" opacity=".25" />
+        <circle cx="50" cy="50" r="28" fill="#ffc531" />
+      </>
+    ),
+    half: (
+      <>
+        {sun}
+        {cloud(14, 22, 1, `url(#${id})`)}
+      </>
+    ),
+    bewolkt: (
+      <>
+        {cloud(2, 6, 0.8, "#c9d3e8")}
+        {cloud(14, 22, 1, `url(#${id})`)}
+      </>
+    ),
+    mist: (
+      <>
+        {cloud(14, 12, 1, `url(#${id})`)}
+        <path d="M20 82h60M28 92h44" stroke="#c9d3e8" strokeWidth={5} strokeLinecap="round" />
+      </>
+    ),
+    regen: (
+      <>
+        {cloud(2, 4, 0.8, "#b7c3dc")}
+        {cloud(14, 14, 1, `url(#${id})`)}
+        {drops}
+      </>
+    ),
+    buien: (
+      <>
+        {sun}
+        {cloud(14, 16, 1, `url(#${id})`)}
+        {drops}
+      </>
+    ),
+    onweer: (
+      <>
+        {cloud(2, 4, 0.8, "#9aa6c4")}
+        {cloud(14, 14, 1, `url(#${id})`)}
+        <path d="M54 66 44 84h10l-6 14 16-20H54l6-12z" fill="#ffc531" />
+      </>
+    ),
+    sneeuw: (
+      <>
+        {cloud(14, 14, 1, `url(#${id})`)}
+        {flakes}
+      </>
+    ),
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden className={cn("overflow-visible drop-shadow-[0_4px_6px_rgba(20,30,80,0.18)]", className)}>
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="1" stopColor="#dfe6f5" />
+        </linearGradient>
+      </defs>
+      {body[kind]}
+    </svg>
+  );
+}
+
+// ─── Tegels ─────────────────────────────────────────────────────────────────
+
+const tile = "relative overflow-hidden rounded-[24px]";
+
+function TodayWeather({ weather }: { weather: Weather | null }) {
+  if (!weather) {
+    return <div className={cn(tile, "min-w-0 flex-1 animate-pulse bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] opacity-70")} aria-label="Weer laden" />;
+  }
+  return (
+    <section
+      aria-label={`Weer vandaag in ${weather.place}`}
+      className={cn(tile, "flex min-w-0 flex-1 flex-col bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] px-[18px] py-4 text-white shadow-[0_18px_40px_-24px_rgba(40,100,220,0.8)]")}
+    >
+      <WeatherIcon kind={weather.now.kind} size={136} className="absolute -right-[18px] -top-[26px]" />
+      <span className="text-[11.5px] font-extrabold tracking-[0.08em] opacity-90">VANDAAG · {weather.place.toUpperCase()}</span>
+      <span className="mt-1 flex items-baseline gap-2">
+        <span className="text-[58px] font-extrabold leading-none tracking-[-0.04em]">{weather.now.temp}°</span>
+        <span className="text-base font-bold opacity-80">{weather.today.min}°</span>
+      </span>
+      <span className="mt-1 text-sm font-semibold">{weather.now.label}</span>
+      {weather.rainFromHour != null ? (
+        <span className="mt-2 inline-flex h-[26px] items-center gap-1.5 self-start rounded-pill bg-white/[0.22] px-2.5 text-xs font-bold">
+          ☂ {weather.rainFromHour === new Date().getHours() ? "Kans op regen nu" : `Regen vanaf ${weather.rainFromHour}u`}
+        </span>
+      ) : null}
+      <ul className="m-0 mt-auto flex list-none justify-between border-t border-white/30 p-0 pt-2.5">
+        {weather.hours.map((h, i) => (
+          <li key={h.hour} className="flex flex-col items-center gap-0.5">
+            <span className="text-[11px] font-bold text-white/85">{i === 0 ? "Nu" : `${h.hour}u`}</span>
+            <WeatherIcon kind={h.kind} size={28} />
+            <span className="text-[13px] font-extrabold">{h.temp}°</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function TomorrowWeather({ weather }: { weather: Weather | null }) {
+  const t = weather?.tomorrow;
+  return (
+    <section
+      aria-label={t ? `Weer morgen: ${t.label}, ${t.max} tot ${t.min} graden` : "Weer morgen"}
+      className={cn(tile, "flex w-[124px] shrink-0 flex-col items-center justify-center gap-1.5 bg-[linear-gradient(170deg,#e4ecfb,#f1f5fd)] text-center shadow-[0_0_0_1px_var(--border-subtle)]")}
+    >
+      <span className="text-[11px] font-extrabold tracking-[0.08em] text-[#4a5f8f]">MORGEN</span>
+      {t ? (
+        <>
+          <WeatherIcon kind={t.kind} size={64} />
+          <span className="text-2xl font-extrabold leading-none text-[#1d2f5c]">{t.max}°</span>
+          <span className="text-[13px] font-bold text-[#7b8bb0]">{t.min}°</span>
+        </>
+      ) : (
+        <span className="size-16 animate-pulse rounded-full bg-white/70" />
+      )}
+    </section>
+  );
+}
+
+function mealPhoto(meal: DashboardMeal | null, getPhoto: (name: string) => string | null): string | null {
+  if (!meal) return null;
+  return meal.photoUrl ?? meal.items.map((i) => i.photoUrl ?? getPhoto(i.name)).find(Boolean) ?? null;
+}
+
+function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
+  const getPhoto = useItemPhotoUrl(320);
+  const photo = mealPhoto(meal, getPhoto);
+  const inner = (
+    <>
+      {photo ? (
+        // eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app
+        <img src={photo} alt="" className="absolute -right-[30px] -top-1.5 size-[250px] object-contain drop-shadow-[0_18px_24px_rgba(120,60,0,0.35)]" />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element -- lokale illustratie
+        <img src="/images/ui/kalender_320.webp" alt="" className="absolute -bottom-4 -right-4 size-[180px] object-contain opacity-90" />
+      )}
+      <span className="absolute left-[18px] top-4 text-[11.5px] font-extrabold tracking-[0.08em] text-[rgba(90,40,0,0.75)]">VANDAAG ETEN WE</span>
+      <span className="absolute bottom-[18px] left-[18px] max-w-[60%]">
+        <span className="block text-[34px] font-extrabold leading-tight tracking-[-0.02em] text-[#3d1d00]">{meal?.title ?? "Nog niets gepland"}</span>
+        <span className="block text-[13.5px] font-semibold text-[rgba(61,29,0,0.75)]">{meal ? meal.subtitle : "Plan iets in de kalender"}</span>
+      </span>
+    </>
+  );
+  const cls = cn(
+    tile,
+    "block min-w-0 flex-1 bg-[radial-gradient(120%_95%_at_80%_35%,#ffe6a8_0%,#ffc76b_45%,#f59f3a_100%)] no-underline shadow-[0_18px_40px_-22px_rgba(230,140,30,0.9)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+  );
+  return meal ? (
+    <Link href={meal.href} className={cls} aria-label={`Vandaag: ${meal.title}`}>
+      {inner}
+    </Link>
+  ) : (
+    <Link href="/kalender" className={cls}>
+      {inner}
+    </Link>
+  );
+}
+
+function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
+  const getPhoto = useItemPhotoUrl(320);
+  const photo = mealPhoto(meal, getPhoto);
+  return (
+    <Link
+      href={meal?.href ?? "/kalender"}
+      aria-label={meal ? `Morgen: ${meal.title}` : "Morgen: nog niets gepland"}
+      className={cn(
+        tile,
+        "flex w-[124px] shrink-0 flex-col items-center justify-center gap-2 bg-[linear-gradient(170deg,#ffeadd,#fff6ef)] px-2.5 py-3 text-center no-underline shadow-[0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+      )}
+    >
+      <span className="text-[11px] font-extrabold tracking-[0.08em]" style={{ color: deep(ORANGE, 0.6) }}>
+        MORGEN
+      </span>
+      {photo ? (
+        // eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app
+        <img src={photo} alt="" className="size-[76px] rounded-full bg-white object-cover shadow-[0_12px_20px_-12px_rgba(120,40,0,0.6)]" />
+      ) : (
+        <span className="flex size-[76px] items-center justify-center rounded-full border-[1.5px] border-dashed border-[#e8cdb8] text-2xl text-[#d9b49a]">?</span>
+      )}
+      <span className="line-clamp-2 text-[13.5px] font-extrabold leading-tight text-[#3d1d00]">{meal?.title ?? "Nog niets"}</span>
+      {meal?.fromStock ? (
+        <span className="inline-flex h-[22px] items-center gap-1 rounded-pill bg-white px-2 text-[11px] font-extrabold text-[#2f6fd0]" title="Vanavond uit de diepvries halen">
+          ❄ ontdooien
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
+function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; nextShopping: DashboardShopping }) {
+  const { state, connected, allDay, timed, nowMin, nowLabel, connect } = useTodayAgenda();
+  const next = timed.find((r) => r.state === "next") ?? null;
+  const minutesToNext = next ? next.startMin - nowMin : null;
+  const countdown = minutesToNext != null ? `${Math.floor(minutesToNext / 60)}:${String(minutesToNext % 60).padStart(2, "0")}` : null;
+  const left = timed.filter((r) => r.state !== "past").length;
+  const timeOf = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" }) : "";
+
+  return (
+    <section
+      aria-label="Agenda vandaag"
+      className="flex min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] px-5 py-4 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]"
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-xl font-extrabold text-text-primary">Vandaag</h2>
+        {connected ? (
+          <span className="text-[12.5px] text-[var(--text-secondary)]">
+            {timed.length} {timed.length === 1 ? "afspraak" : "afspraken"}
+            {left > 0 && left < timed.length ? ` · nog ${left}` : ""}
+          </span>
+        ) : null}
+      </div>
+
+      {!state ? (
+        <div className="flex-1 animate-pulse rounded-[18px] bg-[var(--gray-25)]" aria-label="Agenda laden" />
+      ) : !connected ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+          <p className="text-[17px] font-extrabold text-text-primary">Je dag in één oogopslag</p>
+          <p className="max-w-[260px] text-sm text-[var(--text-secondary)]">Koppel je Google-agenda om je afspraken van vandaag hier te zien.</p>
+          <button type="button" onClick={connect} className="inline-flex h-11 items-center rounded-pill bg-action-primary px-5 text-sm font-bold text-white">
+            Google-agenda koppelen
+          </button>
+        </div>
+      ) : (
+        <>
+          {next && countdown ? (
+            <div
+              className="mb-2.5 flex items-center gap-3.5 rounded-[18px] px-3.5 py-3"
+              style={{ backgroundImage: `linear-gradient(135deg, ${mixWithWhiteRgb(ORANGE, 0.22)}, ${mixWithWhiteRgb(ORANGE, 0.06)})` }}
+            >
+              <span className="flex size-[58px] shrink-0 flex-col items-center justify-center rounded-2xl bg-white shadow-[0_6px_14px_-8px_rgba(224,140,47,0.8)]">
+                <span className="text-xl font-extrabold leading-none" style={{ color: deep(ORANGE) }}>
+                  {countdown}
+                </span>
+                <span className="text-[9.5px] font-extrabold text-[var(--text-tertiary)]">UUR</span>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-extrabold tracking-[0.06em]" style={{ color: deep(ORANGE) }}>
+                  VOLGENDE
+                </span>
+                <span className="block truncate text-lg font-extrabold text-text-primary">
+                  {next.title} · {timeOf(next.start)}
+                </span>
+                {next.location ? <span className="block truncate text-[12.5px] text-[var(--text-secondary)]">{next.location}</span> : null}
+              </span>
+            </div>
+          ) : null}
+          <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <AllDayChips rows={allDay} />
+            {timed.length > 0 ? (
+              <Timeline rows={timed} nowMin={nowMin} nowLabel={nowLabel} />
+            ) : (
+              <p className="py-4 text-center text-sm text-[var(--text-secondary)]">Verder niets gepland vandaag.</p>
+            )}
+          </div>
+        </>
+      )}
+
+      <div className="mt-3 flex gap-2 border-t border-[var(--border-subtle)] pt-3">
+        <Link
+          href="/te-kopen"
+          className="flex flex-1 items-center gap-2.5 rounded-[14px] px-3 py-2.5 no-underline"
+          style={{ backgroundColor: mixWithWhiteRgb(YELLOW, 0.2) }}
+        >
+          <b className="text-xl" style={{ color: deep(YELLOW, 0.6) }}>
+            {shoppingCount}
+          </b>
+          <span className="text-[13px] font-bold text-text-primary">Te kopen</span>
+        </Link>
+        <Link href={nextShopping?.href ?? "/lijstjes-beheren/lijstjes"} className="flex flex-1 items-center rounded-[14px] bg-[var(--blue-25)] px-3 py-2.5 no-underline">
+          <span className="truncate text-[13px] font-bold text-text-primary">
+            {nextShopping ? nextShopping.label : "Lijstjes"}{" "}
+            <span className="font-medium text-[var(--text-secondary)]">· {nextShopping ? nextShopping.sub : "alle lijstjes"}</span>
+          </span>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/** Herinneringen naast de weergaveschakelaar: verjaardagen uit kado-lijstjes binnen 30 dagen. */
+export function DashboardReminders({ userId }: { userId: string }) {
+  const { lists } = useVasteLijstjes(userId);
+  const chips = lists
+    .filter((l) => l.type === "kado" && l.eventDate)
+    .map((l) => {
+      const [, m, d] = (l.eventDate as string).split("-").map(Number);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let next = new Date(today.getFullYear(), m - 1, d);
+      if (next < today) next = new Date(today.getFullYear() + 1, m - 1, d);
+      const days = Math.round((next.getTime() - today.getTime()) / 86_400_000);
+      const who = l.name.replace(/^kado'?s\s*/i, "").trim() || l.name;
+      return { id: l.id, days, label: days === 0 ? `🎂 ${who} jarig vandaag` : days === 1 ? `🎂 ${who} morgen jarig` : `🎂 ${who} over ${days} dagen` };
+    })
+    .filter((c) => c.days <= 30)
+    .sort((a, b) => a.days - b.days)
+    .slice(0, 2);
+  if (chips.length === 0) return null;
+  return (
+    <span className="flex gap-1.5">
+      {chips.map((c) => (
+        <Link key={c.id} href={`/vast/${c.id}`} className="inline-flex h-7 items-center rounded-pill bg-[#fbe2ea] px-3 text-xs font-bold text-[#8f3756] no-underline">
+          {c.label}
+        </Link>
+      ))}
+    </span>
+  );
+}
+
+export function HomeTabletDashboard({
+  todayMeal,
+  tomorrowMeal,
+  shoppingCount,
+  nextShopping,
+}: {
+  todayMeal: DashboardMeal | null;
+  tomorrowMeal: DashboardMeal | null;
+  shoppingCount: number;
+  nextShopping: DashboardShopping;
+}) {
+  const weather = useWeather();
+  return (
+    <div className="flex h-[max(470px,calc(100dvh-196px))] gap-3.5 pt-5 motion-safe:animate-fade-up">
+      <div className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
+        <div className="flex min-h-0 flex-1 gap-3.5">
+          <TodayWeather weather={weather} />
+          <TomorrowWeather weather={weather} />
+        </div>
+        <div className="flex min-h-0 flex-1 gap-3.5">
+          <TodayMeal meal={todayMeal} />
+          <TomorrowMeal meal={tomorrowMeal} />
+        </div>
+      </div>
+      <AgendaColumn shoppingCount={shoppingCount} nextShopping={nextShopping} />
+    </div>
+  );
+}
