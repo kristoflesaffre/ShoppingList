@@ -75,28 +75,68 @@ function parseEnd(e: ApiEvent, start: Date): Date {
   return Number.isFinite(d.getTime()) ? d : start;
 }
 
-/** Afspraken van vandaag tot 7 dagen verder; ververst bij focus en elke 5 minuten. */
+/**
+ * Gedeelde cache voor de agendaweek: blijft bewaard tussen «Eten» en «Agenda» en tussen pagina's,
+ * zodat wisselen meteen toont wat er al was en enkel op de achtergrond ververst.
+ */
+type AgendaCache = { state: ApiState | null; failed: boolean };
+let agendaCache: AgendaCache | null = null;
+let agendaInflight: Promise<void> | null = null;
+const agendaListeners = new Set<(c: AgendaCache) => void>();
+
+function fetchAgendaWeek(token: string): Promise<void> {
+  if (agendaInflight) return agendaInflight;
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + DAYS_AHEAD);
+  // Ook de vorige dagen, zodat er links van de volgende afspraak iets te zien is.
+  start.setDate(start.getDate() - DAYS_BEFORE);
+  const params = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString() });
+  agendaInflight = fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store", headers: googleAuthHeaders(token) })
+    .then(async (r) => ({ state: (await r.json()) as ApiState, failed: !r.ok }))
+    .catch(() => ({ state: agendaCache?.state ?? null, failed: true }))
+    .then((next) => {
+      agendaCache = next;
+      agendaListeners.forEach((fn) => fn(next));
+    })
+    .finally(() => {
+      agendaInflight = null;
+    });
+  return agendaInflight;
+}
+
+/** Laadt de agendaweek alvast op de achtergrond (bv. terwijl «Eten» open staat). */
+export function usePrefetchAgendaWeek() {
+  const token = useGoogleAuthToken();
+  React.useEffect(() => {
+    if (token && !agendaCache) void fetchAgendaWeek(token);
+  }, [token]);
+}
+
+/** Onzichtbaar op «Eten»: haalt de agenda en de kalenderillustratie alvast op, zodat «Agenda» meteen klaarstaat. */
+export function KalenderAgendaPrefetch() {
+  usePrefetchAgendaWeek();
+  return <Image src="/images/ui/kalender_320.webp" alt="" width={320} height={320} priority aria-hidden className="pointer-events-none absolute size-px opacity-0" />;
+}
+
+/** Afspraken van een paar dagen terug tot 7 dagen verder; ververst bij focus en elke 5 minuten. */
 function useAgendaWeek() {
   const token = useGoogleAuthToken();
-  const [state, setState] = React.useState<ApiState | null>(null);
-  const [failed, setFailed] = React.useState(false);
+  const [cache, setCache] = React.useState<AgendaCache | null>(agendaCache);
+  const state = cache?.state ?? null;
+  const failed = cache?.failed ?? false;
   const [now, setNow] = React.useState(() => new Date());
 
+  React.useEffect(() => {
+    agendaListeners.add(setCache);
+    return () => {
+      agendaListeners.delete(setCache);
+    };
+  }, []);
+
   const load = React.useCallback(() => {
-    if (!token) return;
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + DAYS_AHEAD);
-    // Ook de vorige dagen, zodat er links van de volgende afspraak iets te zien is.
-    start.setDate(start.getDate() - DAYS_BEFORE);
-    const params = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString() });
-    fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store", headers: googleAuthHeaders(token) })
-      .then(async (r) => {
-        setState((await r.json()) as ApiState);
-        setFailed(!r.ok);
-      })
-      .catch(() => setFailed(true));
+    if (token) void fetchAgendaWeek(token);
   }, [token]);
 
   React.useEffect(() => {

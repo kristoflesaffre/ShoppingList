@@ -25,7 +25,7 @@ import { useItemPhotoUrl } from "@/lib/item-photos";
 import { mixWithWhite, RECIPE_TINT_FALLBACK, useIsDarkTheme, useRecipeTint, type Rgb } from "@/lib/recipe-tint";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import { SegmentedControl } from "@/components/ui/segmented_control";
-import { KalenderAgenda, agendaBand } from "@/components/kalender_agenda";
+import { KalenderAgenda, KalenderAgendaPrefetch, agendaBand } from "@/components/kalender_agenda";
 
 type Weergave = "eten" | "agenda";
 const WEERGAVE_KEY = "kalender-weergave";
@@ -568,6 +568,7 @@ export default function KalenderPage() {
           />
         </header>
 
+        {weergave === "eten" ? <KalenderAgendaPrefetch /> : null}
         {weergave === "agenda" ? (
           <KalenderAgenda onTint={setAgendaTint} />
         ) : calendarIsEmpty ? (
