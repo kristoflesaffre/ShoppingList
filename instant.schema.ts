@@ -119,6 +119,16 @@ const schema = i.schema({
        * Ontbreekt → geen keuze (telt als allebei; weeklijstjes nemen de keuze van de favoriet over).
        */
       store: i.string().optional(),
+      /**
+       * Kado-ideeën (vast lijstje «kado»): link naar de webwinkel en wat daar gevonden werd
+       * (`/api/link-preview`: Open Graph + schema.org Product). Prijs is al opgemaakt («€ 34,99»).
+       */
+      linkUrl: i.string().optional(),
+      linkImage: i.string().optional(),
+      linkPrice: i.string().optional(),
+      linkStore: i.string().optional(),
+      /** Vrije notitie bij een kado-idee (bv. «maat 27»). */
+      note: i.string().optional(),
     }),
     recipes: i.entity({
       name: i.string(),

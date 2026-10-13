@@ -10,6 +10,7 @@ import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loadin
 import { headerRoundButtonClass, HeaderEditButton } from "@/components/ui/header_round_button";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { VastListSheet } from "@/components/vaste_lijstjes";
+import { KadoIdeeen, type KadoItem } from "@/components/kado_ideeen";
 import {
   VAST_COLORS,
   VAST_TYPE_META,
@@ -124,6 +125,7 @@ export default function VastLijstjePage() {
   };
 
   const accent = deepRgb(color, 0.72);
+  const isKado = type === "kado";
   return (
     <div className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)]">
       <div
@@ -131,7 +133,7 @@ export default function VastLijstjePage() {
         className="pointer-events-none absolute inset-x-0 top-0 h-[340px]"
         style={{ backgroundImage: `linear-gradient(180deg, ${mixWithWhiteRgb(color, 0.34)} 0%, ${mixWithWhiteRgb(color, 0.12)} 60%, var(--bg-app) 100%)` }}
       />
-      <div className="relative mx-auto flex w-full max-w-[720px] flex-1 flex-col px-4 pb-[calc(48px+env(safe-area-inset-bottom,0px))] pt-[env(safe-area-inset-top,0px)] motion-safe:animate-fade-up">
+      <div className={cn("relative mx-auto flex w-full flex-1 flex-col px-4 pb-[calc(48px+env(safe-area-inset-bottom,0px))] pt-[env(safe-area-inset-top,0px)] motion-safe:animate-fade-up", isKado ? "max-w-[1120px]" : "max-w-[720px]")}>
         <header className="flex h-16 items-center justify-between lg:mt-6">
           <Link href="/lijstjes-beheren/lijstjes" aria-label="Terug naar je lijstjes" className={headerRoundButtonClass}>
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
@@ -174,97 +176,134 @@ export default function VastLijstjePage() {
           </span>
         </header>
 
-        <section className="mb-5 flex flex-col items-center text-center">
-          <span
-            className="flex size-28 items-center justify-center overflow-hidden rounded-[32px] bg-[rgba(255,255,255,0.75)]"
-            style={{ boxShadow: `0 14px 28px -18px rgb(${color.join(",")})` }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
-            <img src={icon} alt="" className={cn("object-contain", isPerson ? "size-24 rounded-full" : "size-[88px]")} />
-          </span>
-          <h1 className="mt-3 text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-text-primary">{list.name}</h1>
-          <p className="mt-0.5 text-[13.5px] text-[var(--text-secondary)]">
-            {shared ? "Gedeeld · " : ""}
-            {countLabel}
-          </p>
-          {eventLabel ? (
-            <div className="mt-3 flex gap-2">
-              <span className="inline-flex h-8 items-center rounded-pill bg-[rgba(255,255,255,0.8)] px-3 text-[13px] font-bold text-text-primary">🎂 {eventLabel}</span>
-              {daysLabel ? (
-                <span className="inline-flex h-8 items-center rounded-pill bg-[rgba(255,255,255,0.8)] px-3 text-[13px] font-bold" style={{ color: accent }}>
-                  {daysLabel}
+        {isKado ? (
+          <KadoIdeeen
+            header={
+              <section className="mb-3 flex min-w-0 items-center gap-3.5 lg:mb-0">
+                <span className="flex size-[72px] shrink-0 items-center justify-center overflow-hidden rounded-[22px] bg-[rgba(255,255,255,0.75)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
+                  <img src={icon} alt="" className={cn("object-contain", isPerson ? "size-16 rounded-full" : "size-[58px]")} />
                 </span>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
-
-        <div className="rounded-[22px] bg-[var(--white)] px-4 pb-3 pt-1 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]">
-          {open.length > 0 ? (
-            <ul className="m-0 list-none p-0">
-              {open.map((item, i) => (
-                <li key={item.id} className={cn(i > 0 && "border-t border-[var(--border-subtle)]")}>
-                  <SwipeToDelete onDelete={() => remove(item)} deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}>
-                    <div className="flex items-center gap-3 bg-[var(--white)] py-3">
-                      <CheckCircle checked={false} color={color} onClick={() => toggle(item)} label={`${item.name} afvinken`} />
-                      <span className="min-w-0 flex-1 text-[15px] font-semibold leading-5 text-text-primary">{item.name}</span>
-                    </div>
-                  </SwipeToDelete>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="py-4 text-center text-sm text-[var(--text-tertiary)]">Nog niets op dit lijstje.</p>
-          )}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              addItem();
-            }}
-            className="mt-1 flex items-center gap-2 border-t border-[var(--border-subtle)] pt-3"
-          >
-            <input
-              ref={inputRef}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={type === "kado" ? "Nieuw kado-idee…" : type === "todo" ? "Nieuwe taak…" : "Iets toevoegen…"}
-              aria-label="Nieuw item"
-              className="h-10 min-w-0 flex-1 rounded-[14px] bg-[var(--gray-25)] px-3.5 text-[15px] text-text-primary outline-none placeholder:text-[var(--text-tertiary)] focus:bg-[var(--white)] focus:shadow-[inset_0_0_0_1.5px_var(--blue-300)]"
-            />
-            <button
-              type="submit"
-              disabled={!draft.trim()}
-              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-pill px-3.5 text-sm font-bold transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: mixWithWhiteRgb(color, 0.14), color: accent }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-4">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              Toevoegen
-            </button>
-          </form>
-        </div>
-
-        {done.length > 0 ? (
+                <div className="min-w-0">
+                  <h1 className="truncate text-[26px] font-extrabold leading-tight tracking-[-0.02em] text-text-primary lg:text-[30px]">{list.name}</h1>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {eventLabel ? (
+                      <span className="inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.85)] px-2.5 text-[12.5px] font-bold text-text-primary">🎂 {eventLabel}</span>
+                    ) : null}
+                    {daysLabel ? (
+                      <span className="inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.85)] px-2.5 text-[12.5px] font-bold" style={{ color: accent }}>
+                        {daysLabel}
+                      </span>
+                    ) : null}
+                    {shared ? (
+                      <span className="inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.85)] px-2.5 text-[12.5px] font-bold text-[var(--text-secondary)]">Gedeeld</span>
+                    ) : null}
+                  </div>
+                </div>
+              </section>
+            }
+            listId={list.id}
+            listName={list.name}
+            items={items as KadoItem[]}
+            color={color}
+            userId={user.id}
+            emptyIcon={icon}
+          />
+        ) : (
           <>
-            <div className="mx-1 mb-1.5 mt-5 flex items-center justify-between">
-              <span className="text-xs font-extrabold tracking-[0.05em] text-[var(--text-tertiary)]">
-                {meta.doneLabel.toUpperCase()} · {done.length}
-              </span>
-              <button type="button" onClick={clearDone} className="rounded-pill px-1 text-[13px] font-semibold text-action-primary">
-                Wis
+          <section className="mb-5 flex flex-col items-center text-center">
+            <span
+              className="flex size-28 items-center justify-center overflow-hidden rounded-[32px] bg-[rgba(255,255,255,0.75)]"
+              style={{ boxShadow: `0 14px 28px -18px rgb(${color.join(",")})` }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
+              <img src={icon} alt="" className={cn("object-contain", isPerson ? "size-24 rounded-full" : "size-[88px]")} />
+            </span>
+            <h1 className="mt-3 text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-text-primary">{list.name}</h1>
+            <p className="mt-0.5 text-[13.5px] text-[var(--text-secondary)]">
+              {shared ? "Gedeeld · " : ""}
+              {countLabel}
+            </p>
+            {eventLabel ? (
+              <div className="mt-3 flex gap-2">
+                <span className="inline-flex h-8 items-center rounded-pill bg-[rgba(255,255,255,0.8)] px-3 text-[13px] font-bold text-text-primary">🎂 {eventLabel}</span>
+                {daysLabel ? (
+                  <span className="inline-flex h-8 items-center rounded-pill bg-[rgba(255,255,255,0.8)] px-3 text-[13px] font-bold" style={{ color: accent }}>
+                    {daysLabel}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </section>
+
+          <div className="rounded-[22px] bg-[var(--white)] px-4 pb-3 pt-1 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]">
+            {open.length > 0 ? (
+              <ul className="m-0 list-none p-0">
+                {open.map((item, i) => (
+                  <li key={item.id} className={cn(i > 0 && "border-t border-[var(--border-subtle)]")}>
+                    <SwipeToDelete onDelete={() => remove(item)} deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}>
+                      <div className="flex items-center gap-3 bg-[var(--white)] py-3">
+                        <CheckCircle checked={false} color={color} onClick={() => toggle(item)} label={`${item.name} afvinken`} />
+                        <span className="min-w-0 flex-1 text-[15px] font-semibold leading-5 text-text-primary">{item.name}</span>
+                      </div>
+                    </SwipeToDelete>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="py-4 text-center text-sm text-[var(--text-tertiary)]">Nog niets op dit lijstje.</p>
+            )}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                addItem();
+              }}
+              className="mt-1 flex items-center gap-2 border-t border-[var(--border-subtle)] pt-3"
+            >
+              <input
+                ref={inputRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder={type === "todo" ? "Nieuwe taak…" : "Iets toevoegen…"}
+                aria-label="Nieuw item"
+                className="h-10 min-w-0 flex-1 rounded-[14px] bg-[var(--gray-25)] px-3.5 text-[15px] text-text-primary outline-none placeholder:text-[var(--text-tertiary)] focus:bg-[var(--white)] focus:shadow-[inset_0_0_0_1.5px_var(--blue-300)]"
+              />
+              <button
+                type="submit"
+                disabled={!draft.trim()}
+                className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-pill px-3.5 text-sm font-bold transition-opacity disabled:opacity-50"
+                style={{ backgroundColor: mixWithWhiteRgb(color, 0.14), color: accent }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-4">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Toevoegen
               </button>
-            </div>
-            <ul className="m-0 list-none rounded-[22px] bg-[var(--white)] px-4 py-0.5 opacity-75 shadow-[0_0_0_1px_var(--border-subtle)]">
-              {done.map((item, i) => (
-                <li key={item.id} className={cn("flex items-center gap-3 py-3", i > 0 && "border-t border-[var(--border-subtle)]")}>
-                  <CheckCircle checked color={color} onClick={() => toggle(item)} label={`${item.name} terugzetten`} />
-                  <span className="min-w-0 flex-1 text-[15px] text-[var(--text-tertiary)] line-through">{item.name}</span>
-                </li>
-              ))}
-            </ul>
+            </form>
+          </div>
+
+          {done.length > 0 ? (
+            <>
+              <div className="mx-1 mb-1.5 mt-5 flex items-center justify-between">
+                <span className="text-xs font-extrabold tracking-[0.05em] text-[var(--text-tertiary)]">
+                  {meta.doneLabel.toUpperCase()} · {done.length}
+                </span>
+                <button type="button" onClick={clearDone} className="rounded-pill px-1 text-[13px] font-semibold text-action-primary">
+                  Wis
+                </button>
+              </div>
+              <ul className="m-0 list-none rounded-[22px] bg-[var(--white)] px-4 py-0.5 opacity-75 shadow-[0_0_0_1px_var(--border-subtle)]">
+                {done.map((item, i) => (
+                  <li key={item.id} className={cn("flex items-center gap-3 py-3", i > 0 && "border-t border-[var(--border-subtle)]")}>
+                    <CheckCircle checked color={color} onClick={() => toggle(item)} label={`${item.name} terugzetten`} />
+                    <span className="min-w-0 flex-1 text-[15px] text-[var(--text-tertiary)] line-through">{item.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
           </>
-        ) : null}
+        )}
       </div>
 
       <VastListSheet
