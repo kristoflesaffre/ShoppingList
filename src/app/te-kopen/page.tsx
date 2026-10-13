@@ -675,7 +675,6 @@ export default function TeKopenPage() {
           {isStoreOrderMode ? "Volgorde winkels" : "Te kopen"}
         </h1>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
-          <span className={cn(pill, "text-text-primary")}>{countLabel}</span>
           {sharedLabel ? (
             <span className={cn(pill, "gap-1.5 pl-1 text-[var(--text-secondary)]")}>
               <span className="flex">
@@ -769,6 +768,10 @@ export default function TeKopenPage() {
           </div>
 
           <div className="mt-5 flex min-w-0 flex-col gap-5">
+            {/* Aantal als eigen kopje boven de lijst, zoals «n ideeën» bij Kado's. */}
+            {!isStoreOrderMode && openItems.length > 0 ? (
+              <h2 className="-mb-2 mx-1 text-[17px] font-bold text-text-primary">{countLabel}</h2>
+            ) : null}
             {isStoreOrderMode ? (
               <StoreOrderPanel storeKeys={orderedStoreKeys} onChange={(next) => setStoreOrder(next)} />
             ) : (
