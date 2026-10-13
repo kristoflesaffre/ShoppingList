@@ -36,6 +36,12 @@ type AgendaState = {
   reconnectRequired?: boolean;
 };
 
+const TOMORROW_COLORS: Rgb[] = [
+  [224, 140, 47],
+  [214, 90, 120],
+  [200, 112, 64],
+];
+
 const ACCOUNT_COLORS: Rgb[] = [
   [79, 85, 241],
   [229, 97, 138],
@@ -547,11 +553,18 @@ export function useTodayAgenda() {
   const tomorrowIso = localDayIso(tomorrowDate);
   const events = state?.events ?? [];
   const todayEvents = events.filter((e) => (eventDayIso(e) ?? todayIso) <= todayIso);
+  // Morgen in warme kleuren (zoals op het canvas), zodat je in de rij meteen ziet waar vandaag stopt.
+  const tomorrowCalendars: string[] = [];
   const tomorrow: AgendaRow[] = events
     .filter((e) => eventDayIso(e) === tomorrowIso)
-    .map((e) => ({
+    .map((e) => {
+      const cal = e.calendarName ?? e.accountId ?? "";
+      if (!tomorrowCalendars.includes(cal)) tomorrowCalendars.push(cal);
+      return { e, color: TOMORROW_COLORS[tomorrowCalendars.indexOf(cal) % TOMORROW_COLORS.length] };
+    })
+    .map(({ e, color }) => ({
       ...e,
-      color: colorOf(e.accountId),
+      color,
       account: accounts.length > 1 ? accountName(accounts.find((a) => a.id === e.accountId)?.email) : null,
       startMin: e.allDay ? 0 : minutesOfDay(e.start) ?? 0,
       endMin: e.allDay ? 24 * 60 : minutesOfDay(e.end) ?? 0,
