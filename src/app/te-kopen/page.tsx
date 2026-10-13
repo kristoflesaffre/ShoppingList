@@ -214,7 +214,7 @@ function ShoppingRow({
       type="button"
       onClick={() => onEdit(item)}
       aria-label={`${item.name} wijzigen`}
-      className="-my-1 -ml-1.5 -mr-2 flex min-w-0 flex-1 items-center gap-3 rounded-[14px] py-1 pl-1.5 pr-2 text-left transition-colors duration-fast [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+      className="flex min-w-0 flex-1 items-center gap-3 rounded-[12px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
     >
       {content}
     </button>
@@ -222,7 +222,7 @@ function ShoppingRow({
 
   if (isEditing) {
     return (
-      <div className="flex w-full items-center gap-3 py-[9px]">
+      <div className="flex items-center gap-3 py-[11px] px-4 transition-colors duration-fast [@media(hover:hover)]:hover:bg-[var(--gray-25)]">
         {editButton}
         <RoundIconButton tone="danger" size={28} onClick={() => onDelete(item.id)} aria-label={`${item.name} verwijderen`}>
           {RoundIcons.trash}
@@ -233,7 +233,7 @@ function ShoppingRow({
 
   return (
     <SwipeToDelete onDelete={() => onDelete(item.id)} deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}>
-      <div className="flex w-full items-center gap-3 bg-[var(--white)] py-[9px]">
+      <div className="flex items-center gap-3 bg-[var(--white)] py-[11px] px-4 transition-colors duration-fast [@media(hover:hover)]:hover:bg-[var(--gray-25)]">
         <CheckCircle checked={false} onClick={() => onToggle(item)} label={`${item.name} afvinken`} />
         {editButton}
       </div>
@@ -288,11 +288,14 @@ function GroupBlock({
           </RoundIconButton>
         ) : null}
       </div>
-      <div className="rounded-[22px] bg-[var(--white)] px-4 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]">
+      <div className="overflow-hidden rounded-[22px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]">
         {group.items.length > 0 ? (
           <ul className="m-0 list-none p-0">
             {group.items.map((item, k) => (
-              <li key={item.id} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>
+              <li
+                key={item.id}
+                className={cn("relative", k > 0 && "before:absolute before:inset-x-4 before:top-0 before:z-[1] before:h-px before:bg-[var(--border-subtle)] before:content-['']")}
+              >
                 <ShoppingRow
                   item={item}
                   isEditing={isEditing}
