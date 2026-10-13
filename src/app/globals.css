@@ -104,6 +104,28 @@ body::before {
   }
 }
 
+/* Agenda, leeg dagdeel: het figuurtje deint traag op en neer; de schaduw krimpt mee. */
+@keyframes agenda-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes agenda-bob-shadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleX(0.82);
+    opacity: 0.6;
+  }
+}
+
 /* «Kaart scannen»: blauwe scanlijn die op en neer beweegt in de scanzone. */
 @keyframes scan-line-sweep {
   0%,

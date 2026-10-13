@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { startGoogleConnect } from "@/lib/google-client";
@@ -44,12 +45,30 @@ const ACCOUNT_COLORS: Rgb[] = [
 ];
 const NOW_RED: Rgb = [230, 70, 70];
 
-const PARTS: { key: "ochtend" | "middag" | "avond"; label: string; sub: string; from: number; to: number; color: Rgb; icon: string }[] = [
+const PARTS: { key: "ochtend" | "middag" | "avond"; label: string; sub: string; from: number; to: number; color: Rgb; icon: string; free: { image: string; title: string; text: string } }[] = [
   // Ochtend: koffie met stoomkrulletjes (oranje); middag: de volle zon (geel); avond: maan.
-  { key: "ochtend", label: "Ochtend", sub: "tot 12 u", from: 0, to: 12 * 60, color: [224, 140, 47], icon: "M4 12h12v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 13h1.5a2 2 0 0 1 0 4H16M6.5 3.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7M10 2.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7M13.5 3.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7" },
-  { key: "middag", label: "Middag", sub: "12 – 18 u", from: 12 * 60, to: 18 * 60, color: [224, 170, 40], icon: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" },
-  { key: "avond", label: "Avond", sub: "na 18 u", from: 18 * 60, to: 24 * 60, color: [98, 96, 230], icon: "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" },
+  { key: "ochtend", label: "Ochtend", sub: "tot 12 u", from: 0, to: 12 * 60, color: [224, 140, 47], icon: "M4 12h12v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 13h1.5a2 2 0 0 1 0 4H16M6.5 3.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7M10 2.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7M13.5 3.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7", free: { image: "/images/ui/zomer_240.webp", title: "Vrije ochtend", text: "Rustig aan de dag beginnen" } },
+  { key: "middag", label: "Middag", sub: "12 – 18 u", from: 12 * 60, to: 18 * 60, color: [224, 170, 40], icon: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4", free: { image: "/images/ui/vakantie_240.webp", title: "Vrije middag", text: "Niets gepland — even niks moeten" } },
+  { key: "avond", label: "Avond", sub: "na 18 u", from: 18 * 60, to: 24 * 60, color: [98, 96, 230], icon: "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z", free: { image: "/images/ui/ster_240.webp", title: "Vrije avond", text: "Tijd voor jezelf" } },
 ];
+
+/** Leeg dagdeel: groot figuurtje uit de reeks (zon, parasol, ster) met zachte schaduw; deint traag op en neer. */
+function FreePart({ part, past }: { part: (typeof PARTS)[number]; past: boolean }) {
+  return (
+    <div className={cn("flex min-h-[170px] flex-1 flex-col items-center justify-center pb-1 pt-3 text-center", past && "opacity-60")}>
+      <span className="relative block size-[92px]">
+        <Image src={part.free.image} alt="" width={240} height={240} className="relative z-[1] size-full object-contain motion-safe:animate-[agenda-bob_4.5s_ease-in-out_infinite]" />
+        <span
+          aria-hidden
+          className="absolute inset-x-[22px] -bottom-1 h-2.5 rounded-[50%] blur-[4px] motion-safe:animate-[agenda-bob-shadow_4.5s_ease-in-out_infinite]"
+          style={{ backgroundColor: rgb(part.color, 0.28) }}
+        />
+      </span>
+      <p className="mt-3 text-[15px] font-extrabold text-text-primary">{part.free.title}</p>
+      <p className="mt-0.5 text-[13px] text-[var(--text-tertiary)]">{past ? "Niets gepland" : part.free.text}</p>
+    </div>
+  );
+}
 
 const rgb = (c: Rgb, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const deep = (c: Rgb, f = 0.7) => `rgb(${Math.round(c[0] * f)},${Math.round(c[1] * f)},${Math.round(c[2] * f)})`;
@@ -563,7 +582,7 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
                 <section
                   key={part.key}
                   aria-label={part.label}
-                  className="min-w-0 rounded-[22px] bg-[var(--white)] px-[18px] py-4"
+                  className="flex min-w-0 flex-col rounded-[22px] bg-[var(--white)] px-[18px] py-4"
                   style={{
                     boxShadow: active ? `0 0 0 2px ${rgb(part.color, 0.55)}` : "0 0 0 1px var(--border-subtle)",
                     backgroundImage: active ? `linear-gradient(180deg, ${mixWithWhiteRgb(part.color, 0.14)}, #fff 120px)` : undefined,
@@ -590,9 +609,7 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
                   {rows.length > 0 ? (
                     <Timeline rows={rows} nowMin={nowMin} nowLabel={nowLabel} showNow={active} />
                   ) : (
-                    <p className="mt-2.5 rounded-[14px] border-[1.5px] border-dashed border-[#d5d7e6] px-3 py-3 text-[13px] text-[var(--text-tertiary)]">
-                      {nowMin >= part.to ? "Niets gepland" : "Vrij — tijd voor jezelf"}
-                    </p>
+                    <FreePart part={part} past={nowMin >= part.to} />
                   )}
                 </section>
               );
