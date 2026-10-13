@@ -149,9 +149,35 @@ function absolutize(src: string | null | undefined, base: URL): string | null {
   }
 }
 
+/**
+ * Amazon zet geen og:image of JSON-LD op productpagina's; foto, titel en prijs staan in eigen opmaak
+ * (`#landingImage`, `#productTitle`, prijsblok `corePrice…`).
+ */
+function amazonFallback(html: string): { title: string | null; image: string | null; price: string | null } {
+  const landing = /<img[^>]*\bid=["']landingImage["'][^>]*>/i.exec(html)?.[0] ?? "";
+  let image = /\bdata-old-hires=["']([^"']+)["']/i.exec(landing)?.[1] ?? null;
+  if (!image) {
+    const dyn = /\bdata-a-dynamic-image=["']([^"']+)["']/i.exec(landing)?.[1];
+    if (dyn) {
+      try {
+        const sizes = JSON.parse(decodeEntities(dyn)) as Record<string, [number, number]>;
+        image = Object.entries(sizes).sort((a, b) => b[1][0] - a[1][0])[0]?.[0] ?? null;
+      } catch {
+        /* overslaan */
+      }
+    }
+  }
+  image ??= /"hiRes":"(https:[^"]+)"/.exec(html)?.[1] ?? null;
+  const title = /\bid=["']productTitle["'][^>]*>([^<]+)</i.exec(html)?.[1]?.trim() ?? null;
+  const core = /\bid=["']corePrice(?:Display_desktop)?_feature_div["']/i.exec(html);
+  const price = core ? (/class=["']a-offscreen["']>([^<]+)</i.exec(html.slice(core.index, core.index + 20000))?.[1]?.trim() ?? null) : null;
+  return { title: title ? decodeEntities(title) : null, image, price: price ? decodeEntities(price).replace(/\u00a0/g, " ") : null };
+}
+
 function cleanTitle(t: string | null, siteName: string | null): string | null {
   if (!t) return null;
   let s = decodeEntities(t).replace(/\s+/g, " ").trim();
+  s = s.replace(/\s*:\s*Amazon\.[a-z.]+(?:\s*:.*)?$/i, "");
   if (siteName) s = s.replace(new RegExp(`\\s*[|–—-]\\s*${siteName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"), "");
   return s || null;
 }
@@ -178,7 +204,14 @@ function parsePreview(html: string, pageUrl: URL): LinkPreview {
   const metaCurrency = meta.get("product:price:currency") ?? meta.get("og:price:currency") ?? meta.get("pricecurrency") ?? null;
   const price = fromLd ? formatPrice(fromLd.amount, fromLd.currency) : metaAmount ? formatPrice(metaAmount, metaCurrency) : null;
 
-  return { url: pageUrl.toString(), store: pageUrl.hostname.replace(/^www\./, ""), title, image, price };
+  const store = pageUrl.hostname.replace(/^www\./, "");
+  if (/^amazon\./i.test(store)) {
+    const amz = amazonFallback(html);
+    const amzAmount = amz.price?.replace(/[^\d,.]/g, "") ?? "";
+    const amzPrice = amzAmount ? formatPrice(amzAmount.includes(",") ? amzAmount.replace(/\./g, "") : amzAmount, "EUR") : null;
+    return { url: pageUrl.toString(), store, title: cleanTitle(amz.title, null) ?? title, image: image ?? absolutize(amz.image, pageUrl), price: price ?? amzPrice };
+  }
+  return { url: pageUrl.toString(), store, title, image, price };
 }
 
 async function readLimited(res: Response): Promise<string> {

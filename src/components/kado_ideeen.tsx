@@ -371,6 +371,25 @@ export function KadoIdeeen({
     return () => clearTimeout(t);
   }, [pasteHint]);
 
+  // Ideeën met een link maar zonder foto (winkel kon niet gelezen worden, of oudere versie van de
+  // lezer): één keer per bezoek opnieuw proberen en aanvullen wat nu wel gevonden wordt.
+  const retried = React.useRef(new Set<string>());
+  React.useEffect(() => {
+    for (const it of items) {
+      if (!it.linkUrl || it.linkImage || retried.current.has(it.id)) continue;
+      retried.current.add(it.id);
+      fetch("/api/link-preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: it.linkUrl }) })
+        .then((r) => r.json() as Promise<Preview>)
+        .then((p) => {
+          if (!p?.image) return;
+          void db
+            .transact(db.tx.items[it.id].update({ linkImage: p.image, ...(p.price && !it.linkPrice ? { linkPrice: p.price } : {}), ...(p.title && /:\s*Amazon\./i.test(it.name) ? { name: p.title } : {}) }))
+            .catch(() => undefined);
+        })
+        .catch(() => undefined);
+    }
+  }, [items]);
+
   // ⌘V / Ctrl+V ergens op de pagina (niet in een tekstveld) voegt de link toe.
   const submitRef = React.useRef(submit);
   submitRef.current = submit;
