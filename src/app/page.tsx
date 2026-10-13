@@ -3745,7 +3745,7 @@ export default function Home() {
             clock={tabletHomeView === "dashboard"}
             className="pt-[var(--space-6)] motion-safe:animate-fade-up"
             action={
-              /* Weergavetoggle links van «Nieuw lijstje», allebei even hoog. */
+              /* Weergavetoggle rechtsboven, in beide weergaven op dezelfde plek; «Nieuw lijstje» staat onderaan. */
               <div className="hidden items-center gap-3 md:flex">
                 {tabletHomeView === "dashboard" && user ? <DashboardReminders userId={user.id} /> : null}
                 <SegmentedControl
@@ -3758,15 +3758,6 @@ export default function Home() {
                     { value: "dashboard", label: "Dashboard" },
                   ]}
                 />
-                {tabletHomeView === "overview" ? (
-                  <FloatingActionButton
-                    aria-label="Nieuw lijstje"
-                    desktopLabel="Nieuw lijstje"
-                    elevated={false}
-                    className="hidden h-[38px] min-h-0 gap-2 px-4 py-0 text-[15px] md:inline-flex md:[&_span]:!inline"
-                    onClick={handleOpenCreateModal}
-                  />
-                ) : null}
               </div>
             }
           />
@@ -4308,6 +4299,26 @@ export default function Home() {
           />
         </form>
       </SlideInModal>
+
+      {/* Tablet/desktop: «Nieuw lijstje» rechtsonder, even hoog als de zwevende tabbalk en op dezelfde basislijn. */}
+      {tabletHomeView === "overview" ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[max(32px,env(safe-area-inset-bottom,0px))] z-20 hidden md:block">
+          <div className="px-[var(--space-4)]">
+            <div className="mx-auto flex w-full max-w-[1180px] justify-end">
+              <button
+                type="button"
+                onClick={handleOpenCreateModal}
+                className="pointer-events-auto inline-flex h-[68px] items-center gap-2.5 rounded-pill bg-[var(--blue-500)] pl-7 pr-6 text-[17px] font-semibold text-[var(--white)] shadow-fab transition-[background-color,box-shadow,transform] duration-fast ease-out-strong [@media(hover:hover)]:hover:bg-[var(--blue-600)] [@media(hover:hover)]:hover:shadow-raised motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+              >
+                Nieuw lijstje
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="size-6">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div
         className={cn(
