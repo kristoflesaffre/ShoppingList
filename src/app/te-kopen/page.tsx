@@ -233,10 +233,20 @@ function ShoppingRow({
 
   return (
     <SwipeToDelete onDelete={() => onDelete(item.id)} deleteActionLabel={`Veeg naar links om "${item.name}" te verwijderen`}>
-      <div className="flex items-center gap-3 bg-[var(--white)] py-[11px] px-4 transition-colors duration-fast [@media(hover:hover)]:hover:bg-[var(--gray-25)]">
-        <CheckCircle checked={false} onClick={() => onToggle(item)} label={`${item.name} afvinken`} />
-        {editButton}
-      </div>
+      {/* Buiten de bewerkstand vinkt een tik op de rij het product af; wijzigen kan via «Bewerken». */}
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={false}
+        aria-label={`${item.name} afvinken`}
+        onClick={() => onToggle(item)}
+        className="flex w-full items-center gap-3 bg-[var(--white)] px-4 py-[11px] text-left transition-colors duration-fast [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+      >
+        <span className="-my-2 -ml-1.5 flex size-10 shrink-0 items-center justify-center" aria-hidden>
+          <span className="size-[22px] rounded-full shadow-[inset_0_0_0_1.6px_#c6c8ce]" />
+        </span>
+        {content}
+      </button>
     </SwipeToDelete>
   );
 }
