@@ -1,4 +1,5 @@
 export type HomeSectionId =
+  | "agenda"
   | "lijstjes"
   | "te-kopen"
   | "kalender"
@@ -21,6 +22,7 @@ export const HOME_SECTIONS_META: {
   illustration: string;
   hideable: boolean;
 }[] = [
+  { id: "agenda", label: "Agenda", description: "Je Google-afspraken van vandaag", tint: "#eef0ff", illustration: "/images/ui/kalender_320.webp", hideable: true },
   { id: "lijstjes", label: "Lijstjes", description: "Je boodschappenlijstjes", tint: "#f2f2fe", illustration: "/images/ui/lijstje_320.webp", hideable: false },
   { id: "te-kopen", label: "Te kopen", description: "Losse dingen om mee te nemen", tint: "#fdf3df", illustration: "/images/ui/kopen_320.webp", hideable: true },
   { id: "kalender", label: "Kalender", description: "Wat je deze week kookt", tint: "#fdeee3", illustration: "/images/ui/kalender_320.webp", hideable: true },
@@ -30,6 +32,7 @@ export const HOME_SECTIONS_META: {
 ];
 
 export const DEFAULT_SECTION_ORDER: HomeSectionId[] = [
+  "agenda",
   "lijstjes",
   "te-kopen",
   "kalender",
@@ -50,9 +53,15 @@ export function loadHomeSectionConfig(): HomeSectionConfig {
       // Filter verwijderde secties eruit; voeg nieuwe secties toe aan het einde.
       const validSaved = savedOrder.filter((id) => (DEFAULT_SECTION_ORDER as string[]).includes(id));
       const savedSet = new Set(validSaved);
-      const newSections = DEFAULT_SECTION_ORDER.filter((id) => !savedSet.has(id));
+      // Nieuwe secties komen op hun standaardplek (bv. «Agenda» bovenaan), niet achteraan.
+      const order = [...validSaved];
+      DEFAULT_SECTION_ORDER.forEach((id, index) => {
+        if (savedSet.has(id)) return;
+        const before = DEFAULT_SECTION_ORDER.slice(index + 1).find((next) => order.includes(next));
+        order.splice(before ? order.indexOf(before) : order.length, 0, id);
+      });
       return {
-        order: [...validSaved, ...newSections],
+        order,
         hidden: (parsed.hidden ?? []) as HomeSectionId[],
       };
     }

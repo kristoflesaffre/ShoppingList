@@ -108,3 +108,62 @@ export function googleCookieOptions(secure: boolean) {
     maxAge: 60 * 60 * 24 * 45,
   };
 }
+
+/**
+ * Meerdere Google-accounts (agenda op de startpagina): één versleutelde cookie met een lijst accounts.
+ * Een oudere cookie met één account wordt gelezen als lijst van één.
+ */
+export type GoogleAccount = GoogleAuthPayload & {
+  /** Naam van de hoofdagenda = het e-mailadres van het account. */
+  email?: string;
+};
+
+export type GoogleAccountsPayload = {
+  ownerId: string;
+  accounts: GoogleAccount[];
+};
+
+/** Maximaal aantal gekoppelde accounts (cookie blijft zo onder 4 kB). */
+export const GOOGLE_MAX_ACCOUNTS = 4;
+
+export function sealGoogleAccounts(payload: GoogleAccountsPayload, secret: string): string {
+  return sealPayload(payload, secret);
+}
+
+export function readGoogleAccounts(value: string, secret: string): GoogleAccountsPayload | null {
+  const raw = unsealPayload(value, secret) as Partial<GoogleAccountsPayload & GoogleAuthPayload> | null;
+  if (!raw || typeof raw.ownerId !== "string" || !raw.ownerId) return null;
+  if (Array.isArray(raw.accounts)) {
+    const accounts = raw.accounts.filter(
+      (a): a is GoogleAccount => !!a && typeof a.accessToken === "string" && Number.isFinite(a.expiresAt),
+    );
+    return { ownerId: raw.ownerId, accounts };
+  }
+  const single = unsealGoogleAuth(value, secret);
+  return single ? { ownerId: single.ownerId, accounts: [single] } : null;
+}
+
+/** Vernieuwt het toegangstoken als het (bijna) verlopen is; null = account niet meer bruikbaar. */
+export async function refreshGoogleAccount(
+  account: GoogleAccount,
+  clientId: string,
+  clientSecret: string,
+): Promise<GoogleAccount | null> {
+  if (account.expiresAt > Date.now() + 60_000) return account;
+  if (!account.refreshToken) return null;
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: account.refreshToken,
+      grant_type: "refresh_token",
+    }),
+    cache: "no-store",
+  });
+  if (!response.ok) return null;
+  const refreshed = (await response.json()) as { access_token?: string; expires_in?: number };
+  if (!refreshed.access_token) return null;
+  return { ...account, accessToken: refreshed.access_token, expiresAt: Date.now() + (refreshed.expires_in ?? 3600) * 1000 };
+}

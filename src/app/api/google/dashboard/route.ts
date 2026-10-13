@@ -3,9 +3,10 @@ import {
   GOOGLE_AUTH_COOKIE,
   googleCookieOptions,
   googleOAuthConfig,
-  sealGoogleAuth,
-  unsealGoogleAuth,
-  type GoogleAuthPayload,
+  readGoogleAccounts,
+  refreshGoogleAccount,
+  sealGoogleAccounts,
+  type GoogleAccount,
 } from "@/lib/google-dashboard-auth";
 
 export const runtime = "nodejs";
@@ -18,36 +19,6 @@ type GoogleCalendarEvent = {
   start?: { date?: string; dateTime?: string };
   end?: { date?: string; dateTime?: string };
 };
-
-async function refreshGoogleToken(
-  payload: GoogleAuthPayload,
-  clientId: string,
-  clientSecret: string,
-): Promise<GoogleAuthPayload | null> {
-  if (payload.expiresAt > Date.now() + 60_000) return payload;
-  if (!payload.refreshToken) return null;
-
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: payload.refreshToken,
-      grant_type: "refresh_token",
-    }),
-    cache: "no-store",
-  });
-  if (!response.ok) return null;
-  const refreshed = (await response.json()) as { access_token?: string; expires_in?: number };
-  if (!refreshed.access_token) return null;
-  return {
-    accessToken: refreshed.access_token,
-    refreshToken: payload.refreshToken,
-    expiresAt: Date.now() + (refreshed.expires_in ?? 3600) * 1000,
-    ownerId: payload.ownerId,
-  };
-}
 
 function localDayBounds(request: NextRequest) {
   const requestedStart = request.nextUrl.searchParams.get("timeMin");
@@ -81,60 +52,65 @@ export async function GET(request: NextRequest) {
   }
 
   const sealed = request.cookies.get(GOOGLE_AUTH_COOKIE)?.value;
-  const stored = sealed ? unsealGoogleAuth(sealed, config.cookieSecret) : null;
-  if (!stored || stored.ownerId !== ownerId) {
-    return NextResponse.json({ configured: true, connected: false, events: [] });
+  const stored = sealed ? readGoogleAccounts(sealed, config.cookieSecret) : null;
+  if (!stored || stored.ownerId !== ownerId || stored.accounts.length === 0) {
+    return NextResponse.json({ configured: true, connected: false, events: [], accounts: [] });
   }
 
-  const auth = await refreshGoogleToken(stored, config.clientId, config.clientSecret);
-  if (!auth) {
-    const response = NextResponse.json({ configured: true, connected: false, events: [] });
-    response.cookies.delete(GOOGLE_AUTH_COOKIE);
-    return response;
-  }
-
-  const headers = { authorization: `Bearer ${auth.accessToken}` };
   const bounds = localDayBounds(request);
-  const calendarUrl = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
-  calendarUrl.searchParams.set("timeMin", bounds.start);
-  calendarUrl.searchParams.set("timeMax", bounds.end);
-  calendarUrl.searchParams.set("singleEvents", "true");
-  calendarUrl.searchParams.set("orderBy", "startTime");
-  calendarUrl.searchParams.set("maxResults", "12");
+  // Alle gekoppelde accounts ophalen; een account dat niet meer werkt valt weg.
+  const results = await Promise.all(
+    stored.accounts.map(async (stale) => {
+      const account = await refreshGoogleAccount(stale, config.clientId, config.clientSecret);
+      if (!account) return { account: null, stale, events: [] as GoogleCalendarEvent[], name: undefined, failed: false };
+      const calendarUrl = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+      calendarUrl.searchParams.set("timeMin", bounds.start);
+      calendarUrl.searchParams.set("timeMax", bounds.end);
+      calendarUrl.searchParams.set("singleEvents", "true");
+      calendarUrl.searchParams.set("orderBy", "startTime");
+      calendarUrl.searchParams.set("maxResults", "25");
+      const res = await fetch(calendarUrl, { headers: { authorization: `Bearer ${account.accessToken}` }, cache: "no-store" }).catch(() => null);
+      if (res && (res.status === 401 || res.status === 403)) return { account: null, stale, events: [], name: undefined, failed: false };
+      if (!res?.ok) return { account, stale, events: [], name: undefined, failed: true };
+      const json = (await res.json()) as { items?: GoogleCalendarEvent[]; summary?: string };
+      return { account, stale, events: json.items ?? [], name: json.summary?.trim() || undefined, failed: false };
+    }),
+  );
 
-  const calendarResponse = await fetch(calendarUrl, { headers, cache: "no-store" });
+  const kept: GoogleAccount[] = results
+    .filter((r) => r.account)
+    .map((r) => ({ ...(r.account as GoogleAccount), email: (r.account as GoogleAccount).email ?? r.name }));
+  const accounts = kept.map((a, index) => ({ id: a.email ?? `account-${index + 1}`, email: a.email ?? null }));
+  const events = results
+    .flatMap((r) => {
+      if (!r.account) return [];
+      const accountId = (r.account.email ?? r.name) || `account-${kept.indexOf(r.account) + 1}`;
+      return r.events.map((event) => ({
+        id: `${accountId}:${event.id ?? ""}`,
+        title: event.summary?.trim() || "Zonder titel",
+        location: event.location?.trim() || null,
+        start: event.start?.dateTime ?? event.start?.date ?? null,
+        end: event.end?.dateTime ?? event.end?.date ?? null,
+        allDay: Boolean(event.start?.date && !event.start?.dateTime),
+        accountId,
+      }));
+    })
+    .sort((x, y) => (x.start ?? "").localeCompare(y.start ?? ""));
+  const unavailable = results.some((r) => r.failed);
 
-  if (calendarResponse.status === 401 || calendarResponse.status === 403) {
-    const response = NextResponse.json({ configured: true, connected: false, events: [] });
+  const response = NextResponse.json(
+    { configured: true, connected: kept.length > 0, events, accounts, ...(unavailable ? { unavailable: true } : {}) },
+    { status: unavailable && events.length === 0 && kept.length > 0 ? 502 : 200 },
+  );
+  const changed =
+    kept.length !== stored.accounts.length ||
+    kept.some((a, i) => a.accessToken !== stored.accounts[i]?.accessToken || a.email !== stored.accounts[i]?.email);
+  if (kept.length === 0) {
     response.cookies.delete(GOOGLE_AUTH_COOKIE);
-    return response;
-  }
-  if (!calendarResponse.ok) {
-    return NextResponse.json(
-      { configured: true, connected: true, events: [], unavailable: true },
-      { status: 502 },
-    );
-  }
-
-  const calendarJson = (await calendarResponse.json()) as { items?: GoogleCalendarEvent[] };
-
-  const response = NextResponse.json({
-    configured: true,
-    connected: true,
-    events: (calendarJson.items ?? []).map((event) => ({
-      id: event.id ?? "",
-      title: event.summary?.trim() || "Zonder titel",
-      location: event.location?.trim() || null,
-      start: event.start?.dateTime ?? event.start?.date ?? null,
-      end: event.end?.dateTime ?? event.end?.date ?? null,
-      allDay: Boolean(event.start?.date && !event.start?.dateTime),
-    })),
-  });
-
-  if (auth.accessToken !== stored.accessToken || auth.expiresAt !== stored.expiresAt) {
+  } else if (changed) {
     response.cookies.set(
       GOOGLE_AUTH_COOKIE,
-      sealGoogleAuth(auth, config.cookieSecret),
+      sealGoogleAccounts({ ownerId: stored.ownerId, accounts: kept }, config.cookieSecret),
       googleCookieOptions(request.nextUrl.protocol === "https:"),
     );
   }

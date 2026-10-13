@@ -1,0 +1,379 @@
+"use client";
+
+import * as React from "react";
+import { cn } from "@/lib/utils";
+import { ListSectionHeader } from "@/components/list_section_header";
+import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
+
+/**
+ * Agenda op de startpagina (canvas «Agenda A · Tijdlijn» + desktop «2 · Dagdelen»): de Google-afspraken
+ * van vandaag. Mobiel één tijdlijn met een «nu»-lijn; vanaf md drie kolommen ochtend · middag · avond.
+ * Meerdere Google-accounts kunnen gekoppeld worden; elk account krijgt een eigen kleur.
+ */
+
+type Rgb = [number, number, number];
+
+type AgendaEvent = {
+  id: string;
+  title: string;
+  location: string | null;
+  start: string | null;
+  end: string | null;
+  allDay: boolean;
+  accountId?: string;
+};
+
+type AgendaState = {
+  configured: boolean;
+  connected: boolean;
+  events: AgendaEvent[];
+  accounts?: { id: string; email: string | null }[];
+};
+
+const ACCOUNT_COLORS: Rgb[] = [
+  [79, 85, 241],
+  [229, 97, 138],
+  [47, 163, 107],
+  [224, 140, 47],
+  [139, 108, 240],
+];
+const NOW_RED: Rgb = [230, 70, 70];
+
+const PARTS: { key: "ochtend" | "middag" | "avond"; label: string; sub: string; from: number; to: number; color: Rgb; icon: string }[] = [
+  { key: "ochtend", label: "Ochtend", sub: "tot 12 u", from: 0, to: 12 * 60, color: [224, 170, 40], icon: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" },
+  { key: "middag", label: "Middag", sub: "12 – 18 u", from: 12 * 60, to: 18 * 60, color: [224, 140, 47], icon: "M4 8h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 10h2a2 2 0 0 1 0 4h-2" },
+  { key: "avond", label: "Avond", sub: "na 18 u", from: 18 * 60, to: 24 * 60, color: [98, 96, 230], icon: "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" },
+];
+
+const rgb = (c: Rgb, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const deep = (c: Rgb, f = 0.7) => `rgb(${Math.round(c[0] * f)},${Math.round(c[1] * f)},${Math.round(c[2] * f)})`;
+
+function minutesOfDay(iso: string | null): number | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isFinite(d.getTime()) ? d.getHours() * 60 + d.getMinutes() : null;
+}
+function timeLabel(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isFinite(d.getTime()) ? d.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" }) : "";
+}
+function accountName(email: string | null | undefined): string {
+  const local = (email ?? "").split("@")[0] ?? "";
+  return local ? local.charAt(0).toUpperCase() + local.slice(1) : "Agenda";
+}
+
+function GoogleG({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden className={className}>
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.7 17.7 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.1z" />
+      <path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z" />
+      <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.8 6C6.6 42.6 14.6 48 24 48z" />
+    </svg>
+  );
+}
+
+function ConnectButton({ href }: { href: string }) {
+  return (
+    <a
+      href={href}
+      className="inline-flex h-[46px] items-center gap-2.5 rounded-pill bg-action-primary pl-1.5 pr-5 text-[15px] font-bold text-white no-underline shadow-[0_10px_22px_-10px_rgba(79,85,241,0.8)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+    >
+      <span className="flex size-[34px] items-center justify-center rounded-full bg-[var(--white)]">
+        <GoogleG className="size-[18px]" />
+      </span>
+      Accounts koppelen
+    </a>
+  );
+}
+
+const PinIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[13px] shrink-0">
+    <path d="M12 21s-6-5.4-6-11a6 6 0 0 1 12 0c0 5.6-6 11-6 11z" />
+    <circle cx="12" cy="10" r="2.2" />
+  </svg>
+);
+
+type Row = AgendaEvent & { color: Rgb; account: string | null; startMin: number; endMin: number; state: "past" | "now" | "next" };
+
+function TimelineRow({ row }: { row: Row }) {
+  const now = row.state === "now";
+  return (
+    <li
+      className={cn("flex gap-3", now ? "-mx-2.5 rounded-[16px] px-2.5 py-2.5" : "py-2", row.state === "past" && "opacity-[0.45]")}
+      style={now ? { backgroundColor: mixWithWhiteRgb(row.color, 0.1) } : undefined}
+    >
+      <span className="w-11 shrink-0 text-right">
+        <span className="block text-sm font-extrabold leading-5 text-text-primary">{timeLabel(row.start)}</span>
+        <span className="block text-xs leading-4 text-[var(--text-tertiary)]">{timeLabel(row.end)}</span>
+      </span>
+      <span className="w-1 shrink-0 rounded-sm" style={{ backgroundColor: rgb(row.color) }} aria-hidden />
+      <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-[15px] font-bold leading-5 text-text-primary">{row.title}</span>
+          {now ? (
+            <span className="inline-flex h-5 shrink-0 items-center rounded-pill px-2 text-[11px] font-bold text-white" style={{ backgroundColor: rgb(row.color) }}>
+              Nu
+            </span>
+          ) : null}
+        </span>
+        {row.location || row.account ? (
+          <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[12.5px] leading-[18px] text-[var(--text-secondary)]">
+            {row.location ? <PinIcon /> : null}
+            <span className="truncate">{[row.location, row.account].filter(Boolean).join(" · ")}</span>
+          </span>
+        ) : null}
+      </span>
+    </li>
+  );
+}
+
+function NowLine({ label }: { label: string }) {
+  return (
+    <li className="my-0.5 flex items-center gap-2" aria-label={`Nu, ${label}`}>
+      <span className="w-11 text-right text-[11.5px] font-extrabold" style={{ color: rgb(NOW_RED) }}>
+        {label}
+      </span>
+      <span className="-ml-0.5 size-2 rounded-full" style={{ backgroundColor: rgb(NOW_RED) }} />
+      <span className="h-0.5 flex-1" style={{ backgroundColor: rgb(NOW_RED, 0.6) }} />
+    </li>
+  );
+}
+
+/** Tijdlijn met de «nu»-lijn vóór de eerste afspraak die nog moet beginnen. */
+function Timeline({ rows, nowMin, nowLabel, showNow = true }: { rows: Row[]; nowMin: number; nowLabel: string; showNow?: boolean }) {
+  const items: React.ReactNode[] = [];
+  let drawn = !showNow;
+  for (const row of rows) {
+    if (!drawn && row.startMin > nowMin) {
+      items.push(<NowLine key="__nu" label={nowLabel} />);
+      drawn = true;
+    }
+    items.push(<TimelineRow key={row.id} row={row} />);
+  }
+  if (!drawn && rows.length > 0 && rows[rows.length - 1].endMin <= nowMin) items.push(<NowLine key="__nu" label={nowLabel} />);
+  return <ul className="m-0 list-none p-0">{items}</ul>;
+}
+
+function AllDayChips({ rows }: { rows: Row[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="mb-1.5 flex flex-wrap gap-1.5">
+      {rows.map((r) => (
+        <span
+          key={r.id}
+          className="inline-flex h-7 max-w-full items-center gap-1.5 truncate rounded-pill px-3 text-[12.5px] font-bold"
+          style={{ backgroundColor: mixWithWhiteRgb(r.color, 0.14), color: deep(r.color) }}
+        >
+          <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
+          Hele dag · {r.title}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+const cardClass = "rounded-[22px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]";
+
+export function HomeAgendaSection({ ownerId, onHide }: { ownerId: string; onHide?: () => void }) {
+  const [state, setState] = React.useState<AgendaState | null>(null);
+  const [failed, setFailed] = React.useState(false);
+  const [now, setNow] = React.useState(() => new Date());
+
+  const load = React.useCallback(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const params = new URLSearchParams({ ownerId, timeMin: start.toISOString(), timeMax: end.toISOString() });
+    fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store" })
+      .then(async (r) => {
+        const json = (await r.json()) as AgendaState;
+        setState(json);
+        setFailed(!r.ok);
+      })
+      .catch(() => setFailed(true));
+  }, [ownerId]);
+
+  React.useEffect(() => {
+    load();
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    const refresh = window.setInterval(load, 5 * 60_000);
+    const tick = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(refresh);
+      window.clearInterval(tick);
+    };
+  }, [load]);
+
+  const connectHref = `/api/google/connect?ownerId=${encodeURIComponent(ownerId)}`;
+  const accounts = state?.accounts ?? [];
+  const colorOf = (accountId?: string): Rgb => {
+    const i = accounts.findIndex((a) => a.id === accountId);
+    return ACCOUNT_COLORS[(i < 0 ? 0 : i) % ACCOUNT_COLORS.length];
+  };
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowLabel = now.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
+
+  const allRows: Row[] = (state?.events ?? []).map((e) => {
+    const startMin = e.allDay ? 0 : minutesOfDay(e.start) ?? 0;
+    const endMin = e.allDay ? 24 * 60 : minutesOfDay(e.end) ?? startMin;
+    const account = accounts.length > 1 ? accountName(accounts.find((a) => a.id === e.accountId)?.email) : null;
+    return {
+      ...e,
+      color: colorOf(e.accountId),
+      account,
+      startMin,
+      endMin,
+      state: endMin <= nowMin ? "past" : startMin <= nowMin ? "now" : "next",
+    };
+  });
+  const allDay = allRows.filter((r) => r.allDay);
+  const timed = allRows.filter((r) => !r.allDay).sort((a, b) => a.startMin - b.startMin);
+
+  const dayRaw = now.toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "short" }).replace(".", "");
+  const dayLabel = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1);
+  const accountAvatars = (
+    <span className="flex items-center">
+      {accounts.slice(0, 4).map((a, i) => (
+        <span
+          key={a.id}
+          title={a.email ?? undefined}
+          className={cn("flex size-[26px] items-center justify-center rounded-full text-[11px] font-extrabold text-white ring-2 ring-[var(--bg-app)]", i > 0 && "-ml-1.5")}
+          style={{ backgroundColor: rgb(ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]) }}
+        >
+          {(a.email ?? "?").charAt(0).toUpperCase()}
+        </span>
+      ))}
+      <a
+        href={connectHref}
+        aria-label="Nog een Google-account koppelen"
+        className="-ml-1.5 flex size-[26px] items-center justify-center rounded-full bg-[var(--white)] text-action-primary shadow-[inset_0_0_0_1.5px_var(--border-subtle)] ring-2 ring-[var(--bg-app)]"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-3">
+          <path d="M12 6v12M6 12h12" />
+        </svg>
+      </a>
+    </span>
+  );
+  const connected = !!state?.connected;
+  const headerAction = connected ? (
+    <span className="flex shrink-0 items-center gap-4">
+      <span className="hidden text-[13.5px] font-semibold text-[var(--text-secondary)] md:inline">{dayLabel}</span>
+      {accountAvatars}
+      <a
+        href="https://calendar.google.com/calendar/r/day"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hidden text-[15px] font-semibold text-action-primary no-underline md:inline"
+      >
+        Open agenda
+      </a>
+    </span>
+  ) : undefined;
+
+  let body: React.ReactNode;
+  if (!state && !failed) {
+    body = <div className={cn(cardClass, "h-[180px] animate-pulse")} aria-label="Agenda laden" />;
+  } else if (!connected) {
+    body = (
+      <div className={cn(cardClass, "flex flex-col items-center gap-1.5 p-5 text-center md:flex-row md:items-center md:gap-7 md:p-6 md:text-left")}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie (enkel desktop) */}
+        <img src="/images/ui/kalender_320.webp" alt="" className="hidden size-[120px] shrink-0 object-contain md:block" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[19px] font-extrabold leading-tight text-text-primary">Je dag in één oogopslag</p>
+          <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">Koppel je Google-agenda en zie hier wat er vandaag gepland staat.</p>
+          <div className="mt-3.5">
+            <ConnectButton href={connectHref} />
+          </div>
+          {state && !state.configured ? (
+            <p className="mt-2.5 text-xs leading-4 text-[var(--text-tertiary)]">De Google-koppeling is op deze server nog niet ingesteld.</p>
+          ) : null}
+        </div>
+        <ul aria-hidden className="m-0 hidden w-[300px] shrink-0 list-none p-0 opacity-50 lg:block">
+          {["09:00", "12:30", "18:00"].map((t) => (
+            <li key={t} className="flex gap-2.5 py-[7px]">
+              <span className="w-10 text-[13px] font-extrabold text-[var(--text-tertiary)]">{t}</span>
+              <span className="w-1 rounded-sm bg-[var(--gray-50)]" />
+              <span className="h-[30px] flex-1 rounded-[9px] border-[1.5px] border-dashed border-[#d5d7e6]" />
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  } else if (timed.length === 0 && allDay.length === 0) {
+    body = (
+      <div className={cn(cardClass, "px-5 py-6 text-center")}>
+        <p className="text-base font-bold text-text-primary">Niets gepland vandaag</p>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">{failed ? "De agenda kon niet geladen worden." : "Een vrije dag — geniet ervan."}</p>
+      </div>
+    );
+  } else {
+    body = (
+      <>
+        {/* Mobiel: één tijdlijn */}
+        <div className={cn(cardClass, "px-4 pb-2.5 pt-3 md:hidden")}>
+          <AllDayChips rows={allDay} />
+          <Timeline rows={timed} nowMin={nowMin} nowLabel={nowLabel} />
+        </div>
+        {/* Desktop: ochtend · middag · avond */}
+        <div className="hidden md:block">
+          <AllDayChips rows={allDay} />
+          <div className="grid grid-cols-3 items-stretch gap-4">
+            {PARTS.map((part) => {
+              const rows = timed.filter((r) => r.startMin >= part.from && r.startMin < part.to);
+              const active = nowMin >= part.from && nowMin < part.to;
+              return (
+                <section
+                  key={part.key}
+                  aria-label={part.label}
+                  className="min-w-0 rounded-[22px] bg-[var(--white)] px-[18px] py-4"
+                  style={{
+                    boxShadow: active ? `0 0 0 2px ${rgb(part.color, 0.55)}` : "0 0 0 1px var(--border-subtle)",
+                    backgroundImage: active ? `linear-gradient(180deg, ${mixWithWhiteRgb(part.color, 0.14)}, #fff 120px)` : undefined,
+                  }}
+                >
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="flex size-[30px] items-center justify-center rounded-[10px]" style={{ backgroundColor: mixWithWhiteRgb(part.color, 0.18), color: deep(part.color, 0.75) }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                        <path d={part.icon} />
+                      </svg>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-base font-extrabold leading-5 text-text-primary">{part.label}</span>
+                      <span className="text-xs text-[var(--text-tertiary)]">
+                        {part.sub} · {rows.length} {rows.length === 1 ? "afspraak" : "afspraken"}
+                      </span>
+                    </span>
+                    {active ? (
+                      <span className="inline-flex h-[22px] items-center rounded-pill px-2.5 text-[11px] font-bold text-white" style={{ backgroundColor: rgb(part.color) }}>
+                        Nu
+                      </span>
+                    ) : null}
+                  </div>
+                  {rows.length > 0 ? (
+                    <Timeline rows={rows} nowMin={nowMin} nowLabel={nowLabel} showNow={active} />
+                  ) : (
+                    <p className="mt-2.5 rounded-[14px] border-[1.5px] border-dashed border-[#d5d7e6] px-3 py-3 text-[13px] text-[var(--text-tertiary)]">
+                      {nowMin >= part.to ? "Niets gepland" : "Vrij — tijd voor jezelf"}
+                    </p>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <section aria-label="Agenda" className="flex flex-col gap-3">
+      <ListSectionHeader label="Agenda" showNaarOverzicht={false} onHide={connected ? undefined : onHide} action={headerAction} />
+      {body}
+    </section>
+  );
+}

@@ -85,6 +85,7 @@ import {
   HomeTodayDashboard,
   type DashboardMeal,
 } from "@/components/home_today_dashboard";
+import { HomeAgendaSection } from "@/components/home_agenda_section";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { HomeDiscoverBanners, type DiscoverBanner } from "@/components/home_discover_banners";
@@ -3663,6 +3664,8 @@ export default function Home() {
             onHide={onHide}
           />
         );
+      case "agenda":
+        return <HomeAgendaSection ownerId={ownerId} onHide={onHide} />;
       case "kalender":
         return (
           <HomeKalenderSection
@@ -3689,6 +3692,10 @@ export default function Home() {
         return null;
     }
   };
+
+  const agendaFirstOnDesktop =
+    !homeSectionConfig.hidden.includes("agenda") &&
+    homeSectionConfig.order.indexOf("agenda") < homeSectionConfig.order.indexOf("lijstjes");
 
   if (authLoading || !user || isLoading) {
     return <PageSpinner />;
@@ -3764,6 +3771,8 @@ export default function Home() {
           <div className="hidden md:block">
             {tabletHomeView === "overview" ? (
               <div className="flex flex-col gap-10 pt-8">
+                {/* Agenda boven de lijstjes als ze zo gerangschikt is (standaard: bovenaan). */}
+                {agendaFirstOnDesktop ? renderHomeSlot("agenda") : null}
                 {/* Lijstjes over de volle breedte (drie kaartjes), daaronder Te kopen en de diepvries even hoog. */}
                 <div className="min-w-0">
                   {favoritesPromo.show ? (
@@ -3815,6 +3824,7 @@ export default function Home() {
                     (sectionId) =>
                       sectionId !== "lijstjes" &&
                       sectionId !== "diepvries" &&
+                      !(sectionId === "agenda" && agendaFirstOnDesktop) &&
                       !homeSectionConfig.hidden.includes(sectionId),
                   )
                   .map((sectionId, index) => {

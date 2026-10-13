@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
   authorizeUrl.searchParams.set("redirect_uri", config.redirectUri);
   authorizeUrl.searchParams.set("response_type", "code");
   authorizeUrl.searchParams.set("access_type", "offline");
-  authorizeUrl.searchParams.set("prompt", "consent");
+  // «select_account»: met «+» kan een tweede account (bv. dat van je partner) gekoppeld worden.
+  authorizeUrl.searchParams.set("prompt", "consent select_account");
   authorizeUrl.searchParams.set("include_granted_scopes", "false");
   authorizeUrl.searchParams.set("state", state);
   authorizeUrl.searchParams.set(
