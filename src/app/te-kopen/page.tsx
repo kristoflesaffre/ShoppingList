@@ -660,7 +660,6 @@ export default function TeKopenPage() {
     item.ownerId && item.ownerId !== user.id
       ? { firstName: shoppingFirstNameByUserId.get(item.ownerId) ?? "deelnemer", avatarUrl: shoppingAvatarByUserId.get(item.ownerId) }
       : null;
-  const countLabel = `${openItems.length} ${openItems.length === 1 ? "product" : "producten"}`;
 
   /** Kop zoals bij «Kado's»: kleine illustratie links, naam, pillen met aantal en met wie gedeeld. */
   const pill = "inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.85)] px-2.5 text-[12.5px] font-bold";
@@ -768,10 +767,6 @@ export default function TeKopenPage() {
           </div>
 
           <div className="mt-5 flex min-w-0 flex-col gap-5">
-            {/* Aantal als eigen kopje boven de lijst, zoals «n ideeën» bij Kado's. */}
-            {!isStoreOrderMode && openItems.length > 0 ? (
-              <h2 className="-mb-2 mx-1 text-[17px] font-bold text-text-primary">{countLabel}</h2>
-            ) : null}
             {isStoreOrderMode ? (
               <StoreOrderPanel storeKeys={orderedStoreKeys} onChange={(next) => setStoreOrder(next)} />
             ) : (
