@@ -284,7 +284,8 @@ function FocusDay({
     >
       <span className="lg:hidden">{plateBlock(250, 86, "-bottom-1 right-1")}</span>
       <span className="hidden lg:block">{plateBlock(330, 110, "-bottom-1 -right-5")}</span>
-      <div className="flex min-w-0 flex-col items-center lg:flex-1 lg:items-start">
+      {/* Mobiel: plaats voor een titel van twee regels, zodat de rij eronder bij «Eten» en «Agenda» even hoog staat. */}
+      <div className="flex min-w-0 flex-col items-center max-lg:min-h-[146px] lg:flex-1 lg:items-start">
         {isToday ? (
           <span className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold tracking-[0.04em] text-[var(--blue-500)] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]">
             VANDAAG
@@ -525,12 +526,12 @@ export default function KalenderPage() {
     if (!el) return;
     const next = el.querySelector<HTMLElement>(`[data-lane-day="${focusIso}"]`);
     if (!next) return;
-    const card = next.offsetWidth;
-    const peek = Math.round(card * 0.4) + 12;
+    // Zelfde plaats als het snappunt: scroll-padding laat een derde van de vorige dag zien (zoals «Agenda»).
+    const peek = parseFloat(getComputedStyle(el).scrollPaddingLeft) || 0;
     el.scrollLeft = Math.max(0, next.offsetLeft - el.offsetLeft - peek);
     updateArrows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusIso, dataLoading, calendarIsEmpty, updateArrows]);
+  }, [focusIso, dataLoading, calendarIsEmpty, weergave, updateArrows]);
 
   const scrollLane = (dir: -1 | 1) => {
     const el = laneRef.current;
@@ -621,7 +622,7 @@ export default function KalenderPage() {
             <div
               ref={laneRef}
               onScroll={updateArrows}
-              className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 pt-1.5 [scrollbar-width:none] lg:mx-0 lg:scroll-px-0 lg:gap-4 lg:px-0 [&::-webkit-scrollbar]:hidden"
+              className="-mx-4 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-1.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden"
             >
               {laneDays.map((d) => (
                 <div key={d.iso} data-lane-day={d.iso} className="flex-none">

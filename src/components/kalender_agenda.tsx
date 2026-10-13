@@ -204,17 +204,20 @@ function ChevronIcon({ direction }: { direction: "left" | "right" }) {
 
 /** Bovenaan: kalenderillustratie met het uur + de volgende afspraak. */
 function NextHero({ next, current, now }: { next: WeekEvent | null; current: WeekEvent | null; now: Date }) {
-  const illustration = (size: number) => (
-    <span className="relative block shrink-0" style={{ width: size, height: size }}>
-      <Image src="/images/ui/kalender_320.webp" alt="" width={320} height={320} priority className="size-full object-contain drop-shadow-[0_24px_30px_rgba(120,60,0,0.25)]" />
-      {next ? (
-        <span
-          className="absolute bottom-[12%] left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap rounded-pill bg-[var(--white)] font-extrabold shadow-[0_8px_18px_-10px_rgba(0,0,0,0.35)]"
-          style={{ height: size * 0.16, paddingInline: size * 0.06, fontSize: size * 0.09, color: deep(next.color, 0.6) }}
-        >
-          {next.allDay ? "Hele dag" : hhmm(next.startAt)}
-        </span>
-      ) : null}
+  // Zelfde vak als het bord op «Eten» (250 / 330 px), zodat tekst en rij op dezelfde plaats staan.
+  const illustration = (box: number, size = Math.round(box * 0.8)) => (
+    <span className="flex shrink-0 items-center justify-center" style={{ width: box, height: box }}>
+      <span className="relative block shrink-0" style={{ width: size, height: size }}>
+        <Image src="/images/ui/kalender_320.webp" alt="" width={320} height={320} priority className="size-full object-contain drop-shadow-[0_24px_30px_rgba(120,60,0,0.25)]" />
+        {next ? (
+          <span
+            className="absolute bottom-[12%] left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap rounded-pill bg-[var(--white)] font-extrabold shadow-[0_8px_18px_-10px_rgba(0,0,0,0.35)]"
+            style={{ height: size * 0.16, paddingInline: size * 0.06, fontSize: size * 0.09, color: deep(next.color, 0.6) }}
+          >
+            {next.allDay ? "Hele dag" : hhmm(next.startAt)}
+          </span>
+        ) : null}
+      </span>
     </span>
   );
   const dateLabel = next
@@ -223,11 +226,12 @@ function NextHero({ next, current, now }: { next: WeekEvent | null; current: Wee
   return (
     <section
       aria-label={next ? `Volgende afspraak: ${next.title}` : "Geen afspraken meer deze week"}
-      className="flex flex-col items-center gap-3 text-center lg:flex-row lg:items-center lg:gap-16 lg:pl-10 lg:text-left"
+      className="flex flex-col items-center gap-2 text-center lg:flex-row lg:items-center lg:gap-12 lg:pl-6 lg:text-left"
     >
-      <span className="lg:hidden">{illustration(190)}</span>
-      <span className="hidden lg:block">{illustration(270)}</span>
-      <div className="flex min-w-0 flex-col items-center lg:flex-1 lg:items-start">
+      <span className="lg:hidden">{illustration(250)}</span>
+      <span className="hidden lg:block">{illustration(330)}</span>
+      {/* Mobiel: plaats voor een titel van twee regels, zodat de rij eronder bij «Eten» en «Agenda» even hoog staat. */}
+      <div className="flex min-w-0 flex-col items-center max-lg:min-h-[146px] lg:flex-1 lg:items-start">
         {next ? (
           <>
             <span className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-[var(--blue-500)] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]">
@@ -268,7 +272,7 @@ function EventTile({ e, now, isNext }: { e: WeekEvent; now: Date; isNext: boolea
       data-next={isNext ? "true" : undefined}
       aria-label={`${dayLabel(e.startAt, now).toLowerCase()}, ${e.allDay ? "hele dag" : hhmm(e.startAt)}: ${e.title}`}
       className={cn(
-        "relative h-[190px] w-[150px] flex-none snap-start rounded-[26px] p-3.5 lg:h-[230px] lg:w-[200px] lg:p-4",
+        "relative h-[190px] w-[150px] flex-none snap-start rounded-[26px] p-3.5 lg:h-[230px] lg:w-[220px] lg:p-4",
         past && "opacity-50",
       )}
       style={{
@@ -307,7 +311,7 @@ function EventTile({ e, now, isNext }: { e: WeekEvent; now: Date; isNext: boolea
 
 function TileSkeleton() {
   return (
-    <div className="h-[190px] w-[150px] flex-none rounded-[26px] bg-[var(--white)]/60 p-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:h-[230px] lg:w-[200px] lg:p-4" aria-hidden>
+    <div className="h-[190px] w-[150px] flex-none rounded-[26px] bg-[var(--white)]/60 p-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:h-[230px] lg:w-[220px] lg:p-4" aria-hidden>
       <span className="shimmer block h-2.5 w-14 rounded-md" />
       <span className="shimmer mt-2 block h-6 w-20 rounded-md" />
       <span className="shimmer mt-[70px] block h-4 w-[80%] rounded-md lg:mt-[100px]" />
@@ -356,8 +360,10 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
   if (!state && !failed) {
     return (
       <div aria-label="Agenda laden" aria-busy>
-        <div className="mt-2 flex flex-col items-center gap-3 lg:mt-4 lg:flex-row lg:gap-16 lg:pl-10">
-          <span className="shimmer block size-[190px] rounded-[40px] lg:size-[270px]" />
+        <div className="mt-2 flex flex-col items-center gap-2 lg:mt-4 lg:flex-row lg:gap-12 lg:pl-6">
+          <span className="flex size-[250px] items-center justify-center lg:size-[330px]">
+            <span className="shimmer block size-[200px] rounded-[40px] lg:size-[264px]" />
+          </span>
           <span className="flex flex-col items-center gap-2.5 lg:items-start">
             <span className="shimmer block h-6 w-32 rounded-pill" />
             <span className="shimmer block h-3.5 w-44 rounded-md" />
@@ -368,7 +374,7 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
         <div className="mb-1.5 mt-8 lg:mt-10">
           <span className="shimmer block h-5 w-28 rounded-md" />
         </div>
-        <div className="-mx-4 flex gap-3 overflow-hidden px-4 pb-2 pt-3 lg:mx-0 lg:gap-4 lg:px-0">
+        <div className="-mx-4 flex gap-3 overflow-hidden px-4 pb-2 pt-1.5 lg:mx-0 lg:gap-4 lg:px-0">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <TileSkeleton key={i} />
           ))}
@@ -418,7 +424,7 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
         <div
           ref={laneRef}
           onScroll={updateArrows}
-          className="-mx-4 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-3.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[87px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden"
+          className="-mx-4 flex -mt-2 snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-3.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden"
         >
           {lane.map((e) => (
             <EventTile key={e.id} e={e} now={now} isNext={e.id === next?.id} />
