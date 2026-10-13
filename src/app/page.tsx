@@ -88,6 +88,7 @@ import {
   type DashboardShopping,
 } from "@/components/home_tablet_dashboard";
 import { HomeAgendaSection } from "@/components/home_agenda_section";
+import { useAlwaysOn } from "@/lib/use_always_on";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { HomeDiscoverBanners, type DiscoverBanner } from "@/components/home_discover_banners";
@@ -3711,6 +3712,9 @@ export default function Home() {
         return null;
     }
   };
+
+  // Tablet-dashboard: na 2 min zonder aanraking het donkere always-on-scherm (zelfde opbouw).
+  useAlwaysOn(tabletHomeView === "dashboard");
 
   const agendaFirstOnDesktop =
     !homeSectionConfig.hidden.includes("agenda") &&

@@ -107,7 +107,7 @@ function TimelineRow({ row }: { row: AgendaRow }) {
   return (
     <li
       className={cn("flex gap-3", now ? "-mx-2.5 rounded-[16px] px-2.5 py-2.5" : "py-2", row.state === "past" && "opacity-[0.45]")}
-      style={now ? { backgroundColor: mixWithWhiteRgb(row.color, 0.1) } : undefined}
+      style={now ? { backgroundColor: rgb(row.color, 0.11) } : undefined}
     >
       <span className="w-11 shrink-0 text-right">
         <span className="block text-sm font-extrabold leading-5 text-text-primary">{timeLabel(row.start)}</span>
@@ -169,7 +169,7 @@ export function AllDayChips({ rows }: { rows: AgendaRow[] }) {
         <span
           key={r.id}
           className="inline-flex h-7 max-w-full items-center gap-1.5 truncate rounded-pill px-3 text-[12.5px] font-bold"
-          style={{ backgroundColor: mixWithWhiteRgb(r.color, 0.14), color: deep(r.color) }}
+          style={{ backgroundColor: rgb(r.color, 0.14), color: `color-mix(in srgb, ${rgb(r.color)} 62%, var(--text-primary))` }}
         >
           <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
           Hele dag · {r.title}

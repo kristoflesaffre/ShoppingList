@@ -28,7 +28,6 @@ export type DashboardShopping = { label: string; sub: string; href: string } | n
 
 type Rgb = [number, number, number];
 const ORANGE: Rgb = [224, 140, 47];
-const YELLOW: Rgb = [240, 180, 40];
 const deep = (c: Rgb, f = 0.62) => `rgb(${Math.round(c[0] * f)},${Math.round(c[1] * f)},${Math.round(c[2] * f)})`;
 
 // ─── Weericonen (zelfde stijl als het canvas) ───────────────────────────────
@@ -100,7 +99,7 @@ export function WeatherIcon({ kind, size, className }: { kind: WeatherKind; size
     ),
   };
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden className={cn("overflow-visible drop-shadow-[0_4px_6px_rgba(20,30,80,0.18)]", className)}>
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden className={cn("overflow-visible drop-shadow-[0_4px_6px_rgba(20,30,80,0.18)] [[data-aod]_&]:opacity-85 [[data-aod]_&]:brightness-90", className)}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#ffffff" />
@@ -123,7 +122,7 @@ function TodayWeather({ weather }: { weather: Weather | null }) {
   return (
     <section
       aria-label={`Weer vandaag in ${weather.place}`}
-      className={cn(tile, "flex min-w-0 flex-1 flex-col bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] px-[18px] py-4 text-white shadow-[0_18px_40px_-24px_rgba(40,100,220,0.8)]")}
+      className={cn(tile, "flex min-w-0 flex-1 flex-col bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] px-[18px] py-4 text-white shadow-[0_18px_40px_-24px_rgba(40,100,220,0.8)] [[data-aod]_&]:bg-[linear-gradient(160deg,#173468,#0f2347_55%,#0a1630)] [[data-aod]_&]:text-[#eaf1ff] [[data-aod]_&]:shadow-[0_18px_40px_-26px_rgba(60,120,255,0.6)]")}
     >
       <WeatherIcon kind={weather.now.kind} size={136} className="absolute -right-[18px] -top-[26px]" />
       <span className="text-[11.5px] font-extrabold tracking-[0.08em] opacity-90">VANDAAG · {weather.place.toUpperCase()}</span>
@@ -155,14 +154,14 @@ function TomorrowWeather({ weather }: { weather: Weather | null }) {
   return (
     <section
       aria-label={t ? `Weer morgen: ${t.label}, ${t.max} tot ${t.min} graden` : "Weer morgen"}
-      className={cn(tile, "flex w-[124px] shrink-0 flex-col items-center justify-center gap-1.5 bg-[linear-gradient(170deg,#e4ecfb,#f1f5fd)] text-center shadow-[0_0_0_1px_var(--border-subtle)]")}
+      className={cn(tile, "flex w-[124px] shrink-0 flex-col items-center justify-center gap-1.5 bg-[linear-gradient(170deg,#e4ecfb,#f1f5fd)] text-center shadow-[0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[linear-gradient(170deg,#141c33,#0d1222)] [[data-aod]_&]:shadow-[0_0_0_1px_#1d2742]")}
     >
-      <span className="text-[11px] font-extrabold tracking-[0.08em] text-[#4a5f8f]">MORGEN</span>
+      <span className="text-[11px] font-extrabold tracking-[0.08em] text-[#4a5f8f] [[data-aod]_&]:text-[#9db7e6]">MORGEN</span>
       {t ? (
         <>
           <WeatherIcon kind={t.kind} size={64} />
-          <span className="text-2xl font-extrabold leading-none text-[#1d2f5c]">{t.max}°</span>
-          <span className="text-[13px] font-bold text-[#7b8bb0]">{t.min}°</span>
+          <span className="text-2xl font-extrabold leading-none text-[#1d2f5c] [[data-aod]_&]:text-[#e4e9f7]">{t.max}°</span>
+          <span className="text-[13px] font-bold text-[#7b8bb0] [[data-aod]_&]:text-[#7d8aa8]">{t.min}°</span>
         </>
       ) : (
         <span className="size-16 animate-pulse rounded-full bg-white/70" />
@@ -183,21 +182,21 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
     <>
       {photo ? (
         // eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app
-        <img src={photo} alt="" className="absolute -right-[30px] -top-1.5 size-[250px] object-contain drop-shadow-[0_18px_24px_rgba(120,60,0,0.35)]" />
+        <img src={photo} alt="" className="absolute -right-[30px] -top-1.5 size-[250px] object-contain drop-shadow-[0_18px_24px_rgba(120,60,0,0.35)] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element -- lokale illustratie
         <img src="/images/ui/kalender_320.webp" alt="" className="absolute -bottom-4 -right-4 size-[180px] object-contain opacity-90" />
       )}
-      <span className="absolute left-[18px] top-4 text-[11.5px] font-extrabold tracking-[0.08em] text-[rgba(90,40,0,0.75)]">VANDAAG ETEN WE</span>
+      <span className="absolute left-[18px] top-4 text-[11.5px] font-extrabold tracking-[0.08em] text-[rgba(90,40,0,0.75)] [[data-aod]_&]:text-[#d8a874]">VANDAAG ETEN WE</span>
       <span className="absolute bottom-[18px] left-[18px] max-w-[60%]">
-        <span className="block text-[34px] font-extrabold leading-tight tracking-[-0.02em] text-[#3d1d00]">{meal?.title ?? "Nog niets gepland"}</span>
-        <span className="block text-[13.5px] font-semibold text-[rgba(61,29,0,0.75)]">{meal ? meal.subtitle : "Plan iets in de kalender"}</span>
+        <span className="block text-[34px] font-extrabold leading-tight tracking-[-0.02em] text-[#3d1d00] [[data-aod]_&]:text-[#ffe9cc]">{meal?.title ?? "Nog niets gepland"}</span>
+        <span className="block text-[13.5px] font-semibold text-[rgba(61,29,0,0.75)] [[data-aod]_&]:text-[#d8a874]">{meal ? meal.subtitle : "Plan iets in de kalender"}</span>
       </span>
     </>
   );
   const cls = cn(
     tile,
-    "block min-w-0 flex-1 bg-[radial-gradient(120%_95%_at_80%_35%,#ffe6a8_0%,#ffc76b_45%,#f59f3a_100%)] no-underline shadow-[0_18px_40px_-22px_rgba(230,140,30,0.9)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+    "block min-w-0 flex-1 bg-[radial-gradient(120%_95%_at_80%_35%,#ffe6a8_0%,#ffc76b_45%,#f59f3a_100%)] no-underline shadow-[0_18px_40px_-22px_rgba(230,140,30,0.9)] [[data-aod]_&]:bg-[radial-gradient(120%_95%_at_80%_35%,#5a3510_0%,#3a2209_50%,#1d1105_100%)] [[data-aod]_&]:shadow-[0_18px_40px_-26px_rgba(255,150,40,0.5)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
   );
   return meal ? (
     <Link href={meal.href} className={cls} aria-label={`Vandaag: ${meal.title}`}>
@@ -219,21 +218,21 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
       aria-label={meal ? `Morgen: ${meal.title}` : "Morgen: nog niets gepland"}
       className={cn(
         tile,
-        "flex w-[124px] shrink-0 flex-col items-center justify-center gap-2 bg-[linear-gradient(170deg,#ffeadd,#fff6ef)] px-2.5 py-3 text-center no-underline shadow-[0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        "flex w-[124px] shrink-0 flex-col items-center justify-center gap-2 bg-[linear-gradient(170deg,#ffeadd,#fff6ef)] px-2.5 py-3 text-center no-underline shadow-[0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[linear-gradient(170deg,#2a1a10,#160e09)] [[data-aod]_&]:shadow-[0_0_0_1px_#3a2612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
       )}
     >
-      <span className="text-[11px] font-extrabold tracking-[0.08em]" style={{ color: deep(ORANGE, 0.6) }}>
+      <span className="text-[11px] font-extrabold tracking-[0.08em] text-[rgb(139,87,29)] [[data-aod]_&]:text-[#d8a874]">
         MORGEN
       </span>
       {photo ? (
         // eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app
-        <img src={photo} alt="" className="size-[76px] rounded-full bg-white object-cover shadow-[0_12px_20px_-12px_rgba(120,40,0,0.6)]" />
+        <img src={photo} alt="" className="size-[76px] rounded-full bg-white object-cover shadow-[0_12px_20px_-12px_rgba(120,40,0,0.6)] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" />
       ) : (
         <span className="flex size-[76px] items-center justify-center rounded-full border-[1.5px] border-dashed border-[#e8cdb8] text-2xl text-[#d9b49a]">?</span>
       )}
-      <span className="line-clamp-2 text-[13.5px] font-extrabold leading-tight text-[#3d1d00]">{meal?.title ?? "Nog niets"}</span>
+      <span className="line-clamp-2 text-[13.5px] font-extrabold leading-tight text-[#3d1d00] [[data-aod]_&]:text-[#e4e6ef]">{meal?.title ?? "Nog niets"}</span>
       {meal?.fromStock ? (
-        <span className="inline-flex h-[22px] items-center gap-1 rounded-pill bg-white px-2 text-[11px] font-extrabold text-[#2f6fd0]" title="Vanavond uit de diepvries halen">
+        <span className="inline-flex h-[22px] items-center gap-1 rounded-pill bg-white px-2 text-[11px] font-extrabold text-[#2f6fd0] [[data-aod]_&]:bg-[rgba(80,130,255,0.16)] [[data-aod]_&]:text-[#8fb8ff]" title="Vanavond uit de diepvries halen">
           ❄ ontdooien
         </span>
       ) : null}
@@ -253,7 +252,7 @@ function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; 
   return (
     <section
       aria-label="Agenda vandaag"
-      className="flex min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] px-5 py-4 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]"
+      className="flex min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] px-5 py-4 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[#0b0c12] [[data-aod]_&]:shadow-[0_0_0_1px_#191b25]"
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-xl font-extrabold text-text-primary">Vandaag</h2>
@@ -279,17 +278,17 @@ function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; 
         <>
           {next && countdown ? (
             <div
-              className="mb-2.5 flex items-center gap-3.5 rounded-[18px] px-3.5 py-3"
+              className="mb-2.5 flex items-center gap-3.5 rounded-[18px] px-3.5 py-3 [[data-aod]_&]:!bg-[linear-gradient(135deg,#3a2410,#1c1209)]"
               style={{ backgroundImage: `linear-gradient(135deg, ${mixWithWhiteRgb(ORANGE, 0.22)}, ${mixWithWhiteRgb(ORANGE, 0.06)})` }}
             >
-              <span className="flex size-[58px] shrink-0 flex-col items-center justify-center rounded-2xl bg-white shadow-[0_6px_14px_-8px_rgba(224,140,47,0.8)]">
-                <span className="text-xl font-extrabold leading-none" style={{ color: deep(ORANGE) }}>
+              <span className="flex size-[58px] shrink-0 flex-col items-center justify-center rounded-2xl bg-white shadow-[0_6px_14px_-8px_rgba(224,140,47,0.8)] [[data-aod]_&]:bg-[#120c07]">
+                <span className="text-xl font-extrabold leading-none text-[rgb(139,87,29)] [[data-aod]_&]:text-[#e0a060]">
                   {countdown}
                 </span>
                 <span className="text-[9.5px] font-extrabold text-[var(--text-tertiary)]">UUR</span>
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[11px] font-extrabold tracking-[0.06em]" style={{ color: deep(ORANGE) }}>
+                <span className="block text-[11px] font-extrabold tracking-[0.06em] text-[rgb(139,87,29)] [[data-aod]_&]:text-[#e0a060]">
                   VOLGENDE
                 </span>
                 <span className="block truncate text-lg font-extrabold text-text-primary">
@@ -313,15 +312,14 @@ function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; 
       <div className="mt-3 flex gap-2 border-t border-[var(--border-subtle)] pt-3">
         <Link
           href="/te-kopen"
-          className="flex flex-1 items-center gap-2.5 rounded-[14px] px-3 py-2.5 no-underline"
-          style={{ backgroundColor: mixWithWhiteRgb(YELLOW, 0.2) }}
+          className="flex flex-1 items-center gap-2.5 rounded-[14px] bg-[rgb(252,240,212)] px-3 py-2.5 no-underline [[data-aod]_&]:bg-[rgba(230,196,90,0.12)]"
         >
-          <b className="text-xl" style={{ color: deep(YELLOW, 0.6) }}>
+          <b className="text-xl text-[rgb(144,108,24)] [[data-aod]_&]:text-[#e6c45a]">
             {shoppingCount}
           </b>
           <span className="text-[13px] font-bold text-text-primary">Te kopen</span>
         </Link>
-        <Link href={nextShopping?.href ?? "/lijstjes-beheren/lijstjes"} className="flex flex-1 items-center rounded-[14px] bg-[var(--blue-25)] px-3 py-2.5 no-underline">
+        <Link href={nextShopping?.href ?? "/lijstjes-beheren/lijstjes"} className="flex flex-1 items-center rounded-[14px] bg-[var(--blue-25)] px-3 py-2.5 no-underline [[data-aod]_&]:bg-[rgba(110,120,255,0.12)]">
           <span className="truncate text-[13px] font-bold text-text-primary">
             {nextShopping ? nextShopping.label : "Lijstjes"}{" "}
             <span className="font-medium text-[var(--text-secondary)]">· {nextShopping ? nextShopping.sub : "alle lijstjes"}</span>
@@ -354,7 +352,7 @@ export function DashboardReminders({ userId }: { userId: string }) {
   return (
     <span className="flex gap-1.5">
       {chips.map((c) => (
-        <Link key={c.id} href={`/vast/${c.id}`} className="inline-flex h-7 items-center rounded-pill bg-[#fbe2ea] px-3 text-xs font-bold text-[#8f3756] no-underline">
+        <Link key={c.id} href={`/vast/${c.id}`} className="inline-flex h-7 items-center rounded-pill bg-[#fbe2ea] px-3 text-xs font-bold text-[#8f3756] no-underline [[data-aod]_&]:bg-[rgba(229,97,138,0.16)] [[data-aod]_&]:text-[#f0a3bd]">
           {c.label}
         </Link>
       ))}

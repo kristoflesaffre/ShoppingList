@@ -122,3 +122,24 @@ body::before {
     animation: none;
   }
 }
+
+/*
+ * Always-on-scherm (tablet-dashboard, zie `src/lib/use_always_on.ts`): donker thema op puur zwart
+ * (AMOLED-pixels uit), de hele pagina schuift langzaam mee tegen inbranden, ’s nachts extra gedimd.
+ */
+:root[data-aod] {
+  --bg-app: #000000 !important;
+  background-color: #000000;
+}
+html[data-aod] body {
+  transform: translate(var(--aod-x, 0px), var(--aod-y, 0px));
+  transition: transform 3s ease-in-out, filter 2s ease;
+}
+html[data-aod="night"] body {
+  filter: brightness(0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-aod] body {
+    transition: none;
+  }
+}
