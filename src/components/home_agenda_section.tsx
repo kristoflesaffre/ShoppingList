@@ -51,19 +51,29 @@ const ACCOUNT_COLORS: Rgb[] = [
 ];
 const NOW_RED: Rgb = [230, 70, 70];
 
-const PARTS: { key: "ochtend" | "middag" | "avond"; label: string; sub: string; from: number; to: number; color: Rgb; icon: string; free: { image: string; title: string; text: string } }[] = [
+const PARTS: { key: "ochtend" | "middag" | "avond"; label: string; sub: string; from: number; to: number; color: Rgb; icon: string; free: { images: string[]; title: string; text: string } }[] = [
   // Ochtend: koffie met stoomkrulletjes (oranje); middag: de volle zon (geel); avond: maan.
-  { key: "ochtend", label: "Ochtend", sub: "tot 12 u", from: 0, to: 12 * 60, color: [224, 140, 47], icon: "M4 12h12v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 13h1.5a2 2 0 0 1 0 4H16M6.5 3.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7M10 2.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7M13.5 3.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7", free: { image: "/images/ui/zomer_240.webp", title: "Vrije ochtend", text: "Rustig aan de dag beginnen" } },
-  { key: "middag", label: "Middag", sub: "12 – 18 u", from: 12 * 60, to: 18 * 60, color: [224, 170, 40], icon: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4", free: { image: "/images/ui/vakantie_240.webp", title: "Vrije middag", text: "Niets gepland — even niks moeten" } },
-  { key: "avond", label: "Avond", sub: "na 18 u", from: 18 * 60, to: 24 * 60, color: [98, 96, 230], icon: "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z", free: { image: "/images/ui/ster_240.webp", title: "Vrije avond", text: "Tijd voor jezelf" } },
+  { key: "ochtend", label: "Ochtend", sub: "tot 12 u", from: 0, to: 12 * 60, color: [224, 140, 47], icon: "M4 12h12v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 13h1.5a2 2 0 0 1 0 4H16M6.5 3.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7M10 2.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7M13.5 3.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7", free: { images: ["thee", "boek", "slippers"], title: "Vrije ochtend", text: "Rustig aan de dag beginnen" } },
+  { key: "middag", label: "Middag", sub: "12 – 18 u", from: 12 * 60, to: 18 * 60, color: [224, 170, 40], icon: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4", free: { images: ["limonade", "hangmat", "tennisracket", "bordspel"], title: "Vrije middag", text: "Niets gepland — even niks moeten" } },
+  { key: "avond", label: "Avond", sub: "na 18 u", from: 18 * 60, to: 24 * 60, color: [98, 96, 230], icon: "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z", free: { images: ["zetel", "televisie", "kussen"], title: "Vrije avond", text: "Tijd voor jezelf" } },
 ];
 
-/** Leeg dagdeel: groot figuurtje uit de reeks (zon, parasol, ster) met zachte schaduw; deint traag op en neer. */
+/**
+ * Figuurtje voor vrije tijd uit de reeks «ontspanning» (thee, boek, zetel, …), per dagdeel een eigen set.
+ * Elke dag een ander, maar binnen dezelfde dag altijd hetzelfde (geen verspringen bij verversen).
+ */
+function freeImage(part: (typeof PARTS)[number], date: Date = new Date()): string {
+  const day = Math.floor(new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() / 86_400_000);
+  const name = part.free.images[day % part.free.images.length];
+  return `/images/ui/${name}_240.webp`;
+}
+
+/** Leeg dagdeel: groot figuurtje uit de reeks «ontspanning» met zachte schaduw; deint traag op en neer. */
 function FreePart({ part, past }: { part: (typeof PARTS)[number]; past: boolean }) {
   return (
     <div className={cn("flex min-h-[170px] flex-1 flex-col items-center justify-center pb-1 pt-3 text-center", past && "opacity-60")}>
       <span className="relative block size-[92px]">
-        <Image src={part.free.image} alt="" width={240} height={240} className="relative z-[1] size-full object-contain motion-safe:animate-[agenda-bob_4.5s_ease-in-out_infinite]" />
+        <Image src={freeImage(part)} alt="" width={240} height={240} className="relative z-[1] size-full object-contain motion-safe:animate-[agenda-bob_4.5s_ease-in-out_infinite]" />
         <span
           aria-hidden
           className="absolute inset-x-[22px] -bottom-1 h-2.5 rounded-[50%] blur-[4px] motion-safe:animate-[agenda-bob-shadow_4.5s_ease-in-out_infinite]"
@@ -331,7 +341,7 @@ function RestOfDayTile({ nowMin, wholeDay }: { nowMin: number; wholeDay: boolean
         Nu
       </span>
       <span className="relative mt-1 block size-[72px]">
-        <Image src={part.free.image} alt="" width={240} height={240} className="relative z-[1] size-full object-contain motion-safe:animate-[agenda-bob_4.5s_ease-in-out_infinite]" />
+        <Image src={freeImage(part)} alt="" width={240} height={240} className="relative z-[1] size-full object-contain motion-safe:animate-[agenda-bob_4.5s_ease-in-out_infinite]" />
         <span
           aria-hidden
           className="absolute inset-x-[18px] -bottom-1 h-2 rounded-[50%] blur-[3px] motion-safe:animate-[agenda-bob-shadow_4.5s_ease-in-out_infinite]"
