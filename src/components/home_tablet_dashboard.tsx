@@ -7,7 +7,7 @@ import { useItemPhotoUrl } from "@/lib/item-photos";
 import { useWeather, type Weather, type WeatherKind } from "@/lib/weather";
 import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { useVasteLijstjes } from "@/components/vaste_lijstjes";
-import { AllDayChips, Timeline, useTodayAgenda } from "@/components/home_agenda_section";
+import { AllDayChips, SkeletonTimeline, Timeline, useTodayAgenda } from "@/components/home_agenda_section";
 
 /**
  * Tablet-dashboard (canvas «Dashboard tablet · B iteratie»), gemaakt voor een Galaxy Tab liggend
@@ -272,7 +272,17 @@ function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; 
       </div>
 
       {!state ? (
-        <div className="flex-1 animate-pulse rounded-[18px] bg-[var(--gray-25)]" aria-label="Agenda laden" />
+        <div className="flex-1" aria-label="Agenda laden" aria-busy>
+          <div className="mb-2.5 flex items-center gap-3.5 rounded-[18px] bg-[var(--gray-25)] px-3.5 py-3 [[data-aod]_&]:bg-[#141519]">
+            <span className="shimmer size-[58px] shrink-0 rounded-2xl" />
+            <span className="flex flex-1 flex-col gap-1.5">
+              <span className="shimmer block h-2.5 w-16 rounded-md" />
+              <span className="shimmer block h-4 w-[60%] rounded-md" />
+              <span className="shimmer block h-3 w-[35%] rounded-md" />
+            </span>
+          </div>
+          <SkeletonTimeline rows={[0.7, 0.55, 0.8, 0.5]} />
+        </div>
       ) : !connected ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
           <p className="text-[17px] font-extrabold text-text-primary">Je dag in één oogopslag</p>

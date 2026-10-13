@@ -286,6 +286,85 @@ function ViewToggle({ view, onChange }: { view: AgendaView; onChange: (v: Agenda
   );
 }
 
+// ─── Laadskelet: zelfde opbouw als de gekozen weergave, met shimmer ────────────
+
+const bone = "shimmer block rounded-md";
+
+/** Eén tijdlijnrij in skeletvorm: tijd · kleurstreep · titel en plaats. */
+function SkeletonRow({ wide = 0.62 }: { wide?: number }) {
+  return (
+    <li className="flex gap-3 py-2">
+      <span className="flex w-11 shrink-0 flex-col items-end gap-1.5 pt-0.5">
+        <span className={cn(bone, "h-3.5 w-9")} />
+        <span className={cn(bone, "h-2.5 w-7")} />
+      </span>
+      <span className="shimmer w-1 shrink-0 rounded-sm" />
+      <span className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
+        <span className={cn(bone, "h-3.5")} style={{ width: `${Math.round(wide * 100)}%` }} />
+        <span className={cn(bone, "h-2.5")} style={{ width: `${Math.round(wide * 70)}%` }} />
+      </span>
+    </li>
+  );
+}
+
+export function SkeletonTimeline({ rows }: { rows: number[] }) {
+  return (
+    <ul className="m-0 list-none p-0" aria-hidden>
+      {rows.map((w, i) => (
+        <SkeletonRow key={i} wide={w} />
+      ))}
+    </ul>
+  );
+}
+
+/** Laadstaat die de opbouw volgt die de gebruiker koos (overzicht of tegels; mobiel of desktop). */
+function AgendaSkeleton({ view }: { view: AgendaView }) {
+  if (view === "tegels") {
+    return (
+      <ul className="-mx-4 m-0 flex list-none gap-2.5 overflow-hidden px-4 pb-1 pt-3.5 md:mx-0 md:gap-4 md:px-0" aria-label="Agenda laden" aria-busy>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <li
+            key={i}
+            className="flex h-[176px] w-[150px] shrink-0 flex-col rounded-[20px] bg-[var(--white)] p-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle)] md:w-[171px]"
+          >
+            <span className={cn(bone, "h-6 w-16")} />
+            <span className={cn(bone, "mt-1.5 h-3 w-12")} />
+            <span className={cn(bone, "mt-auto h-4 w-[80%]")} />
+            <span className={cn(bone, "mt-1.5 h-3 w-[55%]")} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return (
+    <div aria-label="Agenda laden" aria-busy>
+      {/* Mobiel: één tijdlijn */}
+      <div className={cn(cardClass, "px-4 pb-2.5 pt-3 md:hidden")}>
+        <SkeletonTimeline rows={[0.7, 0.55, 0.8, 0.5]} />
+      </div>
+      {/* Desktop: ochtend · middag · avond */}
+      <div className="hidden grid-cols-3 gap-4 md:grid">
+        {[
+          [0.7, 0.55],
+          [0.8, 0.6],
+          [0.5],
+        ].map((rows, i) => (
+          <div key={i} className="min-w-0 rounded-[22px] bg-[var(--white)] px-[18px] py-4 shadow-[0_0_0_1px_var(--border-subtle)]">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="shimmer size-[30px] rounded-[10px]" />
+              <span className="flex flex-col gap-1.5">
+                <span className={cn(bone, "h-4 w-20")} />
+                <span className={cn(bone, "h-2.5 w-28")} />
+              </span>
+            </div>
+            <SkeletonTimeline rows={rows} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const cardClass = "rounded-[22px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]";
 
 /**
@@ -366,13 +445,15 @@ export function useTodayAgenda() {
 export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () => void }) {
   const { state, failed, load, now, nowMin, nowLabel, connected, allDay, timed, connect } = useTodayAgenda();
   const [feedback, setFeedback] = React.useState<string | null>(null);
-  const [view, setView] = React.useState<AgendaView>("overzicht");
-  React.useEffect(() => {
+  // Meteen de bewaarde weergave, zodat ook het laadskelet de juiste opbouw toont.
+  const [view, setView] = React.useState<AgendaView>(() => {
     try {
-      if (window.localStorage.getItem(VIEW_KEY) === "tegels") setView("tegels");
+      return typeof window !== "undefined" && window.localStorage.getItem(VIEW_KEY) === "tegels" ? "tegels" : "overzicht";
     } catch {
-      /* geen opslag: standaard overzicht */
+      return "overzicht";
     }
+  });
+  React.useEffect(() => {
     // Mobiele en desktopversie van de sectie volgen dezelfde keuze.
     const onChange = (e: Event) => setView((e as CustomEvent<AgendaView>).detail);
     window.addEventListener(VIEW_KEY, onChange);
@@ -418,7 +499,7 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
         Open agenda
       </a>
     </span>
-  ) : !onHide ? null : (
+  ) : !onHide || (!state && !failed) ? null : (
     <button
       type="button"
       onClick={onHide}
@@ -430,7 +511,7 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
 
   let body: React.ReactNode;
   if (!state && !failed) {
-    body = <div className={cn(cardClass, "h-[180px] animate-pulse")} aria-label="Agenda laden" />;
+    body = <AgendaSkeleton view={view} />;
   } else if (!connected) {
     body = (
       <div className={cn(cardClass, "flex flex-col items-center gap-1.5 p-5 text-center md:flex-row md:items-center md:gap-7 md:p-6 md:text-left")}>
@@ -539,7 +620,7 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
       <div className="flex min-h-8 items-center justify-between gap-3">
         <span className="flex min-w-0 items-center gap-3">
           <h2 className="truncate text-[22px] font-bold leading-7 tracking-[-0.01em] text-[var(--text-primary)]">Agenda</h2>
-          {hasEvents ? <ViewToggle view={view} onChange={changeView} /> : null}
+          {hasEvents || (!state && !failed) ? <ViewToggle view={view} onChange={changeView} /> : null}
         </span>
         {headerRight}
       </div>
