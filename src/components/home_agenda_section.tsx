@@ -649,12 +649,9 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
 
   const allRows = [...allDay, ...timed];
 
-  const dayRaw = now.toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "short" }).replace(".", "");
-  const dayLabel = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1);
   const hasEvents = connected && (allRows.length > 0 || tomorrow.length > 0);
   const headerRight = connected ? (
     <span className="flex shrink-0 items-center gap-4">
-      <span className="hidden text-[13.5px] font-semibold text-[var(--text-secondary)] md:inline">{dayLabel}</span>
       <a href="https://calendar.google.com/calendar/r/day" target="_blank" rel="noopener noreferrer" className="text-[15px] font-semibold text-action-primary no-underline">
         Open agenda
       </a>
