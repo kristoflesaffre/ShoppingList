@@ -24,6 +24,11 @@ import {
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { mixWithWhite, RECIPE_TINT_FALLBACK, useIsDarkTheme, useRecipeTint, type Rgb } from "@/lib/recipe-tint";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
+import { SegmentedControl } from "@/components/ui/segmented_control";
+import { KalenderAgenda, agendaBand } from "@/components/kalender_agenda";
+
+type Weergave = "eten" | "agenda";
+const WEERGAVE_KEY = "kalender-weergave";
 
 /**
  * Kalender (canvas «Kalender · C · Podium»): de bovenkant kleurt mee met het gerecht van de gekozen dag
@@ -440,6 +445,26 @@ export default function KalenderPage() {
   const focusIso = toIsoDate(focusDate);
   const isToday = focusIso === todayKey;
 
+  /** Schakelaar «Eten | Agenda»: ?weergave=agenda of de laatst gekozen weergave op dit toestel. */
+  const [weergave, setWeergave] = React.useState<Weergave>(() => {
+    const fromUrl = searchParams.get("weergave");
+    if (fromUrl === "agenda" || fromUrl === "eten") return fromUrl;
+    try {
+      return typeof window !== "undefined" && window.localStorage.getItem(WEERGAVE_KEY) === "agenda" ? "agenda" : "eten";
+    } catch {
+      return "eten";
+    }
+  });
+  const changeWeergave = (w: Weergave) => {
+    setWeergave(w);
+    try {
+      window.localStorage.setItem(WEERGAVE_KEY, w);
+    } catch {
+      /* niet bewaren */
+    }
+  };
+  const [agendaTint, setAgendaTint] = React.useState<Rgb | null>(null);
+
   const { isLoading: dataLoading, data } = db.useQuery(
     ownerId
       ? {
@@ -482,7 +507,10 @@ export default function KalenderPage() {
   const focusSummary = calendarDaySummary(focusIso, focusEntry);
   const focusLoosePhotos = useLoosePhotos(focusSummary?.loose);
   const focusRgb = useRecipeTint(focusSummary?.photo ?? focusLoosePhotos.find(Boolean) ?? null);
-  const band = tintColors(focusSummary ? focusRgb : null, dark, 0.42, 0.2);
+  const band =
+    weergave === "agenda"
+      ? (agendaBand(agendaTint, dark) ?? tintColors(null, dark, 0.42, 0.2))
+      : tintColors(focusSummary ? focusRgb : null, dark, 0.42, 0.2);
 
   // Bij laden (en bij een andere gekozen dag): de gekozen dag links, de dag ervoor piept nog binnen.
   const laneRef = React.useRef<HTMLDivElement>(null);
@@ -514,7 +542,7 @@ export default function KalenderPage() {
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)]">
-      {!calendarIsEmpty ? (
+      {weergave === "agenda" || !calendarIsEmpty ? (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-[600px] lg:h-[620px]"
@@ -527,11 +555,22 @@ export default function KalenderPage() {
           <Link href="/" aria-label="Terug naar de startpagina" className={headerRoundButtonClass}>
             <ChevronIcon direction="left" className="size-5" />
           </Link>
-          <h1 className="min-w-0 flex-1 text-center text-base font-semibold text-text-primary lg:text-left lg:text-[22px] lg:font-extrabold">Kalender</h1>
-          <span aria-hidden className="size-10 shrink-0 lg:hidden" />
+          <h1 className="min-w-0 flex-1 text-left text-[22px] font-extrabold text-text-primary">Kalender</h1>
+          <SegmentedControl
+            ariaLabel="Kalenderweergave"
+            fill={false}
+            value={weergave}
+            onChange={changeWeergave}
+            options={[
+              { value: "eten", label: "Eten" },
+              { value: "agenda", label: "Agenda" },
+            ]}
+          />
         </header>
 
-        {calendarIsEmpty ? (
+        {weergave === "agenda" ? (
+          <KalenderAgenda onTint={setAgendaTint} />
+        ) : calendarIsEmpty ? (
           <section className="flex min-h-[min(520px,calc(100dvh-12rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] flex-1 flex-col items-center justify-center">
             <div className="flex w-full max-w-[358px] flex-col items-center text-center">
               <div className="relative size-24 shrink-0 overflow-hidden">
