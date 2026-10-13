@@ -8,6 +8,7 @@ import { PageBackButton } from "@/components/ui/page_back_button";
 import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import { RouteLoadingSpinner } from "@/components/ui/route_loading_spinner";
 import { googleAuthHeaders, startGoogleConnect, useGoogleAuthToken } from "@/lib/google-client";
+import { clearAgendaCache } from "@/lib/agenda_cache";
 
 /**
  * Profiel › Agenda's: gekoppelde Google-accounts beheren (account toevoegen, ontkoppelen).
@@ -56,6 +57,7 @@ export default function AgendaInstellingenPage() {
       const query = email ? `?email=${encodeURIComponent(email)}` : "";
       const response = await fetch(`/api/google/disconnect${query}`, { method: "POST", headers: googleAuthHeaders(token) });
       if (!response.ok) throw new Error("ontkoppelen mislukt");
+      clearAgendaCache();
       setMessage(email ? `${email} is ontkoppeld.` : "Je agenda's zijn ontkoppeld.");
       load();
     } catch {

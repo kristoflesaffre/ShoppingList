@@ -3,7 +3,8 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
-import { googleAuthHeaders, startGoogleConnect, useGoogleAuthToken } from "@/lib/google-client";
+import { startGoogleConnect } from "@/lib/google-client";
+import { localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
 import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
 
 /**
@@ -381,40 +382,17 @@ const cardClass = "rounded-[22px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17
  * Afspraken van vandaag (gedeeld door de Agenda-sectie en het tablet-dashboard): laadt via
  * /api/google/dashboard, ververst bij focus en elke 5 min, en houdt «nu» bij.
  */
+function todayRange() {
+  const timeMin = new Date();
+  timeMin.setHours(0, 0, 0, 0);
+  const timeMax = new Date(timeMin);
+  timeMax.setDate(timeMax.getDate() + 1);
+  return { key: `today:${localDayIso(timeMin)}`, timeMin, timeMax };
+}
+
 export function useTodayAgenda() {
-  const token = useGoogleAuthToken();
-  const [state, setState] = React.useState<AgendaState | null>(null);
-  const [failed, setFailed] = React.useState(false);
-  const [now, setNow] = React.useState(() => new Date());
-
-  const load = React.useCallback(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-    if (!token) return;
-    const params = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString() });
-    fetch(`/api/google/dashboard?${params.toString()}`, { cache: "no-store", headers: googleAuthHeaders(token) })
-      .then(async (r) => {
-        const json = (await r.json()) as AgendaState;
-        setState(json);
-        setFailed(!r.ok);
-      })
-      .catch(() => setFailed(true));
-  }, [token]);
-
-  React.useEffect(() => {
-    load();
-    const onFocus = () => load();
-    window.addEventListener("focus", onFocus);
-    const refresh = window.setInterval(load, 5 * 60_000);
-    const tick = window.setInterval(() => setNow(new Date()), 30_000);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      window.clearInterval(refresh);
-      window.clearInterval(tick);
-    };
-  }, [load]);
+  // Gecachet (geheugen + dit toestel): home en dashboard tonen meteen de vorige stand en verversen stil.
+  const { token, state, setState, failed, load, now } = useCachedAgenda<AgendaState>(todayRange);
 
   const accounts = state?.accounts ?? [];
   const colorOf = (accountId?: string): Rgb => {
