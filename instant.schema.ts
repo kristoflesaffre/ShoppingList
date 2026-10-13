@@ -205,6 +205,11 @@ const schema = i.schema({
       autoShareKindsJson: i.string().optional(),
       /** Token voor de algemene uitnodigingslink (/deel/samen/[token]) uit «Samen delen». */
       shareInviteToken: i.string().optional().indexed(),
+      /**
+       * Vaste lijstjes op de startpagina/het overzicht: JSON `{ "order": [id…], "hidden": [id…] }`.
+       * Ids: «te-kopen», «favorieten» of een lijst-id (zie `src/components/vaste_lijstjes.tsx`).
+       */
+      vasteLijstjesJson: i.string().optional(),
     }),
     /** Vaste deelgenoot van een gebruiker (via de algemene uitnodigingslink). */
     sharePartners: i.entity({

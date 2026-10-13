@@ -57,13 +57,7 @@ import {
   APP_SNACKBAR_NO_NAV_FIXTURE_CLASS,
 } from "@/lib/app-layout";
 import { isVastList } from "@/lib/vaste-lijstjes";
-import {
-  FavorietenTile,
-  TeKopenTile,
-  VastTile,
-  deleteVastList,
-  useVasteLijstjes,
-} from "@/components/vaste_lijstjes";
+import { useVasteLijstjes, VasteLijstjesGrid } from "@/components/vaste_lijstjes";
 
 export type LijstjesBeherenSection = "lijstjes" | "favorieten";
 
@@ -661,28 +655,7 @@ export function LijstjesBeherenClient({
           {section === "lijstjes" ? (
             <section aria-label="Vaste lijstjes" className="mb-2 flex flex-col gap-3">
               <h2 className="text-[17px] font-bold leading-6 text-text-primary">Vaste lijstjes</h2>
-              <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">
-                <TeKopenTile count={vaste.teKopenOpen} className="!w-full" />
-                <FavorietenTile count={vaste.favoritesCount} className="!w-full" />
-                {vaste.lists.map((l) => (
-                  <VastTile
-                    key={l.id}
-                    href={`/vast/${l.id}`}
-                    name={l.name}
-                    count={l.openCount}
-                    icon={l.icon}
-                    color={l.color}
-                    className="!w-full"
-                    onDelete={
-                      isCardsEditMode && l.isOwner
-                        ? () => {
-                            if (window.confirm(`«${l.name}» en alles erop verwijderen?`)) deleteVastList(l);
-                          }
-                        : undefined
-                    }
-                  />
-                ))}
-              </div>
+              <VasteLijstjesGrid userId={user?.id} editing={isCardsEditMode} />
             </section>
           ) : null}
 

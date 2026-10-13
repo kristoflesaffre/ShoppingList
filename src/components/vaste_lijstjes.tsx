@@ -4,6 +4,17 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
@@ -129,7 +140,96 @@ export function useVasteLijstjes(userId: string | null | undefined) {
     return ids.size;
   }, [favData?.lists, favData?.listMembers]);
 
-  return { isLoading, lists, teKopenOpen, favoritesCount };
+  // Volgorde en verborgen tegels (per gebruiker, op het profiel).
+  const { data: profData } = db.useQuery({ profiles: { $: { where: { instantUserId: uid } } } });
+  const profile = (profData?.profiles?.[0] ?? null) as { id: string; vasteLijstjesJson?: string | null } | null;
+  const serverPrefs = React.useMemo(() => parseVastPrefs(profile?.vasteLijstjesJson), [profile?.vasteLijstjesJson]);
+  // Optimistisch: eigen wijzigingen meteen tonen en als basis voor de volgende gebruiken.
+  const [localPrefs, setLocalPrefs] = React.useState<VastPrefs | null>(null);
+  React.useEffect(() => {
+    setLocalPrefs((cur) => (cur && JSON.stringify(cur) === (profile?.vasteLijstjesJson ?? "") ? null : cur));
+  }, [profile?.vasteLijstjesJson]);
+  const prefs = localPrefs ?? serverPrefs;
+
+  const allEntries = React.useMemo((): VastTileEntry[] => {
+    const builtins: VastTileEntry[] = [
+      { id: "te-kopen", kind: "te-kopen", href: "/te-kopen", name: "Te kopen", count: teKopenOpen, countLabel: "open", icon: "/images/ui/kopen_240.webp", color: VAST_COLORS.blauw },
+      { id: "favorieten", kind: "favorieten", href: "/lijstjes-beheren/favorieten", name: "Favorieten", count: favoritesCount, countLabel: "lijstjes", icon: "/images/ui/ster_240.webp", color: VAST_COLORS.geel },
+    ];
+    const own: VastTileEntry[] = lists.map((l) => ({
+      id: l.id,
+      kind: "vast",
+      href: `/vast/${l.id}`,
+      name: l.name,
+      count: l.openCount,
+      countLabel: "open",
+      icon: l.icon,
+      color: l.color,
+      list: l,
+    }));
+    const all = [...builtins, ...own];
+    const rank = new Map(prefs.order.map((id, i) => [id, i]));
+    return all
+      .map((e, i) => ({ e, r: rank.get(e.id) ?? prefs.order.length + i }))
+      .sort((a, b) => a.r - b.r)
+      .map(({ e }) => e);
+  }, [teKopenOpen, favoritesCount, lists, prefs.order]);
+
+  const hiddenSet = React.useMemo(() => new Set(prefs.hidden), [prefs.hidden]);
+  const tiles = React.useMemo(() => allEntries.filter((e) => !hiddenSet.has(e.id)), [allEntries, hiddenSet]);
+  /** Verborgen ingebouwde tegels (Te kopen, Favorieten), om terug te zetten in bewerkstand. */
+  const hiddenTiles = React.useMemo(() => allEntries.filter((e) => hiddenSet.has(e.id) && e.kind !== "vast"), [allEntries, hiddenSet]);
+
+  const savePrefs = React.useCallback(
+    (next: VastPrefs) => {
+      if (!userId) return;
+      setLocalPrefs(next);
+      const json = JSON.stringify(next);
+      const tx = profile
+        ? db.tx.profiles[profile.id].update({ vasteLijstjesJson: json })
+        : db.tx.profiles[iid()].update({ instantUserId: userId, vasteLijstjesJson: json });
+      void db.transact(tx).catch(() => undefined);
+    },
+    [profile, userId],
+  );
+  const saveOrder = React.useCallback(
+    (visibleIds: string[]) => savePrefs({ order: [...visibleIds, ...prefs.hidden.filter((id) => !visibleIds.includes(id))], hidden: prefs.hidden }),
+    [prefs.hidden, savePrefs],
+  );
+  const hideTile = React.useCallback(
+    (id: string) => savePrefs({ order: prefs.order, hidden: Array.from(new Set([...prefs.hidden, id])) }),
+    [prefs, savePrefs],
+  );
+  const restoreTile = React.useCallback(
+    (id: string) => savePrefs({ order: prefs.order, hidden: prefs.hidden.filter((h) => h !== id) }),
+    [prefs, savePrefs],
+  );
+
+  return { isLoading, lists, teKopenOpen, favoritesCount, tiles, hiddenTiles, saveOrder, hideTile, restoreTile };
+}
+
+export type VastTileEntry = {
+  id: string;
+  kind: "te-kopen" | "favorieten" | "vast";
+  href: string;
+  name: string;
+  count: number;
+  countLabel: string;
+  icon: string;
+  color: [number, number, number];
+  list?: VastListSummary;
+};
+
+type VastPrefs = { order: string[]; hidden: string[] };
+
+function parseVastPrefs(raw: string | null | undefined): VastPrefs {
+  try {
+    const v = raw ? (JSON.parse(raw) as Partial<VastPrefs>) : {};
+    const ids = (x: unknown) => (Array.isArray(x) ? x.filter((i): i is string => typeof i === "string") : []);
+    return { order: ids(v.order), hidden: ids(v.hidden) };
+  } catch {
+    return { order: [], hidden: [] };
+  }
 }
 
 const TRASH_PATH = "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13";
@@ -150,6 +250,8 @@ export function VastTile({
   countLabel = "open",
   onAdd,
   addLabel,
+  editing: editingProp = false,
+  onRestore,
 }: {
   href: string;
   name: string;
@@ -164,10 +266,14 @@ export function VastTile({
   /** Ronde «+» rechtsboven om meteen iets toe te voegen (bv. aan Te kopen). */
   onAdd?: () => void;
   addLabel?: string;
-  /** Bewerkstand: verwijderen (ontbreekt = niet verwijderbaar). */
+  /** Bewerkstand: verwijderen/verbergen (ontbreekt = niet verwijderbaar). */
   onDelete?: () => void;
+  /** Bewerkstand (sleepbaar, met zes puntjes), ook zonder vuilbak. */
+  editing?: boolean;
+  /** Verborgen tegel: gedimd met «Terugzetten». */
+  onRestore?: () => void;
 }) {
-  const editing = onDelete != null;
+  const editing = editingProp || onDelete != null;
   // Zelfde zichtbare grootte voor elke illustratie, deels van de tegel af (rechtsonder).
   const placement = tileIconPlacement(icon, wide ? 104 : 84, wide ? 10 : 14);
   const body = (
@@ -187,23 +293,52 @@ export function VastTile({
     </>
   );
   const surface =
-    "relative flex flex-col overflow-hidden rounded-[22px] p-3 no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+    "relative flex flex-col overflow-clip rounded-[22px] p-3 no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
   const cls = cn("h-[150px] w-[124px] shrink-0", surface, className);
   const style = { backgroundImage: `linear-gradient(160deg, ${mixWithWhiteRgb(color, 0.3)} 0%, ${mixWithWhiteRgb(color, 0.1)} 100%)` };
-  if (editing) {
+  if (onRestore) {
     return (
-      <div className={cls} style={style}>
-        {body}
+      <div className={cn(cls, "border-[1.5px] border-dashed border-[#c9cbe6] !bg-none")}>
+        <div className="absolute inset-0 flex flex-col p-3 opacity-40 grayscale">{body}</div>
         <button
           type="button"
-          aria-label={`${name} verwijderen`}
-          onClick={onDelete}
-          className="absolute right-2 top-2 z-[1] flex size-7 items-center justify-center rounded-full bg-[var(--white)] text-[var(--error-400)] shadow-[0_1px_3px_rgba(16,17,48,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          onClick={onRestore}
+          aria-label={`${name} terugzetten`}
+          className="absolute inset-x-3 bottom-3 z-[1] inline-flex h-9 items-center justify-center gap-1.5 rounded-pill bg-[var(--white)] text-[13px] font-bold text-action-primary shadow-[0_2px_6px_-2px_rgba(16,17,48,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[15px]">
-            <path d={TRASH_PATH} />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-3.5">
+            <path d="M12 5v14M5 12h14" />
           </svg>
+          Terugzetten
         </button>
+      </div>
+    );
+  }
+  if (editing) {
+    return (
+      <div className={cn(cls, "cursor-grab active:cursor-grabbing")} style={style}>
+        {body}
+        {/* Zes puntjes: de hele tegel is sleepbaar. */}
+        <span aria-hidden className="absolute bottom-2.5 left-2.5 flex size-7 items-center justify-center rounded-full bg-[rgba(255,255,255,0.75)] text-[var(--gray-400)]">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="size-4">
+            <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" />
+            <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+            <circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
+          </svg>
+        </span>
+        {onDelete ? (
+          <button
+            type="button"
+            aria-label={`${name} verwijderen`}
+            onClick={onDelete}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="absolute right-2 top-2 z-[1] flex size-7 items-center justify-center rounded-full bg-[var(--white)] text-[var(--error-400)] shadow-[0_1px_3px_rgba(16,17,48,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[15px]">
+              <path d={TRASH_PATH} />
+            </svg>
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -474,20 +609,31 @@ export { deepRgb, mixWithWhiteRgb };
  * Rij «Vaste lijstjes» op de startpagina: «Te kopen», de eigen vaste lijstjes en een tegel «Nieuw».
  */
 export function VasteLijstjesLane({ userId, onAddTeKopen }: { userId: string; onAddTeKopen?: () => void }) {
-  const { lists, teKopenOpen, favoritesCount } = useVasteLijstjes(userId);
-  const count = 2 + lists.length;
-  const fit = count <= 2;
+  const { tiles } = useVasteLijstjes(userId);
+  if (tiles.length === 0) return null;
+  const fit = tiles.length <= 2;
   const tileClass = fit ? "!w-auto min-w-0" : "snap-start";
   return (
     <div
       className={cn(
-        fit ? "grid grid-cols-2 gap-2.5" : "-mx-4 flex snap-x gap-2.5 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        fit
+          ? cn("grid gap-2.5", tiles.length === 1 ? "grid-cols-1" : "grid-cols-2")
+          : "-mx-4 flex snap-x gap-2.5 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
       )}
     >
-      <TeKopenTile count={teKopenOpen} className={tileClass} onAdd={onAddTeKopen} />
-      <FavorietenTile count={favoritesCount} className={tileClass} />
-      {lists.map((l) => (
-        <VastTile key={l.id} href={`/vast/${l.id}`} name={l.name} count={l.openCount} icon={l.icon} color={l.color} className={tileClass} />
+      {tiles.map((t) => (
+        <VastTile
+          key={t.id}
+          href={t.href}
+          name={t.name}
+          count={t.count}
+          countLabel={t.countLabel}
+          icon={t.icon}
+          color={t.color}
+          className={tileClass}
+          onAdd={t.kind === "te-kopen" ? onAddTeKopen : undefined}
+          addLabel={t.kind === "te-kopen" ? "Product toevoegen aan Te kopen" : undefined}
+        />
       ))}
     </div>
   );
@@ -518,12 +664,8 @@ export function HomeListsDesktopRow({
   shopping: React.ReactNode[];
   onAddTeKopen?: () => void;
 }) {
-  const { lists, teKopenOpen, favoritesCount } = useVasteLijstjes(userId);
-  const tiles = [
-    { id: "te-kopen", href: "/te-kopen", name: "Te kopen", count: teKopenOpen, icon: "/images/ui/kopen_240.webp", color: VAST_COLORS.blauw, countLabel: "open" },
-    { id: "favorieten", href: "/lijstjes-beheren/favorieten", name: "Favorieten", count: favoritesCount, icon: "/images/ui/ster_240.webp", color: VAST_COLORS.geel, countLabel: "lijstjes" },
-    ...lists.map((l) => ({ id: l.id, href: `/vast/${l.id}`, name: l.name, count: l.openCount, icon: l.icon, color: l.color, countLabel: "open" })),
-  ].slice(0, 3);
+  const { tiles: allTiles } = useVasteLijstjes(userId);
+  const tiles = allTiles.slice(0, 3);
   const equal = shopping.length + tiles.length <= 3;
   const tileEls = tiles.map((t) => (
     <VastTile
@@ -536,8 +678,8 @@ export function HomeListsDesktopRow({
       color={t.color}
       wide={!equal && tiles.length === 1}
       className="!h-auto min-h-[150px] !w-auto min-w-0"
-      onAdd={t.id === "te-kopen" ? onAddTeKopen : undefined}
-      addLabel={t.id === "te-kopen" ? "Product toevoegen aan Te kopen" : undefined}
+      onAdd={t.kind === "te-kopen" ? onAddTeKopen : undefined}
+      addLabel={t.kind === "te-kopen" ? "Product toevoegen aan Te kopen" : undefined}
     />
   ));
   if (equal) {
@@ -566,6 +708,106 @@ export function HomeListsDesktopRow({
       <div className="grid items-stretch gap-3" style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}>
         {tileEls}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Raster met alle vaste tegels (overzicht «Lijstjes»). In bewerkstand: slepen om te ordenen,
+ * vuilbak om te verwijderen (Te kopen/Favorieten worden enkel verborgen) en «Terugzetten».
+ */
+export function VasteLijstjesGrid({ userId, editing }: { userId?: string; editing: boolean }) {
+  const { tiles, hiddenTiles, saveOrder, hideTile, restoreTile } = useVasteLijstjes(userId);
+  const [localOrder, setLocalOrder] = React.useState<string[] | null>(null);
+  const ids = tiles.map((t) => t.id);
+  const idsKey = ids.join("|");
+  React.useEffect(() => setLocalOrder(null), [idsKey]);
+  const byId = new Map(tiles.map((t) => [t.id, t]));
+  const ordered = (localOrder ?? ids).map((id) => byId.get(id)).filter((t): t is VastTileEntry => t != null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const onDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const cur = localOrder ?? ids;
+    const next = arrayMove(cur, cur.indexOf(String(active.id)), cur.indexOf(String(over.id)));
+    setLocalOrder(next);
+    saveOrder(next);
+  };
+
+  const remove = (t: VastTileEntry) => {
+    if (t.kind !== "vast") {
+      hideTile(t.id);
+      return;
+    }
+    if (t.list && window.confirm(`«${t.name}» en alles erop verwijderen?`)) deleteVastList(t.list);
+  };
+
+  const gridClass = "grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6";
+  if (!editing) {
+    return (
+      <div className={gridClass}>
+        {ordered.map((t) => (
+          <VastTile key={t.id} href={t.href} name={t.name} count={t.count} countLabel={t.countLabel} icon={t.icon} color={t.color} className="!w-full" />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={ordered.map((t) => t.id)} strategy={rectSortingStrategy}>
+        <div className={gridClass}>
+          {ordered.map((t) => (
+            <SortableVastTile
+              key={t.id}
+              tile={t}
+              onDelete={t.kind !== "vast" || t.list?.isOwner ? () => remove(t) : undefined}
+            />
+          ))}
+          {hiddenTiles.map((t) => (
+            <VastTile
+              key={t.id}
+              href={t.href}
+              name={t.name}
+              count={t.count}
+              countLabel={t.countLabel}
+              icon={t.icon}
+              color={t.color}
+              className="!w-full"
+              onRestore={() => restoreTile(t.id)}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function SortableVastTile({ tile: t, onDelete }: { tile: VastTileEntry; onDelete?: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: t.id });
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      aria-label={`${t.name} verslepen`}
+      className={cn("relative touch-none rounded-[22px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]", isDragging && "z-10 scale-[1.04] shadow-[0_12px_28px_-10px_rgba(16,17,48,0.35)]")}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+    >
+      <VastTile
+        href={t.href}
+        name={t.name}
+        count={t.count}
+        countLabel={t.countLabel}
+        icon={t.icon}
+        color={t.color}
+        className="!w-full"
+        editing
+        onDelete={onDelete}
+      />
     </div>
   );
 }
