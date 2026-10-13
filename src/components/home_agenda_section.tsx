@@ -196,15 +196,16 @@ export function Timeline({ rows, nowMin, nowLabel, showNow = true }: { rows: Age
 export function AllDayChips({ rows }: { rows: AgendaRow[] }) {
   if (rows.length === 0) return null;
   return (
-    <div className="mb-3 flex flex-wrap gap-1.5">
+    // Eén rij die horizontaal scrolt (op mobiel tot aan de schermrand), nooit gestapeld.
+    <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
       {rows.map((r) => (
         <span
           key={r.id}
-          className="inline-flex h-7 max-w-full items-center gap-1.5 truncate rounded-pill px-3 text-[12.5px] font-bold"
+          className="inline-flex h-7 max-w-[280px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill px-3 text-[12.5px] font-bold"
           style={{ backgroundColor: rgb(r.color, 0.14), color: `color-mix(in srgb, ${rgb(r.color)} 62%, var(--text-primary))` }}
         >
           <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
-          Hele dag · {r.title}
+          <span className="truncate">Hele dag · {r.title}</span>
         </span>
       ))}
     </div>
@@ -500,8 +501,8 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
   const dayLabel = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1);
   const hasEvents = connected && allRows.length > 0;
   const headerRight = connected ? (
-    <span className="hidden shrink-0 items-center gap-4 md:flex">
-      <span className="text-[13.5px] font-semibold text-[var(--text-secondary)]">{dayLabel}</span>
+    <span className="flex shrink-0 items-center gap-4">
+      <span className="hidden text-[13.5px] font-semibold text-[var(--text-secondary)] md:inline">{dayLabel}</span>
       <a href="https://calendar.google.com/calendar/r/day" target="_blank" rel="noopener noreferrer" className="text-[15px] font-semibold text-action-primary no-underline">
         Open agenda
       </a>
