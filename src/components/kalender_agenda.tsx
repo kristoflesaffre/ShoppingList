@@ -191,7 +191,7 @@ function NextHero({ next, current, now }: { next: WeekEvent | null; current: Wee
         {next ? (
           <>
             <span className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-[var(--blue-500)] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]">
-              Straks · {untilLabel(next.startAt, now)}
+              {untilLabel(next.startAt, now)}
             </span>
             <span className="text-[13px] font-bold tracking-[0.02em] text-[var(--text-secondary)] lg:text-sm">{dateLabel}</span>
             <h2 className="mt-1.5 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em] text-text-primary lg:mt-2 lg:max-w-[520px] lg:text-[46px] lg:leading-[1.04] lg:tracking-[-0.03em]">
