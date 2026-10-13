@@ -44,8 +44,9 @@ const ACCOUNT_COLORS: Rgb[] = [
 const NOW_RED: Rgb = [230, 70, 70];
 
 const PARTS: { key: "ochtend" | "middag" | "avond"; label: string; sub: string; from: number; to: number; color: Rgb; icon: string }[] = [
-  { key: "ochtend", label: "Ochtend", sub: "tot 12 u", from: 0, to: 12 * 60, color: [224, 170, 40], icon: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" },
-  { key: "middag", label: "Middag", sub: "12 – 18 u", from: 12 * 60, to: 18 * 60, color: [224, 140, 47], icon: "M4 8h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 10h2a2 2 0 0 1 0 4h-2" },
+  // Ochtend: koffie met stoomkrulletjes (oranje); middag: de volle zon (geel); avond: maan.
+  { key: "ochtend", label: "Ochtend", sub: "tot 12 u", from: 0, to: 12 * 60, color: [224, 140, 47], icon: "M4 12h12v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 13h1.5a2 2 0 0 1 0 4H16M6.5 3.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7M10 2.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7M13.5 3.5c-.9.9.9 1.8 0 2.7s.9 1.8 0 2.7" },
+  { key: "middag", label: "Middag", sub: "12 – 18 u", from: 12 * 60, to: 18 * 60, color: [224, 170, 40], icon: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" },
   { key: "avond", label: "Avond", sub: "na 18 u", from: 18 * 60, to: 24 * 60, color: [98, 96, 230], icon: "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" },
 ];
 
