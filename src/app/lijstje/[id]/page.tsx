@@ -3721,8 +3721,6 @@ export default function ListDetailPage({
   const [cardLayout, setCardLayout] = React.useState<ListCardLayout>("two");
   const [isListLayoutHydrated, setIsListLayoutHydrated] = React.useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
-  const [masterSearchQuery, setMasterSearchQuery] = React.useState("");
-  const [masterSearchOpen, setMasterSearchOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<ListItem | null>(null);
   const [initialSection, setInitialSection] = React.useState<string | null>(null);
   const [initialItemCategory, setInitialItemCategory] = React.useState<
@@ -5246,13 +5244,6 @@ export default function ListDetailPage({
   const hasItems = items.length > 0;
   const isMasterEmpty = isMasterList && !hasItems;
 
-  const sectionsForDisplay = React.useMemo(() => {
-    if (!isMasterList || !masterSearchQuery.trim()) return sections;
-    const q = masterSearchQuery.trim().toLowerCase();
-    return sections
-      .map((s) => ({ ...s, items: s.items.filter((i) => i.name.toLowerCase().includes(q)) }))
-      .filter((s) => s.items.length > 0);
-  }, [sections, isMasterList, masterSearchQuery]);
   const showUncheckedFirstToggle =
     !isMasterList &&
     hasItems &&
@@ -5554,7 +5545,7 @@ export default function ListDetailPage({
       const { active, over } = event;
       if (String(active.id).startsWith(CATEGORY_DRAG_PREFIX)) {
         if (over == null || active.id === over.id || !String(over.id).startsWith(CATEGORY_DRAG_PREFIX)) return;
-        const titles = sectionsForDisplay.map((s) => s.title);
+        const titles = sections.map((s) => s.title);
         const from = titles.indexOf(String(active.id).slice(CATEGORY_DRAG_PREFIX.length));
         const to = titles.indexOf(String(over.id).slice(CATEGORY_DRAG_PREFIX.length));
         if (from < 0 || to < 0) return;
@@ -5595,7 +5586,7 @@ export default function ListDetailPage({
       const txns = reordered.map((item, i) => db.tx.items[item.id].update({ order: i }));
       db.transact(txns as Parameters<typeof db.transact>[0]);
     },
-    [items, sectionsForDisplay, saveCategoryOrder, cardGroupingMode],
+    [items, sections, saveCategoryOrder, cardGroupingMode],
   );
 
   const sensors = useSensors(
@@ -6032,20 +6023,7 @@ export default function ListDetailPage({
                       />
                     </div>
                   ) : null}
-                  {isMasterList ? (
-                    <RoundIconButton
-                      tone={masterSearchOpen ? "primary" : "surface"}
-                      size={36}
-                      onClick={() => {
-                        setMasterSearchOpen((v) => !v);
-                        setMasterSearchQuery("");
-                      }}
-                      aria-label={masterSearchOpen ? "Zoeken sluiten" : "Zoeken in favorieten"}
-                      aria-pressed={masterSearchOpen}
-                    >
-                      {RoundIcons.search}
-                    </RoundIconButton>
-                  ) : (
+                  {isMasterList ? null : (
                     <ListLayoutToggle
                       value={cardLayout}
                       onChange={(v) => {
@@ -6287,17 +6265,10 @@ export default function ListDetailPage({
                 «Wie» in via toevoegen of bewerken van een item.
               </p>
             ) : null}
-            {isMasterList && hasItems && !isMasterCategoryOrderMode && masterSearchOpen ? (
-              <SearchBar
-                value={masterSearchQuery}
-                onValueChange={setMasterSearchQuery}
-                placeholder="Zoeken in favorieten…"
-              />
-            ) : null}
             {isMasterList && !isEditMode ? (
               <StoreMarkProvider value={storeMarkApi}>
               <MasterCategoryCards
-                sections={sectionsForDisplay}
+                sections={sections}
                 getPhotoUrl={getPhotoUrl}
                 onAddToSection={(sectionTitle) => {
                   setInitialItemCategory(sectionTitle);
@@ -6326,11 +6297,11 @@ export default function ListDetailPage({
                   modifiers={categoryReorderArmed ? [] : [restrictToVerticalAxis]}
                 >
                   <SortableContext
-                    items={sectionsForDisplay.flatMap((s) => s.items).map((i) => i.id)}
+                    items={sections.flatMap((s) => s.items).map((i) => i.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <ListCardsView
-                      sections={sectionsForDisplay}
+                      sections={sections}
                       groupingMode={cardGroupingMode}
                       layout="one"
                       listDateStr={listDateStr}
@@ -6356,7 +6327,7 @@ export default function ListDetailPage({
             ) : useCardView ? (
               <StoreMarkProvider value={storeMarkApi}>
               <ListCardsView
-                sections={sectionsForDisplay}
+                sections={sections}
                 groupingMode={effectiveListGroupingMode}
                 layout={cardLayout}
                 dayLead={embedSuggestionsInDayCards ? listSuggestions : undefined}
@@ -6393,11 +6364,11 @@ export default function ListDetailPage({
                 modifiers={listViewMode === "grid" ? [] : [restrictToVerticalAxis]}
               >
                 <SortableContext
-                  items={sectionsForDisplay.flatMap((s) => s.items).map((i) => i.id)}
+                  items={sections.flatMap((s) => s.items).map((i) => i.id)}
                   strategy={listViewMode === "grid" ? rectSortingStrategy : verticalListSortingStrategy}
                 >
                   <SortableItemItems
-                    sections={sectionsForDisplay}
+                    sections={sections}
                     groupingMode={
                       isMasterList ? "category" : effectiveListGroupingMode
                     }
