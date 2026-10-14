@@ -361,3 +361,9 @@ export function groupMeatSubtypes<T>(categoryTitle: string, items: T[], getName:
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .map((x) => x.item);
 }
+
+/** Vlees en vis: kan je uit de diepvries halen i.p.v. kopen (sneeuwvlok bij het toevoegen). */
+export function isFreezableProduct(name: string): boolean {
+  const cat = resolveItemCategoryFromName(name);
+  return cat === "Vlees & Charcuterie" || cat === "Vis & Zeevruchten";
+}

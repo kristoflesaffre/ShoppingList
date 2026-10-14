@@ -16,6 +16,7 @@ import { CountStepper } from "@/components/ui/count_stepper";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { MiniButton } from "@/components/ui/mini_button";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
+import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
@@ -952,6 +953,45 @@ export function NewItemModal({
   );
 
   /* Canvas «Items toevoegen 1b»: segmentknop Alles / Producten / Recepten (+ Voorraad bij een dag). */
+  /** Product uit de diepvries: op de dag/kalender, niet op het boodschappenlijstje. */
+  const addFromStock = (stockItem: {
+    name: string;
+    quantity: string;
+    section: string;
+    fromStock: true;
+    stockPhotoUrl?: string;
+  }) => {
+    if (batchMode) {
+      const entryId = createBatchId("item");
+      setBatchEntries((previous) => [
+        ...previous,
+        {
+          id: entryId,
+          kind: "item",
+          item: {
+            id: `draft-${entryId}`,
+            ...stockItem,
+            checked: false,
+            itemCategory: resolveItemCategoryFromName(stockItem.name),
+          },
+        },
+      ]);
+      return;
+    }
+    onAdd(stockItem);
+    onClose();
+  };
+
+  const handleSelectItemFromFreezer = (name: string) => {
+    if (batchMode) setItemSearchQuery("");
+    addFromStock({
+      name: name.trim(),
+      quantity: "1 stuk",
+      section: selectedDay === "Geen" ? "Algemeen" : selectedDay,
+      fromStock: true,
+    });
+  };
+
   const sourceFilterControls =
     !isMasterList &&
     !isVacationList &&
@@ -1105,11 +1145,19 @@ export function NewItemModal({
               <span className="flex min-w-0 flex-1 flex-col leading-[18px]">
                 <span className="truncate text-[15px] font-semibold text-[var(--text-primary)] first-letter:uppercase">{title}</span>
                 <span className={cn("truncate text-[12.5px]", isItem ? "font-semibold text-[var(--blue-500)]" : "text-[var(--text-tertiary)]")}>
-                  {isItem
-                    ? entry.item.quantity
-                    : `Recept · ${entry.items.length} ${entry.items.length === 1 ? "ingrediënt" : "ingrediënten"}`}
+                  {isItem ? (
+                    entry.item.fromStock ? (
+                      <span className="inline-flex items-center gap-1">
+                        {entry.item.quantity} · <FreezeMaskIcon className="!size-3.5" colorClassName="bg-[var(--blue-500)]" /> Uit de diepvries
+                      </span>
+                    ) : (
+                      entry.item.quantity
+                    )
+                  ) : (
+                    `Recept · ${entry.items.length} ${entry.items.length === 1 ? "ingrediënt" : "ingrediënten"}`
+                  )}
                 </span>
-                {isItem && storeChoice ? (
+                {isItem && storeChoice && !entry.item.fromStock ? (
                   <span className="mt-1 flex">
                     <StoreChip store={entry.item.store} onClick={(anchor) => setBatchStoreMenu({ entryId: entry.id, anchor })} />
                   </span>
@@ -1358,6 +1406,7 @@ export function NewItemModal({
                       recipes={sourceFilter === "all" ? storedRecipes : undefined}
                       onSelectRecipe={handleSelectRecipe}
                       onSelectRecipeFromFreezer={handleSelectRecipeFromFreezer}
+                      onSelectItemFromFreezer={!isMasterList && !isVacationList && !isEditMode ? handleSelectItemFromFreezer : undefined}
                       slideInTitle={sourceFilter === "all" ? "Item of recept toevoegen" : "Item toevoegen"}
                     />
                     {sourceFilterControls}
@@ -1530,30 +1579,10 @@ export function NewItemModal({
                                 name: it.name ?? "",
                                 quantity: subtitle,
                                 section: selectedDay,
-                                fromStock: true,
+                                fromStock: true as const,
                                 stockPhotoUrl: it.recipePhotoUrl || undefined,
                               };
-                              if (batchMode) {
-                                const entryId = createBatchId("item");
-                                setBatchEntries((previous) => [
-                                  ...previous,
-                                  {
-                                    id: entryId,
-                                    kind: "item",
-                                    item: {
-                                      id: `draft-${entryId}`,
-                                      ...stockItem,
-                                      checked: false,
-                                      itemCategory: resolveItemCategoryFromName(
-                                        stockItem.name,
-                                      ),
-                                    },
-                                  },
-                                ]);
-                                return;
-                              }
-                              onAdd(stockItem);
-                              onClose();
+                              addFromStock(stockItem);
                             }}
                           >
                             {/* Package count */}

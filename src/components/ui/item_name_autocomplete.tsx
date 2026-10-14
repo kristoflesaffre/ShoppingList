@@ -22,6 +22,7 @@ import {
 import type { SavedRecipe } from "@/lib/recipe_library";
 import { matchRecipesForAutocomplete } from "@/lib/recipe-search";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
+import { isFreezableProduct } from "@/lib/item-ingredient-category";
 import { cn } from "@/lib/utils";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 
@@ -79,6 +80,8 @@ export type ItemNameAutocompleteProps = {
   onSelectRecipe?: (recipe: SavedRecipe) => void;
   /** Wordt aangeroepen wanneer het sneeuwvlok-icoon bij een recept wordt gekozen. */
   onSelectRecipeFromFreezer?: (recipe: SavedRecipe) => void;
+  /** Sneeuwvlok bij vlees/vis: product uit de diepvries (niet kopen). */
+  onSelectItemFromFreezer?: (name: string) => void;
   /** `top`: zacht grijs zoekveld met icoon links; mobiele zoek-slide-in met zoekbalk bovenaan. */
   searchVariant?: "default" | "top";
 };
@@ -99,6 +102,7 @@ function LargeScreenAutocomplete({
   onSelectItem,
   onSelectRecipe,
   onSelectRecipeFromFreezer,
+  onSelectItemFromFreezer,
 }: ItemNameAutocompleteProps) {
   const itemSlugs = useItemSlugs();
   const itemSynonyms = useItemSynonyms();
@@ -305,19 +309,22 @@ function LargeScreenAutocomplete({
                   </span>
                 </button>
                 ) : suggestion.kind === "item" ? (
+                <div
+                  className={cn(
+                    "flex w-full items-center gap-1 pr-3 transition-colors",
+                    i === highlightedIndex
+                      ? "bg-[var(--blue-25)]"
+                      : "hover:bg-[var(--blue-25)]",
+                    i > 0 && "border-t border-[var(--gray-100)]",
+                  )}
+                >
                 <button
                   type="button"
                   onMouseDown={(e) => {
                     e.preventDefault();
                     handleSelect(suggestion);
                   }}
-                  className={cn(
-                    "flex w-full items-center gap-3 px-3 py-2 text-left transition-colors",
-                    i === highlightedIndex
-                      ? "bg-[var(--blue-25)]"
-                      : "hover:bg-[var(--blue-25)]",
-                    i > 0 && "border-t border-[var(--gray-100)]",
-                  )}
+                  className="flex min-w-0 flex-1 items-center gap-3 py-2 pl-3 text-left"
                 >
                       <Image
                         src={
@@ -336,6 +343,23 @@ function LargeScreenAutocomplete({
                         {slugToDisplayName(suggestion.slug)}
                       </span>
                 </button>
+                      {onSelectItemFromFreezer && isFreezableProduct(slugToDisplayName(suggestion.slug)) ? (
+                        <button
+                          type="button"
+                          aria-label={`${slugToDisplayName(suggestion.slug)} uit de diepvries toevoegen`}
+                          title="Uit de diepvries (niet kopen)"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onSelectItemFromFreezer(slugToDisplayName(suggestion.slug));
+                            setOpen(false);
+                          }}
+                          className="flex size-8 shrink-0 items-center justify-center rounded-pill text-[var(--blue-500)] transition-[color,background-color,transform] duration-fast ease-out-strong hover:bg-[var(--blue-50)] motion-safe:active:scale-90"
+                        >
+                          <FreezeMaskIcon />
+                        </button>
+                      ) : null}
+                </div>
                 ) : (
                 <div
                   className={cn(
@@ -448,6 +472,7 @@ function SmallScreenAutocomplete({
   onSelectItem,
   onSelectRecipe,
   onSelectRecipeFromFreezer,
+  onSelectItemFromFreezer,
   searchVariant = "top",
 }: ItemNameAutocompleteProps) {
   const [slideInOpen, setSlideInOpen] = React.useState(false);
@@ -552,6 +577,7 @@ function SmallScreenAutocomplete({
         suggestionScope={suggestionScope}
         onSelectRecipe={onSelectRecipe}
         onSelectRecipeFromFreezer={onSelectRecipeFromFreezer}
+        onSelectItemFromFreezer={onSelectItemFromFreezer}
       />
     </div>
   );

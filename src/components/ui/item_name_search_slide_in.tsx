@@ -19,6 +19,7 @@ import type { SavedRecipe } from "@/lib/recipe_library";
 import { matchRecipesForAutocomplete } from "@/lib/recipe-search";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
+import { isFreezableProduct } from "@/lib/item-ingredient-category";
 import { SEARCH_FIELD_CLASS, SearchIcon } from "@/components/ui/search_bar";
 import { FilterChip } from "@/components/ui/filter_chip";
 import { RoundIconButton } from "@/components/ui/round_icon_button";
@@ -118,6 +119,8 @@ export type ItemNameSearchSlideInProps = {
   onSelectRecipe?: (recipe: SavedRecipe) => void;
   /** Wordt aangeroepen wanneer het sneeuwvlok-icoon bij een recept wordt gekozen. */
   onSelectRecipeFromFreezer?: (recipe: SavedRecipe) => void;
+  /** Sneeuwvlok bij vlees/vis: product uit de diepvries (niet kopen). */
+  onSelectItemFromFreezer?: (name: string) => void;
   /**
    * `top` (canvas «Items toevoegen 1b · zoeken»): zoekbalk helemaal bovenaan met «Annuleer»,
    * filterchips Alles / Producten / Recepten en rijen met enkel foto + naam.
@@ -137,6 +140,7 @@ export function ItemNameSearchSlideIn({
   suggestionScope = "all",
   onSelectRecipe,
   onSelectRecipeFromFreezer,
+  onSelectItemFromFreezer,
   variant = "top",
 }: ItemNameSearchSlideInProps) {
   const isTop = variant === "top";
@@ -255,6 +259,14 @@ export function ItemNameSearchSlideIn({
     [onClose, onSelectRecipe],
   );
 
+  const handleSelectItemFromFreezer = React.useCallback(
+    (slug: string) => {
+      onSelectItemFromFreezer?.(slugToDisplayName(slug));
+      onClose();
+    },
+    [onClose, onSelectItemFromFreezer],
+  );
+
   const handleSelectRecipeFromFreezer = React.useCallback(
     (recipe: SavedRecipe) => {
       onSelectRecipeFromFreezer?.(recipe);
@@ -357,6 +369,7 @@ export function ItemNameSearchSlideIn({
           <ul role="listbox" className="min-h-0 flex-1 overflow-y-auto px-[18px] pb-[max(45px,env(safe-area-inset-bottom,45px))] md:px-6 md:pb-6">
             {suggestions.map((slug, i) => (
               <li key={slug} role="option" aria-selected={false} className={i > 0 ? "border-t border-[var(--border-subtle)]" : undefined}>
+                <div className="flex w-full items-center gap-2">
                 <button type="button" onClick={() => handleSelect(slug)} className={rowClass}>
                   <span className="flex size-11 shrink-0 items-center justify-center" aria-hidden>
                     {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp */}
@@ -373,6 +386,18 @@ export function ItemNameSearchSlideIn({
                     {highlight(slugToDisplayName(slug))}
                   </span>
                 </button>
+                {onSelectItemFromFreezer && isFreezableProduct(slugToDisplayName(slug)) ? (
+                  <RoundIconButton
+                    tone="primary"
+                    size={28}
+                    aria-label={`${slugToDisplayName(slug)} uit de diepvries toevoegen`}
+                    onClick={() => handleSelectItemFromFreezer(slug)}
+                    className="mx-2"
+                  >
+                    <FreezeMaskIcon className="!size-4" colorClassName="bg-[var(--blue-500)]" />
+                  </RoundIconButton>
+                ) : null}
+                </div>
               </li>
             ))}
             {recipeSuggestions.map((recipe) => (
@@ -521,10 +546,11 @@ export function ItemNameSearchSlideIn({
           ) : null}
           {suggestions.map((slug) => (
             <li key={slug} role="option" aria-selected={false}>
+              <div className="flex w-full items-center gap-2">
               <button
                 type="button"
                 onClick={() => handleSelect(slug)}
-                className="flex w-full items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- lokale webp: Next/Image optimizer faalt op sommige iOS-builds */}
                 <img
@@ -542,6 +568,17 @@ export function ItemNameSearchSlideIn({
                 />
                 <HighlightedName slug={slug} norm={norm} />
               </button>
+              {onSelectItemFromFreezer && isFreezableProduct(slugToDisplayName(slug)) ? (
+                <button
+                  type="button"
+                  aria-label={`${slugToDisplayName(slug)} uit de diepvries toevoegen`}
+                  onClick={() => handleSelectItemFromFreezer(slug)}
+                  className="flex size-11 shrink-0 items-center justify-center rounded-pill text-[var(--blue-500)] transition-[color,background-color,transform] duration-fast ease-out-strong hover:bg-[var(--blue-25)] motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                >
+                  <FreezeMaskIcon />
+                </button>
+              ) : null}
+              </div>
               <div className="h-px w-full bg-[var(--border-subtle)]" aria-hidden />
             </li>
           ))}
