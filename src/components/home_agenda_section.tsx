@@ -272,8 +272,9 @@ function AgendaTile({ row, focus = false }: { row: AgendaRow; focus?: boolean })
 }
 
 /**
- * Tegel met foto (canvas «Fototegel blur · 2»): volle foto, naar onder progressief wazig en ingekleurd
- * in de lichte agendakleur; uur als glazen pil, titel en uur · plaats in een donkere tint van die kleur.
+ * Tegel met foto (canvas «Fototegel blur · 2» + «L1 · Licht uitgewassen»): volle foto, iets lichter en zachter
+ * met een dunne witte waas, naar onder progressief wazig en ingekleurd in de lichte agendakleur; uur als witte pil,
+ * titel en uur · plaats in een donkere tint van die kleur. Zo blijft de tekst ook op donkere foto's leesbaar.
  */
 function PhotoAgendaTile({ row, focus, photo }: { row: AgendaRow; focus: boolean; photo: string }) {
   const now = row.state === "now";
@@ -290,16 +291,17 @@ function PhotoAgendaTile({ row, focus, photo }: { row: AgendaRow; focus: boolean
       style={{ boxShadow: now ? `0 0 0 2px ${rgb(c)}, 0 12px 24px -14px ${rgb(c, 0.7)}` : "0 12px 24px -18px rgba(16,17,48,0.45)" }}
     >
       <span className="absolute inset-0 isolate overflow-hidden rounded-[20px]" aria-hidden>
-        <Image src={`${photo}_480.webp`} alt="" fill sizes="171px" className="object-cover" />
+        <Image src={`${photo}_480.webp`} alt="" fill sizes="171px" className="object-cover brightness-[1.2] contrast-[.78] saturate-[.82]" />
+        <span className="absolute inset-0" style={{ backgroundColor: "rgba(255,255,255,0.25)" }} />
         <Image
           src={`${photo}_240.webp`}
           alt=""
           fill
           sizes="171px"
-          className="scale-110 object-cover blur-[14px] saturate-[1.1]"
+          className="scale-110 object-cover blur-[14px] brightness-[1.15] saturate-[1.1]"
           style={{ WebkitMaskImage: mask, maskImage: mask }}
         />
-        <span className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${tint(0)} 42%, ${tint(0.72)} 78%, ${tint(0.85)} 100%)` }} />
+        <span className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${tint(0)} 36%, ${tint(0.86)} 70%, ${tint(0.97)} 100%)` }} />
       </span>
       {now ? (
         <span className="absolute -top-[11px] left-1/2 z-[2] inline-flex h-[22px] -translate-x-1/2 items-center whitespace-nowrap rounded-pill px-2.5 text-[11px] font-bold text-white" style={{ backgroundColor: rgb(c) }}>
@@ -307,8 +309,8 @@ function PhotoAgendaTile({ row, focus, photo }: { row: AgendaRow; focus: boolean
         </span>
       ) : null}
       <span
-        className="absolute left-2.5 top-2.5 z-[2] inline-flex h-7 items-center rounded-pill bg-white/70 px-2.5 text-sm font-extrabold shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)] backdrop-blur-md"
-        style={{ color: deep(c, 0.6) }}
+        className="absolute left-2.5 top-2.5 z-[2] inline-flex h-7 items-center rounded-pill px-2.5 text-sm font-extrabold shadow-[0_2px_8px_-3px_rgba(16,17,48,0.3)]"
+        style={{ color: deep(c, 0.6), backgroundColor: "rgba(255,255,255,0.95)" }}
       >
         {timeLabel(row.start)}
       </span>
