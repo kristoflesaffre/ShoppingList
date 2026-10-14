@@ -58,6 +58,7 @@ import {
 } from "@/lib/app-layout";
 import { isVastList } from "@/lib/vaste-lijstjes";
 import { useVasteLijstjes, VasteLijstjesGrid } from "@/components/vaste_lijstjes";
+import { NewListFlow, type NewListFlowHandle } from "@/components/new_list_flow";
 
 export type LijstjesBeherenSection = "lijstjes" | "favorieten";
 
@@ -516,6 +517,9 @@ export function LijstjesBeherenClient({
   const { titleRef: largeTitleRef, collapsed: isLargeTitleCollapsed } =
     useLargeTitleCollapse<HTMLHeadingElement>(64);
 
+  /** «Nieuw lijstje» opent hier boven het overzicht (zelfde flow als op home). */
+  const newListFlowRef = React.useRef<NewListFlowHandle>(null);
+
   const handleFabNewList = React.useCallback(() => {
     router.push("/nieuw-lijstje/selecteer-winkel");
   }, [router]);
@@ -747,6 +751,8 @@ export function LijstjesBeherenClient({
         </form>
       </SlideInModal>
 
+      <NewListFlow ref={newListFlowRef} onCreated={setAddingId} />
+
       {snackbarMessage ? (
         <div className={APP_SNACKBAR_NO_NAV_FIXTURE_CLASS}>
           <Snackbar
@@ -782,7 +788,7 @@ export function LijstjesBeherenClient({
             <FloatingActionButton
               aria-label="Nieuw lijstje"
               className="pointer-events-auto"
-              onClick={section === "lijstjes" ? () => router.push("/?nieuw=1") : handleFabNewList}
+              onClick={section === "lijstjes" ? () => newListFlowRef.current?.open() : handleFabNewList}
             />
           </div>
         </div>
