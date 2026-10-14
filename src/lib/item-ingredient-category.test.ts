@@ -32,6 +32,12 @@ describe("resolveItemCategoryFromName", () => {
     );
   });
 
+  it("deelt kippengehakt in bij vlees en charcuterie", () => {
+    expect(resolveItemCategoryFromName("Kippengehakt")).toBe(
+      "Vlees & Charcuterie",
+    );
+  });
+
   it("deelt krabsla in bij vlees en charcuterie", () => {
     expect(resolveItemCategoryFromName("Krabsla")).toBe(
       "Vlees & Charcuterie",
