@@ -455,12 +455,12 @@ export function LoyaltyCardSwipeShell({
                   role="tablist"
                   aria-label="Kies je klantenkaart"
                   data-swipe-ignore=""
-                  className="relative mx-auto mt-12 flex w-full max-w-[400px] shrink-0 gap-1 rounded-pill bg-[var(--white)] p-1 shadow-[0_0_0_1px_var(--card-hairline),0_6px_20px_-10px_rgba(16,17,48,0.22)]"
+                  className="relative mx-auto mt-12 flex w-full max-w-[400px] shrink-0 gap-1 rounded-pill bg-[var(--white)] p-1 shadow-[inset_0_0_0_1px_var(--card-hairline),inset_0_2px_4px_rgba(16,17,48,0.07)]"
                 >
                   <span
                     aria-hidden
                     className={cn(
-                      "pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-6px)] rounded-pill bg-[var(--blue-50)]",
+                      "pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-6px)] rounded-pill bg-[var(--white)] shadow-[0_0_0_1px_var(--card-hairline),0_1px_2px_rgba(16,17,48,0.10),0_4px_10px_-3px_rgba(16,17,48,0.18),inset_0_-1px_0_rgba(16,17,48,0.05)]",
                       !reduceMotion && "transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
                     )}
                     style={{ transform: activeIndex === 1 ? "translateX(calc(100% + 4px))" : "none" }}
@@ -477,7 +477,7 @@ export function LoyaltyCardSwipeShell({
                         onClick={() => selectTab(i)}
                         className={cn(
                           "relative flex h-11 flex-1 items-center justify-center gap-2 rounded-pill text-[15px] transition-colors duration-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                          on ? "font-extrabold text-[var(--blue-700)]" : "font-semibold text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
+                          on ? "font-extrabold text-text-primary" : "font-semibold text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
                         )}
                       >
                         {pane.footerLogoSrc ? (
