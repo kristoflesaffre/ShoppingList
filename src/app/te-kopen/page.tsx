@@ -253,6 +253,77 @@ function ShoppingRow({
 
 type Group = { key: string; kind: "section" | "store" | "algemeen"; title: string; store: string | null; section: string | null; items: ShoppingItem[] };
 
+/** Breed scherm (lg): secties in twee kolommen. */
+function useIsWide(): boolean {
+  const [wide, setWide] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return wide;
+}
+
+/**
+ * Secties in kolommen: telkens in de kortste kolom (hoogte ≈ kop + aantal producten), zodat de kolommen
+ * gelijk vollopen. `extra` (de spookkaart «Nieuwe sectie») komt onderaan de kortste kolom (canvas «A»).
+ */
+function GroupColumns({
+  columns,
+  groups,
+  renderGroup,
+  extra,
+}: {
+  columns: 1 | 2;
+  groups: Group[];
+  renderGroup: (group: Group) => React.ReactNode;
+  extra: React.ReactNode;
+}) {
+  const cols: Group[][] = Array.from({ length: columns }, () => []);
+  const heights = new Array<number>(columns).fill(0);
+  for (const g of groups) {
+    const i = heights.indexOf(Math.min(...heights));
+    cols[i].push(g);
+    heights[i] += 1.2 + Math.max(1, g.items.length);
+  }
+  const shortest = heights.indexOf(Math.min(...heights));
+  return (
+    <div className={cn("grid items-start gap-5", columns === 2 && "grid-cols-2 gap-6")}>
+      {cols.map((col, i) => (
+        <div key={i} className="flex min-w-0 flex-col gap-5">
+          {col.map((g) => (
+            <React.Fragment key={g.key}>{renderGroup(g)}</React.Fragment>
+          ))}
+          {i === shortest ? extra : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Spookkaart «Nieuwe sectie» (canvas «Te kopen · Nieuwe sectie A»). */
+function NewSectionCard({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-3.5 rounded-[22px] border-[1.5px] border-dashed border-[#c9cbe6] p-[18px] text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+    >
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-[14px] text-action-primary" style={{ backgroundColor: "rgba(120,110,230,0.12)" }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-5">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[15px] font-bold text-action-primary">Nieuwe sectie</span>
+        <span className="block text-[13px] text-[var(--text-secondary)]">Per winkel of zelf benoemd, bv. «Apotheek»</span>
+      </span>
+    </button>
+  );
+}
+
 function GroupBlock({
   group,
   isEditing,
@@ -357,6 +428,11 @@ export default function TeKopenPage() {
   const [shareModalOpen, setShareModalOpen] = React.useState(false);
   const [localShareToken, setLocalShareToken] = React.useState<string | null>(null);
   const [sectionSheetOpen, setSectionSheetOpen] = React.useState(false);
+  const openNewSection = React.useCallback(() => {
+    setSectionDraft("");
+    setSectionSheetOpen(true);
+  }, []);
+  const isWide = useIsWide();
   const [sectionDraft, setSectionDraft] = React.useState("");
 
   const { data, isLoading: dataLoading } = db.useQuery(
@@ -784,8 +860,11 @@ export default function TeKopenPage() {
                 ) : groups.length === 0 ? (
                   <p className="py-8 text-center text-[15px] text-[var(--text-tertiary)]">Geen producten gevonden voor «{searchQuery.trim()}».</p>
                 ) : (
-                  <div className="flex flex-col gap-5 lg:block lg:columns-2 lg:gap-6 [&>*]:break-inside-avoid lg:[&>*]:mb-5">
-                  {groups.map((group) => (
+                  <GroupColumns
+                    columns={isWide ? 2 : 1}
+                    groups={groups}
+                    extra={!searchOpen ? <NewSectionCard onClick={openNewSection} /> : null}
+                    renderGroup={(group) => (
                     <GroupBlock
                       key={group.key}
                       group={group}
@@ -800,24 +879,13 @@ export default function TeKopenPage() {
                       onDelete={handleDelete}
                       onRemoveSection={group.kind === "section" ? () => removeSection(group.title) : undefined}
                     />
-                  ))}
-                  </div>
+                    )}
+                  />
                 )}
 
-                {!searchOpen ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSectionDraft("");
-                      setSectionSheetOpen(true);
-                    }}
-                    className="flex h-12 items-center justify-center gap-1.5 rounded-[18px] border-[1.5px] border-dashed border-[#c9cbe6] text-sm font-bold text-action-primary transition-colors [@media(hover:hover)]:hover:bg-[var(--blue-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-4">
-                      <path d="M12 5v14M5 12h14" />
-                    </svg>
-                    Nieuwe sectie
-                  </button>
+                {/* Lege staat of geen resultaten: de spookkaart staat dan los onder de melding. */}
+                {!searchOpen && (groups.length === 0 || (openItems.length === 0 && sectionNames.length === 0)) ? (
+                  <NewSectionCard onClick={openNewSection} />
                 ) : null}
 
                 {boughtItems.length > 0 && !searchOpen ? (
