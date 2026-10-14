@@ -460,7 +460,7 @@ export function LoyaltyCardSwipeShell({
                   <span
                     aria-hidden
                     className={cn(
-                      "pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-6px)] rounded-pill bg-[var(--gray-900)] shadow-[0_2px_8px_-2px_rgba(16,17,48,0.3)]",
+                      "pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-6px)] rounded-pill bg-[var(--blue-50)]",
                       !reduceMotion && "transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
                     )}
                     style={{ transform: activeIndex === 1 ? "translateX(calc(100% + 4px))" : "none" }}
@@ -477,7 +477,7 @@ export function LoyaltyCardSwipeShell({
                         onClick={() => selectTab(i)}
                         className={cn(
                           "relative flex h-11 flex-1 items-center justify-center gap-2 rounded-pill text-[15px] transition-colors duration-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                          on ? "font-extrabold text-[var(--text-inverse)]" : "font-semibold text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
+                          on ? "font-extrabold text-[var(--blue-700)]" : "font-semibold text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
                         )}
                       >
                         {pane.footerLogoSrc ? (
