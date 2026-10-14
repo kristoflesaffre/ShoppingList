@@ -38,7 +38,9 @@ const ROW_HEIGHT = 56;
 
 type AutocompleteSuggestion =
   | { kind: "item"; slug: string }
-  | { kind: "recipe"; recipe: SavedRecipe };
+  | { kind: "recipe"; recipe: SavedRecipe }
+  /** Vrije tekst toevoegen als product dat (nog) niet in de catalogus staat. */
+  | { kind: "create"; name: string };
 
 /** True wanneer de viewport smaller is dan 768px (md breakpoint). */
 export function useIsSmallScreen(): boolean {
@@ -147,8 +149,15 @@ function LargeScreenAutocomplete({
     () => [
       ...itemSuggestions.map((slug) => ({ kind: "item" as const, slug })),
       ...recipeSuggestions.map((recipe) => ({ kind: "recipe" as const, recipe })),
+      // Ook wat niet in de catalogus staat (bv. «ajuinpoeder») moet je kunnen toevoegen, zoals op mobiel.
+      ...(onSelectItem &&
+      suggestionScope !== "recipes" &&
+      value.trim() &&
+      !itemSuggestions.some((slug) => slugToDisplayName(slug).toLowerCase() === value.trim().toLowerCase())
+        ? [{ kind: "create" as const, name: value.trim() }]
+        : []),
     ],
-    [itemSuggestions, recipeSuggestions],
+    [itemSuggestions, recipeSuggestions, onSelectItem, suggestionScope, value],
   );
 
   const showDropdown = open && suggestions.length > 0;
@@ -211,6 +220,8 @@ function LargeScreenAutocomplete({
     (suggestion: AutocompleteSuggestion) => {
       if (suggestion.kind === "recipe") {
         onSelectRecipe?.(suggestion.recipe);
+      } else if (suggestion.kind === "create") {
+        onSelectItem?.(suggestion.name);
       } else {
         const selectedName = slugToDisplayName(suggestion.slug);
         if (onSelectItem) {
@@ -264,12 +275,36 @@ function LargeScreenAutocomplete({
                 key={
                   suggestion.kind === "item"
                     ? `item-${suggestion.slug}`
-                    : `recipe-${suggestion.recipe.id}`
+                    : suggestion.kind === "create"
+                      ? "create"
+                      : `recipe-${suggestion.recipe.id}`
                 }
                 role="option"
                 aria-selected={i === highlightedIndex}
               >
-                {suggestion.kind === "item" ? (
+                {suggestion.kind === "create" ? (
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelect(suggestion);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-3 px-3 py-2 text-left transition-colors",
+                    i === highlightedIndex ? "bg-[var(--blue-25)]" : "hover:bg-[var(--blue-25)]",
+                    i > 0 && "border-t border-[var(--gray-100)]",
+                  )}
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--blue-25)] text-[var(--blue-500)]" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" className="size-[18px]">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                  </span>
+                  <span className="min-w-0 truncate text-sm leading-20 text-[var(--text-primary)]">
+                    <span className="font-semibold">«{suggestion.name}»</span> toevoegen
+                  </span>
+                </button>
+                ) : suggestion.kind === "item" ? (
                 <button
                   type="button"
                   onMouseDown={(e) => {
