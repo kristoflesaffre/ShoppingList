@@ -57,13 +57,24 @@ describe("mergeLooseDuplicates", () => {
     expect(out[0].checked).toBe(false);
   });
 
-  it("laat receptingrediënten, diepvries en andere eenheden apart", () => {
+  it("voegt ook receptingrediënten en andere eenheden samen, diepvries blijft apart", () => {
     const out = mergeLooseDuplicates([
       it0("a", "Look", "1 stuk", "A"),
       it0("b", "Look", "2 stuks", "B", { recipeGroupId: "r1" }),
       it0("c", "Look", "200 gram", "C"),
       it0("d", "Look", "1 stuk", "D", { fromStock: true }),
     ]);
-    expect(out.map((i) => i.id)).toEqual(["a", "b", "c", "d"]);
+    expect(out.map((i) => i.id)).toEqual(["a", "d"]);
+    expect(out[0]).toMatchObject({ quantity: "3 stuks + 200 gram", mergedIds: ["a", "b", "c"] });
+  });
+
+  it("komkommer van twee recepten op verschillende dagen = één kaartje", () => {
+    const out = mergeLooseDuplicates([
+      it0("a", "Komkommer", "1 stuk", "Woensdag", { recipeGroupId: "r1" }),
+      it0("x", "Paprika", "1 stuk", "Woensdag"),
+      it0("b", "Komkommer", "1 stuk", "Vrijdag", { recipeGroupId: "r2" }),
+    ]);
+    expect(out.map((i) => i.id)).toEqual(["a", "x"]);
+    expect(out[0]).toMatchObject({ quantity: "2 stuks", mergedIds: ["a", "b"] });
   });
 });

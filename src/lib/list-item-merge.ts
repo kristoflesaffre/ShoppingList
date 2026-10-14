@@ -59,33 +59,49 @@ export function findMergeTarget(
 
 type DisplayItem = MergeCandidate & { mergedIds?: string[] };
 
+/** Telt een lijst hoeveelheden op per eenheid: «1 stuk», «1 stuk», «200 g» → «2 stuks + 200 g». */
+function sumQuantities(quantities: readonly string[]): string {
+  const parts: string[] = [];
+  for (const q of quantities) {
+    const at = parts.findIndex((p) => addQuantities(p, q) != null);
+    if (at >= 0) parts[at] = addQuantities(parts[at], q)!;
+    else parts.push(q.trim() || "1 stuk");
+  }
+  return parts.join(" + ");
+}
+
 /**
- * Weergave per categorie: hetzelfde losse product op verschillende dagen (bv. «Kroketjes» bij
- * Algemeen én Zaterdag) als één kaartje met de opgetelde hoeveelheid. Receptingrediënten en
- * diepvries blijven apart. `mergedIds` = alle onderliggende items (afvinken/verwijderen doet ze allemaal).
+ * Weergave per categorie: elk product maar één keer. Hetzelfde product op verschillende dagen
+ * (los of als receptingrediënt, bv. «Komkommer» woensdag én vrijdag) wordt één kaartje met de
+ * opgetelde hoeveelheid; verschillende eenheden komen naast elkaar («1 stuk + 200 g»). Diepvries
+ * (uit de voorraad) blijft apart. `mergedIds` = alle onderliggende items (afvinken/verwijderen doet ze allemaal).
  */
 export function mergeLooseDuplicates<T extends DisplayItem>(items: readonly T[]): T[] {
-  const out: T[] = [];
-  const byName = new Map<string, number>();
+  const groups = new Map<string, T[]>();
+  const order: (T | string)[] = [];
   for (const item of items) {
-    const loose = !item.recipeGroupId && !item.fromStock;
     const key = item.name.trim().toLowerCase();
-    const at = loose && key ? byName.get(key) : undefined;
-    if (at != null) {
-      const base = out[at];
-      const sum = addQuantities(base.quantity, item.quantity);
-      if (sum != null) {
-        out[at] = {
-          ...base,
-          quantity: sum,
-          checked: base.checked && item.checked,
-          mergedIds: [...(base.mergedIds ?? [base.id]), item.id],
-        };
-        continue;
-      }
+    if (item.fromStock || !key) {
+      order.push(item);
+      continue;
     }
-    if (loose && key && !byName.has(key)) byName.set(key, out.length);
-    out.push(item);
+    const group = groups.get(key);
+    if (group) group.push(item);
+    else {
+      groups.set(key, [item]);
+      order.push(key);
+    }
   }
-  return out;
+  return order.map((entry) => {
+    if (typeof entry !== "string") return entry;
+    const group = groups.get(entry)!;
+    if (group.length === 1) return group[0];
+    const [base] = group;
+    return {
+      ...base,
+      quantity: sumQuantities(group.map((i) => i.quantity)),
+      checked: group.every((i) => i.checked),
+      mergedIds: group.map((i) => i.id),
+    };
+  });
 }
