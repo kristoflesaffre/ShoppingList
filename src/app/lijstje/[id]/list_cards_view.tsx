@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { IngredientPlate } from "@/components/ingredient_plate";
+import { selectCalendarPreviewItems } from "@/lib/calendar-utils";
 import { SortableContext, rectSortingStrategy, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { StoreBadge, StoreLogos, useStoreLongPress } from "./store_mark";
@@ -1107,10 +1108,11 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
           <Plate src={dishPhoto} size={46} freeze={Boolean(stock)} />
         ) : (
           <IngredientPlate
-            photos={section.items
-              .map((i) => i.stockPhotoUrl ?? getPhotoUrl?.(i.name, 160) ?? null)
-              .filter((src): src is string => Boolean(src))
-              .slice(0, 3)}
+            photos={selectCalendarPreviewItems(
+              section.items
+                .map((i) => ({ name: i.name, photo: i.stockPhotoUrl ?? getPhotoUrl?.(i.name, 160) ?? null }))
+                .filter((i): i is { name: string; photo: string } => Boolean(i.photo)),
+            ).map((i) => i.photo)}
             size={46}
             className="!bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.10)]"
           />

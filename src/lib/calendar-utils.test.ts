@@ -5,7 +5,7 @@ import {
 } from "@/lib/calendar-utils";
 
 describe("selectCalendarPreviewItems", () => {
-  it("geeft vlees, aardappelen en een groente voorrang", () => {
+  it("kiest één zetmeel, één groente en één vlees", () => {
     const items = [
       { name: "Maïs" },
       { name: "Radijsjes" },
@@ -16,9 +16,36 @@ describe("selectCalendarPreviewItems", () => {
     ];
 
     expect(selectCalendarPreviewItems(items).map((item) => item.name)).toEqual([
-      "Kipfilet",
       "Aardappelen",
       "Radijsjes",
+      "Kipfilet",
+    ]);
+  });
+
+  it("telt vis als vlees, rijst/pasta als zetmeel, en geen rijstpapier of fruit", () => {
+    const items = [
+      { name: "Rijstpapier" },
+      { name: "Appels" },
+      { name: "Komkommer" },
+      { name: "Kokosmelk" },
+      { name: "Zalm" },
+      { name: "Basmati rijst" },
+    ];
+
+    expect(selectCalendarPreviewItems(items).map((item) => item.name)).toEqual([
+      "Basmati rijst",
+      "Komkommer",
+      "Zalm",
+    ]);
+  });
+
+  it("ordent ook een dag met precies drie items als zetmeel · groente · vlees", () => {
+    const items = [{ name: "Gehakt" }, { name: "Spaghetti" }, { name: "Tomaten" }];
+
+    expect(selectCalendarPreviewItems(items).map((item) => item.name)).toEqual([
+      "Spaghetti",
+      "Tomaten",
+      "Gehakt",
     ]);
   });
 

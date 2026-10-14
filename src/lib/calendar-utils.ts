@@ -34,21 +34,35 @@ export function dayEntryHasContent(entry: DayEntry | undefined): boolean {
   return entry.meals.length > 0 || entry.looseIngredients.length > 0;
 }
 
-const CALENDAR_MEAT_CATEGORY = "Vlees & Charcuterie";
+const CALENDAR_PROTEIN_CATEGORIES = new Set(["Vlees & Charcuterie", "Vis & Zeevruchten"]);
 const CALENDAR_PRODUCE_CATEGORY = "Groenten & Fruit";
-const POTATO_NAME_PATTERN = /\b(?:aardappel\w*|patat\w*|krielt\w*|friet\w*|kroket\w*)\b/i;
+/** Zetmeel: aardappelen (en afgeleiden), rijst, pasta, noedels, granen. «Rijstpapier» telt niet. */
+const STARCH_NAME_PATTERN =
+  /\b(?:\w*aardappel\w*|patat\w*|krielt\w*|friet\w*|kroket\w*|puree|gnocchi|rijst|basmati\w*|risotto\w*|pasta\w*|spaghetti|penne|macaroni|fusilli|tagliatelle|lasagne\w*|farfalle|tortellini|ravioli|noedel\w*|mie|udon|couscous|bulgur|quinoa|orzo|polenta)\b/i;
+/** Eiwit buiten vlees/vis: vegetarische hoofdcomponent. */
+const VEGGIE_PROTEIN_PATTERN = /\b(?:tofu|tempeh|seitan|eieren|ei|falafel|quorn|kikkererwten|linzen)\b/i;
+/** Fruit telt niet als «groente» op het bord. */
+const FRUIT_NAME_PATTERN =
+  /\b(?:appel\w*|banan\w*|mandarijn\w*|clementine\w*|sinaas\w*|kiwi\w*|peer|peren|druiven|aardbei\w*|framboz\w*|bosbes\w*|blauwe bessen|citroen\w*|limoen\w*|meloen\w*|ananas|mango\w*|perzik\w*|nectarine\w*|pruim\w*|kers\w*|abrikoz\w*|granaatappel\w*)\b/i;
+
+const isStarch = (name: string) => STARCH_NAME_PATTERN.test(name);
+const isProtein = (name: string) =>
+  CALENDAR_PROTEIN_CATEGORIES.has(resolveItemCategoryFromName(name)) || VEGGIE_PROTEIN_PATTERN.test(name);
+const isVegetable = (name: string) =>
+  !isStarch(name) &&
+  !FRUIT_NAME_PATTERN.test(name) &&
+  resolveItemCategoryFromName(name) === CALENDAR_PRODUCE_CATEGORY;
 
 /**
- * Kiest maximaal drie representatieve losse items voor een kalendertegel:
- * eerst vlees/kip, daarna aardappelen en vervolgens een groente. Ontbrekende
- * plaatsen worden stabiel aangevuld uit de oorspronkelijke volgorde.
+ * Kiest maximaal drie representatieve losse items voor een kalendertegel, zoals een bord:
+ * één zetmeel (aardappelen, rijst, pasta…), één groente en één vlees/vis (of tofu, eieren…).
+ * Ontbrekende plaatsen worden stabiel aangevuld uit de oorspronkelijke volgorde.
  */
 export function selectCalendarPreviewItems<T extends { name: string }>(
   items: readonly T[],
   limit = 3,
 ): T[] {
   if (limit <= 0) return [];
-  if (items.length <= limit) return [...items];
 
   const selectedIndexes = new Set<number>();
   const selected: T[] = [];
@@ -61,15 +75,9 @@ export function selectCalendarPreviewItems<T extends { name: string }>(
     selected.push(items[index]);
   };
 
-  takeFirst(
-    (item) => resolveItemCategoryFromName(item.name) === CALENDAR_MEAT_CATEGORY,
-  );
-  takeFirst((item) => POTATO_NAME_PATTERN.test(item.name));
-  takeFirst(
-    (item) =>
-      !POTATO_NAME_PATTERN.test(item.name) &&
-      resolveItemCategoryFromName(item.name) === CALENDAR_PRODUCE_CATEGORY,
-  );
+  takeFirst((item) => isStarch(item.name));
+  takeFirst((item) => isVegetable(item.name));
+  takeFirst((item) => isProtein(item.name));
 
   for (let index = 0; index < items.length && selected.length < limit; index++) {
     if (selectedIndexes.has(index)) continue;
