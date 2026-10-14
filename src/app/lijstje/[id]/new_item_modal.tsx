@@ -16,10 +16,10 @@ import { CountStepper } from "@/components/ui/count_stepper";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { MiniButton } from "@/components/ui/mini_button";
 import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
-import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
+import { StockSourceIcon } from "@/components/ui/freeze_mask_icon";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
-import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
+import { resolveItemCategoryFromName, stockSourceLabel } from "@/lib/item-ingredient-category";
 import { normalizeQuantity, parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
 import {
   DEFAULT_TRIP_PERSON_TAB,
@@ -69,6 +69,8 @@ export type ListItem = {
   fromStock?: boolean;
   /** Foto-URL van het diepvriesitem (recipePhotoUrl), voor weergave in de lijst. */
   stockPhotoUrl?: string;
+  /** Waar het voorraaditem vandaan komt; ontbreekt = diepvries. */
+  stockSource?: "freezer" | "pantry";
   /** Absolute datum "YYYY-MM-DD" waarop dit item gepland staat (alleen voor dagnaam-secties). */
   itemDate?: string;
   /** Landal/vakantie: wie het item betreft. */
@@ -250,6 +252,8 @@ export function NewItemModal({
     itemCategory?: string;
     fromStock?: boolean;
     stockPhotoUrl?: string;
+    /** Waar het voorraaditem vandaan komt; ontbreekt = diepvries. */
+    stockSource?: "freezer" | "pantry";
     tripPerson?: TripPersonTab;
     store?: ItemStore;
   }) => void;
@@ -960,6 +964,7 @@ export function NewItemModal({
     section: string;
     fromStock: true;
     stockPhotoUrl?: string;
+    stockSource?: "freezer" | "pantry";
   }) => {
     if (batchMode) {
       const entryId = createBatchId("item");
@@ -982,13 +987,14 @@ export function NewItemModal({
     onClose();
   };
 
-  const handleSelectItemFromFreezer = (name: string) => {
+  const handleSelectItemFromStock = (name: string, source: "freezer" | "pantry") => {
     if (batchMode) setItemSearchQuery("");
     addFromStock({
       name: name.trim(),
       quantity: "1 stuk",
       section: selectedDay === "Geen" ? "Algemeen" : selectedDay,
       fromStock: true,
+      ...(source === "pantry" ? { stockSource: "pantry" as const } : {}),
     });
   };
 
@@ -1148,7 +1154,7 @@ export function NewItemModal({
                   {isItem ? (
                     entry.item.fromStock ? (
                       <span className="inline-flex items-center gap-1">
-                        {entry.item.quantity} · <FreezeMaskIcon className="!size-3.5" colorClassName="bg-[var(--blue-500)]" /> Uit de diepvries
+                        {entry.item.quantity} · <StockSourceIcon source={entry.item.stockSource === "pantry" ? "pantry" : "freezer"} className="!size-3.5" colorClassName="bg-[var(--blue-500)]" /> {stockSourceLabel(entry.item.stockSource)}
                       </span>
                     ) : (
                       entry.item.quantity
@@ -1406,7 +1412,7 @@ export function NewItemModal({
                       recipes={sourceFilter === "all" ? storedRecipes : undefined}
                       onSelectRecipe={handleSelectRecipe}
                       onSelectRecipeFromFreezer={handleSelectRecipeFromFreezer}
-                      onSelectItemFromFreezer={!isMasterList && !isVacationList && !isEditMode ? handleSelectItemFromFreezer : undefined}
+                      onSelectItemFromStock={!isMasterList && !isVacationList && !isEditMode ? handleSelectItemFromStock : undefined}
                       slideInTitle={sourceFilter === "all" ? "Item of recept toevoegen" : "Item toevoegen"}
                     />
                     {sourceFilterControls}

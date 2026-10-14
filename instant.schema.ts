@@ -104,6 +104,8 @@ const schema = i.schema({
        * Ontbreekt voor producten zonder foto.
        */
       stockPhotoUrl: i.string().optional(),
+      /** Bron van een voorraaditem: "pantry" = voorraadkast (kruiden, conserven…); leeg = diepvries. */
+      stockSource: i.string().optional(),
       /**
        * Absolute datum (ISO "YYYY-MM-DD") berekend op het moment dat een item aan een
        * dagnaam-sectie (Maandag…Zondag) wordt toegewezen. Ontbreekt op oudere items.

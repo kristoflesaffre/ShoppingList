@@ -93,16 +93,19 @@ export interface ItemCardProps extends Omit<
    * Niet-klikbaar: sneeuwvlok-icoon links, foto op 20% opacity, doorgestreepte grijze tekst, geen acties.
    */
   isFromStock?: boolean;
+  /** Bron van het voorraaditem: voorraadkast toont een pot i.p.v. de sneeuwvlok. */
+  stockSource?: "freezer" | "pantry";
 }
 
 /** Sneeuwvlok-icoon voor "uit voorraad"-items (Figma icons/freeze, 24×24). */
-function FreezeIcon({ className }: { className?: string }) {
+function FreezeIcon({ className, pantry = false }: { className?: string; pantry?: boolean }) {
+  const src = pantry ? "url(/icons/pantry.svg)" : "url(/icons/freeze.svg)";
   return (
     <span
       className={cn("inline-block shrink-0 size-6 bg-[var(--blue-500)]", className)}
       style={{
-        WebkitMaskImage: "url(/icons/freeze.svg)",
-        maskImage: "url(/icons/freeze.svg)",
+        WebkitMaskImage: src,
+        maskImage: src,
         WebkitMaskSize: "contain",
         maskSize: "contain",
         WebkitMaskRepeat: "no-repeat",
@@ -419,6 +422,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
       itemThumbnail,
       density = "default",
       isFromStock = false,
+      stockSource,
       style: incomingStyle,
       ...restProps
     },
@@ -1209,7 +1213,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
               {/* Sneeuwvlok linksboven i.p.v. checkbox */}
               <div className="absolute inset-x-0 top-0 z-[1] flex items-start justify-between">
                 <div className="flex h-8 w-8 items-start justify-start">
-                  <FreezeIcon />
+                  <FreezeIcon pantry={stockSource === "pantry"} />
                 </div>
                 <span className="size-8" aria-hidden />
               </div>
@@ -1270,7 +1274,7 @@ const ItemCard = React.forwardRef<HTMLDivElement, ItemCardProps>(
           {...restProps}
         >
           {/* Sneeuwvlok i.p.v. checkbox */}
-          <FreezeIcon className="shrink-0" />
+          <FreezeIcon className="shrink-0" pantry={stockSource === "pantry"} />
 
           {/* Thumbnail – 44×44, 20% opacity */}
           {itemThumbnail != null && (

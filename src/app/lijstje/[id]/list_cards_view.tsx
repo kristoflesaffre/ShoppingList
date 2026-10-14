@@ -5,7 +5,8 @@ import type { ListItem } from "./new_item_modal";
 import type { SavedRecipe } from "@/lib/recipe_library";
 import type { ItemPhotoLookupOptions } from "@/lib/item-photos";
 import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate } from "@/lib/calendar-utils";
-import { categoryHeadingDisplay, groupMeatSubtypes } from "@/lib/item-ingredient-category";
+import { categoryHeadingDisplay, groupMeatSubtypes, stockSourceLabel } from "@/lib/item-ingredient-category";
+import { StockSourceIcon } from "@/components/ui/freeze_mask_icon";
 import { mixWithWhite, pickDistinctTint, useTintMap, type Rgb } from "@/lib/recipe-tint";
 import { cn } from "@/lib/utils";
 import { SegmentedControl } from "@/components/ui/segmented_control";
@@ -68,7 +69,7 @@ function splitDay(items: ListItem[], savedRecipes: SavedRecipe[]) {
   for (const item of items) {
     if (isTakeoutMealName(item.name)) {
       takeoutDishes.push(item);
-    } else if (item.fromStock) {
+    } else if (item.fromStock && item.stockSource !== "pantry") {
       stockDishes.push(item);
     } else if (item.recipeGroupId && item.recipeName) {
       let r = recipes.find((x) => x.groupId === item.recipeGroupId);
@@ -266,6 +267,44 @@ function ItemTile({ item, getPhotoUrl, onToggle }: ItemProps) {
   );
 }
 
+/** Uit voorraad (diepvries of voorraadkast): staat op de dag, maar je hoeft het niet te kopen. */
+function StockItem({ item, layout, getPhotoUrl }: { item: ListItem; layout: ListCardLayout; getPhotoUrl?: GetPhotoUrl }) {
+  const source = item.stockSource === "pantry" ? "pantry" : "freezer";
+  const label = stockSourceLabel(item.stockSource);
+  if (layout === "tiles") {
+    return (
+      <div className="relative flex aspect-[1/1.12] min-w-0 flex-col items-center justify-center gap-1 rounded-[16px] bg-[var(--gray-25)] px-1 py-2" aria-label={`${item.name}, ${label.toLowerCase()}`}>
+        <span className="absolute right-[7px] top-[7px] flex size-[22px] items-center justify-center">
+          <StockSourceIcon source={source} className="!size-[18px]" colorClassName="bg-[var(--blue-500)]" />
+        </span>
+        <ItemPhoto item={item} getPhotoUrl={getPhotoUrl} size={58} boxed={false} />
+        <span className="w-full px-1 text-center leading-[15px]">
+          <span className="block truncate text-xs font-semibold text-text-primary first-letter:uppercase">{item.name}</span>
+          <span className="block truncate text-[11px] text-[var(--blue-500)]">{label}</span>
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div
+      aria-label={`${item.name}, ${label.toLowerCase()}`}
+      className={cn(
+        "flex min-w-0 items-center gap-3 text-left",
+        layout === "one"
+          ? "border-t border-[var(--border-subtle)] px-1 py-2.5 first:border-t-0"
+          : "rounded-[12px] bg-[var(--gray-25)] p-[7px]",
+      )}
+    >
+      <ItemPhoto item={item} getPhotoUrl={getPhotoUrl} size={layout === "one" ? 42 : 34} />
+      <span className="min-w-0 flex-1 leading-[18px]">
+        <span className="block truncate text-[15px] font-medium text-text-primary first-letter:uppercase">{item.name}</span>
+        <span className="block truncate text-[12px] font-medium text-[var(--blue-500)]">{label}</span>
+      </span>
+      <StockSourceIcon source={source} className="!size-5" colorClassName="bg-[var(--blue-500)]" />
+    </div>
+  );
+}
+
 /** Afhaalgerecht: statische maaltijdweergave zonder boodschappencheckbox. */
 function TakeoutMealItem({ item, layout }: { item: ListItem; layout: ListCardLayout }) {
   if (layout === "tiles") {
@@ -316,7 +355,9 @@ function ItemsLayout({
   if (layout === "one") {
     return (
       <div className="px-2.5 pb-1.5 pt-1">
-        {items.map((it) => isTakeoutMealName(it.name) ? (
+        {items.map((it) => it.fromStock ? (
+          <StockItem key={it.id} item={it} layout={layout} getPhotoUrl={getPhotoUrl} />
+        ) : isTakeoutMealName(it.name) ? (
           <TakeoutMealItem key={it.id} item={it} layout={layout} />
         ) : (
           <ItemRow key={it.id} item={it} getPhotoUrl={getPhotoUrl} onToggle={() => onCheckedChange(it.id, !it.checked)} />
@@ -327,7 +368,9 @@ function ItemsLayout({
   if (layout === "tiles") {
     return (
       <div className={cn("grid gap-1.5 p-2.5", wide ? "grid-cols-3 lg:grid-cols-4" : "grid-cols-3")}>
-        {items.map((it) => isTakeoutMealName(it.name) ? (
+        {items.map((it) => it.fromStock ? (
+          <StockItem key={it.id} item={it} layout={layout} getPhotoUrl={getPhotoUrl} />
+        ) : isTakeoutMealName(it.name) ? (
           <TakeoutMealItem key={it.id} item={it} layout={layout} />
         ) : (
           <ItemTile key={it.id} item={it} getPhotoUrl={getPhotoUrl} onToggle={() => onCheckedChange(it.id, !it.checked)} />
@@ -337,7 +380,9 @@ function ItemsLayout({
   }
   return (
     <div className="grid grid-cols-2 gap-1.5 p-2.5">
-      {items.map((it) => isTakeoutMealName(it.name) ? (
+      {items.map((it) => it.fromStock ? (
+          <StockItem key={it.id} item={it} layout={layout} getPhotoUrl={getPhotoUrl} />
+        ) : isTakeoutMealName(it.name) ? (
         <TakeoutMealItem key={it.id} item={it} layout={layout} />
       ) : (
         <ItemChip key={it.id} item={it} getPhotoUrl={getPhotoUrl} onToggle={() => onCheckedChange(it.id, !it.checked)} />
@@ -1091,7 +1136,7 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
       ...split.stockDishes.filter((s) => s !== stock),
     ];
     const countable = section.items.filter(
-      (item) => item !== stock && !isTakeoutMealName(item.name),
+      (item) => item !== stock && !item.fromStock && !isTakeoutMealName(item.name),
     );
     /* Elke dag: datumtegel + dag als titel; het gerecht (recept of diepvries) als sublabel.
        Desktop: ook de gerechtfoto, en bij dagen zonder gerecht de items als sublabel. */

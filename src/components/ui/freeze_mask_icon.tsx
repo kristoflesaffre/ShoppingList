@@ -33,3 +33,31 @@ export function FreezeMaskIcon({
     />
   );
 }
+
+const PANTRY_MASK_STYLE: React.CSSProperties = {
+  ...FREEZE_MASK_STYLE,
+  WebkitMaskImage: 'url("/icons/pantry.svg")',
+  maskImage: 'url("/icons/pantry.svg")',
+};
+
+/** Voorraadpot uit `public/icons/pantry.svg` via CSS-mask (tegenhanger van de sneeuwvlok). */
+export function PantryMaskIcon({
+  className,
+  colorClassName = "bg-action-primary",
+}: FreezeMaskIconProps) {
+  return (
+    <span
+      className={cn("inline-block size-6 shrink-0", colorClassName, className)}
+      style={PANTRY_MASK_STYLE}
+      aria-hidden
+    />
+  );
+}
+
+/** Sneeuwvlok (diepvries) of voorraadpot (voorraadkast). */
+export function StockSourceIcon({
+  source,
+  ...props
+}: FreezeMaskIconProps & { source: "freezer" | "pantry" }) {
+  return source === "pantry" ? <PantryMaskIcon {...props} /> : <FreezeMaskIcon {...props} />;
+}

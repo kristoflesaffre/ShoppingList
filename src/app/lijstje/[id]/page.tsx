@@ -1735,6 +1735,7 @@ function SortableItemCard({
           state={isEditMode ? "editable" : (isSharedList ? "shared" : "default")}
           density={listViewMode === "grid" ? "grid" : "default"}
           isFromStock={item.fromStock === true}
+          stockSource={item.stockSource}
           itemThumbnail={(() => {
             // Voor "uit voorraad"-items: gebruik de opgeslagen recipePhotoUrl.
             // Items eindigend op " (diepvries)": gebruik recept-foto uit bibliotheek.
@@ -3514,6 +3515,7 @@ export default function ListDetailPage({
           recipeLink: it.recipeLink || undefined,
           fromStock: row.fromStock === true || undefined,
           stockPhotoUrl: typeof row.stockPhotoUrl === "string" ? row.stockPhotoUrl : undefined,
+          stockSource: row.stockSource === "pantry" ? "pantry" : undefined,
           itemDate: typeof row.itemDate === "string" && row.itemDate ? row.itemDate : undefined,
           tripPerson: (() => {
             const rawTp = row.tripPerson ?? row.trip_person;
@@ -4583,6 +4585,7 @@ export default function ListDetailPage({
                 ...(item.stockPhotoUrl
                   ? { stockPhotoUrl: item.stockPhotoUrl }
                   : {}),
+                ...(item.stockSource ? { stockSource: item.stockSource } : {}),
                 ...(item.tripPerson !== undefined
                   ? { tripPerson: normalizeTripPerson(item.tripPerson) }
                   : {}),
@@ -4889,6 +4892,7 @@ export default function ListDetailPage({
       itemCategory?: string;
       fromStock?: boolean;
       stockPhotoUrl?: string;
+      stockSource?: "freezer" | "pantry";
       tripPerson?: TripPersonTab;
       store?: ItemStore;
     }) => {
@@ -4919,6 +4923,7 @@ export default function ListDetailPage({
         itemCategory,
         fromStock: newItem.fromStock,
         stockPhotoUrl: newItem.stockPhotoUrl,
+        stockSource: newItem.stockSource,
         ...(isLandalOrVakantieList && !isPreDepartureItem
           ? { tripPerson: normalizeTripPerson(newItem.tripPerson) }
           : {}),
@@ -4970,6 +4975,7 @@ export default function ListDetailPage({
             order: idx,
             ...(newItem.fromStock ? { fromStock: true } : {}),
             ...(newItem.stockPhotoUrl ? { stockPhotoUrl: newItem.stockPhotoUrl } : {}),
+            ...(newItem.stockSource ? { stockSource: newItem.stockSource } : {}),
             ...(newItem.store ? { store: newItem.store } : {}),
             ...(computeSectionAbsoluteDate(newItem.section) != null
               ? { itemDate: computeSectionAbsoluteDate(newItem.section)! }

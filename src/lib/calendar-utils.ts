@@ -175,6 +175,8 @@ type AnyItem = {
   recipeName?: string | null;
   fromStock?: boolean | null;
   stockPhotoUrl?: string | null;
+  /** "pantry" = uit de voorraadkast (geen diepvriesgerecht). */
+  stockSource?: string | null;
 };
 
 type AnyList = {
@@ -284,7 +286,8 @@ export function buildCalendarEntries(
           name: item.name,
           quantity: item.quantity,
           photoUrl: loosePhotoUrl,
-          fromStock: item.fromStock === true || undefined,
+          // Voorraadkast (kruiden, bouillon…) is geen diepvriesgerecht: geen sneeuwvlok op de dag.
+          fromStock: (item.fromStock === true && item.stockSource !== "pantry") || undefined,
         });
       }
     }

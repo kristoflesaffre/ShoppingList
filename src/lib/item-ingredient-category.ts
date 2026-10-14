@@ -362,8 +362,23 @@ export function groupMeatSubtypes<T>(categoryTitle: string, items: T[], getName:
     .map((x) => x.item);
 }
 
-/** Vlees en vis: kan je uit de diepvries halen i.p.v. kopen (sneeuwvlok bij het toevoegen). */
-export function isFreezableProduct(name: string): boolean {
+export type StockSource = "freezer" | "pantry";
+
+const PANTRY_CATEGORIES = new Set(["Conserven, Sauzen, Olie & Kruiden", "Droogwaren & Bakproducten"]);
+
+/**
+ * Waar je een product al in huis kan hebben i.p.v. het te kopen: vlees en vis uit de diepvries,
+ * kruiden, sauzen, bouillon, conserven en droogwaren uit de voorraadkast. Verse producten
+ * (groenten, fruit, zuivel, brood…) nooit.
+ */
+export function stockSourceForProduct(name: string): StockSource | null {
   const cat = resolveItemCategoryFromName(name);
-  return cat === "Vlees & Charcuterie" || cat === "Vis & Zeevruchten";
+  if (cat === "Vlees & Charcuterie" || cat === "Vis & Zeevruchten") return "freezer";
+  if (PANTRY_CATEGORIES.has(cat)) return "pantry";
+  return null;
+}
+
+/** Label voor een item uit voorraad. */
+export function stockSourceLabel(source: StockSource | null | undefined): string {
+  return source === "pantry" ? "Uit de voorraadkast" : "Uit de diepvries";
 }
