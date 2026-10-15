@@ -493,6 +493,8 @@ function SmallScreenAutocomplete({
   const [slideInOpen, setSlideInOpen] = React.useState(false);
   /** Het veld waarop getikt wordt: de zoek-slide-in vliegt van hieruit naar boven. */
   const triggerRef = React.useRef<HTMLButtonElement>(null);
+  /** Zolang de zoeklaag (incl. animatie) in beeld is, verbergen we het veld: er vliegt een kopie. */
+  const [layerVisible, setLayerVisible] = React.useState(false);
   const getItemPhotoUrl = useItemPhotoUrl();
   const getIngredientPhotoUrl = useIngredientPhotoUrl(160);
   const getPhotoUrl =
@@ -516,7 +518,8 @@ function SmallScreenAutocomplete({
           onClick={() => setSlideInOpen(true)}
           className={cn(
             "flex w-full items-center rounded-[16px] bg-[var(--gray-25)] text-left transition-colors active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-            value ? "h-[58px] gap-3 pl-2 pr-4" : "h-12 gap-2.5 px-3.5 text-[15px]",
+            value ? "h-[58px] gap-3 pl-2 pr-4" : "h-12 gap-2.5 px-3.5 text-base",
+            layerVisible && "invisible",
           )}
           aria-haspopup="dialog"
           aria-label={ariaLabel ?? label ?? placeholder}
@@ -580,6 +583,7 @@ function SmallScreenAutocomplete({
       <ItemNameSearchSlideIn
         variant={searchVariant}
         originRef={triggerRef}
+        onLayerVisibleChange={setLayerVisible}
         open={slideInOpen}
         onClose={() => setSlideInOpen(false)}
         initialValue={value}

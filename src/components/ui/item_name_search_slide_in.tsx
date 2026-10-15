@@ -131,11 +131,15 @@ export type ItemNameSearchSlideInProps = {
    * naar boven (en bij sluiten terug); de rest van het blad fadet in.
    */
   originRef?: React.RefObject<HTMLElement | null>;
+  /** Of de laag in beeld is (ook tijdens de sluitanimatie): het bronveld verbergt zich zolang. */
+  onLayerVisibleChange?: (visible: boolean) => void;
 };
 
 /** Zelfde curve als de bladen (`--ease-drawer`). */
 const FLY_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
-const FLY_MS = 380;
+const FLY_MS = 520;
+/** Beweging + breedte + kleur (grijs veld → wit met focusrand) in één vloeiende overgang. */
+const FLY_TRANSITION = ["transform", "width", "background-color", "box-shadow"].map((p) => `${p} ${FLY_MS}ms ${FLY_EASE}`).join(", ");
 
 export function ItemNameSearchSlideIn({
   open,
@@ -152,6 +156,7 @@ export function ItemNameSearchSlideIn({
   onSelectItemFromStock,
   variant = "top",
   originRef,
+  onLayerVisibleChange,
 }: ItemNameSearchSlideInProps) {
   const isTop = variant === "top";
   const itemSlugs = useItemSlugs();
@@ -199,6 +204,9 @@ export function ItemNameSearchSlideIn({
     field.style.flex = "none";
     field.style.width = `${from.width}px`;
     field.style.transform = `translate(${from.left - to.left}px, ${from.top - to.top}px)`;
+    // Start in de look van het bronveld (grijs, zonder focusrand).
+    field.style.backgroundColor = "var(--gray-25)";
+    field.style.boxShadow = "none";
     return to;
   }, [originRef]);
 
@@ -218,12 +226,14 @@ export function ItemNameSearchSlideIn({
       const field = fieldRef.current;
       const to = field.getBoundingClientRect();
       const from = originRef.current.getBoundingClientRect();
-      field.style.transition = `transform ${FLY_MS}ms ${FLY_EASE}, width ${FLY_MS}ms ${FLY_EASE}`;
+      field.style.transition = FLY_TRANSITION;
       field.style.flex = "none";
       field.style.width = `${to.width}px`;
       void field.offsetWidth;
       field.style.width = `${from.width}px`;
       field.style.transform = `translate(${from.left - to.left}px, ${from.top - to.top}px)`;
+      field.style.backgroundColor = "var(--gray-25)";
+      field.style.boxShadow = "none";
       exitTimerRef.current = window.setTimeout(() => setDomVisible(false), FLY_MS);
     } else {
       exitTimerRef.current = window.setTimeout(() => setDomVisible(false), canFly() ? 0 : 180);
@@ -242,9 +252,11 @@ export function ItemNameSearchSlideIn({
     const to = placeFieldAtOrigin();
     void field.offsetWidth;
     const raf = requestAnimationFrame(() => {
-      field.style.transition = `transform ${FLY_MS}ms ${FLY_EASE}, width ${FLY_MS}ms ${FLY_EASE}`;
+      field.style.transition = FLY_TRANSITION;
       field.style.transform = "translate(0px, 0px)";
       field.style.width = to ? `${to.width}px` : "";
+      field.style.backgroundColor = "";
+      field.style.boxShadow = "";
       setEntered(true);
     });
     const done = window.setTimeout(() => {
@@ -252,6 +264,8 @@ export function ItemNameSearchSlideIn({
       field.style.transform = "";
       field.style.width = "";
       field.style.flex = "";
+      field.style.backgroundColor = "";
+      field.style.boxShadow = "";
     }, FLY_MS + 40);
     return () => {
       cancelAnimationFrame(raf);
@@ -266,6 +280,11 @@ export function ItemNameSearchSlideIn({
     [],
   );
 
+  // Layout-effect: het bronveld wisselt in hetzelfde frame als de laag (geen dubbel veld, geen gat).
+  React.useLayoutEffect(() => {
+    onLayerVisibleChange?.(domVisible);
+  }, [domVisible, onLayerVisibleChange]);
+
   React.useEffect(() => {
     if (open) setQuery(initialValue);
   }, [open, initialValue]);
@@ -279,8 +298,8 @@ export function ItemNameSearchSlideIn({
     if (!open || !domVisible) return;
     const el = inputRef.current;
     if (!el) return;
-    el.focus();
-    const t0 = window.setTimeout(() => el.focus(), 0);
+    el.focus({ preventScroll: true });
+    const t0 = window.setTimeout(() => el.focus({ preventScroll: true }), 0);
     return () => clearTimeout(t0);
   }, [open, domVisible]);
 
@@ -375,8 +394,8 @@ export function ItemNameSearchSlideIn({
 
   /** Chips, hint en resultaten: komen net na het zoekveld binnen (en gaan eerst weg). */
   const fadeClass = cn(
-    "transition-[opacity,transform] duration-[260ms] ease-out-strong motion-reduce:transition-none",
-    entered ? "translate-y-0 opacity-100 delay-[140ms]" : "translate-y-2 opacity-0",
+    "transition-[opacity,transform] ease-out-strong motion-reduce:transition-none",
+    entered ? "translate-y-0 opacity-100 delay-[260ms] duration-[380ms]" : "translate-y-2 opacity-0 duration-[160ms]",
   );
 
   if (isTop) {
@@ -404,7 +423,7 @@ export function ItemNameSearchSlideIn({
     return ReactDOM.createPortal(
       <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={title}>
         <div
-          className={cn("absolute inset-0 bg-black/50 transition-opacity duration-[260ms] ease-out-strong motion-reduce:transition-none", entered ? "opacity-100" : "opacity-0")}
+          className={cn("absolute inset-0 bg-black/50 transition-opacity duration-[420ms] ease-out-strong motion-reduce:transition-none", entered ? "opacity-100" : "opacity-0")}
           onClick={handleClose}
           aria-hidden
         />
@@ -419,7 +438,7 @@ export function ItemNameSearchSlideIn({
           <span
             aria-hidden
             className={cn(
-              "absolute inset-0 -z-10 bg-[var(--white)] transition-opacity duration-[240ms] ease-out-strong motion-reduce:transition-none",
+              "absolute inset-0 -z-10 bg-[var(--white)] transition-opacity duration-[220ms] ease-out motion-reduce:transition-none",
               entered ? "opacity-100" : "opacity-0",
             )}
           />
@@ -438,7 +457,6 @@ export function ItemNameSearchSlideIn({
                 autoComplete="off"
                 enterKeyHint="search"
                 inputMode="text"
-                autoFocus
                 className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none"
               />
               {query.length > 0 ? (
@@ -462,8 +480,8 @@ export function ItemNameSearchSlideIn({
               type="button"
               onClick={handleClose}
               className={cn(
-                "shrink-0 rounded-md text-[15px] font-semibold text-[var(--blue-500)] transition-[opacity,transform] duration-[260ms] ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] motion-reduce:transition-none",
-                entered ? "translate-x-0 opacity-100 delay-[120ms]" : "translate-x-3 opacity-0",
+                "shrink-0 rounded-md text-[15px] font-semibold text-[var(--blue-500)] transition-[opacity,transform] ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] motion-reduce:transition-none",
+                entered ? "translate-x-0 opacity-100 delay-[220ms] duration-[360ms]" : "translate-x-3 opacity-0 duration-[180ms]",
               )}
             >
               Annuleer
