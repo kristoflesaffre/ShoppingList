@@ -240,7 +240,8 @@ function AgendaTile({ row, focus = false }: { row: AgendaRow; focus?: boolean })
       data-now={now ? "true" : undefined}
       data-focus={focus ? "true" : undefined}
       // Mobiel: voorbije afspraken niet meer tonen; desktop: vervaagd.
-      className={cn("relative flex h-[176px] w-[150px] shrink-0 snap-start flex-col rounded-[20px] p-3.5 md:w-[171px]", row.state === "past" && "opacity-50 max-md:hidden")}
+      // Voorbije afspraken niet meer tonen (mobiel én desktop): de rij begint bij wat nog komt.
+      className={cn("relative flex h-[176px] w-[150px] shrink-0 snap-start flex-col rounded-[20px] p-3.5 md:w-[171px]", row.state === "past" && "hidden")}
       style={{
         backgroundImage: `linear-gradient(170deg, ${mixWithWhiteRgb(row.color, 0.18)} 0%, #fff 70%)`,
         backgroundColor: "#fff",
@@ -288,7 +289,7 @@ function PhotoAgendaTile({ row, focus, photo }: { row: AgendaRow; focus: boolean
     <li
       data-now={now ? "true" : undefined}
       data-focus={focus ? "true" : undefined}
-      className={cn("relative h-[176px] w-[150px] shrink-0 snap-start rounded-[20px] md:w-[171px]", row.state === "past" && "opacity-50 max-md:hidden")}
+      className={cn("relative h-[176px] w-[150px] shrink-0 snap-start rounded-[20px] md:w-[171px]", row.state === "past" && "hidden")}
       style={{ boxShadow: now ? `0 0 0 2px ${rgb(c)}, 0 12px 24px -14px ${rgb(c, 0.7)}` : "0 12px 24px -18px rgba(16,17,48,0.45)" }}
     >
       <span className="absolute inset-0 isolate overflow-hidden rounded-[20px]" aria-hidden>
@@ -497,15 +498,9 @@ function TileLane({
   const tomorrowTimed = tomorrow.filter((r) => !r.allDay);
   React.useEffect(() => {
     const lane = ref.current;
-    const tile = lane?.querySelector<HTMLElement>('[data-focus="true"]');
-    const first = lane?.firstElementChild;
     if (!lane) return;
-    // Mobiel: voorbije tegels zijn verborgen, dus de rij begint gewoon vooraan (hele dag, dan nu en straks).
-    if (window.matchMedia("(max-width: 767px)").matches) {
-      lane.scrollLeft = 0;
-      return;
-    }
-    if (tile) lane.scrollLeft = Math.max(0, tile.offsetLeft - lane.offsetLeft - 16 - (tile !== first ? 60 : 0));
+    // Voorbije tegels zijn verborgen, dus de rij begint gewoon vooraan (hele dag, dan nu en straks).
+    lane.scrollLeft = 0;
   }, [focusId, rows.length, allDay.length]);
   return (
     <ul
@@ -520,8 +515,9 @@ function TileLane({
       {tomorrow.length > 0 && tomorrowDate ? (
         <>
           <DayDivider date={tomorrowDate} />
+          {/* Morgen: een voorsmaakje van twee tegels («Hele dag» telt als één). */}
           {tomorrowAllDay.length > 0 ? <AllDayStackTile rows={tomorrowAllDay} /> : null}
-          {tomorrowTimed.map((row) => (
+          {tomorrowTimed.slice(0, tomorrowAllDay.length > 0 ? 1 : 2).map((row) => (
             <AgendaTile key={`morgen-${row.id}`} row={row} />
           ))}
         </>
