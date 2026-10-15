@@ -1,17 +1,53 @@
 /**
- * Foto's voor herkende afspraken (public/images/afspraken/<naam>_240|480.webp). Titel en plaats van een
+ * Foto's voor herkende afspraken (public/images/afspraken/<naam>_240|480|full.webp). Titel en plaats van een
  * afspraak worden vergeleken met de namen en synoniemen hieronder; hoofdletters, accenten en leestekens
- * tellen niet mee. Nieuwe foto: bestand toevoegen in beide formaten en hier een regel bijzetten.
+ * tellen niet mee. Nieuwe foto: bestand toevoegen in de drie formaten en hier een regel bijzetten.
+ * De full-variant bewaart de originele resolutie; gebruik die alleen voor een vergroting, niet voor tegels.
  */
 
 const AGENDA_PHOTOS: { file: string; keys: string[] }[] = [
+  { file: "amazone_by_jarno", keys: ["amazone by jarno", "bistro amazone", "amazone"] },
+  { file: "bento_sushi", keys: ["bento sushi", "bento"] },
+  { file: "wok_dynasty", keys: ["wok dynasty"] },
+  { file: "ss_rotterdam", keys: ["ss rotterdam"] },
+  { file: "winterbanden_zomerbanden", keys: ["winterbanden", "zomerbanden", "bandenwissel", "donckers"] },
+  { file: "bmw", keys: ["bmw", "juma", "gilray"] },
   { file: "barbecue", keys: ["barbecue", "barbeque", "bbq"] },
   { file: "datenight", keys: ["datenight", "date night"] },
+  { file: "es_clinic", keys: ["es clinic", "esclinic"] },
+  { file: "dokter_an_koeck", keys: ["an koeck", "dokter koeck", "dr koeck"] },
   { file: "dokter_vincent_jacobs", keys: ["dokter vincent jacobs", "vincent jacobs", "dokter jacobs", "dr jacobs", "dr vincent jacobs"] },
-  { file: "kbc_leuven", keys: ["kbc leuven", "kbc"] },
+  { file: "kbc_leuven", keys: ["kbc leuven", "kbc", "kristof leuven", "kristof naar leuven"] },
   { file: "sjotter", keys: ["sjotter", "sjotten", "kicker", "tafelvoetbal"] },
   { file: "tandarts", keys: ["tandarts", "tandartsbezoek", "dentist"] },
   { file: "tanja_holvoet", keys: ["tanja holvoet"] },
+  { file: "elyn_van_hul", keys: ["elyn van hul"] },
+  { file: "oogarts", keys: ["oogarts", "oogcontrole", "controle oog", "controle imelda oog"] },
+  { file: "gynaecoloog", keys: ["gynaecoloog", "gyneacoloog", "gynaecologie", "werebroeck"] },
+  { file: "kinesist", keys: ["kinesist", "kinesitherapie", "kine", "fysiotherapie"] },
+  { file: "relatietherapie", keys: ["relatietherapie", "lydia de win"] },
+  { file: "ziekenhuis_imelda", keys: ["imelda", "imeldaziekenhuis"] },
+  { file: "ziekenhuis_sint_maarten", keys: ["sint maarten", "sintmaarten", "az sint maarten"] },
+  { file: "loopband_smeren", keys: ["loopband smeren", "loopband onderhoud"] },
+  { file: "notaris", keys: ["notaris", "zorgvolmacht"] },
+  { file: "gelnagels", keys: ["gelnagels", "gel nagels", "manicure", "nagelstudio", "nagelatelier"] },
+  { file: "pedicure", keys: ["pedicure"] },
+  { file: "oudercontact", keys: ["oudercontact"] },
+  { file: "schoolfeest", keys: ["schoolfeest"] },
+  { file: "schoolreis", keys: ["schoolreis", "schooluitstap"] },
+  { file: "fruitschildag", keys: ["fruitschildag", "fruit schillen", "fruitdag", "appelschillen", "appelmoes"] },
+  { file: "soepdag", keys: ["soepdag", "soep maken"] },
+  { file: "trouw", keys: ["trouw", "huwelijk", "bruiloft"] },
+  { file: "verjaardag", keys: ["verjaardag", "verjaardagsfeest", "verjaardagsfeestje", "birthday", "bday"] },
+  // Personen zijn een fallback: "BBQ bij Jeroen" blijft een barbecue, geen portret.
+  { file: "oma_opa", keys: ["oma opa", "oma en opa", "oma", "opa"] },
+  { file: "bompa", keys: ["bompa"] },
+  { file: "sam_and_max", keys: ["sam and max", "sam en max", "sam max"] },
+  { file: "anneke", keys: ["anneke"] },
+  { file: "jeroen", keys: ["jeroen"] },
+  { file: "karen", keys: ["karen"] },
+  { file: "marie", keys: ["marie"] },
+  { file: "noe", keys: ["noe"] },
 ];
 
 function normalize(s: string): string {

@@ -7,6 +7,7 @@ import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import { startGoogleConnect, useGoogleAuthToken } from "@/lib/google-client";
 import { fetchAgenda, localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
 import { mixWithWhite, type Rgb } from "@/lib/recipe-tint";
+import { agendaPhotoFor } from "@/lib/agenda_photos";
 
 /**
  * Kalender › Agenda (canvas «Kalender · B · kalenderillustratie + tegel per afspraak»): bovenaan de
@@ -222,6 +223,7 @@ function NextHero({ next, current, now }: { next: WeekEvent | null; current: Wee
 
 function EventTile({ e, now, isNext }: { e: WeekEvent; now: Date; isNext: boolean }) {
   const past = e.endAt.getTime() <= now.getTime();
+  const photo = agendaPhotoFor(e.title, e.location);
   return (
     <article
       data-next={isNext ? "true" : undefined}
@@ -236,6 +238,18 @@ function EventTile({ e, now, isNext }: { e: WeekEvent; now: Date; isNext: boolea
         boxShadow: isNext ? `0 0 0 2.5px ${rgb(e.color)}, 0 14px 30px -18px ${rgb(e.color, 0.7)}` : "inset 0 0 0 1px var(--border-subtle)",
       }}
     >
+      {photo ? (
+        <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]" aria-hidden>
+          <Image src={`${photo}_480.webp`} alt="" fill sizes="(min-width: 1024px) 220px, 150px" className="object-cover" />
+          {/* Canvas «Agendategels · B»: band in de afspraakkleur bovenaan, donker verloop onderaan → witte tekst blijft leesbaar. */}
+          <span
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(180deg, ${rgb([e.color[0] * 0.25, e.color[1] * 0.25, e.color[2] * 0.25], 0.78)} 0%, rgba(10,12,24,0.05) 38%, rgba(10,12,24,0.1) 52%, rgba(10,12,24,0.82) 100%)`,
+            }}
+          />
+        </span>
+      ) : null}
       {isNext ? (
         <span
           className="absolute -top-3 left-1/2 inline-flex h-6 -translate-x-1/2 items-center whitespace-nowrap rounded-pill px-2.5 text-[11.5px] font-bold text-white"
@@ -244,17 +258,31 @@ function EventTile({ e, now, isNext }: { e: WeekEvent; now: Date; isNext: boolea
           Volgende
         </span>
       ) : null}
-      <span className="block text-[11px] font-extrabold tracking-[0.06em] text-[var(--text-secondary)]">{dayLabel(e.startAt, now)}</span>
       <span
-        className="mt-0.5 block text-[24px] font-extrabold tracking-[-0.02em] lg:text-[28px] [[data-theme=dark]_&]:!text-[color:var(--tile-time-dark)]"
-        style={{ color: deep(e.color), ["--tile-time-dark" as string]: rgb(e.color) }}
+        className={cn("relative block text-[11px] font-extrabold tracking-[0.06em]", photo ? "text-[rgba(255,255,255,0.88)] [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]" : "text-[var(--text-secondary)]")}
+      >
+        {dayLabel(e.startAt, now)}
+      </span>
+      <span
+        className={cn(
+          "relative mt-0.5 block text-[24px] font-extrabold tracking-[-0.02em] lg:text-[28px]",
+          photo ? "text-[#fff] [text-shadow:0_1px_3px_rgba(0,0,0,0.35)]" : "[[data-theme=dark]_&]:!text-[color:var(--tile-time-dark)]",
+        )}
+        style={photo ? undefined : { color: deep(e.color), ["--tile-time-dark" as string]: rgb(e.color) }}
       >
         {e.allDay ? "Hele dag" : hhmm(e.startAt)}
       </span>
       <span className="absolute inset-x-3.5 bottom-3.5 lg:inset-x-4 lg:bottom-4">
-        <span className="line-clamp-2 text-[14.5px] font-extrabold leading-[1.2] text-text-primary lg:text-base">{e.title}</span>
+        <span
+          className={cn(
+            "line-clamp-2 text-[14.5px] font-extrabold leading-[1.2] lg:text-base",
+            photo ? "text-[#fff] [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]" : "text-text-primary",
+          )}
+        >
+          {e.title}
+        </span>
         {e.location ? (
-          <span className="mt-1 flex min-w-0 items-center gap-1 text-[12px] text-[var(--text-secondary)] lg:text-[12.5px]">
+          <span className={cn("mt-1 flex min-w-0 items-center gap-1 text-[12px] lg:text-[12.5px]", photo ? "text-[rgba(255,255,255,0.85)]" : "text-[var(--text-secondary)]")}>
             <PinIcon />
             <span className="truncate">{e.location}</span>
           </span>
