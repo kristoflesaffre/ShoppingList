@@ -126,7 +126,16 @@ export type ItemNameSearchSlideInProps = {
    * filterchips Alles / Producten / Recepten en rijen met enkel foto + naam.
    */
   variant?: "default" | "top";
+  /**
+   * Mobiel (`top`): het zoekveld waarop getikt werd. Bij openen schuift het zoekveld vanaf die plek
+   * naar boven (en bij sluiten terug); de rest van het blad fadet in.
+   */
+  originRef?: React.RefObject<HTMLElement | null>;
 };
+
+/** Zelfde curve als de bladen (`--ease-drawer`). */
+const FLY_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+const FLY_MS = 380;
 
 export function ItemNameSearchSlideIn({
   open,
@@ -142,6 +151,7 @@ export function ItemNameSearchSlideIn({
   onSelectRecipeFromFreezer,
   onSelectItemFromStock,
   variant = "top",
+  originRef,
 }: ItemNameSearchSlideInProps) {
   const isTop = variant === "top";
   const itemSlugs = useItemSlugs();
@@ -162,13 +172,99 @@ export function ItemNameSearchSlideIn({
     setMounted(true);
   }, []);
 
+  /** `entered` stuurt de fades (achtergrond, chips, resultaten); het zoekveld vliegt apart. */
+  const [entered, setEntered] = React.useState(false);
+  const fieldRef = React.useRef<HTMLDivElement>(null);
+  const exitTimerRef = React.useRef<number | null>(null);
+
+  /** Vliegen enkel op mobiel, met een bronveld en zonder «verminderde beweging». */
+  const canFly = React.useCallback(() => {
+    if (!isTop || !originRef?.current || typeof window === "undefined") return false;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+    return window.matchMedia("(max-width: 767px)").matches;
+  }, [isTop, originRef]);
+
+  /** Zet het zoekveld visueel op de plek (en breedte) van het bronveld. */
+  const placeFieldAtOrigin = React.useCallback(() => {
+    const field = fieldRef.current;
+    const origin = originRef?.current;
+    if (!field || !origin) return null;
+    field.style.transition = "none";
+    field.style.transform = "none";
+    field.style.width = "";
+    field.style.flex = "";
+    const to = field.getBoundingClientRect();
+    const from = origin.getBoundingClientRect();
+    // flex-1 zou de breedte overschrijven: tijdens de animatie een vaste breedte.
+    field.style.flex = "none";
+    field.style.width = `${from.width}px`;
+    field.style.transform = `translate(${from.left - to.left}px, ${from.top - to.top}px)`;
+    return to;
+  }, [originRef]);
+
   React.useLayoutEffect(() => {
+    if (exitTimerRef.current) {
+      window.clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = null;
+    }
     if (open) {
       setDomVisible(true);
-    } else {
-      setDomVisible(false);
+      return;
     }
+    if (!domVisible) return;
+    // Sluiten: zoekveld terug naar het bronveld, rest fadet weg; daarna pas uit de DOM.
+    setEntered(false);
+    if (canFly() && fieldRef.current && originRef?.current) {
+      const field = fieldRef.current;
+      const to = field.getBoundingClientRect();
+      const from = originRef.current.getBoundingClientRect();
+      field.style.transition = `transform ${FLY_MS}ms ${FLY_EASE}, width ${FLY_MS}ms ${FLY_EASE}`;
+      field.style.flex = "none";
+      field.style.width = `${to.width}px`;
+      void field.offsetWidth;
+      field.style.width = `${from.width}px`;
+      field.style.transform = `translate(${from.left - to.left}px, ${from.top - to.top}px)`;
+      exitTimerRef.current = window.setTimeout(() => setDomVisible(false), FLY_MS);
+    } else {
+      exitTimerRef.current = window.setTimeout(() => setDomVisible(false), canFly() ? 0 : 180);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  /** Openen: eerst op de plek van het bronveld, volgende frame naar de eindpositie. */
+  React.useLayoutEffect(() => {
+    if (!open || !domVisible) return;
+    const field = fieldRef.current;
+    if (!canFly() || !field) {
+      const raf = requestAnimationFrame(() => setEntered(true));
+      return () => cancelAnimationFrame(raf);
+    }
+    const to = placeFieldAtOrigin();
+    void field.offsetWidth;
+    const raf = requestAnimationFrame(() => {
+      field.style.transition = `transform ${FLY_MS}ms ${FLY_EASE}, width ${FLY_MS}ms ${FLY_EASE}`;
+      field.style.transform = "translate(0px, 0px)";
+      field.style.width = to ? `${to.width}px` : "";
+      setEntered(true);
+    });
+    const done = window.setTimeout(() => {
+      field.style.transition = "";
+      field.style.transform = "";
+      field.style.width = "";
+      field.style.flex = "";
+    }, FLY_MS + 40);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(done);
+    };
+  }, [open, domVisible, canFly, placeFieldAtOrigin]);
+
+  React.useEffect(
+    () => () => {
+      if (exitTimerRef.current) window.clearTimeout(exitTimerRef.current);
+    },
+    [],
+  );
 
   React.useEffect(() => {
     if (open) setQuery(initialValue);
@@ -277,6 +373,12 @@ export function ItemNameSearchSlideIn({
 
   if (!mounted || !domVisible) return null;
 
+  /** Chips, hint en resultaten: komen net na het zoekveld binnen (en gaan eerst weg). */
+  const fadeClass = cn(
+    "transition-[opacity,transform] duration-[260ms] ease-out-strong motion-reduce:transition-none",
+    entered ? "translate-y-0 opacity-100 delay-[140ms]" : "translate-y-2 opacity-0",
+  );
+
   if (isTop) {
     const showChips = Boolean(onSelectRecipe) && suggestionScope === "all";
     const chips: Array<{ value: "all" | "items" | "recipes"; label: string }> = [
@@ -301,18 +403,30 @@ export function ItemNameSearchSlideIn({
     };
     return ReactDOM.createPortal(
       <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="absolute inset-0 bg-black/50" onClick={handleClose} aria-hidden />
+        <div
+          className={cn("absolute inset-0 bg-black/50 transition-opacity duration-[260ms] ease-out-strong motion-reduce:transition-none", entered ? "opacity-100" : "opacity-0")}
+          onClick={handleClose}
+          aria-hidden
+        />
         <div
           className={cn(
-            "absolute bottom-0 left-1/2 top-12 flex w-full max-w-[956px] -translate-x-1/2 flex-col overflow-hidden rounded-t-[26px] bg-[var(--white)]",
+            "absolute bottom-0 left-1/2 top-12 isolate flex w-full max-w-[956px] -translate-x-1/2 flex-col overflow-hidden rounded-t-[26px]",
             /* Tablet+: gecentreerd venster zoals SlideInModal (design system «Blad»). */
             "md:bottom-auto md:top-1/2 md:h-[min(640px,calc(100dvh-48px))] md:max-w-[620px] md:-translate-y-1/2 md:rounded-[26px] md:shadow-[0_30px_60px_-20px_rgba(16,17,48,0.45)]",
           )}
         >
-          <span aria-hidden className="mx-auto mt-2 block h-1 w-[38px] shrink-0 rounded-full bg-[var(--gray-100)] md:hidden" />
+          {/* Achtergrond van het blad fadet in; het zoekveld erboven vliegt van het bronveld naar hier. */}
+          <span
+            aria-hidden
+            className={cn(
+              "absolute inset-0 -z-10 bg-[var(--white)] transition-opacity duration-[240ms] ease-out-strong motion-reduce:transition-none",
+              entered ? "opacity-100" : "opacity-0",
+            )}
+          />
+          <span aria-hidden className={cn("mx-auto mt-2 block h-1 w-[38px] shrink-0 rounded-full bg-[var(--gray-100)] md:hidden", fadeClass)} />
           <div className="flex shrink-0 items-center gap-2.5 px-[18px] pb-3 pt-3 md:px-6 md:pt-5">
             {/* Design system «Zoekveld»: zelfde vlak als SearchBar. */}
-            <div className={SEARCH_FIELD_CLASS}>
+            <div ref={fieldRef} className={cn(SEARCH_FIELD_CLASS, "will-change-transform")}>
               <SearchIcon className="shrink-0 text-[var(--text-tertiary)] group-focus-within:text-[var(--blue-500)]" />
               <input
                 ref={inputRef}
@@ -347,13 +461,16 @@ export function ItemNameSearchSlideIn({
             <button
               type="button"
               onClick={handleClose}
-              className="shrink-0 rounded-md text-[15px] font-semibold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              className={cn(
+                "shrink-0 rounded-md text-[15px] font-semibold text-[var(--blue-500)] transition-[opacity,transform] duration-[260ms] ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] motion-reduce:transition-none",
+                entered ? "translate-x-0 opacity-100 delay-[120ms]" : "translate-x-3 opacity-0",
+              )}
             >
               Annuleer
             </button>
           </div>
           {showChips ? (
-            <div className="flex shrink-0 gap-1.5 px-[18px] pb-2 md:px-6" role="group" aria-label="Filter op type">
+            <div className={cn("flex shrink-0 gap-1.5 px-[18px] pb-2 md:px-6", fadeClass)} role="group" aria-label="Filter op type">
               {chips.map((c) => (
                 <FilterChip key={c.value} selected={topScope === c.value} onClick={() => setTopScope(c.value)}>
                   {c.label}
@@ -362,11 +479,11 @@ export function ItemNameSearchSlideIn({
             </div>
           ) : null}
           {!query.trim() ? (
-            <p className="px-6 pt-8 text-center text-[14px] leading-5 text-[var(--text-tertiary)]">
+            <p className={cn("px-6 pt-8 text-center text-[14px] leading-5 text-[var(--text-tertiary)]", fadeClass)}>
               {scope === "recipes" ? "Typ de naam van een recept." : "Typ de naam van een product. Staat het er niet bij, dan voeg je het toe als nieuw item."}
             </p>
           ) : null}
-          <ul role="listbox" className="min-h-0 flex-1 overflow-y-auto px-[18px] pb-[max(45px,env(safe-area-inset-bottom,45px))] md:px-6 md:pb-6">
+          <ul role="listbox" className={cn("min-h-0 flex-1 overflow-y-auto px-[18px] pb-[max(45px,env(safe-area-inset-bottom,45px))] md:px-6 md:pb-6", fadeClass)}>
             {suggestions.map((slug, i) => (
               <li key={slug} role="option" aria-selected={false} className={i > 0 ? "border-t border-[var(--border-subtle)]" : undefined}>
                 <div className="flex w-full items-center gap-2">

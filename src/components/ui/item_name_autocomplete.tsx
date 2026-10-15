@@ -491,6 +491,8 @@ function SmallScreenAutocomplete({
   searchVariant = "top",
 }: ItemNameAutocompleteProps) {
   const [slideInOpen, setSlideInOpen] = React.useState(false);
+  /** Het veld waarop getikt wordt: de zoek-slide-in vliegt van hieruit naar boven. */
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const getItemPhotoUrl = useItemPhotoUrl();
   const getIngredientPhotoUrl = useIngredientPhotoUrl(160);
   const getPhotoUrl =
@@ -509,6 +511,7 @@ function SmallScreenAutocomplete({
       {searchVariant === "top" ? (
         /* Design system «Productveld»: leeg = zoekveld; gekozen = foto-tegel · naam (vet) · «Wijzig» (zoals Te kopen). */
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setSlideInOpen(true)}
           className={cn(
@@ -576,6 +579,7 @@ function SmallScreenAutocomplete({
 
       <ItemNameSearchSlideIn
         variant={searchVariant}
+        originRef={triggerRef}
         open={slideInOpen}
         onClose={() => setSlideInOpen(false)}
         initialValue={value}
