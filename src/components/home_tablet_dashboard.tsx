@@ -281,33 +281,33 @@ function ShortcutTile({
   return (
     <Link
       href={href}
-      className="relative flex h-[68px] min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-[20px] pl-4 pr-[84px] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [[data-aod]_&]:brightness-[0.5]"
+      className="relative flex h-[84px] min-w-0 flex-1 items-center gap-3.5 overflow-hidden rounded-[24px] pl-5 pr-[96px] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [[data-aod]_&]:brightness-[0.5]"
       style={{
         backgroundImage: `linear-gradient(120deg, ${mixWithWhiteRgb(color, 0.3)} 0%, ${mixWithWhiteRgb(color, 0.1)} 100%)`,
-        boxShadow: `inset 0 0 0 1px ${mixWithWhiteRgb(color, 0.22)}, 0 12px 24px -18px ${deepRgb(color, 0.9)}`,
+        boxShadow: `0 18px 40px -26px ${deepRgb(color, 0.9)}`,
         color: deepRgb(color),
       }}
     >
       {lead}
-      <span className="flex min-w-0 flex-col leading-tight">
+      <span className="flex min-w-0 flex-col gap-0.5 leading-tight">
         {kicker ? <span className="text-[10.5px] font-extrabold tracking-[0.08em]">{kicker}</span> : null}
-        <span className="truncate text-[15px] font-extrabold text-text-primary">{title}</span>
+        <span className="truncate text-[17px] font-extrabold text-text-primary">{title}</span>
         <span className="truncate text-[12.5px] font-semibold">{sub}</span>
       </span>
       {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
-      <img src={icon} alt="" aria-hidden className="pointer-events-none absolute -bottom-3 right-2 size-[78px] rotate-[-6deg] object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.18)]" />
+      <img src={icon} alt="" aria-hidden className="pointer-events-none absolute -bottom-3 right-3 size-[92px] rotate-[-6deg] object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.18)]" />
     </Link>
   );
 }
 
-function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; nextShopping: DashboardShopping }) {
+function AgendaColumn() {
   const { state, connected, allDay, timed, upcomingDays, nowMin, nowLabel, connect } = useTodayAgenda();
   const left = timed.filter((r) => r.state !== "past").length;
 
   return (
     <section
       aria-label="Agenda vandaag"
-      className="flex min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] bg-[linear-gradient(170deg,#e3e6ff_0%,#f3f2ff_38%,#ffffff_70%)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(79,85,241,0.55),0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[#0b0c12] [[data-aod]_&]:bg-none [[data-aod]_&]:shadow-[0_0_0_1px_#191b25]"
+      className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] bg-[linear-gradient(170deg,#e3e6ff_0%,#f3f2ff_38%,#ffffff_70%)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(79,85,241,0.55),0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[#0b0c12] [[data-aod]_&]:bg-none [[data-aod]_&]:shadow-[0_0_0_1px_#191b25]"
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-xl font-extrabold text-text-primary">Vandaag</h2>
@@ -347,25 +347,31 @@ function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; 
         </>
       )}
 
-      <div className="mt-3 flex gap-3">
-        <ShortcutTile
-          href="/te-kopen"
-          color={VAST_COLORS.blauw}
-          icon="/images/ui/kopen_240.webp"
-          lead={<b className="text-[28px] font-extrabold leading-none tabular-nums">{shoppingCount}</b>}
-          title="Te kopen"
-          sub={shoppingCount === 1 ? "product open" : "producten open"}
-        />
-        <ShortcutTile
-          href={nextShopping?.href ?? "/lijstjes-beheren/lijstjes"}
-          color={VAST_COLORS.groen}
-          icon="/images/ui/lijstje_160.webp"
-          kicker={nextShopping ? "VOLGEND LIJSTJE" : undefined}
-          title={nextShopping ? nextShopping.label : "Lijstjes"}
-          sub={nextShopping ? nextShopping.sub : "alle lijstjes"}
-        />
-      </div>
     </section>
+  );
+}
+
+/** Losse tegels onder de agenda: Te kopen en het volgende boodschappenlijstje. */
+function DashboardShortcuts({ shoppingCount, nextShopping }: { shoppingCount: number; nextShopping: DashboardShopping }) {
+  return (
+    <div className="flex shrink-0 gap-3.5">
+      <ShortcutTile
+        href="/te-kopen"
+        color={VAST_COLORS.blauw}
+        icon="/images/ui/kopen_240.webp"
+        lead={<b className="text-[34px] font-extrabold leading-none tabular-nums">{shoppingCount}</b>}
+        title="Te kopen"
+        sub={shoppingCount === 1 ? "product open" : "producten open"}
+      />
+      <ShortcutTile
+        href={nextShopping?.href ?? "/lijstjes-beheren/lijstjes"}
+        color={VAST_COLORS.groen}
+        icon="/images/ui/lijstje_160.webp"
+        kicker={nextShopping ? "VOLGEND LIJSTJE" : undefined}
+        title={nextShopping ? nextShopping.label : "Lijstjes"}
+        sub={nextShopping ? nextShopping.sub : "alle lijstjes"}
+      />
+    </div>
   );
 }
 
@@ -423,7 +429,10 @@ export function HomeTabletDashboard({
           <TomorrowMeal meal={tomorrowMeal} />
         </div>
       </div>
-      <AgendaColumn shoppingCount={shoppingCount} nextShopping={nextShopping} />
+      <div className="flex min-w-0 flex-1 flex-col gap-3.5">
+        <AgendaColumn />
+        <DashboardShortcuts shoppingCount={shoppingCount} nextShopping={nextShopping} />
+      </div>
     </div>
   );
 }
