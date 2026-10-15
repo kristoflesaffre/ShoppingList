@@ -331,7 +331,7 @@ function PhotoAgendaTile({ row, focus, photo }: { row: AgendaRow; focus: boolean
 }
 
 /** Mini-knop «Route» (enkel voor afspraken die nog komen): kies Google Maps of Waze, opent de app op de gsm. */
-function RouteButton({ location, color }: { location: string; color: Rgb }) {
+export function RouteButton({ location, color }: { location: string; color: Rgb }) {
   const [open, setOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLSpanElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);

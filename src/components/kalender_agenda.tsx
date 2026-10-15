@@ -9,6 +9,7 @@ import { fetchAgenda, localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
 import { mixWithWhite, type Rgb } from "@/lib/recipe-tint";
 import { agendaPhotoFor } from "@/lib/agenda_photos";
 import { agendaDisplayTitle, dedupeBirthdays } from "@/lib/agenda_birthdays";
+import { RouteButton } from "@/components/home_agenda_section";
 
 /**
  * Kalender › Agenda (canvas «Kalender · B · kalenderillustratie + tegel per afspraak»): bovenaan de
@@ -225,6 +226,7 @@ function NextHero({ next, current, now }: { next: WeekEvent | null; current: Wee
 function EventTile({ e, now, isNext }: { e: WeekEvent; now: Date; isNext: boolean }) {
   const past = e.endAt.getTime() <= now.getTime();
   const photo = agendaPhotoFor(e.title, e.location);
+  if (photo) return <PhotoEventTile e={e} now={now} isNext={isNext} past={past} photo={photo} />;
   return (
     <article
       data-next={isNext ? "true" : undefined}
@@ -239,55 +241,90 @@ function EventTile({ e, now, isNext }: { e: WeekEvent; now: Date; isNext: boolea
         boxShadow: isNext ? `0 0 0 2.5px ${rgb(e.color)}, 0 14px 30px -18px ${rgb(e.color, 0.7)}` : "inset 0 0 0 1px var(--border-subtle)",
       }}
     >
-      {photo ? (
-        <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]" aria-hidden>
-          <Image src={`${photo}_480.webp`} alt="" fill sizes="(min-width: 1024px) 220px, 150px" className="object-cover" />
-          {/* Canvas «Agendategels · B»: band in de afspraakkleur bovenaan, donker verloop onderaan → witte tekst blijft leesbaar. */}
-          <span
-            className="absolute inset-0"
-            style={{
-              background: `linear-gradient(180deg, ${rgb([e.color[0] * 0.25, e.color[1] * 0.25, e.color[2] * 0.25], 0.78)} 0%, rgba(10,12,24,0.05) 38%, rgba(10,12,24,0.1) 52%, rgba(10,12,24,0.82) 100%)`,
-            }}
-          />
-        </span>
-      ) : null}
-      {isNext ? (
-        <span
-          className="absolute -top-3 left-1/2 inline-flex h-6 -translate-x-1/2 items-center whitespace-nowrap rounded-pill px-2.5 text-[11.5px] font-bold text-white"
-          style={{ backgroundColor: rgb(e.color) }}
-        >
-          Volgende
-        </span>
-      ) : null}
+      {isNext ? <NextBadge color={e.color} /> : null}
+      <span className="block text-[11px] font-extrabold tracking-[0.06em] text-[var(--text-secondary)]">{dayLabel(e.startAt, now)}</span>
       <span
-        className={cn("relative block text-[11px] font-extrabold tracking-[0.06em]", photo ? "text-[rgba(255,255,255,0.88)] [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]" : "text-[var(--text-secondary)]")}
-      >
-        {dayLabel(e.startAt, now)}
-      </span>
-      <span
-        className={cn(
-          "relative mt-0.5 block text-[24px] font-extrabold tracking-[-0.02em] lg:text-[28px]",
-          photo ? "text-[#fff] [text-shadow:0_1px_3px_rgba(0,0,0,0.35)]" : "[[data-theme=dark]_&]:!text-[color:var(--tile-time-dark)]",
-        )}
-        style={photo ? undefined : { color: deep(e.color), ["--tile-time-dark" as string]: rgb(e.color) }}
+        className="mt-0.5 block text-[24px] font-extrabold tracking-[-0.02em] lg:text-[28px] [[data-theme=dark]_&]:!text-[color:var(--tile-time-dark)]"
+        style={{ color: deep(e.color), ["--tile-time-dark" as string]: rgb(e.color) }}
       >
         {e.allDay ? "Hele dag" : hhmm(e.startAt)}
       </span>
       <span className="absolute inset-x-3.5 bottom-3.5 lg:inset-x-4 lg:bottom-4">
-        <span
-          className={cn(
-            "line-clamp-2 text-[14.5px] font-extrabold leading-[1.2] lg:text-base",
-            photo ? "text-[#fff] [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]" : "text-text-primary",
-          )}
-        >
-          {agendaDisplayTitle(e.title)}
-        </span>
+        <span className="line-clamp-2 text-[14.5px] font-extrabold leading-[1.2] text-text-primary lg:text-base">{agendaDisplayTitle(e.title)}</span>
         {e.location ? (
-          <span className={cn("mt-1 flex min-w-0 items-center gap-1 text-[12px] lg:text-[12.5px]", photo ? "text-[rgba(255,255,255,0.85)]" : "text-[var(--text-secondary)]")}>
+          <span className="mt-1 flex min-w-0 items-center gap-1 text-[12px] text-[var(--text-secondary)] lg:text-[12.5px]">
             <PinIcon />
             <span className="truncate">{e.location}</span>
           </span>
         ) : null}
+      </span>
+    </article>
+  );
+}
+
+function NextBadge({ color }: { color: Rgb }) {
+  return (
+    <span
+      className="absolute -top-3 left-1/2 z-[2] inline-flex h-6 -translate-x-1/2 items-center whitespace-nowrap rounded-pill px-2.5 text-[11.5px] font-bold text-white"
+      style={{ backgroundColor: rgb(color) }}
+    >
+      Volgende
+    </span>
+  );
+}
+
+/**
+ * Fototegel zoals op de startpagina (canvas «Fototegel blur · 2» + «L1 · Licht uitgewassen»): volle foto,
+ * lichter en zachter met een witte waas, onderaan wazig en ingekleurd in de lichte afspraakkleur. Dag + uur
+ * in een witte pil, titel en uur · plaats in een donkere tint van die kleur; route-knop rechtsboven.
+ */
+function PhotoEventTile({ e, now, isNext, past, photo }: { e: WeekEvent; now: Date; isNext: boolean; past: boolean; photo: string }) {
+  const c = e.color;
+  const light = c.map((v) => Math.round(255 - (255 - v) * 0.2));
+  const tint = (a: number) => `rgba(${light[0]},${light[1]},${light[2]},${a})`;
+  const mask = "linear-gradient(180deg, transparent 40%, #000 68%)";
+  const meta = [`${hhmm(e.startAt)} – ${hhmm(e.endAt)}`, e.location].filter(Boolean).join(" · ");
+  const title = agendaDisplayTitle(e.title);
+  return (
+    <article
+      data-next={isNext ? "true" : undefined}
+      aria-label={`${dayLabel(e.startAt, now).toLowerCase()}, ${hhmm(e.startAt)}: ${title}`}
+      className={cn("relative h-[190px] w-[150px] flex-none snap-start rounded-[26px] lg:h-[230px] lg:w-[220px]", past && "opacity-50")}
+      style={{ boxShadow: isNext ? `0 0 0 2.5px ${rgb(c)}, 0 14px 30px -18px ${rgb(c, 0.7)}` : "0 12px 24px -18px rgba(16,17,48,0.45)" }}
+    >
+      <span className="pointer-events-none absolute inset-0 isolate overflow-hidden rounded-[26px]" aria-hidden>
+        <Image src={`${photo}_480.webp`} alt="" fill sizes="(min-width: 1024px) 220px, 150px" className="object-cover brightness-[1.2] contrast-[.78] saturate-[.82]" />
+        <span className="absolute inset-0" style={{ backgroundColor: "rgba(255,255,255,0.25)" }} />
+        <Image
+          src={`${photo}_240.webp`}
+          alt=""
+          fill
+          sizes="(min-width: 1024px) 220px, 150px"
+          className="scale-110 object-cover blur-[14px] brightness-[1.15] saturate-[1.1]"
+          style={{ WebkitMaskImage: mask, maskImage: mask }}
+        />
+        <span className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${tint(0)} 36%, ${tint(0.86)} 70%, ${tint(0.97)} 100%)` }} />
+      </span>
+      {isNext ? <NextBadge color={c} /> : null}
+      <span
+        className="absolute left-2.5 top-2.5 z-[2] inline-flex h-7 items-center gap-1.5 rounded-pill px-2.5 shadow-[0_2px_8px_-3px_rgba(16,17,48,0.3)] lg:left-3 lg:top-3 lg:h-8 lg:px-3"
+        style={{ backgroundColor: "rgba(255,255,255,0.95)" }}
+      >
+        <span className="text-[10px] font-extrabold tracking-[0.06em] lg:text-[10.5px]" style={{ color: deep(c, 0.45) }}>
+          {dayLabel(e.startAt, now)}
+        </span>
+        <span className="text-sm font-extrabold lg:text-[15px]" style={{ color: deep(c, 0.6) }}>
+          {hhmm(e.startAt)}
+        </span>
+      </span>
+      {e.location && !past ? <RouteButton location={e.location} color={c} /> : null}
+      <span className="absolute inset-x-3.5 bottom-3 z-[1] flex flex-col lg:inset-x-4 lg:bottom-3.5">
+        <span className="line-clamp-2 text-[15px] font-extrabold leading-[19px] lg:text-base lg:leading-5" style={{ color: deep(c, 0.35) }}>
+          {title}
+        </span>
+        <span className="mt-0.5 truncate text-xs font-medium lg:text-[12.5px]" style={{ color: deep(c, 0.5) }}>
+          {meta}
+        </span>
       </span>
     </article>
   );
@@ -354,7 +391,13 @@ function AllDayTile({ events, now, isNext }: { events: WeekEvent[]; now: Date; i
             )}
           >
             <span className="w-1 shrink-0 rounded-sm" style={{ backgroundColor: rgb(e.color) }} aria-hidden />
-            <span className="line-clamp-1 text-[13px] font-bold leading-4 text-text-primary lg:line-clamp-2 lg:text-[14px] lg:leading-[18px]">
+            <span
+              className={cn(
+                "text-[13px] font-bold leading-4 text-text-primary lg:line-clamp-2 lg:text-[14px] lg:leading-[18px]",
+                // Mobiel: met 1–2 afspraken is er plaats voor 2 regels, anders 1.
+                events.length <= 2 ? "line-clamp-2" : "line-clamp-1",
+              )}
+            >
               {e.title}
             </span>
           </span>
