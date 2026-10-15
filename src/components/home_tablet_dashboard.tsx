@@ -217,6 +217,8 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
   const photo = mealPhoto(meal, getPhoto);
   // Losse ingrediënten (geen receptfoto): tot drie op een wit bord, zoals in de kalender.
   const itemPhotos = meal && !meal.photoUrl ? meal.items.map((i) => i.photoUrl ?? getPhoto(i.name)).filter(Boolean) : [];
+  // Losse ingrediënten: de tegel is hoog genoeg om ze allemaal te noemen (i.p.v. «A, B +2»).
+  const allNames = meal && !meal.photoUrl && meal.items.length > 1 ? meal.items.map((i) => i.name.charAt(0).toUpperCase() + i.name.slice(1)).join(", ") : null;
   return (
     <Link
       href={meal?.href ?? "/kalender"}
@@ -242,7 +244,9 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
       ) : (
         <span className="flex size-[76px] items-center justify-center rounded-full border-[1.5px] border-dashed border-[rgba(120,55,15,0.3)] bg-white/25 text-2xl text-[rgba(120,55,15,0.55)]">?</span>
       )}
-      <span className="line-clamp-2 text-[13.5px] font-extrabold leading-tight text-[#3d1d00] [[data-aod]_&]:text-[#e4e6ef]">{meal?.title ?? "Nog niets"}</span>
+      <span className={cn("text-[13.5px] font-extrabold leading-tight text-[#3d1d00] [[data-aod]_&]:text-[#e4e6ef]", allNames ? "line-clamp-6" : "line-clamp-2")}>
+        {allNames ?? meal?.title ?? "Nog niets"}
+      </span>
       {meal?.fromStock ? (
         <span className="inline-flex h-[22px] items-center gap-1 rounded-pill bg-white px-2 text-[11px] font-extrabold text-[#2f6fd0] [[data-aod]_&]:bg-[rgba(80,130,255,0.16)] [[data-aod]_&]:text-[#8fb8ff]" title="Vanavond uit de diepvries halen">
           ❄ ontdooien
