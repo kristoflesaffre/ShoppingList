@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { useWeather, type Weather, type WeatherKind } from "@/lib/weather";
 import { useVasteLijstjes } from "@/components/vaste_lijstjes";
+import { VAST_COLORS, deepRgb, mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { SkeletonTimeline, useTodayAgenda } from "@/components/home_agenda_section";
 import { DashboardPhotoTimeline } from "@/components/dashboard_photo_timeline";
 import { CalendarLoosePlate } from "@/components/calendar_day_visuals";
@@ -256,6 +257,49 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
   );
 }
 
+/**
+ * Snelkoppeling onderaan de agenda (Te kopen, volgend lijstje): zelfde zachte kleurverloop en
+ * illustratie (deels van de tegel af) als de vaste tegels op de startpagina.
+ */
+function ShortcutTile({
+  href,
+  color,
+  icon,
+  lead,
+  kicker,
+  title,
+  sub,
+}: {
+  href: string;
+  color: [number, number, number];
+  icon: string;
+  lead?: React.ReactNode;
+  kicker?: string;
+  title: string;
+  sub: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="relative flex h-[68px] min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-[20px] pl-4 pr-[84px] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [[data-aod]_&]:brightness-[0.5]"
+      style={{
+        backgroundImage: `linear-gradient(120deg, ${mixWithWhiteRgb(color, 0.3)} 0%, ${mixWithWhiteRgb(color, 0.1)} 100%)`,
+        boxShadow: `inset 0 0 0 1px ${mixWithWhiteRgb(color, 0.22)}, 0 12px 24px -18px ${deepRgb(color, 0.9)}`,
+        color: deepRgb(color),
+      }}
+    >
+      {lead}
+      <span className="flex min-w-0 flex-col leading-tight">
+        {kicker ? <span className="text-[10.5px] font-extrabold tracking-[0.08em]">{kicker}</span> : null}
+        <span className="truncate text-[15px] font-extrabold text-text-primary">{title}</span>
+        <span className="truncate text-[12.5px] font-semibold">{sub}</span>
+      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
+      <img src={icon} alt="" aria-hidden className="pointer-events-none absolute -bottom-3 right-2 size-[78px] rotate-[-6deg] object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.18)]" />
+    </Link>
+  );
+}
+
 function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; nextShopping: DashboardShopping }) {
   const { state, connected, allDay, timed, upcomingDays, nowMin, nowLabel, connect } = useTodayAgenda();
   const left = timed.filter((r) => r.state !== "past").length;
@@ -303,22 +347,23 @@ function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; 
         </>
       )}
 
-      <div className="mt-3 flex gap-2 border-t border-[var(--border-subtle)] pt-3">
-        <Link
+      <div className="mt-3 flex gap-3">
+        <ShortcutTile
           href="/te-kopen"
-          className="flex flex-1 items-center gap-2.5 rounded-[14px] bg-[rgb(252,240,212)] px-3 py-2.5 no-underline [[data-aod]_&]:bg-[rgba(230,196,90,0.12)]"
-        >
-          <b className="text-xl text-[rgb(144,108,24)] [[data-aod]_&]:text-[#e6c45a]">
-            {shoppingCount}
-          </b>
-          <span className="text-[13px] font-bold text-text-primary">Te kopen</span>
-        </Link>
-        <Link href={nextShopping?.href ?? "/lijstjes-beheren/lijstjes"} className="flex flex-1 items-center rounded-[14px] bg-[var(--blue-25)] px-3 py-2.5 no-underline [[data-aod]_&]:bg-[rgba(110,120,255,0.12)]">
-          <span className="truncate text-[13px] font-bold text-text-primary">
-            {nextShopping ? nextShopping.label : "Lijstjes"}{" "}
-            <span className="font-medium text-[var(--text-secondary)]">· {nextShopping ? nextShopping.sub : "alle lijstjes"}</span>
-          </span>
-        </Link>
+          color={VAST_COLORS.blauw}
+          icon="/images/ui/kopen_240.webp"
+          lead={<b className="text-[28px] font-extrabold leading-none tabular-nums">{shoppingCount}</b>}
+          title="Te kopen"
+          sub={shoppingCount === 1 ? "product open" : "producten open"}
+        />
+        <ShortcutTile
+          href={nextShopping?.href ?? "/lijstjes-beheren/lijstjes"}
+          color={VAST_COLORS.groen}
+          icon="/images/ui/lijstje_160.webp"
+          kicker={nextShopping ? "VOLGEND LIJSTJE" : undefined}
+          title={nextShopping ? nextShopping.label : "Lijstjes"}
+          sub={nextShopping ? nextShopping.sub : "alle lijstjes"}
+        />
       </div>
     </section>
   );
