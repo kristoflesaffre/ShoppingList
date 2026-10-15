@@ -9,6 +9,7 @@ import { localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
 import { agendaPhotoFor } from "@/lib/agenda_photos";
 import { agendaDisplayTitle, dedupeBirthdays } from "@/lib/agenda_birthdays";
 import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
+import { RoundIconButton } from "@/components/ui/round_icon_button";
 
 /**
  * Agenda op de startpagina (canvas «Agenda A · Tijdlijn» + desktop «2 · Dagdelen»): de Google-afspraken
@@ -509,15 +510,56 @@ function TileLane({
   }
   const today = new Date();
   const tomorrowIso = localDayIso(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
+  // Desktop (muis): pijlen links/rechts zolang er in die richting nog tegels zijn.
+  const [canScroll, setCanScroll] = React.useState({ back: false, forward: false });
+  const updateArrows = React.useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const back = el.scrollLeft > 4;
+    const forward = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+    // Enkel bij een echte wijziging, zodat de effect hieronder geen render-lus veroorzaakt.
+    setCanScroll((prev) => (prev.back === back && prev.forward === forward ? prev : { back, forward }));
+  }, []);
+  const scrollLane = (dir: -1 | 1) => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(240, el.clientWidth * 0.8), behavior: "smooth" });
+  };
+  // Pijlen bijwerken als de rij of het venster van grootte verandert (niet bij elke render).
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    updateArrows();
+    const ro = new ResizeObserver(updateArrows);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [updateArrows, rows.length, allDay.length, upcomingDays.length]);
   React.useEffect(() => {
     const lane = ref.current;
     if (!lane) return;
     // Voorbije tegels zijn verborgen, dus de rij begint gewoon vooraan (hele dag, dan nu en straks).
     lane.scrollLeft = 0;
   }, [focusId, rows.length, allDay.length]);
+  const arrow = (dir: -1 | 1) => (
+    <RoundIconButton
+      tone="surface"
+      size={36}
+      aria-label={dir < 0 ? "Eerdere afspraken" : "Latere afspraken"}
+      onClick={() => scrollLane(dir)}
+      className={cn("absolute top-1/2 z-[3] -translate-y-1/2 max-md:hidden", dir < 0 ? "-left-[18px]" : "-right-[18px]")}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d={dir < 0 ? "m14.5 6-6 6 6 6" : "m9.5 6 6 6-6 6"} />
+      </svg>
+    </RoundIconButton>
+  );
   return (
+    <div className="relative">
+    {canScroll.back ? arrow(-1) : null}
+    {canScroll.forward ? arrow(1) : null}
     <ul
       ref={ref}
+      onScroll={updateArrows}
       className="-mx-4 m-0 flex list-none snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 pt-3.5 [scrollbar-width:none] md:mx-0 md:gap-4 md:px-0 md:scroll-px-0 [&::-webkit-scrollbar]:hidden"
     >
       {allDay.length > 0 ? <AllDayStackTile rows={allDay} /> : null}
@@ -538,6 +580,7 @@ function TileLane({
         );
       })}
     </ul>
+    </div>
   );
 }
 
@@ -678,8 +721,8 @@ const cardClass = "rounded-[22px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17
  */
 /** Hoeveel dagen na vandaag de tegelrij mag aanvullen. */
 const UPCOMING_DAYS = 7;
-/** Zoveel tegels in de rij (vandaag meegeteld), zodat de volle breedte altijd gevuld is. */
-const LANE_TILE_BUDGET = 7;
+/** Tegels in de rij (vandaag meegeteld): de hele komende week, de rij scrolt horizontaal. */
+const LANE_TILE_BUDGET = 40;
 
 function todayRange() {
   const timeMin = new Date();
