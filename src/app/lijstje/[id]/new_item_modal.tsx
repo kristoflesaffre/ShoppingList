@@ -1091,7 +1091,7 @@ export function NewItemModal({
         <div className="ml-auto min-w-[220px] max-w-[380px] flex-1">{searchField}</div>
       </div>
     ) : (
-      <div className="flex flex-col gap-3">
+      <div className={cn("flex flex-col", batchMode ? "gap-4" : "gap-3")}>
         {searchField}
         {sourceFilterControls}
       </div>
@@ -1318,7 +1318,7 @@ export function NewItemModal({
         <p className="mt-1 max-w-[40ch] text-sm leading-5 text-[var(--text-secondary)] [text-wrap:balance] md:text-[15px] md:leading-6">
           {selectedDay !== "Geen"
             ? `Zoek een product of recept. Wat je kiest, gaat in één keer naar ${selectedDay.toLowerCase()}.`
-            : "Zoek een product of recept. Zonder dag komt het bij «altijd nodig»; kies een dag om het bij een maaltijd te zetten."}
+            : "Zoek een product of recept. Kies bovenaan een dag om het bij een maaltijd te zetten."}
         </p>
       </div>
     ) : null;
@@ -1374,7 +1374,7 @@ export function NewItemModal({
               <div
                 className={cn(
                   "flex flex-col",
-                  masterItemFormOnly ? "gap-4" : "gap-6",
+                  masterItemFormOnly || batchMode ? "gap-4" : "gap-6",
                 )}
               >
               {!isMasterList && !isVacationList ? (

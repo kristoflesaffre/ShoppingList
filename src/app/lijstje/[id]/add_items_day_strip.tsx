@@ -130,7 +130,7 @@ export function AddItemsDayStrip({
 }) {
   const plateSize = compact ? 46 : 52;
   return (
-    <div className={cn(compact ? "-mx-4 -my-1.5 overflow-x-auto px-4 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "")}>
+    <div className={cn(compact ? "-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "")}>
       <div
         className={cn("gap-2", compact ? "flex w-max" : "grid grid-cols-8")}
         role="radiogroup"
@@ -146,7 +146,7 @@ export function AddItemsDayStrip({
               type="button"
               role="radio"
               aria-checked={active}
-              aria-label={geen ? "Geen dag, altijd nodig" : `${day.value}${day.date ? ` ${day.date}` : ""}`}
+              aria-label={geen ? "Geen dag" : `${day.value}${day.date ? ` ${day.date}` : ""}`}
               onClick={() => onChange(day.value)}
               className={cn(
                 "group/day flex shrink-0 flex-col items-center rounded-[16px] transition-[box-shadow,background-color,transform] duration-base ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
@@ -159,16 +159,17 @@ export function AddItemsDayStrip({
                   ? "justify-center gap-1.5 bg-[linear-gradient(150deg,#edeefe,#fde7ef)] px-1 [[data-theme=dark]_&]:bg-[linear-gradient(150deg,var(--blue-50),var(--gray-50))]"
                   : "justify-start gap-1 pt-2.5",
                 !geen && (active ? "bg-[var(--white)]" : "bg-[var(--gray-25)]"),
-                active && "shadow-[0_0_0_2px_var(--blue-500),0_10px_22px_-12px_rgba(79,85,241,0.6)]",
+                active && "shadow-[inset_0_0_0_2px_var(--blue-500),0_10px_22px_-12px_rgba(79,85,241,0.6)]",
               )}
             >
               {geen ? (
                 <>
                   <GeenFan compact={compact} />
-                  <span className={cn("text-[12.5px] font-extrabold leading-[15px]", active ? "text-[var(--blue-500)]" : "text-[var(--text-primary)]")}>
-                    Geen dag
+                  <span className={cn("text-center text-[13px] font-extrabold leading-[15px]", active ? "text-[var(--blue-500)]" : "text-[var(--text-primary)]")}>
+                    Geen
+                    <br />
+                    dag
                   </span>
-                  <span className="text-[10.5px] font-semibold leading-3 text-[var(--text-secondary)]">altijd nodig</span>
                 </>
               ) : (
                 <>
