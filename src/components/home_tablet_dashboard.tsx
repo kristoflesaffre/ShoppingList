@@ -230,7 +230,8 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
         MORGEN
       </span>
       {itemPhotos.length > 1 ? (
-        <span className="[[data-aod]_&]:brightness-[0.6]">
+        // Zelfde warme, zachte schaduw als het bord van vandaag: het bord «zweeft» boven de tegel.
+        <span className="drop-shadow-[0_14px_18px_rgba(120,60,0,0.32)] [[data-aod]_&]:brightness-[0.6]">
           <CalendarLoosePlate photos={itemPhotos.slice(0, 3)} size={88} />
         </span>
       ) : photo ? (
