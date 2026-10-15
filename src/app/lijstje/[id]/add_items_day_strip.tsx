@@ -87,7 +87,7 @@ function GeenFan({ compact }: { compact: boolean }) {
   const chip = compact ? 26 : 31;
   const step = compact ? 16 : 21;
   return (
-    <span aria-hidden className="relative block" style={{ width: chip + step * 2, height: chip + 4 }}>
+    <span aria-hidden className="relative block transition-transform duration-base ease-out-strong motion-safe:[@media(hover:hover)]:group-hover/day:scale-[1.06]" style={{ width: chip + step * 2, height: chip + 4 }}>
       {GEEN_FAN.map((src, i) => (
         <span
           key={src}
@@ -149,7 +149,11 @@ export function AddItemsDayStrip({
               aria-label={geen ? "Geen dag, altijd nodig" : `${day.value}${day.date ? ` ${day.date}` : ""}`}
               onClick={() => onChange(day.value)}
               className={cn(
-                "flex shrink-0 flex-col items-center rounded-[16px] transition-[box-shadow,background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+                "group/day flex shrink-0 flex-col items-center rounded-[16px] transition-[box-shadow,background-color,transform] duration-base ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+                // Desktop (muis): zachte hover — tegel licht omhoog, wit vlak met haarlijn; het bord groeit een tikje.
+                !active &&
+                  "[@media(hover:hover)]:hover:shadow-[0_0_0_1px_var(--card-hairline),0_10px_22px_-14px_rgba(16,17,48,0.35)] motion-safe:[@media(hover:hover)]:hover:-translate-y-0.5",
+                !active && !geen && "[@media(hover:hover)]:hover:bg-[var(--white)]",
                 compact ? "h-[118px] w-[68px]" : "h-[124px] min-w-0",
                 geen
                   ? "justify-center gap-1.5 bg-[linear-gradient(150deg,#edeefe,#fde7ef)] px-1 [[data-theme=dark]_&]:bg-[linear-gradient(150deg,var(--blue-50),var(--gray-50))]"
@@ -174,7 +178,7 @@ export function AddItemsDayStrip({
                   <span className={cn("text-lg font-extrabold leading-5 tabular-nums", active ? "text-[var(--blue-500)]" : "text-[var(--text-primary)]")}>
                     {day.date ?? ""}
                   </span>
-                  <span className="mt-1 flex">
+                  <span className="mt-1 flex transition-transform duration-base ease-out-strong motion-safe:[@media(hover:hover)]:group-hover/day:scale-[1.06]">
                     {plate.kind === "dish" ? (
                       <CalendarDayPlate src={plate.src} size={plateSize - 4} freeze={plate.freeze} />
                     ) : plate.kind === "loose" ? (
