@@ -6586,6 +6586,7 @@ export default function ListDetailPage({
         onSaveRecipeToLibrary={handleSaveRecipeToLibrary}
         onApplyRecipeToList={handleAddItemsFromRecipe}
         listDateStr={listDateStr}
+        listItems={items}
         isMasterList={isMasterList}
         isVacationList={isLandalOrVakantieList}
         initialTripPerson={

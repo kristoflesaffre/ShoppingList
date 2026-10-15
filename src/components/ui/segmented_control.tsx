@@ -33,8 +33,8 @@ export function SegmentedControl<T extends string>({
   ariaLabel: string;
   /** Opties verdelen de volle breedte (standaard), of nemen enkel hun eigen breedte. */
   fill?: boolean;
-  /** `md` = 32px hoog; `icon` = vierkante icoonknoppen. */
-  size?: "md" | "icon";
+  /** `md` = 32px hoog; `lg` = 38px (trog 44px, naast een zoekveld van 44px); `icon` = vierkante icoonknoppen. */
+  size?: "md" | "lg" | "icon";
   className?: string;
 }) {
   // De pil volgt meteen de keuze; de (soms zware) wissel in de ouder volgt twee frames later, zodat
@@ -80,8 +80,9 @@ export function SegmentedControl<T extends string>({
             onClick={() => choose(o.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
-              "flex h-8 items-center justify-center rounded-[10px] text-[13.5px] font-semibold transition-colors duration-200 ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-              size === "icon" ? "w-9" : "px-3",
+              "flex items-center justify-center rounded-[10px] text-[13.5px] font-semibold transition-colors duration-200 ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+              size === "lg" ? "h-[38px] px-4" : "h-8",
+              size === "icon" ? "w-9" : size === "lg" ? "" : "px-3",
               fill && size !== "icon" && "min-w-0 flex-1",
               on ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
             )}

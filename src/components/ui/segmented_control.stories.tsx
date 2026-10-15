@@ -63,6 +63,27 @@ function CompactDemo() {
 }
 export const Compact: Story = { render: () => <CompactDemo /> };
 
+/** `lg`: trog 44px, op één lijn met een zoekveld van 44px (Items toevoegen op desktop). */
+function LargeDemo() {
+  const [value, setValue] = React.useState<"all" | "items" | "recipes" | "stock">("all");
+  return (
+    <SegmentedControl
+      ariaLabel="Filter op type"
+      size="lg"
+      fill={false}
+      value={value}
+      onChange={setValue}
+      options={[
+        { value: "all", label: "Alles" },
+        { value: "items", label: "Producten" },
+        { value: "recipes", label: "Recepten" },
+        { value: "stock", label: "Voorraad" },
+      ]}
+    />
+  );
+}
+export const Large: Story = { render: () => <LargeDemo /> };
+
 /** Iconen (weergave: 1 kolom / 2 kolommen / tegels). */
 function IconsDemo() {
   {

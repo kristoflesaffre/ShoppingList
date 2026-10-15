@@ -29,6 +29,8 @@ import {
 } from "@/lib/trip-person";
 import type { ItemStore } from "@/lib/item-store";
 import { StoreChip, StoreChoiceTiles, StoreMarkMenu } from "./store_mark";
+import { AddItemsDayStrip, useDayPlates } from "./add_items_day_strip";
+import { EmptyStateFan } from "@/components/empty_state_fan";
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import type { RecipeIngredientFormDraft } from "@/components/recipe_ingredient_form_slide_in";
@@ -242,6 +244,7 @@ export function NewItemModal({
   groupingMode = "day",
   listDateStr = "",
   storeChoice = null,
+  listItems,
 }: {
   open: boolean;
   onClose: () => void;
@@ -276,6 +279,8 @@ export function NewItemModal({
   listDateStr?: string;
   /** Alleen op een Lidl / Delhaize-lijstje: «Waar koop je dit?». */
   storeChoice?: StoreChoiceConfig | null;
+  /** Items van het lijstje: de weekstrook toont per dag wat er al gepland staat. */
+  listItems?: ListItem[];
 }) {
   const isEditMode = editingItem != null;
   const isSmall = useIsSmallScreen();
@@ -341,6 +346,20 @@ export function NewItemModal({
     }
     return out;
   }, [listDateStr]);
+
+  const getPlatePhoto = React.useCallback((name: string) => getItemPhotoUrl(name, 160), [getItemPhotoUrl]);
+  const dayPlates = useDayPlates(listItems, storedRecipes, getPlatePhoto);
+  const dayStripDays = React.useMemo(
+    () =>
+      DAY_OPTIONS.map((day) => ({
+        value: day.value,
+        short: DAY_SHORT[day.value] ?? day.label,
+        date: dayDates.get(day.value),
+      })),
+    [dayDates],
+  );
+  /** Desktop (batch): filter links en zoekveld rechts op één lijn (44px). */
+  const desktopControlRow = batchMode && !isSmall;
 
   // Diepvriesvoorraad — only query when a day is selected and we're not in edit/master mode
   const { data: freezerData } = db.useQuery(
@@ -916,7 +935,45 @@ export function NewItemModal({
     ? `${effectiveBatchCount === 1 ? "Selectie" : "Selecties"} toevoegen${batchDaySuffix}`
     : `${effectiveBatchCount === 1 ? "Item" : "Items"} toevoegen${batchDaySuffix}`;
 
-  const itemFooter = batchMode ? (
+  /* Mobiel: zwevend mandje (concept 2) i.p.v. een volle knop; enkel zichtbaar zodra er iets gekozen is. */
+  const mobileTray =
+    batchMode && isSmall ? (
+      effectiveBatchCount > 0 ? (
+        <div className="flex h-16 w-full items-center gap-2.5 rounded-[22px] bg-[var(--white)] pl-3 pr-2.5 shadow-[0_0_0_1px_var(--border-subtle),0_14px_30px_-12px_rgba(16,17,48,0.6)]">
+          <span className="flex shrink-0" aria-hidden>
+            {batchEntries.slice(0, 3).map((entry, i) => {
+              const src =
+                entry.kind === "item"
+                  ? entry.item.stockPhotoUrl ?? getItemPhotoUrl(entry.item.name, 160)
+                  : entry.photoUrl || "/images/ui/recept_320.webp";
+              return (
+                <span
+                  key={entry.id}
+                  className={cn("flex size-[34px] items-center justify-center overflow-hidden rounded-full bg-[var(--blue-25)] shadow-[0_0_0_2px_var(--white)]", i > 0 && "-ml-2.5")}
+                  style={{ zIndex: 3 - i }}
+                >
+                  {src ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- lokale itemfoto of receptfoto
+                    <img src={src} alt="" className={entry.kind === "item" ? "size-[26px] object-contain" : "size-full object-cover"} />
+                  ) : null}
+                </span>
+              );
+            })}
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col text-left leading-[17px]">
+            <span className="text-[14.5px] font-bold text-[var(--text-primary)]">
+              {effectiveBatchCount} {effectiveBatchCount === 1 ? "item" : "items"}
+            </span>
+            <span className="text-[12.5px] text-[var(--text-tertiary)]">gekozen</span>
+          </span>
+          <Button variant="primary" size="md" onClick={handleSubmitBatch} className="!w-auto shrink-0 !px-[18px]">
+            Toevoegen
+          </Button>
+        </div>
+      ) : undefined
+    ) : null;
+
+  const itemFooter = mobileTray !== null ? mobileTray : batchMode ? (
     <Button
       variant="primary"
       disabled={effectiveBatchCount === 0}
@@ -1008,8 +1065,23 @@ export function NewItemModal({
         value={sourceFilter}
         onChange={handleSourceFilterChange}
         options={[...BASE_SOURCE_FILTERS, ...(daySelected ? [STOCK_SOURCE_FILTER] : [])]}
+        size={desktopControlRow ? "lg" : "md"}
+        fill={!desktopControlRow}
       />
     ) : null;
+  /** Zoekveld + filter: desktop naast elkaar (filter links, zoeken rechts), mobiel onder elkaar. */
+  const controlRow = (searchField: React.ReactNode) =>
+    desktopControlRow && sourceFilterControls ? (
+      <div className="flex items-center gap-3">
+        {sourceFilterControls}
+        <div className="ml-auto min-w-[220px] max-w-[380px] flex-1">{searchField}</div>
+      </div>
+    ) : (
+      <div className="flex flex-col gap-3">
+        {searchField}
+        {sourceFilterControls}
+      </div>
+    );
 
   const storeOriginHint =
     itemStoreOrigin === "favorite" ? (
@@ -1109,7 +1181,7 @@ export function NewItemModal({
     <section className="flex flex-col gap-2" aria-labelledby="batch-selection-title">
       <div className="flex items-center justify-between">
         <h3 id="batch-selection-title" className="text-xs font-bold tracking-[0.05em] text-[var(--text-tertiary)]">
-          GEKOZEN · {batchEntries.length}
+          {selectedDay !== "Geen" ? `GEKOZEN VOOR ${selectedDay.toUpperCase()}` : "GEKOZEN"} · {batchEntries.length}
         </h3>
         <button
           type="button"
@@ -1201,33 +1273,38 @@ export function NewItemModal({
     </section>
   ) : null;
 
-  /* Canvas «Items toevoegen 1b · leeg». */
+  /* Canvas «Items toevoegen · voorstel · lege staat»: waaier van productkaartjes (DS «EmptyStateFan»). */
+  const emptyFanCard = (name: string, quantity: string) => {
+    const src = getItemPhotoUrl(name, 160);
+    return (
+      <span className="flex h-[124px] w-[104px] flex-col items-center justify-center gap-1 rounded-[18px] bg-[var(--white)] shadow-[0_0_0_1px_var(--card-hairline),0_12px_24px_-12px_rgba(16,17,48,0.28)] md:h-[138px] md:w-[118px]">
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element -- lokale itemfoto
+          <img src={src} alt="" width={48} height={48} className="size-12 object-contain md:size-[54px]" />
+        ) : null}
+        <span className="text-[12.5px] font-bold text-[var(--text-primary)]">{name}</span>
+        <span className="text-[11.5px] font-semibold text-[var(--blue-500)]">{quantity}</span>
+      </span>
+    );
+  };
   const batchEmptyHint =
     batchMode && batchEntries.length === 0 ? (
-      <div className="flex flex-col items-center px-6 pt-8 text-center">
-        <span className="flex h-[84px] w-[132px] items-center justify-center rounded-pill bg-[var(--blue-25)]" aria-hidden>
-          {["Appels", "Brood", "Eieren"].map((name, i) => {
-            const src = getItemPhotoUrl(name, 160);
-            return (
-              <span
-                key={name}
-                className={cn(
-                  "relative flex size-11 items-center justify-center rounded-full bg-[var(--white)] shadow-[0_0_0_3px_var(--blue-25),0_6px_14px_-8px_rgba(16,17,48,0.25)]",
-                  i > 0 && "-ml-3",
-                )}
-                style={{ zIndex: 3 - i }}
-              >
-                {src ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- lokale itemfoto
-                  <img src={src} alt="" width={32} height={32} className="size-8 object-contain" />
-                ) : null}
-              </span>
-            );
-          })}
-        </span>
-        <p className="mt-4 text-base font-bold text-[var(--text-primary)]">Kies meerdere items</p>
-        <p className="mt-1 max-w-[32ch] text-sm leading-5 text-[var(--text-secondary)] [text-wrap:balance]">
-          Zoek producten of recepten en voeg ze in één keer toe aan de gekozen dag.
+      <div className="flex flex-col items-center px-6 pt-4 text-center md:pt-8">
+        <EmptyStateFan
+          className="h-[170px] w-[290px] md:h-[190px] md:w-[320px]"
+          items={[
+            { key: "aardappelen", dx: -70, dy: 8, rotate: -12, node: emptyFanCard("Aardappelen", "1 zak") },
+            { key: "zalm", dx: 70, dy: 6, rotate: 10, node: emptyFanCard("Zalm", "1 stuk") },
+            { key: "komkommer", dx: 0, dy: -4, rotate: -2, node: emptyFanCard("Komkommer", "2 stuks") },
+          ]}
+        />
+        <p className="mt-3 text-lg font-extrabold text-[var(--text-primary)] md:text-xl">
+          {selectedDay !== "Geen" ? `Nog niets gekozen voor ${selectedDay.toLowerCase()}` : "Nog niets gekozen"}
+        </p>
+        <p className="mt-1 max-w-[40ch] text-sm leading-5 text-[var(--text-secondary)] [text-wrap:balance] md:text-[15px] md:leading-6">
+          {selectedDay !== "Geen"
+            ? `Zoek een product of recept. Wat je kiest, gaat in één keer naar ${selectedDay.toLowerCase()}.`
+            : "Zoek een product of recept. Zonder dag komt het bij «altijd nodig»; kies een dag om het bij een maaltijd te zetten."}
         </p>
       </div>
     ) : null;
@@ -1331,49 +1408,21 @@ export function NewItemModal({
                       </div>
                     </div>
                   ) : (
-                    /* Canvas «Items toevoegen 1b»: dagkaartjes met datum. */
+                    /* Canvas «Items toevoegen · voorstel»: weekstrook met de borden van de kalender. */
                     <div className="flex flex-col gap-2">
                       <span className="text-xs font-bold tracking-[0.05em] text-[var(--text-tertiary)]">VOOR WELKE DAG?</span>
-                      <div className="grid grid-cols-[1.2fr_repeat(7,minmax(0,1fr))] gap-1.5" role="group" aria-label="Dag">
-                        {DAY_OPTIONS.map((day) => {
-                          const active = selectedDay === day.value;
-                          const date = dayDates.get(day.value);
-                          return (
-                            <button
-                              key={day.value}
-                              type="button"
-                              aria-pressed={active}
-                              aria-label={day.value === "Geen" ? "Geen dag" : `${day.value}${date ? ` ${date}` : ""}`}
-                              onClick={() => {
-                                setSelectedDay(day.value);
-                                if (day.value === "Geen") {
-                                  setSourceFilter((prev) => (prev === "stock" ? "all" : prev));
-                                }
-                              }}
-                              className={cn(
-                                "flex h-[58px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[14px] transition-[background-color,color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-                                active
-                                  ? "bg-[var(--blue-500)] text-white shadow-[0_6px_14px_-6px_rgba(79,85,241,0.6)]"
-                                  : "bg-[var(--gray-25)] text-[var(--text-primary)]",
-                              )}
-                            >
-                              {day.value === "Geen" ? (
-                                <>
-                                  <span className={active ? "text-white" : "text-[var(--text-secondary)]"}>
-                                    <CalendarIcon />
-                                  </span>
-                                  <span className={cn("text-[11px] font-bold", active ? "text-white" : "text-[var(--text-secondary)]")}>Geen</span>
-                                </>
-                              ) : (
-                                <>
-                                  <span className="text-[10px] font-bold opacity-75">{DAY_SHORT[day.value]}</span>
-                                  <span className="text-[17px] font-bold leading-5 tabular-nums">{date ?? day.label}</span>
-                                </>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <AddItemsDayStrip
+                        days={dayStripDays}
+                        value={selectedDay}
+                        plates={dayPlates}
+                        compact={isSmall}
+                        onChange={(value) => {
+                          setSelectedDay(value);
+                          if (value === "Geen") {
+                            setSourceFilter((prev) => (prev === "stock" ? "all" : prev));
+                          }
+                        }}
+                      />
                     </div>
                   )}
 
@@ -1391,8 +1440,9 @@ export function NewItemModal({
                     masterItemFormOnly ? "gap-4" : "gap-6",
                   )}
                 >
-                  <div className="flex flex-col gap-3">
+                  {controlRow(
                     <ItemNameAutocomplete
+                      dense={desktopControlRow}
                       ariaLabel={batchMode ? (sourceFilter === "all" ? "Zoek een product of recept" : "Zoek een product") : sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
                       placeholder={batchMode ? (sourceFilter === "all" ? "Zoek een product of recept" : "Zoek een product") : sourceFilter === "all" ? "Naam item of recept" : "Naam item"}
                       value={batchMode ? itemSearchQuery : itemName}
@@ -1414,9 +1464,8 @@ export function NewItemModal({
                       onSelectRecipeFromFreezer={handleSelectRecipeFromFreezer}
                       onSelectItemFromStock={!isMasterList && !isVacationList && !isEditMode ? handleSelectItemFromStock : undefined}
                       slideInTitle={sourceFilter === "all" ? "Item of recept toevoegen" : "Item toevoegen"}
-                    />
-                    {sourceFilterControls}
-                  </div>
+                    />,
+                  )}
                   {activeBatchEditor}
                   {batchQueueControls}
                   {batchEmptyHint}
@@ -1554,12 +1603,14 @@ export function NewItemModal({
                     </>
                   ) : (
                   <>
-                  <SearchBar
-                    placeholder="Zoek gerecht of product"
-                    value={freezerSearch}
-                    onValueChange={setFreezerSearch}
-                  />
-                  {sourceFilterControls}
+                  {controlRow(
+                    <SearchBar
+                      placeholder="Zoek gerecht of product"
+                      value={freezerSearch}
+                      onValueChange={setFreezerSearch}
+                      className={desktopControlRow ? "!h-11" : undefined}
+                    />,
+                  )}
                   {batchQueueControls}
                   {filteredFreezerItems.length === 0 ? (
                     <p className="py-4 text-center text-base font-medium leading-6 text-[var(--text-tertiary)]">
@@ -1662,9 +1713,10 @@ export function NewItemModal({
 
               {!isMasterList && !isEditMode && sourceFilter === "recipes" && (
                 <div className="flex flex-col gap-6">
-                  <div className="flex flex-col gap-3">
-                    {storedRecipes.length > 0 ? (
+                  {controlRow(
+                    storedRecipes.length > 0 ? (
                       <ItemNameAutocomplete
+                        dense={desktopControlRow}
                         ariaLabel={batchMode ? "Zoek een recept" : "Naam recept"}
                         placeholder={batchMode ? "Zoek een recept" : "Naam recept"}
                           value={itemSearchQuery}
@@ -1678,9 +1730,8 @@ export function NewItemModal({
                         onSelectRecipeFromFreezer={handleSelectRecipeFromFreezer}
                         slideInTitle="Recept zoeken"
                       />
-                    ) : null}
-                    {sourceFilterControls}
-                  </div>
+                    ) : null,
+                  )}
                   {batchQueueControls}
                   {batchEntries.length === 0 &&
                   storedRecipes.length > 0 &&

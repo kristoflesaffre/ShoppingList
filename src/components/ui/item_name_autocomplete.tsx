@@ -82,6 +82,8 @@ export type ItemNameAutocompleteProps = {
   onSelectRecipeFromFreezer?: (recipe: SavedRecipe) => void;
   /** Sneeuwvlok (vlees/vis) of voorraadpot (kruiden, conserven…): product uit voorraad, niet kopen. */
   onSelectItemFromStock?: (name: string, source: StockSource) => void;
+  /** Desktop: 44px hoog i.p.v. 48px, zodat het naast een segmentknop (lg) op één lijn staat. */
+  dense?: boolean;
   /** `top`: zacht grijs zoekveld met icoon links; mobiele zoek-slide-in met zoekbalk bovenaan. */
   searchVariant?: "default" | "top";
 };
@@ -103,6 +105,7 @@ function LargeScreenAutocomplete({
   onSelectRecipe,
   onSelectRecipeFromFreezer,
   onSelectItemFromStock,
+  dense = false,
 }: ItemNameAutocompleteProps) {
   const itemSlugs = useItemSlugs();
   const itemSynonyms = useItemSynonyms();
@@ -181,14 +184,16 @@ function LargeScreenAutocomplete({
     const estHeight = Math.min(suggestions.length, MAX_SUGGESTIONS) * ROW_HEIGHT;
     const spaceBelow = vvHeight - rectBottomInVV;
     const spaceAbove = rectTopInVV;
+    // Smal zoekveld (bv. rechts naast de filter): resultaten minstens 440px breed, rechts uitgelijnd.
+    const dropdownWidth = Math.min(Math.max(rect.width, 440), rect.right - 8);
 
     if (spaceBelow < estHeight + 8) {
       const maxH = Math.min(estHeight, spaceAbove - 8);
       setDropdownStyle({
         position: "fixed",
         bottom: vvHeight - rectTopInVV + 4,
-        left: rect.left,
-        width: rect.width,
+        left: rect.right - dropdownWidth,
+        width: dropdownWidth,
         maxHeight: maxH > 0 ? maxH : estHeight,
         zIndex: 9999,
       });
@@ -196,8 +201,8 @@ function LargeScreenAutocomplete({
       setDropdownStyle({
         position: "fixed",
         top: rectBottomInVV + 4,
-        left: rect.left,
-        width: rect.width,
+        left: rect.right - dropdownWidth,
+        width: dropdownWidth,
         maxHeight: spaceBelow - 8,
         zIndex: 9999,
       });
@@ -432,7 +437,12 @@ function LargeScreenAutocomplete({
         <p className="mb-1 text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">{label}</p>
       ) : null}
       {/* Design system «Zoekveld»: zacht grijs, vergrootglas links (zelfde als SearchBar). */}
-      <div className="group flex h-12 w-full min-w-0 items-center gap-2.5 rounded-[16px] bg-[var(--gray-25)] px-3.5 transition-[background-color,box-shadow] duration-fast ease-out-strong focus-within:bg-[var(--white)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-300)]">
+      <div
+        className={cn(
+          "group flex w-full min-w-0 items-center gap-2.5 rounded-[16px] bg-[var(--gray-25)] px-3.5 transition-[background-color,box-shadow] duration-fast ease-out-strong focus-within:bg-[var(--white)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-300)]",
+          dense ? "h-11" : "h-12",
+        )}
+      >
         <SearchIcon className="size-5 shrink-0 text-[var(--text-tertiary)] transition-colors group-focus-within:text-[var(--blue-500)]" />
         <input
           type="text"
