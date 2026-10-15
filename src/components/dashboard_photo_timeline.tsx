@@ -111,7 +111,7 @@ function AllDayRow({ rows }: { rows: AgendaRow[] }) {
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           className={cn(
-            "flex h-[72px] flex-col items-center justify-center gap-1 rounded-[18px] bg-white text-[13px] shadow-[0_0_0_1px_var(--border-subtle),0_8px_18px_-14px_rgba(16,17,48,0.35)] font-bold text-text-primary transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [[data-aod]_&]:bg-[#141519]",
+            "flex h-[72px] flex-col items-center justify-center gap-1 rounded-[18px] bg-white text-[13px] shadow-[0_0_0_1px_var(--border-subtle),0_8px_18px_-14px_rgba(16,17,48,0.35)] font-bold text-text-primary transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [[data-aod]_&]:bg-white/[0.06]",
             open && "col-span-2",
           )}
         >
@@ -164,7 +164,7 @@ function EventTile({ row }: { row: AgendaRow }) {
 /** Voorbije afspraak: lage grijze regel, zonder foto. */
 function PastLine({ row }: { row: AgendaRow }) {
   return (
-    <div className="aod-past flex h-10 min-w-0 items-center gap-2.5 rounded-xl bg-white/75 px-3.5 shadow-[0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[#141519] [[data-aod]_&]:shadow-none">
+    <div className="aod-past flex h-10 min-w-0 items-center gap-2.5 rounded-xl bg-white/75 px-3.5 shadow-[0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-white/[0.06] [[data-aod]_&]:shadow-none">
       <span className="size-2 shrink-0 rounded-full opacity-60" style={{ backgroundColor: rgba(row.color) }} aria-hidden />
       <span className="truncate text-sm font-semibold text-[var(--text-tertiary)]">{row.title}</span>
     </div>

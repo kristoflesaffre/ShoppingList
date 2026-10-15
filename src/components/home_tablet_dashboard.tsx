@@ -314,7 +314,7 @@ function AgendaColumn() {
   return (
     <section
       aria-label="Agenda vandaag"
-      className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] bg-[linear-gradient(170deg,#e3e6ff_0%,#f3f2ff_38%,#ffffff_70%)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(79,85,241,0.55),0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[#0b0c12] [[data-aod]_&]:bg-none [[data-aod]_&]:shadow-[0_0_0_1px_#191b25]"
+      className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] bg-[linear-gradient(170deg,#e3e6ff_0%,#f3f2ff_38%,#ffffff_70%)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(79,85,241,0.55),0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[#120d22] [[data-aod]_&]:bg-[linear-gradient(170deg,#2b1f4d_0%,#1a1331_45%,#100b1e_100%)] [[data-aod]_&]:shadow-[0_0_0_1px_#33275a,0_18px_40px_-26px_rgba(120,80,220,0.5)]"
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-xl font-extrabold text-text-primary">Vandaag</h2>
