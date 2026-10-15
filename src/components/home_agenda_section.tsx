@@ -333,7 +333,7 @@ function PhotoAgendaTile({ row, focus, photo }: { row: AgendaRow; focus: boolean
 /** Mini-knop «Route» (enkel voor afspraken die nog komen): kies Google Maps of Waze, opent de app op de gsm. */
 /**
  * Route-knop: zelfde hoogte als de uur-pil ernaast (28px; via `className` groter op desktop),
- * met een herkenbaar richting-icoon (ruit met afslagpijl, zoals in kaarten-apps).
+ * met een kaartpin als icoon.
  */
 export function RouteButton({ location, color, className }: { location: string; color: Rgb; className?: string }) {
   const [open, setOpen] = React.useState(false);
@@ -368,10 +368,10 @@ export function RouteButton({ location, color, className }: { location: string; 
         )}
         style={{ color: deep(color, 0.75) }}
       >
-        {/* Richting-icoon: ruit met afslagpijl naar rechts. */}
+        {/* Kaartpin (gevuld) met wit gaatje: «hier naartoe». */}
         <svg viewBox="0 0 24 24" aria-hidden className="size-[17px]">
-          <path d="M10.6 2.6a2 2 0 0 1 2.8 0l8 8a2 2 0 0 1 0 2.8l-8 8a2 2 0 0 1-2.8 0l-8-8a2 2 0 0 1 0-2.8z" fill="currentColor" />
-          <path d="M9 15.5v-2.8a1.7 1.7 0 0 1 1.7-1.7h4.8M13.4 8.6l2.4 2.4-2.4 2.4" fill="none" stroke="var(--white)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M12 2.5a7.2 7.2 0 0 0-7.2 7.2c0 5.1 6 11.1 6.6 11.7a.85.85 0 0 0 1.2 0c.6-.6 6.6-6.6 6.6-11.7A7.2 7.2 0 0 0 12 2.5z" fill="currentColor" />
+          <circle cx="12" cy="9.7" r="2.6" fill="var(--white)" />
         </svg>
       </button>
       {open ? (
