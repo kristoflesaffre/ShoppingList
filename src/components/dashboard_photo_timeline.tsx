@@ -17,7 +17,6 @@ const NOW_RED = "rgb(230,70,70)";
 
 const rgba = (c: Rgb, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const deep = (c: Rgb, k: number) => `rgb(${Math.round(c[0] * k)},${Math.round(c[1] * k)},${Math.round(c[2] * k)})`;
-const light = (c: Rgb, k = 0.1): Rgb => c.map((v) => Math.round(255 - (255 - v) * k)) as Rgb;
 
 // Via `new RegExp`: de `u`-vlag mag niet als letterlijke regex bij het huidige TypeScript-target.
 const LEADING_EMOJI = new RegExp(String.raw`^((?:\p{Extended_Pictographic}|\u{FE0F}|\u{200D})+)\s*`, "u");
@@ -38,9 +37,8 @@ const PinIcon = () => (
   </svg>
 );
 
-/** Foto rechts (`width` van de tegel) met een tint die er links overheen uitvloeit. */
-function TilePhoto({ photo, color, width }: { photo: string; color: Rgb; width: number }) {
-  const t = light(color);
+/** Foto rechts (`width` van de tegel) die links uitvloeit in het wit van de tegel. */
+function TilePhoto({ photo, width }: { photo: string; width: number }) {
   return (
     <>
       <span className="absolute inset-y-0 right-0" style={{ width: `${width}%` }} aria-hidden>
@@ -48,17 +46,17 @@ function TilePhoto({ photo, color, width }: { photo: string; color: Rgb; width: 
       </span>
       <span
         className="absolute inset-0"
-        style={{ background: `linear-gradient(90deg, ${rgba(t)} ${100 - width}%, ${rgba(t, 0)} ${100 - width + 17}%)` }}
+        style={{ background: `linear-gradient(90deg, #fff ${100 - width}%, rgba(255,255,255,0) ${100 - width + 17}%)` }}
         aria-hidden
       />
     </>
   );
 }
 
-const tileBase = "relative flex h-[72px] min-w-0 items-center overflow-hidden rounded-[18px] [[data-aod]_&]:brightness-[0.5]";
-// Bijna witte tegel met een dunne rand in de eigen kleur en een zachte schaduw: zo blijft ze los van de
-// (blauw-paarse) verloopachtergrond van het paneel, ook als de afspraak zelf blauw is.
-const lift = (c: Rgb, ring = `0 0 0 1px ${rgba(c, 0.16)}`) => `${ring}, 0 8px 18px -14px rgba(16,17,48,0.35)`;
+const tileBase = "relative flex h-[72px] min-w-0 items-center overflow-hidden rounded-[18px] bg-white [[data-aod]_&]:brightness-[0.5]";
+// Witte tegel met een zachte schaduw: zo staat ze los van de (blauw-paarse) verloopachtergrond van het
+// paneel, ook als de afspraak zelf blauw is. De afspraakkleur zit in de tekst (en de rand als ze nu bezig is).
+const lift = (ring = "0 0 0 1px rgba(16,17,48,0.05)") => `${ring}, 0 8px 18px -14px rgba(16,17,48,0.35)`;
 
 function AllDayTile({ row, narrow }: { row: AgendaRow; narrow: boolean }) {
   const { emoji, text: full } = splitEmoji(row.title);
@@ -69,12 +67,12 @@ function AllDayTile({ row, narrow }: { row: AgendaRow; narrow: boolean }) {
   const width = narrow ? 34 : 45;
   const sub = row.location ?? row.account ?? source?.[1] ?? null;
   return (
-    <div className={cn(tileBase, "gap-3 pr-4", photo ? "pl-4" : "pl-3.5")} style={{ backgroundColor: rgba(light(row.color)), boxShadow: lift(row.color) }}>
+    <div className={cn(tileBase, "gap-3 pr-4", photo ? "pl-4" : "pl-3.5")} style={{ boxShadow: lift() }}>
       {photo ? (
-        <TilePhoto photo={photo} color={row.color} width={width} />
+        <TilePhoto photo={photo} width={width} />
       ) : (
         // Geen foto: dan zegt het emoji-vierkantje wat voor dag het is.
-        <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[22px] shadow-[0_2px_6px_-3px_rgba(16,17,48,0.25)]" aria-hidden>
+        <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl text-[22px]" style={{ backgroundColor: rgba(row.color, 0.12) }} aria-hidden>
           {emoji}
         </span>
       )}
@@ -140,9 +138,9 @@ function EventTile({ row }: { row: AgendaRow }) {
   return (
     <div
       className={cn(tileBase, "px-4")}
-      style={{ backgroundColor: rgba(light(row.color)), boxShadow: lift(row.color, now ? `inset 0 0 0 2px ${rgba(row.color)}` : undefined) }}
+      style={{ boxShadow: lift(now ? `inset 0 0 0 2px ${rgba(row.color)}` : undefined) }}
     >
-      {photo ? <TilePhoto photo={photo} color={row.color} width={45} /> : null}
+      {photo ? <TilePhoto photo={photo} width={45} /> : null}
       <span className="relative flex min-w-0 flex-col gap-0.5 leading-tight" style={photo ? { maxWidth: "calc(55% - 8px)" } : undefined}>
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate text-base font-extrabold" style={{ color: deep(row.color, 0.35) }}>
