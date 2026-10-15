@@ -17,7 +17,7 @@ const NOW_RED = "rgb(230,70,70)";
 
 const rgba = (c: Rgb, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const deep = (c: Rgb, k: number) => `rgb(${Math.round(c[0] * k)},${Math.round(c[1] * k)},${Math.round(c[2] * k)})`;
-const light = (c: Rgb, k = 0.13): Rgb => c.map((v) => Math.round(255 - (255 - v) * k)) as Rgb;
+const light = (c: Rgb, k = 0.1): Rgb => c.map((v) => Math.round(255 - (255 - v) * k)) as Rgb;
 
 // Via `new RegExp`: de `u`-vlag mag niet als letterlijke regex bij het huidige TypeScript-target.
 const LEADING_EMOJI = new RegExp(String.raw`^((?:\p{Extended_Pictographic}|\u{FE0F}|\u{200D})+)\s*`, "u");
@@ -56,6 +56,9 @@ function TilePhoto({ photo, color, width }: { photo: string; color: Rgb; width: 
 }
 
 const tileBase = "relative flex h-[72px] min-w-0 items-center overflow-hidden rounded-[18px] [[data-aod]_&]:brightness-[0.5]";
+// Bijna witte tegel met een dunne rand in de eigen kleur en een zachte schaduw: zo blijft ze los van de
+// (blauw-paarse) verloopachtergrond van het paneel, ook als de afspraak zelf blauw is.
+const lift = (c: Rgb, ring = `0 0 0 1px ${rgba(c, 0.16)}`) => `${ring}, 0 8px 18px -14px rgba(16,17,48,0.35)`;
 
 function AllDayTile({ row, narrow }: { row: AgendaRow; narrow: boolean }) {
   const { emoji, text: full } = splitEmoji(row.title);
@@ -66,12 +69,16 @@ function AllDayTile({ row, narrow }: { row: AgendaRow; narrow: boolean }) {
   const width = narrow ? 34 : 45;
   const sub = row.location ?? row.account ?? source?.[1] ?? null;
   return (
-    <div className={cn(tileBase, "gap-3 pl-3.5 pr-4")} style={{ backgroundColor: rgba(light(row.color)) }}>
-      {photo ? <TilePhoto photo={photo} color={row.color} width={width} /> : null}
-      <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[22px] shadow-[0_2px_6px_-3px_rgba(16,17,48,0.25)]" aria-hidden>
-        {emoji}
-      </span>
-      <span className="relative flex min-w-0 flex-col leading-tight" style={photo ? { maxWidth: `calc(${100 - width}% - 60px)` } : undefined}>
+    <div className={cn(tileBase, "gap-3 pr-4", photo ? "pl-4" : "pl-3.5")} style={{ backgroundColor: rgba(light(row.color)), boxShadow: lift(row.color) }}>
+      {photo ? (
+        <TilePhoto photo={photo} color={row.color} width={width} />
+      ) : (
+        // Geen foto: dan zegt het emoji-vierkantje wat voor dag het is.
+        <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[22px] shadow-[0_2px_6px_-3px_rgba(16,17,48,0.25)]" aria-hidden>
+          {emoji}
+        </span>
+      )}
+      <span className="relative flex min-w-0 flex-col leading-tight" style={photo ? { maxWidth: `calc(${100 - width}% - 12px)` } : undefined}>
         <span className="text-[10.5px] font-extrabold tracking-[0.08em]" style={{ color: deep(row.color, 0.6) }}>
           HELE DAG
         </span>
@@ -106,7 +113,7 @@ function AllDayRow({ rows }: { rows: AgendaRow[] }) {
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           className={cn(
-            "flex h-[72px] flex-col items-center justify-center gap-1 rounded-[18px] bg-[var(--gray-25)] text-[13px] font-bold text-text-primary transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [[data-aod]_&]:bg-[#141519]",
+            "flex h-[72px] flex-col items-center justify-center gap-1 rounded-[18px] bg-white text-[13px] shadow-[0_0_0_1px_var(--border-subtle),0_8px_18px_-14px_rgba(16,17,48,0.35)] font-bold text-text-primary transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [[data-aod]_&]:bg-[#141519]",
             open && "col-span-2",
           )}
         >
@@ -133,7 +140,7 @@ function EventTile({ row }: { row: AgendaRow }) {
   return (
     <div
       className={cn(tileBase, "px-4")}
-      style={{ backgroundColor: rgba(light(row.color)), boxShadow: now ? `inset 0 0 0 2px ${rgba(row.color)}` : undefined }}
+      style={{ backgroundColor: rgba(light(row.color)), boxShadow: lift(row.color, now ? `inset 0 0 0 2px ${rgba(row.color)}` : undefined) }}
     >
       {photo ? <TilePhoto photo={photo} color={row.color} width={45} /> : null}
       <span className="relative flex min-w-0 flex-col gap-0.5 leading-tight" style={photo ? { maxWidth: "calc(55% - 8px)" } : undefined}>
@@ -159,7 +166,7 @@ function EventTile({ row }: { row: AgendaRow }) {
 /** Voorbije afspraak: lage grijze regel, zonder foto. */
 function PastLine({ row }: { row: AgendaRow }) {
   return (
-    <div className="aod-past flex h-10 min-w-0 items-center gap-2.5 rounded-xl bg-[var(--gray-25)] px-3.5 [[data-aod]_&]:bg-[#141519]">
+    <div className="aod-past flex h-10 min-w-0 items-center gap-2.5 rounded-xl bg-white/75 px-3.5 shadow-[0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[#141519] [[data-aod]_&]:shadow-none">
       <span className="size-2 shrink-0 rounded-full opacity-60" style={{ backgroundColor: rgba(row.color) }} aria-hidden />
       <span className="truncate text-sm font-semibold text-[var(--text-tertiary)]">{row.title}</span>
     </div>
