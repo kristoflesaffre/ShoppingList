@@ -8,6 +8,7 @@ import { startGoogleConnect, useGoogleAuthToken } from "@/lib/google-client";
 import { fetchAgenda, localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
 import { mixWithWhite, type Rgb } from "@/lib/recipe-tint";
 import { agendaPhotoFor } from "@/lib/agenda_photos";
+import { agendaDisplayTitle, dedupeBirthdays } from "@/lib/agenda_birthdays";
 
 /**
  * Kalender › Agenda (canvas «Kalender · B · kalenderillustratie + tegel per afspraak»): bovenaan de
@@ -181,7 +182,7 @@ function NextHero({ next, current, now }: { next: WeekEvent | null; current: Wee
     : "";
   return (
     <section
-      aria-label={next ? `Volgende afspraak: ${next.title}` : "Geen afspraken meer deze week"}
+      aria-label={next ? `Volgende afspraak: ${agendaDisplayTitle(next.title)}` : "Geen afspraken meer deze week"}
       className="flex flex-col items-center gap-2 text-center lg:flex-row lg:items-center lg:gap-12 lg:pl-6 lg:text-left"
     >
       <span className="lg:hidden">{illustration(250)}</span>
@@ -195,7 +196,7 @@ function NextHero({ next, current, now }: { next: WeekEvent | null; current: Wee
             </span>
             <span className="text-[13px] font-bold tracking-[0.02em] text-[var(--text-secondary)] lg:text-sm">{dateLabel}</span>
             <h2 className="mt-1.5 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em] text-text-primary lg:mt-2 lg:max-w-[520px] lg:text-[46px] lg:leading-[1.04] lg:tracking-[-0.03em]">
-              {next.title}
+              {agendaDisplayTitle(next.title)}
             </h2>
             <p className="mt-1.5 text-sm font-semibold text-[var(--text-secondary)] lg:mt-2.5 lg:text-[15px]">
               {next.allDay ? "Hele dag" : `${hhmm(next.startAt)} – ${hhmm(next.endAt)}`}
@@ -212,7 +213,7 @@ function NextHero({ next, current, now }: { next: WeekEvent | null; current: Wee
           <span className="mt-4 inline-flex max-w-full items-center gap-2.5 rounded-[16px] bg-[var(--white)]/75 px-3.5 py-2.5 text-[13.5px] text-text-primary lg:mt-5 lg:text-sm">
             <span className="size-2 shrink-0 rounded-full bg-[#e06a6a]" aria-hidden />
             <span className="truncate">
-              <b>Nu:</b> {current.title} · tot {hhmm(current.endAt)}
+              <b>Nu:</b> {agendaDisplayTitle(current.title)} · tot {hhmm(current.endAt)}
             </span>
           </span>
         ) : null}
@@ -227,7 +228,7 @@ function EventTile({ e, now, isNext }: { e: WeekEvent; now: Date; isNext: boolea
   return (
     <article
       data-next={isNext ? "true" : undefined}
-      aria-label={`${dayLabel(e.startAt, now).toLowerCase()}, ${e.allDay ? "hele dag" : hhmm(e.startAt)}: ${e.title}`}
+      aria-label={`${dayLabel(e.startAt, now).toLowerCase()}, ${e.allDay ? "hele dag" : hhmm(e.startAt)}: ${agendaDisplayTitle(e.title)}`}
       className={cn(
         "relative h-[190px] w-[150px] flex-none snap-start rounded-[26px] p-3.5 lg:h-[230px] lg:w-[220px] lg:p-4",
         past && "opacity-50",
@@ -279,7 +280,7 @@ function EventTile({ e, now, isNext }: { e: WeekEvent; now: Date; isNext: boolea
             photo ? "text-[#fff] [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]" : "text-text-primary",
           )}
         >
-          {e.title}
+          {agendaDisplayTitle(e.title)}
         </span>
         {e.location ? (
           <span className={cn("mt-1 flex min-w-0 items-center gap-1 text-[12px] lg:text-[12.5px]", photo ? "text-[rgba(255,255,255,0.85)]" : "text-[var(--text-secondary)]")}>
@@ -388,7 +389,8 @@ function buildLane(events: WeekEvent[]): LaneItem[] {
       out.push(item);
     }
   }
-  return out;
+  // Zelfde verjaardag meermaals in de agenda («bday», «verjaardag», …): één keer per dag.
+  return out.map((item) => (item.kind === "allDay" ? { ...item, events: dedupeBirthdays(item.events) } : item));
 }
 
 function TileSkeleton() {

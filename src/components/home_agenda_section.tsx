@@ -7,6 +7,7 @@ import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { startGoogleConnect } from "@/lib/google-client";
 import { localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
 import { agendaPhotoFor } from "@/lib/agenda_photos";
+import { agendaDisplayTitle, dedupeBirthdays } from "@/lib/agenda_birthdays";
 import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
 
 /**
@@ -682,7 +683,7 @@ export function useTodayAgenda() {
   const todayEvents = events.filter((e) => (eventDayIso(e) ?? todayIso) <= todayIso);
   // Morgen in warme kleuren (zoals op het canvas), zodat je in de rij meteen ziet waar vandaag stopt.
   const tomorrowCalendars: string[] = [];
-  const tomorrow: AgendaRow[] = events
+  const tomorrowRows: AgendaRow[] = events
     .filter((e) => eventDayIso(e) === tomorrowIso)
     .map((e) => {
       const cal = e.calendarName ?? e.accountId ?? "";
@@ -691,6 +692,7 @@ export function useTodayAgenda() {
     })
     .map(({ e, color }) => ({
       ...e,
+      title: agendaDisplayTitle(e.title),
       color,
       account: accounts.length > 1 ? accountName(accounts.find((a) => a.id === e.accountId)?.email) : null,
       startMin: e.allDay ? 0 : minutesOfDay(e.start) ?? 0,
@@ -698,12 +700,15 @@ export function useTodayAgenda() {
       state: "next" as const,
     }))
     .sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.startMin - b.startMin);
+  // Hele dag eerst (zoals gesorteerd), dubbele verjaardagen één keer.
+  const tomorrow: AgendaRow[] = [...dedupeBirthdays(tomorrowRows.filter((r) => r.allDay)), ...tomorrowRows.filter((r) => !r.allDay)];
   const allRows: AgendaRow[] = todayEvents.map((e) => {
     const startMin = e.allDay ? 0 : minutesOfDay(e.start) ?? 0;
     const endMin = e.allDay ? 24 * 60 : minutesOfDay(e.end) ?? startMin;
     const account = accounts.length > 1 ? accountName(accounts.find((a) => a.id === e.accountId)?.email) : null;
     return {
       ...e,
+      title: agendaDisplayTitle(e.title),
       color: colorOf(e.accountId),
       account,
       startMin,
@@ -721,7 +726,8 @@ export function useTodayAgenda() {
     nowMin,
     nowLabel,
     connected: !!state?.connected,
-    allDay: allRows.filter((r) => r.allDay),
+    // Zelfde verjaardag meermaals («bday», «verjaardag», …): één keer.
+    allDay: dedupeBirthdays(allRows.filter((r) => r.allDay)),
     timed: allRows.filter((r) => !r.allDay).sort((a, b) => a.startMin - b.startMin),
     tomorrow,
     tomorrowDate,
