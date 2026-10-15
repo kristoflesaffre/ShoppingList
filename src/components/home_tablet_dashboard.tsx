@@ -5,9 +5,10 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { useWeather, type Weather, type WeatherKind } from "@/lib/weather";
-import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { useVasteLijstjes } from "@/components/vaste_lijstjes";
-import { AllDayChips, SkeletonTimeline, Timeline, useTodayAgenda } from "@/components/home_agenda_section";
+import { SkeletonTimeline, useTodayAgenda } from "@/components/home_agenda_section";
+import { DashboardPhotoTimeline } from "@/components/dashboard_photo_timeline";
+import { CalendarLoosePlate } from "@/components/calendar_day_visuals";
 
 /**
  * Tablet-dashboard (canvas «Dashboard tablet · B iteratie»), gemaakt voor een Galaxy Tab liggend
@@ -26,9 +27,6 @@ export type DashboardMeal = {
 
 export type DashboardShopping = { label: string; sub: string; href: string } | null;
 
-type Rgb = [number, number, number];
-const ORANGE: Rgb = [224, 140, 47];
-const deep = (c: Rgb, f = 0.62) => `rgb(${Math.round(c[0] * f)},${Math.round(c[1] * f)},${Math.round(c[2] * f)})`;
 
 // ─── Weericonen (zelfde stijl als het canvas) ───────────────────────────────
 
@@ -217,6 +215,8 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
 function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
   const getPhoto = useItemPhotoUrl(320);
   const photo = mealPhoto(meal, getPhoto);
+  // Losse ingrediënten (geen receptfoto): tot drie op een wit bord, zoals in de kalender.
+  const itemPhotos = meal && !meal.photoUrl ? meal.items.map((i) => i.photoUrl ?? getPhoto(i.name)).filter(Boolean) : [];
   return (
     <Link
       href={meal?.href ?? "/kalender"}
@@ -229,7 +229,11 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
       <span className="text-[11px] font-extrabold tracking-[0.08em] text-[rgb(139,87,29)] [[data-aod]_&]:text-[#d8a874]">
         MORGEN
       </span>
-      {photo ? (
+      {itemPhotos.length > 1 ? (
+        <span className="[[data-aod]_&]:brightness-[0.6]">
+          <CalendarLoosePlate photos={itemPhotos.slice(0, 3)} size={88} />
+        </span>
+      ) : photo ? (
         <span className="block size-[76px] overflow-hidden rounded-full bg-white shadow-[0_12px_20px_-12px_rgba(120,40,0,0.6)]">
           {/* eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app */}
           <img src={photo} alt="" className="aod-kenburns size-full object-cover [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" />
@@ -248,13 +252,8 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
 }
 
 function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; nextShopping: DashboardShopping }) {
-  const { state, connected, allDay, timed, nowMin, nowLabel, connect } = useTodayAgenda();
-  const next = timed.find((r) => r.state === "next") ?? null;
-  const minutesToNext = next ? next.startMin - nowMin : null;
-  const countdown = minutesToNext != null ? `${Math.floor(minutesToNext / 60)}:${String(minutesToNext % 60).padStart(2, "0")}` : null;
+  const { state, connected, allDay, timed, upcomingDays, nowMin, nowLabel, connect } = useTodayAgenda();
   const left = timed.filter((r) => r.state !== "past").length;
-  const timeOf = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" }) : "";
 
   return (
     <section
@@ -293,35 +292,8 @@ function AgendaColumn({ shoppingCount, nextShopping }: { shoppingCount: number; 
         </div>
       ) : (
         <>
-          {next && countdown ? (
-            <div
-              className="mb-2.5 flex items-center gap-3.5 rounded-[18px] px-3.5 py-3 [[data-aod]_&]:!bg-[linear-gradient(135deg,#3a2410,#1c1209)]"
-              style={{ backgroundImage: `linear-gradient(135deg, ${mixWithWhiteRgb(ORANGE, 0.22)}, ${mixWithWhiteRgb(ORANGE, 0.06)})` }}
-            >
-              <span className="flex size-[58px] shrink-0 flex-col items-center justify-center rounded-2xl bg-white shadow-[0_6px_14px_-8px_rgba(224,140,47,0.8)] [[data-aod]_&]:bg-[#120c07]">
-                <span className="text-xl font-extrabold leading-none text-[rgb(139,87,29)] [[data-aod]_&]:text-[#e0a060]">
-                  {countdown}
-                </span>
-                <span className="text-[9.5px] font-extrabold text-[var(--text-tertiary)]">UUR</span>
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[11px] font-extrabold tracking-[0.06em] text-[rgb(139,87,29)] [[data-aod]_&]:text-[#e0a060]">
-                  VOLGENDE
-                </span>
-                <span className="block truncate text-lg font-extrabold text-text-primary">
-                  {next.title} · {timeOf(next.start)}
-                </span>
-                {next.location ? <span className="block truncate text-[12.5px] text-[var(--text-secondary)]">{next.location}</span> : null}
-              </span>
-            </div>
-          ) : null}
           <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <AllDayChips rows={allDay} />
-            {timed.length > 0 ? (
-              <Timeline rows={timed} nowMin={nowMin} nowLabel={nowLabel} />
-            ) : (
-              <p className="py-4 text-center text-sm text-[var(--text-secondary)]">Verder niets gepland vandaag.</p>
-            )}
+            <DashboardPhotoTimeline allDay={allDay} timed={timed} upcomingDays={upcomingDays} nowMin={nowMin} nowLabel={nowLabel} />
           </div>
         </>
       )}
