@@ -307,14 +307,17 @@ function PhotoEventTile({ e, now, isNext, past, photo }: { e: WeekEvent; now: Da
       </span>
       {isNext ? <NextBadge color={c} /> : null}
       <span
-        className="absolute left-2.5 top-2.5 z-[2] inline-flex h-7 items-center gap-1.5 rounded-pill px-2.5 shadow-[0_2px_8px_-3px_rgba(16,17,48,0.3)] lg:left-3 lg:top-3 lg:h-8 lg:px-3"
+        className="absolute left-2.5 top-2.5 z-[2] inline-flex h-7 items-center rounded-pill px-2.5 shadow-[0_2px_8px_-3px_rgba(16,17,48,0.3)] lg:left-3 lg:top-3 lg:h-8 lg:px-3"
         style={{ backgroundColor: "rgba(255,255,255,0.95)" }}
       >
-        <span className="text-[10px] font-extrabold tracking-[0.06em] lg:text-[10.5px]" style={{ color: deep(c, 0.45) }}>
-          {dayLabel(e.startAt, now)}
-        </span>
-        <span className="text-sm font-extrabold lg:text-[15px]" style={{ color: deep(c, 0.6) }}>
-          {hhmm(e.startAt)}
+        {/* Dag en uur op één basislijn (kleine kapitalen naast het grotere uur), samen verticaal gecentreerd. */}
+        <span className="inline-flex items-baseline gap-1.5 leading-none">
+          <span className="text-[10px] font-extrabold uppercase leading-none tracking-[0.06em] lg:text-[10.5px]" style={{ color: deep(c, 0.45) }}>
+            {dayLabel(e.startAt, now)}
+          </span>
+          <span className="text-sm font-extrabold leading-none tabular-nums lg:text-[15px]" style={{ color: deep(c, 0.6) }}>
+            {hhmm(e.startAt)}
+          </span>
         </span>
       </span>
       {e.location && !past ? <RouteButton location={e.location} color={c} /> : null}
