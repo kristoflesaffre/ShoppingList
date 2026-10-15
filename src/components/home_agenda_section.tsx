@@ -350,9 +350,9 @@ export function RouteButton({ location, color, className }: { location: string; 
     return () => window.removeEventListener("pointerdown", close);
   }, [open]);
   const q = encodeURIComponent(location);
-  // `icon`: logo links van de naam. Google Maps volgt nog (aangeleverd bestand was het logo niet).
+  // `icon`: logo links van de naam.
   const links: { label: string; href: string; icon: string | null }[] = [
-    { label: "Google Maps", href: `https://www.google.com/maps/dir/?api=1&destination=${q}`, icon: null },
+    { label: "Google Maps", href: `https://www.google.com/maps/dir/?api=1&destination=${q}`, icon: "/logos/google-maps.jpg" },
     { label: "Waze", href: `https://waze.com/ul?q=${q}&navigate=yes`, icon: "/logos/waze.svg" },
   ];
   return (
