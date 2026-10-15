@@ -41,7 +41,7 @@ import {
 import { isVacationSlugAllowedForEmail, getVacationDefaultSlugsForPerson } from "@/lib/vacation-default-items";
 import { useItemPhotoUrl, useVacationItemSlugs } from "@/lib/item-photos";
 import { MASTER_STORE_OPTIONS } from "@/lib/master-stores";
-import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate } from "@/lib/calendar-utils";
+import { computeSectionAbsoluteDate } from "@/lib/calendar-utils";
 
 const RecipeIngredientSortableList = dynamic(
   () => import("@/app/recepten/recipe_ingredient_sortable_list").then((m) => m.RecipeIngredientSortableList),
@@ -332,30 +332,44 @@ export function NewItemModal({
     groupingMode !== "category";
   const getItemPhotoUrl = useItemPhotoUrl(160);
 
-  /** Datum per dag (zelfde logica als de dagkaarten op het lijstje). */
+  /**
+   * Weekstrook: vandaag eerst en dan de zes volgende dagen, chronologisch. Zelfde datum als bij het
+   * opslaan (`computeSectionAbsoluteDate`): een dagnaam is altijd vandaag of later, nooit voorbij.
+   */
   const dayDates = React.useMemo(() => {
-    const out = new Map<string, number>();
-    const listDate = parseDutchDate(listDateStr);
-    if (!listDate) return out;
+    const out = new Map<string, { day: number; iso: string; order: number }>();
     for (const day of DAY_OPTIONS) {
-      const offset = dutchDayToOffset(day.value);
-      if (offset === null) continue;
-      let date = addDays(getMondayOfWeek(listDate), offset);
-      if (date < listDate) date = addDays(date, 7);
-      out.set(day.value, date.getDate());
+      const iso = computeSectionAbsoluteDate(day.value);
+      if (!iso) continue;
+      const [y, m, d] = iso.split("-").map(Number);
+      out.set(day.value, { day: d, iso, order: new Date(y, m - 1, d).getTime() });
     }
     return out;
-  }, [listDateStr]);
+    // Opnieuw berekenen bij openen (de datum kan intussen veranderd zijn).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const getPlatePhoto = React.useCallback((name: string) => getItemPhotoUrl(name, 160), [getItemPhotoUrl]);
-  const dayPlates = useDayPlates(listItems, storedRecipes, getPlatePhoto);
+  const dayIsoBySection = React.useMemo(() => {
+    const m = new Map<string, string>();
+    dayDates.forEach((v, k) => m.set(k, v.iso));
+    return m;
+  }, [dayDates]);
+  const dayPlates = useDayPlates(listItems, storedRecipes, getPlatePhoto, dayIsoBySection);
   const dayStripDays = React.useMemo(
     () =>
-      DAY_OPTIONS.map((day) => ({
-        value: day.value,
-        short: DAY_SHORT[day.value] ?? day.label,
-        date: dayDates.get(day.value),
-      })),
+      DAY_OPTIONS.filter((day) => day.value !== "Geen")
+        .map((day) => ({
+          value: day.value,
+          short: DAY_SHORT[day.value] ?? day.label,
+          date: dayDates.get(day.value)?.day,
+          order: dayDates.get(day.value)?.order ?? 0,
+        }))
+        .sort((a, b) => a.order - b.order)
+        .reduce<{ value: string; short: string; date?: number }[]>(
+          (acc, { order: _order, ...day }) => [...acc, day],
+          [{ value: "Geen", short: "Geen" }],
+        ),
     [dayDates],
   );
   /** Desktop (batch): filter links en zoekveld rechts op één lijn (44px). */

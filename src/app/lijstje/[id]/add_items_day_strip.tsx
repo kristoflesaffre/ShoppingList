@@ -33,12 +33,16 @@ export function useDayPlates(
   items: readonly ListItem[] | undefined,
   savedRecipes: readonly SavedRecipe[],
   getPhoto: (name: string) => string | null | undefined,
+  /** Datum (YYYY-MM-DD) per dagnaam in de strook: items met een andere datum (bv. vorige week) tellen niet mee. */
+  isoBySection?: Map<string, string>,
 ): Map<string, DayPlate> {
   return React.useMemo(() => {
     const out = new Map<string, DayPlate>();
     if (!items) return out;
     const bySection = new Map<string, ListItem[]>();
     for (const item of items) {
+      const iso = isoBySection?.get(item.section);
+      if (iso && item.itemDate && item.itemDate !== iso) continue;
       const list = bySection.get(item.section) ?? [];
       list.push(item);
       bySection.set(item.section, list);
@@ -66,7 +70,7 @@ export function useDayPlates(
       );
     });
     return out;
-  }, [items, savedRecipes, getPhoto]);
+  }, [items, savedRecipes, getPhoto, isoBySection]);
 }
 
 function EmptyPlate({ size }: { size: number }) {
