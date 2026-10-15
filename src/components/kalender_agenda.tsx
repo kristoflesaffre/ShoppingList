@@ -292,6 +292,105 @@ function EventTile({ e, now, isNext }: { e: WeekEvent; now: Date; isNext: boolea
   );
 }
 
+/**
+ * Alle hele-dag-afspraken van één dag in één tegel (zelfde stijl als «Hele dag» op de startpagina):
+ * dag + aantal, «Hele dag» groot, daaronder de afspraken met een kleurstreepje. Geen foto.
+ */
+function AllDayTile({ events, now, isNext }: { events: WeekEvent[]; now: Date; isNext: boolean }) {
+  const c = events[0].color;
+  const past = events.every((e) => e.endAt.getTime() <= now.getTime());
+  const shown = events.slice(0, 3);
+  return (
+    <article
+      data-next={isNext ? "true" : undefined}
+      aria-label={`${dayLabel(events[0].startAt, now).toLowerCase()}, hele dag: ${events.map((e) => e.title).join(", ")}`}
+      className={cn(
+        "relative flex h-[190px] w-[150px] flex-none snap-start flex-col rounded-[26px] p-3.5 lg:h-[230px] lg:w-[220px] lg:p-4",
+        past && "opacity-50",
+      )}
+      style={{
+        backgroundImage: `linear-gradient(170deg, ${rgb(c, 0.16)} 0%, transparent 62%)`,
+        backgroundColor: "var(--white)",
+        boxShadow: isNext ? `0 0 0 2.5px ${rgb(c)}, 0 14px 30px -18px ${rgb(c, 0.7)}` : "inset 0 0 0 1px var(--border-subtle)",
+      }}
+    >
+      {isNext ? (
+        <span
+          className="absolute -top-3 left-1/2 inline-flex h-6 -translate-x-1/2 items-center whitespace-nowrap rounded-pill px-2.5 text-[11.5px] font-bold text-white"
+          style={{ backgroundColor: rgb(c) }}
+        >
+          Volgende
+        </span>
+      ) : null}
+      <span className="flex items-center justify-between">
+        <span className="text-[11px] font-extrabold tracking-[0.06em]" style={{ color: deep(c, 0.55) }}>
+          {dayLabel(events[0].startAt, now)}
+        </span>
+        {events.length > 1 ? (
+          <span
+            className="flex h-5 min-w-5 items-center justify-center rounded-pill px-1.5 text-[11px] font-extrabold"
+            style={{ backgroundColor: rgb(c, 0.16), color: deep(c, 0.55) }}
+          >
+            {events.length}
+          </span>
+        ) : null}
+      </span>
+      <span
+        className="mt-0.5 block text-[24px] font-extrabold tracking-[-0.02em] lg:text-[28px] [[data-theme=dark]_&]:!text-[color:var(--tile-time-dark)]"
+        style={{ color: deep(c), ["--tile-time-dark" as string]: rgb(c) }}
+      >
+        Hele dag
+      </span>
+      <span className="mt-1.5 flex min-h-0 flex-col">
+        {shown.map((e, i) => (
+          <span
+            key={e.id}
+            className={cn(
+              "flex gap-2 py-[7px]",
+              i > 0 && "border-t border-[var(--border-subtle)]",
+              // Mobiel: bij meer dan 3 maar 2 rijen, zodat «+ n meer» ruimte heeft.
+              i === 2 && events.length > 3 && "max-lg:hidden",
+            )}
+          >
+            <span className="w-1 shrink-0 rounded-sm" style={{ backgroundColor: rgb(e.color) }} aria-hidden />
+            <span className="line-clamp-1 text-[13px] font-bold leading-4 text-text-primary lg:line-clamp-2 lg:text-[14px] lg:leading-[18px]">
+              {e.title}
+            </span>
+          </span>
+        ))}
+      </span>
+      {events.length > 3 ? (
+        <>
+          <span className="mt-auto text-xs font-semibold text-[var(--text-tertiary)] lg:hidden">+ {events.length - 2} meer</span>
+          <span className="mt-auto text-xs font-semibold text-[var(--text-tertiary)] max-lg:hidden">+ {events.length - 3} meer</span>
+        </>
+      ) : null}
+    </article>
+  );
+}
+
+type LaneItem = { kind: "event"; e: WeekEvent } | { kind: "allDay"; day: string; events: WeekEvent[] };
+
+/** Rij: hele-dag-afspraken per dag samen in één tegel, op de plek van de eerste van die dag. */
+function buildLane(events: WeekEvent[]): LaneItem[] {
+  const out: LaneItem[] = [];
+  const groups = new Map<string, Extract<LaneItem, { kind: "allDay" }>>();
+  for (const e of events) {
+    if (!e.allDay) {
+      out.push({ kind: "event", e });
+      continue;
+    }
+    const g = groups.get(e.dayIso);
+    if (g) g.events.push(e);
+    else {
+      const item = { kind: "allDay" as const, day: e.dayIso, events: [e] };
+      groups.set(e.dayIso, item);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
 function TileSkeleton() {
   return (
     <div className="h-[190px] w-[150px] flex-none rounded-[26px] bg-[var(--white)]/60 p-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:h-[230px] lg:w-[220px] lg:p-4" aria-hidden>
@@ -310,8 +409,8 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
   const upcoming = events.filter((e) => e.endAt.getTime() > nowMs);
   const current = upcoming.find((e) => !e.allDay && e.startAt.getTime() <= nowMs) ?? null;
   const next = upcoming.find((e) => e.startAt.getTime() > nowMs) ?? null;
-  // In de rij: de vorige dagen (vervaagd), vandaag en de rest van de week.
-  const lane = events;
+  // In de rij: de vorige dagen (vervaagd), vandaag en de rest van de week; hele-dag per dag gebundeld.
+  const lane = buildLane(events);
 
   React.useEffect(() => {
     onTint(next?.color ?? current?.color ?? null);
@@ -409,9 +508,18 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
           onScroll={updateArrows}
           className="-mx-4 flex -mt-2 snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-3.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden"
         >
-          {lane.map((e) => (
-            <EventTile key={e.id} e={e} now={now} isNext={e.id === next?.id} />
-          ))}
+          {lane.map((item) =>
+            item.kind === "event" ? (
+              <EventTile key={item.e.id} e={item.e} now={now} isNext={item.e.id === next?.id} />
+            ) : (
+              <AllDayTile
+                key={`allday-${item.day}`}
+                events={item.events}
+                now={now}
+                isNext={item.events.some((e) => e.id === next?.id)}
+              />
+            ),
+          )}
         </div>
       ) : (
         <p className="rounded-[22px] bg-[var(--white)]/60 px-5 py-6 text-center text-sm text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle)]">
