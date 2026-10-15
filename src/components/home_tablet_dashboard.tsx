@@ -281,21 +281,28 @@ function ShortcutTile({
   return (
     <Link
       href={href}
-      className="relative flex h-[84px] min-w-0 flex-1 items-center gap-3.5 overflow-hidden rounded-[24px] pl-5 pr-[96px] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [[data-aod]_&]:brightness-[0.5]"
-      style={{
-        backgroundImage: `linear-gradient(120deg, ${mixWithWhiteRgb(color, 0.3)} 0%, ${mixWithWhiteRgb(color, 0.1)} 100%)`,
-        boxShadow: `0 18px 40px -26px ${deepRgb(color, 0.9)}`,
-        color: deepRgb(color),
-      }}
+      className="relative flex h-[84px] min-w-0 flex-1 items-center gap-3.5 overflow-hidden rounded-[24px] pl-5 pr-[96px] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [background-image:var(--sc-bg)] [box-shadow:var(--sc-shadow)] [color:var(--sc-fg)] [[data-aod]_&]:[background-image:var(--sc-bg-dark)] [[data-aod]_&]:[box-shadow:var(--sc-shadow-dark)] [[data-aod]_&]:[color:var(--sc-fg-dark)]"
+      // Licht: zacht verloop in de eigen kleur. Donker (always-on): diep verloop in dezelfde kleur, lichte tekst,
+      // zoals de weer- en eettegels in het donker.
+      style={
+        {
+          "--sc-bg": `linear-gradient(120deg, ${mixWithWhiteRgb(color, 0.3)} 0%, ${mixWithWhiteRgb(color, 0.1)} 100%)`,
+          "--sc-shadow": `0 18px 40px -26px ${deepRgb(color, 0.9)}`,
+          "--sc-fg": deepRgb(color),
+          "--sc-bg-dark": `linear-gradient(120deg, ${deepRgb(color, 0.34)} 0%, ${deepRgb(color, 0.14)} 100%)`,
+          "--sc-shadow-dark": `0 0 0 1px ${deepRgb(color, 0.45)}`,
+          "--sc-fg-dark": mixWithWhiteRgb(color, 0.5),
+        } as React.CSSProperties
+      }
     >
       {lead}
       <span className="flex min-w-0 flex-col gap-0.5 leading-tight">
         {kicker ? <span className="text-[10.5px] font-extrabold tracking-[0.08em]">{kicker}</span> : null}
-        <span className="truncate text-[17px] font-extrabold text-text-primary">{title}</span>
+        <span className="truncate text-[17px] font-extrabold text-text-primary [[data-aod]_&]:text-[#eef0f8]">{title}</span>
         <span className="truncate text-[12.5px] font-semibold">{sub}</span>
       </span>
       {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
-      <img src={icon} alt="" aria-hidden className="pointer-events-none absolute -bottom-3 right-3 size-[92px] rotate-[-6deg] object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.18)]" />
+      <img src={icon} alt="" aria-hidden className="pointer-events-none absolute -bottom-3 right-3 size-[92px] rotate-[-6deg] object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.18)] [[data-aod]_&]:brightness-[0.75]" />
     </Link>
   );
 }
