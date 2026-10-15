@@ -21,7 +21,7 @@ describe("birthdayName", () => {
 describe("agendaDisplayTitle", () => {
   it("toont verjaardagen als «🎂 Naam verjaardag» zonder andere emoji", () => {
     expect(agendaDisplayTitle("Huub Bday 🎈")).toBe("🎂 Huub verjaardag");
-    expect(agendaDisplayTitle("Mama gestorven")).toBe("Mama gestorven");
+    expect(agendaDisplayTitle("Sjotter Y&O vs De Zwaluw")).toBe("Sjotter Y&O vs De Zwaluw");
   });
 });
 

@@ -351,7 +351,7 @@ function AllDayTile({ events, now, isNext }: { events: WeekEvent[]; now: Date; i
   return (
     <article
       data-next={isNext ? "true" : undefined}
-      aria-label={`${dayLabel(events[0].startAt, now).toLowerCase()}, hele dag: ${events.map((e) => e.title).join(", ")}`}
+      aria-label={`${dayLabel(events[0].startAt, now).toLowerCase()}, hele dag: ${events.map((e) => agendaDisplayTitle(e.title)).join(", ")}`}
       className={cn(
         "relative flex h-[190px] w-[150px] flex-none snap-start flex-col rounded-[26px] p-3.5 lg:h-[230px] lg:w-[220px] lg:p-4",
         past && "opacity-50",
@@ -408,7 +408,7 @@ function AllDayTile({ events, now, isNext }: { events: WeekEvent[]; now: Date; i
                 events.length <= 2 ? "line-clamp-2" : "line-clamp-1",
               )}
             >
-              {e.title}
+              {agendaDisplayTitle(e.title)}
             </span>
           </span>
         ))}

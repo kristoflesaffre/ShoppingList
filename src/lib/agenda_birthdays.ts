@@ -4,6 +4,8 @@
  * naam eruit, tonen ze één keer als «🎂 Bart Machilsen verjaardag» en laten emoji's weg.
  */
 
+import { agendaEventIcon, isDeathRemembrance } from "./agenda_event_icons";
+
 // Via `new RegExp`: de `u`-vlag mag niet als letterlijke regex bij het huidige TypeScript-target.
 const BIRTHDAY_WORD = new RegExp(
   String.raw`\b(?:happy\s+)?(?:b-?days?|birth-?days?|bdays?|verjaardag(?:sfeest(?:je)?|je)?|verjaart|jarig)\b`,
@@ -15,7 +17,7 @@ const POSSESSIVE = new RegExp(String.raw`(\p{L})['’]s?(?=\s|$)`, "gu");
 /** Naam uit een verjaardagstitel, of `null` als het geen verjaardag is. «verjaardag» zonder naam = "". */
 export function birthdayName(title: string): string | null {
   const clean = title.replace(EMOJI, " ");
-  if (!clean.match(BIRTHDAY_WORD)) return null;
+  if (!clean.match(BIRTHDAY_WORD) || isDeathRemembrance(clean)) return null;
   let name = clean.replace(BIRTHDAY_WORD, " ");
   name = name
     .replace(/\b(?:van|of|from)\b/gi, " ")
@@ -32,10 +34,14 @@ function birthdayTitle(name: string): string {
   return name ? `🎂 ${name} verjaardag` : "🎂 Verjaardag";
 }
 
-/** Weergave van een agendatitel: verjaardagen als «🎂 Naam verjaardag», de rest ongewijzigd. */
+/**
+ * Weergave van een agendatitel: verjaardagen als «🎂 Naam verjaardag», andere herkende soorten met
+ * hun emoji vooraan (zie `agenda_event_icons`), de rest ongewijzigd.
+ */
 export function agendaDisplayTitle(title: string): string {
   const name = birthdayName(title);
-  return name === null ? title : birthdayTitle(name);
+  if (name !== null) return birthdayTitle(name);
+  return agendaEventIcon(title)?.title ?? title;
 }
 
 function normName(name: string): string {
