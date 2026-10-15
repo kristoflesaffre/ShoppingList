@@ -552,7 +552,8 @@ export default function KalenderPage() {
       ) : null}
       <div className="relative mx-auto flex w-full max-w-[1040px] flex-1 flex-col px-4 pb-[calc(120px+env(safe-area-inset-bottom,0px))] pt-[env(safe-area-inset-top,0px)] motion-safe:animate-fade-up lg:px-6 lg:pt-[calc(40px+env(safe-area-inset-top,0px))]">
         {/* Kop: ronde terugknop; titel in het midden op mobiel, links ernaast op desktop. */}
-        <header className="flex h-16 items-center gap-3 lg:h-auto lg:gap-3.5">
+        {/* Boven de foto van de agenda-hero (die loopt tot achter de kop). */}
+        <header className="relative z-[2] flex h-16 items-center gap-3 lg:h-auto lg:gap-3.5">
           <Link href="/" aria-label="Terug naar de startpagina" className={headerRoundButtonClass}>
             <ChevronIcon direction="left" className="size-5" />
           </Link>

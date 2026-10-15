@@ -181,15 +181,47 @@ function NextHero({ next, current, now }: { next: WeekEvent | null; current: Wee
   const dateLabel = next
     ? next.startAt.toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "long" }).toUpperCase()
     : "";
+  // Canvas «Kalender · hero met foto · C»: heeft de volgende afspraak een foto, dan vult die de bovenband.
+  const photo = next && !next.allDay ? agendaPhotoFor(next.title, next.location) : null;
+  // Zachte maskers i.p.v. vaste kleuren: de foto vloeit uit in elke tint (en in het donkere thema).
+  const deskMask =
+    "linear-gradient(90deg, transparent 0%, transparent 38%, #000 70%), linear-gradient(180deg, transparent 0%, #000 24%, #000 66%, transparent 100%)";
+  // Mobiel: bovenaan langer uitgewassen, zodat de kop («Kalender», Eten/Agenda) leesbaar blijft.
+  const mobileMask = "linear-gradient(180deg, transparent 0%, transparent 8%, #000 36%, #000 54%, transparent 100%)";
   return (
     <section
       aria-label={next ? `Volgende afspraak: ${agendaDisplayTitle(next.title)}` : "Geen afspraken meer deze week"}
-      className="flex flex-col items-center gap-2 text-center lg:flex-row lg:items-center lg:gap-12 lg:pl-6 lg:text-left"
+      className="relative flex flex-col items-center gap-2 text-center lg:flex-row lg:items-center lg:gap-12 lg:pl-6 lg:text-left"
     >
-      <span className="lg:hidden">{illustration(250)}</span>
-      <span className="hidden lg:block">{illustration(330)}</span>
+      {photo ? (
+        <span aria-hidden className="pointer-events-none absolute left-1/2 top-[-72px] h-[420px] w-screen -translate-x-1/2 lg:top-[-104px] lg:h-[calc(100%+150px)]">
+          <span className="absolute inset-0 lg:hidden" style={{ WebkitMaskImage: mobileMask, maskImage: mobileMask }}>
+            <Image src={`${photo}_full.webp`} alt="" fill priority sizes="100vw" className="object-cover saturate-[.95]" />
+          </span>
+          <span
+            className="absolute inset-0 hidden lg:block"
+            style={{ WebkitMaskImage: deskMask, maskImage: deskMask, WebkitMaskComposite: "source-in", maskComposite: "intersect" }}
+          >
+            <Image src={`${photo}_full.webp`} alt="" fill priority sizes="100vw" className="object-cover object-center saturate-[.95]" />
+          </span>
+        </span>
+      ) : null}
+      {photo ? (
+        // Zelfde ruimte als de illustratie, zodat titel en rij op dezelfde plaats blijven; de foto toont erachter.
+        <span aria-hidden className="block h-[250px] w-full lg:hidden" />
+      ) : (
+        <>
+          <span className="lg:hidden">{illustration(250)}</span>
+          <span className="hidden lg:block">{illustration(330)}</span>
+        </>
+      )}
       {/* Mobiel: plaats voor een titel van twee regels, zodat de rij eronder bij «Eten» en «Agenda» even hoog staat. */}
-      <div className="flex min-w-0 flex-col items-center max-lg:min-h-[146px] lg:flex-1 lg:items-start">
+      <div
+        className={cn(
+          "relative flex min-w-0 flex-col items-center max-lg:min-h-[146px] lg:flex-1 lg:items-start",
+          photo && "lg:min-h-[330px] lg:justify-center",
+        )}
+      >
         {next ? (
           <>
             <span className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-[var(--blue-500)] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]">
