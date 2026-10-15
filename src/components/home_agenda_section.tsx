@@ -350,9 +350,10 @@ export function RouteButton({ location, color, className }: { location: string; 
     return () => window.removeEventListener("pointerdown", close);
   }, [open]);
   const q = encodeURIComponent(location);
-  const links = [
-    { label: "Google Maps", href: `https://www.google.com/maps/dir/?api=1&destination=${q}` },
-    { label: "Waze", href: `https://waze.com/ul?q=${q}&navigate=yes` },
+  // `icon`: logo links van de naam. Google Maps volgt nog (aangeleverd bestand was het logo niet).
+  const links: { label: string; href: string; icon: string | null }[] = [
+    { label: "Google Maps", href: `https://www.google.com/maps/dir/?api=1&destination=${q}`, icon: null },
+    { label: "Waze", href: `https://waze.com/ul?q=${q}&navigate=yes`, icon: "/logos/waze.svg" },
   ];
   return (
     <>
@@ -375,7 +376,7 @@ export function RouteButton({ location, color, className }: { location: string; 
         </svg>
       </button>
       {open ? (
-        <span ref={menuRef} className="absolute inset-x-2 bottom-2 z-[3] flex flex-col gap-1 rounded-[14px] bg-[var(--white)] p-1.5 shadow-[0_10px_28px_-10px_rgba(16,17,48,0.45)]">
+        <span ref={menuRef} className="absolute inset-x-2 bottom-2 z-[3] flex flex-col gap-1 rounded-[14px] bg-[var(--white)] p-1 shadow-[0_10px_28px_-10px_rgba(16,17,48,0.45)]">
           {links.map((l) => (
             <a
               key={l.label}
@@ -383,9 +384,15 @@ export function RouteButton({ location, color, className }: { location: string; 
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setOpen(false)}
-              className="flex h-9 items-center justify-center rounded-[10px] text-[13px] font-bold text-text-primary no-underline [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
+              className="flex h-9 items-center gap-2 rounded-[10px] px-1.5 text-left text-[13px] font-bold text-text-primary no-underline [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
             >
-              {l.label}
+              {l.icon ? (
+                // eslint-disable-next-line @next/next/no-img-element -- klein lokaal app-logo
+                <img src={l.icon} alt="" width={22} height={22} className="size-[22px] shrink-0 rounded-[6px]" />
+              ) : (
+                <span aria-hidden className="size-[22px] shrink-0 rounded-[6px] bg-[var(--gray-50)]" />
+              )}
+              <span className="truncate">{l.label}</span>
             </a>
           ))}
         </span>
