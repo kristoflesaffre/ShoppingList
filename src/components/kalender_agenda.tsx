@@ -285,6 +285,9 @@ function PhotoEventTile({ e, now, isNext, past, photo }: { e: WeekEvent; now: Da
   const mask = "linear-gradient(180deg, transparent 40%, #000 68%)";
   const meta = [`${hhmm(e.startAt)} – ${hhmm(e.endAt)}`, e.location].filter(Boolean).join(" · ");
   const title = agendaDisplayTitle(e.title);
+  // Mobiel past «MORGEN 22:00» niet naast de route-knop: dan enkel het uur in de pil, de dag in de regel onderaan.
+  const hasRoute = Boolean(e.location) && !past;
+  const day = dayLabel(e.startAt, now);
   return (
     <article
       data-next={isNext ? "true" : undefined}
@@ -310,22 +313,26 @@ function PhotoEventTile({ e, now, isNext, past, photo }: { e: WeekEvent; now: Da
         className="absolute left-2.5 top-2.5 z-[2] inline-flex h-7 items-center rounded-pill px-2.5 shadow-[0_2px_8px_-3px_rgba(16,17,48,0.3)] lg:left-3 lg:top-3 lg:h-8 lg:px-3"
         style={{ backgroundColor: "rgba(255,255,255,0.95)" }}
       >
-        {/* Dag en uur op één basislijn (kleine kapitalen naast het grotere uur), samen verticaal gecentreerd. */}
-        <span className="inline-flex items-baseline gap-1.5 leading-none">
-          <span className="text-[10px] font-extrabold uppercase leading-none tracking-[0.06em] lg:text-[10.5px]" style={{ color: deep(c, 0.45) }}>
-            {dayLabel(e.startAt, now)}
+        {/* Dag en uur allebei verticaal gecentreerd in de pil. */}
+        <span className="inline-flex items-center gap-1.5 leading-none">
+          <span
+            className={cn("text-[10px] font-extrabold uppercase leading-none tracking-[0.06em] lg:text-[10.5px]", hasRoute && "max-lg:hidden")}
+            style={{ color: deep(c, 0.45) }}
+          >
+            {day}
           </span>
           <span className="text-sm font-extrabold leading-none tabular-nums lg:text-[15px]" style={{ color: deep(c, 0.6) }}>
             {hhmm(e.startAt)}
           </span>
         </span>
       </span>
-      {e.location && !past ? <RouteButton location={e.location} color={c} /> : null}
+      {hasRoute ? <RouteButton location={e.location!} color={c} className="lg:right-3 lg:top-3 lg:size-8" /> : null}
       <span className="absolute inset-x-3.5 bottom-3 z-[1] flex flex-col lg:inset-x-4 lg:bottom-3.5">
         <span className="line-clamp-2 text-[15px] font-extrabold leading-[19px] lg:text-base lg:leading-5" style={{ color: deep(c, 0.35) }}>
           {title}
         </span>
         <span className="mt-0.5 truncate text-xs font-medium lg:text-[12.5px]" style={{ color: deep(c, 0.5) }}>
+          {hasRoute ? <span className="lg:hidden">{day.charAt(0) + day.slice(1).toLowerCase()} · </span> : null}
           {meta}
         </span>
       </span>

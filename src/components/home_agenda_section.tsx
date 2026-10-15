@@ -331,7 +331,11 @@ function PhotoAgendaTile({ row, focus, photo }: { row: AgendaRow; focus: boolean
 }
 
 /** Mini-knop «Route» (enkel voor afspraken die nog komen): kies Google Maps of Waze, opent de app op de gsm. */
-export function RouteButton({ location, color }: { location: string; color: Rgb }) {
+/**
+ * Route-knop: zelfde hoogte als de uur-pil ernaast (28px; via `className` groter op desktop),
+ * met een herkenbaar richting-icoon (ruit met afslagpijl, zoals in kaarten-apps).
+ */
+export function RouteButton({ location, color, className }: { location: string; color: Rgb; className?: string }) {
   const [open, setOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLSpanElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
@@ -358,11 +362,16 @@ export function RouteButton({ location, color }: { location: string; color: Rgb 
         aria-label={`Route naar ${location}`}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="absolute right-2.5 top-2.5 z-[2] flex size-8 items-center justify-center rounded-full bg-[var(--white)] shadow-[0_4px_12px_-6px_rgba(16,17,48,0.35)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        className={cn(
+          "absolute right-2.5 top-2.5 z-[2] flex size-7 items-center justify-center rounded-full bg-[var(--white)] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.3)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+          className,
+        )}
         style={{ color: deep(color, 0.75) }}
       >
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-[15px]">
-          <path d="M20.6 3.4 3.9 10.2c-.8.3-.7 1.5.1 1.7l6.6 1.5 1.5 6.6c.2.8 1.4.9 1.7.1l6.8-16.7c.3-.7-.4-1.4-1.1-1.1z" />
+        {/* Richting-icoon: ruit met afslagpijl naar rechts. */}
+        <svg viewBox="0 0 24 24" aria-hidden className="size-[17px]">
+          <path d="M10.6 2.6a2 2 0 0 1 2.8 0l8 8a2 2 0 0 1 0 2.8l-8 8a2 2 0 0 1-2.8 0l-8-8a2 2 0 0 1 0-2.8z" fill="currentColor" />
+          <path d="M9 15.5v-2.8a1.7 1.7 0 0 1 1.7-1.7h4.8M13.4 8.6l2.4 2.4-2.4 2.4" fill="none" stroke="var(--white)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
       {open ? (
