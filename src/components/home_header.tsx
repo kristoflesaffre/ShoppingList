@@ -114,14 +114,14 @@ export function HomeHeader({ ownerId, className, action, clock = false }: HomeHe
         </span>
       </Link>
       {clock ? (
-        <LiveClock className="aod-clock col-start-2 row-span-2 row-start-1 hidden self-center text-[64px] font-extrabold leading-[0.9] tracking-[-0.05em] text-text-primary md:block" />
+        <LiveClock className="aod-clock col-start-2 row-span-2 row-start-1 hidden self-center text-[64px] font-extrabold leading-[0.9] tracking-[-0.05em] text-text-primary md:block [[data-sunset]_&]:text-fixed-white" />
       ) : null}
-      <p className={cn("col-start-2 row-start-1 self-end text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)]", clock && "md:col-start-3")}>
+      <p className={cn("col-start-2 row-start-1 self-end text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)] [[data-sunset]_&]:text-fixed-white/80", clock && "md:col-start-3")}>
         <time dateTime={now.toISOString().slice(0, 10)}>{dateLabel}</time>
       </p>
       <h1
         className={cn(
-          "col-start-2 row-start-2 self-start truncate text-[24px] font-bold leading-[30px] tracking-tight text-[var(--text-primary)] md:text-page-title md:leading-32",
+          "col-start-2 row-start-2 self-start truncate text-[24px] font-bold leading-[30px] tracking-tight text-[var(--text-primary)] md:text-page-title md:leading-32 [[data-sunset]_&]:text-fixed-white",
           clock && "md:col-start-3",
         )}
       >

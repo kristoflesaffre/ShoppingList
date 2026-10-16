@@ -43,7 +43,8 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: var(--bg-app);
+  /* --page-sky: optionele lucht (bv. zonsondergang op het avonddashboard), anders de appkleur. */
+  background: var(--page-sky, var(--bg-app));
 }
 
 /* Route loading: gecentreerde spinner */

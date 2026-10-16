@@ -88,7 +88,7 @@ function EveningTile({
       aria-label={label.toLowerCase()}
       className={cn(
         tile,
-        "flex min-w-0 flex-1 flex-col self-start pt-4 text-fixed-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)] [background:var(--bg)] [[data-theme=dark]_&]:[background:var(--bg-dark)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]",
+        "flex min-w-0 flex-1 flex-col self-start pt-4 text-fixed-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)] [background:var(--bg)] [[data-theme=dark]_&]:[background:var(--bg-dark)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] [[data-sunset]_&]:[background:rgba(255,255,255,0.2)] [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]",
       )}
       style={{ "--bg": background, "--bg-dark": backgroundDark } as React.CSSProperties}
     >

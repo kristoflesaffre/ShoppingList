@@ -41,11 +41,16 @@ const PinIcon = () => (
 function TilePhoto({ photo, width }: { photo: string; width: number }) {
   return (
     <>
-      <span className="absolute inset-y-0 right-0 [[data-theme=dark]_&]:brightness-[0.8]" style={{ width: `${width}%` }} aria-hidden>
+      {/* Zonsondergang: de foto loopt via een masker uit in het glas (geen kleurvlak erover). */}
+      <span
+        className="absolute inset-y-0 right-0 [[data-sunset]_&]:[mask-image:linear-gradient(90deg,transparent_0%,#000_40%)] [[data-theme=dark]_&]:brightness-[0.8]"
+        style={{ width: `${width}%` }}
+        aria-hidden
+      >
         <Image src={`${photo}_480.webp`} alt="" fill sizes="320px" className="object-cover" />
       </span>
       <span
-        className="absolute inset-0"
+        className="absolute inset-0 [[data-sunset]_&]:hidden"
         style={{ background: `linear-gradient(90deg, var(--tile-bg) ${100 - width}%, transparent ${100 - width + 17}%)` }}
         aria-hidden
       />
@@ -57,16 +62,16 @@ function TilePhoto({ photo, width }: { photo: string; width: number }) {
 // in donker» B · Nachtblauw glas): donkere glastegel met lichte tekst, foto's iets gedimd. De kleuren komen
 // via CSS-variabelen (--tile-bg, --t1/--t2/--t0 en hun donkere tegenhangers) zodat één tegel beide thema's kent.
 const tileBase =
-  "relative flex h-[72px] min-w-0 items-center overflow-hidden rounded-[18px] bg-[var(--tile-bg)] [--tile-bg:#ffffff] [box-shadow:var(--lift)] [[data-theme=dark]_&]:[--tile-bg:#242a3e] [[data-theme=dark]_&]:[box-shadow:var(--lift-dark)]";
+  "relative flex h-[72px] min-w-0 items-center overflow-hidden rounded-[18px] bg-[var(--tile-bg)] [--tile-bg:#ffffff] [box-shadow:var(--lift)] [[data-theme=dark]_&]:[--tile-bg:#242a3e] [[data-theme=dark]_&]:[box-shadow:var(--lift-dark)] [[data-sunset]_&]:[--tile-bg:rgba(255,255,255,0.26)] [[data-sunset]_&]:[box-shadow:inset_0_0_0_1px_rgba(255,255,255,0.42)]";
 const lift = (ring = "0 0 0 1px rgba(16,17,48,0.05)") => `${ring}, 0 8px 18px -14px rgba(16,17,48,0.35)`;
 const liftDark = (ring = "inset 0 0 0 1px rgba(255,255,255,0.08)") => ring;
 /** Afspraakkleur gemengd met wit (voor labels op de donkere tegel). */
 const tintLight = (c: Rgb, k = 0.45) => `rgb(${c.map((v) => Math.round(v + (255 - v) * k)).join(",")})`;
 const textVars = (c: Rgb): React.CSSProperties =>
   ({ "--t0": deep(c, 0.6), "--t1": deep(c, 0.35), "--t2": deep(c, 0.55), "--t0d": tintLight(c) }) as React.CSSProperties;
-const T0 = "text-[color:var(--t0)] [[data-theme=dark]_&]:text-[color:var(--t0d)]";
-const T1 = "text-[color:var(--t1)] [[data-theme=dark]_&]:text-[#eef0fb]";
-const T2 = "text-[color:var(--t2)] [[data-theme=dark]_&]:text-[#a9afcc]";
+const T0 = "text-[color:var(--t0)] [[data-theme=dark]_&]:text-[color:var(--t0d)] [[data-sunset]_&]:text-[#ffe2a0]";
+const T1 = "text-[color:var(--t1)] [[data-theme=dark]_&]:text-[#eef0fb] [[data-sunset]_&]:text-fixed-white";
+const T2 = "text-[color:var(--t2)] [[data-theme=dark]_&]:text-[#a9afcc] [[data-sunset]_&]:text-fixed-white/80";
 
 function AllDayTile({ row, narrow }: { row: AgendaRow; narrow: boolean }) {
   const { emoji, text: full } = splitEmoji(row.title);
@@ -117,7 +122,7 @@ function AllDayRow({ rows }: { rows: AgendaRow[] }) {
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           className={cn(
-            "flex h-[72px] flex-col items-center justify-center gap-1 rounded-[18px] bg-white text-[13px] shadow-[0_0_0_1px_var(--border-subtle),0_8px_18px_-14px_rgba(16,17,48,0.35)] font-bold text-text-primary transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [[data-aod]_&]:bg-white/[0.06]",
+            "flex h-[72px] flex-col items-center justify-center gap-1 rounded-[18px] bg-white text-[13px] [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:text-fixed-white shadow-[0_0_0_1px_var(--border-subtle),0_8px_18px_-14px_rgba(16,17,48,0.35)] font-bold text-text-primary transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [[data-aod]_&]:bg-white/[0.06]",
             open && "col-span-2",
           )}
         >
@@ -174,9 +179,9 @@ function EventTile({ row }: { row: AgendaRow }) {
 /** Voorbije afspraak: lage grijze regel, zonder foto. */
 function PastLine({ row }: { row: AgendaRow }) {
   return (
-    <div className="aod-past flex h-10 min-w-0 items-center gap-2.5 rounded-xl bg-white/75 px-3.5 shadow-[0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-white/[0.06] [[data-aod]_&]:shadow-none">
+    <div className="aod-past flex h-10 min-w-0 items-center gap-2.5 rounded-xl bg-white/75 px-3.5 shadow-[0_0_0_1px_var(--border-subtle)] [[data-sunset]_&]:bg-fixed-white/[0.14] [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.3)] [[data-aod]_&]:bg-white/[0.06] [[data-aod]_&]:shadow-none">
       <span className="size-2 shrink-0 rounded-full opacity-60" style={{ backgroundColor: rgba(row.color) }} aria-hidden />
-      <span className="truncate text-sm font-semibold text-[var(--text-tertiary)]">{row.title}</span>
+      <span className="truncate text-sm font-semibold text-[var(--text-tertiary)] [[data-sunset]_&]:text-fixed-white/75">{row.title}</span>
     </div>
   );
 }
@@ -187,8 +192,8 @@ function Row({ time, children, past = false }: { time?: AgendaRow; children: Rea
       <span className="flex flex-col items-end leading-tight">
         {time ? (
           <>
-            <span className={cn("text-base font-extrabold", past ? "text-[var(--text-tertiary)]" : "text-text-primary")}>{timeLabel(time.start)}</span>
-            <span className="text-[12.5px] text-[var(--text-tertiary)]">{timeLabel(time.end)}</span>
+            <span className={cn("text-base font-extrabold", past ? "text-[var(--text-tertiary)] [[data-sunset]_&]:text-fixed-white/60" : "text-text-primary [[data-sunset]_&]:text-fixed-white")}>{timeLabel(time.start)}</span>
+            <span className="text-[12.5px] text-[var(--text-tertiary)] [[data-sunset]_&]:text-fixed-white/70">{timeLabel(time.end)}</span>
           </>
         ) : null}
       </span>
@@ -200,14 +205,15 @@ function Row({ time, children, past = false }: { time?: AgendaRow; children: Rea
 function NowLine({ label, text }: { label: string; text: string | null }) {
   return (
     <li className="grid h-5 grid-cols-[56px_1fr_auto] items-center gap-x-4" aria-label={`Nu, ${label}`}>
-      <span className="text-right text-[13.5px] font-extrabold" style={{ color: NOW_RED }}>
+      <span className="text-right text-[13.5px] font-extrabold text-[color:var(--now)] [[data-sunset]_&]:text-[#ffe2a0]" style={{ "--now": NOW_RED } as React.CSSProperties}>
         {label}
       </span>
-      <span className="relative h-0.5 rounded-sm" style={{ backgroundColor: "rgba(230,70,70,0.75)" }}>
-        <span className="absolute -left-[5px] -top-1 size-2.5 rounded-full" style={{ backgroundColor: NOW_RED }} />
+      {/* Zonsondergang: de nu-lijn warm geel i.p.v. rood. */}
+      <span className="relative h-0.5 rounded-sm bg-[rgba(230,70,70,0.75)] [[data-sunset]_&]:bg-[#ffe2a0]">
+        <span className="absolute -left-[5px] -top-1 size-2.5 rounded-full bg-[rgb(230,70,70)] [[data-sunset]_&]:bg-[#ffe2a0]" />
       </span>
       {text ? (
-        <span className="text-[13px] font-semibold" style={{ color: "rgb(192,58,58)" }}>
+        <span className="text-[13px] font-semibold text-[rgb(192,58,58)] [[data-sunset]_&]:text-[#ffe2a0]">
           {text}
         </span>
       ) : null}
@@ -218,7 +224,7 @@ function NowLine({ label, text }: { label: string; text: string | null }) {
 function DaySeparator({ date, tomorrow }: { date: Date; tomorrow: boolean }) {
   const long = date.toLocaleDateString("nl-BE", { weekday: "long", day: "numeric" });
   return (
-    <li className="ml-[72px] pt-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+    <li className="ml-[72px] pt-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-tertiary)] [[data-sunset]_&]:text-fixed-white/70">
       {tomorrow ? `Morgen · ${long}` : long}
     </li>
   );

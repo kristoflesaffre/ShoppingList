@@ -188,15 +188,15 @@ function TomorrowWeather({ weather }: { weather: Weather | null }) {
   return (
     <section
       aria-label={t ? `Weer morgen: ${t.label}, ${t.max} tot ${t.min} graden` : "Weer morgen"}
-      className={cn(tile, "flex w-[124px] shrink-0 flex-col items-center justify-center gap-1.5 bg-[linear-gradient(165deg,#7ea7ee,#a9c6f6_60%,#cadcfa)] text-center shadow-[0_14px_32px_-24px_rgba(40,100,220,0.7)] [[data-theme=dark]_&]:bg-[linear-gradient(165deg,#22345e,#1a2848_60%,#141e36)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#263256]")}
+      className={cn(tile, "flex w-[124px] shrink-0 flex-col items-center justify-center gap-1.5 bg-[linear-gradient(165deg,#7ea7ee,#a9c6f6_60%,#cadcfa)] text-center shadow-[0_14px_32px_-24px_rgba(40,100,220,0.7)] [[data-theme=dark]_&]:bg-[linear-gradient(165deg,#22345e,#1a2848_60%,#141e36)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#263256] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]")}
     >
-      <span className="text-[11px] font-extrabold tracking-[0.08em] text-fixed-white/90 [[data-theme=dark]_&]:text-[#a9c2ef]">MORGEN</span>
+      <span className="text-[11px] font-extrabold tracking-[0.08em] text-fixed-white/90 [[data-theme=dark]_&]:text-[#a9c2ef] [[data-sunset]_&]:text-fixed-white">MORGEN</span>
       {t ? (
         <>
           <WeatherHero kind={t.kind} size={76} />
           <span className="text-2xl font-extrabold leading-none text-fixed-white [[data-theme=dark]_&]:text-[#e4ecff]">{t.max}°</span>
-          <span className="text-[13px] font-bold text-fixed-white/80 [[data-theme=dark]_&]:text-[#8fa3c8]">{t.min}°</span>
-          {t.rainChance >= 20 ? <span className="mt-0.5 text-xs font-extrabold text-fixed-white [[data-theme=dark]_&]:text-[#a9c2ef]">☂ {t.rainChance}%</span> : null}
+          <span className="text-[13px] font-bold text-fixed-white/80 [[data-theme=dark]_&]:text-[#8fa3c8] [[data-sunset]_&]:text-fixed-white/80">{t.min}°</span>
+          {t.rainChance >= 20 ? <span className="mt-0.5 text-xs font-extrabold text-fixed-white [[data-theme=dark]_&]:text-[#a9c2ef] [[data-sunset]_&]:text-fixed-white">☂ {t.rainChance}%</span> : null}
         </>
       ) : (
         <span className="size-16 animate-pulse rounded-full bg-fixed-white/40" />
@@ -291,10 +291,10 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
       aria-label={meal ? `Morgen: ${meal.title}` : "Morgen: nog niets gepland"}
       className={cn(
         tile,
-        "flex w-[124px] shrink-0 flex-col items-center justify-center gap-2 bg-[linear-gradient(165deg,#ffb48c,#ffcfae_60%,#ffe2cc)] px-2.5 py-3 text-center no-underline shadow-[0_14px_32px_-24px_rgba(230,120,60,0.8)] [[data-theme=dark]_&]:bg-[linear-gradient(165deg,#3a2a24,#2c201b_60%,#211814)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#3d2d25] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        "flex w-[124px] shrink-0 flex-col items-center justify-center gap-2 bg-[linear-gradient(165deg,#ffb48c,#ffcfae_60%,#ffe2cc)] px-2.5 py-3 text-center no-underline shadow-[0_14px_32px_-24px_rgba(230,120,60,0.8)] [[data-theme=dark]_&]:bg-[linear-gradient(165deg,#3a2a24,#2c201b_60%,#211814)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#3d2d25] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
       )}
     >
-      <span className="text-[11px] font-extrabold tracking-[0.08em] text-[rgb(139,87,29)] [[data-theme=dark]_&]:text-[#e0b48e]">
+      <span className="text-[11px] font-extrabold tracking-[0.08em] text-[rgb(139,87,29)] [[data-theme=dark]_&]:text-[#e0b48e] [[data-sunset]_&]:text-fixed-white/90">
         MORGEN
       </span>
       {itemPhotos.length > 1 ? (
@@ -308,9 +308,9 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
           <img src={photo} alt="" className="aod-kenburns size-full object-cover [[data-theme=dark]_&]:brightness-[0.8] [[data-theme=dark]_&]:saturate-[0.85]" />
         </span>
       ) : (
-        <span className="flex size-[76px] items-center justify-center rounded-full border-[1.5px] border-dashed border-[rgba(120,55,15,0.3)] bg-fixed-white/25 text-2xl text-[rgba(120,55,15,0.55)] [[data-theme=dark]_&]:border-[rgba(255,215,184,0.35)] [[data-theme=dark]_&]:bg-transparent [[data-theme=dark]_&]:text-[rgba(255,215,184,0.6)]">?</span>
+        <span className="flex size-[76px] items-center justify-center rounded-full border-[1.5px] border-dashed border-[rgba(120,55,15,0.3)] bg-fixed-white/25 text-2xl text-[rgba(120,55,15,0.55)] [[data-theme=dark]_&]:border-[rgba(255,215,184,0.35)] [[data-theme=dark]_&]:bg-transparent [[data-theme=dark]_&]:text-[rgba(255,215,184,0.6)] [[data-sunset]_&]:border-fixed-white/50 [[data-sunset]_&]:bg-transparent [[data-sunset]_&]:text-fixed-white/80">?</span>
       )}
-      <span className={cn("text-[13.5px] font-extrabold leading-tight text-[#3d1d00] [[data-theme=dark]_&]:text-[#ffd7b8]", allNames ? "line-clamp-6" : "line-clamp-2")}>
+      <span className={cn("text-[13.5px] font-extrabold leading-tight text-[#3d1d00] [[data-theme=dark]_&]:text-[#ffd7b8] [[data-sunset]_&]:text-fixed-white", allNames ? "line-clamp-6" : "line-clamp-2")}>
         {allNames ?? meal?.title ?? "Nog niets"}
       </span>
       {meal?.fromStock ? (
@@ -379,12 +379,12 @@ function AgendaColumn() {
   return (
     <section
       aria-label="Agenda vandaag"
-      className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] bg-[linear-gradient(170deg,#e3e6ff_0%,#f3f2ff_38%,#ffffff_70%)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(79,85,241,0.55),0_0_0_1px_var(--border-subtle)] [[data-theme=dark]_&]:bg-[#151a2c] [[data-theme=dark]_&]:bg-[linear-gradient(170deg,#1c2238_0%,#151a2c_50%,#10131f_100%)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#262d48,0_18px_40px_-26px_rgba(60,80,160,0.5)]"
+      className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] bg-[linear-gradient(170deg,#e3e6ff_0%,#f3f2ff_38%,#ffffff_70%)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(79,85,241,0.55),0_0_0_1px_var(--border-subtle)] [[data-theme=dark]_&]:bg-[#151a2c] [[data-theme=dark]_&]:bg-[linear-gradient(170deg,#1c2238_0%,#151a2c_50%,#10131f_100%)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#262d48,0_18px_40px_-26px_rgba(60,80,160,0.5)] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/[0.14] [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[18px]"
     >
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xl font-extrabold text-text-primary">Vandaag</h2>
+        <h2 className="text-xl font-extrabold text-text-primary [[data-sunset]_&]:text-fixed-white">Vandaag</h2>
         {connected ? (
-          <span className="text-[12.5px] text-[var(--text-secondary)]">
+          <span className="text-[12.5px] text-[var(--text-secondary)] [[data-sunset]_&]:text-fixed-white/80">
             {timed.length} {timed.length === 1 ? "afspraak" : "afspraken"}
             {left > 0 && left < timed.length ? ` · nog ${left}` : ""}
           </span>
@@ -565,6 +565,37 @@ function applyTestTheme(theme: TestTheme | null) {
 
 const segment = (on: boolean) => cn("h-8 whitespace-nowrap rounded-pill px-3", on ? "bg-fixed-white text-[#14112a]" : "text-fixed-white/80 [@media(hover:hover)]:hover:bg-fixed-white/10");
 
+/**
+ * Zonsondergang (canvas «avond, zonsondergang in glas» C1 · Avondrood): 's avonds in het lichte thema krijgt
+ * <html> `data-sunset`; de pagina wordt een lucht van oranje naar violet en alle panelen worden matglas
+ * (`[[data-sunset]_&]:`-varianten). In het donkere thema en always-on blijft palet B.
+ */
+const SUNSET_SKY = "linear-gradient(180deg,#ff9b5c 0%,#f2697a 30%,#c4508f 58%,#7b4597 80%,#4a3a8c 100%)";
+
+function useSunset(on: boolean) {
+  React.useEffect(() => {
+    const root = document.documentElement;
+    // De lucht via --page-sky op de vaste achtergrondlaag van de app (body::before in globals.css).
+    const sync = () => {
+      if (on && root.dataset.theme !== "dark" && !root.dataset.aod) {
+        root.dataset.sunset = "";
+        root.style.setProperty("--page-sky", SUNSET_SKY);
+      } else {
+        delete root.dataset.sunset;
+        root.style.removeProperty("--page-sky");
+      }
+    };
+    sync();
+    const mo = new MutationObserver(sync);
+    mo.observe(root, { attributes: true, attributeFilter: ["data-theme", "data-aod"] });
+    return () => {
+      mo.disconnect();
+      delete root.dataset.sunset;
+      root.style.removeProperty("--page-sky");
+    };
+  }, [on]);
+}
+
 /** Kleine schakelaar bovenaan in het midden, enkel zichtbaar in testmodus: moment van de dag + thema. */
 function MomentTestBar({ value, onChange }: { value: DashboardMoment; onChange: (m: DashboardMoment | null) => void }) {
   const [theme, setTheme] = React.useState<TestTheme>("light");
@@ -645,6 +676,7 @@ export function HomeTabletDashboard({
   const weather = useWeather();
   const { moment, testMoment, setTestMoment } = useDashboardMoment();
   const morning = moment === "ochtend";
+  useSunset(moment === "avond");
   return (
     <div className="flex h-[max(470px,calc(100dvh-196px))] gap-3.5 pt-5 motion-safe:animate-fade-up">
       <div className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
