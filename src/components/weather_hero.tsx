@@ -97,15 +97,16 @@ export function WeatherHero({ kind, size, className }: { kind: WeatherKind; size
     regen: (
       <>
         <Cloud x={6} y={24} scale={0.78} fill={back} className="wx-drift-slow" />
+        {/* Druppels eerst (achter de wolk) en hoger: ze komen van onder de wolk tevoorschijn. */}
+        {drops(74)}
         <Cloud x={26} y={36} scale={1} fill={front} className="wx-drift" />
-        {drops(86)}
       </>
     ),
     buien: (
       <>
         <Sun cx={46} cy={40} r={19} ids={ids} />
+        {drops(80)}
         <Cloud x={28} y={44} scale={0.95} fill={front} className="wx-drift" />
-        {drops(90)}
       </>
     ),
     onweer: (
@@ -117,8 +118,8 @@ export function WeatherHero({ kind, size, className }: { kind: WeatherKind; size
     ),
     sneeuw: (
       <>
+        {flakes(78)}
         <Cloud x={26} y={36} scale={1} fill={front} className="wx-drift" />
-        {flakes(88)}
       </>
     ),
   };

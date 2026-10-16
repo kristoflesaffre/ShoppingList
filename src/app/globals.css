@@ -244,10 +244,9 @@ html[data-aod="night"] body {
   to { translate: -4px 0; }
 }
 @keyframes wx-drop {
-  0% { translate: 0 -6px; opacity: 0; }
-  20% { opacity: 1; }
+  0% { translate: 0 -4px; opacity: 1; }
   80% { opacity: 1; }
-  100% { translate: -3px 10px; opacity: 0; }
+  100% { translate: -5px 20px; opacity: 0; }
 }
 @keyframes wx-flake {
   0% { translate: 0 -6px; opacity: 0; }
