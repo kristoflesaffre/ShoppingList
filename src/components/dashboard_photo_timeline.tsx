@@ -41,22 +41,32 @@ const PinIcon = () => (
 function TilePhoto({ photo, width }: { photo: string; width: number }) {
   return (
     <>
-      <span className="absolute inset-y-0 right-0" style={{ width: `${width}%` }} aria-hidden>
+      <span className="absolute inset-y-0 right-0 [[data-theme=dark]_&]:brightness-[0.8]" style={{ width: `${width}%` }} aria-hidden>
         <Image src={`${photo}_480.webp`} alt="" fill sizes="320px" className="object-cover" />
       </span>
       <span
         className="absolute inset-0"
-        style={{ background: `linear-gradient(90deg, #fff ${100 - width}%, rgba(255,255,255,0) ${100 - width + 17}%)` }}
+        style={{ background: `linear-gradient(90deg, var(--tile-bg) ${100 - width}%, transparent ${100 - width + 17}%)` }}
         aria-hidden
       />
     </>
   );
 }
 
-const tileBase = "relative flex h-[72px] min-w-0 items-center overflow-hidden rounded-[18px] bg-fixed-white [[data-aod]_&]:brightness-[0.5]";
-// Witte tegel met een zachte schaduw: zo staat ze los van de (blauw-paarse) verloopachtergrond van het
-// paneel, ook als de afspraak zelf blauw is. De afspraakkleur zit in de tekst (en de rand als ze nu bezig is).
+// Licht: witte tegel met zachte schaduw, tekst in een donkere tint van de afspraakkleur. Donker (canvas «avond
+// in donker» B · Nachtblauw glas): donkere glastegel met lichte tekst, foto's iets gedimd. De kleuren komen
+// via CSS-variabelen (--tile-bg, --t1/--t2/--t0 en hun donkere tegenhangers) zodat één tegel beide thema's kent.
+const tileBase =
+  "relative flex h-[72px] min-w-0 items-center overflow-hidden rounded-[18px] bg-[var(--tile-bg)] [--tile-bg:#ffffff] [box-shadow:var(--lift)] [[data-theme=dark]_&]:[--tile-bg:#242a3e] [[data-theme=dark]_&]:[box-shadow:var(--lift-dark)]";
 const lift = (ring = "0 0 0 1px rgba(16,17,48,0.05)") => `${ring}, 0 8px 18px -14px rgba(16,17,48,0.35)`;
+const liftDark = (ring = "inset 0 0 0 1px rgba(255,255,255,0.08)") => ring;
+/** Afspraakkleur gemengd met wit (voor labels op de donkere tegel). */
+const tintLight = (c: Rgb, k = 0.45) => `rgb(${c.map((v) => Math.round(v + (255 - v) * k)).join(",")})`;
+const textVars = (c: Rgb): React.CSSProperties =>
+  ({ "--t0": deep(c, 0.6), "--t1": deep(c, 0.35), "--t2": deep(c, 0.55), "--t0d": tintLight(c) }) as React.CSSProperties;
+const T0 = "text-[color:var(--t0)] [[data-theme=dark]_&]:text-[color:var(--t0d)]";
+const T1 = "text-[color:var(--t1)] [[data-theme=dark]_&]:text-[#eef0fb]";
+const T2 = "text-[color:var(--t2)] [[data-theme=dark]_&]:text-[#a9afcc]";
 
 function AllDayTile({ row, narrow }: { row: AgendaRow; narrow: boolean }) {
   const { emoji, text: full } = splitEmoji(row.title);
@@ -67,7 +77,7 @@ function AllDayTile({ row, narrow }: { row: AgendaRow; narrow: boolean }) {
   const width = narrow ? 34 : 45;
   const sub = row.location ?? row.account ?? source?.[1] ?? null;
   return (
-    <div className={cn(tileBase, "gap-3 pr-4", photo ? "pl-4" : "pl-3.5")} style={{ boxShadow: lift() }}>
+    <div className={cn(tileBase, "gap-3 pr-4", photo ? "pl-4" : "pl-3.5")} style={{ ...textVars(row.color), "--lift": lift(), "--lift-dark": liftDark() } as React.CSSProperties}>
       {photo ? (
         <TilePhoto photo={photo} width={width} />
       ) : (
@@ -77,14 +87,10 @@ function AllDayTile({ row, narrow }: { row: AgendaRow; narrow: boolean }) {
         </span>
       )}
       <span className="relative flex min-w-0 flex-col leading-tight" style={photo ? { maxWidth: `calc(${100 - width}% - 12px)` } : undefined}>
-        <span className="text-[10.5px] font-extrabold tracking-[0.08em]" style={{ color: deep(row.color, 0.6) }}>
-          HELE DAG
-        </span>
-        <span className="truncate text-base font-extrabold" style={{ color: deep(row.color, 0.35) }}>
-          {text}
-        </span>
+        <span className={cn("text-[10.5px] font-extrabold tracking-[0.08em]", T0)}>HELE DAG</span>
+        <span className={cn("truncate text-base font-extrabold", T1)}>{text}</span>
         {sub ? (
-          <span className="truncate text-[12.5px]" style={{ color: deep(row.color, 0.55) }}>
+          <span className={cn("truncate text-[12.5px]", T2)}>
             {sub}
           </span>
         ) : null}
@@ -138,21 +144,25 @@ function EventTile({ row }: { row: AgendaRow }) {
   return (
     <div
       className={cn(tileBase, "px-4")}
-      style={{ boxShadow: lift(now ? `inset 0 0 0 2px ${rgba(row.color)}` : undefined) }}
+      style={
+        {
+          ...textVars(row.color),
+          "--lift": lift(now ? `inset 0 0 0 2px ${rgba(row.color)}` : undefined),
+          "--lift-dark": liftDark(now ? `inset 0 0 0 2px ${rgba(row.color)}` : undefined),
+        } as React.CSSProperties
+      }
     >
       {photo ? <TilePhoto photo={photo} width={45} /> : null}
       <span className="relative flex min-w-0 flex-col gap-0.5 leading-tight" style={photo ? { maxWidth: "calc(55% - 8px)" } : undefined}>
         <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-base font-extrabold" style={{ color: deep(row.color, 0.35) }}>
-            {row.title}
-          </span>
+          <span className={cn("truncate text-base font-extrabold", T1)}>{row.title}</span>
           {now ? (
             <span className="inline-flex h-5 shrink-0 items-center rounded-pill px-2 text-[11px] font-bold text-fixed-white" style={{ backgroundColor: rgba(row.color) }}>
               Nu
             </span>
           ) : null}
         </span>
-        <span className="flex min-w-0 items-center gap-1 text-[12.5px]" style={{ color: deep(row.color, 0.55) }}>
+        <span className={cn("flex min-w-0 items-center gap-1 text-[12.5px]", T2)}>
           {row.location ? <PinIcon /> : null}
           <span className="truncate">{meta}</span>
         </span>

@@ -70,12 +70,15 @@ function EveningTile({
   label,
   items,
   background,
+  backgroundDark,
   singleTitle = false,
   onOpen,
 }: {
   label: string;
   items: EveningMedia[];
   background: string;
+  /** Donker thema (canvas «avond in donker» B): diepere, minder felle tint. */
+  backgroundDark: string;
   singleTitle?: boolean;
   onOpen: (m: EveningMedia) => void;
 }) {
@@ -83,8 +86,11 @@ function EveningTile({
   return (
     <section
       aria-label={label.toLowerCase()}
-      className={cn(tile, "flex min-w-0 flex-1 flex-col self-start pt-4 text-fixed-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)]")}
-      style={{ background }}
+      className={cn(
+        tile,
+        "flex min-w-0 flex-1 flex-col self-start pt-4 text-fixed-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)] [background:var(--bg)] [[data-theme=dark]_&]:[background:var(--bg-dark)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]",
+      )}
+      style={{ "--bg": background, "--bg-dark": backgroundDark } as React.CSSProperties}
     >
       <span className="px-[18px] text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">{label}</span>
       {/* Container-query-breedte: 2,5 posters over de breedte, hoogte volgt uit 2:3 (niets afgesneden);
@@ -133,6 +139,7 @@ export function WatchingTile({ items, onOpen }: { items: EveningMedia[]; onOpen:
       singleTitle
       onOpen={onOpen}
       background="radial-gradient(120% 90% at 85% 100%, #5a3a9c 0%, #2d2160 45%, #161236 100%)"
+      backgroundDark="radial-gradient(120% 90% at 85% 100%, #35296a 0%, #1d1840 45%, #121029 100%)"
     />
   );
 }
@@ -144,6 +151,7 @@ export function WatchlistTile({ items, onOpen }: { items: EveningMedia[]; onOpen
       items={items}
       onOpen={onOpen}
       background="radial-gradient(120% 90% at 85% 100%, #a33d5c 0%, #5b1f3d 45%, #2a0f22 100%)"
+      backgroundDark="radial-gradient(120% 90% at 85% 100%, #5b2540 0%, #33152a 45%, #1c0c18 100%)"
     />
   );
 }
