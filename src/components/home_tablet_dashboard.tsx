@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
-import { useWeather, type Weather, type WeatherKind } from "@/lib/weather";
+import { spreadHours, useWeather, type Weather, type WeatherKind } from "@/lib/weather";
 import { useVasteLijstjes } from "@/components/vaste_lijstjes";
 import { VAST_COLORS, deepRgb, mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { SkeletonTimeline, useTodayAgenda } from "@/components/home_agenda_section";
@@ -121,7 +121,29 @@ export function WeatherIcon({ kind, size, className }: { kind: WeatherKind; size
 
 const tile = "relative overflow-hidden rounded-[24px]";
 
+/** Breedte per uur in de weerstrook: zo passen er op een brede tegel (ochtend) meer uren in. */
+const HOUR_SLOT_PX = 42;
+
+function useHourSlots(): [React.RefObject<HTMLUListElement>, number] {
+  const ref = React.useRef<HTMLUListElement>(null);
+  const [slots, setSlots] = React.useState(6);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const next = Math.max(3, Math.min(12, Math.floor(el.clientWidth / HOUR_SLOT_PX)));
+      setSlots((s) => (s === next ? s : next));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+  return [ref, slots];
+}
+
 function TodayWeather({ weather }: { weather: Weather | null }) {
+  const [hoursRef, hourSlots] = useHourSlots();
   if (!weather) {
     return <div className={cn(tile, "min-w-0 flex-1 animate-pulse bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] opacity-70")} aria-label="Weer laden" />;
   }
@@ -142,8 +164,8 @@ function TodayWeather({ weather }: { weather: Weather | null }) {
           ☂ {weather.rainFromHour === new Date().getHours() ? "Kans op regen nu" : `Regen vanaf ${weather.rainFromHour}u`}
         </span>
       ) : null}
-      <ul className="m-0 mt-auto flex list-none justify-between border-t border-white/30 p-0 pt-2.5">
-        {weather.hours.map((h, i) => (
+      <ul ref={hoursRef} className="m-0 mt-auto flex list-none justify-between border-t border-white/30 p-0 pt-2.5">
+        {spreadHours(weather.hours, hourSlots).map((h, i) => (
           <li key={h.hour} className="flex flex-col items-center gap-0.5">
             <span className="text-[11px] font-bold text-white/85">{i === 0 ? "Nu" : `${h.hour}u`}</span>
             <WeatherIcon kind={h.kind} size={28} />

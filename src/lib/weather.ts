@@ -16,7 +16,7 @@ export type Weather = {
   now: { kind: WeatherKind; temp: number; label: string };
   today: WeatherDay;
   tomorrow: WeatherDay;
-  /** Volgende uren vanaf nu (maximaal 6). */
+  /** Alle uren van vandaag vanaf nu (tot en met 23 u); kies er een spreiding uit met `spreadHours`. */
   hours: WeatherHour[];
   /** Eerste uur vandaag met kans op regen ≥ 50 %, of null. */
   rainFromHour: number | null;
@@ -64,9 +64,7 @@ export function parseWeather(json: OpenMeteo, now: Date = new Date()): Weather |
     const rainChance = json.hourly?.precipitation_probability?.[i] ?? 0;
     if (hour < now.getHours()) return;
     if (rainFromHour == null && rainChance >= 50) rainFromHour = hour;
-    if (hours.length < 6) {
-      hours.push({ hour, kind: weatherFromCode(json.hourly?.weather_code?.[i] ?? 3).kind, temp: Math.round(json.hourly?.temperature_2m?.[i] ?? 0), rainChance });
-    }
+    hours.push({ hour, kind: weatherFromCode(json.hourly?.weather_code?.[i] ?? 3).kind, temp: Math.round(json.hourly?.temperature_2m?.[i] ?? 0), rainChance });
   });
   return {
     place: WEATHER_PLACE.name,
@@ -76,6 +74,29 @@ export function parseWeather(json: OpenMeteo, now: Date = new Date()): Weather |
     hours,
     rainFromHour,
   };
+}
+
+/**
+ * `count` uren gelijk verspreid van nu tot de avond (`lastHour`, standaard 22 u), zodat je ziet hoe de
+ * hele dag verloopt i.p.v. enkel de komende uren. Het eerste uur is altijd «nu»; zijn er minder uren
+ * over dan `count`, dan tonen we ze allemaal.
+ */
+export function spreadHours(hours: readonly WeatherHour[], count: number, lastHour = 22): WeatherHour[] {
+  const until = hours.filter((h, i) => i === 0 || h.hour <= lastHour);
+  if (count <= 0 || until.length === 0) return [];
+  if (until.length <= count) return [...until];
+  if (count === 1) return [until[0]];
+  // Vaste stap in hele uren, terugtellend vanaf de avond: «Nu, 7u, 10u, 13u, …, 22u» i.p.v. 2-3-2-3.
+  const first = until[0].hour;
+  const last = until[until.length - 1].hour;
+  const step = Math.ceil((last - first) / (count - 1));
+  const byHour = new Map(until.map((h) => [h.hour, h]));
+  const picked: WeatherHour[] = [];
+  for (let h = last; h > first; h -= step) {
+    const hit = byHour.get(h);
+    if (hit) picked.unshift(hit);
+  }
+  return [until[0], ...picked];
 }
 
 export function useWeather(): Weather | null {
