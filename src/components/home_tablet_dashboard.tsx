@@ -10,6 +10,7 @@ import { VAST_COLORS, deepRgb, mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { SkeletonTimeline, useTodayAgenda } from "@/components/home_agenda_section";
 import { DashboardPhotoTimeline } from "@/components/dashboard_photo_timeline";
 import { WeatherHero } from "@/components/weather_hero";
+import { DashboardHuePanel } from "@/components/dashboard_hue_panel";
 import { FilmDetailModal, WatchingTile, WatchlistTile, useWatchingMedia, useWatchlistSuggestions, type EveningMedia } from "@/components/dashboard_evening";
 import { CalendarLoosePlate } from "@/components/calendar_day_visuals";
 
@@ -563,14 +564,16 @@ function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | 
   const [open, setOpen] = React.useState<EveningMedia | null>(null);
   return (
     <>
-      <div className="flex min-h-0 flex-1 gap-3.5">
+      {/* Rijen met posters zijn zo hoog als hun posters; de rest van de kolom is voor de verlichting. */}
+      <div className={cn("flex gap-3.5", watching.length > 0 ? "shrink-0" : "min-h-0 flex-1")}>
         {watching.length > 0 ? <WatchingTile items={watching} onOpen={setOpen} /> : <TodayWeather weather={weather} />}
         <TomorrowWeather weather={weather} />
       </div>
-      <div className="flex min-h-0 flex-1 gap-3.5">
+      <div className={cn("flex gap-3.5", suggestions.length > 0 ? "shrink-0" : "min-h-0 flex-1")}>
         {suggestions.length > 0 ? <WatchlistTile items={suggestions} onOpen={setOpen} /> : <TodayMeal meal={todayMeal} />}
         <TomorrowMeal meal={tomorrowMeal} />
       </div>
+      <DashboardHuePanel />
       {open ? <FilmDetailModal media={open} onClose={() => setOpen(null)} /> : null}
     </>
   );

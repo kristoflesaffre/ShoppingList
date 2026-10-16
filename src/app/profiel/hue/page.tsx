@@ -64,7 +64,7 @@ export default function HueSettingsPage() {
         <PageBackButton href="/profiel" label="Terug naar je profiel" />
         <h1 className="text-[30px] font-bold leading-9 tracking-tight text-text-primary">Philips Hue</h1>
       </div>
-      <p className="text-sm leading-5 text-[var(--text-secondary)]">Koppel je Hue-account en Bridge om je verlichting voor te bereiden op bediening vanuit de app. Lampbediening wordt later toegevoegd.</p>
+      <p className="text-sm leading-5 text-[var(--text-secondary)]">Koppel je Hue-account en Bridge om je verlichting vanuit de app te bedienen. 's Avonds staat er op het dashboard een paneel om per kamer het licht aan of uit te zetten.</p>
       {message && <p role="status" className="text-sm text-text-primary">{message}</p>}
       <section aria-label="Hue-koppeling" className="rounded-[20px] bg-[var(--white)] p-5 shadow-card">
         {failed ? <div role="alert"><p>De verbindingsstatus is tijdelijk niet beschikbaar.</p><button className="mt-3 underline" onClick={() => void load()}>Opnieuw proberen</button></div>

@@ -68,7 +68,8 @@ Maak een cookiesleutel met bijvoorbeeld `openssl rand -base64 32`. Na configurat
 ### Philips Hue OAuth
 
 Open **Profiel → Philips Hue** to connect an existing Hue account and online Bridge.
-This initial integration prepares the connection; lighting controls are a separate feature.
+Once connected, the evening dashboard (20–23 h, or `?moment=avond`) shows a «Licht» panel to switch
+each Hue room on/off (`/api/hue/rooms`, `/api/hue/light`, via the Hue cloud CLIP v2 API).
 The connection is specific to the signed-in app user, browser/PWA and deployment.
 Tokens are AES-GCM encrypted in Secure, HttpOnly, SameSite=Lax cookies, never exposed to
 client JavaScript. Disconnect clears the local connection; revoke the app in the Hue account

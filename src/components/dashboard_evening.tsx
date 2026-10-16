@@ -50,7 +50,7 @@ function PosterButton({ media, onOpen }: { media: EveningMedia; onOpen: (m: Even
       type="button"
       onClick={() => onOpen(media)}
       aria-label={`${media.title} openen`}
-      className="aspect-[2/3] w-[min(calc((100cqw-24px)/2.5),calc(100cqh*2/3))] shrink-0 snap-start overflow-hidden rounded-[14px] bg-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_14px_24px_-14px_rgba(0,0,0,0.7)] transition-transform duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-safe:active:scale-[0.97]"
+      className="aspect-[2/3] w-[calc((100cqw-24px)/2.5)] shrink-0 snap-start overflow-hidden rounded-[14px] bg-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_14px_24px_-14px_rgba(0,0,0,0.7)] transition-transform duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-safe:active:scale-[0.97]"
     >
       {media.posterUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- TMDB-poster
@@ -83,13 +83,13 @@ function EveningTile({
   return (
     <section
       aria-label={label.toLowerCase()}
-      className={cn(tile, "flex min-w-0 flex-1 flex-col pt-4 text-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)]")}
+      className={cn(tile, "flex min-w-0 flex-1 flex-col self-start pt-4 text-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)]")}
       style={{ background }}
     >
       <span className="px-[18px] text-[11.5px] font-extrabold tracking-[0.08em] text-white/75">{label}</span>
-      {/* Container-query-eenheden: de postermaat volgt de ruimte in de tegel. `items-start`: de posters
-          houden hun eigen 2:3-verhouding (niet uitrekken tot de hoogte van de rij, dus niets afgesneden). */}
-      <div className="mt-3 flex min-h-0 flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-px-[18px] px-[18px] pb-4 [container-type:size] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* Container-query-breedte: 2,5 posters over de breedte, hoogte volgt uit 2:3 (niets afgesneden);
+          de tegel is precies zo hoog als de posters, zonder lege ruimte eronder. */}
+      <div className="mt-3 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-px-[18px] px-[18px] pb-4 [container-type:inline-size] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((m) => (
           <PosterButton key={m.id} media={m} onOpen={onOpen} />
         ))}
