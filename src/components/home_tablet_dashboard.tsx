@@ -346,7 +346,7 @@ function ShortcutTile({
   return (
     <Link
       href={href}
-      className="relative flex h-[84px] min-w-0 flex-1 items-center gap-3.5 overflow-hidden rounded-[24px] pl-5 pr-[96px] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [background-image:var(--sc-bg)] [box-shadow:var(--sc-shadow)] [color:var(--sc-fg)] [[data-aod]_&]:[background-image:var(--sc-bg-dark)] [[data-aod]_&]:[box-shadow:var(--sc-shadow-dark)] [[data-aod]_&]:[color:var(--sc-fg-dark)]"
+      className="relative flex h-[84px] min-w-0 flex-1 items-center gap-3.5 overflow-hidden rounded-[24px] pl-5 pr-[96px] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [background-image:var(--sc-bg)] [box-shadow:var(--sc-shadow)] [color:var(--sc-fg)] [[data-theme=dark]_&]:[background-image:var(--sc-bg-dark)] [[data-theme=dark]_&]:[box-shadow:var(--sc-shadow-dark)] [[data-theme=dark]_&]:[color:var(--sc-fg-dark)]"
       // Licht: zacht verloop in de eigen kleur. Donker (always-on): diep verloop in dezelfde kleur, lichte tekst,
       // zoals de weer- en eettegels in het donker.
       style={
@@ -363,11 +363,11 @@ function ShortcutTile({
       {lead}
       <span className="flex min-w-0 flex-col gap-0.5 leading-tight">
         {kicker ? <span className="text-[10.5px] font-extrabold tracking-[0.08em]">{kicker}</span> : null}
-        <span className="truncate text-[17px] font-extrabold text-text-primary [[data-aod]_&]:text-[#eef0f8]">{title}</span>
+        <span className="truncate text-[17px] font-extrabold text-text-primary [[data-theme=dark]_&]:text-[#eef0f8]">{title}</span>
         <span className="truncate text-[12.5px] font-semibold">{sub}</span>
       </span>
       {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
-      <img src={icon} alt="" aria-hidden className="pointer-events-none absolute -bottom-3 right-3 size-[92px] rotate-[-6deg] object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.18)] [[data-aod]_&]:brightness-[0.75]" />
+      <img src={icon} alt="" aria-hidden className="pointer-events-none absolute -bottom-3 right-3 size-[92px] rotate-[-6deg] object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.18)] [[data-theme=dark]_&]:brightness-[0.75]" />
     </Link>
   );
 }
@@ -379,12 +379,13 @@ function AgendaColumn() {
   return (
     <section
       aria-label="Agenda vandaag"
-      className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] bg-[linear-gradient(170deg,#e3e6ff_0%,#f3f2ff_38%,#ffffff_70%)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(79,85,241,0.55),0_0_0_1px_var(--border-subtle)] [[data-theme=dark]_&]:bg-[#151a2c] [[data-theme=dark]_&]:bg-[linear-gradient(170deg,#1c2238_0%,#151a2c_50%,#10131f_100%)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#262d48,0_18px_40px_-26px_rgba(60,80,160,0.5)] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/[0.14] [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[18px]"
+      // Licht (canvas «agendakleur overdag, voller» D · Petrol): diep groenblauw met glastegels en witte tekst.
+      className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[24px] bg-[#1f9b8e] bg-[linear-gradient(160deg,#178f86_0%,#24a796_50%,#3cc0a6_100%)] px-5 py-4 text-fixed-white shadow-[0_18px_40px_-22px_rgba(23,143,134,0.8)] [[data-theme=dark]_&]:bg-[#151a2c] [[data-theme=dark]_&]:bg-[linear-gradient(170deg,#1c2238_0%,#151a2c_50%,#10131f_100%)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#262d48,0_18px_40px_-26px_rgba(60,80,160,0.5)] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/[0.14] [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[18px]"
     >
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xl font-extrabold text-text-primary [[data-sunset]_&]:text-fixed-white">Vandaag</h2>
+        <h2 className="text-xl font-extrabold text-fixed-white">Vandaag</h2>
         {connected ? (
-          <span className="text-[12.5px] text-[var(--text-secondary)] [[data-sunset]_&]:text-fixed-white/80">
+          <span className="text-[12.5px] text-fixed-white/80">
             {timed.length} {timed.length === 1 ? "afspraak" : "afspraken"}
             {left > 0 && left < timed.length ? ` · nog ${left}` : ""}
           </span>
@@ -393,7 +394,7 @@ function AgendaColumn() {
 
       {!state ? (
         <div className="flex-1" aria-label="Agenda laden" aria-busy>
-          <div className="mb-2.5 flex items-center gap-3.5 rounded-[18px] bg-[var(--gray-25)] px-3.5 py-3 [[data-aod]_&]:bg-[#141519]">
+          <div className="mb-2.5 flex items-center gap-3.5 rounded-[18px] bg-fixed-white/[0.14] px-3.5 py-3">
             <span className="shimmer size-[58px] shrink-0 rounded-2xl" />
             <span className="flex flex-1 flex-col gap-1.5">
               <span className="shimmer block h-2.5 w-16 rounded-md" />
@@ -405,8 +406,8 @@ function AgendaColumn() {
         </div>
       ) : !connected ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-          <p className="text-[17px] font-extrabold text-text-primary">Je dag in één oogopslag</p>
-          <p className="max-w-[260px] text-sm text-[var(--text-secondary)]">Koppel je Google-agenda om je afspraken van vandaag hier te zien.</p>
+          <p className="text-[17px] font-extrabold text-fixed-white">Je dag in één oogopslag</p>
+          <p className="max-w-[260px] text-sm text-fixed-white/80">Koppel je Google-agenda om je afspraken van vandaag hier te zien.</p>
           <button type="button" onClick={connect} className="inline-flex h-11 items-center rounded-pill bg-action-primary px-5 text-sm font-bold text-fixed-white">
             Google-agenda koppelen
           </button>
