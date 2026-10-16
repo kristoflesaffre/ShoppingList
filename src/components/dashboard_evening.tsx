@@ -50,7 +50,7 @@ function PosterButton({ media, onOpen }: { media: EveningMedia; onOpen: (m: Even
       type="button"
       onClick={() => onOpen(media)}
       aria-label={`${media.title} openen`}
-      className="aspect-[2/3] w-[calc((100cqw-24px)/2.5)] shrink-0 snap-start overflow-hidden rounded-[14px] bg-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_14px_24px_-14px_rgba(0,0,0,0.7)] transition-transform duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-safe:active:scale-[0.97]"
+      className="aspect-[2/3] w-[min(calc((100cqw-24px)/2.5),calc(var(--poster-h,9999px)*2/3))] shrink-0 snap-start overflow-hidden rounded-[14px] bg-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_14px_24px_-14px_rgba(0,0,0,0.7)] transition-transform duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-safe:active:scale-[0.97]"
     >
       {media.posterUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- TMDB-poster

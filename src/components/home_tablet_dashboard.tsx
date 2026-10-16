@@ -557,6 +557,8 @@ function MomentTestBar({ value, onChange }: { value: DashboardMoment; onChange: 
   );
 }
 
+const POSTER_LIMIT = { "--poster-h": "calc((max(470px, 100dvh - 196px) - 213px) / 2 - 62px)" } as React.CSSProperties;
+
 /** Avond: series i.p.v. het weer van vandaag, watchlist i.p.v. het eten van vandaag (met terugval). */
 function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | null; todayMeal: DashboardMeal | null; tomorrowMeal: DashboardMeal | null }) {
   const watching = useWatchingMedia();
@@ -564,12 +566,14 @@ function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | 
   const [open, setOpen] = React.useState<EveningMedia | null>(null);
   return (
     <>
-      {/* Rijen met posters zijn zo hoog als hun posters; de rest van de kolom is voor de verlichting. */}
-      <div className={cn("flex gap-3.5", watching.length > 0 ? "shrink-0" : "min-h-0 flex-1")}>
+      {/* Rijen met posters zijn zo hoog als hun posters; de rest van de kolom is voor de verlichting.
+          --poster-h: maximale posterhoogte zodat het lichtpaneel altijd ±160px houdt (kolomhoogte
+          − 2 tussenruimtes − paneel, gedeeld door twee rijen, min. de rand rond de posters). */}
+      <div className={cn("flex gap-3.5", watching.length > 0 ? "shrink-0" : "min-h-0 flex-1")} style={POSTER_LIMIT}>
         {watching.length > 0 ? <WatchingTile items={watching} onOpen={setOpen} /> : <TodayWeather weather={weather} />}
         <TomorrowWeather weather={weather} />
       </div>
-      <div className={cn("flex gap-3.5", suggestions.length > 0 ? "shrink-0" : "min-h-0 flex-1")}>
+      <div className={cn("flex gap-3.5", suggestions.length > 0 ? "shrink-0" : "min-h-0 flex-1")} style={POSTER_LIMIT}>
         {suggestions.length > 0 ? <WatchlistTile items={suggestions} onOpen={setOpen} /> : <TodayMeal meal={todayMeal} />}
         <TomorrowMeal meal={tomorrowMeal} />
       </div>
