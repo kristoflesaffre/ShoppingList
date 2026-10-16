@@ -92,6 +92,16 @@ function FreePart({ part, past }: { part: (typeof PARTS)[number]; past: boolean 
 const rgb = (c: Rgb, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const deep = (c: Rgb, f = 0.7) => `rgb(${Math.round(c[0] * f)},${Math.round(c[1] * f)},${Math.round(c[2] * f)})`;
 
+/**
+ * Einde in minuten na middernacht van de startdag: een afspraak die om 00:00 (of later, de volgende dag)
+ * eindigt, loopt tot het einde van de dag in plaats van «om 0 min» al voorbij te zijn.
+ */
+function endMinutes(startMin: number, end: string | null): number {
+  const e = minutesOfDay(end);
+  if (e == null) return startMin;
+  return e <= startMin ? 24 * 60 : e;
+}
+
 function minutesOfDay(iso: string | null): number | null {
   if (!iso) return null;
   const d = new Date(iso);
@@ -772,7 +782,7 @@ export function useTodayAgenda() {
         color,
         account: accounts.length > 1 ? accountName(accounts.find((a) => a.id === e.accountId)?.email) : null,
         startMin: e.allDay ? 0 : minutesOfDay(e.start) ?? 0,
-        endMin: e.allDay ? 24 * 60 : minutesOfDay(e.end) ?? 0,
+        endMin: e.allDay ? 24 * 60 : endMinutes(minutesOfDay(e.start) ?? 0, e.end),
         state: "next" as const,
       }))
       .sort((x, y) => Number(y.allDay) - Number(x.allDay) || x.startMin - y.startMin);
@@ -786,7 +796,7 @@ export function useTodayAgenda() {
   const tomorrow: AgendaRow[] = rowsForDay(tomorrowIso);
   const allRows: AgendaRow[] = todayEvents.map((e) => {
     const startMin = e.allDay ? 0 : minutesOfDay(e.start) ?? 0;
-    const endMin = e.allDay ? 24 * 60 : minutesOfDay(e.end) ?? startMin;
+    const endMin = e.allDay ? 24 * 60 : endMinutes(startMin, e.end);
     const account = accounts.length > 1 ? accountName(accounts.find((a) => a.id === e.accountId)?.email) : null;
     return {
       ...e,
