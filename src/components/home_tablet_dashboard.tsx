@@ -11,7 +11,7 @@ import { VAST_COLORS, deepRgb, mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { SkeletonTimeline, useTodayAgenda } from "@/components/home_agenda_section";
 import { DashboardPhotoTimeline } from "@/components/dashboard_photo_timeline";
 import { WeatherHero } from "@/components/weather_hero";
-import { CinemaRail, DashboardHuePanel } from "@/components/dashboard_hue_panel";
+import { DashboardHuePanel } from "@/components/dashboard_hue_panel";
 import { FilmDetailModal, WatchingTile, WatchlistTile, useWatchingMedia, useWatchlistSuggestions, type EveningMedia } from "@/components/dashboard_evening";
 import { CalendarLoosePlate } from "@/components/calendar_day_visuals";
 
@@ -665,7 +665,7 @@ function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | 
         {suggestions.length > 0 ? <WatchlistTile items={suggestions} onOpen={setOpen} /> : <TodayMeal meal={todayMeal} />}
         <TomorrowMeal meal={tomorrowMeal} />
       </div>
-      <DashboardHuePanel />
+      <DashboardHuePanel cinema />
       {open ? <FilmDetailModal media={open} onClose={() => setOpen(null)} /> : null}
     </>
   );
@@ -688,8 +688,6 @@ export function HomeTabletDashboard({
   useSunset(moment === "avond");
   return (
     <div className="flex h-[max(470px,calc(100dvh-196px))] gap-3.5 pt-5 motion-safe:animate-fade-up">
-      {/* Avond: twee cinemaknoppen helemaal links (woonkamer op «Cinema», en dat + de rest uit). */}
-      {moment === "avond" ? <CinemaRail /> : null}
       <div className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
         {moment === "avond" ? (
           <EveningLeft weather={weather} todayMeal={todayMeal} tomorrowMeal={tomorrowMeal} />

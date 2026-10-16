@@ -333,7 +333,8 @@ function ScrollLane({ className, children }: { className?: string; children: Rea
   );
 }
 
-export function DashboardHuePanel() {
+/** `cinema`: met de twee cinemaknoppen links in het paneel (avond). */
+export function DashboardHuePanel({ cinema = false }: { cinema?: boolean }) {
   const token = useGoogleAuthToken();
   const [state, setState] = React.useState<State>({ kind: "loading" });
   const [busy, setBusy] = React.useState<Set<string>>(() => new Set());
@@ -440,11 +441,14 @@ export function DashboardHuePanel() {
         ) : state.rooms.length === 0 ? (
           <p className="text-sm text-fixed-white/70">Geen kamers gevonden in je Hue-app.</p>
         ) : (
-          <ScrollLane className="-mx-[18px] flex h-full min-h-0 w-[calc(100%+36px)] gap-0 px-[18px]">
-            {state.rooms.map((room, i) => (
-              <LampColumn key={room.id} room={room} index={i} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} />
-            ))}
-          </ScrollLane>
+          <div className="flex h-full min-h-0 w-full gap-2">
+            {cinema ? <CinemaButtons token={token} onDone={() => void load()} /> : null}
+            <ScrollLane className={cn("-mr-[18px] flex h-full min-h-0 min-w-0 flex-1 gap-0 pr-[18px]", !cinema && "-ml-[18px] pl-[18px]")}>
+              {state.rooms.map((room, i) => (
+                <LampColumn key={room.id} room={room} index={i} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} />
+              ))}
+            </ScrollLane>
+          </div>
         )}
       </div>
     </section>
@@ -453,29 +457,31 @@ export function DashboardHuePanel() {
   );
 }
 
-// ─── Cinema-knoppen (avond) ─────────────────────────────────────────────────
+// ─── Cinema-knoppen (in het lichtpaneel) ────────────────────────────────────
 
-const ClapperIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-6">
+/** Filmklapper; met `power` zit er een aan/uit-teken in de klapper (= de andere lampen gaan uit). */
+const ClapperIcon = ({ power = false }: { power?: boolean }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
     <path d="M4 10h16v8.5A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5z" />
     <path d="m4 10-.6-2.4a1.5 1.5 0 0 1 1.1-1.8l12.7-3.1a1.5 1.5 0 0 1 1.8 1.1l.6 2.4z" />
     <path d="m8.4 5.2 2.3 3.2M13.3 4l2.3 3.2" />
+    {power ? <path d="M12 12.6v2.6M9.6 13.5a3.1 3.1 0 1 0 4.8 0" strokeWidth={1.7} /> : null}
   </svg>
 );
 
 type CinemaMode = "living" | "living-only";
-const CINEMA: { mode: CinemaMode; label: string; hint: string; othersOff: boolean }[] = [
-  { mode: "living", label: "Cinema", hint: "Woonkamer op scène «Cinema»", othersOff: false },
-  { mode: "living-only", label: "Cinema · rest uit", hint: "Woonkamer op «Cinema», alle andere lampen uit", othersOff: true },
+const CINEMA: { mode: CinemaMode; hint: string; othersOff: boolean }[] = [
+  { mode: "living", hint: "Woonkamer op scène «Cinema»", othersOff: false },
+  { mode: "living-only", hint: "Woonkamer op «Cinema», alle andere lampen uit", othersOff: true },
 ];
 
 /**
- * Twee ronde knoppen helemaal links op het avonddashboard: de bovenste zet de woonkamer op de Hue-scène
- * «Cinema», de onderste doet hetzelfde en zet alle andere kamers uit. De laatst gekozen knop blijft
- * opgelicht; een fout (bv. geen scène «Cinema» in de woonkamer) verschijnt kort eronder.
+ * Twee kleine ronde knoppen links in het lichtpaneel (avond): de bovenste zet de woonkamer op de Hue-scène
+ * «Cinema», de onderste doet hetzelfde en zet alle andere kamers uit. Ze staan in de hoogte van de
+ * kolommen: de bovenste lijnt uit met de bovenkant van een capsule, de onderste met de onderkant.
+ * De laatst gekozen knop blijft opgelicht; een fout verschijnt kort bovenaan het paneel.
  */
-export function CinemaRail() {
-  const token = useGoogleAuthToken();
+function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => void }) {
   const [active, setActive] = React.useState<CinemaMode | null>(null);
   const [busy, setBusy] = React.useState<CinemaMode | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -503,6 +509,7 @@ export function CinemaRail() {
         return;
       }
       setActive(c.mode);
+      onDone();
     } catch {
       setError("Hue is even niet bereikbaar");
     } finally {
@@ -517,47 +524,33 @@ export function CinemaRail() {
   }, [error]);
 
   return (
-    <div className="relative flex w-[72px] shrink-0 flex-col items-center justify-center gap-6">
+    // pb: hoogte van de kamernaam + tussenruimte onder de capsules, zodat de onderste knop met de
+    // onderkant van een capsule uitlijnt.
+    <div className="flex shrink-0 flex-col items-center justify-between pb-[22px]">
       {CINEMA.map((c) => {
         const on = active === c.mode;
         return (
-          <div key={c.mode} className="flex flex-col items-center gap-1.5">
-            <button
-              type="button"
-              aria-pressed={on}
-              aria-label={c.hint}
-              title={c.hint}
-              disabled={busy !== null}
-              onClick={() => void run(c)}
-              className={cn(
-                "relative flex size-16 items-center justify-center rounded-full transition-[transform,background-color,box-shadow] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-95 disabled:opacity-70",
-                on
-                  ? "bg-[linear-gradient(160deg,#ffe08a,#ffb547)] text-[#5a3300] shadow-[0_0_0_3px_rgba(255,255,255,0.55),0_12px_28px_-10px_rgba(255,181,71,0.9)]"
-                  : "bg-fixed-white/20 text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.45)] backdrop-blur-[14px] [[data-theme=dark]_&]:bg-[#1e2640] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(160,180,255,0.25)]",
-              )}
-            >
-              {busy === c.mode ? <span className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden /> : <ClapperIcon />}
-              {c.othersOff ? (
-                // Onderste knop: klein «uit»-teken = de andere lampen gaan uit.
-                <span
-                  aria-hidden
-                  className={cn(
-                    "absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full shadow-[0_2px_6px_-2px_rgba(0,0,0,0.4)]",
-                    on ? "bg-[#5a3300] text-[#ffe08a]" : "bg-fixed-white text-[#1e2640]",
-                  )}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" className="size-3.5">
-                    <path d="M12 3v8M7.2 6.4a7 7 0 1 0 9.6 0" />
-                  </svg>
-                </span>
-              ) : null}
-            </button>
-            <span className="w-[88px] text-center text-[11px] font-bold leading-tight text-fixed-white/90 [[data-sunset]_&]:text-fixed-white">{c.label}</span>
-          </div>
+          <button
+            key={c.mode}
+            type="button"
+            aria-pressed={on}
+            aria-label={c.hint}
+            title={c.hint}
+            disabled={busy !== null}
+            onClick={() => void run(c)}
+            className={cn(
+              "flex size-9 items-center justify-center rounded-full transition-[transform,background-color,box-shadow] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-95 disabled:opacity-70",
+              on
+                ? "bg-[linear-gradient(160deg,#ffe08a,#ffb547)] text-[#5a3300] shadow-[0_8px_20px_-8px_rgba(255,181,71,0.9)]"
+                : "bg-fixed-white/[0.12] text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.3)]",
+            )}
+          >
+            {busy === c.mode ? <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden /> : <ClapperIcon power={c.othersOff} />}
+          </button>
         );
       })}
       {error ? (
-        <p role="status" className="absolute -bottom-2 left-0 w-[160px] translate-y-full rounded-[12px] bg-[rgba(16,17,48,0.85)] px-3 py-2 text-xs font-semibold text-fixed-white">
+        <p role="status" className="absolute left-[18px] right-[18px] top-3 z-[2] rounded-[12px] bg-[rgba(16,17,48,0.88)] px-3 py-2 text-xs font-semibold text-fixed-white">
           {error}
         </p>
       ) : null}
