@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as rooms } from "@/app/api/hue/rooms/route";
 import { POST as light } from "@/app/api/hue/light/route";
+import { POST as scene } from "@/app/api/hue/scene/route";
 import { HUE_AUTH_COOKIE, sealHue } from "@/lib/server/hue-auth";
 import { mapHueRooms } from "@/lib/server/hue-control";
 
@@ -65,5 +66,54 @@ describe("Hue light routes", () => {
     expect(url).toBe(`https://api.meethue.com/route/clip/v2/resource/grouped_light/${GROUP}`);
     expect(init.method).toBe("PUT");
     expect(JSON.parse(init.body as string)).toEqual({ on: { on: false } });
+  });
+});
+
+describe("Hue scene route", () => {
+  const ROOMS = [
+    { id: "room-living", metadata: { name: "Woonkamer" }, services: [{ rid: "gl-living", rtype: "grouped_light" }] },
+    { id: "room-kitchen", metadata: { name: "Keuken" }, services: [{ rid: "gl-kitchen", rtype: "grouped_light" }] },
+    { id: "room-hall", metadata: { name: "Gang beneden" }, services: [{ rid: "gl-hall", rtype: "grouped_light" }] },
+  ];
+  const SCENES = [
+    { id: "sc-read", metadata: { name: "Lezen" }, group: { rid: "room-living", rtype: "room" } },
+    { id: "sc-cinema", metadata: { name: "Cinema" }, group: { rid: "room-living", rtype: "room" } },
+    { id: "sc-cinema-kitchen", metadata: { name: "Cinema" }, group: { rid: "room-kitchen", rtype: "room" } },
+  ];
+  const mockBridge = () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/room")) return new Response(JSON.stringify({ data: ROOMS }));
+      if (url.endsWith("/scene")) return new Response(JSON.stringify({ data: SCENES }));
+      return new Response(JSON.stringify({ data: [], method: init?.method }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  };
+  const puts = (fetchMock: ReturnType<typeof mockBridge>) =>
+    (fetchMock.mock.calls as unknown as [string, RequestInit | undefined][]).filter(([, i]) => i?.method === "PUT").map(([u, i]) => [u.split("/resource/")[1], JSON.parse(i!.body as string)]);
+
+  it("roept de cinemascène van de woonkamer op", async () => {
+    const fetchMock = mockBridge();
+    const res = await scene(request("/api/hue/scene", { room: "woonkamer", scene: "cinema" }));
+    expect(res.status).toBe(200);
+    expect(puts(fetchMock)).toEqual([["scene/sc-cinema", { recall: { action: "active" } }]]);
+  });
+
+  it("zet met othersOff alle andere kamers uit", async () => {
+    const fetchMock = mockBridge();
+    const data = await (await scene(request("/api/hue/scene", { room: "Woonkamer", scene: "Cinema", othersOff: true }))).json();
+    expect(data.switchedOff).toBe(2);
+    expect(puts(fetchMock)).toEqual([
+      ["scene/sc-cinema", { recall: { action: "active" } }],
+      ["grouped_light/gl-kitchen", { on: { on: false } }],
+      ["grouped_light/gl-hall", { on: { on: false } }],
+    ]);
+  });
+
+  it("meldt een ontbrekende scène of kamer en weigert ongeldige invoer", async () => {
+    mockBridge();
+    expect((await scene(request("/api/hue/scene", { room: "Woonkamer", scene: "Disco" }))).status).toBe(404);
+    expect((await scene(request("/api/hue/scene", { room: "Zolder", scene: "Cinema" }))).status).toBe(404);
+    expect((await scene(request("/api/hue/scene", { room: "", scene: "Cinema" }))).status).toBe(400);
   });
 });
