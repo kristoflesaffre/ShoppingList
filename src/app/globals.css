@@ -4,13 +4,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  /* Allow scrolling in nested panels without browser pinch/double-tap zoom.
-     Component utilities can still restrict panning for drag interactions. */
-  * {
-    touch-action: pan-x pan-y;
-  }
-}
 
 /**
  * App-achtergrond (stijl 1 · Helder): vlakke `--bg-app` i.p.v. de vroegere lavendel-gradient.
