@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitRoomName } from "@/lib/hue-room-name";
+import { floorGroup, splitRoomName } from "@/lib/hue-room-name";
 
 describe("splitRoomName", () => {
   it("zet de verdieping om in een nummer", () => {
@@ -22,5 +22,15 @@ describe("splitRoomName", () => {
     expect(splitRoomName("Gastenkamer")).toEqual({ base: "Gastenkamer", badge: null });
     expect(splitRoomName("Bureau")).toEqual({ base: "Bureau", badge: null });
     expect(splitRoomName("Boven")).toEqual({ base: "Boven", badge: null });
+  });
+});
+
+describe("floorGroup", () => {
+  it("groepeert per verdieping in een logische volgorde", () => {
+    const g = (name: string) => floorGroup(splitRoomName(name).badge);
+    expect(g("Badkamer eerste verdieping")).toEqual({ key: "f1", label: "Eerste verdieping", order: 11 });
+    expect(g("Gang beneden").order).toBeLessThan(g("Badkamer eerste verdieping").order);
+    expect(g("Gang boven").order).toBeGreaterThan(g("Badkamer tweede verdieping").order);
+    expect(g("Bureau")).toEqual({ key: "other", label: "Andere kamers", order: 1000 });
   });
 });

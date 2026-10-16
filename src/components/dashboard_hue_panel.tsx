@@ -2,14 +2,16 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
-import { splitRoomName } from "@/lib/hue-room-name";
+import { floorGroup, splitRoomName } from "@/lib/hue-room-name";
 
 /**
  * Philips Hue op het avonddashboard (canvas «Dashboard · licht» F · Lampkolommen): elke kamer is een staande
- * capsule die van onder opvult met haar helderheid, met een zachte gloed. Tik = aan/uit, op en neer slepen =
- * dimmen (wordt bij loslaten verstuurd); «Alles uit» bovenaan. Via /api/hue/rooms en /api/hue/light.
+ * capsule die van onder opvult met haar helderheid, met een zachte gloed. Op en neer slepen = dimmen (wordt bij
+ * loslaten verstuurd); tik = het lichtvenster openen (canvas «licht-venster» A): alle kamers per verdieping als
+ * hoge kolommen met een schakelaartje. «Alles uit» bovenaan. Via /api/hue/rooms en /api/hue/light.
  */
 
 type Room = { id: string; name: string; archetype: string; on: boolean; brightness: number | null };
@@ -30,7 +32,23 @@ const GLOWS: [string, string][] = [
 
 type Patch = { on: boolean; brightness?: number };
 
-function LampColumn({ room, index, busy, onChange }: { room: Room; index: number; busy: boolean; onChange: (patch: Patch) => void }) {
+function LampColumn({
+  room,
+  index,
+  busy,
+  onChange,
+  onTap,
+  tall = false,
+}: {
+  room: Room;
+  index: number;
+  busy: boolean;
+  onChange: (patch: Patch) => void;
+  /** Tik zonder te slepen (standaard: aan/uit). Op het dashboard opent dit het lichtvenster. */
+  onTap?: () => void;
+  /** Hoge kolom in het lichtvenster: groter, met aan/uit-schakelaar eronder. */
+  tall?: boolean;
+}) {
   const [preview, setPreview] = React.useState<number | null>(null);
   const drag = React.useRef<{ y: number; moved: boolean; rect: DOMRect } | null>(null);
   const level = preview ?? (room.on ? room.brightness ?? 100 : 0);
@@ -39,13 +57,14 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
   const levelAt = (clientY: number, rect: DOMRect) => Math.round(Math.min(100, Math.max(0, ((rect.bottom - clientY) / rect.height) * 100)));
   const commit = (b: number) => onChange(b <= 2 ? { on: false } : { on: true, brightness: b });
   const { base, badge } = splitRoomName(room.name);
+  const tap = onTap ?? (() => onChange(room.on ? { on: false } : { on: true }));
 
   return (
-    <div className="flex w-[84px] shrink-0 flex-col items-center gap-1.5">
+    <div className={cn("flex shrink-0 flex-col items-center", tall ? "h-full w-[104px] gap-2.5" : "w-[84px] gap-1.5")}>
       <button
         type="button"
         role="slider"
-        aria-label={`${room.name}: ${lit ? `aan, ${level}%` : "uit"}. Tik om te schakelen, schuif om te dimmen.`}
+        aria-label={`${room.name}: ${lit ? `aan, ${level}%` : "uit"}. ${onTap ? "Tik voor alle lampen" : "Tik om te schakelen"}, schuif om te dimmen.`}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={level}
@@ -73,7 +92,11 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
             const b = levelAt(e.clientY, d.rect);
             setPreview(null);
             commit(b);
-          } else onChange(room.on ? { on: false } : { on: true });
+          } else tap();
+        }}
+        onClick={(e) => {
+          // Toetsenbord (Enter/spatie): geen pointer-events, wel een klik met detail 0.
+          if (e.detail === 0) tap();
         }}
         onPointerCancel={() => {
           drag.current = null;
@@ -85,7 +108,10 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
             commit(Math.min(100, Math.max(0, level + (e.key === "ArrowUp" ? 10 : -10))));
           }
         }}
-        className="relative flex min-h-[72px] w-[52px] flex-1 touch-pan-x select-none justify-center overflow-hidden rounded-full bg-fixed-white/[0.06] pt-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-70"
+        className={cn(
+          "relative flex flex-1 touch-pan-x select-none justify-center overflow-hidden rounded-full bg-fixed-white/[0.06] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-70",
+          tall ? "min-h-[160px] w-[76px] pt-4" : "min-h-[72px] w-[52px] pt-2.5",
+        )}
       >
         {lit ? (
           <span
@@ -94,13 +120,16 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
             style={{ height: `${Math.max(level, 12)}%`, backgroundImage: `linear-gradient(0deg, ${from}, ${to})`, boxShadow: `0 0 22px 2px ${from}88` }}
           />
         ) : null}
-        <span className={cn("relative text-[13px] font-extrabold tabular-nums", !lit ? "text-fixed-white/50" : level >= 80 ? "text-[#5a3300]" : "text-fixed-white")}>{lit ? level : "–"}</span>
+        <span className={cn("relative font-extrabold tabular-nums", tall ? "text-base" : "text-[13px]", !lit ? "text-fixed-white/50" : level >= 80 ? "text-[#5a3300]" : "text-fixed-white")}>
+          {lit ? (tall ? `${level}%` : level) : tall ? "Uit" : "–"}
+        </span>
         {/* Verdieping als bolletje: «1»/«2» of een pijl omhoog (boven) / omlaag (beneden). */}
         {badge ? (
           <span
             aria-hidden
             className={cn(
-              "absolute bottom-2 left-1/2 flex size-5 -translate-x-1/2 items-center justify-center rounded-full text-[11px] font-extrabold",
+              "absolute left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full font-extrabold",
+              tall ? "bottom-3 size-6 text-[12.5px]" : "bottom-2 size-5 text-[11px]",
               lit && level >= 20 ? "bg-fixed-white/70 text-[#5a3300]" : "bg-fixed-white/15 text-fixed-white/80",
             )}
           >
@@ -114,8 +143,110 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
           </span>
         ) : null}
       </button>
-      <span className={cn("w-full truncate text-center text-[11px] font-bold", lit ? "text-fixed-white" : "text-fixed-white/65")}>{base}</span>
+      <span className={cn("w-full truncate text-center font-bold", tall ? "text-[13.5px]" : "text-[11px]", lit ? "text-fixed-white" : "text-fixed-white/65")}>{base}</span>
+      {tall ? (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={room.on}
+          aria-label={`${room.name} ${room.on ? "uitzetten" : "aanzetten"}`}
+          disabled={busy}
+          onClick={() => onChange(room.on ? { on: false } : { on: true })}
+          className={cn(
+            "relative h-[26px] w-11 shrink-0 rounded-full transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-70",
+            room.on ? "bg-[#ffb547]" : "bg-fixed-white/[0.16]",
+          )}
+        >
+          <span className={cn("absolute top-[3px] size-5 rounded-full transition-[left] duration-fast ease-out-strong", room.on ? "left-[21px] bg-fixed-white" : "left-[3px] bg-[#cfd5ee]")} />
+        </button>
+      ) : null}
     </div>
+  );
+}
+
+/** Lichtvenster (canvas «licht-venster» A): alle kamers per verdieping als hoge kolommen. */
+function HueLightsModal({
+  rooms,
+  busy,
+  setRoom,
+  onClose,
+}: {
+  rooms: Room[];
+  busy: Set<string>;
+  setRoom: (rooms: Room[], patch: Patch) => Promise<void>;
+  onClose: () => void;
+}) {
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  const indexOf = new Map(rooms.map((r, i) => [r.id, i]));
+  const groups = new Map<string, { label: string; order: number; rooms: Room[] }>();
+  for (const r of rooms) {
+    const g = floorGroup(splitRoomName(r.name).badge);
+    const entry = groups.get(g.key) ?? { label: g.label, order: g.order, rooms: [] };
+    entry.rooms.push(r);
+    groups.set(g.key, entry);
+  }
+  const ordered = Array.from(groups.values()).sort((a, b) => a.order - b.order);
+  const action = "h-10 rounded-pill bg-fixed-white/10 px-4 text-sm font-bold text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-40 [@media(hover:hover)]:hover:bg-fixed-white/[0.16]";
+
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Alle lampen" onClick={onClose} className="fixed inset-0 z-[70] flex bg-[rgba(8,9,24,0.6)] p-7 backdrop-blur-sm motion-safe:animate-fade-up">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex min-h-0 w-full flex-col rounded-[28px] bg-[linear-gradient(160deg,#232b48_0%,#1a2036_55%,#141a2c_100%)] px-7 py-6 text-fixed-white shadow-[inset_0_0_0_1px_rgba(160,180,255,0.22),0_40px_80px_-30px_rgba(0,0,0,0.8)]"
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/60">LICHT</p>
+            <h2 className="mt-0.5 text-[30px] font-extrabold tracking-[-0.02em]">Alle lampen</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" className={action} disabled={rooms.every((r) => r.on)} onClick={() => void setRoom(rooms.filter((r) => !r.on), { on: true })}>
+              Alles aan
+            </button>
+            <button type="button" className={action} disabled={!rooms.some((r) => r.on)} onClick={() => void setRoom(rooms.filter((r) => r.on), { on: false })}>
+              Alles uit
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Sluiten"
+              className="flex size-10 items-center justify-center rounded-full bg-fixed-white/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-4">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 flex min-h-0 flex-1 gap-7 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {ordered.map((g) => (
+            <section key={g.label} aria-label={g.label} className="flex min-h-0 shrink-0 flex-col gap-3.5 border-r border-fixed-white/[0.08] pr-7 last:border-r-0 last:pr-0">
+              <h3 className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[rgba(200,210,255,0.55)]">{g.label}</h3>
+              <div className="flex min-h-0 flex-1 gap-1.5">
+                {g.rooms.map((room) => (
+                  <LampColumn key={room.id} room={room} index={indexOf.get(room.id) ?? 0} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} tall />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+        <p className="mt-4 text-center text-[13px] text-fixed-white/45">Schuif een kolom omhoog of omlaag om te dimmen · tik op een kolom of het schakelaartje om aan of uit te zetten</p>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -123,6 +254,8 @@ export function DashboardHuePanel() {
   const token = useGoogleAuthToken();
   const [state, setState] = React.useState<State>({ kind: "loading" });
   const [busy, setBusy] = React.useState<Set<string>>(() => new Set());
+  const [open, setOpen] = React.useState(false);
+  const closeModal = React.useCallback(() => setOpen(false), []);
 
   const load = React.useCallback(async () => {
     if (!token) return;
@@ -217,11 +350,12 @@ export function DashboardHuePanel() {
         ) : (
           <div className="-mx-[18px] flex h-full min-h-0 w-[calc(100%+36px)] gap-0 overflow-x-auto px-[18px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {state.rooms.map((room, i) => (
-              <LampColumn key={room.id} room={room} index={i} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} />
+              <LampColumn key={room.id} room={room} index={i} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} onTap={() => setOpen(true)} />
             ))}
           </div>
         )}
       </div>
+      {open && state.kind === "ready" ? <HueLightsModal rooms={state.rooms} busy={busy} setRoom={setRoom} onClose={closeModal} /> : null}
     </section>
   );
 }
