@@ -43,196 +43,103 @@ export type EveningMedia = {
   note?: string;
 };
 
-/** Poster met witte rand en schaduw; als knop opent hij het detailvenster. */
-function PosterButton({
-  media,
-  className,
-  style,
-  onOpen,
-}: {
-  media: EveningMedia;
-  className?: string;
-  style?: React.CSSProperties;
-  onOpen: (m: EveningMedia) => void;
-}) {
+/** Poster als knop (opent het detailvenster). Breedte komt van de carrousel. */
+function PosterButton({ media, onOpen }: { media: EveningMedia; onOpen: (m: EveningMedia) => void }) {
   return (
     <button
       type="button"
       onClick={() => onOpen(media)}
       aria-label={`${media.title} openen`}
-      className={cn(
-        "absolute aspect-[2/3] overflow-hidden rounded-[14px] bg-[#2a2348] shadow-[0_0_0_2px_rgba(255,255,255,0.85),0_18px_30px_-14px_rgba(0,0,0,0.7)] transition-transform duration-base ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-safe:active:scale-[0.97] [@media(hover:hover)]:hover:-translate-y-1",
-        className,
-      )}
-      style={style}
+      className="aspect-[2/3] w-[min(calc((100cqw-24px)/2.5),calc(100cqh*2/3))] shrink-0 snap-start overflow-hidden rounded-[14px] bg-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_14px_24px_-14px_rgba(0,0,0,0.7)] transition-transform duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-safe:active:scale-[0.97]"
     >
       {media.posterUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- TMDB-poster
         <img src={media.posterUrl} alt="" className="size-full object-cover" />
       ) : (
-        <span className="flex size-full items-center justify-center p-2 text-center text-xs font-bold text-white/80">
-          {media.title}
-        </span>
+        <span className="flex size-full items-center justify-center p-2 text-center text-xs font-bold text-white/80">{media.title}</span>
       )}
     </button>
   );
 }
 
-/** Waaier van posters in de hoek rechtsonder (zoals de ingrediënten bij het eten). */
-// Maten in % van de tegelbreedte: de waaier schaalt mee (smalle tegel overdag, brede op de tablet).
-const FAN = [
-  { right: "34%", bottom: -28, rotate: -10, z: 1, w: "31%" },
-  { right: "18%", bottom: -18, rotate: 2, z: 2, w: "34%" },
-  { right: "-3%", bottom: -34, rotate: 12, z: 3, w: "36%" },
-] as const;
-
-function PosterFan({
-  items,
-  onOpen,
-}: {
-  items: EveningMedia[];
-  onOpen: (m: EveningMedia) => void;
-}) {
-  // Voorste (rechts) = eerste item.
-  const shown = items.slice(0, 3);
-  const slots = FAN.slice(3 - shown.length);
-  return (
-    <>
-      {[...shown].reverse().map((m, i) => {
-        const s = slots[i];
-        return (
-          <PosterButton
-            key={m.id}
-            media={m}
-            onOpen={onOpen}
-            style={{
-              right: s.right,
-              bottom: s.bottom,
-              width: s.w,
-              zIndex: s.z,
-              transform: `rotate(${s.rotate}deg)`,
-            }}
-          />
-        );
-      })}
-    </>
-  );
-}
-
+/**
+ * Tegel met een horizontale carrousel van posters: maximaal 2,5 zichtbaar (de halve poster toont dat je kan
+ * scrollen). Zonder titels, behalve bij één serie: dan staat de titel naast de poster.
+ */
 function EveningTile({
   label,
-  title,
-  sub,
   items,
   background,
+  singleTitle = false,
   onOpen,
 }: {
   label: string;
-  title: string;
-  sub: string;
   items: EveningMedia[];
   background: string;
+  singleTitle?: boolean;
   onOpen: (m: EveningMedia) => void;
 }) {
+  const only = singleTitle && items.length === 1 ? items[0] : null;
   return (
     <section
-      className={cn(
-        tile,
-        "min-w-0 flex-1 text-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)]",
-      )}
+      aria-label={label.toLowerCase()}
+      className={cn(tile, "flex min-w-0 flex-1 flex-col pt-4 text-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)]")}
       style={{ background }}
     >
-      <span className="absolute left-[18px] top-4 text-[11.5px] font-extrabold tracking-[0.08em] text-white/75">
-        {label}
-      </span>
-      <button
-        type="button"
-        onClick={() => items[0] && onOpen(items[0])}
-        className="absolute left-[18px] top-[42px] z-[4] flex max-w-[62%] flex-col text-left focus-visible:outline-none"
-      >
-        <span className="line-clamp-3 text-[26px] font-extrabold leading-tight tracking-[-0.02em]">
-          {title}
-        </span>
-        <span className="mt-1 text-[13.5px] font-semibold text-white/75">
-          {sub}
-        </span>
-      </button>
-      <PosterFan items={items} onOpen={onOpen} />
+      <span className="px-[18px] text-[11.5px] font-extrabold tracking-[0.08em] text-white/75">{label}</span>
+      {/* Container-query-eenheden: de postermaat volgt de ruimte in de tegel. */}
+      <div className="mt-3 flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-[18px] px-[18px] pb-4 [container-type:size] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {items.map((m) => (
+          <PosterButton key={m.id} media={m} onOpen={onOpen} />
+        ))}
+        {only ? (
+          <button type="button" onClick={() => onOpen(only)} className="flex min-w-0 flex-1 items-end pb-1 text-left focus-visible:outline-none">
+            <span className="line-clamp-4 text-[22px] font-extrabold leading-tight tracking-[-0.02em]">{only.title}</span>
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }
 
-/** Series waar we mee bezig zijn. `null` als er geen zijn (dan blijft het weer staan). */
+/** Series waar we mee bezig zijn (leeg: dan blijft het weer staan). */
 export function useWatchingMedia(): EveningMedia[] {
   const { watchingItems } = useWatchingTvItems();
   return React.useMemo(
-    () =>
-      watchingItems.map((w: WatchingTvItem) => ({
-        id: w.id,
-        title: w.title,
-        posterUrl: w.posterUrl,
-        year: w.year,
-        note: `Volgende: seizoen ${w.nextSeason} · aflevering ${w.nextEpisode}`,
-      })),
+    () => watchingItems.map((w: WatchingTvItem) => ({ id: w.id, title: w.title, posterUrl: w.posterUrl, year: w.year })),
     [watchingItems],
   );
 }
 
 /** Suggesties uit de watchlist (volgorde van de lijst), zonder wat we al aan het kijken zijn. */
-export function useWatchlistSuggestions(
-  exclude: readonly EveningMedia[],
-): EveningMedia[] {
+export function useWatchlistSuggestions(exclude: readonly EveningMedia[]): EveningMedia[] {
   const { ownWatchlist, watchlist } = useFilmsLibrary();
   return React.useMemo(() => {
     const skip = new Set(exclude.map((e) => e.id));
-    const list: WatchlistItem[] =
-      (ownWatchlist?.length ? ownWatchlist : watchlist) ?? [];
+    const list: WatchlistItem[] = (ownWatchlist?.length ? ownWatchlist : watchlist) ?? [];
     return list
       .filter((i) => !skip.has(i.id))
-      .slice(0, 3)
-      .map((i) => ({
-        id: i.id,
-        title: i.title,
-        posterUrl: i.posterUrl,
-        year: i.year,
-        note: i.type === "movie" ? "Film" : "Serie",
-      }));
+      .slice(0, 20)
+      .map((i) => ({ id: i.id, title: i.title, posterUrl: i.posterUrl, year: i.year, note: i.type === "movie" ? "Film" : "Serie" }));
   }, [ownWatchlist, watchlist, exclude]);
 }
 
-export function WatchingTile({
-  items,
-  onOpen,
-}: {
-  items: EveningMedia[];
-  onOpen: (m: EveningMedia) => void;
-}) {
-  const first = items[0];
+export function WatchingTile({ items, onOpen }: { items: EveningMedia[]; onOpen: (m: EveningMedia) => void }) {
   return (
     <EveningTile
       label="AAN HET KIJKEN"
-      title={first.title}
-      sub={first.note ?? ""}
       items={items}
+      singleTitle
       onOpen={onOpen}
       background="radial-gradient(120% 90% at 85% 100%, #5a3a9c 0%, #2d2160 45%, #161236 100%)"
     />
   );
 }
 
-export function WatchlistTile({
-  items,
-  onOpen,
-}: {
-  items: EveningMedia[];
-  onOpen: (m: EveningMedia) => void;
-}) {
-  const first = items[0];
+export function WatchlistTile({ items, onOpen }: { items: EveningMedia[]; onOpen: (m: EveningMedia) => void }) {
   return (
     <EveningTile
       label="VANAVOND KIJKEN?"
-      title={first.title}
-      sub={[first.note, first.year].filter(Boolean).join(" · ")}
       items={items}
       onOpen={onOpen}
       background="radial-gradient(120% 90% at 85% 100%, #a33d5c 0%, #5b1f3d 45%, #2a0f22 100%)"

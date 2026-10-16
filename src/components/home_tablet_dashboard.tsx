@@ -611,7 +611,7 @@ export function HomeTabletDashboard({
       <div className="flex min-w-0 flex-1 flex-col gap-3.5">
         {/* Ook 's ochtends lopen morgen en de volgende dagen door, zodat de agenda nooit leeg oogt. */}
         <AgendaColumn />
-        {morning ? null : <DashboardShortcuts shoppingCount={shoppingCount} nextShopping={nextShopping} />}
+        {moment === "dag" ? <DashboardShortcuts shoppingCount={shoppingCount} nextShopping={nextShopping} /> : null}
       </div>
       {testMoment ? <MomentTestBar value={testMoment} onChange={setTestMoment} /> : null}
     </div>
