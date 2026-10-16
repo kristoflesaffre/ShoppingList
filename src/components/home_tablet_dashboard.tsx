@@ -24,6 +24,8 @@ export type DashboardMeal = {
   photoUrl: string | null;
   fromStock: boolean;
   items: Array<{ name: string; photoUrl?: string | null }>;
+  /** Alle losse ingrediënten (niet enkel de drie voor het bord). */
+  names?: string[];
 };
 
 export type DashboardShopping = { label: string; sub: string; href: string } | null;
@@ -179,12 +181,24 @@ function mealPhoto(meal: DashboardMeal | null, getPhoto: (name: string) => strin
   return meal.photoUrl ?? meal.items.map((i) => i.photoUrl ?? getPhoto(i.name)).find(Boolean) ?? null;
 }
 
+/** Productfoto's voor het bord bij losse ingrediënten (zetmeel, groente, vlees/vis eerst). */
+function plateItemPhotos(meal: DashboardMeal | null, getPhoto: (name: string) => string | null): string[] {
+  if (!meal || meal.photoUrl) return [];
+  return meal.items.map((i) => i.photoUrl ?? getPhoto(i.name)).filter((p): p is string => Boolean(p));
+}
+
 function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
   const getPhoto = useItemPhotoUrl(320);
   const photo = mealPhoto(meal, getPhoto);
+  const platePhotos = plateItemPhotos(meal, getPhoto);
   const inner = (
     <>
-      {photo ? (
+      {platePhotos.length > 1 ? (
+        // Losse ingrediënten: zetmeel, groente en vlees/vis samen op één wit bord.
+        <span className="aod-kenburns absolute -right-[22px] top-[10px] drop-shadow-[0_18px_24px_rgba(120,60,0,0.35)] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]">
+          <CalendarLoosePlate photos={platePhotos.slice(0, 3)} size={236} />
+        </span>
+      ) : photo ? (
         // eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app
         <img src={photo} alt="" className="aod-kenburns absolute -right-[30px] -top-1.5 size-[250px] object-contain drop-shadow-[0_18px_24px_rgba(120,60,0,0.35)] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" />
       ) : (
@@ -193,7 +207,7 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
       )}
       <span className="absolute left-[18px] top-4 text-[11.5px] font-extrabold tracking-[0.08em] text-[rgba(90,40,0,0.75)] [[data-aod]_&]:text-[#d8a874]">VANDAAG ETEN WE</span>
       <span className="absolute bottom-[18px] left-[18px] max-w-[60%]">
-        <span className="block text-[34px] font-extrabold leading-tight tracking-[-0.02em] text-[#3d1d00] [[data-aod]_&]:text-[#ffe9cc]">{meal?.title ?? "Nog niets gepland"}</span>
+        <span className={cn("block font-extrabold leading-tight tracking-[-0.02em] text-[#3d1d00] [[data-aod]_&]:text-[#ffe9cc]", platePhotos.length > 1 ? "text-[28px]" : "text-[34px]")}>{meal?.title ?? "Nog niets gepland"}</span>
         <span className="block text-[13.5px] font-semibold text-[rgba(61,29,0,0.75)] [[data-aod]_&]:text-[#d8a874]">{meal ? meal.subtitle : "Plan iets in de kalender"}</span>
       </span>
     </>
@@ -217,9 +231,10 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
   const getPhoto = useItemPhotoUrl(320);
   const photo = mealPhoto(meal, getPhoto);
   // Losse ingrediënten (geen receptfoto): tot drie op een wit bord, zoals in de kalender.
-  const itemPhotos = meal && !meal.photoUrl ? meal.items.map((i) => i.photoUrl ?? getPhoto(i.name)).filter(Boolean) : [];
+  const itemPhotos = plateItemPhotos(meal, getPhoto);
   // Losse ingrediënten: de tegel is hoog genoeg om ze allemaal te noemen (i.p.v. «A, B +2»).
-  const allNames = meal && !meal.photoUrl && meal.items.length > 1 ? meal.items.map((i) => i.name.charAt(0).toUpperCase() + i.name.slice(1)).join(", ") : null;
+  const names = meal?.names?.length ? meal.names : (meal?.items ?? []).map((i) => i.name);
+  const allNames = meal && !meal.photoUrl && names.length > 1 ? names.map((n) => n.charAt(0).toUpperCase() + n.slice(1)).join(", ") : null;
   return (
     <Link
       href={meal?.href ?? "/kalender"}

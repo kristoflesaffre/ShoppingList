@@ -2623,6 +2623,7 @@ export default function Home() {
           name: item.name,
           photoUrl: item.photoUrl ?? null,
         })),
+        names: (day.entry?.looseIngredients ?? []).map((item) => item.name),
       };
     };
     const today = todayIndex >= 0 ? homeWeekDays[todayIndex] : undefined;
