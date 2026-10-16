@@ -16,13 +16,15 @@ function Sun({ cx, cy, r, ids }: { cx: number; cy: number; r: number; ids: Ids }
   const rays = (count: number, from: number, to: number, offset: number) =>
     Array.from({ length: count }, (_, i) => {
       const a = ((i * 360) / count + offset) * (Math.PI / 180);
+      // Afgerond: server en browser rekenen anders af in de laatste decimaal (hydratatiewaarschuwing).
+      const p = (v: number) => Math.round(v * 100) / 100;
       return (
         <line
           key={i}
-          x1={cx + Math.cos(a) * from}
-          y1={cy + Math.sin(a) * from}
-          x2={cx + Math.cos(a) * to}
-          y2={cy + Math.sin(a) * to}
+          x1={p(cx + Math.cos(a) * from)}
+          y1={p(cy + Math.sin(a) * from)}
+          x2={p(cx + Math.cos(a) * to)}
+          y2={p(cy + Math.sin(a) * to)}
         />
       );
     });

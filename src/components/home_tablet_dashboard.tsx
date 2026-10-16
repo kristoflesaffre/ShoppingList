@@ -10,6 +10,7 @@ import { VAST_COLORS, deepRgb, mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { SkeletonTimeline, useTodayAgenda } from "@/components/home_agenda_section";
 import { DashboardPhotoTimeline } from "@/components/dashboard_photo_timeline";
 import { WeatherHero } from "@/components/weather_hero";
+import { FilmDetailModal, WatchingTile, WatchlistTile, useWatchingMedia, useWatchlistSuggestions, type EveningMedia } from "@/components/dashboard_evening";
 import { CalendarLoosePlate } from "@/components/calendar_day_visuals";
 
 /**
@@ -474,34 +475,107 @@ export function DashboardReminders({ userId }: { userId: string }) {
   );
 }
 
-/** Ochtend (5 – 10 u): geen morgen-tegels voor weer en eten. Wordt elke minuut opnieuw bepaald. */
-const MORNING_FROM = 5;
-const MORNING_TO = 10;
+/**
+ * Moment van de dag voor het dashboard: ochtend (5 – 10 u), avond (20 – 23 u) of overdag.
+ * Testen kan op elk uur met `?moment=ochtend|dag|avond` in de adresbalk (blijft hangen in deze tab tot
+ * «Echte tijd» of `?moment=auto`); er verschijnt dan een kleine schakelaar bovenaan.
+ */
+export type DashboardMoment = "ochtend" | "dag" | "avond";
+const MOMENTS: { key: DashboardMoment; label: string }[] = [
+  { key: "ochtend", label: "Ochtend" },
+  { key: "dag", label: "Overdag" },
+  { key: "avond", label: "Avond" },
+];
+const MOMENT_TEST_KEY = "dashboard-moment-test";
 
-function isMorning(d = new Date()): boolean {
+export function momentAt(d: Date): DashboardMoment {
   const h = d.getHours();
-  return h >= MORNING_FROM && h < MORNING_TO;
+  if (h >= 5 && h < 10) return "ochtend";
+  if (h >= 20 && h < 23) return "avond";
+  return "dag";
 }
 
-function useMorning(): boolean {
-  const [morning, setMorning] = React.useState(() => isMorning());
+function isMoment(v: string | null): v is DashboardMoment {
+  return v === "ochtend" || v === "dag" || v === "avond";
+}
+
+function useDashboardMoment(): { moment: DashboardMoment; testMoment: DashboardMoment | null; setTestMoment: (m: DashboardMoment | null) => void } {
+  const [real, setReal] = React.useState<DashboardMoment>(() => momentAt(new Date()));
+  const [testMoment, setTest] = React.useState<DashboardMoment | null>(null);
   React.useEffect(() => {
-    const tick = () => setMorning(isMorning());
+    const tick = () => setReal(momentAt(new Date()));
     const id = window.setInterval(tick, 60_000);
     document.addEventListener("visibilitychange", tick);
+    // Testmodus: uit de adresbalk, anders wat eerder in deze tab gekozen is.
+    try {
+      const param = new URLSearchParams(window.location.search).get("moment");
+      if (isMoment(param)) sessionStorage.setItem(MOMENT_TEST_KEY, param);
+      else if (param === "auto") sessionStorage.removeItem(MOMENT_TEST_KEY);
+      const stored = sessionStorage.getItem(MOMENT_TEST_KEY);
+      setTest(isMoment(stored) ? stored : null);
+    } catch {
+      /* geen sessionStorage: geen testmodus */
+    }
     return () => {
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", tick);
     };
   }, []);
-  return morning;
+  const setTestMoment = React.useCallback((m: DashboardMoment | null) => {
+    try {
+      if (m) sessionStorage.setItem(MOMENT_TEST_KEY, m);
+      else sessionStorage.removeItem(MOMENT_TEST_KEY);
+    } catch {
+      /* negeren */
+    }
+    setTest(m);
+  }, []);
+  return { moment: testMoment ?? real, testMoment, setTestMoment };
 }
 
-/**
- * Tablet-dashboard. Overdag: vandaag + morgen (weer, eten), agenda met de komende dagen en de tegels
- * Te kopen / Lijstjes. 's Ochtends (5 – 10 u) geen morgen-tegels voor weer en eten en geen snelkoppelingen;
- * de agenda toont vandaag en vult aan met de volgende dagen.
- */
+/** Kleine schakelaar bovenaan in het midden, enkel zichtbaar in testmodus. */
+function MomentTestBar({ value, onChange }: { value: DashboardMoment; onChange: (m: DashboardMoment | null) => void }) {
+  return (
+    <div className="fixed left-1/2 top-3 z-[60] flex -translate-x-1/2 items-center gap-1 rounded-pill bg-[rgba(16,17,48,0.88)] p-1 pl-3 text-xs font-bold text-white shadow-[0_12px_28px_-12px_rgba(0,0,0,0.6)] backdrop-blur-md">
+      <span className="mr-1 text-white/60">Test</span>
+      {MOMENTS.map((m) => (
+        <button
+          key={m.key}
+          type="button"
+          onClick={() => onChange(m.key)}
+          aria-pressed={value === m.key}
+          className={cn("h-8 rounded-pill px-3", value === m.key ? "bg-white text-[#14112a]" : "text-white/80 [@media(hover:hover)]:hover:bg-white/10")}
+        >
+          {m.label}
+        </button>
+      ))}
+      <button type="button" onClick={() => onChange(null)} className="h-8 rounded-pill px-3 text-white/80 [@media(hover:hover)]:hover:bg-white/10">
+        Echte tijd
+      </button>
+    </div>
+  );
+}
+
+/** Avond: series i.p.v. het weer van vandaag, watchlist i.p.v. het eten van vandaag (met terugval). */
+function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | null; todayMeal: DashboardMeal | null; tomorrowMeal: DashboardMeal | null }) {
+  const watching = useWatchingMedia();
+  const suggestions = useWatchlistSuggestions(watching);
+  const [open, setOpen] = React.useState<EveningMedia | null>(null);
+  return (
+    <>
+      <div className="flex min-h-0 flex-1 gap-3.5">
+        {watching.length > 0 ? <WatchingTile items={watching} onOpen={setOpen} /> : <TodayWeather weather={weather} />}
+        <TomorrowWeather weather={weather} />
+      </div>
+      <div className="flex min-h-0 flex-1 gap-3.5">
+        {suggestions.length > 0 ? <WatchlistTile items={suggestions} onOpen={setOpen} /> : <TodayMeal meal={todayMeal} />}
+        <TomorrowMeal meal={tomorrowMeal} />
+      </div>
+      {open ? <FilmDetailModal media={open} onClose={() => setOpen(null)} /> : null}
+    </>
+  );
+}
+
 export function HomeTabletDashboard({
   todayMeal,
   tomorrowMeal,
@@ -514,24 +588,32 @@ export function HomeTabletDashboard({
   nextShopping: DashboardShopping;
 }) {
   const weather = useWeather();
-  const morning = useMorning();
+  const { moment, testMoment, setTestMoment } = useDashboardMoment();
+  const morning = moment === "ochtend";
   return (
     <div className="flex h-[max(470px,calc(100dvh-196px))] gap-3.5 pt-5 motion-safe:animate-fade-up">
       <div className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
-        <div className="flex min-h-0 flex-1 gap-3.5">
-          <TodayWeather weather={weather} />
-          {morning ? null : <TomorrowWeather weather={weather} />}
-        </div>
-        <div className="flex min-h-0 flex-1 gap-3.5">
-          <TodayMeal meal={todayMeal} />
-          {morning ? null : <TomorrowMeal meal={tomorrowMeal} />}
-        </div>
+        {moment === "avond" ? (
+          <EveningLeft weather={weather} todayMeal={todayMeal} tomorrowMeal={tomorrowMeal} />
+        ) : (
+          <>
+            <div className="flex min-h-0 flex-1 gap-3.5">
+              <TodayWeather weather={weather} />
+              {morning ? null : <TomorrowWeather weather={weather} />}
+            </div>
+            <div className="flex min-h-0 flex-1 gap-3.5">
+              <TodayMeal meal={todayMeal} />
+              {morning ? null : <TomorrowMeal meal={tomorrowMeal} />}
+            </div>
+          </>
+        )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3.5">
         {/* Ook 's ochtends lopen morgen en de volgende dagen door, zodat de agenda nooit leeg oogt. */}
         <AgendaColumn />
         {morning ? null : <DashboardShortcuts shoppingCount={shoppingCount} nextShopping={nextShopping} />}
       </div>
+      {testMoment ? <MomentTestBar value={testMoment} onChange={setTestMoment} /> : null}
     </div>
   );
 }
