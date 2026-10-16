@@ -181,6 +181,13 @@ function mealPhoto(meal: DashboardMeal | null, getPhoto: (name: string) => strin
   return meal.photoUrl ?? meal.items.map((i) => i.photoUrl ?? getPhoto(i.name)).find(Boolean) ?? null;
 }
 
+/** Compositie van drie ingrediënten (zetmeel achter links, groente achter rechts, vlees/vis vooraan) in een vak van 250px. */
+const MEAL_TRIO = [
+  { x: 6, y: 30, s: 138, r: -8, z: 1 },
+  { x: 118, y: 6, s: 128, r: 10, z: 2 },
+  { x: 54, y: 104, s: 150, r: -4, z: 3 },
+] as const;
+
 /** Productfoto's voor het bord bij losse ingrediënten (zetmeel, groente, vlees/vis eerst). */
 function plateItemPhotos(meal: DashboardMeal | null, getPhoto: (name: string) => string | null): string[] {
   if (!meal || meal.photoUrl) return [];
@@ -194,9 +201,22 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
   const inner = (
     <>
       {platePhotos.length > 1 ? (
-        // Losse ingrediënten: zetmeel, groente en vlees/vis samen op één wit bord.
-        <span className="aod-kenburns absolute -right-[22px] top-[10px] drop-shadow-[0_18px_24px_rgba(120,60,0,0.35)] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]">
-          <CalendarLoosePlate photos={platePhotos.slice(0, 3)} size={236} />
+        // Losse ingrediënten: zetmeel, groente en vlees/vis als losse compositie rechtsboven (geen bord),
+        // op dezelfde plek als een receptfoto.
+        <span className="aod-kenburns absolute -right-[30px] -top-1.5 isolate size-[250px] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" aria-hidden>
+          {platePhotos.slice(0, 3).map((src, i) => {
+            const slot = MEAL_TRIO[i];
+            return (
+              // eslint-disable-next-line @next/next/no-img-element -- productfoto uit de app
+              <img
+                key={src + i}
+                src={src}
+                alt=""
+                className="absolute object-contain drop-shadow-[0_16px_18px_rgba(120,60,0,0.35)]"
+                style={{ left: slot.x, top: slot.y, width: slot.s, height: slot.s, zIndex: slot.z, transform: `rotate(${slot.r}deg)` }}
+              />
+            );
+          })}
         </span>
       ) : photo ? (
         // eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app
@@ -207,7 +227,7 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
       )}
       <span className="absolute left-[18px] top-4 text-[11.5px] font-extrabold tracking-[0.08em] text-[rgba(90,40,0,0.75)] [[data-aod]_&]:text-[#d8a874]">VANDAAG ETEN WE</span>
       <span className="absolute bottom-[18px] left-[18px] max-w-[60%]">
-        <span className={cn("block font-extrabold leading-tight tracking-[-0.02em] text-[#3d1d00] [[data-aod]_&]:text-[#ffe9cc]", platePhotos.length > 1 ? "text-[28px]" : "text-[34px]")}>{meal?.title ?? "Nog niets gepland"}</span>
+        <span className={cn("block font-extrabold leading-tight tracking-[-0.02em] text-[#3d1d00] [[data-aod]_&]:text-[#ffe9cc]", platePhotos.length > 1 ? "text-[30px]" : "text-[34px]")}>{meal?.title ?? "Nog niets gepland"}</span>
         <span className="block text-[13.5px] font-semibold text-[rgba(61,29,0,0.75)] [[data-aod]_&]:text-[#d8a874]">{meal ? meal.subtitle : "Plan iets in de kalender"}</span>
       </span>
     </>
