@@ -153,16 +153,18 @@ function TodayWeather({ weather }: { weather: Weather | null }) {
       aria-label={`Weer vandaag in ${weather.place}`}
       className={cn(tile, "flex min-w-0 flex-1 flex-col bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] px-[18px] py-4 text-white shadow-[0_18px_40px_-24px_rgba(40,100,220,0.8)] [[data-aod]_&]:bg-[linear-gradient(160deg,#173468,#0f2347_55%,#0a1630)] [[data-aod]_&]:text-[#eaf1ff] [[data-aod]_&]:shadow-[0_18px_40px_-26px_rgba(60,120,255,0.6)]")}
     >
-      <WeatherHero kind={weather.now.kind} size={156} className="absolute -right-[22px] -top-[34px]" />
+      {/* Het dagbeeld (zoals weer-apps): een buiige dag toont buien, ook al is het nu even droog. */}
+      <WeatherHero kind={weather.today.kind} size={196} className="absolute -right-[34px] -top-[38px]" />
       <span className="text-[11.5px] font-extrabold tracking-[0.08em] opacity-90">VANDAAG · {weather.place.toUpperCase()}</span>
       <span className="mt-1 flex items-baseline gap-2">
         <span className="text-[58px] font-extrabold leading-none tracking-[-0.04em]">{weather.now.temp}°</span>
         <span className="text-base font-bold opacity-80">{weather.today.min}°</span>
       </span>
-      <span className="mt-1 text-sm font-semibold">{weather.now.label}</span>
-      {weather.rainFromHour != null ? (
+      <span className="mt-1 text-sm font-semibold">{weather.today.label}</span>
+      {weather.today.rainChance >= 20 ? (
         <span className="mt-2 inline-flex h-[26px] items-center gap-1.5 self-start rounded-pill bg-white/[0.22] px-2.5 text-xs font-bold">
-          ☂ {weather.rainFromHour === new Date().getHours() ? "Kans op regen nu" : `Regen vanaf ${weather.rainFromHour}u`}
+          ☂ {weather.today.rainChance}% kans op regen
+          {weather.rainFromHour != null ? (weather.rainFromHour === new Date().getHours() ? " · nu" : ` · vanaf ${weather.rainFromHour}u`) : ""}
         </span>
       ) : null}
       <ul ref={hoursRef} className="m-0 mt-auto flex list-none justify-between border-t border-white/30 p-0 pt-2.5">
@@ -191,6 +193,7 @@ function TomorrowWeather({ weather }: { weather: Weather | null }) {
           <WeatherHero kind={t.kind} size={76} />
           <span className="text-2xl font-extrabold leading-none text-white [[data-aod]_&]:text-[#e4e9f7]">{t.max}°</span>
           <span className="text-[13px] font-bold text-white/80 [[data-aod]_&]:text-[#7d8aa8]">{t.min}°</span>
+          {t.rainChance >= 20 ? <span className="mt-0.5 text-xs font-extrabold text-white [[data-aod]_&]:text-[#9db7e6]">☂ {t.rainChance}%</span> : null}
         </>
       ) : (
         <span className="size-16 animate-pulse rounded-full bg-white/40" />

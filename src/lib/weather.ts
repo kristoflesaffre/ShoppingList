@@ -10,7 +10,11 @@ import * as React from "react";
 export type WeatherKind = "zon" | "half" | "bewolkt" | "mist" | "regen" | "buien" | "onweer" | "sneeuw";
 
 export type WeatherHour = { hour: number; kind: WeatherKind; temp: number; rainChance: number };
-export type WeatherDay = { kind: WeatherKind; max: number; min: number; label: string };
+/**
+ * Een hele dag: `kind`/`label` uit de daggemiddelde weercode van Open-Meteo (zoals weer-apps het dagbeeld
+ * tonen: een buiige dag is «buien», ook al schijnt nu de zon), `rainChance` = hoogste kans op neerslag (%).
+ */
+export type WeatherDay = { kind: WeatherKind; max: number; min: number; label: string; rainChance: number };
 export type Weather = {
   place: string;
   now: { kind: WeatherKind; temp: number; label: string };
@@ -43,7 +47,7 @@ export function weatherFromCode(code: number): { kind: WeatherKind; label: strin
 type OpenMeteo = {
   current?: { temperature_2m?: number; weather_code?: number };
   hourly?: { time?: string[]; temperature_2m?: number[]; weather_code?: number[]; precipitation_probability?: number[] };
-  daily?: { weather_code?: number[]; temperature_2m_max?: number[]; temperature_2m_min?: number[] };
+  daily?: { weather_code?: number[]; temperature_2m_max?: number[]; temperature_2m_min?: number[]; precipitation_probability_max?: number[] };
 };
 
 export function parseWeather(json: OpenMeteo, now: Date = new Date()): Weather | null {
@@ -51,7 +55,13 @@ export function parseWeather(json: OpenMeteo, now: Date = new Date()): Weather |
   if (!json.current || !daily?.weather_code || daily.weather_code.length < 2) return null;
   const day = (i: number): WeatherDay => {
     const w = weatherFromCode(daily.weather_code?.[i] ?? 3);
-    return { kind: w.kind, label: w.label, max: Math.round(daily.temperature_2m_max?.[i] ?? 0), min: Math.round(daily.temperature_2m_min?.[i] ?? 0) };
+    return {
+      kind: w.kind,
+      label: w.label,
+      max: Math.round(daily.temperature_2m_max?.[i] ?? 0),
+      min: Math.round(daily.temperature_2m_min?.[i] ?? 0),
+      rainChance: Math.round(daily.precipitation_probability_max?.[i] ?? 0),
+    };
   };
   const cur = weatherFromCode(json.current.weather_code ?? 3);
   const times = json.hourly?.time ?? [];
@@ -109,7 +119,7 @@ export function useWeather(): Weather | null {
       url.searchParams.set("longitude", String(WEATHER_PLACE.longitude));
       url.searchParams.set("current", "temperature_2m,weather_code");
       url.searchParams.set("hourly", "temperature_2m,weather_code,precipitation_probability");
-      url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min");
+      url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max");
       url.searchParams.set("timezone", "Europe/Brussels");
       url.searchParams.set("forecast_days", "2");
       fetch(url, { cache: "no-store" })
