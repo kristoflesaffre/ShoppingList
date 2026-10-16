@@ -4,6 +4,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /* Allow scrolling in nested panels without browser pinch/double-tap zoom.
+     Component utilities can still restrict panning for drag interactions. */
+  * {
+    touch-action: pan-x pan-y;
+  }
+}
+
 /**
  * App-achtergrond (stijl 1 · Helder): vlakke `--bg-app` i.p.v. de vroegere lavendel-gradient.
  * Donker thema (stijl 4 · Avond) zet `--bg-app` via `:root[data-theme="dark"]` in tokens.css.
@@ -201,6 +209,74 @@ html[data-aod]::after {
 }
 html[data-aod="night"] body {
   filter: brightness(0.55);
+}
+
+/* Weerillustratie (WeatherHero): traag en rustig, nooit afleidend. */
+.wx-rays,
+.wx-rays-slow,
+.wx-glow,
+.wx-drift,
+.wx-drift-slow,
+.wx-mist,
+.wx-mist-slow,
+.wx-drop,
+.wx-flake,
+.wx-bolt {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.wx-rays { animation: wx-spin 90s linear infinite; }
+.wx-rays-slow { animation: wx-spin 140s linear infinite reverse; }
+.wx-glow { animation: wx-glow 7s ease-in-out infinite alternate; }
+.wx-drift { animation: wx-drift 16s ease-in-out infinite alternate; }
+.wx-drift-slow { animation: wx-drift-slow 23s ease-in-out infinite alternate; }
+.wx-mist { animation: wx-drift 11s ease-in-out infinite alternate; }
+.wx-mist-slow { animation: wx-drift-slow 14s ease-in-out infinite alternate; }
+.wx-drop { animation: wx-drop 1.5s linear infinite; opacity: 0; }
+.wx-flake { animation: wx-flake 3.6s ease-in-out infinite; opacity: 0; }
+.wx-bolt { animation: wx-bolt 7s ease-in-out infinite; }
+@keyframes wx-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes wx-glow {
+  from { transform: scale(0.92); opacity: 0.7; }
+  to { transform: scale(1.08); opacity: 1; }
+}
+@keyframes wx-drift {
+  from { translate: -5px 0; }
+  to { translate: 6px -1px; }
+}
+@keyframes wx-drift-slow {
+  from { translate: 4px 1px; }
+  to { translate: -4px 0; }
+}
+@keyframes wx-drop {
+  0% { translate: 0 -6px; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { translate: -3px 10px; opacity: 0; }
+}
+@keyframes wx-flake {
+  0% { translate: 0 -6px; opacity: 0; }
+  25% { opacity: 1; }
+  50% { translate: 3px 3px; }
+  85% { opacity: 1; }
+  100% { translate: -2px 12px; opacity: 0; }
+}
+@keyframes wx-bolt {
+  0%, 84%, 100% { opacity: 0.55; }
+  87% { opacity: 1; }
+  89% { opacity: 0.6; }
+  91% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wx-rays, .wx-rays-slow, .wx-glow, .wx-drift, .wx-drift-slow, .wx-mist, .wx-mist-slow, .wx-bolt {
+    animation: none;
+  }
+  .wx-drop, .wx-flake {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 /* Tot leven: foto’s zoomen en schuiven traag binnen hun tegel (Ken Burns). */

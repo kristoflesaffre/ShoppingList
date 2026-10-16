@@ -9,6 +9,7 @@ import { useVasteLijstjes } from "@/components/vaste_lijstjes";
 import { VAST_COLORS, deepRgb, mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
 import { SkeletonTimeline, useTodayAgenda } from "@/components/home_agenda_section";
 import { DashboardPhotoTimeline } from "@/components/dashboard_photo_timeline";
+import { WeatherHero } from "@/components/weather_hero";
 import { CalendarLoosePlate } from "@/components/calendar_day_visuals";
 
 /**
@@ -152,7 +153,7 @@ function TodayWeather({ weather }: { weather: Weather | null }) {
       aria-label={`Weer vandaag in ${weather.place}`}
       className={cn(tile, "flex min-w-0 flex-1 flex-col bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] px-[18px] py-4 text-white shadow-[0_18px_40px_-24px_rgba(40,100,220,0.8)] [[data-aod]_&]:bg-[linear-gradient(160deg,#173468,#0f2347_55%,#0a1630)] [[data-aod]_&]:text-[#eaf1ff] [[data-aod]_&]:shadow-[0_18px_40px_-26px_rgba(60,120,255,0.6)]")}
     >
-      <WeatherIcon kind={weather.now.kind} size={136} className="absolute -right-[18px] -top-[26px]" />
+      <WeatherHero kind={weather.now.kind} size={156} className="absolute -right-[22px] -top-[34px]" />
       <span className="text-[11.5px] font-extrabold tracking-[0.08em] opacity-90">VANDAAG · {weather.place.toUpperCase()}</span>
       <span className="mt-1 flex items-baseline gap-2">
         <span className="text-[58px] font-extrabold leading-none tracking-[-0.04em]">{weather.now.temp}°</span>
@@ -187,7 +188,7 @@ function TomorrowWeather({ weather }: { weather: Weather | null }) {
       <span className="text-[11px] font-extrabold tracking-[0.08em] text-white/90 [[data-aod]_&]:text-[#9db7e6]">MORGEN</span>
       {t ? (
         <>
-          <WeatherIcon kind={t.kind} size={64} />
+          <WeatherHero kind={t.kind} size={76} />
           <span className="text-2xl font-extrabold leading-none text-white [[data-aod]_&]:text-[#e4e9f7]">{t.max}°</span>
           <span className="text-[13px] font-bold text-white/80 [[data-aod]_&]:text-[#7d8aa8]">{t.min}°</span>
         </>
