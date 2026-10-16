@@ -461,7 +461,7 @@ export function DashboardHuePanel({ cinema = false }: { cinema?: boolean }) {
 
 /** Filmklapper; met `power` zit er een aan/uit-teken in de klapper (= de andere lampen gaan uit). */
 const ClapperIcon = ({ power = false }: { power?: boolean }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[22px]">
     <path d="M4 10h16v8.5A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5z" />
     <path d="m4 10-.6-2.4a1.5 1.5 0 0 1 1.1-1.8l12.7-3.1a1.5 1.5 0 0 1 1.8 1.1l.6 2.4z" />
     <path d="m8.4 5.2 2.3 3.2M13.3 4l2.3 3.2" />
@@ -526,7 +526,8 @@ function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => 
   return (
     // pb: hoogte van de kamernaam + tussenruimte onder de capsules, zodat de onderste knop met de
     // onderkant van een capsule uitlijnt.
-    <div className="flex shrink-0 flex-col items-center justify-between pb-[22px]">
+    // Even breed als de capsules (52px); hoogte tot 52px (rond), bij een lage capsule worden het pillen.
+    <div className="flex shrink-0 flex-col items-center justify-between gap-1.5 pb-[22px]">
       {CINEMA.map((c) => {
         const on = active === c.mode;
         return (
@@ -539,7 +540,7 @@ function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => 
             disabled={busy !== null}
             onClick={() => void run(c)}
             className={cn(
-              "flex size-9 items-center justify-center rounded-full transition-[transform,background-color,box-shadow] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-95 disabled:opacity-70",
+              "flex max-h-[52px] min-h-0 w-[52px] flex-1 items-center justify-center rounded-full transition-[transform,background-color,box-shadow] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-95 disabled:opacity-70",
               on
                 ? "bg-[linear-gradient(160deg,#ffe08a,#ffb547)] text-[#5a3300] shadow-[0_8px_20px_-8px_rgba(255,181,71,0.9)]"
                 : "bg-fixed-white/[0.12] text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.3)]",
