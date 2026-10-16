@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
+import { splitRoomNumber } from "@/lib/hue-room-name";
 
 /**
  * Philips Hue op het avonddashboard (canvas «Dashboard · licht» F · Lampkolommen): elke kamer is een staande
@@ -37,9 +38,10 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
   const [from, to] = GLOWS[index % GLOWS.length];
   const levelAt = (clientY: number, rect: DOMRect) => Math.round(Math.min(100, Math.max(0, ((rect.bottom - clientY) / rect.height) * 100)));
   const commit = (b: number) => onChange(b <= 2 ? { on: false } : { on: true, brightness: b });
+  const { base, number } = splitRoomNumber(room.name);
 
   return (
-    <div className="flex w-[74px] shrink-0 flex-col items-center gap-1.5">
+    <div className="flex w-[84px] shrink-0 flex-col items-center gap-1.5">
       <button
         type="button"
         role="slider"
@@ -93,8 +95,19 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
           />
         ) : null}
         <span className={cn("relative text-[13px] font-extrabold tabular-nums", !lit ? "text-white/50" : level >= 80 ? "text-[#5a3300]" : "text-white")}>{lit ? level : "–"}</span>
+        {number ? (
+          <span
+            aria-hidden
+            className={cn(
+              "absolute bottom-2 left-1/2 flex size-5 -translate-x-1/2 items-center justify-center rounded-full text-[11px] font-extrabold",
+              lit && level >= 20 ? "bg-white/70 text-[#5a3300]" : "bg-white/15 text-white/80",
+            )}
+          >
+            {number}
+          </span>
+        ) : null}
       </button>
-      <span className={cn("w-full truncate text-center text-[11.5px] font-bold", lit ? "text-white" : "text-white/65")}>{room.name}</span>
+      <span className={cn("w-full truncate text-center text-[11px] font-bold", lit ? "text-white" : "text-white/65")}>{base}</span>
     </div>
   );
 }
