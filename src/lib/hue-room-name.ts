@@ -32,17 +32,3 @@ export function splitRoomName(name: string): { base: string; badge: RoomBadge | 
   if (m && keep(m[1]).length > 1) return { base: keep(m[1]), badge: { kind: "number", value: m[2] } };
   return { base: name, badge: null };
 }
-
-const ORDINAL_LABELS: Record<string, string> = { "1": "Eerste", "2": "Tweede", "3": "Derde", "4": "Vierde" };
-
-/**
- * Verdieping-groep voor het lichtvenster, afgeleid uit het bolletje: «beneden» eerst, dan de genummerde
- * verdiepingen, dan «boven», en tot slot kamers zonder verdieping.
- */
-export function floorGroup(badge: RoomBadge | null): { key: string; label: string; order: number } {
-  if (!badge) return { key: "other", label: "Andere kamers", order: 1000 };
-  if (badge.kind === "down") return { key: "down", label: "Beneden", order: 0 };
-  if (badge.kind === "up") return { key: "up", label: "Boven", order: 500 };
-  const n = Number(badge.value);
-  return { key: `f${n}`, label: `${ORDINAL_LABELS[badge.value] ?? `${n}e`} verdieping`, order: 10 + n };
-}

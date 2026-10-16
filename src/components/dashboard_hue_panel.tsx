@@ -5,7 +5,8 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
-import { floorGroup, splitRoomName } from "@/lib/hue-room-name";
+import { splitRoomName } from "@/lib/hue-room-name";
+import { FLOORS, defaultFloor, readFloorOverrides, writeFloorOverrides, type FloorKey } from "@/lib/hue-room-floors";
 
 /**
  * Philips Hue op het avonddashboard (canvas «Dashboard · licht» F · Lampkolommen): elke kamer is een staande
@@ -61,7 +62,7 @@ function LampColumn({
   const tap = onTap ?? (() => onChange(room.on ? { on: false } : { on: true }));
 
   return (
-    <div className={cn("flex shrink-0 flex-col items-center", tall ? "h-full w-[96px] gap-2.5" : "w-[84px] gap-1.5")}>
+    <div className={cn("flex shrink-0 flex-col items-center", tall ? "min-h-0 w-[96px] flex-1 gap-2.5" : "w-[84px] gap-1.5")}>
       <button
         type="button"
         role="slider"
@@ -202,14 +203,17 @@ function HueLightsModal({
   }, [onClose]);
 
   const indexOf = new Map(rooms.map((r, i) => [r.id, i]));
-  const groups = new Map<string, { label: string; order: number; rooms: Room[] }>();
-  for (const r of rooms) {
-    const g = floorGroup(splitRoomName(r.name).badge);
-    const entry = groups.get(g.key) ?? { label: g.label, order: g.order, rooms: [] };
-    entry.rooms.push(r);
-    groups.set(g.key, entry);
-  }
-  const ordered = Array.from(groups.values()).sort((a, b) => a.order - b.order);
+  // Verdieping per kamer: eigen keuze (bewaard op dit toestel) of de standaard (zie hue-room-floors).
+  const [overrides, setOverrides] = React.useState<Record<string, FloorKey>>({});
+  React.useEffect(() => setOverrides(readFloorOverrides()), []);
+  const [editing, setEditing] = React.useState(false);
+  const floorOf = (r: Room): FloorKey => overrides[r.id] ?? defaultFloor(r.name);
+  const moveRoom = (r: Room, floor: FloorKey) => {
+    const next = { ...overrides, [r.id]: floor };
+    setOverrides(next);
+    writeFloorOverrides(next);
+  };
+  const ordered = FLOORS.map((f) => ({ key: f.key, label: f.label, rooms: rooms.filter((r) => floorOf(r) === f.key) })).filter((g) => g.rooms.length > 0);
   const action = "h-10 rounded-pill bg-fixed-white/10 px-4 text-sm font-bold text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-40 [@media(hover:hover)]:hover:bg-fixed-white/[0.16]";
 
   return createPortal(
@@ -224,6 +228,9 @@ function HueLightsModal({
             <h2 className="mt-0.5 text-[30px] font-extrabold tracking-[-0.02em]">Alle lampen</h2>
           </div>
           <div className="flex items-center gap-2">
+            <button type="button" aria-pressed={editing} className={cn(action, editing && "bg-fixed-white text-[#1a2036] [@media(hover:hover)]:hover:bg-fixed-white")} onClick={() => setEditing((e) => !e)}>
+              {editing ? "Klaar" : "Indeling"}
+            </button>
             <button type="button" className={action} disabled={rooms.every((r) => r.on)} onClick={() => void setRoom(rooms.filter((r) => !r.on), { on: true })}>
               Alles aan
             </button>
@@ -248,17 +255,37 @@ function HueLightsModal({
             met dezelfde marge aan begin en eind. */}
         <ScrollLane className="-mx-7 mt-6 flex min-h-0 flex-1 gap-6 px-7">
           {ordered.map((g) => (
-            <section key={g.label} aria-label={g.label} className="flex min-h-0 shrink-0 flex-col gap-3.5 border-r border-fixed-white/[0.08] pr-6 last:border-r-0 last:pr-0">
+            <section key={g.key} aria-label={g.label} className="flex min-h-0 shrink-0 flex-col gap-3.5 border-r border-fixed-white/[0.08] pr-6 last:border-r-0 last:pr-0">
               <h3 className="whitespace-nowrap text-[11px] font-extrabold uppercase tracking-[0.08em] text-[rgba(200,210,255,0.55)]">{g.label}</h3>
               <div className="flex min-h-0 flex-1 gap-2">
                 {g.rooms.map((room) => (
-                  <LampColumn key={room.id} room={room} index={indexOf.get(room.id) ?? 0} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} tall />
+                  <div key={room.id} className="flex h-full min-h-0 flex-col items-center gap-2">
+                    <LampColumn room={room} index={indexOf.get(room.id) ?? 0} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} tall />
+                    {editing ? (
+                      <select
+                        aria-label={`Verdieping van ${room.name}`}
+                        value={g.key}
+                        onChange={(e) => moveRoom(room, e.target.value as FloorKey)}
+                        className="h-8 w-[96px] rounded-lg bg-fixed-white/[0.12] px-1.5 text-xs font-bold text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [&>option]:text-[#1a2036]"
+                      >
+                        {FLOORS.map((f) => (
+                          <option key={f.key} value={f.key} label={f.short}>
+                            {f.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </div>
                 ))}
               </div>
             </section>
           ))}
         </ScrollLane>
-        <p className="mt-4 text-center text-[13px] text-fixed-white/45">Schuif een kolom omhoog of omlaag om te dimmen · tik op een kolom of het schakelaartje om aan of uit te zetten</p>
+        <p className="mt-4 text-center text-[13px] text-fixed-white/45">
+          {editing
+            ? "Kies per kamer de verdieping · wordt bewaard op dit toestel"
+            : "Schuif een kolom omhoog of omlaag om te dimmen · tik op een kolom of het schakelaartje om aan of uit te zetten"}
+        </p>
       </div>
     </div>,
     document.body,
