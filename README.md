@@ -94,3 +94,22 @@ that started it; test iPhone PWA authorization on a physical device.
 
 References: [cloud setup](https://developers.meethue.com/develop/hue-api-v2/cloud2cloud-getting-started/)
 and [OAuth](https://developers.meethue.com/develop/hue-api/remote-authentication-oauth/).
+
+#### Local Hue development
+
+Use a separate Hue developer registration with the exact callback
+`https://localhost:3011/api/hue/callback`. Put its `HUE_CLIENT_ID`,
+`HUE_CLIENT_SECRET`, `HUE_REDIRECT_URI` and a new random `HUE_OAUTH_SECRET`
+in the ignored `.env.local` file. Keep the existing `INSTANT_APP_ADMIN_TOKEN`.
+
+Run `npm run dev:https` in your own terminal. Next.js downloads mkcert and sets up
+a trusted local HTTPS certificate; the first run may ask for your macOS password.
+Complete that prompt yourself. Certificate keys are ignored by Git.
+
+Open `https://localhost:3011`, sign in to Shopping List, then connect Hue under
+**Profiel → Philips Hue**. Use `https://localhost:3011/?moment=avond` and select
+**Dashboard** to test the room controls. Use the exact `localhost` address, rather
+than `127.0.0.1`, so the registered callback and browser cookies match.
+
+The HTTPS preview uses `.next-https`, allowing the ordinary HTTP preview to keep
+running independently. Local OAuth credentials do not change the hosted settings.

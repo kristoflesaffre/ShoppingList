@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Keep the HTTPS Hue preview separate from the existing HTTP preview/build.
+  distDir: process.env.LOCAL_HTTPS_DEV === "1" ? ".next-https" : ".next",
   async redirects() {
     return [
       {

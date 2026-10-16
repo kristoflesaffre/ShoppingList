@@ -15,6 +15,8 @@ node_modules/
 
 # Next.js (voor later)
 .next/
+.next-https/
+certificates/
 out/
 build/
 dist/

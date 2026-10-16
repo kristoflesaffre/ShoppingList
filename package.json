@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:https": "LOCAL_HTTPS_DEV=1 next dev --hostname localhost --port 3011 --experimental-https",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
