@@ -343,7 +343,7 @@ function ShortcutTile({
   );
 }
 
-function AgendaColumn() {
+function AgendaColumn({ todayOnly = false }: { todayOnly?: boolean }) {
   const { state, connected, allDay, timed, upcomingDays, nowMin, nowLabel, connect } = useTodayAgenda();
   const left = timed.filter((r) => r.state !== "past").length;
 
@@ -385,7 +385,7 @@ function AgendaColumn() {
       ) : (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <DashboardPhotoTimeline allDay={allDay} timed={timed} upcomingDays={upcomingDays} nowMin={nowMin} nowLabel={nowLabel} />
+            <DashboardPhotoTimeline allDay={allDay} timed={timed} upcomingDays={upcomingDays} nowMin={nowMin} nowLabel={nowLabel} maxDays={todayOnly ? 0 : 3} />
           </div>
         </>
       )}
@@ -448,6 +448,34 @@ export function DashboardReminders({ userId }: { userId: string }) {
   );
 }
 
+/** Ochtend (5 – 10 u): het dashboard toont enkel vandaag. Wordt elke minuut opnieuw bepaald. */
+const MORNING_FROM = 5;
+const MORNING_TO = 10;
+
+function isMorning(d = new Date()): boolean {
+  const h = d.getHours();
+  return h >= MORNING_FROM && h < MORNING_TO;
+}
+
+function useMorning(): boolean {
+  const [morning, setMorning] = React.useState(() => isMorning());
+  React.useEffect(() => {
+    const tick = () => setMorning(isMorning());
+    const id = window.setInterval(tick, 60_000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, []);
+  return morning;
+}
+
+/**
+ * Tablet-dashboard. Overdag: vandaag + morgen (weer, eten), agenda met de komende dagen en de tegels
+ * Te kopen / Lijstjes. 's Ochtends (5 – 10 u) enkel vandaag: geen morgen-tegels, geen volgende dagen in
+ * de agenda en geen snelkoppelingen.
+ */
 export function HomeTabletDashboard({
   todayMeal,
   tomorrowMeal,
@@ -460,21 +488,22 @@ export function HomeTabletDashboard({
   nextShopping: DashboardShopping;
 }) {
   const weather = useWeather();
+  const morning = useMorning();
   return (
     <div className="flex h-[max(470px,calc(100dvh-196px))] gap-3.5 pt-5 motion-safe:animate-fade-up">
       <div className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
         <div className="flex min-h-0 flex-1 gap-3.5">
           <TodayWeather weather={weather} />
-          <TomorrowWeather weather={weather} />
+          {morning ? null : <TomorrowWeather weather={weather} />}
         </div>
         <div className="flex min-h-0 flex-1 gap-3.5">
           <TodayMeal meal={todayMeal} />
-          <TomorrowMeal meal={tomorrowMeal} />
+          {morning ? null : <TomorrowMeal meal={tomorrowMeal} />}
         </div>
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-        <AgendaColumn />
-        <DashboardShortcuts shoppingCount={shoppingCount} nextShopping={nextShopping} />
+        <AgendaColumn todayOnly={morning} />
+        {morning ? null : <DashboardShortcuts shoppingCount={shoppingCount} nextShopping={nextShopping} />}
       </div>
     </div>
   );
