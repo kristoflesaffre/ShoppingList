@@ -228,6 +228,10 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
   const getPhoto = useItemPhotoUrl(320);
   const photo = mealPhoto(meal, getPhoto);
   const platePhotos = plateItemPhotos(meal, getPhoto);
+  // Losse ingrediënten: de titel noemt er twee («A, B +8»); de rest staat in klein lettertype eronder.
+  const inTitle = new Set((meal?.items ?? []).slice(0, 2).map((i) => i.name));
+  const otherNames = meal && !meal.photoUrl ? (meal.names ?? []).filter((n) => !inTitle.has(n)) : [];
+  const others = otherNames.length ? otherNames.map((n, i) => (i === 0 ? n.charAt(0).toUpperCase() + n.slice(1) : n)).join(", ") : null;
   const inner = (
     <>
       {platePhotos.length > 1 ? (
@@ -258,7 +262,11 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
       <span className="absolute left-[18px] top-4 text-[11.5px] font-extrabold tracking-[0.08em] text-[rgba(90,40,0,0.75)] [[data-aod]_&]:text-[#d8a874]">VANDAAG ETEN WE</span>
       <span className={cn("absolute left-[18px] z-[4] max-w-[60%]", platePhotos.length > 1 ? "top-[42px]" : "bottom-[18px]")}>
         <span className={cn("block font-extrabold leading-tight tracking-[-0.02em] text-[#3d1d00] [[data-aod]_&]:text-[#ffe9cc]", platePhotos.length > 1 ? "text-[30px]" : "text-[34px]")}>{meal?.title ?? "Nog niets gepland"}</span>
-        <span className="block text-[13.5px] font-semibold text-[rgba(61,29,0,0.75)] [[data-aod]_&]:text-[#d8a874]">{meal ? meal.subtitle : "Plan iets in de kalender"}</span>
+        {others ? (
+          <span className="mt-1 line-clamp-5 block text-[13.5px] font-semibold leading-snug text-[rgba(61,29,0,0.75)] [[data-aod]_&]:text-[#d8a874]">{others}</span>
+        ) : (
+          <span className="block text-[13.5px] font-semibold text-[rgba(61,29,0,0.75)] [[data-aod]_&]:text-[#d8a874]">{meal ? meal.subtitle : "Plan iets in de kalender"}</span>
+        )}
       </span>
     </>
   );
