@@ -361,6 +361,15 @@ export default function ProfielPage() {
           onClick={() => router.push("/profiel/agenda")}
         />
       </li>
+      <li>
+        <ProfileSettingsRow
+          bare={bare}
+          icon={homeIcon}
+          label="Philips Hue"
+          description="Je verlichting koppelen"
+          onClick={() => router.push("/profiel/hue")}
+        />
+      </li>
     </>
   );
 
