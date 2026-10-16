@@ -369,7 +369,7 @@ function ShortcutTile({
   );
 }
 
-function AgendaColumn({ todayOnly = false }: { todayOnly?: boolean }) {
+function AgendaColumn() {
   const { state, connected, allDay, timed, upcomingDays, nowMin, nowLabel, connect } = useTodayAgenda();
   const left = timed.filter((r) => r.state !== "past").length;
 
@@ -411,7 +411,7 @@ function AgendaColumn({ todayOnly = false }: { todayOnly?: boolean }) {
       ) : (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <DashboardPhotoTimeline allDay={allDay} timed={timed} upcomingDays={upcomingDays} nowMin={nowMin} nowLabel={nowLabel} maxDays={todayOnly ? 0 : 3} />
+            <DashboardPhotoTimeline allDay={allDay} timed={timed} upcomingDays={upcomingDays} nowMin={nowMin} nowLabel={nowLabel} />
           </div>
         </>
       )}
@@ -474,7 +474,7 @@ export function DashboardReminders({ userId }: { userId: string }) {
   );
 }
 
-/** Ochtend (5 – 10 u): het dashboard toont enkel vandaag. Wordt elke minuut opnieuw bepaald. */
+/** Ochtend (5 – 10 u): geen morgen-tegels voor weer en eten. Wordt elke minuut opnieuw bepaald. */
 const MORNING_FROM = 5;
 const MORNING_TO = 10;
 
@@ -499,8 +499,8 @@ function useMorning(): boolean {
 
 /**
  * Tablet-dashboard. Overdag: vandaag + morgen (weer, eten), agenda met de komende dagen en de tegels
- * Te kopen / Lijstjes. 's Ochtends (5 – 10 u) enkel vandaag: geen morgen-tegels, geen volgende dagen in
- * de agenda en geen snelkoppelingen.
+ * Te kopen / Lijstjes. 's Ochtends (5 – 10 u) geen morgen-tegels voor weer en eten en geen snelkoppelingen;
+ * de agenda toont vandaag en vult aan met de volgende dagen.
  */
 export function HomeTabletDashboard({
   todayMeal,
@@ -528,7 +528,8 @@ export function HomeTabletDashboard({
         </div>
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-        <AgendaColumn todayOnly={morning} />
+        {/* Ook 's ochtends lopen morgen en de volgende dagen door, zodat de agenda nooit leeg oogt. */}
+        <AgendaColumn />
         {morning ? null : <DashboardShortcuts shoppingCount={shoppingCount} nextShopping={nextShopping} />}
       </div>
     </div>
