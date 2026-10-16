@@ -21,8 +21,8 @@ export const FLOORS: { key: FloorKey; label: string; short: string }[] = [
 /** Standaardindeling (zoals Kristof ze opgaf); wat je in het venster kiest gaat altijd voor. */
 const HOUSE_DEFAULTS: { match: RegExp; floor: FloorKey }[] = [
   { match: /\b(bureau|woonkamer|living|keuken|eetkamer)\b/i, floor: "g" },
-  { match: /\bgastenkamer\b/i, floor: "1" },
-  { match: /\b(slaapkamer|kinderkamer)\b|no[eë]/i, floor: "2" },
+  { match: /\bgastenkamer\b|\btv[\s-]?kamer\b/i, floor: "1" },
+  { match: /\b(slaapkamer|kinderkamer|hobbykamer|hobby)\b|no[eë]/i, floor: "2" },
 ];
 
 export function defaultFloor(name: string): FloorKey {

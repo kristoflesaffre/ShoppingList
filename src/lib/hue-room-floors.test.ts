@@ -18,9 +18,13 @@ describe("defaultFloor", () => {
     expect(defaultFloor("Slaapkamer")).toBe("2");
     expect(defaultFloor("Kinderkamer")).toBe("2");
     expect(defaultFloor("Kamer Noë")).toBe("2");
+    expect(defaultFloor("Hobbykamer")).toBe("2");
+    expect(defaultFloor("TV kamer")).toBe("1");
+    expect(defaultFloor("Tv-kamer")).toBe("1");
+    expect(defaultFloor("Tvkamer")).toBe("1");
   });
 
   it("valt terug op andere kamers", () => {
-    expect(defaultFloor("Hobbykamer")).toBe("other");
+    expect(defaultFloor("Zolder opslag")).toBe("other");
   });
 });
