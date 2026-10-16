@@ -9,9 +9,10 @@ import { floorGroup, splitRoomName } from "@/lib/hue-room-name";
 
 /**
  * Philips Hue op het avonddashboard (canvas «Dashboard · licht» F · Lampkolommen): elke kamer is een staande
- * capsule die van onder opvult met haar helderheid, met een zachte gloed. Op en neer slepen = dimmen (wordt bij
- * loslaten verstuurd); tik = het lichtvenster openen (canvas «licht-venster» A): alle kamers per verdieping als
- * hoge kolommen met een schakelaartje. «Alles uit» bovenaan. Via /api/hue/rooms en /api/hue/light.
+ * capsule die van onder opvult met haar helderheid, met een zachte gloed. Tik op een kolom = aan/uit, op en neer
+ * slepen = dimmen (wordt bij loslaten verstuurd). Tik ergens anders op het paneel = het lichtvenster (canvas
+ * «licht-venster» A): alle kamers per verdieping als hoge kolommen met een schakelaartje. Via /api/hue/rooms en
+ * /api/hue/light.
  */
 
 type Room = { id: string; name: string; archetype: string; on: boolean; brightness: number | null };
@@ -306,10 +307,19 @@ export function DashboardHuePanel() {
 
   const anyOn = state.kind === "ready" && state.rooms.some((r) => r.on);
 
+  // Venster buiten de <section>: anders zou een tik op de achtergrond van het venster (via React-bubbling)
+  // het paneel-klik-event raken en het venster meteen weer openen.
   return (
+    <>
     <section
       aria-label="Verlichting"
-      className="relative flex min-h-[96px] min-w-0 flex-1 flex-col overflow-hidden rounded-[24px] bg-[radial-gradient(120%_140%_at_0%_0%,#3a2f1c_0%,#1c1a2c_45%,#11101e_100%)] px-[18px] py-3.5 text-fixed-white shadow-[0_18px_40px_-26px_rgba(255,190,80,0.45)] [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#2a3352_0%,#1e2640_55%,#171d32_100%)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(160,180,255,0.25)]"
+      // Tik op een lege plek in het paneel (niet op een kolom of knop) = lichtvenster openen.
+      onClick={(e) => {
+        if (state.kind !== "ready" || state.rooms.length === 0) return;
+        if ((e.target as Element).closest("button, a, [role=slider]")) return;
+        setOpen(true);
+      }}
+      className="relative flex cursor-pointer min-h-[96px] min-w-0 flex-1 flex-col overflow-hidden rounded-[24px] bg-[radial-gradient(120%_140%_at_0%_0%,#3a2f1c_0%,#1c1a2c_45%,#11101e_100%)] px-[18px] py-3.5 text-fixed-white shadow-[0_18px_40px_-26px_rgba(255,190,80,0.45)] [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#2a3352_0%,#1e2640_55%,#171d32_100%)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(160,180,255,0.25)]"
     >
       <div className="flex items-center justify-between">
         <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">LICHT</span>
@@ -350,12 +360,13 @@ export function DashboardHuePanel() {
         ) : (
           <div className="-mx-[18px] flex h-full min-h-0 w-[calc(100%+36px)] gap-0 overflow-x-auto px-[18px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {state.rooms.map((room, i) => (
-              <LampColumn key={room.id} room={room} index={i} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} onTap={() => setOpen(true)} />
+              <LampColumn key={room.id} room={room} index={i} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} />
             ))}
           </div>
         )}
       </div>
-      {open && state.kind === "ready" ? <HueLightsModal rooms={state.rooms} busy={busy} setRoom={setRoom} onClose={closeModal} /> : null}
     </section>
+    {open && state.kind === "ready" ? <HueLightsModal rooms={state.rooms} busy={busy} setRoom={setRoom} onClose={closeModal} /> : null}
+    </>
   );
 }
