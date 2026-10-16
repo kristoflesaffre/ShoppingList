@@ -85,7 +85,7 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
             commit(Math.min(100, Math.max(0, level + (e.key === "ArrowUp" ? 10 : -10))));
           }
         }}
-        className="relative flex min-h-[72px] w-[52px] flex-1 touch-pan-x select-none justify-center overflow-hidden rounded-full bg-white/[0.06] pt-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-70"
+        className="relative flex min-h-[72px] w-[52px] flex-1 touch-pan-x select-none justify-center overflow-hidden rounded-full bg-fixed-white/[0.06] pt-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-70"
       >
         {lit ? (
           <span
@@ -94,14 +94,14 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
             style={{ height: `${Math.max(level, 12)}%`, backgroundImage: `linear-gradient(0deg, ${from}, ${to})`, boxShadow: `0 0 22px 2px ${from}88` }}
           />
         ) : null}
-        <span className={cn("relative text-[13px] font-extrabold tabular-nums", !lit ? "text-white/50" : level >= 80 ? "text-[#5a3300]" : "text-white")}>{lit ? level : "–"}</span>
+        <span className={cn("relative text-[13px] font-extrabold tabular-nums", !lit ? "text-fixed-white/50" : level >= 80 ? "text-[#5a3300]" : "text-fixed-white")}>{lit ? level : "–"}</span>
         {/* Verdieping als bolletje: «1»/«2» of een pijl omhoog (boven) / omlaag (beneden). */}
         {badge ? (
           <span
             aria-hidden
             className={cn(
               "absolute bottom-2 left-1/2 flex size-5 -translate-x-1/2 items-center justify-center rounded-full text-[11px] font-extrabold",
-              lit && level >= 20 ? "bg-white/70 text-[#5a3300]" : "bg-white/15 text-white/80",
+              lit && level >= 20 ? "bg-fixed-white/70 text-[#5a3300]" : "bg-fixed-white/15 text-fixed-white/80",
             )}
           >
             {badge.kind === "number" ? (
@@ -114,7 +114,7 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
           </span>
         ) : null}
       </button>
-      <span className={cn("w-full truncate text-center text-[11px] font-bold", lit ? "text-white" : "text-white/65")}>{base}</span>
+      <span className={cn("w-full truncate text-center text-[11px] font-bold", lit ? "text-fixed-white" : "text-fixed-white/65")}>{base}</span>
     </div>
   );
 }
@@ -176,15 +176,15 @@ export function DashboardHuePanel() {
   return (
     <section
       aria-label="Verlichting"
-      className="relative flex min-h-[96px] min-w-0 flex-1 flex-col overflow-hidden rounded-[24px] bg-[radial-gradient(120%_140%_at_0%_0%,#3a2f1c_0%,#1c1a2c_45%,#11101e_100%)] px-[18px] py-3.5 text-white shadow-[0_18px_40px_-26px_rgba(255,190,80,0.45)]"
+      className="relative flex min-h-[96px] min-w-0 flex-1 flex-col overflow-hidden rounded-[24px] bg-[radial-gradient(120%_140%_at_0%_0%,#3a2f1c_0%,#1c1a2c_45%,#11101e_100%)] px-[18px] py-3.5 text-fixed-white shadow-[0_18px_40px_-26px_rgba(255,190,80,0.45)]"
     >
       <div className="flex items-center justify-between">
-        <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-white/75">LICHT</span>
+        <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">LICHT</span>
         {state.kind === "ready" && anyOn ? (
           <button
             type="button"
             onClick={() => void setRoom(state.rooms.filter((r) => r.on), { on: false })}
-            className="h-7 rounded-pill bg-white/10 px-3 text-xs font-bold text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:bg-white/[0.16]"
+            className="h-7 rounded-pill bg-fixed-white/10 px-3 text-xs font-bold text-fixed-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [@media(hover:hover)]:hover:bg-fixed-white/[0.16]"
           >
             Alles uit
           </button>
@@ -196,24 +196,24 @@ export function DashboardHuePanel() {
         {state.kind === "loading" ? (
           <div className="flex h-full gap-3" aria-busy aria-label="Lampen laden">
             {[0, 1, 2, 3].map((i) => (
-              <span key={i} className="h-full min-h-[72px] w-[52px] animate-pulse rounded-full bg-white/10" />
+              <span key={i} className="h-full min-h-[72px] w-[52px] animate-pulse rounded-full bg-fixed-white/10" />
             ))}
           </div>
         ) : state.kind === "not-configured" ? (
-          <p className="text-sm text-white/70">Philips Hue is nog niet ingesteld op deze versie van de app.</p>
+          <p className="text-sm text-fixed-white/70">Philips Hue is nog niet ingesteld op deze versie van de app.</p>
         ) : state.kind === "not-connected" ? (
-          <Link href="/profiel/hue" className="inline-flex h-11 items-center rounded-pill bg-white px-4 text-sm font-bold text-[#1c1a2c] no-underline">
+          <Link href="/profiel/hue" className="inline-flex h-11 items-center rounded-pill bg-fixed-white px-4 text-sm font-bold text-[#1c1a2c] no-underline">
             {state.reconnect ? "Koppel Philips Hue opnieuw" : "Koppel Philips Hue"}
           </Link>
         ) : state.kind === "error" ? (
-          <p className="text-sm text-white/70">
+          <p className="text-sm text-fixed-white/70">
             Hue is even niet bereikbaar.{" "}
             <button type="button" onClick={() => void load()} className="font-bold underline">
               Opnieuw
             </button>
           </p>
         ) : state.rooms.length === 0 ? (
-          <p className="text-sm text-white/70">Geen kamers gevonden in je Hue-app.</p>
+          <p className="text-sm text-fixed-white/70">Geen kamers gevonden in je Hue-app.</p>
         ) : (
           <div className="-mx-[18px] flex h-full min-h-0 w-[calc(100%+36px)] gap-0 overflow-x-auto px-[18px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {state.rooms.map((room, i) => (

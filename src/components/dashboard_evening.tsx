@@ -50,13 +50,13 @@ function PosterButton({ media, onOpen }: { media: EveningMedia; onOpen: (m: Even
       type="button"
       onClick={() => onOpen(media)}
       aria-label={`${media.title} openen`}
-      className="aspect-[2/3] w-[min(calc((100cqw-24px)/2.5),calc(var(--poster-h,9999px)*2/3))] shrink-0 snap-start overflow-hidden rounded-[14px] bg-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_14px_24px_-14px_rgba(0,0,0,0.7)] transition-transform duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-safe:active:scale-[0.97]"
+      className="aspect-[2/3] w-[min(calc((100cqw-24px)/2.5),calc(var(--poster-h,9999px)*2/3))] shrink-0 snap-start overflow-hidden rounded-[14px] bg-fixed-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_14px_24px_-14px_rgba(0,0,0,0.7)] transition-transform duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-[0.97]"
     >
       {media.posterUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- TMDB-poster
         <img src={media.posterUrl} alt="" className="size-full object-cover" />
       ) : (
-        <span className="flex size-full items-center justify-center p-2 text-center text-xs font-bold text-white/80">{media.title}</span>
+        <span className="flex size-full items-center justify-center p-2 text-center text-xs font-bold text-fixed-white/80">{media.title}</span>
       )}
     </button>
   );
@@ -83,10 +83,10 @@ function EveningTile({
   return (
     <section
       aria-label={label.toLowerCase()}
-      className={cn(tile, "flex min-w-0 flex-1 flex-col self-start pt-4 text-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)]")}
+      className={cn(tile, "flex min-w-0 flex-1 flex-col self-start pt-4 text-fixed-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)]")}
       style={{ background }}
     >
-      <span className="px-[18px] text-[11.5px] font-extrabold tracking-[0.08em] text-white/75">{label}</span>
+      <span className="px-[18px] text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">{label}</span>
       {/* Container-query-breedte: 2,5 posters over de breedte, hoogte volgt uit 2:3 (niets afgesneden);
           de tegel is precies zo hoog als de posters, zonder lege ruimte eronder. */}
       <div className="mt-3 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-px-[18px] px-[18px] pb-4 [container-type:inline-size] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -232,7 +232,7 @@ export function FilmDetailModal({
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="relative flex max-h-[88dvh] w-full max-w-[940px] flex-col overflow-hidden rounded-[28px] bg-[#14112a] text-white shadow-[0_40px_80px_-30px_rgba(0,0,0,0.8)]"
+          className="relative flex max-h-[88dvh] w-full max-w-[940px] flex-col overflow-hidden rounded-[28px] bg-[#14112a] text-fixed-white shadow-[0_40px_80px_-30px_rgba(0,0,0,0.8)]"
         >
           {/* Achtergrondbeeld met de trailerknop */}
           <div className="relative h-[min(38dvh,340px)] w-full shrink-0 bg-[#221b45]">
@@ -264,7 +264,7 @@ export function FilmDetailModal({
               type="button"
               onClick={onClose}
               aria-label="Sluiten"
-              className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-[rgba(16,17,48,0.45)] text-white backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-[rgba(16,17,48,0.45)] text-fixed-white backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -299,10 +299,10 @@ export function FilmDetailModal({
                 <h2 className="mt-1 text-[34px] font-extrabold leading-tight tracking-[-0.02em]">
                   {detail?.title ?? media.title}
                 </h2>
-                <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-white/70">
+                <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-fixed-white/70">
                   <span>{meta}</span>
                   {detail?.score ? (
-                    <span className="inline-flex items-center gap-1 font-bold text-white">
+                    <span className="inline-flex items-center gap-1 font-bold text-fixed-white">
                       <StarGlyph
                         source={detail.scoreSource}
                         className="size-4"
@@ -317,7 +317,7 @@ export function FilmDetailModal({
             {detail ? (
               <>
                 {detail.overview ? (
-                  <p className="mt-5 max-w-[720px] text-[15px] leading-6 text-white/85">
+                  <p className="mt-5 max-w-[720px] text-[15px] leading-6 text-fixed-white/85">
                     {detail.overview}
                   </p>
                 ) : null}
@@ -327,14 +327,14 @@ export function FilmDetailModal({
                       href={`https://www.youtube.com/watch?v=${detail.trailerKey}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex h-10 items-center gap-2 rounded-pill bg-white/[0.12] px-4 text-sm font-bold text-white no-underline [@media(hover:hover)]:hover:bg-white/[0.2]"
+                      className="inline-flex h-10 items-center gap-2 rounded-pill bg-fixed-white/[0.12] px-4 text-sm font-bold text-fixed-white no-underline [@media(hover:hover)]:hover:bg-fixed-white/[0.2]"
                     >
                       Op YouTube {FilmIcons.external}
                     </a>
                   ) : null}
                   <Link
                     href={`/films-series/${media.id}`}
-                    className="inline-flex h-10 items-center rounded-pill bg-white/[0.12] px-4 text-sm font-bold text-white no-underline [@media(hover:hover)]:hover:bg-white/[0.2]"
+                    className="inline-flex h-10 items-center rounded-pill bg-fixed-white/[0.12] px-4 text-sm font-bold text-fixed-white no-underline [@media(hover:hover)]:hover:bg-fixed-white/[0.2]"
                   >
                     Alles over{" "}
                     {detail.type === "tv" ? "deze serie" : "deze film"}
@@ -344,7 +344,7 @@ export function FilmDetailModal({
                   <>
                     <h3 className="mt-7 text-base font-extrabold">Cast</h3>
                     {/* Castnamen in het wit op de donkere achtergrond. */}
-                    <div className="-mx-1 mt-3 flex gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_p]:!text-white/90 [&_p+p]:!text-white/55">
+                    <div className="-mx-1 mt-3 flex gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_p]:!text-fixed-white/90 [&_p+p]:!text-fixed-white/55">
                       {detail.cast.slice(0, 14).map((c) => (
                         <CastRound key={c.name + c.character} person={c} />
                       ))}
@@ -353,7 +353,7 @@ export function FilmDetailModal({
                 ) : null}
               </>
             ) : failed ? (
-              <p className="mt-6 text-sm text-white/70">
+              <p className="mt-6 text-sm text-fixed-white/70">
                 Details konden niet geladen worden.
               </p>
             ) : (
@@ -362,9 +362,9 @@ export function FilmDetailModal({
                 aria-busy
                 aria-label="Details laden"
               >
-                <span className="block h-3 w-[80%] animate-pulse rounded bg-white/10" />
-                <span className="block h-3 w-[70%] animate-pulse rounded bg-white/10" />
-                <span className="block h-3 w-[55%] animate-pulse rounded bg-white/10" />
+                <span className="block h-3 w-[80%] animate-pulse rounded bg-fixed-white/10" />
+                <span className="block h-3 w-[70%] animate-pulse rounded bg-fixed-white/10" />
+                <span className="block h-3 w-[55%] animate-pulse rounded bg-fixed-white/10" />
               </div>
             )}
           </div>

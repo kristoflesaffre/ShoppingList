@@ -53,7 +53,7 @@ function TilePhoto({ photo, width }: { photo: string; width: number }) {
   );
 }
 
-const tileBase = "relative flex h-[72px] min-w-0 items-center overflow-hidden rounded-[18px] bg-white [[data-aod]_&]:brightness-[0.5]";
+const tileBase = "relative flex h-[72px] min-w-0 items-center overflow-hidden rounded-[18px] bg-fixed-white [[data-aod]_&]:brightness-[0.5]";
 // Witte tegel met een zachte schaduw: zo staat ze los van de (blauw-paarse) verloopachtergrond van het
 // paneel, ook als de afspraak zelf blauw is. De afspraakkleur zit in de tekst (en de rand als ze nu bezig is).
 const lift = (ring = "0 0 0 1px rgba(16,17,48,0.05)") => `${ring}, 0 8px 18px -14px rgba(16,17,48,0.35)`;
@@ -147,7 +147,7 @@ function EventTile({ row }: { row: AgendaRow }) {
             {row.title}
           </span>
           {now ? (
-            <span className="inline-flex h-5 shrink-0 items-center rounded-pill px-2 text-[11px] font-bold text-white" style={{ backgroundColor: rgba(row.color) }}>
+            <span className="inline-flex h-5 shrink-0 items-center rounded-pill px-2 text-[11px] font-bold text-fixed-white" style={{ backgroundColor: rgba(row.color) }}>
               Nu
             </span>
           ) : null}

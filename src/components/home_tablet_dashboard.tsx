@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { applyTheme, readThemePreference } from "@/lib/theme";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { spreadHours, useWeather, type Weather, type WeatherKind } from "@/lib/weather";
 import { useVasteLijstjes } from "@/components/vaste_lijstjes";
@@ -153,7 +154,7 @@ function TodayWeather({ weather }: { weather: Weather | null }) {
   return (
     <section
       aria-label={`Weer vandaag in ${weather.place}`}
-      className={cn(tile, "flex min-w-0 flex-1 flex-col bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] px-[18px] py-4 text-white shadow-[0_18px_40px_-24px_rgba(40,100,220,0.8)] [[data-aod]_&]:bg-[linear-gradient(160deg,#173468,#0f2347_55%,#0a1630)] [[data-aod]_&]:text-[#eaf1ff] [[data-aod]_&]:shadow-[0_18px_40px_-26px_rgba(60,120,255,0.6)]")}
+      className={cn(tile, "flex min-w-0 flex-1 flex-col bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] px-[18px] py-4 text-fixed-white shadow-[0_18px_40px_-24px_rgba(40,100,220,0.8)] [[data-aod]_&]:bg-[linear-gradient(160deg,#173468,#0f2347_55%,#0a1630)] [[data-aod]_&]:text-[#eaf1ff] [[data-aod]_&]:shadow-[0_18px_40px_-26px_rgba(60,120,255,0.6)]")}
     >
       {/* Het dagbeeld (zoals weer-apps): een buiige dag toont buien, ook al is het nu even droog. */}
       <WeatherHero kind={weather.today.kind} size={196} className="absolute -right-[34px] -top-[38px]" />
@@ -164,15 +165,15 @@ function TodayWeather({ weather }: { weather: Weather | null }) {
       </span>
       <span className="mt-1 text-sm font-semibold">{weather.today.label}</span>
       {weather.today.rainChance >= 20 ? (
-        <span className="mt-2 inline-flex h-[26px] items-center gap-1.5 self-start rounded-pill bg-white/[0.22] px-2.5 text-xs font-bold">
+        <span className="mt-2 inline-flex h-[26px] items-center gap-1.5 self-start rounded-pill bg-fixed-white/[0.22] px-2.5 text-xs font-bold">
           ☂ {weather.today.rainChance}% kans op regen
           {weather.rainFromHour != null ? (weather.rainFromHour === new Date().getHours() ? " · nu" : ` · vanaf ${weather.rainFromHour}u`) : ""}
         </span>
       ) : null}
-      <ul ref={hoursRef} className="m-0 mt-auto flex list-none justify-between border-t border-white/30 p-0 pt-2.5">
+      <ul ref={hoursRef} className="m-0 mt-auto flex list-none justify-between border-t border-fixed-white/30 p-0 pt-2.5">
         {spreadHours(weather.hours, hourSlots).map((h, i) => (
           <li key={h.hour} className="flex flex-col items-center gap-0.5">
-            <span className="text-[11px] font-bold text-white/85">{i === 0 ? "Nu" : `${h.hour}u`}</span>
+            <span className="text-[11px] font-bold text-fixed-white/85">{i === 0 ? "Nu" : `${h.hour}u`}</span>
             <WeatherIcon kind={h.kind} size={28} />
             <span className="text-[13px] font-extrabold">{h.temp}°</span>
           </li>
@@ -189,16 +190,16 @@ function TomorrowWeather({ weather }: { weather: Weather | null }) {
       aria-label={t ? `Weer morgen: ${t.label}, ${t.max} tot ${t.min} graden` : "Weer morgen"}
       className={cn(tile, "flex w-[124px] shrink-0 flex-col items-center justify-center gap-1.5 bg-[linear-gradient(165deg,#7ea7ee,#a9c6f6_60%,#cadcfa)] text-center shadow-[0_14px_32px_-24px_rgba(40,100,220,0.7)] [[data-aod]_&]:bg-[linear-gradient(170deg,#141c33,#0d1222)] [[data-aod]_&]:shadow-[0_0_0_1px_#1d2742]")}
     >
-      <span className="text-[11px] font-extrabold tracking-[0.08em] text-white/90 [[data-aod]_&]:text-[#9db7e6]">MORGEN</span>
+      <span className="text-[11px] font-extrabold tracking-[0.08em] text-fixed-white/90 [[data-aod]_&]:text-[#9db7e6]">MORGEN</span>
       {t ? (
         <>
           <WeatherHero kind={t.kind} size={76} />
-          <span className="text-2xl font-extrabold leading-none text-white [[data-aod]_&]:text-[#e4e9f7]">{t.max}°</span>
-          <span className="text-[13px] font-bold text-white/80 [[data-aod]_&]:text-[#7d8aa8]">{t.min}°</span>
-          {t.rainChance >= 20 ? <span className="mt-0.5 text-xs font-extrabold text-white [[data-aod]_&]:text-[#9db7e6]">☂ {t.rainChance}%</span> : null}
+          <span className="text-2xl font-extrabold leading-none text-fixed-white [[data-aod]_&]:text-[#e4e9f7]">{t.max}°</span>
+          <span className="text-[13px] font-bold text-fixed-white/80 [[data-aod]_&]:text-[#7d8aa8]">{t.min}°</span>
+          {t.rainChance >= 20 ? <span className="mt-0.5 text-xs font-extrabold text-fixed-white [[data-aod]_&]:text-[#9db7e6]">☂ {t.rainChance}%</span> : null}
         </>
       ) : (
-        <span className="size-16 animate-pulse rounded-full bg-white/40" />
+        <span className="size-16 animate-pulse rounded-full bg-fixed-white/40" />
       )}
     </section>
   );
@@ -302,18 +303,18 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
           <CalendarLoosePlate photos={itemPhotos.slice(0, 3)} size={88} />
         </span>
       ) : photo ? (
-        <span className="block size-[76px] overflow-hidden rounded-full bg-white shadow-[0_12px_20px_-12px_rgba(120,40,0,0.6)]">
+        <span className="block size-[76px] overflow-hidden rounded-full bg-fixed-white shadow-[0_12px_20px_-12px_rgba(120,40,0,0.6)]">
           {/* eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app */}
           <img src={photo} alt="" className="aod-kenburns size-full object-cover [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" />
         </span>
       ) : (
-        <span className="flex size-[76px] items-center justify-center rounded-full border-[1.5px] border-dashed border-[rgba(120,55,15,0.3)] bg-white/25 text-2xl text-[rgba(120,55,15,0.55)]">?</span>
+        <span className="flex size-[76px] items-center justify-center rounded-full border-[1.5px] border-dashed border-[rgba(120,55,15,0.3)] bg-fixed-white/25 text-2xl text-[rgba(120,55,15,0.55)]">?</span>
       )}
       <span className={cn("text-[13.5px] font-extrabold leading-tight text-[#3d1d00] [[data-aod]_&]:text-[#e4e6ef]", allNames ? "line-clamp-6" : "line-clamp-2")}>
         {allNames ?? meal?.title ?? "Nog niets"}
       </span>
       {meal?.fromStock ? (
-        <span className="inline-flex h-[22px] items-center gap-1 rounded-pill bg-white px-2 text-[11px] font-extrabold text-[#2f6fd0] [[data-aod]_&]:bg-[rgba(80,130,255,0.16)] [[data-aod]_&]:text-[#8fb8ff]" title="Vanavond uit de diepvries halen">
+        <span className="inline-flex h-[22px] items-center gap-1 rounded-pill bg-fixed-white px-2 text-[11px] font-extrabold text-[#2f6fd0] [[data-aod]_&]:bg-[rgba(80,130,255,0.16)] [[data-aod]_&]:text-[#8fb8ff]" title="Vanavond uit de diepvries halen">
           ❄ ontdooien
         </span>
       ) : null}
@@ -378,7 +379,7 @@ function AgendaColumn() {
   return (
     <section
       aria-label="Agenda vandaag"
-      className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] bg-[linear-gradient(170deg,#e3e6ff_0%,#f3f2ff_38%,#ffffff_70%)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(79,85,241,0.55),0_0_0_1px_var(--border-subtle)] [[data-aod]_&]:bg-[#120d22] [[data-aod]_&]:bg-[linear-gradient(170deg,#2b1f4d_0%,#1a1331_45%,#100b1e_100%)] [[data-aod]_&]:shadow-[0_0_0_1px_#33275a,0_18px_40px_-26px_rgba(120,80,220,0.5)]"
+      className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[24px] bg-[var(--white)] bg-[linear-gradient(170deg,#e3e6ff_0%,#f3f2ff_38%,#ffffff_70%)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(79,85,241,0.55),0_0_0_1px_var(--border-subtle)] [[data-theme=dark]_&]:bg-[#120d22] [[data-theme=dark]_&]:bg-[linear-gradient(170deg,#2b1f4d_0%,#1a1331_45%,#100b1e_100%)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#33275a,0_18px_40px_-26px_rgba(120,80,220,0.5)]"
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-xl font-extrabold text-text-primary">Vandaag</h2>
@@ -406,7 +407,7 @@ function AgendaColumn() {
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
           <p className="text-[17px] font-extrabold text-text-primary">Je dag in één oogopslag</p>
           <p className="max-w-[260px] text-sm text-[var(--text-secondary)]">Koppel je Google-agenda om je afspraken van vandaag hier te zien.</p>
-          <button type="button" onClick={connect} className="inline-flex h-11 items-center rounded-pill bg-action-primary px-5 text-sm font-bold text-white">
+          <button type="button" onClick={connect} className="inline-flex h-11 items-center rounded-pill bg-action-primary px-5 text-sm font-bold text-fixed-white">
             Google-agenda koppelen
           </button>
         </div>
@@ -534,23 +535,70 @@ function useDashboardMoment(): { moment: DashboardMoment; testMoment: DashboardM
   return { moment: testMoment ?? real, testMoment, setTestMoment };
 }
 
-/** Kleine schakelaar bovenaan in het midden, enkel zichtbaar in testmodus. */
+type TestTheme = "light" | "dark" | "aod";
+const TEST_THEMES: { key: TestTheme; label: string }[] = [
+  { key: "light", label: "Licht" },
+  { key: "dark", label: "Donker" },
+  { key: "aod", label: "Always-on" },
+];
+
+/** Huidig thema op <html>: always-on (data-aod), anders het app-thema (data-theme). */
+function currentTestTheme(): TestTheme {
+  const root = document.documentElement;
+  return root.dataset.aod ? "aod" : root.dataset.theme === "dark" ? "dark" : "light";
+}
+
+/**
+ * Thema enkel voor deze test (niet opgeslagen): licht, donker (app-thema «Avond») of het always-on-scherm.
+ * «Echte tijd» zet het opgeslagen thema terug.
+ */
+function applyTestTheme(theme: TestTheme | null) {
+  const root = document.documentElement;
+  delete root.dataset.aod;
+  if (theme === null) {
+    applyTheme(readThemePreference());
+    return;
+  }
+  applyTheme(theme === "light" ? "light" : "dark");
+  if (theme === "aod") root.dataset.aod = "on";
+}
+
+const segment = (on: boolean) => cn("h-8 whitespace-nowrap rounded-pill px-3", on ? "bg-fixed-white text-[#14112a]" : "text-fixed-white/80 [@media(hover:hover)]:hover:bg-fixed-white/10");
+
+/** Kleine schakelaar bovenaan in het midden, enkel zichtbaar in testmodus: moment van de dag + thema. */
 function MomentTestBar({ value, onChange }: { value: DashboardMoment; onChange: (m: DashboardMoment | null) => void }) {
+  const [theme, setTheme] = React.useState<TestTheme>("light");
+  React.useEffect(() => setTheme(currentTestTheme()), []);
+  const pickTheme = (t: TestTheme) => {
+    applyTestTheme(t);
+    setTheme(t);
+  };
   return (
-    <div className="fixed left-1/2 top-3 z-[60] flex -translate-x-1/2 items-center gap-1 rounded-pill bg-[rgba(16,17,48,0.88)] p-1 pl-3 text-xs font-bold text-white shadow-[0_12px_28px_-12px_rgba(0,0,0,0.6)] backdrop-blur-md">
-      <span className="mr-1 text-white/60">Test</span>
+    <div
+      data-test-bar
+      className="fixed left-1/2 top-3 z-[60] flex -translate-x-1/2 items-center gap-1 rounded-pill bg-[rgba(16,17,48,0.88)] p-1 pl-3 text-xs font-bold text-fixed-white shadow-[0_12px_28px_-12px_rgba(0,0,0,0.6)] backdrop-blur-md"
+    >
+      <span className="mr-1 text-fixed-white/60">Test</span>
       {MOMENTS.map((m) => (
-        <button
-          key={m.key}
-          type="button"
-          onClick={() => onChange(m.key)}
-          aria-pressed={value === m.key}
-          className={cn("h-8 rounded-pill px-3", value === m.key ? "bg-white text-[#14112a]" : "text-white/80 [@media(hover:hover)]:hover:bg-white/10")}
-        >
+        <button key={m.key} type="button" onClick={() => onChange(m.key)} aria-pressed={value === m.key} className={segment(value === m.key)}>
           {m.label}
         </button>
       ))}
-      <button type="button" onClick={() => onChange(null)} className="h-8 rounded-pill px-3 text-white/80 [@media(hover:hover)]:hover:bg-white/10">
+      <span className="mx-1 h-5 w-px bg-fixed-white/20" aria-hidden />
+      {TEST_THEMES.map((t) => (
+        <button key={t.key} type="button" onClick={() => pickTheme(t.key)} aria-pressed={theme === t.key} className={segment(theme === t.key)}>
+          {t.label}
+        </button>
+      ))}
+      <span className="mx-1 h-5 w-px bg-fixed-white/20" aria-hidden />
+      <button
+        type="button"
+        onClick={() => {
+          applyTestTheme(null);
+          onChange(null);
+        }}
+        className="h-8 whitespace-nowrap rounded-pill px-3 text-fixed-white/80 [@media(hover:hover)]:hover:bg-fixed-white/10"
+      >
         Echte tijd
       </button>
     </div>
