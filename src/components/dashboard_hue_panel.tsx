@@ -61,7 +61,7 @@ function LampColumn({
   const tap = onTap ?? (() => onChange(room.on ? { on: false } : { on: true }));
 
   return (
-    <div className={cn("flex shrink-0 flex-col items-center", tall ? "h-full min-w-[60px] max-w-[104px] flex-1 basis-0 gap-2.5" : "w-[84px] gap-1.5")}>
+    <div className={cn("flex shrink-0 flex-col items-center", tall ? "h-full w-[96px] gap-2.5" : "w-[84px] gap-1.5")}>
       <button
         type="button"
         role="slider"
@@ -111,7 +111,7 @@ function LampColumn({
         }}
         className={cn(
           "relative flex flex-1 touch-pan-x select-none justify-center overflow-hidden rounded-full bg-fixed-white/[0.06] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-70",
-          tall ? "min-h-[160px] w-full max-w-[76px] pt-4" : "min-h-[72px] w-[52px] pt-2.5",
+          tall ? "min-h-[160px] w-[76px] pt-4" : "min-h-[72px] w-[52px] pt-2.5",
         )}
       >
         {lit ? (
@@ -243,25 +243,21 @@ function HueLightsModal({
           </div>
         </div>
 
-        {/* Alle kamers passen naast elkaar: groepen krijgen breedte naar hun aantal kamers en kolommen
-            krimpen tot 60px; pas bij heel veel kamers scrolt het venster (met zichtbaar schuifbalkje). */}
-        <div className="mt-6 flex min-h-0 flex-1 gap-5 overflow-x-auto [scrollbar-color:rgba(255,255,255,0.25)_transparent] [scrollbar-width:thin]">
+        {/* Vaste kolombreedte en vaste tussenruimtes; passen niet alle kamers, dan wordt het een baan die
+            zijwaarts scrolt (veeg, trackpad of muiswiel) en die tot aan de rand van het venster doorloopt,
+            met dezelfde marge aan begin en eind. */}
+        <ScrollLane className="-mx-7 mt-6 flex min-h-0 flex-1 gap-6 px-7">
           {ordered.map((g) => (
-            <section
-              key={g.label}
-              aria-label={g.label}
-              className="flex min-h-0 min-w-0 flex-col gap-3.5 border-r border-fixed-white/[0.08] pr-5 last:border-r-0 last:pr-0"
-              style={{ flex: `${g.rooms.length} 1 0%`, minWidth: g.rooms.length * 62 }}
-            >
-              <h3 className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[rgba(200,210,255,0.55)]">{g.label}</h3>
-              <div className="flex min-h-0 flex-1 gap-1">
+            <section key={g.label} aria-label={g.label} className="flex min-h-0 shrink-0 flex-col gap-3.5 border-r border-fixed-white/[0.08] pr-6 last:border-r-0 last:pr-0">
+              <h3 className="whitespace-nowrap text-[11px] font-extrabold uppercase tracking-[0.08em] text-[rgba(200,210,255,0.55)]">{g.label}</h3>
+              <div className="flex min-h-0 flex-1 gap-2">
                 {g.rooms.map((room) => (
                   <LampColumn key={room.id} room={room} index={indexOf.get(room.id) ?? 0} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} tall />
                 ))}
               </div>
             </section>
           ))}
-        </div>
+        </ScrollLane>
         <p className="mt-4 text-center text-[13px] text-fixed-white/45">Schuif een kolom omhoog of omlaag om te dimmen · tik op een kolom of het schakelaartje om aan of uit te zetten</p>
       </div>
     </div>,
@@ -270,10 +266,10 @@ function HueLightsModal({
 }
 
 /**
- * Rij kolommen in het dashboardpaneel. Passen niet alle kamers, dan vervaagt de rechterrand (er is meer) en
- * scrollt het muiswiel ook zijwaarts; op de tablet veeg je gewoon opzij.
+ * Horizontale baan die zijwaarts scrolt (vegen, trackpad of muiswiel). Is er meer dan zichtbaar, dan vervaagt
+ * de rechterrand als hint. Gebruikt in het dashboardpaneel en in het lichtvenster.
  */
-function PanelRow({ children }: { children: React.ReactNode }) {
+function ScrollLane({ className, children }: { className?: string; children: React.ReactNode }) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [more, setMore] = React.useState(false);
   React.useEffect(() => {
@@ -300,8 +296,9 @@ function PanelRow({ children }: { children: React.ReactNode }) {
     <div
       ref={ref}
       className={cn(
-        "-mx-[18px] flex h-full min-h-0 w-[calc(100%+36px)] gap-0 overflow-x-auto px-[18px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-        more && "[mask-image:linear-gradient(90deg,#000_82%,transparent)]",
+        "overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        more && "[mask-image:linear-gradient(90deg,#000_85%,transparent)]",
+        className,
       )}
     >
       {children}
@@ -416,11 +413,11 @@ export function DashboardHuePanel() {
         ) : state.rooms.length === 0 ? (
           <p className="text-sm text-fixed-white/70">Geen kamers gevonden in je Hue-app.</p>
         ) : (
-          <PanelRow>
+          <ScrollLane className="-mx-[18px] flex h-full min-h-0 w-[calc(100%+36px)] gap-0 px-[18px]">
             {state.rooms.map((room, i) => (
               <LampColumn key={room.id} room={room} index={i} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} />
             ))}
-          </PanelRow>
+          </ScrollLane>
         )}
       </div>
     </section>
