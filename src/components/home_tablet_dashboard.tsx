@@ -181,11 +181,11 @@ function mealPhoto(meal: DashboardMeal | null, getPhoto: (name: string) => strin
   return meal.photoUrl ?? meal.items.map((i) => i.photoUrl ?? getPhoto(i.name)).find(Boolean) ?? null;
 }
 
-/** Compositie van drie ingrediënten (zetmeel achter links, groente achter rechts, vlees/vis vooraan) in een vak van 250px. */
+/** Compositie van drie ingrediënten (zetmeel achter links, groente achter rechts, vlees/vis vooraan), dicht op elkaar in een vak van 270px. */
 const MEAL_TRIO = [
-  { x: 6, y: 30, s: 138, r: -8, z: 1 },
-  { x: 118, y: 6, s: 128, r: 10, z: 2 },
-  { x: 54, y: 104, s: 150, r: -4, z: 3 },
+  { x: -6, y: 44, s: 150, r: -12, z: 1 },
+  { x: 118, y: 24, s: 140, r: 14, z: 2 },
+  { x: 74, y: 104, s: 164, r: -5, z: 3 },
 ] as const;
 
 /** Productfoto's voor het bord bij losse ingrediënten (zetmeel, groente, vlees/vis eerst). */
@@ -201,9 +201,9 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
   const inner = (
     <>
       {platePhotos.length > 1 ? (
-        // Losse ingrediënten: zetmeel, groente en vlees/vis als losse compositie rechtsboven (geen bord),
-        // op dezelfde plek als een receptfoto.
-        <span className="aod-kenburns absolute -right-[30px] -top-1.5 isolate size-[250px] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" aria-hidden>
+        // Losse ingrediënten: zetmeel, groente en vlees/vis als losse compositie in de hoek rechtsonder
+        // (geen bord), deels van de tegel af; de titel staat dan bovenaan.
+        <span className="aod-kenburns absolute -bottom-[46px] -right-[44px] isolate size-[270px] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" aria-hidden>
           {platePhotos.slice(0, 3).map((src, i) => {
             const slot = MEAL_TRIO[i];
             return (
@@ -226,7 +226,7 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
         <img src="/images/ui/kalender_320.webp" alt="" className="absolute -bottom-4 -right-4 size-[180px] object-contain opacity-90" />
       )}
       <span className="absolute left-[18px] top-4 text-[11.5px] font-extrabold tracking-[0.08em] text-[rgba(90,40,0,0.75)] [[data-aod]_&]:text-[#d8a874]">VANDAAG ETEN WE</span>
-      <span className="absolute bottom-[18px] left-[18px] max-w-[60%]">
+      <span className={cn("absolute left-[18px] z-[4] max-w-[60%]", platePhotos.length > 1 ? "top-[42px]" : "bottom-[18px]")}>
         <span className={cn("block font-extrabold leading-tight tracking-[-0.02em] text-[#3d1d00] [[data-aod]_&]:text-[#ffe9cc]", platePhotos.length > 1 ? "text-[30px]" : "text-[34px]")}>{meal?.title ?? "Nog niets gepland"}</span>
         <span className="block text-[13.5px] font-semibold text-[rgba(61,29,0,0.75)] [[data-aod]_&]:text-[#d8a874]">{meal ? meal.subtitle : "Plan iets in de kalender"}</span>
       </span>
