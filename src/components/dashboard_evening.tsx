@@ -87,8 +87,9 @@ function EveningTile({
       style={{ background }}
     >
       <span className="px-[18px] text-[11.5px] font-extrabold tracking-[0.08em] text-white/75">{label}</span>
-      {/* Container-query-eenheden: de postermaat volgt de ruimte in de tegel. */}
-      <div className="mt-3 flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-[18px] px-[18px] pb-4 [container-type:size] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* Container-query-eenheden: de postermaat volgt de ruimte in de tegel. `items-start`: de posters
+          houden hun eigen 2:3-verhouding (niet uitrekken tot de hoogte van de rij, dus niets afgesneden). */}
+      <div className="mt-3 flex min-h-0 flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-px-[18px] px-[18px] pb-4 [container-type:size] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((m) => (
           <PosterButton key={m.id} media={m} onOpen={onOpen} />
         ))}
