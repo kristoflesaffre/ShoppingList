@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
-import { splitRoomNumber } from "@/lib/hue-room-name";
+import { splitRoomName } from "@/lib/hue-room-name";
 
 /**
  * Philips Hue op het avonddashboard (canvas «Dashboard · licht» F · Lampkolommen): elke kamer is een staande
@@ -38,7 +38,7 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
   const [from, to] = GLOWS[index % GLOWS.length];
   const levelAt = (clientY: number, rect: DOMRect) => Math.round(Math.min(100, Math.max(0, ((rect.bottom - clientY) / rect.height) * 100)));
   const commit = (b: number) => onChange(b <= 2 ? { on: false } : { on: true, brightness: b });
-  const { base, number } = splitRoomNumber(room.name);
+  const { base, badge } = splitRoomName(room.name);
 
   return (
     <div className="flex w-[84px] shrink-0 flex-col items-center gap-1.5">
@@ -95,7 +95,8 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
           />
         ) : null}
         <span className={cn("relative text-[13px] font-extrabold tabular-nums", !lit ? "text-white/50" : level >= 80 ? "text-[#5a3300]" : "text-white")}>{lit ? level : "–"}</span>
-        {number ? (
+        {/* Verdieping als bolletje: «1»/«2» of een pijl omhoog (boven) / omlaag (beneden). */}
+        {badge ? (
           <span
             aria-hidden
             className={cn(
@@ -103,7 +104,13 @@ function LampColumn({ room, index, busy, onChange }: { room: Room; index: number
               lit && level >= 20 ? "bg-white/70 text-[#5a3300]" : "bg-white/15 text-white/80",
             )}
           >
-            {number}
+            {badge.kind === "number" ? (
+              badge.value
+            ) : (
+              <svg viewBox="0 0 16 16" className={cn("size-3", badge.kind === "down" && "rotate-180")} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" />
+              </svg>
+            )}
           </span>
         ) : null}
       </button>
