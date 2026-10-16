@@ -183,9 +183,10 @@ function mealPhoto(meal: DashboardMeal | null, getPhoto: (name: string) => strin
 
 /** Compositie van drie ingrediënten (zetmeel achter links, groente achter rechts, vlees/vis vooraan), dicht op elkaar in een vak van 270px. */
 const MEAL_TRIO = [
-  { x: -6, y: 44, s: 150, r: -12, z: 1 },
-  { x: 118, y: 24, s: 140, r: 14, z: 2 },
-  { x: 74, y: 104, s: 164, r: -5, z: 3 },
+  { x: 4, y: 52, s: 168, r: -16, z: 1 },
+  { x: 100, y: 22, s: 172, r: 14, z: 2 },
+  // Vooraan schuin (45°): breekt de rechte lijnen en leidt het oog de hoek in.
+  { x: 62, y: 96, s: 186, r: 45, z: 3 },
 ] as const;
 
 /** Productfoto's voor het bord bij losse ingrediënten (zetmeel, groente, vlees/vis eerst). */
@@ -203,7 +204,7 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
       {platePhotos.length > 1 ? (
         // Losse ingrediënten: zetmeel, groente en vlees/vis als losse compositie in de hoek rechtsonder
         // (geen bord), deels van de tegel af; de titel staat dan bovenaan.
-        <span className="aod-kenburns absolute -bottom-[46px] -right-[44px] isolate size-[270px] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" aria-hidden>
+        <span className="aod-kenburns absolute -bottom-[78px] -right-[70px] isolate size-[270px] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" aria-hidden>
           {platePhotos.slice(0, 3).map((src, i) => {
             const slot = MEAL_TRIO[i];
             return (
