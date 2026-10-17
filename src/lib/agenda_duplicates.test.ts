@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dropAllDayDuplicates } from "./agenda_duplicates";
+import { dropAllDayDuplicates, mergeAllDayDuplicates } from "./agenda_duplicates";
 
 const t = (title: string) => ({ title });
 
@@ -24,5 +24,17 @@ describe("dropAllDayDuplicates", () => {
   it("keeps everything without timed events or meaningful words", () => {
     expect(dropAllDayDuplicates([t("Soepdag")], [])).toEqual([t("Soepdag")]);
     expect(dropAllDayDuplicates([t("[Smartschool]")], [t("Smartschool")])).toEqual([t("[Smartschool]")]);
+  });
+});
+
+describe("mergeAllDayDuplicates", () => {
+  it("keeps one of two all-day events about the same thing, preferring the title without brackets", () => {
+    expect(mergeAllDayDuplicates([t("[Smartschool] Pedagogische studiedag – opvang mogelijk [AI-generated]"), t("PEDAGOGISCHE STUDIEDAG NOE")])).toEqual([t("PEDAGOGISCHE STUDIEDAG NOE")]);
+    expect(mergeAllDayDuplicates([t("Soepdag"), t("[Smartschool] Soepdag [AI-generated]")])).toEqual([t("Soepdag")]);
+  });
+
+  it("keeps different all-day events", () => {
+    const day = [t("Ribbetjes eten paps"), t("Papa ophalen 09u Lier"), t("Mama gestorven"), t("🚙 @KBC Leuven"), t("Tante Chantale Roosen Bday 🎈")];
+    expect(mergeAllDayDuplicates(day)).toEqual(day);
   });
 });

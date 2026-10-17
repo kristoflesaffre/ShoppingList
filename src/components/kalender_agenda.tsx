@@ -9,7 +9,7 @@ import { fetchAgenda, localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
 import { mixWithWhite, type Rgb } from "@/lib/recipe-tint";
 import { agendaPhotoFor } from "@/lib/agenda_photos";
 import { agendaDisplayTitle, dedupeBirthdays } from "@/lib/agenda_birthdays";
-import { dropAllDayDuplicates } from "@/lib/agenda_duplicates";
+import { dropAllDayDuplicates, mergeAllDayDuplicates } from "@/lib/agenda_duplicates";
 import { RouteButton } from "@/components/home_agenda_section";
 
 /**
@@ -477,8 +477,9 @@ function buildLane(events: WeekEvent[]): LaneItem[] {
       out.push(item);
     }
   }
-  // Zelfde verjaardag meermaals in de agenda («bday», «verjaardag», …): één keer per dag.
-  return out.map((item) => (item.kind === "allDay" ? { ...item, events: dedupeBirthdays(item.events) } : item));
+  // Zelfde verjaardag meermaals in de agenda («bday», «verjaardag», …) of twee hele-dag-afspraken over
+  // hetzelfde («studiedag»): één keer per dag.
+  return out.map((item) => (item.kind === "allDay" ? { ...item, events: mergeAllDayDuplicates(dedupeBirthdays(item.events)) } : item));
 }
 
 function TileSkeleton() {

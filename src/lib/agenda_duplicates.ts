@@ -35,3 +35,31 @@ export function dropAllDayDuplicates<T extends { title: string }>(allDay: readon
     return !timedWords.some((set) => own.every((w) => set.has(w)));
   });
 }
+
+/** Zelfde onderwerp? De ene titel zit helemaal in de andere, of ze delen minstens twee woorden. */
+function sameTopic(a: string[], b: string[]): boolean {
+  if (a.length === 0 || b.length === 0) return false;
+  const sa = new Set(a);
+  const sb = new Set(b);
+  if (a.every((w) => sb.has(w)) || b.every((w) => sa.has(w))) return true;
+  return new Set(a.filter((w) => sb.has(w))).size >= 2;
+}
+
+/**
+ * Twee hele-dag-afspraken van dezelfde dag over hetzelfde («PEDAGOGISCHE STUDIEDAG NOE» en
+ * «[Smartschool] Pedagogische studiedag – opvang mogelijk [AI-generated]»): één keer. We houden de
+ * titel zonder haakjes (meestal zelf ingegeven), anders de eerste. Geef alleen afspraken van één dag mee.
+ */
+export function mergeAllDayDuplicates<T extends { title: string }>(allDay: readonly T[]): T[] {
+  const out: { e: T; w: string[] }[] = [];
+  for (const e of allDay) {
+    const w = words(e.title, true);
+    const match = out.find((k) => sameTopic(k.w, w));
+    if (!match) out.push({ e, w });
+    else if (/\[/.test(match.e.title) && !/\[/.test(e.title)) {
+      match.e = e;
+      match.w = w;
+    }
+  }
+  return out.map((k) => k.e);
+}
