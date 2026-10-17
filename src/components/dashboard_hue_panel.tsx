@@ -550,6 +550,27 @@ export function DashboardHuePanel({
 
 // ─── Startpagina op de gsm ──────────────────────────────────────────────────
 
+/** Schakelaar op lichte ondergrond voor een groep kamers (alles of één verdieping): aan zodra er één lamp brandt. */
+function LightSwitch({ label, rooms, busy, setRoom }: { label: string; rooms: Room[]; busy: Set<string>; setRoom: (rooms: Room[], patch: Patch) => Promise<void> }) {
+  const on = rooms.some((r) => r.on);
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={`${label}: ${on ? "uitzetten" : "aanzetten"}`}
+      disabled={rooms.every((r) => busy.has(r.id))}
+      onClick={() => void setRoom(rooms.filter((r) => r.on === on), { on: !on })}
+      className={cn(
+        "relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffb547] focus-visible:ring-offset-2 disabled:opacity-60",
+        on ? "bg-[#ffb547] shadow-[0_6px_16px_-8px_rgba(255,181,71,0.9)]" : "bg-[rgba(16,17,48,0.14)] [[data-theme=dark]_&]:bg-fixed-white/[0.16]",
+      )}
+    >
+      <span className={cn("absolute top-[3px] size-6 rounded-full bg-fixed-white shadow-[0_1px_3px_rgba(16,17,48,0.25)] transition-[left] duration-fast ease-out-strong", on ? "left-[25px]" : "left-[3px]")} />
+    </button>
+  );
+}
+
 /**
  * «Licht» op de startpagina (gsm), op de lichte pagina-achtergrond: titel met één schakelaar voor alle lampen
  * (aan zodra er één brandt), daaronder rechtstreeks op de pagina de (witte) kolommen per verdieping, elk groepje met zijn
@@ -571,7 +592,6 @@ function MobileHueSection({
   renderEmpty?: (kind: HueEmptyKind, reconnect: boolean) => React.ReactNode;
 }) {
   const rooms = state.kind === "ready" ? state.rooms : [];
-  const anyOn = rooms.some((r) => r.on);
   const note = "text-sm text-[var(--text-secondary)]";
 
   const body =
@@ -599,7 +619,30 @@ function MobileHueSection({
     ) : rooms.length === 0 ? (
       renderEmpty?.("no-rooms", false) ?? <p className={note}>Geen kamers gevonden in je Hue-app.</p>
     ) : (
-      <ScrollLane className="-mx-4 -my-3 flex gap-4 px-4 py-3">
+      <>
+      {/* Desktop: één paneel per verdieping met een lichte rand en een eigen schakelaar; samen de volle breedte
+          (breedte per paneel naar het aantal kamers, kolommen gelijk verdeeld). */}
+      <div className="hidden flex-wrap gap-4 lg:flex">
+        {floors.groups(rooms).map((g) => (
+          <section
+            key={g.key}
+            aria-label={g.label}
+            style={{ flexGrow: g.rooms.length, minWidth: g.rooms.length * 72 + 34 }}
+            className="flex basis-0 flex-col gap-3 rounded-[24px] border border-[var(--border-subtle)] px-4 pb-4 pt-3.5"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="whitespace-nowrap text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-secondary)]">{g.label}</h3>
+              <LightSwitch label={g.label} rooms={g.rooms} busy={busy} setRoom={setRoom} />
+            </div>
+            <div className="flex h-[224px] justify-around">
+              {g.rooms.map((room) => (
+                <LampColumn key={room.id} room={room} index={rooms.indexOf(room)} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} light />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+      <ScrollLane className="-mx-4 -my-3 flex gap-4 px-4 py-3 lg:hidden">
         {floors.groups(rooms).map((g) => (
           <section key={g.key} aria-label={g.label} className="flex shrink-0 flex-col gap-2.5 border-r border-[rgba(16,17,48,0.08)] pr-4 last:border-r-0 last:pr-0 [[data-theme=dark]_&]:border-fixed-white/10">
             {/* Verdieping boven het groepje, zoals in het lichtvenster. */}
@@ -612,6 +655,7 @@ function MobileHueSection({
           </section>
         ))}
       </ScrollLane>
+      </>
     );
 
   return (
@@ -619,20 +663,7 @@ function MobileHueSection({
       <div className="flex min-h-8 items-center justify-between gap-3">
         <h2 className="text-[22px] font-bold leading-7 tracking-[-0.01em] text-[var(--text-primary)]">Licht</h2>
         {state.kind === "ready" && rooms.length > 0 ? (
-          <button
-            type="button"
-            role="switch"
-            aria-checked={anyOn}
-            aria-label={anyOn ? "Alle lampen uitzetten" : "Alle lampen aanzetten"}
-            disabled={rooms.every((r) => busy.has(r.id))}
-            onClick={() => void setRoom(rooms.filter((r) => r.on === anyOn), { on: !anyOn })}
-            className={cn(
-              "relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffb547] focus-visible:ring-offset-2 disabled:opacity-60",
-              anyOn ? "bg-[#ffb547] shadow-[0_6px_16px_-8px_rgba(255,181,71,0.9)]" : "bg-[rgba(16,17,48,0.14)] [[data-theme=dark]_&]:bg-fixed-white/[0.16]",
-            )}
-          >
-            <span className={cn("absolute top-[3px] size-6 rounded-full bg-fixed-white shadow-[0_1px_3px_rgba(16,17,48,0.25)] transition-[left] duration-fast ease-out-strong", anyOn ? "left-[25px]" : "left-[3px]")} />
-          </button>
+          <LightSwitch label="Alle lampen" rooms={rooms} busy={busy} setRoom={setRoom} />
         ) : null}
       </div>
       {body}
