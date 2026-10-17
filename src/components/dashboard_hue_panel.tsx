@@ -117,7 +117,7 @@ function LampColumn({
         className={cn(
           "relative flex flex-1 touch-pan-x select-none justify-center overflow-hidden rounded-full focus-visible:outline-none focus-visible:ring-2 disabled:opacity-70",
           light
-            ? "bg-[#f1f2f7] shadow-[inset_0_0_0_1px_rgba(16,17,48,0.06)] focus-visible:ring-[#ffb547] [[data-theme=dark]_&]:bg-fixed-white/[0.06] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]"
+            ? "bg-white shadow-[0_8px_18px_-12px_rgba(16,17,48,0.35),inset_0_0_0_1px_rgba(16,17,48,0.04)] focus-visible:ring-[#ffb547] [[data-theme=dark]_&]:bg-fixed-white/[0.06] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]"
             : "bg-fixed-white/[0.06] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] focus-visible:ring-fixed-white",
           tall ? "min-h-[160px] w-[76px] pt-4" : "min-h-[72px] w-[52px] pt-2.5",
         )}
@@ -552,7 +552,7 @@ export function DashboardHuePanel({
 
 /**
  * «Licht» op de startpagina (gsm), op de lichte pagina-achtergrond: titel met één schakelaar voor alle lampen
- * (aan zodra er één brandt), daaronder een witte kaart met de kolommen per verdieping, elk groepje met zijn
+ * (aan zodra er één brandt), daaronder rechtstreeks op de pagina de (witte) kolommen per verdieping, elk groepje met zijn
  * verdieping erboven (zoals in het lichtvenster). Geen cinemaknoppen en geen «Alles uit»: dat doet de schakelaar.
  */
 function MobileHueSection({
@@ -578,7 +578,7 @@ function MobileHueSection({
     state.kind === "loading" ? (
       <div className="flex h-[248px] gap-2" aria-busy aria-label="Lampen laden">
         {[0, 1, 2, 3].map((i) => (
-          <span key={i} className="h-[200px] w-[72px] animate-pulse rounded-full bg-[rgba(16,17,48,0.06)] [[data-theme=dark]_&]:bg-fixed-white/10" />
+          <span key={i} className="h-[200px] w-[72px] animate-pulse rounded-full bg-white [[data-theme=dark]_&]:bg-fixed-white/10" />
         ))}
       </div>
     ) : state.kind === "error" ? (
@@ -599,7 +599,7 @@ function MobileHueSection({
     ) : rooms.length === 0 ? (
       renderEmpty?.("no-rooms", false) ?? <p className={note}>Geen kamers gevonden in je Hue-app.</p>
     ) : (
-      <ScrollLane className="-mx-4 flex gap-4 px-4">
+      <ScrollLane className="-mx-4 -my-3 flex gap-4 px-4 py-3">
         {floors.groups(rooms).map((g) => (
           <section key={g.key} aria-label={g.label} className="flex shrink-0 flex-col gap-2.5 border-r border-[rgba(16,17,48,0.08)] pr-4 last:border-r-0 last:pr-0 [[data-theme=dark]_&]:border-fixed-white/10">
             {/* Verdieping boven het groepje, zoals in het lichtvenster. */}
@@ -613,8 +613,6 @@ function MobileHueSection({
         ))}
       </ScrollLane>
     );
-
-  const showCard = state.kind === "loading" || state.kind === "error" || (state.kind === "ready" && rooms.length > 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -637,7 +635,7 @@ function MobileHueSection({
           </button>
         ) : null}
       </div>
-      {showCard ? <div className="rounded-[24px] bg-white px-4 py-4 shadow-card">{body}</div> : body}
+      {body}
     </div>
   );
 }
