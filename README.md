@@ -113,3 +113,26 @@ than `127.0.0.1`, so the registered callback and browser cookies match.
 
 The HTTPS preview uses `.next-https`, allowing the ordinary HTTP preview to keep
 running independently. Local OAuth credentials do not change the hosted settings.
+
+### Local recipe-photo collection
+
+`npm run dev` and `npm run dev:https` now start an incremental photo sync alongside
+Next.js. It runs immediately and checks again every minute while the preview runs.
+It only reads InstantDB and downloads photo copies; online storage is unchanged.
+A sync failure does not prevent the app from starting.
+
+Open `exported-recipe-photos/index.html` in a browser (double-click in Finder) for a
+searchable visual overview. Photos use `recipe-name__recipe-id.ext` filenames,
+with the original image bytes and real format preserved. Recipe names are updated
+without downloading the same photo again. New photo URLs trigger a download;
+unchanged sources with an existing local copy are skipped. Earlier photo versions
+and managed photos from removed recipes are moved to `_previous`, never discarded.
+Unrelated files in the folder are left alone. A failed download retains the last
+local copy. Refresh the overview page to see the latest sync.
+
+Run `npm run export:recipe-photos` for a manual sync, or
+`npm run export:recipe-photos -- --watch` for a standalone one-minute watcher.
+`--out /path/to/folder` selects a different backup folder. The default collection,
+its manifest and overview are ignored by Git and are not published with the app.
+The sync uses the same `.env.local` configuration as Next.js, including
+`INSTANT_APP_ADMIN_TOKEN`, and only runs on your Mac—not on deployed servers.

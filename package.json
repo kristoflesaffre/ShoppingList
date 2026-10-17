@@ -6,8 +6,8 @@
     "node": ">=18.18.0"
   },
   "scripts": {
-    "dev": "next dev",
-    "dev:https": "LOCAL_HTTPS_DEV=1 next dev --hostname localhost --port 3011 --experimental-https",
+    "dev": "node scripts/dev-with-photo-sync.mjs",
+    "dev:https": "node scripts/dev-with-photo-sync.mjs --https",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
