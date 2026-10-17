@@ -5,6 +5,10 @@ import { agendaDisplayTitle } from "./agenda_birthdays";
 const icon = (t: string) => agendaEventIcon(t)?.title ?? null;
 
 describe("agendaEventIcon", () => {
+  it("vervangt bestaande emoji bij stop progesteron door één pil", () => {
+    expect(agendaDisplayTitle("🛑 Stop progesteron ❗")).toBe("💊 Stop progesteron");
+    expect(agendaDisplayTitle("💊 STOP PROGESTERON")).toBe("💊 STOP PROGESTERON");
+  });
   it("zet de juiste emoji vooraan en haalt andere emoji weg", () => {
     expect(icon("Trouw Lien & Pieter 🥂")).toBe("💍 Trouw Lien & Pieter");
     expect(icon("Wedding Sarah")).toBe("💍 Wedding Sarah");

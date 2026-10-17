@@ -10,6 +10,7 @@ const rx = (source: string) => new RegExp(source, "iu");
 
 export type AgendaEventKind =
   | "death"
+  | "medication"
   | "wedding"
   | "mothersDay"
   | "fathersDay"
@@ -24,6 +25,7 @@ export type AgendaEventKind =
 const RULES: { kind: AgendaEventKind; emoji: string; match: RegExp }[] = [
   // Herdenking van een overlijden: nooit als verjaardag behandelen.
   { kind: "death", emoji: "✝️", match: rx(String.raw`gestorven|overleden|overlijden|sterfdag|herdenking|uitvaart|begrafenis|\bfuneral\b|\bpassed away\b|\bmemorial\b|\bdeath\b`) },
+  { kind: "medication", emoji: "💊", match: rx(String.raw`\bstop\s+progesteron(?:e)?\b`) },
   { kind: "wedding", emoji: "💍", match: rx(String.raw`\btrouw|huwelijk|bruiloft|\bwedding\b|\bgetrouwd\b`) },
   { kind: "mothersDay", emoji: "💐", match: rx(String.raw`moederdag|mother['’]?s\s*day`) },
   { kind: "fathersDay", emoji: "🍷", match: rx(String.raw`vaderdag|father['’]?s\s*day`) },
