@@ -661,7 +661,7 @@ function MobileHueSection({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex min-h-8 items-center justify-between gap-3">
-        <h2 className="text-[22px] font-bold leading-7 tracking-[-0.01em] text-[var(--text-primary)]">Licht</h2>
+        <h2 className="min-w-0 text-[22px] font-bold leading-7 tracking-[-0.01em] text-[var(--text-primary)]">Philips Hue lampen bedienen</h2>
         {state.kind === "ready" && rooms.length > 0 ? (
           <LightSwitch label="Alle lampen" rooms={rooms} busy={busy} setRoom={setRoom} />
         ) : null}

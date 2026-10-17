@@ -47,7 +47,7 @@ const sectionActionClass =
   "inline-flex shrink-0 items-center rounded-pill px-2 py-1 -mr-1 text-[15px] font-semibold leading-5 tracking-normal text-action-primary no-underline transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover [@media(hover:hover)]:hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
 
 /**
- * «Toon alle» als zacht drukvlak (canvas «Toon alle» K3): lichtgrijze pil met een kaartstapel-icoon, het
+ * «Toon alle» als zacht drukvlak (canvas «Toon alle» K3): lichtgrijze pil (zelfde grijs als de weergaveschakelaar) met een kaartstapel-icoon, het
  * aantal en een chevron. Zonder aantal: icoon en chevron. `external` opent in een nieuw tabblad.
  */
 export function OverviewPill({
@@ -62,7 +62,7 @@ export function OverviewPill({
   external?: boolean;
 }) {
   const className =
-    "-mr-0.5 inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-pill bg-[#e9eaf2] pl-[11px] pr-[9px] text-[15.5px] font-extrabold leading-5 tabular-nums text-[var(--text-primary)] no-underline transition-[background-color,transform] duration-fast motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[#dfe0ec] [[data-theme=dark]_&]:bg-[var(--gray-25)] [[data-theme=dark]_&]:[@media(hover:hover)]:hover:bg-[var(--gray-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
+    "-mr-0.5 inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-pill bg-[var(--gray-50)] pl-[11px] pr-[9px] text-[15.5px] font-extrabold leading-5 tabular-nums text-[var(--text-primary)] no-underline transition-[background-color,transform] duration-fast motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[var(--gray-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
   const inner = (
     <>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[17px] shrink-0">

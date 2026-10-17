@@ -1220,7 +1220,7 @@ function HomeCalendarLaneMobile({ days, todayIso }: { days: HomeWeekDay[]; today
   }, [days.length]);
   return (
     <div className="flex flex-col gap-4">
-      <ListSectionHeader icon="calendar" label="Kalender" showNaarOverzicht naarOverzichtHref="/kalender" overzichtLabel="Toon alle" overzichtCount={plannedAhead(days, todayIso)} />
+      <ListSectionHeader icon="calendar" label="Kalender maaltijden" showNaarOverzicht naarOverzichtHref="/kalender" overzichtLabel="Toon alle" overzichtCount={plannedAhead(days, todayIso)} />
       <div
         ref={laneRef}
         role="group"
@@ -1260,7 +1260,7 @@ function HomeCalendarWeekDesktop({ days, todayIso }: { days: HomeWeekDay[]; toda
     <div className="flex flex-col gap-4">
       <ListSectionHeader
         icon="calendar"
-        label="Kalender"
+        label="Kalender maaltijden"
         showNaarOverzicht
         naarOverzichtHref="/kalender"
         overzichtLabel="Toon alle"
@@ -1822,7 +1822,7 @@ function HomeKalenderSection({
   }
   return (
     <div className="flex flex-col gap-4">
-      <ListSectionHeader icon="calendar" label="Kalender" showNaarOverzicht={false} onHide={onHide} />
+      <ListSectionHeader icon="calendar" label="Kalender maaltijden" showNaarOverzicht={false} onHide={onHide} />
       <HomeOnboardingEmptyCard
         illustrationSrc={HOME_ONBOARDING_ILLUSTRATIONS.kalender}
         illustrationSide="end"
