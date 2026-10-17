@@ -4,6 +4,23 @@ import { agendaPhotoFor } from "./agenda_photos";
 
 describe("appointment photos", () => {
   it.each([
+    ["Kerstvakantie", "kerstvakantie"],
+    ["Herfstvakantie", "herfstvakantie"],
+    ["Zomervakantie", "zomervakantie"],
+    ["Paasvakantie", "paasvakantie"],
+    ["Thanksgiving bij Jeroen", "thanksgiving"],
+    ["Herfstfeest school", "herfstfeest"],
+    ["Kerstmis bij oma en opa", "kerstmis"],
+    ["Kerstavond", "kerstmis"],
+    ["Pasen bij Karen", "pasen"],
+    ["Paasmaandag", "pasen"],
+    ["Nieuwjaar bij Marie", "nieuwjaar"],
+    ["Oudejaarsavond", "nieuwjaar"],
+    ["Weekend Landal", "landal"],
+    ["Papa nr Magda", "wies"],
+    ["Paps ophalen Lier", "wies"],
+    ["Ribbetjes eten paps", "wies"],
+    ["Wies jarig", "wies"],
     ["BBQ bij Jeroen", "barbecue"],
     ["Winterbanden BMW", "winterbanden_zomerbanden"],
     ["Auto binnen doen bij Juma", "bmw"],
@@ -26,6 +43,7 @@ describe("appointment photos", () => {
 
   it("uses location only when the title has no match", () => {
     expect(agendaPhotoFor("Afspraak", "Wok Dynasty")).toBe("/images/afspraken/wok_dynasty");
+    expect(agendaPhotoFor("Weekend weg", "Landal park")).toBe("/images/afspraken/landal");
     expect(agendaPhotoFor("Tandarts", "Imelda")).toBe("/images/afspraken/tandarts");
   });
 

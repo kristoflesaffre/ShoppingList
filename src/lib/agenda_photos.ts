@@ -6,6 +6,17 @@
  */
 
 const AGENDA_PHOTOS: { file: string; keys: string[] }[] = [
+  // Specifieke vakanties vóór feestdagen: "kerstvakantie" krijgt een eigen foto.
+  { file: "kerstvakantie", keys: ["kerstvakantie", "kerst vakantie"] },
+  { file: "herfstvakantie", keys: ["herfstvakantie", "herfst vakantie"] },
+  { file: "zomervakantie", keys: ["zomervakantie", "zomer vakantie"] },
+  { file: "paasvakantie", keys: ["paasvakantie", "paas vakantie"] },
+  { file: "thanksgiving", keys: ["thanksgiving"] },
+  { file: "herfstfeest", keys: ["herfstfeest", "herfst feest"] },
+  { file: "kerstmis", keys: ["kerstmis", "kerst", "kerstavond", "kerstfeest", "christmas"] },
+  { file: "pasen", keys: ["pasen", "paasfeest", "paaszondag", "paasmaandag", "easter"] },
+  { file: "nieuwjaar", keys: ["nieuwjaar", "nieuwjaarsdag", "nieuwjaarsfeest", "oudejaarsavond", "oud en nieuw", "new year"] },
+  { file: "landal", keys: ["landal"] },
   { file: "amazone_by_jarno", keys: ["amazone by jarno", "bistro amazone", "amazone"] },
   { file: "bento_sushi", keys: ["bento sushi", "bento"] },
   { file: "wok_dynasty", keys: ["wok dynasty"] },
@@ -48,6 +59,8 @@ const AGENDA_PHOTOS: { file: string; keys: string[] }[] = [
   { file: "karen", keys: ["karen"] },
   { file: "marie", keys: ["marie"] },
   { file: "noe", keys: ["noe"] },
+  // Wies = papa: ook «Paps ophalen», «Papa nr Magda».
+  { file: "wies", keys: ["wies", "papa", "paps"] },
 ];
 
 function normalize(s: string): string {
