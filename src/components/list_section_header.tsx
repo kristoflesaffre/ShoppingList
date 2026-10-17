@@ -65,7 +65,7 @@ export function OverviewPill({
     "-mr-0.5 inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-pill bg-[var(--white)] pl-[11px] shadow-card pr-[9px] text-[15.5px] font-extrabold leading-5 tabular-nums text-[var(--text-primary)] no-underline transition-[background-color,transform] duration-fast motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
   const inner = (
     <>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[17px] shrink-0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[17px] shrink-0 text-[var(--gray-500)]">
         <rect x="7" y="3.5" width="13.5" height="13.5" rx="2.6" />
         <path d="M3.5 7.5v10a3 3 0 0 0 3 3h10" />
       </svg>
