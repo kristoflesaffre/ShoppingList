@@ -8,6 +8,7 @@ import { startGoogleConnect } from "@/lib/google-client";
 import { localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
 import { agendaPhotoFor } from "@/lib/agenda_photos";
 import { agendaDisplayTitle, dedupeBirthdays } from "@/lib/agenda_birthdays";
+import { dropAllDayDuplicates } from "@/lib/agenda_duplicates";
 import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
 import { RoundIconButton } from "@/components/ui/round_icon_button";
 
@@ -788,8 +789,10 @@ export function useTodayAgenda() {
         state: "next" as const,
       }))
       .sort((x, y) => Number(y.allDay) - Number(x.allDay) || x.startMin - y.startMin);
-    // Hele dag eerst (zoals gesorteerd), dubbele verjaardagen één keer.
-    return [...dedupeBirthdays(dayRows.filter((r) => r.allDay)), ...dayRows.filter((r) => !r.allDay)];
+    // Hele dag eerst (zoals gesorteerd), dubbele verjaardagen één keer; staat dezelfde afspraak ook met
+    // een uur in de agenda, dan enkel die.
+    const dayTimed = dayRows.filter((r) => !r.allDay);
+    return [...dropAllDayDuplicates(dedupeBirthdays(dayRows.filter((r) => r.allDay)), dayTimed), ...dayTimed];
   };
   const upcomingDays: { date: Date; rows: AgendaRow[] }[] = Array.from({ length: UPCOMING_DAYS }, (_, i) => {
     const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i + 1);
@@ -821,7 +824,11 @@ export function useTodayAgenda() {
     nowLabel,
     connected: !!state?.connected,
     // Zelfde verjaardag meermaals («bday», «verjaardag», …): één keer.
-    allDay: dedupeBirthdays(allRows.filter((r) => r.allDay)),
+    // Ook als dezelfde afspraak vandaag met een uur bestaat («Fruitschildag»): enkel die met uur.
+    allDay: dropAllDayDuplicates(
+      dedupeBirthdays(allRows.filter((r) => r.allDay)),
+      allRows.filter((r) => !r.allDay),
+    ),
     timed: allRows.filter((r) => !r.allDay).sort((a, b) => a.startMin - b.startMin),
     tomorrow,
     tomorrowDate,
