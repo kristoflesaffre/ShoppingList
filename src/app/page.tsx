@@ -58,7 +58,6 @@ import { HomeHeader } from "@/components/home_header";
 import {
   HomeDashboardFreezerColumn,
   HomeFreezerPlatesCard,
-  HomeDashboardShoppingList,
 } from "@/components/home_dashboard";
 import {
   DashboardReminders,
@@ -2106,14 +2105,6 @@ export default function Home() {
     shareProfilesQuery as unknown as Parameters<typeof db.useQuery>[0],
   );
 
-  /** Eigen profiel: naam en foto voor «Samen» in Te kopen. */
-  const { data: ownProfileData } = db.useQuery({
-    profiles: { $: { where: { instantUserId: user?.id ?? "__own_profile_none__" } } },
-  });
-  const ownProfile = React.useMemo(() => {
-    const p = ownProfileData?.profiles?.[0] as { firstName?: string; avatarUrl?: string } | undefined;
-    return { firstName: (p?.firstName ?? "").trim() || "Jij", avatarUrl: (p?.avatarUrl ?? "").trim() || null };
-  }, [ownProfileData?.profiles]);
 
   /** Bestaande masterlijsten: naam gelijkzetten aan winkel uit het logo (Lidl, Delhaize, …). */
   React.useEffect(() => {
@@ -2592,15 +2583,6 @@ export default function Home() {
     return orderedKeys.flatMap((key) => groups.get(key) ?? []);
   }, [data, user?.id, homeStoreOrder]);
 
-  /** Desktop-dashboard: laatst toegevoegd eerst, met nette hoeveelheid. */
-  const dashboardShoppingItems = React.useMemo(
-    () =>
-      [...homeShoppingItems]
-        .sort((a, b) => b.order - a.order)
-        .map((i) => ({ id: i.id, name: i.name, quantity: pluralizeShoppingQuantity(i.quantity) })),
-    [homeShoppingItems],
-  );
-
   const [hasUsedTeKopen, setHasUsedTeKopen] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("te-kopen-used") === "1";
@@ -3076,33 +3058,12 @@ export default function Home() {
                     renderDesktopRow={user ? (shopping) => <HomeListsDesktopRow userId={user.id} shopping={shopping} onAddTeKopen={openTeKopenAdd} /> : undefined}
                   />
                 </div>
-                <div className="flex flex-col gap-10 min-[1050px]:grid min-[1050px]:grid-cols-2 min-[1050px]:items-stretch min-[1050px]:gap-8">
-                  {!homeSectionConfig.hidden.includes("te-kopen") ? (
-                    <div className="hidden min-w-0 min-[1050px]:flex min-[1050px]:flex-col">
-                      {/* Canvas «Combinatie 1»: één gedeelde Te kopen-lijst. */}
-                      <HomeDashboardShoppingList
-                        items={dashboardShoppingItems}
-                        addedByFor={(item) => {
-                          const row = homeShoppingItems.find((i) => i.id === item.id);
-                          return row ? teKopenAddedByFor(row) : null;
-                        }}
-                        onAdd={() => {
-                          primeKeyboard();
-                          setTeKopenSlideOpen(true);
-                        }}
-                        onBought={(id) => void db.transact(db.tx.shoppingItems[id].delete()).catch(() => undefined)}
-                        me={ownProfile}
-                      />
-                    </div>
-                  ) : (
-                    <div className="hidden min-[1050px]:block" />
-                  )}
+                {/* «Te kopen» staat als tegel in de rij lijstjes hierboven; geen aparte lijst meer ernaast. */}
+                {!homeSectionConfig.hidden.includes("diepvries") ? (
                   <aside className="flex min-w-0 flex-col">
-                    {!homeSectionConfig.hidden.includes("diepvries") ? (
-                      <HomeDashboardFreezerColumn items={homeFreezerItems} />
-                    ) : null}
+                    <HomeDashboardFreezerColumn items={homeFreezerItems} />
                   </aside>
-                </div>
+                ) : null}
 
                 {homeSectionConfig.order
                   .filter(
