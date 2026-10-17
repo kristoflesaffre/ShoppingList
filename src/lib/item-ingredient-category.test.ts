@@ -38,9 +38,9 @@ describe("resolveItemCategoryFromName", () => {
     );
   });
 
-  it("deelt krabsla in bij vlees en charcuterie", () => {
+  it("deelt krabsla in bij beleg", () => {
     expect(resolveItemCategoryFromName("Krabsla")).toBe(
-      "Vlees & Charcuterie",
+      "Beleg",
     );
   });
 
@@ -52,5 +52,27 @@ describe("resolveItemCategoryFromName", () => {
     expect(
       effectiveItemCategory({ name: "Frituur", itemCategory: "Overig" }),
     ).toBe("Afhaalgerechten");
+  });
+});
+
+// Verschillende vormen en naamvarianten mogen niet door dezelfde woordhint verkeerd landen.
+describe("goedgekeurde productindeling", () => {
+  it.each([
+    ["Blik tomaten", "Conserven, Sauzen, Olie & Kruiden"],
+    ["Tomaten", "Groenten & Fruit"],
+    ["Hot dogs", "Conserven, Sauzen, Olie & Kruiden"],
+    ["Knijpzakjes appel/banaan Chloé", "Conserven, Sauzen, Olie & Kruiden"],
+    ["Fish sticks", "Diepvries"],
+    ["Ovenhapjes", "Diepvries"],
+    ["Iglo bowls noodles kip", "Diepvries"],
+    ["Gevulde pasta", "Gekoeld & Vers"],
+    ["Bladerdeeg", "Gekoeld & Vers"],
+    ["Verse gist", "Gekoeld & Vers"],
+    ["Tête de moine", "Zuivel, Kaas & Eieren"],
+    ["Zelfrijzend bakmeel", "Droogwaren & Bakproducten"],
+    ["Verse basilicum", "Groenten & Fruit"],
+    ["Gedroogde basilicum", "Conserven, Sauzen, Olie & Kruiden"],
+  ])("%s → %s", (name, category) => {
+    expect(resolveItemCategoryFromName(name)).toBe(category);
   });
 });
