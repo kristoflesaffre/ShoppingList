@@ -25,6 +25,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { PageBackButton } from "@/components/ui/page_back_button";
+import { backOr } from "@/lib/in_app_history";
 import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
 import {
   type HomeSectionId,
@@ -134,6 +135,8 @@ function SortableSectionRow({
 
 export default function BeheerHomepaginaPage() {
   const router = useRouter();
+  // Terug naar waar je vandaan kwam (startpagina of profiel); zonder geschiedenis in de app naar je profiel.
+  const goBack = React.useCallback(() => backOr(router, "/profiel"), [router]);
   const { titleRef, collapsed } = useLargeTitleCollapse<HTMLHeadingElement>(64);
 
   const [order, setOrder] = React.useState<HomeSectionId[]>(() => {
@@ -191,8 +194,8 @@ export default function BeheerHomepaginaPage() {
         <header className="mx-auto flex h-16 w-full max-w-[620px] items-center gap-4 px-4">
           <button
             type="button"
-            aria-label="Terug naar je profiel"
-            onClick={() => router.push("/profiel")}
+            aria-label="Terug"
+            onClick={goBack}
             className={headerRoundButtonClass}
           >
             <BackArrowIcon />
@@ -211,7 +214,7 @@ export default function BeheerHomepaginaPage() {
 
       <main className="mx-auto flex w-full max-w-[620px] flex-1 flex-col px-4 pb-[calc(48px+env(safe-area-inset-bottom,0px))] pt-[calc(64px+8px+env(safe-area-inset-top,0px))] motion-safe:animate-fade-up lg:pt-12">
         <div className="flex items-center gap-3">
-          <PageBackButton href="/profiel" label="Terug naar je profiel" />
+          <PageBackButton label="Terug" onClick={goBack} />
           <h1 ref={titleRef} className="text-[30px] font-bold leading-9 tracking-tight text-[var(--text-primary)] lg:text-[34px] lg:leading-10">
             Startpagina
           </h1>

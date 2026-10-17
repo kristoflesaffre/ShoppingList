@@ -14,17 +14,20 @@ export function PageBackButton({
   href = "/",
   label = "Terug",
   className,
+  onClick,
 }: {
   href?: string;
   label?: string;
   className?: string;
+  /** Eigen gedrag (bv. terug naar waar je vandaan kwam); anders naar `href`. */
+  onClick?: () => void;
 }) {
   const router = useRouter();
   return (
     <button
       type="button"
       aria-label={label}
-      onClick={() => router.push(href)}
+      onClick={onClick ?? (() => router.push(href))}
       className={cn(headerRoundButtonClass, "!hidden lg:!flex", className)}
     >
       {RoundIcons.back}
