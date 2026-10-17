@@ -5202,10 +5202,10 @@ export default function ListDetailPage({
     }
     const grouped = new Map<string, ListItem[]>();
     // Per categorie: hetzelfde losse product op meerdere dagen als één kaartje (opgetelde hoeveelheid).
-    // Voorraadgerechten blijven zichtbaar: ItemsLayout toont ze met hun voorraadmarkering,
-    // zonder afvinkknop. De samenvoeging houdt ze apart van gelijknamige boodschappen.
-    const categoryItems =
-      isMasterList || isLandalOrVakantieList ? itemsForStoreView : mergeLooseDuplicates(itemsForStoreView);
+    // Diepvriesgerechten (uit de voorraad) koop je niet: per categorie niet tonen en niet af te vinken (per dag staan ze als gerecht).
+    const categoryItems = (
+      isMasterList || isLandalOrVakantieList ? itemsForStoreView : mergeLooseDuplicates(itemsForStoreView)
+    ).filter((item) => item.fromStock !== true);
     for (const item of categoryItems) {
       const cat = effectiveListItemCategory(item);
       const existing = grouped.get(cat) ?? [];
