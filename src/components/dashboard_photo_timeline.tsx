@@ -87,7 +87,8 @@ function AllDayTile({ row, narrow }: { row: AgendaRow; narrow: boolean }) {
         <TilePhoto photo={photo} width={width} />
       ) : (
         // Geen foto: dan zegt het emoji-vierkantje wat voor dag het is.
-        <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl text-[22px]" style={{ backgroundColor: rgba(row.color, 0.12) }} aria-hidden>
+        // Geen achtergrond achter het emoji; zelfde grootte als in de «+n meer»-tegel.
+        <span className="relative flex w-8 shrink-0 items-center justify-center text-[26px] leading-none" aria-hidden>
           {emoji}
         </span>
       )}
@@ -122,7 +123,7 @@ function AllDayRow({ rows }: { rows: AgendaRow[] }) {
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-label={open ? "Minder tonen" : `Nog ${rest.length} hele-dagitem${rest.length === 1 ? "" : "s"}: ${rest.map((r) => r.title).join(", ")}`}
-          // Zelfde glastegel als de andere kaarten; de verborgen items als overlappende emoji-bolletjes.
+          // Zelfde glastegel als de andere kaarten; de verborgen items als emoji (zonder achtergrond).
           className={cn(
             "flex h-[72px] items-center justify-center gap-2 rounded-[18px] bg-fixed-white/[0.18] px-3 text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.34)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [[data-sunset]_&]:bg-fixed-white/[0.26] [[data-theme=dark]_&]:bg-[#242a3e] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]",
             open && "col-span-2",
@@ -132,14 +133,9 @@ function AllDayRow({ rows }: { rows: AgendaRow[] }) {
             <span className="text-[13px] font-bold">Minder tonen</span>
           ) : (
             <>
-              <span className="flex -space-x-2.5" aria-hidden>
-                {rest.slice(0, 3).map((r) => (
-                  <span
-                    key={r.id}
-                    className="flex size-9 items-center justify-center rounded-full bg-fixed-white/[0.9] text-[18px] shadow-[0_0_0_2px_rgba(255,255,255,0.35),0_4px_10px_-4px_rgba(16,17,48,0.4)] [[data-theme=dark]_&]:bg-[#323a56]"
-                  >
-                    {splitEmoji(r.title).emoji}
-                  </span>
+              <span className="flex gap-1 text-[26px] leading-none" aria-hidden>
+                {rest.slice(0, 2).map((r) => (
+                  <span key={r.id}>{splitEmoji(r.title).emoji}</span>
                 ))}
               </span>
               <span className="flex flex-col leading-none">
