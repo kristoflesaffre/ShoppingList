@@ -4,6 +4,16 @@ import { agendaPhotoFor } from "./agenda_photos";
 
 describe("appointment photos", () => {
   it.each([
+    ["Niels & Inès komen eten", "niels_en_ines"],
+    ["Bart en Annemie", "bart_en_annemie"],
+    ["Kristof & Chloé", "kristof_en_chloe"],
+    ["Chloé en Kristof", "kristof_en_chloe"],
+    ["Afspraak Inès", "ines"],
+    ["Chloé", "chloe"],
+    ["Kristof", "kristof"],
+    ["Émile komt spelen", "emile"],
+    ["Norbert komt langs", "norbert"],
+    ["Ribbetjes eten bij bompa", "ribbetjes"],
     ["Kerstvakantie", "kerstvakantie"],
     ["Herfstvakantie", "herfstvakantie"],
     ["Zomervakantie", "zomervakantie"],
@@ -19,7 +29,7 @@ describe("appointment photos", () => {
     ["Weekend Landal", "landal"],
     ["Papa nr Magda", "wies"],
     ["Paps ophalen Lier", "wies"],
-    ["Ribbetjes eten paps", "wies"],
+    ["Ribbetjes eten paps", "ribbetjes"],
     ["Wies jarig", "wies"],
     ["BBQ bij Jeroen", "barbecue"],
     ["Winterbanden BMW", "winterbanden_zomerbanden"],
