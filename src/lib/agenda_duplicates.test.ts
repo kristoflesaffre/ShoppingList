@@ -10,6 +10,12 @@ describe("dropAllDayDuplicates", () => {
     expect(dropAllDayDuplicates([t("[Smartschool] Fruitschildag [AI-")], [t("Fruitschildag Noë")])).toEqual([]);
   });
 
+  it("ignores times and treats papa/paps as the same", () => {
+    expect(dropAllDayDuplicates([t("Papa ophalen 09u Lier")], [t("Paps ophalen lier")])).toEqual([]);
+    expect(dropAllDayDuplicates([t("Mams bellen 9:30")], [t("Mama bellen")])).toEqual([]);
+    expect(dropAllDayDuplicates([t("Papa ophalen Lier")], [t("Papa nr Magda")])).toEqual([t("Papa ophalen Lier")]);
+  });
+
   it("keeps all-day events that only share a word", () => {
     const allDay = [t("🎂 Bart Machilsen verjaardag"), t("Herfstvakantie")];
     expect(dropAllDayDuplicates(allDay, [t("Verjaardag feest Jan"), t("Fruitschildag")])).toEqual(allDay);

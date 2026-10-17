@@ -3,14 +3,17 @@
  * «[Smartschool] Fruitschildag [AI-…]») en één keer met een uur («🍎 Fruitschildag Noë - …»).
  * Dan tonen we enkel de afspraak met het uur. Een hele-dag-afspraak geldt als dubbel als al haar
  * betekenisvolle woorden ook in een afspraak met uur van dezelfde dag staan. Tekst tussen haakjes,
- * emoji's, leestekens en vulwoorden tellen niet mee.
+ * emoji's, leestekens, vulwoorden en uren («09u», «9:30») tellen niet mee, en «paps» = «papa».
  */
 
 const EMOJI = new RegExp(String.raw`[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}\u{20E3}]`, "gu");
+/** Koosnamen die hetzelfde betekenen: «Papa ophalen» = «Paps ophalen». */
+const SAME_WORD: Record<string, string> = { paps: "papa", pap: "papa", mams: "mama", mam: "mama" };
+const TIME = /\b\d{1,2}(?:[:.h]\d{2}|u\d{0,2}|h)\b/gi;
 const STOPWORDS = new Set(["de", "het", "een", "van", "voor", "met", "bij", "en", "op", "in", "aan", "naar", "om", "tot", "the", "and", "for", "with", "at", "to", "of"]);
 
 function words(title: string, dropBrackets: boolean): string[] {
-  let t = title.replace(EMOJI, " ");
+  let t = title.replace(EMOJI, " ").replace(TIME, " ");
   // Ook een afgebroken «[AI-…» zonder sluithaakje.
   if (dropBrackets) t = t.replace(/\[[^\]]*(?:\]|$)/g, " ").replace(/\([^)]*(?:\)|$)/g, " ");
   return t
@@ -18,7 +21,8 @@ function words(title: string, dropBrackets: boolean): string[] {
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .split(/[^a-z0-9]+/)
-    .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+    .filter((w) => w.length >= 3 && !STOPWORDS.has(w))
+    .map((w) => SAME_WORD[w] ?? w);
 }
 
 /** Hele-dag-afspraken zonder de exemplaren die ook als afspraak met uur op dezelfde dag staan. */
