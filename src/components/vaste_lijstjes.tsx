@@ -639,6 +639,32 @@ export function VasteLijstjesLane({ userId, onAddTeKopen }: { userId: string; on
   );
 }
 
+/**
+ * De vaste tegels los, om in een andere rij te zetten (startpagina op de gsm: naast het laatste lijstje).
+ * Ze rekken mee tot de hoogte van die rij.
+ */
+export function VasteLijstjesTiles({ userId, onAddTeKopen }: { userId: string; onAddTeKopen?: () => void }) {
+  const { tiles } = useVasteLijstjes(userId);
+  return (
+    <>
+      {tiles.map((t) => (
+        <VastTile
+          key={t.id}
+          href={t.href}
+          name={t.name}
+          count={t.count}
+          countLabel={t.countLabel}
+          icon={t.icon}
+          color={t.color}
+          className="!h-auto min-h-[120px] snap-start"
+          onAdd={t.kind === "te-kopen" ? onAddTeKopen : undefined}
+          addLabel={t.kind === "te-kopen" ? "Product toevoegen aan Te kopen" : undefined}
+        />
+      ))}
+    </>
+  );
+}
+
 /** Vast lijstje met zijn items en deelnemers verwijderen. */
 export function deleteVastList(list: Pick<VastListSummary, "id" | "itemIds" | "memberIds">) {
   void db

@@ -105,7 +105,7 @@ import {
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { useWatchingTvItems } from "@/hooks/use_watching_tv_items";
 import { isVastList } from "@/lib/vaste-lijstjes";
-import { HomeListsDesktopRow, VasteLijstjesLane } from "@/components/vaste_lijstjes";
+import { HomeListsDesktopRow, VasteLijstjesLane, VasteLijstjesTiles } from "@/components/vaste_lijstjes";
 import { IconPrimaryMask, NewListFlow, type NewListFlowHandle } from "@/components/new_list_flow";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
@@ -1581,9 +1581,12 @@ function HomeLijstjesSection({
   onQuickAdd,
   onNewListLike,
   after,
+  laneTiles,
   renderDesktopRow,
 }: {
   normalLists: HomeList[];
+  /** Mobiel: vaste tegels in dezelfde rij, rechts van het laatste lijstje (dan geen aparte rij `after`). */
+  laneTiles?: React.ReactNode;
   /** Onder de boodschappen: rij «Vaste lijstjes» (mobiel). */
   after?: React.ReactNode;
   /** Desktop: één rij met de boodschappenkaarten en de vaste tegels. */
@@ -1689,20 +1692,25 @@ function HomeLijstjesSection({
         overzichtLabel="Toon alle"
       />
 
-      {/* Mobiel: 1 lijstje = volle breedte, 2 = elk de helft, meer = swimlane. */}
+      {/* Mobiel met vaste tegels: één rij — het laatste lijstje, dan Te kopen, Favorieten, … en tot slot
+          «Alle lijstjes»; de tegels zijn even hoog als de lijstkaart. Zonder tegels: 1 lijstje = volle
+          breedte, 2 = elk de helft, meer = swimlane. */}
       <div
         ref={laneRef}
         onScroll={handleScroll}
         className={cn(
           "flex gap-3 lg:hidden",
-          !fitLists && "-mx-4 snap-x snap-mandatory overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          (laneTiles != null || !fitLists) && "-mx-4 snap-x snap-mandatory overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          laneTiles != null && "gap-2.5",
         )}
       >
-        {activeLists.map((list) => (
+        {(laneTiles ? activeLists.slice(0, 1) : activeLists).map((list) => (
           <div
             key={list.id}
             className={cn(
-              fitLists ? "min-w-0 flex-1 [&>*]:h-full" : "w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start",
+              laneTiles
+                ? "w-[calc(100%-64px)] max-w-[380px] shrink-0 snap-start [&>*]:h-full"
+                : fitLists ? "min-w-0 flex-1 [&>*]:h-full" : "w-[calc(100%-32px)] max-w-[420px] shrink-0 snap-start",
             )}
           >
             <HomeListSwimCard
@@ -1715,7 +1723,8 @@ function HomeLijstjesSection({
             />
           </div>
         ))}
-        {fitLists ? null : (
+        {laneTiles}
+        {fitLists && !laneTiles ? null : (
         <Link
           href="/lijstjes-beheren/lijstjes"
           className="flex w-40 shrink-0 snap-start flex-col items-center justify-center gap-2.5 rounded-lg bg-[var(--white)] p-4 no-underline shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
@@ -1740,7 +1749,7 @@ function HomeLijstjesSection({
         </Link>
         )}
       </div>
-      {after ? <div className="lg:hidden">{after}</div> : null}
+      {after && !laneTiles ? <div className="lg:hidden">{after}</div> : null}
       {/* Desktop: alles op één rij — 2 boodschappenkaarten + max. 3 vaste tegels (canvas «Lijstjes op één rij»). */}
       {renderDesktopRow ? (
         <div className="hidden lg:block">
@@ -2907,6 +2916,7 @@ export default function Home() {
               onQuickAdd={handleQuickAddToList}
               onNewListLike={handleNewListLike}
               after={user ? <VasteLijstjesLane userId={user.id} onAddTeKopen={openTeKopenAdd} /> : null}
+              laneTiles={user ? <VasteLijstjesTiles userId={user.id} onAddTeKopen={openTeKopenAdd} /> : undefined}
               renderDesktopRow={user ? (shopping) => <HomeListsDesktopRow userId={user.id} shopping={shopping} onAddTeKopen={openTeKopenAdd} /> : undefined}
             />
           </>
@@ -3055,6 +3065,7 @@ export default function Home() {
                     onQuickAdd={handleQuickAddToList}
                     onNewListLike={handleNewListLike}
                     after={user ? <VasteLijstjesLane userId={user.id} onAddTeKopen={openTeKopenAdd} /> : null}
+                    laneTiles={user ? <VasteLijstjesTiles userId={user.id} onAddTeKopen={openTeKopenAdd} /> : undefined}
                     renderDesktopRow={user ? (shopping) => <HomeListsDesktopRow userId={user.id} shopping={shopping} onAddTeKopen={openTeKopenAdd} /> : undefined}
                   />
                 </div>
