@@ -53,7 +53,8 @@ function LampColumn({
 }) {
   const [preview, setPreview] = React.useState<number | null>(null);
   const drag = React.useRef<{ y: number; moved: boolean; rect: DOMRect } | null>(null);
-  const level = preview ?? (room.on ? room.brightness ?? 100 : 0);
+  // Aan met (afgeronde) helderheid 0 telt als 1%: anders toont de kolom «Uit» terwijl het licht brandt.
+  const level = preview ?? (room.on ? Math.max(1, room.brightness ?? 100) : 0);
   const lit = level > 0;
   const [from, to] = GLOWS[index % GLOWS.length];
   const levelAt = (clientY: number, rect: DOMRect) => Math.round(Math.min(100, Math.max(0, ((rect.bottom - clientY) / rect.height) * 100)));
@@ -177,6 +178,26 @@ function LampColumn({
   );
 }
 
+/** Schakelaar voor een hele verdieping in het lichtvenster. */
+function FloorSwitch({ label, on, disabled, onToggle }: { label: string; on: boolean; disabled: boolean; onToggle: (on: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={`${label}: alle lampen ${on ? "uitzetten" : "aanzetten"}`}
+      disabled={disabled}
+      onClick={() => onToggle(!on)}
+      className={cn(
+        "relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-60",
+        on ? "bg-[#ffb547] shadow-[0_6px_16px_-8px_rgba(255,181,71,0.9)]" : "bg-fixed-white/[0.16]",
+      )}
+    >
+      <span className={cn("absolute top-[3px] size-6 rounded-full transition-[left] duration-fast ease-out-strong", on ? "left-[25px] bg-fixed-white" : "left-[3px] bg-[#cfd5ee]")} />
+    </button>
+  );
+}
+
 /** Lichtvenster (canvas «licht-venster» A): alle kamers per verdieping als hoge kolommen. */
 function HueLightsModal({
   rooms,
@@ -250,7 +271,11 @@ function HueLightsModal({
         <ScrollLane className="-mx-7 mt-6 flex min-h-0 flex-1 gap-6 px-7">
           {ordered.map((g) => (
             <section key={g.key} aria-label={g.label} className="flex min-h-0 shrink-0 flex-col gap-3.5 border-r border-fixed-white/[0.08] pr-6 last:border-r-0 last:pr-0">
-              <h3 className="whitespace-nowrap text-[11px] font-extrabold uppercase tracking-[0.08em] text-[rgba(200,210,255,0.55)]">{g.label}</h3>
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="whitespace-nowrap text-[11px] font-extrabold uppercase tracking-[0.08em] text-[rgba(200,210,255,0.55)]">{g.label}</h3>
+                {/* Overkoepelende schakelaar: hele verdieping aan/uit (aan zodra er één lamp brandt). */}
+                <FloorSwitch label={g.label} on={g.rooms.some((r) => r.on)} disabled={g.rooms.every((r) => busy.has(r.id))} onToggle={(on) => void setRoom(g.rooms.filter((r) => r.on !== on), { on })} />
+              </div>
               <div className="flex min-h-0 flex-1 gap-2">
                 {g.rooms.map((room) => (
                   <div key={room.id} className="flex h-full min-h-0 flex-col items-center gap-2">
@@ -392,7 +417,14 @@ export function DashboardHuePanel({ cinema = false }: { cinema?: boolean }) {
       // Meteen tonen; bij een fout opnieuw ophalen.
       setState((s) =>
         s.kind === "ready"
-          ? { ...s, rooms: s.rooms.map((r) => (ids.has(r.id) ? { ...r, on: patch.on, brightness: patch.brightness ?? r.brightness } : r)) }
+          ? {
+              ...s,
+              rooms: s.rooms.map((r) =>
+                // Aanzetten zonder helderheid: Hue zet de vorige stand terug; tot we die kennen tonen we «aan»
+                // (geen 0 → «1%»).
+                ids.has(r.id) ? { ...r, on: patch.on, brightness: patch.brightness ?? (patch.on && !r.brightness ? null : r.brightness) } : r,
+              ),
+            }
           : s,
       );
       setBusy((b) => new Set(Array.from(b).concat(Array.from(ids))));
@@ -408,7 +440,9 @@ export function DashboardHuePanel({ cinema = false }: { cinema?: boolean }) {
         ),
       );
       setBusy((b) => new Set(Array.from(b).filter((id) => !ids.has(id))));
+      // Bij een fout meteen, anders even later: de echte helderheid zoals Hue ze nu kent.
       if (results.some((ok) => !ok)) void load();
+      else window.setTimeout(() => void load(), 1500);
     },
     [token, load],
   );

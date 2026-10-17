@@ -6,7 +6,7 @@ describe("defaultFloor", () => {
     expect(defaultFloor("Badkamer eerste verdieping")).toBe("1");
     expect(defaultFloor("Badkamer tweede verdieping")).toBe("2");
     expect(defaultFloor("Gang beneden")).toBe("g");
-    expect(defaultFloor("Gang boven")).toBe("up");
+    expect(defaultFloor("Gang boven")).toBe("2");
   });
 
   it("gebruikt de standaardindeling van het huis", () => {

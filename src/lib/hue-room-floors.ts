@@ -28,7 +28,8 @@ const HOUSE_DEFAULTS: { match: RegExp; floor: FloorKey }[] = [
 export function defaultFloor(name: string): FloorKey {
   const badge = splitRoomName(name).badge;
   if (badge?.kind === "down") return "g";
-  if (badge?.kind === "up") return "up";
+  // «boven» is bij ons de tweede verdieping (Gang boven).
+  if (badge?.kind === "up") return "2";
   if (badge?.kind === "number") {
     if (badge.value === "0") return "g";
     if (badge.value === "1" || badge.value === "2") return badge.value;
