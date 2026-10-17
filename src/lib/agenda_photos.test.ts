@@ -4,6 +4,13 @@ import { agendaPhotoFor } from "./agenda_photos";
 
 describe("appointment photos", () => {
   it.each([
+    ["Dinner with Christophe", "kristof"],
+    ["Christophe & Chloé", "kristof_en_chloe"],
+    ["School party Chloé", "schoolfeest"],
+    ["Schoolfeets Chloé", "schoolfeest"],
+    ["School trip Noë", "schoolreis"],
+    ["Tandartsbezoeek Christophe", "tandarts"],
+    ["Wedding Christophe", "trouw"],
     ["Niels & Inès komen eten", "niels_en_ines"],
     ["Bart en Annemie", "bart_en_annemie"],
     ["Kristof & Chloé", "kristof_en_chloe"],
@@ -58,7 +65,7 @@ describe("appointment photos", () => {
   });
 
   it("does not match substrings or empty events", () => {
-    for (const title of [null, undefined, "", "Update", "Samenvatting", "Karenina"]) {
+    for (const title of [null, undefined, "", "Update", "Samenvatting", "Karenina", "Christopheline", "Project review", "Chloebert"]) {
       expect(agendaPhotoFor(title)).toBeNull();
     }
   });

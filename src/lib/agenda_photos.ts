@@ -44,12 +44,12 @@ const AGENDA_PHOTOS: { file: string; keys: string[] }[] = [
   { file: "notaris", keys: ["notaris", "zorgvolmacht"] },
   { file: "gelnagels", keys: ["gelnagels", "gel nagels", "manicure", "nagelstudio", "nagelatelier"] },
   { file: "pedicure", keys: ["pedicure"] },
-  { file: "oudercontact", keys: ["oudercontact"] },
-  { file: "schoolfeest", keys: ["schoolfeest"] },
-  { file: "schoolreis", keys: ["schoolreis", "schooluitstap"] },
+  { file: "oudercontact", keys: ["oudercontact", "parent teacher meeting", "parents evening"] },
+  { file: "schoolfeest", keys: ["schoolfeest", "school feest", "school party", "school celebration", "school fair"] },
+  { file: "schoolreis", keys: ["schoolreis", "schooluitstap", "school trip"] },
   { file: "fruitschildag", keys: ["fruitschildag", "fruit schillen", "fruitdag", "appelschillen", "appelmoes"] },
   { file: "soepdag", keys: ["soepdag", "soep maken"] },
-  { file: "trouw", keys: ["trouw", "huwelijk", "bruiloft"] },
+  { file: "trouw", keys: ["trouw", "huwelijk", "bruiloft", "wedding"] },
   { file: "verjaardag", keys: ["verjaardag", "verjaardagsfeest", "verjaardagsfeestje", "birthday", "bday"] },
   // Personen zijn een fallback: "BBQ bij Jeroen" blijft een barbecue, geen portret.
   // Koppels vóór individuele namen, ook als «&» na normalisatie wegvalt.
@@ -79,19 +79,64 @@ function normalize(s: string): string {
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
-    .trim()} `;
+    .trim()
+    .split(/\s+/)
+    .map((word) => ["christophe", "christoph", "christof"].includes(word) ? "kristof" : word)
+    .join(" ")} `;
 }
 
-const PREPARED = AGENDA_PHOTOS.map((p) => ({ file: p.file, keys: p.keys.map(normalize) }));
+const PERSON_START = AGENDA_PHOTOS.findIndex((p) => p.file === "niels_en_ines");
+const PREPARED = AGENDA_PHOTOS.map((p, index) => ({
+  file: p.file,
+  person: index >= PERSON_START,
+  keys: p.keys.map(normalize),
+}));
 
-/** Pad naar de foto (zonder formaat-achtervoegsel) of null; eerst de titel, dan de plaats. */
+/** Eén typefout in langere woorden; korte namen blijven exact om verkeerde portretten te vermijden. */
+function oneTypo(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.min(a.length, b.length) < 6 || Math.abs(a.length - b.length) > 1) return false;
+  let at = 0;
+  while (at < Math.min(a.length, b.length) && a[at] === b[at]) at++;
+  if (a.length === b.length) {
+    return a.slice(at + 1) === b.slice(at + 1) ||
+      (a[at] === b[at + 1] && a[at + 1] === b[at] && a.slice(at + 2) === b.slice(at + 2));
+  }
+  return a.length > b.length
+    ? a.slice(at + 1) === b.slice(at)
+    : a.slice(at) === b.slice(at + 1);
+}
+
+function fuzzyPhrase(text: string, key: string): boolean {
+  const words = text.trim().split(/\s+/);
+  const phrase = key.trim().split(/\s+/);
+  for (let start = 0; start <= words.length - phrase.length; start++) {
+    let typos = 0;
+    const matches = phrase.every((word, offset) => {
+      const candidate = words[start + offset];
+      if (word === candidate) return true;
+      typos++;
+      return typos <= 1 && oneTypo(word, candidate);
+    });
+    if (matches) return true;
+  }
+  return false;
+}
+
+/** Automatische lokale herkenning bij elke weergave, ook voor toekomstige uitnodigingen.
+ * Eerst titel, dan plaats; afspraken vóór personen. Bij dubbelzinnige typefouten geen gok.
+ */
 export function agendaPhotoFor(title: string | null | undefined, location?: string | null): string | null {
   for (const text of [title, location]) {
     if (!text) continue;
     const t = normalize(text);
-    // Hele woorden: «kbc» in «KBC Leuven» wel, «date» in «update» niet.
-    const hit = PREPARED.find((p) => p.keys.some((k) => t.includes(k)));
-    if (hit) return `/images/afspraken/${hit.file}`;
+    for (const person of [false, true]) {
+      const candidates = PREPARED.filter((p) => p.person === person);
+      const exact = candidates.find((p) => p.keys.some((key) => t.includes(key)));
+      if (exact) return `/images/afspraken/${exact.file}`;
+      const fuzzy = candidates.filter((p) => p.keys.some((key) => fuzzyPhrase(t, key)));
+      if (fuzzy.length === 1) return `/images/afspraken/${fuzzy[0].file}`;
+    }
   }
   return null;
 }
