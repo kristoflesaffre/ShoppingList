@@ -422,7 +422,9 @@ function AgendaColumn() {
         </div>
       ) : (
         <>
-          <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {/* Kleine binnenmarge (en even veel negatieve marge): randen en schaduwen van tegels aan de bovenkant
+              en rechts vallen anders weg tegen de rand van het scrollvak. */}
+          <div className="-mx-1.5 -mt-1.5 min-h-0 flex-1 overflow-y-auto px-1.5 pt-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <DashboardPhotoTimeline allDay={allDay} timed={timed} upcomingDays={upcomingDays} nowMin={nowMin} nowLabel={nowLabel} />
           </div>
         </>
