@@ -597,9 +597,9 @@ function TileLane({
 type AgendaView = "overzicht" | "tegels";
 const VIEW_KEY = "home-agenda-view";
 
-/** Schakelaar met enkel iconen naast de titel: overzicht (tijdlijn/dagdelen) of tegels. */
+/** Schakelaar met enkel iconen naast de titel: tegels (standaard) of overzicht (tijdlijn/dagdelen). */
 function ViewToggle({ view, onChange }: { view: AgendaView; onChange: (v: AgendaView) => void }) {
-  const { containerRef, indicatorStyle } = useSlidingIndicator<HTMLSpanElement>(view === "tegels" ? 1 : 0);
+  const { containerRef, indicatorStyle } = useSlidingIndicator<HTMLSpanElement>(view === "tegels" ? 0 : 1);
   const opt = (v: AgendaView, label: string, icon: React.ReactNode) => (
     <button
       data-segment
@@ -625,19 +625,21 @@ function ViewToggle({ view, onChange }: { view: AgendaView; onChange: (v: Agenda
         className="pointer-events-none absolute left-0 -z-10 rounded-pill bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.14)] motion-reduce:!transition-none"
         style={indicatorStyle}
       />
+      {/* Tegels eerst: de standaardweergave (een rij tegels = drie vierkantjes naast elkaar). */}
+      {opt(
+        "tegels",
+        "Tegels",
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinejoin="round" aria-hidden className="size-4">
+          <rect x="1.75" y="8.25" width="5.5" height="7.5" rx="1.6" />
+          <rect x="9.25" y="8.25" width="5.5" height="7.5" rx="1.6" />
+          <rect x="16.75" y="8.25" width="5.5" height="7.5" rx="1.6" />
+        </svg>,
+      )}
       {opt(
         "overzicht",
         "Overzicht",
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-4">
           <path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
-        </svg>,
-      )}
-      {opt(
-        "tegels",
-        "Tegels",
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" aria-hidden className="size-4">
-          <rect x="3" y="5" width="7.5" height="14" rx="2.2" />
-          <rect x="13.5" y="5" width="7.5" height="14" rx="2.2" />
         </svg>,
       )}
     </span>
@@ -834,9 +836,10 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
   // Meteen de bewaarde weergave, zodat ook het laadskelet de juiste opbouw toont.
   const [view, setView] = React.useState<AgendaView>(() => {
     try {
-      return typeof window !== "undefined" && window.localStorage.getItem(VIEW_KEY) === "tegels" ? "tegels" : "overzicht";
+      // Standaard tegels; het overzicht enkel als je daar zelf voor koos.
+      return typeof window !== "undefined" && window.localStorage.getItem(VIEW_KEY) === "overzicht" ? "overzicht" : "tegels";
     } catch {
-      return "overzicht";
+      return "tegels";
     }
   });
   React.useEffect(() => {
