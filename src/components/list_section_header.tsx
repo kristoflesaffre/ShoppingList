@@ -6,7 +6,7 @@ export function ListSectionHeaderIcon({
   variant,
   className,
 }: {
-  variant: "list" | "heart" | "card" | "calendar" | "freeze" | "shopping-bag" | "films";
+  variant: "list" | "heart" | "card" | "calendar" | "freeze" | "shopping-bag" | "films" | "bulb";
   className?: string;
 }) {
   const src =
@@ -22,7 +22,9 @@ export function ListSectionHeaderIcon({
               ? "/icons/shopping_bag.svg"
               : variant === "films"
                 ? "/icons/films.svg"
-                : "/icons/heart.svg";
+                : variant === "bulb"
+                  ? "/icons/bulb.svg"
+                  : "/icons/heart.svg";
   return (
     <span
       className={cn("inline-block shrink-0 bg-current", className ?? "size-4")}
@@ -63,7 +65,7 @@ export function ListSectionHeader({
   extra,
 }: {
   /** @deprecated Niet meer getoond sinds stijl 1; blijft voor bestaande aanroepen. */
-  icon?: "list" | "heart" | "card" | "calendar" | "freeze" | "shopping-bag" | "films";
+  icon?: "list" | "heart" | "card" | "calendar" | "freeze" | "shopping-bag" | "films" | "bulb";
   /** Zichtbare naam, in sentence case (bv. «Favorieten»). */
   label: string;
   /** Aantal items in de sectie; verborgen bij `undefined` of 0. */

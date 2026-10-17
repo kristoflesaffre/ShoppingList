@@ -70,6 +70,7 @@ import { HomeAgendaSection } from "@/components/home_agenda_section";
 import { useAlwaysOn } from "@/lib/use_always_on";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
+import { DashboardHuePanel } from "@/components/dashboard_hue_panel";
 import { HomeDiscoverBanners, type DiscoverBanner } from "@/components/home_discover_banners";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
 import {
@@ -623,6 +624,49 @@ type FreezerPreviewItem = Pick<
 >;
 
 /** Startpagina: diepvriesvoorraad — altijd zichtbaar (ook bij bestaande lijsten). */
+/**
+ * «Licht» op de startpagina (gsm en overzicht): hetzelfde lichtpaneel als op het avonddashboard, met hoge
+ * kolommen zodat dimmen met de duim makkelijk gaat, plus de cinemaknoppen. Niet gekoppeld of niet
+ * ingesteld: lege staat met de lamp-illustratie en een knop naar Profiel → Philips Hue.
+ */
+function HomeLightSection({ onHide }: { onHide?: () => void }) {
+  const router = useRouter();
+  return (
+    <div className="flex flex-col gap-4">
+      <ListSectionHeader icon="bulb" label="Licht" showNaarOverzicht={false} onHide={onHide} />
+      <DashboardHuePanel
+        cinema
+        variant="mobile"
+        renderEmpty={(kind, reconnect) => (
+          <HomeOnboardingEmptyCard
+            illustrationSrc="/images/ui/lamp_240.webp"
+            illustrationSide="end"
+            contentAlign="start"
+            text={
+              kind === "no-rooms"
+                ? "Er staan nog geen kamers in je Hue-app. Maak er een aan en je lampen verschijnen hier."
+                : kind === "not-configured"
+                  ? "Bedien je Philips Hue-lampen vanaf hier. Hue is nog niet ingesteld voor deze versie van de app."
+                  : reconnect
+                    ? "Je Hue-koppeling is verlopen. Koppel opnieuw om je lampen hier te bedienen."
+                    : "Bedien je Philips Hue-lampen vanaf hier: per kamer aan, uit en dimmen."
+            }
+            actions={
+              kind === "not-configured" ? (
+                <span className="text-[12px] font-medium leading-4 text-[var(--text-secondary)]">Vraag de beheerder om Hue in te stellen.</span>
+              ) : (
+                <MiniButton variant="primary" onClick={() => router.push("/profiel/hue")}>
+                  {kind === "no-rooms" ? "Hue-instellingen" : reconnect ? "Opnieuw koppelen" : "Koppel Philips Hue"}
+                </MiniButton>
+              )
+            }
+          />
+        )}
+      />
+    </div>
+  );
+}
+
 function HomeDiepvriesSection({
   itemCount,
   previewItems,
@@ -2923,6 +2967,8 @@ export default function Home() {
             onHide={onHide}
           />
         );
+      case "licht":
+        return <HomeLightSection onHide={onHide} />;
       case "films-series":
         return <HomeFilmsSeriesSection onHide={onHide} ownWatchlist={homeOwnWatchlist} watchingItems={homeWatchingItems} newSeasonItems={homeNewSeasonItems} />;
       default:

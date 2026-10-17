@@ -382,8 +382,22 @@ function ScrollLane({ className, children }: { className?: string; children: Rea
   );
 }
 
-/** `cinema`: met de twee cinemaknoppen links in het paneel (avond). */
-export function DashboardHuePanel({ cinema = false }: { cinema?: boolean }) {
+export type HueEmptyKind = "not-configured" | "not-connected" | "no-rooms";
+
+/**
+ * `cinema`: met de twee cinemaknoppen links in het paneel. `variant="mobile"`: vaste hoogte met hoge
+ * kolommen (startpagina op de gsm). `renderEmpty`: eigen lege staat (niet ingesteld, niet gekoppeld, geen
+ * kamers) i.p.v. de korte melding in het paneel.
+ */
+export function DashboardHuePanel({
+  cinema = false,
+  variant = "dashboard",
+  renderEmpty,
+}: {
+  cinema?: boolean;
+  variant?: "dashboard" | "mobile";
+  renderEmpty?: (kind: HueEmptyKind, reconnect: boolean) => React.ReactNode;
+}) {
   const token = useGoogleAuthToken();
   const [state, setState] = React.useState<State>({ kind: "loading" });
   const [busy, setBusy] = React.useState<Set<string>>(() => new Set());
@@ -449,6 +463,12 @@ export function DashboardHuePanel({ cinema = false }: { cinema?: boolean }) {
 
   const anyOn = state.kind === "ready" && state.rooms.some((r) => r.on);
 
+  if (renderEmpty) {
+    if (state.kind === "not-configured") return <>{renderEmpty("not-configured", false)}</>;
+    if (state.kind === "not-connected") return <>{renderEmpty("not-connected", state.reconnect)}</>;
+    if (state.kind === "ready" && state.rooms.length === 0) return <>{renderEmpty("no-rooms", false)}</>;
+  }
+
   // Venster buiten de <section>: anders zou een tik op de achtergrond van het venster (via React-bubbling)
   // het paneel-klik-event raken en het venster meteen weer openen.
   return (
@@ -461,10 +481,11 @@ export function DashboardHuePanel({ cinema = false }: { cinema?: boolean }) {
         if ((e.target as Element).closest("button, a, [role=slider]")) return;
         setOpen(true);
       }}
-      className="relative flex cursor-pointer min-h-[96px] min-w-0 flex-1 flex-col overflow-hidden rounded-[24px] bg-[radial-gradient(120%_140%_at_0%_0%,#3a2f1c_0%,#1c1a2c_45%,#11101e_100%)] px-[18px] py-3.5 text-fixed-white shadow-[0_18px_40px_-26px_rgba(255,190,80,0.45)] [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#2a3352_0%,#1e2640_55%,#171d32_100%)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(160,180,255,0.25)] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]"
+      className={cn("relative flex cursor-pointer min-w-0 flex-col overflow-hidden rounded-[24px] bg-[radial-gradient(120%_140%_at_0%_0%,#3a2f1c_0%,#1c1a2c_45%,#11101e_100%)] px-[18px] py-3.5 text-fixed-white shadow-[0_18px_40px_-26px_rgba(255,190,80,0.45)] [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#2a3352_0%,#1e2640_55%,#171d32_100%)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(160,180,255,0.25)] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]", variant === "mobile" ? "h-[300px] w-full" : "min-h-[96px] flex-1")}
     >
-      <div className="flex items-center justify-between">
-        <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">LICHT</span>
+      <div className="flex min-h-7 items-center justify-between">
+        {/* Op de startpagina staat «Licht» al als sectietitel erboven. */}
+        <span className={cn("text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75", variant === "mobile" && "invisible")}>LICHT</span>
         {state.kind === "ready" && anyOn ? (
           <button
             type="button"

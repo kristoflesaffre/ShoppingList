@@ -5,7 +5,8 @@ export type HomeSectionId =
   | "kalender"
   | "klantenkaarten"
   | "diepvries"
-  | "films-series";
+  | "films-series"
+  | "licht";
 
 export type HomeSectionConfig = {
   order: HomeSectionId[];
@@ -29,6 +30,7 @@ export const HOME_SECTIONS_META: {
   { id: "klantenkaarten", label: "Klantenkaarten", description: "Je kaarten altijd bij de hand", tint: "#fdf6d8", illustration: "/images/ui/klantenkaart_320.webp", hideable: true },
   { id: "diepvries", label: "Diepvries", description: "Wat er in je diepvries ligt", tint: "#e5f1fb", illustration: "/images/ui/empty_state_diepvries.png", hideable: true },
   { id: "films-series", label: "Films en series", description: "Je watchlist en wat je kijkt", tint: "#eceef4", illustration: "/images/ui/films_320.webp", hideable: true },
+  { id: "licht", label: "Licht", description: "Je Philips Hue-lampen bedienen", tint: "#fff6d9", illustration: "/images/ui/lamp_320.webp", hideable: true },
 ];
 
 export const DEFAULT_SECTION_ORDER: HomeSectionId[] = [
@@ -39,6 +41,7 @@ export const DEFAULT_SECTION_ORDER: HomeSectionId[] = [
   "klantenkaarten",
   "diepvries",
   "films-series",
+  "licht",
 ];
 
 const STORAGE_KEY = "home-section-config";

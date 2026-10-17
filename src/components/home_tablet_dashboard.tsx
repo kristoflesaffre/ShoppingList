@@ -587,8 +587,10 @@ function useSunset(on: boolean) {
   React.useEffect(() => {
     const root = document.documentElement;
     // De lucht via --page-sky op de vaste achtergrondlaag van de app (body::before in globals.css).
+    // Enkel waar het dashboard echt zichtbaar is (vanaf md); op de gsm is het verborgen maar wel gemount.
+    const wide = window.matchMedia("(min-width: 768px)");
     const sync = () => {
-      if (on && root.dataset.theme !== "dark" && !root.dataset.aod) {
+      if (on && wide.matches && root.dataset.theme !== "dark" && !root.dataset.aod) {
         root.dataset.sunset = "";
         root.style.setProperty("--page-sky", SUNSET_SKY);
       } else {
@@ -599,8 +601,10 @@ function useSunset(on: boolean) {
     sync();
     const mo = new MutationObserver(sync);
     mo.observe(root, { attributes: true, attributeFilter: ["data-theme", "data-aod"] });
+    wide.addEventListener("change", sync);
     return () => {
       mo.disconnect();
+      wide.removeEventListener("change", sync);
       delete root.dataset.sunset;
       root.style.removeProperty("--page-sky");
     };
