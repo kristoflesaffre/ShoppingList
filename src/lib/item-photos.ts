@@ -117,6 +117,8 @@ export { normalizeForMatch };
  */
 export type ItemPhotoLookupOptions = {
   tripPerson?: TripPersonTab | string | null;
+  /** Item uit een recept: zonder itemfoto de ingrediëntfoto tonen (alleen waar de lijst dat ondersteunt). */
+  ingredientFallback?: boolean;
 };
 
 export function matchItemPhotoUrl(

@@ -70,6 +70,7 @@ import {
   APP_SNACKBAR_NO_NAV_FIXTURE_CLASS,
 } from "@/lib/app-layout";
 import { useItemPhotoUrl, type ItemPhotoLookupOptions } from "@/lib/item-photos";
+import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 import type { DecodeResult } from "@/lib/loyalty_card";
 import {
   MASTER_STORE_OPTIONS,
@@ -1743,7 +1744,9 @@ function SortableItemCard({
             const photoLookupOptions: ItemPhotoLookupOptions | undefined =
               isVacationList
                 ? { tripPerson: normalizeTripPerson(item.tripPerson) }
-                : undefined;
+                : item.recipeGroupId
+                  ? { ingredientFallback: true }
+                  : undefined;
             let photoUrl: string | null | undefined;
             if (item.fromStock && item.stockPhotoUrl) {
               photoUrl = item.stockPhotoUrl;
@@ -3089,7 +3092,14 @@ export default function ListDetailPage({
   const router = useRouter();
   const routeParams = useParams();
   const searchParams = useSearchParams();
-  const getPhotoUrl = useItemPhotoUrl();
+  const getItemPhotoUrl = useItemPhotoUrl();
+  const getIngredientPhotoUrl = useIngredientPhotoUrl(240);
+  // Items uit een recept: liefst de itemfoto (zoals elk ander item), anders de ingrediëntfoto uit het recept.
+  const getPhotoUrl = React.useCallback(
+    (name: string, size?: number, options?: ItemPhotoLookupOptions) =>
+      getItemPhotoUrl(name, size, options) ?? (options?.ingredientFallback ? getIngredientPhotoUrl(name) : null),
+    [getItemPhotoUrl, getIngredientPhotoUrl],
+  );
   const { isLoading: authLoading, user } = db.useAuth();
   const routeListId = resolvedRouteListId(params.id, routeParams?.id);
   const listQueryId = routeListId ?? LIJSTJE_QUERY_PLACEHOLDER_ID;
