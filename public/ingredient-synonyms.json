@@ -766,5 +766,22 @@
   "zuur_fruit_snoep": "zuur_fruit_snoep",
   "zure_snoepjes": "zuur_fruit_snoep",
   "zuurtjes": "zuur_fruit_snoep",
-  "zuur_fruit": "zuur_fruit_snoep"
+  "zuur_fruit": "zuur_fruit_snoep",
+  "hotdogs": "hot_dogs",
+  "hotdog": "hot_dogs",
+  "hot_dog": "hot_dogs",
+  "knakworsten": "hot_dogs",
+  "knakworst": "hot_dogs",
+  "piccolo": "piccolo_broodje",
+  "piccolos": "piccolo_broodje",
+  "piccolo_broodjes": "piccolo_broodje",
+  "piccolobroodjes": "piccolo_broodje",
+  "sandwiches": "sandwich",
+  "gefrituurde_uitjes": "gefrituurde_ajuin",
+  "gebakken_uitjes": "gefrituurde_ajuin",
+  "gefrituurde_ui": "gefrituurde_ajuin",
+  "crispy_onions": "gefrituurde_ajuin",
+  "gefruite_uitjes": "gefrituurde_ajuin",
+  "raclette": "raclette_kaas",
+  "raclettekaas": "raclette_kaas"
 }
