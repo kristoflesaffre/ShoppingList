@@ -270,6 +270,7 @@ function HomeLoyaltyCardsSwimlane({ cards }: { cards: HomeLoyaltyCard[] }) {
         showNaarOverzicht
         naarOverzichtHref="/klantenkaarten"
         overzichtLabel="Toon alle"
+        overzichtCount={cards.length}
       />
       {/* -mx + px: tegel-scroll loopt tot aan de schermrand, padding houdt eerste tegel op grid. */}
       <div
@@ -684,8 +685,8 @@ function HomeDiepvriesSection({
         <ListSectionHeader
           icon="freeze"
           label="Diepvries"
-          count={itemCount}
           showNaarOverzicht
+          overzichtCount={itemCount}
           naarOverzichtHref="/diepvriesvoorraad"
           overzichtLabel="Toon alle"
         />
@@ -1089,6 +1090,11 @@ const HOME_SWIMLANE_ARROW_CLASS =
  *  Desktop: 3-kolommen grid. */
 type HomeWeekDay = { isoDate: string; date: Date; entry: DayEntry | null };
 
+/** Aantal geplande dagen vanaf vandaag (voor de «Toon alle»-pil van Kalender). */
+function plannedAhead(days: HomeWeekDay[], todayIso: string): number {
+  return days.filter((d) => d.isoDate >= todayIso && d.entry).length;
+}
+
 const WEEKDAY_ABBR = ["ZO", "MA", "DI", "WO", "DO", "VR", "ZA"] as const;
 
 /** Hoeveel dagen terug de kalenderstrip op de startpagina gaat (swipen naar rechts). */
@@ -1214,7 +1220,7 @@ function HomeCalendarLaneMobile({ days, todayIso }: { days: HomeWeekDay[]; today
   }, [days.length]);
   return (
     <div className="flex flex-col gap-4">
-      <ListSectionHeader icon="calendar" label="Kalender" showNaarOverzicht naarOverzichtHref="/kalender" overzichtLabel="Toon alle" />
+      <ListSectionHeader icon="calendar" label="Kalender" showNaarOverzicht naarOverzichtHref="/kalender" overzichtLabel="Toon alle" overzichtCount={plannedAhead(days, todayIso)} />
       <div
         ref={laneRef}
         role="group"
@@ -1258,6 +1264,7 @@ function HomeCalendarWeekDesktop({ days, todayIso }: { days: HomeWeekDay[]; toda
         showNaarOverzicht
         naarOverzichtHref="/kalender"
         overzichtLabel="Toon alle"
+        overzichtCount={plannedAhead(days, todayIso)}
         extra={
           <span className="flex items-center gap-1.5">
             <span className="mr-2 text-sm text-[var(--text-tertiary)]">{range}</span>
@@ -1690,6 +1697,7 @@ function HomeLijstjesSection({
         showNaarOverzicht
         naarOverzichtHref="/lijstjes-beheren/lijstjes"
         overzichtLabel="Toon alle"
+        overzichtCount={normalLists.length}
       />
 
       {/* Mobiel met vaste tegels: één rij — het laatste lijstje, dan Te kopen, Favorieten, … en tot slot
@@ -1948,6 +1956,7 @@ function HomeFilmsSeriesSection({
         showNaarOverzicht
         naarOverzichtHref="/films-series"
         overzichtLabel="Toon alle"
+        overzichtCount={posterItems.length}
       />
       <div
         className={SWIMLANE_CLASSES}

@@ -47,6 +47,46 @@ const sectionActionClass =
   "inline-flex shrink-0 items-center rounded-pill px-2 py-1 -mr-1 text-[15px] font-semibold leading-5 tracking-normal text-action-primary no-underline transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover [@media(hover:hover)]:hover:text-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
 
 /**
+ * «Toon alle» als zacht drukvlak (canvas «Toon alle» K3): lichtgrijze pil met een kaartstapel-icoon, het
+ * aantal en een chevron. Zonder aantal: icoon en chevron. `external` opent in een nieuw tabblad.
+ */
+export function OverviewPill({
+  href,
+  count,
+  ariaLabel,
+  external = false,
+}: {
+  href: string;
+  count?: number;
+  ariaLabel: string;
+  external?: boolean;
+}) {
+  const className =
+    "-mr-0.5 inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-pill bg-[#e9eaf2] pl-[11px] pr-[9px] text-[15.5px] font-extrabold leading-5 tabular-nums text-[var(--text-primary)] no-underline transition-[background-color,transform] duration-fast motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[#dfe0ec] [[data-theme=dark]_&]:bg-[var(--gray-25)] [[data-theme=dark]_&]:[@media(hover:hover)]:hover:bg-[var(--gray-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
+  const inner = (
+    <>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[17px] shrink-0">
+        <rect x="7" y="3.5" width="13.5" height="13.5" rx="2.6" />
+        <path d="M3.5 7.5v10a3 3 0 0 0 3 3h10" />
+      </svg>
+      {count ? <span>{count}</span> : null}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[13px] shrink-0 text-[var(--text-secondary)]">
+        <path d="m9 6 6 6-6 6" />
+      </svg>
+    </>
+  );
+  return external ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" aria-label={ariaLabel} className={className}>
+      {inner}
+    </a>
+  ) : (
+    <Link href={href} aria-label={ariaLabel} className={className}>
+      {inner}
+    </Link>
+  );
+}
+
+/**
  * Sectiekop voor home-secties (stijl 1 · Helder): sectietitel (18px, sentence case) met
  * optioneel aantal ernaast in gedempte tekst, en rechts een tekstlink zonder icoon
  * (of «Sectie verbergen»).
@@ -60,6 +100,7 @@ export function ListSectionHeader({
   showNaarOverzicht,
   naarOverzichtHref = "/lijstjes-beheren/lijstjes",
   overzichtLabel = "Alles",
+  overzichtCount,
   onHide,
   action,
   extra,
@@ -72,7 +113,10 @@ export function ListSectionHeader({
   count?: number;
   showNaarOverzicht: boolean;
   naarOverzichtHref?: string;
+  /** Toegankelijke naam van de overzichtsknop (niet meer zichtbaar sinds K3). */
   overzichtLabel?: string;
+  /** Aantal in de overzichtsknop (K3), bv. alle 81 lijstjes. */
+  overzichtCount?: number;
   /** When provided, renders "Sectie verbergen" instead of "Alles". */
   onHide?: () => void;
   /** Eigen actie rechts (bv. «Toevoegen»-pil); gaat vóór «Alles». */
@@ -99,13 +143,11 @@ export function ListSectionHeader({
       ) : showNaarOverzicht ? (
         <div className="flex shrink-0 items-center gap-3">
           {extra}
-          <Link
+          <OverviewPill
             href={naarOverzichtHref}
-            className={sectionActionClass}
-            aria-label={`${label}: alles bekijken`}
-          >
-            {overzichtLabel}
-          </Link>
+            count={overzichtCount}
+            ariaLabel={`${label}: ${overzichtLabel.toLowerCase()}${overzichtCount ? ` (${overzichtCount})` : ""}`}
+          />
         </div>
       ) : null}
     </div>

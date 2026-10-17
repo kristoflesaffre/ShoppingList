@@ -11,6 +11,7 @@ import { agendaDisplayTitle, dedupeBirthdays } from "@/lib/agenda_birthdays";
 import { dropAllDayDuplicates, mergeAllDayDuplicates } from "@/lib/agenda_duplicates";
 import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
 import { RoundIconButton } from "@/components/ui/round_icon_button";
+import { OverviewPill } from "@/components/list_section_header";
 
 /**
  * Agenda op de startpagina (canvas «Agenda A · Tijdlijn» + desktop «2 · Dagdelen»): de Google-afspraken
@@ -888,9 +889,13 @@ export function HomeAgendaSection({ onHide }: { ownerId?: string; onHide?: () =>
   const hasEvents = connected && (allRows.length > 0 || upcomingDays.length > 0);
   const headerRight = connected ? (
     <span className="flex shrink-0 items-center gap-4">
-      <a href="https://calendar.google.com/calendar/r/day" target="_blank" rel="noopener noreferrer" className="text-[15px] font-semibold text-action-primary no-underline">
-        Open agenda
-      </a>
+      {/* Zelfde «Toon alle»-pil als de andere secties (K3), met het aantal komende afspraken. */}
+      <OverviewPill
+        href="https://calendar.google.com/calendar/r/day"
+        external
+        count={allRows.length + upcomingDays.reduce((n, d) => n + d.rows.length, 0)}
+        ariaLabel="Open agenda in Google Agenda"
+      />
     </span>
   ) : !onHide || (!state && !failed) ? null : (
     <button
