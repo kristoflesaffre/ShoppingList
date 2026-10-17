@@ -9,6 +9,7 @@ import { fetchAgenda, localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
 import { mixWithWhite, type Rgb } from "@/lib/recipe-tint";
 import { agendaPhotoFor } from "@/lib/agenda_photos";
 import { agendaDisplayTitle, dedupeBirthdays } from "@/lib/agenda_birthdays";
+import { dropAllDayDuplicates } from "@/lib/agenda_duplicates";
 import { RouteButton } from "@/components/home_agenda_section";
 
 /**
@@ -120,7 +121,9 @@ function useAgendaWeek() {
       if (!names.includes(key)) names.push(key);
       out.push({ ...e, startAt, endAt: parseEnd(e, startAt), dayIso: dayIso(startAt), color: CALENDAR_COLORS[names.indexOf(key) % CALENDAR_COLORS.length] });
     }
-    return out.sort((a, b) => a.startAt.getTime() - b.startAt.getTime() || Number(b.allDay) - Number(a.allDay));
+    // Staat een hele-dag-afspraak die dag ook met een uur in de agenda («Fruitschildag»), dan enkel die met uur.
+    const kept = out.filter((e) => !e.allDay || dropAllDayDuplicates([e], out.filter((t) => !t.allDay && t.dayIso === e.dayIso)).length > 0);
+    return kept.sort((a, b) => a.startAt.getTime() - b.startAt.getTime() || Number(b.allDay) - Number(a.allDay));
   }, [state?.events]);
 
   return { token, state, failed, events, now, connect: () => void startGoogleConnect(token) };
