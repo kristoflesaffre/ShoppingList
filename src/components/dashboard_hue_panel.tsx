@@ -41,6 +41,7 @@ function LampColumn({
   onChange,
   onTap,
   tall = false,
+  light = false,
 }: {
   room: Room;
   index: number;
@@ -50,6 +51,8 @@ function LampColumn({
   onTap?: () => void;
   /** Hoge kolom in het lichtvenster: groter, met aan/uit-schakelaar eronder. */
   tall?: boolean;
+  /** Op een lichte ondergrond (startpagina op de gsm): lichte capsule, donkere tekst. */
+  light?: boolean;
 }) {
   const [preview, setPreview] = React.useState<number | null>(null);
   const drag = React.useRef<{ y: number; moved: boolean; rect: DOMRect } | null>(null);
@@ -112,7 +115,10 @@ function LampColumn({
           }
         }}
         className={cn(
-          "relative flex flex-1 touch-pan-x select-none justify-center overflow-hidden rounded-full bg-fixed-white/[0.06] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-70",
+          "relative flex flex-1 touch-pan-x select-none justify-center overflow-hidden rounded-full focus-visible:outline-none focus-visible:ring-2 disabled:opacity-70",
+          light
+            ? "bg-[#f1f2f7] shadow-[inset_0_0_0_1px_rgba(16,17,48,0.06)] focus-visible:ring-[#ffb547] [[data-theme=dark]_&]:bg-fixed-white/[0.06] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]"
+            : "bg-fixed-white/[0.06] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] focus-visible:ring-fixed-white",
           tall ? "min-h-[160px] w-[76px] pt-4" : "min-h-[72px] w-[52px] pt-2.5",
         )}
       >
@@ -124,7 +130,7 @@ function LampColumn({
           />
         ) : null}
         {/* Donkere tekst enkel als de vulling tot onder het getal komt (hoge kolom: pas bijna vol). */}
-        <span className={cn("relative font-extrabold tabular-nums", tall ? "text-base" : "text-[13px]", !lit ? "text-fixed-white/50" : level >= (tall ? 93 : 80) ? "text-[#5a3300]" : "text-fixed-white")}>
+        <span className={cn("relative font-extrabold tabular-nums", tall ? "text-base" : "text-[13px]", lit && level >= (tall ? 93 : 80) ? "text-[#5a3300]" : light ? (lit ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]") : lit ? "text-fixed-white" : "text-fixed-white/50")}>
           {lit ? (tall ? `${level}%` : level) : tall ? "Uit" : "–"}
         </span>
         {/* Verdieping als bolletje: «1»/«2» of een pijl omhoog (boven) / omlaag (beneden). */}
@@ -134,7 +140,11 @@ function LampColumn({
             className={cn(
               "absolute left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full font-extrabold",
               tall ? "bottom-3 size-6 text-[12.5px]" : "bottom-2 size-5 text-[11px]",
-              lit && level >= 20 ? "bg-fixed-white/70 text-[#5a3300]" : "bg-fixed-white/15 text-fixed-white/80",
+              lit && level >= 20
+                ? "bg-fixed-white/70 text-[#5a3300]"
+                : light
+                  ? "bg-[rgba(16,17,48,0.08)] text-[var(--text-secondary)] [[data-theme=dark]_&]:bg-fixed-white/15"
+                  : "bg-fixed-white/15 text-fixed-white/80",
             )}
           >
             {badge.kind === "number" ? (
@@ -153,7 +163,7 @@ function LampColumn({
           "w-full text-center font-bold",
           // Hoge kolom: mag op twee regels met afbreekstreepje («Gasten-kamer») i.p.v. «…».
           tall ? "line-clamp-2 min-h-[2.4em] text-[13px] leading-[1.2] [hyphens:auto]" : "truncate text-[11px]",
-          lit ? "text-fixed-white" : "text-fixed-white/65",
+          light ? (lit ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]") : lit ? "text-fixed-white" : "text-fixed-white/65",
         )}
       >
         {base}
@@ -168,7 +178,7 @@ function LampColumn({
           onClick={() => onChange(room.on ? { on: false } : { on: true })}
           className={cn(
             "relative h-[26px] w-11 shrink-0 rounded-full transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-70",
-            room.on ? "bg-[#ffb547]" : "bg-fixed-white/[0.16]",
+            room.on ? "bg-[#ffb547]" : light ? "bg-[rgba(16,17,48,0.12)] [[data-theme=dark]_&]:bg-fixed-white/[0.16]" : "bg-fixed-white/[0.16]",
           )}
         >
           <span className={cn("absolute top-[3px] size-5 rounded-full transition-[left] duration-fast ease-out-strong", room.on ? "left-[21px] bg-fixed-white" : "left-[3px] bg-[#cfd5ee]")} />
@@ -385,8 +395,8 @@ function ScrollLane({ className, children }: { className?: string; children: Rea
 export type HueEmptyKind = "not-configured" | "not-connected" | "no-rooms";
 
 /**
- * `cinema`: met de twee cinemaknoppen links in het paneel. `variant="mobile"`: vaste hoogte met hoge
- * kolommen (startpagina op de gsm). `renderEmpty`: eigen lege staat (niet ingesteld, niet gekoppeld, geen
+ * `cinema`: met de twee cinemaknoppen links in het paneel. `variant="mobile"`: sectie voor de startpagina op
+ * de gsm (licht, met eigen titel en hoofdschakelaar, zie MobileHueSection). `renderEmpty`: eigen lege staat (niet ingesteld, niet gekoppeld, geen
  * kamers) i.p.v. de korte melding in het paneel.
  */
 export function DashboardHuePanel({
@@ -469,6 +479,8 @@ export function DashboardHuePanel({
     if (state.kind === "ready" && state.rooms.length === 0) return <>{renderEmpty("no-rooms", false)}</>;
   }
 
+  if (variant === "mobile") return <MobileHueSection state={state} busy={busy} setRoom={setRoom} floors={floors} load={load} renderEmpty={renderEmpty} />;
+
   // Venster buiten de <section>: anders zou een tik op de achtergrond van het venster (via React-bubbling)
   // het paneel-klik-event raken en het venster meteen weer openen.
   return (
@@ -481,11 +493,10 @@ export function DashboardHuePanel({
         if ((e.target as Element).closest("button, a, [role=slider]")) return;
         setOpen(true);
       }}
-      className={cn("relative flex cursor-pointer min-w-0 flex-col overflow-hidden rounded-[24px] bg-[radial-gradient(120%_140%_at_0%_0%,#3a2f1c_0%,#1c1a2c_45%,#11101e_100%)] px-[18px] py-3.5 text-fixed-white shadow-[0_18px_40px_-26px_rgba(255,190,80,0.45)] [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#2a3352_0%,#1e2640_55%,#171d32_100%)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(160,180,255,0.25)] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]", variant === "mobile" ? "h-[300px] w-full" : "min-h-[96px] flex-1")}
+      className={cn("relative flex min-h-[96px] min-w-0 flex-1 cursor-pointer flex-col overflow-hidden rounded-[24px] bg-[radial-gradient(120%_140%_at_0%_0%,#3a2f1c_0%,#1c1a2c_45%,#11101e_100%)] px-[18px] py-3.5 text-fixed-white shadow-[0_18px_40px_-26px_rgba(255,190,80,0.45)] [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#2a3352_0%,#1e2640_55%,#171d32_100%)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(160,180,255,0.25)] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]")}
     >
       <div className="flex min-h-7 items-center justify-between">
-        {/* Op de startpagina staat «Licht» al als sectietitel erboven. */}
-        <span className={cn("text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75", variant === "mobile" && "invisible")}>LICHT</span>
+        <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">LICHT</span>
         {state.kind === "ready" && anyOn ? (
           <button
             type="button"
@@ -534,6 +545,100 @@ export function DashboardHuePanel({
     </section>
     {open && state.kind === "ready" ? <HueLightsModal rooms={state.rooms} busy={busy} setRoom={setRoom} floors={floors} onClose={closeModal} /> : null}
     </>
+  );
+}
+
+// ─── Startpagina op de gsm ──────────────────────────────────────────────────
+
+/**
+ * «Licht» op de startpagina (gsm), op de lichte pagina-achtergrond: titel met één schakelaar voor alle lampen
+ * (aan zodra er één brandt), daaronder een witte kaart met de kolommen per verdieping, elk groepje met zijn
+ * verdieping erboven (zoals in het lichtvenster). Geen cinemaknoppen en geen «Alles uit»: dat doet de schakelaar.
+ */
+function MobileHueSection({
+  state,
+  busy,
+  setRoom,
+  floors,
+  load,
+  renderEmpty,
+}: {
+  state: State;
+  busy: Set<string>;
+  setRoom: (rooms: Room[], patch: Patch) => Promise<void>;
+  floors: RoomFloors;
+  load: () => Promise<void>;
+  renderEmpty?: (kind: HueEmptyKind, reconnect: boolean) => React.ReactNode;
+}) {
+  const rooms = state.kind === "ready" ? state.rooms : [];
+  const anyOn = rooms.some((r) => r.on);
+  const note = "text-sm text-[var(--text-secondary)]";
+
+  const body =
+    state.kind === "loading" ? (
+      <div className="flex h-[248px] gap-2" aria-busy aria-label="Lampen laden">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className="h-[200px] w-[72px] animate-pulse rounded-full bg-[rgba(16,17,48,0.06)] [[data-theme=dark]_&]:bg-fixed-white/10" />
+        ))}
+      </div>
+    ) : state.kind === "error" ? (
+      <p className={note}>
+        Hue is even niet bereikbaar.{" "}
+        <button type="button" onClick={() => void load()} className="font-bold text-[var(--text-primary)] underline">
+          Opnieuw
+        </button>
+      </p>
+    ) : state.kind === "not-configured" ? (
+      renderEmpty?.("not-configured", false) ?? <p className={note}>Philips Hue is nog niet ingesteld op deze versie van de app.</p>
+    ) : state.kind === "not-connected" ? (
+      renderEmpty?.("not-connected", state.reconnect) ?? (
+        <Link href="/profiel/hue" className="font-bold text-[var(--text-primary)] underline">
+          Koppel Philips Hue
+        </Link>
+      )
+    ) : rooms.length === 0 ? (
+      renderEmpty?.("no-rooms", false) ?? <p className={note}>Geen kamers gevonden in je Hue-app.</p>
+    ) : (
+      <ScrollLane className="-mx-4 flex gap-4 px-4">
+        {floors.groups(rooms).map((g) => (
+          <section key={g.key} aria-label={g.label} className="flex shrink-0 flex-col gap-2.5 border-r border-[rgba(16,17,48,0.08)] pr-4 last:border-r-0 last:pr-0 [[data-theme=dark]_&]:border-fixed-white/10">
+            {/* Verdieping boven het groepje, zoals in het lichtvenster. */}
+            <h3 className="whitespace-nowrap px-2.5 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-secondary)]">{g.label}</h3>
+            <div className="flex h-[224px]">
+              {g.rooms.map((room) => (
+                <LampColumn key={room.id} room={room} index={rooms.indexOf(room)} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} light />
+              ))}
+            </div>
+          </section>
+        ))}
+      </ScrollLane>
+    );
+
+  const showCard = state.kind === "loading" || state.kind === "error" || (state.kind === "ready" && rooms.length > 0);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex min-h-8 items-center justify-between gap-3">
+        <h2 className="text-[22px] font-bold leading-7 tracking-[-0.01em] text-[var(--text-primary)]">Licht</h2>
+        {state.kind === "ready" && rooms.length > 0 ? (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={anyOn}
+            aria-label={anyOn ? "Alle lampen uitzetten" : "Alle lampen aanzetten"}
+            disabled={rooms.every((r) => busy.has(r.id))}
+            onClick={() => void setRoom(rooms.filter((r) => r.on === anyOn), { on: !anyOn })}
+            className={cn(
+              "relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffb547] focus-visible:ring-offset-2 disabled:opacity-60",
+              anyOn ? "bg-[#ffb547] shadow-[0_6px_16px_-8px_rgba(255,181,71,0.9)]" : "bg-[rgba(16,17,48,0.14)] [[data-theme=dark]_&]:bg-fixed-white/[0.16]",
+            )}
+          >
+            <span className={cn("absolute top-[3px] size-6 rounded-full bg-fixed-white shadow-[0_1px_3px_rgba(16,17,48,0.25)] transition-[left] duration-fast ease-out-strong", anyOn ? "left-[25px]" : "left-[3px]")} />
+          </button>
+        ) : null}
+      </div>
+      {showCard ? <div className="rounded-[24px] bg-white px-4 py-4 shadow-card">{body}</div> : body}
+    </div>
   );
 }
 

@@ -629,13 +629,13 @@ type FreezerPreviewItem = Pick<
  * kolommen zodat dimmen met de duim makkelijk gaat, plus de cinemaknoppen. Niet gekoppeld of niet
  * ingesteld: lege staat met de lamp-illustratie en een knop naar Profiel → Philips Hue.
  */
-function HomeLightSection({ onHide }: { onHide?: () => void }) {
+/** Titel, hoofdschakelaar en kolommen zitten in de mobiele variant van het paneel; verbergen gaat via
+ * «Startpagina aanpassen». */
+function HomeLightSection() {
   const router = useRouter();
   return (
-    <div className="flex flex-col gap-4">
-      <ListSectionHeader icon="bulb" label="Licht" showNaarOverzicht={false} onHide={onHide} />
+    <div className="flex flex-col">
       <DashboardHuePanel
-        cinema
         variant="mobile"
         renderEmpty={(kind, reconnect) => (
           <HomeOnboardingEmptyCard
@@ -2968,7 +2968,7 @@ export default function Home() {
           />
         );
       case "licht":
-        return <HomeLightSection onHide={onHide} />;
+        return <HomeLightSection />;
       case "films-series":
         return <HomeFilmsSeriesSection onHide={onHide} ownWatchlist={homeOwnWatchlist} watchingItems={homeWatchingItems} newSeasonItems={homeNewSeasonItems} />;
       default:
