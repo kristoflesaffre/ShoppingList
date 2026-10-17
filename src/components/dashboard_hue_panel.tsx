@@ -518,33 +518,27 @@ export function DashboardHuePanel({ cinema = false }: { cinema?: boolean }) {
 
 // ─── Cinema-knoppen (in het lichtpaneel) ────────────────────────────────────
 
-/** Filmklapper; met `power` zit er een aan/uit-teken in de klapper (= de andere lampen gaan uit). */
-const ClapperIcon = ({ power = false }: { power?: boolean }) => (
+/** Filmklapper. */
+const ClapperIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[22px]">
     <path d="M4 10h16v8.5A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5z" />
     <path d="m4 10-.6-2.4a1.5 1.5 0 0 1 1.1-1.8l12.7-3.1a1.5 1.5 0 0 1 1.8 1.1l.6 2.4z" />
     <path d="m8.4 5.2 2.3 3.2M13.3 4l2.3 3.2" />
-    {power ? <path d="M12 12.6v2.6M9.6 13.5a3.1 3.1 0 1 0 4.8 0" strokeWidth={1.7} /> : null}
+  </svg>
+);
+
+/** Maansikkel: «de rest van het huis gaat donker». */
+const MoonIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-[15px]">
+    <path d="M20.2 14.6A8.5 8.5 0 0 1 9.4 3.8a.6.6 0 0 0-.8-.7 9.5 9.5 0 1 0 12.3 12.3.6.6 0 0 0-.7-.8z" />
   </svg>
 );
 
 type CinemaMode = "living" | "living-only";
-/** `bg`: eigen kleur per knop (fluweelrood als een bioscoopgordijn, en nachtblauw = de rest gaat uit). */
-const CINEMA: { mode: CinemaMode; hint: string; othersOff: boolean; bg: string; glow: string }[] = [
-  {
-    mode: "living",
-    hint: "Woonkamer op scène «Cinema»",
-    othersOff: false,
-    bg: "linear-gradient(160deg,#ff6b6b 0%,#e0356f 55%,#a3205e 100%)",
-    glow: "rgba(224,53,111,0.75)",
-  },
-  {
-    mode: "living-only",
-    hint: "Woonkamer op «Cinema», alle andere lampen uit",
-    othersOff: true,
-    bg: "linear-gradient(160deg,#7b6cff 0%,#4b3fd1 55%,#2a2380 100%)",
-    glow: "rgba(91,79,224,0.75)",
-  },
+/** Onderste knop: donkerder glas met een maantje naast de klapper (= woonkamer cinema, de rest donker). */
+const CINEMA: { mode: CinemaMode; hint: string; othersOff: boolean }[] = [
+  { mode: "living", hint: "Woonkamer op scène «Cinema»", othersOff: false },
+  { mode: "living-only", hint: "Woonkamer op «Cinema», alle andere lampen uit", othersOff: true },
 ];
 
 /**
@@ -611,19 +605,29 @@ function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => 
             title={c.hint}
             disabled={busy !== null}
             onClick={() => void run(c)}
-            // Kleurrijk: eigen verloop, glanslaagje bovenaan en een gloed in de eigen kleur; actief = witte ring.
-            className="relative flex max-h-[52px] min-h-0 w-[52px] flex-1 items-center justify-center overflow-hidden rounded-full text-fixed-white transition-[transform,box-shadow] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-95 disabled:opacity-70"
-            style={{
-              backgroundImage: c.bg,
-              boxShadow: on
-                ? `0 0 0 2.5px #fff, 0 0 18px 2px ${c.glow}`
-                : `inset 0 0 0 1px rgba(255,255,255,0.28), 0 10px 22px -12px ${c.glow}`,
-            }}
+            // Glas zoals de capsules; de onderste is donkerder getint. Actief = warme gloed + gele ring.
+            className={cn(
+              "relative flex max-h-[52px] min-h-0 w-[52px] flex-1 items-center justify-center gap-1 rounded-full text-fixed-white backdrop-blur-[10px] transition-[transform,box-shadow,background-color] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-95 disabled:opacity-70",
+              c.othersOff ? "bg-[rgba(16,17,48,0.28)]" : "bg-fixed-white/[0.18]",
+              on
+                ? "shadow-[inset_0_0_0_1.5px_rgba(255,224,138,0.95),0_0_20px_2px_rgba(255,190,90,0.55)]"
+                : "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.34)]",
+            )}
           >
-            <span aria-hidden className="pointer-events-none absolute inset-x-1.5 top-1 h-[42%] rounded-full bg-[linear-gradient(180deg,rgba(255,255,255,0.38),rgba(255,255,255,0))]" />
-            <span className="relative drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]">
-              {busy === c.mode ? <span className="block size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden /> : <ClapperIcon power={c.othersOff} />}
-            </span>
+            {busy === c.mode ? (
+              <span className="block size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+            ) : (
+              <>
+                <span className={cn(on && "text-[#ffe08a]")}>
+                  <ClapperIcon />
+                </span>
+                {c.othersOff ? (
+                  <span className={cn("-ml-0.5", on ? "text-[#ffe08a]" : "text-fixed-white/85")}>
+                    <MoonIcon />
+                  </span>
+                ) : null}
+              </>
+            )}
           </button>
         );
       })}
