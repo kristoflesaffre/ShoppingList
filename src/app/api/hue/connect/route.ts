@@ -13,7 +13,20 @@ export async function POST(request: NextRequest) {
   const verifier = randomBytes(32).toString("base64url");
   const url = new URL("https://api.meethue.com/v2/oauth2/authorize");
   url.search = new URLSearchParams({ client_id: config.clientId, response_type: "code", redirect_uri: config.redirectUri, state, code_challenge_method: "S256", code_challenge: createHash("sha256").update(verifier).digest("base64url") }).toString();
-  const response = NextResponse.json({ url: url.toString() }, { headers: { "Cache-Control": "no-store" } });
+  // iOS claims /v2/oauth2/* as Hue-app universal links. Resolve Hue's first
+  // redirect here so browser-based clients reach the web consent page instead.
+  let consentUrl: URL;
+  try {
+    const authorization = await fetch(url, { redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(10_000) });
+    const location = authorization.headers.get("location");
+    if (![302, 303, 307, 308].includes(authorization.status) || !location) throw new Error("Missing Hue redirect");
+    consentUrl = new URL(location, url);
+    if (consentUrl.origin !== "https://account.meethue.com" || consentUrl.pathname !== "/get-token/" || consentUrl.username || consentUrl.password) throw new Error("Unexpected Hue redirect");
+    if (consentUrl.searchParams.get("state") !== state || consentUrl.searchParams.get("redirect_uri") !== config.redirectUri || consentUrl.searchParams.get("client_id") !== config.clientId || consentUrl.searchParams.get("code_challenge") !== url.searchParams.get("code_challenge")) throw new Error("Changed Hue parameters");
+  } catch {
+    return NextResponse.json({ error: "hue-unavailable" }, { status: 502, headers: { "Cache-Control": "no-store" } });
+  }
+  const response = NextResponse.json({ url: consentUrl.toString() }, { headers: { "Cache-Control": "no-store" } });
   response.cookies.set(HUE_STATE_COOKIE, sealHue({ ownerId, state, verifier, expiresAt: Date.now() + 600_000 }, config.secret), { ...hueCookieOptions, maxAge: 600 });
   return response;
 }

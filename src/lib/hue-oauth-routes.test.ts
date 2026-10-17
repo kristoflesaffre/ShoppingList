@@ -32,14 +32,31 @@ describe("Hue OAuth", () => {
     expect((await connect(new NextRequest(`${origin}/api/hue/connect`, { method: "POST", headers: { ...headers, origin: "https://attacker.example" } }))).status).toBe(403);
   });
   it("uses the current Hue endpoint, PKCE and a short-lived protected state cookie", async () => {
+    const fetchMock = vi.fn(async (input: URL) => {
+      const redirect = new URL("https://account.meethue.com/get-token/");
+      redirect.search = input.search;
+      return new Response(null, { status: 302, headers: { location: redirect.toString() } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
     const response = await connect(new NextRequest(`${origin}/api/hue/connect`, { method: "POST", headers }));
     const url = new URL((await response.json()).url);
-    expect(url.origin + url.pathname).toBe("https://api.meethue.com/v2/oauth2/authorize");
+    expect(url.origin + url.pathname).toBe("https://account.meethue.com/get-token/");
+    expect(fetchMock.mock.calls[0][0].origin + fetchMock.mock.calls[0][0].pathname).toBe("https://api.meethue.com/v2/oauth2/authorize");
     expect(url.searchParams.get("redirect_uri")).toBe(`${origin}/api/hue/callback`);
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     const cookie = response.cookies.get(HUE_STATE_COOKIE)!;
     expect(readHueState(cookie.value, secret)?.state).toBe(url.searchParams.get("state"));
     expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: "lax", maxAge: 600 });
+  });
+  it.each(["https://attacker.example/get-token/", "https://account.meethue.com/invite/test", "https://account.meethue.com/get-token/?state=changed"])("rejects unsafe or changed consent redirects: %s", async location => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 302, headers: { location } })));
+    const response = await connect(new NextRequest(`${origin}/api/hue/connect`, { method: "POST", headers }));
+    expect(response.status).toBe(502);
+    expect(response.cookies.get(HUE_STATE_COOKIE)).toBeUndefined();
+  });
+  it("handles unavailable Hue without sending the browser into the native app", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    expect((await connect(new NextRequest(`${origin}/api/hue/connect`, { method: "POST", headers }))).status).toBe(502);
   });
   it.each(["wrong", "expected"])("rejects wrong or expired state before any network request (%s)", async value => {
     const fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);

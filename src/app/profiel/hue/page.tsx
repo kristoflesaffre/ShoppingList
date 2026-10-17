@@ -47,7 +47,9 @@ export default function HueSettingsPage() {
       if (!response.ok) throw new Error();
       const data = await response.json() as { url?: string };
       if (action === "connect") {
-        if (!data.url || new URL(data.url).origin !== "https://api.meethue.com") throw new Error();
+        if (!data.url) throw new Error();
+        const consentUrl = new URL(data.url);
+        if (consentUrl.origin !== "https://account.meethue.com" || consentUrl.pathname !== "/get-token/" || consentUrl.username || consentUrl.password) throw new Error();
         window.location.assign(data.url);
       } else {
         setStatus({ configured: true, connected: false });
