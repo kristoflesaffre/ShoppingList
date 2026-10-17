@@ -529,13 +529,13 @@ const ClapperIcon = () => (
 
 /** Maansikkel: «de rest van het huis gaat donker». */
 const MoonIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-[15px]">
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-3">
     <path d="M20.2 14.6A8.5 8.5 0 0 1 9.4 3.8a.6.6 0 0 0-.8-.7 9.5 9.5 0 1 0 12.3 12.3.6.6 0 0 0-.7-.8z" />
   </svg>
 );
 
 type CinemaMode = "living" | "living-only";
-/** Onderste knop: donkerder glas met een maantje naast de klapper (= woonkamer cinema, de rest donker). */
+/** Onderste knop: klapper met een maantje in een bolletje op de hoek (= woonkamer cinema, de rest donker). */
 const CINEMA: { mode: CinemaMode; hint: string; othersOff: boolean }[] = [
   { mode: "living", hint: "Woonkamer op scène «Cinema»", othersOff: false },
   { mode: "living-only", hint: "Woonkamer op «Cinema», alle andere lampen uit", othersOff: true },
@@ -601,12 +601,12 @@ function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => 
             title={c.hint}
             disabled={busy !== null}
             onClick={() => void run(c)}
-            // Glas zoals de capsules; de onderste is donkerder getint. Geen blijvende «gekozen»-stand: het is
-            // een actie, geen schakelaar.
+            // Beide in hetzelfde glas als de capsules. Geen blijvende «gekozen»-stand: het is een actie, geen
+            // schakelaar.
             className={cn(
               "relative flex max-h-[52px] min-h-0 w-[52px] flex-1 items-center justify-center gap-1 rounded-full text-fixed-white backdrop-blur-[10px] transition-[transform,box-shadow,background-color] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-95 disabled:opacity-70",
               "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.34)]",
-              c.othersOff ? "bg-[rgba(16,17,48,0.28)]" : "bg-fixed-white/[0.18]",
+              "bg-fixed-white/[0.18]",
             )}
           >
             {busy === c.mode ? (
@@ -615,7 +615,8 @@ function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => 
               <>
                 <ClapperIcon />
                 {c.othersOff ? (
-                  <span className="-ml-0.5 text-fixed-white/85">
+                  // Maantje in een eigen rond bolletje op de hoek (zoals de verdiepingsbolletjes op de capsules).
+                  <span className="absolute -bottom-1 -right-1 flex size-[22px] items-center justify-center rounded-full bg-fixed-white text-[#2a2350] shadow-[0_2px_6px_-2px_rgba(16,17,48,0.45)]">
                     <MoonIcon />
                   </span>
                 ) : null}
