@@ -62,7 +62,7 @@ function LampColumn({
   const tap = onTap ?? (() => onChange(room.on ? { on: false } : { on: true }));
 
   return (
-    <div className={cn("flex shrink-0 flex-col items-center", tall ? "min-h-0 w-[96px] flex-1 gap-2.5" : "w-[84px] gap-1.5")}>
+    <div className={cn("flex shrink-0 flex-col items-center", tall ? "min-h-0 w-[96px] flex-1 gap-2.5" : "w-[72px] gap-1.5")}>
       <button
         type="button"
         role="slider"
@@ -495,9 +495,22 @@ const ClapperIcon = ({ power = false }: { power?: boolean }) => (
 );
 
 type CinemaMode = "living" | "living-only";
-const CINEMA: { mode: CinemaMode; hint: string; othersOff: boolean }[] = [
-  { mode: "living", hint: "Woonkamer op scène «Cinema»", othersOff: false },
-  { mode: "living-only", hint: "Woonkamer op «Cinema», alle andere lampen uit", othersOff: true },
+/** `bg`: eigen kleur per knop (fluweelrood als een bioscoopgordijn, en nachtblauw = de rest gaat uit). */
+const CINEMA: { mode: CinemaMode; hint: string; othersOff: boolean; bg: string; glow: string }[] = [
+  {
+    mode: "living",
+    hint: "Woonkamer op scène «Cinema»",
+    othersOff: false,
+    bg: "linear-gradient(160deg,#ff6b6b 0%,#e0356f 55%,#a3205e 100%)",
+    glow: "rgba(224,53,111,0.75)",
+  },
+  {
+    mode: "living-only",
+    hint: "Woonkamer op «Cinema», alle andere lampen uit",
+    othersOff: true,
+    bg: "linear-gradient(160deg,#7b6cff 0%,#4b3fd1 55%,#2a2380 100%)",
+    glow: "rgba(91,79,224,0.75)",
+  },
 ];
 
 /**
@@ -564,14 +577,19 @@ function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => 
             title={c.hint}
             disabled={busy !== null}
             onClick={() => void run(c)}
-            className={cn(
-              "flex max-h-[52px] min-h-0 w-[52px] flex-1 items-center justify-center rounded-full transition-[transform,background-color,box-shadow] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-95 disabled:opacity-70",
-              on
-                ? "bg-[linear-gradient(160deg,#ffe08a,#ffb547)] text-[#5a3300] shadow-[0_8px_20px_-8px_rgba(255,181,71,0.9)]"
-                : "bg-fixed-white/[0.12] text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.3)]",
-            )}
+            // Kleurrijk: eigen verloop, glanslaagje bovenaan en een gloed in de eigen kleur; actief = witte ring.
+            className="relative flex max-h-[52px] min-h-0 w-[52px] flex-1 items-center justify-center overflow-hidden rounded-full text-fixed-white transition-[transform,box-shadow] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-95 disabled:opacity-70"
+            style={{
+              backgroundImage: c.bg,
+              boxShadow: on
+                ? `0 0 0 2.5px #fff, 0 0 18px 2px ${c.glow}`
+                : `inset 0 0 0 1px rgba(255,255,255,0.28), 0 10px 22px -12px ${c.glow}`,
+            }}
           >
-            {busy === c.mode ? <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden /> : <ClapperIcon power={c.othersOff} />}
+            <span aria-hidden className="pointer-events-none absolute inset-x-1.5 top-1 h-[42%] rounded-full bg-[linear-gradient(180deg,rgba(255,255,255,0.38),rgba(255,255,255,0))]" />
+            <span className="relative drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]">
+              {busy === c.mode ? <span className="block size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden /> : <ClapperIcon power={c.othersOff} />}
+            </span>
           </button>
         );
       })}
