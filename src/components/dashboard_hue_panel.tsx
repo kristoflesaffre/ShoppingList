@@ -545,10 +545,9 @@ const CINEMA: { mode: CinemaMode; hint: string; othersOff: boolean }[] = [
  * Twee kleine ronde knoppen links in het lichtpaneel (avond): de bovenste zet de woonkamer op de Hue-scène
  * «Cinema», de onderste doet hetzelfde en zet alle andere kamers uit. Ze staan in de hoogte van de
  * kolommen: de bovenste lijnt uit met de bovenkant van een capsule, de onderste met de onderkant.
- * De laatst gekozen knop blijft opgelicht; een fout verschijnt kort bovenaan het paneel.
+ * Een fout verschijnt kort bovenaan het paneel.
  */
 function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => void }) {
-  const [active, setActive] = React.useState<CinemaMode | null>(null);
   const [busy, setBusy] = React.useState<CinemaMode | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -574,7 +573,6 @@ function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => 
         );
         return;
       }
-      setActive(c.mode);
       onDone();
     } catch {
       setError("Hue is even niet bereikbaar");
@@ -595,34 +593,29 @@ function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => 
     // Even breed als de capsules (52px); hoogte tot 52px (rond), bij een lage capsule worden het pillen.
     <div className="flex shrink-0 flex-col items-center justify-between gap-1.5 pb-[22px]">
       {CINEMA.map((c) => {
-        const on = active === c.mode;
         return (
           <button
             key={c.mode}
             type="button"
-            aria-pressed={on}
             aria-label={c.hint}
             title={c.hint}
             disabled={busy !== null}
             onClick={() => void run(c)}
-            // Glas zoals de capsules; de onderste is donkerder getint. Actief = warme gloed + gele ring.
+            // Glas zoals de capsules; de onderste is donkerder getint. Geen blijvende «gekozen»-stand: het is
+            // een actie, geen schakelaar.
             className={cn(
               "relative flex max-h-[52px] min-h-0 w-[52px] flex-1 items-center justify-center gap-1 rounded-full text-fixed-white backdrop-blur-[10px] transition-[transform,box-shadow,background-color] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-95 disabled:opacity-70",
+              "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.34)]",
               c.othersOff ? "bg-[rgba(16,17,48,0.28)]" : "bg-fixed-white/[0.18]",
-              on
-                ? "shadow-[inset_0_0_0_1.5px_rgba(255,224,138,0.95),0_0_20px_2px_rgba(255,190,90,0.55)]"
-                : "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.34)]",
             )}
           >
             {busy === c.mode ? (
               <span className="block size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
             ) : (
               <>
-                <span className={cn(on && "text-[#ffe08a]")}>
-                  <ClapperIcon />
-                </span>
+                <ClapperIcon />
                 {c.othersOff ? (
-                  <span className={cn("-ml-0.5", on ? "text-[#ffe08a]" : "text-fixed-white/85")}>
+                  <span className="-ml-0.5 text-fixed-white/85">
                     <MoonIcon />
                   </span>
                 ) : null}
