@@ -182,11 +182,13 @@ function HueLightsModal({
   rooms,
   busy,
   setRoom,
+  floors,
   onClose,
 }: {
   rooms: Room[];
   busy: Set<string>;
   setRoom: (rooms: Room[], patch: Patch) => Promise<void>;
+  floors: RoomFloors;
   onClose: () => void;
 }) {
   React.useEffect(() => {
@@ -203,17 +205,9 @@ function HueLightsModal({
   }, [onClose]);
 
   const indexOf = new Map(rooms.map((r, i) => [r.id, i]));
-  // Verdieping per kamer: eigen keuze (bewaard op dit toestel) of de standaard (zie hue-room-floors).
-  const [overrides, setOverrides] = React.useState<Record<string, FloorKey>>({});
-  React.useEffect(() => setOverrides(readFloorOverrides()), []);
   const [editing, setEditing] = React.useState(false);
-  const floorOf = (r: Room): FloorKey => overrides[r.id] ?? defaultFloor(r.name);
-  const moveRoom = (r: Room, floor: FloorKey) => {
-    const next = { ...overrides, [r.id]: floor };
-    setOverrides(next);
-    writeFloorOverrides(next);
-  };
-  const ordered = FLOORS.map((f) => ({ key: f.key, label: f.label, rooms: rooms.filter((r) => floorOf(r) === f.key) })).filter((g) => g.rooms.length > 0);
+  const { moveRoom } = floors;
+  const ordered = floors.groups(rooms);
   const action = "h-10 rounded-pill bg-fixed-white/10 px-4 text-sm font-bold text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-40 [@media(hover:hover)]:hover:bg-fixed-white/[0.16]";
 
   return createPortal(
@@ -293,6 +287,36 @@ function HueLightsModal({
 }
 
 /**
+ * Verdieping per kamer, gedeeld door het paneel en het lichtvenster zodat beide dezelfde volgorde tonen:
+ * eigen keuze («Indeling», bewaard op dit toestel) of de standaard (zie hue-room-floors). Volgorde =
+ * verdiepingen zoals in FLOORS, binnen een verdieping zoals Hue ze geeft.
+ */
+type RoomFloors = {
+  moveRoom: (r: Room, floor: FloorKey) => void;
+  groups: (rooms: Room[]) => { key: FloorKey; label: string; rooms: Room[] }[];
+  sorted: (rooms: Room[]) => Room[];
+};
+
+function useRoomFloors(): RoomFloors {
+  const [overrides, setOverrides] = React.useState<Record<string, FloorKey>>({});
+  React.useEffect(() => setOverrides(readFloorOverrides()), []);
+  return React.useMemo(() => {
+    const floorOf = (r: Room): FloorKey => overrides[r.id] ?? defaultFloor(r.name);
+    const groups = (rooms: Room[]) =>
+      FLOORS.map((f) => ({ key: f.key, label: f.label, rooms: rooms.filter((r) => floorOf(r) === f.key) })).filter((g) => g.rooms.length > 0);
+    return {
+      moveRoom: (r, floor) => {
+        const next = { ...overrides, [r.id]: floor };
+        setOverrides(next);
+        writeFloorOverrides(next);
+      },
+      groups,
+      sorted: (rooms) => groups(rooms).flatMap((g) => g.rooms),
+    };
+  }, [overrides]);
+}
+
+/**
  * Horizontale baan die zijwaarts scrolt (vegen, trackpad of muiswiel). Is er meer dan zichtbaar, dan vervaagt
  * de rechterrand als hint. Gebruikt in het dashboardpaneel en in het lichtvenster.
  */
@@ -339,6 +363,7 @@ export function DashboardHuePanel({ cinema = false }: { cinema?: boolean }) {
   const [state, setState] = React.useState<State>({ kind: "loading" });
   const [busy, setBusy] = React.useState<Set<string>>(() => new Set());
   const [open, setOpen] = React.useState(false);
+  const floors = useRoomFloors();
   const closeModal = React.useCallback(() => setOpen(false), []);
 
   const load = React.useCallback(async () => {
@@ -444,15 +469,15 @@ export function DashboardHuePanel({ cinema = false }: { cinema?: boolean }) {
           <div className="flex h-full min-h-0 w-full gap-2">
             {cinema ? <CinemaButtons token={token} onDone={() => void load()} /> : null}
             <ScrollLane className={cn("-mr-[18px] flex h-full min-h-0 min-w-0 flex-1 gap-0 pr-[18px]", !cinema && "-ml-[18px] pl-[18px]")}>
-              {state.rooms.map((room, i) => (
-                <LampColumn key={room.id} room={room} index={i} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} />
+              {floors.sorted(state.rooms).map((room) => (
+                <LampColumn key={room.id} room={room} index={state.rooms.indexOf(room)} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} />
               ))}
             </ScrollLane>
           </div>
         )}
       </div>
     </section>
-    {open && state.kind === "ready" ? <HueLightsModal rooms={state.rooms} busy={busy} setRoom={setRoom} onClose={closeModal} /> : null}
+    {open && state.kind === "ready" ? <HueLightsModal rooms={state.rooms} busy={busy} setRoom={setRoom} floors={floors} onClose={closeModal} /> : null}
     </>
   );
 }
