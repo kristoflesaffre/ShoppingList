@@ -370,6 +370,15 @@ export default function ProfielPage() {
           onClick={() => router.push("/profiel/hue")}
         />
       </li>
+      <li>
+        <ProfileSettingsRow
+          bare={bare}
+          icon={homeIcon}
+          label="Klimaat"
+          description="Je Panasonic-airco’s koppelen en bedienen"
+          onClick={() => router.push("/profiel/panasonic")}
+        />
+      </li>
     </>
   );
 

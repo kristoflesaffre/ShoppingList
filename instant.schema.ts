@@ -284,6 +284,12 @@ const schema = i.schema({
     shoppingShareMembers: i.entity({
       instantUserId: i.string().indexed(),
     }),
+    /** Server-only encrypted Comfort Cloud session; client access is denied in Instant permissions. */
+    panasonicConnections: i.entity({
+      ownerId: i.string(),
+      sealedSession: i.string(),
+      updatedAt: i.number(),
+    }),
     /**
      * Google-agendakoppeling per gebruiker (enkel via de server-routes /api/google/*). `sealedAccounts`
      * is versleuteld met GOOGLE_OAUTH_COOKIE_SECRET; de app zelf leest of schrijft dit nooit.
