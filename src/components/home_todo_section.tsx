@@ -15,10 +15,14 @@ import { taskPhotoFor } from "@/lib/task_photos";
  * rondje (blijft in de app, opent Todoist niet). Niet gekoppeld: kaart met «Koppel Todoist».
  */
 
-/** Kurken prikbord achter de rij (canvas «post-its op kurk» R2): korrels in drie tinten op een warm verloop. */
+/**
+ * Kurken prikbord achter de rij (canvas «post-its op kurk» R2): korrels in drie tinten op een warm verloop.
+ * Donker thema (canvas «donker thema» A): dieper kurk via --cork-a/--cork-b (zie CORK_DARK).
+ */
+const CORK_DARK = "[[data-theme=dark]_&]:[--cork-a:#6b4f32] [[data-theme=dark]_&]:[--cork-b:#58402a]";
 const CORK_STYLE: React.CSSProperties = {
   backgroundImage:
-    "radial-gradient(circle at 20% 30%,rgba(120,70,20,.35) 0 1.5px,transparent 2px),radial-gradient(circle at 70% 60%,rgba(90,50,15,.3) 0 1.2px,transparent 1.8px),radial-gradient(circle at 40% 80%,rgba(255,230,190,.35) 0 1.4px,transparent 2px),linear-gradient(135deg,#c8955b,#b98549)",
+    "radial-gradient(circle at 20% 30%,rgba(120,70,20,.35) 0 1.5px,transparent 2px),radial-gradient(circle at 70% 60%,rgba(90,50,15,.3) 0 1.2px,transparent 1.8px),radial-gradient(circle at 40% 80%,rgba(255,230,190,.35) 0 1.4px,transparent 2px),linear-gradient(135deg,var(--cork-a,#c8955b),var(--cork-b,#b98549))",
   backgroundSize: "26px 26px,31px 31px,23px 23px,100% 100%",
 };
 const TAPE_TILT = [-3, 2, -1.5, 3, -2];
@@ -49,7 +53,7 @@ export function TodoPostit({ task, due, index, onCheck, size = 168 }: { task: To
     <div className="relative mt-3 shrink-0 snap-start" style={{ width: size, height: size, transform: `rotate(${postitTilt(task.id, index)}deg)` }}>
       <div
         className={cn(
-          "absolute inset-0 flex flex-col gap-[9px] overflow-hidden px-3.5 pb-3.5 pt-4 shadow-[0_1px_1.5px_rgba(0,0,0,0.16),0_8px_14px_-6px_rgba(40,25,5,0.45)] [[data-theme=dark]_&]:brightness-[0.92]",
+          "absolute inset-0 flex flex-col gap-[9px] overflow-hidden px-3.5 pb-3.5 pt-4 shadow-[0_1px_1.5px_rgba(0,0,0,0.16),0_8px_14px_-6px_rgba(40,25,5,0.45)] [[data-theme=dark]_&]:brightness-[0.88]",
           late ? "bg-[linear-gradient(170deg,#f9d2cb,#f2c2b9)]" : "bg-[linear-gradient(170deg,#f3f1b4,#eceaa6)]",
         )}
       >
@@ -172,7 +176,7 @@ export function HomeTodoSection() {
   } else {
     body = (
       // Prikbord: de notes hangen er met plakband op; de rij scrolt binnen het bord.
-      <div className="overflow-hidden rounded-[24px] shadow-[inset_0_2px_6px_rgba(60,35,10,0.35)]" style={CORK_STYLE}>
+      <div className={cn("overflow-hidden rounded-[24px] shadow-[inset_0_2px_6px_rgba(60,35,10,0.35)]", CORK_DARK)} style={CORK_STYLE}>
         <div className="flex snap-x gap-5 overflow-x-auto scroll-px-4 px-5 pb-6 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {sorted.slice(0, 30).map(({ task, due }, i) => (
             <TodoPostit key={task.id} task={task} due={due} index={i} onCheck={(t) => void closeTask(t)} />
@@ -206,7 +210,7 @@ export function DashboardTodoPanel() {
       aria-label="Te doen"
       // Always-on: ontkleurd en gedimd (zoals de rest van het nachtscherm), geen fel kurk en papier op een tablet die
       // de hele tijd aanstaat.
-      className="flex shrink-0 flex-col overflow-hidden rounded-[24px] pt-4 shadow-[inset_0_2px_6px_rgba(60,35,10,0.35),0_18px_40px_-26px_rgba(60,35,10,0.6)] transition-[filter] duration-500 [[data-aod]_&]:shadow-none [[data-aod]_&]:[filter:saturate(0.65)_brightness(0.58)_contrast(1.08)]"
+      className={cn("flex shrink-0 flex-col overflow-hidden rounded-[24px] pt-4 shadow-[inset_0_2px_6px_rgba(60,35,10,0.35),0_18px_40px_-26px_rgba(60,35,10,0.6)] transition-[filter] duration-500 [[data-aod]_&]:shadow-none [[data-aod]_&]:[filter:saturate(0.65)_brightness(0.58)_contrast(1.08)] [[data-theme=dark]_&]:shadow-[inset_0_2px_6px_rgba(0,0,0,0.45)]", CORK_DARK)}
       style={CORK_STYLE}
     >
       <div className="flex items-center justify-between px-5">

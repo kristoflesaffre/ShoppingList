@@ -150,12 +150,12 @@ function useHourSlots(): [React.RefObject<HTMLUListElement>, number] {
 function TodayWeather({ weather }: { weather: Weather | null }) {
   const [hoursRef, hourSlots] = useHourSlots();
   if (!weather) {
-    return <div className={cn(tile, "min-w-0 flex-1 animate-pulse bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] opacity-70")} aria-label="Weer laden" />;
+    return <div className={cn(tile, "min-w-0 flex-1 animate-pulse bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] opacity-70 [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#1f3f86,#162c5e_60%,#10204a)]")} aria-label="Weer laden" />;
   }
   return (
     <section
       aria-label={`Weer vandaag in ${weather.place}`}
-      className={cn(tile, "flex min-w-0 flex-1 flex-col bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] px-[18px] py-4 text-fixed-white shadow-[0_18px_40px_-24px_rgba(40,100,220,0.8)] [[data-aod]_&]:bg-[linear-gradient(160deg,#173468,#0f2347_55%,#0a1630)] [[data-aod]_&]:text-[#eaf1ff] [[data-aod]_&]:shadow-[0_18px_40px_-26px_rgba(60,120,255,0.6)]")}
+      className={cn(tile, "flex min-w-0 flex-1 flex-col bg-[linear-gradient(160deg,#5aa0ff,#86c6ff_60%,#c4e5ff)] px-[18px] py-4 text-fixed-white shadow-[0_18px_40px_-24px_rgba(40,100,220,0.8)] [[data-aod]_&]:bg-[linear-gradient(160deg,#173468,#0f2347_55%,#0a1630)] [[data-aod]_&]:text-[#eaf1ff] [[data-aod]_&]:shadow-[0_18px_40px_-26px_rgba(60,120,255,0.6)] [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#1f3f86,#162c5e_60%,#10204a)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(120,160,255,0.18),0_18px_40px_-28px_rgba(60,120,255,0.55)]")}
     >
       {/* Het dagbeeld (zoals weer-apps): een buiige dag toont buien, ook al is het nu even droog. */}
       <WeatherHero kind={weather.today.kind} size={196} className="absolute -right-[34px] -top-[38px]" />
@@ -238,7 +238,7 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
       {platePhotos.length > 1 ? (
         // Losse ingrediënten: zetmeel, groente en vlees/vis als losse compositie in de hoek rechtsonder
         // (geen bord), deels van de tegel af; de titel staat dan bovenaan.
-        <span className="aod-kenburns absolute -bottom-[78px] -right-[70px] isolate size-[270px] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" aria-hidden>
+        <span className="aod-kenburns absolute -bottom-[78px] -right-[70px] isolate size-[270px] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85] [[data-theme=dark]_&]:brightness-[0.85] [[data-theme=dark]_&]:saturate-[0.9]" aria-hidden>
           {platePhotos.slice(0, 3).map((src, i) => {
             const slot = MEAL_TRIO[i];
             return (
@@ -255,25 +255,25 @@ function TodayMeal({ meal }: { meal: DashboardMeal | null }) {
         </span>
       ) : photo ? (
         // eslint-disable-next-line @next/next/no-img-element -- receptfoto of productfoto uit de app
-        <img src={photo} alt="" className="aod-kenburns absolute -right-[30px] -top-1.5 size-[250px] object-contain drop-shadow-[0_18px_24px_rgba(120,60,0,0.35)] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85]" />
+        <img src={photo} alt="" className="aod-kenburns absolute -right-[30px] -top-1.5 size-[250px] object-contain drop-shadow-[0_18px_24px_rgba(120,60,0,0.35)] [[data-aod]_&]:brightness-[0.6] [[data-aod]_&]:saturate-[0.85] [[data-theme=dark]_&]:brightness-[0.85] [[data-theme=dark]_&]:saturate-[0.9]" />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element -- lokale illustratie
         <img src="/images/ui/kalender_320.webp" alt="" className="absolute -bottom-4 -right-4 size-[180px] object-contain opacity-90" />
       )}
-      <span className="absolute left-[18px] top-4 text-[11.5px] font-extrabold tracking-[0.08em] text-[rgba(90,40,0,0.75)] [[data-aod]_&]:text-[#d8a874]">VANDAAG ETEN WE</span>
+      <span className="absolute left-[18px] top-4 text-[11.5px] font-extrabold tracking-[0.08em] text-[rgba(90,40,0,0.75)] [[data-aod]_&]:text-[#d8a874] [[data-theme=dark]_&]:text-[#e9b47a]">VANDAAG ETEN WE</span>
       <span className={cn("absolute left-[18px] z-[4] max-w-[60%]", platePhotos.length > 1 ? "top-[42px]" : "bottom-[18px]")}>
-        <span className={cn("block font-extrabold leading-tight tracking-[-0.02em] text-[#3d1d00] [[data-aod]_&]:text-[#ffe9cc]", platePhotos.length > 1 ? "text-[30px]" : "text-[34px]")}>{meal?.title ?? "Nog niets gepland"}</span>
+        <span className={cn("block font-extrabold leading-tight tracking-[-0.02em] text-[#3d1d00] [[data-aod]_&]:text-[#ffe9cc] [[data-theme=dark]_&]:text-[#ffe7c7]", platePhotos.length > 1 ? "text-[30px]" : "text-[34px]")}>{meal?.title ?? "Nog niets gepland"}</span>
         {others ? (
-          <span className="mt-1 line-clamp-5 block text-[13.5px] font-semibold leading-snug text-[rgba(61,29,0,0.75)] [[data-aod]_&]:text-[#d8a874]">{others}</span>
+          <span className="mt-1 line-clamp-5 block text-[13.5px] font-semibold leading-snug text-[rgba(61,29,0,0.75)] [[data-aod]_&]:text-[#d8a874] [[data-theme=dark]_&]:text-[#e9b47a]">{others}</span>
         ) : (
-          <span className="block text-[13.5px] font-semibold text-[rgba(61,29,0,0.75)] [[data-aod]_&]:text-[#d8a874]">{meal ? meal.subtitle : "Plan iets in de kalender"}</span>
+          <span className="block text-[13.5px] font-semibold text-[rgba(61,29,0,0.75)] [[data-aod]_&]:text-[#d8a874] [[data-theme=dark]_&]:text-[#e9b47a]">{meal ? meal.subtitle : "Plan iets in de kalender"}</span>
         )}
       </span>
     </>
   );
   const cls = cn(
     tile,
-    "block min-w-0 flex-1 bg-[radial-gradient(120%_95%_at_80%_35%,#ffe6a8_0%,#ffc76b_45%,#f59f3a_100%)] no-underline shadow-[0_18px_40px_-22px_rgba(230,140,30,0.9)] [[data-aod]_&]:bg-[radial-gradient(120%_95%_at_80%_35%,#5a3510_0%,#3a2209_50%,#1d1105_100%)] [[data-aod]_&]:shadow-[0_18px_40px_-26px_rgba(255,150,40,0.5)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+    "block min-w-0 flex-1 bg-[radial-gradient(120%_95%_at_80%_35%,#ffe6a8_0%,#ffc76b_45%,#f59f3a_100%)] no-underline shadow-[0_18px_40px_-22px_rgba(230,140,30,0.9)] [[data-aod]_&]:bg-[radial-gradient(120%_95%_at_80%_35%,#5a3510_0%,#3a2209_50%,#1d1105_100%)] [[data-aod]_&]:shadow-[0_18px_40px_-26px_rgba(255,150,40,0.5)] [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#4a2c16,#33200f_60%,#24170b)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,180,90,0.16),0_18px_40px_-28px_rgba(255,150,40,0.45)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
   );
   return meal ? (
     <Link href={meal.href} className={cls} aria-label={`Vandaag: ${meal.title}`}>
