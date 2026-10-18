@@ -27,7 +27,8 @@ const STYLE =
   "editorial interior photograph, cozy modern Belgian living room at night, large flat TV on the wall showing a softly glowing movie scene, comfortable sofa with a knitted throw and cushions, shot from behind the sofa at eye level, shallow depth of field, cinematic, photorealistic, no people, no text, no logos";
 const PHOTOS = {
   cinema: `${STYLE}, warm dimmed amber lamps and a low glowing floor lamp, candle-like warm light, snug and inviting, rich warm tones`,
-  cinema_dark: `${STYLE}, all room lights switched off, the room lit only by the cool blue glow of the TV screen, deep shadows, moody dark cinema atmosphere, a few faint reflections`,
+  // Geen «lamp» in de prompt: FLUX tekent wat je noemt, ook met «no» ervoor.
+  cinema_dark: `${STYLE}, completely dark room at midnight, lit solely by the cool blue light of the TV screen, blue light spilling over the empty sofa and floor, everything else in deep black shadow, minimal furniture, moody dark home cinema atmosphere`,
 };
 
 const only = process.argv[2];
