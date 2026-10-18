@@ -7,7 +7,8 @@ export type HomeSectionId =
   | "klantenkaarten"
   | "diepvries"
   | "films-series"
-  | "licht";
+  | "licht"
+  | "airco";
 
 export type HomeSectionConfig = {
   order: HomeSectionId[];
@@ -33,6 +34,7 @@ export const HOME_SECTIONS_META: {
   { id: "diepvries", label: "Diepvries", description: "Wat er in je diepvries ligt", tint: "#e5f1fb", illustration: "/images/ui/empty_state_diepvries.png", hideable: true },
   { id: "films-series", label: "Films en series", description: "Je watchlist en wat je kijkt", tint: "#eceef4", illustration: "/images/ui/films_320.webp", hideable: true },
   { id: "licht", label: "Licht", description: "Je Philips Hue-lampen bedienen", tint: "#fff6d9", illustration: "/images/ui/lamp_320.webp", hideable: true },
+  { id: "airco", label: "Airco", description: "Je Panasonic-airco’s bedienen", tint: "#e6f3fb", illustration: "/images/ui/airco_320.webp", hideable: true },
 ];
 
 export const DEFAULT_SECTION_ORDER: HomeSectionId[] = [
@@ -45,6 +47,7 @@ export const DEFAULT_SECTION_ORDER: HomeSectionId[] = [
   "diepvries",
   "films-series",
   "licht",
+  "airco",
 ];
 
 const STORAGE_KEY = "home-section-config";
@@ -59,10 +62,16 @@ export function loadHomeSectionConfig(): HomeSectionConfig {
       // Filter verwijderde secties eruit; voeg nieuwe secties toe aan het einde.
       const validSaved = savedOrder.filter((id) => (DEFAULT_SECTION_ORDER as string[]).includes(id));
       const savedSet = new Set(validSaved);
-      // Nieuwe secties komen op hun standaardplek (bv. «Agenda» bovenaan), niet achteraan.
+      // Nieuwe secties komen op hun standaardplek: direct na hun voorganger (bv. «Airco» onder «Licht»), of
+      // zonder voorganger vóór hun opvolger (bv. «Agenda» bovenaan); anders achteraan.
       const order = [...validSaved];
       DEFAULT_SECTION_ORDER.forEach((id, index) => {
         if (savedSet.has(id)) return;
+        const prev = DEFAULT_SECTION_ORDER.slice(0, index).reverse().find((p) => order.includes(p));
+        if (prev && index > 0 && DEFAULT_SECTION_ORDER[index - 1] === prev) {
+          order.splice(order.indexOf(prev) + 1, 0, id);
+          return;
+        }
         const before = DEFAULT_SECTION_ORDER.slice(index + 1).find((next) => order.includes(next));
         order.splice(before ? order.indexOf(before) : order.length, 0, id);
       });

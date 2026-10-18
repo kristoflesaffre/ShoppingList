@@ -71,6 +71,7 @@ import { useAlwaysOn } from "@/lib/use_always_on";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { HomeTodoSection } from "@/components/home_todo_section";
+import { HomeAircoSection } from "@/components/home_airco_section";
 import { DashboardHuePanel } from "@/components/dashboard_hue_panel";
 import { HomeDiscoverBanners, type DiscoverBanner } from "@/components/home_discover_banners";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
@@ -3006,6 +3007,8 @@ export default function Home() {
         );
       case "licht":
         return <HomeLightSection />;
+      case "airco":
+        return <HomeAircoSection />;
       case "films-series":
         return <HomeFilmsSeriesSection onHide={onHide} ownWatchlist={homeOwnWatchlist} watchingItems={homeWatchingItems} newSeasonItems={homeNewSeasonItems} />;
       default:
