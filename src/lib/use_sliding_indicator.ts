@@ -49,7 +49,9 @@ export function useSlidingIndicator<T extends HTMLElement = HTMLDivElement>(acti
         height: box.height,
         transition: animate
           ? // Zachte iOS-achtige curve: zichtbaar schuiven, rustig uitlopen.
-            "transform 380ms cubic-bezier(0.32, 0.72, 0, 1), width 380ms cubic-bezier(0.32, 0.72, 0, 1)"
+            // Ook kleur, schaduw en hoeken: verandert de stijl van de schakelaar (bv. glas op het dashboard), dan
+            // vloeit de pil mee i.p.v. te verspringen.
+            "transform 380ms cubic-bezier(0.32, 0.72, 0, 1), width 380ms cubic-bezier(0.32, 0.72, 0, 1), background-color 420ms cubic-bezier(0.32, 0.72, 0, 1), box-shadow 420ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 420ms cubic-bezier(0.32, 0.72, 0, 1)"
           : "none",
       }
     : { opacity: 0 };

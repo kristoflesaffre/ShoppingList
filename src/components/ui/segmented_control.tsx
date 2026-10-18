@@ -67,6 +67,8 @@ export function SegmentedControl<T extends string>({
       aria-label={ariaLabel}
       className={cn(
         "relative isolate flex gap-0.5 rounded-[13px] bg-[var(--gray-50)] p-[3px]",
+        // Zelfde curve als de pil: oppervlak, rand en hoeken lopen mee als «smart animate».
+        "transition-[background-color,box-shadow,border-radius,backdrop-filter] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
         tone === "glass" && GLASS_TROUGH,
         fill ? "w-full" : "w-fit shrink-0",
         className,
@@ -94,7 +96,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => choose(o.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
-              "flex items-center justify-center rounded-[10px] text-[13.5px] font-semibold transition-colors duration-200 ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+              "flex items-center justify-center rounded-[10px] text-[13.5px] font-semibold transition-[color,border-radius] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
               size === "lg" ? "h-[38px] px-4" : "h-8",
               size === "icon" ? "w-9" : size === "lg" ? "" : "px-3",
               fill && size !== "icon" && "min-w-0 flex-1",
@@ -112,16 +114,17 @@ export function SegmentedControl<T extends string>({
 }
 
 // Glastoon: avondlucht (licht thema), donker thema en always-on. Zonder die context: gewone trog.
-// Voluit geschreven: Tailwind maakt enkel klassen die letterlijk in de bron staan.
+// Voluit geschreven: Tailwind maakt enkel klassen die letterlijk in de bron staan. Geen rounded-full en geen
+// andere padding: hoeken van 13 → 19px (pil van 38px) en 10 → 16px laten zich vloeiend animeren.
 const GLASS_TROUGH =
-  "[[data-sunset]_&]:rounded-full [[data-sunset]_&]:bg-[rgba(30,12,48,0.28)] [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)] [[data-sunset]_&]:backdrop-blur-[14px] [[data-sunset]_&]:p-1 " +
-  "[[data-theme=dark]_&]:rounded-full [[data-theme=dark]_&]:bg-[rgba(0,0,0,0.28)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] [[data-theme=dark]_&]:backdrop-blur-[14px] [[data-theme=dark]_&]:p-1 " +
-  "[[data-aod]_&]:rounded-full [[data-aod]_&]:bg-[rgba(0,0,0,0.28)] [[data-aod]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] [[data-aod]_&]:p-1";
+  "[[data-sunset]_&]:rounded-[19px] [[data-sunset]_&]:bg-[rgba(30,12,48,0.28)] [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)] [[data-sunset]_&]:backdrop-blur-[14px] " +
+  "[[data-theme=dark]_&]:rounded-[19px] [[data-theme=dark]_&]:bg-[rgba(0,0,0,0.28)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] [[data-theme=dark]_&]:backdrop-blur-[14px] " +
+  "[[data-aod]_&]:rounded-[19px] [[data-aod]_&]:bg-[rgba(0,0,0,0.28)] [[data-aod]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]";
 const GLASS_PILL =
-  "[[data-sunset]_&]:rounded-full [[data-sunset]_&]:bg-fixed-white [[data-sunset]_&]:shadow-[0_6px_14px_-8px_rgba(42,24,56,0.6)] " +
-  "[[data-theme=dark]_&]:rounded-full [[data-theme=dark]_&]:bg-fixed-white/[0.16] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)] " +
-  "[[data-aod]_&]:rounded-full [[data-aod]_&]:bg-fixed-white/[0.16] [[data-aod]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]";
-const GLASS_ROUND = "[[data-sunset]_&]:rounded-full [[data-theme=dark]_&]:rounded-full [[data-aod]_&]:rounded-full";
+  "[[data-sunset]_&]:rounded-[16px] [[data-sunset]_&]:bg-fixed-white [[data-sunset]_&]:shadow-[0_6px_14px_-8px_rgba(42,24,56,0.6)] " +
+  "[[data-theme=dark]_&]:rounded-[16px] [[data-theme=dark]_&]:bg-fixed-white/[0.16] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)] " +
+  "[[data-aod]_&]:rounded-[16px] [[data-aod]_&]:bg-fixed-white/[0.16] [[data-aod]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]";
+const GLASS_ROUND = "[[data-sunset]_&]:rounded-[16px] [[data-theme=dark]_&]:rounded-[16px] [[data-aod]_&]:rounded-[16px]";
 const GLASS_TEXT_ON = "[[data-sunset]_&]:text-[#2a1838] [[data-theme=dark]_&]:text-fixed-white [[data-aod]_&]:text-fixed-white";
 const GLASS_TEXT_OFF =
   "[[data-sunset]_&]:text-fixed-white/85 [[data-sunset]_&]:hover:text-fixed-white [[data-theme=dark]_&]:text-fixed-white/60 [[data-theme=dark]_&]:hover:text-fixed-white [[data-aod]_&]:text-fixed-white/60";

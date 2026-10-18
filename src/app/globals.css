@@ -54,6 +54,22 @@ body::before {
   }
 }
 
+/* Avondlucht van het dashboard ([data-sunset], gezet door useSunset): eigen laag die in- en uitfadet,
+   zodat wisselen tussen overzicht en dashboard vloeiend loopt i.p.v. te flitsen. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, #ff9b5c 0%, #f2697a 30%, #c4508f 58%, #7b4597 80%, #4a3a8c 100%);
+  opacity: 0;
+  transition: opacity 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+[data-sunset] body::after {
+  opacity: 1;
+}
+
 .route-loading-spinner {
   width: 48px;
   height: 48px;

@@ -581,21 +581,17 @@ const segment = (on: boolean) => cn("h-8 whitespace-nowrap rounded-pill px-3", o
  * <html> `data-sunset`; de pagina wordt een lucht van oranje naar violet en alle panelen worden matglas
  * (`[[data-sunset]_&]:`-varianten). In het donkere thema en always-on blijft palet B.
  */
-const SUNSET_SKY = "linear-gradient(180deg,#ff9b5c 0%,#f2697a 30%,#c4508f 58%,#7b4597 80%,#4a3a8c 100%)";
-
 function useSunset(on: boolean) {
   React.useEffect(() => {
     const root = document.documentElement;
-    // De lucht via --page-sky op de vaste achtergrondlaag van de app (body::before in globals.css).
+    // De lucht is een eigen laag (body::after in globals.css) die op [data-sunset] in- en uitfadet.
     // Enkel waar het dashboard echt zichtbaar is (vanaf md); op de gsm is het verborgen maar wel gemount.
     const wide = window.matchMedia("(min-width: 768px)");
     const sync = () => {
       if (on && wide.matches && root.dataset.theme !== "dark" && !root.dataset.aod) {
         root.dataset.sunset = "";
-        root.style.setProperty("--page-sky", SUNSET_SKY);
       } else {
         delete root.dataset.sunset;
-        root.style.removeProperty("--page-sky");
       }
     };
     sync();
@@ -606,7 +602,6 @@ function useSunset(on: boolean) {
       mo.disconnect();
       wide.removeEventListener("change", sync);
       delete root.dataset.sunset;
-      root.style.removeProperty("--page-sky");
     };
   }, [on]);
 }
@@ -651,7 +646,7 @@ function MomentTestBar({ value, onChange }: { value: DashboardMoment; onChange: 
   );
 }
 
-const POSTER_LIMIT = { "--poster-h": "calc((max(470px, 100dvh - 196px) - 263px) / 2 - 62px)" } as React.CSSProperties;
+const POSTER_LIMIT = { "--poster-h": "calc((max(650px, 100dvh - 196px) - 263px) / 2 - 62px)" } as React.CSSProperties;
 
 /** Avond: series i.p.v. het weer van vandaag, watchlist i.p.v. het eten van vandaag (met terugval). */
 function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | null; todayMeal: DashboardMeal | null; tomorrowMeal: DashboardMeal | null }) {
@@ -692,8 +687,10 @@ export function HomeTabletDashboard({
   const { moment, testMoment, setTestMoment } = useDashboardMoment();
   const morning = moment === "ochtend";
   useSunset(moment === "avond");
+  // Min. 650px hoog: op een laag scherm scrolt de pagina i.p.v. posters en lichtpaneel te pletten
+  // (posters blijven ±130px hoog, zie POSTER_LIMIT).
   return (
-    <div className="flex h-[max(470px,calc(100dvh-196px))] gap-3.5 pt-5 motion-safe:animate-fade-up">
+    <div className="flex h-[max(650px,calc(100dvh-196px))] gap-3.5 pt-5 motion-safe:animate-fade-up">
       <div className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
         {moment === "avond" ? (
           <EveningLeft weather={weather} todayMeal={todayMeal} tomorrowMeal={tomorrowMeal} />

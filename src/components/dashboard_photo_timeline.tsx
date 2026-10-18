@@ -106,18 +106,37 @@ function AllDayTile({ row, narrow }: { row: AgendaRow; narrow: boolean }) {
 }
 
 /** Hele-dagitems van één dag: 1 over de volle breedte, 2 naast elkaar, 3+ twee tegels + «+n meer» (klapt open). */
+/** Smaller dan dit (agendakolom op een klein tablet): één hele-dagtegel naast «+n», i.p.v. twee krappe. */
+const ALL_DAY_TWO_UP = 480;
+
 function AllDayRow({ rows }: { rows: AgendaRow[] }) {
   const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [wide, setWide] = React.useState(true);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => setWide(e.contentRect.width >= ALL_DAY_TWO_UP));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   if (rows.length === 0) return null;
-  const collapsed = rows.length > 2 && !open;
-  const shown = collapsed ? rows.slice(0, 2) : rows;
-  const rest = rows.slice(2);
+  const perRow = wide ? 2 : 1;
+  const collapsed = rows.length > perRow && !open;
+  const shown = collapsed ? rows.slice(0, perRow) : rows;
+  const rest = rows.slice(perRow);
   return (
-    <div className={cn("grid gap-3", rows.length === 1 ? "grid-cols-1" : collapsed ? "grid-cols-[1fr_1fr_104px]" : "grid-cols-2")}>
+    <div
+      ref={ref}
+      className={cn(
+        "grid gap-3",
+        rows.length === 1 ? "grid-cols-1" : collapsed ? (wide ? "grid-cols-[1fr_1fr_104px]" : "grid-cols-[1fr_104px]") : wide ? "grid-cols-2" : "grid-cols-1",
+      )}
+    >
       {shown.map((r) => (
-        <AllDayTile key={r.id} row={r} narrow={rows.length > 1} />
+        <AllDayTile key={r.id} row={r} narrow={wide && rows.length > 1} />
       ))}
-      {rows.length > 2 ? (
+      {rows.length > perRow ? (
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -126,7 +145,7 @@ function AllDayRow({ rows }: { rows: AgendaRow[] }) {
           // Zelfde glastegel als de andere kaarten; de verborgen items als emoji (zonder achtergrond).
           className={cn(
             "flex h-[72px] items-center justify-center gap-2 rounded-[18px] bg-fixed-white/[0.18] px-3 text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.34)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [[data-sunset]_&]:bg-fixed-white/[0.26] [[data-theme=dark]_&]:bg-[#242a3e] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]",
-            open && "col-span-2",
+            open && wide && "col-span-2",
           )}
         >
           {open ? (
