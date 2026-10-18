@@ -1091,8 +1091,13 @@ const HOME_SWIMLANE_ARROW_CLASS =
  *  Desktop: 3-kolommen grid. */
 type HomeWeekDay = { isoDate: string; date: Date; entry: DayEntry | null };
 
-/** Verborgen startweergave: uit de opmaak en onzichtbaar, maar niet display:none (intro-animaties blijven af). */
-const HIDDEN_VIEW = "pointer-events-none invisible absolute inset-x-0 top-0 h-0 overflow-hidden";
+/** Verborgen startweergave (volgt `data-home-view`): uit de opmaak en onzichtbaar, maar niet display:none
+ *  (anders spelen de intro-animaties opnieuw). Voluit geschreven: Tailwind maakt enkel letterlijke klassen. */
+const HIDDEN_WHEN_DASHBOARD =
+  "[[data-home-view=dashboard]_&]:pointer-events-none [[data-home-view=dashboard]_&]:invisible [[data-home-view=dashboard]_&]:absolute [[data-home-view=dashboard]_&]:inset-x-0 [[data-home-view=dashboard]_&]:top-0 [[data-home-view=dashboard]_&]:h-0 [[data-home-view=dashboard]_&]:overflow-hidden";
+const HIDDEN_WHEN_OVERVIEW =
+  "[[data-home-view=overview]_&]:pointer-events-none [[data-home-view=overview]_&]:invisible [[data-home-view=overview]_&]:absolute [[data-home-view=overview]_&]:inset-x-0 [[data-home-view=overview]_&]:top-0 [[data-home-view=overview]_&]:h-0 [[data-home-view=overview]_&]:overflow-hidden";
+const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
 
 /** Aantal geplande dagen vanaf vandaag (voor de «Toon alle»-pil van Kalender). */
 function plannedAhead(days: HomeWeekDay[], todayIso: string): number {
@@ -2381,11 +2386,30 @@ export default function Home() {
     setTabletHomeView(view);
     localStorage.setItem("tablet-home-view", view);
   }, []);
-  // Welke weergaven al gemount zijn (blijven daarna staan, verborgen als ze niet actief zijn).
+  // Welke weergaven gemount zijn. Kort na het laden ook de andere (op de achtergrond), zodat wisselen enkel
+  // nog `data-home-view` op <html> omzet: inhoud, klok, knoppen, lucht en glas wisselen dan in hetzelfde
+  // frame via CSS, zonder her-render die de animatie zou bevriezen. React volgt pas na de animatie.
   const [mountedViews, setMountedViews] = React.useState<Set<"overview" | "dashboard">>(() => new Set([tabletHomeView]));
   React.useEffect(() => {
     setMountedViews((m) => (m.has(tabletHomeView) ? m : new Set(m).add(tabletHomeView)));
   }, [tabletHomeView]);
+  React.useEffect(() => {
+    const id = window.setTimeout(() => setMountedViews(new Set<"overview" | "dashboard">(["overview", "dashboard"])), 1200);
+    return () => window.clearTimeout(id);
+  }, []);
+  useIsoLayoutEffect(() => {
+    document.documentElement.dataset.homeView = tabletHomeView;
+  }, [tabletHomeView]);
+  React.useEffect(() => () => void delete document.documentElement.dataset.homeView, []);
+  /** Bij de tik: is de andere weergave al gemount, dan meteen tonen (enkel CSS) en de lucht meenemen. */
+  const showTabletViewNow = React.useCallback(
+    (view: "overview" | "dashboard") => {
+      if (!mountedViews.has(view)) return;
+      document.documentElement.dataset.homeView = view;
+      syncSunsetNow(view === "dashboard");
+    },
+    [mountedViews],
+  );
 
   React.useEffect(() => {
     const handler = () => setHomeSectionConfig(loadHomeSectionConfig());
@@ -3013,26 +3037,29 @@ export default function Home() {
         className={cn(
           "flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]",
           // Dashboard vult het tabletscherm: enkel ruimte voor de zwevende tabbalk.
-          tabletHomeView === "dashboard" && "md:pb-[calc(84px+env(safe-area-inset-bottom,0px))]",
+          "md:[[data-home-view=dashboard]_&]:pb-[calc(84px+env(safe-area-inset-bottom,0px))]",
         )}
       >
         <div className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col">
           <HomeHeader
             ownerId={ownerId}
-            clock={tabletHomeView === "dashboard"}
+            clock="view"
             className="pt-[var(--space-6)] motion-safe:animate-fade-up"
             action={
               /* Weergavetoggle rechtsboven, in beide weergaven op dezelfde plek; «Nieuw lijstje» staat onderaan. */
               <div className="hidden items-center gap-3 md:flex">
-                {tabletHomeView === "dashboard" && user ? <DashboardReminders userId={user.id} /> : null}
+                {user ? (
+                  <span className="contents [[data-home-view=overview]_&]:hidden">
+                    <DashboardReminders userId={user.id} />
+                  </span>
+                ) : null}
                 <SegmentedControl
                   ariaLabel="Startweergave"
-                  // Glas zodra «Dashboard» gekozen is (avondlucht en donker thema); de lucht start bij de tik zelf,
-                  // zodat pil, schakelaar en achtergrond in één beweging wisselen.
+                  // Eén beweging: bij de tik schuift de pil en wisselen inhoud, lucht en glas tegelijk (enkel CSS, zie
+                  // showTabletViewNow); de React-status volgt na de animatie.
                   glassFor="dashboard"
-                  onSelect={(v) => syncSunsetNow(v === "dashboard")}
-                  // Eerst pil, glas en lucht volledig laten bewegen; dan pas de (zware) wissel van de inhoud.
-                  commitDelay={440}
+                  onSelect={showTabletViewNow}
+                  commitDelay={700}
                   fill={false}
                   value={tabletHomeView}
                   onChange={handleTabletHomeViewChange}
@@ -3074,7 +3101,7 @@ export default function Home() {
                 tonen/verbergen (geen zware opbouw die de animatie van de schakelaar zou bevriezen). Verbergen
                 zonder display:none, anders spelen alle intro-animaties (fade-up) opnieuw en flitst de inhoud. */}
             {mountedViews.has("overview") ? (
-              <div className={cn("flex flex-col gap-10 pt-8", tabletHomeView !== "overview" && HIDDEN_VIEW)} inert={tabletHomeView !== "overview" || undefined}>
+              <div className={cn("flex flex-col gap-10 pt-8", HIDDEN_WHEN_DASHBOARD)}>
                 {/* Agenda boven de lijstjes als ze zo gerangschikt is (standaard: bovenaan). */}
                 {agendaFirstOnDesktop ? renderHomeSlot("agenda") : null}
                 {/* Lijstjes over de volle breedte (drie kaartjes), daaronder Te kopen en de diepvries even hoog. */}
@@ -3130,7 +3157,7 @@ export default function Home() {
               </div>
             ) : null}
             {mountedViews.has("dashboard") ? (
-              <div className={cn(tabletHomeView !== "dashboard" && HIDDEN_VIEW)} inert={tabletHomeView !== "dashboard" || undefined}>
+              <div className={HIDDEN_WHEN_OVERVIEW}>
                 <HomeTabletDashboard
                   todayMeal={todayDashboard.todayMeal}
                   tomorrowMeal={todayDashboard.tomorrowMeal}
@@ -3141,7 +3168,7 @@ export default function Home() {
               </div>
             ) : null}
           </div>
-          <div className={cn("mt-10 flex justify-center pb-4", tabletHomeView === "dashboard" && "md:hidden")}>
+          <div className="mt-10 flex justify-center pb-4 md:[[data-home-view=dashboard]_&]:hidden">
             <Link
               href="/beheer-homepagina"
               className="rounded-pill bg-[var(--white)] px-4 py-2 text-sm font-medium leading-5 text-action-primary shadow-card transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
@@ -3155,24 +3182,22 @@ export default function Home() {
       <NewListFlow ref={newListFlowRef} onCreated={setAddingId} />
 
       {/* Tablet/desktop: «Nieuw lijstje» rechtsonder, even hoog als de zwevende tabbalk en op dezelfde basislijn. */}
-      {tabletHomeView === "overview" ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[max(32px,env(safe-area-inset-bottom,0px))] z-20 hidden md:block">
-          <div className="px-[var(--space-4)]">
-            <div className="mx-auto flex w-full max-w-[1180px] justify-end">
-              <button
-                type="button"
-                onClick={handleOpenCreateModal}
-                className="pointer-events-auto inline-flex h-[68px] items-center gap-2.5 rounded-pill bg-[var(--blue-500)] pl-7 pr-6 text-[17px] font-semibold text-[var(--white)] shadow-fab transition-[background-color,box-shadow,transform] duration-fast ease-out-strong [@media(hover:hover)]:hover:bg-[var(--blue-600)] [@media(hover:hover)]:hover:shadow-raised motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-              >
-                Nieuw lijstje
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="size-6">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-              </button>
-            </div>
+      <div className="pointer-events-none fixed inset-x-0 bottom-[max(32px,env(safe-area-inset-bottom,0px))] z-20 hidden md:block md:[[data-home-view=dashboard]_&]:hidden">
+        <div className="px-[var(--space-4)]">
+          <div className="mx-auto flex w-full max-w-[1180px] justify-end">
+            <button
+              type="button"
+              onClick={handleOpenCreateModal}
+              className="pointer-events-auto inline-flex h-[68px] items-center gap-2.5 rounded-pill bg-[var(--blue-500)] pl-7 pr-6 text-[17px] font-semibold text-[var(--white)] shadow-fab transition-[background-color,box-shadow,transform] duration-fast ease-out-strong [@media(hover:hover)]:hover:bg-[var(--blue-600)] [@media(hover:hover)]:hover:shadow-raised motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+            >
+              Nieuw lijstje
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="size-6">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
           </div>
         </div>
-      ) : null}
+      </div>
 
       <div
         className={cn(

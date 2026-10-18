@@ -581,16 +581,16 @@ const segment = (on: boolean) => cn("h-8 whitespace-nowrap rounded-pill px-3", o
  * <html> `data-sunset`; de pagina wordt een lucht van oranje naar violet en alle panelen worden matglas
  * (`[[data-sunset]_&]:`-varianten). In het donkere thema en always-on blijft palet B.
  */
+/** useLayoutEffect in de browser, useEffect op de server (geen waarschuwing bij server-rendering). */
+const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+
 /** Of de avondlucht nu zou gelden (avond, licht thema, vanaf md); zelfde voorwaarden als useSunset. */
 function sunsetApplies(on: boolean): boolean {
   const root = document.documentElement;
   return on && window.matchMedia("(min-width: 768px)").matches && root.dataset.theme !== "dark" && !root.dataset.aod;
 }
 
-/**
- * Meteen bij het wisselen naar/van het dashboard (vóór het dashboard getekend is): de lucht en de
- * glazen schakelaar beginnen zo op hetzelfde moment als de schuivende pil, in één beweging.
- */
+/** Meteen bij het wisselen (zonder her-render): avondlucht aan of uit, met dezelfde voorwaarden als useSunset. */
 export function syncSunsetNow(toDashboard: boolean): void {
   let moment = momentAt(new Date());
   try {
@@ -605,7 +605,9 @@ export function syncSunsetNow(toDashboard: boolean): void {
 }
 
 function useSunset(on: boolean) {
-  React.useEffect(() => {
+  // Layout-effect: de lucht staat aan vóór het eerste frame van het dashboard, zodat inhoud, lucht en glas
+  // samen beginnen (geen frame met de gewone kleuren, en niet eerder dan de inhoud).
+  useIsoLayoutEffect(() => {
     const root = document.documentElement;
     // De lucht is een eigen laag (body::after in globals.css) die op [data-sunset] in- en uitfadet.
     // Enkel waar het dashboard echt zichtbaar is (vanaf md); op de gsm is het verborgen maar wel gemount.

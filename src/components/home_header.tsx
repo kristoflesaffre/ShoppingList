@@ -12,7 +12,8 @@ export interface HomeHeaderProps {
   /** Optionele actie rechts naast de paginatitel. */
   action?: React.ReactNode;
   /** Tablet-dashboard: grote klok vóór datum en begroeting (vanaf md). */
-  clock?: boolean;
+  /** Grote klok links (dashboard). `"view"`: volgt `data-home-view` op <html> (wisselen zonder her-render). */
+  clock?: boolean | "view";
 }
 
 /** Klok die elke 15 s bijwerkt (uu:mm). */
@@ -72,7 +73,8 @@ export function HomeHeader({ ownerId, className, action, clock = false }: HomeHe
     <header
       className={cn(
         "grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-0.5",
-        clock && "md:grid-cols-[auto_auto_minmax(0,1fr)_auto] md:gap-x-4",
+        clock === true && "md:grid-cols-[auto_auto_minmax(0,1fr)_auto] md:gap-x-4",
+        clock === "view" && "md:[[data-home-view=dashboard]_&]:grid-cols-[auto_auto_minmax(0,1fr)_auto] md:[[data-home-view=dashboard]_&]:gap-x-4",
         className,
       )}
     >
@@ -114,22 +116,28 @@ export function HomeHeader({ ownerId, className, action, clock = false }: HomeHe
         </span>
       </Link>
       {clock ? (
-        <LiveClock className="aod-clock col-start-2 row-span-2 row-start-1 hidden self-center text-[64px] font-extrabold leading-[0.9] tracking-[-0.05em] text-text-primary md:block [[data-sunset]_&]:text-fixed-white" />
+        <LiveClock
+          className={cn(
+            "aod-clock col-start-2 row-span-2 row-start-1 hidden self-center text-[64px] font-extrabold leading-[0.9] tracking-[-0.05em] text-text-primary [[data-sunset]_&]:text-fixed-white",
+            clock === "view" ? "md:[[data-home-view=dashboard]_&]:block" : "md:block",
+          )}
+        />
       ) : null}
-      <p className={cn("col-start-2 row-start-1 self-end text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)] [[data-sunset]_&]:text-fixed-white/80", clock && "md:col-start-3")}>
+      <p className={cn("col-start-2 row-start-1 self-end text-sm font-medium leading-20 tracking-normal text-[var(--text-tertiary)] [[data-sunset]_&]:text-fixed-white/80", clock === true && "md:col-start-3", clock === "view" && "md:[[data-home-view=dashboard]_&]:col-start-3")}>
         <time dateTime={now.toISOString().slice(0, 10)}>{dateLabel}</time>
       </p>
       <h1
         className={cn(
           "col-start-2 row-start-2 self-start truncate text-[24px] font-bold leading-[30px] tracking-tight text-[var(--text-primary)] md:text-page-title md:leading-32 [[data-sunset]_&]:text-fixed-white",
-          clock && "md:col-start-3",
+          clock === true && "md:col-start-3",
+          clock === "view" && "md:[[data-home-view=dashboard]_&]:col-start-3",
         )}
       >
         {greeting}
         {firstName ? `, ${firstName}` : ""}
       </h1>
       {action ? (
-        <div className={cn("col-start-3 row-span-2 row-start-1 self-center", clock && "md:col-start-4")}>{action}</div>
+        <div className={cn("col-start-3 row-span-2 row-start-1 self-center", clock === true && "md:col-start-4", clock === "view" && "md:[[data-home-view=dashboard]_&]:col-start-4")}>{action}</div>
       ) : null}
     </header>
   );
