@@ -17,12 +17,16 @@ import { taskPhotoFor } from "@/lib/task_photos";
 
 /**
  * Kurken prikbord achter de rij (canvas «post-its op kurk» R2): korrels in drie tinten op een warm verloop.
- * Donker thema (canvas «donker thema» A): dieper kurk via --cork-a/--cork-b (zie CORK_DARK).
+ * Donker thema (canvas «donker thema» A): dieper kurk via --cork-a/--cork-b; avondlucht: glas (zie CORK_DARK).
  */
-const CORK_DARK = "[[data-theme=dark]_&]:[--cork-a:#6b4f32] [[data-theme=dark]_&]:[--cork-b:#58402a]";
+const CORK_DARK =
+  "[[data-theme=dark]_&]:[--cork-a:#6b4f32] [[data-theme=dark]_&]:[--cork-b:#58402a] " +
+  // Avondlucht: geen kurk maar matglas, net als de andere tegels op het dashboard.
+  "[[data-sunset]_&]:[--cork-bg:none] [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]";
 const CORK_STYLE: React.CSSProperties = {
+  // Via --cork-bg uit te zetten: op de avondlucht wordt het bord glas zoals de andere tegels (zie CORK_DARK).
   backgroundImage:
-    "radial-gradient(circle at 20% 30%,rgba(120,70,20,.35) 0 1.5px,transparent 2px),radial-gradient(circle at 70% 60%,rgba(90,50,15,.3) 0 1.2px,transparent 1.8px),radial-gradient(circle at 40% 80%,rgba(255,230,190,.35) 0 1.4px,transparent 2px),linear-gradient(135deg,var(--cork-a,#c8955b),var(--cork-b,#b98549))",
+    "var(--cork-bg, radial-gradient(circle at 20% 30%,rgba(120,70,20,.35) 0 1.5px,transparent 2px),radial-gradient(circle at 70% 60%,rgba(90,50,15,.3) 0 1.2px,transparent 1.8px),radial-gradient(circle at 40% 80%,rgba(255,230,190,.35) 0 1.4px,transparent 2px),linear-gradient(135deg,var(--cork-a,#c8955b),var(--cork-b,#b98549)))",
   backgroundSize: "26px 26px,31px 31px,23px 23px,100% 100%",
 };
 const TAPE_TILT = [-3, 2, -1.5, 3, -2];
