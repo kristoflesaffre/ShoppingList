@@ -6,29 +6,26 @@ import { PRIORITY, plainTaskText, TODO_NEAR_DAYS, daysUntil, localIso, projectCo
 import { ListSectionHeader, OverviewPill } from "@/components/list_section_header";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { MiniButton } from "@/components/ui/mini_button";
+import { TodoCheck, TodoNotice } from "@/components/todo_check";
 
 /**
  * Startpagina · «To-do»: je Todoist-taken in een swimlane. Enkel taken met een datum die te laat is of binnen
- * TODO_NEAR_DAYS valt (verre of datumloze taken staan op /todo, via de «Toon alle»-pil). Tik op een taak =
- * openen in Todoist. Niet gekoppeld: kaart met «Koppel Todoist».
+ * TODO_NEAR_DAYS valt (verre of datumloze taken staan op /todo, via de «Toon alle»-pil). Afvinken met het
+ * rondje (blijft in de app, opent Todoist niet). Niet gekoppeld: kaart met «Koppel Todoist».
  */
 
-function TaskCard({ task, project, due }: { task: TodoTask; project: TodoProject | undefined; due: TodoDue }) {
+function TaskCard({ task, project, due, onCheck }: { task: TodoTask; project: TodoProject | undefined; due: TodoDue; onCheck: (t: TodoTask) => void }) {
   const prio = PRIORITY[task.priority];
   return (
-    <a
-      href={task.url ?? "https://app.todoist.com/app/today"}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex w-[220px] shrink-0 snap-start flex-col gap-2 rounded-[20px] bg-[var(--white)] p-4 no-underline shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-    >
-      <span className="flex min-h-5 items-center justify-between gap-2">
+    <div className="flex w-[220px] shrink-0 snap-start flex-col gap-2 rounded-[20px] bg-[var(--white)] p-4 shadow-card">
+      <span className="flex min-h-[22px] items-center gap-2">
+        <TodoCheck task={task} onCheck={onCheck} />
         {due.label ? (
-          <span className={cn("text-[12px] font-bold leading-4", due.overdue ? "text-[#d1453b]" : due.rank === 1 ? "text-[#058527]" : "text-[var(--text-secondary)]")}>
+          <span className={cn("mr-auto text-[12px] font-bold leading-4", due.overdue ? "text-[#d1453b]" : due.rank === 1 ? "text-[#058527]" : "text-[var(--text-secondary)]")}>
             {due.label}
           </span>
         ) : (
-          <span className="text-[12px] font-semibold leading-4 text-[var(--text-tertiary)]">Geen datum</span>
+          <span className="mr-auto text-[12px] font-semibold leading-4 text-[var(--text-tertiary)]">Geen datum</span>
         )}
         {prio ? (
           <span aria-label={`Prioriteit ${prio.label}`} className="flex items-center gap-0.5 text-[11px] font-extrabold" style={{ color: prio.color }}>
@@ -53,12 +50,12 @@ function TaskCard({ task, project, due }: { task: TodoTask; project: TodoProject
           </span>
         ))}
       </span>
-    </a>
+    </div>
   );
 }
 
 export function HomeTodoSection() {
-  const { state, load, connect } = useTodoist();
+  const { state, load, connect, closeTask, notice, clearNotice } = useTodoist();
   const todayIso = localIso(new Date());
 
   // Enkel wat dichtbij is: te laat, vandaag en de komende dagen; de rest staat op /todo.
@@ -137,7 +134,7 @@ export function HomeTodoSection() {
     body = (
       <div className="-mx-[var(--space-4)] flex snap-x gap-3 overflow-x-auto scroll-px-[var(--space-4)] px-[var(--space-4)] pb-2 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sorted.slice(0, 30).map(({ task, due }) => (
-          <TaskCard key={task.id} task={task} project={task.projectId ? state.projects.get(task.projectId) : undefined} due={due} />
+          <TaskCard key={task.id} task={task} project={task.projectId ? state.projects.get(task.projectId) : undefined} due={due} onCheck={(t) => void closeTask(t)} />
         ))}
       </div>
     );
@@ -147,6 +144,7 @@ export function HomeTodoSection() {
     <div className="flex flex-col gap-4">
       {header}
       {body}
+      <TodoNotice notice={notice} onReconnect={() => void connect()} onClose={clearNotice} />
     </div>
   );
 }

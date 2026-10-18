@@ -112,7 +112,43 @@ export function useTodoist() {
     if (data.url) window.location.assign(data.url);
   }, [token]);
 
-  return { state, load, connect };
+  // Afvinken: meteen uit de lijst (optimistisch); lukt het niet, dan komt de taak terug met een melding.
+  // Herhalende taken krijgen in Todoist een nieuwe datum: even later opnieuw ophalen toont ze daar.
+  const [notice, setNotice] = React.useState<{ text: string; reconnect: boolean } | null>(null);
+  const closeTask = React.useCallback(
+    async (task: TodoTask) => {
+      if (state.kind === "ready" && !state.canWrite) {
+        setNotice({ text: "Koppel Todoist opnieuw met schrijfrechten om taken af te vinken.", reconnect: true });
+        return;
+      }
+      setState((s) => (s.kind === "ready" ? { ...s, tasks: s.tasks.filter((t) => t.id !== task.id) } : s));
+      try {
+        const res = await fetch("/api/todoist/close", {
+          method: "POST",
+          headers: { ...googleAuthHeaders(token), "content-type": "application/json" },
+          body: JSON.stringify({ id: task.id }),
+        });
+        if (res.status === 403) {
+          setNotice({ text: "Koppel Todoist opnieuw met schrijfrechten om taken af te vinken.", reconnect: true });
+          void load();
+          return;
+        }
+        if (!res.ok && res.status !== 404) throw new Error(String(res.status));
+        if (task.due?.recurring) window.setTimeout(() => void load(), 800);
+      } catch {
+        setNotice({ text: "Afvinken lukte niet. Probeer het opnieuw.", reconnect: false });
+        void load();
+      }
+    },
+    [state, token, load],
+  );
+  React.useEffect(() => {
+    if (!notice || notice.reconnect) return;
+    const id = window.setTimeout(() => setNotice(null), 4000);
+    return () => window.clearTimeout(id);
+  }, [notice]);
+
+  return { state, load, connect, closeTask, notice, clearNotice: () => setNotice(null) };
 }
 
 

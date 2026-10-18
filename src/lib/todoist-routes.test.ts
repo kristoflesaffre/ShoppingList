@@ -194,3 +194,11 @@ describe("Todoist write access and return path", () => {
     expect(safeTodoistReturn(42)).toBeUndefined();
   });
 });
+
+describe("Todoist close route", () => {
+  it("rejects requests without a signed-in user from another origin", async () => {
+    const { POST: close } = await import("@/app/api/todoist/close/route");
+    const res = await close(new NextRequest("https://evil.example/api/todoist/close", { method: "POST", body: JSON.stringify({ id: "1" }) }));
+    expect([401, 403]).toContain(res.status);
+  });
+});

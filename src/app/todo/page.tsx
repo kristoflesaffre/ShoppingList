@@ -4,17 +4,18 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { backOr } from "@/lib/in_app_history";
-import { PRIORITY, plainTaskText, daysUntil, localIso, projectColor, sortTasks, useTodoist, type TodoDue, type TodoProject, type TodoTask } from "@/lib/todoist-client";
+import { plainTaskText, daysUntil, localIso, projectColor, sortTasks, useTodoist, type TodoDue, type TodoProject, type TodoTask } from "@/lib/todoist-client";
 import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { RoundIcons } from "@/components/ui/round_icon_button";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { MiniButton } from "@/components/ui/mini_button";
+import { TodoCheck, TodoNotice } from "@/components/todo_check";
 
 /**
  * «To-do» (via «Toon alle» op de startpagina): al je Todoist-taken in één overzicht, per periode gegroepeerd
- * (te laat, vandaag, morgen, deze week, later, zonder datum) en te filteren per project. Alleen lezen: een
- * taak openen gaat naar Todoist.
+ * (te laat, vandaag, morgen, deze week, later, zonder datum) en te filteren per project. Een
+ * taak afvinken met het rondje (blijft in de app).
  */
 
 type GroupKey = "late" | "today" | "tomorrow" | "week" | "later" | "none";
@@ -37,22 +38,12 @@ function groupOf(task: TodoTask, todayIso: string): GroupKey {
   return "later";
 }
 
-function TaskRow({ task, project, due, showDate }: { task: TodoTask; project: TodoProject | undefined; due: TodoDue; showDate: boolean }) {
-  const prio = PRIORITY[task.priority];
+function TaskRow({ task, project, due, showDate, onCheck }: { task: TodoTask; project: TodoProject | undefined; due: TodoDue; showDate: boolean; onCheck: (t: TodoTask) => void }) {
   return (
     <li>
-      <a
-        href={task.url ?? "https://app.todoist.com/app/today"}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-start gap-3 px-4 py-3 no-underline transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
-      >
-        {/* Cirkel zoals in Todoist: rand in de prioriteitskleur (P4 grijs). */}
-        <span
-          aria-hidden
-          className="mt-0.5 size-[18px] shrink-0 rounded-full border-2"
-          style={{ borderColor: prio?.color ?? "var(--gray-200)", backgroundColor: prio ? `${prio.color}14` : undefined }}
-        />
+      <div className="flex items-start gap-3 px-4 py-3">
+        {/* Afvinken zoals in Todoist: rondje met rand in de prioriteitskleur (P4 grijs). */}
+        <TodoCheck task={task} onCheck={onCheck} className="mt-[-1px]" />
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-medium leading-5 text-[var(--text-primary)] [overflow-wrap:anywhere]">{plainTaskText(task.content)}</span>
           <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px] leading-4 text-[var(--text-secondary)] empty:hidden">
@@ -79,7 +70,7 @@ function TaskRow({ task, project, due, showDate }: { task: TodoTask; project: To
             ) : null}
           </span>
         </span>
-      </a>
+      </div>
     </li>
   );
 }
@@ -87,7 +78,7 @@ function TaskRow({ task, project, due, showDate }: { task: TodoTask; project: To
 export default function TodoPage() {
   const router = useRouter();
   const goBack = React.useCallback(() => backOr(router, "/"), [router]);
-  const { state, load, connect } = useTodoist();
+  const { state, load, connect, closeTask, notice, clearNotice } = useTodoist();
   const [projectFilter, setProjectFilter] = React.useState<string | null>(null);
   const todayIso = localIso(new Date());
 
@@ -225,6 +216,7 @@ export default function TodoPage() {
                           due={due}
                           // In «Vandaag» en «Morgen» zegt de groep de datum al; toon dan enkel het uur.
                           showDate={g.key !== "today" && g.key !== "tomorrow" ? true : Boolean(task.due?.datetime)}
+                          onCheck={(t) => void closeTask(t)}
                         />
                       ))}
                     </ul>
@@ -235,6 +227,7 @@ export default function TodoPage() {
           </>
         )}
       </main>
+      <TodoNotice notice={notice} onReconnect={() => void connect()} onClose={clearNotice} />
     </div>
   );
 }

@@ -130,6 +130,13 @@ export async function withTodoistConnection(request: NextRequest, run: (connecti
     return response;
   }
 }
+/** Eén taak afvinken (POST /tasks/{id}/close). Het id is vooraf gecontroleerd; geen vrije paden. */
+export async function todoistCloseTask(connection: TodoistConnection, taskId: string) {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(taskId)) throw new Error("Invalid Todoist task id");
+  const response = await fetch(`https://api.todoist.com/api/v1/tasks/${encodeURIComponent(taskId)}/close`, { method: "POST", headers: { authorization: `Bearer ${connection.accessToken}` }, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15_000) });
+  if (response.status === 401) throw new TodoistReconnectRequired();
+  if (!response.ok) throw new TodoistUpstreamError(response.status, response.headers.get("retry-after"));
+}
 export async function todoistGet(connection: TodoistConnection, path: "tasks" | "tasks/filter" | "projects", params: URLSearchParams) {
   const response = await fetch(`https://api.todoist.com/api/v1/${path}?${params}`, { headers: { authorization: `Bearer ${connection.accessToken}` }, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15_000) });
   if (response.status === 401) throw new TodoistReconnectRequired();
