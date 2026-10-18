@@ -4,6 +4,7 @@ import { verifiedUserId } from "@/lib/server/google-connection-store";
 
 export const TODOIST_STATE_COOKIE = "shopping_todoist_state";
 export const TODOIST_AUTH_COOKIE = "shopping_todoist_auth";
+export const TODOIST_SCOPE = "data:read_write";
 export const todoistCookieOptions = { httpOnly: true, secure: true, sameSite: "lax" as const, path: "/" };
 export type TodoistState = { ownerId: string; state: string; verifier: string; expiresAt: number };
 export type TodoistConnection = { ownerId: string; clientId: string; accessToken: string; refreshToken?: string; expiresAt: number };
@@ -63,7 +64,7 @@ export async function todoistTokens(params: URLSearchParams, config: ReturnType<
   const data = await response.json() as { access_token?: unknown; refresh_token?: unknown; expires_in?: unknown; scope?: unknown };
   const lifetime = Number(data.expires_in);
   if (typeof data.access_token !== "string" || !data.access_token || !Number.isFinite(lifetime) || lifetime <= 0 || (data.refresh_token !== undefined && (typeof data.refresh_token !== "string" || !data.refresh_token))) throw new Error("Invalid Todoist token response");
-  if (typeof data.scope === "string" && !data.scope.split(/[ ,]+/).includes("data:read")) throw new Error("Unexpected Todoist scope");
+  if (typeof data.scope === "string" && !data.scope.split(/[ ,]+/).includes(TODOIST_SCOPE)) throw new Error("Unexpected Todoist scope");
   return { accessToken: data.access_token, ...(typeof data.refresh_token === "string" ? { refreshToken: data.refresh_token } : {}), expiresAt: Date.now() + lifetime * 1000 };
 }
 export function setTodoistConnection(response: NextResponse, connection: TodoistConnection, secret: string) {

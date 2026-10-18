@@ -34,11 +34,11 @@ describe("Todoist backend", () => {
     expect((await handler(new NextRequest(`${origin}/api/todoist/test`, { method: "POST", headers: { origin: "https://attacker.example", authorization: "Bearer good" } }))).status).toBe(403);
     expect(fetch).not.toHaveBeenCalled();
   });
-  it("requests only read access, binds state, and protects the cookie", async () => {
+  it("requests read and write access, binds state, and protects the cookie", async () => {
     const response = await connect(request("connect"));
     const url = new URL((await response.json()).url);
     expect(url.origin + url.pathname).toBe("https://app.todoist.com/oauth/authorize");
-    expect(url.searchParams.get("scope")).toBe("data:read");
+    expect(url.searchParams.get("scope")).toBe("data:read_write");
     expect(url.searchParams.get("redirect_uri")).toBe(`${origin}/api/todoist/callback`);
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     const cookie = response.cookies.get(TODOIST_STATE_COOKIE)!;
@@ -62,7 +62,7 @@ describe("Todoist backend", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
   it("exchanges the code server-side and never returns tokens to the frontend", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ access_token: "private-access", refresh_token: "private-refresh", expires_in: 3600, scope: "data:read" }));
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ access_token: "private-access", refresh_token: "private-refresh", expires_in: 3600, scope: "data:read_write" }));
     const response = await callback(callbackRequest("state=expected&code=code"));
     expect(response.headers.get("location")).toBe(`${origin}/profiel?todoist=connected`);
     const cookie = response.cookies.get(TODOIST_AUTH_COOKIE)!;
@@ -162,8 +162,8 @@ describe("Todoist backend", () => {
     expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes("oauth/access_token"))).toHaveLength(1);
     for (const response of responses) expect(readTodoistConnection(response.cookies.get(TODOIST_AUTH_COOKIE)?.value, secret, "user-1", "client")?.refreshToken).toBe("rotated");
   });
-  it("rejects unexpected writable scopes instead of saving them", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ access_token: "access", refresh_token: "refresh", expires_in: 3600, scope: "data:read_write" }));
+  it.each(["data:read", "task:add"])("rejects insufficient scope %s instead of saving it", async scope => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ access_token: "access", refresh_token: "refresh", expires_in: 3600, scope }));
     const response = await callback(callbackRequest("state=expected&code=code"));
     expect(response.headers.get("location")).toContain("connection-failed");
     expect(response.cookies.get(TODOIST_AUTH_COOKIE)).toBeUndefined();

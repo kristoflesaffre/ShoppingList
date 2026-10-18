@@ -1,6 +1,6 @@
 # Todoist backend — frontend handoff
 
-Backend only. No new screens or task mutations. Uses the current Todoist API v1 and OAuth `data:read` scope: https://developer.todoist.com/api/v1/.
+Backend only. No new screens or task mutations. Uses the current Todoist API v1 and OAuth `data:read_write` scope: https://developer.todoist.com/api/v1/.
 
 ## Connection and credentials
 
@@ -48,7 +48,7 @@ Keep these requests sequential through one shared frontend loader (especially st
 
 `POST /api/todoist/connect` with no body or `{}` returns `{ "url": "https://app.todoist.com/oauth/authorize?..." }`. It also sets a protected short-lived state cookie.
 
-Navigate the **same browser window** to `url` (validate the exact `https://app.todoist.com` origin and `/oauth/authorize` path before assigning it). The user signs into Todoist and approves read access. The backend exchanges the code and saves encrypted tokens. Access tokens expire; the backend refreshes them automatically.
+Navigate the **same browser window** to `url` (validate the exact `https://app.todoist.com` origin and `/oauth/authorize` path before assigning it). The user signs into Todoist and approves read and write access. The backend exchanges the code and saves encrypted tokens. Access tokens expire; the backend refreshes them automatically.
 
 The callback redirects to an **existing page**, `/profiel?todoist=connected`, `?todoist=cancelled`, or `?todoist=connection-failed`. Add the desired notice/navigation there in the frontend. Do not invent a separate callback page or expose token responses. Once the result is displayed, remove the parameter with `history.replaceState` and load status.
 
@@ -149,10 +149,10 @@ Responses always have `Cache-Control: no-store`.
 | 503 | `not-configured` | Server settings missing; do not show an active connect button. |
 | 503 | `temporarily-unavailable` | Show retry affordance; keep existing displayed tasks. |
 
-Only read access is requested and there are no create, complete, edit, or delete task endpoints. No synchronization jobs, webhooks, or permanent task copies are created.
+Read and write access (`data:read_write`) is requested. Existing read-only grants must be upgraded by disconnecting and reconnecting Todoist; refreshing an old token cannot grant broader permissions. This scope change does not add write endpoints: there are currently no create, complete, edit, or delete task endpoints. No synchronization jobs, webhooks, or permanent task copies are created.
 
 ## Validation
 
 `npx vitest run src/lib/todoist-routes.test.ts`
 
-Covers authentication/origin, read-only OAuth scope, callback state, encrypted user-bound cookies, cancellation, pagination, task mapping, filters, input validation, projects, refresh rotation, revoked credentials, rate limits, outages, and disconnect. The initial consent must still be completed by the user through the future frontend; no full-access developer test token is generated.
+Covers authentication/origin, read/write OAuth scope, callback state, encrypted user-bound cookies, cancellation, pagination, task mapping, filters, input validation, projects, refresh rotation, revoked credentials, rate limits, outages, and disconnect. The initial consent must still be completed by the user through the future frontend; no full-access developer test token is generated.
