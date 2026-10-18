@@ -643,6 +643,7 @@ function MobileHueSection({
             </div>
           </section>
         ))}
+        <CinemaPanels token={token} onDone={() => void load()} />
       </div>
       <ScrollLane className="-mx-4 -my-3 flex gap-4 px-4 py-3 lg:hidden">
         {floors.groups(rooms).map((g) => (
@@ -657,7 +658,7 @@ function MobileHueSection({
           </section>
         ))}
         {/* Helemaal achteraan: de twee cinemastanden als fototegels. */}
-        <section aria-label="Cinema" className="flex shrink-0 flex-col gap-2.5">
+        <section aria-label="Cinema" className="flex shrink-0 flex-col gap-2.5 pl-2.5">
           <h3 className="whitespace-nowrap px-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Cinema</h3>
           <CinemaPhotoTiles token={token} onDone={() => void load()} />
         </section>
@@ -681,8 +682,8 @@ function MobileHueSection({
 // ─── Cinema-knoppen (in het lichtpaneel) ────────────────────────────────────
 
 /** Filmklapper. */
-const ClapperIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[22px]">
+const ClapperIcon = ({ className = "size-[22px]" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
     <path d="M4 10h16v8.5A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5z" />
     <path d="m4 10-.6-2.4a1.5 1.5 0 0 1 1.1-1.8l12.7-3.1a1.5 1.5 0 0 1 1.8 1.1l.6 2.4z" />
     <path d="m8.4 5.2 2.3 3.2M13.3 4l2.3 3.2" />
@@ -690,8 +691,8 @@ const ClapperIcon = () => (
 );
 
 /** Maansikkel: «de rest van het huis gaat donker». */
-const MoonIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-3">
+const MoonIcon = ({ className = "size-3" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
     <path d="M20.2 14.6A8.5 8.5 0 0 1 9.4 3.8a.6.6 0 0 0-.8-.7 9.5 9.5 0 1 0 12.3 12.3.6.6 0 0 0-.7-.8z" />
   </svg>
 );
@@ -860,6 +861,53 @@ function CinemaPhotoTiles({ token, onDone }: { token: string | null; onDone: () 
             </span>
             <span className="relative text-[17px] font-extrabold leading-5">{t.title}</span>
             <span className="relative mt-0.5 text-[12.5px] font-semibold leading-4 text-fixed-white/80">{t.sub}</span>
+          </button>
+        );
+      })}
+      {error ? (
+        <p role="status" className="absolute inset-x-2 top-2 z-[2] rounded-[12px] bg-[rgba(16,17,48,0.88)] px-3 py-2 text-xs font-semibold text-fixed-white">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Desktop, rechts van de verdiepingen: de twee cinemastanden als twee gestapelde panelen met een lichte rand,
+ * een groot maar ingetogen icoon en een duidelijk label. Samen even hoog als de verdiepingspanelen.
+ */
+function CinemaPanels({ token, onDone }: { token: string | null; onDone: () => void }) {
+  const { busy, error, run } = useCinemaScene(token, onDone);
+  return (
+    <div className="relative flex w-[232px] shrink-0 flex-col gap-4">
+      {CINEMA.map((c) => {
+        const t = CINEMA_TILES[c.mode];
+        return (
+          <button
+            key={c.mode}
+            type="button"
+            aria-label={c.hint}
+            disabled={busy !== null}
+            onClick={() => void run(c)}
+            className="flex flex-1 items-center gap-4 rounded-[24px] border border-[var(--border-subtle)] px-5 text-left transition-[background-color,transform] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffb547] motion-safe:active:scale-[0.98] disabled:opacity-70 [@media(hover:hover)]:hover:bg-[var(--white)]"
+          >
+            <span className="relative flex size-12 shrink-0 items-center justify-center text-[var(--gray-500)]">
+              {busy === c.mode ? (
+                <span className="block size-5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+              ) : (
+                <ClapperIcon className="size-11 [stroke-width:1.4]" />
+              )}
+              {c.othersOff ? (
+                <span className="absolute -bottom-0.5 -right-0.5 flex size-[22px] items-center justify-center rounded-full bg-[var(--gray-500)] text-[var(--bg-app)] shadow-[0_0_0_2.5px_var(--bg-app)]">
+                  <MoonIcon className="size-3.5" />
+                </span>
+              ) : null}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-base font-bold leading-5 text-[var(--text-primary)]">{t.title}</span>
+              <span className="mt-0.5 block text-[13px] leading-4 text-[var(--text-secondary)]">{t.sub}</span>
+            </span>
           </button>
         );
       })}
