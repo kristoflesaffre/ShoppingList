@@ -875,12 +875,12 @@ function CinemaPhotoTiles({ token, onDone }: { token: string | null; onDone: () 
 
 /**
  * Desktop, rechts van de verdiepingen: de twee cinemastanden als twee gestapelde panelen met een lichte rand,
- * een groot maar ingetogen icoon en een duidelijk label. Samen even hoog als de verdiepingspanelen.
+ * een ingetogen icoon boven een duidelijk label. Samen even hoog als de verdiepingspanelen.
  */
 function CinemaPanels({ token, onDone }: { token: string | null; onDone: () => void }) {
   const { busy, error, run } = useCinemaScene(token, onDone);
   return (
-    <div className="relative flex w-[232px] shrink-0 flex-col gap-4">
+    <div className="relative flex w-[96px] shrink-0 flex-col gap-4">
       {CINEMA.map((c) => {
         const t = CINEMA_TILES[c.mode];
         return (
@@ -890,23 +890,23 @@ function CinemaPanels({ token, onDone }: { token: string | null; onDone: () => v
             aria-label={c.hint}
             disabled={busy !== null}
             onClick={() => void run(c)}
-            className="flex flex-1 items-center gap-4 rounded-[24px] border border-[var(--border-subtle)] px-5 text-left transition-[background-color,transform] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffb547] motion-safe:active:scale-[0.98] disabled:opacity-70 [@media(hover:hover)]:hover:bg-[var(--white)]"
+            className="flex flex-1 flex-col items-center justify-center gap-2 rounded-[24px] border border-[var(--border-subtle)] px-2 text-center transition-[background-color,transform] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffb547] motion-safe:active:scale-[0.98] disabled:opacity-70 [@media(hover:hover)]:hover:bg-[var(--white)]"
           >
-            <span className="relative flex size-12 shrink-0 items-center justify-center text-[var(--gray-500)]">
+            <span className="relative flex size-9 shrink-0 items-center justify-center text-[var(--gray-400)]">
               {busy === c.mode ? (
-                <span className="block size-5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+                <span className="block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
               ) : (
-                <ClapperIcon className="size-11 [stroke-width:1.4]" />
+                <ClapperIcon className="size-8 [stroke-width:1.25]" />
               )}
               {c.othersOff ? (
-                <span className="absolute -bottom-0.5 -right-0.5 flex size-[22px] items-center justify-center rounded-full bg-[var(--gray-500)] text-[var(--bg-app)] shadow-[0_0_0_2.5px_var(--bg-app)]">
-                  <MoonIcon className="size-3.5" />
+                <span className="absolute -bottom-0.5 -right-1 flex size-[18px] items-center justify-center rounded-full bg-[var(--gray-400)] text-[var(--bg-app)] shadow-[0_0_0_2px_var(--bg-app)]">
+                  <MoonIcon className="size-[11px]" />
                 </span>
               ) : null}
             </span>
             <span className="min-w-0">
-              <span className="block text-base font-bold leading-5 text-[var(--text-primary)]">{t.title}</span>
-              <span className="mt-0.5 block text-[13px] leading-4 text-[var(--text-secondary)]">{t.sub}</span>
+              <span className="block text-[14px] font-bold leading-[18px] text-[var(--text-primary)]">{t.title}</span>
+              <span className="mt-0.5 block text-[11.5px] leading-[14px] text-[var(--text-secondary)]">{t.sub}</span>
             </span>
           </button>
         );
