@@ -1091,6 +1091,9 @@ const HOME_SWIMLANE_ARROW_CLASS =
  *  Desktop: 3-kolommen grid. */
 type HomeWeekDay = { isoDate: string; date: Date; entry: DayEntry | null };
 
+/** Verborgen startweergave: uit de opmaak en onzichtbaar, maar niet display:none (intro-animaties blijven af). */
+const HIDDEN_VIEW = "pointer-events-none invisible absolute inset-x-0 top-0 h-0 overflow-hidden";
+
 /** Aantal geplande dagen vanaf vandaag (voor de «Toon alle»-pil van Kalender). */
 function plannedAhead(days: HomeWeekDay[], todayIso: string): number {
   return days.filter((d) => d.isoDate >= todayIso && d.entry).length;
@@ -2383,25 +2386,6 @@ export default function Home() {
   React.useEffect(() => {
     setMountedViews((m) => (m.has(tabletHomeView) ? m : new Set(m).add(tabletHomeView)));
   }, [tabletHomeView]);
-  const overviewRef = React.useRef<HTMLDivElement>(null);
-  const dashboardRef = React.useRef<HTMLDivElement>(null);
-  const firstViewRender = React.useRef(true);
-  // De nieuwe weergave zacht laten opkomen (niet bij het laden van de pagina).
-  React.useEffect(() => {
-    if (firstViewRender.current) {
-      firstViewRender.current = false;
-      return;
-    }
-    const el = (tabletHomeView === "dashboard" ? dashboardRef : overviewRef).current;
-    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    el.animate(
-      [
-        { opacity: 0, transform: "translateY(8px)" },
-        { opacity: 1, transform: "none" },
-      ],
-      { duration: 320, easing: "cubic-bezier(0.32, 0.72, 0, 1)" },
-    );
-  }, [tabletHomeView, mountedViews]);
 
   React.useEffect(() => {
     const handler = () => setHomeSectionConfig(loadHomeSectionConfig());
@@ -3085,11 +3069,12 @@ export default function Home() {
             })}
           </div>
 
-          <div className="hidden md:block">
+          <div className="relative hidden md:block">
             {/* Beide weergaven blijven gemount zodra ze één keer getoond zijn: terugwisselen is dan enkel
-                tonen/verbergen (geen zware opbouw die de animatie van de schakelaar zou bevriezen). */}
+                tonen/verbergen (geen zware opbouw die de animatie van de schakelaar zou bevriezen). Verbergen
+                zonder display:none, anders spelen alle intro-animaties (fade-up) opnieuw en flitst de inhoud. */}
             {mountedViews.has("overview") ? (
-              <div ref={overviewRef} className={cn("flex flex-col gap-10 pt-8", tabletHomeView !== "overview" && "hidden")}>
+              <div className={cn("flex flex-col gap-10 pt-8", tabletHomeView !== "overview" && HIDDEN_VIEW)} inert={tabletHomeView !== "overview" || undefined}>
                 {/* Agenda boven de lijstjes als ze zo gerangschikt is (standaard: bovenaan). */}
                 {agendaFirstOnDesktop ? renderHomeSlot("agenda") : null}
                 {/* Lijstjes over de volle breedte (drie kaartjes), daaronder Te kopen en de diepvries even hoog. */}
@@ -3145,7 +3130,7 @@ export default function Home() {
               </div>
             ) : null}
             {mountedViews.has("dashboard") ? (
-              <div ref={dashboardRef} className={cn(tabletHomeView !== "dashboard" && "hidden")}>
+              <div className={cn(tabletHomeView !== "dashboard" && HIDDEN_VIEW)} inert={tabletHomeView !== "dashboard" || undefined}>
                 <HomeTabletDashboard
                   todayMeal={todayDashboard.todayMeal}
                   tomorrowMeal={todayDashboard.tomorrowMeal}
