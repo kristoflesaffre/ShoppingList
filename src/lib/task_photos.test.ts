@@ -15,6 +15,11 @@ describe("task photos", () => {
     expect(taskPhotoFor("Take medication: concerta 36mg")?.upright).toBe(false);
   });
 
+  it("adds the 30mg pill next to cymbalta only", () => {
+    expect(taskPhotoFor("Take medication: cymbalta 60mg + 30mg")?.extra).toBe("/images/taken/cymbalta_30mg");
+    expect(taskPhotoFor("Take medication: concerta 36mg")?.extra).toBeNull();
+  });
+
   it("returns null for other tasks", () => {
     expect(taskPhotoFor("Cadeau kopen voor Huub")).toBeNull();
   });

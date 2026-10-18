@@ -77,6 +77,18 @@ export function TodoPostit({ task, due, index, onCheck, size = 168 }: { task: To
             }
           />
         ) : null}
+        {photo?.extra && !photo.upright ? (
+          // Tweede pil van de dosis: half zo groot, schuin links naast de eerste.
+          // eslint-disable-next-line @next/next/no-img-element -- lokale, transparante webp
+          <img
+            src={`${photo.extra}_240.webp`}
+            srcSet={`${photo.extra}_240.webp 1x, ${photo.extra}_480.webp 2x`}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute rotate-45 object-contain drop-shadow-[0_6px_8px_rgba(16,17,48,0.25)]"
+            style={{ width: Math.round(img / 2), height: Math.round(img / 2), right: Math.round(img * 0.58), bottom: -Math.round(img * (small ? 0.12 : 0.04)) }}
+          />
+        ) : null}
         <span className="relative flex min-h-[21px] items-center justify-between gap-2">
           <TodoCheck task={task} onCheck={onCheck} />
           {due.label ? (
