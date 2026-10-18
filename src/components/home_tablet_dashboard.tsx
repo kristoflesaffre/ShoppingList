@@ -651,7 +651,7 @@ function MomentTestBar({ value, onChange }: { value: DashboardMoment; onChange: 
   );
 }
 
-const POSTER_LIMIT = { "--poster-h": "calc((max(470px, 100dvh - 196px) - 213px) / 2 - 62px)" } as React.CSSProperties;
+const POSTER_LIMIT = { "--poster-h": "calc((max(470px, 100dvh - 196px) - 263px) / 2 - 62px)" } as React.CSSProperties;
 
 /** Avond: series i.p.v. het weer van vandaag, watchlist i.p.v. het eten van vandaag (met terugval). */
 function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | null; todayMeal: DashboardMeal | null; tomorrowMeal: DashboardMeal | null }) {
@@ -661,7 +661,7 @@ function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | 
   return (
     <>
       {/* Rijen met posters zijn zo hoog als hun posters; de rest van de kolom is voor de verlichting.
-          --poster-h: maximale posterhoogte zodat het lichtpaneel altijd ±160px houdt (kolomhoogte
+          --poster-h: maximale posterhoogte zodat het lichtpaneel altijd ±215px houdt (kolomhoogte
           − 2 tussenruimtes − paneel, gedeeld door twee rijen, min. de rand rond de posters). */}
       <div className={cn("flex gap-3.5", watching.length > 0 ? "shrink-0" : "min-h-0 flex-1")} style={POSTER_LIMIT}>
         {watching.length > 0 ? <WatchingTile items={watching} onOpen={setOpen} /> : <TodayWeather weather={weather} />}
