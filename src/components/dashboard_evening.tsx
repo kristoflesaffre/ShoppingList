@@ -41,6 +41,8 @@ export type EveningMedia = {
   posterUrl: string | null;
   year: string;
   note?: string;
+  /** Series die we aan het kijken zijn: de volgende aflevering. */
+  next?: { season: number; episode: number };
 };
 
 /** Poster als knop (opent het detailvenster). Vult de hoogte van de rij; de breedte volgt uit 2:3. */
@@ -112,7 +114,14 @@ function EveningTile({
 export function useWatchingMedia(): EveningMedia[] {
   const { watchingItems } = useWatchingTvItems();
   return React.useMemo(
-    () => watchingItems.map((w: WatchingTvItem) => ({ id: w.id, title: w.title, posterUrl: w.posterUrl, year: w.year })),
+    () =>
+      watchingItems.map((w: WatchingTvItem) => ({
+        id: w.id,
+        title: w.title,
+        posterUrl: w.posterUrl,
+        year: w.year,
+        next: { season: w.nextSeason, episode: w.nextEpisode },
+      })),
     [watchingItems],
   );
 }
@@ -130,16 +139,118 @@ export function useWatchlistSuggestions(exclude: readonly EveningMedia[]): Eveni
   }, [ownWatchlist, watchlist, exclude]);
 }
 
-export function WatchingTile({ items, onOpen }: { items: EveningMedia[]; onOpen: (m: EveningMedia) => void }) {
+/** Liggende achtergrondfoto (TMDB-backdrop) per serie, één keer opgehaald en onthouden. */
+const backdropCache = new Map<string, Promise<string | null>>();
+function useBackdrop(media: EveningMedia): string | null {
+  const [url, setUrl] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    const parsed = parseMediaId(media.id);
+    if (!parsed) return;
+    let active = true;
+    let job = backdropCache.get(media.id);
+    if (!job) {
+      job = fetch(`/api/films/detail?type=${parsed.type}&id=${parsed.tmdbId}`)
+        .then((r) => (r.ok ? (r.json() as Promise<{ backdropUrl?: string | null }>) : null))
+        .then((d) => d?.backdropUrl ?? null)
+        .catch(() => null);
+      backdropCache.set(media.id, job);
+    }
+    void job.then((u) => active && setUrl(u));
+    return () => {
+      active = false;
+    };
+  }, [media.id]);
+  return url;
+}
+
+/** Eén serie: foto rechts die naar links in het glas uitvloeit, titel en volgende aflevering linksonder. */
+function WatchingSlide({ media, onOpen }: { media: EveningMedia; onOpen: (m: EveningMedia) => void }) {
+  const backdrop = useBackdrop(media);
+  const src = backdrop ?? media.posterUrl;
   return (
-    <EveningTile
-      label="AAN HET KIJKEN"
-      items={items}
-      singleTitle
-      onOpen={onOpen}
-      background="radial-gradient(120% 90% at 85% 100%, #5a3a9c 0%, #2d2160 45%, #161236 100%)"
-      backgroundDark="radial-gradient(120% 90% at 85% 100%, #35296a 0%, #1d1840 45%, #121029 100%)"
-    />
+    <button
+      type="button"
+      onClick={() => onOpen(media)}
+      aria-label={`${media.title} openen`}
+      className="relative h-full w-full shrink-0 snap-start overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fixed-white"
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element -- TMDB-beeld
+        <img
+          src={src}
+          alt=""
+          aria-hidden
+          className="absolute inset-y-0 right-0 h-full w-[72%] object-cover [mask-image:linear-gradient(90deg,transparent_0%,#000_55%)] [-webkit-mask-image:linear-gradient(90deg,transparent_0%,#000_55%)]"
+          // Poster (staand) als terugval: het bovenste deel, waar meestal het gezicht staat.
+          style={{ objectPosition: backdrop ? "50% 35%" : "50% 22%" }}
+        />
+      ) : null}
+      <span className="absolute bottom-5 left-[18px] z-[1] max-w-[56%]">
+        <span className="line-clamp-2 block text-[24px] font-extrabold leading-[1.05] tracking-[-0.02em] text-fixed-white [text-shadow:0_2px_10px_rgba(40,10,40,0.35)]">{media.title}</span>
+        {media.next ? (
+          <span className="mt-1.5 block text-[12.5px] font-bold text-fixed-white/90">
+            Seizoen {media.next.season} · Aflevering {media.next.episode}
+          </span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * «Aan het kijken» (canvas «Aan het kijken» W1): één serie tegelijk, liggend; de foto staat rechts en vervaagt
+ * naar links in de tegel. Meer series: zijwaarts swipen, met bolletjes rechtsonder (tik = naar die serie).
+ */
+export function WatchingTile({ items, onOpen }: { items: EveningMedia[]; onOpen: (m: EveningMedia) => void }) {
+  const laneRef = React.useRef<HTMLDivElement>(null);
+  const [active, setActive] = React.useState(0);
+  const onScroll = () => {
+    const el = laneRef.current;
+    if (el) setActive(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+  };
+  const goTo = (i: number) => laneRef.current?.scrollTo({ left: i * laneRef.current.clientWidth, behavior: "smooth" });
+  return (
+    <section
+      aria-label="aan het kijken"
+      className={cn(
+        tile,
+        "flex min-w-0 flex-1 text-fixed-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)] [background:var(--bg)] [[data-theme=dark]_&]:[background:var(--bg-dark)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] [[data-sunset]_&]:[background:rgba(255,255,255,0.2)] [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]",
+      )}
+      style={
+        {
+          "--bg": "radial-gradient(120% 90% at 85% 100%, #5a3a9c 0%, #2d2160 45%, #161236 100%)",
+          "--bg-dark": "radial-gradient(120% 90% at 85% 100%, #35296a 0%, #1d1840 45%, #121029 100%)",
+        } as React.CSSProperties
+      }
+    >
+      <span className="pointer-events-none absolute left-[18px] top-4 z-[2] text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/80">AAN HET KIJKEN</span>
+      <div
+        ref={laneRef}
+        onScroll={onScroll}
+        className="flex h-full w-full snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {items.map((m) => (
+          <WatchingSlide key={m.id} media={m} onOpen={onOpen} />
+        ))}
+      </div>
+      {items.length > 1 ? (
+        <span className="absolute bottom-4 right-4 z-[2] flex items-center gap-1.5">
+          {items.map((m, i) => (
+            <button
+              key={m.id}
+              type="button"
+              aria-label={`Serie ${i + 1} van ${items.length}: ${m.title}`}
+              aria-current={i === active}
+              onClick={() => goTo(i)}
+              className={cn(
+                "h-1.5 rounded-pill transition-[width,background-color] duration-200 ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white",
+                i === active ? "w-[18px] bg-fixed-white" : "w-1.5 bg-fixed-white/50",
+              )}
+            />
+          ))}
+        </span>
+      ) : null}
+    </section>
   );
 }
 
