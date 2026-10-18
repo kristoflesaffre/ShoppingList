@@ -193,10 +193,13 @@ export function HomeTodoSection() {
 
 /**
  * Tabletdashboard: de post-its op een kurken prikbord bovenaan de rechterkolom (boven de agenda), zo hoog als
- * nodig; de agenda vult de rest. Enkel zichtbaar met open taken (te laat of deze week).
+ * nodig; de agenda vult de rest. Enkel wat vandaag moet of te laat is (morgen en later niet); is dat er niet
+ * meer, dan verdwijnt het paneel en vult de agenda de kolom.
  */
 export function DashboardTodoPanel() {
-  const { sorted, closeTask, connect, notice, clearNotice } = useNearTodos();
+  const { sorted: near, closeTask, connect, notice, clearNotice } = useNearTodos();
+  const todayIso = localIso(new Date());
+  const sorted = near.filter(({ task }) => (daysUntil(task, todayIso) ?? 1) <= 0);
   if (sorted.length === 0) return null;
   return (
     <section
