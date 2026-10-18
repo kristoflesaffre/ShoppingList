@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import { startGoogleConnect, useGoogleAuthToken } from "@/lib/google-client";
 import { fetchAgenda, localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
+import { useAgendaFuture } from "@/lib/use_agenda_future";
 import { mixWithWhite, type Rgb } from "@/lib/recipe-tint";
 import { agendaPhotoFor } from "@/lib/agenda_photos";
 import { agendaDisplayTitle, dedupeBirthdays } from "@/lib/agenda_birthdays";
@@ -111,10 +112,11 @@ export function KalenderAgendaPrefetch() {
 function useAgendaWeek() {
   const { token, state, failed, now } = useCachedAgenda<ApiState>(weekRange);
 
+  const future = useAgendaFuture(state?.events ?? [], weekRange().timeMax, token);
   const events = React.useMemo((): WeekEvent[] => {
     const names: string[] = [];
     const out: WeekEvent[] = [];
-    for (const e of state?.events ?? []) {
+    for (const e of future.events) {
       const startAt = parseStart(e);
       if (!startAt) continue;
       const key = e.calendarName ?? e.accountId ?? "";
@@ -124,9 +126,9 @@ function useAgendaWeek() {
     // Staat een hele-dag-afspraak die dag ook met een uur in de agenda («Fruitschildag»), dan enkel die met uur.
     const kept = out.filter((e) => !e.allDay || dropAllDayDuplicates([e], out.filter((t) => !t.allDay && t.dayIso === e.dayIso)).length > 0);
     return kept.sort((a, b) => a.startAt.getTime() - b.startAt.getTime() || Number(b.allDay) - Number(a.allDay));
-  }, [state?.events]);
+  }, [future.events]);
 
-  return { token, state, failed, events, now, connect: () => void startGoogleConnect(token) };
+  return { token, state, failed, events, now, future, connect: () => void startGoogleConnect(token) };
 }
 
 function dayLabel(d: Date, now: Date): string {
@@ -135,7 +137,7 @@ function dayLabel(d: Date, now: Date): string {
   if (diff === 0) return "VANDAAG";
   if (diff === 1) return "MORGEN";
   if (diff === -1) return "GISTEREN";
-  return d.toLocaleDateString("nl-BE", { weekday: "short", day: "numeric" }).replace(".", "").toUpperCase();
+  return d.toLocaleDateString("nl-BE", { weekday: "short", day: "numeric", ...(Math.abs(diff) >= 7 ? { month: "short" as const, ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" as const } : {}) } : {}) }).replace(".", "").toUpperCase();
 }
 
 /** «over 2u10», «over 25 min», «morgen», «woensdag». */
@@ -495,7 +497,7 @@ function TileSkeleton() {
 
 /** Agendaweergave van de kalender. `onTint` geeft de kleur van de volgende afspraak voor de band bovenaan. */
 export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) {
-  const { state, failed, events, now, connect } = useAgendaWeek();
+  const { state, failed, events, now, future, connect } = useAgendaWeek();
   const nowMs = now.getTime();
   const upcoming = events.filter((e) => e.endAt.getTime() > nowMs);
   const current = upcoming.find((e) => !e.allDay && e.startAt.getTime() <= nowMs) ?? null;
@@ -508,6 +510,10 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
   }, [next?.color, current?.color, onTint]);
 
   const laneRef = React.useRef<HTMLDivElement>(null);
+  const moreRef = React.useRef<HTMLDivElement>(null);
+  const positioned = React.useRef(false);
+  const moreAction = React.useRef({ load: future.loadMore, failed: future.failed });
+  moreAction.current = { load: future.loadMore, failed: future.failed };
   const [canScroll, setCanScroll] = React.useState({ back: false, forward: false });
   const updateArrows = React.useCallback(() => {
     const el = laneRef.current;
@@ -521,12 +527,35 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
     if (!el) return;
     const tile = el.querySelector<HTMLElement>('[data-next="true"]');
     // Zelfde plaats als het snappunt: scroll-padding laat een derde van de vorige tegel zien.
-    if (tile) el.scrollLeft = Math.max(0, tile.offsetLeft - el.offsetLeft - (parseFloat(getComputedStyle(el).scrollPaddingLeft) || 0));
+    if (!positioned.current) {
+      if (tile) el.scrollLeft = Math.max(0, tile.offsetLeft - el.offsetLeft - (parseFloat(getComputedStyle(el).scrollPaddingLeft) || 0));
+      positioned.current = true;
+    }
     updateArrows();
   }, [nextId, lane.length, updateArrows]);
+  React.useEffect(() => {
+    const root = laneRef.current;
+    const target = moreRef.current;
+    if (!state?.connected || !root || !target || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting) && !moreAction.current.failed) void moreAction.current.load();
+    }, { root, rootMargin: "0px 240px 0px 0px", threshold: 0.1 });
+    observer.observe(target);
+    // Keep the observer mounted as windows arrive. An empty month must not cause
+    // an automatic request loop; the same visible button can advance it manually.
+    return () => observer.disconnect();
+  }, [state?.connected]);
+  React.useEffect(() => {
+    const root = laneRef.current;
+    if (!root || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(updateArrows);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [state?.connected, updateArrows]);
   const scrollLane = (dir: -1 | 1) => {
     const el = laneRef.current;
     if (!el) return;
+    if (dir === 1 && el.scrollLeft + el.clientWidth >= el.scrollWidth - 240) void future.loadMore();
     el.scrollBy({ left: dir * Math.max(240, el.clientWidth * 0.8), behavior: "smooth" });
   };
 
@@ -583,18 +612,20 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
       </div>
 
       <div className="mb-1.5 mt-8 flex items-center justify-between lg:mt-10">
-        <h2 className="text-[19px] font-bold tracking-[-0.01em] text-text-primary">Deze week</h2>
+        <h2 className="text-[19px] font-bold tracking-[-0.01em] text-text-primary">Komende afspraken</h2>
         <span className="flex items-center gap-2 max-lg:hidden">
           <button type="button" aria-label="Eerdere afspraken" disabled={!canScroll.back} onClick={() => scrollLane(-1)} className={cn(headerRoundButtonClass, "disabled:opacity-40")}>
             <ChevronIcon direction="left" />
           </button>
-          <button type="button" aria-label="Latere afspraken" disabled={!canScroll.forward} onClick={() => scrollLane(1)} className={cn(headerRoundButtonClass, "disabled:opacity-40")}>
+          <button type="button" aria-label="Latere afspraken" disabled={!canScroll.forward && future.loading} onClick={() => scrollLane(1)} className={cn(headerRoundButtonClass, "disabled:opacity-40")}>
             <ChevronIcon direction="right" />
           </button>
         </span>
       </div>
-      {lane.length > 0 ? (
-        <div
+      <div className="mb-2 text-xs text-[var(--text-tertiary)]" aria-live="polite">
+        Geladen tot {new Date(future.loadedUntil.getFullYear(), future.loadedUntil.getMonth(), future.loadedUntil.getDate() - 1).toLocaleDateString("nl-BE", { day: "numeric", month: "long", year: "numeric" })}
+      </div>
+      <div
           ref={laneRef}
           onScroll={updateArrows}
           className="-mx-4 flex -mt-2 snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-3.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden"
@@ -611,12 +642,13 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
               />
             ),
           )}
+          <div ref={moreRef} className="flex h-[190px] w-[150px] flex-none snap-start flex-col items-center justify-center gap-3 rounded-[26px] bg-[var(--white)]/60 p-4 text-center shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:h-[230px] lg:w-[220px]" aria-busy={future.loading}>
+            <p className="text-sm text-[var(--text-secondary)]">{future.failed ? "Laden is niet gelukt." : lane.length === 0 ? "Geen afspraken in de geladen periode." : "Verder kijken in je agenda"}</p>
+            <button type="button" disabled={future.loading} onClick={() => void future.loadMore()} className="min-h-11 rounded-pill bg-action-primary px-4 text-sm font-bold text-white disabled:opacity-50">
+              {future.loading ? "Afspraken laden…" : future.failed ? "Opnieuw proberen" : "Volgende 30 dagen"}
+            </button>
+          </div>
         </div>
-      ) : (
-        <p className="rounded-[22px] bg-[var(--white)]/60 px-5 py-6 text-center text-sm text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle)]">
-          Geen afspraken deze week.
-        </p>
-      )}
       {failed ? <p className="mt-3 text-sm text-[var(--text-secondary)]">Niet alle afspraken konden geladen worden.</p> : null}
     </>
   );
