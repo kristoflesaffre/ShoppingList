@@ -331,55 +331,6 @@ function TomorrowMeal({ meal }: { meal: DashboardMeal | null }) {
   );
 }
 
-/**
- * Snelkoppeling onderaan de agenda (Te kopen, volgend lijstje): zelfde zachte kleurverloop en
- * illustratie (deels van de tegel af) als de vaste tegels op de startpagina.
- */
-function ShortcutTile({
-  href,
-  color,
-  icon,
-  lead,
-  kicker,
-  title,
-  sub,
-}: {
-  href: string;
-  color: [number, number, number];
-  icon: string;
-  lead?: React.ReactNode;
-  kicker?: string;
-  title: string;
-  sub: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="relative flex h-[84px] min-w-0 flex-1 items-center gap-3.5 overflow-hidden rounded-[24px] pl-5 pr-[96px] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [background-image:var(--sc-bg)] [box-shadow:var(--sc-shadow)] [color:var(--sc-fg)] [[data-theme=dark]_&]:[background-image:var(--sc-bg-dark)] [[data-theme=dark]_&]:[box-shadow:var(--sc-shadow-dark)] [[data-theme=dark]_&]:[color:var(--sc-fg-dark)]"
-      // Licht: zacht verloop in de eigen kleur. Donker (always-on): diep verloop in dezelfde kleur, lichte tekst,
-      // zoals de weer- en eettegels in het donker.
-      style={
-        {
-          "--sc-bg": `linear-gradient(120deg, ${mixWithWhiteRgb(color, 0.3)} 0%, ${mixWithWhiteRgb(color, 0.1)} 100%)`,
-          "--sc-shadow": `0 18px 40px -26px ${deepRgb(color, 0.9)}`,
-          "--sc-fg": deepRgb(color),
-          "--sc-bg-dark": `linear-gradient(120deg, ${deepRgb(color, 0.34)} 0%, ${deepRgb(color, 0.14)} 100%)`,
-          "--sc-shadow-dark": `0 0 0 1px ${deepRgb(color, 0.45)}`,
-          "--sc-fg-dark": mixWithWhiteRgb(color, 0.5),
-        } as React.CSSProperties
-      }
-    >
-      {lead}
-      <span className="flex min-w-0 flex-col gap-0.5 leading-tight">
-        {kicker ? <span className="text-[10.5px] font-extrabold tracking-[0.08em]">{kicker}</span> : null}
-        <span className="truncate text-[17px] font-extrabold text-text-primary [[data-theme=dark]_&]:text-[#eef0f8]">{title}</span>
-        <span className="truncate text-[12.5px] font-semibold">{sub}</span>
-      </span>
-      {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
-      <img src={icon} alt="" aria-hidden className="pointer-events-none absolute -bottom-3 right-3 size-[92px] rotate-[-6deg] object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.18)] [[data-theme=dark]_&]:brightness-[0.75]" />
-    </Link>
-  );
-}
 
 function AgendaColumn() {
   const { state, connected, allDay, timed, upcomingDays, nowMin, nowLabel, connect } = useTodayAgenda();
@@ -435,29 +386,6 @@ function AgendaColumn() {
   );
 }
 
-/** Losse tegels onder de agenda: Te kopen en het volgende boodschappenlijstje. */
-function DashboardShortcuts({ shoppingCount, nextShopping }: { shoppingCount: number; nextShopping: DashboardShopping }) {
-  return (
-    <div className="flex shrink-0 gap-3.5">
-      <ShortcutTile
-        href="/te-kopen"
-        color={VAST_COLORS.blauw}
-        icon="/images/ui/kopen_240.webp"
-        lead={<b className="text-[34px] font-extrabold leading-none tabular-nums">{shoppingCount}</b>}
-        title="Te kopen"
-        sub={shoppingCount === 1 ? "product open" : "producten open"}
-      />
-      <ShortcutTile
-        href={nextShopping?.href ?? "/lijstjes-beheren/lijstjes"}
-        color={VAST_COLORS.groen}
-        icon="/images/ui/lijstje_160.webp"
-        kicker={nextShopping ? "VOLGEND LIJSTJE" : undefined}
-        title={nextShopping ? nextShopping.label : "Lijstjes"}
-        sub={nextShopping ? nextShopping.sub : "alle lijstjes"}
-      />
-    </div>
-  );
-}
 
 /** Herinneringen naast de weergaveschakelaar: verjaardagen uit kado-lijstjes binnen 30 dagen. */
 export function DashboardReminders({ userId }: { userId: string }) {
@@ -704,8 +632,6 @@ function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | 
 export function HomeTabletDashboard({
   todayMeal,
   tomorrowMeal,
-  shoppingCount,
-  nextShopping,
   active = true,
 }: {
   todayMeal: DashboardMeal | null;
@@ -719,21 +645,11 @@ export function HomeTabletDashboard({
   const { moment, testMoment, setTestMoment } = useDashboardMoment();
   const morning = moment === "ochtend";
   useSunset(moment === "avond" && active);
-  // Hoogte van de bovenste rij links (posters/weer): het takenpaneel rechts krijgt precies die hoogte.
-  const leftRef = React.useRef<HTMLDivElement>(null);
-  const [topRowHeight, setTopRowHeight] = React.useState<number | null>(null);
-  React.useEffect(() => {
-    const row = leftRef.current?.firstElementChild as HTMLElement | null;
-    if (!row || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => setTopRowHeight(Math.round(row.getBoundingClientRect().height)));
-    ro.observe(row);
-    return () => ro.disconnect();
-  }, [moment]);
   // Min. 650px hoog: op een laag scherm scrolt de pagina i.p.v. posters en lichtpaneel te pletten
   // (posters blijven ±130px hoog, zie POSTER_LIMIT).
   return (
     <div className="flex h-[max(650px,calc(100dvh-196px))] gap-3.5 pt-5">
-      <div ref={leftRef} className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
+      <div className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
         {moment === "avond" ? (
           <EveningLeft weather={weather} todayMeal={todayMeal} tomorrowMeal={tomorrowMeal} />
         ) : (
@@ -750,11 +666,10 @@ export function HomeTabletDashboard({
         )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-        {/* Post-its met open taken bovenaan (even hoog als de bovenste rij links); zonder open taken neemt de
-            agenda de volle hoogte. Ook 's ochtends lopen morgen en de volgende dagen door in de agenda. */}
-        <DashboardTodoPanel height={topRowHeight} />
+        {/* Post-its met open taken bovenaan (zo hoog als nodig, op kurk); de agenda vult de rest, en zonder open
+            taken de volle hoogte. Ook 's ochtends lopen morgen en de volgende dagen door in de agenda. */}
+        <DashboardTodoPanel />
         <AgendaColumn />
-        {moment === "dag" ? <DashboardShortcuts shoppingCount={shoppingCount} nextShopping={nextShopping} /> : null}
       </div>
       {testMoment ? <MomentTestBar value={testMoment} onChange={setTestMoment} /> : null}
     </div>

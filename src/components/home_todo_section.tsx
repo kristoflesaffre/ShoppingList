@@ -24,6 +24,17 @@ const CORK_STYLE: React.CSSProperties = {
 const TAPE_TILT = [-3, 2, -1.5, 3, -2];
 
 /**
+ * Hoe schuin een note hangt, alsof iemand ze er met de hand op plakte: afwisselend met en tegen de klok in
+ * (volgens de plaats in de rij), met een hoek tussen 1° en 5° die per taak vast is (zelfde taak = zelfde hoek).
+ */
+function postitTilt(taskId: string, index: number): number {
+  let h = 0;
+  for (let i = 0; i < taskId.length; i++) h = (h * 31 + taskId.charCodeAt(i)) >>> 0;
+  const magnitude = [1, 2.5, 4, 1.5, 3.5, 5, 2][h % 7];
+  return index % 2 === 0 ? -magnitude : magnitude;
+}
+
+/**
  * Taak als vierkante post-it op het prikbord (canvas «post-its op kurk» R2, zonder omgevouwen hoeken): mat
  * papier met scherpe hoeken, een stukje plakband bovenaan, geel — of rood als de taak te laat is. Herkende
  * taken krijgen hun foto in de rechteronderhoek: 45° gedraaid, of rechtop (telefoonscherm).
@@ -35,7 +46,7 @@ export function TodoPostit({ task, due, index, onCheck, size = 168 }: { task: To
   // Foto in verhouding tot de note: blijft zo ook op een kleinere note onder drie regels titel.
   const img = Math.round(size * (photo?.upright ? 0.4 : small ? 0.38 : 0.42));
   return (
-    <div className="relative mt-3 shrink-0 snap-start" style={{ width: size, height: size }}>
+    <div className="relative mt-3 shrink-0 snap-start" style={{ width: size, height: size, transform: `rotate(${postitTilt(task.id, index)}deg)` }}>
       <div
         className={cn(
           "absolute inset-0 flex flex-col gap-[9px] overflow-hidden px-3.5 pb-3.5 pt-4 shadow-[0_1px_1.5px_rgba(0,0,0,0.16),0_8px_14px_-6px_rgba(40,25,5,0.45)] [[data-theme=dark]_&]:brightness-[0.92]",
@@ -162,7 +173,7 @@ export function HomeTodoSection() {
     body = (
       // Prikbord: de notes hangen er met plakband op; de rij scrolt binnen het bord.
       <div className="overflow-hidden rounded-[24px] shadow-[inset_0_2px_6px_rgba(60,35,10,0.35)]" style={CORK_STYLE}>
-        <div className="flex snap-x gap-4 overflow-x-auto scroll-px-4 px-4 pb-5 pt-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex snap-x gap-5 overflow-x-auto scroll-px-4 px-5 pb-6 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {sorted.slice(0, 30).map(({ task, due }, i) => (
             <TodoPostit key={task.id} task={task} due={due} index={i} onCheck={(t) => void closeTask(t)} />
           ))}
@@ -181,28 +192,25 @@ export function HomeTodoSection() {
 }
 
 /**
- * Tabletdashboard: de post-its in een paneel bovenaan de rechterkolom (boven de agenda), even hoog als de
- * bovenste rij links (`height`, gemeten door het dashboard). Zelfde glasstijl als de andere tegels: licht glas
- * overdag, donker paneel in het donkere thema, matglas op de avondlucht. Enkel zichtbaar met open taken.
+ * Tabletdashboard: de post-its op een kurken prikbord bovenaan de rechterkolom (boven de agenda), zo hoog als
+ * nodig; de agenda vult de rest. Enkel zichtbaar met open taken (te laat of deze week).
  */
-export function DashboardTodoPanel({ height }: { height: number | null }) {
+export function DashboardTodoPanel() {
   const { sorted, closeTask, connect, notice, clearNotice } = useNearTodos();
   if (sorted.length === 0) return null;
-  // Note-grootte uit de paneelhoogte: label + marges + plakband eraf, tussen 116 en 160 px.
-  const size = Math.round(Math.min(160, Math.max(116, (height ?? 200) - 64)));
   return (
     <section
       aria-label="Te doen"
-      style={height ? { height } : undefined}
-      className="flex min-h-0 shrink-0 flex-col overflow-hidden rounded-[24px] bg-fixed-white/75 pt-4 shadow-[0_0_0_1px_rgba(16,17,48,0.05),0_18px_40px_-26px_rgba(16,17,48,0.35)] backdrop-blur-[14px] [[data-theme=dark]_&]:bg-[linear-gradient(170deg,#1c2238_0%,#151a2c_100%)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#262d48] [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
+      className="flex shrink-0 flex-col overflow-hidden rounded-[24px] pt-4 shadow-[inset_0_2px_6px_rgba(60,35,10,0.35),0_18px_40px_-26px_rgba(60,35,10,0.6)]"
+      style={CORK_STYLE}
     >
       <div className="flex items-center justify-between px-5">
-        <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-[var(--text-secondary)] [[data-sunset]_&]:text-fixed-white/85 [[data-theme=dark]_&]:text-fixed-white/70">TE DOEN</span>
-        <span className="text-[12px] font-bold text-[var(--text-tertiary)] [[data-sunset]_&]:text-fixed-white/75 [[data-theme=dark]_&]:text-fixed-white/55">{sorted.length}</span>
+        <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/90 [text-shadow:0_1px_2px_rgba(60,35,10,0.45)]">TE DOEN</span>
+        <span className="text-[12px] font-bold text-fixed-white/80 [text-shadow:0_1px_2px_rgba(60,35,10,0.45)]">{sorted.length}</span>
       </div>
-      <div className="flex min-h-0 flex-1 snap-x items-center gap-4 overflow-x-auto scroll-px-5 px-5 pb-4 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex snap-x gap-5 overflow-x-auto scroll-px-5 px-5 pb-6 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sorted.slice(0, 20).map(({ task, due }, i) => (
-          <TodoPostit key={task.id} task={task} due={due} index={i} size={size} onCheck={(t) => void closeTask(t)} />
+          <TodoPostit key={task.id} task={task} due={due} index={i} size={150} onCheck={(t) => void closeTask(t)} />
         ))}
       </div>
       <TodoNotice notice={notice} onReconnect={() => void connect()} onClose={clearNotice} />
