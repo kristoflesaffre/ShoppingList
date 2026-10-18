@@ -6,8 +6,9 @@ export const TODOIST_STATE_COOKIE = "shopping_todoist_state";
 export const TODOIST_AUTH_COOKIE = "shopping_todoist_auth";
 export const TODOIST_SCOPE = "data:read_write";
 export const todoistCookieOptions = { httpOnly: true, secure: true, sameSite: "lax" as const, path: "/" };
-export type TodoistState = { ownerId: string; state: string; verifier: string; expiresAt: number };
-export type TodoistConnection = { ownerId: string; clientId: string; accessToken: string; refreshToken?: string; expiresAt: number };
+export type TodoistState = { ownerId: string; state: string; verifier: string; expiresAt: number; returnTo?: string };
+/** `scope`: toegekend bij het koppelen (oudere koppelingen zonder dit veld zijn alleen-lezen gekoppeld). */
+export type TodoistConnection = { ownerId: string; clientId: string; accessToken: string; refreshToken?: string; expiresAt: number; scope?: string };
 export function todoistConfig() {
   const clientId = process.env.TODOIST_CLIENT_ID?.trim() ?? "";
   const clientSecret = process.env.TODOIST_CLIENT_SECRET?.trim() ?? "";
@@ -44,10 +45,18 @@ export function readTodoistState(value: string | undefined, secret: string): Tod
 }
 export function readTodoistConnection(value: string | undefined, secret: string, ownerId: string, clientId: string): TodoistConnection | null {
   const data = unseal(value, secret);
-  return data && data.ownerId === ownerId && data.clientId === clientId && typeof data.accessToken === "string" && data.accessToken.length > 0 && typeof data.expiresAt === "number" && Number.isFinite(data.expiresAt) && (data.refreshToken === undefined || (typeof data.refreshToken === "string" && data.refreshToken.length > 0)) ? data as TodoistConnection : null;
+  return data && data.ownerId === ownerId && data.clientId === clientId && typeof data.accessToken === "string" && data.accessToken.length > 0 && typeof data.expiresAt === "number" && Number.isFinite(data.expiresAt) && (data.refreshToken === undefined || (typeof data.refreshToken === "string" && data.refreshToken.length > 0)) && (data.scope === undefined || typeof data.scope === "string") ? data as TodoistConnection : null;
 }
 export function todoistJson(data: unknown, status = 200) {
   return NextResponse.json(data, { status, headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
+}
+/** Mag deze koppeling schrijven (taken afvinken)? Enkel als ze met lezen + schrijven gekoppeld is. */
+export function todoistCanWrite(connection: TodoistConnection): boolean {
+  return typeof connection.scope === "string" && connection.scope.split(/[ ,]+/).includes("data:read_write");
+}
+/** Terugkeerpad na het koppelen: enkel een eigen pad («/todo»), nooit een andere site. */
+export function safeTodoistReturn(value: unknown): string | undefined {
+  return typeof value === "string" && /^\/[A-Za-z0-9/_-]{0,64}$/.test(value) && !value.startsWith("//") ? value : undefined;
 }
 export class TodoistReconnectRequired extends Error {}
 export class TodoistUpstreamError extends Error {

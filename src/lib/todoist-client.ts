@@ -23,7 +23,7 @@ export type TodoState =
   | { kind: "not-configured" }
   | { kind: "not-connected"; reconnect: boolean }
   | { kind: "error" }
-  | { kind: "ready"; tasks: TodoTask[]; projects: Map<string, TodoProject> };
+  | { kind: "ready"; tasks: TodoTask[]; projects: Map<string, TodoProject>; canWrite: boolean };
 
 /** Todoist-kleurnamen → hex (palet van Todoist). */
 export const TODOIST_COLORS: Record<string, string> = {
@@ -80,14 +80,14 @@ export function useTodoist() {
         cache: "no-store",
       });
     try {
-      const status = (await (await post("status")).json()) as { configured?: boolean; connected?: boolean; reconnect?: boolean };
+      const status = (await (await post("status")).json()) as { configured?: boolean; connected?: boolean; reconnect?: boolean; canWrite?: boolean };
       if (status.configured === false) return setState({ kind: "not-configured" });
       if (!status.connected) return setState({ kind: "not-connected", reconnect: status.reconnect === true });
       const [tasksRes, projectsRes] = await Promise.all([post("tasks", { limit: 200 }), post("projects", { limit: 200 })]);
       if (!tasksRes.ok) throw new Error(String(tasksRes.status));
       const { tasks } = (await tasksRes.json()) as { tasks: TodoTask[] };
       const { projects } = projectsRes.ok ? ((await projectsRes.json()) as { projects: TodoProject[] }) : { projects: [] };
-      setState({ kind: "ready", tasks, projects: new Map(projects.map((p) => [p.id, p])) });
+      setState({ kind: "ready", tasks, projects: new Map(projects.map((p) => [p.id, p])), canWrite: status.canWrite === true });
     } catch {
       setState({ kind: "error" });
     }
@@ -101,8 +101,13 @@ export function useTodoist() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [load]);
 
+  // Na het koppelen terug naar deze pagina (bv. /todo of de startpagina).
   const connect = React.useCallback(async () => {
-    const res = await fetch("/api/todoist/connect", { method: "POST", headers: googleAuthHeaders(token) });
+    const res = await fetch("/api/todoist/connect", {
+      method: "POST",
+      headers: { ...googleAuthHeaders(token), "content-type": "application/json" },
+      body: JSON.stringify({ returnTo: window.location.pathname }),
+    });
     const data = (await res.json().catch(() => ({}))) as { url?: string };
     if (data.url) window.location.assign(data.url);
   }, [token]);

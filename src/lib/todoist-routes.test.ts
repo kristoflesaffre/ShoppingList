@@ -175,3 +175,22 @@ describe("Todoist backend", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 });
+
+describe("Todoist write access and return path", () => {
+  it("only treats read_write connections as writable", async () => {
+    const { todoistCanWrite } = await import("@/lib/server/todoist-auth");
+    const base = { ownerId: "u", clientId: "c", accessToken: "t", expiresAt: Date.now() + 60_000 };
+    expect(todoistCanWrite(base)).toBe(false);
+    expect(todoistCanWrite({ ...base, scope: "data:read" })).toBe(false);
+    expect(todoistCanWrite({ ...base, scope: "data:read_write" })).toBe(true);
+  });
+
+  it("accepts only same-site return paths", async () => {
+    const { safeTodoistReturn } = await import("@/lib/server/todoist-auth");
+    expect(safeTodoistReturn("/todo")).toBe("/todo");
+    expect(safeTodoistReturn("//evil.example")).toBeUndefined();
+    expect(safeTodoistReturn("https://evil.example")).toBeUndefined();
+    expect(safeTodoistReturn("/todo?x=1")).toBeUndefined();
+    expect(safeTodoistReturn(42)).toBeUndefined();
+  });
+});

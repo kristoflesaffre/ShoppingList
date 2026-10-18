@@ -148,6 +148,19 @@ export default function TodoPage() {
           {state.kind === "ready" ? `${tasks.length} open ${tasks.length === 1 ? "taak" : "taken"} uit Todoist` : "Je taken uit Todoist"}
         </p>
 
+        {/* Gekoppeld met enkel leesrechten (oudere koppeling): opnieuw koppelen geeft ook schrijfrechten (afvinken). */}
+        {state.kind === "ready" && !state.canWrite ? (
+          <div className="mt-5 flex flex-wrap items-center gap-3 rounded-[20px] bg-[var(--white)] px-4 py-3.5 shadow-card lg:ml-12">
+            <p className="min-w-0 flex-1 text-sm leading-5 text-[var(--text-primary)]">
+              <span className="font-semibold">Taken afvinken vanuit de app?</span>{" "}
+              <span className="text-[var(--text-secondary)]">Koppel Todoist opnieuw en geef lees- en schrijfrechten.</span>
+            </p>
+            <MiniButton variant="primary" onClick={() => void connect()}>
+              Opnieuw koppelen
+            </MiniButton>
+          </div>
+        ) : null}
+
         {state.kind === "loading" ? (
           <div className="mt-6 flex flex-col gap-3" aria-busy aria-label="Taken laden">
             {[0, 1, 2].map((i) => (
