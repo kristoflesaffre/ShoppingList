@@ -201,7 +201,9 @@ export function DashboardTodoPanel() {
   return (
     <section
       aria-label="Te doen"
-      className="flex shrink-0 flex-col overflow-hidden rounded-[24px] pt-4 shadow-[inset_0_2px_6px_rgba(60,35,10,0.35),0_18px_40px_-26px_rgba(60,35,10,0.6)]"
+      // Always-on: ontkleurd en gedimd (zoals de rest van het nachtscherm), geen fel kurk en papier op een tablet die
+      // de hele tijd aanstaat.
+      className="flex shrink-0 flex-col overflow-hidden rounded-[24px] pt-4 shadow-[inset_0_2px_6px_rgba(60,35,10,0.35),0_18px_40px_-26px_rgba(60,35,10,0.6)] transition-[filter] duration-500 [[data-aod]_&]:shadow-none [[data-aod]_&]:[filter:saturate(0.25)_brightness(0.6)_contrast(1.08)]"
       style={CORK_STYLE}
     >
       <div className="flex items-center justify-between px-5">
