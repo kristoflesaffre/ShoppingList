@@ -479,7 +479,7 @@ export function DashboardHuePanel({
     if (state.kind === "ready" && state.rooms.length === 0) return <>{renderEmpty("no-rooms", false)}</>;
   }
 
-  if (variant === "mobile") return <MobileHueSection state={state} busy={busy} setRoom={setRoom} floors={floors} load={load} renderEmpty={renderEmpty} />;
+  if (variant === "mobile") return <MobileHueSection state={state} busy={busy} setRoom={setRoom} floors={floors} load={load} renderEmpty={renderEmpty} token={token} />;
 
   // Venster buiten de <section>: anders zou een tik op de achtergrond van het venster (via React-bubbling)
   // het paneel-klik-event raken en het venster meteen weer openen.
@@ -583,7 +583,9 @@ function MobileHueSection({
   floors,
   load,
   renderEmpty,
+  token,
 }: {
+  token: string | null;
   state: State;
   busy: Set<string>;
   setRoom: (rooms: Room[], patch: Patch) => Promise<void>;
@@ -654,6 +656,11 @@ function MobileHueSection({
             </div>
           </section>
         ))}
+        {/* Helemaal achteraan: de twee cinemastanden als fototegels. */}
+        <section aria-label="Cinema" className="flex shrink-0 flex-col gap-2.5">
+          <h3 className="whitespace-nowrap px-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Cinema</h3>
+          <CinemaPhotoTiles token={token} onDone={() => void load()} />
+        </section>
       </ScrollLane>
       </>
     );
@@ -702,7 +709,8 @@ const CINEMA: { mode: CinemaMode; hint: string; othersOff: boolean }[] = [
  * kolommen: de bovenste lijnt uit met de bovenkant van een capsule, de onderste met de onderkant.
  * Een fout verschijnt kort bovenaan het paneel.
  */
-function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => void }) {
+/** Zet een cinemastand via /api/hue/scene; een fout verdwijnt na 4 s. */
+function useCinemaScene(token: string | null, onDone: () => void) {
   const [busy, setBusy] = React.useState<CinemaMode | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -741,6 +749,12 @@ function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => 
     const id = window.setTimeout(() => setError(null), 4000);
     return () => window.clearTimeout(id);
   }, [error]);
+
+  return { busy, error, run };
+}
+
+function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => void }) {
+  const { busy, error, run } = useCinemaScene(token, onDone);
 
   return (
     // pb: hoogte van de kamernaam + tussenruimte onder de capsules, zodat de onderste knop met de
@@ -782,6 +796,75 @@ function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => 
       })}
       {error ? (
         <p role="status" className="absolute left-[18px] right-[18px] top-3 z-[2] rounded-[12px] bg-[rgba(16,17,48,0.88)] px-3 py-2 text-xs font-semibold text-fixed-white">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Foto's per cinemastand (gegenereerd met scripts/generate-cinema-photos.mjs); zonder foto een verloop. */
+const CINEMA_TILES: Record<CinemaMode, { title: string; sub: string; photo: string; fallback: string }> = {
+  living: {
+    title: "Cinema",
+    sub: "Woonkamer gedimd",
+    photo: "/images/hue/cinema_480.webp",
+    fallback: "linear-gradient(160deg,#5b3a1f 0%,#2a1d2e 55%,#120f1c 100%)",
+  },
+  "living-only": {
+    title: "Cinema",
+    sub: "Alle andere lampen uit",
+    photo: "/images/hue/cinema_dark_480.webp",
+    fallback: "linear-gradient(160deg,#1f2440 0%,#121428 55%,#07080f 100%)",
+  },
+};
+
+/**
+ * Startpagina (gsm), achteraan de lichtrij: twee fototegels voor de cinemastanden, even hoog als de
+ * lampkolommen. Tik = de stand zetten (zelfde als de cinemaknoppen op het dashboard).
+ */
+function CinemaPhotoTiles({ token, onDone }: { token: string | null; onDone: () => void }) {
+  const { busy, error, run } = useCinemaScene(token, onDone);
+  const [missing, setMissing] = React.useState<Set<CinemaMode>>(() => new Set());
+  return (
+    <div className="relative flex h-[224px] gap-2.5">
+      {CINEMA.map((c) => {
+        const t = CINEMA_TILES[c.mode];
+        return (
+          <button
+            key={c.mode}
+            type="button"
+            aria-label={c.hint}
+            disabled={busy !== null}
+            onClick={() => void run(c)}
+            className="relative flex w-[148px] shrink-0 flex-col justify-end overflow-hidden rounded-[24px] p-3.5 text-left text-fixed-white shadow-[0_14px_28px_-16px_rgba(16,17,48,0.6)] transition-transform duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffb547] focus-visible:ring-offset-2 motion-safe:active:scale-[0.97] disabled:opacity-80"
+            style={{ backgroundImage: t.fallback }}
+          >
+            {missing.has(c.mode) ? null : (
+              // eslint-disable-next-line @next/next/no-img-element -- lokale webp
+              <img
+                src={t.photo}
+                alt=""
+                className="absolute inset-0 size-full object-cover"
+                onError={() => setMissing((m) => new Set(m).add(c.mode))}
+              />
+            )}
+            <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,24,0)_35%,rgba(8,9,24,0.78)_100%)]" />
+            <span className="absolute left-3 top-3 flex size-9 items-center justify-center rounded-full bg-fixed-white/20 backdrop-blur-[10px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]">
+              {busy === c.mode ? <span className="block size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden /> : <ClapperIcon />}
+              {c.othersOff ? (
+                <span className="absolute -bottom-1 -right-1 flex size-[18px] items-center justify-center rounded-full bg-fixed-white text-[#2a2350]">
+                  <MoonIcon />
+                </span>
+              ) : null}
+            </span>
+            <span className="relative text-[17px] font-extrabold leading-5">{t.title}</span>
+            <span className="relative mt-0.5 text-[12.5px] font-semibold leading-4 text-fixed-white/80">{t.sub}</span>
+          </button>
+        );
+      })}
+      {error ? (
+        <p role="status" className="absolute inset-x-2 top-2 z-[2] rounded-[12px] bg-[rgba(16,17,48,0.88)] px-3 py-2 text-xs font-semibold text-fixed-white">
           {error}
         </p>
       ) : null}
