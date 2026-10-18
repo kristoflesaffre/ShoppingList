@@ -154,8 +154,8 @@ export function useTodoist() {
 
 export type TodoDue = ReturnType<typeof dueInfo>;
 
-/** Dagen vooruit die de swimlane op de startpagina toont (plus alles wat te laat is). */
-export const TODO_NEAR_DAYS = 7;
+/** Dagen vooruit die de post-its tonen (plus alles wat te laat is): 0 = enkel vandaag, morgen en later niet. */
+export const TODO_NEAR_DAYS = 0;
 
 /** Dagen tussen vandaag en de vervaldatum (negatief = te laat); null zonder datum. */
 export function daysUntil(task: TodoTask, todayIso: string): number | null {

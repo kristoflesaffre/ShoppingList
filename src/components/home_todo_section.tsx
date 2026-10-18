@@ -10,8 +10,8 @@ import { TodoCheck, TodoNotice } from "@/components/todo_check";
 import { taskPhotoFor } from "@/lib/task_photos";
 
 /**
- * Startpagina · «To-do»: je Todoist-taken in een swimlane. Enkel taken met een datum die te laat is of binnen
- * TODO_NEAR_DAYS valt (verre of datumloze taken staan op /todo, via de «Toon alle»-pil). Afvinken met het
+ * Startpagina · «To-do»: je Todoist-taken in een swimlane. Enkel taken van vandaag of die te laat zijn
+ * (TODO_NEAR_DAYS) (verre of datumloze taken staan op /todo, via de «Toon alle»-pil). Afvinken met het
  * rondje (blijft in de app, opent Todoist niet). Niet gekoppeld: kaart met «Koppel Todoist».
  */
 
@@ -97,7 +97,7 @@ export function TodoPostit({ task, due, index, onCheck, size = 168 }: { task: To
   );
 }
 
-/** Todoist + enkel wat dichtbij is (te laat, vandaag en de komende dagen); de rest staat op /todo. */
+/** Todoist + enkel wat vandaag moet of te laat is (morgen en later niet); de rest staat op /todo. */
 export function useNearTodos() {
   const todo = useTodoist();
   const { state } = todo;
@@ -175,7 +175,7 @@ export function HomeTodoSection() {
   } else if (sorted.length === 0) {
     body = (
       <p className="text-sm text-[var(--text-secondary)]">
-        {state.tasks.length > 0 ? "Niets dringends deze week. 🎉" : "Niets te doen in Todoist. 🎉"}
+        {state.tasks.length > 0 ? "Niets meer voor vandaag. 🎉" : "Niets te doen in Todoist. 🎉"}
       </p>
     );
   } else {
