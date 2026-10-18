@@ -117,6 +117,9 @@ export function useNearTodos() {
 
 export function HomeTodoSection() {
   const { state, load, connect, closeTask, notice, clearNotice, sorted } = useNearTodos();
+  // Laatst getoonde notes: blijven staan terwijl het bord dichtklapt na de laatste vink.
+  const lastShown = React.useRef(sorted);
+  if (sorted.length > 0) lastShown.current = sorted;
 
   const header = (
     <ListSectionHeader
@@ -172,20 +175,26 @@ export function HomeTodoSection() {
         }
       />
     );
-  } else if (sorted.length === 0) {
-    body = (
-      <p className="text-sm text-[var(--text-secondary)]">
-        {state.tasks.length > 0 ? "Niets meer voor vandaag. 🎉" : "Niets te doen in Todoist. 🎉"}
-      </p>
-    );
   } else {
+    const hasCards = sorted.length > 0;
     body = (
-      // Prikbord: de notes hangen er met plakband op; de rij scrolt binnen het bord.
-      <div className={cn("overflow-hidden rounded-[24px] shadow-[inset_0_2px_6px_rgba(60,35,10,0.35)]", CORK_DARK)} style={CORK_STYLE}>
-        <div className="flex snap-x gap-5 overflow-x-auto scroll-px-4 px-5 pb-6 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {sorted.slice(0, 30).map(({ task, due }, i) => (
-            <TodoPostit key={task.id} task={task} due={due} index={i} onCheck={(t) => void closeTask(t)} />
-          ))}
+      // Alles afgevinkt: het bord klapt dicht (hoogte → 0) en de sectie eronder schuift mee op; enkel de titel blijft.
+      <div
+        aria-hidden={!hasCards}
+        className={cn(
+          "grid transition-[grid-template-rows,opacity,margin] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none",
+          hasCards ? "grid-rows-[1fr] opacity-100" : "-mt-4 grid-rows-[0fr] opacity-0",
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+          {/* Prikbord: de notes hangen er met plakband op; de rij scrolt binnen het bord. */}
+          <div className={cn("overflow-hidden rounded-[24px] shadow-[inset_0_2px_6px_rgba(60,35,10,0.35)]", CORK_DARK)} style={CORK_STYLE}>
+            <div className="flex snap-x gap-5 overflow-x-auto scroll-px-4 px-5 pb-6 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {(hasCards ? sorted : lastShown.current).slice(0, 30).map(({ task, due }, i) => (
+                <TodoPostit key={task.id} task={task} due={due} index={i} onCheck={(t) => void closeTask(t)} />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
