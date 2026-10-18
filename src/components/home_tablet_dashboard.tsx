@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardTodoPanel } from "@/components/home_todo_section";
 import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -718,11 +719,21 @@ export function HomeTabletDashboard({
   const { moment, testMoment, setTestMoment } = useDashboardMoment();
   const morning = moment === "ochtend";
   useSunset(moment === "avond" && active);
+  // Hoogte van de bovenste rij links (posters/weer): het takenpaneel rechts krijgt precies die hoogte.
+  const leftRef = React.useRef<HTMLDivElement>(null);
+  const [topRowHeight, setTopRowHeight] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    const row = leftRef.current?.firstElementChild as HTMLElement | null;
+    if (!row || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setTopRowHeight(Math.round(row.getBoundingClientRect().height)));
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, [moment]);
   // Min. 650px hoog: op een laag scherm scrolt de pagina i.p.v. posters en lichtpaneel te pletten
   // (posters blijven ±130px hoog, zie POSTER_LIMIT).
   return (
     <div className="flex h-[max(650px,calc(100dvh-196px))] gap-3.5 pt-5">
-      <div className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
+      <div ref={leftRef} className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
         {moment === "avond" ? (
           <EveningLeft weather={weather} todayMeal={todayMeal} tomorrowMeal={tomorrowMeal} />
         ) : (
@@ -739,7 +750,9 @@ export function HomeTabletDashboard({
         )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-        {/* Ook 's ochtends lopen morgen en de volgende dagen door, zodat de agenda nooit leeg oogt. */}
+        {/* Post-its met open taken bovenaan (even hoog als de bovenste rij links); zonder open taken neemt de
+            agenda de volle hoogte. Ook 's ochtends lopen morgen en de volgende dagen door in de agenda. */}
+        <DashboardTodoPanel height={topRowHeight} />
         <AgendaColumn />
         {moment === "dag" ? <DashboardShortcuts shoppingCount={shoppingCount} nextShopping={nextShopping} /> : null}
       </div>

@@ -28,11 +28,14 @@ const TAPE_TILT = [-3, 2, -1.5, 3, -2];
  * papier met scherpe hoeken, een stukje plakband bovenaan, geel — of rood als de taak te laat is. Herkende
  * taken krijgen hun foto in de rechteronderhoek: 45° gedraaid, of rechtop (telefoonscherm).
  */
-function TaskCard({ task, due, index, onCheck }: { task: TodoTask; due: TodoDue; index: number; onCheck: (t: TodoTask) => void }) {
+export function TodoPostit({ task, due, index, onCheck, size = 168 }: { task: TodoTask; due: TodoDue; index: number; onCheck: (t: TodoTask) => void; size?: number }) {
   const photo = taskPhotoFor(task.content);
   const late = due.overdue;
+  const small = size < 152;
+  // Foto in verhouding tot de note: blijft zo ook op een kleinere note onder drie regels titel.
+  const img = Math.round(size * (photo?.upright ? 0.4 : small ? 0.38 : 0.42));
   return (
-    <div className="relative mt-3 size-[168px] shrink-0 snap-start">
+    <div className="relative mt-3 shrink-0 snap-start" style={{ width: size, height: size }}>
       <div
         className={cn(
           "absolute inset-0 flex flex-col gap-[9px] overflow-hidden px-3.5 pb-3.5 pt-4 shadow-[0_1px_1.5px_rgba(0,0,0,0.16),0_8px_14px_-6px_rgba(40,25,5,0.45)] [[data-theme=dark]_&]:brightness-[0.92]",
@@ -46,11 +49,12 @@ function TaskCard({ task, due, index, onCheck }: { task: TodoTask; due: TodoDue;
             srcSet={`${photo.src}_240.webp 1x, ${photo.src}_480.webp 2x`}
             alt=""
             aria-hidden
-            className={cn(
-              "pointer-events-none absolute object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.25)]",
-              // Klein genoeg en ver genoeg in de hoek: blijft onder drie regels titel.
-              photo.upright ? "-bottom-3.5 right-1.5 size-[74px]" : "-bottom-[26px] -right-[17px] size-[71px] rotate-45",
-            )}
+            className={cn("pointer-events-none absolute object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.25)]", !photo.upright && "rotate-45")}
+            style={
+              photo.upright
+                ? { width: img, height: img, right: Math.round(size * 0.04), bottom: -Math.round(img * 0.3) }
+                : { width: img, height: img, right: -Math.round(img * 0.24), bottom: -Math.round(img * (small ? 0.48 : 0.36)) }
+            }
           />
         ) : null}
         <span className="relative flex min-h-[21px] items-center justify-between gap-2">
@@ -59,7 +63,7 @@ function TaskCard({ task, due, index, onCheck }: { task: TodoTask; due: TodoDue;
             <span className={cn("text-[12px] font-extrabold leading-4", late ? "text-[#b42318]" : due.rank === 1 ? "text-[#1f7a34]" : "text-[#6f6a12]")}>{due.label}</span>
           ) : null}
         </span>
-        <span className={cn("relative line-clamp-3 text-[13.5px] font-bold leading-[18px] [overflow-wrap:anywhere]", late ? "text-[#4a1410]" : "text-[#2b2a10]")}>
+        <span className={cn("relative line-clamp-3 font-bold [overflow-wrap:anywhere]", small ? "text-[12.5px] leading-[16.5px]" : "text-[13.5px] leading-[18px]", late ? "text-[#4a1410]" : "text-[#2b2a10]")}>
           {plainTaskText(task.content)}
         </span>
       </div>
@@ -73,11 +77,11 @@ function TaskCard({ task, due, index, onCheck }: { task: TodoTask; due: TodoDue;
   );
 }
 
-export function HomeTodoSection() {
-  const { state, load, connect, closeTask, notice, clearNotice } = useTodoist();
+/** Todoist + enkel wat dichtbij is (te laat, vandaag en de komende dagen); de rest staat op /todo. */
+export function useNearTodos() {
+  const todo = useTodoist();
+  const { state } = todo;
   const todayIso = localIso(new Date());
-
-  // Enkel wat dichtbij is: te laat, vandaag en de komende dagen; de rest staat op /todo.
   const sorted = React.useMemo(() => {
     if (state.kind !== "ready") return [];
     return sortTasks(
@@ -88,6 +92,11 @@ export function HomeTodoSection() {
       todayIso,
     );
   }, [state, todayIso]);
+  return { ...todo, sorted };
+}
+
+export function HomeTodoSection() {
+  const { state, load, connect, closeTask, notice, clearNotice, sorted } = useNearTodos();
 
   const header = (
     <ListSectionHeader
@@ -155,7 +164,7 @@ export function HomeTodoSection() {
       <div className="overflow-hidden rounded-[24px] shadow-[inset_0_2px_6px_rgba(60,35,10,0.35)]" style={CORK_STYLE}>
         <div className="flex snap-x gap-4 overflow-x-auto scroll-px-4 px-4 pb-5 pt-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {sorted.slice(0, 30).map(({ task, due }, i) => (
-            <TaskCard key={task.id} task={task} due={due} index={i} onCheck={(t) => void closeTask(t)} />
+            <TodoPostit key={task.id} task={task} due={due} index={i} onCheck={(t) => void closeTask(t)} />
           ))}
         </div>
       </div>
@@ -168,5 +177,35 @@ export function HomeTodoSection() {
       {body}
       <TodoNotice notice={notice} onReconnect={() => void connect()} onClose={clearNotice} />
     </div>
+  );
+}
+
+/**
+ * Tabletdashboard: de post-its in een paneel bovenaan de rechterkolom (boven de agenda), even hoog als de
+ * bovenste rij links (`height`, gemeten door het dashboard). Zelfde glasstijl als de andere tegels: licht glas
+ * overdag, donker paneel in het donkere thema, matglas op de avondlucht. Enkel zichtbaar met open taken.
+ */
+export function DashboardTodoPanel({ height }: { height: number | null }) {
+  const { sorted, closeTask, connect, notice, clearNotice } = useNearTodos();
+  if (sorted.length === 0) return null;
+  // Note-grootte uit de paneelhoogte: label + marges + plakband eraf, tussen 116 en 160 px.
+  const size = Math.round(Math.min(160, Math.max(116, (height ?? 200) - 64)));
+  return (
+    <section
+      aria-label="Te doen"
+      style={height ? { height } : undefined}
+      className="flex min-h-0 shrink-0 flex-col overflow-hidden rounded-[24px] bg-fixed-white/75 pt-4 shadow-[0_0_0_1px_rgba(16,17,48,0.05),0_18px_40px_-26px_rgba(16,17,48,0.35)] backdrop-blur-[14px] [[data-theme=dark]_&]:bg-[linear-gradient(170deg,#1c2238_0%,#151a2c_100%)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#262d48] [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
+    >
+      <div className="flex items-center justify-between px-5">
+        <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-[var(--text-secondary)] [[data-sunset]_&]:text-fixed-white/85 [[data-theme=dark]_&]:text-fixed-white/70">TE DOEN</span>
+        <span className="text-[12px] font-bold text-[var(--text-tertiary)] [[data-sunset]_&]:text-fixed-white/75 [[data-theme=dark]_&]:text-fixed-white/55">{sorted.length}</span>
+      </div>
+      <div className="flex min-h-0 flex-1 snap-x items-center gap-4 overflow-x-auto scroll-px-5 px-5 pb-4 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {sorted.slice(0, 20).map(({ task, due }, i) => (
+          <TodoPostit key={task.id} task={task} due={due} index={i} size={size} onCheck={(t) => void closeTask(t)} />
+        ))}
+      </div>
+      <TodoNotice notice={notice} onReconnect={() => void connect()} onClose={clearNotice} />
+    </section>
   );
 }
