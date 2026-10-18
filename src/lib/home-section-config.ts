@@ -1,5 +1,6 @@
 export type HomeSectionId =
   | "agenda"
+  | "todo"
   | "lijstjes"
   | "te-kopen"
   | "kalender"
@@ -24,6 +25,7 @@ export const HOME_SECTIONS_META: {
   hideable: boolean;
 }[] = [
   { id: "agenda", label: "Agenda", description: "Je Google-afspraken van vandaag", tint: "#eef0ff", illustration: "/images/ui/kalender_320.webp", hideable: true },
+  { id: "todo", label: "To-do", description: "Je taken uit Todoist", tint: "#e8f4ec", illustration: "/images/ui/lijstje_320.webp", hideable: true },
   { id: "lijstjes", label: "Lijstjes", description: "Je boodschappenlijstjes", tint: "#f2f2fe", illustration: "/images/ui/lijstje_320.webp", hideable: false },
   { id: "te-kopen", label: "Te kopen", description: "Losse dingen om mee te nemen", tint: "#fdf3df", illustration: "/images/ui/kopen_320.webp", hideable: true },
   { id: "kalender", label: "Kalender", description: "Wat je deze week kookt", tint: "#fdeee3", illustration: "/images/ui/kalender_320.webp", hideable: true },
@@ -35,6 +37,7 @@ export const HOME_SECTIONS_META: {
 
 export const DEFAULT_SECTION_ORDER: HomeSectionId[] = [
   "agenda",
+  "todo",
   "lijstjes",
   "te-kopen",
   "kalender",

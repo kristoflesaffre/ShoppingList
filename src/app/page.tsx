@@ -70,6 +70,7 @@ import { HomeAgendaSection } from "@/components/home_agenda_section";
 import { useAlwaysOn } from "@/lib/use_always_on";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
+import { HomeTodoSection } from "@/components/home_todo_section";
 import { DashboardHuePanel } from "@/components/dashboard_hue_panel";
 import { HomeDiscoverBanners, type DiscoverBanner } from "@/components/home_discover_banners";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
@@ -2981,6 +2982,8 @@ export default function Home() {
         );
       case "agenda":
         return <HomeAgendaSection ownerId={ownerId} onHide={onHide} />;
+      case "todo":
+        return <HomeTodoSection />;
       case "kalender":
         return (
           <HomeKalenderSection
@@ -3016,6 +3019,10 @@ export default function Home() {
   const agendaFirstOnDesktop =
     !homeSectionConfig.hidden.includes("agenda") &&
     homeSectionConfig.order.indexOf("agenda") < homeSectionConfig.order.indexOf("lijstjes");
+  const todoUnderAgendaOnDesktop =
+    agendaFirstOnDesktop &&
+    !homeSectionConfig.hidden.includes("todo") &&
+    homeSectionConfig.order.indexOf("todo") < homeSectionConfig.order.indexOf("lijstjes");
 
   if (authLoading || !user || isLoading) {
     return <PageSpinner />;
@@ -3104,6 +3111,8 @@ export default function Home() {
               <div className={cn("flex flex-col gap-10 pt-8", HIDDEN_WHEN_DASHBOARD)}>
                 {/* Agenda boven de lijstjes als ze zo gerangschikt is (standaard: bovenaan). */}
                 {agendaFirstOnDesktop ? renderHomeSlot("agenda") : null}
+                {/* To-do meteen onder de agenda (zolang die bovenaan staat). */}
+                {todoUnderAgendaOnDesktop ? renderHomeSlot("todo") : null}
                 {/* Lijstjes over de volle breedte (drie kaartjes), daaronder Te kopen en de diepvries even hoog. */}
                 <div className="min-w-0">
                   {favoritesPromo.show ? (
@@ -3136,6 +3145,7 @@ export default function Home() {
                       sectionId !== "lijstjes" &&
                       sectionId !== "diepvries" &&
                       !(sectionId === "agenda" && agendaFirstOnDesktop) &&
+                      !(sectionId === "todo" && todoUnderAgendaOnDesktop) &&
                       !homeSectionConfig.hidden.includes(sectionId),
                   )
                   .map((sectionId, index) => {
