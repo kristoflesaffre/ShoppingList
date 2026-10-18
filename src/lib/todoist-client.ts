@@ -1,0 +1,144 @@
+"use client";
+
+import * as React from "react";
+import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
+
+/**
+ * Todoist in de app (alleen lezen, via /api/todoist/*): types, kleuren, vervaldatums en de hook die status,
+ * taken en projecten ophaalt. Gedeeld door de sectie op de startpagina en de overzichtspagina /todo.
+ */
+
+export type TodoTask = {
+  id: string;
+  content: string;
+  projectId: string | null;
+  labels: string[];
+  priority: number;
+  due: { date: string | null; datetime: string | null; recurring: boolean } | null;
+  url: string | null;
+};
+export type TodoProject = { id: string; name: string; color: string | null; inbox: boolean };
+export type TodoState =
+  | { kind: "loading" }
+  | { kind: "not-configured" }
+  | { kind: "not-connected"; reconnect: boolean }
+  | { kind: "error" }
+  | { kind: "ready"; tasks: TodoTask[]; projects: Map<string, TodoProject> };
+
+/** Todoist-kleurnamen → hex (palet van Todoist). */
+export const TODOIST_COLORS: Record<string, string> = {
+  berry_red: "#b8256f", red: "#db4035", orange: "#ff9933", yellow: "#fad000", olive_green: "#afb83b",
+  lime_green: "#7ecc49", green: "#299438", mint_green: "#6accbc", teal: "#158fad", sky_blue: "#14aaf5",
+  light_blue: "#96c3eb", blue: "#4073ff", grape: "#884dff", violet: "#af38eb", lavender: "#eb96eb",
+  magenta: "#e05194", salmon: "#ff8d85", charcoal: "#808080", grey: "#b8b8b8", taupe: "#ccac93",
+};
+/** Todoist-prioriteit (4 = P1 hoogst) → vlagkleur; P4 (1) = geen vlag. */
+export const PRIORITY: Record<number, { label: string; color: string } | undefined> = {
+  4: { label: "P1", color: "#d1453b" },
+  3: { label: "P2", color: "#eb8909" },
+  2: { label: "P3", color: "#246fe0" },
+};
+
+export function localIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Sorteersleutel en label voor de vervaldatum. */
+export function dueInfo(task: TodoTask, todayIso: string): { rank: number; key: string; label: string | null; overdue: boolean } {
+  const date = task.due?.date?.slice(0, 10) ?? null;
+  if (!date) return { rank: 3, key: String(5 - task.priority), label: null, overdue: false };
+  const time = task.due?.datetime ? new Date(task.due.datetime).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" }) : null;
+  const withTime = (s: string) => (time ? `${s} · ${time}` : s);
+  if (date < todayIso) {
+    const d = new Date(`${date}T00:00:00`);
+    return { rank: 0, key: date, label: d.toLocaleDateString("nl-BE", { day: "numeric", month: "short" }).replace(".", ""), overdue: true };
+  }
+  if (date === todayIso) return { rank: 1, key: task.due?.datetime ?? date, label: withTime("Vandaag"), overdue: false };
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const d = new Date(`${date}T00:00:00`);
+  const label =
+    date === localIso(tomorrow)
+      ? "Morgen"
+      : (d.getTime() - Date.now()) / 86_400_000 < 6
+        ? d.toLocaleDateString("nl-BE", { weekday: "long" }).replace(/^./, (c) => c.toUpperCase())
+        : d.toLocaleDateString("nl-BE", { day: "numeric", month: "short" }).replace(".", "");
+  return { rank: 2, key: task.due?.datetime ?? date, label: withTime(label), overdue: false };
+}
+
+export function useTodoist() {
+  const token = useGoogleAuthToken();
+  const [state, setState] = React.useState<TodoState>({ kind: "loading" });
+
+  const load = React.useCallback(async () => {
+    if (!token) return;
+    const post = (path: string, body?: unknown) =>
+      fetch(`/api/todoist/${path}`, {
+        method: "POST",
+        headers: { ...googleAuthHeaders(token), "content-type": "application/json" },
+        body: body ? JSON.stringify(body) : undefined,
+        cache: "no-store",
+      });
+    try {
+      const status = (await (await post("status")).json()) as { configured?: boolean; connected?: boolean; reconnect?: boolean };
+      if (status.configured === false) return setState({ kind: "not-configured" });
+      if (!status.connected) return setState({ kind: "not-connected", reconnect: status.reconnect === true });
+      const [tasksRes, projectsRes] = await Promise.all([post("tasks", { limit: 200 }), post("projects", { limit: 200 })]);
+      if (!tasksRes.ok) throw new Error(String(tasksRes.status));
+      const { tasks } = (await tasksRes.json()) as { tasks: TodoTask[] };
+      const { projects } = projectsRes.ok ? ((await projectsRes.json()) as { projects: TodoProject[] }) : { projects: [] };
+      setState({ kind: "ready", tasks, projects: new Map(projects.map((p) => [p.id, p])) });
+    } catch {
+      setState({ kind: "error" });
+    }
+  }, [token]);
+
+  React.useEffect(() => {
+    void load();
+    // Verversen bij terugkeren naar de app (taken afgevinkt in Todoist).
+    const onVisible = () => document.visibilityState === "visible" && void load();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [load]);
+
+  const connect = React.useCallback(async () => {
+    const res = await fetch("/api/todoist/connect", { method: "POST", headers: googleAuthHeaders(token) });
+    const data = (await res.json().catch(() => ({}))) as { url?: string };
+    if (data.url) window.location.assign(data.url);
+  }, [token]);
+
+  return { state, load, connect };
+}
+
+
+export type TodoDue = ReturnType<typeof dueInfo>;
+
+/** Dagen vooruit die de swimlane op de startpagina toont (plus alles wat te laat is). */
+export const TODO_NEAR_DAYS = 7;
+
+/** Dagen tussen vandaag en de vervaldatum (negatief = te laat); null zonder datum. */
+export function daysUntil(task: TodoTask, todayIso: string): number | null {
+  const date = task.due?.date?.slice(0, 10);
+  if (!date) return null;
+  return Math.round((new Date(`${date}T00:00:00`).getTime() - new Date(`${todayIso}T00:00:00`).getTime()) / 86_400_000);
+}
+
+/** Taken met hun vervaldatum, gesorteerd: te laat → vandaag → later (op datum/uur) → zonder datum (op prioriteit). */
+export function sortTasks(tasks: TodoTask[], todayIso: string): { task: TodoTask; due: TodoDue }[] {
+  return tasks
+    .map((t) => ({ task: t, due: dueInfo(t, todayIso) }))
+    .sort((a, b) => a.due.rank - b.due.rank || a.due.key.localeCompare(b.due.key) || b.task.priority - a.task.priority);
+}
+
+export function projectColor(project: TodoProject | undefined): string {
+  return project?.color ? TODOIST_COLORS[project.color] ?? "#b8b8b8" : "#b8b8b8";
+}
+
+/** Todoist-titels mogen Markdown bevatten («[tekst](url)», **vet**): toon enkel de leesbare tekst. */
+export function plainTaskText(content: string): string {
+  return content
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/(\*\*|__)(.+?)\1/g, "$2")
+    .replace(/(^|\s)[*_](\S.*?\S|\S)[*_](?=\s|$)/g, "$1$2")
+    .trim();
+}
