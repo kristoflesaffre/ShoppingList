@@ -31,8 +31,17 @@ export function SegmentedControl<T extends string>({
   size = "md",
   className,
   tone = "default",
+  glassFor,
+  onSelect,
+  commitDelay = 0,
 }: {
+  /** ms tussen de tik en onChange: bij een zware wissel eerst de animatie afmaken, dan pas de inhoud. */
+  commitDelay?: number;
   tone?: "default" | "glass";
+  /** Glas zodra déze optie gekozen is: de stijl wisselt mee met de pil, op hetzelfde moment (geen wachten op de ouder). */
+  glassFor?: T;
+  /** Meteen bij de tik (vóór de vertraagde onChange), bv. om de achtergrond tegelijk te laten meelopen. */
+  onSelect?: (value: T) => void;
   options: ReadonlyArray<SegmentedOption<T>>;
   value: T;
   onChange: (value: T) => void;
@@ -49,9 +58,12 @@ export function SegmentedControl<T extends string>({
   React.useEffect(() => setShown(value), [value]);
   const choose = (v: T) => {
     if (v === value) return;
+    onSelect?.(v);
     setShown(v);
-    requestAnimationFrame(() => requestAnimationFrame(() => onChange(v)));
+    if (commitDelay > 0) window.setTimeout(() => onChange(v), commitDelay);
+    else requestAnimationFrame(() => requestAnimationFrame(() => onChange(v)));
   };
+  const glass = glassFor !== undefined ? shown === glassFor : tone === "glass";
   const { containerRef, indicatorStyle } = useSlidingIndicator(Math.max(0, options.findIndex((o) => o.value === shown)));
   const onKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     const next = e.key === "ArrowRight" ? index + 1 : e.key === "ArrowLeft" ? index - 1 : -1;
@@ -69,7 +81,7 @@ export function SegmentedControl<T extends string>({
         "relative isolate flex gap-0.5 rounded-[13px] bg-[var(--gray-50)] p-[3px]",
         // Zelfde curve als de pil: oppervlak, rand en hoeken lopen mee als «smart animate».
         "transition-[background-color,box-shadow,border-radius,backdrop-filter] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
-        tone === "glass" && GLASS_TROUGH,
+        glass && GLASS_TROUGH,
         fill ? "w-full" : "w-fit shrink-0",
         className,
       )}
@@ -78,7 +90,7 @@ export function SegmentedControl<T extends string>({
         aria-hidden
         className={cn(
           "pointer-events-none absolute left-0 -z-10 rounded-[10px] bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.12)] motion-reduce:!transition-none",
-          tone === "glass" && GLASS_PILL,
+          glass && GLASS_PILL,
         )}
         style={indicatorStyle}
       />
@@ -101,8 +113,8 @@ export function SegmentedControl<T extends string>({
               size === "icon" ? "w-9" : size === "lg" ? "" : "px-3",
               fill && size !== "icon" && "min-w-0 flex-1",
               on ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
-              tone === "glass" && (on ? GLASS_TEXT_ON : GLASS_TEXT_OFF),
-              tone === "glass" && GLASS_ROUND,
+              glass && (on ? GLASS_TEXT_ON : GLASS_TEXT_OFF),
+              glass && GLASS_ROUND,
             )}
           >
             {o.label}

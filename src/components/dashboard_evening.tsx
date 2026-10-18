@@ -43,14 +43,14 @@ export type EveningMedia = {
   note?: string;
 };
 
-/** Poster als knop (opent het detailvenster). Breedte komt van de carrousel. */
+/** Poster als knop (opent het detailvenster). Vult de hoogte van de rij; de breedte volgt uit 2:3. */
 function PosterButton({ media, onOpen }: { media: EveningMedia; onOpen: (m: EveningMedia) => void }) {
   return (
     <button
       type="button"
       onClick={() => onOpen(media)}
       aria-label={`${media.title} openen`}
-      className="aspect-[2/3] w-[min(calc((100cqw-24px)/2.5),calc(var(--poster-h,9999px)*2/3))] shrink-0 snap-start overflow-hidden rounded-[14px] bg-fixed-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_14px_24px_-14px_rgba(0,0,0,0.7)] transition-transform duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-[0.97]"
+      className="aspect-[2/3] h-full shrink-0 snap-start overflow-hidden rounded-[14px] bg-fixed-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_14px_24px_-14px_rgba(0,0,0,0.7)] transition-transform duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white motion-safe:active:scale-[0.97]"
     >
       {media.posterUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- TMDB-poster
@@ -88,14 +88,13 @@ function EveningTile({
       aria-label={label.toLowerCase()}
       className={cn(
         tile,
-        "flex min-w-0 flex-1 flex-col self-start pt-4 text-fixed-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)] [background:var(--bg)] [[data-theme=dark]_&]:[background:var(--bg-dark)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] [[data-sunset]_&]:[background:rgba(255,255,255,0.2)] [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]",
+        "flex min-w-0 flex-1 flex-col pt-4 text-fixed-white shadow-[0_18px_40px_-24px_rgba(60,30,120,0.8)] [background:var(--bg)] [[data-theme=dark]_&]:[background:var(--bg-dark)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] [[data-sunset]_&]:[background:rgba(255,255,255,0.2)] [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]",
       )}
       style={{ "--bg": background, "--bg-dark": backgroundDark } as React.CSSProperties}
     >
       <span className="px-[18px] text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">{label}</span>
-      {/* Container-query-breedte: 2,5 posters over de breedte, hoogte volgt uit 2:3 (niets afgesneden);
-          de tegel is precies zo hoog als de posters, zonder lege ruimte eronder. */}
-      <div className="mt-3 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-px-[18px] px-[18px] pb-4 [container-type:inline-size] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* Posters vullen de hoogte van de rij (even hoog als de tegel ernaast); wat niet past, scrolt zijwaarts. */}
+      <div className="mt-3 flex min-h-0 flex-1 snap-x snap-mandatory items-stretch gap-3 overflow-x-auto scroll-px-[18px] px-[18px] pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((m) => (
           <PosterButton key={m.id} media={m} onOpen={onOpen} />
         ))}

@@ -62,6 +62,7 @@ import {
 import {
   DashboardReminders,
   HomeTabletDashboard,
+  syncSunsetNow,
   type DashboardMeal,
   type DashboardShopping,
 } from "@/components/home_tablet_dashboard";
@@ -2377,6 +2378,30 @@ export default function Home() {
     setTabletHomeView(view);
     localStorage.setItem("tablet-home-view", view);
   }, []);
+  // Welke weergaven al gemount zijn (blijven daarna staan, verborgen als ze niet actief zijn).
+  const [mountedViews, setMountedViews] = React.useState<Set<"overview" | "dashboard">>(() => new Set([tabletHomeView]));
+  React.useEffect(() => {
+    setMountedViews((m) => (m.has(tabletHomeView) ? m : new Set(m).add(tabletHomeView)));
+  }, [tabletHomeView]);
+  const overviewRef = React.useRef<HTMLDivElement>(null);
+  const dashboardRef = React.useRef<HTMLDivElement>(null);
+  const firstViewRender = React.useRef(true);
+  // De nieuwe weergave zacht laten opkomen (niet bij het laden van de pagina).
+  React.useEffect(() => {
+    if (firstViewRender.current) {
+      firstViewRender.current = false;
+      return;
+    }
+    const el = (tabletHomeView === "dashboard" ? dashboardRef : overviewRef).current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    el.animate(
+      [
+        { opacity: 0, transform: "translateY(8px)" },
+        { opacity: 1, transform: "none" },
+      ],
+      { duration: 320, easing: "cubic-bezier(0.32, 0.72, 0, 1)" },
+    );
+  }, [tabletHomeView, mountedViews]);
 
   React.useEffect(() => {
     const handler = () => setHomeSectionConfig(loadHomeSectionConfig());
@@ -3018,8 +3043,12 @@ export default function Home() {
                 {tabletHomeView === "dashboard" && user ? <DashboardReminders userId={user.id} /> : null}
                 <SegmentedControl
                   ariaLabel="Startweergave"
-                  // Op het dashboard in glas (avondlucht en donker thema); in het overzicht de gewone trog.
-                  tone={tabletHomeView === "dashboard" ? "glass" : "default"}
+                  // Glas zodra «Dashboard» gekozen is (avondlucht en donker thema); de lucht start bij de tik zelf,
+                  // zodat pil, schakelaar en achtergrond in één beweging wisselen.
+                  glassFor="dashboard"
+                  onSelect={(v) => syncSunsetNow(v === "dashboard")}
+                  // Eerst pil, glas en lucht volledig laten bewegen; dan pas de (zware) wissel van de inhoud.
+                  commitDelay={440}
                   fill={false}
                   value={tabletHomeView}
                   onChange={handleTabletHomeViewChange}
@@ -3057,8 +3086,10 @@ export default function Home() {
           </div>
 
           <div className="hidden md:block">
-            {tabletHomeView === "overview" ? (
-              <div className="flex flex-col gap-10 pt-8">
+            {/* Beide weergaven blijven gemount zodra ze één keer getoond zijn: terugwisselen is dan enkel
+                tonen/verbergen (geen zware opbouw die de animatie van de schakelaar zou bevriezen). */}
+            {mountedViews.has("overview") ? (
+              <div ref={overviewRef} className={cn("flex flex-col gap-10 pt-8", tabletHomeView !== "overview" && "hidden")}>
                 {/* Agenda boven de lijstjes als ze zo gerangschikt is (standaard: bovenaan). */}
                 {agendaFirstOnDesktop ? renderHomeSlot("agenda") : null}
                 {/* Lijstjes over de volle breedte (drie kaartjes), daaronder Te kopen en de diepvries even hoog. */}
@@ -3112,14 +3143,18 @@ export default function Home() {
                     );
                   })}
               </div>
-            ) : (
-              <HomeTabletDashboard
-                todayMeal={todayDashboard.todayMeal}
-                tomorrowMeal={todayDashboard.tomorrowMeal}
-                shoppingCount={homeShoppingItems.length}
-                nextShopping={dashboardNextShopping}
-              />
-            )}
+            ) : null}
+            {mountedViews.has("dashboard") ? (
+              <div ref={dashboardRef} className={cn(tabletHomeView !== "dashboard" && "hidden")}>
+                <HomeTabletDashboard
+                  todayMeal={todayDashboard.todayMeal}
+                  tomorrowMeal={todayDashboard.tomorrowMeal}
+                  shoppingCount={homeShoppingItems.length}
+                  nextShopping={dashboardNextShopping}
+                  active={tabletHomeView === "dashboard"}
+                />
+              </div>
+            ) : null}
           </div>
           <div className={cn("mt-10 flex justify-center pb-4", tabletHomeView === "dashboard" && "md:hidden")}>
             <Link

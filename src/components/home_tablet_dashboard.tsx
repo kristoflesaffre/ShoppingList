@@ -581,6 +581,29 @@ const segment = (on: boolean) => cn("h-8 whitespace-nowrap rounded-pill px-3", o
  * <html> `data-sunset`; de pagina wordt een lucht van oranje naar violet en alle panelen worden matglas
  * (`[[data-sunset]_&]:`-varianten). In het donkere thema en always-on blijft palet B.
  */
+/** Of de avondlucht nu zou gelden (avond, licht thema, vanaf md); zelfde voorwaarden als useSunset. */
+function sunsetApplies(on: boolean): boolean {
+  const root = document.documentElement;
+  return on && window.matchMedia("(min-width: 768px)").matches && root.dataset.theme !== "dark" && !root.dataset.aod;
+}
+
+/**
+ * Meteen bij het wisselen naar/van het dashboard (vóór het dashboard getekend is): de lucht en de
+ * glazen schakelaar beginnen zo op hetzelfde moment als de schuivende pil, in één beweging.
+ */
+export function syncSunsetNow(toDashboard: boolean): void {
+  let moment = momentAt(new Date());
+  try {
+    const stored = sessionStorage.getItem(MOMENT_TEST_KEY);
+    if (isMoment(stored)) moment = stored;
+  } catch {
+    /* geen sessionStorage */
+  }
+  const root = document.documentElement;
+  if (sunsetApplies(toDashboard && moment === "avond")) root.dataset.sunset = "";
+  else delete root.dataset.sunset;
+}
+
 function useSunset(on: boolean) {
   React.useEffect(() => {
     const root = document.documentElement;
@@ -588,7 +611,7 @@ function useSunset(on: boolean) {
     // Enkel waar het dashboard echt zichtbaar is (vanaf md); op de gsm is het verborgen maar wel gemount.
     const wide = window.matchMedia("(min-width: 768px)");
     const sync = () => {
-      if (on && wide.matches && root.dataset.theme !== "dark" && !root.dataset.aod) {
+      if (sunsetApplies(on)) {
         root.dataset.sunset = "";
       } else {
         delete root.dataset.sunset;
@@ -646,6 +669,9 @@ function MomentTestBar({ value, onChange }: { value: DashboardMoment; onChange: 
   );
 }
 
+/** Rij met posters: vaste hoogte (posterhoogte + label en marges), zodat de filmtegel en de tegel ernaast
+ *  (weer/eten morgen) even hoog zijn en de posters die hoogte vullen. */
+const POSTER_ROW = "h-[calc(var(--poster-h)+62px)] shrink-0";
 const POSTER_LIMIT = { "--poster-h": "calc((max(650px, 100dvh - 196px) - 263px) / 2 - 62px)" } as React.CSSProperties;
 
 /** Avond: series i.p.v. het weer van vandaag, watchlist i.p.v. het eten van vandaag (met terugval). */
@@ -658,11 +684,11 @@ function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | 
       {/* Rijen met posters zijn zo hoog als hun posters; de rest van de kolom is voor de verlichting.
           --poster-h: maximale posterhoogte zodat het lichtpaneel altijd ±215px houdt (kolomhoogte
           − 2 tussenruimtes − paneel, gedeeld door twee rijen, min. de rand rond de posters). */}
-      <div className={cn("flex gap-3.5", watching.length > 0 ? "shrink-0" : "min-h-0 flex-1")} style={POSTER_LIMIT}>
+      <div className={cn("flex gap-3.5", watching.length > 0 ? POSTER_ROW : "min-h-0 flex-1")} style={POSTER_LIMIT}>
         {watching.length > 0 ? <WatchingTile items={watching} onOpen={setOpen} /> : <TodayWeather weather={weather} />}
         <TomorrowWeather weather={weather} />
       </div>
-      <div className={cn("flex gap-3.5", suggestions.length > 0 ? "shrink-0" : "min-h-0 flex-1")} style={POSTER_LIMIT}>
+      <div className={cn("flex gap-3.5", suggestions.length > 0 ? POSTER_ROW : "min-h-0 flex-1")} style={POSTER_LIMIT}>
         {suggestions.length > 0 ? <WatchlistTile items={suggestions} onOpen={setOpen} /> : <TodayMeal meal={todayMeal} />}
         <TomorrowMeal meal={tomorrowMeal} />
       </div>
@@ -677,20 +703,23 @@ export function HomeTabletDashboard({
   tomorrowMeal,
   shoppingCount,
   nextShopping,
+  active = true,
 }: {
   todayMeal: DashboardMeal | null;
   tomorrowMeal: DashboardMeal | null;
   shoppingCount: number;
   nextShopping: DashboardShopping;
+  /** Zichtbaar? Het dashboard blijft gemount als je naar het overzicht wisselt (snel terug); verborgen geen lucht. */
+  active?: boolean;
 }) {
   const weather = useWeather();
   const { moment, testMoment, setTestMoment } = useDashboardMoment();
   const morning = moment === "ochtend";
-  useSunset(moment === "avond");
+  useSunset(moment === "avond" && active);
   // Min. 650px hoog: op een laag scherm scrolt de pagina i.p.v. posters en lichtpaneel te pletten
   // (posters blijven ±130px hoog, zie POSTER_LIMIT).
   return (
-    <div className="flex h-[max(650px,calc(100dvh-196px))] gap-3.5 pt-5 motion-safe:animate-fade-up">
+    <div className="flex h-[max(650px,calc(100dvh-196px))] gap-3.5 pt-5">
       <div className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
         {moment === "avond" ? (
           <EveningLeft weather={weather} todayMeal={todayMeal} tomorrowMeal={tomorrowMeal} />
