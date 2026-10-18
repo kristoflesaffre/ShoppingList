@@ -2,11 +2,12 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { PRIORITY, plainTaskText, TODO_NEAR_DAYS, daysUntil, localIso, projectColor, sortTasks, useTodoist, type TodoDue, type TodoProject, type TodoTask } from "@/lib/todoist-client";
+import { plainTaskText, TODO_NEAR_DAYS, daysUntil, localIso, sortTasks, useTodoist, type TodoDue, type TodoProject, type TodoTask } from "@/lib/todoist-client";
 import { ListSectionHeader, OverviewPill } from "@/components/list_section_header";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { MiniButton } from "@/components/ui/mini_button";
 import { TodoCheck, TodoNotice } from "@/components/todo_check";
+import { taskPhotoFor } from "@/lib/task_photos";
 
 /**
  * Startpagina · «To-do»: je Todoist-taken in een swimlane. Enkel taken met een datum die te laat is of binnen
@@ -14,42 +15,52 @@ import { TodoCheck, TodoNotice } from "@/components/todo_check";
  * rondje (blijft in de app, opent Todoist niet). Niet gekoppeld: kaart met «Koppel Todoist».
  */
 
+/**
+ * Taak als post-it (canvas «To-do-tegels» E + F): recht papiertje met vouwhoekje, geel — of rood als de taak te
+ * laat is. Herkende taken (medicatie, …) krijgen een foto die uit de rechteronderhoek steekt.
+ */
 function TaskCard({ task, project, due, onCheck }: { task: TodoTask; project: TodoProject | undefined; due: TodoDue; onCheck: (t: TodoTask) => void }) {
-  const prio = PRIORITY[task.priority];
+  const photo = taskPhotoFor(task.content);
+  const late = due.overdue;
   return (
-    <div className="flex w-[220px] shrink-0 snap-start flex-col gap-2 rounded-[20px] bg-[var(--white)] p-4 shadow-card">
-      <span className="flex min-h-[22px] items-center gap-2">
+    <div
+      className={cn(
+        "relative flex min-h-[164px] w-[210px] shrink-0 snap-start flex-col gap-2.5 overflow-hidden rounded-[6px_6px_22px_6px] p-4 shadow-[0_14px_22px_-16px_rgba(80,60,20,0.55),0_1px_0_rgba(0,0,0,0.04)] [[data-theme=dark]_&]:brightness-[0.92]",
+        late ? "bg-[#ffd9d4]" : "bg-[#fff4b8]",
+      )}
+    >
+      {photo ? (
+        // eslint-disable-next-line @next/next/no-img-element -- lokale, transparante webp
+        <img
+          src={`${photo}_240.webp`}
+          srcSet={`${photo}_240.webp 1x, ${photo}_480.webp 2x`}
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute -bottom-3 -right-3 size-[108px] object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.18)]"
+        />
+      ) : null}
+      {/* Vouwhoekje rechtsonder. */}
+      <span aria-hidden className="pointer-events-none absolute bottom-0 right-0 size-[26px] rounded-br-[22px] bg-[linear-gradient(135deg,transparent_50%,rgba(0,0,0,0.08)_50%)]" />
+      <span className="relative flex min-h-[22px] items-center justify-between gap-2">
         <TodoCheck task={task} onCheck={onCheck} />
         {due.label ? (
-          <span className={cn("mr-auto text-[12px] font-bold leading-4", due.overdue ? "text-[#d1453b]" : due.rank === 1 ? "text-[#058527]" : "text-[var(--text-secondary)]")}>
-            {due.label}
-          </span>
-        ) : (
-          <span className="mr-auto text-[12px] font-semibold leading-4 text-[var(--text-tertiary)]">Geen datum</span>
+          <span className={cn("text-[12px] font-extrabold leading-4", late ? "text-[#b42318]" : due.rank === 1 ? "text-[#1f7a34]" : "text-[#7a5d00]")}>{due.label}</span>
+        ) : null}
+      </span>
+      <span
+        className={cn(
+          "relative line-clamp-4 text-[16px] font-bold leading-[21px] [overflow-wrap:anywhere]",
+          late ? "text-[#4a1410]" : "text-[#2b2510]",
+          photo && "max-w-[128px]",
         )}
-        {prio ? (
-          <span aria-label={`Prioriteit ${prio.label}`} className="flex items-center gap-0.5 text-[11px] font-extrabold" style={{ color: prio.color }}>
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-3.5">
-              <path d="M5 21V4h11.5l-1.6 3.8L16.5 12H7v9z" />
-            </svg>
-            {prio.label}
-          </span>
-        ) : null}
+      >
+        {plainTaskText(task.content)}
       </span>
-      <span className="line-clamp-3 text-[15px] font-semibold leading-5 text-[var(--text-primary)] [overflow-wrap:anywhere]">{plainTaskText(task.content)}</span>
-      <span className="mt-auto flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] leading-4 text-[var(--text-secondary)]">
-        {project ? (
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: projectColor(project) }} />
-            <span className="truncate">{project.inbox ? "Inbox" : project.name}</span>
-          </span>
-        ) : null}
-        {task.labels.slice(0, 2).map((l) => (
-          <span key={l} className="rounded-pill bg-[var(--gray-50)] px-1.5 py-0.5 text-[11px] font-semibold">
-            @{l}
-          </span>
-        ))}
-      </span>
+      {project ? (
+        <span className={cn("relative mt-auto truncate text-[12px] leading-4", late ? "text-[#8a3a33]" : "text-[#6b5f3a]", photo && "max-w-[100px]")}>
+          {project.inbox ? "Inbox" : project.name}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -87,7 +98,7 @@ export function HomeTodoSection() {
     body = (
       <div className="-mx-[var(--space-4)] flex gap-3 overflow-hidden px-[var(--space-4)] pb-1" aria-busy aria-label="Taken laden">
         {[0, 1, 2].map((i) => (
-          <span key={i} className="shimmer h-[132px] w-[220px] shrink-0 rounded-[20px]" />
+          <span key={i} className="shimmer h-[164px] w-[210px] shrink-0 rounded-[6px_6px_22px_6px]" />
         ))}
       </div>
     );
