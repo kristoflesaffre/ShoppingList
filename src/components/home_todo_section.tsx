@@ -51,6 +51,7 @@ export function TodoPostit({ task, due, index, onCheck, size = 168 }: { task: To
   const photo = taskPhotoFor(task.content);
   const late = due.overdue;
   const small = size < 152;
+  const tiny = size < 140;
   // Foto in verhouding tot de note: blijft zo ook op een kleinere note onder drie regels titel.
   const img = Math.round(size * (photo?.upright ? 0.4 : small ? 0.38 : 0.42));
   return (
@@ -82,7 +83,7 @@ export function TodoPostit({ task, due, index, onCheck, size = 168 }: { task: To
             <span className={cn("text-[12px] font-extrabold leading-4", late ? "text-[#b42318]" : due.rank === 1 ? "text-[#1f7a34]" : "text-[#6f6a12]")}>{due.label}</span>
           ) : null}
         </span>
-        <span className={cn("relative line-clamp-3 font-bold [overflow-wrap:anywhere]", small ? "text-[12.5px] leading-[16.5px]" : "text-[13.5px] leading-[18px]", late ? "text-[#4a1410]" : "text-[#2b2a10]")}>
+        <span lang="nl" className={cn("relative line-clamp-3 font-bold [hyphens:auto] [overflow-wrap:anywhere]", tiny ? "text-[11.5px] leading-[15px]" : small ? "text-[12.5px] leading-[16.5px]" : "text-[13.5px] leading-[18px]", late ? "text-[#4a1410]" : "text-[#2b2a10]")}>
           {plainTaskText(task.content)}
         </span>
       </div>
@@ -200,30 +201,32 @@ export function HomeTodoSection() {
 }
 
 /**
- * Tabletdashboard: de post-its op een kurken prikbord bovenaan de rechterkolom (boven de agenda), zo hoog als
- * nodig; de agenda vult de rest. Enkel wat vandaag moet of te laat is (morgen en later niet); is dat er niet
+ * Tabletdashboard: de post-its op een kurken prikbord bovenaan de rechterkolom (boven de agenda), even hoog als
+ * de bovenste rij links (`height`); de notes schalen mee zodat ze er precies in passen. De agenda vult de rest. Enkel wat vandaag moet of te laat is (morgen en later niet); is dat er niet
  * meer, dan verdwijnt het paneel en vult de agenda de kolom.
  */
-export function DashboardTodoPanel() {
+export function DashboardTodoPanel({ height }: { height: number | null }) {
   const { sorted: near, closeTask, connect, notice, clearNotice } = useNearTodos();
   const todayIso = localIso(new Date());
   const sorted = near.filter(({ task }) => (daysUntil(task, todayIso) ?? 1) <= 0);
   if (sorted.length === 0) return null;
+  // Note-grootte uit de paneelhoogte: label en marges (±62 px) eraf, tussen 104 en 168 px.
+  const size = Math.round(Math.min(168, Math.max(104, (height ?? 228) - 62)));
   return (
     <section
       aria-label="Te doen"
       // Always-on: ontkleurd en gedimd (zoals de rest van het nachtscherm), geen fel kurk en papier op een tablet die
       // de hele tijd aanstaat.
       className={cn("flex shrink-0 flex-col overflow-hidden rounded-[24px] pt-4 shadow-[inset_0_2px_6px_rgba(60,35,10,0.35),0_18px_40px_-26px_rgba(60,35,10,0.6)] transition-[filter] duration-500 [[data-aod]_&]:shadow-none [[data-aod]_&]:[filter:saturate(0.65)_brightness(0.58)_contrast(1.08)] [[data-theme=dark]_&]:shadow-[inset_0_2px_6px_rgba(0,0,0,0.45)]", CORK_DARK)}
-      style={CORK_STYLE}
+      style={height ? { ...CORK_STYLE, height } : CORK_STYLE}
     >
       <div className="flex items-center justify-between px-5">
         <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/90 [text-shadow:0_1px_2px_rgba(60,35,10,0.45)]">TE DOEN</span>
         <span className="text-[12px] font-bold text-fixed-white/80 [text-shadow:0_1px_2px_rgba(60,35,10,0.45)]">{sorted.length}</span>
       </div>
-      <div className="flex snap-x gap-5 overflow-x-auto scroll-px-5 px-5 pb-6 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="-mt-1 flex min-h-0 flex-1 snap-x items-center gap-5 overflow-x-auto scroll-px-5 px-5 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sorted.slice(0, 20).map(({ task, due }, i) => (
-          <TodoPostit key={task.id} task={task} due={due} index={i} size={150} onCheck={(t) => void closeTask(t)} />
+          <TodoPostit key={task.id} task={task} due={due} index={i} size={size} onCheck={(t) => void closeTask(t)} />
         ))}
       </div>
       <TodoNotice notice={notice} onReconnect={() => void connect()} onClose={clearNotice} />

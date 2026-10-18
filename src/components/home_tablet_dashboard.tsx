@@ -336,6 +336,40 @@ function AgendaColumn() {
   const { state, connected, allDay, timed, upcomingDays, nowMin, nowLabel, connect } = useTodayAgenda();
   const left = timed.filter((r) => r.state !== "past").length;
 
+  // Focus op wat komt: de nu-lijn staat bovenaan, met hoogstens anderhalve voorbije rij erboven (de laatste
+  // helemaal, die ervoor half). Zelf gescrold? Dan een minuut niet terugspringen.
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const userScrolledAt = React.useRef(0);
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const mark = () => (userScrolledAt.current = Date.now());
+    el.addEventListener("wheel", mark, { passive: true });
+    el.addEventListener("touchstart", mark, { passive: true });
+    return () => {
+      el.removeEventListener("wheel", mark);
+      el.removeEventListener("touchstart", mark);
+    };
+  }, [connected]);
+  React.useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const now = el?.querySelector<HTMLElement>("[data-agenda-now]");
+    if (!el || !now || Date.now() - userScrolledAt.current < 60_000) return;
+    const top = (node: Element) => node.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
+    const prev = now.previousElementSibling;
+    const before = prev?.previousElementSibling;
+    let target = top(now);
+    if (prev) target = before ? top(before) + before.getBoundingClientRect().height / 2 : top(prev);
+    target = Math.max(0, target - 6);
+    // Weinig afspraken na «nu»? Dan wat lege ruimte onderaan, zodat de nu-lijn toch naar boven kan.
+    const spacer = el.querySelector<HTMLElement>("[data-agenda-spacer]");
+    if (spacer) {
+      const contentH = el.scrollHeight - spacer.offsetHeight;
+      spacer.style.height = `${Math.max(0, target + el.clientHeight - contentH)}px`;
+    }
+    el.scrollTop = target;
+  }, [connected, allDay.length, timed.length, upcomingDays.length, nowLabel]);
+
   return (
     <section
       aria-label="Agenda vandaag"
@@ -376,8 +410,9 @@ function AgendaColumn() {
         <>
           {/* Kleine binnenmarge (en even veel negatieve marge): randen en schaduwen van tegels aan de bovenkant
               en rechts vallen anders weg tegen de rand van het scrollvak. */}
-          <div className="-mx-1.5 -mt-1.5 min-h-0 flex-1 overflow-y-auto px-1.5 pt-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div ref={scrollRef} className="-mx-1.5 -mt-1.5 min-h-0 flex-1 overflow-y-auto px-1.5 pt-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <DashboardPhotoTimeline allDay={allDay} timed={timed} upcomingDays={upcomingDays} nowMin={nowMin} nowLabel={nowLabel} />
+            <div data-agenda-spacer aria-hidden />
           </div>
         </>
       )}
@@ -645,11 +680,21 @@ export function HomeTabletDashboard({
   const { moment, testMoment, setTestMoment } = useDashboardMoment();
   const morning = moment === "ochtend";
   useSunset(moment === "avond" && active);
+  // Hoogte van de bovenste rij links: het takenpaneel rechts krijgt precies die hoogte (het grid loopt door).
+  const leftRef = React.useRef<HTMLDivElement>(null);
+  const [topRowHeight, setTopRowHeight] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    const row = leftRef.current?.firstElementChild as HTMLElement | null;
+    if (!row || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setTopRowHeight(Math.round(row.getBoundingClientRect().height)));
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, [moment]);
   // Min. 650px hoog: op een laag scherm scrolt de pagina i.p.v. posters en lichtpaneel te pletten
   // (posters blijven ±130px hoog, zie POSTER_LIMIT).
   return (
     <div className="flex h-[max(650px,calc(100dvh-196px))] gap-3.5 pt-5">
-      <div className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
+      <div ref={leftRef} className="flex w-[min(497px,46%)] shrink-0 flex-col gap-3.5">
         {moment === "avond" ? (
           <EveningLeft weather={weather} todayMeal={todayMeal} tomorrowMeal={tomorrowMeal} />
         ) : (
@@ -666,9 +711,9 @@ export function HomeTabletDashboard({
         )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-        {/* Post-its met open taken bovenaan (zo hoog als nodig, op kurk); de agenda vult de rest, en zonder open
-            taken de volle hoogte. Ook 's ochtends lopen morgen en de volgende dagen door in de agenda. */}
-        <DashboardTodoPanel />
+        {/* Post-its met open taken bovenaan, even hoog als de bovenste rij links; de agenda vult de rest, en zonder
+            open taken de volle hoogte. Ook 's ochtends lopen morgen en de volgende dagen door in de agenda. */}
+        <DashboardTodoPanel height={topRowHeight} />
         <AgendaColumn />
       </div>
       {testMoment ? <MomentTestBar value={testMoment} onChange={setTestMoment} /> : null}

@@ -231,7 +231,7 @@ function Row({ time, children, past = false }: { time?: AgendaRow; children: Rea
 
 function NowLine({ label, text }: { label: string; text: string | null }) {
   return (
-    <li className="grid h-5 grid-cols-[56px_1fr_auto] items-center gap-x-4" aria-label={`Nu, ${label}`}>
+    <li data-agenda-now className="grid h-5 grid-cols-[56px_1fr_auto] items-center gap-x-4" aria-label={`Nu, ${label}`}>
       <span className="text-right text-[13.5px] font-extrabold text-[#ffe08a] [[data-theme=dark]_&]:text-[color:var(--now)] [[data-sunset]_&]:text-[#ffe2a0]" style={{ "--now": NOW_RED } as React.CSSProperties}>
         {label}
       </span>
