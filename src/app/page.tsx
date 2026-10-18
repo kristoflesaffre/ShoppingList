@@ -3018,6 +3018,8 @@ export default function Home() {
                 {tabletHomeView === "dashboard" && user ? <DashboardReminders userId={user.id} /> : null}
                 <SegmentedControl
                   ariaLabel="Startweergave"
+                  // Op het dashboard in glas (avondlucht en donker thema); in het overzicht de gewone trog.
+                  tone={tabletHomeView === "dashboard" ? "glass" : "default"}
                   fill={false}
                   value={tabletHomeView}
                   onChange={handleTabletHomeViewChange}

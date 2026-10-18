@@ -17,6 +17,10 @@ export type SegmentedOption<T extends string> = {
  * Grijze trog (gray-50, radius 13, 3px inzet), actieve optie wit met donkere tekst en zachte
  * schaduw. Blauw blijft voor acties. Onderlijn-tabs (TabGroup) blijven een apart patroon.
  * De witte pil schuift met een easing naar de gekozen optie.
+ *
+ * `tone="glass"` (dashboard, canvas «Schakelaar in glas» G3): op de avondlucht ([data-sunset]) een rookglazen
+ * pil met witte keuze; in het donkere thema en always-on een donker glas met een licht glasplaatje als keuze
+ * (een witte pil zou daar verblinden). Op een lichte achtergrond blijft het de gewone grijze trog.
  */
 export function SegmentedControl<T extends string>({
   options,
@@ -26,7 +30,9 @@ export function SegmentedControl<T extends string>({
   fill = true,
   size = "md",
   className,
+  tone = "default",
 }: {
+  tone?: "default" | "glass";
   options: ReadonlyArray<SegmentedOption<T>>;
   value: T;
   onChange: (value: T) => void;
@@ -59,11 +65,19 @@ export function SegmentedControl<T extends string>({
       ref={containerRef}
       role="radiogroup"
       aria-label={ariaLabel}
-      className={cn("relative isolate flex gap-0.5 rounded-[13px] bg-[var(--gray-50)] p-[3px]", fill ? "w-full" : "w-fit shrink-0", className)}
+      className={cn(
+        "relative isolate flex gap-0.5 rounded-[13px] bg-[var(--gray-50)] p-[3px]",
+        tone === "glass" && GLASS_TROUGH,
+        fill ? "w-full" : "w-fit shrink-0",
+        className,
+      )}
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute left-0 -z-10 rounded-[10px] bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.12)] motion-reduce:!transition-none"
+        className={cn(
+          "pointer-events-none absolute left-0 -z-10 rounded-[10px] bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.12)] motion-reduce:!transition-none",
+          tone === "glass" && GLASS_PILL,
+        )}
         style={indicatorStyle}
       />
       {options.map((o, i) => {
@@ -85,6 +99,8 @@ export function SegmentedControl<T extends string>({
               size === "icon" ? "w-9" : size === "lg" ? "" : "px-3",
               fill && size !== "icon" && "min-w-0 flex-1",
               on ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
+              tone === "glass" && (on ? GLASS_TEXT_ON : GLASS_TEXT_OFF),
+              tone === "glass" && GLASS_ROUND,
             )}
           >
             {o.label}
@@ -94,3 +110,18 @@ export function SegmentedControl<T extends string>({
     </div>
   );
 }
+
+// Glastoon: avondlucht (licht thema), donker thema en always-on. Zonder die context: gewone trog.
+// Voluit geschreven: Tailwind maakt enkel klassen die letterlijk in de bron staan.
+const GLASS_TROUGH =
+  "[[data-sunset]_&]:rounded-full [[data-sunset]_&]:bg-[rgba(30,12,48,0.28)] [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)] [[data-sunset]_&]:backdrop-blur-[14px] [[data-sunset]_&]:p-1 " +
+  "[[data-theme=dark]_&]:rounded-full [[data-theme=dark]_&]:bg-[rgba(0,0,0,0.28)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] [[data-theme=dark]_&]:backdrop-blur-[14px] [[data-theme=dark]_&]:p-1 " +
+  "[[data-aod]_&]:rounded-full [[data-aod]_&]:bg-[rgba(0,0,0,0.28)] [[data-aod]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] [[data-aod]_&]:p-1";
+const GLASS_PILL =
+  "[[data-sunset]_&]:rounded-full [[data-sunset]_&]:bg-fixed-white [[data-sunset]_&]:shadow-[0_6px_14px_-8px_rgba(42,24,56,0.6)] " +
+  "[[data-theme=dark]_&]:rounded-full [[data-theme=dark]_&]:bg-fixed-white/[0.16] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)] " +
+  "[[data-aod]_&]:rounded-full [[data-aod]_&]:bg-fixed-white/[0.16] [[data-aod]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]";
+const GLASS_ROUND = "[[data-sunset]_&]:rounded-full [[data-theme=dark]_&]:rounded-full [[data-aod]_&]:rounded-full";
+const GLASS_TEXT_ON = "[[data-sunset]_&]:text-[#2a1838] [[data-theme=dark]_&]:text-fixed-white [[data-aod]_&]:text-fixed-white";
+const GLASS_TEXT_OFF =
+  "[[data-sunset]_&]:text-fixed-white/85 [[data-sunset]_&]:hover:text-fixed-white [[data-theme=dark]_&]:text-fixed-white/60 [[data-theme=dark]_&]:hover:text-fixed-white [[data-aod]_&]:text-fixed-white/60";
