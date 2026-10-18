@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, type NextResponse } from "next/server";
 import { POST as connect } from "@/app/api/todoist/connect/route";
 import { GET as callback } from "@/app/api/todoist/callback/route";
 import { POST as status } from "@/app/api/todoist/status/route";
 import { POST as disconnect } from "@/app/api/todoist/disconnect/route";
 import { POST as tasks } from "@/app/api/todoist/tasks/route";
 import { POST as projects } from "@/app/api/todoist/projects/route";
-import { TODOIST_AUTH_COOKIE, TODOIST_STATE_COOKIE, readTodoistConnection, readTodoistState, sealTodoist } from "@/lib/server/todoist-auth";
+import { TODOIST_AUTH_COOKIE, TODOIST_RECONNECT_COOKIE, TODOIST_STATE_COOKIE, readTodoistConnection, readTodoistState, resetTodoistRefreshesForTests, sealTodoist, type TodoistConnection } from "@/lib/server/todoist-auth";
 
 vi.mock("@/lib/server/google-connection-store", () => ({ verifiedUserId: async (r: Request) => r.headers.get("authorization") === "Bearer good" ? "user-1" : null }));
 const origin = "https://shoppinglist-lesaffre.netlify.app";
 const secret = "todoist-test-secret-at-least-thirty-two-characters";
-const connection = () => ({ ownerId: "user-1", clientId: "client", accessToken: "private-access", refreshToken: "private-refresh", expiresAt: Date.now() + 3600_000 });
+const connection = (): TodoistConnection => ({ ownerId: "user-1", clientId: "client", accessToken: "private-access", refreshToken: "private-refresh", expiresAt: Date.now() + 3600_000 });
 function request(route: string, body?: unknown, payload = connection()) {
   const r = new NextRequest(`${origin}/api/todoist/${route}`, { method: "POST", headers: { origin, authorization: "Bearer good", "content-type": "application/json" }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
   r.cookies.set(TODOIST_AUTH_COOKIE, sealTodoist(payload, secret));
@@ -25,6 +25,7 @@ function callbackRequest(query: string, expired = false) {
 beforeEach(() => {
   vi.stubEnv("TODOIST_CLIENT_ID", "client"); vi.stubEnv("TODOIST_CLIENT_SECRET", "client-secret"); vi.stubEnv("TODOIST_OAUTH_SECRET", secret); vi.stubEnv("TODOIST_REDIRECT_URI", `${origin}/api/todoist/callback`);
   vi.stubGlobal("fetch", vi.fn());
+  resetTodoistRefreshesForTests();
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
@@ -121,11 +122,12 @@ describe("Todoist backend", () => {
     expect(response.headers.get("retry-after")).toBe("30");
     expect(readTodoistConnection(response.cookies.get(TODOIST_AUTH_COOKIE)?.value, secret, "user-1", "client")?.refreshToken).toBe("new-refresh");
   });
-  it("clears a revoked connection and requests reconnection", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 401 }));
+  it("clears a revoked connection (401, then refresh refused) and requests reconnection", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 401 })).mockResolvedValueOnce(Response.json({ error: "invalid_grant" }, { status: 400 }));
     const response = await tasks(request("tasks"));
     expect(response.status).toBe(409);
     expect(response.cookies.get(TODOIST_AUTH_COOKIE)?.maxAge).toBe(0);
+    expect(response.cookies.get(TODOIST_RECONNECT_COOKIE)?.value).toBeTruthy();
     expect(await response.json()).toEqual({ error: "not-connected", reconnect: true });
   });
   it("handles upstream downtime without exposing error details", async () => {
@@ -173,6 +175,97 @@ describe("Todoist backend", () => {
     expect(response.cookies.get(TODOIST_AUTH_COOKIE)?.maxAge).toBe(0);
     expect(response.cookies.get(TODOIST_STATE_COOKIE)?.maxAge).toBe(0);
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("Todoist token expiry and refresh", () => {
+  const expired = () => ({ ...connection(), expiresAt: Date.now() - 1, scope: "data:read_write" });
+  const tokenCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes("oauth/access_token"));
+  const saved = (response: NextResponse) => readTodoistConnection(response.cookies.get(TODOIST_AUTH_COOKIE)?.value, secret, "user-1", "client");
+
+  it.each([undefined, "data:read", "task:add,data:read_write"])("refreshes regardless of the scope Todoist echoes (%s)", async scope => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600, ...(scope ? { scope } : {}) })).mockResolvedValueOnce(Response.json({ results: [], next_cursor: null }));
+    const response = await tasks(request("tasks", {}, expired()));
+    expect(response.status).toBe(200);
+    expect(saved(response)).toMatchObject({ accessToken: "new-access", refreshToken: "new-refresh", scope: scope ?? "data:read_write" });
+    expect(tokenCalls()[0][1]?.body?.toString()).toContain("grant_type=refresh_token");
+  });
+  it("refreshes and retries once when Todoist rejects a not-yet-expired access token", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600 }))
+      .mockResolvedValueOnce(Response.json({ results: [], next_cursor: null }));
+    const response = await tasks(request("tasks", { limit: 10 }));
+    expect(response.status).toBe(200);
+    expect(saved(response)?.refreshToken).toBe("new-refresh");
+    expect(String(vi.mocked(fetch).mock.calls[2][0])).toContain("limit=10");
+    expect(vi.mocked(fetch).mock.calls[2][1]?.headers).toEqual({ authorization: "Bearer new-access" });
+  });
+  it("retries a check-off with the same body after refreshing", async () => {
+    const { POST: close } = await import("@/app/api/todoist/close/route");
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const response = await close(request("close", { id: "task-1" }, { ...connection(), scope: "data:read_write" }));
+    expect(response.status).toBe(200);
+    expect(String(vi.mocked(fetch).mock.calls[2][0])).toContain("/tasks/task-1/close");
+  });
+  it("only disconnects after a 401 with a freshly refreshed token", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(Response.json({ access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600 }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }));
+    const response = await tasks(request("tasks", {}, expired()));
+    expect(response.status).toBe(409);
+    expect(tokenCalls()).toHaveLength(1);
+    expect(response.cookies.get(TODOIST_AUTH_COOKIE)?.maxAge).toBe(0);
+  });
+  it.each([
+    ["a server error", () => new Response(null, { status: 502 })],
+    ["a network failure", () => { throw new Error("offline"); }],
+    ["a client configuration error", () => Response.json({ error: "invalid_client" }, { status: 401 })],
+  ])("keeps the connection on %s while refreshing", async (_, result) => {
+    vi.mocked(fetch).mockImplementationOnce(async () => result());
+    const response = await status(request("status", {}, expired()));
+    expect(response.status).toBe(503);
+    expect(response.cookies.get(TODOIST_AUTH_COOKIE)).toBeUndefined();
+    expect(response.cookies.get(TODOIST_RECONNECT_COOKIE)).toBeUndefined();
+  });
+  it("does not overwrite the cookie with a consumed refresh token when Todoist answers a reused one", async () => {
+    // Binnen 60 s hergebruikt: hetzelfde toegangstoken, géén nieuw vernieuwingstoken (een andere aanvraag kreeg het).
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ access_token: "same-access", expires_in: 3590 })).mockResolvedValueOnce(Response.json({ results: [], next_cursor: null }));
+    const response = await tasks(request("tasks", {}, expired()));
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetch).mock.calls[1][1]?.headers).toEqual({ authorization: "Bearer same-access" });
+    expect(response.cookies.get(TODOIST_AUTH_COOKIE)).toBeUndefined();
+  });
+  it("hands late requests that still carry the old cookie the rotated tokens instead of refreshing twice", async () => {
+    vi.mocked(fetch).mockImplementation(async url => String(url).includes("oauth/access_token") ? Response.json({ access_token: "new-access", refresh_token: "rotated", expires_in: 3600 }) : Response.json({ results: [], next_cursor: null }));
+    const payload = expired();
+    const first = await tasks(request("tasks", {}, payload));
+    const late = await projects(request("projects", {}, payload));
+    expect(tokenCalls()).toHaveLength(1);
+    for (const response of [first, late]) expect(saved(response)?.refreshToken).toBe("rotated");
+  });
+  it("keeps showing «Opnieuw koppelen» after the cookie is gone, until reconnecting succeeds", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ error: "invalid_grant" }, { status: 400 }));
+    const refused = await status(request("status", {}, expired()));
+    expect(await refused.json()).toEqual({ configured: true, connected: false, reconnect: true });
+    const mark = refused.cookies.get(TODOIST_RECONNECT_COOKIE)!;
+    expect(mark).toMatchObject({ httpOnly: true, secure: true });
+
+    const later = request("status");
+    later.cookies.delete(TODOIST_AUTH_COOKIE);
+    later.cookies.set(TODOIST_RECONNECT_COOKIE, mark.value);
+    expect(await (await status(later)).json()).toEqual({ configured: true, connected: false, reconnect: true });
+    // Een andere gebruiker op dezelfde browser ziet gewoon de eerste koppelkaart.
+    const other = new NextRequest(`${origin}/api/todoist/status`, { method: "POST", headers: { origin, authorization: "Bearer good" } });
+    other.cookies.set(TODOIST_RECONNECT_COOKIE, "forged");
+    expect(await (await status(other)).json()).toEqual({ configured: true, connected: false });
+
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ access_token: "a", refresh_token: "r", expires_in: 3600, scope: "data:read_write" }));
+    expect((await callback(callbackRequest("state=expected&code=code"))).cookies.get(TODOIST_RECONNECT_COOKIE)?.maxAge).toBe(0);
+    expect((await disconnect(request("disconnect"))).cookies.get(TODOIST_RECONNECT_COOKIE)?.maxAge).toBe(0);
   });
 });
 

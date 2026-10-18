@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { TODOIST_SCOPE, TODOIST_STATE_COOKIE, readTodoistState, safeTodoistReturn, setTodoistConnection, todoistConfig, todoistCookieOptions, todoistJson, todoistTokens } from "@/lib/server/todoist-auth";
+import { TODOIST_SCOPE, TODOIST_STATE_COOKIE, clearTodoistReconnect, readTodoistState, safeTodoistReturn, setTodoistConnection, todoistConfig, todoistCookieOptions, todoistJson, todoistTokens } from "@/lib/server/todoist-auth";
 export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   const config = todoistConfig();
@@ -20,10 +20,11 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   if (!code || code.length > 4096) return finish("connection-failed");
   try {
-    const tokens = await todoistTokens(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: config.redirectUri, code_verifier: expected.verifier }), config);
+    const tokens = await todoistTokens(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: config.redirectUri, code_verifier: expected.verifier }), config, { requireScope: true });
     const response = finish("connected");
     // Toegekende rechten bewaren (todoistTokens weigert een antwoord zonder lezen + schrijven).
     setTodoistConnection(response, { ...tokens, ownerId: expected.ownerId, clientId: config.clientId, scope: TODOIST_SCOPE }, config.secret);
+    clearTodoistReconnect(response);
     return response;
   } catch { return finish("connection-failed"); }
 }

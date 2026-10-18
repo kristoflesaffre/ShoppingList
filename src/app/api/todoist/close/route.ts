@@ -3,9 +3,8 @@ import { TodoistUpstreamError, todoistCanWrite, todoistCloseTask, todoistJson, w
 export const runtime = "nodejs";
 /** Eén taak afvinken. Enkel met een koppeling met lees- en schrijfrechten; body: { id }. */
 export async function POST(request: NextRequest) {
-  return withTodoistConnection(request, async connection => {
+  return withTodoistConnection(request, async (connection, text) => {
     if (!todoistCanWrite(connection)) return todoistJson({ error: "read-only", reconnect: true }, 403);
-    const text = await request.text();
     if (text.length > 512) return todoistJson({ error: "invalid-request" }, 400);
     let id: unknown;
     try { id = (JSON.parse(text) as { id?: unknown }).id; } catch { return todoistJson({ error: "invalid-request" }, 400); }

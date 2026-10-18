@@ -44,22 +44,7 @@ export function todoistReadOptions(body: unknown, resource: "tasks" | "projects"
   return params;
 }
 export async function readTodoistResource(request: NextRequest, resource: "tasks" | "projects") {
-  return withTodoistConnection(request, async connection => {
-    // Stream a bounded body; Content-Length alone is not reliable for chunked requests.
-    const reader = request.body?.getReader();
-    let body = "";
-    if (reader) {
-      let length = 0;
-      const decoder = new TextDecoder();
-      while (true) {
-        const chunk = await reader.read();
-        if (chunk.done) break;
-        length += chunk.value.byteLength;
-        if (length > 8192) { await reader.cancel(); return todoistJson({ error: "invalid-request" }, 400); }
-        body += decoder.decode(chunk.value, { stream: true });
-      }
-      body += decoder.decode();
-    }
+  return withTodoistConnection(request, async (connection, body) => {
     let input: unknown;
     try { input = body.trim() ? JSON.parse(body) : {}; } catch { return todoistJson({ error: "invalid-request" }, 400); }
     const params = todoistReadOptions(input, resource);
