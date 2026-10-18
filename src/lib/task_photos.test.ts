@@ -7,7 +7,12 @@ describe("task photos", () => {
     ["Take medication: cymbalta 60mg + 30mg", "cymbalta"],
     ["Diagnose: Perimenopause PMDD invullen", "cyclus_app"],
   ])("%s → %s", (title, file) => {
-    expect(taskPhotoFor(title)).toBe(`/images/taken/${file}`);
+    expect(taskPhotoFor(title)?.src).toBe(`/images/taken/${file}`);
+  });
+
+  it("shows the cycle app upright, the pills tilted", () => {
+    expect(taskPhotoFor("Diagnose: Perimenopause PMDD invullen")?.upright).toBe(true);
+    expect(taskPhotoFor("Take medication: concerta 36mg")?.upright).toBe(false);
   });
 
   it("returns null for other tasks", () => {
