@@ -690,15 +690,15 @@ const ClapperIcon = ({ className = "size-[22px]" }: { className?: string }) => (
   </svg>
 );
 
-/** Maansikkel: «de rest van het huis gaat donker». */
-const MoonIcon = ({ className = "size-3" }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
-    <path d="M20.2 14.6A8.5 8.5 0 0 1 9.4 3.8a.6.6 0 0 0-.8-.7 9.5 9.5 0 1 0 12.3 12.3.6.6 0 0 0-.7-.8z" />
+/** Aan/uit-symbool (lijntjes): «de rest van het huis gaat uit». */
+const PowerIcon = ({ className = "size-3" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" aria-hidden className={className}>
+    <path d="M12 3.5v8M6.6 6.9a7.5 7.5 0 1 0 10.8 0" />
   </svg>
 );
 
 type CinemaMode = "living" | "living-only";
-/** Onderste knop: klapper met een maantje in een bolletje op de hoek (= woonkamer cinema, de rest donker). */
+/** Onderste knop: klapper met een aan/uit-symbool in een bolletje op de hoek (= woonkamer cinema, de rest uit). */
 const CINEMA: { mode: CinemaMode; hint: string; othersOff: boolean }[] = [
   { mode: "living", hint: "Woonkamer op scène «Cinema»", othersOff: false },
   { mode: "living-only", hint: "Woonkamer op «Cinema», alle andere lampen uit", othersOff: true },
@@ -785,9 +785,9 @@ function CinemaButtons({ token, onDone }: { token: string | null; onDone: () => 
               <>
                 <ClapperIcon />
                 {c.othersOff ? (
-                  // Maantje in een eigen rond bolletje op de hoek (zoals de verdiepingsbolletjes op de capsules).
-                  <span className="absolute -bottom-1 -right-1 flex size-[22px] items-center justify-center rounded-full bg-fixed-white text-[#2a2350] shadow-[0_2px_6px_-2px_rgba(16,17,48,0.45)]">
-                    <MoonIcon />
+                  // Aan/uit-symbool in een omlijnd bolletje op de hoek.
+                  <span className="absolute -bottom-1 -right-1 flex size-[22px] items-center justify-center rounded-full bg-[rgba(16,17,48,0.72)] text-fixed-white shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.9),0_2px_6px_-2px_rgba(16,17,48,0.45)]">
+                    <PowerIcon />
                   </span>
                 ) : null}
               </>
@@ -854,8 +854,8 @@ function CinemaPhotoTiles({ token, onDone }: { token: string | null; onDone: () 
             <span className="absolute left-3 top-3 flex size-9 items-center justify-center rounded-full bg-fixed-white/20 backdrop-blur-[10px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]">
               {busy === c.mode ? <span className="block size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden /> : <ClapperIcon />}
               {c.othersOff ? (
-                <span className="absolute -bottom-1 -right-1 flex size-[18px] items-center justify-center rounded-full bg-fixed-white text-[#2a2350]">
-                  <MoonIcon />
+                <span className="absolute -bottom-1 -right-1 flex size-[18px] items-center justify-center rounded-full bg-[rgba(16,17,48,0.72)] text-fixed-white shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.9)]">
+                  <PowerIcon className="size-[10px]" />
                 </span>
               ) : null}
             </span>
@@ -890,7 +890,7 @@ function CinemaPanels({ token, onDone }: { token: string | null; onDone: () => v
             aria-label={c.hint}
             disabled={busy !== null}
             onClick={() => void run(c)}
-            className="flex flex-1 flex-col items-center justify-center gap-2 rounded-[24px] border border-[var(--border-subtle)] px-2 text-center transition-[background-color,transform] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffb547] motion-safe:active:scale-[0.98] disabled:opacity-70 [@media(hover:hover)]:hover:bg-[var(--white)]"
+            className="group flex flex-1 flex-col items-center justify-center gap-2 rounded-[24px] border border-[var(--border-subtle)] px-2 text-center transition-[background-color,transform] duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffb547] motion-safe:active:scale-[0.98] disabled:opacity-70 [@media(hover:hover)]:hover:bg-[var(--white)]"
           >
             <span className="relative flex size-9 shrink-0 items-center justify-center text-[var(--gray-400)]">
               {busy === c.mode ? (
@@ -899,8 +899,8 @@ function CinemaPanels({ token, onDone }: { token: string | null; onDone: () => v
                 <ClapperIcon className="size-8 [stroke-width:1.25]" />
               )}
               {c.othersOff ? (
-                <span className="absolute -bottom-0.5 -right-1 flex size-[18px] items-center justify-center rounded-full bg-[var(--gray-400)] text-[var(--bg-app)] shadow-[0_0_0_2px_var(--bg-app)]">
-                  <MoonIcon className="size-[11px]" />
+                <span className="absolute -bottom-0.5 -right-1 flex size-[18px] items-center justify-center rounded-full bg-[var(--bg-app)] text-[var(--gray-400)] shadow-[inset_0_0_0_1.25px_var(--gray-400),0_0_0_2px_var(--bg-app)] transition-colors duration-fast [@media(hover:hover)]:group-hover:bg-[var(--white)] [@media(hover:hover)]:group-hover:shadow-[inset_0_0_0_1.25px_var(--gray-400),0_0_0_2px_var(--white)]">
+                  <PowerIcon className="size-[10px] [stroke-width:2.2]" />
                 </span>
               ) : null}
             </span>
