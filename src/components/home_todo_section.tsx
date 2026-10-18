@@ -69,7 +69,7 @@ export function TodoPostit({ task, due, index, onCheck, size = 168 }: { task: To
             srcSet={`${photo.src}_240.webp 1x, ${photo.src}_480.webp 2x`}
             alt=""
             aria-hidden
-            className={cn("pointer-events-none absolute object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.25)]", !photo.upright && "rotate-45")}
+            className={cn("pointer-events-none absolute z-[1] object-contain drop-shadow-[0_8px_10px_rgba(16,17,48,0.25)]", !photo.upright && "rotate-45")}
             style={
               photo.upright
                 ? { width: img, height: img, right: Math.round(size * 0.04), bottom: -Math.round(img * 0.3) }
@@ -78,15 +78,15 @@ export function TodoPostit({ task, due, index, onCheck, size = 168 }: { task: To
           />
         ) : null}
         {photo?.extra && !photo.upright ? (
-          // Tweede pil van de dosis: half zo groot, schuin links naast de eerste.
+          // Tweede pil van de dosis: 30% kleiner, half onder de eerste geschoven en onder een andere hoek (niet evenwijdig).
           // eslint-disable-next-line @next/next/no-img-element -- lokale, transparante webp
           <img
             src={`${photo.extra}_240.webp`}
             srcSet={`${photo.extra}_240.webp 1x, ${photo.extra}_480.webp 2x`}
             alt=""
             aria-hidden
-            className="pointer-events-none absolute rotate-45 object-contain drop-shadow-[0_6px_8px_rgba(16,17,48,0.25)]"
-            style={{ width: Math.round(img / 2), height: Math.round(img / 2), right: Math.round(img * 0.58), bottom: -Math.round(img * (small ? 0.12 : 0.04)) }}
+            className="pointer-events-none absolute object-contain drop-shadow-[0_6px_8px_rgba(16,17,48,0.25)]"
+            style={{ width: Math.round(img * 0.7), height: Math.round(img * 0.7), right: Math.round(img * 0.66), bottom: Math.round(img * (small ? -0.06 : 0.02)), transform: "rotate(-28deg)" }}
           />
         ) : null}
         <span className="relative flex min-h-[21px] items-center justify-between gap-2">
