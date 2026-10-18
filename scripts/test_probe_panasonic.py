@@ -2,6 +2,7 @@ import asyncio
 from contextlib import redirect_stdout
 import importlib.util
 import io
+import ssl
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
@@ -14,6 +15,12 @@ spec.loader.exec_module(probe)
 
 
 class ProbeTests(unittest.TestCase):
+    def test_ca_fix_preserves_certificate_and_hostname_verification(self):
+        context = probe.tls_context()
+        self.assertTrue(context.check_hostname)
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertGreater(context.cert_store_stats()["x509_ca"], 0)
+
     def test_device_control_and_legal_acceptance_are_blocked(self):
         for path in ["/deviceStatus/control", "/weeklyTimer", "/agreements/accept", "/device/control"]:
             self.assertFalse(probe.allow_request("POST", "https://accsmart.panasonic.com" + path))

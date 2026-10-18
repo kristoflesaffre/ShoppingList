@@ -6,11 +6,37 @@ import json
 import logging
 import os
 from pathlib import Path
+import ssl
 import sys
 import tempfile
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def tls_context():
+    # python.org macOS installs may have no usable system CA bundle. Keep full
+    # hostname/certificate verification and use Mozilla's trusted roots explicitly.
+    import certifi
+    return ssl.create_default_context(cafile=certifi.where())
+
+
+async def check_connection():
+    """No login or credentials: distinguish local TLS issues from authentication."""
+    import aiohttp
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=tls_context()), timeout=aiohttp.ClientTimeout(total=15)) as session:
+        for host in ["authglb.digital.panasonic.com", "accsmart.panasonic.com"]:
+            try:
+                async with session.get(f"https://{host}/", allow_redirects=False) as response:
+                    # 403/404 are fine here: we requested only the public root.
+                    print(f"{host}: beveiligde verbinding geslaagd (HTTP {response.status}).")
+            except aiohttp.ClientConnectorCertificateError:
+                print(f"{host}: certificaatcontrole mislukt (TLS_CERTIFICATE).")
+                return 1
+            except Exception:
+                print(f"{host}: netwerkverbinding mislukt (NETWORK).")
+                return 1
+    return 0
 
 
 def allow_request(method, url):
@@ -58,7 +84,7 @@ async def probe(email, password):
     trace.on_request_redirect.append(redirect_guard)
     report = []
     with tempfile.TemporaryDirectory(prefix="shoppinglist-panasonic-") as directory:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=45), trace_configs=[trace]) as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=tls_context()), timeout=aiohttp.ClientTimeout(total=45), trace_configs=[trace]) as session:
             client = ApiClient(email, password, session, token_file_name=str(Path(directory) / "session.json"), auto_power_on=False)
             authenticated = False
             try:
@@ -98,9 +124,16 @@ async def probe(email, password):
             except LoginError:
                 print("Aanmelden is niet gelukt. Controleer je account in Comfort Cloud. Er is niet automatisch opnieuw geprobeerd.")
                 return 1
-            except Exception:
+            except aiohttp.ClientConnectorCertificateError:
+                print("De beveiligde verbinding faalt bij de certificaatcontrole (TLS_CERTIFICATE). Dit is geen melding over je wachtwoord.")
+                return 1
+            except (aiohttp.ClientConnectionError, asyncio.TimeoutError):
+                print("Panasonic kon niet bereikt worden of antwoordde niet op tijd (NETWORK). Dit bevestigt geen fout wachtwoord.")
+                return 1
+            except Exception as error:
                 # Dependency exceptions may contain credentials, tokens or login HTML.
-                print("De verbindingstest is niet gelukt. Er zijn geen foutdetails of inloggegevens gelogd. Controleer eerst of de officiële app werkt.")
+                category = "AUTH_FLOW" if error.__class__.__name__ == "ResponseError" else "PROBE_FAILED"
+                print(f"De verbindingstest is niet gelukt ({category}). Het inlogproces kon niet afgerond worden; dit bevestigt geen fout wachtwoord. Inloggegevens zijn niet gelogd.")
                 return 1
             finally:
                 if authenticated:
@@ -114,8 +147,11 @@ async def probe(email, password):
 
 def main():
     if "--help" in sys.argv:
-        print("Lokale alleen-lezen Panasonic Comfort Cloud-test. Voer dit script uit in een interactieve terminal. E-mail, wachtwoord en eventuele verificatiecode worden daar gevraagd; gebruik geen wachtwoord als opdrachtregelargument.")
+        print("Lokale alleen-lezen Panasonic Comfort Cloud-test. Voer dit script uit in een interactieve terminal. E-mail, wachtwoord en eventuele verificatiecode worden daar gevraagd; gebruik geen wachtwoord als opdrachtregelargument. Met --check-connection test je de beveiligde verbinding zonder inloggen.")
         return 0
+    if "--check-connection" in sys.argv:
+        logging.disable(logging.CRITICAL)
+        return asyncio.run(check_connection())
     if not sys.stdin.isatty():
         print("Open een interactieve terminal voor de afgeschermde inlogvragen.")
         return 1

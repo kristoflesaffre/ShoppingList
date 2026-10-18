@@ -17,6 +17,18 @@ python3 -m venv .cache/panasonic-probe/venv
 .cache/panasonic-probe/venv/bin/python -m pip install -r scripts/panasonic-probe-requirements.txt
 ```
 
+### Certificate troubleshooting
+
+The first real attempt exposed a local Python CA configuration issue: even public HTTPS requests to Panasonic failed with `ClientConnectorCertificateError`, before account authentication could be evaluated. The probe now uses the explicit `certifi` CA bundle, with certificate and hostname validation enabled. No `ssl=False` workaround is used.
+
+Check connectivity without providing any credentials:
+
+```sh
+.cache/panasonic-probe/venv/bin/python scripts/probe-panasonic.py --check-connection
+```
+
+An HTTP 403 for the bare device API root is expected here; it confirms a verified HTTPS connection, not an authenticated device request. TLS/network failures now have distinct messages instead of suggesting a wrong password. Actual account login remains a separate interactive test.
+
 Enter the Panasonic email, then the password at the hidden prompt. If needed, enter the verification code at the hidden prompt. Do not provide passwords or OTP codes in chat, command-line arguments, or screenshots. If the account actually uses Google/Apple sign-in, stop here: the current probe is for Panasonic email/password login.
 
 The probe signs in, lists ordinary air conditioners, reads their state, and signs its own session out. It never changes temperature, power, mode, schedules, or legal agreements. A request guard blocks device-cloud writes except login/logout. `auto_power_on=False` is also set. Dependency logging is disabled, and raw exception details are not printed because they could contain tokens or login HTML.

@@ -1,2 +1,5 @@
 # Separate local investigation environment; not a Next.js runtime dependency.
 aio-panasonic-comfort-cloud==2026.10.1
+
+# Explicit CA bundle for Python installations without macOS certificate setup.
+certifi==2026.10.18
