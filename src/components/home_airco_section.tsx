@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
-import { AC_FANS, AC_MODES, type AcCommand, type AcDevice, type AcFan, type AcMode } from "@/lib/panasonic";
+import { AC_FANS, type AcCommand, type AcDevice, type AcFan } from "@/lib/panasonic";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { MiniButton } from "@/components/ui/mini_button";
 
@@ -140,35 +140,51 @@ function useAirco() {
 
 // ─── Iconen ─────────────────────────────────────────────────────────────────
 
-const MODE_ICON: Record<AcMode, React.ReactNode> = {
-  auto: <path d="M7.5 17 12 6l4.5 11M9.2 13h5.6" />,
-  cool: <path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.5 4.5 12 6l2.5-1.5M9.5 19.5 12 18l2.5 1.5" />,
-  heat: (
-    <>
-      <circle cx="12" cy="12" r="3.6" />
-      <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" />
-    </>
-  ),
-  dry: <path d="M12 3.5c3.2 4 5.5 7.2 5.5 10.2a5.5 5.5 0 0 1-11 0c0-3 2.3-6.2 5.5-10.2z" />,
-  fan: <path d="M12 12c0-3.5 1-7 3.4-7 1.9 0 2.6 2 1.6 3.6C15.8 10.4 13.7 11.4 12 12zm0 0c3.5 0 7 1 7 3.4 0 1.9-2 2.6-3.6 1.6-1.8-1.2-2.8-3.3-3.4-5zm0 0c0 3.5-1 7-3.4 7-1.9 0-2.6-2-1.6-3.6C8.2 13.6 10.3 12.6 12 12zm0 0c-3.5 0-7-1-7-3.4 0-1.9 2-2.6 3.6-1.6 1.8 1.2 2.8 3.3 3.4 5z" />,
-};
+/** Sneeuwvlok: zes armen, elk met een V-tak. */
+const SNOW_PATH = Array.from({ length: 6 }, (_, i) => {
+  const a = (i * Math.PI) / 3;
+  const p = (r: number, da = 0) => `${(12 + r * Math.sin(a + da)).toFixed(2)} ${(12 - r * Math.cos(a + da)).toFixed(2)}`;
+  return `M12 12L${p(9.5)}M${p(6.2)}L${p(9.2, 0.42)}M${p(6.2)}L${p(9.2, -0.42)}`;
+}).join("");
 
-function ModeIcon({ mode, className = "size-[18px]" }: { mode: AcMode; className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
-      {MODE_ICON[mode]}
-    </svg>
-  );
-}
+const Svg = ({ children, className = "size-4", width = 1.9 }: { children: React.ReactNode; className?: string; width?: number }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+    {children}
+  </svg>
+);
+const SnowIcon = () => <Svg><path d={SNOW_PATH} /></Svg>;
+const SunIcon = () => (
+  <Svg>
+    <circle cx="12" cy="12" r="4.2" />
+    <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />
+  </Svg>
+);
+const PowerIcon = ({ className = "size-7" }: { className?: string }) => (
+  <Svg className={className} width={2.4}>
+    <path d="M12 3.5v8M6.6 6.9a7.5 7.5 0 1 0 10.8 0" />
+  </Svg>
+);
+const MinusIcon = () => <Svg className="size-6" width={2.6}><path d="M6 12h12" /></Svg>;
+const PlusIcon = () => <Svg className="size-6" width={2.6}><path d="M6 12h12M12 6v12" /></Svg>;
 
-/** Kleur van de schakelaar en de actieve modus: warm bij verwarmen, koel bij koelen. */
-function accent(mode: AcMode | null) {
-  return mode === "heat" ? "#ff8a3d" : mode === "cool" ? "#3d8bff" : "#22a89a";
-}
+/** Enkel koelen en verwarmen; automatisch en ontvochtigen bieden we niet aan. */
+const MODES = [
+  { mode: "cool" as const, label: "Koelen", Icon: SnowIcon },
+  { mode: "heat" as const, label: "Verwarmen", Icon: SunIcon },
+];
+/** De vijf standen (Laag … Hoog); «Automatisch» staat er niet bij. */
+const FAN_STEPS: AcFan[] = FAN_ORDER.filter((f) => f !== "auto");
+
+/** Canvas «A3 · V1 Verloop met gloed»: ijsblauw bij koelen, oranje bij verwarmen, met een gloed in die kleur. */
+const LOOK = {
+  cool: "bg-[linear-gradient(160deg,#62a8ff,#2f6cf0)] shadow-[0_18px_34px_-14px_rgba(47,108,240,0.7),0_0_0_1px_rgba(47,108,240,0.15)]",
+  heat: "bg-[linear-gradient(160deg,#ffae5c,#f2542d)] shadow-[0_18px_34px_-14px_rgba(242,84,45,0.75),0_0_0_1px_rgba(242,84,45,0.15)]",
+} as const;
+const MODE_TEXT = { cool: "text-[#2f6cf0]", heat: "text-[#f0522c]" } as const;
 
 // ─── Onderdelen ─────────────────────────────────────────────────────────────
 
-function PowerSwitch({ label, on, color, disabled, onToggle }: { label: string; on: boolean; color: string; disabled?: boolean; onToggle: () => void }) {
+function PowerSwitch({ label, on, disabled, onToggle, glass }: { label: string; on: boolean; disabled?: boolean; onToggle: () => void; glass?: boolean }) {
   return (
     <button
       type="button"
@@ -177,10 +193,9 @@ function PowerSwitch({ label, on, color, disabled, onToggle }: { label: string; 
       aria-label={`${label}: ${on ? "uitzetten" : "aanzetten"}`}
       disabled={disabled}
       onClick={onToggle}
-      style={on ? { background: color, boxShadow: `0 6px 16px -8px ${color}` } : undefined}
       className={cn(
-        "relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff] focus-visible:ring-offset-2 disabled:opacity-50",
-        !on && "bg-[rgba(16,17,48,0.14)] [[data-theme=dark]_&]:bg-fixed-white/[0.16]",
+        "relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white focus-visible:ring-offset-2 disabled:opacity-50",
+        glass ? "bg-fixed-white/40" : on ? "bg-[#2f80ff] shadow-[0_6px_16px_-8px_#2f80ff]" : "bg-[rgba(16,17,48,0.14)] [[data-theme=dark]_&]:bg-fixed-white/[0.16]",
       )}
     >
       <span className={cn("absolute top-[3px] size-6 rounded-full bg-fixed-white shadow-[0_1px_3px_rgba(16,17,48,0.25)] transition-[left] duration-fast ease-out-strong", on ? "left-[25px]" : "left-[3px]")} />
@@ -190,114 +205,120 @@ function PowerSwitch({ label, on, color, disabled, onToggle }: { label: string; 
 
 const fmt = (t: number) => `${String(t).replace(".", ",")}°`;
 
-function StepButton({ label, children, disabled, onClick }: { label: string; children: React.ReactNode; disabled?: boolean; onClick: () => void }) {
+function GlassButton({ label, children, disabled, onClick }: { label: string; children: React.ReactNode; disabled?: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[rgba(16,17,48,0.06)] text-[22px] font-semibold leading-none text-[var(--text-primary)] transition-transform active:scale-95 disabled:opacity-35 [[data-theme=dark]_&]:bg-fixed-white/10"
+      className="flex size-[50px] shrink-0 items-center justify-center rounded-[16px] bg-fixed-white/[0.22] text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.4),0_8px_16px_-10px_rgba(0,0,0,0.45)] transition-transform active:scale-95 disabled:opacity-40"
     >
       {children}
     </button>
   );
 }
 
-function AircoCard({ device, onChange }: { device: AcDevice; onChange: (command: Omit<AcCommand, "deviceId">, immediate?: boolean) => void }) {
-  const color = accent(device.mode);
-  const live = device.available && device.on === true;
-  const t = device.targetTemperature;
-  const fanIndex = device.fan ? FAN_ORDER.indexOf(device.fan) : -1;
-  return (
-    <section
-      aria-label={device.name}
-      className="flex w-[232px] shrink-0 snap-start flex-col gap-4 rounded-[24px] bg-white p-4 shadow-[0_1px_2px_rgba(16,17,48,0.06)] lg:w-auto [[data-theme=dark]_&]:bg-fixed-white/[0.07]"
-    >
-      <div className="flex items-center justify-between gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element -- lokale UI-illustratie */}
-        <img
-          src="/images/ui/airco_96.webp"
-          srcSet="/images/ui/airco_96.webp 1x, /images/ui/airco_160.webp 2x"
-          alt=""
-          aria-hidden
-          className={cn("-my-1 size-10 shrink-0 object-contain transition-[filter,opacity]", device.on !== true && "opacity-60 grayscale")}
-        />
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-[15px] font-bold leading-5 text-[var(--text-primary)]">{device.name}</h3>
-          <p className="mt-0.5 text-[12px] font-medium leading-4 text-[var(--text-secondary)]">
-            {!device.available ? "Niet bereikbaar" : device.insideTemperature !== null ? `Binnen ${fmt(device.insideTemperature)}` : device.on ? "Aan" : "Uit"}
-          </p>
-        </div>
-        <PowerSwitch
-          label={device.name}
-          on={device.on === true}
-          color={color}
-          disabled={!device.available || device.on === null}
-          onToggle={() => onChange({ power: !device.on }, true)}
-        />
-      </div>
+const CARD = "flex w-[250px] shrink-0 snap-start flex-col gap-3.5 rounded-[24px] p-4 lg:w-auto";
 
-      <div className={cn("flex items-center justify-between gap-2 transition-opacity", !live && "opacity-40")}>
-        <StepButton label={`${device.name} kouder`} disabled={!live || t === null || t <= 16} onClick={() => t !== null && onChange({ temperature: t - 0.5 })}>
-          −
-        </StepButton>
-        <span className="text-center text-[40px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[var(--text-primary)]" aria-live="polite">
+function CardHead({ device, sub, light, onToggle }: { device: AcDevice; sub: string; light?: boolean; onToggle: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <h3 className={cn("truncate text-[15px] font-extrabold leading-5", light ? "text-fixed-white" : "text-[var(--text-primary)]")}>{device.name}</h3>
+        <p className={cn("mt-0.5 text-[12px] font-semibold leading-4", light ? "text-fixed-white/80" : "text-[var(--text-secondary)]")}>{sub}</p>
+      </div>
+      <PowerSwitch label={device.name} on={device.on === true} glass={light} disabled={!device.available || device.on === null} onToggle={onToggle} />
+    </div>
+  );
+}
+
+function AircoCard({ device, onChange }: { device: AcDevice; onChange: (command: Omit<AcCommand, "deviceId">, immediate?: boolean) => void }) {
+  const inside = device.insideTemperature !== null ? `Binnen ${fmt(device.insideTemperature)}` : null;
+  const togglePower = () => onChange({ power: !device.on }, true);
+
+  // Uit (of onbereikbaar): witte kaart met een grote aan-knop en de vorige stand; even hoog als de rest.
+  if (!device.available || device.on !== true) {
+    const lastMode = device.mode === "heat" ? "verwarmen" : device.mode === "cool" ? "koelen" : null;
+    const lastFan = device.fan && device.fan !== "auto" ? FAN_STEPS.indexOf(device.fan) + 1 : null;
+    const last = [device.targetTemperature !== null ? `${fmt(device.targetTemperature)}${lastMode ? ` ${lastMode}` : ""}` : null, lastFan ? `stand ${lastFan}` : null].filter(Boolean).join(" · ");
+    const canStart = device.available && device.on === false;
+    return (
+      <section aria-label={device.name} className={cn(CARD, "bg-white shadow-[0_1px_2px_rgba(16,17,48,0.06)] [[data-theme=dark]_&]:bg-fixed-white/[0.07]")}>
+        <CardHead device={device} sub={[inside, device.available ? "Uit" : "Niet bereikbaar"].filter(Boolean).join(" · ")} onToggle={togglePower} />
+        <div className="flex flex-1 flex-col items-center justify-center gap-2.5 py-2">
+          <button
+            type="button"
+            disabled={!canStart}
+            onClick={togglePower}
+            aria-label={`${device.name} aanzetten`}
+            className="flex size-[76px] items-center justify-center rounded-full bg-white text-[var(--text-primary)] shadow-[0_0_0_1px_rgba(16,17,48,0.1),0_10px_20px_-10px_rgba(16,17,48,0.35)] transition-transform active:scale-95 disabled:opacity-40 [[data-theme=dark]_&]:bg-fixed-white/10"
+          >
+            <PowerIcon />
+          </button>
+          <span className="text-[13px] font-extrabold text-[var(--text-primary)]">{canStart ? "Aanzetten" : "Niet bereikbaar"}</span>
+          {last ? <span className="text-[11.5px] font-semibold text-[var(--text-secondary)]">Laatst: {last}</span> : null}
+        </div>
+      </section>
+    );
+  }
+
+  const mode = device.mode === "heat" ? "heat" : "cool";
+  const t = device.targetTemperature;
+  const fanStep = device.fan ? FAN_STEPS.indexOf(device.fan) : -1;
+  return (
+    <section aria-label={device.name} className={cn(CARD, LOOK[mode])}>
+      <CardHead device={device} light sub={[inside, mode === "heat" ? "verwarmt" : "koelt"].filter(Boolean).join(" · ")} onToggle={togglePower} />
+
+      <div className="flex items-center justify-between gap-2">
+        <GlassButton label={`${device.name} kouder`} disabled={t === null || t <= 16} onClick={() => t !== null && onChange({ temperature: t - 0.5 })}>
+          <MinusIcon />
+        </GlassButton>
+        <span className="text-[40px] font-extrabold leading-none tracking-[-0.04em] tabular-nums text-fixed-white" aria-live="polite">
           {t === null ? "—" : fmt(t)}
         </span>
-        <StepButton label={`${device.name} warmer`} disabled={!live || t === null || t >= 30} onClick={() => t !== null && onChange({ temperature: t + 0.5 })}>
-          +
-        </StepButton>
+        <GlassButton label={`${device.name} warmer`} disabled={t === null || t >= 30} onClick={() => t !== null && onChange({ temperature: t + 0.5 })}>
+          <PlusIcon />
+        </GlassButton>
       </div>
 
-      <div className={cn("flex flex-col gap-2 transition-opacity", !live && "opacity-40")}>
-        <div role="radiogroup" aria-label={`${device.name} modus`} className="flex justify-between gap-1">
-          {device.modes.map((mode) => {
-            const active = device.mode === mode;
-            return (
-              <button
-                key={mode}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                aria-label={AC_MODES[mode]}
-                title={AC_MODES[mode]}
-                disabled={!live}
-                onClick={() => !active && onChange({ mode }, true)}
-                style={active ? { background: accent(mode), color: "#fff" } : undefined}
-                className={cn(
-                  "flex h-9 flex-1 items-center justify-center rounded-full transition-colors",
-                  !active && "bg-[rgba(16,17,48,0.05)] text-[var(--text-secondary)] [[data-theme=dark]_&]:bg-fixed-white/[0.08]",
-                )}
-              >
-                <ModeIcon mode={mode} />
-              </button>
-            );
-          })}
-        </div>
-        {/* Ventilator: één tik = volgende stand (Automatisch → Laag → … → Hoog → Automatisch). */}
-        <button
-          type="button"
-          disabled={!live}
-          aria-label={`${device.name} ventilator: ${device.fan ? AC_FANS[device.fan] : "onbekend"}. Tik voor de volgende stand.`}
-          onClick={() => onChange({ fan: FAN_ORDER[(fanIndex + 1) % FAN_ORDER.length] })}
-          className="flex h-9 items-center justify-between gap-2 rounded-full bg-[rgba(16,17,48,0.05)] pl-3 pr-3.5 text-[12px] font-bold text-[var(--text-secondary)] [[data-theme=dark]_&]:bg-fixed-white/[0.08]"
-        >
-          <span className="flex items-center gap-1.5">
-            <ModeIcon mode="fan" className="size-4" />
-            {device.fan ? AC_FANS[device.fan] : "Ventilator"}
-          </span>
-          {/* Vijf streepjes: de snelheid (Automatisch = geen). */}
-          <span className="flex items-end gap-[3px]" aria-hidden>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <span
-                key={n}
-                className={cn("w-[3px] rounded-full", n <= fanIndex ? "bg-current" : "bg-current opacity-25")}
-                style={{ height: 4 + n * 2 }}
-              />
-            ))}
-          </span>
-        </button>
+      <div role="radiogroup" aria-label={`${device.name} modus`} className="flex gap-1.5">
+        {MODES.filter((m) => device.modes.includes(m.mode)).map(({ mode: m, label, Icon }) => {
+          const active = device.mode === m;
+          return (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => !active && onChange({ mode: m }, true)}
+              className={cn(
+                "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full text-[12.5px] font-extrabold transition-colors",
+                active ? cn("bg-fixed-white", MODE_TEXT[m]) : "text-fixed-white/90 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.38)]",
+              )}
+            >
+              <Icon />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Ventilator: de vijf standen meteen kiesbaar, als oplopende staafjes. */}
+      <div role="radiogroup" aria-label={`${device.name} ventilator`} className="flex gap-0.5">
+        {FAN_STEPS.map((fan, i) => (
+          <button
+            key={fan}
+            type="button"
+            role="radio"
+            aria-checked={i === fanStep}
+            aria-label={`Ventilator ${AC_FANS[fan].toLowerCase()} (stand ${i + 1})`}
+            onClick={() => i !== fanStep && onChange({ fan }, true)}
+            className={cn("flex h-[34px] flex-1 items-end justify-center rounded-[10px] pb-2 transition-colors", i === fanStep && "bg-fixed-white/25")}
+          >
+            <span className={cn("w-1.5 rounded-full", i <= fanStep ? "bg-fixed-white" : "bg-fixed-white/35")} style={{ height: 8 + i * 3.4 }} />
+          </button>
+        ))}
       </div>
     </section>
   );
@@ -305,7 +326,7 @@ function AircoCard({ device, onChange }: { device: AcDevice; onChange: (command:
 
 /**
  * «Airco» op de startpagina, onder het licht: de Panasonic-airco’s (Comfort Cloud) als witte kaarten op de
- * pagina, met per toestel aan/uit, temperatuur, modus en ventilator. De schakelaar naast de titel zet alles
+ * pagina (canvas «A3 · V1»), met per toestel aan/uit, temperatuur, koelen/verwarmen en vijf ventilatorstanden. De schakelaar naast de titel zet alles
  * uit zodra er één aan staat (anders alles aan). Niet gekoppeld: lege staat met een knop naar Profiel → Klimaat.
  */
 export function HomeAircoSection() {
@@ -319,7 +340,7 @@ export function HomeAircoSection() {
     state.kind === "loading" ? (
       <div className="-mx-4 flex gap-3 overflow-hidden px-4" aria-busy aria-label="Airco’s laden">
         {[0, 1, 2, 3].map((i) => (
-          <span key={i} className="h-[252px] w-[232px] shrink-0 animate-pulse rounded-[24px] bg-white lg:flex-1 [[data-theme=dark]_&]:bg-fixed-white/10" />
+          <span key={i} className="h-[252px] w-[250px] shrink-0 animate-pulse rounded-[24px] bg-white lg:flex-1 [[data-theme=dark]_&]:bg-fixed-white/10" />
         ))}
       </div>
     ) : state.kind === "error" ? (
@@ -369,7 +390,6 @@ export function HomeAircoSection() {
           <PowerSwitch
             label="Alle airco’s"
             on={anyOn}
-            color="#22a89a"
             onToggle={() => reachable.filter((d) => d.on === anyOn).forEach((d) => change(d.id, { power: !anyOn }, true))}
           />
         ) : null}
