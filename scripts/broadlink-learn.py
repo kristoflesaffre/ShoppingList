@@ -26,7 +26,7 @@ def wait_for(check, seconds=35):
     raise TimeoutError('Geen signaal ontvangen binnen de leertijd.')
 
 
-def capture(device, kind, label, config=None):
+def capture(device, kind, label, config=None, save_frequency=None):
     config = config if config is not None else {}
     input(f'\nKlaar voor {label}? Druk hier eerst op Enter. ')
     if kind == 'rf':
@@ -43,6 +43,8 @@ def capture(device, kind, label, config=None):
                 frequency = wait_for(found)
                 if isinstance(frequency, (int, float)) and not isinstance(frequency, bool) and 300 <= frequency <= 450:
                     config['frequency'] = frequency
+                    if save_frequency:
+                        save_frequency(config)
                 else:
                     frequency = None
                 print('Frequentie gevonden. Laat de knop los.', flush=True)
@@ -111,7 +113,7 @@ def main():
         if config['commands'].get(key):
             print(f'{label} is al opgeslagen; overgeslagen.')
             continue
-        packet = capture(device, kind, label, config)
+        packet = capture(device, kind, label, config, save)
         if not isinstance(packet, bytes) or not 4 <= len(packet) <= 16384:
             raise ValueError('Ongeldig ontvangen signaal.')
         config['commands'][key] = base64.b64encode(packet).decode('ascii')

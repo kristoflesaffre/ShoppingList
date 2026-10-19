@@ -17,3 +17,5 @@ Reference: https://github.com/mjg59/python-broadlink (0.19.0). In this version `
 After capture, implement and test the authenticated Mac bridge and app buttons. The app is not yet connected to these commands. The Mac must remain awake and on the home network for a local bridge. Netlify cannot directly access the RM4 Pro's private LAN address. A deployed-site connection needs a secured outbound relay or equivalent architecture, not an unauthenticated public port.
 
 The launcher now resumes the saved remote type and skips captured buttons automatically. The RF frequency is retained alongside captured commands and reused for later buttons. Files from the first helper version contain no frequency, so the next button needs one final scan before subsequent buttons can reuse it.
+
+Fix: persist a discovered frequency immediately, before waiting for the button packet. Previously, a packet timeout discarded the frequency too, causing a repeat scan on restart. Successful button captures remain unchanged.
