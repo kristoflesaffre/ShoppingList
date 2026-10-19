@@ -26,20 +26,33 @@ def wait_for(check, seconds=35):
     raise TimeoutError('Geen signaal ontvangen binnen de leertijd.')
 
 
-def capture(device, kind, label):
+def capture(device, kind, label, config=None):
+    config = config if config is not None else {}
     input(f'\nKlaar voor {label}? Druk hier eerst op Enter. ')
     if kind == 'rf':
         try:
-            device.sweep_frequency()
-            print(f'Houd nu {label} op je originele afstandsbediening ingedrukt tot hier "Frequentie gevonden" verschijnt.', flush=True)
-            def found():
-                value = device.check_frequency()
-                # broadlink 0.19 returns (found, MHz); a nonempty tuple alone is always true.
-                return value[0] if isinstance(value, tuple) else bool(value)
-            wait_for(found)
-            print('Frequentie gevonden. Laat de knop los.', flush=True)
-            input('Druk hier op Enter om het korte signaal op te nemen. ')
-            device.find_rf_packet()
+            frequency = config.get('frequency')
+            if not isinstance(frequency, (int, float)) or not 300 <= frequency <= 450:
+                device.sweep_frequency()
+                print(f'Houd nu {label} op je originele afstandsbediening ingedrukt tot hier "Frequentie gevonden" verschijnt.', flush=True)
+                def found():
+                    value = device.check_frequency()
+                    if isinstance(value, tuple) and value[0]:
+                        return value[1] if value[1] else True
+                    return False
+                frequency = wait_for(found)
+                if isinstance(frequency, (int, float)) and not isinstance(frequency, bool) and 300 <= frequency <= 450:
+                    config['frequency'] = frequency
+                else:
+                    frequency = None
+                print('Frequentie gevonden. Laat de knop los.', flush=True)
+                input('Druk hier op Enter om het korte signaal op te nemen. ')
+            else:
+                print('De eerder gevonden frequentie wordt hergebruikt.', flush=True)
+            if frequency:
+                device.find_rf_packet(frequency)
+            else:
+                device.find_rf_packet()
             print(f'Druk nu {label} één keer kort in.', flush=True)
             return wait_for(device.check_data)
         finally:
@@ -67,7 +80,10 @@ def main():
     print('Projectiescherm koppelen — bestaande BroadLink-knoppen blijven behouden.')
     print('Deze leerhulp zendt zelf geen schermopdrachten. Je originele remote kan het scherm wel bewegen.')
     print('RF werkt doorgaans zonder richten; IR vereist richten op de ontvanger.')
-    kind = input('Type afstandsbediening: RF of IR (Enter = RF proberen): ').strip().lower() or 'rf'
+    previous = json.loads(OUTPUT.read_text()) if OUTPUT.exists() else {}
+    kind = previous.get('kind') if '--resume' in sys.argv else None
+    if kind not in ('rf', 'ir'):
+        kind = input('Type afstandsbediening: RF of IR (Enter = RF proberen): ').strip().lower() or 'rf'
     if kind not in ('rf', 'ir'):
         print('Kies RF of IR en start opnieuw.')
         return 1
@@ -90,11 +106,12 @@ def main():
         old = json.loads(OUTPUT.read_text())
         if old.get('mac') == config['mac'] and old.get('kind') == kind:
             config['commands'] = old.get('commands', {})
+            config['frequency'] = old.get('frequency')
     for key, label in BUTTONS:
         if config['commands'].get(key):
             print(f'{label} is al opgeslagen; overgeslagen.')
             continue
-        packet = capture(device, kind, label)
+        packet = capture(device, kind, label, config)
         if not isinstance(packet, bytes) or not 4 <= len(packet) <= 16384:
             raise ValueError('Ongeldig ontvangen signaal.')
         config['commands'][key] = base64.b64encode(packet).decode('ascii')
