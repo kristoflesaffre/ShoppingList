@@ -12,9 +12,13 @@ Double-click `scripts/broadlink-scherm-leren.command`. Choose RF or IR according
 
 Reference: https://github.com/mjg59/python-broadlink (0.19.0). In this version `check_frequency()` returns a tuple; check its first element, not tuple truthiness.
 
-## Pending
+## Local app controls
 
-After capture, implement and test the authenticated Mac bridge and app buttons. The app is not yet connected to these commands. The Mac must remain awake and on the home network for a local bridge. Netlify cannot directly access the RM4 Pro's private LAN address. A deployed-site connection needs a secured outbound relay or equivalent architecture, not an unauthenticated public port.
+All three packets have been captured. The local configuration is bound to the owner's verified Instant user ID. `/profiel/projectiescherm` exposes Up / Stop / Down through same-origin, authenticated POST `/api/broadlink`. The backend accepts only these named actions, uses an absolute Python/script path with no shell, and never exposes packets to the browser. The runner verifies the remote MAC before sending one captured packet. Timeout errors are not retried, because the remote might already have transmitted.
+
+This implementation runs **only on the local Mac app**, not on Netlify/Vercel. It explicitly refuses cloud/public hosts rather than assuming that a cloud function can reach the private LAN or spawn the Mac environment. The Mac must remain awake on the home network. A connection from the published site still needs a secured outbound relay or equivalent architecture. No public unauthenticated port is opened.
+
+Status reports saved-command readiness, not a live screen position or confirmed motor movement. Actual physical command verification is pending the user's manual test in the app. Tests use mocks only.
 
 The launcher now resumes the saved remote type and skips captured buttons automatically. The RF frequency is retained alongside captured commands and reused for later buttons. Files from the first helper version contain no frequency, so the next button needs one final scan before subsequent buttons can reuse it.
 

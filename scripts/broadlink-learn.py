@@ -109,6 +109,8 @@ def main():
         if old.get('mac') == config['mac'] and old.get('kind') == kind:
             config['commands'] = old.get('commands', {})
             config['frequency'] = old.get('frequency')
+            if old.get('ownerId'):
+                config['ownerId'] = old['ownerId']
     for key, label in BUTTONS:
         if config['commands'].get(key):
             print(f'{label} is al opgeslagen; overgeslagen.')

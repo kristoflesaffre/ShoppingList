@@ -379,6 +379,15 @@ export default function ProfielPage() {
           onClick={() => router.push("/profiel/panasonic")}
         />
       </li>
+      <li>
+        <ProfileSettingsRow
+          bare={bare}
+          icon={homeIcon}
+          label="Projectiescherm"
+          description="Omhoog, stop en omlaag via BroadLink"
+          onClick={() => router.push("/profiel/projectiescherm")}
+        />
+      </li>
     </>
   );
 

@@ -661,6 +661,7 @@ function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | 
       <div className="relative flex min-h-0 flex-1 flex-col">
         <DashboardHuePanel cinema />
         <a href="/profiel/panasonic" className="absolute left-[76px] top-3.5 z-10 flex min-h-7 items-center rounded-pill bg-fixed-white/10 px-3 text-xs font-bold text-fixed-white/90">Klimaat ↗</a>
+        <a href="/profiel/projectiescherm" className="absolute left-[162px] top-3.5 z-10 flex min-h-7 items-center rounded-pill bg-fixed-white/10 px-3 text-xs font-bold text-fixed-white/90">Scherm ↗</a>
       </div>
       {open ? <FilmDetailModal media={open} onClose={() => setOpen(null)} /> : null}
     </>
