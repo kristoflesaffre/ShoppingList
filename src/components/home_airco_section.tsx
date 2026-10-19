@@ -7,6 +7,7 @@ import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
 import { AC_FANS, type AcCommand, type AcDevice, type AcFan } from "@/lib/panasonic";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { MiniButton } from "@/components/ui/mini_button";
+import { sortAircos } from "@/lib/airco-order";
 
 type State =
   | { kind: "loading" }
@@ -331,7 +332,14 @@ function AircoCard({ device, onChange }: { device: AcDevice; onChange: (command:
  */
 export function HomeAircoSection() {
   const router = useRouter();
-  const { state, devices, change, error, load } = useAirco();
+  const { state, devices: unsorted, change, error, load } = useAirco();
+  // Volgorde naar het moment van de dag (slaapkamers ’s ochtends en ’s avonds eerst); elke minuut herbekeken.
+  const [now, setNow] = React.useState(() => new Date());
+  React.useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const devices = sortAircos(unsorted, now);
   const anyOn = devices.some((d) => d.on);
   const reachable = devices.filter((d) => d.available && d.on !== null);
   const note = "text-sm text-[var(--text-secondary)]";
