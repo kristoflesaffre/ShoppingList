@@ -31,3 +31,7 @@ On `/profiel/projectiescherm`, choose **Hoogte instellen**, begin with the scree
 Calibration has a detached 60-second maximum-duration STOP watchdog. Presets are limited to 0.1–60 seconds. Manual Stop or another manual movement invalidates a pending preset, so its delayed STOP cannot interrupt a later movement. Short file locks serialize RF access and state changes across Python processes. The preset request can run up to 75 seconds locally; no cloud runtime is involved. No automatic write retries are made. Keep the Mac awake; hardware/network failure cannot guarantee delivery of STOP.
 
 Timing/cancellation tests use fake clocks and mocked remotes; no real UP/STOP was sent while implementing this feature. User calibration and physical height verification remain pending.
+
+## Controls paused after physical malfunction
+
+The user reported clicking, failure to retract and loss of original-remote operation after a timed preset. App controls have been paused in the private local configuration and pending run IDs invalidated without RF transmission. Both server route and Python runner enforce this pause. The cause has not been confirmed. Captured RF packets use 0xb0/0xb1 formats and need validation against this model's protocol; do not assume the legacy packet repeat-byte interpretation applies, or modify/transmit these captures speculatively. Timing calibration alone is insufficient until basic remote reliability is established. No native RM4 Pro atomic delayed sequence upload has been implemented or verified.

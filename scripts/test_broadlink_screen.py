@@ -43,6 +43,16 @@ class ScreenTest(unittest.TestCase):
         with patch('broadlink.hello', return_value=self.device):
             with self.assertRaises(TimeoutError): screen.run('up')
         self.device.send_data.assert_called_once()
+    def test_paused_controls_never_contact_remote(self):
+        config = json.loads(self.path.read_text())
+        config['paused'] = True
+        self.path.write_text(json.dumps(config))
+        with patch('broadlink.hello') as hello:
+            self.assertTrue(screen.run('status')['paused'])
+            for action in ('up','stop','down','calibrate','preset'):
+                with self.assertRaises(ValueError): screen.run(action)
+            hello.assert_not_called()
+
     def test_unknown_command_is_rejected(self):
         with patch('broadlink.hello') as hello:
             with self.assertRaises(ValueError): screen.run('reset')

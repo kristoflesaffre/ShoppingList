@@ -53,7 +53,7 @@ def send(device, config, action):
     device.send_data(packet)
 
 def public_status(config, current):
-    return {'configured': all(config.get('commands', {}).get(k) for k in ('up','stop','down')), 'durationSeconds': current.get('duration') if valid_duration(current.get('duration')) else None, 'calibrating': current.get('kind') == 'calibrating', 'running': current.get('kind') == 'preset'}
+    return {'configured': not config.get('paused', False) and all(config.get('commands', {}).get(k) for k in ('up','stop','down')), 'paused': bool(config.get('paused')), 'durationSeconds': current.get('duration') if valid_duration(current.get('duration')) else None, 'calibrating': current.get('kind') == 'calibrating', 'running': current.get('kind') == 'preset'}
 
 def wait_and_stop(config, run_id, seconds, device=None):
     # The deadline uses the same monotonic clock as the original UP transmission.
@@ -78,6 +78,8 @@ def run(action):
     if action not in ('status','up','stop','down','calibrate','preset'):
         raise ValueError('Invalid command')
     config = json.loads(CONFIG.read_text())
+    if config.get('paused') and action != 'status':
+        raise ValueError('Controls paused pending investigation')
     with locked():
         current = state()
         if action == 'status':

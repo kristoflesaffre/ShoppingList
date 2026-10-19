@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
 import { PageBackButton } from "@/components/ui/page_back_button";
-type ScreenState = { configured: boolean; durationSeconds: number | null; calibrating: boolean; running: boolean };
+type ScreenState = { paused?: boolean; configured: boolean; durationSeconds: number | null; calibrating: boolean; running: boolean };
 type Action = "up" | "stop" | "down" | "calibrate" | "preset";
 const buttonClass = "flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--border-subtle)] px-3 py-4 font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 export default function ScreenPage() {
@@ -25,7 +25,7 @@ export default function ScreenPage() {
   React.useEffect(() => {
     if (!token) return;
     const controller = new AbortController();
-    void call("status", controller.signal).then(data => { if (!controller.signal.aborted) { setScreen(data); setMessage(data.configured ? "De schermbediening staat klaar." : "Open de lokale app op je MacBook voor deze bediening."); } }).catch(() => { if (!controller.signal.aborted) setMessage("Bediening niet beschikbaar. Open de lokale app op je MacBook met het gekoppelde account."); });
+    void call("status", controller.signal).then(data => { if (!controller.signal.aborted) { setScreen(data); setMessage(data.paused ? "Bediening gepauzeerd wegens onverwacht gedrag van het scherm. Gebruik de appknoppen voorlopig niet." : data.configured ? "De schermbediening staat klaar." : "Open de lokale app op je MacBook voor deze bediening."); } }).catch(() => { if (!controller.signal.aborted) setMessage("Bediening niet beschikbaar. Open de lokale app op je MacBook met het gekoppelde account."); });
     return () => controller.abort();
   }, [call, token]);
   React.useEffect(() => {
