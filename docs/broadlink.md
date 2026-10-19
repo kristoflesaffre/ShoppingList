@@ -23,3 +23,11 @@ Status reports saved-command readiness, not a live screen position or confirmed 
 The launcher now resumes the saved remote type and skips captured buttons automatically. The RF frequency is retained alongside captured commands and reused for later buttons. Files from the first helper version contain no frequency, so the next button needs one final scan before subsequent buttons can reuse it.
 
 Fix: persist a discovered frequency immediately, before waiting for the button packet. Previously, a packet timeout discarded the frequency too, causing a repeat scan on restart. Successful button captures remain unchanged.
+
+## Timed screen height
+
+On `/profiel/projectiescherm`, choose **Hoogte instellen**, begin with the screen fully down, then use the app's **Omhoog** and **Stop** buttons. The Mac records the monotonic interval between RF send calls, saving it privately in `.cache/broadlink/screen-timing.json`. Physical-remote presses are not monitored. A saved **Naar mijn hoogte** action repeats UP, waits until that interval's deadline, and sends STOP over the same authenticated connection. Timing avoids browser scheduling, but OS scheduling, RF delivery and motor response still introduce physical variation; this is not position feedback. Always begin from the same fully lowered position.
+
+Calibration has a detached 60-second maximum-duration STOP watchdog. Presets are limited to 0.1–60 seconds. Manual Stop or another manual movement invalidates a pending preset, so its delayed STOP cannot interrupt a later movement. Short file locks serialize RF access and state changes across Python processes. The preset request can run up to 75 seconds locally; no cloud runtime is involved. No automatic write retries are made. Keep the Mac awake; hardware/network failure cannot guarantee delivery of STOP.
+
+Timing/cancellation tests use fake clocks and mocked remotes; no real UP/STOP was sent while implementing this feature. User calibration and physical height verification remain pending.
