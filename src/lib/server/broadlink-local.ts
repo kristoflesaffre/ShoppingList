@@ -24,7 +24,7 @@ export async function broadlinkLocal(request: NextRequest) {
   try {
     const config = JSON.parse(await readFile(path.join(process.cwd(), ".cache/broadlink/screen.json"), "utf8"));
     if (config.ownerId !== ownerId) return reply({ error: "not-authorized" }, 403);
-    
+
     const { stdout } = await execute(path.join(process.cwd(), ".cache/broadlink/venv/bin/python"), [path.join(process.cwd(), "scripts/broadlink-screen.py"), action], { timeout: action === "preset" ? 75_000 : 10_000, maxBuffer: 4096, windowsHide: true });
     const result = JSON.parse(stdout);
     if (action !== "status" && result.accepted !== true) throw new Error();
