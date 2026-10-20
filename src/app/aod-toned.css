@@ -1,0 +1,16 @@
+/*
+ * Always-on, gedempt: op een scherm dat de hele tijd aanstaat mag niets fel of verzadigd zijn.
+ * Overdag alles wat minder verzadigd en minder helder; foto's (posters, afspraakfoto's, notes) nog een
+ * stap extra. ’s Nachts (22–7 u) sterker gedimd. Na een tik verdwijnt `data-aod` en is alles weer normaal.
+ * (De filter op body werkt samen met de pixelbaan-animatie op body; die zet al een eigen laag.)
+ */
+:root[data-aod="on"] body {
+  filter: saturate(0.6) brightness(0.78) contrast(0.96);
+}
+:root[data-aod="night"] body {
+  filter: saturate(0.45) brightness(0.5) contrast(0.95);
+}
+html[data-aod] main img,
+html[data-aod] main video {
+  filter: saturate(0.7) brightness(0.82);
+}

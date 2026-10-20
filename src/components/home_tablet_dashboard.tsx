@@ -15,6 +15,7 @@ import { WeatherHero } from "@/components/weather_hero";
 import { DashboardHuePanel } from "@/components/dashboard_hue_panel";
 import { FilmDetailModal, WatchingTile, WatchlistTile, useWatchingMedia, useWatchlistSuggestions, type EveningMedia } from "@/components/dashboard_evening";
 import { CalendarLoosePlate } from "@/components/calendar_day_visuals";
+import "@/app/aod-toned.css";
 
 /**
  * Tablet-dashboard (canvas «Dashboard tablet · B iteratie»), gemaakt voor een Galaxy Tab liggend
