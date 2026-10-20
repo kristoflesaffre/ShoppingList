@@ -24,7 +24,10 @@ export async function withPanasonic(request: NextRequest, run: (session: Panason
       return response;
     } catch (error) {
       if (error instanceof PanasonicReconnect) return reply({ configured: true, connected: false, reconnect: true });
-      return reply({ error: "temporarily-unavailable" }, 503);
+      // Ontwikkelversie: de oorzaak meesturen, zodat een storing zonder serverlogboek te volgen is.
+      const detail = process.env.NODE_ENV !== "production" && error instanceof Error ? error.message.slice(0, 300) : undefined;
+      if (detail) console.error("[panasonic]", detail);
+      return reply({ error: "temporarily-unavailable", ...(detail ? { detail } : {}) }, 503);
     }
   });
   pending.set(ownerId, task);

@@ -52,6 +52,22 @@ export function useAirco() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [load]);
 
+  // Comfort Cloud is soms even onbereikbaar: zelf opnieuw proberen, telkens wat later (20 s, 40 s, … max. 5 min),
+  // zodat de sectie niet op «niet bereikbaar» blijft hangen en Panasonic niet overspoeld wordt.
+  const retries = React.useRef(0);
+  React.useEffect(() => {
+    if (state.kind !== "error") {
+      retries.current = 0;
+      return;
+    }
+    const delay = Math.min(300_000, 20_000 * 2 ** retries.current);
+    const id = window.setTimeout(() => {
+      retries.current += 1;
+      void load();
+    }, delay);
+    return () => window.clearTimeout(id);
+  }, [state, load]);
+
   React.useEffect(() => {
     if (!error) return;
     const id = window.setTimeout(() => setError(null), 4500);
