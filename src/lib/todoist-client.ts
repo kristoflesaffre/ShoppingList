@@ -84,24 +84,79 @@ export async function todoistPost(token: string | null, path: string, body?: unk
   return send(true);
 }
 
+/**
+ * Laatste geladen taken: in het geheugen (tussen pagina's) en op dit toestel (na herladen). Bij terugkeren toont de
+ * sectie meteen wat er was en ververst ze stil op de achtergrond, in plaats van telkens de laadanimatie.
+ */
+const TODOIST_CACHE_KEY = "todoist-cache:v1";
+type TodoCache = { tasks: TodoTask[]; projects: TodoProject[]; canWrite: boolean };
+let todoMemory: TodoCache | null = null;
+
+function readTodoCache(): TodoCache | null {
+  if (todoMemory) return todoMemory;
+  try {
+    const raw = window.localStorage.getItem(TODOIST_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as TodoCache;
+    if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.projects)) return null;
+    todoMemory = parsed;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeTodoCache(cache: TodoCache | null) {
+  todoMemory = cache;
+  try {
+    if (cache) window.localStorage.setItem(TODOIST_CACHE_KEY, JSON.stringify(cache));
+    else window.localStorage.removeItem(TODOIST_CACHE_KEY);
+  } catch {
+    // Opslag vol of geblokkeerd: enkel in het geheugen.
+  }
+}
+
+/** Na afmelden of ontkoppelen: geen oude taken meer tonen. */
+export function clearTodoistCache() {
+  writeTodoCache(null);
+}
+
+function readyFromCache(cache: TodoCache): TodoState {
+  return { kind: "ready", tasks: cache.tasks, projects: new Map(cache.projects.map((p) => [p.id, p])), canWrite: cache.canWrite };
+}
+
 export function useTodoist() {
   const token = useGoogleAuthToken();
-  const [state, setState] = React.useState<TodoState>({ kind: "loading" });
+  const [state, setState] = React.useState<TodoState>(() => (todoMemory ? readyFromCache(todoMemory) : { kind: "loading" }));
+  // Bewaarde taken vóór de eerste weergave lezen (geen flits van de laadanimatie na herladen).
+  React.useLayoutEffect(() => {
+    const cached = readTodoCache();
+    if (cached) setState((s) => (s.kind === "loading" ? readyFromCache(cached) : s));
+  }, []);
 
   const load = React.useCallback(async () => {
     if (!token) return;
     const post = (path: string, body?: unknown) => todoistPost(token, path, body);
     try {
       const status = (await (await post("status")).json()) as { configured?: boolean; connected?: boolean; reconnect?: boolean; canWrite?: boolean };
-      if (status.configured === false) return setState({ kind: "not-configured" });
-      if (!status.connected) return setState({ kind: "not-connected", reconnect: status.reconnect === true });
+      if (status.configured === false) {
+        writeTodoCache(null);
+        return setState({ kind: "not-configured" });
+      }
+      if (!status.connected) {
+        writeTodoCache(null);
+        return setState({ kind: "not-connected", reconnect: status.reconnect === true });
+      }
       const [tasksRes, projectsRes] = await Promise.all([post("tasks", { limit: 200 }), post("projects", { limit: 200 })]);
       if (!tasksRes.ok) throw new Error(String(tasksRes.status));
       const { tasks } = (await tasksRes.json()) as { tasks: TodoTask[] };
       const { projects } = projectsRes.ok ? ((await projectsRes.json()) as { projects: TodoProject[] }) : { projects: [] };
-      setState({ kind: "ready", tasks, projects: new Map(projects.map((p) => [p.id, p])), canWrite: status.canWrite === true });
+      const fresh = { tasks, projects, canWrite: status.canWrite === true };
+      writeTodoCache(fresh);
+      setState(readyFromCache(fresh));
     } catch {
-      setState({ kind: "error" });
+      // Even geen verbinding: de bewaarde taken blijven staan; enkel zonder bewaarde taken de foutmelding.
+      setState((s) => (s.kind === "ready" ? s : { kind: "error" }));
     }
   }, [token]);
 
@@ -134,6 +189,7 @@ export function useTodoist() {
         return;
       }
       setState((s) => (s.kind === "ready" ? { ...s, tasks: s.tasks.filter((t) => t.id !== task.id) } : s));
+      if (todoMemory) writeTodoCache({ ...todoMemory, tasks: todoMemory.tasks.filter((t) => t.id !== task.id) });
       try {
         const res = await todoistPost(token, "close", { id: task.id });
         if (res.status === 403) {

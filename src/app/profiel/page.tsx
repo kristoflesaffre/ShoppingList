@@ -15,6 +15,7 @@ import { uploadUserImageFile } from "@/lib/image-storage";
 import { cn } from "@/lib/utils";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { clearAgendaCache } from "@/lib/agenda_cache";
+import { clearTodoistCache } from "@/lib/todoist-client";
 
 type AuthUserWithEmail = {
   id: string;
@@ -210,6 +211,7 @@ export default function ProfielPage() {
     setLocalError(null);
     try {
       clearAgendaCache();
+      clearTodoistCache();
       await db.auth.signOut();
       router.replace("/auth");
     } catch {
