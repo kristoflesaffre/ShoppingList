@@ -466,8 +466,29 @@ export function VastListSheet({
   const [eventDate, setEventDate] = React.useState(initial?.eventDate ?? "");
   const [colorKey, setColorKey] = React.useState<VastColorKey>(initial?.colorKey ?? "roze");
   const [icon, setIcon] = React.useState(initial?.icon ?? VAST_TYPE_META.kado.icon);
-  const [share, setShare] = React.useState(true);
+  /** Per deelgenoot een eigen keuze; zonder keuze: delen, behalve met wie het kado-lijstje bestemd is. */
+  const [shareChoice, setShareChoice] = React.useState<Record<string, boolean>>({});
   const [person, setPerson] = React.useState("");
+  const { data: partnerProfileData } = db.useQuery({
+    profiles: {
+      $: { where: partnerIds.length > 0 ? { or: partnerIds.map((id) => ({ instantUserId: id })) } : { instantUserId: "__vast_geen_deelgenoten__" } },
+    },
+  } as unknown as Parameters<typeof db.useQuery>[0]);
+  const partners = React.useMemo(() => {
+    const rows = ((partnerProfileData as { profiles?: { instantUserId?: string; firstName?: string; avatarUrl?: string }[] } | undefined)?.profiles ?? []);
+    return partnerIds.map((id) => {
+      const p = rows.find((row) => row.instantUserId === id);
+      return { id, name: p?.firstName?.trim() || "Deelgenoot", avatarUrl: p?.avatarUrl?.trim() || null };
+    });
+  }, [partnerProfileData, partnerIds]);
+  // «Kado's Chloé» is een verrassing voor Chloé: haar standaard niet mee laten kijken.
+  const giftFor = (id: string) => {
+    if (type !== "kado") return false;
+    const target = normalizePersonName(editing ? name.replace(/^kado'?s\s+/i, "") : person);
+    const partnerName = normalizePersonName(partners.find((p) => p.id === id)?.name ?? "");
+    return target.length > 0 && partnerName.length > 0 && (target === partnerName || target.split(" ").includes(partnerName));
+  };
+  const sharesWith = (id: string) => shareChoice[id] ?? !giftFor(id);
 
   React.useEffect(() => {
     if (!open) return;
@@ -477,7 +498,7 @@ export function VastListSheet({
     setColorKey(initial?.colorKey ?? "roze");
     setIcon(initial?.icon ?? VAST_TYPE_META.kado.icon);
     setPerson("");
-    setShare(true);
+    setShareChoice({});
     // Enkel bij openen (of een ander lijstje) opnieuw invullen, niet bij elke render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial?.id]);
@@ -518,7 +539,7 @@ export function VastListSheet({
         ownerId,
         isMasterTemplate: false,
       }),
-      ...(share ? partnerIds.map((uid) => db.tx.listMembers[iid()].update({ instantUserId: uid }).link({ list: newId })) : []),
+      ...partnerIds.filter(sharesWith).map((uid) => db.tx.listMembers[iid()].update({ instantUserId: uid }).link({ list: newId })),
     ];
     void db.transact(txs).catch(() => undefined);
     onClose();
@@ -610,15 +631,49 @@ export function VastListSheet({
           </div>
         </div>
 
-        {!editing && partnerIds.length > 0 ? (
-          <div className="flex items-center justify-between gap-3 rounded-[16px] bg-[var(--gray-25)] px-4 py-3">
-            <span className="text-[15px] text-text-primary">Delen met je deelgenoten</span>
-            <Switch checked={share} onCheckedChange={setShare} aria-label="Delen met je deelgenoten" />
+        {!editing && partners.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm text-text-primary">Delen met</span>
+            <div className="flex flex-col rounded-[16px] bg-[var(--gray-25)] px-4">
+              {partners.map((p, i) => (
+                <div key={p.id} className={cn("flex items-center gap-3 py-3", i > 0 && "border-t border-[var(--border-subtle)]")}>
+                  <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] text-sm font-bold text-[var(--blue-500)]">
+                    {p.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- profielfoto
+                      <img src={p.avatarUrl} alt="" className="size-full object-cover" />
+                    ) : (
+                      p.name.charAt(0).toUpperCase()
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] text-text-primary">{p.name}</span>
+                    {giftFor(p.id) && !sharesWith(p.id) ? (
+                      <span className="block text-[12.5px] text-[var(--text-secondary)]">Het lijstje is voor {p.name}: die ziet het niet</span>
+                    ) : null}
+                  </span>
+                  <Switch
+                    checked={sharesWith(p.id)}
+                    onCheckedChange={(on) => setShareChoice((prev) => ({ ...prev, [p.id]: on }))}
+                    aria-label={`Delen met ${p.name}`}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
       </div>
     </SlideInModal>
   );
+}
+
+/** Voornaam vergelijken zonder hoofdletters en accenten («Chloé» = «chloe»). */
+function normalizePersonName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 export { deepRgb, mixWithWhiteRgb };

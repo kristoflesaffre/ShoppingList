@@ -10,6 +10,7 @@ import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loadin
 import { headerRoundButtonClass, HeaderEditButton } from "@/components/ui/header_round_button";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { VastListSheet } from "@/components/vaste_lijstjes";
+import { useAutoShare } from "@/lib/auto-share";
 import { KadoIdeeen, type KadoItem } from "@/components/kado_ideeen";
 import {
   VAST_COLORS,
@@ -89,16 +90,21 @@ export default function VastLijstjePage() {
     if (user?.id) ids.delete(user.id);
     return Array.from(ids);
   }, [list?.ownerId, list?.memberships, user?.id]);
+  /** Je deelgenoten: in het menu kan de eigenaar per persoon kiezen of die het lijstje ziet. */
+  const { partnerIds } = useAutoShare(user?.id);
+  const profileIds = React.useMemo(() => Array.from(new Set([...otherIds, ...partnerIds])), [otherIds, partnerIds]);
   const { data: peopleData } = db.useQuery({
-    profiles: { $: { where: otherIds.length > 0 ? { or: otherIds.map((id) => ({ instantUserId: id })) } : { instantUserId: "__vast_geen_deelnemers__" } } },
+    profiles: { $: { where: profileIds.length > 0 ? { or: profileIds.map((id) => ({ instantUserId: id })) } : { instantUserId: "__vast_geen_deelnemers__" } } },
   } as unknown as Parameters<typeof db.useQuery>[0]);
-  const people = React.useMemo(() => {
-    const rows = ((peopleData as { profiles?: { instantUserId?: string; firstName?: string; avatarUrl?: string }[] } | undefined)?.profiles ?? []);
-    return otherIds.map((id) => {
+  const profileOf = React.useCallback(
+    (id: string) => {
+      const rows = ((peopleData as { profiles?: { instantUserId?: string; firstName?: string; avatarUrl?: string }[] } | undefined)?.profiles ?? []);
       const p = rows.find((r) => r.instantUserId === id);
       return { id, name: p?.firstName?.trim() || null, avatarUrl: p?.avatarUrl?.trim() || null };
-    });
-  }, [peopleData, otherIds]);
+    },
+    [peopleData],
+  );
+  const people = React.useMemo(() => otherIds.map(profileOf), [otherIds, profileOf]);
   const named = people.filter((p) => p.name).map((p) => p.name as string);
   const sharedLabel =
     named.length === 0 ? "Gedeeld" : `Gedeeld met ${named.length === 1 ? named[0] : `${named.slice(0, -1).join(", ")} en ${named[named.length - 1]}`}`;
@@ -186,12 +192,49 @@ export default function VastLijstjePage() {
                     </div>
                   </div>
                 ) : (
+                  <>
+                  {/* Delen per persoon: bv. een kado-lijstje voor Chloé niet met Chloé delen. */}
+                  {Array.from(new Set([...partnerIds, ...(list.memberships ?? []).map((m) => m.instantUserId ?? "")]))
+                    .filter((id) => id && id !== user.id)
+                    .map((id) => {
+                      const person = profileOf(id);
+                      const membership = (list.memberships ?? []).find((m) => m.instantUserId === id);
+                      const label = person.name ?? "deelgenoot";
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => {
+                            void db
+                              .transact(
+                                membership
+                                  ? db.tx.listMembers[membership.id].delete()
+                                  : db.tx.listMembers[iid()].update({ instantUserId: id }).link({ list: list.id }),
+                              )
+                              .catch(() => undefined);
+                            setMenuOpen(false);
+                          }}
+                          className="flex h-11 w-full items-center gap-2.5 rounded-[12px] px-3 text-left text-[15px] font-medium text-text-primary [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
+                        >
+                          <span className="flex size-[22px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] text-[11px] font-bold text-[var(--blue-500)]">
+                            {person.avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element -- profielfoto
+                              <img src={person.avatarUrl} alt="" className="size-full object-cover" />
+                            ) : (
+                              label.charAt(0).toUpperCase()
+                            )}
+                          </span>
+                          {membership ? `Niet meer delen met ${label}` : `Delen met ${label}`}
+                        </button>
+                      );
+                    })}
                   <button type="button" onClick={() => setConfirmDelete(true)} className="flex h-11 w-full items-center gap-2.5 rounded-[12px] px-3 text-left text-[15px] font-medium text-[var(--error-400)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
                       <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
                     </svg>
                     Lijstje verwijderen
                   </button>
+                  </>
                 )}
               </div>
             ) : null}

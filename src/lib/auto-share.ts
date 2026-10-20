@@ -33,11 +33,16 @@ export type AutoShareListInput = {
   name?: string | null;
   customIconUrl?: string | null;
   isMasterTemplate?: boolean | null;
+  listKind?: string | null;
 };
 
-/** Soort van een lijstje; `null` voor favorietenlijsten (die deel je niet automatisch). */
+/**
+ * Soort van een lijstje; `null` voor favorietenlijsten en vaste lijstjes (kado's, to do): die deel je niet
+ * automatisch — een kado-lijstje voor je partner mag nooit vanzelf bij die partner belanden.
+ */
 export function listAutoShareKind(list: AutoShareListInput): AutoShareKind | null {
   if (list.isMasterTemplate) return null;
+  if (list.listKind === "vast") return null;
   const icon = String(list.customIconUrl ?? "").toLowerCase();
   if (isLandalListCard(icon)) return "landal";
   if (icon.includes("vakantie_")) return "vakantie";
@@ -67,6 +72,7 @@ export type OwnedListRow = {
   masterIcon?: string | null;
   shareToken?: string | null;
   isMasterTemplate?: boolean | null;
+  listKind?: string | null;
   order?: number | null;
   memberships?: MembershipRow[] | null;
 };
