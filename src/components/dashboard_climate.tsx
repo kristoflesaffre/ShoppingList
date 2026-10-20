@@ -161,7 +161,7 @@ function AcColumn({ device, change, tall = false }: { device: AcDevice; change: 
   );
 }
 
-function ClimateModal({ devices, change, onClose }: { devices: AcDevice[]; change: Change; onClose: () => void }) {
+function ClimateModal({ devices, change, onClose, headerToggle }: { devices: AcDevice[]; change: Change; onClose: () => void; headerToggle?: React.ReactNode }) {
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -186,12 +186,16 @@ function ClimateModal({ devices, change, onClose }: { devices: AcDevice[]; chang
             <h2 className="mt-0.5 text-[30px] font-extrabold tracking-[-0.02em]">Alle airco&apos;s</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" className={action} disabled={reachable.every((d) => d.on)} onClick={() => reachable.filter((d) => !d.on).forEach((d) => change(d.id, { power: true }, true))}>
-              Alles aan
-            </button>
-            <button type="button" className={action} disabled={!reachable.some((d) => d.on)} onClick={() => reachable.filter((d) => d.on).forEach((d) => change(d.id, { power: false }, true))}>
-              Alles uit
-            </button>
+            {headerToggle ?? (
+              <>
+                <button type="button" className={action} disabled={reachable.every((d) => d.on)} onClick={() => reachable.filter((d) => !d.on).forEach((d) => change(d.id, { power: true }, true))}>
+                  Alles aan
+                </button>
+                <button type="button" className={action} disabled={!reachable.some((d) => d.on)} onClick={() => reachable.filter((d) => d.on).forEach((d) => change(d.id, { power: false }, true))}>
+                  Alles uit
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -219,7 +223,7 @@ function ClimateModal({ devices, change, onClose }: { devices: AcDevice[]; chang
 }
 
 /** Inhoud van het paneel in de stand «Klimaat»: de kolommen, plus het volledige scherm als `open`. */
-export function DashboardClimate({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function DashboardClimate({ open, onClose, headerToggle }: { open: boolean; onClose: () => void; headerToggle?: React.ReactNode }) {
   const { state, devices, change, error, load } = useAirco();
   const sorted = React.useMemo(() => sortAircos(devices, new Date()), [devices]);
 
@@ -265,7 +269,7 @@ export function DashboardClimate({ open, onClose }: { open: boolean; onClose: ()
     <>
       {body}
       {error ? <p className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-pill bg-[rgba(8,9,24,0.6)] px-3 py-1 text-xs font-bold text-fixed-white">{error}</p> : null}
-      {open && state.kind === "ready" && sorted.length > 0 ? <ClimateModal devices={sorted} change={change} onClose={onClose} /> : null}
+      {open && state.kind === "ready" && sorted.length > 0 ? <ClimateModal devices={sorted} change={change} onClose={onClose} headerToggle={headerToggle} /> : null}
     </>
   );
 }

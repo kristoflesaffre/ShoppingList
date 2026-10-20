@@ -216,12 +216,15 @@ function HueLightsModal({
   setRoom,
   floors,
   onClose,
+  headerToggle,
 }: {
   rooms: Room[];
   busy: Set<string>;
   setRoom: (rooms: Room[], patch: Patch) => Promise<void>;
   floors: RoomFloors;
   onClose: () => void;
+  /** Schakelaar «Licht | Klimaat» rechtsboven (vervangt «Indeling», «Alles aan» en «Alles uit»). */
+  headerToggle?: React.ReactNode;
 }) {
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -254,15 +257,19 @@ function HueLightsModal({
             <h2 className="mt-0.5 text-[30px] font-extrabold tracking-[-0.02em]">Alle lampen</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" aria-pressed={editing} className={cn(action, editing && "bg-fixed-white text-[#1a2036] [@media(hover:hover)]:hover:bg-fixed-white")} onClick={() => setEditing((e) => !e)}>
-              {editing ? "Klaar" : "Indeling"}
-            </button>
-            <button type="button" className={action} disabled={rooms.every((r) => r.on)} onClick={() => void setRoom(rooms.filter((r) => !r.on), { on: true })}>
-              Alles aan
-            </button>
-            <button type="button" className={action} disabled={!rooms.some((r) => r.on)} onClick={() => void setRoom(rooms.filter((r) => r.on), { on: false })}>
-              Alles uit
-            </button>
+            {headerToggle ?? (
+              <>
+                <button type="button" aria-pressed={editing} className={cn(action, editing && "bg-fixed-white text-[#1a2036] [@media(hover:hover)]:hover:bg-fixed-white")} onClick={() => setEditing((e) => !e)}>
+                  {editing ? "Klaar" : "Indeling"}
+                </button>
+                <button type="button" className={action} disabled={rooms.every((r) => r.on)} onClick={() => void setRoom(rooms.filter((r) => !r.on), { on: true })}>
+                  Alles aan
+                </button>
+                <button type="button" className={action} disabled={!rooms.some((r) => r.on)} onClick={() => void setRoom(rooms.filter((r) => r.on), { on: false })}>
+                  Alles uit
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -435,6 +442,32 @@ export function DashboardHuePanel({
   };
   const [climateOpen, setClimateOpen] = React.useState(false);
   const closeClimate = React.useCallback(() => setClimateOpen(false), []);
+  /** In het volledige scherm: wisselen tussen lampen en airco's zonder het venster te sluiten. */
+  const switchModal = (v: "licht" | "klimaat") => {
+    changeView(v);
+    setOpen(v === "licht");
+    setClimateOpen(v === "klimaat");
+  };
+  const viewToggle = (current: "licht" | "klimaat", large = false) => (
+    <div role="radiogroup" aria-label="Licht of klimaat" className="flex rounded-pill bg-fixed-white/[0.14] p-[3px]">
+      {(["licht", "klimaat"] as const).map((v) => (
+        <button
+          key={v}
+          type="button"
+          role="radio"
+          aria-checked={current === v}
+          onClick={() => (large ? switchModal(v) : changeView(v))}
+          className={cn(
+            "rounded-pill font-extrabold transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white",
+            large ? "h-9 px-4 text-sm" : "h-7 px-3 text-xs",
+            current === v ? "bg-fixed-white text-[#3a2f5a]" : "text-fixed-white/85",
+          )}
+        >
+          {v === "licht" ? "Licht" : "Klimaat"}
+        </button>
+      ))}
+    </div>
+  );
 
   const load = React.useCallback(async () => {
     if (!token) return;
@@ -518,28 +551,12 @@ export function DashboardHuePanel({
     >
       <div className="flex min-h-7 items-center justify-between">
         <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">{view === "klimaat" ? "KLIMAAT" : "LICHT"}</span>
-        <div role="radiogroup" aria-label="Licht of klimaat" className="flex rounded-pill bg-fixed-white/[0.14] p-[3px]">
-          {(["licht", "klimaat"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="radio"
-              aria-checked={view === v}
-              onClick={() => changeView(v)}
-              className={cn(
-                "h-7 rounded-pill px-3 text-xs font-extrabold transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white",
-                view === v ? "bg-fixed-white text-[#3a2f5a]" : "text-fixed-white/85",
-              )}
-            >
-              {v === "licht" ? "Licht" : "Klimaat"}
-            </button>
-          ))}
-        </div>
+        {viewToggle(view)}
       </div>
 
       {view === "klimaat" ? (
         <div className="mt-2.5 flex min-h-0 flex-1 items-center">
-          <DashboardClimate open={climateOpen} onClose={closeClimate} />
+          <DashboardClimate open={climateOpen} onClose={closeClimate} headerToggle={viewToggle("klimaat", true)} />
         </div>
       ) : (
       <div className="mt-2.5 flex min-h-0 flex-1 items-center">
@@ -578,7 +595,7 @@ export function DashboardHuePanel({
       </div>
       )}
     </section>
-    {open && state.kind === "ready" ? <HueLightsModal rooms={state.rooms} busy={busy} setRoom={setRoom} floors={floors} onClose={closeModal} /> : null}
+    {open && state.kind === "ready" ? <HueLightsModal rooms={state.rooms} busy={busy} setRoom={setRoom} floors={floors} onClose={closeModal} headerToggle={viewToggle("licht", true)} /> : null}
     </>
   );
 }
