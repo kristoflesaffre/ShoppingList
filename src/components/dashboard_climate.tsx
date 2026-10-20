@@ -161,7 +161,20 @@ function AcColumn({ device, change, tall = false }: { device: AcDevice; change: 
   );
 }
 
-function ClimateModal({ devices, change, onClose, headerToggle }: { devices: AcDevice[]; change: Change; onClose: () => void; headerToggle?: React.ReactNode }) {
+function ClimateModal({
+  devices,
+  change,
+  onClose,
+  headerToggle,
+  switched = false,
+}: {
+  devices: AcDevice[];
+  change: Change;
+  onClose: () => void;
+  headerToggle?: React.ReactNode;
+  /** Geopend via de schakelaar in het venster: achtergrond zonder in-animatie, enkel de inhoud vloeit in. */
+  switched?: boolean;
+}) {
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -175,7 +188,7 @@ function ClimateModal({ devices, change, onClose, headerToggle }: { devices: AcD
   const reachable = devices.filter((d) => d.available && d.on !== null);
   const action = "h-10 rounded-pill bg-fixed-white/10 px-4 text-sm font-bold text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-40 [@media(hover:hover)]:hover:bg-fixed-white/[0.16]";
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Alle airco's" onClick={onClose} className="fixed inset-0 z-[70] flex bg-[rgba(8,9,24,0.6)] p-7 backdrop-blur-sm motion-safe:animate-fade-up">
+    <div role="dialog" aria-modal="true" aria-label="Alle airco's" onClick={onClose} className={cn("fixed inset-0 z-[70] flex bg-[rgba(8,9,24,0.6)] p-7 backdrop-blur-sm", !switched && "motion-safe:animate-fade-up")}>
       <div
         onClick={(e) => e.stopPropagation()}
         className="flex min-h-0 w-full flex-col rounded-[28px] bg-[linear-gradient(160deg,#232b48_0%,#1a2036_55%,#141a2c_100%)] px-7 py-6 text-fixed-white shadow-[inset_0_0_0_1px_rgba(160,180,255,0.22),0_40px_80px_-30px_rgba(0,0,0,0.8)]"
@@ -208,7 +221,7 @@ function ClimateModal({ devices, change, onClose, headerToggle }: { devices: AcD
             </button>
           </div>
         </div>
-        <div className="mt-6 flex min-h-0 flex-1 justify-center gap-10 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className={cn("mt-6 flex min-h-0 flex-1 justify-center gap-10 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", switched && "motion-safe:animate-fade-slide-in")}>
           {devices.map((d) => (
             <AcColumn key={d.id} device={d} change={change} tall />
           ))}
@@ -223,7 +236,17 @@ function ClimateModal({ devices, change, onClose, headerToggle }: { devices: AcD
 }
 
 /** Inhoud van het paneel in de stand «Klimaat»: de kolommen, plus het volledige scherm als `open`. */
-export function DashboardClimate({ open, onClose, headerToggle }: { open: boolean; onClose: () => void; headerToggle?: React.ReactNode }) {
+export function DashboardClimate({
+  open,
+  onClose,
+  headerToggle,
+  switched = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  headerToggle?: React.ReactNode;
+  switched?: boolean;
+}) {
   const { state, devices, change, error, load } = useAirco();
   const sorted = React.useMemo(() => sortAircos(devices, new Date()), [devices]);
 
@@ -269,7 +292,7 @@ export function DashboardClimate({ open, onClose, headerToggle }: { open: boolea
     <>
       {body}
       {error ? <p className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-pill bg-[rgba(8,9,24,0.6)] px-3 py-1 text-xs font-bold text-fixed-white">{error}</p> : null}
-      {open && state.kind === "ready" && sorted.length > 0 ? <ClimateModal devices={sorted} change={change} onClose={onClose} headerToggle={headerToggle} /> : null}
+      {open && state.kind === "ready" && sorted.length > 0 ? <ClimateModal devices={sorted} change={change} onClose={onClose} headerToggle={headerToggle} switched={switched} /> : null}
     </>
   );
 }

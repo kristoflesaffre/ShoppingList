@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
+import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
 import { DashboardClimate } from "@/components/dashboard_climate";
 import { cn } from "@/lib/utils";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
@@ -217,6 +218,7 @@ function HueLightsModal({
   floors,
   onClose,
   headerToggle,
+  switched = false,
 }: {
   rooms: Room[];
   busy: Set<string>;
@@ -225,6 +227,8 @@ function HueLightsModal({
   onClose: () => void;
   /** Schakelaar «Licht | Klimaat» rechtsboven (vervangt «Indeling», «Alles aan» en «Alles uit»). */
   headerToggle?: React.ReactNode;
+  /** Geopend via de schakelaar in het venster: achtergrond zonder in-animatie, enkel de inhoud vloeit in. */
+  switched?: boolean;
 }) {
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -246,7 +250,7 @@ function HueLightsModal({
   const action = "h-10 rounded-pill bg-fixed-white/10 px-4 text-sm font-bold text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-40 [@media(hover:hover)]:hover:bg-fixed-white/[0.16]";
 
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Alle lampen" onClick={onClose} className="fixed inset-0 z-[70] flex bg-[rgba(8,9,24,0.6)] p-7 backdrop-blur-sm motion-safe:animate-fade-up">
+    <div role="dialog" aria-modal="true" aria-label="Alle lampen" onClick={onClose} className={cn("fixed inset-0 z-[70] flex bg-[rgba(8,9,24,0.6)] p-7 backdrop-blur-sm", !switched && "motion-safe:animate-fade-up")}>
       <div
         onClick={(e) => e.stopPropagation()}
         className="flex min-h-0 w-full flex-col rounded-[28px] bg-[linear-gradient(160deg,#232b48_0%,#1a2036_55%,#141a2c_100%)] px-7 py-6 text-fixed-white shadow-[inset_0_0_0_1px_rgba(160,180,255,0.22),0_40px_80px_-30px_rgba(0,0,0,0.8)]"
@@ -286,7 +290,7 @@ function HueLightsModal({
         {/* Vaste kolombreedte en vaste tussenruimtes; passen niet alle kamers, dan wordt het een baan die
             zijwaarts scrolt (veeg, trackpad of muiswiel) en die tot aan de rand van het venster doorloopt,
             met dezelfde marge aan begin en eind. */}
-        <ScrollLane className="-mx-7 mt-6 flex min-h-0 flex-1 gap-6 px-7">
+        <ScrollLane className={cn("-mx-7 mt-6 flex min-h-0 flex-1 gap-6 px-7", switched && "motion-safe:animate-fade-slide-in")}>
           {ordered.map((g) => (
             <section key={g.key} aria-label={g.label} className="flex min-h-0 shrink-0 flex-col gap-3.5 border-r border-fixed-white/[0.08] pr-6 last:border-r-0 last:pr-0">
               <div className="flex items-center justify-between gap-4">
@@ -402,6 +406,45 @@ function ScrollLane({ className, children }: { className?: string; children: Rea
 
 const PANEL_VIEW_KEY = "dashboard-panel-view";
 
+/**
+ * Schakelaar «Licht | Klimaat» met een schuivende witte pil. De pil beweegt meteen; de wissel zelf volgt twee
+ * frames later, zodat de schuifanimatie al loopt voordat het paneel of venster opnieuw tekent.
+ */
+function ViewToggle({ value, onChange, large = false }: { value: "licht" | "klimaat"; onChange: (v: "licht" | "klimaat") => void; large?: boolean }) {
+  const [shown, setShown] = React.useState(value);
+  React.useEffect(() => setShown(value), [value]);
+  const { containerRef, indicatorStyle } = useSlidingIndicator<HTMLDivElement>(shown === "licht" ? 0 : 1);
+  const choose = (v: "licht" | "klimaat") => {
+    if (v === shown) return;
+    setShown(v);
+    // In het venster wisselt de hele inhoud (en deze schakelaar): eerst de pil laten uitschuiven.
+    if (large) window.setTimeout(() => onChange(v), 340);
+    else requestAnimationFrame(() => requestAnimationFrame(() => onChange(v)));
+  };
+  return (
+    <div ref={containerRef} role="radiogroup" aria-label="Licht of klimaat" className="relative isolate flex rounded-pill bg-fixed-white/[0.14] p-[3px]">
+      <span aria-hidden className="pointer-events-none absolute left-0 -z-10 rounded-pill bg-fixed-white shadow-[0_1px_3px_rgba(16,17,48,0.18)] motion-reduce:!transition-none" style={indicatorStyle} />
+      {(["licht", "klimaat"] as const).map((v) => (
+        <button
+          key={v}
+          type="button"
+          role="radio"
+          data-segment
+          aria-checked={shown === v}
+          onClick={() => choose(v)}
+          className={cn(
+            "rounded-pill font-extrabold transition-colors duration-[380ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white",
+            large ? "h-9 px-4 text-sm" : "h-7 px-3 text-xs",
+            shown === v ? "text-[#3a2f5a]" : "text-fixed-white/85",
+          )}
+        >
+          {v === "licht" ? "Licht" : "Klimaat"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export type HueEmptyKind = "not-configured" | "not-connected" | "no-rooms";
 
 /**
@@ -423,7 +466,12 @@ export function DashboardHuePanel({
   const [busy, setBusy] = React.useState<Set<string>>(() => new Set());
   const [open, setOpen] = React.useState(false);
   const floors = useRoomFloors();
-  const closeModal = React.useCallback(() => setOpen(false), []);
+  /** true = venster geopend via de schakelaar in het venster: geen in-animatie (geen flikkering bij het wisselen). */
+  const [switched, setSwitched] = React.useState(false);
+  const closeModal = React.useCallback(() => {
+    setOpen(false);
+    setSwitched(false);
+  }, []);
   // Dashboard: schakelaar «Licht | Klimaat» rechtsboven (vervangt «Alles uit»); de keuze blijft op dit toestel.
   const [view, setView] = React.useState<"licht" | "klimaat">(() => {
     try {
@@ -441,7 +489,10 @@ export function DashboardHuePanel({
     }
   };
   const [climateOpen, setClimateOpen] = React.useState(false);
-  const closeClimate = React.useCallback(() => setClimateOpen(false), []);
+  const closeClimate = React.useCallback(() => {
+    setClimateOpen(false);
+    setSwitched(false);
+  }, []);
   /** In het volledige scherm: wisselen tussen lampen en airco's zonder het venster te sluiten. */
   const switchModal = (v: "licht" | "klimaat") => {
     changeView(v);
@@ -449,24 +500,16 @@ export function DashboardHuePanel({
     setClimateOpen(v === "klimaat");
   };
   const viewToggle = (current: "licht" | "klimaat", large = false) => (
-    <div role="radiogroup" aria-label="Licht of klimaat" className="flex rounded-pill bg-fixed-white/[0.14] p-[3px]">
-      {(["licht", "klimaat"] as const).map((v) => (
-        <button
-          key={v}
-          type="button"
-          role="radio"
-          aria-checked={current === v}
-          onClick={() => (large ? switchModal(v) : changeView(v))}
-          className={cn(
-            "rounded-pill font-extrabold transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white",
-            large ? "h-9 px-4 text-sm" : "h-7 px-3 text-xs",
-            current === v ? "bg-fixed-white text-[#3a2f5a]" : "text-fixed-white/85",
-          )}
-        >
-          {v === "licht" ? "Licht" : "Klimaat"}
-        </button>
-      ))}
-    </div>
+    <ViewToggle
+      value={current}
+      large={large}
+      onChange={(v) => {
+        if (large) {
+          setSwitched(true);
+          switchModal(v);
+        } else changeView(v);
+      }}
+    />
   );
 
   const load = React.useCallback(async () => {
@@ -554,12 +597,24 @@ export function DashboardHuePanel({
         {viewToggle(view)}
       </div>
 
-      {view === "klimaat" ? (
-        <div className="mt-2.5 flex min-h-0 flex-1 items-center">
-          <DashboardClimate open={climateOpen} onClose={closeClimate} headerToggle={viewToggle("klimaat", true)} />
-        </div>
-      ) : (
-      <div className="mt-2.5 flex min-h-0 flex-1 items-center">
+      {/* Licht en klimaat liggen op elkaar en vloeien in elkaar over; beide blijven geladen (geen laadflits). */}
+      <div className="relative mt-2.5 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)]">
+      <div
+        aria-hidden={view !== "klimaat"}
+        className={cn(
+          "col-start-1 row-start-1 flex min-h-0 items-center transition-opacity duration-300 ease-out motion-reduce:transition-none",
+          view === "klimaat" ? "opacity-100" : "pointer-events-none invisible opacity-0",
+        )}
+      >
+        <DashboardClimate open={climateOpen} onClose={closeClimate} headerToggle={viewToggle("klimaat", true)} switched={switched} />
+      </div>
+      <div
+        aria-hidden={view !== "licht"}
+        className={cn(
+          "col-start-1 row-start-1 flex min-h-0 items-center transition-opacity duration-300 ease-out motion-reduce:transition-none",
+          view === "licht" ? "opacity-100" : "pointer-events-none invisible opacity-0",
+        )}
+      >
         {/* Kolommen vullen de hoogte van het paneel; laden/meldingen staan verticaal gecentreerd. */}
         {state.kind === "loading" ? (
           <div className="flex h-full gap-3" aria-busy aria-label="Lampen laden">
@@ -593,9 +648,9 @@ export function DashboardHuePanel({
           </div>
         )}
       </div>
-      )}
+      </div>
     </section>
-    {open && state.kind === "ready" ? <HueLightsModal rooms={state.rooms} busy={busy} setRoom={setRoom} floors={floors} onClose={closeModal} headerToggle={viewToggle("licht", true)} /> : null}
+    {open && state.kind === "ready" ? <HueLightsModal rooms={state.rooms} busy={busy} setRoom={setRoom} floors={floors} onClose={closeModal} headerToggle={viewToggle("licht", true)} switched={switched} /> : null}
     </>
   );
 }
