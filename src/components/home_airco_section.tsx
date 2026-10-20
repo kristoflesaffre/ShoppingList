@@ -23,7 +23,7 @@ const HOLD_MS = 15_000;
 const SEND_DELAY_MS = 800;
 const FAN_ORDER = Object.keys(AC_FANS) as AcFan[];
 
-function useAirco() {
+export function useAirco() {
   const token = useGoogleAuthToken();
   const [state, setState] = React.useState<State>({ kind: "loading" });
   const [overrides, setOverrides] = React.useState<Record<string, Override>>({});
