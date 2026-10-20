@@ -59,6 +59,13 @@ export function safeTodoistReturn(value: unknown): string | undefined {
   return typeof value === "string" && /^\/[A-Za-z0-9/_-]{0,64}$/.test(value) && !value.startsWith("//") ? value : undefined;
 }
 export class TodoistReconnectRequired extends Error {}
+/**
+ * Todoist weigerde het vernieuwingstoken. Meestal is het net verbruikt door een parallelle aanvraag (een andere
+ * route of serverinstantie vernieuwde eerst en zette het nieuwe cookie): dan eerst opnieuw laten proberen.
+ */
+export class TodoistRefreshRefused extends TodoistReconnectRequired {}
+/** De client stuurt dit mee bij de tweede poging na «retry»; weigert Todoist dan nog, dan echt ontkoppelen. */
+export const TODOIST_RETRY_HEADER = "x-todoist-retry";
 /** 401 van de Todoist-API: het toegangstoken is verlopen of ingetrokken (eerst vernieuwen, dan pas ontkoppelen). */
 export class TodoistUnauthorized extends Error {}
 export class TodoistUpstreamError extends Error {
@@ -159,7 +166,8 @@ export function clearTodoistReconnect(response: NextResponse) {
 /**
  * Voert `run` uit met een geldige koppeling. Verloopt het toegangstoken (of antwoordt de API toch met 401),
  * dan wordt het eerst vernieuwd en één keer opnieuw geprobeerd. Enkel als Todoist de koppeling echt weigert
- * (vernieuwing geweigerd, of 401 met een vers token) wordt het cookie gewist; tijdelijke fouten laten het staan.
+ * (vernieuwing ook bij de tweede poging geweigerd, of 401 met een vers token) wordt het cookie gewist; tijdelijke
+ * fouten laten het staan. Een eerste geweigerde vernieuwing geeft 425 «retry» (zie TodoistRefreshRefused).
  * `run` krijgt de (begrensde) body als tekst mee: een aanvraagstroom is maar één keer leesbaar, een nieuwe poging niet.
  */
 export async function withTodoistConnection(request: NextRequest, run: (connection: TodoistConnection, body: string) => Promise<NextResponse>) {
@@ -173,7 +181,9 @@ export async function withTodoistConnection(request: NextRequest, run: (connecti
   let refreshed = false;
   let persist = false;
   const renew = async () => {
-    const result = await refresh(connection!, config);
+    const result = await refresh(connection!, config).catch((cause) => {
+      throw cause instanceof TodoistReconnectRequired && connection!.refreshToken ? new TodoistRefreshRefused() : cause;
+    });
     connection = result.connection;
     refreshed = true;
     persist ||= result.persist;
@@ -190,6 +200,11 @@ export async function withTodoistConnection(request: NextRequest, run: (connecti
     }
   } catch (cause) {
     let response: NextResponse;
+    // Geweigerde vernieuwing bij de eerste poging: het cookie niet wissen (het kan intussen al vervangen zijn
+    // door het antwoord van de parallelle aanvraag die wél vernieuwde), maar de client opnieuw laten proberen.
+    if (cause instanceof TodoistRefreshRefused && request.headers.get(TODOIST_RETRY_HEADER) !== "1") {
+      return todoistJson({ error: "retry" }, 425);
+    }
     if (cause instanceof TodoistReconnectRequired || cause instanceof TodoistUnauthorized) {
       response = todoistJson({ error: "not-connected", reconnect: true }, 409);
       response.cookies.set(TODOIST_AUTH_COOKIE, "", { ...todoistCookieOptions, maxAge: 0 });

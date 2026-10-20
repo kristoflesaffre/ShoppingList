@@ -17,6 +17,8 @@ function request(route: string, body?: unknown, payload = connection()) {
   r.cookies.set(TODOIST_AUTH_COOKIE, sealTodoist(payload, secret));
   return r;
 }
+/** Tweede poging na 425 «retry». */
+function retried(r: NextRequest) { r.headers.set("x-todoist-retry", "1"); return r; }
 function callbackRequest(query: string, expired = false) {
   const r = new NextRequest(`${origin}/api/todoist/callback?${query}`);
   r.cookies.set(TODOIST_STATE_COOKIE, sealTodoist({ ownerId: "user-1", state: "expected", verifier: "verifier", expiresAt: Date.now() + (expired ? -1 : 600_000) }, secret));
@@ -122,9 +124,17 @@ describe("Todoist backend", () => {
     expect(response.headers.get("retry-after")).toBe("30");
     expect(readTodoistConnection(response.cookies.get(TODOIST_AUTH_COOKIE)?.value, secret, "user-1", "client")?.refreshToken).toBe("new-refresh");
   });
-  it("clears a revoked connection (401, then refresh refused) and requests reconnection", async () => {
+  it("asks the client to retry first when a refresh is refused, without touching the cookie", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ error: "invalid_grant" }, { status: 400 }));
+    const response = await tasks(request("tasks", {}, { ...connection(), expiresAt: Date.now() - 1 }));
+    expect(response.status).toBe(425);
+    expect(await response.json()).toEqual({ error: "retry" });
+    expect(response.cookies.get(TODOIST_AUTH_COOKIE)).toBeUndefined();
+    expect(response.cookies.get(TODOIST_RECONNECT_COOKIE)).toBeUndefined();
+  });
+  it("clears a revoked connection (401, then refresh refused again on retry) and requests reconnection", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 401 })).mockResolvedValueOnce(Response.json({ error: "invalid_grant" }, { status: 400 }));
-    const response = await tasks(request("tasks"));
+    const response = await tasks(retried(request("tasks")));
     expect(response.status).toBe(409);
     expect(response.cookies.get(TODOIST_AUTH_COOKIE)?.maxAge).toBe(0);
     expect(response.cookies.get(TODOIST_RECONNECT_COOKIE)?.value).toBeTruthy();
@@ -145,7 +155,7 @@ describe("Todoist backend", () => {
   });
   it("turns an invalid refresh token into a disconnected status", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 400 }));
-    const response = await status(request("status", {}, { ...connection(), expiresAt: Date.now() - 1 }));
+    const response = await status(retried(request("status", {}, { ...connection(), expiresAt: Date.now() - 1 })));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ configured: true, connected: false, reconnect: true });
     expect(response.cookies.get(TODOIST_AUTH_COOKIE)?.maxAge).toBe(0);
@@ -249,7 +259,7 @@ describe("Todoist token expiry and refresh", () => {
   });
   it("keeps showing «Opnieuw koppelen» after the cookie is gone, until reconnecting succeeds", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({ error: "invalid_grant" }, { status: 400 }));
-    const refused = await status(request("status", {}, expired()));
+    const refused = await status(retried(request("status", {}, expired())));
     expect(await refused.json()).toEqual({ configured: true, connected: false, reconnect: true });
     const mark = refused.cookies.get(TODOIST_RECONNECT_COOKIE)!;
     expect(mark).toMatchObject({ httpOnly: true, secure: true });

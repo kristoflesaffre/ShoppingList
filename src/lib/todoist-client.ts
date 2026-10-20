@@ -66,19 +66,31 @@ export function dueInfo(task: TodoTask, todayIso: string): { rank: number; key: 
   return { rank: 2, key: task.due?.datetime ?? date, label: withTime(label), overdue: false };
 }
 
+/**
+ * POST naar /api/todoist/*. Antwoordt de server 425 «retry» (vernieuwingstoken net verbruikt door een parallelle
+ * aanvraag), dan na een korte pauze één keer opnieuw — met het intussen vernieuwde cookie.
+ */
+export async function todoistPost(token: string | null, path: string, body?: unknown): Promise<Response> {
+  const send = (retry: boolean) =>
+    fetch(`/api/todoist/${path}`, {
+      method: "POST",
+      headers: { ...googleAuthHeaders(token), "content-type": "application/json", ...(retry ? { "x-todoist-retry": "1" } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
+    });
+  const first = await send(false);
+  if (first.status !== 425) return first;
+  await new Promise((r) => setTimeout(r, 1500));
+  return send(true);
+}
+
 export function useTodoist() {
   const token = useGoogleAuthToken();
   const [state, setState] = React.useState<TodoState>({ kind: "loading" });
 
   const load = React.useCallback(async () => {
     if (!token) return;
-    const post = (path: string, body?: unknown) =>
-      fetch(`/api/todoist/${path}`, {
-        method: "POST",
-        headers: { ...googleAuthHeaders(token), "content-type": "application/json" },
-        body: body ? JSON.stringify(body) : undefined,
-        cache: "no-store",
-      });
+    const post = (path: string, body?: unknown) => todoistPost(token, path, body);
     try {
       const status = (await (await post("status")).json()) as { configured?: boolean; connected?: boolean; reconnect?: boolean; canWrite?: boolean };
       if (status.configured === false) return setState({ kind: "not-configured" });
@@ -123,11 +135,7 @@ export function useTodoist() {
       }
       setState((s) => (s.kind === "ready" ? { ...s, tasks: s.tasks.filter((t) => t.id !== task.id) } : s));
       try {
-        const res = await fetch("/api/todoist/close", {
-          method: "POST",
-          headers: { ...googleAuthHeaders(token), "content-type": "application/json" },
-          body: JSON.stringify({ id: task.id }),
-        });
+        const res = await todoistPost(token, "close", { id: task.id });
         if (res.status === 403) {
           setNotice({ text: "Koppel Todoist opnieuw met schrijfrechten om taken af te vinken.", reconnect: true });
           void load();
