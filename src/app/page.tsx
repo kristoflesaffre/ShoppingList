@@ -110,6 +110,7 @@ import { useWatchingTvItems } from "@/hooks/use_watching_tv_items";
 import { isVastList } from "@/lib/vaste-lijstjes";
 import { HomeListsDesktopRow, VasteLijstjesLane, VasteLijstjesTiles } from "@/components/vaste_lijstjes";
 import { IconPrimaryMask, NewListFlow, type NewListFlowHandle } from "@/components/new_list_flow";
+import { QueryErrorScreen } from "@/components/query_error_screen";
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -3032,13 +3033,7 @@ export default function Home() {
   }
 
   if (error) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
-        <p className="text-base text-[var(--error-600)]">
-          Er ging iets mis: {error.message}
-        </p>
-      </div>
-    );
+    return <QueryErrorScreen error={error} />;
   }
 
   return (

@@ -19,6 +19,7 @@ import {
   findMasterStoreBySlug,
 } from "@/lib/master-stores";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
+import { QueryErrorScreen } from "@/components/query_error_screen";
 
 /** Zelfde pijl als SlideInModal — public/icons/arrow.svg */
 function BackArrowIcon({ className }: { className?: string }) {
@@ -112,13 +113,7 @@ function SelecteerWinkelContent() {
   }
 
   if (error) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
-        <p className="text-base text-[var(--error-600)]">
-          Er ging iets mis: {error.message}
-        </p>
-      </div>
-    );
+    return <QueryErrorScreen error={error} />;
   }
 
   return (

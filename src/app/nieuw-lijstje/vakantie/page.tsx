@@ -21,6 +21,7 @@ import { defaultVakantieListName } from "@/lib/list-default-name";
 import { pickListProductIconForNewList } from "@/lib/list-product-icons";
 import { buildVacationDefaultItems } from "@/lib/vacation-default-items";
 import { cn } from "@/lib/utils";
+import { QueryErrorScreen } from "@/components/query_error_screen";
 
 const VACATION_ICON = "/images/ui/vakantie_160.webp";
 
@@ -672,13 +673,7 @@ export default function NieuwVakantielijstjePage() {
   }
 
   if (error) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
-        <p className="text-base text-[var(--error-600)]">
-          Er ging iets mis: {error.message}
-        </p>
-      </div>
-    );
+    return <QueryErrorScreen error={error} />;
   }
 
   const labelOf = (opts: Option[], v: OptionValue | null) => opts.find((o) => o.value === v)?.label;

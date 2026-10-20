@@ -182,6 +182,7 @@ import {
 } from "@/lib/item-store";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
+import { QueryErrorScreen } from "@/components/query_error_screen";
 
 const RecipeIngredientSortableList = dynamic(
   () =>
@@ -5785,13 +5786,7 @@ export default function ListDetailPage({
   }
 
   if (error) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
-        <p className="text-base text-[var(--error-600)]">
-          Er ging iets mis: {error.message}
-        </p>
-      </div>
-    );
+    return <QueryErrorScreen error={error} />;
   }
 
   const mainSurfaceClassName = cn(

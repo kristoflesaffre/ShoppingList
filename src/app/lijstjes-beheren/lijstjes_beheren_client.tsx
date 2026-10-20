@@ -59,6 +59,7 @@ import {
 import { isVastList } from "@/lib/vaste-lijstjes";
 import { useVasteLijstjes, VasteLijstjesGrid } from "@/components/vaste_lijstjes";
 import { NewListFlow, type NewListFlowHandle } from "@/components/new_list_flow";
+import { QueryErrorScreen } from "@/components/query_error_screen";
 
 export type LijstjesBeherenSection = "lijstjes" | "favorieten";
 
@@ -567,13 +568,7 @@ export function LijstjesBeherenClient({
   }
 
   if (error) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
-        <p className="text-base text-[var(--error-600)]">
-          Er ging iets mis: {error.message}
-        </p>
-      </div>
-    );
+    return <QueryErrorScreen error={error} />;
   }
 
 

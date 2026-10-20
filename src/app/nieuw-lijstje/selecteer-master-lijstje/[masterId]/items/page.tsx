@@ -31,6 +31,7 @@ import { pickListProductIconForNewList } from "@/lib/list-product-icons";
 import { DoneButton } from "@/components/ui/title_edit_button";
 import { ListSuggestions, type Suggestion } from "@/app/lijstje/[id]/list_suggestions";
 import { categoryColor } from "@/app/lijstje/[id]/list_cards_view";
+import { QueryErrorScreen } from "@/components/query_error_screen";
 
 type TemplateItem = {
   id: string;
@@ -728,13 +729,7 @@ export default function SelecteerMasterItemsPage() {
   }
 
   if (error) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
-        <p className="text-base text-[var(--error-600)]">
-          Er ging iets mis: {error.message}
-        </p>
-      </div>
-    );
+    return <QueryErrorScreen error={error} />;
   }
 
   if (!masterList) {
