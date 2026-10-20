@@ -111,6 +111,11 @@ import { isVastList } from "@/lib/vaste-lijstjes";
 import { HomeListsDesktopRow, VasteLijstjesLane, VasteLijstjesTiles } from "@/components/vaste_lijstjes";
 import { IconPrimaryMask, NewListFlow, type NewListFlowHandle } from "@/components/new_list_flow";
 import { QueryErrorScreen } from "@/components/query_error_screen";
+import { useListItemsBuckets } from "@/hooks/use_list_items_buckets";
+import type { InstaQLEntity } from "@instantdb/react";
+import type schema from "../../instant.schema";
+
+type AppSchema = typeof schema;
 
 type ListMembershipRow = { id?: string; instantUserId?: string };
 
@@ -2039,16 +2044,17 @@ export default function Home() {
 
   const ownerId = user?.id ?? "__no_user__";
 
-  const { isLoading, error, data } = db.useQuery({
+  // Lijstjes zonder items: die komen in kleine deelquery’s (useListItemsBuckets) — één grote query liep
+  // server-side over de limiet («Operation timed out: handle-receive»).
+  const { isLoading: baseLoading, error: baseError, data: baseData } = db.useQuery({
     lists: {
-      items: {},
       memberships: {},
       loyaltyCard: {},
       loyaltyCardSecondary: {},
       $: { where: { ownerId } },
     },
     listMembers: {
-      list: { items: {} },
+      list: {},
       $: { where: { instantUserId: ownerId } },
     },
     loyaltyCards: {
@@ -2073,6 +2079,35 @@ export default function Home() {
       $: { where: { instantUserId: ownerId } },
     },
   });
+
+  const listIdsForItems = React.useMemo(() => {
+    if (!baseData) return [] as string[];
+    const ids = (baseData.lists ?? []).map((l) => l.id);
+    for (const row of baseData.listMembers ?? []) if (row.list?.id) ids.push(row.list.id);
+    return ids;
+  }, [baseData]);
+  const { itemsByList, ready: itemsReady, error: itemsError, loaders: itemLoaders } = useListItemsBuckets(listIdsForItems);
+  const isLoading = baseLoading || (!!baseData && !itemsReady);
+  const error = baseError ?? itemsError ?? undefined;
+  type BaseData = NonNullable<typeof baseData>;
+  type ItemEntity = InstaQLEntity<AppSchema, "items">;
+  type ItemsMergedData = Omit<BaseData, "lists" | "listMembers"> & {
+    lists: (BaseData["lists"][number] & { items: ItemEntity[] })[];
+    listMembers: (Omit<BaseData["listMembers"][number], "list"> & {
+      list?: (NonNullable<BaseData["listMembers"][number]["list"]> & { items: ItemEntity[] }) | null;
+    })[];
+  };
+  /** Zelfde vorm als vroeger (`lists[].items`, `listMembers[].list.items`); lijstjes zonder geladen items nog weglaten. */
+  const data = React.useMemo(() => {
+    if (!baseData || !itemsReady) return undefined;
+    return {
+      ...baseData,
+      lists: (baseData.lists ?? []).filter((l) => itemsByList.has(l.id)).map((l) => ({ ...l, items: itemsByList.get(l.id) ?? [] })),
+      listMembers: (baseData.listMembers ?? [])
+        .filter((m) => !m.list || itemsByList.has(m.list.id))
+        .map((m) => (m.list ? { ...m, list: { ...m.list, items: itemsByList.get(m.list.id) ?? [] } } : m)),
+    } as unknown as ItemsMergedData;
+  }, [baseData, itemsReady, itemsByList]);
 
   const shareRelatedUserIds = React.useMemo(() => {
     const ids = new Set<string>();
@@ -3029,15 +3064,26 @@ export default function Home() {
     homeSectionConfig.order.indexOf("todo") < homeSectionConfig.order.indexOf("lijstjes");
 
   if (authLoading || !user || isLoading) {
-    return <PageSpinner />;
+    return (
+      <>
+        {itemLoaders}
+        <PageSpinner />
+      </>
+    );
   }
 
   if (error) {
-    return <QueryErrorScreen error={error} />;
+    return (
+      <>
+        {itemLoaders}
+        <QueryErrorScreen error={error} />
+      </>
+    );
   }
 
   return (
     <div className={cn("relative flex min-h-dvh w-full flex-col px-[var(--space-4)]", !hasLists && "bg-[var(--bg-app)]")}>
+      {itemLoaders}
       <div
         className={cn(
           "flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]",

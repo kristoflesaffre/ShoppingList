@@ -18,6 +18,9 @@ import { ListDateStepper } from "@/components/list_date_stepper";
 import { VastListSheet } from "@/components/vaste_lijstjes";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { useListItemsBuckets } from "@/hooks/use_list_items_buckets";
+import type { InstaQLEntity } from "@instantdb/react";
+import type schema from "../../instant.schema";
 import {
   defaultCafeListName,
   defaultFrituurListName,
@@ -289,13 +292,40 @@ export const NewListFlow = React.forwardRef<NewListFlowHandle, { onCreated?: (li
   onCreatedRef.current = onCreated;
   const ownerId = user?.id ?? "__no_user__";
 
-  const { data } = db.useQuery({
-    lists: { items: {}, $: { where: { ownerId } } },
-    listMembers: { list: { items: {} }, $: { where: { instantUserId: ownerId } } },
+  // Items apart in kleine deelquery’s (zelfde als de startpagina, dus gedeeld): alles in één query liep
+  // server-side over de limiet («Operation timed out: handle-receive»).
+  const { data: baseData } = db.useQuery({
+    lists: { $: { where: { ownerId } } },
+    listMembers: { list: {}, $: { where: { instantUserId: ownerId } } },
     loyaltyCards: { list: {}, $: { where: { ownerId } } },
     listIconImages: { $: { where: { ownerId } } },
     supermarktPickerStats: { $: { where: { ownerId } } },
   });
+  const listIdsForItems = React.useMemo(() => {
+    if (!baseData) return [] as string[];
+    const ids = (baseData.lists ?? []).map((l) => l.id);
+    for (const row of baseData.listMembers ?? []) if (row.list?.id) ids.push(row.list.id);
+    return ids;
+  }, [baseData]);
+  const { itemsByList, ready: itemsReady, loaders: itemLoaders } = useListItemsBuckets(listIdsForItems);
+  type BaseData = NonNullable<typeof baseData>;
+  type ItemEntity = InstaQLEntity<typeof schema, "items">;
+  type MergedData = Omit<BaseData, "lists" | "listMembers"> & {
+    lists: (BaseData["lists"][number] & { items: ItemEntity[] })[];
+    listMembers: (Omit<BaseData["listMembers"][number], "list"> & {
+      list?: (NonNullable<BaseData["listMembers"][number]["list"]> & { items: ItemEntity[] }) | null;
+    })[];
+  };
+  const data = React.useMemo(() => {
+    if (!baseData || !itemsReady) return undefined;
+    return {
+      ...baseData,
+      lists: (baseData.lists ?? []).filter((l) => itemsByList.has(l.id)).map((l) => ({ ...l, items: itemsByList.get(l.id) ?? [] })),
+      listMembers: (baseData.listMembers ?? [])
+        .filter((m) => !m.list || itemsByList.has(m.list.id))
+        .map((m) => (m.list ? { ...m, list: { ...m.list, items: itemsByList.get(m.list.id) ?? [] } } : m)),
+    } as unknown as MergedData;
+  }, [baseData, itemsReady, itemsByList]);
 
   /** Eigen en gedeelde lijstjes (zonder vaste lijstjes en lege concept-favorieten), op volgorde. */
   const lists = React.useMemo((): FlowList[] => {
@@ -892,6 +922,7 @@ export const NewListFlow = React.forwardRef<NewListFlowHandle, { onCreated?: (li
 
   return (
     <>
+      {itemLoaders}
       {/* Figma 1320:22753 — Nieuw lijstje supermarkt (swimlane + optionele klantenkaart-koppeling) */}
       <SlideInModal
         open={supermarktNewListSlideOpen}
