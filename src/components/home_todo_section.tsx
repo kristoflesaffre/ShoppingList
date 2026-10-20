@@ -4,7 +4,6 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { plainTaskText, TODO_NEAR_DAYS, daysUntil, localIso, sortTasks, useTodoist, type TodoDue, type TodoTask } from "@/lib/todoist-client";
 import { ListSectionHeader, OverviewPill } from "@/components/list_section_header";
-import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { MiniButton } from "@/components/ui/mini_button";
 import { TodoCheck, TodoNotice } from "@/components/todo_check";
 import { taskPhotoFor } from "@/lib/task_photos";
@@ -30,6 +29,42 @@ const CORK_STYLE: React.CSSProperties = {
   backgroundSize: "26px 26px,31px 31px,23px 23px,100% 100%",
 };
 const TAPE_TILT = [-3, 2, -1.5, 3, -2];
+
+/**
+ * Nog niet gekoppeld (canvas «Todoist lege staat · A»): het kurken bord staat er al, met één briefje met uitleg en
+ * de knop; gestippelde lege plekken tonen waar je taken straks hangen.
+ */
+function TodoConnectBoard({ title, text, action }: { title: string; text: string; action: React.ReactNode }) {
+  return (
+    <div className={cn("overflow-hidden rounded-[24px] shadow-[inset_0_2px_6px_rgba(60,35,10,0.35)]", CORK_DARK)} style={CORK_STYLE}>
+      <div className="flex items-center gap-5 overflow-hidden px-5 pb-6 pt-6 lg:gap-6 lg:px-6">
+        <div className="relative w-[200px] shrink-0 -rotate-2 lg:w-[220px]">
+          <div className="flex min-h-[196px] flex-col gap-1.5 bg-[linear-gradient(170deg,#f3f1b4,#eceaa6)] px-4 pb-4 pt-5 shadow-[0_1px_1.5px_rgba(0,0,0,0.16),0_8px_14px_-6px_rgba(40,25,5,0.45)] [[data-theme=dark]_&]:brightness-[0.88] lg:min-h-[206px]">
+            <p className="text-[15px] font-extrabold leading-[19px] text-[#3b3317] lg:text-base lg:leading-5">{title}</p>
+            <p className="text-[12.5px] leading-[17px] text-[#6f6638]">{text}</p>
+            {action ? <div className="mt-auto pt-3">{action}</div> : null}
+          </div>
+          <span
+            aria-hidden
+            className="absolute -top-2 left-1/2 z-[1] h-[18px] w-[54px] -translate-x-1/2 rotate-[1.5deg] shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
+            style={{ backgroundColor: "rgba(255,255,255,0.62)" }}
+          />
+        </div>
+        {[2.5, -1.5, 2, -2.5].map((tilt, i) => (
+          <span
+            key={tilt}
+            aria-hidden
+            className={cn(
+              "size-[150px] shrink-0 border-2 border-dashed border-[rgba(255,240,215,0.55)] bg-[rgba(255,240,215,0.08)] lg:size-[168px]",
+              i >= 2 && "max-lg:hidden",
+            )}
+            style={{ transform: `rotate(${tilt}deg)` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Hoe schuin een note hangt, alsof iemand ze er met de hand op plakte: afwisselend met en tegen de klok in
@@ -165,21 +200,23 @@ export function HomeTodoSection() {
     );
   } else if (state.kind === "not-configured" || state.kind === "not-connected") {
     body = (
-      <HomeOnboardingEmptyCard
-        illustrationSrc="/images/ui/lijstje_240.webp"
-        illustrationSide="end"
-        contentAlign="start"
+      <TodoConnectBoard
+        title={
+          state.kind === "not-configured"
+            ? "Todoist is nog niet ingesteld"
+            : state.reconnect
+              ? "Je Todoist-koppeling is verlopen"
+              : "Je Todoist-taken hangen straks hier"
+        }
         text={
           state.kind === "not-configured"
-            ? "Zie hier je Todoist-taken. Todoist is nog niet ingesteld voor deze versie van de app."
+            ? "Vraag de beheerder om Todoist in te stellen voor deze versie van de app."
             : state.reconnect
-              ? "Je Todoist-koppeling is verlopen. Koppel opnieuw om je taken hier te zien."
-              : "Zie hier je Todoist-taken: wat vandaag moet, wat te laat is en wat eraan komt."
+              ? "Koppel opnieuw om je taken weer op het bord te zien."
+              : "Wat vandaag moet, wat te laat is en wat eraan komt."
         }
-        actions={
-          state.kind === "not-configured" ? (
-            <span className="text-[12px] font-medium leading-4 text-[var(--text-secondary)]">Vraag de beheerder om Todoist in te stellen.</span>
-          ) : (
+        action={
+          state.kind === "not-configured" ? null : (
             <MiniButton variant="primary" onClick={() => void connect()}>
               {state.reconnect ? "Opnieuw koppelen" : "Koppel Todoist"}
             </MiniButton>
