@@ -17,6 +17,7 @@ import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordi
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { useListItemsBuckets } from "@/hooks/use_list_items_buckets";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import { useAutoShare } from "@/lib/auto-share";
 import { isoToListDate, todayIsoDate } from "@/lib/list-date";
@@ -92,25 +93,41 @@ function summarize(row: ListRow, isOwner: boolean): VastListSummary {
 /** Vaste lijstjes van de gebruiker (eigen + gedeeld) en het aantal open punten in «Te kopen». */
 export function useVasteLijstjes(userId: string | null | undefined) {
   const uid = userId ?? "__no_user__";
-  const { isLoading, data } = db.useQuery({
-    lists: { items: {}, memberships: {}, $: { where: { ownerId: uid, listKind: "vast" } } },
-    listMembers: { list: { items: {} }, $: { where: { instantUserId: uid } } },
+  // Lijstjes zonder items: `listMembers.list.items` haalde de items van álle gedeelde lijstjes op en liep
+  // server-side over de limiet («Operation timed out: handle-receive»). Items enkel voor de vaste
+  // lijstjes, in kleine deelquery’s (useListItemsBuckets).
+  const { isLoading: baseLoading, data } = db.useQuery({
+    lists: { memberships: {}, $: { where: { ownerId: uid, listKind: "vast" } } },
+    listMembers: { list: {}, $: { where: { instantUserId: uid } } },
     shoppingItems: {},
     shoppingShares: { memberships: {}, $: { where: { ownerId: uid } } },
     shoppingShareMembers: { shoppingShare: { memberships: {} }, $: { where: { instantUserId: uid } } },
   });
 
-  const lists = React.useMemo(() => {
-    const byId = new Map<string, VastListSummary>();
+  const vastRows = React.useMemo(() => {
+    const byId = new Map<string, { row: ListRow; isOwner: boolean }>();
     for (const row of (data?.lists ?? []) as ListRow[]) {
-      if (isVastList(row)) byId.set(row.id, summarize(row, true));
+      if (isVastList(row)) byId.set(row.id, { row, isOwner: true });
     }
     for (const m of (data?.listMembers ?? []) as { list?: ListRow | null }[]) {
       const row = m.list;
-      if (row && isVastList(row) && !byId.has(row.id)) byId.set(row.id, summarize(row, false));
+      if (row && isVastList(row) && !byId.has(row.id)) byId.set(row.id, { row, isOwner: false });
     }
-    return Array.from(byId.values()).sort((a, b) => a.order - b.order);
+    return Array.from(byId.values());
   }, [data?.lists, data?.listMembers]);
+  const vastIds = React.useMemo(() => vastRows.map((r) => r.row.id), [vastRows]);
+  const { itemsByList, ready: itemsReady, loaders } = useListItemsBuckets(vastIds);
+  const isLoading = baseLoading || (!!data && !itemsReady);
+
+  /** Enkel vaste lijstjes waarvan de items geladen zijn, anders lijkt een lijstje even «leeg». */
+  const lists = React.useMemo(
+    () =>
+      vastRows
+        .filter(({ row }) => itemsByList.has(row.id))
+        .map(({ row, isOwner }) => summarize({ ...row, items: itemsByList.get(row.id) as ListRow["items"] }, isOwner))
+        .sort((a, b) => a.order - b.order),
+    [vastRows, itemsByList],
+  );
 
   const teKopenOpen = React.useMemo(() => {
     if (!userId) return 0;
@@ -205,7 +222,8 @@ export function useVasteLijstjes(userId: string | null | undefined) {
     [prefs, savePrefs],
   );
 
-  return { isLoading, lists, teKopenOpen, favoritesCount, tiles, hiddenTiles, saveOrder, hideTile, restoreTile };
+  /** `loaders` moet in elke render-tak van de aanroeper staan (laadt de items van de vaste lijstjes). */
+  return { isLoading, lists, teKopenOpen, favoritesCount, tiles, hiddenTiles, saveOrder, hideTile, restoreTile, loaders };
 }
 
 export type VastTileEntry = {
@@ -609,8 +627,8 @@ export { deepRgb, mixWithWhiteRgb };
  * Rij «Vaste lijstjes» op de startpagina: «Te kopen», de eigen vaste lijstjes en een tegel «Nieuw».
  */
 export function VasteLijstjesLane({ userId, onAddTeKopen }: { userId: string; onAddTeKopen?: () => void }) {
-  const { tiles } = useVasteLijstjes(userId);
-  if (tiles.length === 0) return null;
+  const { tiles, loaders } = useVasteLijstjes(userId);
+  if (tiles.length === 0) return loaders;
   const fit = tiles.length <= 2;
   const tileClass = fit ? "!w-auto min-w-0" : "snap-start";
   return (
@@ -621,6 +639,7 @@ export function VasteLijstjesLane({ userId, onAddTeKopen }: { userId: string; on
           : "-mx-4 flex snap-x gap-2.5 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
       )}
     >
+      {loaders}
       {tiles.map((t) => (
         <VastTile
           key={t.id}
@@ -644,9 +663,10 @@ export function VasteLijstjesLane({ userId, onAddTeKopen }: { userId: string; on
  * Ze rekken mee tot de hoogte van die rij.
  */
 export function VasteLijstjesTiles({ userId, onAddTeKopen }: { userId: string; onAddTeKopen?: () => void }) {
-  const { tiles } = useVasteLijstjes(userId);
+  const { tiles, loaders } = useVasteLijstjes(userId);
   return (
     <>
+      {loaders}
       {tiles.map((t) => (
         <VastTile
           key={t.id}
@@ -690,7 +710,7 @@ export function HomeListsDesktopRow({
   shopping: React.ReactNode[];
   onAddTeKopen?: () => void;
 }) {
-  const { tiles: allTiles } = useVasteLijstjes(userId);
+  const { tiles: allTiles, loaders } = useVasteLijstjes(userId);
   const tiles = allTiles.slice(0, 3);
   const equal = shopping.length + tiles.length <= 3;
   const tileEls = tiles.map((t) => (
@@ -718,6 +738,7 @@ export function HomeListsDesktopRow({
           </div>
         ))}
         {tileEls}
+        {loaders}
       </div>
     );
   }
@@ -733,6 +754,7 @@ export function HomeListsDesktopRow({
       </div>
       <div className="grid items-stretch gap-3" style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}>
         {tileEls}
+        {loaders}
       </div>
     </div>
   );
@@ -743,7 +765,7 @@ export function HomeListsDesktopRow({
  * vuilbak om te verwijderen (Te kopen/Favorieten worden enkel verborgen) en «Terugzetten».
  */
 export function VasteLijstjesGrid({ userId, editing }: { userId?: string; editing: boolean }) {
-  const { tiles, hiddenTiles, saveOrder, hideTile, restoreTile } = useVasteLijstjes(userId);
+  const { tiles, hiddenTiles, saveOrder, hideTile, restoreTile, loaders } = useVasteLijstjes(userId);
   const [localOrder, setLocalOrder] = React.useState<string[] | null>(null);
   const ids = tiles.map((t) => t.id);
   const idsKey = ids.join("|");
@@ -776,6 +798,7 @@ export function VasteLijstjesGrid({ userId, editing }: { userId?: string; editin
   if (!editing) {
     return (
       <div className={gridClass}>
+        {loaders}
         {ordered.map((t) => (
           <VastTile key={t.id} href={t.href} name={t.name} count={t.count} countLabel={t.countLabel} icon={t.icon} color={t.color} className="!w-full" />
         ))}
@@ -784,6 +807,7 @@ export function VasteLijstjesGrid({ userId, editing }: { userId?: string; editin
   }
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      {loaders}
       <SortableContext items={ordered.map((t) => t.id)} strategy={rectSortingStrategy}>
         <div className={gridClass}>
           {ordered.map((t) => (

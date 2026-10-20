@@ -424,7 +424,7 @@ function AgendaColumn() {
 
 /** Herinneringen naast de weergaveschakelaar: verjaardagen uit kado-lijstjes binnen 30 dagen. */
 export function DashboardReminders({ userId }: { userId: string }) {
-  const { lists } = useVasteLijstjes(userId);
+  const { lists, loaders } = useVasteLijstjes(userId);
   const chips = lists
     .filter((l) => l.type === "kado" && l.eventDate)
     .map((l) => {
@@ -440,9 +440,10 @@ export function DashboardReminders({ userId }: { userId: string }) {
     .filter((c) => c.days <= 30)
     .sort((a, b) => a.days - b.days)
     .slice(0, 2);
-  if (chips.length === 0) return null;
+  if (chips.length === 0) return loaders;
   return (
     <span className="flex gap-1.5">
+      {loaders}
       {chips.map((c) => (
         <Link key={c.id} href={`/vast/${c.id}`} className="inline-flex h-7 items-center rounded-pill bg-[#fbe2ea] px-3 text-xs font-bold text-[#8f3756] no-underline [[data-aod]_&]:bg-[rgba(229,97,138,0.16)] [[data-aod]_&]:text-[#f0a3bd]">
           {c.label}
