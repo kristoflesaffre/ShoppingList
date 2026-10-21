@@ -23,6 +23,7 @@ function ScreenIcon({ kind }: { kind: (typeof ACTIONS)[number]["icon"] }) {
 /** Reuses the authenticated local API. No RF command is sent on mount or retried. */
 export function DashboardScreenPanel({ token }: { token: string | null }) {
   const [screen, setScreen] = React.useState<ScreenStatus | null>(null);
+  const [statusVersion, setStatusVersion] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
   const [message, setMessage] = React.useState("Verbinding controleren…");
   const mounted = React.useRef(false);
@@ -55,7 +56,7 @@ export function DashboardScreenPanel({ token }: { token: string | null }) {
         : "Schermbediening niet beschikbaar. Controleer de koppeling op je Mac.");
     });
     return () => { mounted.current = false; command.current += 1; busyRef.current = false; controller.abort(); };
-  }, [token, call]);
+  }, [token, call, statusVersion]);
 
   async function send(action: Action) {
     if (isScreenActionDisabled(action, screen, busyRef.current)) return;
@@ -110,6 +111,9 @@ export function DashboardScreenPanel({ token }: { token: string | null }) {
       <span>{screen?.durationSeconds != null ? `Mijn hoogte: ${screen.durationSeconds.toLocaleString("nl-BE", { maximumFractionDigits: 2 })} s · begin volledig omlaag` : "Mijn hoogte nog niet ingesteld"}</span>
       <Link href="/profiel/projectiescherm" className="font-bold text-fixed-white/90 underline underline-offset-2">Hoogte instellen</Link>
     </div>
-    <p role="status" aria-live="polite" className="text-[11px] leading-4 text-fixed-white/75">{message}</p>
+    <div className="flex flex-wrap items-center justify-between gap-1">
+      <p role="status" aria-live="polite" className="text-[11px] leading-4 text-fixed-white/75">{message}</p>
+      {!ready && token && <button type="button" onClick={() => setStatusVersion(value => value + 1)} className="min-h-8 text-xs font-bold text-fixed-white underline underline-offset-2">Opnieuw controleren</button>}
+    </div>
   </div>;
 }

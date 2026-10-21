@@ -51,3 +51,10 @@ a preset is running, including when the user returns to the tab. Commands are
 never retried automatically, and an unconfirmed result asks the user to check the
 screen. Existing local-Mac, owner and origin restrictions remain in place; no cloud
 relay is added. Tests use mocks and do not move the physical screen.
+
+Loopback fix: Next.js can normalize numeric loopback URLs to `localhost` in
+NextURL while the browser still sends `127.0.0.1` in Origin and Host. BroadLink
+now compares against the exact request Host and protocol, with a separate
+loopback-only Host check. Different origins/ports, missing login and different
+owners remain rejected. The dashboard includes a read-only retry button for
+stale paused/unavailable status; retrying never sends a motor command.

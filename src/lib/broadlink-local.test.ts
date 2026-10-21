@@ -18,3 +18,20 @@ describe("BroadLink local boundary", () => {
   it("restricts the local device to its configured owner", async () => { mocks.verify.mockResolvedValue("other"); expect((await broadlinkLocal(request({action:"status"}))).status).toBe(403); });
   it("returns readiness without exposing captured codes or transmitting RF", async () => { const response = await broadlinkLocal(request({action:"status"})); expect(await response.json()).toEqual({ configured:true, durationSeconds:null, calibrating:false, running:false }); expect(response.headers.get("Cache-Control")).toBe("no-store"); });
 });
+
+// Next.js normalizes loopback names, while the browser's Origin and Host stay exact.
+it("accepts a matching numeric loopback Origin and Host after NextURL normalization", async () => {
+  const req = new NextRequest("http://localhost:3000/api/broadlink", { method: "POST", headers: { host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000", "content-type": "application/json" }, body: JSON.stringify({ action: "status" }) });
+  expect((await broadlinkLocal(req)).status).toBe(200);
+});
+it("still rejects other loopback ports and mismatched browser origins", async () => {
+  const req = new NextRequest("http://localhost:3000/api/broadlink", { method: "POST", headers: { host: "127.0.0.1:3000", origin: "http://127.0.0.1:3001", "content-type": "application/json" }, body: JSON.stringify({ action: "status" }) });
+  expect((await broadlinkLocal(req)).status).toBe(403);
+  expect(mocks.execute).not.toHaveBeenCalled();
+});
+
+it("rejects non-local Host headers even when NextURL uses a loopback hostname", async () => {
+  const req = new NextRequest("http://localhost:3000/api/broadlink", { method: "POST", headers: { host: "example.com:3000", origin: "http://example.com:3000", "content-type": "application/json" }, body: JSON.stringify({ action: "status" }) });
+  expect((await broadlinkLocal(req)).status).toBe(503);
+  expect(mocks.execute).not.toHaveBeenCalled();
+});

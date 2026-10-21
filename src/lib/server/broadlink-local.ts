@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { NextRequest, NextResponse } from "next/server";
+import { googleRequestOrigin } from "@/lib/google-dashboard-auth";
 import { verifiedUserId } from "./google-connection-store";
 const execute = promisify(execFile);
 const commands = ["up", "stop", "down", "calibrate", "preset"] as const;
@@ -16,7 +17,11 @@ export async function broadlinkLocal(request: NextRequest) {
   const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
   // This runtime exists on the Mac only. Never spawn Python inside a cloud deployment.
   if (process.env.NETLIFY || process.env.VERCEL || !["localhost", "127.0.0.1", "[::1]"].includes(request.nextUrl.hostname)) return reply({ error: "mac-required", configured: false }, 503);
-  if (request.headers.get("origin") !== request.nextUrl.origin) return reply({ error: "invalid-origin" }, 403);
+  // NextURL normalizes 127.0.0.1 to localhost. Check the browser's exact
+  // Host/origin pair, while still permitting loopback hosts only.
+  const origin = googleRequestOrigin(request);
+  if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(origin).hostname)) return reply({ error: "mac-required", configured: false }, 503);
+  if (request.headers.get("origin") !== origin) return reply({ error: "invalid-origin" }, 403);
   const ownerId = await verifiedUserId(request);
   if (!ownerId) return reply({ error: "not-signed-in" }, 401);
   const action = broadlinkAction(await request.json().catch(() => null));
