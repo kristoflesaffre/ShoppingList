@@ -35,3 +35,19 @@ Timing/cancellation tests use fake clocks and mocked remotes; no real UP/STOP wa
 ## Controls paused after physical malfunction
 
 The user reported clicking, failure to retract and loss of original-remote operation after a timed preset. App controls have been paused in the private local configuration and pending run IDs invalidated without RF transmission. Both server route and Python runner enforce this pause. The cause has not been confirmed. Captured RF packets use 0xb0/0xb1 formats and need validation against this model's protocol; do not assume the legacy packet repeat-byte interpretation applies, or modify/transmit these captures speculatively. Timing calibration alone is insufficient until basic remote reliability is established. No native RM4 Pro atomic delayed sequence upload has been implemented or verified.
+
+## Dashboard screen tab
+
+The dashboard control panel now has **Licht / Klimaat / Scherm** segments.
+Scherm provides Omhoog, Stop, Omlaag and Mijn hoogte, using the existing
+same-origin authenticated `/api/broadlink` endpoint. No motor command is sent
+when selecting the tab; readiness is a read-only status action. The saved-height
+button uses the existing bounded timed preset and links to the profile page for
+calibration. Start fully down before using the preset: there is no position sensor.
+
+Stop remains available during a pending command or timed preset. Other movement
+buttons are disabled until the current operation finishes. Status refreshes while
+a preset is running, including when the user returns to the tab. Commands are
+never retried automatically, and an unconfirmed result asks the user to check the
+screen. Existing local-Mac, owner and origin restrictions remain in place; no cloud
+relay is added. Tests use mocks and do not move the physical screen.

@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
+import { DashboardScreenPanel } from "@/components/dashboard_screen_panel";
 import { DashboardClimate } from "@/components/dashboard_climate";
 import { cn } from "@/lib/utils";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
@@ -225,7 +226,7 @@ function HueLightsModal({
   setRoom: (rooms: Room[], patch: Patch) => Promise<void>;
   floors: RoomFloors;
   onClose: () => void;
-  /** Schakelaar «Licht | Klimaat» rechtsboven (vervangt «Indeling», «Alles aan» en «Alles uit»). */
+  /** Schakelaar «Licht | Klimaat | Scherm» rechtsboven (vervangt «Indeling», «Alles aan» en «Alles uit»). */
   headerToggle?: React.ReactNode;
   /** Geopend via de schakelaar in het venster: achtergrond zonder in-animatie, enkel de inhoud vloeit in. */
   switched?: boolean;
@@ -404,17 +405,19 @@ function ScrollLane({ className, children }: { className?: string; children: Rea
   );
 }
 
+type PanelView = "licht" | "klimaat" | "scherm";
+const PANEL_VIEWS = ["licht", "klimaat", "scherm"] as const;
 const PANEL_VIEW_KEY = "dashboard-panel-view";
 
 /**
- * Schakelaar «Licht | Klimaat» met een schuivende witte pil. De pil beweegt meteen; de wissel zelf volgt twee
+ * Schakelaar «Licht | Klimaat | Scherm» met een schuivende witte pil. De pil beweegt meteen; de wissel zelf volgt twee
  * frames later, zodat de schuifanimatie al loopt voordat het paneel of venster opnieuw tekent.
  */
-function ViewToggle({ value, onChange, large = false }: { value: "licht" | "klimaat"; onChange: (v: "licht" | "klimaat") => void; large?: boolean }) {
+function ViewToggle({ value, onChange, large = false }: { value: PanelView; onChange: (v: PanelView) => void; large?: boolean }) {
   const [shown, setShown] = React.useState(value);
   React.useEffect(() => setShown(value), [value]);
-  const { containerRef, indicatorStyle } = useSlidingIndicator<HTMLDivElement>(shown === "licht" ? 0 : 1);
-  const choose = (v: "licht" | "klimaat") => {
+  const { containerRef, indicatorStyle } = useSlidingIndicator<HTMLDivElement>(PANEL_VIEWS.indexOf(shown));
+  const choose = (v: PanelView) => {
     if (v === shown) return;
     setShown(v);
     // In het venster wisselt de hele inhoud (en deze schakelaar): eerst de pil laten uitschuiven.
@@ -422,9 +425,9 @@ function ViewToggle({ value, onChange, large = false }: { value: "licht" | "klim
     else requestAnimationFrame(() => requestAnimationFrame(() => onChange(v)));
   };
   return (
-    <div ref={containerRef} role="radiogroup" aria-label="Licht of klimaat" className="relative isolate flex rounded-pill bg-fixed-white/[0.14] p-[3px]">
+    <div ref={containerRef} role="radiogroup" aria-label="Licht, klimaat of projectiescherm" className="relative isolate flex rounded-pill bg-fixed-white/[0.14] p-[3px]">
       <span aria-hidden className="pointer-events-none absolute left-0 -z-10 rounded-pill bg-fixed-white shadow-[0_1px_3px_rgba(16,17,48,0.18)] motion-reduce:!transition-none" style={indicatorStyle} />
-      {(["licht", "klimaat"] as const).map((v) => (
+      {PANEL_VIEWS.map((v) => (
         <button
           key={v}
           type="button"
@@ -438,7 +441,7 @@ function ViewToggle({ value, onChange, large = false }: { value: "licht" | "klim
             shown === v ? "text-[#3a2f5a]" : "text-fixed-white/85",
           )}
         >
-          {v === "licht" ? "Licht" : "Klimaat"}
+          {v === "licht" ? "Licht" : v === "klimaat" ? "Klimaat" : "Scherm"}
         </button>
       ))}
     </div>
@@ -472,15 +475,15 @@ export function DashboardHuePanel({
     setOpen(false);
     setSwitched(false);
   }, []);
-  // Dashboard: schakelaar «Licht | Klimaat» rechtsboven (vervangt «Alles uit»); de keuze blijft op dit toestel.
-  const [view, setView] = React.useState<"licht" | "klimaat">(() => {
+  // Dashboard: schakelaar «Licht | Klimaat | Scherm» rechtsboven (vervangt «Alles uit»); de keuze blijft op dit toestel.
+  const [view, setView] = React.useState<PanelView>("licht");
+  React.useEffect(() => {
     try {
-      return typeof window !== "undefined" && window.localStorage.getItem(PANEL_VIEW_KEY) === "klimaat" ? "klimaat" : "licht";
-    } catch {
-      return "licht";
-    }
-  });
-  const changeView = (v: "licht" | "klimaat") => {
+      const saved = window.localStorage.getItem(PANEL_VIEW_KEY);
+      if (saved === "licht" || saved === "klimaat" || saved === "scherm") setView(saved);
+    } catch { /* geen opslag */ }
+  }, []);
+  const changeView = (v: PanelView) => {
     setView(v);
     try {
       window.localStorage.setItem(PANEL_VIEW_KEY, v);
@@ -493,13 +496,13 @@ export function DashboardHuePanel({
     setClimateOpen(false);
     setSwitched(false);
   }, []);
-  /** In het volledige scherm: wisselen tussen lampen en airco's zonder het venster te sluiten. */
-  const switchModal = (v: "licht" | "klimaat") => {
+  /** Licht/klimaat wisselen in het venster; Scherm opent de directe dashboardbediening. */
+  const switchModal = (v: PanelView) => {
     changeView(v);
     setOpen(v === "licht");
     setClimateOpen(v === "klimaat");
   };
-  const viewToggle = (current: "licht" | "klimaat", large = false) => (
+  const viewToggle = (current: PanelView, large = false) => (
     <ViewToggle
       value={current}
       large={large}
@@ -582,10 +585,11 @@ export function DashboardHuePanel({
   return (
     <>
     <section
-      aria-label="Verlichting"
+      aria-label="Licht, klimaat en projectiescherm"
       // Tik op een lege plek in het paneel (niet op een kolom of knop) = lichtvenster openen.
       onClick={(e) => {
         if ((e.target as Element).closest("button, a, [role=slider]")) return;
+        if (view === "scherm") return;
         if (view === "klimaat") return setClimateOpen(true);
         if (state.kind !== "ready" || state.rooms.length === 0) return;
         setOpen(true);
@@ -593,12 +597,13 @@ export function DashboardHuePanel({
       className={cn("relative flex min-h-[96px] min-w-0 flex-1 cursor-pointer flex-col overflow-hidden rounded-[24px] bg-[radial-gradient(120%_140%_at_0%_0%,#3a2f1c_0%,#1c1a2c_45%,#11101e_100%)] px-[18px] py-3.5 text-fixed-white shadow-[0_18px_40px_-26px_rgba(255,190,80,0.45)] [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#2a3352_0%,#1e2640_55%,#171d32_100%)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(160,180,255,0.25)] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]")}
     >
       <div className="flex min-h-7 items-center justify-between">
-        <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">{view === "klimaat" ? "KLIMAAT" : "LICHT"}</span>
+        <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">{view === "klimaat" ? "KLIMAAT" : view === "scherm" ? "SCHERM" : "LICHT"}</span>
         {viewToggle(view)}
       </div>
 
-      {/* Licht en klimaat liggen op elkaar en vloeien in elkaar over; beide blijven geladen (geen laadflits). */}
+      {/* Licht en klimaat blijven geladen; schermstatus wordt pas opgevraagd bij de derde tab. */}
       <div className="relative mt-2.5 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)]">
+      {view === "scherm" && <div className="col-start-1 row-start-1 flex min-h-0 items-center"><DashboardScreenPanel token={token} /></div>}
       <div
         aria-hidden={view !== "klimaat"}
         className={cn(
