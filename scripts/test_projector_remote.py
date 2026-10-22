@@ -19,11 +19,11 @@ class ProjectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse((await module.wake({'enabled': False}, remote))['accepted'])
         remote.async_connect.assert_not_called()
 
-    async def test_already_on_never_sends_power_or_home(self):
+    async def test_already_on_sends_only_idempotent_wakeup(self):
         remote = self.remote(is_on=True)
         result = await module.wake({'enabled': True, 'paired': True, 'mac': 'known'}, remote)
         self.assertTrue(result['alreadyOn'])
-        remote.send_key_command.assert_not_called()
+        remote.send_key_command.assert_called_once_with('WAKEUP')
         remote.disconnect.assert_called_once()
 
     async def test_standby_only_sends_explicit_wakeup(self):
@@ -50,11 +50,18 @@ class ProjectorTests(unittest.IsolatedAsyncioTestCase):
         remote.send_key_command.assert_called_once_with('SLEEP')
         remote.disconnect.assert_called_once()
 
-    async def test_already_off_does_not_toggle_on(self):
+    async def test_already_off_sends_only_idempotent_sleep(self):
         remote = self.remote(is_on=False)
         result = await module.sleep({'enabled': True, 'paired': True, 'mac': 'known'}, remote)
         self.assertTrue(result['alreadyAtTarget'])
+        remote.send_key_command.assert_called_once_with('SLEEP')
+
+    async def test_inspection_never_sends_power(self):
+        remote = self.remote(is_on=True)
+        result = await module.inspect_power({'enabled': True, 'paired': True, 'mac': 'known'}, remote)
+        self.assertTrue(result['isOn'])
         remote.send_key_command.assert_not_called()
+        remote.disconnect.assert_called_once()
 
     def test_only_private_lan_addresses(self):
         self.assertEqual(module.private_host('192.168.1.4'), '192.168.1.4')

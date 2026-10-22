@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
 import { PageBackButton } from "@/components/ui/page_back_button";
+import { projectorTestMessage, type ProjectorTestAction, type ProjectorTestResult } from "@/lib/projector-control";
 import type { ScreenStatus as ScreenState } from "@/lib/projection-screen";
 type Action = "up" | "stop" | "down" | "calibrate" | "preset";
 const buttonClass = "flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--border-subtle)] px-3 py-4 font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
@@ -12,6 +13,9 @@ export default function ScreenPage() {
   const token = useGoogleAuthToken();
   const router = useRouter();
   const [screen, setScreen] = React.useState<ScreenState | null>(null);
+  const [projectorBusy, setProjectorBusy] = React.useState(false);
+  const projectorLock = React.useRef(false);
+  const [projectorMessage, setProjectorMessage] = React.useState("Test de projector apart. Deze knoppen bewegen het scherm niet.");
   const [armed, setArmed] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [message, setMessage] = React.useState("Verbinding controleren…");
@@ -49,6 +53,18 @@ export default function ScreenPage() {
     } catch { setMessage("De opdracht kon niet bevestigd worden. Controleer het scherm. Je kunt altijd op Stop drukken."); }
     finally { setBusy(false); }
   };
+  const testProjector = async (action: ProjectorTestAction) => {
+    if (projectorLock.current || !token) return;
+    projectorLock.current = true;
+    setProjectorBusy(true);
+    setProjectorMessage(action === "status" ? "Verbinding met Woonkamer TV controleren…" : "Projectorcommando versturen…");
+    try {
+      const response = await fetch("/api/projector", { method: "POST", headers: { ...googleAuthHeaders(token), "content-type": "application/json" }, body: JSON.stringify({ action }) });
+      const result = await response.json() as ProjectorTestResult;
+      setProjectorMessage(projectorTestMessage(action, response.ok ? result : { ...result, accepted: false }));
+    } catch { setProjectorMessage("De lokale app kon de projectortest niet afronden. Het scherm is niet aangestuurd."); }
+    finally { projectorLock.current = false; setProjectorBusy(false); }
+  };
   if (!user) return null;
   const ready = screen?.configured === true;
   const moving = screen?.calibrating || screen?.running;
@@ -57,6 +73,15 @@ export default function ScreenPage() {
       <div className="grid grid-cols-3 gap-3">{([['up', '↑', 'Omhoog'], ['stop', '■', 'Stop'], ['down', '↓', 'Omlaag']] as const).map(([action, icon, label]) => <button key={action} disabled={!ready || (action !== "stop" && (busy || moving))} onClick={() => void send(action === "up" && armed ? "calibrate" : action)} className={buttonClass}><span aria-hidden className="text-3xl">{icon}</span>{label}</button>)}</div>
       <p role="status" aria-live="polite" className="mt-5 text-sm">{message}</p>
       {screen?.projectorConfigured && <p className="mt-2 text-sm text-[var(--text-secondary)]">Omhoog / Mijn hoogte: projector aan. Omlaag: projector uit. Stop en kalibratie veranderen de projector niet.</p>}
+    </section>
+    <section aria-labelledby="projector-test-title" aria-busy={projectorBusy} className="flex flex-col gap-4 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--white)] p-6">
+      <div><h2 id="projector-test-title" className="text-xl font-bold">Projector apart testen</h2><p className="mt-2 text-sm text-[var(--text-secondary)]">Woonkamer TV · zonder het projectiescherm te bewegen</p></div>
+      <div className="grid grid-cols-2 gap-3">
+        <button type="button" disabled={!token || projectorBusy} onClick={() => void testProjector("on")} className={buttonClass}><span aria-hidden className="text-3xl">⏻</span>Projector aan</button>
+        <button type="button" disabled={!token || projectorBusy} onClick={() => void testProjector("off")} className={buttonClass}><span aria-hidden className="text-3xl">☾</span>Projector uit</button>
+      </div>
+      <button type="button" disabled={!token || projectorBusy} onClick={() => void testProjector("status")} className="min-h-12 rounded-xl border border-[var(--border-subtle)] px-4 py-3 font-semibold disabled:opacity-50">{projectorBusy ? "Test loopt…" : "Verbinding testen"}</button>
+      <p role="status" aria-live="polite" className="text-sm">{projectorMessage}</p>
     </section>
     <section className="flex flex-col gap-4 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--white)] p-6"><h2 className="text-xl font-bold">Mijn hoogte</h2>
       <p className="text-sm">Begin steeds met het scherm helemaal omlaag. De app herhaalt de tijd tussen Omhoog en Stop; het scherm geeft geen positie terug.</p>

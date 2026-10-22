@@ -65,7 +65,7 @@ De lokale route koppelt het openen en sluiten van het scherm aan de ingebouwde G
 de Google TV-app, met een afzonderlijk clientcertificaat. Geen Google-wachtwoord,
 ADB of ontwikkelaarsmodus nodig. **Omhoog** en **Mijn hoogte** openen het scherm en sturen `WAKEUP` naar de projector.
 **Omlaag** sluit het scherm en stuurt `SLEEP`. Stop en kalibratie veranderen de projector niet.
-De wisselknop `POWER` wordt nooit gebruikt. Staat het toestel al in de gevraagde toestand, dan wordt niets verstuurd.
+De wisselknop `POWER` wordt nooit gebruikt. De aparte aan/uit-opdrachten worden ook verstuurd als Google TV al dezelfde toestand meldt: die status bevestigt niet noodzakelijk dat de projectorlamp aanstaat. De idempotente opdrachten kunnen het toestel niet per ongeluk omgekeerd toggelen.
 
 Eenmalig op de Mac (op hetzelfde netwerk als de projector):
 
@@ -92,3 +92,9 @@ De Mac moet wakker zijn. Of de projector vanuit diepe slaap bereikbaar blijft,
 hangt af van de projectorinstellingen/firmware. Test dit ook na langere stand-by.
 
 Protocolbibliotheek: https://github.com/tronikos/androidtvremote2 (Apache-2.0).
+
+### Projector apart testen
+
+De lokale pagina `/profiel/projectiescherm` heeft afzonderlijke knoppen **Projector aan**, **Projector uit** en **Verbinding testen**. Deze gebruiken `/api/projector` met dezelfde lokale host/origin- en eigenaarscontrole, maar roepen BroadLink niet aan. De verbindingsknop leest alleen Google TV-status; hij verstuurt geen aan/uit-commando. De getoonde Google TV-status is geen bevestiging van de projectorlamp: controleer het beeld op het toestel.
+
+De Python-opdracht `check` controleert verbinding en apparaatidentiteit zonder toetsen te sturen. Veilige foutcodes onderscheiden onbereikbaar, opnieuw koppelen en gewijzigd apparaat. Tijdens de lokale controle op 22 oktober 2026 was de projector niet bereikbaar; de webpagina toonde die fout en gaf de testknoppen daarna weer vrij. Er zijn geen echte aan/uit- of schermcommando's gebruikt voor deze verificatie. Screenshot: `docs/screenshots/projector-test.png`. Gerichte controles: 24 Vitest-tests, 8 Python-tests, TypeScript-typecheck geslaagd.

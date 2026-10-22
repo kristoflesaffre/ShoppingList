@@ -79,15 +79,14 @@ async def set_power(config, on, remote=None):
         if mac != config.get('mac'):
             raise ValueError('Device identity changed; pair again')
         await asyncio.wait_for(remote.async_connect(), 6)
-        if remote.is_on is on:
-            return {'configured': True, 'accepted': True, 'alreadyAtTarget': True, 'isOn': remote.is_on}
+        already = remote.is_on is on
         remote.send_key_command('WAKEUP' if on else 'SLEEP')
         # send_key_command queues a write; allow transport and state feedback to run.
         for _ in range(10):
             await asyncio.sleep(0.1)
             if remote.is_on is on:
-                return {'configured': True, 'accepted': True, 'alreadyAtTarget': False, 'isOn': remote.is_on}
-        return {'configured': True, 'accepted': True, 'alreadyAtTarget': False, 'isOn': remote.is_on}
+                return {'configured': True, 'accepted': True, 'alreadyAtTarget': already, 'isOn': remote.is_on}
+        return {'configured': True, 'accepted': True, 'alreadyAtTarget': already, 'isOn': remote.is_on}
     finally:
         remote.disconnect()
 
@@ -103,9 +102,23 @@ async def sleep(config, remote=None):
     return await set_power(config, False, remote)
 
 
+async def inspect_power(config, remote=None):
+    if config.get('paired') is not True or config.get('enabled') is not True:
+        return {'configured': False, 'accepted': False, 'error': 'not-configured'}
+    remote = remote or remote_for(config['host'])
+    try:
+        _, mac = await asyncio.wait_for(remote.async_get_name_and_mac(), 4)
+        if mac != config.get('mac'):
+            raise ValueError('Device identity changed; pair again')
+        await asyncio.wait_for(remote.async_connect(), 6)
+        return {'configured': True, 'accepted': True, 'isOn': remote.is_on}
+    finally:
+        remote.disconnect()
+
+
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['pair', 'on', 'off', 'status'])
+    parser.add_argument('action', choices=['pair', 'on', 'off', 'status', 'check'])
     parser.add_argument('--host', type=private_host)
     args = parser.parse_args()
     os.umask(0o077)
@@ -118,6 +131,8 @@ async def main():
     config = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
     if args.action == 'status':
         print(json.dumps({'configured': config.get('paired') is True and config.get('enabled') is True}))
+    elif args.action == 'check':
+        print(json.dumps(await inspect_power(config)))
     else:
         print(json.dumps(await (wake(config) if args.action == 'on' else sleep(config))))
 
@@ -125,7 +140,9 @@ async def main():
 if __name__ == '__main__':
     try:
         asyncio.run(main())
-    except (Exception, KeyboardInterrupt):
+    except (Exception, KeyboardInterrupt) as error:
         # No certificates, pairing codes or network details in API error output.
-        print(json.dumps({'error': 'projector-not-confirmed'}), flush=True)
+        kind = type(error).__name__
+        code = 'identity-changed' if isinstance(error, ValueError) else 'pairing-required' if kind in ('InvalidAuth', 'ConnectionClosed') else 'unreachable' if isinstance(error, (TimeoutError, OSError)) or kind == 'CannotConnect' else 'projector-not-confirmed'
+        print(json.dumps({'error': code}), flush=True)
         sys.exit(1)
