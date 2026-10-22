@@ -68,8 +68,10 @@ export function DashboardScreenPanel({ token }: { token: string | null }) {
     try {
       const result = await call(action);
       if (!mounted.current || current !== command.current) return;
-      setScreen(result);
-      setMessage(action === "preset" ? "Hoogtereeks beëindigd. Controleer het scherm." : `${ACTIONS.find(item => item.action === action)?.label} verstuurd. Controleer het scherm.`);
+      setScreen(value => ({ ...value, ...result }));
+      setMessage(action === "down" && result.projector?.configured
+        ? `Omlaag verstuurd. ${result.projector.isOn === true ? "Projector staat aan." : result.projector.accepted ? "Projector: wekcommando verstuurd." : "Projector niet bereikbaar; zet hem aan met de afstandsbediening."}`
+        : action === "preset" ? "Hoogtereeks beëindigd. Controleer het scherm." : `${ACTIONS.find(item => item.action === action)?.label} verstuurd. Controleer het scherm.`);
     } catch {
       if (!mounted.current || current !== command.current) return;
       setMessage("Opdracht niet bevestigd. Controleer het scherm; je kunt nog op Stop drukken.");
@@ -111,6 +113,7 @@ export function DashboardScreenPanel({ token }: { token: string | null }) {
       <span>{screen?.durationSeconds != null ? `Mijn hoogte: ${screen.durationSeconds.toLocaleString("nl-BE", { maximumFractionDigits: 2 })} s · begin volledig omlaag` : "Mijn hoogte nog niet ingesteld"}</span>
       <Link href="/profiel/projectiescherm" className="font-bold text-fixed-white/90 underline underline-offset-2">Hoogte instellen</Link>
     </div>
+    {screen?.projectorConfigured && <p className="text-[11px] leading-4 text-fixed-white/70">Projector gaat automatisch aan bij Omlaag.</p>}
     <div className="flex flex-wrap items-center justify-between gap-1">
       <p role="status" aria-live="polite" className="text-[11px] leading-4 text-fixed-white/75">{message}</p>
       {!ready && token && <button type="button" onClick={() => setStatusVersion(value => value + 1)} className="min-h-8 text-xs font-bold text-fixed-white underline underline-offset-2">Opnieuw controleren</button>}

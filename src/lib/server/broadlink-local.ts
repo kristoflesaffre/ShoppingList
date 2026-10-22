@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { NextRequest, NextResponse } from "next/server";
 import { googleRequestOrigin } from "@/lib/google-dashboard-auth";
 import { verifiedUserId } from "./google-connection-store";
+import { projectorConfigured, wakeProjector } from "./projector-local";
 const execute = promisify(execFile);
 const commands = ["up", "stop", "down", "calibrate", "preset"] as const;
 export function broadlinkAction(value: unknown): "status" | typeof commands[number] | null {
@@ -33,10 +34,14 @@ export async function broadlinkLocal(request: NextRequest) {
       ? reply({ configured: false, paused: true, durationSeconds: null, calibrating: false, running: false })
       : reply({ error: "controls-paused" }, 423);
 
+    // Start wake and screen movement together. Projector failure must never
+    // block a motor command (especially Stop), nor retry a screen transmission.
+    const projector = action === "down" ? wakeProjector(ownerId) : null;
     const { stdout } = await execute(path.join(process.cwd(), ".cache/broadlink/venv/bin/python"), [path.join(process.cwd(), "scripts/broadlink-screen.py"), action], { timeout: action === "preset" ? 75_000 : 10_000, maxBuffer: 4096, windowsHide: true });
     const result = JSON.parse(stdout);
     if (action !== "status" && result.accepted !== true) throw new Error();
-    return reply(result);
+    if (action === "status") return reply({ ...result, projectorConfigured: await projectorConfigured(ownerId) });
+    return reply(projector ? { ...result, projector: await projector } : result);
   } catch {
     return reply({ error: action === "status" ? "not-configured" : "command-not-confirmed" }, 503);
   }

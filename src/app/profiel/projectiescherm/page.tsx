@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
 import { PageBackButton } from "@/components/ui/page_back_button";
-type ScreenState = { paused?: boolean; configured: boolean; durationSeconds: number | null; calibrating: boolean; running: boolean };
+import type { ScreenStatus as ScreenState } from "@/lib/projection-screen";
 type Action = "up" | "stop" | "down" | "calibrate" | "preset";
 const buttonClass = "flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--border-subtle)] px-3 py-4 font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 export default function ScreenPage() {
@@ -41,10 +41,11 @@ export default function ScreenPage() {
     setMessage(action === "preset" ? "Omhoog gestart; je Mac verstuurt Stop na de opgeslagen tijd." : "Opdracht versturen…");
     try {
       const data = await call(action);
-      setScreen(data);
+      setScreen(value => ({ ...value, ...data }));
       if (action === "calibrate") { setArmed(false); setMessage("Meting loopt. Druk op Stop zodra het scherm op de juiste hoogte staat."); }
       else if (action === "stop" && data.durationSeconds && screen?.calibrating) setMessage(`Hoogte opgeslagen: ${data.durationSeconds.toFixed(3)} seconden tussen Omhoog en Stop.`);
       else if (action === "preset") setMessage("Hoogtereeks beëindigd. Controleer de hoogte.");
+      else if (action === "down" && data.projector?.configured) setMessage(`Omlaag verstuurd. ${data.projector.isOn === true ? "Projector staat aan." : data.projector.accepted ? "Projector: wekcommando verstuurd." : "Projector niet bereikbaar; gebruik de afstandsbediening."}`);
       else setMessage(`${action === "up" ? "Omhoog" : action === "down" ? "Omlaag" : "Stop"} verstuurd. Controleer het scherm.`);
     } catch { setMessage("De opdracht kon niet bevestigd worden. Controleer het scherm. Je kunt altijd op Stop drukken."); }
     finally { setBusy(false); }
@@ -56,6 +57,7 @@ export default function ScreenPage() {
     <section className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--white)] p-6">
       <div className="grid grid-cols-3 gap-3">{([['up', '↑', 'Omhoog'], ['stop', '■', 'Stop'], ['down', '↓', 'Omlaag']] as const).map(([action, icon, label]) => <button key={action} disabled={!ready || (action !== "stop" && (busy || moving))} onClick={() => void send(action === "up" && armed ? "calibrate" : action)} className={buttonClass}><span aria-hidden className="text-3xl">{icon}</span>{label}</button>)}</div>
       <p role="status" aria-live="polite" className="mt-5 text-sm">{message}</p>
+      {screen?.projectorConfigured && <p className="mt-2 text-sm text-[var(--text-secondary)]">Projector gaat automatisch aan bij Omlaag. Omhoog en Stop veranderen de projector niet.</p>}
     </section>
     <section className="flex flex-col gap-4 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--white)] p-6"><h2 className="text-xl font-bold">Mijn hoogte</h2>
       <p className="text-sm">Begin steeds met het scherm helemaal omlaag. De app herhaalt de tijd tussen Omhoog en Stop; het scherm geeft geen positie terug.</p>

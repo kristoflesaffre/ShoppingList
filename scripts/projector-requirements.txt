@@ -1,0 +1,2 @@
+# Same local protocol as the Google TV phone remote; no ADB required.
+androidtvremote2==0.2.3
