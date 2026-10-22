@@ -59,14 +59,13 @@ loopback-only Host check. Different origins/ports, missing login and different
 owners remain rejected. The dashboard includes a read-only retry button for
 stale paused/unavailable status; retrying never sends a motor command.
 
-## Projector wakker maken bij Omlaag (Google TV)
+## Projector aan bij openen, uit bij sluiten (Google TV)
 
-De lokale route kan gelijktijdig het scherm laten zakken en de ingebouwde Google TV
-wekken. Hiervoor gebruikt hij Android TV Remote v2, hetzelfde lokale protocol als
+De lokale route koppelt het openen en sluiten van het scherm aan de ingebouwde Google TV. Hiervoor gebruikt hij Android TV Remote v2, hetzelfde lokale protocol als
 de Google TV-app, met een afzonderlijk clientcertificaat. Geen Google-wachtwoord,
-ADB of ontwikkelaarsmodus nodig. Alleen **Omlaag** wekt de projector; Omhoog, Stop,
-kalibratie en Mijn hoogte doen dat niet. Er wordt uitsluitend `WAKEUP` verstuurd,
-nooit de wisselknop `POWER`. Staat de projector al aan, dan wordt niets verstuurd.
+ADB of ontwikkelaarsmodus nodig. **Omhoog** en **Mijn hoogte** openen het scherm en sturen `WAKEUP` naar de projector.
+**Omlaag** sluit het scherm en stuurt `SLEEP`. Stop en kalibratie veranderen de projector niet.
+De wisselknop `POWER` wordt nooit gebruikt. Staat het toestel al in de gevraagde toestand, dan wordt niets verstuurd.
 
 Eenmalig op de Mac (op hetzelfde netwerk als de projector):
 
@@ -77,7 +76,7 @@ python3 -m venv .cache/projector/venv
 ```
 
 Gebruik het eigen LAN-IP van de projector. De koppelcode verschijnt op de projector;
-voer die in dezelfde terminal in. Na geslaagde koppeling wordt automatisch aanzetten
+voer die in dezelfde terminal in. Na geslaagde koppeling wordt automatische projectorbediening
 geactiveerd voor de eigenaar van de bestaande schermbediening. Voor handmatig testen
 (zonder schermbeweging): `scripts/projector-remote.py on` via diezelfde Python.
 `status` leest alleen de opgeslagen configuratie en wekt niets.
@@ -85,9 +84,8 @@ geactiveerd voor de eigenaar van de bestaande schermbediening. Voor handmatig te
 De configuratie en sleutels blijven genegeerd in `.cache/projector/` (bestanden 0600).
 De bridge controleert ook de bij koppeling opgeslagen apparaatidentiteit. Geef de
 projector bij voorkeur een DHCP-reservering; na een gewijzigd IP-adres opnieuw koppelen.
-Zet `enabled` op `false` in `.cache/projector/projector.json` om de koppeling met
-Omlaag te onderbreken. Projectorfouten verhinderen de schermopdracht niet; de UI
-meldt apart of het wekcommando verstuurd of het aanstaan bevestigd is. Geen
+Zet `enabled` op `false` in `.cache/projector/projector.json` om de automatische schermkoppeling te onderbreken. Projectorfouten verhinderen de schermopdracht niet; de UI
+meldt apart of het aan/uit-commando verstuurd of de gevraagde toestand bevestigd is. Geen
 automatische herhalingen of inschakelen bij laden van het dashboard.
 
 De Mac moet wakker zijn. Of de projector vanuit diepe slaap bereikbaar blijft,

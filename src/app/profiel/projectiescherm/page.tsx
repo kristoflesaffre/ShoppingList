@@ -44,8 +44,7 @@ export default function ScreenPage() {
       setScreen(value => ({ ...value, ...data }));
       if (action === "calibrate") { setArmed(false); setMessage("Meting loopt. Druk op Stop zodra het scherm op de juiste hoogte staat."); }
       else if (action === "stop" && data.durationSeconds && screen?.calibrating) setMessage(`Hoogte opgeslagen: ${data.durationSeconds.toFixed(3)} seconden tussen Omhoog en Stop.`);
-      else if (action === "preset") setMessage("Hoogtereeks beëindigd. Controleer de hoogte.");
-      else if (action === "down" && data.projector?.configured) setMessage(`Omlaag verstuurd. ${data.projector.isOn === true ? "Projector staat aan." : data.projector.accepted ? "Projector: wekcommando verstuurd." : "Projector niet bereikbaar; gebruik de afstandsbediening."}`);
+      else if (["down", "up", "preset"].includes(action) && data.projector?.configured) setMessage(`Schermopdracht verstuurd. ${data.projector.isOn === (action !== "down") ? (action === "down" ? "Projector staat uit." : "Projector staat aan.") : data.projector.accepted ? (action === "down" ? "Uitschakelcommando verstuurd." : "Wekcommando verstuurd.") : "Projector niet bereikbaar; gebruik de afstandsbediening."}`);
       else setMessage(`${action === "up" ? "Omhoog" : action === "down" ? "Omlaag" : "Stop"} verstuurd. Controleer het scherm.`);
     } catch { setMessage("De opdracht kon niet bevestigd worden. Controleer het scherm. Je kunt altijd op Stop drukken."); }
     finally { setBusy(false); }
@@ -57,7 +56,7 @@ export default function ScreenPage() {
     <section className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--white)] p-6">
       <div className="grid grid-cols-3 gap-3">{([['up', '↑', 'Omhoog'], ['stop', '■', 'Stop'], ['down', '↓', 'Omlaag']] as const).map(([action, icon, label]) => <button key={action} disabled={!ready || (action !== "stop" && (busy || moving))} onClick={() => void send(action === "up" && armed ? "calibrate" : action)} className={buttonClass}><span aria-hidden className="text-3xl">{icon}</span>{label}</button>)}</div>
       <p role="status" aria-live="polite" className="mt-5 text-sm">{message}</p>
-      {screen?.projectorConfigured && <p className="mt-2 text-sm text-[var(--text-secondary)]">Projector gaat automatisch aan bij Omlaag. Omhoog en Stop veranderen de projector niet.</p>}
+      {screen?.projectorConfigured && <p className="mt-2 text-sm text-[var(--text-secondary)]">Omhoog / Mijn hoogte: projector aan. Omlaag: projector uit. Stop en kalibratie veranderen de projector niet.</p>}
     </section>
     <section className="flex flex-col gap-4 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--white)] p-6"><h2 className="text-xl font-bold">Mijn hoogte</h2>
       <p className="text-sm">Begin steeds met het scherm helemaal omlaag. De app herhaalt de tijd tussen Omhoog en Stop; het scherm geeft geen positie terug.</p>

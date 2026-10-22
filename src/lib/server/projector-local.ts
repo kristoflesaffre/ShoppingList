@@ -14,13 +14,16 @@ export async function projectorConfigured(ownerId: string): Promise<boolean> {
   } catch { return false; }
 }
 
-export async function wakeProjector(ownerId: string): Promise<ProjectorResult> {
+async function setProjectorPower(ownerId: string, action: "on" | "off"): Promise<ProjectorResult> {
   if (!await projectorConfigured(ownerId)) return { configured: false };
   try {
     const { stdout } = await execute(path.join(process.cwd(), ".cache/projector/venv/bin/python"),
-      [path.join(process.cwd(), "scripts/projector-remote.py"), "on"],
+      [path.join(process.cwd(), "scripts/projector-remote.py"), action],
       { timeout: 13_000, maxBuffer: 4096, windowsHide: true });
     const result = JSON.parse(stdout);
     return { configured: true, accepted: result.accepted === true, isOn: typeof result.isOn === "boolean" ? result.isOn : null };
   } catch { return { configured: true, accepted: false }; }
 }
+
+export const wakeProjector = (ownerId: string) => setProjectorPower(ownerId, "on");
+export const sleepProjector = (ownerId: string) => setProjectorPower(ownerId, "off");

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Private local Google TV pairing and wake-only bridge. Never sends POWER toggle."""
+"""Private local Google TV pairing and explicit on/off bridge. Never sends POWER toggle."""
 import argparse
 import asyncio
 import getpass
@@ -69,8 +69,8 @@ async def pair(host):
         remote.disconnect()
 
 
-async def wake(config, remote=None):
-    """Send explicit WAKEUP (224), never POWER (26); safe if already on."""
+async def set_power(config, on, remote=None):
+    """Use explicit WAKEUP/SLEEP commands, never the POWER toggle."""
     if config.get('paired') is not True or config.get('enabled') is not True:
         return {'configured': False, 'accepted': False}
     remote = remote or remote_for(config['host'])
@@ -79,22 +79,33 @@ async def wake(config, remote=None):
         if mac != config.get('mac'):
             raise ValueError('Device identity changed; pair again')
         await asyncio.wait_for(remote.async_connect(), 6)
-        if remote.is_on is True:
-            return {'configured': True, 'accepted': True, 'alreadyOn': True, 'isOn': True}
-        remote.send_key_command('WAKEUP')
+        if remote.is_on is on:
+            return {'configured': True, 'accepted': True, 'alreadyAtTarget': True, 'isOn': remote.is_on}
+        remote.send_key_command('WAKEUP' if on else 'SLEEP')
         # send_key_command queues a write; allow transport and state feedback to run.
         for _ in range(10):
             await asyncio.sleep(0.1)
-            if remote.is_on is True:
-                return {'configured': True, 'accepted': True, 'alreadyOn': False, 'isOn': True}
-        return {'configured': True, 'accepted': True, 'alreadyOn': False, 'isOn': remote.is_on}
+            if remote.is_on is on:
+                return {'configured': True, 'accepted': True, 'alreadyAtTarget': False, 'isOn': remote.is_on}
+        return {'configured': True, 'accepted': True, 'alreadyAtTarget': False, 'isOn': remote.is_on}
     finally:
         remote.disconnect()
 
 
+async def wake(config, remote=None):
+    result = await set_power(config, True, remote)
+    if 'alreadyAtTarget' in result:
+        result['alreadyOn'] = result['alreadyAtTarget']
+    return result
+
+
+async def sleep(config, remote=None):
+    return await set_power(config, False, remote)
+
+
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['pair', 'on', 'status'])
+    parser.add_argument('action', choices=['pair', 'on', 'off', 'status'])
     parser.add_argument('--host', type=private_host)
     args = parser.parse_args()
     os.umask(0o077)
@@ -108,7 +119,7 @@ async def main():
     if args.action == 'status':
         print(json.dumps({'configured': config.get('paired') is True and config.get('enabled') is True}))
     else:
-        print(json.dumps(await wake(config)))
+        print(json.dumps(await (wake(config) if args.action == 'on' else sleep(config))))
 
 
 if __name__ == '__main__':
