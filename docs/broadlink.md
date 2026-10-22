@@ -64,8 +64,9 @@ stale paused/unavailable status; retrying never sends a motor command.
 De lokale route koppelt het openen en sluiten van het scherm aan de ingebouwde Google TV. Hiervoor gebruikt hij Android TV Remote v2, hetzelfde lokale protocol als
 de Google TV-app, met een afzonderlijk clientcertificaat. Geen Google-wachtwoord,
 ADB of ontwikkelaarsmodus nodig. **Omhoog** en **Mijn hoogte** openen het scherm en sturen `WAKEUP` naar de projector.
-**Omlaag** sluit het scherm en stuurt `SLEEP`. Stop en kalibratie veranderen de projector niet.
-De wisselknop `POWER` wordt nooit gebruikt. De aparte aan/uit-opdrachten worden ook verstuurd als Google TV al dezelfde toestand meldt: die status bevestigt niet noodzakelijk dat de projectorlamp aanstaat. De idempotente opdrachten kunnen het toestel niet per ongeluk omgekeerd toggelen.
+**Omlaag** sluit het scherm en gebruikt dezelfde uitschakeling als **Projector uit**. Stop en kalibratie veranderen de projector niet.
+
+Uitschakelen stuurt uitsluitend bij een bevestigde aan-status één `POWER START_LONG`, gevolgd door `POWER END_LONG` na 120 ms. Na 250 ms wordt de verbinding gesloten, zonder statuspolling, herverbinding of automatische herhaling. Bij stand-by wordt geen POWER gestuurd; bij onbekende status wordt de opdracht geweigerd. `SLEEP` en de protocolvariant `SHORT` doofden het beeld slechts tijdelijk. De gebruiker bevestigde op 22 oktober 2026 dat de aparte korte indruk-/loslaatsignalen de projector wel blijvend uitschakelden. De lampstatus wordt niet afgeleid uit de laatst bekende Google TV-status.
 
 Eenmalig op de Mac (op hetzelfde netwerk als de projector):
 

@@ -2,7 +2,7 @@
 import importlib.util
 from pathlib import Path
 import unittest
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, call, patch
 
 spec = importlib.util.spec_from_file_location('projector_remote', Path(__file__).with_name('projector-remote.py'))
 module = importlib.util.module_from_spec(spec)
@@ -42,19 +42,31 @@ class ProjectorTests(unittest.IsolatedAsyncioTestCase):
         remote.send_key_command.assert_not_called()
         remote.disconnect.assert_called_once()
 
-    async def test_off_only_sends_sleep(self):
+    async def test_off_sends_one_short_press_and_release_then_disconnects(self):
         remote = self.remote(is_on=True)
-        remote.send_key_command.side_effect = lambda key: setattr(remote, 'is_on', False)
-        result = await module.sleep({'enabled': True, 'paired': True, 'mac': 'known'}, remote)
-        self.assertFalse(result['isOn'])
-        remote.send_key_command.assert_called_once_with('SLEEP')
+        with patch.object(module.asyncio, 'sleep', new_callable=AsyncMock) as delay:
+            result = await module.sleep({'enabled': True, 'paired': True, 'mac': 'known'}, remote)
+        self.assertTrue(result['accepted'])
+        self.assertIsNone(result['isOn'])  # No physical-off claim from stale Google TV state.
+        self.assertEqual(remote.send_key_command.call_args_list,
+                         [call('POWER', 'START_LONG'), call('POWER', 'END_LONG')])
+        self.assertEqual(delay.call_args_list, [call(0.12), call(0.25)])
+        remote.async_connect.assert_awaited_once()
         remote.disconnect.assert_called_once()
 
-    async def test_already_off_sends_only_idempotent_sleep(self):
+    async def test_already_off_never_toggles_back_on(self):
         remote = self.remote(is_on=False)
         result = await module.sleep({'enabled': True, 'paired': True, 'mac': 'known'}, remote)
         self.assertTrue(result['alreadyAtTarget'])
-        remote.send_key_command.assert_called_once_with('SLEEP')
+        remote.send_key_command.assert_not_called()
+        remote.disconnect.assert_called_once()
+
+    async def test_unknown_state_never_sends_toggle(self):
+        remote = self.remote(is_on=None)
+        result = await module.sleep({'enabled': True, 'paired': True, 'mac': 'known'}, remote)
+        self.assertFalse(result['accepted'])
+        remote.send_key_command.assert_not_called()
+        remote.disconnect.assert_called_once()
 
     async def test_inspection_never_sends_power(self):
         remote = self.remote(is_on=True)

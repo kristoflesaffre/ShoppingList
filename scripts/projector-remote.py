@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Private local Google TV pairing and explicit on/off bridge. Never sends POWER toggle."""
+"""Private local Google TV bridge with guarded XGIMI short-press shutdown."""
 import argparse
 import asyncio
 import getpass
@@ -70,7 +70,7 @@ async def pair(host):
 
 
 async def set_power(config, on, remote=None):
-    """Use explicit WAKEUP/SLEEP commands, never the POWER toggle."""
+    """Wake explicitly; shut down using the short press verified on this XGIMI."""
     if config.get('paired') is not True or config.get('enabled') is not True:
         return {'configured': False, 'accepted': False}
     remote = remote or remote_for(config['host'])
@@ -80,7 +80,20 @@ async def set_power(config, on, remote=None):
             raise ValueError('Device identity changed; pair again')
         await asyncio.wait_for(remote.async_connect(), 6)
         already = remote.is_on is on
-        remote.send_key_command('WAKEUP' if on else 'SLEEP')
+        if not on:
+            # POWER is a toggle: never send it to an off or unknown state.
+            if remote.is_on is False:
+                return {'configured': True, 'accepted': True, 'alreadyAtTarget': True, 'isOn': False}
+            if remote.is_on is not True:
+                return {'configured': True, 'accepted': False, 'error': 'projector-not-confirmed', 'isOn': None}
+            # SHORT and SLEEP only blanked the image temporarily on this device.
+            # Match the verified physical press, then close without polling/reconnecting.
+            remote.send_key_command('POWER', 'START_LONG')
+            await asyncio.sleep(0.12)
+            remote.send_key_command('POWER', 'END_LONG')
+            await asyncio.sleep(0.25)
+            return {'configured': True, 'accepted': True, 'alreadyAtTarget': False, 'isOn': None}
+        remote.send_key_command('WAKEUP')
         # send_key_command queues a write; allow transport and state feedback to run.
         for _ in range(10):
             await asyncio.sleep(0.1)
