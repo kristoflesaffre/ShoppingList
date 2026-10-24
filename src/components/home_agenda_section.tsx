@@ -572,7 +572,9 @@ function TileLane({
     <ul
       ref={ref}
       onScroll={updateArrows}
-      className="-mx-4 m-0 flex list-none snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 pt-3.5 [scrollbar-width:none] md:mx-0 md:gap-4 md:px-0 md:scroll-px-0 [&::-webkit-scrollbar]:hidden"
+      // Desktop: een paar px ademruimte links/rechts (en onder) zodat de rand en schaduw van de eerste tegel niet
+      // afgesneden worden; de negatieve marge houdt de tegels zelf op dezelfde plaats.
+      className="-mx-4 m-0 flex list-none snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 pt-3.5 [scrollbar-width:none] md:-mx-2 md:-mb-2 md:gap-4 md:px-2 md:pb-3 md:scroll-px-2 [&::-webkit-scrollbar]:hidden"
     >
       {allDay.length > 0 ? <AllDayStackTile rows={allDay} /> : null}
       {rows.map((row) => (
