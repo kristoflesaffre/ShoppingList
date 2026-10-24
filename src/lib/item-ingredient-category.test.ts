@@ -38,9 +38,9 @@ describe("resolveItemCategoryFromName", () => {
     );
   });
 
-  it("deelt krabsla in bij beleg", () => {
+  it("deelt krabsla in bij vlees & charcuterie", () => {
     expect(resolveItemCategoryFromName("Krabsla")).toBe(
-      "Beleg",
+      "Vlees & Charcuterie",
     );
   });
 
