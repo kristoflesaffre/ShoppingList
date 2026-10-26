@@ -14,6 +14,7 @@ import { DashboardPhotoTimeline } from "@/components/dashboard_photo_timeline";
 import { WeatherHero } from "@/components/weather_hero";
 import { DashboardHuePanel } from "@/components/dashboard_hue_panel";
 import { FilmDetailModal, WatchingTile, WatchlistTile, useWatchingMedia, useWatchlistSuggestions, type EveningMedia } from "@/components/dashboard_evening";
+import { AmbienceTileOr } from "@/components/dashboard_ambience";
 import { CalendarLoosePlate } from "@/components/calendar_day_visuals";
 import "@/app/aod-toned.css";
 
@@ -658,7 +659,8 @@ function EveningLeft({ weather, todayMeal, tomorrowMeal }: { weather: Weather | 
       </div>
       <div className={cn("flex gap-3.5", suggestions.length > 0 ? POSTER_ROW : "min-h-0 flex-1")} style={POSTER_LIMIT}>
         {suggestions.length > 0 ? <WatchlistTile items={suggestions} onOpen={setOpen} /> : <TodayMeal meal={todayMeal} />}
-        <TomorrowMeal meal={tomorrowMeal} />
+        {/* 's Avonds: sfeer op tv i.p.v. eten morgen (enkel waar de tv bedienbaar is, anders eten morgen). */}
+        <AmbienceTileOr fallback={<TomorrowMeal meal={tomorrowMeal} />} />
       </div>
       <div className="relative flex min-h-0 flex-1 flex-col">
         <DashboardHuePanel cinema />

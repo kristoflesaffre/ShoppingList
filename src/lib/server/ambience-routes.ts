@@ -49,6 +49,13 @@ export async function ambienceTv(request: NextRequest) {
 
 export type AmbienceVideo = { id: string; title: string; channel: string; thumbnail: string; duration: string | null; live: boolean };
 
+/**
+ * Zoekresultaten 12 uur bewaren: één zoekopdracht kost 100 van de 10.000 dagelijkse eenheden en het venster
+ * vraagt telkens 7 rijen op. Zo kost een tweede opening niets.
+ */
+const SEARCH_TTL = 12 * 60 * 60 * 1000;
+const searchCache = new Map<string, { at: number; videos: AmbienceVideo[] }>();
+
 /** `{ q }` → up to 24 YouTube videos (Data API v3: search.list 100 units + videos.list 1 unit). */
 export async function youtubeSearch(request: NextRequest) {
   const guard = await localOwner(request);
@@ -58,6 +65,9 @@ export async function youtubeSearch(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as { q?: unknown } | null;
   const q = typeof body?.q === "string" ? body.q.trim().slice(0, 100) : "";
   if (!q) return reply({ error: "invalid-query" }, 400);
+  const cacheKey = q.toLowerCase();
+  const cached = searchCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < SEARCH_TTL) return reply({ videos: cached.videos });
   try {
     const search = await fetch(`https://www.googleapis.com/youtube/v3/search?${new URLSearchParams({ part: "snippet", type: "video", maxResults: "24", q, safeSearch: "moderate", regionCode: "BE", key })}`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
     if (!search.ok) return reply({ error: search.status === 403 ? "quota-or-key" : "search-failed" }, 502);
@@ -82,6 +92,8 @@ export async function youtubeSearch(request: NextRequest) {
           live,
         };
       });
+    if (searchCache.size > 200) searchCache.clear();
+    searchCache.set(cacheKey, { at: Date.now(), videos });
     return reply({ videos });
   } catch {
     return reply({ error: "search-failed" }, 502);
