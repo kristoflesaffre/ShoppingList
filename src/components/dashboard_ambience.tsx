@@ -7,8 +7,10 @@ import { ambienceShelves, type AmbienceShelf } from "@/lib/ambience-seasons";
 import {
   ambienceAvailable,
   ambienceErrorText,
+  cachedAmbience,
   onLastAmbienceChange,
   playAmbienceOnTv,
+  prefetchAmbience,
   readLastAmbience,
   saveLastAmbience,
   searchAmbience,
@@ -86,37 +88,41 @@ function useTvPlayer(token: string | null) {
 
 /* ---------------- Venster (A3: rijen per stemming, seizoen bovenaan) ---------------- */
 
-function VideoCard({ video, selected, busy, elapsed, onSelect, onPlay }: { video: AmbienceVideo; selected: boolean; busy: boolean; elapsed: number; onSelect: () => void; onPlay: () => void }) {
+function VideoCard({ video, busy, locked, elapsed, onPlay }: { video: AmbienceVideo; busy: boolean; locked: boolean; elapsed: number; onPlay: () => void }) {
   return (
     <li className="w-[232px] shrink-0 snap-start">
-      <div className={cn("flex flex-col gap-2 rounded-[18px] p-2 transition-colors", selected ? "bg-fixed-white/[0.14] shadow-[0_0_0_2.5px_#b9a8ff]" : "bg-fixed-white/[0.06]")}>
-        <button type="button" onClick={onSelect} aria-pressed={selected} className={cn("flex flex-col gap-2 rounded-[12px] text-left", focusRing)}>
-          <span className="relative block aspect-video overflow-hidden rounded-[12px] bg-[#2a2148]">
-            {/* eslint-disable-next-line @next/next/no-img-element -- YouTube-miniatuur */}
-            <img src={video.thumbnail} alt="" loading="lazy" className="size-full object-cover" />
-            {video.duration ? (
-              <span className={cn("absolute bottom-1.5 right-1.5 rounded-md px-1.5 py-0.5 text-[11px] font-extrabold", video.live ? "bg-[#e5384f]" : "bg-[rgba(10,10,20,0.82)]")}>
-                {video.live ? "● LIVE" : video.duration}
-              </span>
-            ) : null}
-          </span>
-          <span className="px-0.5">
-            <span className="line-clamp-2 text-[13px] font-bold leading-[1.3]">{video.title}</span>
-            <span className="mt-0.5 block truncate text-[11.5px] text-fixed-white/60">{video.channel}</span>
-          </span>
-        </button>
-        {selected ? (
-          <button
-            type="button"
-            onClick={onPlay}
-            disabled={busy}
-            className={cn("flex h-10 items-center justify-center gap-2 rounded-pill bg-fixed-white text-[13.5px] font-extrabold text-[#2a2148] disabled:opacity-70", focusRing)}
-          >
-            <TvIcon className="size-4" />
-            {busy ? `Bezig… ${elapsed} s` : "Op tv afspelen"}
-          </button>
-        ) : null}
-      </div>
+      <button
+        type="button"
+        onClick={onPlay}
+        disabled={locked}
+        aria-label={`«${video.title}» op tv afspelen`}
+        className={cn(
+          "flex w-full flex-col gap-2 rounded-[18px] p-2 text-left transition-[background-color,box-shadow,opacity] disabled:cursor-default",
+          busy ? "bg-fixed-white/[0.14] shadow-[0_0_0_2.5px_#b9a8ff]" : "bg-fixed-white/[0.06] [@media(hover:hover)]:hover:bg-fixed-white/[0.1]",
+          locked && !busy && "opacity-50",
+          focusRing,
+        )}
+      >
+        <span className="relative block aspect-video overflow-hidden rounded-[12px] bg-[#2a2148]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- YouTube-miniatuur */}
+          <img src={video.thumbnail} alt="" loading="lazy" className="size-full object-cover" />
+          {video.duration ? (
+            <span className={cn("absolute bottom-1.5 right-1.5 rounded-md px-1.5 py-0.5 text-[11px] font-extrabold", video.live ? "bg-[#e5384f]" : "bg-[rgba(10,10,20,0.82)]")}>
+              {video.live ? "● LIVE" : video.duration}
+            </span>
+          ) : null}
+          {busy ? (
+            <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[rgba(14,12,32,0.62)] text-[13px] font-extrabold">
+              <TvIcon className="size-6 motion-safe:animate-pulse" />
+              Naar de tv… {elapsed} s
+            </span>
+          ) : null}
+        </span>
+        <span className="px-0.5">
+          <span className="line-clamp-2 text-[13px] font-bold leading-[1.3]">{video.title}</span>
+          <span className="mt-0.5 block truncate text-[11.5px] text-fixed-white/60">{video.channel}</span>
+        </span>
+      </button>
     </li>
   );
 }
@@ -125,29 +131,27 @@ function Shelf({
   shelf,
   seasonal,
   token,
-  selected,
   player,
-  onSelect,
   onPlayed,
 }: {
   shelf: AmbienceShelf;
   seasonal: boolean;
   token: string | null;
-  selected: string | null;
   player: ReturnType<typeof useTvPlayer>;
-  onSelect: (key: string | null) => void;
   onPlayed: () => void;
 }) {
-  const [videos, setVideos] = React.useState<AmbienceVideo[] | null>(null);
+  const [videos, setVideos] = React.useState<AmbienceVideo[] | null>(() => cachedAmbience(shelf.query));
   const [error, setError] = React.useState<string | null>(null);
   React.useEffect(() => {
-    const controller = new AbortController();
-    setVideos(null);
+    let active = true;
+    setVideos(cachedAmbience(shelf.query));
     setError(null);
-    searchAmbience(token, shelf.query, controller.signal)
-      .then((v) => !controller.signal.aborted && setVideos(v))
-      .catch((e: Error) => !controller.signal.aborted && setError(ambienceErrorText(e.message, "Kon deze rij niet laden.")));
-    return () => controller.abort();
+    searchAmbience(token, shelf.query)
+      .then((v) => active && setVideos(v))
+      .catch((e: Error) => active && setError(ambienceErrorText(e.message, "Kon deze rij niet laden.")));
+    return () => {
+      active = false;
+    };
   }, [token, shelf.query]);
   return (
     <section aria-label={shelf.label} className="flex flex-col gap-2.5">
@@ -167,20 +171,16 @@ function Shelf({
         <p className="text-sm text-fixed-white/60">Geen video’s gevonden.</p>
       ) : (
         <ul className="-mx-7 flex snap-x gap-3 overflow-x-auto scroll-px-7 px-7 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {videos.map((v) => {
-            const key = `${shelf.key}:${v.id}`;
-            return (
-              <VideoCard
-                key={v.id}
-                video={v}
-                selected={selected === key}
-                busy={player.playing?.id === v.id}
-                elapsed={player.elapsed}
-                onSelect={() => onSelect(selected === key ? null : key)}
-                onPlay={() => void player.play(v).then((ok) => ok && onPlayed())}
-              />
-            );
-          })}
+          {videos.map((v) => (
+            <VideoCard
+              key={v.id}
+              video={v}
+              busy={player.playing?.id === v.id}
+              locked={!!player.playing}
+              elapsed={player.elapsed}
+              onPlay={() => void player.play(v).then((ok) => ok && onPlayed())}
+            />
+          ))}
         </ul>
       )}
     </section>
@@ -190,7 +190,6 @@ function Shelf({
 export function AmbienceModal({ onClose }: { onClose: () => void }) {
   const token = useGoogleAuthToken();
   const player = useTvPlayer(token);
-  const [selected, setSelected] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState("");
   const [query, setQuery] = React.useState<string | null>(null);
   const shelves = React.useMemo(() => ambienceShelves(new Date()), []);
@@ -235,7 +234,6 @@ export function AmbienceModal({ onClose }: { onClose: () => void }) {
                 e.preventDefault();
                 const q = draft.trim();
                 setQuery(q || null);
-                setSelected(null);
               }}
               className="flex h-11 w-[300px] items-center gap-2 rounded-pill bg-fixed-white/[0.12] pl-4 pr-1.5"
             >
@@ -264,9 +262,9 @@ export function AmbienceModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="-mx-7 flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-7 pb-2">
-          {searchShelf ? <Shelf key={searchShelf.query} shelf={searchShelf} seasonal={false} token={token} selected={selected} player={player} onSelect={setSelected} onPlayed={onPlayed} /> : null}
+          {searchShelf ? <Shelf key={searchShelf.query} shelf={searchShelf} seasonal={false} token={token} player={player} onPlayed={onPlayed} /> : null}
           {shelves.map((shelf, i) => (
-            <Shelf key={shelf.key} shelf={shelf} seasonal={i < seasonalCount} token={token} selected={selected} player={player} onSelect={setSelected} onPlayed={onPlayed} />
+            <Shelf key={shelf.key} shelf={shelf} seasonal={i < seasonalCount} token={token} player={player} onPlayed={onPlayed} />
           ))}
         </div>
       </div>
@@ -326,7 +324,12 @@ export function AmbienceTileOr({ fallback }: { fallback: React.ReactNode }) {
   const [available, setAvailable] = React.useState(false);
   React.useEffect(() => {
     let active = true;
-    void ambienceAvailable(token).then((ok) => active && setAvailable(ok));
+    void ambienceAvailable(token).then((ok) => {
+      if (!active) return;
+      setAvailable(ok);
+      // Rijen van het venster alvast laden, zodat het meteen gevuld opent.
+      if (ok) prefetchAmbience(token, ambienceShelves(new Date()).map((s) => s.query));
+    });
     return () => {
       active = false;
     };

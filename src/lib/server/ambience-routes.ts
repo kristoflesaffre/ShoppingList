@@ -1,3 +1,5 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { googleRequestOrigin } from "@/lib/google-dashboard-auth";
 import { formatYoutubeDuration, isYoutubeVideoId } from "@/lib/samsung-tv-protocol";
@@ -55,6 +57,24 @@ export type AmbienceVideo = { id: string; title: string; channel: string; thumbn
  */
 const SEARCH_TTL = 12 * 60 * 60 * 1000;
 const searchCache = new Map<string, { at: number; videos: AmbienceVideo[] }>();
+// Ook op schijf (.cache/), zodat een herstart of hot reload van de dev-server de cache niet wist.
+const CACHE_FILE = path.join(process.cwd(), ".cache/youtube-search.json");
+let cacheLoaded: Promise<void> | null = null;
+function loadSearchCache(): Promise<void> {
+  cacheLoaded ??= readFile(CACHE_FILE, "utf8")
+    .then((raw) => {
+      for (const [k, v] of Object.entries(JSON.parse(raw) as Record<string, { at: number; videos: AmbienceVideo[] }>)) {
+        if (Date.now() - v.at < SEARCH_TTL && !searchCache.has(k)) searchCache.set(k, v);
+      }
+    })
+    .catch(() => undefined);
+  return cacheLoaded;
+}
+function saveSearchCache(): void {
+  void mkdir(path.dirname(CACHE_FILE), { recursive: true })
+    .then(() => writeFile(CACHE_FILE, JSON.stringify(Object.fromEntries(searchCache)), { mode: 0o600 }))
+    .catch(() => undefined);
+}
 
 /** `{ q }` → up to 24 YouTube videos (Data API v3: search.list 100 units + videos.list 1 unit). */
 export async function youtubeSearch(request: NextRequest) {
@@ -66,6 +86,7 @@ export async function youtubeSearch(request: NextRequest) {
   const q = typeof body?.q === "string" ? body.q.trim().slice(0, 100) : "";
   if (!q) return reply({ error: "invalid-query" }, 400);
   const cacheKey = q.toLowerCase();
+  await loadSearchCache();
   const cached = searchCache.get(cacheKey);
   if (cached && Date.now() - cached.at < SEARCH_TTL) return reply({ videos: cached.videos });
   try {
@@ -94,6 +115,7 @@ export async function youtubeSearch(request: NextRequest) {
       });
     if (searchCache.size > 200) searchCache.clear();
     searchCache.set(cacheKey, { at: Date.now(), videos });
+    saveSearchCache();
     return reply({ videos });
   } catch {
     return reply({ error: "search-failed" }, 502);

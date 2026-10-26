@@ -23,8 +23,62 @@ async function post<T>(url: string, token: string | null, body: unknown, signal?
   return data as T;
 }
 
-export async function searchAmbience(token: string | null, q: string, signal?: AbortSignal): Promise<AmbienceVideo[]> {
-  return (await post<{ videos: AmbienceVideo[] }>("/api/youtube/search", token, { q }, signal)).videos;
+/**
+ * Zoekresultaten ook in de browser bewaren (12 u, per toestel): het venster toont ze dan meteen,
+ * zonder te wachten op de server. Lopende aanvragen worden gedeeld, nooit afgebroken.
+ */
+const SEARCH_TTL = 12 * 60 * 60 * 1000;
+const SEARCH_KEY = "ambience-search-v1";
+type CacheEntry = { at: number; videos: AmbienceVideo[] };
+let memory: Map<string, CacheEntry> | null = null;
+const inflight = new Map<string, Promise<AmbienceVideo[]>>();
+function cache(): Map<string, CacheEntry> {
+  if (memory) return memory;
+  memory = new Map();
+  try {
+    const raw = window.localStorage.getItem(SEARCH_KEY);
+    for (const [k, v] of Object.entries(raw ? (JSON.parse(raw) as Record<string, CacheEntry>) : {})) {
+      if (Date.now() - v.at < SEARCH_TTL && Array.isArray(v.videos)) memory.set(k, v);
+    }
+  } catch {
+    /* geen opslag: enkel in het geheugen */
+  }
+  return memory;
+}
+function persist(): void {
+  try {
+    window.localStorage.setItem(SEARCH_KEY, JSON.stringify(Object.fromEntries(cache())));
+  } catch {
+    /* vol of privémodus */
+  }
+}
+
+/** Verse resultaten uit de cache, of null. Voor de eerste weergave zonder laadstaat. */
+export function cachedAmbience(q: string): AmbienceVideo[] | null {
+  const hit = cache().get(q.toLowerCase());
+  return hit && Date.now() - hit.at < SEARCH_TTL ? hit.videos : null;
+}
+
+export function searchAmbience(token: string | null, q: string): Promise<AmbienceVideo[]> {
+  const key = q.toLowerCase();
+  const hit = cachedAmbience(key);
+  if (hit) return Promise.resolve(hit);
+  const running = inflight.get(key);
+  if (running) return running;
+  const request = post<{ videos: AmbienceVideo[] }>("/api/youtube/search", token, { q })
+    .then(({ videos }) => {
+      cache().set(key, { at: Date.now(), videos });
+      persist();
+      return videos;
+    })
+    .finally(() => inflight.delete(key));
+  inflight.set(key, request);
+  return request;
+}
+
+/** Rijen alvast ophalen (bv. zodra de tegel op het dashboard staat), zodat het venster meteen gevuld is. */
+export function prefetchAmbience(token: string | null, queries: string[]): void {
+  for (const q of queries) void searchAmbience(token, q).catch(() => undefined);
 }
 
 export async function playAmbienceOnTv(token: string | null, videoId: string): Promise<void> {
