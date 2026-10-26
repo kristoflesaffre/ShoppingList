@@ -390,6 +390,15 @@ export default function ProfielPage() {
           onClick={() => router.push("/profiel/projectiescherm")}
         />
       </li>
+      <li>
+        <ProfileSettingsRow
+          bare={bare}
+          icon={homeIcon}
+          label="Ambience op tv"
+          description="YouTube-sfeervideo’s zoeken en op de Samsung-tv afspelen"
+          onClick={() => router.push("/profiel/ambience")}
+        />
+      </li>
     </>
   );
 
