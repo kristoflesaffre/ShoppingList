@@ -86,6 +86,27 @@ export async function playAmbienceOnTv(token: string | null, videoId: string): P
   if (!data.accepted) throw new Error("command-not-confirmed");
 }
 
+export async function tvPlaybackCommand(token: string | null, action: "pause" | "resume"): Promise<void> {
+  const data = await post<{ accepted?: boolean }>("/api/tv/ambience", token, { action });
+  if (!data.accepted) throw new Error("command-not-confirmed");
+}
+
+/** Wat speelt er volgens deze app (gedeeld door tegel en venster; na herladen weer «idle»). */
+export type AmbiencePlayState = "idle" | "playing" | "paused";
+let playState: AmbiencePlayState = "idle";
+const playListeners = new Set<() => void>();
+export function getPlayState(): AmbiencePlayState {
+  return playState;
+}
+export function setPlayState(next: AmbiencePlayState): void {
+  playState = next;
+  playListeners.forEach((cb) => cb());
+}
+export function subscribePlayState(cb: () => void): () => void {
+  playListeners.add(cb);
+  return () => playListeners.delete(cb);
+}
+
 /** Is de tv vanaf hier bedienbaar (Mac of thuisnetwerk, gekoppeld) en staat zoeken aan? Eén keer per sessie. */
 let statusPromise: Promise<boolean> | null = null;
 export function ambienceAvailable(token: string | null): Promise<boolean> {

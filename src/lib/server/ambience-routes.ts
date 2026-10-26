@@ -5,7 +5,7 @@ import { googleRequestOrigin } from "@/lib/google-dashboard-auth";
 import { formatYoutubeDuration, isYoutubeVideoId } from "@/lib/samsung-tv-protocol";
 import { verifiedUserId } from "./google-connection-store";
 import { screenLanHost } from "./projector-temporary";
-import { readTvConfig, startAmbience, tvPower } from "./samsung-tv";
+import { readTvConfig, startAmbience, tvPlayback, tvPower } from "./samsung-tv";
 
 const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 const loopback = ["localhost", "127.0.0.1", "[::1]"];
@@ -22,11 +22,11 @@ async function localOwner(request: NextRequest): Promise<{ ownerId: string } | N
   return { ownerId };
 }
 
-/** `{ action: "status" }` or `{ action: "play", videoId }`. */
-export function ambienceRequest(value: unknown): { action: "status" } | { action: "play"; videoId: string } | null {
+/** `{ action: "status" | "pause" | "resume" }` or `{ action: "play", videoId }`. */
+export function ambienceRequest(value: unknown): { action: "status" | "pause" | "resume" } | { action: "play"; videoId: string } | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const data = value as Record<string, unknown>;
-  if (data.action === "status" && Object.keys(data).length === 1) return { action: "status" };
+  if ((data.action === "status" || data.action === "pause" || data.action === "resume") && Object.keys(data).length === 1) return { action: data.action };
   if (data.action === "play" && Object.keys(data).length === 2 && isYoutubeVideoId(data.videoId)) return { action: "play", videoId: data.videoId };
   return null;
 }
@@ -41,6 +41,10 @@ export async function ambienceTv(request: NextRequest) {
   if (config.ownerId !== guard.ownerId) return reply({ error: "not-authorized" }, 403);
   if (parsed.action === "status") return reply({ configured: true, power: await tvPower(config.host), youtubeSearch: Boolean(process.env.YOUTUBE_API_KEY) });
   try {
+    if (parsed.action !== "play") {
+      await tvPlayback(config, parsed.action === "pause" ? "pause" : "resume");
+      return reply({ accepted: true });
+    }
     const { wasOn } = await startAmbience(config, parsed.videoId);
     return reply({ accepted: true, wasOn });
   } catch (error) {

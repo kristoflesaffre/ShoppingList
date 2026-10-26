@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-const mocks = vi.hoisted(() => ({ verify: vi.fn(), config: vi.fn(), power: vi.fn(), start: vi.fn() }));
+const mocks = vi.hoisted(() => ({ verify: vi.fn(), config: vi.fn(), power: vi.fn(), start: vi.fn(), playback: vi.fn() }));
 vi.mock("@/lib/server/google-connection-store", () => ({ verifiedUserId: mocks.verify }));
-vi.mock("@/lib/server/samsung-tv", () => ({ readTvConfig: mocks.config, tvPower: mocks.power, startAmbience: mocks.start }));
+vi.mock("@/lib/server/samsung-tv", () => ({ readTvConfig: mocks.config, tvPower: mocks.power, startAmbience: mocks.start, tvPlayback: mocks.playback }));
 import { ambienceRequest, ambienceTv, youtubeSearch } from "./server/ambience-routes";
 const request = (body: unknown, origin = "https://localhost:3011", url = "https://localhost:3011/api/tv/ambience") => new NextRequest(url, { method: "POST", headers: { origin, "content-type": "application/json" }, body: JSON.stringify(body) });
 beforeEach(() => {
@@ -16,6 +16,8 @@ describe("Ambience TV boundary", () => {
   it("accepts only status or play with a valid video id", () => {
     expect(ambienceRequest({ action: "status" })).toEqual({ action: "status" });
     expect(ambienceRequest({ action: "play", videoId: "5uY3OMRulVo" })).toEqual({ action: "play", videoId: "5uY3OMRulVo" });
+    expect(ambienceRequest({ action: "pause" })).toEqual({ action: "pause" });
+    expect(ambienceRequest({ action: "resume" })).toEqual({ action: "resume" });
     for (const v of [{ action: "play", videoId: "x; rm" }, { action: "play" }, { action: "key", key: "KEY_POWER" }, { action: "status", extra: 1 }, null, []]) expect(ambienceRequest(v)).toBeNull();
   });
   it("is not available on a public host", async () => {
@@ -39,6 +41,16 @@ describe("Ambience TV boundary", () => {
     mocks.start.mockRejectedValue(new Error("busy"));
     const busy = await ambienceTv(request({ action: "play", videoId: "5uY3OMRulVo" }));
     expect(busy.status).toBe(409);
+  });
+  it("pauses and resumes without restarting the sequence", async () => {
+    mocks.playback.mockResolvedValue(undefined);
+    expect(await (await ambienceTv(request({ action: "pause" }))).json()).toEqual({ accepted: true });
+    expect(mocks.playback).toHaveBeenCalledWith(expect.objectContaining({ host: "192.168.1.2" }), "pause");
+    mocks.playback.mockRejectedValue(new Error("tv-off"));
+    const off = await ambienceTv(request({ action: "resume" }));
+    expect(off.status).toBe(503);
+    expect(await off.json()).toEqual({ error: "tv-off" });
+    expect(mocks.start).not.toHaveBeenCalled();
   });
   it("search needs the API key", async () => {
     const previous = process.env.YOUTUBE_API_KEY;

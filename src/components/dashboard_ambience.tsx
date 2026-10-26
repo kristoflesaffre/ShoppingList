@@ -8,12 +8,16 @@ import {
   ambienceAvailable,
   ambienceErrorText,
   cachedAmbience,
+  getPlayState,
   onLastAmbienceChange,
   playAmbienceOnTv,
   prefetchAmbience,
   readLastAmbience,
   saveLastAmbience,
   searchAmbience,
+  setPlayState,
+  subscribePlayState,
+  tvPlaybackCommand,
   type AmbienceVideo,
 } from "@/lib/ambience-client";
 import { cn } from "@/lib/utils";
@@ -32,6 +36,14 @@ function PlayIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden className={className}>
       <path d="M8 5.5v13l11-6.5z" fill="currentColor" />
+    </svg>
+  );
+}
+function PauseIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className={className}>
+      <rect x="6.5" y="5" width="4" height="14" rx="1.2" fill="currentColor" />
+      <rect x="13.5" y="5" width="4" height="14" rx="1.2" fill="currentColor" />
     </svg>
   );
 }
@@ -72,6 +84,7 @@ function useTvPlayer(token: string | null) {
       try {
         await playAmbienceOnTv(token, video.id);
         saveLastAmbience(video);
+        setPlayState("playing");
         setMessage(`«${video.title}» speelt op de tv.`);
         return true;
       } catch (error) {
@@ -279,14 +292,40 @@ export function DashboardAmbienceTile() {
   const token = useGoogleAuthToken();
   const last = useLastAmbience();
   const player = useTvPlayer(token);
+  const playState = React.useSyncExternalStore(subscribePlayState, getPlayState, () => "idle" as const);
+  const [toggling, setToggling] = React.useState(false);
   const [open, setOpen] = React.useState(false);
-  const busy = !!player.playing;
+  const busy = !!player.playing || toggling;
+
+  /** Pauze ↔ verder via YouTube op de tv; staat de tv uit of weet de app niets, dan opnieuw opzetten. */
+  const togglePlay = async () => {
+    if (!last || busy) return;
+    if (playState === "idle") {
+      await player.play(last);
+      return;
+    }
+    setToggling(true);
+    try {
+      await tvPlaybackCommand(token, playState === "playing" ? "pause" : "resume");
+      setPlayState(playState === "playing" ? "paused" : "playing");
+    } catch {
+      setPlayState("idle");
+      if (playState === "paused") await player.play(last);
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const pill = "pointer-events-auto flex h-9 items-center justify-center rounded-pill text-[12.5px] font-extrabold disabled:opacity-70";
   return (
     <section aria-label="Sfeer op tv" className={cn(tile, "flex w-[124px] shrink-0 flex-col bg-[linear-gradient(165deg,#ff9a5a,#e5618a_70%)] text-fixed-white shadow-[0_14px_32px_-24px_rgba(229,97,138,0.8)] [[data-theme=dark]_&]:bg-[linear-gradient(165deg,#5a2a3a,#3a1f36_60%,#261630)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#4a2a40] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]")}>
       {last ? (
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element -- YouTube-miniatuur van de laatst gekozen sfeer */}
-          <img src={last.thumbnail} alt="" className="aod-kenburns absolute inset-0 size-full object-cover [[data-theme=dark]_&]:brightness-[0.75]" />
+          {/* YouTube-miniaturen (4:3) hebben zwarte balken boven en onder: 4/3 ÷ 16/9 = 1,34× inzoomen haalt ze weg. */}
+          <span aria-hidden className="absolute inset-0 scale-[1.34]">
+            {/* eslint-disable-next-line @next/next/no-img-element -- YouTube-miniatuur van de laatst gekozen sfeer */}
+            <img src={last.thumbnail} alt="" className="aod-kenburns size-full object-cover [[data-theme=dark]_&]:brightness-[0.75]" />
+          </span>
           <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.15)_0%,rgba(0,0,0,0)_30%,rgba(20,10,30,0.88)_100%)]" />
         </>
       ) : null}
@@ -295,20 +334,24 @@ export function DashboardAmbienceTile() {
         <span className="text-[11px] font-extrabold tracking-[0.08em] text-fixed-white/90">SFEER</span>
         {last ? null : <FlameIcon className="size-14 text-fixed-white/90 drop-shadow-[0_8px_14px_rgba(120,20,40,0.45)]" />}
         <span className="flex w-full flex-col items-center gap-2">
-          <span className="line-clamp-3 text-[12.5px] font-extrabold leading-tight">{busy ? `Bezig… ${player.elapsed} s` : last ? last.title : "Ambience op tv"}</span>
+          <span className="line-clamp-3 text-[12.5px] font-extrabold leading-tight">{player.playing ? `Bezig… ${player.elapsed} s` : last ? last.title : "Ambience op tv"}</span>
           {last ? (
-            <button
-              type="button"
-              onClick={() => void player.play(last)}
-              disabled={busy}
-              aria-label={`«${last.title}» opnieuw op tv afspelen`}
-              className={cn("pointer-events-auto flex h-8 items-center gap-1.5 rounded-pill bg-fixed-white px-3 text-[12px] font-extrabold text-[#2a2148] disabled:opacity-70", focusRing)}
-            >
-              <PlayIcon className="size-3" />
-              Opzetten
-            </button>
+            <span className="flex w-full items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => void togglePlay()}
+                disabled={busy}
+                aria-label={playState === "playing" ? "Pauzeren op de tv" : `«${last.title}» afspelen op de tv`}
+                className={cn(pill, "size-9 shrink-0 bg-fixed-white text-[#2a2148]", focusRing)}
+              >
+                {playState === "playing" ? <PauseIcon className="size-4" /> : <PlayIcon className="ml-0.5 size-4" />}
+              </button>
+              <button type="button" onClick={() => setOpen(true)} className={cn(pill, "flex-1 bg-fixed-white/25 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)] backdrop-blur-[6px]", focusRing)}>
+                Wijzig
+              </button>
+            </span>
           ) : (
-            <span className="flex h-8 items-center rounded-pill bg-fixed-white/25 px-3 text-[12px] font-extrabold">Kiezen</span>
+            <span className="flex h-9 items-center rounded-pill bg-fixed-white/25 px-3 text-[12.5px] font-extrabold">Kiezen</span>
           )}
         </span>
       </div>

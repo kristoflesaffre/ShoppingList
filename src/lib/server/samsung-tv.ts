@@ -126,8 +126,8 @@ async function restartYoutube(host: string): Promise<void> {
   if (!response.ok) throw new Error("youtube-not-started");
 }
 
-/** Play one video on the TV's YouTube app through the Lounge API (like casting from the phone app). */
-async function loungePlay(host: string, videoId: string): Promise<void> {
+/** One command to the TV's YouTube app through the Lounge API (like the phone app as a remote). */
+async function loungeSend(host: string, command: Record<string, string>): Promise<void> {
   const screenId = dialScreenId(await (await fetch(`http://${host}:8080/ws/apps/YouTube`, { signal: AbortSignal.timeout(5000) })).text());
   if (!screenId) throw new Error("youtube-no-screen");
   const tokens = await (await fetch("https://www.youtube.com/api/lounge/pairing/get_lounge_token_batch", {
@@ -144,9 +144,20 @@ async function loungePlay(host: string, videoId: string): Promise<void> {
   const bind = await fetch(`${base}?${new URLSearchParams({ ...common, RID: String(rid++), zx: randomBytes(6).toString("hex") })}`, { method: "POST", headers: form, body: "count=0" });
   const session = parseLoungeBind(await bind.text());
   if (!bind.ok || !session) throw new Error("youtube-bind-failed");
-  const body = new URLSearchParams({ count: "1", ofs: "0", req0__sc: "setPlaylist", req0_videoId: videoId, req0_currentTime: "0", req0_currentIndex: "0", req0_listId: "", req0_videoIds: videoId, req0_audioOnly: "false", req0_params: "", req0_playerParams: "" });
-  const play = await fetch(`${base}?${new URLSearchParams({ ...common, SID: session.sid, gsessionid: session.gsessionid, RID: String(rid++), AID: "5", zx: randomBytes(6).toString("hex") })}`, { method: "POST", headers: form, body });
-  if (!play.ok) throw new Error("youtube-play-failed");
+  const body = new URLSearchParams({ count: "1", ofs: "0", ...Object.fromEntries(Object.entries(command).map(([k, v]) => [k === "_sc" ? "req0__sc" : `req0_${k}`, v])) });
+  const sent = await fetch(`${base}?${new URLSearchParams({ ...common, SID: session.sid, gsessionid: session.gsessionid, RID: String(rid++), AID: "5", zx: randomBytes(6).toString("hex") })}`, { method: "POST", headers: form, body });
+  if (!sent.ok) throw new Error("youtube-command-failed");
+}
+
+/** Play one video (replaces whatever is playing). */
+function loungePlay(host: string, videoId: string): Promise<void> {
+  return loungeSend(host, { _sc: "setPlaylist", videoId, currentTime: "0", currentIndex: "0", listId: "", videoIds: videoId, audioOnly: "false", params: "", playerParams: "" });
+}
+
+/** Pause or resume what YouTube is playing on the TV. Fails with `tv-off` when the TV is not on. */
+export async function tvPlayback(config: TvConfig, action: "pause" | "resume"): Promise<void> {
+  if ((await tvPower(config.host)) !== "on") throw new Error("tv-off");
+  await loungeSend(config.host, { _sc: action === "pause" ? "pause" : "play" });
 }
 
 let running = false;
