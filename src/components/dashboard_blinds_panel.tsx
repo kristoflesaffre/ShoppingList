@@ -3,7 +3,7 @@
 import * as React from "react";
 import { googleAuthHeaders } from "@/lib/google-client";
 import { cn } from "@/lib/utils";
-import { blindLabel, type BlindCommand, type BlindsStatus } from "@/lib/brel-blinds";
+import { blindLabel, SLATS_CLOSED_ANGLE, SLATS_OPEN_ANGLE, type BlindCommand, type BlindsStatus } from "@/lib/brel-blinds";
 import { ScreenIcon } from "@/components/dashboard_screen_panel";
 
 const ACTIONS = [
@@ -107,8 +107,31 @@ export function useBlindsControls(token: string | null) {
     }
   }
 
+  /** Lamellen open (horizontaal) of dicht (verticaal). Toont meteen de nieuwe stand; mislukt het, dan de vorige terug. */
+  async function tilt(mac: string, open: boolean) {
+    if (busy) return;
+    const blind = status?.blinds.find(item => item.mac === mac);
+    const angle = open ? SLATS_OPEN_ANGLE : SLATS_CLOSED_ANGLE;
+    const setAngle = (value: number | null) => setStatus(current => current && { ...current, blinds: current.blinds.map(item => item.mac === mac ? { ...item, angle: value } : item) });
+    setBusy(mac + "tilt");
+    setAngle(angle);
+    setMessage("Opdracht versturen…");
+    try {
+      await call({ action: "tilt", blind: mac, angle });
+      if (!mounted.current) return;
+      setMessage(`${blind?.name ?? "Rolluik"}: lamellen ${open ? "open" : "dicht"}.`);
+      setFollowUntil(Date.now() + 15_000);
+    } catch {
+      if (!mounted.current) return;
+      setAngle(blind?.angle ?? null);
+      setMessage("Lamellen niet bevestigd. Controleer het rolluik.");
+    } finally {
+      if (mounted.current) setBusy(null);
+    }
+  }
+
   const ready = status?.configured === true;
-  return { status, message, busy, ready, send, move, recheck: () => setVersion(value => value + 1) };
+  return { status, message, busy, ready, send, move, tilt, recheck: () => setVersion(value => value + 1) };
 }
 
 /** Zelfde vorm als het schermpaneel: per rolluik een kop (naam · stand) en drie tegels, gescheiden door een lijntje. */

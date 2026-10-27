@@ -34,7 +34,10 @@ export function SegmentedControl<T extends string>({
   glassFor,
   onSelect,
   commitDelay = 0,
+  disabled = false,
 }: {
+  /** Tijdelijk niet te bedienen (bv. terwijl een opdracht loopt): gedimd, tikken doet niets. */
+  disabled?: boolean;
   /** ms tussen de tik en onChange: bij een zware wissel eerst de animatie afmaken, dan pas de inhoud. */
   commitDelay?: number;
   tone?: "default" | "glass";
@@ -57,7 +60,7 @@ export function SegmentedControl<T extends string>({
   const [shown, setShown] = React.useState(value);
   React.useEffect(() => setShown(value), [value]);
   const choose = (v: T) => {
-    if (v === value) return;
+    if (v === value || disabled) return;
     onSelect?.(v);
     setShown(v);
     if (commitDelay > 0) window.setTimeout(() => onChange(v), commitDelay);
@@ -82,6 +85,7 @@ export function SegmentedControl<T extends string>({
         // Zelfde curve als de pil: oppervlak, rand en hoeken lopen mee als «smart animate».
         "transition-[background-color,box-shadow,border-radius,backdrop-filter] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
         glass && GLASS_TROUGH,
+        disabled && "opacity-40",
         fill ? "w-full" : "w-fit shrink-0",
         className,
       )}
@@ -104,11 +108,12 @@ export function SegmentedControl<T extends string>({
             role="radio"
             aria-checked={on}
             aria-label={o.ariaLabel}
+            disabled={disabled}
             tabIndex={on ? 0 : -1}
             onClick={() => choose(o.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
-              "flex items-center justify-center rounded-[10px] text-[13.5px] font-semibold transition-[color,border-radius] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+              "flex items-center justify-center rounded-[10px] text-[13.5px] font-semibold disabled:cursor-not-allowed transition-[color,border-radius] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
               size === "lg" ? "h-[38px] px-4" : "h-8",
               size === "icon" ? "w-9" : size === "lg" ? "" : "px-3",
               fill && size !== "icon" && "min-w-0 flex-1",

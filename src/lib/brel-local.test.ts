@@ -33,13 +33,15 @@ describe("BREL local boundary", () => {
   it("passes exactly the validated arguments to the runner", async () => {
     expect((await brelLocal(request({ action: "position", blind: mac, position: 30 }))).status).toBe(200);
     expect(mocks.execute.mock.calls[0][1].slice(1)).toEqual(["position", mac, "30"]);
+    expect((await brelLocal(request({ action: "tilt", blind: mac, angle: 90 }))).status).toBe(200);
+    expect(mocks.execute.mock.calls[1][1].slice(1)).toEqual(["tilt", mac, "90"]);
   });
   it("reports an unconfirmed command instead of success", async () => {
     mocks.execute.mockResolvedValue({ stdout: JSON.stringify({ accepted: false }) });
     expect((await brelLocal(request({ action: "close", blind: mac }))).status).toBe(503);
   });
   it("returns the hub status without caching", async () => {
-    const status = { configured: true, blinds: [{ mac, name: "Woonkamer", available: true, position: 60, moving: false, battery: 75 }] };
+    const status = { configured: true, blinds: [{ mac, name: "Woonkamer", available: true, position: 60, angle: 90, moving: false, battery: 75 }] };
     mocks.execute.mockResolvedValue({ stdout: JSON.stringify(status) });
     const response = await brelLocal(request({ action: "status" }));
     expect(await response.json()).toEqual(status);

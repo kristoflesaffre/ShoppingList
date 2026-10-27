@@ -16,7 +16,7 @@ class BlindsTest(unittest.TestCase):
         self.path.write_text(json.dumps({'host': '192.168.132.222', 'gatewayMac': 'ece33429034c', 'key': '12ab345c-d67e-8f', 'blinds': [{'mac': MAC, 'name': 'Woonkamer'}], 'ownerId': 'owner'}))
         self.config = patch.object(blinds, 'CONFIG', self.path)
         self.config.start()
-        self.blind = MagicMock(position=60, status='Stopped', available=True, battery_level=75)
+        self.blind = MagicMock(position=60, angle=149.0, status='Stopped', available=True, battery_level=75)
         self.blind._write.return_value = {'msgType': 'WriteDeviceAck', 'data': {}}
         self.gateway = MagicMock(mac='ece33429034c', device_list={MAC: self.blind})
         self.connect = patch.object(blinds, 'connect', return_value=self.gateway)
@@ -28,6 +28,7 @@ class BlindsTest(unittest.TestCase):
     def test_status_never_writes(self):
         result = blinds.run('status')
         self.assertEqual(result['blinds'][0]['position'], 60)
+        self.assertEqual(result['blinds'][0]['angle'], 149)
         self.blind._write.assert_not_called()
     def test_each_command_is_one_absolute_write(self):
         for action, data in (('open', {'operation': 1}), ('close', {'operation': 0}), ('stop', {'operation': 2})):
@@ -37,12 +38,15 @@ class BlindsTest(unittest.TestCase):
         self.blind._write.reset_mock()
         blinds.run('position', MAC, 30)
         self.blind._write.assert_called_once_with({'targetPosition': 30})
+        self.blind._write.reset_mock()
+        blinds.run('tilt', MAC, angle=90)
+        self.blind._write.assert_called_once_with({'targetAngle': 90})
     def test_rejected_key_is_not_reported_as_success(self):
         self.blind._write.return_value = {'msgType': 'WriteDeviceAck', 'actionResult': 'AccessToken error'}
         with self.assertRaises(ValueError):
             blinds.run('open', MAC)
     def test_only_configured_blinds_and_valid_positions(self):
-        for args in (('open', 'ece33429034c0009'), ('position', MAC, 101), ('reset', MAC)):
+        for args in (('open', 'ece33429034c0009'), ('position', MAC, 101), ('reset', MAC), ('tilt', MAC, None, 181), ('tilt', MAC)):
             with self.assertRaises(ValueError):
                 blinds.run(*args)
         self.blind._write.assert_not_called()

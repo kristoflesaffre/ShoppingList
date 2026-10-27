@@ -17,7 +17,10 @@ export async function brelLocal(request: NextRequest) {
   try {
     const config = JSON.parse(await readFile(path.join(process.cwd(), ".cache/brel/blinds.json"), "utf8"));
     if (config.ownerId !== guard.ownerId) return reply({ error: "not-authorized" }, 403);
-    const args = parsed.action === "status" ? ["status"] : parsed.action === "position" ? ["position", parsed.blind, String(parsed.position)] : [parsed.action, parsed.blind];
+    const args = parsed.action === "status" ? ["status"]
+      : parsed.action === "position" ? ["position", parsed.blind, String(parsed.position)]
+      : parsed.action === "tilt" ? ["tilt", parsed.blind, String(parsed.angle)]
+      : [parsed.action, parsed.blind];
     // The library resends up to three times after a 3 s timeout; every command is absolute, so that is safe.
     const { stdout } = await execute(path.join(process.cwd(), ".cache/brel/venv/bin/python"), [path.join(process.cwd(), "scripts/brel-blinds.py"), ...args], { timeout: 15_000, maxBuffer: 16_384, windowsHide: true });
     const result = JSON.parse(stdout);

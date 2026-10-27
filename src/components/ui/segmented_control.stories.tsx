@@ -109,3 +109,11 @@ function IconsDemo() {
 }
 export const Icons: Story = { render: () => <IconsDemo /> };
 
+
+/** Niet te bedienen terwijl een opdracht loopt (bv. lamellen open · dicht): gedimd, tikken doet niets. */
+export const Disabled: Story = {
+  render: () => (
+    <SegmentedControl ariaLabel="Lamellen" size="icon" fill={false} disabled value="open" onChange={() => {}}
+      options={[{ value: "open", label: "≡", ariaLabel: "Lamellen open" }, { value: "dicht", label: "⫽", ariaLabel: "Lamellen dicht" }]} />
+  ),
+};

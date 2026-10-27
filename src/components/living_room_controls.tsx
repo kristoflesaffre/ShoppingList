@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import { RoundIconButton } from "@/components/ui/round_icon_button";
 import { Switch } from "@/components/ui/switch";
 import { MiniButton } from "@/components/ui/mini_button";
-import { blindLabel, openPercent, type Blind } from "@/lib/brel-blinds";
+import { SegmentedControl } from "@/components/ui/segmented_control";
+import { blindLabel, openPercent, slatsOpen, type Blind } from "@/lib/brel-blinds";
 import { useBlindsControls } from "@/components/dashboard_blinds_panel";
 import { useScreenControls } from "@/components/dashboard_screen_panel";
 import { isScreenActionDisabled } from "@/lib/projection-screen";
@@ -16,7 +17,20 @@ const Icon = {
   stop: <svg viewBox="0 0 24 24" aria-hidden className="!size-3.5"><rect x="3" y="3" width="18" height="18" rx="4" fill="currentColor" /></svg>,
   /** Omhoog tot een streepje: naar de opgeslagen hoogte. */
   height: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 4.5h14" /><path d="m7 15 5-5 5 5" /></svg>,
+  /** Lamellen horizontaal: licht ertussen. */
+  slatsOpen: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[18px]"><path d="M4 6h16M4 12h16M4 18h16" /></svg>,
+  /** Lamellen rechtop: ze overlappen en houden het licht tegen. */
+  slatsClosed: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[18px]"><path d="M9 3.5l6 5M9 9.5l6 5M9 15.5l6 5" /></svg>,
 };
+
+/** Lamellen open · dicht (segmentknop met iconen). Alleen als de hub een hoek meldt. */
+function SlatsControl({ blind, disabled, onTilt }: { blind: Blind; disabled: boolean; onTilt: (open: boolean) => void }) {
+  const open = slatsOpen(blind);
+  if (open == null) return null;
+  return <SegmentedControl ariaLabel={`${blind.name}: lamellen`} size="icon" fill={false} disabled={disabled}
+    value={open ? "open" : "dicht"} onChange={value => onTilt(value === "open")}
+    options={[{ value: "open", label: Icon.slatsOpen, ariaLabel: "Lamellen open" }, { value: "dicht", label: Icon.slatsClosed, ariaLabel: "Lamellen dicht" }]} />;
+}
 
 /** Drie ronde knoppen onder elkaar (variant B): omhoog · stop · omlaag. */
 function ControlStack({ name, up, stop, down }: {
@@ -43,6 +57,8 @@ function BlindCapsule({ blind, disabled, onMove, dark = false, showLabel = true,
   const [preview, setPreview] = React.useState<number | null>(null);
   const drag = React.useRef<{ y: number; moved: boolean; rect: DOMRect } | null>(null);
   const closed = preview ?? blind.position ?? 0;
+  // Open lamellen: de lucht schijnt tussen de latten door.
+  const lit = slatsOpen(blind) === true;
   const at = (clientY: number, rect: DOMRect) => Math.round(Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100)));
   const open = 100 - closed;
   return <button
@@ -87,7 +103,9 @@ function BlindCapsule({ blind, disabled, onMove, dark = false, showLabel = true,
   >
     <span
       aria-hidden
-      className={cn("absolute inset-x-0 top-0 bg-[repeating-linear-gradient(180deg,#30323e_0,#30323e_3px,#1d1e26_8px,#0b0c10_9px,#30323e_10px)] shadow-[0_3px_0_#08090c,0_8px_14px_-6px_rgba(0,0,0,0.5)]", preview == null && "transition-[height] duration-500 ease-out")}
+      className={cn("absolute inset-x-0 top-0 shadow-[0_3px_0_#08090c,0_8px_14px_-6px_rgba(0,0,0,0.5)]", lit
+        ? "bg-[repeating-linear-gradient(180deg,#30323e_0,#1d1e26_3px,transparent_3px,transparent_10px)]"
+        : "bg-[repeating-linear-gradient(180deg,#30323e_0,#30323e_3px,#1d1e26_8px,#0b0c10_9px,#30323e_10px)]", preview == null && "transition-[height] duration-500 ease-out")}
       style={{ height: `${closed}%` }}
     />
     {showLabel ? <span aria-hidden className={cn("absolute inset-x-0 bottom-4 text-center text-[15px] font-extrabold tabular-nums", closed > 82 ? "text-fixed-white" : "text-[#5a3300]")}>
@@ -144,6 +162,7 @@ export function LivingRoomControls({ token }: { token: string | null }) {
     <div className="flex flex-col items-center gap-2">
       <BlindCapsule blind={blind} disabled={!blinds.ready || !blind.available || blinds.busy !== null} onMove={position => { setSource("blinds"); void blinds.move(blind.mac, position); }} />
       <span className="whitespace-nowrap text-center text-[13px] font-bold leading-4 text-[var(--text-primary)]">{blind.name}<br /><span className="font-semibold text-[var(--text-secondary)]">{blindSubtitle(blind)}</span></span>
+      <SlatsControl blind={blind} disabled={!blinds.ready || !blind.available || blinds.busy !== null} onTilt={open => { setSource("blinds"); void blinds.tilt(blind.mac, open); }} />
     </div>
   </div> : null;
 
@@ -220,6 +239,11 @@ export function DashboardWoonkamerPanel({ token }: { token: string | null }) {
         down={{ label: "dicht", disabled: !blinds.ready || !blind.available || busyBlinds, onClick: () => void blinds.send(blind.mac, "close") }}
       />
     </div>
+    {slatsOpen(blind) != null ? <RoundIconButton tone="onColor" size={28} disabled={!blinds.ready || !blind.available || busyBlinds}
+      aria-label={`${blind.name}: lamellen ${slatsOpen(blind) ? "dicht" : "open"}`} title={slatsOpen(blind) ? "Lamellen dicht" : "Lamellen open"}
+      onClick={() => void blinds.tilt(blind.mac, !slatsOpen(blind))} className="shrink-0 !bg-fixed-white/[0.14] !text-fixed-white">
+      {slatsOpen(blind) ? Icon.slatsOpen : Icon.slatsClosed}
+    </RoundIconButton> : null}
     <span className="whitespace-nowrap text-center text-[11.5px] font-bold leading-[14px] text-fixed-white/90">{short}{blindSubtitle(blind) ? <span className="font-semibold text-fixed-white/60"> · {openPercent(blind)}%</span> : null}</span>
   </div> : <div className="w-[72px]" />;
 
