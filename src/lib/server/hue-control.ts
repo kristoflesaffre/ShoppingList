@@ -35,6 +35,25 @@ export function mapHueRooms(rooms: readonly ClipRoom[], groups: readonly ClipGro
     .sort((a, b) => a.name.localeCompare(b.name, "nl"));
 }
 
+export type HueContact = { id: string; name: string; open: boolean | null; changed: string | null };
+
+type ClipContact = { id: string; owner?: { rid: string }; enabled?: boolean; contact_report?: { state?: string; changed?: string } };
+type ClipDevice = { id: string; metadata?: { name?: string } };
+
+/** Contactsensoren met de naam van hun toestel; `open` = geen contact (de magneet is weg), null = onbekend of uitgeschakeld. */
+export function mapHueContacts(contacts: readonly ClipContact[], devices: readonly ClipDevice[]): HueContact[] {
+  const names = new Map(devices.map((d) => [d.id, d.metadata?.name?.trim()]));
+  return contacts.map((c) => {
+    const state = c.enabled === false ? undefined : c.contact_report?.state;
+    return {
+      id: c.id,
+      name: (c.owner && names.get(c.owner.rid)) || "Contactsensor",
+      open: state === "no_contact" ? true : state === "contact" ? false : null,
+      changed: c.contact_report?.changed ?? null,
+    };
+  });
+}
+
 export async function hueClip(connection: HueConnection, path: string, init?: RequestInit): Promise<Response> {
   return fetch(`${CLIP}/${path}`, {
     ...init,

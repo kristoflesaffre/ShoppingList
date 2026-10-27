@@ -4,7 +4,7 @@ import { POST as rooms } from "@/app/api/hue/rooms/route";
 import { POST as light } from "@/app/api/hue/light/route";
 import { POST as scene } from "@/app/api/hue/scene/route";
 import { HUE_AUTH_COOKIE, sealHue } from "@/lib/server/hue-auth";
-import { mapHueRooms } from "@/lib/server/hue-control";
+import { mapHueContacts, mapHueRooms } from "@/lib/server/hue-control";
 
 vi.mock("@/lib/server/google-connection-store", () => ({ verifiedUserId: async (r: Request) => (r.headers.get("authorization") === "Bearer good" ? "user-1" : null) }));
 const origin = "https://shoppinglist-lesaffre.netlify.app";
@@ -34,6 +34,24 @@ describe("mapHueRooms", () => {
     expect(out).toEqual([
       { id: "g1", name: "Keuken", archetype: "kitchen", on: true, brightness: 54 },
       { id: "g2", name: "Woonkamer", archetype: "living_room", on: false, brightness: null },
+    ]);
+  });
+});
+
+describe("mapHueContacts", () => {
+  it("geeft de toestelnaam en open = geen contact; uitgeschakeld of onbekend = null", () => {
+    const out = mapHueContacts(
+      [
+        { id: "c1", owner: { rid: "d1" }, enabled: true, contact_report: { state: "no_contact", changed: "2026-10-27T19:07:24Z" } },
+        { id: "c2", owner: { rid: "d2" }, enabled: true, contact_report: { state: "contact" } },
+        { id: "c3", owner: { rid: "d3" }, enabled: false, contact_report: { state: "no_contact" } },
+      ],
+      [{ id: "d1", metadata: { name: "Projectiescherm" } }, { id: "d2", metadata: { name: "Schuifraam" } }],
+    );
+    expect(out).toEqual([
+      { id: "c1", name: "Projectiescherm", open: true, changed: "2026-10-27T19:07:24Z" },
+      { id: "c2", name: "Schuifraam", open: false, changed: null },
+      { id: "c3", name: "Contactsensor", open: null, changed: null },
     ]);
   });
 });

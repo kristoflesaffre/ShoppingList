@@ -141,7 +141,49 @@ export function useScreenControls(token: string | null, { projectorStatus = fals
     return () => { window.clearInterval(timer); controller.abort(); };
   }, [moving, ready, call]);
   const recheck = () => setStatusVersion(value => value + 1);
-  return { screen, busy, message, ready, send, recheck, projectorBusy, projectorMessage, projectorOn, sendProjector };
+  // De Hue-contactsensor op het scherm weet beter dan de laatste opdracht (ook de afstandsbediening telt dan mee).
+  const sensorOpen = useScreenSensor(token, busy || !!moving);
+  const shown = screen && sensorOpen != null ? { ...screen, open: sensorOpen } : screen;
+  return { screen: shown, busy, message, ready, send, recheck, projectorBusy, projectorMessage, projectorOn, sendProjector, sensor: sensorOpen != null };
+}
+
+/** Naam van het Hue-toestel met de contactsensor op het scherm (in Home Assistant «Gang beneden voordeur»). */
+const SCREEN_CONTACT = /^projectiescherm$/i;
+
+// Gedeeld door alle bedieningen op de pagina: hoogstens één vraag aan de Hue-cloud per 2,5 s.
+let sensorRead: { at: number; value: Promise<boolean | null> } | null = null;
+function readScreenSensor(token: string): Promise<boolean | null> {
+  if (sensorRead && Date.now() - sensorRead.at < 2_500) return sensorRead.value;
+  const value = fetch("/api/hue/contact", { method: "POST", headers: googleAuthHeaders(token), cache: "no-store" })
+    .then(response => response.json() as Promise<{ contacts?: { name: string; open: boolean | null }[] }>)
+    .then(data => data.contacts?.find(contact => SCREEN_CONTACT.test(contact.name.trim()))?.open ?? null);
+  sensorRead = { at: Date.now(), value };
+  return value;
+}
+
+/**
+ * Open/dicht van het scherm volgens de Hue-contactsensor (geen contact = open), rechtstreeks uit de Hue-cloud,
+ * dus ook zonder de Pi. Leest om de 20 s zolang de pagina zichtbaar is, elke 3 s terwijl het scherm beweegt.
+ * Null als Hue niet gekoppeld is of de sensor niets meldt; dan volgt de app de laatste opdracht.
+ */
+export function useScreenSensor(token: string | null, active: boolean): boolean | null {
+  const [open, setOpen] = React.useState<boolean | null>(null);
+  React.useEffect(() => {
+    if (!token) return;
+    let stopped = false;
+    const read = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const value = await readScreenSensor(token);
+        if (!stopped) setOpen(value);
+      } catch { /* laatste stand houden */ }
+    };
+    void read();
+    const timer = window.setInterval(read, active ? 3_000 : 20_000);
+    document.addEventListener("visibilitychange", read);
+    return () => { stopped = true; window.clearInterval(timer); document.removeEventListener("visibilitychange", read); };
+  }, [token, active]);
+  return open;
 }
 
 /** Variant A (design/screen-controls-options.html): scherm en projector op één rij, één statusregel eronder. */
