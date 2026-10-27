@@ -26,9 +26,9 @@ the opted-in `SCREEN_LOCAL_ORIGIN`, never Netlify/Vercel, verified owner). The r
 Slats: the hub also reports `currentAngle` (0–180), worked out from the motor; there is no sensor on the slats. The app
 reads 90 as horizontal (lamellen open, light passes) and 0/180 as vertical (lamellen dicht), shows a segmented
 «lamellen open · dicht» under each blind on the start page and a round slat button under each capsule on the dashboard,
-and sends `tilt` with `targetAngle` 90 or 0. The hub lists both blinds as roller shutters; whether it acts on a tilt
-for that type, and whether 90 really is horizontal on these blinds, was not yet checked live (2026-10-27: links 149,
-rechts 0).
+and sends `tilt` with `targetAngle` 90 or 0. The hub lists both blinds as roller shutters but still acts on a tilt:
+live 2026-10-27, `targetAngle` 90 on «Blinden rechts» was acknowledged and the hub then reported angle 0 → 90 (position
+51 → 52, the tilt turns the motor a little). Whether 90 is horizontal on these blinds still needs a look in the room.
 
 Unlike the RF screen, every command is absolute, so the library's resend after a timeout can't toggle a blind the
 wrong way. The hub reports positions, so after a command the app follows the status for 45 seconds.
