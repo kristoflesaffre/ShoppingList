@@ -88,8 +88,27 @@ export function useBlindsControls(token: string | null) {
     }
   }
 
+  /** Drag on a capsule: one absolute position (hub: 0 = open, 100 = closed). */
+  async function move(mac: string, position: number) {
+    if (busy) return;
+    const blind = status?.blinds.find(item => item.mac === mac);
+    setBusy(mac + "position");
+    setStatus(value => value && { ...value, blinds: value.blinds.map(item => item.mac === mac ? { ...item, position } : item) });
+    setMessage("Opdracht versturen…");
+    try {
+      await call({ action: "position", blind: mac, position });
+      if (!mounted.current) return;
+      setMessage(`${blind?.name ?? "Rolluik"}: naar ${100 - position}% open.`);
+      setFollowUntil(Date.now() + 45_000);
+    } catch {
+      if (mounted.current) setMessage("Opdracht niet bevestigd. Controleer het rolluik; je kunt nog op Stop drukken.");
+    } finally {
+      if (mounted.current) setBusy(null);
+    }
+  }
+
   const ready = status?.configured === true;
-  return { status, message, busy, ready, send, recheck: () => setVersion(value => value + 1) };
+  return { status, message, busy, ready, send, move, recheck: () => setVersion(value => value + 1) };
 }
 
 /** Zelfde vorm als het schermpaneel: per rolluik een kop (naam · stand) en drie tegels, gescheiden door een lijntje. */

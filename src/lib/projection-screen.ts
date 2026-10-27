@@ -4,6 +4,8 @@ export type ScreenStatus = {
   durationSeconds: number | null;
   calibrating: boolean;
   running: boolean;
+  /** Open after the app's last confirmed up/preset, closed after down; null before any. Not a sensor. */
+  open?: boolean | null;
   projectorConfigured?: boolean;
   projector?: { configured: boolean; accepted?: boolean; isOn?: boolean | null };
 };

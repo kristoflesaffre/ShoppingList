@@ -3,7 +3,7 @@ import { RoundIconButton, RoundIcons } from "./round_icon_button";
 
 /**
  * Design system «Ronde icoonknop». Tonen: primary (acties), danger (verwijderen), neutral (sluiten),
- * surface (los op de pagina), onColor (op een gekleurde kaartkop). Maten: 28 · 32 · 36.
+ * surface (los op de pagina), onColor (op een gekleurde kaartkop). Maten: 28 · 32 · 36 · 48 (bediening).
  */
 const meta: Meta<typeof RoundIconButton> = {
   title: "UI/RoundIconButton",
@@ -36,6 +36,7 @@ export const Sizes: Story = {
       <RoundIconButton size={28} aria-label="28">{RoundIcons.plus}</RoundIconButton>
       <RoundIconButton size={32} aria-label="32">{RoundIcons.plus}</RoundIconButton>
       <RoundIconButton size={36} aria-label="36">{RoundIcons.plus}</RoundIconButton>
+      <RoundIconButton tone="surface" size={48} aria-label="48">{RoundIcons.plus}</RoundIconButton>
     </div>
   ),
 };

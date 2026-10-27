@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { NextRequest } from "next/server";
@@ -44,7 +44,13 @@ export async function broadlinkLocal(request: NextRequest) {
     const { stdout } = await execute(path.join(process.cwd(), ".cache/broadlink/venv/bin/python"), [path.join(process.cwd(), "scripts/broadlink-screen.py"), action], { timeout: action === "preset" ? 75_000 : 10_000, maxBuffer: 4096, windowsHide: true });
     const result = JSON.parse(stdout);
     if (action !== "status" && result.accepted !== true) throw new Error();
-    if (action === "status") return reply({ ...result, projectorConfigured: await projectorConfigured(ownerId) });
+    // No sensor: the screen counts as open or closed after the app's last confirmed movement (the remote is not seen).
+    const stateFile = path.join(process.cwd(), ".cache/broadlink/screen-state.json");
+    if (action === "status") {
+      const open = await readFile(stateFile, "utf8").then(text => JSON.parse(text).open, () => null);
+      return reply({ ...result, open: typeof open === "boolean" ? open : null, projectorConfigured: await projectorConfigured(ownerId) });
+    }
+    if (action === "up" || action === "down" || action === "preset") await writeFile(stateFile, JSON.stringify({ open: action !== "down" }), { mode: 0o600 }).catch(() => undefined);
     return reply(projector ? { ...result, projector: await projector } : result);
   } catch {
     return reply({ error: action === "status" ? "not-configured" : "command-not-confirmed" }, 503);

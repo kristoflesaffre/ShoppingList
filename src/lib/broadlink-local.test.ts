@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-const mocks = vi.hoisted(() => ({ verify: vi.fn(), read: vi.fn(), execute: vi.fn() }));
+const mocks = vi.hoisted(() => ({ verify: vi.fn(), read: vi.fn(), write: vi.fn(), execute: vi.fn() }));
 const projector = vi.hoisted(() => ({ configured: vi.fn(), wake: vi.fn(), sleep: vi.fn() }));
 vi.mock("@/lib/server/projector-local", () => ({ projectorConfigured: projector.configured, wakeProjector: projector.wake, sleepProjector: projector.sleep }));
 vi.mock("@/lib/server/google-connection-store", () => ({ verifiedUserId: mocks.verify }));
-vi.mock("node:fs/promises", () => ({ readFile: mocks.read }));
+vi.mock("node:fs/promises", () => ({ readFile: mocks.read, writeFile: mocks.write }));
 vi.mock("node:child_process", () => ({ execFile: Object.assign(vi.fn(), { [Symbol.for("nodejs.util.promisify.custom")]: mocks.execute }) }));
 import { broadlinkAction, broadlinkLocal, broadlinkRequest } from "./server/broadlink-local";
 function request(action: unknown, origin = "https://localhost:3011", url = "https://localhost:3011/api/broadlink") { return new NextRequest(url, { method: "POST", headers: { origin, "content-type": "application/json" }, body: JSON.stringify(action) }); }
-beforeEach(() => { vi.resetAllMocks(); projector.configured.mockResolvedValue(false); projector.wake.mockResolvedValue({ configured: false }); projector.sleep.mockResolvedValue({ configured: false }); mocks.execute.mockResolvedValue({ stdout: JSON.stringify({ configured: true, durationSeconds: null, calibrating: false, running: false }) }); mocks.verify.mockResolvedValue("owner"); mocks.read.mockResolvedValue(JSON.stringify({ ownerId: "owner", commands: { up: "code", stop: "code", down: "code" } })); });
+beforeEach(() => { vi.resetAllMocks(); projector.configured.mockResolvedValue(false); projector.wake.mockResolvedValue({ configured: false }); projector.sleep.mockResolvedValue({ configured: false }); mocks.execute.mockResolvedValue({ stdout: JSON.stringify({ configured: true, durationSeconds: null, calibrating: false, running: false }) }); mocks.write.mockResolvedValue(undefined); mocks.verify.mockResolvedValue("owner"); mocks.read.mockResolvedValue(JSON.stringify({ ownerId: "owner", commands: { up: "code", stop: "code", down: "code" } })); });
 describe("BroadLink local boundary", () => {
   it("accepts only named actions, never arbitrary packets or shell arguments", () => {
     for (const action of ["status", "up", "stop", "down", "calibrate", "preset"]) expect(broadlinkAction({ action })).toBe(action);
@@ -18,7 +18,7 @@ describe("BroadLink local boundary", () => {
   it("blocks cross-origin requests", async () => { expect((await broadlinkLocal(request({action:"status"}, "https://evil.example"))).status).toBe(403); });
   it("requires a verified app login", async () => { mocks.verify.mockResolvedValue(null); expect((await broadlinkLocal(request({action:"status"}))).status).toBe(401); });
   it("restricts the local device to its configured owner", async () => { mocks.verify.mockResolvedValue("other"); expect((await broadlinkLocal(request({action:"status"}))).status).toBe(403); });
-  it("returns readiness without exposing captured codes or transmitting RF", async () => { const response = await broadlinkLocal(request({action:"status"})); expect(await response.json()).toEqual({ configured:true, durationSeconds:null, calibrating:false, running:false, projectorConfigured:false }); expect(response.headers.get("Cache-Control")).toBe("no-store"); expect(projector.wake).not.toHaveBeenCalled(); });
+  it("returns readiness without exposing captured codes or transmitting RF", async () => { const response = await broadlinkLocal(request({action:"status"})); expect(await response.json()).toEqual({ configured:true, durationSeconds:null, calibrating:false, running:false, open:null, projectorConfigured:false }); expect(response.headers.get("Cache-Control")).toBe("no-store"); expect(projector.wake).not.toHaveBeenCalled(); });
   it("powers the projector off with screen down and reports its independent result", async () => {
     projector.sleep.mockResolvedValue({ configured: true, accepted: false });
     mocks.execute.mockResolvedValue({ stdout: JSON.stringify({ accepted: true, configured: true }) });
@@ -38,6 +38,18 @@ describe("BroadLink local boundary", () => {
     for (const action of ["up", "preset"]) expect((await broadlinkLocal(request({ action }))).status).toBe(200);
     expect(projector.wake).toHaveBeenCalledTimes(2);
     expect(projector.sleep).not.toHaveBeenCalled();
+  });
+  it("remembers open/closed after confirmed movements only, never after Stop", async () => {
+    mocks.execute.mockResolvedValue({ stdout: JSON.stringify({ accepted: true }) });
+    await broadlinkLocal(request({ action: "down" }));
+    expect(mocks.write).toHaveBeenLastCalledWith(expect.stringContaining("screen-state.json"), JSON.stringify({ open: false }), { mode: 0o600 });
+    await broadlinkLocal(request({ action: "preset" }));
+    expect(mocks.write).toHaveBeenLastCalledWith(expect.stringContaining("screen-state.json"), JSON.stringify({ open: true }), { mode: 0o600 });
+    mocks.write.mockClear();
+    await broadlinkLocal(request({ action: "stop" }));
+    mocks.execute.mockResolvedValue({ stdout: JSON.stringify({ accepted: false }) });
+    await broadlinkLocal(request({ action: "up" }));
+    expect(mocks.write).not.toHaveBeenCalled();
   });
   it("does not wake for other owners or while screen controls are paused", async () => {
     mocks.verify.mockResolvedValue("other");
