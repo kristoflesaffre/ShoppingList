@@ -13,11 +13,11 @@ export type BlindRequest =
 
 /** Slats turn through 180°: horizontal (90) lets the light in, both ends (0 and 180) stand vertical and block it. */
 export const SLATS_OPEN_ANGLE = 90;
-export const SLATS_CLOSED_ANGLE = 0;
-/** The other vertical end: the slats overlap the other way round. */
-export const SLATS_CLOSED_UP_ANGLE = 180;
+/** Checked in the room 2026-10-27: 180 leans the slats down (\\\ in the app), 0 the other way round. */
+export const SLATS_CLOSED_ANGLE = 180;
+export const SLATS_CLOSED_UP_ANGLE = 0;
 
-/** Slats closed one way ("down", 0), horizontal ("open", 90) or closed the other way ("up", 180). */
+/** Slats closed upwards ("up", 0), horizontal ("open", 90) or closed downwards ("down", 180). */
 export type Slats = "up" | "open" | "down";
 export const SLATS_ANGLE: Record<Slats, number> = { up: SLATS_CLOSED_UP_ANGLE, open: SLATS_OPEN_ANGLE, down: SLATS_CLOSED_ANGLE };
 
@@ -49,7 +49,7 @@ export function slatsOpen(blind: Blind) {
 /** Which of the three slat positions the reported angle is closest to; null when the hub reports no angle. */
 export function slatsState(blind: Blind): Slats | null {
   if (blind.angle == null) return null;
-  return slatsOpen(blind) ? "open" : blind.angle > SLATS_OPEN_ANGLE ? "up" : "down";
+  return slatsOpen(blind) ? "open" : blind.angle > SLATS_OPEN_ANGLE ? "down" : "up";
 }
 
 export function blindLabel(blind: Blind) {

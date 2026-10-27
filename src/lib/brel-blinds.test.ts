@@ -26,9 +26,9 @@ describe("blind labels", () => {
     expect(blindLabel(blind({ available: false }))).toBe("Niet bereikbaar");
   });
   it("tells which way the slats are closed", () => {
-    expect(slatsState(blind({ angle: 0 }))).toBe("down");
+    expect(slatsState(blind({ angle: 0 }))).toBe("up");
     expect(slatsState(blind({ angle: 90 }))).toBe("open");
-    expect(slatsState(blind({ angle: 170 }))).toBe("up");
+    expect(slatsState(blind({ angle: 170 }))).toBe("down");
     expect(slatsState(blind({ angle: null }))).toBeNull();
   });
 
