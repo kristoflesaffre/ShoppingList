@@ -17,6 +17,7 @@ const Icon = {
   up: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m6 15 6-6 6 6" /></svg>,
   down: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m6 9 6 6 6-6" /></svg>,
   stop: <svg viewBox="0 0 24 24" aria-hidden className="!size-3.5"><rect x="3" y="3" width="18" height="18" rx="4" fill="currentColor" /></svg>,
+  power: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.3} strokeLinecap="round" aria-hidden><path d="M12 3.5v8M6.6 6.9a7.5 7.5 0 1 0 10.8 0" /></svg>,
   /** Omhoog tot een streepje: naar de opgeslagen hoogte. */
   height: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 4.5h14" /><path d="m7 15 5-5 5 5" /></svg>,
   /** Lamellen horizontaal: licht ertussen. */
@@ -202,17 +203,20 @@ function BlindCapsule({ blind, second, label, disabled, onMove, dark = false, sh
 }
 
 /** Wit projectiescherm dat van onder uit zijn kast omhoog komt, met een kleine projector ervoor. Geen sensor: open/dicht volgt de laatste opdracht. */
-function ScreenScene({ open, projectorOn, dark = false, className, stageClassName }: {
-  open: boolean; projectorOn: boolean; dark?: boolean; className?: string;
+function ScreenScene({ open, projectorOn, dark = false, bare = false, className, stageClassName }: {
+  open: boolean; projectorOn: boolean; dark?: boolean;
+  /** Zonder eigen vlak: de tegel errond is de achtergrond (Bioscoop). */
+  bare?: boolean;
+  className?: string;
   /** Waar doek, kast en projector staan binnen het paneel (bv. naast de bedieningsrail). */
   stageClassName?: string;
 }) {
-  return <div aria-hidden className={cn("relative overflow-hidden rounded-[24px]", dark
+  return <div aria-hidden className={cn("relative overflow-hidden rounded-[24px]", bare ? null : dark
     ? "bg-fixed-white/[0.06] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]"
     : "bg-[linear-gradient(180deg,var(--white),var(--gray-50))] shadow-[0_1px_2px_rgba(16,17,48,0.04),0_14px_30px_-22px_rgba(16,17,48,0.35)]", className ?? "h-[200px] w-full max-w-[320px]")}>
     <span className={cn("absolute", stageClassName ?? "inset-0")}>
       {/* Lichtbundel van de projector, achter het doek: het licht valt erop. */}
-      {projectorOn ? <span className="absolute bottom-[14px] left-1/2 h-[85%] w-[80%] -translate-x-1/2 bg-[linear-gradient(0deg,rgba(255,200,120,0.8),rgba(255,200,120,0.08))] [clip-path:polygon(47%_100%,53%_100%,100%_0,0_0)]" /> : null}
+      {projectorOn ? <span className="absolute bottom-[14px] left-1/2 h-[85%] w-[80%] -translate-x-1/2 bg-[linear-gradient(0deg,rgba(255,200,120,0.8),rgba(255,200,120,0))] [clip-path:polygon(47%_100%,53%_100%,100%_0,0_0)]" /> : null}
       {/* Doek: komt van onder uit de kast. */}
       <span className={cn("absolute inset-x-[12%] bottom-[46px] rounded-t-[6px] bg-[linear-gradient(180deg,#ffffff,#f7f8fc)] shadow-[0_0_0_1px_rgba(16,17,48,0.08),0_12px_24px_-16px_rgba(16,17,48,0.4)] transition-[height] duration-700 ease-out motion-reduce:transition-none", open ? "h-[calc(100%-64px)]" : "h-0")}>
         <span className="absolute inset-x-0 top-0 h-[5px] rounded-t-[6px] bg-[#2a2c44]" />
@@ -288,19 +292,34 @@ export function LivingRoomControls({ token }: { token: string | null }) {
       action === "preset" && s?.durationSeconds != null ? s.durationSeconds * 1000 + 1500 : SCREEN_TRAVEL_MS);
     void screen.send(action);
   };
-  const screenBlock = <div className="relative h-[200px] w-full min-w-0">
-    <ScreenScene open={screenOpen} projectorOn={screen.projectorOn === true} className="h-full w-full" stageClassName="inset-y-0 left-[60px] right-0" />
-    <ControlRail name="Projectiescherm" className="absolute left-2 top-2 !h-[184px]" pressed={headings.heading("screen")}
-      up={{ label: "helemaal omhoog", disabled: isScreenActionDisabled("up", s, screen.busy), onClick: () => screenAction("up") }}
-      stop={{ disabled: isScreenActionDisabled("stop", s, screen.busy), onClick: () => screenAction("stop") }}
-      down={{ label: "omlaag", disabled: isScreenActionDisabled("down", s, screen.busy), onClick: () => screenAction("down") }} />
-    {hasHeight ? <MiniButton variant="secondary" disabled={isScreenActionDisabled("preset", s, screen.busy)} onClick={() => screenAction("preset")} aria-label="Projectiescherm omhoog tot mijn hoogte" className="absolute right-3 top-3 bg-[var(--white)] shadow-[0_4px_12px_-6px_rgba(16,17,48,0.35)] [&_svg]:size-4">{Icon.height}Mijn hoogte</MiniButton> : null}
-    <label className="absolute left-[68px] top-3 flex items-center gap-2 rounded-pill bg-[var(--white)] py-1 pl-3 pr-1 text-[12.5px] font-bold text-[var(--text-primary)] shadow-[0_4px_12px_-6px_rgba(16,17,48,0.35)]">
-      Projector
-      <Switch checked={screen.projectorOn === true} disabled={!token || screen.projectorBusy} aria-busy={screen.projectorBusy}
-        onCheckedChange={on => { setSource("screen"); void screen.sendProjector(on ? "on" : "off"); }} />
-    </label>
-  </div>;
+  // Bioscoop (canvas ST · 2): donkere tegel waarin het doek oplicht, bediening als glazen balk onderaan.
+  const projectorOn = screen.projectorOn === true;
+  const screenState = s?.running ? "Gaat omhoog…" : s?.open == null ? "Stand onbekend" : s.open ? "Open" : "Dicht";
+  const screenBlock = <section aria-label="Projectiescherm" className="relative h-[248px] w-full min-w-0 overflow-hidden rounded-[28px] bg-[radial-gradient(120%_90%_at_50%_0%,#2a2f55_0%,#171a33_55%,#0f1124_100%)] text-fixed-white shadow-[0_18px_36px_-22px_rgba(16,17,48,0.7)]">
+    <div className="absolute inset-x-4 top-11 bottom-[68px]"><ScreenScene dark bare open={screenOpen} projectorOn={projectorOn} className="h-full w-full" /></div>
+    <p role="status" className="absolute left-4 top-3.5 flex h-[26px] items-center gap-1.5 rounded-pill bg-fixed-white/[0.12] px-2.5 text-[12px] font-bold">
+      <span aria-hidden className={cn("size-[7px] rounded-full", screenOpen ? "bg-[#35c27a] shadow-[0_0_0_3px_rgba(53,194,122,0.2)]" : "bg-fixed-white/50")} />
+      {screenState}{screen.sensor && !s?.running ? <span className="font-semibold text-fixed-white/60">· Hue-sensor</span> : null}
+    </p>
+    <div className="absolute inset-x-3 bottom-3 flex items-center gap-2">
+      <ControlRail name="Projectiescherm" tone="glass" orientation="horizontal" className="!h-12 !w-[150px]" pressed={headings.heading("screen")}
+        up={{ label: "helemaal omhoog", disabled: isScreenActionDisabled("up", s, screen.busy), onClick: () => screenAction("up") }}
+        stop={{ disabled: isScreenActionDisabled("stop", s, screen.busy), onClick: () => screenAction("stop") }}
+        down={{ label: "omlaag", disabled: isScreenActionDisabled("down", s, screen.busy), onClick: () => screenAction("down") }} />
+      {hasHeight ? <button type="button" disabled={isScreenActionDisabled("preset", s, screen.busy)} onClick={() => screenAction("preset")} aria-label="Projectiescherm omhoog tot mijn hoogte"
+        className="flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill bg-fixed-white/[0.12] px-3 text-[13px] font-extrabold shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)] backdrop-blur-[6px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-40 [@media(hover:hover)]:hover:bg-fixed-white/20 [&_svg]:size-4 [&_svg]:shrink-0">
+        {Icon.height}Mijn hoogte
+      </button> : <span className="flex-1" />}
+      <RoundIconButton tone="onColor" size={48} aria-label={projectorOn ? "Projector uitzetten" : "Projector aanzetten"} aria-pressed={projectorOn} aria-busy={screen.projectorBusy}
+        title={projectorOn ? "Projector aan" : "Projector uit"} disabled={!token || screen.projectorBusy}
+        onClick={() => { setSource("screen"); void screen.sendProjector(projectorOn ? "off" : "on"); }}
+        className={cn("focus-visible:!ring-fixed-white [&_svg]:!size-5", projectorOn
+          ? "!bg-[#ffb547] !text-[#3a2400] shadow-[0_0_18px_rgba(255,181,71,0.6)]"
+          : "!bg-fixed-white/[0.12] !text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]", screen.projectorBusy && "opacity-70")}>
+        {Icon.power}
+      </RoundIconButton>
+    </div>
+  </section>;
 
   const message = source === "screen" ? screen.projectorMessage ?? screen.message
     : source === "blinds" ? blinds.message

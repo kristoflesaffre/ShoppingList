@@ -38,3 +38,10 @@ export const Pressed: Story = {
     <ControlRail name="Omlaag" pressed="down" up={{ label: "open", onClick: () => {} }} stop={{ onClick: () => {} }} down={{ label: "dicht", onClick: () => {} }} />
   </div>,
 };
+
+export const Horizontal: Story = {
+  render: () => <div className="rounded-[20px] bg-[#171a33] p-8">
+    <ControlRail name="Projectiescherm" tone="glass" orientation="horizontal" pressed="up" className="!h-12 !w-[150px]"
+      up={{ label: "helemaal omhoog", onClick: () => {} }} stop={{ onClick: () => {} }} down={{ label: "omlaag", onClick: () => {} }} />
+  </div>,
+};
