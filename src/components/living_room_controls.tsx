@@ -6,7 +6,7 @@ import { RoundIconButton } from "@/components/ui/round_icon_button";
 import { Switch } from "@/components/ui/switch";
 import { MiniButton } from "@/components/ui/mini_button";
 import { SegmentedControl } from "@/components/ui/segmented_control";
-import { blindLabel, openPercent, slatsOpen, type Blind } from "@/lib/brel-blinds";
+import { blindLabel, openPercent, slatsOpen, slatsState, type Blind, type Slats } from "@/lib/brel-blinds";
 import { useBlindsControls } from "@/components/dashboard_blinds_panel";
 import { useScreenControls } from "@/components/dashboard_screen_panel";
 import { isScreenActionDisabled } from "@/lib/projection-screen";
@@ -21,17 +21,23 @@ const Icon = {
   height: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 4.5h14" /><path d="m7 15 5-5 5 5" /></svg>,
   /** Lamellen horizontaal: licht ertussen. */
   slatsOpen: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[18px]"><path d="M4 6h16M4 12h16M4 18h16" /></svg>,
+  /** Lamellen rechtop, naar boven gekanteld: het spiegelbeeld van slatsClosed. */
+  slatsClosedUp: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[18px]"><path d="M15 3.5l-6 5M15 9.5l-6 5M15 15.5l-6 5" /></svg>,
   /** Lamellen rechtop: ze overlappen en houden het licht tegen. */
   slatsClosed: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[18px]"><path d="M9 3.5l6 5M9 9.5l6 5M9 15.5l6 5" /></svg>,
 };
 
-/** Lamellen open · dicht (segmentknop met iconen). Alleen als de hub een hoek meldt. */
-function SlatsControl({ blind, disabled, onTilt }: { blind: Blind; disabled: boolean; onTilt: (open: boolean) => void }) {
-  const open = slatsOpen(blind);
-  if (open == null) return null;
+/** Lamellen dicht naar boven · open · dicht naar onder (segmentknop met iconen). Alleen als de hub een hoek meldt. */
+function SlatsControl({ blind, disabled, onTilt }: { blind: Blind; disabled: boolean; onTilt: (slats: Slats) => void }) {
+  const slats = slatsState(blind);
+  if (slats == null) return null;
   return <SegmentedControl ariaLabel={`${blind.name}: lamellen`} size="icon" fill={false} disabled={disabled}
-    value={open ? "open" : "dicht"} onChange={value => onTilt(value === "open")}
-    options={[{ value: "open", label: Icon.slatsOpen, ariaLabel: "Lamellen open" }, { value: "dicht", label: Icon.slatsClosed, ariaLabel: "Lamellen dicht" }]} />;
+    value={slats} onChange={value => onTilt(value as Slats)}
+    options={[
+      { value: "up", label: Icon.slatsClosedUp, ariaLabel: "Lamellen dicht naar boven" },
+      { value: "open", label: Icon.slatsOpen, ariaLabel: "Lamellen open" },
+      { value: "down", label: Icon.slatsClosed, ariaLabel: "Lamellen dicht naar onder" },
+    ]} />;
 }
 
 type Controls = {
@@ -220,7 +226,7 @@ export function LivingRoomControls({ token }: { token: string | null }) {
       </div>
       <div className="flex w-full items-center justify-between gap-2">
         <span className="whitespace-nowrap text-[13px] font-bold leading-4 text-[var(--text-primary)]">{blind.name}</span>
-        <SlatsControl blind={blind} disabled={locked} onTilt={open => { setSource("blinds"); void blinds.tilt(blind.mac, open); }} />
+        <SlatsControl blind={blind} disabled={locked} onTilt={slats => { setSource("blinds"); void blinds.tilt(blind.mac, slats); }} />
       </div>
     </div>;
   };
@@ -296,7 +302,7 @@ export function DashboardWoonkamerPanel({ token, large = false }: { token: strin
     </div>
     {slatsOpen(blind) != null ? <RoundIconButton tone="onColor" size={28} disabled={!blinds.ready || !blind.available || busyBlinds}
       aria-label={`${blind.name}: lamellen ${slatsOpen(blind) ? "dicht" : "open"}`} title={slatsOpen(blind) ? "Lamellen dicht" : "Lamellen open"}
-      onClick={() => void blinds.tilt(blind.mac, !slatsOpen(blind))} className="shrink-0 !bg-fixed-white/[0.14] !text-fixed-white">
+      onClick={() => void blinds.tilt(blind.mac, slatsOpen(blind) ? "down" : "open")} className="shrink-0 !bg-fixed-white/[0.14] !text-fixed-white">
       {slatsOpen(blind) ? Icon.slatsOpen : Icon.slatsClosed}
     </RoundIconButton> : null}
     <span className={cn("whitespace-nowrap text-center font-bold text-fixed-white/90", large ? "text-[13px] leading-4" : "text-[11.5px] leading-[14px]")}>{short}{blindSubtitle(blind) ? <span className="font-semibold text-fixed-white/60"> · {openPercent(blind)}%</span> : null}</span>

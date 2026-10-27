@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blindLabel, blindRequest, openPercent, slatsOpen, type Blind } from "./brel-blinds";
+import { blindLabel, blindRequest, openPercent, slatsOpen, slatsState, type Blind } from "./brel-blinds";
 const mac = "ece33429034c0001";
 const blind = (patch: Partial<Blind> = {}): Blind => ({ mac, name: "Woonkamer", available: true, position: 60, angle: 90, moving: false, battery: 80, ...patch });
 describe("BREL blind requests", () => {
@@ -25,6 +25,13 @@ describe("blind labels", () => {
     expect(blindLabel(blind({ moving: true }))).toBe("Beweegt…");
     expect(blindLabel(blind({ available: false }))).toBe("Niet bereikbaar");
   });
+  it("tells which way the slats are closed", () => {
+    expect(slatsState(blind({ angle: 0 }))).toBe("down");
+    expect(slatsState(blind({ angle: 90 }))).toBe("open");
+    expect(slatsState(blind({ angle: 170 }))).toBe("up");
+    expect(slatsState(blind({ angle: null }))).toBeNull();
+  });
+
   it("calls slats open near horizontal and closed near either vertical end", () => {
     expect(slatsOpen(blind())).toBe(true);
     expect(slatsOpen(blind({ angle: 130 }))).toBe(true);
