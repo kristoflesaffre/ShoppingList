@@ -2,11 +2,9 @@ import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { NextRequest, NextResponse } from "next/server";
-import { googleRequestOrigin } from "@/lib/google-dashboard-auth";
-import { verifiedUserId } from "./google-connection-store";
+import { NextRequest } from "next/server";
+import { localMacOwner, localReply } from "./local-mac-guard";
 import { projectorConfigured, wakeProjector, sleepProjector } from "./projector-local";
-import { screenLanHost } from "./projector-temporary";
 const execute = promisify(execFile);
 const commands = ["up", "stop", "down", "calibrate", "preset"] as const;
 export function broadlinkAction(value: unknown): "status" | typeof commands[number] | null {
@@ -25,19 +23,11 @@ export function broadlinkRequest(value: unknown): { action: NonNullable<ReturnTy
   return { action, projector: projector !== false };
 }
 export async function broadlinkLocal(request: NextRequest) {
-  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+  const reply = localReply;
   // This runtime exists on the Mac only. Never spawn Python inside a cloud deployment.
-  // Besides loopback, one exact home-network origin may be opted in (SCREEN_LOCAL_ORIGIN).
-  const loopback = ["localhost", "127.0.0.1", "[::1]"];
-  const lan = screenLanHost(request);
-  if (process.env.NETLIFY || process.env.VERCEL || (!lan && !loopback.includes(request.nextUrl.hostname))) return reply({ error: "mac-required", configured: false }, 503);
-  // NextURL normalizes 127.0.0.1 to localhost. Check the browser's exact
-  // Host/origin pair, while still permitting loopback hosts only.
-  const origin = googleRequestOrigin(request);
-  if (!lan && !loopback.includes(new URL(origin).hostname)) return reply({ error: "mac-required", configured: false }, 503);
-  if (request.headers.get("origin") !== origin) return reply({ error: "invalid-origin" }, 403);
-  const ownerId = await verifiedUserId(request);
-  if (!ownerId) return reply({ error: "not-signed-in" }, 401);
+  const guard = await localMacOwner(request);
+  if ("rejected" in guard) return guard.rejected;
+  const { ownerId } = guard;
   const parsed = broadlinkRequest(await request.json().catch(() => null));
   if (!parsed) return reply({ error: "invalid-command" }, 400);
   const { action } = parsed;

@@ -1,0 +1,2 @@
+# Local Mac bridge for the BREL Home Hub; isolated from the BroadLink environment.
+motionblinds==0.6.31

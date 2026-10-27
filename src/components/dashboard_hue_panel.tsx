@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
+import { DashboardBlindsPanel } from "@/components/dashboard_blinds_panel";
 import { ACTIONS, DashboardScreenPanel, PowerIcon as ProjectorPowerIcon, ScreenIcon, useScreenControls } from "@/components/dashboard_screen_panel";
 import { AcColumn, DashboardClimate, type Airco } from "@/components/dashboard_climate";
 import { useAirco } from "@/components/home_airco_section";
@@ -508,12 +509,12 @@ function ScrollLane({ className, children }: { className?: string; children: Rea
   );
 }
 
-type PanelView = "licht" | "klimaat" | "scherm";
-const PANEL_VIEWS = ["licht", "klimaat", "scherm"] as const;
+type PanelView = "licht" | "klimaat" | "scherm" | "rolluiken";
+const PANEL_VIEWS = ["licht", "klimaat", "scherm", "rolluiken"] as const;
 const PANEL_VIEW_KEY = "dashboard-panel-view";
 
 /**
- * Schakelaar «Licht | Klimaat | Scherm» met een schuivende witte pil. De pil beweegt meteen; de wissel zelf volgt twee
+ * Schakelaar «Licht | Klimaat | Scherm | Rolluiken» met een schuivende witte pil. De pil beweegt meteen; de wissel zelf volgt twee
  * frames later, zodat de schuifanimatie al loopt voordat het paneel of venster opnieuw tekent.
  */
 function ViewToggle({ value, onChange, large = false }: { value: PanelView; onChange: (v: PanelView) => void; large?: boolean }) {
@@ -528,7 +529,7 @@ function ViewToggle({ value, onChange, large = false }: { value: PanelView; onCh
     else requestAnimationFrame(() => requestAnimationFrame(() => onChange(v)));
   };
   return (
-    <div ref={containerRef} role="radiogroup" aria-label="Licht, klimaat of projectiescherm" className="relative isolate flex rounded-pill bg-fixed-white/[0.14] p-[3px]">
+    <div ref={containerRef} role="radiogroup" aria-label="Licht, klimaat, projectiescherm of rolluiken" className="relative isolate flex rounded-pill bg-fixed-white/[0.14] p-[3px]">
       <span aria-hidden className="pointer-events-none absolute left-0 -z-10 rounded-pill bg-fixed-white shadow-[0_1px_3px_rgba(16,17,48,0.18)] motion-reduce:!transition-none" style={indicatorStyle} />
       {PANEL_VIEWS.map((v) => (
         <button
@@ -544,7 +545,7 @@ function ViewToggle({ value, onChange, large = false }: { value: PanelView; onCh
             shown === v ? "text-[#3a2f5a]" : "text-fixed-white/85",
           )}
         >
-          {v === "licht" ? "Licht" : v === "klimaat" ? "Klimaat" : "Scherm"}
+          {v === "licht" ? "Licht" : v === "klimaat" ? "Klimaat" : v === "scherm" ? "Scherm" : "Rolluiken"}
         </button>
       ))}
     </div>
@@ -580,7 +581,7 @@ export function DashboardHuePanel({
   React.useEffect(() => {
     try {
       const saved = window.localStorage.getItem(PANEL_VIEW_KEY);
-      if (saved === "licht" || saved === "klimaat" || saved === "scherm") setView(saved);
+      if ((PANEL_VIEWS as readonly string[]).includes(saved ?? "")) setView(saved as PanelView);
     } catch { /* geen opslag */ }
   }, []);
   const changeView = (v: PanelView) => {
@@ -672,7 +673,7 @@ export function DashboardHuePanel({
       className={cn("relative flex min-h-[96px] min-w-0 flex-1 cursor-pointer flex-col overflow-hidden rounded-[24px] bg-[radial-gradient(120%_140%_at_0%_0%,#3a2f1c_0%,#1c1a2c_45%,#11101e_100%)] px-[18px] py-3.5 text-fixed-white shadow-[0_18px_40px_-26px_rgba(255,190,80,0.45)] [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#2a3352_0%,#1e2640_55%,#171d32_100%)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(160,180,255,0.25)] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]")}
     >
       <div className="flex min-h-7 items-center justify-between">
-        <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">{view === "klimaat" ? "KLIMAAT" : view === "scherm" ? "SCHERM" : "LICHT"}</span>
+        <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/75">{view === "klimaat" ? "KLIMAAT" : view === "scherm" ? "SCHERM" : view === "rolluiken" ? "ROLLUIKEN" : "LICHT"}</span>
         {viewToggle(view)}
       </div>
 
@@ -680,6 +681,7 @@ export function DashboardHuePanel({
       {/* Eén kolom met de breedte van het paneel: anders zou de verborgen licht-/klimaatweergave de kolom (en het scherm) breder maken. */}
       <div className="relative mt-2.5 grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]">
       {view === "scherm" && <div className="col-start-1 row-start-1 flex min-h-0 items-center"><DashboardScreenPanel token={token} /></div>}
+      {view === "rolluiken" && <div className="col-start-1 row-start-1 flex min-h-0 items-center"><DashboardBlindsPanel token={token} /></div>}
       <div
         aria-hidden={view !== "klimaat"}
         className={cn(
