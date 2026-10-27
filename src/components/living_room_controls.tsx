@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { RoundIconButton } from "@/components/ui/round_icon_button";
 import { Switch } from "@/components/ui/switch";
+import { MiniButton } from "@/components/ui/mini_button";
 import { blindLabel, openPercent, type Blind } from "@/lib/brel-blinds";
 import { useBlindsControls } from "@/components/dashboard_blinds_panel";
 import { useScreenControls } from "@/components/dashboard_screen_panel";
@@ -78,14 +79,14 @@ function BlindCapsule({ blind, disabled, onMove }: { blind: Blind; disabled: boo
       style={{ height: `${closed}%` }}
     />
     <span aria-hidden className={cn("absolute inset-x-0 bottom-4 text-center text-[15px] font-extrabold tabular-nums", closed > 82 ? "text-fixed-white" : "text-[#5a3300]")}>
-      {blind.position == null ? "–" : open <= 2 ? "Dicht" : `${open}%`}
+      {blind.position == null ? "–" : open <= 2 ? null : `${open}%`}
     </span>
   </button>;
 }
 
 /** Wit projectiescherm dat van onder uit zijn kast omhoog komt, met een kleine projector ervoor. Geen sensor: open/dicht volgt de laatste opdracht. */
 function ScreenScene({ open, projectorOn }: { open: boolean; projectorOn: boolean }) {
-  return <div aria-hidden className="relative h-[200px] w-full max-w-[300px] overflow-hidden rounded-[20px] bg-[var(--gray-50)]">
+  return <div aria-hidden className="relative h-[200px] w-full max-w-[320px] overflow-hidden rounded-[24px] bg-[linear-gradient(180deg,var(--white),var(--gray-50))] shadow-[0_1px_2px_rgba(16,17,48,0.04),0_14px_30px_-22px_rgba(16,17,48,0.35)]">
     {/* Lichtbundel van de projector, achter het doek: het licht valt erop. */}
     {projectorOn ? <span className="absolute bottom-[14px] left-1/2 h-[170px] w-[80%] -translate-x-1/2 bg-[linear-gradient(0deg,rgba(255,200,120,0.8),rgba(255,200,120,0.08))] [clip-path:polygon(47%_100%,53%_100%,100%_0,0_0)]" /> : null}
     {/* Doek: komt van onder uit de kast. */}
@@ -133,16 +134,17 @@ export function LivingRoomControls({ token }: { token: string | null }) {
   const screenBlock = <div className="flex min-w-0 items-center gap-3.5">
     <ControlStack
       name="Projectiescherm"
-      up={hasHeight
-        ? { label: "omhoog naar mijn hoogte", icon: Icon.height, disabled: isScreenActionDisabled("preset", s, screen.busy), onClick: () => screenAction("preset") }
-        : { label: "omhoog", disabled: isScreenActionDisabled("up", s, screen.busy), onClick: () => screenAction("up") }}
+      up={{ label: "helemaal omhoog", disabled: isScreenActionDisabled("up", s, screen.busy), onClick: () => screenAction("up") }}
       stop={{ disabled: isScreenActionDisabled("stop", s, screen.busy), onClick: () => screenAction("stop") }}
       down={{ label: "omlaag", disabled: isScreenActionDisabled("down", s, screen.busy), onClick: () => screenAction("down") }}
     />
     <div className="flex min-w-0 flex-1 flex-col items-center gap-2">
-      <ScreenScene open={screenOpen} projectorOn={screen.projectorOn === true} />
-      <div className="flex w-full max-w-[300px] items-center justify-between gap-3">
-        <span className="text-[13px] font-bold leading-4 text-[var(--text-primary)]">Scherm<br /><span className="font-semibold text-[var(--text-secondary)]">{screenState}</span></span>
+      <div className="relative w-full max-w-[320px]">
+        <ScreenScene open={screenOpen} projectorOn={screen.projectorOn === true} />
+        {hasHeight ? <MiniButton variant="secondary" disabled={isScreenActionDisabled("preset", s, screen.busy)} onClick={() => screenAction("preset")} aria-label="Projectiescherm omhoog tot mijn hoogte" className="absolute right-3 top-3 bg-[var(--white)] shadow-[0_4px_12px_-6px_rgba(16,17,48,0.35)] [&_svg]:size-4">{Icon.height}Mijn hoogte</MiniButton> : null}
+      </div>
+      <div className="flex w-full max-w-[320px] items-center justify-between gap-2">
+        <span className="whitespace-nowrap text-[13px] font-bold leading-4 text-[var(--text-primary)]">Scherm<br /><span className="font-semibold text-[var(--text-secondary)]">{screenState}</span></span>
         <label className="flex items-center gap-2.5 text-[13px] font-bold text-[var(--text-primary)]">
           Projector
           <Switch checked={screen.projectorOn === true} disabled={!token || screen.projectorBusy} aria-busy={screen.projectorBusy}
@@ -157,14 +159,12 @@ export function LivingRoomControls({ token }: { token: string | null }) {
     : !blinds.ready ? blinds.message : !screen.ready ? screen.message : null;
   const notReady = token && (!blinds.ready || !screen.ready);
   return <div className="flex min-w-0 flex-col gap-3">
-    <div className="rounded-[20px] bg-[var(--white)] p-4 shadow-[0_1px_2px_rgba(16,17,48,0.04)] md:px-6 md:py-5">
-      {/* Gsm: scherm bovenaan, de rolluiken eronder (links blijft links). Vanaf md: alles op één rij zoals in de kamer. */}
-      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <div className="hidden md:block">{blindSide(left, "left")}</div>
-        <div className="min-w-0 md:max-w-[420px] md:flex-1">{screenBlock}</div>
-        <div className="hidden md:block">{blindSide(right, "right")}</div>
-        <div className="flex justify-between gap-3 md:hidden">{blindSide(left, "left")}{blindSide(right, "right")}</div>
-      </div>
+    {/* Los op de pagina, zonder grote kaart. Gsm: scherm bovenaan, de rolluiken eronder (links blijft links). Vanaf md: alles op één rij zoals in de kamer. */}
+    <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+      <div className="hidden md:block">{blindSide(left, "left")}</div>
+      <div className="min-w-0 md:max-w-[440px] md:flex-1">{screenBlock}</div>
+      <div className="hidden md:block">{blindSide(right, "right")}</div>
+      <div className="flex justify-between gap-3 md:hidden">{blindSide(left, "left")}{blindSide(right, "right")}</div>
     </div>
     {message || notReady ? <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 text-[12px] leading-4 text-[var(--text-secondary)]">
       <p role="status" aria-live="polite" className="min-w-0">{message}</p>
