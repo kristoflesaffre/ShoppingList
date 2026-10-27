@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { privateIpv4 } from "./projector-temporary";
 
 const execute = promisify(execFile);
 export type ProjectorResult = { configured: boolean; accepted?: boolean; isOn?: boolean | null; error?: string };
@@ -33,7 +34,19 @@ async function setProjectorPower(ownerId: string, action: "on" | "off" | "check"
   }
 }
 
-export const wakeProjector = (ownerId: string) => setProjectorPower(ownerId, "on");
+export async function wakeProjector(ownerId: string): Promise<ProjectorResult> {
+  const atomHost = process.env.PROJECTOR_ATOM_HOST;
+  if (!atomHost) return setProjectorPower(ownerId, "on");
+  if (!await projectorConfigured(ownerId)) return { configured: false, accepted: false, error: "not-configured" };
+  if (process.env.NETLIFY || process.env.VERCEL || !privateIpv4(atomHost)) return { configured: true, accepted: false, error: "unreachable" };
+  try {
+    const response = await fetch(`http://${atomHost}/button/Wake%20projector/press`, {
+      method: "POST", body: "", headers: { "content-type": "application/x-www-form-urlencoded" },
+      redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(8000),
+    });
+    return { configured: true, accepted: response.status === 200, isOn: null, ...(response.status !== 200 ? { error: "unreachable" } : {}) };
+  } catch { return { configured: true, accepted: false, error: "unreachable" }; }
+}
 export const sleepProjector = (ownerId: string) => setProjectorPower(ownerId, "off");
 
 export const inspectProjector = (ownerId: string) => setProjectorPower(ownerId, "check");

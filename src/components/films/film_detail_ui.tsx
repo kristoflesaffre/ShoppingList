@@ -4,6 +4,7 @@ import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { WatchOnProjector } from "@/components/films/watch_on_projector";
 
 /**
  * Bouwstenen voor canvas «21 · Films & series — detail, afleveringen, cast»: zachte play-knop,
@@ -651,6 +652,7 @@ export function DeckBody({
           </div>
         ) : null}
         {banner}
+        <WatchOnProjector imdbId={media.imdbId} type={media.type} />
         {media.overview ? (
           <div>
             <p className={cn("text-[15px] leading-[22px] text-[var(--text-primary)] lg:max-w-[680px]", !expanded && "line-clamp-4")}>{media.overview}</p>

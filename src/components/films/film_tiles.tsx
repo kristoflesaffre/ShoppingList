@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import type { WatchingTvItem } from "@/hooks/use_watching_tv_items";
+import { stremioTimeLabel } from "@/lib/stremio-progress";
 
 function ThreeDotsIcon({ className }: { className?: string }) {
   return (
@@ -209,7 +210,7 @@ export function WatchingCard({
   /** Standaard 300px in een horizontale rij; op een eigen pagina `w-full`. */
   className?: string;
 }) {
-  const progress = Math.min(95, Math.max(6, (item.lastWatched.episode / Math.max(item.nextEpisode, item.lastWatched.episode + 1)) * 100));
+  const progress = item.stremio ? item.stremio.percent ?? 0 : Math.min(95, Math.max(6, (item.lastWatched.episode / Math.max(item.nextEpisode, item.lastWatched.episode + 1)) * 100));
   const menuItem =
     "flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:bg-[var(--gray-25)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]";
   const menuIcon = "flex size-[30px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)]";
@@ -247,6 +248,7 @@ export function WatchingCard({
             <p className="mt-0.5 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">
               Seizoen {item.nextSeason} · Aflevering {item.nextEpisode}
             </p>
+            {item.stremio ? <p className="mt-0.5 text-xs leading-4 text-[var(--text-secondary)]">Stremio · {stremioTimeLabel(item.stremio)}{item.stremio.stale ? " · verouderd" : ""}</p> : null}
             <span aria-hidden className="mt-2 block h-1 overflow-hidden rounded-sm bg-[var(--gray-50)]">
               <span className="block h-full rounded-sm bg-[var(--blue-500)]" style={{ width: `${progress}%` }} />
             </span>

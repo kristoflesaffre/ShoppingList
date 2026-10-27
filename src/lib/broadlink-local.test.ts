@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({ verify: vi.fn(), read: vi.fn(), execute: vi.fn() }));
 const projector = vi.hoisted(() => ({ configured: vi.fn(), wake: vi.fn(), sleep: vi.fn() }));
@@ -6,7 +6,7 @@ vi.mock("@/lib/server/projector-local", () => ({ projectorConfigured: projector.
 vi.mock("@/lib/server/google-connection-store", () => ({ verifiedUserId: mocks.verify }));
 vi.mock("node:fs/promises", () => ({ readFile: mocks.read }));
 vi.mock("node:child_process", () => ({ execFile: Object.assign(vi.fn(), { [Symbol.for("nodejs.util.promisify.custom")]: mocks.execute }) }));
-import { broadlinkAction, broadlinkLocal } from "./server/broadlink-local";
+import { broadlinkAction, broadlinkLocal, broadlinkRequest } from "./server/broadlink-local";
 function request(action: unknown, origin = "https://localhost:3011", url = "https://localhost:3011/api/broadlink") { return new NextRequest(url, { method: "POST", headers: { origin, "content-type": "application/json" }, body: JSON.stringify(action) }); }
 beforeEach(() => { vi.resetAllMocks(); projector.configured.mockResolvedValue(false); projector.wake.mockResolvedValue({ configured: false }); projector.sleep.mockResolvedValue({ configured: false }); mocks.execute.mockResolvedValue({ stdout: JSON.stringify({ configured: true, durationSeconds: null, calibrating: false, running: false }) }); mocks.verify.mockResolvedValue("owner"); mocks.read.mockResolvedValue(JSON.stringify({ ownerId: "owner", commands: { up: "code", stop: "code", down: "code" } })); });
 describe("BroadLink local boundary", () => {
@@ -65,4 +65,49 @@ it("rejects non-local Host headers even when NextURL uses a loopback hostname", 
   const req = new NextRequest("http://localhost:3000/api/broadlink", { method: "POST", headers: { host: "example.com:3000", origin: "http://example.com:3000", "content-type": "application/json" }, body: JSON.stringify({ action: "status" }) });
   expect((await broadlinkLocal(req)).status).toBe(503);
   expect(mocks.execute).not.toHaveBeenCalled();
+});
+
+describe("home-network screen access (SCREEN_LOCAL_ORIGIN)", () => {
+  const lan = (host: string, origin = `http://${host}`) => new NextRequest(`http://${host}/api/broadlink`, { method: "POST", headers: { host, origin, "content-type": "application/json" }, body: JSON.stringify({ action: "status" }) });
+  afterEach(() => vi.unstubAllEnvs());
+  it("stays Mac-only without the explicit opt-in", async () => {
+    vi.stubEnv("SCREEN_LOCAL_ORIGIN", "");
+    expect((await broadlinkLocal(lan("192.168.132.183:3000"))).status).toBe(503);
+    expect(mocks.verify).not.toHaveBeenCalled();
+  });
+  it("accepts only the exact opted-in LAN origin, still requiring the owner's login", async () => {
+    vi.stubEnv("SCREEN_LOCAL_ORIGIN", "http://192.168.132.183:3000");
+    expect((await broadlinkLocal(lan("192.168.132.183:3000"))).status).toBe(200);
+    for (const host of ["192.168.132.184:3000", "192.168.132.183:3001"]) expect((await broadlinkLocal(lan(host))).status).toBe(503);
+    expect((await broadlinkLocal(lan("192.168.132.183:3000", "http://evil.example"))).status).toBe(403);
+    mocks.verify.mockResolvedValue(null);
+    expect((await broadlinkLocal(lan("192.168.132.183:3000"))).status).toBe(401);
+  });
+  it("never opens the LAN path on a hosted runtime or for a public origin", async () => {
+    vi.stubEnv("SCREEN_LOCAL_ORIGIN", "http://192.168.132.183:3000");
+    vi.stubEnv("NETLIFY", "true");
+    expect((await broadlinkLocal(lan("192.168.132.183:3000"))).status).toBe(503);
+    vi.unstubAllEnvs();
+    vi.stubEnv("SCREEN_LOCAL_ORIGIN", "http://8.8.8.8:3000");
+    expect((await broadlinkLocal(lan("8.8.8.8:3000"))).status).toBe(503);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+});
+
+describe("film mode: screen movement without projector power", () => {
+  it("accepts projector:false only for up, down and preset, and nothing else", () => {
+    expect(broadlinkRequest({ action: "preset", projector: false })).toEqual({ action: "preset", projector: false });
+    expect(broadlinkRequest({ action: "down" })).toEqual({ action: "down", projector: true });
+    for (const data of [{ action: "stop", projector: false }, { action: "status", projector: false }, { action: "up", projector: true }, { action: "up", projector: "no" }, { action: "up", projector: false, extra: 1 }]) expect(broadlinkRequest(data)).toBeNull();
+  });
+  it("moves the screen without waking or sleeping the projector", async () => {
+    mocks.execute.mockResolvedValue({ stdout: JSON.stringify({ accepted: true }) });
+    for (const action of ["preset", "down"]) {
+      const response = await broadlinkLocal(request({ action, projector: false }));
+      expect(response.status).toBe(200);
+      expect(await response.json()).not.toHaveProperty("projector");
+    }
+    expect(projector.wake).not.toHaveBeenCalled();
+    expect(projector.sleep).not.toHaveBeenCalled();
+  });
 });

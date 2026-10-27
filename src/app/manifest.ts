@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Boodschappen",
     description: "Samen boodschappenlijsten beheren",
     start_url: "/",
-    display: "standalone",
+    display: "fullscreen",
     background_color: "#f5f6fa",
     theme_color: "#f5f6fa",
     icons: [

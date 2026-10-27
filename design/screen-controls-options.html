@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schermpaneel · vier varianten</title>
+<style>
+  /* Dashboard · avond (zonsondergang in glas): het paneel «Scherm» op de echte maat (495 × 213). */
+  :root { --stop: #f4d8cb; --stop-ink: #572e38; --glass: rgba(255,255,255,.2); --line: rgba(255,255,255,.42); }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; font: 14px/1.4 "Museo Sans Rounded", "Nunito", ui-rounded, system-ui, sans-serif; color: #fff;
+    background: linear-gradient(180deg, #c97aa0 0%, #a85d98 35%, #6e4a98 75%, #4f3a86 100%); padding: 40px 32px 64px; }
+  h1 { margin: 0 0 6px; font-size: 26px; }
+  .intro { margin: 0 0 32px; max-width: 760px; color: rgba(255,255,255,.82); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); gap: 40px 32px; }
+  .opt h2 { margin: 0 0 4px; font-size: 18px; }
+  .opt p { margin: 0 0 14px; color: rgba(255,255,255,.8); max-width: 495px; font-size: 13px; }
+
+  /* Het paneel zelf, zoals op het dashboard */
+  .panel { width: 495px; height: 213px; border-radius: 24px; padding: 14px 18px; background: var(--glass); box-shadow: inset 0 0 0 1px var(--line);
+    backdrop-filter: blur(14px); display: flex; flex-direction: column; overflow: hidden; }
+  .top { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
+  .lbl { font-size: 11.5px; font-weight: 800; letter-spacing: .08em; color: rgba(255,255,255,.75); }
+  .tog { display: flex; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.14); font-size: 12px; font-weight: 700; }
+  .tog span { padding: 5px 12px; border-radius: 999px; color: rgba(255,255,255,.8); }
+  .tog .on { background: #fff; color: #2a2148; }
+  .body { margin-top: 10px; flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+  .btn { background: rgba(255,255,255,.12); border-radius: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background .15s; }
+  .btn:hover { background: rgba(255,255,255,.22); }
+  .btn.stop { background: var(--stop); color: var(--stop-ink); }
+  .btn.stop:hover { background: #ffe7dc; }
+  svg { width: 20px; height: 20px; flex: none; }
+  .status { font-size: 11px; line-height: 15px; color: rgba(255,255,255,.78); display: flex; justify-content: space-between; gap: 8px; }
+  .status a { color: #fff; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #8ff0a8; margin-right: 5px; box-shadow: 0 0 6px #8ff0a8; vertical-align: 1px; }
+  .dot.off { background: rgba(255,255,255,.4); box-shadow: none; }
+
+  /* A · Eén rij */
+  .a-row { display: grid; grid-template-columns: repeat(4, 1fr) 1px repeat(2, 1fr); gap: 6px; }
+  .a-row .btn { flex-direction: column; height: 62px; font-size: 11px; gap: 3px; border-radius: 14px; }
+  .a-row .sep { background: rgba(255,255,255,.3); margin: 8px 0; }
+  .a-head { display: grid; grid-template-columns: 4fr 2fr; gap: 13px; font-size: 10px; font-weight: 800; letter-spacing: .08em; color: rgba(255,255,255,.6); }
+
+  /* B · Twee kolommen */
+  .b { display: grid; grid-template-columns: 1fr 128px; gap: 10px; }
+  .b-card { border-radius: 16px; background: rgba(255,255,255,.08); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .b-card h3 { margin: 0 2px; font-size: 10px; letter-spacing: .08em; color: rgba(255,255,255,.65); display: flex; justify-content: space-between; }
+  .b-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .b-2x2 .btn, .b-proj .btn { height: 38px; font-size: 12px; border-radius: 12px; }
+  .b-proj { display: grid; gap: 6px; }
+
+  /* C · Afstandsbediening */
+  .seg { display: flex; padding: 4px; gap: 4px; border-radius: 999px; background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+  .seg .btn { border-radius: 999px; background: transparent; height: 40px; font-size: 13px; flex: 1; }
+  .seg .btn:hover { background: rgba(255,255,255,.16); }
+  .seg .btn.stop { background: var(--stop); flex: 0 0 64px; }
+  .c-row { display: flex; gap: 8px; align-items: center; }
+  .c-row .seg { flex: 1; }
+  .chip { height: 48px; padding: 0 14px; border-radius: 999px; background: rgba(255,255,255,.16); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); font-size: 12px; font-weight: 700; display: flex; flex-direction: column; justify-content: center; line-height: 1.15; }
+  .chip small { font-weight: 600; opacity: .75; }
+  .c-proj { display: flex; align-items: center; gap: 10px; }
+  .c-proj b { font-size: 12px; white-space: nowrap; }
+  .c-proj .seg { flex: 1; padding: 3px; }
+  .c-proj .seg .btn { height: 32px; font-size: 12px; }
+  .c-proj .seg .btn.sel { background: #fff; color: #2a2148; }
+
+  /* D · Filmavond */
+  .d-big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .d-big .btn { height: 70px; border-radius: 18px; justify-content: flex-start; padding: 0 14px; gap: 10px; text-align: left; }
+  .d-big .btn b { display: block; font-size: 14px; }
+  .d-big .btn small { display: block; font-size: 10.5px; font-weight: 600; opacity: .78; line-height: 1.25; }
+  .d-big .go { background: linear-gradient(135deg, rgba(255,214,150,.55), rgba(255,140,170,.4)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
+  .d-big .go:hover { background: linear-gradient(135deg, rgba(255,214,150,.7), rgba(255,140,170,.55)); }
+  .d-big svg { width: 26px; height: 26px; }
+  .d-mini { display: flex; gap: 6px; align-items: center; }
+  .d-mini .btn { height: 34px; border-radius: 11px; flex: 1; font-size: 11px; }
+  .d-mini .btn.stop { flex: 1.3; }
+  .d-mini i { width: 1px; height: 20px; background: rgba(255,255,255,.3); }
+</style>
+</head>
+<body>
+<h1>Schermpaneel · vier varianten</h1>
+<p class="intro">Op de echte maat van het paneel op het avonddashboard (495 × 213 px, zonsondergang in glas). In elke variant blijft <b>Stop</b> de opvallendste schermknop, schermknoppen en projectorknoppen staan duidelijk apart, en alles past zonder afsnijden. De knoppen hier doen niets.</p>
+
+<div class="grid" id="grid"></div>
+
+<script>
+  const I = {
+    up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 6-6 6 6"/></svg>',
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 10 6 6 6-6"/></svg>',
+    stop: '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>',
+    preset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16M6 4v11h12V4M12 15v5M9 20h6"/><path d="m9 10 3-3 3 3"/></svg>',
+    on: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg>',
+    off: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
+    film: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="m10 8.5 4.5 2.5-4.5 2.5z" fill="currentColor"/><path d="M8 21h8"/></svg>',
+    moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M6 5v9h12V5"/><path d="m9 9 3 3 3-3"/><path d="M12 18v3"/></svg>',
+  };
+  const panel = (body) => `<div class="panel"><div class="top"><span class="lbl">SCHERM</span><div class="tog"><span>Licht</span><span>Klimaat</span><span class="on">Scherm</span></div></div><div class="body">${body}</div></div>`;
+  const status = (left = "Kies een schermopdracht.") => `<div class="status"><span>${left}</span><a href="#">Hoogte instellen</a></div>`;
+
+  const A = panel(`
+    <div class="a-head"><span>SCHERM</span><span>PROJECTOR</span></div>
+    <div class="a-row">
+      <button class="btn">${I.up}Omhoog</button>
+      <button class="btn stop">${I.stop}Stop</button>
+      <button class="btn">${I.down}Omlaag</button>
+      <button class="btn">${I.preset}Mijn hoogte</button>
+      <span class="sep"></span>
+      <button class="btn">${I.on}Aan</button>
+      <button class="btn">${I.off}Uit</button>
+    </div>
+    ${status("Mijn hoogte 30,55 s · begin volledig omlaag")}`);
+
+  const B = panel(`
+    <div class="b">
+      <div class="b-card"><h3><span>SCHERM</span><span>30,55 s</span></h3>
+        <div class="b-2x2">
+          <button class="btn">${I.up}Omhoog</button>
+          <button class="btn stop">${I.stop}Stop</button>
+          <button class="btn">${I.down}Omlaag</button>
+          <button class="btn">${I.preset}Mijn hoogte</button>
+        </div></div>
+      <div class="b-card"><h3><span>PROJECTOR</span><span><i class="dot"></i>aan</span></h3>
+        <div class="b-proj">
+          <button class="btn">${I.on}Aan</button>
+          <button class="btn">${I.off}Uit</button>
+        </div></div>
+    </div>
+    ${status()}`);
+
+  const C = panel(`
+    <div class="c-row">
+      <div class="seg"><button class="btn">${I.up}Omhoog</button><button class="btn stop" aria-label="Stop">${I.stop}</button><button class="btn">${I.down}Omlaag</button></div>
+      <button class="chip">Mijn hoogte<small>30,55 s</small></button>
+    </div>
+    <div class="c-proj"><b>Projector</b>
+      <div class="seg"><button class="btn sel">${I.on}Aan</button><button class="btn">${I.off}Uit</button></div>
+    </div>
+    ${status("<i class='dot'></i>Projector staat aan")}`);
+
+  const D = panel(`
+    <div class="d-big">
+      <button class="btn go">${I.film}<span><b>Film starten</b><small>Scherm naar mijn hoogte<br>+ projector aan</small></span></button>
+      <button class="btn">${I.moon}<span><b>Film stoppen</b><small>Scherm omlaag<br>+ projector uit</small></span></button>
+    </div>
+    <div class="d-mini">
+      <button class="btn" aria-label="Omhoog">${I.up}</button>
+      <button class="btn stop">${I.stop}Stop</button>
+      <button class="btn" aria-label="Omlaag">${I.down}</button>
+      <i></i>
+      <button class="btn">${I.on}Aan</button>
+      <button class="btn">${I.off}Uit</button>
+    </div>
+    ${status("Los bedienen: scherm ↑ ■ ↓ · projector aan/uit")}`);
+
+  const OPTS = [
+    ["A · Eén rij", "Alle zes knoppen naast elkaar, met kopjes Scherm en Projector erboven. Het dichtst bij wat er nu staat, alleen compacter en zonder afsnijden.", A],
+    ["B · Twee vakken", "Scherm links in een 2 × 2-raster, projector rechts in een eigen vak met de live status (aan/uit) van de Pi.", B],
+    ["C · Afstandsbediening", "Het scherm als één pil (Omhoog · Stop · Omlaag) met Mijn hoogte als chip ernaast; de projector als aan/uit-schakelaar die toont wat er nu aan staat.", C],
+    ["D · Filmavond", "Twee grote knoppen die doen wat je meestal wil: Film starten (scherm naar je hoogte + projector aan) en Film stoppen (scherm omlaag + projector uit). Daaronder alles nog los te bedienen.", D],
+  ];
+  document.getElementById("grid").innerHTML = OPTS.map(([t, d, html]) => `<section class="opt"><h2>${t}</h2><p>${d}</p>${html}</section>`).join("");
+</script>
+</body>
+</html>

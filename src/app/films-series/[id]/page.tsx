@@ -1,5 +1,8 @@
 "use client";
 
+import { WatchOnProjector } from "@/components/films/watch_on_projector";
+import { StremioEpisodeStatus } from "@/components/films/stremio_progress";
+
 import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -618,6 +621,8 @@ export default function FilmDetailPage() {
               <div className="flex min-w-0 flex-1 flex-col gap-[30px] lg:gap-[34px]">
                 {/* Over */}
                 <section>
+                  <div className="mb-4"><WatchOnProjector imdbId={detail.imdbId} type={detail.type} /></div>
+                  <StremioEpisodeStatus imdbId={detail.imdbId} tmdbId={detail.type === "tv" ? String(detail.id).replace(/^tv-/, "") : undefined} />
                   <h2 className="mb-2.5 hidden text-[19px] font-bold leading-6 text-[var(--text-primary)] lg:block">Over</h2>
                   <p className={cn("text-[15px] leading-[22px] text-[var(--text-primary)] lg:text-[15.5px] lg:leading-6", !overviewExpanded && "line-clamp-4 lg:line-clamp-none")}>
                     {activeOverview || "Geen beschrijving beschikbaar."}

@@ -1,0 +1,15 @@
+import fs from "node:fs/promises";
+const identity = JSON.parse(await fs.readFile(".cache/projector-relay/cinema-direct.json", "utf8"));
+const files = {};
+for (const name of ["manifest.json", "__init__.py", "screen.py"]) files[`custom_components/shoppinglist_cinema/${name}`] = await fs.readFile(`home-assistant/custom_components/shoppinglist_cinema/${name}`, "utf8");
+const screen = JSON.parse(await fs.readFile(".cache/broadlink/screen.json", "utf8"));
+const timing = JSON.parse(await fs.readFile(".cache/broadlink/screen-timing.json", "utf8"));
+const bridge = JSON.parse(await fs.readFile(".cache/projector-relay/bridge.json", "utf8"));
+if (!screen.ownerId || screen.ownerId !== bridge.ownerId) throw new Error("Screen owner mismatch");
+if (screen.paused || screen.mac.replaceAll(":", "").toLowerCase() !== "348e89b166a7" || !screen.commands?.up || !screen.commands?.stop || !(timing.duration > 0 && timing.duration <= 60)) throw new Error("Screen configuration not verified");
+files["shoppinglist-cinema.yaml"] = `bridge_id: ${JSON.stringify(identity.bridgeId)}\ntoken: ${JSON.stringify(identity.token)}\nprojector_host: "192.168.132.133"\ncinema_scene: scene.woonkamer_woonkamer_cinema\n`;
+files["shoppinglist-cinema.yaml"] += `screen: ${JSON.stringify({ battery_entity: "sensor.gang_beneden_voordeur_battery", remote_entity: "remote.broadlink_rm4_pro", duration: timing.duration, up: screen.commands.up, stop: screen.commands.stop })}\n`;
+const installer = `import base64,json,pathlib,shutil,time,py_compile\nroot=pathlib.Path('/homeassistant')\nfiles=json.loads(base64.b64decode('${Buffer.from(JSON.stringify(files)).toString("base64")}'))\nconfig=root/'configuration.yaml'\ntext=config.read_text()\nbackup=config.with_name('configuration.yaml.before-cinema-'+str(int(time.time())))\nshutil.copy2(config,backup)\nfor name,contents in files.items():\n p=root/name\n if p.exists(): shutil.copy2(p,p.with_name(p.name+'.before-'+str(int(time.time()))))\n p.parent.mkdir(parents=True,exist_ok=True)\n p.write_text(contents)\n p.chmod(0o600)\npy_compile.compile(str(root/'custom_components/shoppinglist_cinema/__init__.py'),doraise=True)\ntext=text.replace('shoppinglist_projector: !include shoppinglist-projector.yaml','shoppinglist_projector: {}')\nif 'shoppinglist_cinema:' not in text: text+='\\nshoppinglist_cinema: !include shoppinglist-cinema.yaml\\n'\nconfig.write_text(text)\nprint('Cinema bridge installed; configuration backed up; old Mac-polling package disabled. No device commands sent.')\n`;
+const command = `python3 -c "import base64; exec(base64.b64decode('${Buffer.from(installer).toString("base64")}'))"`;
+await fs.writeFile(".cache/projector-relay/install-cinema-command.txt", command, { mode: 0o600 });
+console.log("Private Pi installer prepared; no credentials printed.");

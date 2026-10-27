@@ -73,6 +73,8 @@ import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card
 import { HomeTodoSection } from "@/components/home_todo_section";
 import { HomeAircoSection } from "@/components/home_airco_section";
 import { DashboardHuePanel } from "@/components/dashboard_hue_panel";
+import { DashboardScreenPanel } from "@/components/dashboard_screen_panel";
+import { useGoogleAuthToken } from "@/lib/google-client";
 import { HomeDiscoverBanners, type DiscoverBanner } from "@/components/home_discover_banners";
 import type { LoyaltyCardCodeType } from "@/lib/loyalty_card";
 import {
@@ -642,8 +644,9 @@ type FreezerPreviewItem = Pick<
  * «Startpagina aanpassen». */
 function HomeLightSection() {
   const router = useRouter();
+  const token = useGoogleAuthToken();
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-6">
       <DashboardHuePanel
         variant="mobile"
         renderEmpty={(kind, reconnect) => (
@@ -672,6 +675,10 @@ function HomeLightSection() {
           />
         )}
       />
+      <section aria-label="Projectiescherm" className="flex min-w-0 flex-col gap-3">
+        <h2 className="text-[22px] font-bold leading-7 text-[var(--text-primary)]">Projectiescherm</h2>
+        <DashboardScreenPanel token={token} variant="light" />
+      </section>
     </div>
   );
 }

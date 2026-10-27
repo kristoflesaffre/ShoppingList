@@ -4,8 +4,12 @@ import * as React from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
-import { DashboardScreenPanel } from "@/components/dashboard_screen_panel";
-import { DashboardClimate } from "@/components/dashboard_climate";
+import { ACTIONS, DashboardScreenPanel, PowerIcon as ProjectorPowerIcon, ScreenIcon, useScreenControls } from "@/components/dashboard_screen_panel";
+import { AcColumn, DashboardClimate, type Airco } from "@/components/dashboard_climate";
+import { useAirco } from "@/components/home_airco_section";
+import { useFilmMode } from "@/components/use_film_mode";
+import { sortAircos } from "@/lib/airco-order";
+import { isScreenActionDisabled } from "@/lib/projection-screen";
 import { cn } from "@/lib/utils";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
 import { splitRoomName } from "@/lib/hue-room-name";
@@ -44,6 +48,7 @@ function LampColumn({
   onChange,
   onTap,
   tall = false,
+  fluid = false,
   light = false,
 }: {
   room: Room;
@@ -54,6 +59,8 @@ function LampColumn({
   onTap?: () => void;
   /** Hoge kolom in het lichtvenster: groter, met aan/uit-schakelaar eronder. */
   tall?: boolean;
+  /** Met `tall`: kolom rekt mee met de breedte (bedieningsvenster over de volle breedte). */
+  fluid?: boolean;
   /** Op een lichte ondergrond (startpagina op de gsm): lichte capsule, donkere tekst. */
   light?: boolean;
 }) {
@@ -69,7 +76,7 @@ function LampColumn({
   const tap = onTap ?? (() => onChange(room.on ? { on: false } : { on: true }));
 
   return (
-    <div className={cn("flex shrink-0 flex-col items-center", tall ? "min-h-0 w-[96px] flex-1 gap-2.5" : "w-[72px] gap-1.5")}>
+    <div className={cn("flex flex-col items-center", fluid ? "min-h-0 min-w-[64px] flex-1 basis-0 gap-2" : "shrink-0", !fluid && (tall ? "min-h-0 w-[96px] flex-1 gap-2.5" : "w-[72px] gap-1.5"))}>
       <button
         type="button"
         role="slider"
@@ -122,7 +129,7 @@ function LampColumn({
           light
             ? "bg-white shadow-[0_8px_18px_-12px_rgba(16,17,48,0.35),inset_0_0_0_1px_rgba(16,17,48,0.04)] focus-visible:ring-[#ffb547] [[data-theme=dark]_&]:bg-fixed-white/[0.06] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]"
             : "bg-fixed-white/[0.06] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] focus-visible:ring-fixed-white",
-          tall ? "min-h-[160px] w-[76px] pt-4" : "min-h-[72px] w-[52px] pt-2.5",
+          fluid ? "min-h-[140px] w-full max-w-[84px] pt-4" : tall ? "min-h-[160px] w-[76px] pt-4" : "min-h-[72px] w-[52px] pt-2.5",
         )}
       >
         {lit ? (
@@ -211,25 +218,32 @@ function FloorSwitch({ label, on, disabled, onToggle }: { label: string; on: boo
   );
 }
 
-/** Lichtvenster (canvas «licht-venster» A): alle kamers per verdieping als hoge kolommen. */
-function HueLightsModal({
-  rooms,
+/** Kopje van een kaart of groep in het bedieningsvenster. */
+const capLabel = "text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-[rgba(200,210,255,0.6)]";
+const card = "flex min-w-0 flex-col gap-2 rounded-[22px] bg-fixed-white/[0.06] px-3.5 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]";
+const tileBtn = "flex h-[58px] min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-1 rounded-[15px] text-[11.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:cursor-not-allowed disabled:opacity-40";
+
+/**
+ * Bedieningsvenster (canvas «CM2 · B2»): licht, klimaat en scherm in één volledig venster. Bovenaan drie kaarten
+ * (Filmavond, Scherm, Projector) die boven hun groep eronder staan (Gelijkvloers, Verdieping, Klimaat); de kolommen
+ * rekken mee over de volle breedte. Enkel licht en klimaat scrollen zijwaarts als er meer kamers zijn dan plaats.
+ */
+function ControlModal({
+  token,
+  state,
   busy,
   setRoom,
   floors,
+  airco,
   onClose,
-  headerToggle,
-  switched = false,
 }: {
-  rooms: Room[];
+  token: string | null;
+  state: State;
   busy: Set<string>;
   setRoom: (rooms: Room[], patch: Patch) => Promise<void>;
   floors: RoomFloors;
+  airco: Airco;
   onClose: () => void;
-  /** Schakelaar «Licht | Klimaat | Scherm» rechtsboven (vervangt «Indeling», «Alles aan» en «Alles uit»). */
-  headerToggle?: React.ReactNode;
-  /** Geopend via de schakelaar in het venster: achtergrond zonder in-animatie, enkel de inhoud vloeit in. */
-  switched?: boolean;
 }) {
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -244,43 +258,49 @@ function HueLightsModal({
     };
   }, [onClose]);
 
+  const screen = useScreenControls(token, { projectorStatus: true });
+  const film = useFilmMode();
+  const rooms = state.kind === "ready" ? state.rooms : [];
+  const groups = floors.groups(rooms);
   const indexOf = new Map(rooms.map((r, i) => [r.id, i]));
-  const [editing, setEditing] = React.useState(false);
-  const { moveRoom } = floors;
-  const ordered = floors.groups(rooms);
+  const devices = React.useMemo(() => sortAircos(airco.devices, new Date()), [airco.devices]);
+  // De kaarten staan boven hun groep: dezelfde verhouding (aantal kolommen) en dezelfde tussenruimte als de baan.
+  const aligned = groups.length === 2 && devices.length > 0;
+  const weights = aligned ? [groups[0].rooms.length, groups[1].rooms.length, devices.length] : [1, 1, 1];
   const action = "h-10 rounded-pill bg-fixed-white/10 px-4 text-sm font-bold text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-40 [@media(hover:hover)]:hover:bg-fixed-white/[0.16]";
+  const durationText = screen.screen?.durationSeconds != null ? `${screen.screen.durationSeconds.toLocaleString("nl-BE", { maximumFractionDigits: 2 })} s` : null;
+  const projectorText = screen.projectorOn == null ? "status onbekend" : screen.projectorOn ? "staat aan" : "staat uit";
+
+  const lightsNote =
+    state.kind === "loading" ? "Lampen laden…"
+      : state.kind === "not-configured" ? "Philips Hue is nog niet ingesteld op deze versie van de app."
+        : state.kind === "not-connected" ? "Philips Hue is niet gekoppeld. Koppel via Profiel → Philips Hue."
+          : state.kind === "error" ? "Hue is even niet bereikbaar op dit adres."
+            : rooms.length === 0 ? "Geen kamers gevonden in je Hue-app." : null;
+  const aircoNote =
+    airco.state.kind === "loading" ? "Airco's laden…"
+      : airco.state.kind === "not-configured" ? "Panasonic is nog niet ingesteld."
+        : airco.state.kind === "not-connected" ? "Airco's niet gekoppeld."
+          : airco.state.kind === "error" ? "De airco's zijn even niet bereikbaar."
+            : devices.length === 0 ? "Geen airco's gevonden." : null;
+  const note = (text: string) => <p className="flex flex-1 items-center justify-center rounded-[22px] bg-fixed-white/[0.04] px-4 text-center text-sm text-fixed-white/60">{text}</p>;
 
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Alle lampen" onClick={onClose} className={cn("fixed inset-0 z-[70] flex bg-[rgba(8,9,24,0.6)] p-7 backdrop-blur-sm", !switched && "motion-safe:animate-fade-up")}>
+    <div role="dialog" aria-modal="true" aria-label="Licht, klimaat en scherm" onClick={onClose} className="fixed inset-0 z-[70] flex bg-[rgba(8,9,24,0.6)] p-7 backdrop-blur-sm motion-safe:animate-fade-up">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex min-h-0 w-full flex-col rounded-[28px] bg-[linear-gradient(160deg,#232b48_0%,#1a2036_55%,#141a2c_100%)] px-7 py-6 text-fixed-white shadow-[inset_0_0_0_1px_rgba(160,180,255,0.22),0_40px_80px_-30px_rgba(0,0,0,0.8)]"
+        className="flex min-h-0 w-full flex-col gap-[18px] rounded-[28px] bg-[linear-gradient(160deg,#232b48_0%,#1a2036_55%,#141a2c_100%)] px-7 py-6 text-fixed-white shadow-[inset_0_0_0_1px_rgba(160,180,255,0.22),0_40px_80px_-30px_rgba(0,0,0,0.8)]"
       >
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/60">LICHT</p>
-            <h2 className="mt-0.5 text-[30px] font-extrabold tracking-[-0.02em]">Alle lampen</h2>
+            <p className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/60">BEDIENING</p>
+            <h2 className="mt-0.5 text-[30px] font-extrabold tracking-[-0.02em]">Licht, klimaat &amp; scherm</h2>
           </div>
           <div className="flex items-center gap-2">
-            {headerToggle ?? (
-              <>
-                <button type="button" aria-pressed={editing} className={cn(action, editing && "bg-fixed-white text-[#1a2036] [@media(hover:hover)]:hover:bg-fixed-white")} onClick={() => setEditing((e) => !e)}>
-                  {editing ? "Klaar" : "Indeling"}
-                </button>
-                <button type="button" className={action} disabled={rooms.every((r) => r.on)} onClick={() => void setRoom(rooms.filter((r) => !r.on), { on: true })}>
-                  Alles aan
-                </button>
-                <button type="button" className={action} disabled={!rooms.some((r) => r.on)} onClick={() => void setRoom(rooms.filter((r) => r.on), { on: false })}>
-                  Alles uit
-                </button>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Sluiten"
-              className="flex size-10 items-center justify-center rounded-full bg-fixed-white/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
-            >
+            <button type="button" className={action} disabled={!rooms.some((r) => r.on)} onClick={() => void setRoom(rooms.filter((r) => r.on), { on: false })}>
+              Alle lampen uit
+            </button>
+            <button type="button" onClick={onClose} aria-label="Sluiten" className="flex size-10 items-center justify-center rounded-full bg-fixed-white/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-4">
                 <path d="M6 6l12 12M18 6L6 18" />
               </svg>
@@ -288,46 +308,129 @@ function HueLightsModal({
           </div>
         </div>
 
-        {/* Vaste kolombreedte en vaste tussenruimtes; passen niet alle kamers, dan wordt het een baan die
-            zijwaarts scrolt (veeg, trackpad of muiswiel) en die tot aan de rand van het venster doorloopt,
-            met dezelfde marge aan begin en eind. */}
-        <ScrollLane className={cn("-mx-7 mt-6 flex min-h-0 flex-1 gap-6 px-7", switched && "motion-safe:animate-fade-slide-in")}>
-          {ordered.map((g) => (
-            <section key={g.key} aria-label={g.label} className="flex min-h-0 shrink-0 flex-col gap-3.5 border-r border-fixed-white/[0.08] pr-6 last:border-r-0 last:pr-0">
-              <div className="flex items-center justify-between gap-4">
-                <h3 className="whitespace-nowrap text-[11px] font-extrabold uppercase tracking-[0.08em] text-[rgba(200,210,255,0.55)]">{g.label}</h3>
-                {/* Overkoepelende schakelaar: hele verdieping aan/uit (aan zodra er één lamp brandt). */}
-                <FloorSwitch label={g.label} on={g.rooms.some((r) => r.on)} disabled={g.rooms.every((r) => busy.has(r.id))} onToggle={(on) => void setRoom(g.rooms.filter((r) => r.on !== on), { on })} />
-              </div>
-              <div className="flex min-h-0 flex-1 gap-2">
-                {g.rooms.map((room) => (
-                  <div key={room.id} className="flex h-full min-h-0 flex-col items-center gap-2">
-                    <LampColumn room={room} index={indexOf.get(room.id) ?? 0} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} tall />
-                    {editing ? (
-                      <select
-                        aria-label={`Verdieping van ${room.name}`}
-                        value={g.key}
-                        onChange={(e) => moveRoom(room, e.target.value as FloorKey)}
-                        className="h-8 w-[96px] rounded-lg bg-fixed-white/[0.12] px-1.5 text-xs font-bold text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [&>option]:text-[#1a2036]"
-                      >
-                        {FLOORS.map((f) => (
-                          <option key={f.key} value={f.key} label={f.short}>
-                            {f.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : null}
+        {/* Gap 45 px = 22 + 1 (scheiding) + 22 in de baan eronder: zo staat elke kaart boven haar groep. */}
+        <div className="flex gap-[45px]">
+          <section aria-label="Filmavond" className="flex min-w-0 items-center justify-between gap-4 rounded-[22px] bg-[linear-gradient(120deg,rgba(255,190,140,0.16),rgba(255,120,170,0.1))] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(255,200,170,0.25)]" style={{ flex: `${weights[0]} 1 0` }}>
+            <div className="min-w-0">
+              <p className={capLabel}>Filmavond</p>
+              <p className="mt-1 text-[17px] font-extrabold leading-tight">{film.on ? "De film loopt" : "Klaar voor een film?"}</p>
+              <p role="status" aria-live="polite" className="mt-0.5 line-clamp-2 text-[11px] leading-[14px] text-fixed-white/70">
+                {film.message ?? (film.on ? "Stoppen: projector uit · scherm omlaag · woonkamer op 20 %" : "Projector aan · scherm naar je hoogte · woonkamer op Cinema")}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void film.toggle()}
+              disabled={film.disabled}
+              aria-pressed={film.on}
+              className={cn(
+                "flex h-[52px] shrink-0 items-center gap-2 rounded-pill px-5 text-[15px] font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:cursor-not-allowed disabled:opacity-60",
+                film.on ? "bg-fixed-white text-[#2a2148]" : "bg-[linear-gradient(135deg,rgba(255,214,150,0.62),rgba(255,140,170,0.46))] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]",
+              )}
+            >
+              {film.on ? (
+                <svg viewBox="0 0 24 24" aria-hidden className="size-4"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden className="size-4"><path d="M8 5.5v13l11-6.5z" fill="currentColor" /></svg>
+              )}
+              {film.busy ? "Bezig…" : film.on ? "Film stoppen" : "Film starten"}
+            </button>
+          </section>
+
+          <section aria-label="Projectiescherm" className={card} style={{ flex: `${weights[1]} 1 0` }}>
+            <div className="flex items-center justify-between gap-2">
+              <span className={capLabel}>Scherm</span>
+              <span role="status" aria-live="polite" title={screen.message} className="min-w-0 truncate text-[11px] font-bold text-fixed-white/70">
+                {screen.busy || !screen.ready ? screen.message : durationText ?? screen.message}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {ACTIONS.map(({ action: a, label, icon }) => (
+                <button
+                  key={a}
+                  type="button"
+                  aria-label={a === "preset" ? "Omhoog naar opgeslagen hoogte" : `Projectiescherm ${label.toLowerCase()}`}
+                  disabled={isScreenActionDisabled(a, screen.screen, screen.busy)}
+                  onClick={() => void screen.send(a)}
+                  className={cn(tileBtn, a === "stop" ? "bg-[#f4d8cb] text-[#572e38] hover:bg-[#ffe7dc]" : "bg-fixed-white/10 text-fixed-white hover:bg-fixed-white/20")}
+                >
+                  <ScreenIcon kind={icon} />
+                  <span>{a === "preset" ? "Hoogte" : label}</span>
+                </button>
+              ))}
+            </div>
+            {!screen.ready && token ? (
+              <button type="button" onClick={screen.recheck} className="self-start text-[11px] font-bold underline underline-offset-2">Opnieuw controleren</button>
+            ) : null}
+          </section>
+
+          <section aria-label="Projector" className={card} style={{ flex: `${weights[2]} 1 0` }}>
+            <div className="flex items-center justify-between gap-2">
+              <span className={capLabel}>Projector</span>
+              <span role="status" aria-live="polite" title={screen.projectorMessage ?? projectorText} className="flex min-w-0 items-center gap-1.5 truncate text-[11px] font-bold text-fixed-white/75">
+                {screen.projectorMessage ? null : <i aria-hidden className={cn("size-[7px] shrink-0 rounded-full", screen.projectorOn ? "bg-[#8ff0a8] shadow-[0_0_6px_#8ff0a8]" : "bg-fixed-white/40")} />}
+                <span className="truncate">{screen.projectorMessage ?? projectorText}</span>
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {([["on", "Projector aan"], ["off", "Projector uit"]] as const).map(([a, label]) => (
+                <button
+                  key={a}
+                  type="button"
+                  aria-label={`${label}, zonder het scherm te bewegen`}
+                  disabled={!token || screen.projectorBusy}
+                  onClick={() => void screen.sendProjector(a)}
+                  className={cn(tileBtn, "flex-row gap-2 bg-fixed-white/10 text-[12.5px] text-fixed-white hover:bg-fixed-white/20")}
+                >
+                  <ProjectorPowerIcon on={a === "on"} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <ScrollLane className="flex min-h-0 flex-1 gap-[22px]">
+          {lightsNote ? (
+            <div className="flex min-w-0 flex-col gap-2.5" style={{ flex: `${aligned ? weights[0] + weights[1] : 2} 1 0` }}>
+              <h3 className={capLabel}>Licht</h3>
+              {note(lightsNote)}
+            </div>
+          ) : (
+            groups.map((g, i) => (
+              <React.Fragment key={g.key}>
+                {i > 0 ? <i aria-hidden className="w-px shrink-0 bg-fixed-white/[0.08]" /> : null}
+                <section aria-label={g.label} className="flex flex-col gap-2.5" style={{ flex: `${g.rooms.length} 1 0` }}>
+                  <div className="flex min-h-[30px] items-center justify-between gap-3">
+                    <h3 className={capLabel}>{g.label}</h3>
+                    <FloorSwitch label={g.label} on={g.rooms.some((r) => r.on)} disabled={g.rooms.every((r) => busy.has(r.id))} onToggle={(on) => void setRoom(g.rooms.filter((r) => r.on !== on), { on })} />
                   </div>
+                  <div className="flex min-h-0 flex-1 gap-2.5">
+                    {g.rooms.map((room) => (
+                      <LampColumn key={room.id} room={room} index={indexOf.get(room.id) ?? 0} busy={busy.has(room.id)} onChange={(patch) => void setRoom([room], patch)} tall fluid />
+                    ))}
+                  </div>
+                </section>
+              </React.Fragment>
+            ))
+          )}
+          <i aria-hidden className="w-px shrink-0 bg-fixed-white/[0.18]" />
+          <section aria-label="Klimaat" className="flex flex-col gap-2.5" style={{ flex: `${aircoNote ? weights[2] : devices.length} 1 0` }}>
+            <div className="flex min-h-[30px] items-center">
+              <h3 className={capLabel}>Klimaat</h3>
+            </div>
+            {aircoNote ? (
+              note(aircoNote)
+            ) : (
+              <div className="flex min-h-0 flex-1 gap-2.5">
+                {devices.map((d) => (
+                  <AcColumn key={d.id} device={d} change={airco.change} tall fluid />
                 ))}
               </div>
-            </section>
-          ))}
+            )}
+          </section>
         </ScrollLane>
-        <p className="mt-4 text-center text-[13px] text-fixed-white/45">
-          {editing
-            ? "Kies per kamer de verdieping · wordt bewaard op dit toestel"
-            : "Schuif een kolom omhoog of omlaag om te dimmen · tik op een kolom of het schakelaartje om aan of uit te zetten"}
-        </p>
+        {airco.error ? <p className="-mt-2 text-center text-xs font-bold text-fixed-white/70">{airco.error}</p> : null}
       </div>
     </div>,
     document.body,
@@ -469,12 +572,9 @@ export function DashboardHuePanel({
   const [busy, setBusy] = React.useState<Set<string>>(() => new Set());
   const [open, setOpen] = React.useState(false);
   const floors = useRoomFloors();
-  /** true = venster geopend via de schakelaar in het venster: geen in-animatie (geen flikkering bij het wisselen). */
-  const [switched, setSwitched] = React.useState(false);
-  const closeModal = React.useCallback(() => {
-    setOpen(false);
-    setSwitched(false);
-  }, []);
+  const closeModal = React.useCallback(() => setOpen(false), []);
+  // Eén keer de airco's ophalen voor paneel én bedieningsvenster (Comfort Cloud niet dubbel bevragen).
+  const airco = useAirco();
   // Dashboard: schakelaar «Licht | Klimaat | Scherm» rechtsboven (vervangt «Alles uit»); de keuze blijft op dit toestel.
   const [view, setView] = React.useState<PanelView>("licht");
   React.useEffect(() => {
@@ -491,29 +591,7 @@ export function DashboardHuePanel({
       /* geen opslag */
     }
   };
-  const [climateOpen, setClimateOpen] = React.useState(false);
-  const closeClimate = React.useCallback(() => {
-    setClimateOpen(false);
-    setSwitched(false);
-  }, []);
-  /** Licht/klimaat wisselen in het venster; Scherm opent de directe dashboardbediening. */
-  const switchModal = (v: PanelView) => {
-    changeView(v);
-    setOpen(v === "licht");
-    setClimateOpen(v === "klimaat");
-  };
-  const viewToggle = (current: PanelView, large = false) => (
-    <ViewToggle
-      value={current}
-      large={large}
-      onChange={(v) => {
-        if (large) {
-          setSwitched(true);
-          switchModal(v);
-        } else changeView(v);
-      }}
-    />
-  );
+  const viewToggle = (current: PanelView) => <ViewToggle value={current} onChange={changeView} />;
 
   const load = React.useCallback(async () => {
     if (!token) return;
@@ -586,12 +664,9 @@ export function DashboardHuePanel({
     <>
     <section
       aria-label="Licht, klimaat en projectiescherm"
-      // Tik op een lege plek in het paneel (niet op een kolom of knop) = lichtvenster openen.
+      // Tik op een lege plek in het paneel (niet op een kolom of knop) = bedieningsvenster (licht, klimaat en scherm).
       onClick={(e) => {
         if ((e.target as Element).closest("button, a, [role=slider]")) return;
-        if (view === "scherm") return;
-        if (view === "klimaat") return setClimateOpen(true);
-        if (state.kind !== "ready" || state.rooms.length === 0) return;
         setOpen(true);
       }}
       className={cn("relative flex min-h-[96px] min-w-0 flex-1 cursor-pointer flex-col overflow-hidden rounded-[24px] bg-[radial-gradient(120%_140%_at_0%_0%,#3a2f1c_0%,#1c1a2c_45%,#11101e_100%)] px-[18px] py-3.5 text-fixed-white shadow-[0_18px_40px_-26px_rgba(255,190,80,0.45)] [[data-theme=dark]_&]:bg-[linear-gradient(160deg,#2a3352_0%,#1e2640_55%,#171d32_100%)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(160,180,255,0.25)] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]")}
@@ -602,7 +677,8 @@ export function DashboardHuePanel({
       </div>
 
       {/* Licht en klimaat blijven geladen; schermstatus wordt pas opgevraagd bij de derde tab. */}
-      <div className="relative mt-2.5 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)]">
+      {/* Eén kolom met de breedte van het paneel: anders zou de verborgen licht-/klimaatweergave de kolom (en het scherm) breder maken. */}
+      <div className="relative mt-2.5 grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]">
       {view === "scherm" && <div className="col-start-1 row-start-1 flex min-h-0 items-center"><DashboardScreenPanel token={token} /></div>}
       <div
         aria-hidden={view !== "klimaat"}
@@ -611,7 +687,7 @@ export function DashboardHuePanel({
           view === "klimaat" ? "opacity-100" : "pointer-events-none invisible opacity-0",
         )}
       >
-        <DashboardClimate open={climateOpen} onClose={closeClimate} headerToggle={viewToggle("klimaat", true)} switched={switched} />
+        <DashboardClimate airco={airco} />
       </div>
       <div
         aria-hidden={view !== "licht"}
@@ -655,7 +731,7 @@ export function DashboardHuePanel({
       </div>
       </div>
     </section>
-    {open && state.kind === "ready" ? <HueLightsModal rooms={state.rooms} busy={busy} setRoom={setRoom} floors={floors} onClose={closeModal} headerToggle={viewToggle("licht", true)} switched={switched} /> : null}
+    {open ? <ControlModal token={token} state={state} busy={busy} setRoom={setRoom} floors={floors} airco={airco} onClose={closeModal} /> : null}
     </>
   );
 }
@@ -773,6 +849,7 @@ function MobileHueSection({
         <section aria-label="Cinema" className="flex shrink-0 flex-col gap-2.5 pl-2.5">
           <h3 className="whitespace-nowrap px-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Cinema</h3>
           <CinemaPhotoTiles token={token} onDone={() => void load()} />
+          <CinemaModeControls />
         </section>
       </ScrollLane>
       </>
@@ -992,7 +1069,7 @@ function CinemaPhotoTiles({ token, onDone }: { token: string | null; onDone: () 
 function CinemaPanels({ token, onDone }: { token: string | null; onDone: () => void }) {
   const { busy, error, run } = useCinemaScene(token, onDone);
   return (
-    <div className="relative flex w-[96px] shrink-0 flex-col gap-4">
+    <div className="relative flex w-[152px] shrink-0 flex-col gap-4">
       {CINEMA.map((c) => {
         const t = CINEMA_TILES[c.mode];
         return (
@@ -1023,6 +1100,7 @@ function CinemaPanels({ token, onDone }: { token: string | null; onDone: () => v
           </button>
         );
       })}
+      <CinemaModeControls />
       {error ? (
         <p role="status" className="absolute inset-x-2 top-2 z-[2] rounded-[12px] bg-[rgba(16,17,48,0.88)] px-3 py-2 text-xs font-semibold text-fixed-white">
           {error}
@@ -1030,4 +1108,24 @@ function CinemaPanels({ token, onDone }: { token: string | null; onDone: () => v
       ) : null}
     </div>
   );
+}
+
+function CinemaModeControls() {
+  const film = useFilmMode();
+  return <div className="flex min-w-0 flex-col gap-2" aria-label="Cinemamodus">
+    <div className="grid grid-cols-2 gap-2">
+      {([true, false] as const).map(start => <button
+        key={String(start)} type="button" disabled={film.disabled}
+        aria-label={start ? "Cinemamodus activeren" : "Cinemamodus stoppen"}
+        aria-busy={film.busy}
+        title={start ? "Projector aan, scherm naar mijn hoogte en Cinema-verlichting" : "Projector uit, scherm omlaag en woonkamer op 20 procent"}
+        onClick={() => void film.setMode(start)}
+        className="flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--white)] px-2 py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--bg-app)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple-500)] disabled:opacity-40"
+      >
+        {start ? <ClapperIcon className="size-5" /> : <ScreenIcon kind="stop" />}
+        <span>{start ? "Start film" : "Stop film"}</span>
+      </button>)}
+    </div>
+    {film.message ? <p role="status" aria-live="polite" className="text-xs leading-4 text-[var(--text-secondary)]">{film.message}</p> : null}
+  </div>;
 }

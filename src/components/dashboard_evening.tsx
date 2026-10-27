@@ -10,6 +10,7 @@ import {
   type WatchingTvItem,
 } from "@/hooks/use_watching_tv_items";
 import type { WatchlistItem } from "@/lib/watchlist";
+import { useFilmMode } from "@/components/use_film_mode";
 import {
   CastRound,
   FilmIcons,
@@ -20,7 +21,7 @@ import {
 } from "@/components/films/film_detail_ui";
 
 /**
- * Avond op het tablet-dashboard (20 – 23 u): de series waar we mee bezig zijn (i.p.v. het weer van vandaag)
+ * Avond op het tablet-dashboard (19 – 23 u): de series waar we mee bezig zijn (i.p.v. het weer van vandaag)
  * en suggesties uit de watchlist (i.p.v. het eten van vandaag). Een tik opent een groot venster met
  * samenvatting, cast en de trailer (YouTube, volledig scherm).
  */
@@ -198,6 +199,42 @@ function WatchingSlide({ media, onOpen }: { media: EveningMedia; onOpen: (m: Eve
 }
 
 /**
+ * Filmmodus rechtsboven in «Aan het kijken»: «Film starten» (projector aan, scherm naar je hoogte, woonkamer op
+ * «Cinema») en daarna «Film stoppen» (projector uit, scherm omlaag, woonkamer op 20 %). Zelfde stand als in het
+ * bedieningsvenster (use_film_mode).
+ */
+function FilmModeButton() {
+  const { on, busy, message, toggle, disabled } = useFilmMode();
+  return (
+    <span className="absolute right-3 top-3 z-[3] flex max-w-[70%] flex-col items-end gap-1.5">
+      <button
+        type="button"
+        onClick={() => void toggle()}
+        disabled={disabled}
+        aria-pressed={on}
+        aria-label={on ? "Film stoppen: projector uit, scherm omlaag, woonkamer op 20 procent" : "Film starten: projector aan, scherm naar je hoogte, woonkamer op Cinema"}
+        className={cn(
+          "flex h-9 items-center gap-1.5 rounded-pill px-3.5 text-[12.5px] font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:cursor-not-allowed disabled:opacity-60",
+          on ? "bg-fixed-white text-[#2a2148] hover:bg-fixed-white/90" : "bg-fixed-white/15 text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)] backdrop-blur-md hover:bg-fixed-white/25",
+        )}
+      >
+        {on ? (
+          <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" /></svg>
+        ) : (
+          <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4"><path d="M8 5.5v13l11-6.5z" fill="currentColor" /></svg>
+        )}
+        {busy ? "Bezig…" : on ? "Film stoppen" : "Film starten"}
+      </button>
+      {message ? (
+        <span role="status" aria-live="polite" className="rounded-[12px] bg-[rgba(20,16,44,0.72)] px-2.5 py-1.5 text-right text-[11px] font-semibold leading-[14px] text-fixed-white backdrop-blur-md">
+          {message}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/**
  * «Aan het kijken» (canvas «Aan het kijken» W1): één serie tegelijk, liggend; de foto staat rechts en vervaagt
  * naar links in de tegel. Meer series: zijwaarts swipen, met bolletjes rechtsonder (tik = naar die serie).
  */
@@ -224,6 +261,7 @@ export function WatchingTile({ items, onOpen }: { items: EveningMedia[]; onOpen:
       }
     >
       <span className="pointer-events-none absolute left-[18px] top-4 z-[2] text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/80">AAN HET KIJKEN</span>
+      <FilmModeButton />
       <div
         ref={laneRef}
         onScroll={onScroll}

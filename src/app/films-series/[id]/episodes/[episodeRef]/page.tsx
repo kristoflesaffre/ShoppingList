@@ -6,6 +6,8 @@ import { useRouter, useParams } from "next/navigation";
 import { backOr } from "@/lib/in_app_history";
 import { ActionPill, CastRound, DetailSectionHead, FilmIcons, GlassIconButton, StarGlyph, formatAirDate } from "@/components/films/film_detail_ui";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
+import { WatchOnProjector } from "@/components/films/watch_on_projector";
+import { StremioEpisodeStatus } from "@/components/films/stremio_progress";
 
 type CastMember = {
   name: string;
@@ -32,6 +34,7 @@ type SeasonMeta = {
 };
 
 type SeriesInfo = {
+  imdbId: string | null;
   title: string;
   certification: string;
   seasons: SeasonMeta[];
@@ -95,6 +98,8 @@ function EpisodeBody({
   onToggleWatched,
   onNext,
   onAllCast,
+  projectorTmdbId,
+  imdbId,
 }: {
   episode: EpisodeDetail;
   at: EpisodeRef;
@@ -106,6 +111,8 @@ function EpisodeBody({
   onToggleWatched?: () => void;
   onNext?: () => void;
   onAllCast?: () => void;
+  projectorTmdbId?: string;
+  imdbId?: string | null;
 }) {
   const metaLine = [formatAirDate(episode.airDate), episode.runtime, certification].filter(Boolean).join(" · ");
   return (
@@ -126,6 +133,8 @@ function EpisodeBody({
             ) : null}
             {metaLine ? <span>{episode.rating != null ? "· " : ""}{metaLine}</span> : null}
           </p>
+          {projectorTmdbId ? <div className="mt-4"><WatchOnProjector type="tv" tmdbId={projectorTmdbId} season={at.s} episode={at.e} /></div> : null}
+          {projectorTmdbId ? <StremioEpisodeStatus imdbId={imdbId} tmdbId={projectorTmdbId} /> : null}
           <p className="mt-4 text-[15px] leading-[22px] text-[var(--text-primary)]">{episode.overview || "Geen beschrijving beschikbaar."}</p>
           <div className="mt-[18px] flex">
             <ActionPill
@@ -244,8 +253,8 @@ export default function EpisodeDetailPage() {
     if (!tmdbId) return;
     fetch(`/api/films/detail?type=tv&id=${tmdbId}`)
       .then((r) => r.json())
-      .then((data: { title: string; certification: string; seasons: SeasonMeta[] }) => {
-        setSeriesInfo({ title: data.title, certification: data.certification, seasons: data.seasons ?? [] });
+      .then((data: { title: string; certification: string; seasons: SeasonMeta[]; imdbId?: string | null }) => {
+        setSeriesInfo({ title: data.title, certification: data.certification, seasons: data.seasons ?? [], imdbId: data.imdbId ?? null });
       })
       .catch(() => {});
   }, [tmdbId]);
@@ -637,6 +646,8 @@ export default function EpisodeDetailPage() {
             ) : (
               <EpisodeBody
                 episode={episode}
+                projectorTmdbId={tmdbId}
+                imdbId={seriesInfo?.imdbId}
                 at={here}
                 series={seriesTitle}
                 certification={certification}

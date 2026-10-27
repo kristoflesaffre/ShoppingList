@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { projectorTestMessage, type ProjectorTestAction, type ProjectorTestResult } from "@/lib/projector-control";
+import { sendProjectorCommand } from "@/lib/projector-client";
 import type { ScreenStatus as ScreenState } from "@/lib/projection-screen";
 type Action = "up" | "stop" | "down" | "calibrate" | "preset";
 const buttonClass = "flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--border-subtle)] px-3 py-4 font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
@@ -59,10 +60,9 @@ export default function ScreenPage() {
     setProjectorBusy(true);
     setProjectorMessage(action === "status" ? "Verbinding met Woonkamer TV controleren…" : "Projectorcommando versturen…");
     try {
-      const response = await fetch("/api/projector", { method: "POST", headers: { ...googleAuthHeaders(token), "content-type": "application/json" }, body: JSON.stringify({ action }) });
-      const result = await response.json() as ProjectorTestResult;
-      setProjectorMessage(projectorTestMessage(action, response.ok ? result : { ...result, accepted: false }));
-    } catch { setProjectorMessage("De lokale app kon de projectortest niet afronden. Het scherm is niet aangestuurd."); }
+      const result: ProjectorTestResult = await sendProjectorCommand(action, token);
+      setProjectorMessage(projectorTestMessage(action, result));
+    } catch { setProjectorMessage("De projectoropdracht is niet bevestigd. Controleer het beeld voordat je opnieuw probeert. Het scherm is niet aangestuurd."); }
     finally { projectorLock.current = false; setProjectorBusy(false); }
   };
   if (!user) return null;

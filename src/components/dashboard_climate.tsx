@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import { useAirco } from "@/components/home_airco_section";
+import type { useAirco } from "@/components/home_airco_section";
 import { sortAircos } from "@/lib/airco-order";
 import type { AcCommand, AcDevice } from "@/lib/panasonic";
 
@@ -20,7 +19,7 @@ const COOL: [string, string] = ["#5fa8ff", "#b8d8ff"];
 const HEAT: [string, string] = ["#ff9450", "#ffd2b0"];
 const NEUTRAL: [string, string] = ["#a99be0", "#d9d1f5"];
 
-type Change = (deviceId: string, command: Omit<AcCommand, "deviceId">, immediate?: boolean) => void;
+export type Change = (deviceId: string, command: Omit<AcCommand, "deviceId">, immediate?: boolean) => void;
 
 function colorsFor(device: AcDevice): [string, string] {
   return device.mode === "cool" ? COOL : device.mode === "heat" ? HEAT : NEUTRAL;
@@ -35,7 +34,8 @@ function PowerIcon({ className }: { className?: string }) {
   );
 }
 
-function AcColumn({ device, change, tall = false }: { device: AcDevice; change: Change; tall?: boolean }) {
+/** `tall`: hoge kolom in het bedieningsvenster; met `fluid` rekt ze mee met de breedte (venster over de volle breedte). */
+export function AcColumn({ device, change, tall = false, fluid = false }: { device: AcDevice; change: Change; tall?: boolean; fluid?: boolean }) {
   const [preview, setPreview] = React.useState<number | null>(null);
   const drag = React.useRef<{ y: number; moved: boolean; rect: DOMRect } | null>(null);
   const reachable = device.available && device.on !== null;
@@ -51,8 +51,8 @@ function AcColumn({ device, change, tall = false }: { device: AcDevice; change: 
   const temp = (t: number) => `${String(t).replace(".", ",")}°`;
 
   return (
-    <div className={cn("flex shrink-0 flex-col items-center", tall ? "min-h-0 w-[120px] flex-1 gap-2.5" : "h-full min-h-0 w-[84px] gap-1")}>
-      <div className={cn("relative flex min-h-0 flex-1", tall ? "min-h-[200px] w-[96px]" : "min-h-[56px] w-[60px]")}>
+    <div className={cn("flex flex-col items-center", fluid ? "min-h-0 min-w-[64px] flex-1 basis-0 gap-2" : "shrink-0", !fluid && (tall ? "min-h-0 w-[120px] flex-1 gap-2.5" : "h-full min-h-0 w-[84px] gap-1"))}>
+      <div className={cn("relative flex min-h-0 flex-1", fluid ? "min-h-[140px] w-full max-w-[88px]" : tall ? "min-h-[200px] w-[96px]" : "min-h-[56px] w-[60px]")}>
         <button
           type="button"
           role="slider"
@@ -161,93 +161,14 @@ function AcColumn({ device, change, tall = false }: { device: AcDevice; change: 
   );
 }
 
-function ClimateModal({
-  devices,
-  change,
-  onClose,
-  headerToggle,
-  switched = false,
-}: {
-  devices: AcDevice[];
-  change: Change;
-  onClose: () => void;
-  headerToggle?: React.ReactNode;
-  /** Geopend via de schakelaar in het venster: achtergrond zonder in-animatie, enkel de inhoud vloeit in. */
-  switched?: boolean;
-}) {
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [onClose]);
-  const reachable = devices.filter((d) => d.available && d.on !== null);
-  const action = "h-10 rounded-pill bg-fixed-white/10 px-4 text-sm font-bold text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-40 [@media(hover:hover)]:hover:bg-fixed-white/[0.16]";
-  return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Alle airco's" onClick={onClose} className={cn("fixed inset-0 z-[70] flex bg-[rgba(8,9,24,0.6)] p-7 backdrop-blur-sm", !switched && "motion-safe:animate-fade-up")}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="flex min-h-0 w-full flex-col rounded-[28px] bg-[linear-gradient(160deg,#232b48_0%,#1a2036_55%,#141a2c_100%)] px-7 py-6 text-fixed-white shadow-[inset_0_0_0_1px_rgba(160,180,255,0.22),0_40px_80px_-30px_rgba(0,0,0,0.8)]"
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/60">KLIMAAT</p>
-            <h2 className="mt-0.5 text-[30px] font-extrabold tracking-[-0.02em]">Alle airco&apos;s</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {headerToggle ?? (
-              <>
-                <button type="button" className={action} disabled={reachable.every((d) => d.on)} onClick={() => reachable.filter((d) => !d.on).forEach((d) => change(d.id, { power: true }, true))}>
-                  Alles aan
-                </button>
-                <button type="button" className={action} disabled={!reachable.some((d) => d.on)} onClick={() => reachable.filter((d) => d.on).forEach((d) => change(d.id, { power: false }, true))}>
-                  Alles uit
-                </button>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Sluiten"
-              className="flex size-10 items-center justify-center rounded-full bg-fixed-white/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-4">
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div className={cn("mt-6 flex min-h-0 flex-1 justify-center gap-10 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", switched && "motion-safe:animate-fade-slide-in")}>
-          {devices.map((d) => (
-            <AcColumn key={d.id} device={d} change={change} tall />
-          ))}
-        </div>
-        <p className="mt-4 text-center text-[13px] text-fixed-white/45">
-          Schuif een kolom omhoog of omlaag voor de temperatuur · ⏻ onderaan de kolom zet aan of uit · ❄ / ☀ kiest koelen of verwarmen
-        </p>
-      </div>
-    </div>,
-    document.body,
-  );
-}
+export type Airco = ReturnType<typeof useAirco>;
 
-/** Inhoud van het paneel in de stand «Klimaat»: de kolommen, plus het volledige scherm als `open`. */
-export function DashboardClimate({
-  open,
-  onClose,
-  headerToggle,
-  switched = false,
-}: {
-  open: boolean;
-  onClose: () => void;
-  headerToggle?: React.ReactNode;
-  switched?: boolean;
-}) {
-  const { state, devices, change, error, load } = useAirco();
+/**
+ * Inhoud van het paneel in de stand «Klimaat»: de kolommen. De gegevens komen van het paneel (één useAirco voor
+ * paneel en bedieningsvenster: Comfort Cloud niet dubbel bevragen).
+ */
+export function DashboardClimate({ airco }: { airco: Airco }) {
+  const { state, devices, change, error, load } = airco;
   const sorted = React.useMemo(() => sortAircos(devices, new Date()), [devices]);
 
   let body: React.ReactNode;
@@ -292,7 +213,6 @@ export function DashboardClimate({
     <>
       {body}
       {error ? <p className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-pill bg-[rgba(8,9,24,0.6)] px-3 py-1 text-xs font-bold text-fixed-white">{error}</p> : null}
-      {open && state.kind === "ready" && sorted.length > 0 ? <ClimateModal devices={sorted} change={change} onClose={onClose} headerToggle={headerToggle} switched={switched} /> : null}
     </>
   );
 }

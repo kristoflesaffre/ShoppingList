@@ -284,6 +284,12 @@ const schema = i.schema({
     shoppingShareMembers: i.entity({
       instantUserId: i.string().indexed(),
     }),
+    /** Server-only encrypted Stremio session; deny all client access before provisioning. */
+    stremioConnections: i.entity({
+      ownerId: i.string(),
+      sealedSession: i.string(),
+      updatedAt: i.number(),
+    }),
     /** Server-only encrypted Comfort Cloud session; client access is denied in Instant permissions. */
     panasonicConnections: i.entity({
       ownerId: i.string(),
@@ -298,6 +304,28 @@ const schema = i.schema({
       ownerId: i.string().unique().indexed(),
       sealedAccounts: i.string(),
       updatedAt: i.number(),
+    }),
+    /** Server-only, scoped outbound projector bridge. Client access must be denied. */
+    projectorBridges: i.entity({
+      ownerId: i.string().unique().indexed(),
+      tokenHash: i.string().unique().indexed(),
+      enabled: i.boolean(),
+      lastSeenAt: i.number(),
+      reportedState: i.string(),
+    }),
+    projectorCommands: i.entity({
+      bridgeId: i.string().indexed(),
+      action: i.string(),
+      createdAt: i.number().indexed(),
+      expiresAt: i.number(),
+      state: i.string(),
+      error: i.string().optional(),
+    }),
+    /** Unique active/claim keys enforce concurrency and at-most-once dispatch. */
+    projectorLocks: i.entity({
+      key: i.string().unique().indexed(),
+      commandId: i.string(),
+      expiresAt: i.number().indexed(),
     }),
     shoppingItems: i.entity({
       name: i.string(),

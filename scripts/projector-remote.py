@@ -129,9 +129,46 @@ async def inspect_power(config, remote=None):
         remote.disconnect()
 
 
+async def open_stremio(config, link):
+    if not re.fullmatch(r'stremio:///detail/(?:movie|series)/tt\d{7,10}/(?:tt\d{7,10}(?::\d{1,3}:\d{1,4})?)?\?autoPlay=false', link or ''):
+        raise ValueError('Invalid Stremio link')
+    if config.get('paired') is not True or config.get('enabled') is not True:
+        return {'accepted': False}
+    # Only connection attempts are repeated while the projector boots; launch is sent once.
+    deadline = asyncio.get_running_loop().time() + 50
+    while asyncio.get_running_loop().time() < deadline:
+        remote = remote_for(config['host'])
+        try:
+            _, mac = await asyncio.wait_for(remote.async_get_name_and_mac(), 3)
+            if mac != config.get('mac'):
+                raise ValueError('Device identity changed; pair again')
+            await asyncio.wait_for(remote.async_connect(), 5)
+        except (OSError, asyncio.TimeoutError):
+            remote.disconnect()
+            await asyncio.sleep(2)
+            continue
+        except Exception as error:
+            remote.disconnect()
+            if type(error).__name__ == 'CannotConnect':
+                await asyncio.sleep(2)
+                continue
+            raise
+        try:
+            if remote.is_on is not True:
+                await asyncio.sleep(2)
+                continue
+            remote.send_launch_app_command(link)
+            await asyncio.sleep(0.5)
+            return {'accepted': True}
+        finally:
+            remote.disconnect()
+    return {'accepted': False}
+
+
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['pair', 'on', 'off', 'status', 'check'])
+    parser.add_argument('action', choices=['pair', 'on', 'off', 'status', 'check', 'stremio'])
+    parser.add_argument('--link')
     parser.add_argument('--host', type=private_host)
     args = parser.parse_args()
     os.umask(0o077)
@@ -142,7 +179,9 @@ async def main():
         await pair(args.host)
         return
     config = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
-    if args.action == 'status':
+    if args.action == 'stremio':
+        print(json.dumps(await open_stremio(config, args.link)))
+    elif args.action == 'status':
         print(json.dumps({'configured': config.get('paired') is True and config.get('enabled') is True}))
     elif args.action == 'check':
         print(json.dumps(await inspect_power(config)))

@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { cn, isIPhoneDevice } from "@/lib/utils";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
+import { StremioConnection } from "@/components/films/stremio_progress";
 
 const ShareListModal = dynamic(
   () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
@@ -216,6 +217,7 @@ export default function FilmsSeriesInstellingenPage() {
             </button>
           </section>
         </div>
+        <StremioConnection />
       </main>
 
       <ShareListModal

@@ -4,24 +4,36 @@ import * as React from "react";
 import Link from "next/link";
 import { googleAuthHeaders } from "@/lib/google-client";
 import { cn } from "@/lib/utils";
+import { sendProjectorCommand } from "@/lib/projector-client";
+import { projectorTestMessage } from "@/lib/projector-control";
 
 import { isScreenActionDisabled, type ScreenStatus, type ScreenAction as Action } from "@/lib/projection-screen";
 
-const ACTIONS = [
+export const ACTIONS = [
   { action: "up", label: "Omhoog", icon: "up" },
   { action: "stop", label: "Stop", icon: "stop" },
   { action: "down", label: "Omlaag", icon: "down" },
   { action: "preset", label: "Mijn hoogte", icon: "preset" },
 ] as const;
 
-function ScreenIcon({ kind }: { kind: (typeof ACTIONS)[number]["icon"] }) {
+export function PowerIcon({ on }: { on: boolean }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-5 w-5">
+    {on ? <><path d="M12 3v8" /><path d="M6.4 6.6a8 8 0 1 0 11.2 0" /></> : <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />}
+  </svg>;
+}
+
+export function ScreenIcon({ kind }: { kind: (typeof ACTIONS)[number]["icon"] }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-6 w-6">
     {kind === "stop" ? <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none" /> : kind === "preset" ? <><path d="M4 4h16M6 4v11h12V4M12 15v5M9 20h6" /><path d="m9 10 3-3 3 3" /></> : <path d={kind === "up" ? "m6 14 6-6 6 6" : "m6 10 6 6 6-6"} />}
   </svg>;
 }
 
-/** Reuses the authenticated local API. No RF command is sent on mount or retried. */
-export function DashboardScreenPanel({ token }: { token: string | null }) {
+/**
+ * Screen and projector state, shared by the dashboard panel and the control window. Reuses the authenticated local
+ * API; no RF command is sent on mount or retried. `projectorStatus` also reads the Pi's last reported power state
+ * (a database read, never a command).
+ */
+export function useScreenControls(token: string | null, { projectorStatus = false }: { projectorStatus?: boolean } = {}) {
   const [screen, setScreen] = React.useState<ScreenStatus | null>(null);
   const [statusVersion, setStatusVersion] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
@@ -48,7 +60,8 @@ export function DashboardScreenPanel({ token }: { token: string | null }) {
     if (token) void call("status", controller.signal).then(data => {
       if (controller.signal.aborted) return;
       setScreen(data);
-      setMessage(data.paused ? "Schermbediening is gepauzeerd." : data.configured ? "Kies een schermopdracht." : "Stel de BroadLink-schermbediening eerst in.");
+      setMessage(data.paused ? "Schermbediening is gepauzeerd." : !data.configured ? "Stel de BroadLink-schermbediening eerst in."
+        : data.durationSeconds != null ? `Mijn hoogte ${data.durationSeconds.toLocaleString("nl-BE", { maximumFractionDigits: 2 })} s · begin volledig omlaag` : "Kies een schermopdracht.");
     }).catch(error => {
       if (controller.signal.aborted) return;
       setMessage(error instanceof Error && error.message === "mac-required"
@@ -63,6 +76,7 @@ export function DashboardScreenPanel({ token }: { token: string | null }) {
     const current = ++command.current;
     busyRef.current = true;
     setBusy(true);
+    setProjectorMessage(null);
     if (action === "preset") setScreen(value => value ? { ...value, running: true } : value);
     setMessage(action === "preset" ? "Omhoog naar je opgeslagen hoogte… Stop blijft beschikbaar." : "Opdracht versturen…");
     try {
@@ -77,6 +91,34 @@ export function DashboardScreenPanel({ token }: { token: string | null }) {
       setMessage("Opdracht niet bevestigd. Controleer het scherm; je kunt nog op Stop drukken.");
     } finally {
       if (mounted.current && current === command.current) { busyRef.current = false; setBusy(false); }
+    }
+  }
+
+  // Projector only (never moves the screen): one command at a time, never retried.
+  const [projectorBusy, setProjectorBusy] = React.useState(false);
+  const [projectorMessage, setProjectorMessage] = React.useState<string | null>(null);
+  const projectorLock = React.useRef(false);
+  const [projectorOn, setProjectorOn] = React.useState<boolean | null>(null);
+  React.useEffect(() => {
+    if (!projectorStatus || !token) return;
+    let active = true;
+    void sendProjectorCommand("status", token).then(result => { if (active && result.accepted) setProjectorOn(result.isOn ?? null); }).catch(() => { /* status unknown */ });
+    return () => { active = false; };
+  }, [projectorStatus, token]);
+  async function sendProjector(action: "on" | "off") {
+    if (projectorLock.current || !token) return;
+    projectorLock.current = true;
+    setProjectorBusy(true);
+    setProjectorMessage(action === "on" ? "Projector aanzetten… dit kan tot 10 seconden duren." : "Projector uitzetten… dit kan tot 10 seconden duren.");
+    try {
+      const result = await sendProjectorCommand(action, token);
+      if (mounted.current) setProjectorMessage(projectorTestMessage(action, result));
+      if (mounted.current && result.accepted) setProjectorOn(action === "on");
+    } catch {
+      if (mounted.current) setProjectorMessage("De projectoropdracht is niet bevestigd. Controleer het beeld voordat je opnieuw probeert.");
+    } finally {
+      projectorLock.current = false;
+      if (mounted.current) setProjectorBusy(false);
     }
   }
 
@@ -98,25 +140,45 @@ export function DashboardScreenPanel({ token }: { token: string | null }) {
     }, 2000);
     return () => { window.clearInterval(timer); controller.abort(); };
   }, [moving, ready, call]);
+  const recheck = () => setStatusVersion(value => value + 1);
+  return { screen, busy, message, ready, send, recheck, projectorBusy, projectorMessage, projectorOn, sendProjector };
+}
+
+/** Variant A (design/screen-controls-options.html): scherm en projector op één rij, één statusregel eronder. */
+export function DashboardScreenPanel({ token, variant = "dark" }: { token: string | null; variant?: "dark" | "light" }) {
+  const { screen, busy, message, ready, send, recheck, projectorBusy, projectorMessage, sendProjector } = useScreenControls(token);
+  const light = variant === "light";
+  const secondary = light ? "text-[var(--text-secondary)]" : "text-fixed-white/75";
+  const control = light ? "border border-[var(--border-subtle)] bg-[var(--white)] text-[var(--text-primary)] hover:bg-[var(--bg-app)]" : "bg-fixed-white/10 text-fixed-white hover:bg-fixed-white/20";
+  const tile = "flex h-[62px] min-w-0 flex-col items-center justify-center gap-[3px] rounded-[14px] px-1 text-[11px] font-bold leading-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white";
   return <div className="flex min-w-0 w-full flex-col gap-2" aria-label="Projectiescherm bedienen">
-    <div className="grid grid-cols-4 gap-2">
+    <div className={cn("grid grid-cols-[4fr_2fr] gap-[13px] text-[10px] font-extrabold leading-3", secondary)} aria-hidden>
+      <span>SCHERM</span><span>PROJECTOR</span>
+    </div>
+    <div className="grid grid-cols-[repeat(4,minmax(0,1fr))_1px_repeat(2,minmax(0,1fr))] gap-1.5">
       {ACTIONS.map(({ action, label, icon }) => <button key={action} type="button"
         aria-label={action === "preset" ? "Omhoog naar opgeslagen hoogte" : `Projectiescherm ${label.toLowerCase()}`}
         disabled={isScreenActionDisabled(action, screen, busy)}
         onClick={() => void send(action)}
         title={action === "preset" ? "Start met het scherm helemaal omlaag; gebruikt de opgeslagen looptijd." : undefined}
-        className={cn("flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white", action === "stop" ? "bg-[#f4d8cb] text-[#572e38] hover:bg-[#ffe7dc]" : "bg-fixed-white/10 text-fixed-white hover:bg-fixed-white/20")}>
-        <ScreenIcon kind={icon} /><span>{label}</span>
+        className={cn(tile, light && "rounded-lg focus-visible:ring-[var(--text-primary)]", action === "stop" ? "bg-[#f4d8cb] text-[#572e38] hover:bg-[#ffe7dc]" : control)}>
+        <ScreenIcon kind={icon} /><span className="text-center">{label}</span>
+      </button>)}
+      <span aria-hidden className={cn("my-2", light ? "bg-[var(--border-subtle)]" : "bg-fixed-white/30")} />
+      {([["on", "Aan"], ["off", "Uit"]] as const).map(([action, label]) => <button key={action} type="button"
+        aria-label={`Projector ${label.toLowerCase()}, zonder het scherm te bewegen`}
+        aria-busy={projectorBusy}
+        disabled={!token || projectorBusy}
+        onClick={() => void sendProjector(action)}
+        className={cn(tile, control, light && "rounded-lg focus-visible:ring-[var(--text-primary)]")}>
+        <PowerIcon on={action === "on"} /><span>{label}</span>
       </button>)}
     </div>
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] leading-4 text-fixed-white/70">
-      <span>{screen?.durationSeconds != null ? `Mijn hoogte: ${screen.durationSeconds.toLocaleString("nl-BE", { maximumFractionDigits: 2 })} s · begin volledig omlaag` : "Mijn hoogte nog niet ingesteld"}</span>
-      <Link href="/profiel/projectiescherm" className="font-bold text-fixed-white/90 underline underline-offset-2">Hoogte instellen</Link>
-    </div>
-    {screen?.projectorConfigured && <p className="text-[11px] leading-4 text-fixed-white/70">Omhoog / Mijn hoogte: projector aan · Omlaag: projector uit.</p>}
-    <div className="flex flex-wrap items-center justify-between gap-1">
-      <p role="status" aria-live="polite" className="text-[11px] leading-4 text-fixed-white/75">{message}</p>
-      {!ready && token && <button type="button" onClick={() => setStatusVersion(value => value + 1)} className="min-h-8 text-xs font-bold text-fixed-white underline underline-offset-2">Opnieuw controleren</button>}
+    <div className={cn("flex min-w-0 flex-wrap items-center justify-between gap-3 text-[11px] leading-[15px]", secondary)}>
+      <p role="status" aria-live="polite" className={cn("min-w-0", !light && "truncate")} title={projectorMessage ?? message}>{projectorMessage ?? message}</p>
+      {!ready && token
+        ? <button type="button" onClick={recheck} className="shrink-0 font-bold underline underline-offset-2">Opnieuw controleren</button>
+        : <Link href="/profiel/projectiescherm" className="shrink-0 font-bold underline underline-offset-2">Hoogte instellen</Link>}
     </div>
   </div>;
 }

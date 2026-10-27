@@ -456,7 +456,7 @@ export function DashboardReminders({ userId }: { userId: string }) {
 }
 
 /**
- * Moment van de dag voor het dashboard: ochtend (5 – 10 u), avond (20 – 23 u) of overdag.
+ * Moment van de dag voor het dashboard: ochtend (5 – 10 u), avond (19 – 23 u) of overdag.
  * Testen kan op elk uur met `?moment=ochtend|dag|avond` in de adresbalk (blijft hangen in deze tab tot
  * «Echte tijd» of `?moment=auto`); er verschijnt dan een kleine schakelaar bovenaan.
  */
@@ -471,7 +471,7 @@ const MOMENT_TEST_KEY = "dashboard-moment-test";
 export function momentAt(d: Date): DashboardMoment {
   const h = d.getHours();
   if (h >= 5 && h < 10) return "ochtend";
-  if (h >= 20 && h < 23) return "avond";
+  if (h >= 19 && h < 23) return "avond";
   return "dag";
 }
 

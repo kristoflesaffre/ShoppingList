@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { googleRequestOrigin } from "@/lib/google-dashboard-auth";
 import { verifiedUserId } from "./google-connection-store";
 import { projectorConfigured, wakeProjector, sleepProjector, inspectProjector } from "./projector-local";
+import { temporaryProjectorHost } from "./projector-temporary";
 
 /** Projector-only controls. Never call BroadLink or start a screen movement. */
 export async function projectorLocal(request: NextRequest) {
   const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
   const local = (host: string) => ["localhost", "127.0.0.1", "[::1]"].includes(host);
-  if (process.env.NETLIFY || process.env.VERCEL || !local(request.nextUrl.hostname)) return reply({ error: "mac-required" }, 503);
+  const temporary = temporaryProjectorHost(request);
+  if (process.env.NETLIFY || process.env.VERCEL || (!local(request.nextUrl.hostname) && !temporary)) return reply({ error: "mac-required" }, 503);
   const origin = googleRequestOrigin(request);
-  if (!local(new URL(origin).hostname)) return reply({ error: "mac-required" }, 503);
+  if (!local(new URL(origin).hostname) && !temporary) return reply({ error: "mac-required" }, 503);
   if (request.headers.get("origin") !== origin) return reply({ error: "invalid-origin" }, 403);
   const owner = await verifiedUserId(request);
   if (!owner) return reply({ error: "not-signed-in" }, 401);

@@ -12,6 +12,7 @@ export type WatchedProgress = {
 };
 
 export type WatchingTvItem = {
+  stremio?: import("./stremio-progress").StremioProgress & { stale: boolean };
   tmdbId: string;
   id: string;
   title: string;

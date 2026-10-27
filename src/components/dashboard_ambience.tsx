@@ -25,13 +25,6 @@ import { cn } from "@/lib/utils";
 const tile = "relative overflow-hidden rounded-[24px]";
 const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white";
 
-function FlameIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
-      <path d="M12 2.5c.6 3-1.6 4.6-2.9 6.4C7.9 10.6 7 12.1 7 14.2a5 5 0 0 0 10 0c0-1.7-.7-3-1.5-4.1-.2 1.2-.8 2.2-1.9 2.6.6-3.6-.4-7.6-1.6-10.2z" />
-    </svg>
-  );
-}
 function PlayIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden className={className}>
@@ -318,23 +311,20 @@ export function DashboardAmbienceTile() {
 
   const pill = "pointer-events-auto flex h-9 items-center justify-center rounded-pill text-[12.5px] font-extrabold disabled:opacity-70";
   return (
-    <section aria-label="Sfeer op tv" className={cn(tile, "flex w-[124px] shrink-0 flex-col bg-[linear-gradient(165deg,#ff9a5a,#e5618a_70%)] text-fixed-white shadow-[0_14px_32px_-24px_rgba(229,97,138,0.8)] [[data-theme=dark]_&]:bg-[linear-gradient(165deg,#5a2a3a,#3a1f36_60%,#261630)] [[data-theme=dark]_&]:shadow-[0_0_0_1px_#4a2a40] [[data-sunset]_&]:bg-none [[data-sunset]_&]:bg-fixed-white/20 [[data-sunset]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)] [[data-sunset]_&]:backdrop-blur-[14px]")}>
-      {last ? (
-        <>
-          {/* YouTube-miniaturen (4:3) hebben zwarte balken boven en onder: 4/3 ÷ 16/9 = 1,34× inzoomen haalt ze weg. */}
-          <span aria-hidden className="absolute inset-0 scale-[1.34]">
-            {/* eslint-disable-next-line @next/next/no-img-element -- YouTube-miniatuur van de laatst gekozen sfeer */}
-            <img src={last.thumbnail} alt="" className="aod-kenburns size-full object-cover [[data-theme=dark]_&]:brightness-[0.75]" />
-          </span>
-          <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.15)_0%,rgba(0,0,0,0)_30%,rgba(20,10,30,0.88)_100%)]" />
-        </>
-      ) : null}
+    <section aria-label="Sfeer op tv" className={cn(tile, "flex w-[124px] shrink-0 flex-col bg-[#17131d] text-fixed-white shadow-[0_14px_32px_-24px_rgba(0,0,0,0.65)]")}>
+      {/* Only YouTube thumbnails need the zoom that removes their letterbox bars. */}
+      <span aria-hidden className={cn("absolute inset-0", last && "scale-[1.34]")}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- Generated local default or selected YouTube thumbnail. */}
+        <img src={last?.thumbnail ?? "/images/ambience/fireplace-default.webp"} alt="" className={cn("size-full object-cover", last ? "aod-kenburns [[data-theme=dark]_&]:brightness-[0.85]" : "origin-top scale-[1.25] object-[50%_30%] brightness-110")} />
+      </span>
+      {!last ? <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[30%] backdrop-blur-[2px] [mask-image:linear-gradient(180deg,transparent,black)]" /> : null}
+      <span aria-hidden className={cn("pointer-events-none absolute inset-0", last ? "bg-[linear-gradient(180deg,rgba(12,10,18,0.35)_0%,rgba(12,10,18,0)_28%,rgba(23,19,29,0.12)_48%,rgba(23,19,29,0.94)_100%)]" : "bg-[linear-gradient(180deg,transparent_50%,rgba(12,10,18,0.2)_75%,rgba(12,10,18,0.38)_100%)]")} />
+      <span aria-hidden className="pointer-events-none absolute inset-0 z-[2] rounded-[inherit] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.24)]" />
       <button type="button" onClick={() => setOpen(true)} aria-label="Sfeer kiezen" className={cn("absolute inset-0 z-[1] rounded-[24px]", focusRing)} />
-      <div className="pointer-events-none relative z-[2] flex flex-1 flex-col items-center justify-between gap-2 px-2.5 py-3 text-center">
-        <span className="text-[11px] font-extrabold tracking-[0.08em] text-fixed-white/90">SFEER</span>
-        {last ? null : <FlameIcon className="size-14 text-fixed-white/90 drop-shadow-[0_8px_14px_rgba(120,20,40,0.45)]" />}
+      <div className={cn("pointer-events-none relative z-[2] flex flex-1 flex-col items-center gap-2 px-2.5 py-3 text-center", last ? "justify-between" : "justify-end")}>
+        {last ? <span className="text-[11px] font-extrabold tracking-normal text-fixed-white/90">SFEER OP TV</span> : null}
         <span className="flex w-full flex-col items-center gap-2">
-          <span className="line-clamp-3 text-[12.5px] font-extrabold leading-tight">{player.playing ? `Bezig… ${player.elapsed} s` : last ? last.title : "Ambience op tv"}</span>
+          <span className={cn("line-clamp-3 font-extrabold leading-tight", last ? "text-[12.5px]" : "text-[15px]")}>{last ? player.playing ? `Bezig… ${player.elapsed} s` : last.title : "Sfeer op tv"}</span>
           {last ? (
             <span className="flex w-full items-center gap-1.5">
               <button

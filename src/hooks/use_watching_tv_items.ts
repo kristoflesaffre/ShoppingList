@@ -3,6 +3,9 @@
 import * as React from "react";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import type { WatchlistItem } from "@/lib/watchlist";
+import { useStremio } from "@/hooks/use_stremio";
+import { mergeStremioWatching } from "@/lib/stremio-watching";
+import { stremioTitleMapping } from "@/lib/stremio-title-mapping";
 import {
   buildNewSeasonItems,
   buildWatchingTvItems,
@@ -50,6 +53,29 @@ export function useWatchingTvItems() {
   } = useFilmsLibrary();
 
   const [fetchedSeasons, setFetchedSeasons] = React.useState<Record<string, TvSeasonInfo[]>>({});
+  const stremio = useStremio();
+  const [imdbByTmdbId, setImdbByTmdbId] = React.useState<Record<string, string | null>>({});
+  const mappingIds = watchlist.filter(item => item.type === "tv" && /^tv-\d+$/.test(item.id)).map(item => item.id.slice(3)).sort().join(",");
+  const hasStremioProgress = stremio.connected && stremio.items.length > 0;
+  React.useEffect(() => {
+    if (!hasStremioProgress || !mappingIds) return;
+    let active = true;
+    const ids = Array.from(new Set(mappingIds.split(",")));
+    let index = 0;
+    const worker = async () => {
+      while (active && index < ids.length) {
+        const tmdbId = ids[index++];
+        try {
+          const mapping = await stremioTitleMapping(tmdbId);
+          if (!active) return;
+          setImdbByTmdbId(prev => prev[tmdbId] === mapping.imdbId ? prev : { ...prev, [tmdbId]: mapping.imdbId });
+          setFetchedSeasons(prev => prev[tmdbId] === mapping.seasons ? prev : { ...prev, [tmdbId]: mapping.seasons });
+        } catch { /* Retry unavailable metadata on the next Stremio snapshot. */ }
+      }
+    };
+    void Promise.all(Array.from({ length: Math.min(4, ids.length) }, worker));
+    return () => { active = false; };
+  }, [mappingIds, hasStremioProgress, stremio.syncedAt]);
   /** Seizoenen zoals TMDB ze nu kent, ook aangekondigde zonder afleveringen (voor «Nieuw seizoen»). */
   const [rawSeasons, setRawSeasons] = React.useState<Record<string, TvSeasonInfo[]>>({});
   const [dismissedNewSeasons, setDismissedNewSeasons] = React.useState<Set<string>>(() => new Set());
@@ -59,13 +85,13 @@ export function useWatchingTvItems() {
 
   const watchingItems = React.useMemo(
     () =>
-      buildWatchingTvItems({
+      mergeStremioWatching({ manual: buildWatchingTvItems({
         watchedIds,
         watchlist,
         seriesMeta,
         seasonsByTmdbId: fetchedSeasons,
-      }),
-    [watchedIds, watchlist, seriesMeta, fetchedSeasons],
+      }), watchlist, watchedIds, progress: stremio.connected ? stremio.items : [], imdbByTmdbId, stale: Boolean(stremio.error) }),
+    [watchedIds, watchlist, seriesMeta, fetchedSeasons, stremio.connected, stremio.items, stremio.error, imdbByTmdbId],
   );
 
   const newSeasonItems = React.useMemo(
@@ -173,7 +199,7 @@ export function useWatchingTvItems() {
   const markNextEpisode = React.useCallback(
     async (item: WatchingTvItem) => {
       const seasons = getSeasonsFor(item.tmdbId);
-      const next = getEpisodeIdAfterWatchingNext(item.lastWatched, seasons);
+      const next = item.stremio ? { season: item.nextSeason, episode: item.nextEpisode } : getEpisodeIdAfterWatchingNext(item.lastWatched, seasons);
       if (!next) {
         await removeFromWatchlist(item.id);
         return { completed: true as const, epId: null, episode: null };
