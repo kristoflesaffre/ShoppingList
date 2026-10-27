@@ -21,6 +21,8 @@ import {
   type AmbienceVideo,
 } from "@/lib/ambience-client";
 import { cn } from "@/lib/utils";
+import { RoundIconButton } from "@/components/ui/round_icon_button";
+import { MiniButton } from "@/components/ui/mini_button";
 
 const tile = "relative overflow-hidden rounded-[24px]";
 const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white";
@@ -96,7 +98,7 @@ function useTvPlayer(token: string | null) {
 
 function VideoCard({ video, busy, locked, elapsed, onPlay }: { video: AmbienceVideo; busy: boolean; locked: boolean; elapsed: number; onPlay: () => void }) {
   return (
-    <li className="w-[232px] shrink-0 snap-start">
+    <li className="w-[200px] shrink-0 snap-start md:w-[232px]">
       <button
         type="button"
         onClick={onPlay}
@@ -170,13 +172,13 @@ function Shelf({
       ) : !videos ? (
         <div className="flex gap-3" aria-busy aria-label={`${shelf.label} laden`}>
           {Array.from({ length: 4 }, (_, i) => (
-            <span key={i} className="h-[190px] w-[232px] shrink-0 animate-pulse rounded-[18px] bg-fixed-white/[0.06]" />
+            <span key={i} className="h-[170px] w-[200px] shrink-0 md:h-[190px] md:w-[232px] animate-pulse rounded-[18px] bg-fixed-white/[0.06]" />
           ))}
         </div>
       ) : videos.length === 0 ? (
         <p className="text-sm text-fixed-white/60">Geen video’s gevonden.</p>
       ) : (
-        <ul className="-mx-7 flex snap-x gap-3 overflow-x-auto scroll-px-7 px-7 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 md:-mx-7 md:scroll-px-7 md:px-7 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {videos.map((v) => (
             <VideoCard
               key={v.id}
@@ -220,15 +222,17 @@ export function AmbienceModal({ onClose }: { onClose: () => void }) {
   const searchShelf: AmbienceShelf | null = query ? { key: "zoek", label: `Zoekresultaten voor «${query}»`, query } : null;
 
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Sfeer op tv" onClick={() => !player.playing && onClose()} className="fixed inset-0 z-[70] flex bg-[rgba(8,9,24,0.6)] p-7 backdrop-blur-sm motion-safe:animate-fade-up">
+    <div role="dialog" aria-modal="true" aria-label="Sfeer op tv" onClick={() => !player.playing && onClose()} className="fixed inset-0 z-[70] flex items-end bg-[rgba(8,9,24,0.6)] pt-10 backdrop-blur-sm motion-safe:animate-fade-up md:items-stretch md:p-7">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex min-h-0 w-full flex-col gap-5 rounded-[28px] bg-[linear-gradient(160deg,#232b48_0%,#1a2036_55%,#141a2c_100%)] px-7 py-6 text-fixed-white shadow-[inset_0_0_0_1px_rgba(160,180,255,0.22),0_40px_80px_-30px_rgba(0,0,0,0.8)]"
+        className="relative flex h-full min-h-0 w-full flex-col gap-4 rounded-t-[26px] bg-[linear-gradient(160deg,#232b48_0%,#1a2036_55%,#141a2c_100%)] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-2.5 text-fixed-white md:h-auto md:gap-5 md:rounded-[28px] md:px-7 md:py-6 shadow-[inset_0_0_0_1px_rgba(160,180,255,0.22),0_40px_80px_-30px_rgba(0,0,0,0.8)]"
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
+        {/* Gsm: blad met greepje; titel + sluiten op één rij, zoeken eronder over de volle breedte. */}
+        <span aria-hidden className="mx-auto h-[5px] w-9 shrink-0 rounded-full bg-fixed-white/30 md:hidden" />
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
+          <div className="min-w-0 pr-12 md:pr-0">
             <p className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/60">SFEER OP TV</p>
-            <h2 className="mt-0.5 text-[30px] font-extrabold tracking-[-0.02em]">Kies je sfeer</h2>
+            <h2 className="mt-0.5 text-[24px] font-extrabold tracking-[-0.02em] md:text-[30px]">Kies je sfeer</h2>
             <p role="status" aria-live="polite" className={cn("mt-1 text-sm text-fixed-white/75", !player.playing && !player.message && "sr-only")}>
               {player.playing ? `Bezig op de tv: aanzetten, YouTube openen, Chloé kiezen en afspelen… (${player.elapsed} s)` : player.message}
             </p>
@@ -241,7 +245,7 @@ export function AmbienceModal({ onClose }: { onClose: () => void }) {
                 const q = draft.trim();
                 setQuery(q || null);
               }}
-              className="flex h-11 w-[300px] items-center gap-2 rounded-pill bg-fixed-white/[0.12] pl-4 pr-1.5"
+              className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-pill md:w-[300px] md:flex-none bg-fixed-white/[0.12] pl-4 pr-1.5"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-4 shrink-0 text-fixed-white/70">
                 <circle cx="11" cy="11" r="6.5" />
@@ -259,7 +263,7 @@ export function AmbienceModal({ onClose }: { onClose: () => void }) {
                 className="min-w-0 flex-1 bg-transparent text-[15px] text-fixed-white placeholder:text-fixed-white/50 focus:outline-none"
               />
             </form>
-            <button type="button" onClick={onClose} disabled={!!player.playing} aria-label="Sluiten" className={cn("flex size-10 items-center justify-center rounded-full bg-fixed-white/[0.12] disabled:opacity-40", focusRing)}>
+            <button type="button" onClick={onClose} disabled={!!player.playing} aria-label="Sluiten" className={cn("absolute right-4 top-6 flex size-10 items-center md:static justify-center rounded-full bg-fixed-white/[0.12] disabled:opacity-40", focusRing)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-4">
                 <path d="M6 6l12 12M18 6L6 18" />
               </svg>
@@ -267,7 +271,7 @@ export function AmbienceModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="-mx-7 flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-7 pb-2">
+        <div className="-mx-4 flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-4 pb-2 md:-mx-7 md:px-7">
           {searchShelf ? <Shelf key={searchShelf.query} shelf={searchShelf} seasonal={false} token={token} player={player} onPlayed={onPlayed} /> : null}
           {shelves.map((shelf, i) => (
             <Shelf key={shelf.key} shelf={shelf} seasonal={i < seasonalCount} token={token} player={player} onPlayed={onPlayed} />
@@ -368,4 +372,48 @@ export function AmbienceTileOr({ fallback }: { fallback: React.ReactNode }) {
     };
   }, [token]);
   return available ? <DashboardAmbienceTile /> : <>{fallback}</>;
+}
+
+/* ---------------- Startpagina «Woonkamer»: tv met sfeer starten ---------------- */
+
+/** Witte kaart onder de woonkamerbediening: laatste sfeer opnieuw starten of een andere kiezen. Enkel als de tv bedienbaar is. */
+export function AmbienceLauncherOrNothing() {
+  const token = useGoogleAuthToken();
+  const [available, setAvailable] = React.useState(false);
+  React.useEffect(() => {
+    let active = true;
+    void ambienceAvailable(token).then((ok) => active && setAvailable(ok));
+    return () => {
+      active = false;
+    };
+  }, [token]);
+  return available ? <AmbienceLauncher /> : null;
+}
+
+function AmbienceLauncher() {
+  const token = useGoogleAuthToken();
+  const last = useLastAmbience();
+  const player = useTvPlayer(token);
+  const [open, setOpen] = React.useState(false);
+  return (
+    <section aria-label="Sfeer op tv" className="flex min-w-0 items-center gap-3 rounded-[20px] bg-[var(--white)] p-2.5 pr-3 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+      <span aria-hidden className="relative aspect-video w-[96px] shrink-0 overflow-hidden rounded-[12px] bg-[#17131d]">
+        {/* eslint-disable-next-line @next/next/no-img-element -- Generated local default or selected YouTube thumbnail. */}
+        <img src={last?.thumbnail ?? "/images/ambience/fireplace-default.webp"} alt="" className={cn("size-full object-cover", last && "scale-[1.34]")} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-semibold leading-5 text-[var(--text-primary)]">Tv met sfeer</span>
+        <span role="status" aria-live="polite" className="block truncate text-[12.5px] leading-4 text-[var(--text-secondary)]">
+          {player.playing ? `Tv aanzetten en afspelen… ${player.elapsed} s` : player.message ?? last?.title ?? "Haardvuur, regen, sneeuw… op de tv"}
+        </span>
+      </span>
+      {last ? (
+        <RoundIconButton tone="primary" size={36} aria-label={`«${last.title}» afspelen op de tv`} disabled={!!player.playing || !token} onClick={() => void player.play(last)}>
+          <PlayIcon className="ml-0.5" />
+        </RoundIconButton>
+      ) : null}
+      <MiniButton variant="secondary" onClick={() => setOpen(true)} disabled={!!player.playing}>{last ? "Wijzig" : "Kies sfeer"}</MiniButton>
+      {open ? <AmbienceModal onClose={() => setOpen(false)} /> : null}
+    </section>
+  );
 }

@@ -10,6 +10,8 @@ import { blindLabel, openPercent, slatsOpen, type Blind } from "@/lib/brel-blind
 import { useBlindsControls } from "@/components/dashboard_blinds_panel";
 import { useScreenControls } from "@/components/dashboard_screen_panel";
 import { isScreenActionDisabled } from "@/lib/projection-screen";
+import { ControlRail } from "@/components/ui/control_rail";
+import { AmbienceLauncherOrNothing } from "@/components/dashboard_ambience";
 
 const Icon = {
   up: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m6 15 6-6 6 6" /></svg>,
@@ -32,18 +34,38 @@ function SlatsControl({ blind, disabled, onTilt }: { blind: Blind; disabled: boo
     options={[{ value: "open", label: Icon.slatsOpen, ariaLabel: "Lamellen open" }, { value: "dicht", label: Icon.slatsClosed, ariaLabel: "Lamellen dicht" }]} />;
 }
 
-/** Drie ronde knoppen onder elkaar (variant B): omhoog · stop · omlaag. */
-function ControlStack({ name, up, stop, down }: {
+type Controls = {
   name: string;
-  up: { label: string; icon?: React.ReactNode; disabled: boolean; onClick: () => void };
+  up: { label: string; disabled: boolean; onClick: () => void };
   stop: { disabled: boolean; onClick: () => void };
   down: { label: string; disabled: boolean; onClick: () => void };
-}) {
-  return <div className="flex shrink-0 flex-col gap-2" role="group" aria-label={`${name} bedienen`}>
-    <RoundIconButton tone="surface" size={48} aria-label={`${name}: ${up.label}`} title={up.label} disabled={up.disabled} onClick={up.onClick}>{up.icon ?? Icon.up}</RoundIconButton>
-    <RoundIconButton tone="danger" size={48} aria-label={`${name}: stop`} title="Stop" disabled={stop.disabled} onClick={stop.onClick}>{Icon.stop}</RoundIconButton>
-    <RoundIconButton tone="surface" size={48} aria-label={`${name}: ${down.label}`} title={down.label} disabled={down.disabled} onClick={down.onClick}>{Icon.down}</RoundIconButton>
-  </div>;
+};
+
+type Heading = "up" | "down";
+
+/**
+ * Welke richting loopt er, per toestel: omhoog/omlaag blijven ingedrukt tot het einde bereikt is (`done`), tot stop,
+ * of tot `maxMs` verstreken is (het scherm heeft geen sensor).
+ */
+function useHeadings(done: (key: string, heading: Heading) => boolean, /** Opnieuw nagaan als dit verandert (de stand). */ watch: unknown) {
+  const [headings, setHeadings] = React.useState<Record<string, { heading: Heading; until: number }>>({});
+  const set = React.useCallback((key: string, heading: Heading | null, maxMs = 90_000) => setHeadings(current => {
+    const next = { ...current };
+    if (heading) next[key] = { heading, until: Date.now() + maxMs }; else delete next[key];
+    return next;
+  }), []);
+  // Opruimen zodra het einde bereikt is of de tijd om is.
+  const doneRef = React.useRef(done);
+  doneRef.current = done;
+  React.useEffect(() => {
+    const entries = Object.entries(headings);
+    if (!entries.length) return;
+    const finished = entries.filter(([key, value]) => value.until < Date.now() || doneRef.current(key, value.heading));
+    if (finished.length) { setHeadings(current => { const next = { ...current }; for (const [key] of finished) delete next[key]; return next; }); return; }
+    const timer = window.setTimeout(() => setHeadings(current => ({ ...current })), Math.max(250, Math.min(...entries.map(([, value]) => value.until - Date.now()))));
+    return () => window.clearTimeout(timer);
+  }, [headings, watch]);
+  return { heading: (key: string) => headings[key]?.heading ?? null, set };
 }
 
 /** Zwart rolluik in een capsule: de lamellen zakken van boven tot de stand. Slepen kiest een stand, zoals de Hue-kolommen. */
@@ -108,29 +130,47 @@ function BlindCapsule({ blind, disabled, onMove, dark = false, showLabel = true,
         : "bg-[repeating-linear-gradient(180deg,#30323e_0,#30323e_3px,#1d1e26_8px,#0b0c10_9px,#30323e_10px)]", preview == null && "transition-[height] duration-500 ease-out")}
       style={{ height: `${closed}%` }}
     />
-    {showLabel ? <span aria-hidden className={cn("absolute inset-x-0 bottom-4 text-center text-[15px] font-extrabold tabular-nums", closed > 82 ? "text-fixed-white" : "text-[#5a3300]")}>
-      {blind.position == null ? "–" : open <= 2 ? null : `${open}%`}
-    </span> : null}
+    {showLabel ? <>
+      {/* Stand: midden in het open stuk, of op de lamellen als dat te smal is. */}
+      {blind.position == null || open > 2 ? <span aria-hidden
+        className={cn("absolute inset-x-0 -translate-y-1/2 text-center text-[15px] font-extrabold tabular-nums", open >= 34 ? "text-[#5a3300]" : "text-fixed-white")}
+        style={{ top: `${open >= 34 ? closed + open / 2 : closed / 2}%` }}>
+        {blind.position == null ? "–" : `${open}%`}
+      </span> : null}
+      {/* Greep op de onderkant van de lamellen, zoals in de BREL-app: sleep hem naar de gewenste hoogte. */}
+      <span aria-hidden
+        className={cn("absolute left-1/2 flex size-10 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full bg-[var(--white)] text-[var(--text-primary)] shadow-[0_6px_14px_-4px_rgba(16,17,48,0.55)] [&_svg]:-my-[3px] [&_svg]:size-4",
+          preview == null ? "transition-[top] duration-500 ease-out" : "scale-110")}
+        style={{ top: `clamp(22px, ${closed}%, calc(100% - 22px))` }}>
+        {Icon.up}{Icon.down}
+      </span>
+    </> : null}
   </button>;
 }
 
 /** Wit projectiescherm dat van onder uit zijn kast omhoog komt, met een kleine projector ervoor. Geen sensor: open/dicht volgt de laatste opdracht. */
-function ScreenScene({ open, projectorOn, dark = false, className }: { open: boolean; projectorOn: boolean; dark?: boolean; className?: string }) {
+function ScreenScene({ open, projectorOn, dark = false, className, stageClassName }: {
+  open: boolean; projectorOn: boolean; dark?: boolean; className?: string;
+  /** Waar doek, kast en projector staan binnen het paneel (bv. naast de bedieningsrail). */
+  stageClassName?: string;
+}) {
   return <div aria-hidden className={cn("relative overflow-hidden rounded-[24px]", dark
     ? "bg-fixed-white/[0.06] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]"
     : "bg-[linear-gradient(180deg,var(--white),var(--gray-50))] shadow-[0_1px_2px_rgba(16,17,48,0.04),0_14px_30px_-22px_rgba(16,17,48,0.35)]", className ?? "h-[200px] w-full max-w-[320px]")}>
-    {/* Lichtbundel van de projector, achter het doek: het licht valt erop. */}
-    {projectorOn ? <span className="absolute bottom-[14px] left-1/2 h-[85%] w-[80%] -translate-x-1/2 bg-[linear-gradient(0deg,rgba(255,200,120,0.8),rgba(255,200,120,0.08))] [clip-path:polygon(47%_100%,53%_100%,100%_0,0_0)]" /> : null}
-    {/* Doek: komt van onder uit de kast. */}
-    <span className={cn("absolute inset-x-[12%] bottom-[46px] rounded-t-[6px] bg-[linear-gradient(180deg,#ffffff,#f7f8fc)] shadow-[0_0_0_1px_rgba(16,17,48,0.08),0_12px_24px_-16px_rgba(16,17,48,0.4)] transition-[height] duration-700 ease-out motion-reduce:transition-none", open ? "h-[calc(100%-64px)]" : "h-0")}>
-      <span className="absolute inset-x-0 top-0 h-[5px] rounded-t-[6px] bg-[#2a2c44]" />
-      {projectorOn && open ? <span className="absolute inset-[6px] rounded-[3px] bg-[radial-gradient(90%_100%_at_50%_100%,rgba(255,196,120,0.55),rgba(255,236,200,0.18)_75%)]" /> : null}
-    </span>
-    {/* Kast op de vloer. */}
-    <span className={cn("absolute inset-x-[9%] bottom-[34px] h-3 rounded-full", dark ? "bg-[#0d0e1c] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]" : "bg-[#2a2c44]")} />
-    {/* Kleine projector. */}
-    <span className="absolute bottom-2 left-1/2 flex h-[18px] w-[46px] -translate-x-1/2 items-center justify-center rounded-[6px] bg-[#3a3c52] shadow-[0_4px_8px_-4px_rgba(16,17,48,0.6)]">
-      <span className={cn("size-2 rounded-full", projectorOn ? "bg-[#ffd28a] shadow-[0_0_8px_2px_rgba(255,200,120,0.9)]" : "bg-[#5d6078]")} />
+    <span className={cn("absolute", stageClassName ?? "inset-0")}>
+      {/* Lichtbundel van de projector, achter het doek: het licht valt erop. */}
+      {projectorOn ? <span className="absolute bottom-[14px] left-1/2 h-[85%] w-[80%] -translate-x-1/2 bg-[linear-gradient(0deg,rgba(255,200,120,0.8),rgba(255,200,120,0.08))] [clip-path:polygon(47%_100%,53%_100%,100%_0,0_0)]" /> : null}
+      {/* Doek: komt van onder uit de kast. */}
+      <span className={cn("absolute inset-x-[12%] bottom-[46px] rounded-t-[6px] bg-[linear-gradient(180deg,#ffffff,#f7f8fc)] shadow-[0_0_0_1px_rgba(16,17,48,0.08),0_12px_24px_-16px_rgba(16,17,48,0.4)] transition-[height] duration-700 ease-out motion-reduce:transition-none", open ? "h-[calc(100%-64px)]" : "h-0")}>
+        <span className="absolute inset-x-0 top-0 h-[5px] rounded-t-[6px] bg-[#2a2c44]" />
+        {projectorOn && open ? <span className="absolute inset-[6px] rounded-[3px] bg-[radial-gradient(90%_100%_at_50%_100%,rgba(255,196,120,0.55),rgba(255,236,200,0.18)_75%)]" /> : null}
+      </span>
+      {/* Kast op de vloer. */}
+      <span className={cn("absolute inset-x-[9%] bottom-[34px] h-3 rounded-full", dark ? "bg-[#0d0e1c] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]" : "bg-[#2a2c44]")} />
+      {/* Kleine projector. */}
+      <span className="absolute bottom-2 left-1/2 flex h-[18px] w-[46px] -translate-x-1/2 items-center justify-center rounded-[6px] bg-[#3a3c52] shadow-[0_4px_8px_-4px_rgba(16,17,48,0.6)]">
+        <span className={cn("size-2 rounded-full", projectorOn ? "bg-[#ffd28a] shadow-[0_0_8px_2px_rgba(255,200,120,0.9)]" : "bg-[#5d6078]")} />
+      </span>
     </span>
   </div>;
 }
@@ -138,7 +178,13 @@ function ScreenScene({ open, projectorOn, dark = false, className }: { open: boo
 /** Onder de naam: de stand, maar niets bij een dicht rolluik (dat zie je). */
 const blindSubtitle = (blind: Blind) => (blindLabel(blind) === "Dicht" ? null : blindLabel(blind));
 
-/** Startpagina: blinden links · projectiescherm · blinden rechts, zoals in de woonkamer. Variant B met zwarte rolluiken. */
+/** Het scherm heeft geen sensor: omhoog/omlaag blijft zo lang ingedrukt als een volledige rit ongeveer duurt. */
+const SCREEN_TRAVEL_MS = 30_000;
+
+/**
+ * Startpagina «Woonkamer»: projectiescherm · blinden links · blinden rechts, zoals in de kamer (de rolluiken hangen
+ * rechts van het scherm). Elk rolluik: capsule met sleepgreep + bedieningsrail ernaast; het scherm heeft alles in zijn paneel.
+ */
 export function LivingRoomControls({ token }: { token: string | null }) {
   const blinds = useBlindsControls(token);
   const screen = useScreenControls(token, { projectorStatus: true });
@@ -150,58 +196,66 @@ export function LivingRoomControls({ token }: { token: string | null }) {
   const s = screen.screen;
   const hasHeight = s?.durationSeconds != null;
   const screenOpen = s?.running ? true : s?.open === true;
-  const screenState = s?.running ? "Gaat omhoog…" : s?.open == null ? "Stand onbekend" : s.open ? "Open" : "Dicht";
+  // Ingedrukt tot het rolluik helemaal open (0) of dicht (100) is.
+  const headings = useHeadings((key, heading) => {
+    const blind = list.find(item => item.mac === key);
+    return !!blind && blind.position != null && !blind.moving && blind.position === (heading === "up" ? 0 : 100);
+  }, blinds.status);
 
-  const blindSide = (blind: Blind | undefined, side: "left" | "right") => blind ? <div className={cn("flex items-center gap-3.5", side === "right" && "flex-row-reverse")}>
-    <ControlStack
-      name={blind.name}
-      up={{ label: "open", disabled: !blinds.ready || !blind.available || blinds.busy !== null, onClick: () => { setSource("blinds"); void blinds.send(blind.mac, "open"); } }}
-      stop={{ disabled: !blinds.ready || !blind.available, onClick: () => { setSource("blinds"); void blinds.send(blind.mac, "stop"); } }}
-      down={{ label: "dicht", disabled: !blinds.ready || !blind.available || blinds.busy !== null, onClick: () => { setSource("blinds"); void blinds.send(blind.mac, "close"); } }}
-    />
-    <div className="flex flex-col items-center gap-2">
-      <BlindCapsule blind={blind} disabled={!blinds.ready || !blind.available || blinds.busy !== null} onMove={position => { setSource("blinds"); void blinds.move(blind.mac, position); }} />
-      <span className="whitespace-nowrap text-center text-[13px] font-bold leading-4 text-[var(--text-primary)]">{blind.name}<br /><span className="font-semibold text-[var(--text-secondary)]">{blindSubtitle(blind)}</span></span>
-      <SlatsControl blind={blind} disabled={!blinds.ready || !blind.available || blinds.busy !== null} onTilt={open => { setSource("blinds"); void blinds.tilt(blind.mac, open); }} />
-    </div>
-  </div> : null;
+  const blindUnit = (blind: Blind | undefined) => {
+    if (!blind) return null;
+    const locked = !blinds.ready || !blind.available || blinds.busy !== null;
+    const go = (heading: Heading | null) => {
+      setSource("blinds");
+      headings.set(blind.mac, heading);
+      void blinds.send(blind.mac, heading === "up" ? "open" : heading === "down" ? "close" : "stop");
+    };
+    return <div className="flex flex-col items-center gap-2.5">
+      <div className="flex items-center gap-2.5">
+        <BlindCapsule blind={blind} disabled={locked} onMove={position => { setSource("blinds"); headings.set(blind.mac, null); void blinds.move(blind.mac, position); }} />
+        <ControlRail name={blind.name} pressed={headings.heading(blind.mac)}
+          up={{ label: "open", disabled: locked, onClick: () => go("up") }}
+          stop={{ disabled: !blinds.ready || !blind.available, onClick: () => go(null) }}
+          down={{ label: "dicht", disabled: locked, onClick: () => go("down") }} />
+      </div>
+      <div className="flex w-full items-center justify-between gap-2">
+        <span className="whitespace-nowrap text-[13px] font-bold leading-4 text-[var(--text-primary)]">{blind.name}</span>
+        <SlatsControl blind={blind} disabled={locked} onTilt={open => { setSource("blinds"); void blinds.tilt(blind.mac, open); }} />
+      </div>
+    </div>;
+  };
 
-  const screenAction = (action: "up" | "stop" | "down" | "preset") => { setSource("screen"); void screen.send(action); };
-  const screenBlock = <div className="flex min-w-0 items-center gap-3.5">
-    <ControlStack
-      name="Projectiescherm"
+  const screenAction = (action: "up" | "stop" | "down" | "preset") => {
+    setSource("screen");
+    headings.set("screen", action === "stop" ? null : action === "down" ? "down" : "up",
+      action === "preset" && s?.durationSeconds != null ? s.durationSeconds * 1000 + 1500 : SCREEN_TRAVEL_MS);
+    void screen.send(action);
+  };
+  const screenBlock = <div className="relative h-[200px] w-full min-w-0">
+    <ScreenScene open={screenOpen} projectorOn={screen.projectorOn === true} className="h-full w-full" stageClassName="inset-y-0 left-[60px] right-0" />
+    <ControlRail name="Projectiescherm" className="absolute left-2 top-2 !h-[184px]" pressed={headings.heading("screen")}
       up={{ label: "helemaal omhoog", disabled: isScreenActionDisabled("up", s, screen.busy), onClick: () => screenAction("up") }}
       stop={{ disabled: isScreenActionDisabled("stop", s, screen.busy), onClick: () => screenAction("stop") }}
-      down={{ label: "omlaag", disabled: isScreenActionDisabled("down", s, screen.busy), onClick: () => screenAction("down") }}
-    />
-    <div className="flex min-w-0 flex-1 flex-col items-center gap-2">
-      <div className="relative w-full max-w-[320px]">
-        <ScreenScene open={screenOpen} projectorOn={screen.projectorOn === true} />
-        {hasHeight ? <MiniButton variant="secondary" disabled={isScreenActionDisabled("preset", s, screen.busy)} onClick={() => screenAction("preset")} aria-label="Projectiescherm omhoog tot mijn hoogte" className="absolute right-3 top-3 bg-[var(--white)] shadow-[0_4px_12px_-6px_rgba(16,17,48,0.35)] [&_svg]:size-4">{Icon.height}Mijn hoogte</MiniButton> : null}
-      </div>
-      <div className="flex w-full max-w-[320px] items-center justify-between gap-2">
-        <span className="whitespace-nowrap text-[13px] font-bold leading-4 text-[var(--text-primary)]">Scherm<br /><span className="font-semibold text-[var(--text-secondary)]">{screenState}</span></span>
-        <label className="flex items-center gap-2.5 text-[13px] font-bold text-[var(--text-primary)]">
-          Projector
-          <Switch checked={screen.projectorOn === true} disabled={!token || screen.projectorBusy} aria-busy={screen.projectorBusy}
-            onCheckedChange={on => { setSource("screen"); void screen.sendProjector(on ? "on" : "off"); }} />
-        </label>
-      </div>
-    </div>
+      down={{ label: "omlaag", disabled: isScreenActionDisabled("down", s, screen.busy), onClick: () => screenAction("down") }} />
+    {hasHeight ? <MiniButton variant="secondary" disabled={isScreenActionDisabled("preset", s, screen.busy)} onClick={() => screenAction("preset")} aria-label="Projectiescherm omhoog tot mijn hoogte" className="absolute right-3 top-3 bg-[var(--white)] shadow-[0_4px_12px_-6px_rgba(16,17,48,0.35)] [&_svg]:size-4">{Icon.height}Mijn hoogte</MiniButton> : null}
+    <label className="absolute left-[68px] top-3 flex items-center gap-2 rounded-pill bg-[var(--white)] py-1 pl-3 pr-1 text-[12.5px] font-bold text-[var(--text-primary)] shadow-[0_4px_12px_-6px_rgba(16,17,48,0.35)]">
+      Projector
+      <Switch checked={screen.projectorOn === true} disabled={!token || screen.projectorBusy} aria-busy={screen.projectorBusy}
+        onCheckedChange={on => { setSource("screen"); void screen.sendProjector(on ? "on" : "off"); }} />
+    </label>
   </div>;
 
   const message = source === "screen" ? screen.projectorMessage ?? screen.message
     : source === "blinds" ? blinds.message
     : !blinds.ready ? blinds.message : !screen.ready ? screen.message : null;
   const notReady = token && (!blinds.ready || !screen.ready);
-  return <div className="flex min-w-0 flex-col gap-3">
-    {/* Los op de pagina, zonder grote kaart. Gsm: scherm bovenaan, de rolluiken eronder (links blijft links). Vanaf md: alles op één rij zoals in de kamer. */}
-    <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-      <div className="hidden md:block">{blindSide(left, "left")}</div>
-      <div className="min-w-0 md:max-w-[440px] md:flex-1">{screenBlock}</div>
-      <div className="hidden md:block">{blindSide(right, "right")}</div>
-      <div className="flex justify-between gap-3 md:hidden">{blindSide(left, "left")}{blindSide(right, "right")}</div>
+  return <div className="flex min-w-0 flex-col gap-4">
+    {/* Los op de pagina, zonder grote kaart. Gsm: scherm bovenaan, de rolluiken eronder. Vanaf md: alles op één rij zoals in de kamer. */}
+    <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
+      <div className="min-w-0 md:max-w-[460px] md:flex-1">{screenBlock}</div>
+      <div className="flex justify-around gap-6 md:justify-start md:gap-8">{blindUnit(left)}{blindUnit(right)}</div>
     </div>
+    <AmbienceLauncherOrNothing />
     {message || notReady ? <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 text-[12px] leading-4 text-[var(--text-secondary)]">
       <p role="status" aria-live="polite" className="min-w-0">{message}</p>
       {notReady ? <button type="button" onClick={() => { blinds.recheck(); screen.recheck(); }} className="shrink-0 font-bold underline underline-offset-2">Opnieuw controleren</button> : null}
@@ -210,16 +264,16 @@ export function LivingRoomControls({ token }: { token: string | null }) {
 }
 
 /** Op een capsule of het scherm: omhoog bovenaan, stop in het midden, omlaag onderaan (dashboard, variant 2). */
-function SplitControls({ name, up, stop, down }: Parameters<typeof ControlStack>[0]) {
+function SplitControls({ name, up, stop, down, size = 28 }: Controls & { size?: 28 | 36 }) {
   return <>
-    <RoundIconButton tone="onColor" size={28} aria-label={`${name}: ${up.label}`} title={up.label} disabled={up.disabled} onClick={up.onClick} className="absolute left-1/2 top-1.5 -translate-x-1/2 !bg-fixed-white/90 !text-[#1b1c2b]">{Icon.up}</RoundIconButton>
-    <RoundIconButton tone="danger" size={28} aria-label={`${name}: stop`} title="Stop" disabled={stop.disabled} onClick={stop.onClick} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 shadow-[0_4px_10px_-4px_rgba(0,0,0,0.6)]">{Icon.stop}</RoundIconButton>
-    <RoundIconButton tone="onColor" size={28} aria-label={`${name}: ${down.label}`} title={down.label} disabled={down.disabled} onClick={down.onClick} className="absolute bottom-1.5 left-1/2 -translate-x-1/2 !bg-fixed-white/90 !text-[#1b1c2b]">{Icon.down}</RoundIconButton>
+    <RoundIconButton tone="onColor" size={size} aria-label={`${name}: ${up.label}`} title={up.label} disabled={up.disabled} onClick={up.onClick} className={cn("absolute left-1/2 -translate-x-1/2", size === 36 ? "top-3" : "top-1.5", "!bg-fixed-white/90 !text-[#1b1c2b]")}>{Icon.up}</RoundIconButton>
+    <RoundIconButton tone="danger" size={size} aria-label={`${name}: stop`} title="Stop" disabled={stop.disabled} onClick={stop.onClick} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 shadow-[0_4px_10px_-4px_rgba(0,0,0,0.6)]">{Icon.stop}</RoundIconButton>
+    <RoundIconButton tone="onColor" size={size} aria-label={`${name}: ${down.label}`} title={down.label} disabled={down.disabled} onClick={down.onClick} className={cn("absolute left-1/2 -translate-x-1/2", size === 36 ? "bottom-3" : "bottom-1.5", "!bg-fixed-white/90 !text-[#1b1c2b]")}>{Icon.down}</RoundIconButton>
   </>;
 }
 
 /** Dashboard, tab «Woonkamer»: de capsule is de knop. Links · scherm · rechts, met Mijn hoogte en de projector eronder. */
-export function DashboardWoonkamerPanel({ token }: { token: string | null }) {
+export function DashboardWoonkamerPanel({ token, large = false }: { token: string | null; /** Bedieningsvenster: hoge kolommen, grotere knoppen. */ large?: boolean }) {
   const blinds = useBlindsControls(token);
   const screen = useScreenControls(token, { projectorStatus: true });
   const list = blinds.status?.blinds ?? [];
@@ -230,9 +284,10 @@ export function DashboardWoonkamerPanel({ token }: { token: string | null }) {
   const screenAction = (action: "up" | "stop" | "down" | "preset") => void screen.send(action);
 
   const blindColumn = (blind: Blind | undefined, short: string) => blind ? <div className="flex h-full min-h-0 flex-col items-center gap-1.5">
-    <div className="relative min-h-[100px] w-[72px] flex-1">
+    <div className={cn("relative min-h-[100px] flex-1", large ? "w-[104px]" : "w-[72px]")}>
       <BlindCapsule dark showLabel={false} blind={blind} className="h-full w-full" disabled={!blinds.ready || !blind.available || busyBlinds} onMove={position => void blinds.move(blind.mac, position)} />
       <SplitControls
+        size={large ? 36 : 28}
         name={blind.name}
         up={{ label: "open", disabled: !blinds.ready || !blind.available || busyBlinds, onClick: () => void blinds.send(blind.mac, "open") }}
         stop={{ disabled: !blinds.ready || !blind.available, onClick: () => void blinds.send(blind.mac, "stop") }}
@@ -244,17 +299,18 @@ export function DashboardWoonkamerPanel({ token }: { token: string | null }) {
       onClick={() => void blinds.tilt(blind.mac, !slatsOpen(blind))} className="shrink-0 !bg-fixed-white/[0.14] !text-fixed-white">
       {slatsOpen(blind) ? Icon.slatsOpen : Icon.slatsClosed}
     </RoundIconButton> : null}
-    <span className="whitespace-nowrap text-center text-[11.5px] font-bold leading-[14px] text-fixed-white/90">{short}{blindSubtitle(blind) ? <span className="font-semibold text-fixed-white/60"> · {openPercent(blind)}%</span> : null}</span>
-  </div> : <div className="w-[72px]" />;
+    <span className={cn("whitespace-nowrap text-center font-bold text-fixed-white/90", large ? "text-[13px] leading-4" : "text-[11.5px] leading-[14px]")}>{short}{blindSubtitle(blind) ? <span className="font-semibold text-fixed-white/60"> · {openPercent(blind)}%</span> : null}</span>
+  </div> : <div className={large ? "w-[104px]" : "w-[72px]"} />;
 
   const ready = blinds.ready && screen.ready;
-  const pill = "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-pill bg-fixed-white/[0.12] px-3 text-[11.5px] font-extrabold text-fixed-white transition-colors hover:bg-fixed-white/20 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [&_svg]:size-[15px]";
-  return <div className="flex h-full min-h-0 w-full items-stretch justify-between gap-4" aria-label="Woonkamer bedienen">
+  const pill = cn(large ? "h-10 px-4 text-[13px]" : "h-7 px-3 text-[11.5px]", "inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill bg-fixed-white/[0.12] font-extrabold text-fixed-white transition-colors hover:bg-fixed-white/20 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [&_svg]:size-[15px]");
+  return <div className={cn("flex h-full min-h-0 w-full items-stretch justify-between", large ? "gap-6" : "gap-4")} aria-label="Woonkamer bedienen">
     {blindColumn(left, "Links")}
-    <div className="flex min-h-0 min-w-0 max-w-[300px] flex-1 flex-col items-center gap-1.5">
+    <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col items-center", large ? "max-w-[420px] gap-2.5" : "max-w-[300px] gap-1.5")}>
       <div className="relative min-h-[100px] w-full flex-1">
         <ScreenScene dark open={s?.running ? true : s?.open === true} projectorOn={screen.projectorOn === true} className="h-full w-full" />
         <SplitControls
+          size={large ? 36 : 28}
           name="Projectiescherm"
           up={{ label: "helemaal omhoog", disabled: isScreenActionDisabled("up", s, screen.busy), onClick: () => screenAction("up") }}
           stop={{ disabled: isScreenActionDisabled("stop", s, screen.busy), onClick: () => screenAction("stop") }}

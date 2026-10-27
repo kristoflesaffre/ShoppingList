@@ -5,12 +5,11 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useSlidingIndicator } from "@/lib/use_sliding_indicator";
 import { DashboardWoonkamerPanel } from "@/components/living_room_controls";
-import { ACTIONS, PowerIcon as ProjectorPowerIcon, ScreenIcon, useScreenControls } from "@/components/dashboard_screen_panel";
+import { ScreenIcon } from "@/components/dashboard_screen_panel";
 import { AcColumn, DashboardClimate, type Airco } from "@/components/dashboard_climate";
 import { useAirco } from "@/components/home_airco_section";
 import { useFilmMode } from "@/components/use_film_mode";
 import { sortAircos } from "@/lib/airco-order";
-import { isScreenActionDisabled } from "@/lib/projection-screen";
 import { cn } from "@/lib/utils";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
 import { splitRoomName } from "@/lib/hue-room-name";
@@ -221,8 +220,6 @@ function FloorSwitch({ label, on, disabled, onToggle }: { label: string; on: boo
 
 /** Kopje van een kaart of groep in het bedieningsvenster. */
 const capLabel = "text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-[rgba(200,210,255,0.6)]";
-const card = "flex min-w-0 flex-col gap-2 rounded-[22px] bg-fixed-white/[0.06] px-3.5 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]";
-const tileBtn = "flex h-[58px] min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-1 rounded-[15px] text-[11.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:cursor-not-allowed disabled:opacity-40";
 
 /**
  * Bedieningsvenster (canvas «CM2 · B2»): licht, klimaat en scherm in één volledig venster. Bovenaan drie kaarten
@@ -259,7 +256,6 @@ function ControlModal({
     };
   }, [onClose]);
 
-  const screen = useScreenControls(token, { projectorStatus: true });
   const film = useFilmMode();
   const rooms = state.kind === "ready" ? state.rooms : [];
   const groups = floors.groups(rooms);
@@ -269,8 +265,6 @@ function ControlModal({
   const aligned = groups.length === 2 && devices.length > 0;
   const weights = aligned ? [groups[0].rooms.length, groups[1].rooms.length, devices.length] : [1, 1, 1];
   const action = "h-10 rounded-pill bg-fixed-white/10 px-4 text-sm font-bold text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-40 [@media(hover:hover)]:hover:bg-fixed-white/[0.16]";
-  const durationText = screen.screen?.durationSeconds != null ? `${screen.screen.durationSeconds.toLocaleString("nl-BE", { maximumFractionDigits: 2 })} s` : null;
-  const projectorText = screen.projectorOn == null ? "status onbekend" : screen.projectorOn ? "staat aan" : "staat uit";
 
   const lightsNote =
     state.kind === "loading" ? "Lampen laden…"
@@ -287,7 +281,7 @@ function ControlModal({
   const note = (text: string) => <p className="flex flex-1 items-center justify-center rounded-[22px] bg-fixed-white/[0.04] px-4 text-center text-sm text-fixed-white/60">{text}</p>;
 
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Licht, klimaat en scherm" onClick={onClose} className="fixed inset-0 z-[70] flex bg-[rgba(8,9,24,0.6)] p-7 backdrop-blur-sm motion-safe:animate-fade-up">
+    <div role="dialog" aria-modal="true" aria-label="Licht, klimaat en woonkamer" onClick={onClose} className="fixed inset-0 z-[70] flex bg-[rgba(8,9,24,0.6)] p-7 backdrop-blur-sm motion-safe:animate-fade-up">
       <div
         onClick={(e) => e.stopPropagation()}
         className="flex min-h-0 w-full flex-col gap-[18px] rounded-[28px] bg-[linear-gradient(160deg,#232b48_0%,#1a2036_55%,#141a2c_100%)] px-7 py-6 text-fixed-white shadow-[inset_0_0_0_1px_rgba(160,180,255,0.22),0_40px_80px_-30px_rgba(0,0,0,0.8)]"
@@ -295,7 +289,7 @@ function ControlModal({
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/60">BEDIENING</p>
-            <h2 className="mt-0.5 text-[30px] font-extrabold tracking-[-0.02em]">Licht, klimaat &amp; scherm</h2>
+            <h2 className="mt-0.5 text-[30px] font-extrabold tracking-[-0.02em]">Licht, klimaat &amp; woonkamer</h2>
           </div>
           <div className="flex items-center gap-2">
             <button type="button" className={action} disabled={!rooms.some((r) => r.on)} onClick={() => void setRoom(rooms.filter((r) => r.on), { on: false })}>
@@ -338,57 +332,6 @@ function ControlModal({
             </button>
           </section>
 
-          <section aria-label="Projectiescherm" className={card} style={{ flex: `${weights[1]} 1 0` }}>
-            <div className="flex items-center justify-between gap-2">
-              <span className={capLabel}>Scherm</span>
-              <span role="status" aria-live="polite" title={screen.message} className="min-w-0 truncate text-[11px] font-bold text-fixed-white/70">
-                {screen.busy || !screen.ready ? screen.message : durationText ?? screen.message}
-              </span>
-            </div>
-            <div className="flex gap-2">
-              {ACTIONS.map(({ action: a, label, icon }) => (
-                <button
-                  key={a}
-                  type="button"
-                  aria-label={a === "preset" ? "Omhoog naar opgeslagen hoogte" : `Projectiescherm ${label.toLowerCase()}`}
-                  disabled={isScreenActionDisabled(a, screen.screen, screen.busy)}
-                  onClick={() => void screen.send(a)}
-                  className={cn(tileBtn, a === "stop" ? "bg-[#f4d8cb] text-[#572e38] hover:bg-[#ffe7dc]" : "bg-fixed-white/10 text-fixed-white hover:bg-fixed-white/20")}
-                >
-                  <ScreenIcon kind={icon} />
-                  <span>{a === "preset" ? "Hoogte" : label}</span>
-                </button>
-              ))}
-            </div>
-            {!screen.ready && token ? (
-              <button type="button" onClick={screen.recheck} className="self-start text-[11px] font-bold underline underline-offset-2">Opnieuw controleren</button>
-            ) : null}
-          </section>
-
-          <section aria-label="Projector" className={card} style={{ flex: `${weights[2]} 1 0` }}>
-            <div className="flex items-center justify-between gap-2">
-              <span className={capLabel}>Projector</span>
-              <span role="status" aria-live="polite" title={screen.projectorMessage ?? projectorText} className="flex min-w-0 items-center gap-1.5 truncate text-[11px] font-bold text-fixed-white/75">
-                {screen.projectorMessage ? null : <i aria-hidden className={cn("size-[7px] shrink-0 rounded-full", screen.projectorOn ? "bg-[#8ff0a8] shadow-[0_0_6px_#8ff0a8]" : "bg-fixed-white/40")} />}
-                <span className="truncate">{screen.projectorMessage ?? projectorText}</span>
-              </span>
-            </div>
-            <div className="flex gap-2">
-              {([["on", "Projector aan"], ["off", "Projector uit"]] as const).map(([a, label]) => (
-                <button
-                  key={a}
-                  type="button"
-                  aria-label={`${label}, zonder het scherm te bewegen`}
-                  disabled={!token || screen.projectorBusy}
-                  onClick={() => void screen.sendProjector(a)}
-                  className={cn(tileBtn, "flex-row gap-2 bg-fixed-white/10 text-[12.5px] text-fixed-white hover:bg-fixed-white/20")}
-                >
-                  <ProjectorPowerIcon on={a === "on"} />
-                  <span>{label}</span>
-                </button>
-              ))}
-            </div>
-          </section>
         </div>
 
         <ScrollLane className="flex min-h-0 flex-1 gap-[22px]">
@@ -429,6 +372,15 @@ function ControlModal({
                 ))}
               </div>
             )}
+          </section>
+          <i aria-hidden className="w-px shrink-0 bg-fixed-white/[0.18]" />
+          <section aria-label="Woonkamer" className="flex min-w-[420px] flex-col gap-2.5" style={{ flex: "4 1 0" }}>
+            <div className="flex min-h-[30px] items-center">
+              <h3 className={capLabel}>Woonkamer</h3>
+            </div>
+            <div className="flex min-h-0 flex-1">
+              <DashboardWoonkamerPanel token={token} large />
+            </div>
           </section>
         </ScrollLane>
         {airco.error ? <p className="-mt-2 text-center text-xs font-bold text-fixed-white/70">{airco.error}</p> : null}
