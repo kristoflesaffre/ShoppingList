@@ -29,4 +29,4 @@ wrong way. The hub reports positions, so after a command the app follows the sta
 The published site has no access: like the screen, a connection from outside the home network would need a relay
 (for example Home Assistant's Motion Blinds integration on the Pi plus the existing command queue).
 
-Tests use mocks only; no blind was moved while building this.
+Tests use mocks only. Live check 2026-10-27: the user opened and stopped «Blinden links» from the app, as expected.
