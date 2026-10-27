@@ -27,12 +27,16 @@ const Icon = {
   slatsClosed: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[18px]"><path d="M9 3.5l6 5M9 9.5l6 5M9 15.5l6 5" /></svg>,
 };
 
-/** Lamellen dicht naar boven · open · dicht naar onder (segmentknop met iconen). Alleen als de hub een hoek meldt. */
-function SlatsControl({ blind, disabled, onTilt }: { blind: Blind; disabled: boolean; onTilt: (slats: Slats) => void }) {
-  const slats = slatsState(blind);
-  if (slats == null) return null;
-  return <SegmentedControl ariaLabel={`${blind.name}: lamellen`} size="icon" fill={false} disabled={disabled}
-    value={slats} onChange={value => onTilt(value as Slats)}
+/**
+ * Lamellen dicht naar boven · open · dicht naar onder (segmentknop met iconen), zo breed als capsule + rail erboven.
+ * Bij «Beide» enkel een keuze als beide rolluiken in dezelfde stand staan. Alleen als de hub een hoek meldt.
+ */
+function SlatsControl({ name, blinds, disabled, onTilt }: { name: string; blinds: Blind[]; disabled: boolean; onTilt: (slats: Slats) => void }) {
+  const states = blinds.map(slatsState);
+  if (states.every(state => state == null)) return null;
+  const slats = states.every(state => state === states[0]) ? states[0] ?? "" : "";
+  return <SegmentedControl<Slats | ""> ariaLabel={`${name}: lamellen`} size="icon" disabled={disabled}
+    value={slats} onChange={value => value && onTilt(value)}
     options={[
       { value: "up", label: Icon.slatsClosedUp, ariaLabel: "Lamellen dicht naar boven" },
       { value: "open", label: Icon.slatsOpen, ariaLabel: "Lamellen open" },
@@ -74,9 +78,26 @@ function useHeadings(done: (key: string, heading: Heading) => boolean, /** Opnie
   return { heading: (key: string) => headings[key]?.heading ?? null, set };
 }
 
-/** Zwart rolluik in een capsule: de lamellen zakken van boven tot de stand. Slepen kiest een stand, zoals de Hue-kolommen. */
-function BlindCapsule({ blind, disabled, onMove, dark = false, showLabel = true, className }: {
-  blind: Blind; disabled: boolean; onMove: (position: number) => void;
+/** Lamellen van één rolluik: zakken van boven tot de stand; open lamellen laten de lucht tussen de latten door. */
+function Slats({ closed, lit, animate, className }: { closed: number; lit: boolean; animate: boolean; className?: string }) {
+  return <span
+    aria-hidden
+    className={cn("absolute top-0 shadow-[0_3px_0_#08090c,0_8px_14px_-6px_rgba(0,0,0,0.5)]", lit
+      ? "bg-[repeating-linear-gradient(180deg,#30323e_0,#1d1e26_3px,transparent_3px,transparent_10px)]"
+      : "bg-[repeating-linear-gradient(180deg,#30323e_0,#30323e_3px,#1d1e26_8px,#0b0c10_9px,#30323e_10px)]", animate && "transition-[height] duration-500 ease-out", className ?? "inset-x-0")}
+    style={{ height: `${closed}%` }}
+  />;
+}
+
+/**
+ * Zwart rolluik in een capsule: de lamellen zakken van boven tot de stand. Slepen (of de greep) kiest een stand.
+ * Met `second` is het «Beide»: twee ramen naast elkaar met een wit middenstijltje; slepen zet beide op dezelfde stand.
+ */
+function BlindCapsule({ blind, second, label, disabled, onMove, dark = false, showLabel = true, className }: {
+  blind: Blind; second?: Blind;
+  /** Wit in het midden van de capsule (bv. «Links», «Beide»). */
+  label?: string;
+  disabled: boolean; onMove: (position: number) => void;
   /** Donker dashboardpaneel: avondlucht achter de lamellen. */
   dark?: boolean;
   showLabel?: boolean;
@@ -84,19 +105,23 @@ function BlindCapsule({ blind, disabled, onMove, dark = false, showLabel = true,
 }) {
   const [preview, setPreview] = React.useState<number | null>(null);
   const drag = React.useRef<{ y: number; moved: boolean; rect: DOMRect } | null>(null);
-  const closed = preview ?? blind.position ?? 0;
-  // Open lamellen: de lucht schijnt tussen de latten door.
-  const lit = slatsOpen(blind) === true;
+  const blinds = second ? [blind, second] : [blind];
+  const known = blinds.every(item => item.position != null);
+  const same = blinds.every(item => item.position === blind.position);
+  // De greep staat op de stand; bij twee verschillende standen op het gemiddelde.
+  const closed = preview ?? (known ? Math.round(blinds.reduce((sum, item) => sum + (item.position ?? 0), 0) / blinds.length) : 0);
   const at = (clientY: number, rect: DOMRect) => Math.round(Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100)));
   const open = 100 - closed;
+  const name = second ? "Beide rolluiken" : blind.name;
+  const state = second ? (same ? blindLabel(blind) : "verschillende standen") : blindLabel(blind);
   return <button
     type="button"
     role="slider"
-    aria-label={`${blind.name}: ${blindLabel(blind)}. Schuif omhoog of omlaag om de stand te kiezen.`}
+    aria-label={`${name}: ${state}. Schuif omhoog of omlaag om de stand te kiezen.`}
     aria-valuemin={0}
     aria-valuemax={100}
-    aria-valuenow={openPercent(blind) ?? undefined}
-    aria-valuetext={blindLabel(blind)}
+    aria-valuenow={known ? open : undefined}
+    aria-valuetext={state}
     disabled={disabled}
     onPointerDown={e => {
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* slepen werkt dan binnen de capsule */ }
@@ -129,20 +154,21 @@ function BlindCapsule({ blind, disabled, onMove, dark = false, showLabel = true,
       className ?? "h-[200px] w-[76px]",
     )}
   >
-    <span
-      aria-hidden
-      className={cn("absolute inset-x-0 top-0 shadow-[0_3px_0_#08090c,0_8px_14px_-6px_rgba(0,0,0,0.5)]", lit
-        ? "bg-[repeating-linear-gradient(180deg,#30323e_0,#1d1e26_3px,transparent_3px,transparent_10px)]"
-        : "bg-[repeating-linear-gradient(180deg,#30323e_0,#30323e_3px,#1d1e26_8px,#0b0c10_9px,#30323e_10px)]", preview == null && "transition-[height] duration-500 ease-out")}
-      style={{ height: `${closed}%` }}
-    />
+    {second ? <>
+      <Slats closed={preview ?? blind.position ?? 0} lit={slatsOpen(blind) === true} animate={preview == null} className="left-0 right-1/2" />
+      <Slats closed={preview ?? second.position ?? 0} lit={slatsOpen(second) === true} animate={preview == null} className="left-1/2 right-0" />
+      {/* Middenstijl van het raam. */}
+      <span aria-hidden className="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-[var(--white)] shadow-[0_0_4px_rgba(16,17,48,0.35)]" />
+    </> : <Slats closed={closed} lit={slatsOpen(blind) === true} animate={preview == null} />}
     {showLabel ? <>
-      {/* Stand: midden in het open stuk, of op de lamellen als dat te smal is. */}
-      {blind.position == null || open > 2 ? <span aria-hidden
-        className={cn("absolute inset-x-0 -translate-y-1/2 text-center text-[15px] font-extrabold tabular-nums", open >= 34 ? "text-[#5a3300]" : "text-fixed-white")}
-        style={{ top: `${open >= 34 ? closed + open / 2 : closed / 2}%` }}>
-        {blind.position == null ? "–" : `${open}%`}
-      </span> : null}
+      {/* Naam en stand in wit in het midden; schuift naar het bovenste stuk als de greep daar in de weg zit. */}
+      <span aria-hidden
+        className="absolute inset-x-0 flex -translate-y-1/2 flex-col items-center text-fixed-white [text-shadow:0_1px_3px_rgba(8,9,12,0.55)]"
+        style={{ top: `${closed > 30 && closed < 72 ? closed / 2 : 50}%` }}>
+        {label ? <span className={cn("text-[13px] font-extrabold leading-4", second && "relative rounded-pill bg-[#23242e] px-2.5 py-1 shadow-[0_0_0_2px_var(--white)]")}>{label}</span> : null}
+        {!known ? <span className="text-[15px] font-extrabold tabular-nums">–</span>
+          : (same || preview != null) && open > 2 ? <span className="text-[15px] font-extrabold leading-5 tabular-nums">{open}%</span> : null}
+      </span>
       {/* Greep op de onderkant van de lamellen, zoals in de BREL-app: sleep hem naar de gewenste hoogte. */}
       <span aria-hidden
         className={cn("absolute left-1/2 flex size-10 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full bg-[var(--white)] text-[var(--text-primary)] shadow-[0_6px_14px_-4px_rgba(16,17,48,0.55)] [&_svg]:-my-[3px] [&_svg]:size-4",
@@ -204,30 +230,34 @@ export function LivingRoomControls({ token }: { token: string | null }) {
   const screenOpen = s?.running ? true : s?.open === true;
   // Ingedrukt tot het rolluik helemaal open (0) of dicht (100) is.
   const headings = useHeadings((key, heading) => {
-    const blind = list.find(item => item.mac === key);
-    return !!blind && blind.position != null && !blind.moving && blind.position === (heading === "up" ? 0 : 100);
+    const group = key === "both" ? [left, right].filter((item): item is Blind => !!item) : list.filter(item => item.mac === key);
+    return group.length > 0 && group.every(blind => blind.position != null && !blind.moving && blind.position === (heading === "up" ? 0 : 100));
   }, blinds.status);
 
-  const blindUnit = (blind: Blind | undefined) => {
+  /** Eén rolluik, of «Beide» (key "both"): capsule met de naam erin + rail, eronder de lamellen over de volle breedte. */
+  const blindUnit = (group: Blind[], key: string, label: string) => {
+    const [blind, second] = group;
     if (!blind) return null;
-    const locked = !blinds.ready || !blind.available || blinds.busy !== null;
+    const macs = group.map(item => item.mac);
+    const name = second ? "Beide rolluiken" : blind.name;
+    const reachable = blinds.ready && group.every(item => item.available);
+    const locked = !reachable || blinds.busy !== null;
     const go = (heading: Heading | null) => {
       setSource("blinds");
-      headings.set(blind.mac, heading);
-      void blinds.send(blind.mac, heading === "up" ? "open" : heading === "down" ? "close" : "stop");
+      // «Beide» drukt ook de rails van de twee rolluiken in; stop laat ze allemaal los.
+      for (const id of second ? [key, ...macs] : [key]) headings.set(id, heading);
+      void blinds.send(macs, heading === "up" ? "open" : heading === "down" ? "close" : "stop");
     };
-    return <div className="flex flex-col items-center gap-2.5">
+    return <div className="flex flex-col gap-2.5">
       <div className="flex items-center gap-2.5">
-        <BlindCapsule blind={blind} disabled={locked} onMove={position => { setSource("blinds"); headings.set(blind.mac, null); void blinds.move(blind.mac, position); }} />
-        <ControlRail name={blind.name} pressed={headings.heading(blind.mac)}
+        <BlindCapsule blind={blind} second={second} label={label} disabled={locked}
+          onMove={position => { setSource("blinds"); for (const id of [key, ...macs]) headings.set(id, null); void blinds.move(macs, position); }} />
+        <ControlRail name={name} pressed={headings.heading(key)}
           up={{ label: "open", disabled: locked, onClick: () => go("up") }}
-          stop={{ disabled: !blinds.ready || !blind.available, onClick: () => go(null) }}
+          stop={{ disabled: !reachable, onClick: () => go(null) }}
           down={{ label: "dicht", disabled: locked, onClick: () => go("down") }} />
       </div>
-      <div className="flex w-full items-center justify-between gap-2">
-        <span className="whitespace-nowrap text-[13px] font-bold leading-4 text-[var(--text-primary)]">{blind.name}</span>
-        <SlatsControl blind={blind} disabled={locked} onTilt={slats => { setSource("blinds"); void blinds.tilt(blind.mac, slats); }} />
-      </div>
+      <SlatsControl name={name} blinds={group} disabled={locked} onTilt={slats => { setSource("blinds"); void blinds.tilt(macs, slats); }} />
     </div>;
   };
 
@@ -259,7 +289,11 @@ export function LivingRoomControls({ token }: { token: string | null }) {
     {/* Los op de pagina, zonder grote kaart. Gsm: scherm bovenaan, de rolluiken eronder. Vanaf md: alles op één rij zoals in de kamer. */}
     <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
       <div className="min-w-0 md:max-w-[460px] md:flex-1">{screenBlock}</div>
-      <div className="flex justify-around gap-6 md:justify-start md:gap-8">{blindUnit(left)}{blindUnit(right)}</div>
+      <div className="flex flex-wrap justify-center gap-x-6 gap-y-5 md:flex-nowrap md:justify-start md:gap-8">
+        {left ? blindUnit([left], left.mac, "Links") : null}
+        {right ? blindUnit([right], right.mac, "Rechts") : null}
+        {left && right ? blindUnit([left, right], "both", "Beide") : null}
+      </div>
     </div>
     <AmbienceLauncherOrNothing />
     {message || notReady ? <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 text-[12px] leading-4 text-[var(--text-secondary)]">

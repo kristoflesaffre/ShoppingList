@@ -67,7 +67,8 @@ export function SegmentedControl<T extends string>({
     else requestAnimationFrame(() => requestAnimationFrame(() => onChange(v)));
   };
   const glass = glassFor !== undefined ? shown === glassFor : tone === "glass";
-  const { containerRef, indicatorStyle } = useSlidingIndicator(Math.max(0, options.findIndex((o) => o.value === shown)));
+  const shownIndex = options.findIndex((o) => o.value === shown);
+  const { containerRef, indicatorStyle } = useSlidingIndicator(Math.max(0, shownIndex));
   const onKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     const next = e.key === "ArrowRight" ? index + 1 : e.key === "ArrowLeft" ? index - 1 : -1;
     if (next < 0 || next >= options.length) return;
@@ -95,6 +96,8 @@ export function SegmentedControl<T extends string>({
         className={cn(
           "pointer-events-none absolute left-0 -z-10 rounded-[10px] bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.12)] motion-reduce:!transition-none",
           glass && GLASS_PILL,
+          // Geen geldige keuze (bv. twee rolluiken in een andere stand): geen pil.
+          shownIndex < 0 && "opacity-0",
         )}
         style={indicatorStyle}
       />
@@ -115,7 +118,7 @@ export function SegmentedControl<T extends string>({
             className={cn(
               "flex items-center justify-center rounded-[10px] text-[13.5px] font-semibold disabled:cursor-not-allowed transition-[color,border-radius] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
               size === "lg" ? "h-[38px] px-4" : "h-8",
-              size === "icon" ? "w-9" : size === "lg" ? "" : "px-3",
+              size === "icon" ? (fill ? "min-w-0 flex-1" : "w-9") : size === "lg" ? "" : "px-3",
               fill && size !== "icon" && "min-w-0 flex-1",
               on ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
               glass && (on ? GLASS_TEXT_ON : GLASS_TEXT_OFF),

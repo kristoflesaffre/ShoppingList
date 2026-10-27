@@ -402,7 +402,7 @@ function AmbienceLauncher() {
         <img src={last?.thumbnail ?? "/images/ambience/fireplace-default.webp"} alt="" className={cn("size-full object-cover", last && "scale-[1.34]")} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-semibold leading-5 text-[var(--text-primary)]">Tv met sfeer</span>
+        <span className="block truncate text-[15px] font-semibold leading-5 text-[var(--text-primary)]">Tv met sfeer</span>
         <span role="status" aria-live="polite" className="block truncate text-[12.5px] leading-4 text-[var(--text-secondary)]">
           {player.playing ? `Tv aanzetten en afspelen… ${player.elapsed} s` : player.message ?? last?.title ?? "Haardvuur, regen, sneeuw… op de tv"}
         </span>

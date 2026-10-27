@@ -70,16 +70,21 @@ export function useBlindsControls(token: string | null) {
     return () => { window.clearInterval(timer); controller.abort(); };
   }, [token, moving, followUntil, call]);
 
-  async function send(mac: string, action: BlindCommand) {
+  /** Eén rolluik of meerdere («Beide»): de opdrachten gaan na elkaar naar de hub, nooit tegelijk. */
+  const targets = (target: string | string[]) => Array.isArray(target) ? target : [target];
+  const nameOf = (macs: string[]) => macs.length > 1 ? "Beide rolluiken" : status?.blinds.find(item => item.mac === macs[0])?.name ?? "Rolluik";
+  const each = async (macs: string[], body: (mac: string) => Record<string, unknown>) => { for (const mac of macs) await call(body(mac)); };
+
+  async function send(target: string | string[], action: BlindCommand) {
     // Stop is never blocked by another command in flight.
     if (busy && action !== "stop") return;
-    const blind = status?.blinds.find(item => item.mac === mac);
-    setBusy(mac + action);
+    const macs = targets(target);
+    setBusy(macs.join() + action);
     setMessage("Opdracht versturen…");
     try {
-      await call({ action, blind: mac });
+      await each(macs, mac => ({ action, blind: mac }));
       if (!mounted.current) return;
-      setMessage(`${blind?.name ?? "Rolluik"}: ${ACTIONS.find(item => item.action === action)?.label.toLowerCase()} verstuurd.`);
+      setMessage(`${nameOf(macs)}: ${ACTIONS.find(item => item.action === action)?.label.toLowerCase()} verstuurd.`);
       setFollowUntil(Date.now() + 45_000);
     } catch {
       if (mounted.current) setMessage("Opdracht niet bevestigd. Controleer het rolluik; je kunt nog op Stop drukken.");
@@ -89,16 +94,16 @@ export function useBlindsControls(token: string | null) {
   }
 
   /** Drag on a capsule: one absolute position (hub: 0 = open, 100 = closed). */
-  async function move(mac: string, position: number) {
+  async function move(target: string | string[], position: number) {
     if (busy) return;
-    const blind = status?.blinds.find(item => item.mac === mac);
-    setBusy(mac + "position");
-    setStatus(value => value && { ...value, blinds: value.blinds.map(item => item.mac === mac ? { ...item, position } : item) });
+    const macs = targets(target);
+    setBusy(macs.join() + "position");
+    setStatus(value => value && { ...value, blinds: value.blinds.map(item => macs.includes(item.mac) ? { ...item, position } : item) });
     setMessage("Opdracht versturen…");
     try {
-      await call({ action: "position", blind: mac, position });
+      await each(macs, mac => ({ action: "position", blind: mac, position }));
       if (!mounted.current) return;
-      setMessage(`${blind?.name ?? "Rolluik"}: naar ${100 - position}% open.`);
+      setMessage(`${nameOf(macs)}: naar ${100 - position}% open.`);
       setFollowUntil(Date.now() + 45_000);
     } catch {
       if (mounted.current) setMessage("Opdracht niet bevestigd. Controleer het rolluik; je kunt nog op Stop drukken.");
@@ -108,22 +113,23 @@ export function useBlindsControls(token: string | null) {
   }
 
   /** Lamellen dicht naar boven, open (horizontaal) of dicht naar onder. Toont meteen de nieuwe stand; mislukt het, dan de vorige terug. */
-  async function tilt(mac: string, slats: Slats) {
+  async function tilt(target: string | string[], slats: Slats) {
     if (busy) return;
-    const blind = status?.blinds.find(item => item.mac === mac);
+    const macs = targets(target);
+    const before = new Map(status?.blinds.map(item => [item.mac, item.angle]) ?? []);
     const angle = SLATS_ANGLE[slats];
-    const setAngle = (value: number | null) => setStatus(current => current && { ...current, blinds: current.blinds.map(item => item.mac === mac ? { ...item, angle: value } : item) });
-    setBusy(mac + "tilt");
-    setAngle(angle);
+    const setAngle = (value: (mac: string) => number | null) => setStatus(current => current && { ...current, blinds: current.blinds.map(item => macs.includes(item.mac) ? { ...item, angle: value(item.mac) } : item) });
+    setBusy(macs.join() + "tilt");
+    setAngle(() => angle);
     setMessage("Opdracht versturen…");
     try {
-      await call({ action: "tilt", blind: mac, angle });
+      await each(macs, mac => ({ action: "tilt", blind: mac, angle }));
       if (!mounted.current) return;
-      setMessage(`${blind?.name ?? "Rolluik"}: lamellen ${slats === "open" ? "open" : slats === "up" ? "dicht naar boven" : "dicht naar onder"}.`);
+      setMessage(`${nameOf(macs)}: lamellen ${slats === "open" ? "open" : slats === "up" ? "dicht naar boven" : "dicht naar onder"}.`);
       setFollowUntil(Date.now() + 15_000);
     } catch {
       if (!mounted.current) return;
-      setAngle(blind?.angle ?? null);
+      setAngle(mac => before.get(mac) ?? null);
       setMessage("Lamellen niet bevestigd. Controleer het rolluik.");
     } finally {
       if (mounted.current) setBusy(null);
