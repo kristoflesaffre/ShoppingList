@@ -78,6 +78,24 @@ function useHeadings(done: (key: string, heading: Heading) => boolean, /** Opnie
   return { heading: (key: string) => headings[key]?.heading ?? null, set };
 }
 
+/** Onder dit percentage moet de motor aan de lader (rood). */
+const BATTERY_LOW = 20;
+
+/** Batterij van de motor: omtrek met een vulling naar het niveau; rood als hij geladen moet worden. */
+function BatteryBadge({ level }: { level: number }) {
+  const pct = Math.round(Math.min(100, Math.max(0, level)));
+  const low = pct <= BATTERY_LOW;
+  return <span className={cn("flex items-center gap-1 text-[10.5px] font-extrabold tabular-nums leading-3", low ? "text-[#ff6b63]" : "text-fixed-white/85")}
+    title={`Batterij ${pct}%${low ? " · opladen" : ""}`}>
+    <svg viewBox="0 0 24 12" aria-hidden className="h-[11px] w-[22px]">
+      <rect x="0.75" y="0.75" width="19.5" height="10.5" rx="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="21.5" y="3.5" width="2" height="5" rx="1" fill="currentColor" />
+      <rect x="2.5" y="2.5" width={Math.max(1.5, (16 * pct) / 100)} height="7" rx="1.5" fill="currentColor" />
+    </svg>
+    {pct}%
+  </span>;
+}
+
 /** Lamellen van één rolluik: zakken van boven tot de stand; open lamellen laten de lucht tussen de latten door. */
 function Slats({ closed, lit, animate, className }: { closed: number; lit: boolean; animate: boolean; className?: string }) {
   return <span
@@ -117,7 +135,7 @@ function BlindCapsule({ blind, second, label, disabled, onMove, dark = false, sh
   return <button
     type="button"
     role="slider"
-    aria-label={`${name}: ${state}. Schuif omhoog of omlaag om de stand te kiezen.`}
+    aria-label={`${name}: ${state}${!second && blind.battery != null ? `, batterij ${Math.round(blind.battery)}%` : ""}. Schuif omhoog of omlaag om de stand te kiezen.`}
     aria-valuemin={0}
     aria-valuemax={100}
     aria-valuenow={known ? open : undefined}
@@ -160,11 +178,14 @@ function BlindCapsule({ blind, second, label, disabled, onMove, dark = false, sh
       {/* Middenstijl van het raam. */}
       <span aria-hidden className="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-[var(--white)] shadow-[0_0_4px_rgba(16,17,48,0.35)]" />
     </> : <Slats closed={closed} lit={slatsOpen(blind) === true} animate={preview == null} />}
+    {showLabel && !second && blind.battery != null ? <span className="absolute left-1/2 top-5 -translate-x-1/2 [text-shadow:0_1px_3px_rgba(8,9,12,0.55)]">
+      <BatteryBadge level={blind.battery} />
+    </span> : null}
     {showLabel ? <>
-      {/* Naam en stand in wit in het midden; schuift naar het bovenste stuk als de greep daar in de weg zit. */}
+      {/* Naam en stand in wit, weg van de greep en onder de batterij. */}
       <span aria-hidden
         className="absolute inset-x-0 flex -translate-y-1/2 flex-col items-center text-fixed-white [text-shadow:0_1px_3px_rgba(8,9,12,0.55)]"
-        style={{ top: `${closed > 30 && closed < 72 ? closed / 2 : 50}%` }}>
+        style={{ top: `${closed < 50 ? (closed + 100) / 2 : closed < 72 ? Math.max(closed / 2, 28) : 50}%` }}>
         {label ? <span className={cn("text-[13px] font-extrabold leading-4", second && "relative rounded-pill bg-[#23242e] px-2.5 py-1 shadow-[0_0_0_2px_var(--white)]")}>{label}</span> : null}
         {!known ? <span className="text-[15px] font-extrabold tabular-nums">–</span>
           : (same || preview != null) && open > 2 ? <span className="text-[15px] font-extrabold leading-5 tabular-nums">{open}%</span> : null}
