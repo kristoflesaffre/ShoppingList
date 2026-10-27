@@ -41,6 +41,7 @@ assets = (
     f"<script>{open(os.path.join(here, 'ambience-dashboard-boards.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'shutter-controls-boards.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'dashboard-woonkamer-boards.js')).read()}</script>\n"
+    f"<script>{open(os.path.join(here, 'screen-tile-boards.js')).read()}</script>\n"
 )
 src = open(os.path.join(here, "canvas.src.html")).read()
 open(os.path.join(here, "canvas.html"), "w").write(src.replace("<!--ASSETS-->", assets))
