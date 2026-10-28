@@ -1,5 +1,23 @@
 # Home Assistant on the Raspberry Pi
 
+## Move to Raspberry Pi 5 (2026-10-28)
+
+The Pi 3 failed (HA had reported under-voltage). Its card held `haos_rpi3-64`, which cannot boot a Pi 5.
+No Supervisor backups existed on the card, so the `/supervisor/homeassistant` config folder was read
+read-only with `debugfs` and packed into a Supervisor backup (format 2, unencrypted, database included),
+kept on the Mac in `~/Downloads/ha-oude-pi/`. The same card was then flashed with HA OS 18.4 (`rpi5-64`)
+and the backup restored through the onboarding API. Accounts, integrations and devices came back intact;
+add-ons were not in the backup. «Terminal & SSH» (web terminal only, no SSH key) was installed afterwards.
+
+The Pi 5 is at `192.168.132.211` and serves HA on port 80 (`http://homeassistant.local`); `:8123` no
+longer answers. Nothing in the app calls the Pi directly: the cinema integration polls Instant itself.
+
+Cinema bridge v1.5.0 relaxes the screen pre-check at the user's request: a live (not restored) closed
+reading of the contact sensor is enough. The earlier rule required an observed open→closed transition
+within 120 s, which made every start after a restart fail with `screen-closed-confirmation-stale`.
+All motion guards are unchanged (open seen within 5 s, sensor present, battery > 10 %, one bounded STOP).
+A live «Start film» from the app then completed: projector on, screen to height, living room on Cinema.
+
 ## Cinema Bridge Update (2026-10-26)
 
 Bridge v1.2.0 additionally uses verified Hue entities `select.woonkamer_woonkamer_scene` and

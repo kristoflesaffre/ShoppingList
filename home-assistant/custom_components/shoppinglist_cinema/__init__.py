@@ -89,7 +89,6 @@ async def async_setup(hass, config):
     headers = {'App-Id': APP_ID, 'As-Token': settings['token']}
     bridge = settings['bridge_id']
     screen = ScreenGuard(hass, settings.get('screen', {}))
-    unsubscribe_screen = hass.bus.async_listen('state_changed', screen.observe)
 
     async def database(endpoint, body):
         async with session.post(f'https://api.instantdb.com/admin/{endpoint}', headers=headers, json=body, timeout=12) as response:
@@ -183,7 +182,6 @@ async def async_setup(hass, config):
 
     task = hass.async_create_background_task(worker(), 'ShoppingList cinema queue')
     async def shutdown(_event):
-        unsubscribe_screen()
         task.cancel()
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, shutdown)
     return True

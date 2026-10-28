@@ -1,10 +1,9 @@
-"""Fail-closed screen movement, gated by a recent actual contact transition."""
+"""Fail-closed screen movement, gated by a live closed reading of the contact sensor."""
 import asyncio
 import math
 import time
 
 CONTACT = 'binary_sensor.gang_beneden_voordeur_opening'
-FRESH_SECONDS = 120
 MIN_BATTERY = 10
 
 
@@ -13,19 +12,7 @@ class ScreenGuard:
         self.hass = hass
         self.settings = settings
         self.clock = clock
-        self.confirmed_closed_at = None
         self.moving = False
-
-    def observe(self, event):
-        old = event.data.get('old_state')
-        new = event.data.get('new_state')
-        if not new or new.entity_id != CONTACT:
-            return
-        if new.state != 'off':
-            self.confirmed_closed_at = None
-        elif old and old.state == 'on' and not getattr(new, 'attributes', {}).get('restored'):
-            # Initial/restored/cached states and availability recovery cannot arm movement.
-            self.confirmed_closed_at = self.clock()
 
     def check(self):
         contact = self.hass.states.get(CONTACT)
@@ -33,6 +20,9 @@ class ScreenGuard:
             raise RuntimeError('screen-sensor-unavailable')
         if contact.state == 'on':
             return False
+        # A state restored from before a restart is not a live reading of the screen.
+        if getattr(contact, 'attributes', {}).get('restored'):
+            raise RuntimeError('screen-sensor-not-live')
         battery = self.hass.states.get(self.settings['battery_entity'])
         try:
             level = float(battery.state)
@@ -40,8 +30,6 @@ class ScreenGuard:
             raise RuntimeError('screen-battery-unknown') from None
         if not math.isfinite(level) or not MIN_BATTERY < level <= 100:
             raise RuntimeError('screen-battery-low')
-        if self.confirmed_closed_at is None or not 0 <= self.clock() - self.confirmed_closed_at <= FRESH_SECONDS:
-            raise RuntimeError('screen-closed-confirmation-stale')
         if self.moving:
             raise RuntimeError('screen-already-moving')
         return True
@@ -65,7 +53,6 @@ class ScreenGuard:
         # Recheck after all preparation. Nothing is awaited between this check and dispatch.
         if not self.check():
             return
-        self.confirmed_closed_at = None
         self.moving = True
         started = self.clock()
         left_closed = False
