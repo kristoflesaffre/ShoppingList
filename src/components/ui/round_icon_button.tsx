@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export type RoundIconButtonTone = "primary" | "danger" | "neutral" | "surface" | "onColor";
-export type RoundIconButtonSize = 28 | 32 | 36 | 48;
+export type RoundIconButtonSize = 28 | 32 | 36 | 42 | 48;
 
 const TONES: Record<RoundIconButtonTone, string> = {
   /** Zacht lavendel: acties (potlood, diepvries, +). */
@@ -23,12 +23,13 @@ const ICON_SIZE: Record<RoundIconButtonSize, string> = {
   28: "[&_svg]:size-3.5",
   32: "[&_svg]:size-4",
   36: "[&_svg]:size-[18px]",
+  42: "[&_svg]:size-5",
   48: "[&_svg]:size-[22px]",
 };
 
 /**
  * Design system «Ronde icoonknop». Maten: 28 in kaartkoppen en lijstrijen, 32 naast een titel
- * (potlood), 36 los op de pagina (zoeken, sluiten), 48 als bedieningsknop (rolluiken, scherm). Altijd een `aria-label`.
+ * (potlood), 36 los op de pagina (zoeken, sluiten), 42 naast een knop md (scherm: projector), 48 als bedieningsknop. Altijd een `aria-label`.
  */
 export const RoundIconButton = React.forwardRef<
   HTMLButtonElement,

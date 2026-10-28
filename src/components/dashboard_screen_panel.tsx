@@ -144,7 +144,7 @@ export function useScreenControls(token: string | null, { projectorStatus = fals
   // De Hue-contactsensor op het scherm weet beter dan de laatste opdracht (ook de afstandsbediening telt dan mee).
   const sensorOpen = useScreenSensor(token, busy || !!moving);
   const shown = screen && sensorOpen != null ? { ...screen, open: sensorOpen } : screen;
-  return { screen: shown, busy, message, ready, send, recheck, projectorBusy, projectorMessage, projectorOn, sendProjector, sensor: sensorOpen != null };
+  return { screen: shown, busy, message, ready, send, recheck, projectorBusy, projectorMessage, projectorOn, sendProjector, sensor: sensorOpen != null, sensorOpen };
 }
 
 /** Naam van het Hue-toestel met de contactsensor op het scherm (in Home Assistant «Gang beneden voordeur»). */

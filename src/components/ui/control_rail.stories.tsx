@@ -45,3 +45,10 @@ export const Horizontal: Story = {
       up={{ label: "helemaal omhoog", onClick: () => {} }} stop={{ onClick: () => {} }} down={{ label: "omlaag", onClick: () => {} }} />
   </div>,
 };
+
+export const QuietInCard: Story = {
+  render: () => <div className="rounded-[20px] bg-[var(--white)] p-6 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+    <ControlRail name="Projectiescherm" tone="quiet" orientation="horizontal" className="!h-[42px] !w-[140px]"
+      up={{ label: "helemaal omhoog", onClick: () => {} }} stop={{ onClick: () => {} }} down={{ label: "omlaag", onClick: () => {} }} />
+  </div>,
+};
