@@ -58,7 +58,7 @@
     const canvasTop = open ? 6 : h - 26;
     return `<div style="position:relative;width:${w}px;height:${h}px">
       ${on ? `<i style="position:absolute;left:50%;bottom:6px;width:${Math.round(w * 0.7)}px;height:${h - 14}px;transform:translateX(-50%);clip-path:polygon(47% 100%,53% 100%,100% 0,0 0);background:linear-gradient(0deg,rgba(255,190,110,.45),rgba(255,200,120,0))"></i>` : ""}
-      <i style="position:absolute;left:12%;right:12%;top:${canvasTop}px;bottom:24px;border:1.5px solid ${stroke};border-top:4px solid ${INK};border-radius:4px 4px 0 0;background:${fill};${on && open ? "box-shadow:inset 0 -20px 30px -12px rgba(255,196,120,.45)" : ""}"></i>
+      <i style="position:absolute;left:12%;right:12%;top:${canvasTop}px;bottom:24px;border:1.5px solid ${stroke};border-radius:4px 4px 0 0;background:${fill};${on && open ? "box-shadow:inset 0 -20px 30px -12px rgba(255,196,120,.45)" : ""}"><i style="position:absolute;left:-1.5px;right:-1.5px;top:-1.5px;height:4px;border-radius:4px 4px 0 0;background:${INK}"></i></i>
       <i style="position:absolute;left:8%;right:8%;bottom:17px;height:7px;border-radius:4px;background:${INK}"></i>
       <i style="position:absolute;left:50%;bottom:2px;width:30px;height:11px;margin-left:-15px;border-radius:4px;border:1.5px solid ${INK};background:#fff;display:grid;place-items:center"><i style="width:4px;height:4px;border-radius:50%;background:${on ? AMBER : "#c9ccd8"}"></i></i>
     </div>`;
