@@ -1,5 +1,19 @@
 # Home Assistant on the Raspberry Pi
 
+## Screen opens/closes by hand → projector on/off (2026-10-29)
+
+Cinema bridge v1.7.0 listens to `binary_sensor.gang_beneden_voordeur_opening` (the Hue contact on the
+screen). A live closed → open change wakes the projector once through the bridge's guarded `ensure_on`
+(Atom); a live open → closed change sends one `media_player.turn_off` to `media_player.woonkamer_tv_2`, only
+when it reports an awake state. Nothing is sent while a queued cinema command runs, while the bridge moves
+the screen itself, within 120 s of an Atom wake (projector may still be booting), or for availability
+recovery / restored states. No retries. Tests: `scripts/test-cinema-bridge.py` (22).
+
+Installed via the Terminal & SSH add-on, which on the Pi 5 has **no python3**: use a shell-only installer
+(`base64 -d` per file, backups `*.before-<timestamp>`, then `ha core check && ha core restart`).
+Verified: `manifest/get` reports 1.7.0 after restart, no bridge errors in the system log. The File editor
+add-on is not installed on the Pi 5.
+
 ## Move to Raspberry Pi 5 (2026-10-28)
 
 The Pi 3 failed (HA had reported under-voltage). Its card held `haos_rpi3-64`, which cannot boot a Pi 5.
