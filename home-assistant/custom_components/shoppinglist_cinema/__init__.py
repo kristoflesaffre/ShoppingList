@@ -38,10 +38,11 @@ def stremio_playback(dumpsys):
 
 
 def playback_lights(previous, current):
-    # Only a real play <-> pause switch moves the lights; buffering, stopping or the first reading do not.
+    # Playback starting (from pause, stop, a new title or Stremio's first reading) always brings Cinema, whatever
+    # the lights were. Recovering from buffering mid-play is not a start, so lights changed by hand stay put.
     if previous == 'PLAYING' and current == 'PAUSED':
         return 'dim'
-    if previous == 'PAUSED' and current == 'PLAYING':
+    if current == 'PLAYING' and previous not in ('PLAYING', 'BUFFERING'):
         return 'cinema'
     return None
 
@@ -287,7 +288,7 @@ async def async_setup(hass, config):
         return stremio_playback(((response or {}).get(ADB_PLAYER) or {}).get('adb_response'))
 
     async def playback_watcher():
-        # Stremio paused: living room to 20 % (a bit of light for a drink); playing again: back to Cinema.
+        # Stremio paused: living room to 20 % (a bit of light for a drink); playing (again): Cinema.
         previous = None
         while True:
             player = hass.states.get(PLAYER)

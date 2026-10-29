@@ -2,6 +2,9 @@
 
 ## Stremio pause → 20 %, play → Cinema (2026-10-29)
 
+v1.11.0: every playback start recalls Cinema (from pause, stop, a new title or the first reading), whatever the
+lights were; BUFFERING → PLAYING is not a start. v1.10.1 fixed the dump query (`grep -E 'package=|state=PlaybackState'`).
+
 Android TV Remote and Cast cannot see playback in Stremio's own player. The projector's media session can:
 USB debugging was enabled on the XGIMI and the official Android TV (ADB) integration added for
 `192.168.132.133` (entry `01M64FE12GJ4ED6MR8PMCTGN46`, `media_player.android_tv_192_168_132_133`). Its own state

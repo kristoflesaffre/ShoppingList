@@ -321,10 +321,11 @@ class StremioLightsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cinema.stremio_playback(full), 'PLAYING')
         self.assertIsNone(cinema.stremio_playback('package=com.stremio.one\n launchIntent=null\npackage=x\n state=PlaybackState {state=PAUSED(2)}'))
 
-    def test_only_play_pause_switches_move_lights(self):
+    def test_pause_dims_and_every_playback_start_brings_cinema(self):
         self.assertEqual(cinema.playback_lights('PLAYING', 'PAUSED'), 'dim')
-        self.assertEqual(cinema.playback_lights('PAUSED', 'PLAYING'), 'cinema')
-        for previous, current in ((None, 'PLAYING'), (None, 'PAUSED'), ('PLAYING', 'BUFFERING'), ('BUFFERING', 'PLAYING'), ('PLAYING', None), ('PLAYING', 'PLAYING')):
+        for previous in ('PAUSED', None, 'STOPPED', 'NONE', 'CONNECTING'):
+            self.assertEqual(cinema.playback_lights(previous, 'PLAYING'), 'cinema')
+        for previous, current in ((None, 'PAUSED'), ('PLAYING', 'BUFFERING'), ('BUFFERING', 'PLAYING'), ('PLAYING', None), ('PLAYING', 'PLAYING'), ('PAUSED', 'STOPPED')):
             self.assertIsNone(cinema.playback_lights(previous, current))
 
     async def test_watcher_follows_pause_and_play(self):
@@ -348,6 +349,7 @@ class StremioLightsTests(unittest.IsolatedAsyncioTestCase):
             if c is not watcher: c.close()
         with patch.object(cinema.asyncio, 'sleep', AsyncMock(side_effect=[None, None, None, asyncio.CancelledError])):
             with self.assertRaises(asyncio.CancelledError): await watcher
-        self.assertEqual(calls, ['lights_20', 'cinema_scene'])
+        # First reading PLAYING already brings Cinema; pause dims; play again brings Cinema back.
+        self.assertEqual(calls, ['cinema_scene', 'lights_20', 'cinema_scene'])
 
 if __name__ == '__main__': unittest.main()
