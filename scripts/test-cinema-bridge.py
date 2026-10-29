@@ -203,6 +203,8 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
         state = {'power': power}
         async def service(domain, action, data, **_):
             calls.append(action)
+            if action == 'turn_off':
+                state['power'] = 'off'
             if domain == 'rest_command':
                 state['power'] = 'on'
                 return {'status': 200}
@@ -227,10 +229,12 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
         change('off', 'on')
         await run_tasks()
         self.assertEqual(calls, ['xgimi_wake_atom'])
-        # Closing and opening again within the cooldown never sends a second press to a booting projector.
-        change('on', 'off'); change('off', 'on')
+        # Closed again: one turn-off. Reopened within the cooldown: no second press while it may still be shutting down.
+        change('on', 'off')
         await run_tasks()
-        self.assertEqual(calls, ['xgimi_wake_atom'])
+        change('off', 'on')
+        await run_tasks()
+        self.assertEqual(calls, ['xgimi_wake_atom', 'turn_off'])
 
     async def test_projector_already_on_is_not_pressed(self):
         change, run_tasks, calls = await self.setup_bridge(power='idle')
@@ -238,9 +242,22 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
         await run_tasks()
         self.assertEqual(calls, [])
 
+    async def test_screen_closing_turns_projector_off_once(self):
+        change, run_tasks, calls = await self.setup_bridge(power='playing')
+        change('on', 'off')
+        await run_tasks()
+        self.assertEqual(calls, ['turn_off'])
+
+    async def test_screen_closing_sends_nothing_to_an_off_or_unknown_projector(self):
+        for power in ('off', 'unavailable'):
+            change, run_tasks, calls = await self.setup_bridge(power=power)
+            change('on', 'off')
+            await run_tasks()
+            self.assertEqual(calls, [])
+
     async def test_recovery_or_restored_state_is_not_an_opening(self):
         change, run_tasks, calls = await self.setup_bridge()
-        change('unavailable', 'on'); change('off', 'on', restored=True); change('on', 'off')
+        change('unavailable', 'on'); change('off', 'on', restored=True); change('unavailable', 'off')
         await run_tasks()
         self.assertEqual(calls, [])
 

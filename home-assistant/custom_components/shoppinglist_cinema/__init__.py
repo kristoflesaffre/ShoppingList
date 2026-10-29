@@ -21,10 +21,15 @@ AWAKE = {'on', 'playing', 'paused', 'idle', 'buffering'}
 WAKE_COOLDOWN = 120
 
 
-def screen_opened(old, new):
-    # Only a live closed -> open change: availability recovery or a restored state is not the screen moving.
-    return bool(old and new and old.state == 'off' and new.state == 'on'
-                and not getattr(new, 'attributes', {}).get('restored'))
+def screen_change(old, new):
+    # Only a live closed <-> open change counts: availability recovery or a restored state is not the screen moving.
+    if not old or not new or getattr(new, 'attributes', {}).get('restored'):
+        return None
+    if old.state == 'off' and new.state == 'on':
+        return 'opened'
+    if old.state == 'on' and new.state == 'off':
+        return 'closed'
+    return None
 
 
 async def ensure_cinema_lights(hass, scene):
@@ -202,14 +207,25 @@ async def async_setup(hass, config):
             _LOGGER.warning('Projector wake after screen opened failed: %s', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
 
     @callback
+    async def off_for_screen():
+        try:
+            async with busy:
+                if power_state() in AWAKE:
+                    await hass.services.async_call('media_player', 'turn_off', {'entity_id': PLAYER}, blocking=True)
+        except Exception as failure:
+            _LOGGER.warning('Projector off after screen closed failed: %s', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
+
     def on_contact(event):
-        # Screen opened by hand (remote or wall switch): wake the projector once. A cinema command already
-        # wakes it itself, and a recent wake may still be booting: never send a second Atom press then.
-        if not screen_opened(event.data.get('old_state'), event.data.get('new_state')):
+        # Screen moved by hand (remote or wall switch). Opened: wake the projector once; a cinema command
+        # already wakes it itself, and a recent wake may still be booting: never send a second Atom press then.
+        # Closed: one turn-off, only for a projector that reports it is on (no power toggle for unknown states).
+        change = screen_change(event.data.get('old_state'), event.data.get('new_state'))
+        if not change or busy.locked() or screen.moving:
             return
-        if busy.locked() or screen.moving or time.monotonic() - last_wake[0] < WAKE_COOLDOWN or power_state() in AWAKE:
-            return
-        hass.async_create_task(wake_for_screen())
+        if change == 'opened' and time.monotonic() - last_wake[0] >= WAKE_COOLDOWN and power_state() not in AWAKE:
+            hass.async_create_task(wake_for_screen())
+        elif change == 'closed' and power_state() in AWAKE:
+            hass.async_create_task(off_for_screen())
 
     unsubscribe = async_track_state_change_event(hass, [CONTACT], on_contact)
     task = hass.async_create_background_task(worker(), 'ShoppingList cinema queue')
