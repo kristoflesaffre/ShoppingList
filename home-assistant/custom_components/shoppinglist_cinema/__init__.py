@@ -199,14 +199,23 @@ async def async_setup(hass, config):
                 _LOGGER.warning('Cinema queue unavailable; no command retried')
             await asyncio.sleep(5)
 
-    async def wake_for_screen():
+    async def samsung_off_for_screen():
+        # Same paired Samsung as cinema start; only an awake TV gets one turn-off, never a power toggle.
         try:
-            async with busy:
-                await ensure_on()
+            await turn_off_samsung(hass)
+        except Exception as failure:
+            _LOGGER.warning('Samsung off after screen opened failed: %s', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
+
+    async def projector_on_for_screen():
+        try:
+            await ensure_on()
         except Exception as failure:
             _LOGGER.warning('Projector wake after screen opened failed: %s', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
 
-    @callback
+    async def opened_by_hand(wake, samsung):
+        async with busy:
+            await asyncio.gather(*([samsung_off_for_screen()] if samsung else []), *([projector_on_for_screen()] if wake else []))
+
     async def off_for_screen():
         try:
             async with busy:
@@ -215,15 +224,20 @@ async def async_setup(hass, config):
         except Exception as failure:
             _LOGGER.warning('Projector off after screen closed failed: %s', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
 
+    @callback
     def on_contact(event):
-        # Screen moved by hand (remote or wall switch). Opened: wake the projector once; a cinema command
-        # already wakes it itself, and a recent wake may still be booting: never send a second Atom press then.
-        # Closed: one turn-off, only for a projector that reports it is on (no power toggle for unknown states).
+        # Screen moved by hand (remote or wall switch). Opened: Samsung off if it is on, and wake the projector once;
+        # a cinema command does both itself, and a recent wake may still be booting: never send a second Atom press.
+        # Closed: one projector turn-off, only when it reports it is on. The Samsung is never turned on.
         change = screen_change(event.data.get('old_state'), event.data.get('new_state'))
         if not change or busy.locked() or screen.moving:
             return
-        if change == 'opened' and time.monotonic() - last_wake[0] >= WAKE_COOLDOWN and power_state() not in AWAKE:
-            hass.async_create_task(wake_for_screen())
+        if change == 'opened':
+            samsung = hass.states.get(SAMSUNG_TV)
+            samsung_on = bool(samsung and samsung.state in AWAKE)
+            wake = time.monotonic() - last_wake[0] >= WAKE_COOLDOWN and power_state() not in AWAKE
+            if samsung_on or wake:
+                hass.async_create_task(opened_by_hand(wake, samsung_on))
         elif change == 'closed' and power_state() in AWAKE:
             hass.async_create_task(off_for_screen())
 

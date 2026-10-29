@@ -2,6 +2,10 @@
 
 ## Screen opens/closes by hand → projector on/off (2026-10-29)
 
+v1.8.0: opening also turns the Samsung off when it reports an awake state (same `turn_off_samsung` as cinema
+start, one command, confirmed within 15 s); closing never touches the Samsung. Also fixes 1.7.0, where the
+`@callback` marker sat on the wrong function, so HA would have run the contact listener in a worker thread.
+
 Cinema bridge v1.7.0 listens to `binary_sensor.gang_beneden_voordeur_opening` (the Hue contact on the
 screen). A live closed → open change wakes the projector once through the bridge's guarded `ensure_on`
 (Atom); a live open → closed change sends one `media_player.turn_off` to `media_player.woonkamer_tv_2`, only

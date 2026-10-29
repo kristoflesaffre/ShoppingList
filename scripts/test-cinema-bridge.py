@@ -9,7 +9,10 @@ from unittest.mock import AsyncMock, patch
 
 for name in ('homeassistant', 'homeassistant.const', 'homeassistant.core', 'homeassistant.helpers', 'homeassistant.helpers.aiohttp_client', 'homeassistant.helpers.event'):
     sys.modules[name] = types.ModuleType(name)
-sys.modules['homeassistant.core'].callback = lambda function: function
+def mark_callback(function):
+    function.is_hass_callback = True  # HA runs unmarked sync listeners in a worker thread
+    return function
+sys.modules['homeassistant.core'].callback = mark_callback
 contact_listeners = []
 sys.modules['homeassistant.helpers.event'].async_track_state_change_event = lambda _hass, entities, listener: contact_listeners.append((entities, listener)) or (lambda: None)
 sys.modules['homeassistant.const'].EVENT_HOMEASSISTANT_STOP = 'stop'
@@ -198,10 +201,14 @@ class BridgeTests(unittest.IsolatedAsyncioTestCase):
 class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
     """Screen opened by hand wakes the projector once; cinema commands and booting projectors are left alone."""
 
-    async def setup_bridge(self, power='off'):
+    async def setup_bridge(self, power='off', tv='off'):
         calls, tasks = [], []
-        state = {'power': power}
+        state = {'power': power, 'tv': tv}
         async def service(domain, action, data, **_):
+            if data.get('entity_id') == cinema.SAMSUNG_TV:
+                calls.append('samsung_off')
+                state['tv'] = 'off'
+                return
             calls.append(action)
             if action == 'turn_off':
                 state['power'] = 'off'
@@ -209,6 +216,7 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
                 state['power'] = 'on'
                 return {'status': 200}
         def get_state(entity):
+            if entity == cinema.SAMSUNG_TV: return types.SimpleNamespace(state=state['tv'])
             return types.SimpleNamespace(state=state['power']) if entity == cinema.PLAYER else None
         hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service), bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
         hass.async_create_background_task = lambda coroutine, _name: coroutine.close() or types.SimpleNamespace(cancel=lambda: None)
@@ -217,6 +225,7 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
         await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
         entities, listener = contact_listeners[0]
         self.assertEqual(entities, ['binary_sensor.gang_beneden_voordeur_opening'])
+        self.assertTrue(getattr(listener, 'is_hass_callback', False))
         def change(old, new, restored=False):
             listener(types.SimpleNamespace(data={'old_state': types.SimpleNamespace(state=old), 'new_state': types.SimpleNamespace(state=new, attributes={'restored': restored})}))
         async def run_tasks():
@@ -241,6 +250,24 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
         change('off', 'on')
         await run_tasks()
         self.assertEqual(calls, [])
+
+    async def test_screen_opening_turns_samsung_off_and_wakes_projector(self):
+        change, run_tasks, calls = await self.setup_bridge(tv='on')
+        change('off', 'on')
+        await run_tasks()
+        self.assertEqual(sorted(calls), ['samsung_off', 'xgimi_wake_atom'])
+
+    async def test_samsung_turned_off_even_when_projector_already_on(self):
+        change, run_tasks, calls = await self.setup_bridge(power='idle', tv='on')
+        change('off', 'on')
+        await run_tasks()
+        self.assertEqual(calls, ['samsung_off'])
+
+    async def test_screen_closing_never_touches_samsung(self):
+        change, run_tasks, calls = await self.setup_bridge(power='idle', tv='off')
+        change('on', 'off')
+        await run_tasks()
+        self.assertEqual(calls, ['turn_off'])
 
     async def test_screen_closing_turns_projector_off_once(self):
         change, run_tasks, calls = await self.setup_bridge(power='playing')
