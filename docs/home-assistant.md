@@ -3,8 +3,9 @@
 ## Remote access via Tailscale (2026-10-29)
 
 Community add-on `a0d7b954_tailscale` (0.30.4) runs on the Pi, tailnet of lesaffrekristof@gmail.com
-(MagicDNS `tail99cbcc.ts.net`). Home Assistant away from home: `http://100.92.235.112` or
-`http://homeassistant.tail99cbcc.ts.net` (port 80, forwarded to 192.168.132.211). The Mac is
+(MagicDNS `tail99cbcc.ts.net`). Home Assistant away from home: **`http://homeassistant.tail99cbcc.ts.net`** (port 80, forwarded to
+192.168.132.211). Not the bare IP `100.92.235.112`: HA's login rejects it with "Invalid client id" (CGNAT
+addresses are not accepted as an IndieAuth client id); the API answers on it, the login page does not. The Mac is
 `kristofs-macbook-air` (100.116.237.89), standalone Tailscale app. Its "Sign in" button did nothing during
 onboarding; `/Applications/Tailscale.app/Contents/MacOS/Tailscale login` prints the auth URL instead.
 Verified: HA answered (401 before login) over Tailscale. No router ports opened, no HA Cloud.
