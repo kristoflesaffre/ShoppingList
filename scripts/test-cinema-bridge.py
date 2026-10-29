@@ -7,8 +7,11 @@ import types
 import unittest
 from unittest.mock import AsyncMock, patch
 
-for name in ('homeassistant', 'homeassistant.const', 'homeassistant.helpers', 'homeassistant.helpers.aiohttp_client'):
+for name in ('homeassistant', 'homeassistant.const', 'homeassistant.core', 'homeassistant.helpers', 'homeassistant.helpers.aiohttp_client', 'homeassistant.helpers.event'):
     sys.modules[name] = types.ModuleType(name)
+sys.modules['homeassistant.core'].callback = lambda function: function
+contact_listeners = []
+sys.modules['homeassistant.helpers.event'].async_track_state_change_event = lambda _hass, entities, listener: contact_listeners.append((entities, listener)) or (lambda: None)
 sys.modules['homeassistant.const'].EVENT_HOMEASSISTANT_STOP = 'stop'
 sys.modules['homeassistant.helpers.aiohttp_client'].async_get_clientsession = lambda hass: hass.session
 source = Path(__file__).resolve().parents[1] / 'home-assistant/custom_components/shoppinglist_cinema/__init__.py'
@@ -189,5 +192,56 @@ class BridgeTests(unittest.IsolatedAsyncioTestCase):
         for action in ('watch:movie:tt0108778:1:1', 'watch:tv:tt0108778:1:0', 'https://elsewhere'):
             self.assertIsNone(cinema.target_link(action))
 
+
+
+
+class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
+    """Screen opened by hand wakes the projector once; cinema commands and booting projectors are left alone."""
+
+    async def setup_bridge(self, power='off'):
+        calls, tasks = [], []
+        state = {'power': power}
+        async def service(domain, action, data, **_):
+            calls.append(action)
+            if domain == 'rest_command':
+                state['power'] = 'on'
+                return {'status': 200}
+        def get_state(entity):
+            return types.SimpleNamespace(state=state['power']) if entity == cinema.PLAYER else None
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service), bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
+        hass.async_create_background_task = lambda coroutine, _name: coroutine.close() or types.SimpleNamespace(cancel=lambda: None)
+        hass.async_create_task = lambda coroutine: tasks.append(coroutine)
+        contact_listeners.clear()
+        await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
+        entities, listener = contact_listeners[0]
+        self.assertEqual(entities, ['binary_sensor.gang_beneden_voordeur_opening'])
+        def change(old, new, restored=False):
+            listener(types.SimpleNamespace(data={'old_state': types.SimpleNamespace(state=old), 'new_state': types.SimpleNamespace(state=new, attributes={'restored': restored})}))
+        async def run_tasks():
+            with patch.object(cinema.asyncio, 'open_connection', AsyncMock(side_effect=OSError)):
+                while tasks: await tasks.pop(0)
+        return change, run_tasks, calls
+
+    async def test_screen_opening_wakes_projector_once(self):
+        change, run_tasks, calls = await self.setup_bridge()
+        change('off', 'on')
+        await run_tasks()
+        self.assertEqual(calls, ['xgimi_wake_atom'])
+        # Closing and opening again within the cooldown never sends a second press to a booting projector.
+        change('on', 'off'); change('off', 'on')
+        await run_tasks()
+        self.assertEqual(calls, ['xgimi_wake_atom'])
+
+    async def test_projector_already_on_is_not_pressed(self):
+        change, run_tasks, calls = await self.setup_bridge(power='idle')
+        change('off', 'on')
+        await run_tasks()
+        self.assertEqual(calls, [])
+
+    async def test_recovery_or_restored_state_is_not_an_opening(self):
+        change, run_tasks, calls = await self.setup_bridge()
+        change('unavailable', 'on'); change('off', 'on', restored=True); change('on', 'off')
+        await run_tasks()
+        self.assertEqual(calls, [])
 
 if __name__ == '__main__': unittest.main()

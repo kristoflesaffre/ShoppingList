@@ -5,8 +5,10 @@ import re
 import time
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from .screen import ScreenGuard
+from homeassistant.helpers.event import async_track_state_change_event
+from .screen import CONTACT, ScreenGuard
 
 _LOGGER = logging.getLogger(__name__)
 DOMAIN = 'shoppinglist_cinema'
@@ -16,6 +18,13 @@ SAMSUNG_TV = 'media_player.samsung_q60_series_82_qe82q60ralxxn'
 CINEMA_SELECTOR = 'select.woonkamer_woonkamer_scene'
 CINEMA_LIGHTS = 'light.woonkamer_woonkamer'
 AWAKE = {'on', 'playing', 'paused', 'idle', 'buffering'}
+WAKE_COOLDOWN = 120
+
+
+def screen_opened(old, new):
+    # Only a live closed -> open change: availability recovery or a restored state is not the screen moving.
+    return bool(old and new and old.state == 'off' and new.state == 'on'
+                and not getattr(new, 'attributes', {}).get('restored'))
 
 
 async def ensure_cinema_lights(hass, scene):
@@ -99,6 +108,9 @@ async def async_setup(hass, config):
     async def update(namespace, record, fields):
         return await database('transact', {'steps': [['update', namespace, record, fields]]})
 
+    busy = asyncio.Lock()
+    last_wake = [float('-inf')]
+
     def power_state():
         state = hass.states.get(PLAYER)
         return state.state if state else 'unknown'
@@ -115,6 +127,7 @@ async def async_setup(hass, config):
             except (OSError, asyncio.TimeoutError):
                 pass
             if not reachable:
+                last_wake[0] = time.monotonic()
                 result = await hass.services.async_call('rest_command', 'xgimi_wake_atom', {}, blocking=True, return_response=True)
                 if not result or result.get('status') != 200:
                     raise RuntimeError('wake-not-confirmed')
@@ -169,7 +182,8 @@ async def async_setup(hass, config):
                         await update('projectorCommands', command['id'], {'state': 'claimed'})
                         error = ''
                         try:
-                            await execute(action)
+                            async with busy:
+                                await execute(action)
                         except Exception as failure:
                             error = str(failure) if isinstance(failure, RuntimeError) else 'device-action-failed'
                             _LOGGER.warning('Cinema command failed: %s', error)
@@ -180,8 +194,27 @@ async def async_setup(hass, config):
                 _LOGGER.warning('Cinema queue unavailable; no command retried')
             await asyncio.sleep(5)
 
+    async def wake_for_screen():
+        try:
+            async with busy:
+                await ensure_on()
+        except Exception as failure:
+            _LOGGER.warning('Projector wake after screen opened failed: %s', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
+
+    @callback
+    def on_contact(event):
+        # Screen opened by hand (remote or wall switch): wake the projector once. A cinema command already
+        # wakes it itself, and a recent wake may still be booting: never send a second Atom press then.
+        if not screen_opened(event.data.get('old_state'), event.data.get('new_state')):
+            return
+        if busy.locked() or screen.moving or time.monotonic() - last_wake[0] < WAKE_COOLDOWN or power_state() in AWAKE:
+            return
+        hass.async_create_task(wake_for_screen())
+
+    unsubscribe = async_track_state_change_event(hass, [CONTACT], on_contact)
     task = hass.async_create_background_task(worker(), 'ShoppingList cinema queue')
     async def shutdown(_event):
+        unsubscribe()
         task.cancel()
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, shutdown)
     return True
