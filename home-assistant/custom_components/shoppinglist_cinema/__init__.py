@@ -27,9 +27,14 @@ PLAYBACK_POLL = 2
 
 
 def stremio_playback(dumpsys):
-    # `dumpsys media_session`: package=com.stremio.one / active=true / state=PlaybackState {state=PAUSED(2), ...}
-    match = re.search(r'package=' + re.escape(STREMIO) + r'\s+active=\w+\s+state=PlaybackState \{state=([A-Z_]+)', dumpsys or '')
-    return match.group(1) if match else None
+    # `dumpsys media_session`: each session starts with package=…; its state=PlaybackState {state=PAUSED(2), …}
+    # follows a few lines later. Read the first Stremio session's own block only.
+    for block in (dumpsys or '').split('package=')[1:]:
+        if block.startswith(STREMIO):
+            match = re.search(r'state=PlaybackState \{state=([A-Z_]+)', block)
+            if match:
+                return match.group(1)
+    return None
 
 
 def playback_lights(previous, current):
@@ -277,7 +282,7 @@ async def async_setup(hass, config):
 
     async def stremio_state():
         response = await hass.services.async_call('androidtv', 'adb_command', {
-            'entity_id': ADB_PLAYER, 'command': "dumpsys media_session | grep -A2 'package=" + STREMIO + "'",
+            'entity_id': ADB_PLAYER, 'command': "dumpsys media_session | grep -E 'package=|state=PlaybackState'",
         }, blocking=True, return_response=True)
         return stremio_playback(((response or {}).get(ADB_PLAYER) or {}).get('adb_response'))
 

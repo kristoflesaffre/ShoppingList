@@ -315,6 +315,11 @@ class StremioLightsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cinema.stremio_playback(self.SAMPLE % 'PLAYING'), 'PLAYING')
         self.assertIsNone(cinema.stremio_playback('package=com.spotify.tv.android\n active=true\n state=PlaybackState {state=PLAYING(3)}'))
         self.assertIsNone(cinema.stremio_playback(None))
+        # Full dumpsys: other lines between the package and its state; a Stremio session without a state is skipped.
+        full = ("package=com.stremio.one\n launchIntent=null\n mediaButtonReceiver=MBR {pkg=com.stremio.one}\n active=true\n"
+                " state=PlaybackState {state=PLAYING(3), position=1}\npackage=com.netflix.ninja\n state=PlaybackState {state=PAUSED(2)}")
+        self.assertEqual(cinema.stremio_playback(full), 'PLAYING')
+        self.assertIsNone(cinema.stremio_playback('package=com.stremio.one\n launchIntent=null\npackage=x\n state=PlaybackState {state=PAUSED(2)}'))
 
     def test_only_play_pause_switches_move_lights(self):
         self.assertEqual(cinema.playback_lights('PLAYING', 'PAUSED'), 'dim')
