@@ -1,5 +1,16 @@
 # Home Assistant on the Raspberry Pi
 
+## Stremio pause → 20 %, play → Cinema (2026-10-29)
+
+Android TV Remote and Cast cannot see playback in Stremio's own player. The projector's media session can:
+USB debugging was enabled on the XGIMI and the official Android TV (ADB) integration added for
+`192.168.132.133` (entry `01M64FE12GJ4ED6MR8PMCTGN46`, `media_player.android_tv_192_168_132_133`). Its own state
+stays `off` (XGIMI's `Display Power` line has no `state=ON`), so do not use that entity's state.
+Bridge v1.10.0 polls `dumpsys media_session` via `androidtv.adb_command` every 2 s, only while
+`media_player.woonkamer_tv_2` is awake with `app_id` `com.stremio.one`. PLAYING → PAUSED sets the living room
+to 20 %; PAUSED → PLAYING recalls Cinema (skipped when already active). First readings, buffering and stop
+change nothing; nothing happens while a cinema command runs.
+
 ## Screen opens/closes by hand → projector on/off (2026-10-29)
 
 v1.9.0: opening also recalls `scene.woonkamer_woonkamer_cinema` via `ensure_cinema_lights` (skipped when Hue

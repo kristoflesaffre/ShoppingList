@@ -20,6 +20,25 @@ CINEMA_LIGHTS = 'light.woonkamer_woonkamer'
 AWAKE = {'on', 'playing', 'paused', 'idle', 'buffering'}
 WAKE_COOLDOWN = 120
 CLOSED_BRIGHTNESS = 20
+# ADB connection to the same projector: Android TV Remote cannot see playback, the media session can.
+ADB_PLAYER = 'media_player.android_tv_192_168_132_133'
+STREMIO = 'com.stremio.one'
+PLAYBACK_POLL = 2
+
+
+def stremio_playback(dumpsys):
+    # `dumpsys media_session`: package=com.stremio.one / active=true / state=PlaybackState {state=PAUSED(2), ...}
+    match = re.search(r'package=' + re.escape(STREMIO) + r'\s+active=\w+\s+state=PlaybackState \{state=([A-Z_]+)', dumpsys or '')
+    return match.group(1) if match else None
+
+
+def playback_lights(previous, current):
+    # Only a real play <-> pause switch moves the lights; buffering, stopping or the first reading do not.
+    if previous == 'PLAYING' and current == 'PAUSED':
+        return 'dim'
+    if previous == 'PAUSED' and current == 'PLAYING':
+        return 'cinema'
+    return None
 
 
 def screen_change(old, new):
@@ -256,10 +275,43 @@ async def async_setup(hass, config):
         else:
             hass.async_create_task(closed_by_hand())
 
+    async def stremio_state():
+        response = await hass.services.async_call('androidtv', 'adb_command', {
+            'entity_id': ADB_PLAYER, 'command': "dumpsys media_session | grep -A2 'package=" + STREMIO + "'",
+        }, blocking=True, return_response=True)
+        return stremio_playback(((response or {}).get(ADB_PLAYER) or {}).get('adb_response'))
+
+    async def playback_watcher():
+        # Stremio paused: living room to 20 % (a bit of light for a drink); playing again: back to Cinema.
+        previous = None
+        while True:
+            player = hass.states.get(PLAYER)
+            current = None
+            if player and player.state in AWAKE and player.attributes.get('app_id') == STREMIO and hass.states.get(ADB_PLAYER):
+                try:
+                    current = await stremio_state()
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    current = None
+            action = playback_lights(previous, current)
+            if action and not busy.locked():
+                try:
+                    if action == 'dim':
+                        await hass.services.async_call('light', 'turn_on', {'entity_id': CINEMA_LIGHTS, 'brightness_pct': CLOSED_BRIGHTNESS}, blocking=True)
+                    else:
+                        await ensure_cinema_lights(hass, settings['cinema_scene'])
+                except Exception as failure:
+                    _LOGGER.warning('Living room lights after Stremio %s failed: %s', 'pause' if action == 'dim' else 'play', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
+            previous = current
+            await asyncio.sleep(PLAYBACK_POLL if current else 5)
+
     unsubscribe = async_track_state_change_event(hass, [CONTACT], on_contact)
     task = hass.async_create_background_task(worker(), 'ShoppingList cinema queue')
+    watcher = hass.async_create_background_task(playback_watcher(), 'ShoppingList Stremio lights')
     async def shutdown(_event):
         unsubscribe()
         task.cancel()
+        watcher.cancel()
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, shutdown)
     return True

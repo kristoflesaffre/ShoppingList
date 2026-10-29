@@ -117,6 +117,7 @@ class BridgeTests(unittest.IsolatedAsyncioTestCase):
         # The last sleep ends the worker after one iteration; no real network or hardware.
         with patch.object(cinema.asyncio, 'open_connection', AsyncMock(side_effect=OSError)), patch.object(cinema.asyncio, 'sleep', AsyncMock(side_effect=asyncio.CancelledError)):
             with self.assertRaises(asyncio.CancelledError): await captured[0]
+        for coroutine in captured[1:]: coroutine.close()
         return calls, writes
 
     async def test_already_on_never_wakes(self):
@@ -302,5 +303,46 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
         change('unavailable', 'on'); change('off', 'on', restored=True); change('unavailable', 'off')
         await run_tasks()
         self.assertEqual(calls, [])
+
+class StremioLightsTests(unittest.IsolatedAsyncioTestCase):
+    """Stremio pause dims the living room to 20 %; play brings back Cinema."""
+
+    SAMPLE = ("package=com.stremio.one\n      active=true\n      state=PlaybackState {state=%s(2), position=2375404, speed=1.0}\n"
+              "      package=com.spotify.tv.android\n      active=true\n      state=PlaybackState {state=PLAYING(3), position=1}")
+
+    def test_parse_reads_stremio_not_other_apps(self):
+        self.assertEqual(cinema.stremio_playback(self.SAMPLE % 'PAUSED'), 'PAUSED')
+        self.assertEqual(cinema.stremio_playback(self.SAMPLE % 'PLAYING'), 'PLAYING')
+        self.assertIsNone(cinema.stremio_playback('package=com.spotify.tv.android\n active=true\n state=PlaybackState {state=PLAYING(3)}'))
+        self.assertIsNone(cinema.stremio_playback(None))
+
+    def test_only_play_pause_switches_move_lights(self):
+        self.assertEqual(cinema.playback_lights('PLAYING', 'PAUSED'), 'dim')
+        self.assertEqual(cinema.playback_lights('PAUSED', 'PLAYING'), 'cinema')
+        for previous, current in ((None, 'PLAYING'), (None, 'PAUSED'), ('PLAYING', 'BUFFERING'), ('BUFFERING', 'PLAYING'), ('PLAYING', None), ('PLAYING', 'PLAYING')):
+            self.assertIsNone(cinema.playback_lights(previous, current))
+
+    async def test_watcher_follows_pause_and_play(self):
+        readings = iter(['PLAYING', 'PAUSED', 'PAUSED', 'PLAYING'])
+        calls, captured = [], []
+        async def service(domain, action, data, **_):
+            if domain == 'androidtv':
+                return {cinema.ADB_PLAYER: {'adb_response': self.SAMPLE % next(readings)}}
+            calls.append('cinema_scene' if domain == 'scene' else f"lights_{data['brightness_pct']}")
+        def get_state(entity):
+            if entity == cinema.PLAYER: return types.SimpleNamespace(state='playing', attributes={'app_id': 'com.stremio.one'})
+            if entity == cinema.CINEMA_SELECTOR: return types.SimpleNamespace(state='Helder')
+            if entity == cinema.CINEMA_LIGHTS: return types.SimpleNamespace(state='on')
+            return types.SimpleNamespace(state='off', attributes={})
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service), bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
+        hass.async_create_background_task = lambda coroutine, name: captured.append((name, coroutine)) or types.SimpleNamespace(cancel=lambda: None)
+        hass.async_create_task = lambda coroutine: coroutine.close()
+        await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
+        watcher = next(c for n, c in captured if 'Stremio' in n)
+        for n, c in captured:
+            if c is not watcher: c.close()
+        with patch.object(cinema.asyncio, 'sleep', AsyncMock(side_effect=[None, None, None, asyncio.CancelledError])):
+            with self.assertRaises(asyncio.CancelledError): await watcher
+        self.assertEqual(calls, ['lights_20', 'cinema_scene'])
 
 if __name__ == '__main__': unittest.main()
