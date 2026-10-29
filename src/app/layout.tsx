@@ -5,7 +5,7 @@ import { ThemeSync } from "@/components/theme_sync";
 import { PreventPinchZoom } from "@/components/prevent_pinch_zoom";
 import { InAppHistoryTracker } from "@/components/in_app_history_tracker";
 import { THEME_COLORS, THEME_INIT_SCRIPT } from "@/lib/theme";
-import { StremioProvider } from "@/hooks/use_stremio";
+import { AppProviders } from "@/components/app_providers";
 
 const HEAD_CLEANUP_SCRIPT = `(function(){var n=document.head.firstChild;while(n){var x=n.nextSibling;if(n.nodeType===8||(n.nodeType===3&&!n.textContent.trim()))n.remove();n=x;}})();`;
 import "./globals.css";
@@ -57,7 +57,7 @@ export default function RootLayout({
         <PreventPinchZoom />
         <ThemeSync />
         <InAppHistoryTracker />
-        <StremioProvider>{children}</StremioProvider>
+        <AppProviders>{children}</AppProviders>
         <Suspense fallback={null}>
           <AppPersistentBottomNav />
         </Suspense>
