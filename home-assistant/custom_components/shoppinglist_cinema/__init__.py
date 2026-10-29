@@ -19,6 +19,7 @@ CINEMA_SELECTOR = 'select.woonkamer_woonkamer_scene'
 CINEMA_LIGHTS = 'light.woonkamer_woonkamer'
 AWAKE = {'on', 'playing', 'paused', 'idle', 'buffering'}
 WAKE_COOLDOWN = 120
+CLOSED_BRIGHTNESS = 20
 
 
 def screen_change(old, new):
@@ -212,23 +213,38 @@ async def async_setup(hass, config):
         except Exception as failure:
             _LOGGER.warning('Projector wake after screen opened failed: %s', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
 
+    async def lights_for_screen(opened):
+        # Opened: the same Cinema recall as a cinema start (skipped when Cinema is already active).
+        # Closed: the living room to 20 %, also when it was off.
+        try:
+            if opened:
+                await ensure_cinema_lights(hass, settings['cinema_scene'])
+            else:
+                await hass.services.async_call('light', 'turn_on', {'entity_id': CINEMA_LIGHTS, 'brightness_pct': CLOSED_BRIGHTNESS}, blocking=True)
+        except Exception as failure:
+            _LOGGER.warning('Living room lights after screen %s failed: %s', 'opened' if opened else 'closed', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
+
     async def opened_by_hand(wake, samsung):
         async with busy:
-            await asyncio.gather(*([samsung_off_for_screen()] if samsung else []), *([projector_on_for_screen()] if wake else []))
+            await asyncio.gather(lights_for_screen(True), *([samsung_off_for_screen()] if samsung else []), *([projector_on_for_screen()] if wake else []))
 
-    async def off_for_screen():
+    async def projector_off_for_screen():
         try:
-            async with busy:
-                if power_state() in AWAKE:
-                    await hass.services.async_call('media_player', 'turn_off', {'entity_id': PLAYER}, blocking=True)
+            if power_state() in AWAKE:
+                await hass.services.async_call('media_player', 'turn_off', {'entity_id': PLAYER}, blocking=True)
         except Exception as failure:
             _LOGGER.warning('Projector off after screen closed failed: %s', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
 
+    async def closed_by_hand():
+        async with busy:
+            await asyncio.gather(lights_for_screen(False), projector_off_for_screen())
+
     @callback
     def on_contact(event):
-        # Screen moved by hand (remote or wall switch). Opened: Samsung off if it is on, and wake the projector once;
-        # a cinema command does both itself, and a recent wake may still be booting: never send a second Atom press.
-        # Closed: one projector turn-off, only when it reports it is on. The Samsung is never turned on.
+        # Screen moved by hand (remote or wall switch). Opened: Cinema lights, Samsung off if it is on, and wake the
+        # projector once; a cinema command does all of that itself, and a recent wake may still be booting: never send
+        # a second Atom press. Closed: living room to 20 % and one projector turn-off, only when it reports it is on.
+        # The Samsung is never turned on.
         change = screen_change(event.data.get('old_state'), event.data.get('new_state'))
         if not change or busy.locked() or screen.moving:
             return
@@ -236,10 +252,9 @@ async def async_setup(hass, config):
             samsung = hass.states.get(SAMSUNG_TV)
             samsung_on = bool(samsung and samsung.state in AWAKE)
             wake = time.monotonic() - last_wake[0] >= WAKE_COOLDOWN and power_state() not in AWAKE
-            if samsung_on or wake:
-                hass.async_create_task(opened_by_hand(wake, samsung_on))
-        elif change == 'closed' and power_state() in AWAKE:
-            hass.async_create_task(off_for_screen())
+            hass.async_create_task(opened_by_hand(wake, samsung_on))
+        else:
+            hass.async_create_task(closed_by_hand())
 
     unsubscribe = async_track_state_change_event(hass, [CONTACT], on_contact)
     task = hass.async_create_background_task(worker(), 'ShoppingList cinema queue')

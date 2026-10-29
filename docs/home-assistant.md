@@ -2,6 +2,10 @@
 
 ## Screen opens/closes by hand → projector on/off (2026-10-29)
 
+v1.9.0: opening also recalls `scene.woonkamer_woonkamer_cinema` via `ensure_cinema_lights` (skipped when Hue
+reports Cinema active and the room on); closing sets `light.woonkamer_woonkamer` to 20 % (`light.turn_on`,
+`brightness_pct: 20`), which also switches the room on when it was off.
+
 v1.8.0: opening also turns the Samsung off when it reports an awake state (same `turn_off_samsung` as cinema
 start, one command, confirmed within 15 s); closing never touches the Samsung. Also fixes 1.7.0, where the
 `@callback` marker sat on the wrong function, so HA would have run the contact listener in a worker thread.

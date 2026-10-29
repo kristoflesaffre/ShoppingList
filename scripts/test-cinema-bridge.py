@@ -199,12 +199,18 @@ class BridgeTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
-    """Screen opened by hand wakes the projector once; cinema commands and booting projectors are left alone."""
+    """Screen moved by hand: lights, Samsung and projector follow; cinema commands and booting projectors are left alone."""
 
-    async def setup_bridge(self, power='off', tv='off'):
+    async def setup_bridge(self, power='off', tv='off', scene='Helder'):
         calls, tasks = [], []
         state = {'power': power, 'tv': tv}
         async def service(domain, action, data, **_):
+            if domain == 'scene':
+                calls.append('cinema_scene')
+                return
+            if domain == 'light':
+                calls.append(f"lights_{data['brightness_pct']}")
+                return
             if data.get('entity_id') == cinema.SAMSUNG_TV:
                 calls.append('samsung_off')
                 state['tv'] = 'off'
@@ -217,6 +223,8 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
                 return {'status': 200}
         def get_state(entity):
             if entity == cinema.SAMSUNG_TV: return types.SimpleNamespace(state=state['tv'])
+            if entity == cinema.CINEMA_SELECTOR: return types.SimpleNamespace(state=scene)
+            if entity == cinema.CINEMA_LIGHTS: return types.SimpleNamespace(state='on')
             return types.SimpleNamespace(state=state['power']) if entity == cinema.PLAYER else None
         hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service), bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
         hass.async_create_background_task = lambda coroutine, _name: coroutine.close() or types.SimpleNamespace(cancel=lambda: None)
@@ -237,16 +245,23 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
         change, run_tasks, calls = await self.setup_bridge()
         change('off', 'on')
         await run_tasks()
-        self.assertEqual(calls, ['xgimi_wake_atom'])
+        self.assertEqual(sorted(calls), ['cinema_scene', 'xgimi_wake_atom'])
+        calls.clear()
         # Closed again: one turn-off. Reopened within the cooldown: no second press while it may still be shutting down.
         change('on', 'off')
         await run_tasks()
         change('off', 'on')
         await run_tasks()
-        self.assertEqual(calls, ['xgimi_wake_atom', 'turn_off'])
+        self.assertEqual(sorted(calls), ['cinema_scene', 'lights_20', 'turn_off'])
 
     async def test_projector_already_on_is_not_pressed(self):
         change, run_tasks, calls = await self.setup_bridge(power='idle')
+        change('off', 'on')
+        await run_tasks()
+        self.assertEqual(calls, ['cinema_scene'])
+
+    async def test_active_cinema_scene_is_not_recalled(self):
+        change, run_tasks, calls = await self.setup_bridge(power='idle', scene='Cinema')
         change('off', 'on')
         await run_tasks()
         self.assertEqual(calls, [])
@@ -255,32 +270,32 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
         change, run_tasks, calls = await self.setup_bridge(tv='on')
         change('off', 'on')
         await run_tasks()
-        self.assertEqual(sorted(calls), ['samsung_off', 'xgimi_wake_atom'])
+        self.assertEqual(sorted(calls), ['cinema_scene', 'samsung_off', 'xgimi_wake_atom'])
 
     async def test_samsung_turned_off_even_when_projector_already_on(self):
         change, run_tasks, calls = await self.setup_bridge(power='idle', tv='on')
         change('off', 'on')
         await run_tasks()
-        self.assertEqual(calls, ['samsung_off'])
+        self.assertEqual(sorted(calls), ['cinema_scene', 'samsung_off'])
 
     async def test_screen_closing_never_touches_samsung(self):
         change, run_tasks, calls = await self.setup_bridge(power='idle', tv='off')
         change('on', 'off')
         await run_tasks()
-        self.assertEqual(calls, ['turn_off'])
+        self.assertEqual(sorted(calls), ['lights_20', 'turn_off'])
 
     async def test_screen_closing_turns_projector_off_once(self):
         change, run_tasks, calls = await self.setup_bridge(power='playing')
         change('on', 'off')
         await run_tasks()
-        self.assertEqual(calls, ['turn_off'])
+        self.assertEqual(sorted(calls), ['lights_20', 'turn_off'])
 
     async def test_screen_closing_sends_nothing_to_an_off_or_unknown_projector(self):
         for power in ('off', 'unavailable'):
             change, run_tasks, calls = await self.setup_bridge(power=power)
             change('on', 'off')
             await run_tasks()
-            self.assertEqual(calls, [])
+            self.assertEqual(calls, ['lights_20'])
 
     async def test_recovery_or_restored_state_is_not_an_opening(self):
         change, run_tasks, calls = await self.setup_bridge()
