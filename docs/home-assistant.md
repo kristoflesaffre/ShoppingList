@@ -1,5 +1,14 @@
 # Home Assistant on the Raspberry Pi
 
+## Blinds on screen open (2026-10-30)
+
+The BREL hub (192.168.132.222) was added to HA through the official Motion Blinds integration (key entered by the
+user). `cover.rollershutter_0001` = Blinden rechts, `cover.rollershutter_0002` = Blinden links (HA position 0 = closed,
+100 = open). Bridge v1.12.0, when the screen opens (by hand or with a cinema start): from 19:00 both to 0; before
+19:00 left 0 and right 50 (cat door). A blind already at its target or with unknown position gets no command; hub
+failures are logged and never stop the cinema. Closing the screen leaves the blinds as they are (user's choice).
+The Mac's own BREL route (`docs/brel.md`) is unchanged.
+
 ## Remote access via Tailscale (2026-10-29)
 
 Community add-on `a0d7b954_tailscale` (0.30.4) runs on the Pi, tailnet of lesaffrekristof@gmail.com

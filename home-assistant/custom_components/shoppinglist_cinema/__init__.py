@@ -8,6 +8,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.util import dt as dt_util
 from .screen import CONTACT, ScreenGuard
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,6 +25,16 @@ CLOSED_BRIGHTNESS = 20
 ADB_PLAYER = 'media_player.android_tv_192_168_132_133'
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
+# BREL blinds via Motion Blinds (HA position: 0 = closed, 100 = open). Before 19:00 the right one stays half open
+# so the cat can use the door.
+BLIND_LEFT = 'cover.rollershutter_0002'
+BLIND_RIGHT = 'cover.rollershutter_0001'
+EVENING_HOUR = 19
+CAT_DOOR_POSITION = 50
+
+
+def blind_targets(hour):
+    return {BLIND_LEFT: 0, BLIND_RIGHT: 0 if hour >= EVENING_HOUR else CAT_DOOR_POSITION}
 
 
 def stremio_playback(dumpsys):
@@ -85,17 +96,36 @@ async def turn_off_samsung(hass):
         await asyncio.sleep(1)
 
 
-async def start_cinema(hass, screen, scene, ensure_on):
+async def set_blinds_for_screen(hass):
+    # Best effort: a blind already at its target gets no command, and a failing blind never stops the cinema.
+    for entity, target in blind_targets(dt_util.now().hour).items():
+        state = hass.states.get(entity)
+        position = getattr(state, 'attributes', {}).get('current_position')
+        if position is None or position == target:
+            continue
+        try:
+            await hass.services.async_call('cover', 'set_cover_position', {'entity_id': entity, 'position': target}, blocking=True)
+        except Exception:
+            _LOGGER.warning('Blind %s could not be positioned after the screen opened', entity)
+
+
+async def start_cinema(hass, screen, scene, ensure_on, blinds=None):
     # Validate before any side effect; each parallel motor action rechecks its own guard.
-    screen.check()
-    samsung = hass.states.get(SAMSUNG_TV)
-    if not samsung or samsung.state not in AWAKE | {'off', 'standby'}:
-        raise RuntimeError('samsung-state-unknown')
+    try:
+        screen.check()
+        samsung = hass.states.get(SAMSUNG_TV)
+        if not samsung or samsung.state not in AWAKE | {'off', 'standby'}:
+            raise RuntimeError('samsung-state-unknown')
+    except BaseException:
+        if blinds:
+            blinds.close()
+        raise
     tasks = [asyncio.create_task(action) for action in (
         turn_off_samsung(hass),
         ensure_cinema_lights(hass, scene),
         ensure_on(),
         screen.open_if_closed(),
+        *([blinds] if blinds else []),
     )]
     try:
         # Drain all actions even on failure: never abandon a moving screen before its STOP.
@@ -184,7 +214,7 @@ async def async_setup(hass, config):
         scene = settings['cinema_scene']
         if hass.states.get(scene) is None:
             raise RuntimeError('cinema-scene-unavailable')
-        await start_cinema(hass, screen, scene, ensure_on)
+        await start_cinema(hass, screen, scene, ensure_on, set_blinds_for_screen(hass))
         if link:
             await hass.services.async_call('media_player', 'play_media', {
                 'entity_id': PLAYER, 'media_content_type': 'url', 'media_content_id': link,
@@ -251,7 +281,7 @@ async def async_setup(hass, config):
 
     async def opened_by_hand(wake, samsung):
         async with busy:
-            await asyncio.gather(lights_for_screen(True), *([samsung_off_for_screen()] if samsung else []), *([projector_on_for_screen()] if wake else []))
+            await asyncio.gather(lights_for_screen(True), set_blinds_for_screen(hass), *([samsung_off_for_screen()] if samsung else []), *([projector_on_for_screen()] if wake else []))
 
     async def projector_off_for_screen():
         try:
@@ -266,7 +296,7 @@ async def async_setup(hass, config):
 
     @callback
     def on_contact(event):
-        # Screen moved by hand (remote or wall switch). Opened: Cinema lights, Samsung off if it is on, and wake the
+        # Screen moved by hand (remote or wall switch). Opened: Cinema lights, blinds, Samsung off if it is on, and wake the
         # projector once; a cinema command does all of that itself, and a recent wake may still be booting: never send
         # a second Atom press. Closed: living room to 20 % and one projector turn-off, only when it reports it is on.
         # The Samsung is never turned on.

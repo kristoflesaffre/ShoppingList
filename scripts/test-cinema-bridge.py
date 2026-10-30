@@ -7,8 +7,11 @@ import types
 import unittest
 from unittest.mock import AsyncMock, patch
 
-for name in ('homeassistant', 'homeassistant.const', 'homeassistant.core', 'homeassistant.helpers', 'homeassistant.helpers.aiohttp_client', 'homeassistant.helpers.event'):
+for name in ('homeassistant', 'homeassistant.const', 'homeassistant.core', 'homeassistant.helpers', 'homeassistant.helpers.aiohttp_client', 'homeassistant.helpers.event', 'homeassistant.util'):
     sys.modules[name] = types.ModuleType(name)
+import datetime
+clock = types.SimpleNamespace(hour=21)
+sys.modules['homeassistant.util'].dt = types.SimpleNamespace(now=lambda: datetime.datetime(2026, 10, 30, clock.hour, 0))
 def mark_callback(function):
     function.is_hass_callback = True  # HA runs unmarked sync listeners in a worker thread
     return function
@@ -351,5 +354,41 @@ class StremioLightsTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(asyncio.CancelledError): await watcher
         # First reading PLAYING already brings Cinema; pause dims; play again brings Cinema back.
         self.assertEqual(calls, ['cinema_scene', 'lights_20', 'cinema_scene'])
+
+class BlindsTests(unittest.IsolatedAsyncioTestCase):
+    """Screen opened: blinds closed; before 19:00 the right one half open for the cat."""
+
+    def test_targets_by_time(self):
+        self.assertEqual(cinema.blind_targets(19), {cinema.BLIND_LEFT: 0, cinema.BLIND_RIGHT: 0})
+        self.assertEqual(cinema.blind_targets(18), {cinema.BLIND_LEFT: 0, cinema.BLIND_RIGHT: 50})
+
+    async def run_blinds(self, hour, left, right, fail=False):
+        calls = []
+        async def service(domain, action, data, **_):
+            if fail: raise OSError('hub')
+            calls.append((data['entity_id'], data['position']))
+        positions = {cinema.BLIND_LEFT: left, cinema.BLIND_RIGHT: right}
+        def get_state(entity):
+            return types.SimpleNamespace(state='open', attributes={'current_position': positions[entity]}) if entity in positions and positions[entity] is not None else None
+        hass = types.SimpleNamespace(states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service))
+        clock.hour = hour
+        try:
+            await cinema.set_blinds_for_screen(hass)
+        finally:
+            clock.hour = 21
+        return calls
+
+    async def test_evening_closes_both(self):
+        self.assertEqual(await self.run_blinds(20, 30, 9), [(cinema.BLIND_LEFT, 0), (cinema.BLIND_RIGHT, 0)])
+
+    async def test_daytime_left_closed_right_cat_door(self):
+        self.assertEqual(await self.run_blinds(15, 30, 0), [(cinema.BLIND_LEFT, 0), (cinema.BLIND_RIGHT, 50)])
+
+    async def test_blinds_already_in_place_or_unknown_get_nothing(self):
+        self.assertEqual(await self.run_blinds(20, 0, 0), [])
+        self.assertEqual(await self.run_blinds(15, None, 50), [])
+
+    async def test_failing_hub_never_raises(self):
+        self.assertEqual(await self.run_blinds(20, 30, 30, fail=True), [])
 
 if __name__ == '__main__': unittest.main()
