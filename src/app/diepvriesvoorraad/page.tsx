@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { CountStepper } from "@/components/ui/count_stepper";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
+import { FROST_GRADIENT_CLASS, FrostDecor } from "@/components/ui/frost_background";
 import { SearchBar } from "@/components/ui/search_bar";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
@@ -262,15 +263,20 @@ export default function DiepvriesvoorraadPage() {
   const totalPortions = allItems.reduce((sum, i) => sum + (i.packages ?? 0), 0);
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col">
+    <div className="relative isolate flex min-h-dvh w-full flex-col">
+      <div aria-hidden className={cn("fixed inset-0 -z-10 isolate overflow-hidden", FROST_GRADIENT_CLASS)}>
+        <FrostDecor />
+      </div>
 
       {/* Fixed header — zelfde horizontale kolom als body: px-4 buiten, max-w binnen (geen dubbele inspringing). */}
       <div
         className={cn(
-          "fixed left-0 right-0 top-0 z-20 bg-[var(--bg-app)] pt-[env(safe-area-inset-top,0px)] transition-shadow duration-200",
+          "fixed left-0 right-0 top-0 z-20 pt-[env(safe-area-inset-top,0px)] transition-[background-color,box-shadow] duration-200",
           /* Desktop: terugknop staat naast de titel; zonder items (geen titel) blijft de balk. */
           hasItems && "lg:hidden",
-          isLargeTitleCollapsed ? "shadow-[0_1px_0_var(--border-subtle)]" : "shadow-none",
+          isLargeTitleCollapsed
+            ? "bg-[rgba(227,237,255,0.82)] shadow-[0_1px_0_var(--border-subtle)] backdrop-blur-xl [[data-theme=dark]_&]:bg-[rgba(26,34,64,0.82)]"
+            : "shadow-none",
         )}
       >
         <div className="flex justify-center px-4">

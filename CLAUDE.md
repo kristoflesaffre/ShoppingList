@@ -25,6 +25,7 @@ Bouw schermen uit de gedeelde componenten in `src/components/ui/`. Style deze pa
 | Productveld | `ItemNameAutocomplete` | Leeg = zacht zoekveld; gekozen = foto-tegel (of monogram) · naam vet · «Wijzig», 58px. |
 | Keuzerij | `ChoiceRow` | Eén item uit een lijst kiezen: beeld · titel · subtitel · rondje; gekozen = lavendel vlak + blauwe rand + rond vinkje. In een `radiogroup`. |
 | Categoriekaart | `CategoryCard` (+ `categoryGradient`) | Witte kaart radius 20, kop met verloop 16%→5% van de categoriekleur, bolletje · titel · aantal · actie. |
+| Frost | `FROST_GRADIENT_CLASS`, `FrostDecor` (`frost_background.tsx`) | Ijsblauw verloop met glans, ijskristallen en grote sneeuwvlok: de diepvrieskaart op de startpagina en de volledige achtergrond van de diepvriespagina (witte kaarten erop). |
 | Lijstkaart | `ListCard` | Witte kaart radius 20: tegel 48 (lavendel; grijs bij favorieten) · titel 16 halfvet · subtitel (winkellogo + aantal, of ♥ favorieten) · pijltje of «+ Lijstje». Bewerken: sleepgreep links, rode ronde vuilbak rechts. |
 | Favorieten-promo | `FavoritesPromoBanner`, `FavoritesEmptyState` | Banner (lavendel→roze, productwaaier + hartje) voor wie nog geen favorietenlijst heeft; sluitbaar (localStorage). Lege staat met 3 stappen + grote knop. |
 | Schakelaar | `Switch` | Aan/uit voor een instelling die meteen geldt (geen bewaarknop): 46×28, aan = primair blauw, uit = lichtgrijs. Voor een keuze uit een lijst → Checkbox / ChoiceRow. |

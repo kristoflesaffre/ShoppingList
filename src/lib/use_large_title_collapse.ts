@@ -19,15 +19,10 @@ export function useLargeTitleCollapse<T extends HTMLElement = HTMLHeadingElement
 ) {
   const [collapsed, setCollapsed] = React.useState(false);
   const observerRef = React.useRef<IntersectionObserver | null>(null);
+  const titleElRef = React.useRef<T | null>(null);
 
-  const titleRef = React.useCallback(
-    (el: T | null) => {
-      observerRef.current?.disconnect();
-      observerRef.current = null;
-      if (!el || typeof IntersectionObserver === "undefined") {
-        setCollapsed(false);
-        return;
-      }
+  const observe = React.useCallback(
+    (el: T) => {
       const observer = new IntersectionObserver(
         ([entry]) => {
           // Niet (meer) zichtbaar én boven de balk → compacte titel tonen.
@@ -43,7 +38,30 @@ export function useLargeTitleCollapse<T extends HTMLElement = HTMLHeadingElement
     [topOffsetPx],
   );
 
-  React.useEffect(() => () => observerRef.current?.disconnect(), []);
+  const titleRef = React.useCallback(
+    (el: T | null) => {
+      titleElRef.current = el;
+      observerRef.current?.disconnect();
+      observerRef.current = null;
+      if (!el || typeof IntersectionObserver === "undefined") {
+        setCollapsed(false);
+        return;
+      }
+      observe(el);
+    },
+    [observe],
+  );
+
+  React.useEffect(() => {
+    // Strict Mode ruimt effecten één keer extra op zonder de ref opnieuw aan te roepen.
+    if (titleElRef.current && !observerRef.current && typeof IntersectionObserver !== "undefined") {
+      observe(titleElRef.current);
+    }
+    return () => {
+      observerRef.current?.disconnect();
+      observerRef.current = null;
+    };
+  }, [observe]);
 
   return { titleRef, collapsed } as const;
 }
