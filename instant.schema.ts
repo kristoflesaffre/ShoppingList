@@ -106,6 +106,12 @@ const schema = i.schema({
       stockPhotoUrl: i.string().optional(),
       /** Bron van een voorraaditem: "pantry" = voorraadkast (kruiden, conserven…); leeg = diepvries. */
       stockSource: i.string().optional(),
+      /** Gepland uit de diepvries: het diepvriesitem waar na de dag één portie van af gaat. */
+      freezerItemId: i.string().optional(),
+      /** Tijdstip waarop die portie afgeboekt werd (ms); voorkomt dubbel afboeken. */
+      stockDeductedAt: i.number().optional(),
+      /** Todoist-taak «Uit de diepvries halen» voor dit gerecht. */
+      thawTaskId: i.string().optional(),
       /**
        * Absolute datum (ISO "YYYY-MM-DD") berekend op het moment dat een item aan een
        * dagnaam-sectie (Maandag…Zondag) wordt toegewezen. Ontbreekt op oudere items.

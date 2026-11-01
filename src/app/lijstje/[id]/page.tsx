@@ -3527,6 +3527,8 @@ export default function ListDetailPage({
           fromStock: row.fromStock === true || undefined,
           stockPhotoUrl: typeof row.stockPhotoUrl === "string" ? row.stockPhotoUrl : undefined,
           stockSource: row.stockSource === "pantry" ? "pantry" : undefined,
+          freezerItemId: typeof row.freezerItemId === "string" ? row.freezerItemId : undefined,
+          stockDeductedAt: typeof row.stockDeductedAt === "number" ? row.stockDeductedAt : undefined,
           itemDate: typeof row.itemDate === "string" && row.itemDate ? row.itemDate : undefined,
           tripPerson: (() => {
             const rawTp = row.tripPerson ?? row.trip_person;
@@ -4597,6 +4599,7 @@ export default function ListDetailPage({
                   ? { stockPhotoUrl: item.stockPhotoUrl }
                   : {}),
                 ...(item.stockSource ? { stockSource: item.stockSource } : {}),
+                ...(item.freezerItemId ? { freezerItemId: item.freezerItemId } : {}),
                 ...(item.tripPerson !== undefined
                   ? { tripPerson: normalizeTripPerson(item.tripPerson) }
                   : {}),
@@ -4869,6 +4872,15 @@ export default function ListDetailPage({
           recipeGroupId: restoredItem.recipeGroupId ?? "",
           recipeName: restoredItem.recipeName ?? "",
           recipeLink: restoredItem.recipeLink ?? "",
+          ...(restoredItem.freezerItemId
+            ? {
+                fromStock: true,
+                freezerItemId: restoredItem.freezerItemId,
+                ...(restoredItem.itemDate ? { itemDate: restoredItem.itemDate } : {}),
+                ...(restoredItem.stockDeductedAt ? { stockDeductedAt: restoredItem.stockDeductedAt } : {}),
+                ...(restoredItem.stockPhotoUrl ? { stockPhotoUrl: restoredItem.stockPhotoUrl } : {}),
+              }
+            : {}),
           ...(restoredItem.tripPerson !== undefined
             ? { tripPerson: normalizeTripPerson(restoredItem.tripPerson) }
             : {}),
@@ -4904,6 +4916,7 @@ export default function ListDetailPage({
       fromStock?: boolean;
       stockPhotoUrl?: string;
       stockSource?: "freezer" | "pantry";
+      freezerItemId?: string;
       tripPerson?: TripPersonTab;
       store?: ItemStore;
     }) => {
@@ -4987,6 +5000,7 @@ export default function ListDetailPage({
             ...(newItem.fromStock ? { fromStock: true } : {}),
             ...(newItem.stockPhotoUrl ? { stockPhotoUrl: newItem.stockPhotoUrl } : {}),
             ...(newItem.stockSource ? { stockSource: newItem.stockSource } : {}),
+            ...(newItem.freezerItemId ? { freezerItemId: newItem.freezerItemId } : {}),
             ...(newItem.store ? { store: newItem.store } : {}),
             ...(computeSectionAbsoluteDate(newItem.section) != null
               ? { itemDate: computeSectionAbsoluteDate(newItem.section)! }

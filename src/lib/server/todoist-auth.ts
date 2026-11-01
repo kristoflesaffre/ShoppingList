@@ -226,6 +226,22 @@ export async function todoistCloseTask(connection: TodoistConnection, taskId: st
   if (response.status === 401) throw new TodoistUnauthorized();
   if (!response.ok) throw new TodoistUpstreamError(response.status, response.headers.get("retry-after"));
 }
+export type TodoistTaskFields = { content: string; description: string; dueDate: string };
+async function todoistWriteTask(connection: TodoistConnection, path: string, fields: TodoistTaskFields) {
+  const response = await fetch(`https://api.todoist.com/api/v1/${path}`, { method: "POST", headers: { authorization: `Bearer ${connection.accessToken}`, "content-type": "application/json" }, body: JSON.stringify({ content: fields.content, description: fields.description, due_date: fields.dueDate }), cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15_000) });
+  if (response.status === 401) throw new TodoistUnauthorized();
+  if (!response.ok) throw new TodoistUpstreamError(response.status, response.headers.get("retry-after"));
+  return response.json() as Promise<{ id?: unknown }>;
+}
+export async function todoistCreateTask(connection: TodoistConnection, fields: TodoistTaskFields): Promise<string> {
+  const { id } = await todoistWriteTask(connection, "tasks", fields);
+  if (typeof id !== "string") throw new TodoistUpstreamError(502, null);
+  return id;
+}
+export async function todoistUpdateTask(connection: TodoistConnection, taskId: string, fields: TodoistTaskFields) {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(taskId)) throw new Error("Invalid Todoist task id");
+  await todoistWriteTask(connection, `tasks/${encodeURIComponent(taskId)}`, fields);
+}
 export async function todoistGet(connection: TodoistConnection, path: "tasks" | "tasks/filter" | "projects", params: URLSearchParams) {
   const response = await fetch(`https://api.todoist.com/api/v1/${path}?${params}`, { headers: { authorization: `Bearer ${connection.accessToken}` }, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15_000) });
   if (response.status === 401) throw new TodoistUnauthorized();

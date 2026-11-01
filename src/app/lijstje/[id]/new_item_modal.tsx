@@ -20,6 +20,7 @@ import { StockSourceIcon } from "@/components/ui/freeze_mask_icon";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { resolveItemCategoryFromName, stockSourceLabel } from "@/lib/item-ingredient-category";
+import { findFreezerItemForPlan } from "@/lib/freezer-planning";
 import { normalizeQuantity, parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
 import {
   DEFAULT_TRIP_PERSON_TAB,
@@ -73,6 +74,10 @@ export type ListItem = {
   stockPhotoUrl?: string;
   /** Waar het voorraaditem vandaan komt; ontbreekt = diepvries. */
   stockSource?: "freezer" | "pantry";
+  /** Gepland uit de diepvries: het diepvriesitem waar na de dag één portie van af gaat. */
+  freezerItemId?: string;
+  /** Portie al afgeboekt (ms). */
+  stockDeductedAt?: number;
   /** Absolute datum "YYYY-MM-DD" waarop dit item gepland staat (alleen voor dagnaam-secties). */
   itemDate?: string;
   /** Landal/vakantie: wie het item betreft. */
@@ -257,6 +262,7 @@ export function NewItemModal({
     stockPhotoUrl?: string;
     /** Waar het voorraaditem vandaan komt; ontbreekt = diepvries. */
     stockSource?: "freezer" | "pantry";
+    freezerItemId?: string;
     tripPerson?: TripPersonTab;
     store?: ItemStore;
   }) => void;
@@ -405,6 +411,7 @@ export function NewItemModal({
       ownerId?: string;
       recipePhotoUrl?: string;
       recipePersons?: number;
+      recipeId?: string;
       order?: number;
     }>)
       .filter((it) => it.name && (!it.ownerId || it.ownerId === userId))
@@ -853,6 +860,7 @@ export function NewItemModal({
         recipeLink: recipe.link.trim().length > 0 ? recipe.link.trim() : undefined,
         fromStock: true,
         stockPhotoUrl: recipe.photoUrl ?? undefined,
+        freezerItemId: findFreezerItemForPlan(allFreezerItems, { name: recipe.name, recipeId: recipe.id })?.id,
       };
       if (shouldQueueRecipeInBatch(recipe, batchMode, batchEntries.length > 0)) {
         enqueueRecipeInBatch(recipe, [freezerItem]);
@@ -1036,6 +1044,7 @@ export function NewItemModal({
     fromStock: true;
     stockPhotoUrl?: string;
     stockSource?: "freezer" | "pantry";
+    freezerItemId?: string;
   }) => {
     if (batchMode) {
       const entryId = createBatchId("item");
@@ -1065,7 +1074,7 @@ export function NewItemModal({
       quantity: "1 stuk",
       section: selectedDay === "Geen" ? "Algemeen" : selectedDay,
       fromStock: true,
-      ...(source === "pantry" ? { stockSource: "pantry" as const } : {}),
+      ...(source === "pantry" ? { stockSource: "pantry" as const } : { freezerItemId: findFreezerItemForPlan(allFreezerItems, { name })?.id }),
     });
   };
 
@@ -1652,6 +1661,7 @@ export function NewItemModal({
                                 section: selectedDay,
                                 fromStock: true as const,
                                 stockPhotoUrl: it.recipePhotoUrl || undefined,
+                                freezerItemId: it.id,
                               };
                               addFromStock(stockItem);
                             }}

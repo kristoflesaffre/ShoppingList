@@ -9,6 +9,16 @@ const StremioProvider = dynamic(
   { ssr: false },
 );
 
+const FreezerPlanningSync = dynamic(
+  () => import("@/components/freezer_planning_sync").then((module) => module.FreezerPlanningSync),
+  { ssr: false },
+);
+
 export function AppProviders({ children }: { children: ReactNode }) {
-  return <StremioProvider>{children}</StremioProvider>;
+  return (
+    <StremioProvider>
+      {children}
+      <FreezerPlanningSync />
+    </StremioProvider>
+  );
 }
