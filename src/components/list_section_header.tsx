@@ -6,7 +6,7 @@ export function ListSectionHeaderIcon({
   variant,
   className,
 }: {
-  variant: "list" | "heart" | "card" | "calendar" | "freeze" | "shopping-bag" | "films" | "bulb";
+  variant: "list" | "heart" | "card" | "calendar" | "freeze" | "pantry" | "shopping-bag" | "films" | "bulb";
   className?: string;
 }) {
   const src =
@@ -18,7 +18,9 @@ export function ListSectionHeaderIcon({
           ? "/icons/calendar.svg"
           : variant === "freeze"
             ? "/icons/freeze.svg"
-            : variant === "shopping-bag"
+            : variant === "pantry"
+              ? "/icons/pantry.svg"
+              : variant === "shopping-bag"
               ? "/icons/shopping_bag.svg"
               : variant === "films"
                 ? "/icons/films.svg"
@@ -106,7 +108,7 @@ export function ListSectionHeader({
   extra,
 }: {
   /** @deprecated Niet meer getoond sinds stijl 1; blijft voor bestaande aanroepen. */
-  icon?: "list" | "heart" | "card" | "calendar" | "freeze" | "shopping-bag" | "films" | "bulb";
+  icon?: "list" | "heart" | "card" | "calendar" | "freeze" | "pantry" | "shopping-bag" | "films" | "bulb";
   /** Zichtbare naam, in sentence case (bv. «Favorieten»). */
   label: string;
   /** Aantal items in de sectie; verborgen bij `undefined` of 0. */

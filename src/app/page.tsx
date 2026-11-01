@@ -12,6 +12,7 @@ import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { LoyaltyCardDisplay } from "@/components/loyalty_card_display";
 import { cn } from "@/lib/utils";
+import { isPantryItem } from "@/lib/pantry";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import {
   calendarDaySummary as homeDaySummary,
@@ -57,7 +58,9 @@ import {
 import { HomeHeader } from "@/components/home_header";
 import {
   HomeDashboardFreezerColumn,
+  HomeDashboardPantryColumn,
   HomeFreezerPlatesCard,
+  HomePantryPlatesCard,
 } from "@/components/home_dashboard";
 import {
   DashboardReminders,
@@ -742,6 +745,44 @@ function HomeDiepvriesSection({
               Meer info
             </button>
           </div>
+        }
+      />
+    </div>
+  );
+}
+
+/** Startpagina: voorraadkast, de warme tweeling van de diepvries (canvas «VK · Voorraadkast», C). */
+function HomeVoorraadkastSection({ items, onHide }: { items: FreezerPreviewItem[]; onHide?: () => void }) {
+  const router = useRouter();
+
+  if (items.length > 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        <ListSectionHeader
+          icon="pantry"
+          label="Voorraadkast"
+          showNaarOverzicht
+          overzichtCount={items.length}
+          naarOverzichtHref="/voorraadkast"
+          overzichtLabel="Toon alle"
+        />
+        <HomePantryPlatesCard items={items} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <ListSectionHeader icon="pantry" label="Voorraadkast" showNaarOverzicht={false} onHide={onHide} />
+      <HomeOnboardingEmptyCard
+        illustrationSrc="/images/ingredients/bloem_320.webp"
+        illustrationSide="end"
+        contentAlign="start"
+        text="Hou bij hoeveel bloem, olie, koekjes of chips je nog in huis hebt."
+        actions={
+          <MiniButton variant="primary" onClick={() => router.push("/voorraadkast")}>
+            Voorraadkast openen
+          </MiniButton>
         }
       />
     </div>
@@ -2593,8 +2634,8 @@ export default function Home() {
   }, [data]);
 
   /** Kalenderdagen op de startpagina: vandaag én toekomst, alleen met inhoud. */
-  /** Diepvriesitems voor startpagina-sectie (zelfde filter als /diepvriesvoorraad). */
-  const homeFreezerItems = React.useMemo((): HomeFreezerRow[] => {
+  /** Rijen voor de startpagina (zelfde filter als /diepvriesvoorraad); diepvries en voorraadkast apart. */
+  const homeStockItems = React.useMemo((): HomeFreezerRow[] => {
     if (!user?.id) return [];
     const raw = (data as { freezerItems?: unknown[] } | undefined)?.freezerItems;
     if (!Array.isArray(raw)) return [];
@@ -2609,6 +2650,8 @@ export default function Home() {
     out.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     return out;
   }, [data, user?.id]);
+  const homeFreezerItems = React.useMemo(() => homeStockItems.filter((item) => !isPantryItem(item)), [homeStockItems]);
+  const homePantryItems = React.useMemo(() => homeStockItems.filter(isPantryItem), [homeStockItems]);
 
   const [homeStoreOrder, setHomeStoreOrder] = React.useState<string[] | null>(() =>
     loadStoreOrder(),
@@ -3048,6 +3091,8 @@ export default function Home() {
             onHide={onHide}
           />
         );
+      case "voorraadkast":
+        return <HomeVoorraadkastSection items={homePantryItems} onHide={onHide} />;
       case "licht":
         return <HomeLightSection />;
       case "airco":
@@ -3184,10 +3229,19 @@ export default function Home() {
                   />
                 </div>
                 {/* «Te kopen» staat als tegel in de rij lijstjes hierboven; geen aparte lijst meer ernaast. */}
-                {!homeSectionConfig.hidden.includes("diepvries") ? (
-                  <aside className="flex min-w-0 flex-col">
-                    <HomeDashboardFreezerColumn items={homeFreezerItems} />
-                  </aside>
+                {!homeSectionConfig.hidden.includes("diepvries") || !homeSectionConfig.hidden.includes("voorraadkast") ? (
+                  <div className="grid min-w-0 gap-10 min-[1050px]:grid-cols-2 min-[1050px]:gap-6">
+                    {!homeSectionConfig.hidden.includes("diepvries") ? (
+                      <aside className="flex min-w-0 flex-col">
+                        <HomeDashboardFreezerColumn items={homeFreezerItems} />
+                      </aside>
+                    ) : null}
+                    {!homeSectionConfig.hidden.includes("voorraadkast") ? (
+                      <aside className="flex min-w-0 flex-col">
+                        <HomeDashboardPantryColumn items={homePantryItems} />
+                      </aside>
+                    ) : null}
+                  </div>
                 ) : null}
 
                 {homeSectionConfig.order
@@ -3195,6 +3249,7 @@ export default function Home() {
                     (sectionId) =>
                       sectionId !== "lijstjes" &&
                       sectionId !== "diepvries" &&
+                      sectionId !== "voorraadkast" &&
                       !(sectionId === "agenda" && agendaFirstOnDesktop) &&
                       !(sectionId === "todo" && todoUnderAgendaOnDesktop) &&
                       !homeSectionConfig.hidden.includes(sectionId),

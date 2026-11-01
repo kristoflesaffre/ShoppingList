@@ -259,7 +259,7 @@ const schema = i.schema({
     }),
     /** Diepvriesitem (product of gerecht) opgeslagen door een gebruiker. */
     freezerItems: i.entity({
-      /** "product" of "gerecht" */
+      /** "product" of "gerecht" (diepvries), "voorraadkast" (bloem, olie, koekjes…). */
       type: i.string(),
       name: i.string(),
       /** Hoeveelheid per pakket (products) of aantal porties (gerechten). */

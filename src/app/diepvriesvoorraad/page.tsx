@@ -19,6 +19,7 @@ import { FROST_GRADIENT_CLASS, FrostDecor } from "@/components/ui/frost_backgrou
 import { SearchBar } from "@/components/ui/search_bar";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
+import { isPantryItem } from "@/lib/pantry";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -193,7 +194,7 @@ export default function DiepvriesvoorraadPage() {
   }
 
   const allItems: FreezerItem[] = (freezerData?.freezerItems ?? [])
-    .filter((item) => !item.ownerId || item.ownerId === user.id)
+    .filter((item) => !isPantryItem(item) && (!item.ownerId || item.ownerId === user.id))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) as FreezerItem[];
 
   const lowCount = allItems.filter(isLow).length;

@@ -17,6 +17,8 @@ import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 
 export interface NewFreezerItemModalProps {
+  /** «voorraadkast»: enkel producten (geen recepten), eigen titel en eenheden. */
+  mode?: "diepvries" | "voorraadkast";
   open: boolean;
   onClose: () => void;
   onAdd?: (item: {
@@ -33,6 +35,7 @@ export interface NewFreezerItemModalProps {
 
 /** Eenheden voor de diepvries; g/kg = gewicht per pakket, de rest = aantal pakketten. */
 const FREEZER_UNITS = ["stuk", "zak", "pak", "g", "kg"] as const;
+const PANTRY_UNITS = ["stuk", "zak", "pak", "fles", "pot", "g", "kg"] as const;
 const WEIGHT_UNITS = new Set<string>(["g", "kg"]);
 const GRAM_STEP = 50;
 const GRAM_START = 500;
@@ -123,7 +126,8 @@ function ResultRow({
   );
 }
 
-export function NewFreezerItemModal({ open, onClose, onAdd }: NewFreezerItemModalProps) {
+export function NewFreezerItemModal({ mode = "diepvries", open, onClose, onAdd }: NewFreezerItemModalProps) {
+  const isPantry = mode === "voorraadkast";
   const [query, setQuery] = React.useState("");
   const [selection, setSelection] = React.useState<Selection | null>(null);
   const [amount, setAmount] = React.useState(1);
@@ -133,7 +137,7 @@ export function NewFreezerItemModal({ open, onClose, onAdd }: NewFreezerItemModa
   const itemSynonyms = useItemSynonyms();
 
   // Load recipes from DB
-  const { data: recipeData } = db.useQuery(open ? { recipes: { ingredients: {} } } : null);
+  const { data: recipeData } = db.useQuery(open && !isPantry ? { recipes: { ingredients: {} } } : null);
 
   const allRecipes: SavedRecipe[] = React.useMemo(() => {
     if (!recipeData?.recipes) return [];
@@ -232,7 +236,7 @@ export function NewFreezerItemModal({ open, onClose, onAdd }: NewFreezerItemModa
   const selectedKey = selection ? selectionKey(selection) : null;
   const unitChips = (
     <div role="group" aria-label="Eenheid" className="flex flex-wrap gap-1.5 px-2.5 pb-2.5 pt-0.5">
-      {FREEZER_UNITS.map((u) => (
+      {(isPantry ? PANTRY_UNITS : FREEZER_UNITS).map((u) => (
         <FilterChip key={u} selected={unit === u} onClick={() => changeUnit(u)}>
           {u}
         </FilterChip>
@@ -285,7 +289,7 @@ export function NewFreezerItemModal({ open, onClose, onAdd }: NewFreezerItemModa
     <SlideInModal
       open={open}
       onClose={onClose}
-      title="Toevoegen aan diepvries"
+      title={isPantry ? "Toevoegen aan voorraadkast" : "Toevoegen aan diepvries"}
       footer={
         <Button type="submit" form="new-freezer-item-form" variant="primary" disabled={!selection}>
           {selection?.kind === "recipe"
@@ -296,8 +300,8 @@ export function NewFreezerItemModal({ open, onClose, onAdd }: NewFreezerItemModa
     >
       <form id="new-freezer-item-form" onSubmit={handleSubmit} className="flex min-h-[52dvh] w-full flex-col gap-4 md:min-h-[400px]">
         <SearchBar
-          placeholder="Zoek een product of recept"
-          aria-label="Zoek een product of recept"
+          placeholder={isPantry ? "Zoek een product" : "Zoek een product of recept"}
+          aria-label={isPantry ? "Zoek een product" : "Zoek een product of recept"}
           value={query}
           onValueChange={setQuery}
         />
@@ -337,7 +341,7 @@ export function NewFreezerItemModal({ open, onClose, onAdd }: NewFreezerItemModa
         ) : null}
 
         {!typed && recipes.length === 0 ? (
-          <p className="py-6 text-center text-sm text-[var(--text-secondary)]">Zoek een product om in te vriezen</p>
+          <p className="py-6 text-center text-sm text-[var(--text-secondary)]">{isPantry ? "Zoek bijvoorbeeld bloem, olie, koekjes of chips" : "Zoek een product om in te vriezen"}</p>
         ) : null}
       </form>
     </SlideInModal>

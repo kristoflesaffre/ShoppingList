@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { cn } from "@/lib/utils";
 import { FROST_GRADIENT_CLASS, FrostDecor } from "@/components/ui/frost_background";
+import { PANTRY_GRADIENT_CLASS, PANTRY_TEXT_CLASS } from "@/components/ui/pantry_background";
+import { isPantryLow, pantryStatsLabel } from "@/lib/pantry";
 
 export type DashboardFreezerItem = {
   id: string;
@@ -192,6 +194,128 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
         )}
       </div>
     </section>
+  );
+}
+
+const PANTRY_ICON = (
+  <span
+    aria-hidden
+    className="inline-block size-[18px] shrink-0 bg-current"
+    style={{ WebkitMask: "url(/icons/pantry.svg) center/contain no-repeat", mask: "url(/icons/pantry.svg) center/contain no-repeat" }}
+  />
+);
+
+const MAX_PANTRY_ROWS = 5;
+
+/** Canvas «VK · Voorraadkast», C: warme tweeling van de diepvrieskolom op de computer. */
+export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRow[] }) {
+  const getPhotoUrl = useItemPhotoUrl(160);
+  const shown = items.slice(0, MAX_PANTRY_ROWS);
+  const hiddenCount = items.length - shown.length;
+
+  return (
+    <section aria-labelledby="dashboard-pantry" className="flex h-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 items-center justify-between gap-3">
+        <h2 id="dashboard-pantry" className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
+          Voorraadkast
+        </h2>
+      </div>
+      <div className={cn("flex flex-1 flex-col rounded-[24px] p-5", PANTRY_GRADIENT_CLASS)}>
+        <p className={cn("flex items-center gap-2 text-[12.5px] font-extrabold uppercase tracking-[0.06em]", PANTRY_TEXT_CLASS)}>
+          {PANTRY_ICON}
+          {items.length > 0 ? pantryStatsLabel(items) : "Nog leeg"}
+        </p>
+        {items.length === 0 ? (
+          <p className="mt-3 text-[13.5px] leading-5 text-[var(--text-secondary)]">Hou bij hoeveel bloem, olie, koekjes of chips je nog in huis hebt.</p>
+        ) : (
+          <ul className="m-0 mt-3.5 list-none pl-0">
+            {shown.map((item, i) => {
+              const photo = getPhotoUrl(item.name);
+              const low = isPantryLow(item);
+              return (
+                <li key={item.id} className={cn("flex items-center gap-3 rounded-[16px] bg-[rgba(255,255,255,0.6)] py-2 pl-2 pr-3.5 [[data-theme=dark]_&]:bg-[rgba(255,255,255,0.06)]", i > 0 && "mt-2")}>
+                  <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-[var(--white)]">
+                    {photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- lokale productfoto
+                      <img src={photo} alt="" width={44} height={44} className="size-9 object-contain" loading="lazy" decoding="async" />
+                    ) : (
+                      <span className="text-sm font-bold text-[var(--secondary-700)]" aria-hidden>{item.name.trim().charAt(0).toUpperCase()}</span>
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1 leading-[18px]">
+                    <span className="block truncate text-[15px] font-semibold text-text-primary first-letter:uppercase">{item.name}</span>
+                    <span className="block truncate text-[12.5px] text-[var(--text-secondary)]">{low ? "Laatste · " : ""}{item.quantityPerPackage} {item.unit}</span>
+                  </span>
+                  <span className={cn("shrink-0 text-sm font-extrabold", PANTRY_TEXT_CLASS)}>{item.packages}×</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {hiddenCount > 0 ? <p className={cn("mt-2.5 text-[13px] font-semibold", PANTRY_TEXT_CLASS)}>+ {hiddenCount} meer in de kast</p> : null}
+        <div className="min-h-4 flex-1" />
+        <div className="flex gap-2">
+          <Link
+            href="/voorraadkast"
+            className="flex h-10 flex-1 items-center justify-center rounded-pill bg-[var(--white)] text-sm font-bold text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+          >
+            Voorraadkast openen
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Canvas «VK · Voorraadkast», C: rij producten op een warme kaart (mobiel startscherm), zoals de diepvries. */
+export function HomePantryPlatesCard({ items }: { items: DashboardFreezerRow[] }) {
+  const getPhotoUrl = useItemPhotoUrl(160);
+  const tileClass = "flex flex-col items-center gap-1.5 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus rounded-[14px]";
+
+  return (
+    <div className={cn("relative overflow-hidden rounded-[24px] py-4", PANTRY_GRADIENT_CLASS)}>
+      <p className={cn("flex items-center gap-2 px-4 text-xs font-extrabold uppercase tracking-[0.06em]", PANTRY_TEXT_CLASS)}>
+        {PANTRY_ICON}
+        {pantryStatsLabel(items)}
+      </p>
+      <ul className="m-0 mt-4 flex list-none gap-1.5 overflow-x-auto px-4 pb-1 pl-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {items.map((item) => {
+          const photo = getPhotoUrl(item.name);
+          const low = isPantryLow(item);
+          return (
+            <li key={item.id} className="w-[92px] shrink-0">
+              <Link href="/voorraadkast" className={tileClass}>
+                <span className="relative">
+                  <span className="flex size-[76px] items-center justify-center overflow-hidden rounded-full bg-[var(--white)]">
+                    {photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- lokale productfoto
+                      <img src={photo} alt="" width={76} height={76} className="size-[60px] object-contain" loading="lazy" decoding="async" />
+                    ) : (
+                      <span className="text-[28px] font-extrabold text-[var(--secondary-700)]" aria-hidden>{item.name.trim().charAt(0).toUpperCase()}</span>
+                    )}
+                  </span>
+                  <span
+                    className={cn(
+                      "absolute -right-1 -top-0.5 flex h-[22px] items-center rounded-pill px-[7px] text-xs font-extrabold shadow-[0_2px_6px_rgba(0,0,0,0.1)]",
+                      low ? "bg-[var(--secondary-700)] text-white" : "bg-[var(--white)] text-[var(--secondary-700)]",
+                    )}
+                  >
+                    {item.packages}×
+                  </span>
+                </span>
+                <span className="line-clamp-2 text-center text-[13px] font-bold leading-4 text-text-primary first-letter:uppercase">{item.name}</span>
+              </Link>
+            </li>
+          );
+        })}
+        <li className="w-[92px] shrink-0">
+          <Link href="/voorraadkast" className={tileClass}>
+            <span className={cn("flex size-[76px] items-center justify-center rounded-full border-2 border-dashed border-[rgba(145,100,54,0.45)]", PANTRY_TEXT_CLASS)}>{PLUS_ICON}</span>
+            <span className={cn("text-[13px] font-bold leading-4", PANTRY_TEXT_CLASS)}>Toevoegen</span>
+          </Link>
+        </li>
+      </ul>
+    </div>
   );
 }
 

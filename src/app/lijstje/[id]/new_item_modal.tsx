@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { resolveItemCategoryFromName, stockSourceLabel } from "@/lib/item-ingredient-category";
 import { findFreezerItemForPlan } from "@/lib/freezer-planning";
+import { isPantryItem } from "@/lib/pantry";
 import { normalizeQuantity, parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
 import {
   DEFAULT_TRIP_PERSON_TAB,
@@ -414,7 +415,7 @@ export function NewItemModal({
       recipeId?: string;
       order?: number;
     }>)
-      .filter((it) => it.name && (!it.ownerId || it.ownerId === userId))
+      .filter((it) => it.name && !isPantryItem(it) && (!it.ownerId || it.ownerId === userId))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }, [freezerData, authUser?.id]);
 
