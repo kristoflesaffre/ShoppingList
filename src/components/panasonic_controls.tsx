@@ -2,6 +2,7 @@
 import * as React from "react";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
 import { AC_FANS, AC_MODES, type AcCommand, type AcDevice } from "@/lib/panasonic";
+import { readJson, sharedRead } from "@/lib/shared-read";
 type State = { configured: boolean; connected: boolean; reconnect?: boolean; devices?: AcDevice[] };
 const button = "min-h-11 rounded-xl border border-[var(--border-subtle)] px-4 py-2 font-semibold disabled:opacity-50";
 export function PanasonicControls() {
@@ -11,9 +12,10 @@ export function PanasonicControls() {
   const [message, setMessage] = React.useState("");
   const load = React.useCallback(async (signal?: AbortSignal) => {
     if (!token) return;
-    const response = await fetch("/api/panasonic/devices", { method: "POST", headers: googleAuthHeaders(token), cache: "no-store", signal });
-    if (!response.ok) throw new Error();
-    setState(await response.json());
+    const response = await sharedRead(`panasonic-devices|${token}`, () => fetch("/api/panasonic/devices", { method: "POST", headers: googleAuthHeaders(token), cache: "no-store" }).then(readJson<State>));
+    if (signal?.aborted) return;
+    if (!response.ok || !response.data) throw new Error();
+    setState(response.data);
   }, [token]);
   React.useEffect(() => {
     const controller = new AbortController();

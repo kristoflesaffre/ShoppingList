@@ -114,6 +114,12 @@ than `127.0.0.1`, so the registered callback and browser cookies match.
 The HTTPS preview uses `.next-https`, allowing the ordinary HTTP preview to keep
 running independently. Local OAuth credentials do not change the hosted settings.
 
+Next.js itself runs on the internal port 3012 (HTTPS, HTTP/1.1 only);
+`scripts/local-h2-proxy.mjs` serves `https://localhost:3011` over HTTP/2 with the
+same certificate and passes the Host header and HMR websockets through unchanged.
+Over HTTP/1.1 the browser opens only six connections, so slow device reads (BREL,
+Panasonic, Hue) made the start page's photos wait. Open the app on 3011, never 3012.
+
 ### Local recipe-photo collection
 
 `npm run dev` and `npm run dev:https` now start an incremental photo sync alongside

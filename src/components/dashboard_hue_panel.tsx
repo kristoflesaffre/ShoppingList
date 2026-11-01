@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
 import { splitRoomName } from "@/lib/hue-room-name";
 import { FLOORS, defaultFloor, readFloorOverrides, writeFloorOverrides, type FloorKey } from "@/lib/hue-room-floors";
+import { readJson, sharedRead } from "@/lib/shared-read";
 
 /**
  * Philips Hue op het avonddashboard (canvas «Dashboard · licht» F · Lampkolommen): elke kamer is een staande
@@ -551,9 +552,9 @@ export function DashboardHuePanel({
   const load = React.useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch("/api/hue/rooms", { method: "POST", headers: googleAuthHeaders(token), cache: "no-store" });
-      if (!res.ok) throw new Error(String(res.status));
-      const data = (await res.json()) as { configured?: boolean; connected?: boolean; reconnect?: boolean; rooms?: Room[] };
+      const res = await sharedRead(`hue-rooms|${token}`, () => fetch("/api/hue/rooms", { method: "POST", headers: googleAuthHeaders(token), cache: "no-store" }).then(readJson));
+      if (!res.ok || !res.data) throw new Error(String(res.status));
+      const data = res.data as { configured?: boolean; connected?: boolean; reconnect?: boolean; rooms?: Room[] };
       if (data.configured === false) setState({ kind: "not-configured" });
       else if (!data.connected) setState({ kind: "not-connected", reconnect: data.reconnect === true });
       else setState({ kind: "ready", rooms: data.rooms ?? [] });

@@ -8,6 +8,7 @@ import { sendProjectorCommand } from "@/lib/projector-client";
 import { projectorTestMessage } from "@/lib/projector-control";
 
 import { isScreenActionDisabled, type ScreenStatus, type ScreenAction as Action } from "@/lib/projection-screen";
+import { readJson, sharedRead } from "@/lib/shared-read";
 
 export const ACTIONS = [
   { action: "up", label: "Omhoog", icon: "up" },
@@ -42,13 +43,16 @@ export function useScreenControls(token: string | null, { projectorStatus = fals
   const busyRef = React.useRef(false);
   const command = React.useRef(0);
   const call = React.useCallback(async (action: Action | "status", signal?: AbortSignal) => {
-    const response = await fetch("/api/broadlink", {
+    const request = (withSignal?: AbortSignal) => fetch("/api/broadlink", {
       method: "POST", headers: { ...googleAuthHeaders(token), "content-type": "application/json" },
-      body: JSON.stringify({ action }), cache: "no-store", signal,
-    });
-    const data = await response.json();
+      body: JSON.stringify({ action }), cache: "no-store", signal: withSignal,
+    }).then(readJson<Record<string, unknown>>);
+    // De stand lezen alle bedieningen samen; een opdracht gaat altijd apart (en blijft af te breken).
+    const response = action === "status" ? await sharedRead(`broadlink-status|${token}`, () => request()) : await request(signal);
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    const data = response.data ?? {};
     if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "unavailable");
-    return data as ScreenStatus;
+    return data as unknown as ScreenStatus;
   }, [token]);
 
   React.useEffect(() => {
@@ -102,7 +106,7 @@ export function useScreenControls(token: string | null, { projectorStatus = fals
   React.useEffect(() => {
     if (!projectorStatus || !token) return;
     let active = true;
-    void sendProjectorCommand("status", token).then(result => { if (active && result.accepted) setProjectorOn(result.isOn ?? null); }).catch(() => { /* status unknown */ });
+    void sharedRead(`projector-status|${token}`, () => sendProjectorCommand("status", token)).then(result => { if (active && result.accepted) setProjectorOn(result.isOn ?? null); }).catch(() => { /* status unknown */ });
     return () => { active = false; };
   }, [projectorStatus, token]);
   async function sendProjector(action: "on" | "off") {

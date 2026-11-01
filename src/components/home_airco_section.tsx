@@ -8,6 +8,7 @@ import { AC_FANS, type AcCommand, type AcDevice, type AcFan } from "@/lib/panaso
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { MiniButton } from "@/components/ui/mini_button";
 import { sortAircos } from "@/lib/airco-order";
+import { readJson, sharedRead } from "@/lib/shared-read";
 
 type State =
   | { kind: "loading" }
@@ -34,8 +35,8 @@ export function useAirco() {
   const load = React.useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch("/api/panasonic/devices", { method: "POST", headers: googleAuthHeaders(token), cache: "no-store" });
-      const data = (await res.json().catch(() => null)) as { configured?: boolean; connected?: boolean; reconnect?: boolean; devices?: AcDevice[] } | null;
+      const res = await sharedRead(`panasonic-devices|${token}`, () => fetch("/api/panasonic/devices", { method: "POST", headers: googleAuthHeaders(token), cache: "no-store" }).then(readJson));
+      const data = res.data as { configured?: boolean; connected?: boolean; reconnect?: boolean; devices?: AcDevice[] } | null;
       if (!res.ok || !data) throw new Error();
       if (data.configured === false) setState({ kind: "not-configured" });
       else if (!data.connected) setState({ kind: "not-connected", reconnect: data.reconnect === true });

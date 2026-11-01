@@ -5,6 +5,7 @@ import { googleAuthHeaders } from "@/lib/google-client";
 import { cn } from "@/lib/utils";
 import { blindLabel, SLATS_ANGLE, type BlindCommand, type BlindsStatus, type Slats } from "@/lib/brel-blinds";
 import { ScreenIcon } from "@/components/dashboard_screen_panel";
+import { readJson, sharedRead } from "@/lib/shared-read";
 
 const ACTIONS = [
   { action: "open", label: "Open", icon: "up" },
@@ -25,13 +26,17 @@ export function useBlindsControls(token: string | null) {
   const mounted = React.useRef(false);
 
   const call = React.useCallback(async (body: Record<string, unknown>, signal?: AbortSignal) => {
-    const response = await fetch("/api/brel", {
+    const request = () => fetch("/api/brel", {
       method: "POST", headers: { ...googleAuthHeaders(token), "content-type": "application/json" },
-      body: JSON.stringify(body), cache: "no-store", signal,
-    });
-    const data = await response.json();
+      body: JSON.stringify(body), cache: "no-store",
+    }).then(readJson<Record<string, unknown>>);
+    // Status leest de hub via Python (tot 14 s): alle bedieningen op de pagina delen één vraag. Opdrachten nooit.
+    const response = body.action === "status" ? await sharedRead(`brel-status|${token}`, request) : await request();
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    const data = response.data ?? {};
     if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "unavailable");
-    return data;
+    // Opdrachten geven enkel { accepted }; alleen de status wordt als BlindsStatus gelezen.
+    return data as unknown as BlindsStatus;
   }, [token]);
 
   React.useEffect(() => {

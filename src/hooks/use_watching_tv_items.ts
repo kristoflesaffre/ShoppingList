@@ -5,7 +5,8 @@ import { useFilmsLibrary } from "@/hooks/use_films_library";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useStremio } from "@/hooks/use_stremio";
 import { mergeStremioWatching } from "@/lib/stremio-watching";
-import { stremioTitleMapping } from "@/lib/stremio-title-mapping";
+import { STORED_MAPPING_FRESH_MS, storedStremioTitleMappings, stremioTitleMapping } from "@/lib/stremio-title-mapping";
+import { fetchFilmDetail } from "@/lib/film-detail-client";
 import {
   buildNewSeasonItems,
   buildWatchingTvItems,
@@ -60,7 +61,24 @@ export function useWatchingTvItems() {
   React.useEffect(() => {
     if (!hasStremioProgress || !mappingIds) return;
     let active = true;
-    const ids = Array.from(new Set(mappingIds.split(",")));
+    const all = Array.from(new Set(mappingIds.split(",")));
+    // Wat dit toestel al kent, meteen gebruiken: de kaarten «aan het kijken» wachten dan niet op 36 opzoekingen.
+    const stored = storedStremioTitleMappings(all);
+    const known = Object.entries(stored);
+    if (known.length > 0) {
+      setImdbByTmdbId(prev => {
+        const next = { ...prev };
+        for (const [id, entry] of known) if (!(id in next)) next[id] = entry.mapping.imdbId;
+        return next;
+      });
+      setFetchedSeasons(prev => {
+        const next = { ...prev };
+        for (const [id, entry] of known) if (!(id in next) && entry.mapping.seasons.length > 0) next[id] = entry.mapping.seasons;
+        return next;
+      });
+    }
+    // Opzoeken: eerst wat nog ontbreekt, daarna (op de achtergrond) wat al een tijd bewaard is.
+    const ids = [...all.filter(id => !stored[id]), ...all.filter(id => stored[id] && Date.now() - stored[id].at > STORED_MAPPING_FRESH_MS)];
     let index = 0;
     const worker = async () => {
       while (active && index < ids.length) {
@@ -73,13 +91,15 @@ export function useWatchingTvItems() {
         } catch { /* Retry unavailable metadata on the next Stremio snapshot. */ }
       }
     };
-    void Promise.all(Array.from({ length: Math.min(4, ids.length) }, worker));
+    // Over HTTP/2 (lokaal) en op de gehoste site kunnen er meer tegelijk; zes houdt de TMDB-route rustig.
+    void Promise.all(Array.from({ length: Math.min(6, ids.length) }, worker));
     return () => { active = false; };
   }, [mappingIds, hasStremioProgress, stremio.syncedAt]);
   /** Seizoenen zoals TMDB ze nu kent, ook aangekondigde zonder afleveringen (voor «Nieuw seizoen»). */
   const [rawSeasons, setRawSeasons] = React.useState<Record<string, TvSeasonInfo[]>>({});
   const [dismissedNewSeasons, setDismissedNewSeasons] = React.useState<Set<string>>(() => new Set());
   React.useEffect(() => setDismissedNewSeasons(readDismissedNewSeasons()), []);
+  // Per titel één keer per bezoek: het effect loopt opnieuw zodra de bewaarde seizoenen veranderen.
   const fetchingRef = React.useRef<Set<string>>(new Set());
   const cleanedRef = React.useRef<Set<string>>(new Set());
 
@@ -143,15 +163,14 @@ export function useWatchingTvItems() {
       if (fetchingRef.current.has(tmdbId)) continue;
       fetchingRef.current.add(tmdbId);
 
-      void fetch(`/api/films/detail?type=tv&id=${tmdbId}`)
-        .then((r) => r.json())
+      void fetchFilmDetail<{
+        title: string;
+        year: string;
+        posterUrl: string | null;
+        seasons?: { seasonNumber: number; episodeCount: number; name?: string; airDate?: string | null }[];
+      }>("tv", tmdbId)
         .then(
-          (data: {
-            title: string;
-            year: string;
-            posterUrl: string | null;
-            seasons?: { seasonNumber: number; episodeCount: number; name?: string; airDate?: string | null }[];
-          }) => {
+          (data) => {
             setRawSeasons((prev) => ({
               ...prev,
               [tmdbId]: (data.seasons ?? [])
@@ -171,9 +190,8 @@ export function useWatchingTvItems() {
             });
           },
         )
-        .finally(() => {
-          fetchingRef.current.delete(tmdbId);
-        });
+        // Mislukt: bij een volgende keer opnieuw proberen. Gelukt: blijft in de set, geen herhaling.
+        .catch(() => fetchingRef.current.delete(tmdbId));
     }
   }, [watchingTmdbIds, seriesMeta, saveSeriesMeta]);
 

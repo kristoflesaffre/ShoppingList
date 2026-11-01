@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
+import { sharedRead } from "@/lib/shared-read";
 
 /**
  * Todoist in de app (alleen lezen, via /api/todoist/*): types, kleuren, vervaldatums en de hook die status,
@@ -125,6 +126,20 @@ function readyFromCache(cache: TodoCache): TodoState {
   return { kind: "ready", tasks: cache.tasks, projects: new Map(cache.projects.map((p) => [p.id, p])), canWrite: cache.canWrite };
 }
 
+type TodoistFetch = { kind: "not-configured" } | { kind: "not-connected"; reconnect: boolean } | { kind: "ready"; fresh: TodoCache };
+
+async function fetchTodoist(token: string): Promise<TodoistFetch> {
+  const post = (path: string, body?: unknown) => todoistPost(token, path, body);
+  const status = (await (await post("status")).json()) as { configured?: boolean; connected?: boolean; reconnect?: boolean; canWrite?: boolean };
+  if (status.configured === false) return { kind: "not-configured" };
+  if (!status.connected) return { kind: "not-connected", reconnect: status.reconnect === true };
+  const [tasksRes, projectsRes] = await Promise.all([post("tasks", { limit: 200 }), post("projects", { limit: 200 })]);
+  if (!tasksRes.ok) throw new Error(String(tasksRes.status));
+  const { tasks } = (await tasksRes.json()) as { tasks: TodoTask[] };
+  const { projects } = projectsRes.ok ? ((await projectsRes.json()) as { projects: TodoProject[] }) : { projects: [] };
+  return { kind: "ready", fresh: { tasks, projects, canWrite: status.canWrite === true } };
+}
+
 export function useTodoist() {
   const token = useGoogleAuthToken();
   const [state, setState] = React.useState<TodoState>(() => (todoMemory ? readyFromCache(todoMemory) : { kind: "loading" }));
@@ -136,24 +151,15 @@ export function useTodoist() {
 
   const load = React.useCallback(async () => {
     if (!token) return;
-    const post = (path: string, body?: unknown) => todoistPost(token, path, body);
     try {
-      const status = (await (await post("status")).json()) as { configured?: boolean; connected?: boolean; reconnect?: boolean; canWrite?: boolean };
-      if (status.configured === false) {
+      // Meerdere onderdelen gebruiken deze hook tegelijk (to-do, afvinken, diepvriesplanning): één keer ophalen.
+      const result = await sharedRead(`todoist|${token}`, () => fetchTodoist(token));
+      if (result.kind !== "ready") {
         writeTodoCache(null);
-        return setState({ kind: "not-configured" });
+        return setState(result.kind === "not-connected" ? { kind: "not-connected", reconnect: result.reconnect } : { kind: "not-configured" });
       }
-      if (!status.connected) {
-        writeTodoCache(null);
-        return setState({ kind: "not-connected", reconnect: status.reconnect === true });
-      }
-      const [tasksRes, projectsRes] = await Promise.all([post("tasks", { limit: 200 }), post("projects", { limit: 200 })]);
-      if (!tasksRes.ok) throw new Error(String(tasksRes.status));
-      const { tasks } = (await tasksRes.json()) as { tasks: TodoTask[] };
-      const { projects } = projectsRes.ok ? ((await projectsRes.json()) as { projects: TodoProject[] }) : { projects: [] };
-      const fresh = { tasks, projects, canWrite: status.canWrite === true };
-      writeTodoCache(fresh);
-      setState(readyFromCache(fresh));
+      writeTodoCache(result.fresh);
+      setState(readyFromCache(result.fresh));
     } catch {
       // Even geen verbinding: de bewaarde taken blijven staan; enkel zonder bewaarde taken de foutmelding.
       setState((s) => (s.kind === "ready" ? s : { kind: "error" }));

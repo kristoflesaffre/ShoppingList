@@ -11,6 +11,7 @@ import {
 } from "@/hooks/use_watching_tv_items";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmMode } from "@/components/use_film_mode";
+import { fetchFilmDetail } from "@/lib/film-detail-client";
 import {
   CastRound,
   FilmIcons,
@@ -150,9 +151,8 @@ function useBackdrop(media: EveningMedia): string | null {
     let active = true;
     let job = backdropCache.get(media.id);
     if (!job) {
-      job = fetch(`/api/films/detail?type=${parsed.type}&id=${parsed.tmdbId}`)
-        .then((r) => (r.ok ? (r.json() as Promise<{ backdropUrl?: string | null }>) : null))
-        .then((d) => d?.backdropUrl ?? null)
+      job = fetchFilmDetail<{ backdropUrl?: string | null }>(parsed.type, parsed.tmdbId)
+        .then((d) => d.backdropUrl ?? null)
         .catch(() => null);
       backdropCache.set(media.id, job);
     }
@@ -338,12 +338,7 @@ export function FilmDetailModal({
   React.useEffect(() => {
     if (!parsed) return;
     let active = true;
-    fetch(`/api/films/detail?type=${parsed.type}&id=${parsed.tmdbId}`)
-      .then((r) =>
-        r.ok
-          ? (r.json() as Promise<MediaDetail>)
-          : Promise.reject(new Error(String(r.status))),
-      )
+    fetchFilmDetail<MediaDetail>(parsed.type, parsed.tmdbId)
       .then((d) => active && setDetail(d))
       .catch(() => active && setFailed(true));
     return () => {
