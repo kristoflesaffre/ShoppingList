@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { dayEntryHasContent, selectCalendarPreviewItems, type DayEntry } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
+import { eatingOutPhotoFor } from "@/lib/agenda_photos";
 
 /**
  * Gedeelde bouwstenen voor kalenderdagen (startpagina en kalenderpagina): samenvatting van een dag,
@@ -27,7 +28,7 @@ export function calendarDaySummary(isoDate: string, entry: DayEntry | null) {
           : meal.ingredientCount === 1
             ? "1 ingrediënt"
             : `${meal.ingredientCount} ingrediënten`,
-      photo: meal.photoUrl,
+      photo: meal.photoUrl ?? eatingOutPhotoFor(meal.recipeName),
       loose: null as DayEntry["looseIngredients"] | null,
       fromStock: meal.fromStock === true,
       href: meal.recipeId ? `/recepten/${meal.recipeId}` : `/kalender?date=${isoDate}`,
@@ -38,12 +39,14 @@ export function calendarDaySummary(isoDate: string, entry: DayEntry | null) {
   const previewItems = selectCalendarPreviewItems(items);
   const first = items.find((i) => i.photoUrl) ?? items[0];
   const names = previewItems.map((i) => i.name);
+  /** «restaurant», «gaan eten»…: de restaurantfoto als volledig bord in plaats van een leeg bord. */
+  const eatingOut = items.map((i) => eatingOutPhotoFor(i.name)).find(Boolean) ?? null;
   return {
     title: items.length > 2 ? `${names.slice(0, 2).join(", ")} +${items.length - 2}` : names.join(", "),
     sub: items.length === 1 ? "1 item" : `${items.length} items`,
-    photo: null as string | null,
+    photo: eatingOut as string | null,
     /** Losse items: bord met tot drie productfoto's (zoals op de kalenderpagina). */
-    loose: previewItems,
+    loose: eatingOut ? null : previewItems,
     fromStock: first?.fromStock === true,
     href: `/kalender?date=${isoDate}`,
     recipeId: null as string | null,

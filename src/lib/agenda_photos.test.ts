@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { existsSync, readdirSync } from "node:fs";
-import { agendaPhotoFor } from "./agenda_photos";
+import { agendaPhotoFor, eatingOutPhotoFor } from "./agenda_photos";
 
 describe("appointment photos", () => {
   it.each([
@@ -59,6 +59,13 @@ describe("appointment photos", () => {
     ["Huub Bday", "verjaardag"],
   ])("matches %s", (title, file) => {
     expect(agendaPhotoFor(title)).toBe(`/images/afspraken/${file}`);
+  });
+
+  it("gives meals out the restaurant photo", () => {
+    for (const name of ["restaurant", "Gaan eten", "uit eten bij Amazone", "Resto"]) {
+      expect(eatingOutPhotoFor(name)).toBe("/images/afspraken/reservatie_restaurant_480.webp");
+    }
+    for (const name of [null, "", "Spaghetti", "Aardappelen"]) expect(eatingOutPhotoFor(name)).toBeNull();
   });
 
   it("uses location only when the title has no match", () => {

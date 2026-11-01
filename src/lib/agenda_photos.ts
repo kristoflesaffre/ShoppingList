@@ -142,3 +142,13 @@ export function agendaPhotoFor(title: string | null | undefined, location?: stri
   }
   return null;
 }
+
+const EATING_OUT = PREPARED.find((p) => p.file === "reservatie_restaurant")!;
+
+/** Restaurantfoto (480 px) voor een maaltijd of item als «restaurant», «gaan eten» of «uit eten»; anders null. */
+export function eatingOutPhotoFor(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const t = normalize(name);
+  const match = EATING_OUT.keys.some((key) => t.includes(key) || fuzzyPhrase(t, key));
+  return match ? `/images/afspraken/${EATING_OUT.file}_480.webp` : null;
+}

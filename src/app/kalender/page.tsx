@@ -188,7 +188,7 @@ function dayVisual(isoDate: string, entry: DayEntry | null): DayVisual | null {
   const second = entry.meals[1] ?? null;
   return {
     summary,
-    photo: first?.photoUrl ?? null,
+    photo: summary.photo,
     sidePhoto: second?.photoUrl ?? null,
     sideLoose: first && !second && entry.looseIngredients.length > 0 ? entry.looseIngredients : null,
     kind: summary.fromStock && first ? "stock" : first?.takeout ? "takeout" : "plain",
