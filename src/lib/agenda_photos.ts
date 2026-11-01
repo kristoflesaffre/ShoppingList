@@ -26,6 +26,8 @@ const AGENDA_PHOTOS: { file: string; keys: string[] }[] = [
   { file: "barbecue", keys: ["barbecue", "barbeque", "bbq"] },
   { file: "ribbetjes", keys: ["ribbetjes", "spareribs", "spare ribs"] },
   { file: "datenight", keys: ["datenight", "date night"] },
+  // Algemeen op restaurant, na de restaurants met een eigen foto (Wok Dynasty, Bento…).
+  { file: "reservatie_restaurant", keys: ["gaan eten", "uit eten", "restaurant", "resto"] },
   { file: "es_clinic", keys: ["es clinic", "esclinic"] },
   { file: "dokter_an_koeck", keys: ["an koeck", "dokter koeck", "dr koeck"] },
   { file: "dokter_vincent_jacobs", keys: ["dokter vincent jacobs", "vincent jacobs", "dokter jacobs", "dr jacobs", "dr vincent jacobs"] },
