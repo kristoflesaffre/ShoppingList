@@ -117,9 +117,12 @@ describe("freezer dish groups", () => {
   it("puts soups together, before anything else in the name", () => {
     for (const n of ["Tomatensoep met veel balletjes", "Noedelsoep met rode curry", "Rucolasoep", "Kippenbouillon"]) expect(freezerDishGroupOf(n)).toBe("soep");
   });
-  it("groups purees, sauces, pasta and meat", () => {
-    expect(freezerDishGroupOf("Spinaziepuree")).toBe("puree");
-    expect(freezerDishGroupOf("Wortelstoemp")).toBe("puree");
+  it("groups side dishes, sauces, pasta and meat", () => {
+    expect(freezerDishGroupOf("Spinaziepuree")).toBe("bijgerecht");
+    expect(freezerDishGroupOf("Wortelstoemp")).toBe("bijgerecht");
+    expect(freezerDishGroupOf("Kroketten")).toBe("bijgerecht");
+    expect(freezerDishGroupOf("Rode kool met appeltjes")).toBe("bijgerecht");
+    expect(freezerDishGroupOf("Wortelsoep")).toBe("soep");
     expect(freezerDishGroupOf("Bolognesesaus")).toBe("saus");
     expect(freezerDishGroupOf("Vlaamse stoverij")).toBe("saus");
     expect(freezerDishGroupOf("Lasagne")).toBe("pasta");
