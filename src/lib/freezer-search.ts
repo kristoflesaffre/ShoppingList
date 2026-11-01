@@ -72,6 +72,28 @@ export function nextFreezerUndo(current: FreezerUndo | null, item: FreezerEntry,
   return { id: item.id, before, after };
 }
 
+/** Gerechten in logische groepen op de pagina; volgorde = volgorde op het scherm (soepen bovenaan). */
+export type FreezerDishGroup = "soep" | "puree" | "saus" | "pasta" | "vlees" | "overig";
+export const FREEZER_DISH_GROUPS: { key: FreezerDishGroup; label: string }[] = [
+  { key: "soep", label: "Soepen" },
+  { key: "puree", label: "Purees en stoemp" },
+  { key: "saus", label: "Sauzen en stoofpotjes" },
+  { key: "pasta", label: "Pasta, rijst en noedels" },
+  { key: "vlees", label: "Vlees en vis" },
+  { key: "overig", label: "Andere gerechten" },
+];
+
+/** Groep volgt uit de naam; de eerste treffer wint, dus «Noedelsoep» is een soep en geen noedels. */
+export function freezerDishGroupOf(name: string): FreezerDishGroup {
+  const n = name.toLowerCase();
+  if (/soep|bouillon|velout/.test(n)) return "soep";
+  if (/puree|purée|stoemp|mousseline|hutsepot/.test(n)) return "puree";
+  if (/saus|bolognese|ragout|rag[uù]|stoof|stoverij|goulash|curry|chili|blanquette|vol-au-vent|dahl|dal\b/.test(n)) return "saus";
+  if (/pasta|lasagne|spaghetti|macaroni|penne|tagliatelle|noedel|nasi|bami|rijst|risotto|couscous/.test(n)) return "pasta";
+  if (/schnitzel|balletjes|gehakt|kip|kalkoen|vlees|steak|burger|worst|varken|rund|lams?|vis\b|vissticks|zalm|kabeljauw|scampi|garnaal/.test(n)) return "vlees";
+  return "overig";
+}
+
 export type FreezerSearchFilter = "alles" | "gerecht" | "product";
 
 export interface FreezerSearchResult {

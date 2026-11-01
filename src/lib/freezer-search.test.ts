@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFreezerSearch, freezerStockLabel, freezerUndoLines, freezerUnitPatch, nextFreezerUndo, type FreezerEntry } from "./freezer-search";
+import { buildFreezerSearch, freezerDishGroupOf, freezerStockLabel, freezerUndoLines, freezerUnitPatch, nextFreezerUndo, type FreezerEntry } from "./freezer-search";
 
 const dish = (id: string, name: string, packages: number, recipeId?: string): FreezerEntry => ({ id, type: "gerecht", name, quantityPerPackage: 1, unit: "portie", packages, ...(recipeId ? { recipeId } : {}) });
 const product = (id: string, name: string, packages: number, unit = "stuk", quantityPerPackage = 1): FreezerEntry => ({ id, type: "product", name, quantityPerPackage, unit, packages });
@@ -110,5 +110,21 @@ describe("voorraadkast search (same helpers)", () => {
   it("offers no new product when the exact name is already in the pantry", () => {
     const r = buildFreezerSearch({ query: "olijfolie", items: pantry, recipes: [], productNames: [], addedIds: new Set(), filter: "product" });
     expect(r.createName).toBeNull();
+  });
+});
+
+describe("freezer dish groups", () => {
+  it("puts soups together, before anything else in the name", () => {
+    for (const n of ["Tomatensoep met veel balletjes", "Noedelsoep met rode curry", "Rucolasoep", "Kippenbouillon"]) expect(freezerDishGroupOf(n)).toBe("soep");
+  });
+  it("groups purees, sauces, pasta and meat", () => {
+    expect(freezerDishGroupOf("Spinaziepuree")).toBe("puree");
+    expect(freezerDishGroupOf("Wortelstoemp")).toBe("puree");
+    expect(freezerDishGroupOf("Bolognesesaus")).toBe("saus");
+    expect(freezerDishGroupOf("Vlaamse stoverij")).toBe("saus");
+    expect(freezerDishGroupOf("Lasagne")).toBe("pasta");
+    expect(freezerDishGroupOf("Kalkoenschnitzel")).toBe("vlees");
+    expect(freezerDishGroupOf("Witloof met balletjes")).toBe("vlees");
+    expect(freezerDishGroupOf("Quiche")).toBe("overig");
   });
 });

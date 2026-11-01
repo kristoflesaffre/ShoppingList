@@ -16,8 +16,10 @@ import { slugToDisplayName } from "@/components/ui/item_name_autocomplete";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import type { SavedRecipe } from "@/lib/recipe_library";
 import {
+  FREEZER_DISH_GROUPS,
   FREEZER_PRODUCT_UNITS,
   buildFreezerSearch,
+  freezerDishGroupOf,
   freezerStockLabel,
   freezerUndoLines,
   freezerUnitPatch,
@@ -550,7 +552,11 @@ export default function DiepvriesvoorraadPage() {
             </div>
           ) : visibleItems.length > 0 ? (
             <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
-              {gerechten.length > 0 ? <FreezerGroup title="Gerechten">{gerechten.map(restRow)}</FreezerGroup> : null}
+              {/* Gerechten per soort: soepen bovenaan, dan purees, sauzen … (naam bepaalt de groep). */}
+              {FREEZER_DISH_GROUPS.map((g) => {
+                const dishes = gerechten.filter((i) => freezerDishGroupOf(i.name) === g.key);
+                return dishes.length > 0 ? <FreezerGroup key={g.key} title={g.label}>{dishes.map(restRow)}</FreezerGroup> : null;
+              })}
               {producten.length > 0 ? <FreezerGroup title="Producten">{producten.map(restRow)}</FreezerGroup> : null}
             </div>
           ) : (
