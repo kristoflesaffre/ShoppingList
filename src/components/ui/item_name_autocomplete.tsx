@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 
 /** Slug "vleesje_noe" → "Vleesje noe" (eerste woord hoofdletter, rest kleine letters). */
-function slugToDisplayName(slug: string): string {
+export function slugToDisplayName(slug: string): string {
   return slug
     .split("_")
     .map((w, i) => (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w))

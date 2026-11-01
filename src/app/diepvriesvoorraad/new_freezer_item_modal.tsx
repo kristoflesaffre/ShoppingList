@@ -2,20 +2,23 @@
 
 import * as React from "react";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
-import { SegmentedControl } from "@/components/ui/segmented_control";
-import { ChoiceRow } from "@/components/ui/choice_row";
-import { QuantityUnitField } from "@/components/ui/quantity_unit_field";
-import { ItemNameAutocomplete } from "@/components/ui/item_name_autocomplete";
+import { CountStepper } from "@/components/ui/count_stepper";
+import { FilterChip } from "@/components/ui/filter_chip";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
+import { slugToDisplayName } from "@/components/ui/item_name_autocomplete";
 import { SearchBar } from "@/components/ui/search_bar";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { normalizeForMatch, useItemPhotoUrl, useItemSlugs, useItemSynonyms } from "@/lib/item-photos";
+import { matchItemSlugsForAutocomplete } from "@/lib/item-slug-autocomplete";
+import { matchRecipesForAutocomplete } from "@/lib/recipe-search";
+import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
 
 export interface NewFreezerItemModalProps {
   open: boolean;
   onClose: () => void;
-  initialTab?: "first" | "second";
   onAdd?: (item: {
     name: string;
     quantityPerPackage: number;
@@ -30,44 +33,107 @@ export interface NewFreezerItemModalProps {
 
 /** Eenheden voor de diepvries; g/kg = gewicht per pakket, de rest = aantal pakketten. */
 const FREEZER_UNITS = ["stuk", "zak", "pak", "g", "kg"] as const;
-const WEIGHT_UNITS = new Set(["g", "kg"]);
+const WEIGHT_UNITS = new Set<string>(["g", "kg"]);
+const GRAM_STEP = 50;
+const GRAM_START = 500;
+const MAX_RESULTS = 8;
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <p className="mb-2 text-[13px] font-semibold leading-[18px] text-[var(--text-secondary)]">{children}</p>;
+type Selection =
+  | { kind: "recipe"; recipe: SavedRecipe }
+  | { kind: "product"; name: string };
+
+function selectionKey(selection: Selection): string {
+  return selection.kind === "recipe" ? `recipe:${selection.recipe.id}` : `product:${selection.name.toLowerCase()}`;
+}
+
+function personsLabel(persons?: number | null): string {
+  if (!persons) return "Recept";
+  return `Recept · ${persons} ${persons === 1 ? "persoon" : "personen"}`;
+}
+
+function GroupTitle({ children }: { children: React.ReactNode }) {
+  return <h3 className="mb-1 text-[13px] font-bold leading-[18px] text-[var(--text-secondary)]">{children}</h3>;
+}
+
+function ProductThumb({ name }: { name: string }) {
+  const getItemPhoto = useItemPhotoUrl(160);
+  const photo = getItemPhoto(name);
+  return photo ? (
+    <span className="flex size-11 shrink-0 items-center justify-center">
+      {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
+      <img src={photo} alt="" width={36} height={36} className="size-9 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />
+    </span>
+  ) : (
+    <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] text-[17px] font-bold" style={teKopenMonogramStyle(name)} aria-hidden>
+      {name.trim().charAt(0).toUpperCase()}
+    </span>
+  );
 }
 
 function RecipeThumb({ src }: { src: string | null }) {
   return src ? (
     // eslint-disable-next-line @next/next/no-img-element -- receptfoto
-    <img src={src} alt="" width={42} height={42} className="size-[42px] shrink-0 rounded-full object-cover" />
+    <img src={src} alt="" width={44} height={44} className="size-11 shrink-0 rounded-full object-cover" />
   ) : (
     // eslint-disable-next-line @next/next/no-img-element -- illustratie
-    <img src="/images/ui/empty_state_diepvries.png" alt="" width={42} height={42} className="size-[42px] shrink-0 rounded-full bg-[var(--gray-25)] object-contain p-1.5 opacity-60" />
+    <img src="/images/ui/empty_state_diepvries.png" alt="" width={44} height={44} className="size-11 shrink-0 rounded-full bg-[var(--gray-25)] object-contain p-1.5 opacity-60" />
   );
 }
 
-export function NewFreezerItemModal({
-  open,
-  onClose,
-  initialTab = "first",
-  onAdd,
-}: NewFreezerItemModalProps) {
-  const [tab, setTab] = React.useState<"first" | "second">(initialTab);
+/** Canvas «03 · Toevoegen», 1 · Eén zoekveld: niet gekozen = plusknop, gekozen = lavendel vlak met stepper. */
+function ResultRow({
+  media,
+  title,
+  subtitle,
+  selected,
+  amount,
+  onSelect,
+  onChangeAmount,
+  children,
+}: {
+  media: React.ReactNode;
+  title: string;
+  subtitle: string;
+  selected: boolean;
+  amount: number;
+  onSelect: () => void;
+  onChangeAmount: (next: number) => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className={cn("rounded-[14px]", selected && "bg-[var(--blue-25)] shadow-[inset_0_0_0_1.5px_var(--blue-500)]")}>
+      <div className="flex items-center gap-3 py-[7px] pl-2.5 pr-2">
+        <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]">
+          {media}
+          <span className="min-w-0 flex-1 leading-[19px]">
+            <span className={cn("block truncate text-[15px] text-text-primary first-letter:uppercase", selected ? "font-semibold" : "font-medium")}>{title}</span>
+            <span className="block truncate text-[13px] text-[var(--text-secondary)]">{subtitle}</span>
+          </span>
+        </button>
+        {selected ? (
+          <CountStepper name={title} value={amount} tone="soft" onChange={onChangeAmount} />
+        ) : (
+          <RoundIconButton tone="primary" size={36} onClick={onSelect} aria-label={`${title} kiezen`}>
+            {RoundIcons.plus}
+          </RoundIconButton>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
 
-  // Product tab state — canvas «04»: één «Aantal» + eenheid.
-  const [productName, setProductName] = React.useState("");
+export function NewFreezerItemModal({ open, onClose, onAdd }: NewFreezerItemModalProps) {
+  const [query, setQuery] = React.useState("");
+  const [selection, setSelection] = React.useState<Selection | null>(null);
   const [amount, setAmount] = React.useState(1);
-  const [unit, setUnit] = React.useState("stuk");
+  const [unit, setUnit] = React.useState<string>("stuk");
 
-  // Gerecht tab state
-  const [recipeSearch, setRecipeSearch] = React.useState("");
-  const [selectedRecipeId, setSelectedRecipeId] = React.useState<string | null>(null);
-  const [portions, setPortions] = React.useState(1);
+  const itemSlugs = useItemSlugs();
+  const itemSynonyms = useItemSynonyms();
 
   // Load recipes from DB
-  const { data: recipeData } = db.useQuery(
-    open ? { recipes: { ingredients: {} } } : null,
-  );
+  const { data: recipeData } = db.useQuery(open ? { recipes: { ingredients: {} } } : null);
 
   const allRecipes: SavedRecipe[] = React.useMemo(() => {
     if (!recipeData?.recipes) return [];
@@ -88,72 +154,132 @@ export function NewFreezerItemModal({
       }));
   }, [recipeData]);
 
-  const filteredRecipes = React.useMemo(() => {
-    const q = recipeSearch.trim().toLowerCase();
-    if (!q) return allRecipes;
-    return allRecipes.filter((r) => r.name.toLowerCase().includes(q));
-  }, [allRecipes, recipeSearch]);
+  const typed = query.trim();
+
+  const recipes = React.useMemo(() => {
+    if (typed) return matchRecipesForAutocomplete(typed, allRecipes, MAX_RESULTS);
+    // Nog niets getypt: invriesbare recepten eerst.
+    return [...allRecipes].sort((a, b) => Number(b.canBeFrozen) - Number(a.canBeFrozen));
+  }, [allRecipes, typed]);
+
+  const products = React.useMemo(() => {
+    const norm = normalizeForMatch(typed);
+    if (!norm || !itemSlugs.length) return [];
+    return matchItemSlugsForAutocomplete(norm, itemSlugs, itemSynonyms, MAX_RESULTS).map(slugToDisplayName);
+  }, [itemSlugs, itemSynonyms, typed]);
 
   // Reset form when modal opens
   React.useEffect(() => {
     if (open) {
-      setTab(initialTab);
-      setProductName("");
+      setQuery("");
+      setSelection(null);
       setAmount(1);
       setUnit("stuk");
-      setRecipeSearch("");
-      setSelectedRecipeId(null);
-      setPortions(1);
     }
-  }, [open, initialTab]);
+  }, [open]);
 
-  // Reset recipe selection when switching to gerecht tab
-  function handleTabChange(value: "first" | "second" | "third") {
-    if (value === "third") return; // derde tab niet gebruikt in diepvriesmodal
-    setTab(value);
-    if (value === "second") {
-      setSelectedRecipeId(null);
-      setRecipeSearch("");
-      setPortions(1);
-    }
+  function select(next: Selection) {
+    if (selection && selectionKey(selection) === selectionKey(next)) return;
+    setSelection(next);
+    setAmount(1);
+    setUnit("stuk");
   }
 
-  function handleSelectRecipe(id: string) {
-    if (selectedRecipeId === id) {
-      // Deselect
-      setSelectedRecipeId(null);
-      setPortions(1);
-    } else {
-      setSelectedRecipeId(id);
-      setPortions(1);
-    }
+  function changeUnit(next: string) {
+    setUnit(next);
+    setAmount(next === "g" ? GRAM_START : 1);
   }
 
-  const isProductTab = tab === "first";
-
-  const canSubmit = isProductTab
-    ? productName.trim().length > 0
-    : selectedRecipeId !== null;
+  function changeAmount(next: number) {
+    // De stepper telt per 1; grammen gaan per 50.
+    const value = unit === "g" ? amount + (next > amount ? GRAM_STEP : -GRAM_STEP) : next;
+    if (value <= 0) {
+      setSelection(null);
+      setAmount(1);
+      return;
+    }
+    setAmount(value);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit) return;
-    const selectedRecipe = allRecipes.find((r) => r.id === selectedRecipeId);
-    const productUnit = unit.trim() || "stuk";
-    const isWeight = WEIGHT_UNITS.has(productUnit);
-    onAdd?.({
-      name: isProductTab ? productName.trim() : (selectedRecipe?.name ?? ""),
-      // Gewicht (g/kg): één pakket van «aantal» g; anders «aantal» pakketten van 1 eenheid.
-      quantityPerPackage: isProductTab ? (isWeight ? amount : 1) : 1,
-      unit: isProductTab ? productUnit : "portie",
-      packages: isProductTab ? (isWeight ? 1 : amount) : portions,
-      type: isProductTab ? "product" : "gerecht",
-      recipeId: selectedRecipeId ?? undefined,
-      recipePhotoUrl: selectedRecipe?.photoUrl ?? undefined,
-      recipePersons: selectedRecipe?.persons ?? undefined,
-    });
+    if (!selection) return;
+    if (selection.kind === "recipe") {
+      onAdd?.({
+        name: selection.recipe.name,
+        quantityPerPackage: 1,
+        unit: "portie",
+        packages: amount,
+        type: "gerecht",
+        recipeId: selection.recipe.id,
+        recipePhotoUrl: selection.recipe.photoUrl ?? undefined,
+        recipePersons: selection.recipe.persons ?? undefined,
+      });
+    } else {
+      const isWeight = WEIGHT_UNITS.has(unit);
+      onAdd?.({
+        name: selection.name,
+        // Gewicht (g/kg): één pakket van «aantal» g; anders «aantal» pakketten van 1 eenheid.
+        quantityPerPackage: isWeight ? amount : 1,
+        unit,
+        packages: isWeight ? 1 : amount,
+        type: "product",
+      });
+    }
     onClose();
   }
+
+  const selectedKey = selection ? selectionKey(selection) : null;
+  const unitChips = (
+    <div role="group" aria-label="Eenheid" className="flex flex-wrap gap-1.5 px-2.5 pb-2.5 pt-0.5">
+      {FREEZER_UNITS.map((u) => (
+        <FilterChip key={u} selected={unit === u} onClick={() => changeUnit(u)}>
+          {u}
+        </FilterChip>
+      ))}
+    </div>
+  );
+
+  const recipeRow = (recipe: SavedRecipe) => (
+    <ResultRow
+      key={recipe.id}
+      media={<RecipeThumb src={recipe.photoUrl ?? null} />}
+      title={recipe.name}
+      subtitle={personsLabel(recipe.persons)}
+      selected={selectedKey === `recipe:${recipe.id}`}
+      amount={amount}
+      onSelect={() => select({ kind: "recipe", recipe })}
+      onChangeAmount={changeAmount}
+    />
+  );
+
+  const productRow = (name: string, subtitle: string) => {
+    const selected = selectedKey === `product:${name.toLowerCase()}`;
+    return (
+      <ResultRow
+        key={name}
+        media={<ProductThumb name={name} />}
+        title={name}
+        subtitle={subtitle}
+        selected={selected}
+        amount={amount}
+        onSelect={() => select({ kind: "product", name })}
+        onChangeAmount={changeAmount}
+      >
+        {selected ? unitChips : null}
+      </ResultRow>
+    );
+  };
+
+  // Blijft zichtbaar als je verder zoekt en het gekozen item uit de resultaten valt.
+  const selectionInResults =
+    !selection ||
+    (selection.kind === "recipe"
+      ? recipes.some((r) => r.id === selection.recipe.id)
+      : products.some((p) => p.toLowerCase() === selection.name.toLowerCase()));
+
+  const showCreate =
+    typed.length > 0 && !products.some((p) => p.toLowerCase() === typed.toLowerCase());
 
   return (
     <SlideInModal
@@ -161,91 +287,58 @@ export function NewFreezerItemModal({
       onClose={onClose}
       title="Toevoegen aan diepvries"
       footer={
-        <Button
-          type="submit"
-          form="new-freezer-item-form"
-          variant="primary"
-          disabled={!canSubmit}
-        >
-          Toevoegen
+        <Button type="submit" form="new-freezer-item-form" variant="primary" disabled={!selection}>
+          {selection?.kind === "recipe"
+            ? `${amount} ${amount === 1 ? "portie" : "porties"} toevoegen`
+            : "Toevoegen"}
         </Button>
       }
     >
-      <form
-        id="new-freezer-item-form"
-        onSubmit={handleSubmit}
-        className="flex w-full flex-col gap-5"
-      >
-        <SegmentedControl
-          options={[
-            { value: "first", label: "Product" },
-            { value: "second", label: "Gerecht" },
-          ]}
-          value={tab}
-          onChange={(v) => handleTabChange(v)}
-          ariaLabel="Soort"
-          fill
+      <form id="new-freezer-item-form" onSubmit={handleSubmit} className="flex min-h-[52dvh] w-full flex-col gap-4 md:min-h-[400px]">
+        <SearchBar
+          placeholder="Zoek een product of recept"
+          aria-label="Zoek een product of recept"
+          value={query}
+          onValueChange={setQuery}
         />
 
-        {isProductTab ? (
-          <>
-            <div>
-              <FieldLabel>Product</FieldLabel>
-              <ItemNameAutocomplete
-                placeholder="Kies een product"
-                value={productName}
-                onChange={setProductName}
-              />
-            </div>
-            <div>
-              <FieldLabel>Aantal</FieldLabel>
-              <QuantityUnitField
-                value={amount}
-                onValueChange={setAmount}
-                unit={unit}
-                onUnitChange={setUnit}
-                units={FREEZER_UNITS}
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            <div>
-              <FieldLabel>Recept</FieldLabel>
-              <SearchBar
-                placeholder="Zoek een recept"
-                value={recipeSearch}
-                onValueChange={setRecipeSearch}
-              />
-              {filteredRecipes.length === 0 ? (
-                <p className="py-6 text-center text-sm text-[var(--text-tertiary)]">
-                  {recipeSearch.trim() ? "Geen recepten gevonden" : "Je hebt nog geen recepten"}
-                </p>
-              ) : (
-                <div
-                  role="radiogroup"
-                  aria-label="Recept"
-                  className="-mx-1 mt-2.5 flex max-h-[264px] flex-col gap-1 overflow-y-auto px-1 py-0.5"
-                >
-                  {filteredRecipes.map((recipe) => (
-                    <ChoiceRow
-                      key={recipe.id}
-                      selected={selectedRecipeId === recipe.id}
-                      onSelect={() => handleSelectRecipe(recipe.id)}
-                      media={<RecipeThumb src={recipe.photoUrl ?? null} />}
-                      title={recipe.name}
-                      subtitle={recipe.persons ? `${recipe.persons} ${recipe.persons === 1 ? "persoon" : "personen"}` : undefined}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-            <div>
-              <FieldLabel>Aantal</FieldLabel>
-              <QuantityUnitField value={portions} onValueChange={setPortions} />
-            </div>
-          </>
-        )}
+        {!selectionInResults && selection ? (
+          <div>
+            <GroupTitle>Gekozen</GroupTitle>
+            {selection.kind === "recipe" ? recipeRow(selection.recipe) : productRow(selection.name, "Product")}
+          </div>
+        ) : null}
+
+        {recipes.length > 0 ? (
+          <div>
+            <GroupTitle>Recepten</GroupTitle>
+            <div className="flex flex-col gap-0.5">{recipes.map(recipeRow)}</div>
+          </div>
+        ) : null}
+
+        {products.length > 0 ? (
+          <div>
+            <GroupTitle>Producten</GroupTitle>
+            <div className="flex flex-col gap-0.5">{products.map((name) => productRow(name, "Product"))}</div>
+          </div>
+        ) : null}
+
+        {showCreate ? (
+          <button
+            type="button"
+            onClick={() => select({ kind: "product", name: typed })}
+            className="flex h-12 w-full items-center gap-2.5 rounded-[14px] px-3 text-left text-[15px] font-semibold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-[18px] shrink-0">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span className="min-w-0 truncate">«{typed}» als nieuw product</span>
+          </button>
+        ) : null}
+
+        {!typed && recipes.length === 0 ? (
+          <p className="py-6 text-center text-sm text-[var(--text-secondary)]">Zoek een product om in te vriezen</p>
+        ) : null}
       </form>
     </SlideInModal>
   );

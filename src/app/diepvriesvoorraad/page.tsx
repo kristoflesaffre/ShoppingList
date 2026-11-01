@@ -168,9 +168,6 @@ export default function DiepvriesvoorraadPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = db.useAuth();
   const [addModalOpen, setAddModalOpen] = React.useState(false);
-  const [addModalInitialTab, setAddModalInitialTab] = React.useState<
-    "first" | "second"
-  >("first");
   const [search, setSearch] = React.useState("");
   const [filter, setFilter] = React.useState<FreezerFilter>("alles");
   const [undo, setUndo] = React.useState<FreezerUndo | null>(null);
@@ -263,11 +260,6 @@ export default function DiepvriesvoorraadPage() {
   }
 
   const totalPortions = allItems.reduce((sum, i) => sum + (i.packages ?? 0), 0);
-
-  function openAddModal(tab: "first" | "second") {
-    setAddModalInitialTab(tab);
-    setAddModalOpen(true);
-  }
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col">
@@ -385,7 +377,7 @@ export default function DiepvriesvoorraadPage() {
           <p className="text-center text-base font-medium leading-6 text-[var(--text-tertiary)]">
             Je hebt geen items in je diepvriesvoorraad
           </p>
-          <MiniButton variant="primary" onClick={() => openAddModal("first")}>
+          <MiniButton variant="primary" onClick={() => setAddModalOpen(true)}>
             Voeg item toe
           </MiniButton>
         </div>
@@ -415,7 +407,7 @@ export default function DiepvriesvoorraadPage() {
             <FloatingActionButton
               aria-label="Item toevoegen"
               className="pointer-events-auto shrink-0"
-              onClick={() => openAddModal(activeFilter === "gerecht" ? "second" : "first")}
+              onClick={() => setAddModalOpen(true)}
             />
           </div>
         </div>
@@ -423,7 +415,6 @@ export default function DiepvriesvoorraadPage() {
 
       <NewFreezerItemModal
         open={addModalOpen}
-        initialTab={addModalInitialTab}
         onClose={() => setAddModalOpen(false)}
         onAdd={handleAdd}
       />
