@@ -172,19 +172,12 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
               <p className="relative mt-2.5 text-[13px] font-semibold text-[#4d79c7]">+ {hiddenCount} meer in de diepvries</p>
             ) : null}
             <div className="min-h-4 flex-1" />
-            <div className="flex gap-2">
+            <div className="flex justify-end">
               <Link
                 href="/diepvriesvoorraad"
                 className="flex h-10 items-center justify-center rounded-pill bg-[var(--white)] px-5 text-sm font-bold text-[var(--blue-500)] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
               >
                 Diepvries openen
-              </Link>
-              <Link
-                href="/diepvriesvoorraad"
-                aria-label="Iets in de diepvries leggen"
-                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-              >
-                {PLUS_ICON}
               </Link>
             </div>
           </>
@@ -252,19 +245,12 @@ export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRo
         )}
         {hiddenCount > 0 ? <p className={cn("mt-2.5 text-[13px] font-semibold", PANTRY_TEXT_CLASS)}>+ {hiddenCount} meer in de kast</p> : null}
         <div className="min-h-4 flex-1" />
-        <div className="flex gap-2">
+        <div className="flex justify-end">
           <Link
             href="/voorraadkast"
             className="flex h-10 items-center justify-center rounded-pill bg-[var(--white)] px-5 text-sm font-bold text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
             Voorraadkast openen
-          </Link>
-          <Link
-            href="/voorraadkast"
-            aria-label="Iets in de voorraadkast zetten"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-          >
-            {PLUS_ICON}
           </Link>
         </div>
       </div>
