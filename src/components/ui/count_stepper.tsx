@@ -5,12 +5,14 @@ import { cn } from "@/lib/utils";
 
 /**
  * Design system «Stepper · lijst»: blauwe pil met witte bolletjes (− / aantal / +). Bij 1 wordt de
- * min een rood vuilbakje (`onChange(0)` = weghalen). Voor formulieren: Stepper (breed grijs veld).
+ * min een rood vuilbakje (`onChange(0)` = weghalen). `tone="soft"`: zachte lavendel pil voor rijen
+ * waar de stepper altijd zichtbaar is (diepvries). Voor formulieren: Stepper (breed grijs veld).
  */
 export function CountStepper({
   name,
   value,
   onChange,
+  tone = "solid",
   className,
 }: {
   /** Naam van het item, voor de toegankelijke labels. */
@@ -18,12 +20,22 @@ export function CountStepper({
   value: number;
   /** 0 = item weghalen. */
   onChange: (next: number) => void;
+  tone?: "solid" | "soft";
   className?: string;
 }) {
-  const btn =
-    "flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--white)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)]";
+  const soft = tone === "soft";
+  const btn = cn(
+    "flex shrink-0 items-center justify-center rounded-full transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2",
+    soft ? "size-[38px] focus-visible:ring-[var(--border-focus)]" : "size-7 bg-[var(--white)] focus-visible:ring-[var(--white)]",
+  );
   return (
-    <span className={cn("inline-flex h-[34px] shrink-0 items-center gap-0.5 rounded-pill bg-[var(--blue-500)] px-[3px]", className)}>
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-pill",
+        soft ? "h-[38px] bg-[var(--blue-50)]" : "h-[34px] gap-0.5 bg-[var(--blue-500)] px-[3px]",
+        className,
+      )}
+    >
       <button
         type="button"
         onClick={() => onChange(value - 1)}
@@ -40,7 +52,10 @@ export function CountStepper({
           </svg>
         )}
       </button>
-      <span className="min-w-[22px] text-center text-sm font-bold tabular-nums text-white" aria-live="polite">
+      <span
+        className={cn("text-center tabular-nums", soft ? "min-w-5 text-[15px] font-bold text-[var(--blue-500)]" : "min-w-[22px] text-sm font-bold text-white")}
+        aria-live="polite"
+      >
         {value}
       </span>
       <button type="button" onClick={() => onChange(value + 1)} aria-label={`Meer ${name}`} className={cn(btn, "text-[var(--blue-500)]")}>

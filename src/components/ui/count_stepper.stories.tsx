@@ -16,10 +16,10 @@ const meta: Meta<typeof CountStepper> = {
 export default meta;
 type Story = StoryObj<typeof CountStepper>;
 
-function Demo({ start }: { start: number }) {
+function Demo({ start, tone }: { start: number; tone?: "solid" | "soft" }) {
   const [value, setValue] = React.useState(start);
   return value > 0 ? (
-    <CountStepper name="Appels" value={value} onChange={setValue} />
+    <CountStepper name="Appels" value={value} tone={tone} onChange={setValue} />
   ) : (
     <button type="button" className="text-sm font-semibold text-[var(--blue-500)]" onClick={() => setValue(1)}>
       Opnieuw toevoegen
@@ -29,3 +29,4 @@ function Demo({ start }: { start: number }) {
 
 export const One: Story = { render: () => <Demo start={1} /> };
 export const Several: Story = { render: () => <Demo start={3} /> };
+export const Soft: Story = { render: () => <Demo start={3} tone="soft" /> };
