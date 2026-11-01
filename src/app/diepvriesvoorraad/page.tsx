@@ -151,7 +151,7 @@ function InStock({ item }: { item: FreezerItem }) {
 
 function FreezerGroup({ title, children }: { title: string; children: React.ReactNode[] }) {
   return (
-    <section className="mb-3 lg:mb-0">
+    <section className="mb-3 break-inside-avoid lg:mb-4">
       <h2 className="mb-[7px] ml-1 text-[13px] font-bold text-[var(--text-secondary)]">{title}</h2>
       <ul className="overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
         {children.map((child, k) => (
@@ -481,7 +481,7 @@ export default function DiepvriesvoorraadPage() {
             /* ── Typen: eerst wat je al hebt, daaronder wat je kunt toevoegen ── */
             <div className="flex flex-col">
               {searchHasResults ? (
-                <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
+                <div className="lg:columns-2 lg:gap-4">
                   {results.inFreezer.length > 0 ? (
                     <FreezerGroup title="In je diepvries">{results.inFreezer.map(stockRow)}</FreezerGroup>
                   ) : null}
@@ -551,7 +551,7 @@ export default function DiepvriesvoorraadPage() {
               </p>
             </div>
           ) : visibleItems.length > 0 ? (
-            <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
+            <div className="lg:columns-2 lg:gap-4">
               {/* Gerechten per soort: soepen bovenaan, dan purees, sauzen … (naam bepaalt de groep). */}
               {FREEZER_DISH_GROUPS.map((g) => {
                 const dishes = gerechten.filter((i) => freezerDishGroupOf(i.name) === g.key);
