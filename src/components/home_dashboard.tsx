@@ -89,14 +89,11 @@ export type DashboardFreezerRow = DashboardFreezerItem & { quantityPerPackage?: 
 export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerRow[] }) {
   const dishes = items.filter((i) => i.type === "gerecht");
   const products = items.filter((i) => i.type !== "gerecht");
-  const portions = dishes.reduce((sum, i) => sum + Math.max(0, i.packages || 0), 0);
   // Even hoog als Te kopen: maximaal vijf items, de rest via «Diepvries openen».
   const shownDishes = dishes.slice(0, MAX_FREEZER_ROWS);
   const shownProducts = products.slice(0, Math.max(0, MAX_FREEZER_ROWS - shownDishes.length));
   const hiddenCount = items.length - shownDishes.length - shownProducts.length;
-  const stats = [plural(items.length, "item", "items"), portions > 0 ? plural(portions, "portie", "porties") : null]
-    .filter(Boolean)
-    .join(" · ");
+  const stats = plural(items.length, "item", "items");
 
   const row = (item: DashboardFreezerRow, first: boolean) => {
     const isDish = item.type === "gerecht";
@@ -178,7 +175,7 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
             <div className="flex gap-2">
               <Link
                 href="/diepvriesvoorraad"
-                className="flex h-10 flex-1 items-center justify-center rounded-pill bg-[var(--white)] text-sm font-bold text-[var(--blue-500)] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+                className="flex h-10 items-center justify-center rounded-pill bg-[var(--white)] px-5 text-sm font-bold text-[var(--blue-500)] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
               >
                 Diepvries openen
               </Link>
@@ -258,9 +255,16 @@ export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRo
         <div className="flex gap-2">
           <Link
             href="/voorraadkast"
-            className="flex h-10 flex-1 items-center justify-center rounded-pill bg-[var(--white)] text-sm font-bold text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            className="flex h-10 items-center justify-center rounded-pill bg-[var(--white)] px-5 text-sm font-bold text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
             Voorraadkast openen
+          </Link>
+          <Link
+            href="/voorraadkast"
+            aria-label="Iets in de voorraadkast zetten"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+          >
+            {PLUS_ICON}
           </Link>
         </div>
       </div>
@@ -521,11 +525,7 @@ export function HomeDashboardShoppingList({
  */
 export function HomeFreezerPlatesCard({ items }: { items: DashboardFreezerRow[] }) {
   const getPhotoUrl = useItemPhotoUrl(160);
-  const dishes = items.filter((i) => i.type === "gerecht");
-  const portions = dishes.reduce((sum, i) => sum + Math.max(0, i.packages || 0), 0);
-  const stats = [plural(items.length, "item", "items"), portions > 0 ? plural(portions, "portie", "porties") : null]
-    .filter(Boolean)
-    .join(" · ");
+  const stats = plural(items.length, "item", "items");
   // Gerechten eerst, dan producten; binnen elke groep eerst items met een foto.
   const ordered = items
     .map((item) => ({ item, photo: item.recipePhotoUrl ?? (item.type === "gerecht" ? null : getPhotoUrl(item.name)) }))
