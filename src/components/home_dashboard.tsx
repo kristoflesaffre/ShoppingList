@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { cn } from "@/lib/utils";
 import { FROST_GRADIENT_CLASS, FrostDecor } from "@/components/ui/frost_background";
-import { PANTRY_GRADIENT_CLASS, PANTRY_TEXT_CLASS } from "@/components/ui/pantry_background";
+import { PANTRY_GRADIENT_CLASS, PANTRY_TEXT_CLASS, PantryDecor } from "@/components/ui/pantry_background";
 import { isPantryLow, pantryStatsLabel } from "@/lib/pantry";
 
 export type DashboardFreezerItem = {
@@ -220,8 +220,9 @@ export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRo
           Voorraadkast
         </h2>
       </div>
-      <div className={cn("flex flex-1 flex-col rounded-[24px] p-5", PANTRY_GRADIENT_CLASS)}>
-        <p className={cn("flex items-center gap-2 text-[12.5px] font-extrabold uppercase tracking-[0.06em]", PANTRY_TEXT_CLASS)}>
+      <div className={cn("relative isolate flex flex-1 flex-col overflow-hidden rounded-[24px] p-5", PANTRY_GRADIENT_CLASS)}>
+        <PantryDecor />
+        <p className={cn("relative flex items-center gap-2 text-[12.5px] font-extrabold uppercase tracking-[0.06em]", PANTRY_TEXT_CLASS)}>
           {PANTRY_ICON}
           {items.length > 0 ? pantryStatsLabel(items) : "Nog leeg"}
         </p>
@@ -273,7 +274,8 @@ export function HomePantryPlatesCard({ items }: { items: DashboardFreezerRow[] }
   const tileClass = "flex flex-col items-center gap-1.5 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus rounded-[14px]";
 
   return (
-    <div className={cn("relative overflow-hidden rounded-[24px] py-4", PANTRY_GRADIENT_CLASS)}>
+    <div className={cn("relative isolate overflow-hidden rounded-[24px] py-4", PANTRY_GRADIENT_CLASS)}>
+      <PantryDecor />
       <p className={cn("flex items-center gap-2 px-4 text-xs font-extrabold uppercase tracking-[0.06em]", PANTRY_TEXT_CLASS)}>
         {PANTRY_ICON}
         {pantryStatsLabel(items)}

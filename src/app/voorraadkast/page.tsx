@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { CountStepper } from "@/components/ui/count_stepper";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
-import { PANTRY_GRADIENT_CLASS } from "@/components/ui/pantry_background";
+import { PANTRY_GRADIENT_CLASS, PantryDecor } from "@/components/ui/pantry_background";
 import { SearchBar } from "@/components/ui/search_bar";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
@@ -183,7 +183,9 @@ export default function VoorraadkastPage() {
 
   return (
     <div className="relative isolate flex min-h-dvh w-full flex-col">
-      <div aria-hidden className={cn("fixed inset-0 -z-10", PANTRY_GRADIENT_CLASS)} />
+      <div aria-hidden className={cn("fixed inset-0 -z-10 isolate overflow-hidden", PANTRY_GRADIENT_CLASS)}>
+        <PantryDecor />
+      </div>
 
       <div
         className={cn(
