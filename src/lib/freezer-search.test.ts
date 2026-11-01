@@ -75,6 +75,9 @@ describe("undo", () => {
     expect(freezerUndoLines({ id: "f9", before: null, after: added })).toEqual(["Paprikasoep toegevoegd", "1 portie in je diepvries"]);
     expect(freezerUndoLines({ id: "f1", before: items[0], after: { ...items[0], packages: 4 } })).toEqual(["Wortelsoep +1", "nog 4 porties"]);
     expect(freezerUndoLines({ id: "f1", before: items[0], after: null })).toEqual(["Wortelsoep verwijderd", "uit de diepvries"]);
+    const olie = { id: "p1", type: "voorraadkast", name: "Olijfolie", quantityPerPackage: 1, unit: "fles", packages: 1 };
+    expect(freezerUndoLines({ id: "p1", before: null, after: olie }, "voorraadkast")).toEqual(["Olijfolie toegevoegd", "1 fles in je voorraadkast"]);
+    expect(freezerUndoLines({ id: "p1", before: olie, after: null }, "voorraadkast")).toEqual(["Olijfolie verwijderd", "uit de voorraadkast"]);
   });
 
   it("keeps an add as an add while you adjust it, and drops it when you remove it again", () => {
@@ -89,5 +92,23 @@ describe("undo", () => {
   it("clears when a change is reverted by hand", () => {
     const first = nextFreezerUndo(null, items[0], { ...items[0], packages: 4 });
     expect(nextFreezerUndo(first, { ...items[0], packages: 4 }, items[0])).toBeNull();
+  });
+});
+
+describe("voorraadkast search (same helpers)", () => {
+  const pantry: FreezerEntry[] = [
+    { id: "p1", type: "voorraadkast", name: "Bloem", quantityPerPackage: 1, unit: "pak", packages: 2 },
+    { id: "p2", type: "voorraadkast", name: "Olijfolie", quantityPerPackage: 1, unit: "fles", packages: 1 },
+  ];
+  it("shows what is in the pantry first, catalog products to add, and a new-product option", () => {
+    const r = buildFreezerSearch({ query: "bl", items: pantry, recipes: [], productNames: ["Bloem", "Bladerdeeg"], addedIds: new Set(), filter: "product" });
+    expect(r.inFreezer.map((i) => i.name)).toEqual(["Bloem"]);
+    expect(r.products.map((p) => p.name)).toEqual(["Bladerdeeg"]);
+    expect(r.recipes).toEqual([]);
+    expect(r.createName).toBe("bl");
+  });
+  it("offers no new product when the exact name is already in the pantry", () => {
+    const r = buildFreezerSearch({ query: "olijfolie", items: pantry, recipes: [], productNames: [], addedIds: new Set(), filter: "product" });
+    expect(r.createName).toBeNull();
   });
 });

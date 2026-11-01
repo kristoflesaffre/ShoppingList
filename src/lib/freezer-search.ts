@@ -26,6 +26,8 @@ export interface FreezerRecipeOption {
 
 /** Eenheden voor een product; g/kg = gewicht per pakket, de rest = aantal pakketten. */
 export const FREEZER_PRODUCT_UNITS = ["stuk", "zak", "pak", "g", "kg"] as const;
+/** Voorraadkast: dezelfde, plus fles en pot (olie, sauzen, confituur). */
+export const PANTRY_PRODUCT_UNITS = ["stuk", "zak", "pak", "fles", "pot", "g", "kg"] as const;
 export const FREEZER_WEIGHT_UNITS = new Set<string>(["g", "kg"]);
 const PLURALS: Record<string, string> = { portie: "porties", stuk: "stuks", zak: "zakken", pak: "pakken", fles: "flessen", pot: "potten" };
 
@@ -53,9 +55,10 @@ export interface FreezerUndo {
   after: FreezerEntry | null;
 }
 
-export function freezerUndoLines({ before, after }: FreezerUndo): [string, string] {
-  if (!after) return [`${before?.name ?? ""} verwijderd`, "uit de diepvries"];
-  if (!before) return [`${after.name} toegevoegd`, `${freezerStockLabel(after)} in je diepvries`];
+/** `place`: «diepvries» of «voorraadkast», voor «in je …» / «uit de …». */
+export function freezerUndoLines({ before, after }: FreezerUndo, place: "diepvries" | "voorraadkast" = "diepvries"): [string, string] {
+  if (!after) return [`${before?.name ?? ""} verwijderd`, `uit de ${place}`];
+  if (!before) return [`${after.name} toegevoegd`, `${freezerStockLabel(after)} in je ${place}`];
   const delta = after.packages - before.packages;
   if (delta === 0) return [`${after.name} aangepast`, `nu ${freezerStockLabel(after)}`];
   return [`${after.name} ${delta > 0 ? "+" : "−"}${Math.abs(delta)}`, `nog ${freezerStockLabel(after)}`];
