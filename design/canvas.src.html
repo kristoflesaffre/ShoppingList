@@ -864,6 +864,18 @@ body { margin:0; background:var(--board-bg); color:var(--text-primary); font-fam
   document.getElementById('zoom-in').onclick = () => zoomAt(1.25, innerWidth / 2, innerHeight / 2);
   document.getElementById('zoom-out').onclick = () => zoomAt(0.8, innerWidth / 2, innerHeight / 2);
   document.getElementById('zoom-reset').onclick = fit;
-  fit();
+  // Inzoomen op één bord: #CODE (bv. #IE) in de link, anders het nieuwste bord.
+  const focusBoard = (el) => {
+    const pad = 48, w = innerWidth;
+    s = Math.min(1, (w - pad * 2) / el.offsetWidth);
+    x = (w - el.offsetWidth * s) / 2 - el.offsetLeft * s; y = pad - el.offsetTop * s; apply();
+  };
+  const boards = [...world.querySelectorAll(':scope > section.board')];
+  const byCode = (code) => boards.find(el => el.querySelector('.bnum')?.textContent.trim().toUpperCase() === code.toUpperCase());
+  const focusFromHash = () => { const el = location.hash.length > 1 ? byCode(decodeURIComponent(location.hash.slice(1))) : null; if (el) { focusBoard(el); return true; } return false; };
+  addEventListener('hashchange', focusFromHash);
+  // Het nieuwste bord: build-canvas.py markeert het laatst toegevoegde *-boards.js-bord met data-newest.
+  const newest = world.querySelector(':scope > section.board[data-newest]');
+  if (!focusFromHash()) newest ? focusBoard(newest) : fit();
 })();
 </script>
