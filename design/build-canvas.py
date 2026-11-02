@@ -46,6 +46,7 @@ assets = (
     f"<script>{open(os.path.join(here, 'cinema-buttons-boards.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'recipe-nophoto-boards.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'recipe-monogram-boards.js')).read()}</script>\n"
+    f"<script>{open(os.path.join(here, 'item-edit-boards.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'voorraadkast-data.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'voorraadkast-boards.js')).read()}</script>\n"
 )
