@@ -45,7 +45,7 @@ export const RECIPE_SUBCATEGORIES: Partial<Record<RecipeCategory, { id: string; 
     { id: "vlees", label: "Vlees" },
     { id: "groentjes", label: "Groentjes" },
     { id: "brood", label: "Brood" },
-    { id: "puree", label: "Puree" },
+    { id: "puree", label: "Aardappelgerechten" },
   ],
 };
 
