@@ -288,15 +288,21 @@ function RecipeCategoryLane({
         <span className="flex-1" />
         <OverviewPill onClick={onShowAll} count={count} ariaLabel={`Alle ${section.meta ? section.meta.labelPlural.toLowerCase() : "overige recepten"}`} />
       </div>
-      <div
-        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 py-1 [scrollbar-width:none] md:mx-0 md:gap-3.5 md:scroll-px-0 md:px-0 [&::-webkit-scrollbar]:hidden"
-      >
-        {section.recipes.map((r) => (
-          <div key={r.id} className="w-[150px] shrink-0 snap-start md:w-[calc((100%-70px)/6)]">
-            <RecipePlateCard recipe={r} />
+      {/* Categorieën met subsecties (bijgerechten): één veegrij per subsectie, elk met een kleine kop. */}
+      {(groupBySubcategory(section.meta?.id, section.recipes) ?? [{ id: "", label: "", recipes: section.recipes }]).map((group) => (
+        <div key={group.id || "alle"} className="flex flex-col gap-2">
+          {group.label ? <SubsectionHeader label={group.label} count={group.recipes.length} /> : null}
+          <div
+            className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 py-1 [scrollbar-width:none] md:mx-0 md:gap-3.5 md:scroll-px-0 md:px-0 [&::-webkit-scrollbar]:hidden"
+          >
+            {group.recipes.map((r) => (
+              <div key={r.id} className="w-[150px] shrink-0 snap-start md:w-[calc((100%-70px)/6)]">
+                <RecipePlateCard recipe={r} />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </section>
   );
 }
