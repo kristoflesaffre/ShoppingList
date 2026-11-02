@@ -14,7 +14,7 @@ import {
 import { RecipeLinkSlideIn, type ExtractedRecipeLinkData } from "@/components/recipe_link_slide_in";
 import { RecipePhotoUploadSlideIn, type ExtractedRecipeData } from "@/components/recipe_photo_upload_slide_in";
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
-import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
+import { RECIPE_CATEGORIES, RECIPE_SUBCATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { useNormalizeIngredientName } from "@/lib/ingredient-photos";
@@ -48,6 +48,8 @@ export function RecipeEditorSlideIn({
   const [recipeStepsArray, setRecipeStepsArray] = React.useState<string[]>(["", ""]);
   const [recipePersons, setRecipePersons] = React.useState(2);
   const [recipeCategory, setRecipeCategory] = React.useState<RecipeCategory | null>(null);
+  const [recipeSubcategory, setRecipeSubcategory] = React.useState<string | null>(null);
+  const subcategoryOptions = recipeCategory ? RECIPE_SUBCATEGORIES[recipeCategory] : undefined;
   const [canBeFrozen, setCanBeFrozen] = React.useState(false);
   const [ingredients, setIngredients] = React.useState<RecipeIngredient[]>([]);
   const normalizeIngredientName = useNormalizeIngredientName();
@@ -74,6 +76,7 @@ export function RecipeEditorSlideIn({
       setRecipeStepsArray(parsed.length >= 2 ? parsed : [...parsed, ...Array(2 - parsed.length).fill("")]);
       setRecipePersons(recipeToEdit.persons);
       setRecipeCategory(recipeToEdit.category ?? null);
+      setRecipeSubcategory(recipeToEdit.subcategory ?? null);
       setCanBeFrozen(recipeToEdit.canBeFrozen ?? false);
       setIngredients(recipeToEdit.ingredients);
     } else {
@@ -82,6 +85,7 @@ export function RecipeEditorSlideIn({
       setRecipeStepsArray(["", ""]);
       setRecipePersons(2);
       setRecipeCategory(null);
+      setRecipeSubcategory(null);
       setCanBeFrozen(false);
       setIngredients([]);
     }
@@ -138,6 +142,8 @@ export function RecipeEditorSlideIn({
           persons: recipePersons,
           order: isNew ? newOrder : existingOrder,
           ...(recipeCategory != null ? { category: recipeCategory } : {}),
+          // Enkel bewaren als die bij de gekozen categorie hoort; anders wissen (bv. na wisselen van categorie).
+          subcategory: subcategoryOptions?.some((o) => o.id === recipeSubcategory) ? recipeSubcategory : null,
           canBeFrozen,
           ...photoPatch,
           ...(isNew && ownerId ? { ownerId } : {}),
@@ -164,6 +170,8 @@ export function RecipeEditorSlideIn({
       recipeStepsArray,
       recipePersons,
       recipeCategory,
+      recipeSubcategory,
+      subcategoryOptions,
       canBeFrozen,
       ingredients,
       recipeToEdit,
@@ -367,6 +375,25 @@ export function RecipeEditorSlideIn({
           );
         })}
       </FilterChipRow>
+      {subcategoryOptions ? (
+        <div className="mt-3">
+          <FilterChipRow wrap ariaLabel="Soort">
+            {subcategoryOptions.map((sub) => {
+              const isActive = recipeSubcategory === sub.id;
+              return (
+                <FilterChip
+                  key={sub.id}
+                  selected={isActive}
+                  onClick={() => setRecipeSubcategory(isActive ? null : sub.id)}
+                  className={cn(!isActive && "!bg-[var(--white)] !text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-subtle)] [@media(hover:hover)]:hover:!bg-[var(--gray-25)]")}
+                >
+                  {sub.label}
+                </FilterChip>
+              );
+            })}
+          </FilterChipRow>
+        </div>
+      ) : null}
     </section>
   );
 

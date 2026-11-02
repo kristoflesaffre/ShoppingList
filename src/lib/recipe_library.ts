@@ -39,6 +39,32 @@ export const RECIPE_CATEGORIES: RecipeCategoryMeta[] = [
   { id: "snack",        label: "Snack",        labelPlural: "Snacks",         dot: "#30B0C7" },
 ];
 
+/** Subsecties binnen een categorie; nu enkel voor bijgerechten. Volgorde = volgorde in het overzicht. */
+export const RECIPE_SUBCATEGORIES: Partial<Record<RecipeCategory, { id: string; label: string }[]>> = {
+  bijgerecht: [
+    { id: "vlees", label: "Vlees" },
+    { id: "groentjes", label: "Groentjes" },
+    { id: "brood", label: "Brood" },
+    { id: "puree", label: "Puree" },
+  ],
+};
+
+/**
+ * Deelt de recepten van één categorie op in subsecties (in hun bestaande volgorde). Recepten zonder (geldige)
+ * subsectie komen onderaan onder «Andere». Geen subsecties voor deze categorie → null.
+ */
+export function groupBySubcategory<T extends { subcategory?: string | null }>(
+  category: RecipeCategory | null | undefined,
+  recipes: T[],
+): { id: string; label: string; recipes: T[] }[] | null {
+  const subs = category ? RECIPE_SUBCATEGORIES[category] : undefined;
+  if (!subs) return null;
+  const known = new Set(subs.map((s) => s.id));
+  const groups = subs.map((s) => ({ ...s, recipes: recipes.filter((r) => r.subcategory === s.id) }));
+  groups.push({ id: "andere", label: "Andere", recipes: recipes.filter((r) => !r.subcategory || !known.has(r.subcategory)) });
+  return groups.filter((g) => g.recipes.length > 0);
+}
+
 export type SavedRecipe = {
   id: string;
   name: string;
@@ -49,6 +75,8 @@ export type SavedRecipe = {
   /** Optionele receptfoto (data-URL). */
   photoUrl?: string | null;
   category?: RecipeCategory | null;
+  /** Subsectie binnen de categorie (zie RECIPE_SUBCATEGORIES). */
+  subcategory?: string | null;
   canBeFrozen?: boolean | null;
   ingredients: RecipeIngredient[];
 };

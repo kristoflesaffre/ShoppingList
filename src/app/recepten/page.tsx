@@ -38,7 +38,7 @@ const RecipeEditorSlideIn = dynamic(
 import { Snackbar } from "@/components/ui/snackbar";
 import { APP_FAB_BOTTOM_CLASS, APP_SNACKBAR_FIXTURE_CLASS } from "@/lib/app-layout";
 import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
-import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
+import { RECIPE_CATEGORIES, groupBySubcategory } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import { LongAgoSection, MostEatenSection, RecipeStatsSkeleton, useRecipeStats } from "@/app/recepten/recipe_stats_sections";
@@ -150,6 +150,16 @@ function SectionHeader({ section }: { section: { meta: typeof RECIPE_CATEGORIES[
         {section.recipes.length}{" "}{section.recipes.length === 1 ? "recept" : "recepten"}
       </span>
     </div>
+  );
+}
+
+/** Kop van een subsectie binnen een categorie (bv. «Puree» bij bijgerechten): kleiner en gedempter dan de categoriekop. */
+function SubsectionHeader({ label, count }: { label: string; count: number }) {
+  return (
+    <h3 className="flex items-baseline gap-1.5 pt-1 text-[15px] font-semibold leading-5 text-[var(--text-secondary)]">
+      {label}
+      <span className="text-[13px] font-medium tabular-nums text-[var(--text-tertiary)]">{count}</span>
+    </h3>
   );
 }
 
@@ -317,6 +327,7 @@ export default function ReceptenPage() {
         persons: r.persons,
         photoUrl: r.photoUrl ?? null,
         category: ((r as Record<string, unknown>).category as RecipeCategory | undefined) ?? null,
+        subcategory: ((r as Record<string, unknown>).subcategory as string | undefined) ?? null,
         canBeFrozen: ((r as Record<string, unknown>).canBeFrozen as boolean | undefined) ?? false,
         ingredients: [...(r.ingredients ?? [])]
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -600,17 +611,20 @@ export default function ReceptenPage() {
                         {groupedSections.map((section) => (
                           <div key={section.meta?.id ?? "overige"} className="flex flex-col gap-3">
                             <SectionHeader section={section} />
-                            <div className="flex flex-col gap-3">
-                              {section.recipes.map((r) => (
-                                <SortableRecipeRow
-                                  key={r.id}
-                                  recipe={r}
-                                  isEditMode
-                                  onEdit={openEdit}
-                                  onDelete={handleDeleteRecipe}
-                                />
-                              ))}
-                            </div>
+                            {(groupBySubcategory(section.meta?.id, section.recipes) ?? [{ id: "", label: "", recipes: section.recipes }]).map((group) => (
+                              <div key={group.id} className="flex flex-col gap-3">
+                                {group.label ? <SubsectionHeader label={group.label} count={group.recipes.length} /> : null}
+                                {group.recipes.map((r) => (
+                                  <SortableRecipeRow
+                                    key={r.id}
+                                    recipe={r}
+                                    isEditMode
+                                    onEdit={openEdit}
+                                    onDelete={handleDeleteRecipe}
+                                  />
+                                ))}
+                              </div>
+                            ))}
                           </div>
                         ))}
                       </div>
@@ -640,10 +654,17 @@ export default function ReceptenPage() {
                   ))}
                 </div>
               ) : (
-                /* Zoeken of één categorie open: alle kaarten in een raster. */
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                  {displayRecipes.map((r) => (
-                    <RecipePlateCard key={r.id} recipe={r} />
+                /* Zoeken of één categorie open: alle kaarten in een raster (bij bijgerechten per subsectie). */
+                <div className="flex flex-col gap-5">
+                  {((!recipeSearch.trim() && groupBySubcategory(activeCategory, displayRecipes)) || [{ id: "", label: "", recipes: displayRecipes }]).map((group) => (
+                    <div key={group.id} className="flex flex-col gap-3">
+                      {group.label ? <SubsectionHeader label={group.label} count={group.recipes.length} /> : null}
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                        {group.recipes.map((r) => (
+                          <RecipePlateCard key={r.id} recipe={r} />
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}

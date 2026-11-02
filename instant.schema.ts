@@ -153,6 +153,8 @@ const schema = i.schema({
       shareToken: i.string().optional().unique().indexed(),
       /** Categorie: "voorgerecht" | "hoofdgerecht" | "dessert" | "cocktail" | "ontbijt" | … */
       category: i.string().optional(),
+      /** Subsectie binnen een categorie (nu enkel bijgerechten): "vlees" | "groentjes" | "brood" | "puree". */
+      subcategory: i.string().optional(),
       /** Meerdere porties om in te vriezen (recepteditor). */
       canBeFrozen: i.boolean().optional(),
     }),
