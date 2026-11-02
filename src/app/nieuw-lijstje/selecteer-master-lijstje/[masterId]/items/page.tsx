@@ -8,7 +8,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
-import { CategoryCard } from "@/components/ui/category_card";
+import { CategoryCard, CategorySubheading } from "@/components/ui/category_card";
 import { CountStepper } from "@/components/ui/count_stepper";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
@@ -23,6 +23,7 @@ import { useItemPhotoUrl } from "@/lib/item-photos";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import {
   categoryHeadingDisplay,
+  categorySubgroups,
   groupMeatSubtypes,
   orderedCategorySectionTitles,
   resolveItemCategoryFromName,
@@ -806,24 +807,31 @@ export default function SelecteerMasterItemsPage() {
                     ) : null
                   }
                 >
-                  <ul className="px-2.5 pb-1 pt-0.5">
-                    {section.items.map((item, k) => {
-                      const count = countsById[item.id] ?? 0;
-                      return (
-                        <FavoriteRow
-                          key={item.id}
-                          item={item}
-                          count={count}
-                          first={k === 0}
-                          displayQuantity={quantityForCount(item.quantity, count)}
-                          photoUrl={getPhotoUrl(item.name)}
-                          onAdd={() => setCount(item.id, 1)}
-                          onIncrement={() => setCount(item.id, count + 1)}
-                          onDecrement={() => setCount(item.id, count - 1)}
-                        />
-                      );
-                    })}
-                  </ul>
+                  <div className="px-2.5 pb-1 pt-0.5">
+                    {categorySubgroups(section.title, section.items, (i) => i.name).map((g) => (
+                      <React.Fragment key={g.label ?? "all"}>
+                        {g.label ? <CategorySubheading className="px-1 pb-0.5 pt-2.5">{g.label}</CategorySubheading> : null}
+                        <ul>
+                          {g.items.map((item, k) => {
+                            const count = countsById[item.id] ?? 0;
+                            return (
+                              <FavoriteRow
+                                key={item.id}
+                                item={item}
+                                count={count}
+                                first={k === 0}
+                                displayQuantity={quantityForCount(item.quantity, count)}
+                                photoUrl={getPhotoUrl(item.name)}
+                                onAdd={() => setCount(item.id, 1)}
+                                onIncrement={() => setCount(item.id, count + 1)}
+                                onDecrement={() => setCount(item.id, count - 1)}
+                              />
+                            );
+                          })}
+                        </ul>
+                      </React.Fragment>
+                    ))}
+                  </div>
                 </CategoryCard>
               );
             })}

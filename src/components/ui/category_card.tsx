@@ -11,6 +11,11 @@ export function categoryGradient(rgb: Rgb): string {
   return `linear-gradient(90deg, rgba(${c},0.16), rgba(${c},0.05))`;
 }
 
+/** Subtiel subkopje binnen een categoriekaart (bv. Groenten / Fruit). */
+export function CategorySubheading({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <p className={cn("text-[11.5px] font-bold uppercase tracking-[0.05em] text-[var(--text-tertiary)]", className)}>{children}</p>;
+}
+
 /**
  * Design system «Categoriekaart»: witte kaart (radius 20) met een gekleurde kop
  * (bolletje · titel · aantal · actie). Gebruikt voor categorieën in lijstjes en favorieten.

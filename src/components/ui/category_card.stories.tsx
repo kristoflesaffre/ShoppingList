@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { CategoryCard } from "./category_card";
+import { CategoryCard, CategorySubheading } from "./category_card";
 import { RoundIconButton, RoundIcons } from "./round_icon_button";
 
 /** Design system «Categoriekaart»: witte kaart met gekleurde kop (bolletje · titel · aantal · actie). */
@@ -19,6 +19,21 @@ const meta: Meta<typeof CategoryCard> = {
 
 export default meta;
 type Story = StoryObj<typeof CategoryCard>;
+
+export const WithSubheadings: Story = {
+  render: () => (
+    <CategoryCard rgb={[63, 174, 92]} title="Groenten & Fruit" count={4}>
+      <div className="px-3.5 pb-1 text-[15px]">
+        <CategorySubheading className="pt-3">Groenten</CategorySubheading>
+        <div className="py-2">Aardappelen</div>
+        <div className="border-t border-[var(--border-subtle)] py-2">Komkommer</div>
+        <CategorySubheading className="pt-3">Fruit</CategorySubheading>
+        <div className="py-2">Appels</div>
+        <div className="border-t border-[var(--border-subtle)] py-2">Bananen</div>
+      </div>
+    </CategoryCard>
+  ),
+};
 
 export const WithAction: Story = {
   render: () => (

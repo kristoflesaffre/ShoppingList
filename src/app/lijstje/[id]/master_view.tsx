@@ -4,10 +4,10 @@ import * as React from "react";
 import type { ListItem } from "./new_item_modal";
 import { categoryColor } from "./list_cards_view";
 import type { ItemPhotoLookupOptions } from "@/lib/item-photos";
-import { categoryHeadingDisplay, groupMeatSubtypes } from "@/lib/item-ingredient-category";
+import { categoryHeadingDisplay, categorySubgroups, groupMeatSubtypes } from "@/lib/item-ingredient-category";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { cn } from "@/lib/utils";
-import { CategoryCard } from "@/components/ui/category_card";
+import { CategoryCard, CategorySubheading } from "@/components/ui/category_card";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { StoreBadge, useStoreLongPress, useStoreMark } from "./store_mark";
 
@@ -254,13 +254,20 @@ export function MasterCategoryCards({
               </RoundIconButton>
             }
           >
-            <ul className="px-2.5 pb-1 pt-0.5">
-              {groupMeatSubtypes(s.title, s.items, (i) => i.name).map((item, k) => (
-                <li key={item.id} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>
-                  <MasterItemRow item={item} getPhotoUrl={getPhotoUrl} onEdit={onEdit} onDelete={onDelete} />
-                </li>
+            <div className="px-2.5 pb-1 pt-0.5">
+              {categorySubgroups(s.title, groupMeatSubtypes(s.title, s.items, (i) => i.name), (i) => i.name).map((g) => (
+                <React.Fragment key={g.label ?? "all"}>
+                  {g.label ? <CategorySubheading className="px-1 pb-0.5 pt-2.5">{g.label}</CategorySubheading> : null}
+                  <ul>
+                    {g.items.map((item, k) => (
+                      <li key={item.id} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>
+                        <MasterItemRow item={item} getPhotoUrl={getPhotoUrl} onEdit={onEdit} onDelete={onDelete} />
+                      </li>
+                    ))}
+                  </ul>
+                </React.Fragment>
               ))}
-            </ul>
+            </div>
           </CategoryCard>
         );
       })}

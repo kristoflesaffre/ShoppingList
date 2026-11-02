@@ -5,7 +5,8 @@ import type { ListItem } from "./new_item_modal";
 import type { SavedRecipe } from "@/lib/recipe_library";
 import type { ItemPhotoLookupOptions } from "@/lib/item-photos";
 import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate } from "@/lib/calendar-utils";
-import { categoryHeadingDisplay, groupMeatSubtypes, stockSourceLabel } from "@/lib/item-ingredient-category";
+import { categoryHeadingDisplay, categorySubgroups, groupMeatSubtypes, stockSourceLabel } from "@/lib/item-ingredient-category";
+import { CategorySubheading } from "@/components/ui/category_card";
 import { StockSourceIcon } from "@/components/ui/freeze_mask_icon";
 import { mixWithWhite, pickDistinctTint, useTintMap, type Rgb } from "@/lib/recipe-tint";
 import { cn } from "@/lib/utils";
@@ -1316,7 +1317,12 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
         >
           {/* Per categorie: gewoon de producten, zonder receptkoppen of «Losse items». */}
           <div className="px-3 pb-1.5 pt-0.5">
-            <EditRows items={s.items} getPhotoUrl={getPhotoUrl} edit={edit} />
+            {categorySubgroups(s.title, s.items, (i) => i.name).map((g) => (
+              <React.Fragment key={g.label ?? "all"}>
+                {g.label ? <CategorySubheading className="pb-0.5 pl-1 pt-2.5">{g.label}</CategorySubheading> : null}
+                <EditRows items={g.items} getPhotoUrl={getPhotoUrl} edit={edit} />
+              </React.Fragment>
+            ))}
           </div>
         </Card>
       );
@@ -1346,7 +1352,12 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
           </>
         }
       >
-        <ItemsLayout items={sortItems(groupMeatSubtypes(s.title, s.items, (i) => i.name), uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
+        {categorySubgroups(s.title, groupMeatSubtypes(s.title, s.items, (i) => i.name), (i) => i.name).map((g) => (
+          <React.Fragment key={g.label ?? "all"}>
+            {g.label ? <CategorySubheading className="px-3.5 pt-2.5">{g.label}</CategorySubheading> : null}
+            <ItemsLayout items={sortItems(g.items, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
+          </React.Fragment>
+        ))}
       </Card>
     );
   };

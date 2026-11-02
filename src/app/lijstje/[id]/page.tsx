@@ -91,6 +91,7 @@ import {
 } from "@/lib/calendar-utils";
 import {
   categoryHeadingDisplay,
+  categorySubgroupKey,
   effectiveItemCategory,
   isSupermarketCategory,
   orderedCategorySectionTitles,
@@ -5641,9 +5642,11 @@ export default function ListDetailPage({
   const itemSectionMap = React.useMemo(() => {
     const map = new Map<string, string>();
     for (const section of sections) {
-      // Per categorie: geen receptgroepen, alles binnen de categorie vrij versleepbaar.
+      // Per categorie: geen receptgroepen, vrij versleepbaar binnen de categorie (of haar subgroep).
       if (cardGroupingMode === "category") {
-        for (const item of section.items) map.set(item.id, section.title);
+        for (const item of section.items) {
+          map.set(item.id, `${section.title}::${categorySubgroupKey(section.title, item.name)}`);
+        }
         continue;
       }
       // Algemeen: recepten als geheel versleepbaar tussen de losse items (zelfde «top»-groep).

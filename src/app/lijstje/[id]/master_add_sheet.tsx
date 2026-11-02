@@ -9,10 +9,12 @@ import { normalizeForMatch, itemPhotoUrlFromSlug } from "@/lib/item-photo-matchi
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import {
   categoryHeadingDisplay,
+  categorySubgroups,
   groupMeatSubtypes,
   orderedCategorySectionTitles,
   resolveItemCategoryFromName,
 } from "@/lib/item-ingredient-category";
+import { CategorySubheading } from "@/components/ui/category_card";
 import { cn } from "@/lib/utils";
 import type { ItemStore } from "@/lib/item-store";
 import { StoreLogos } from "./store_mark";
@@ -394,7 +396,12 @@ export function MasterAddSheet({
                       {categoryHeadingDisplay(g.title)}
                       <span className="text-xs font-normal text-[var(--text-tertiary)]">{g.items.length}</span>
                     </h3>
-                    <div className="grid grid-cols-6 gap-2.5">{g.items.map(tile)}</div>
+                    {categorySubgroups(g.title, g.items, (i) => i.name).map((sub) => (
+                      <React.Fragment key={sub.label ?? "all"}>
+                        {sub.label ? <CategorySubheading className="mb-1.5 mt-3 first:mt-0">{sub.label}</CategorySubheading> : null}
+                        <div className="grid grid-cols-6 gap-2.5">{sub.items.map(tile)}</div>
+                      </React.Fragment>
+                    ))}
                   </section>
                 ))}
         </div>
@@ -448,7 +455,14 @@ export function MasterAddSheet({
                     <Chevron open={isOpen} />
                   </button>
                   {isOpen ? (
-                    <div className="px-2.5 pb-1 pt-0.5">{g.items.map((item, i) => row(item, i === 0))}</div>
+                    <div className="px-2.5 pb-1 pt-0.5">
+                      {categorySubgroups(g.title, g.items, (i) => i.name).map((sub) => (
+                        <React.Fragment key={sub.label ?? "all"}>
+                          {sub.label ? <CategorySubheading className="px-1 pb-0.5 pt-2.5">{sub.label}</CategorySubheading> : null}
+                          {sub.items.map((item, i) => row(item, i === 0))}
+                        </React.Fragment>
+                      ))}
+                    </div>
                   ) : (
                     <button
                       type="button"

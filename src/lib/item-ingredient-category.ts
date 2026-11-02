@@ -373,6 +373,48 @@ export function groupMeatSubtypes<T>(categoryTitle: string, items: T[], getName:
     .map((x) => x.item);
 }
 
+/* ─── Groenten & Fruit: subgroepen (geen aparte categorie) ─── */
+
+/** Fruit herkennen op naam; alles wat overblijft (ook kruiden en aardappelen) telt als groente. */
+const FRUIT_NAME =
+  /(?<!aard)appel|appelsien|\bpeer\b|\bperen\b|banaan|banan|kiwi|zespri|mandarijn|clementine|\bcitroen(en)?\b|\blimoen(en)?\b|pompelmoes|grapefruit|perzik|nectarine|abriko|\bpruim(en)?\b|\bkers(en)?\b|aardbei|framboos|frambozen|bes(sen)?\b|druif|druiven|meloen|ananas|mango|papaja|lychee|passievrucht|passiefruit|vijg|dadel|\bfruit/;
+
+export function isFruitName(name: string): boolean {
+  return FRUIT_NAME.test(normalizeMeatName(name));
+}
+
+/** Geldt voor «Groenten & Fruit». */
+export function isProduceCategory(categoryTitle: string): boolean {
+  return /groenten/i.test(categoryTitle) && /fruit/i.test(categoryTitle);
+}
+
+/** Sleepgroep binnen een categorie: rijen slepen niet over het subkopje heen. */
+export function categorySubgroupKey(categoryTitle: string, name: string): string {
+  if (!isProduceCategory(categoryTitle)) return "";
+  return isFruitName(name) ? "fruit" : "groenten";
+}
+
+/**
+ * Deelt «Groenten & Fruit» op in Groenten (eerst) en Fruit, stabiel binnen elke groep. Staat er maar
+ * één soort in, of gaat het om een andere categorie, dan één groep zonder label (geen subkopje).
+ */
+export function categorySubgroups<T>(
+  categoryTitle: string,
+  items: T[],
+  getName: (item: T) => string,
+): Array<{ label: string | null; items: T[] }> {
+  if (isProduceCategory(categoryTitle)) {
+    const fruit = items.filter((item) => isFruitName(getName(item)));
+    if (fruit.length > 0 && fruit.length < items.length) {
+      return [
+        { label: "Groenten", items: items.filter((item) => !isFruitName(getName(item))) },
+        { label: "Fruit", items: fruit },
+      ];
+    }
+  }
+  return [{ label: null, items }];
+}
+
 export type StockSource = "freezer" | "pantry";
 
 const PANTRY_CATEGORIES = new Set(["Conserven, Sauzen, Olie & Kruiden", "Droogwaren & Bakproducten"]);
