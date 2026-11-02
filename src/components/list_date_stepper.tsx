@@ -147,6 +147,68 @@ export function ListDateStepper({
 }
 
 /**
+ * Datum in een formulier: zelfde vorm als het invoerveld (grijs, radius 16, h 48), kalender-icoon rechts.
+ * Een tik opent de datumkiezer; bij een gekozen datum staat daar ook «Datum wissen».
+ */
+export function DatePickerField({
+  label,
+  value,
+  onChange,
+  placeholder = "Kies een datum",
+  pickerTitle,
+}: {
+  label: string;
+  /** Titel van de kalender als het label daar te lang voor is. */
+  pickerTitle?: string;
+  /** ISO-datum "YYYY-MM-DD"; leeg = nog niets gekozen. */
+  value: string;
+  onChange: (iso: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const display = value ? isoToDate(value).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : null;
+  return (
+    <div className="flex w-full flex-col gap-2">
+      <span aria-hidden className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+        {label}
+      </span>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-label={`${label}: ${display ?? placeholder}`}
+        onClick={() => setOpen(true)}
+        className="flex h-12 w-full items-center gap-2 rounded-[16px] bg-[var(--gray-25)] px-4 text-left text-[15px] leading-24 transition-[background-color,box-shadow] duration-fast ease-out-strong focus-visible:bg-[var(--white)] focus-visible:shadow-[inset_0_0_0_1.5px_var(--blue-300)] focus-visible:outline-none"
+      >
+        <span className={cn("min-w-0 flex-1 truncate", display ? "text-[var(--text-primary)]" : "text-[var(--text-tertiary)]")}>{display ?? placeholder}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5 shrink-0 text-[var(--text-secondary)]">
+          <rect x="4" y="5.5" width="16" height="14.5" rx="3" />
+          <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" />
+        </svg>
+      </button>
+      {open ? (
+        <DatePickerModal
+          title={pickerTitle ?? label}
+          value={value}
+          onClose={() => setOpen(false)}
+          onPick={(iso) => {
+            onChange(iso);
+            setOpen(false);
+          }}
+          onClear={
+            value
+              ? () => {
+                  onChange("");
+                  setOpen(false);
+                }
+              : undefined
+          }
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * Datumkiezer (canvas «Datum A2 · modal»): gecentreerde kalender; een tik op een dag kiest die meteen.
  * Onderaan snelkeuzes en, met `onClear`, «Datum wissen».
  */

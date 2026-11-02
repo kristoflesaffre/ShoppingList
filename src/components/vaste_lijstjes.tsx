@@ -23,6 +23,7 @@ import { useAutoShare } from "@/lib/auto-share";
 import { isoToListDate, todayIsoDate } from "@/lib/list-date";
 import { listIsMasterTemplate } from "@/lib/list-master";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { DatePickerField } from "@/components/list_date_stepper";
 import { InputField } from "@/components/ui/input_field";
 import { FilterChip } from "@/components/ui/filter_chip";
 import { Shimmer } from "@/components/ui/shimmer";
@@ -621,12 +622,7 @@ export function VastListSheet({
         )}
 
         {type === "kado" ? (
-          <InputField
-            label="Verjaardag of gelegenheid (optioneel)"
-            type="date"
-            value={eventDate}
-            onChange={(e) => setEventDate(e.target.value)}
-          />
+          <DatePickerField label="Verjaardag of gelegenheid (optioneel)" pickerTitle="Verjaardag of gelegenheid" value={eventDate} onChange={setEventDate} />
         ) : null}
 
         <div>
