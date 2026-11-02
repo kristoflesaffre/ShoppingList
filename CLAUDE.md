@@ -66,6 +66,6 @@ Bouw schermen uit de gedeelde componenten in `src/components/ui/`. Style deze pa
 
 ## Git en publiceren
 
-- Werk op branch `login-redesign`; commit en push naar GitHub. Niet deployen naar Vercel of Netlify.
+- Werk op branch `login-redesign`; commit en push altijd alles ook naar `main` (`git push origin HEAD:login-redesign HEAD:main`). Zelf geen deploy starten naar Vercel of Netlify.
 - De database-schema (InstantDB) niet wijzigen zonder expliciete vraag.
 - Lokaal testen op http://localhost:3010.
