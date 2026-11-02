@@ -201,7 +201,7 @@ function ItemRow({ item, getPhotoUrl, onToggle }: ItemProps) {
       aria-checked={item.checked}
       aria-label={itemLabel(item)}
       onClick={onToggle}
-      className={cn(pressCls, "flex w-full items-center gap-3 border-t border-[var(--border-subtle)] px-1 py-2.5 text-left first:border-t-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]")}
+      className={cn(pressCls, "flex w-full items-center gap-3 border-t border-[var(--border-subtle)] px-1 py-2.5 text-left transition-colors duration-fast ease-out-strong first:border-t-0 [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]")}
     >
       <ItemPhoto item={item} getPhotoUrl={getPhotoUrl} size={42} />
       <span className="min-w-0 flex-1 leading-[19px]">
@@ -226,7 +226,7 @@ function ItemChip({ item, getPhotoUrl, onToggle }: ItemProps) {
       onClick={onToggle}
       className={cn(
         pressCls,
-        "flex min-w-0 items-center gap-2 rounded-[12px] p-[7px] text-left transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        "flex min-w-0 items-center gap-2 rounded-[12px] p-[7px] text-left transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
         item.checked ? "bg-[var(--gray-25)]" : "bg-[var(--white)] shadow-[inset_0_0_0_1px_var(--border-subtle)]",
       )}
     >
@@ -253,7 +253,7 @@ function ItemTile({ item, getPhotoUrl, onToggle }: ItemProps) {
       onClick={onToggle}
       className={cn(
         pressCls,
-        "relative flex aspect-[1/1.12] min-w-0 flex-col items-center justify-center gap-1 rounded-[16px] px-1 py-2 transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        "relative flex aspect-[1/1.12] min-w-0 flex-col items-center justify-center gap-1 rounded-[16px] px-1 py-2 transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
         item.checked ? "bg-[var(--gray-25)]" : "bg-[var(--white)] shadow-[inset_0_0_0_1px_var(--border-subtle)]",
       )}
     >
@@ -517,7 +517,7 @@ function EditRow({ item, getPhotoUrl, edit, first }: { item: ListItem; getPhotoU
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        "relative flex items-center gap-2.5 bg-[var(--white)] py-2 pr-1",
+        "relative flex items-center gap-2.5 bg-[var(--white)] py-2 pr-1 transition-colors duration-fast ease-out-strong [@media(hover:hover)]:hover:bg-[var(--gray-50)]",
         !first && "border-t border-[var(--border-subtle)]",
         isDragging && "z-10 rounded-[12px] shadow-[0_10px_24px_-10px_rgba(16,17,48,0.35)]",
       )}
@@ -970,7 +970,7 @@ function Card({
         className={cn(
           "flex items-center gap-2.5 px-3.5 py-3",
           headerClassName,
-          canCollapse && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
+          canCollapse && "cursor-pointer transition-[filter] duration-fast ease-out-strong [@media(hover:hover)]:hover:brightness-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
         )}
         style={{ backgroundImage: gradient }}
       >

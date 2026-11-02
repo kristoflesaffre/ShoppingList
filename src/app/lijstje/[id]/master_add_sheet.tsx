@@ -206,7 +206,7 @@ export function MasterAddSheet({
         onClick={() => toggle(item.name)}
         className={cn(
           "relative flex min-w-0 flex-col items-center gap-1 rounded-[16px] px-1 pb-2 pt-2.5 transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-          sel ? "bg-[var(--blue-25)] shadow-[inset_0_0_0_1.5px_var(--blue-300)]" : "bg-[var(--gray-25)]",
+          sel ? "bg-[var(--blue-25)] shadow-[inset_0_0_0_1.5px_var(--blue-300)]" : "bg-[var(--gray-25)] [@media(hover:hover)]:hover:bg-[var(--gray-50)]",
         )}
       >
         {sel ? (
@@ -233,7 +233,7 @@ export function MasterAddSheet({
         className={cn(
           "flex w-full items-center gap-3 rounded-[10px] px-1 py-[7px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
           !first && "border-t border-[var(--border-subtle)]",
-          sel && "bg-[var(--blue-25)]",
+          sel ? "bg-[var(--blue-25)]" : "[@media(hover:hover)]:hover:bg-[var(--gray-50)]",
         )}
       >
         <span className="flex size-10 shrink-0 items-center justify-center">
