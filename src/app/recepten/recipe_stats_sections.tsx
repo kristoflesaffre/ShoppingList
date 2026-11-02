@@ -329,6 +329,15 @@ function Postcard({ item, todayIso }: { item: RankedRecipe; todayIso: string }) 
   );
 }
 
+/** Desktop: minder dan 5 kaarten vullen samen de volle breedte i.p.v. een lege kolom te laten staan. */
+const LONG_AGO_COLS: Record<number, string> = {
+  1: "lg:grid-cols-1",
+  2: "lg:grid-cols-2",
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+  5: "lg:grid-cols-5",
+};
+
 /** Canvas «Recepten · lang niet meer gegeten»: foto's over de hele kaart, ander ritme dan de tegels. */
 export function LongAgoSection({ ranked, todayIso }: { ranked: RankedRecipe[]; todayIso: string }) {
   const ids = new Set(longAgoRecipes(ranked.map((r) => r.stat), todayIso).map((s) => s.recipeId));
@@ -339,7 +348,13 @@ export function LongAgoSection({ ranked, todayIso }: { ranked: RankedRecipe[]; t
   return (
     <section aria-label="Lang niet meer gegeten">
       <SectionHead title="Lang niet meer gegeten" sub="Tijd om er eentje terug te halen?" />
-      <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-3.5 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden">
+      <div
+        className={cn(
+          "-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:grid lg:gap-3.5 lg:overflow-visible",
+          LONG_AGO_COLS[Math.min(items.length, 5)],
+          "lg:px-0 [&::-webkit-scrollbar]:hidden",
+        )}
+      >
         {items.map((item, i) => (
           <div key={item.recipe.id} className={cn("contents", i >= 5 && "lg:hidden")}>
             <Postcard item={item} todayIso={todayIso} />
