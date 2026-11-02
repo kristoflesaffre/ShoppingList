@@ -31,6 +31,20 @@ describe("matchStepIngredients", () => {
     ]);
   });
 
+  it("toont een ingrediënt enkel bij de eerste stap die het noemt", () => {
+    const ing = ["Eieren 2", "Rijstpapier", "Kippengehakt"].map((name) => ({ id: name, name }));
+    expect(
+      matchStepIngredients(
+        [
+          "Kluts de eieren in een potje",
+          "Doe het eimengsel in een ronde bakvorm en maak het rijstpapier daarin zacht",
+          "Rol het kippengehakt in het rijstpapier",
+        ],
+        ing,
+      ),
+    ).toEqual([["Eieren 2"], ["Rijstpapier"], ["Kippengehakt"]]);
+  });
+
   it("verwart kippenbouillon niet met kipfilets", () => {
     expect(stepMentionsIngredient("Snijd de kipfilets in repen.", "Kippenbouillon")).toBe(false);
   });

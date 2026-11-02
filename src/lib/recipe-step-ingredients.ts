@@ -99,7 +99,15 @@ export function stepMentionsIngredient(step: string, ingredientName: string): bo
   return words.some((key) => stepWords.some((w) => wordMatches(w, key)));
 }
 
-/** Per stap de id's van de ingrediënten die erin voorkomen (in de volgorde van de lijst). */
+/**
+ * Per stap de id's van de ingrediënten die erin voorkomen (in de volgorde van de lijst). Een ingrediënt staat
+ * enkel bij de eerste stap die het noemt: daar heb je het nodig, later is het al verwerkt.
+ */
 export function matchStepIngredients<T extends { id: string; name: string }>(steps: string[], ingredients: T[]): string[][] {
-  return steps.map((step) => ingredients.filter((ing) => stepMentionsIngredient(step, ing.name)).map((ing) => ing.id));
+  const shown = new Set<string>();
+  return steps.map((step) =>
+    ingredients
+      .filter((ing) => !shown.has(ing.id) && stepMentionsIngredient(step, ing.name))
+      .map((ing) => (shown.add(ing.id), ing.id)),
+  );
 }
