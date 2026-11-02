@@ -446,12 +446,20 @@ const ALCOHOL_SUBGROUPS: SubgroupDef[] = [
   { label: "Overig" },
 ];
 
+const HOUSEHOLD_SUBGROUPS: SubgroupDef[] = [
+  { label: "Papier, folie & zakken", re: /papier|folie|\bwrap\b|keukenrol|zak(ken|jes)?\b|servet|zakdoek|tissue/ },
+  { label: "Schoonmaak", re: /reiniger|destop|ontstopper|\bwc\b|javel|bleek|spons|dweil|ontkalk|schuur/ },
+  { label: "Afwas & was", re: /vaatwas|afwas|dreft|wasmiddel|waspoeder|wasverzachter|vlekken/ },
+  { label: "Overig" },
+];
+
 function subgroupDefs(categoryTitle: string): SubgroupDef[] | null {
   if (/groenten/i.test(categoryTitle) && /fruit/i.test(categoryTitle)) return PRODUCE_SUBGROUPS;
   if (/droogwaren/i.test(categoryTitle)) return DRY_GOODS_SUBGROUPS;
   if (/zuivel/i.test(categoryTitle)) return DAIRY_SUBGROUPS;
   if (/conserven/i.test(categoryTitle)) return PANTRY_SUBGROUPS;
   if (/alcohol/i.test(categoryTitle)) return ALCOHOL_SUBGROUPS;
+  if (/huishoud/i.test(categoryTitle)) return HOUSEHOLD_SUBGROUPS;
   return null;
 }
 

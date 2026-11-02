@@ -122,3 +122,22 @@ describe("Alcoholische Dranken", () => {
     expect(groups.map((g) => g.label)).toEqual(["Bier", "Wijn & bubbels", "Sterke drank"]);
   });
 });
+
+describe("Huishouden & Schoonmaak", () => {
+  const H = "Huishouden & Schoonmaak";
+  const expected: Record<string, string[]> = {
+    "Papier, folie & zakken": ["Huishoudfolie", "plastic wrap", "Zilverpapier", "Bakpapier", "Vuilzakken", "Toiletpapier", "Keukenrol"],
+    Schoonmaak: ["Allesreiniger", "glasreiniger", "destop", "wc blokjes", "wc eend"],
+    "Afwas & was": ["dreft", "vaatwastabletten", "zout vaatwasser", "afwasmiddel", "waspoeder", "wasverzachter", "wasmiddel"],
+    Overig: ["aa batterijen", "aaa batterijen", "iets onbekends"],
+  };
+  for (const [label, names] of Object.entries(expected)) {
+    it(`${label} herkent zijn producten`, () => {
+      for (const n of names) expect(categorySubgroupKey(H, n), n).toBe(label);
+    });
+  }
+  it("houdt de volgorde papier, schoonmaak, afwas, overig aan", () => {
+    const groups = categorySubgroups(H, ["aa batterijen", "dreft", "Allesreiniger", "Bakpapier"], (n) => n);
+    expect(groups.map((g) => g.label)).toEqual(["Papier, folie & zakken", "Schoonmaak", "Afwas & was", "Overig"]);
+  });
+});
