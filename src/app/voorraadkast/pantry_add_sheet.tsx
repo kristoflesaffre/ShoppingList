@@ -103,6 +103,8 @@ export function PantryAddSheet({
       title="Product toevoegen"
       cancelLabel="Annuleer"
       titleId="pantry-add-title"
+      className="h-[566px]"
+      bodyClassName={chosen ? undefined : "!pt-0"}
       footer={
         <Button
           type="button"
@@ -157,14 +159,17 @@ export function PantryAddSheet({
           </EditFormRow>
         </div>
       ) : (
-        <div className="flex min-h-[280px] flex-col gap-3">
-          <SearchBar
-            autoFocus
-            placeholder="Zoek een product"
-            aria-label="Zoek een product"
-            value={query}
-            onValueChange={setQuery}
-          />
+        <div className="flex flex-col">
+          {/* Blijft staan als de resultaten scrollen: het blad heeft een vaste hoogte. De witruimte dekt de rijen af. */}
+          <div className="sticky top-0 z-10 bg-[var(--white)] pb-3 pt-6">
+            <SearchBar
+              autoFocus
+              placeholder="Zoek een product"
+              aria-label="Zoek een product"
+              value={query}
+              onValueChange={setQuery}
+            />
+          </div>
           {results ? (
             <div className="flex flex-col">
               {rows.map(({ name, stock }) => (
