@@ -1497,7 +1497,8 @@ export function NewItemModal({
                           setItemName(name);
                         }
                       }}
-                      autoFocus={!nameSearchOpen}
+                      /* Bij wijzigen niet: dan zou het suggestievak meteen over het blad openklappen. */
+                      autoFocus={!nameSearchOpen && !isEditMode}
                       recipes={sourceFilter === "all" ? storedRecipes : undefined}
                       onSelectRecipe={handleSelectRecipe}
                       onSelectRecipeFromFreezer={handleSelectRecipeFromFreezer}
