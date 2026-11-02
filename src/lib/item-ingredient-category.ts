@@ -416,10 +416,27 @@ const DAIRY_SUBGROUPS: SubgroupDef[] = [
   { label: "Overig" },
 ];
 
+/** Ook hier telt de volgorde: «tomatensaus» is saus, «curry poeder» kruid maar «currypasta» saus. */
+const PANTRY_SUBGROUPS: SubgroupDef[] = [
+  {
+    label: "Conserven",
+    re: /\bblik\b|passata|tomatenpuree|kokosmelk|\bmais\b|augurk|zilveruitjes|jalapeno|hot ?dog|bonen|kikkererwten|linzen|olijven|tonijn|ansjovis|artisjok/,
+  },
+  { label: "Sauzen", re: /saus|ketchup|mayo|mosterd|samo[eu]rai|sriracha|tabasco|sambal|pesto|dressing|pasta\b/ },
+  { label: "Olie & vet", re: /olie|frituurvet|bakvet|\bspray\b|azijn/ },
+  { label: "Bouillon", re: /bouillon/ },
+  {
+    label: "Kruiden & specerijen",
+    re: /kruiden|peper|zout|poeder|granulaat|gedroogde|basilicum|rozemarijn|tijm|oregano|laurier|kaneel|nootmuskaat|komijn|kurkuma|paprika|kerrie|koriander|dille|peterselie|saffraan|kruidnagel/,
+  },
+  { label: "Overig" },
+];
+
 function subgroupDefs(categoryTitle: string): SubgroupDef[] | null {
   if (/groenten/i.test(categoryTitle) && /fruit/i.test(categoryTitle)) return PRODUCE_SUBGROUPS;
   if (/droogwaren/i.test(categoryTitle)) return DRY_GOODS_SUBGROUPS;
   if (/zuivel/i.test(categoryTitle)) return DAIRY_SUBGROUPS;
+  if (/conserven/i.test(categoryTitle)) return PANTRY_SUBGROUPS;
   return null;
 }
 

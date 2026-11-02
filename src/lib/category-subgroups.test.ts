@@ -82,3 +82,24 @@ describe("Zuivel, Kaas & Eieren", () => {
     expect(groups.map((g) => g.label)).toEqual(["Melk & drankjes", "Yoghurt & desserts", "Boter & room", "Kaas", "Eieren"]);
   });
 });
+
+describe("Conserven, Sauzen, Olie & Kruiden", () => {
+  const C = "Conserven, Sauzen, Olie & Kruiden";
+  const expected: Record<string, string[]> = {
+    Conserven: ["blik tomaten", "blik tomaten blokjes", "blik tomaten heel", "passata", "tomatenpuree", "Kokosmelk", "Mais", "augurken", "zilveruitjes", "jalapenos", "hot dogs"],
+    Sauzen: ["ketchup", "mayonaise", "mosterd", "samoerai", "samourai", "sriracha", "sojasaus", "pastasaus pot", "pizzasaus", "tomatensaus", "bechamelsaus", "rode currypasta", "rode curry pasta", "tandoori pasta"],
+    "Olie & vet": ["arachideolie", "olijfolie", "sesamolie", "frituurvet", "spray airfryer", "spray olijfolie"],
+    Bouillon: ["Rundsbouillon", "Kippenbouillon", "Groentenbouillon", "visbouillon"],
+    "Kruiden & specerijen": ["Peper", "Zout", "Witte peperbollen", "zwarte peperbollen", "witte peper poeder", "cayennepeper", "Nootmuskaat", "Kippenkruiden", "satekruiden", "curry poeder", "tandoori poeder", "lookpoeder", "ajuinpoeder", "look granulaat", "kaneel", "laurier", "basilicum", "rozemarijn", "gedroogde basilicum", "gedroogde tijm", "gedroogde koriander", "gedroogde peterselie", "gedroogde dille"],
+    Overig: ["gefrituurde ajuin", "knijpzakjes appel/banaan chloe", "iets onbekends"],
+  };
+  for (const [label, names] of Object.entries(expected)) {
+    it(`${label} herkent zijn producten`, () => {
+      for (const n of names) expect(categorySubgroupKey(C, n), n).toBe(label);
+    });
+  }
+  it("houdt de volgorde conserven, sauzen, olie, bouillon, kruiden aan", () => {
+    const groups = categorySubgroups(C, ["Zout", "Kippenbouillon", "Olijfolie", "Ketchup", "Mais"], (n) => n);
+    expect(groups.map((g) => g.label)).toEqual(["Conserven", "Sauzen", "Olie & vet", "Bouillon", "Kruiden & specerijen"]);
+  });
+});
