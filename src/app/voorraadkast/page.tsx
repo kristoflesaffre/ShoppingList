@@ -31,7 +31,7 @@ import { PANTRY_GRADIENT_CLASS, PantryDecor } from "@/components/ui/pantry_backg
 import { SearchBar } from "@/components/ui/search_bar";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
-import { isPantryItem, isPantryLow, pantryGroupOf, PANTRY_GROUPS, PANTRY_ITEM_TYPE, type PantryGroup } from "@/lib/pantry";
+import { isPantryItem, isPantryLow, isPantryProduct, pantryGroupOf, PANTRY_GROUPS, PANTRY_ITEM_TYPE, type PantryGroup } from "@/lib/pantry";
 
 /** Canvas «VK · Voorraadkast», C · Tweeling van de diepvries: snelle lijst met steppers op een warm verloop. */
 
@@ -117,7 +117,9 @@ export default function VoorraadkastPage() {
   const productMatches = React.useMemo(() => {
     const norm = normalizeForMatch(typed);
     if (!norm || !itemSlugs.length) return [];
-    return matchItemSlugsForAutocomplete(norm, itemSlugs, itemSynonyms, MAX_RESULTS).map(slugToDisplayName);
+    // Eerst filteren: anders vullen diepvries en vers de plaatsen van de maximumlijst op.
+    const pantrySlugs = itemSlugs.filter((slug) => isPantryProduct(slugToDisplayName(slug)));
+    return matchItemSlugsForAutocomplete(norm, pantrySlugs, itemSynonyms, MAX_RESULTS).map(slugToDisplayName);
   }, [itemSlugs, itemSynonyms, typed]);
 
   React.useEffect(() => {

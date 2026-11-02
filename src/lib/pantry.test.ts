@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPantryItem, isPantryLow, pantryGroupOf, pantryStatsLabel, PANTRY_ITEM_TYPE } from "./pantry";
+import { isPantryItem, isPantryLow, isPantryProduct, pantryGroupOf, pantryStatsLabel, PANTRY_ITEM_TYPE } from "./pantry";
 
 describe("isPantryItem", () => {
   it("houdt de diepvries apart", () => {
@@ -25,6 +25,53 @@ describe("pantryGroupOf", () => {
     ["Wc-papier", "overig"],
   ])("%s → %s", (name, group) => {
     expect(pantryGroupOf(name)).toBe(group);
+  });
+});
+
+describe("isPantryProduct", () => {
+  it.each([
+    "Diepvriesfrieten",
+    "Diepvriesaardbeien",
+    "Wortelen diepvries",
+    "Pizza",
+    "Erwtjes",
+    "Kipfilet",
+    "Gehakt",
+    "Zalm",
+    "Yoghurt",
+    "Kaas blok",
+    "Tomaten",
+    "Pijpajuin",
+    "Stokbrood",
+    "Bladerdeeg",
+    "Verse lasagnebladen",
+    "Paspoort",
+    "Jas man",
+    "Planten water geven",
+  ])("%s hoort er niet in", (name) => {
+    expect(isPantryProduct(name)).toBe(false);
+  });
+
+  it.each([
+    "Bloem",
+    "Olijfolie",
+    "Kippenbouillon",
+    "Blik tomaten blokjes",
+    "Chips",
+    "Koffiebonen",
+    "Rode wijn",
+    "Nutella",
+    "Melk halfvol",
+    "Havermelk",
+    "Aardappelen",
+    "Ajuinen",
+    "Wraps",
+    "Destop",
+    "Deodorant",
+    "Deodorant man",
+    "Douchegel",
+  ])("%s hoort er wel in", (name) => {
+    expect(isPantryProduct(name)).toBe(true);
   });
 });
 
