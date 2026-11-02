@@ -644,7 +644,8 @@ export default function ReceptDetailPage() {
               ref={heroPlateRef}
               className={cn(
                 "shrink-0 overflow-hidden rounded-full [filter:drop-shadow(4px_6px_5px_rgba(80,50,10,0.24))_drop-shadow(16px_20px_16px_rgba(110,70,20,0.34))]",
-                savedRecipe.photoUrl ? "size-[200px] lg:size-[190px]" : "size-[124px] bg-[var(--white)]",
+                "size-[200px] lg:size-[190px]",
+                !savedRecipe.photoUrl && "bg-[var(--white)]",
               )}
               style={heroLanded ? undefined : { opacity: 0 }}
             >
@@ -664,11 +665,10 @@ export default function ReceptDetailPage() {
                 <Image
                   src="/images/ui/recipe_plate.png"
                   alt=""
-                  width={124}
-                  height={124}
-                  className={cn(
-                    "size-[124px] object-cover transition-opacity duration-150",
-                  )}
+                  width={200}
+                  height={200}
+                  // Leeg bord even groot als een receptfoto, zodat er niets verspringt na het opladen.
+                  className="size-full object-cover transition-opacity duration-150"
                 />
               )}
             </div>
@@ -680,7 +680,6 @@ export default function ReceptDetailPage() {
                 className={cn(
                   plateActionBtn,
                   "size-11",
-                  !savedRecipe.photoUrl && "!-bottom-1 !-right-2 !size-10",
                   heroEnter(300).className,
                 )}
                 style={heroEnter(300).style}
@@ -699,7 +698,7 @@ export default function ReceptDetailPage() {
                 className={cn(
                   plateActionBtn,
                   "size-11 gap-1.5 text-sm font-bold disabled:opacity-60",
-                  savedRecipe.photoUrl ? "lg:w-auto lg:px-4" : "!-bottom-1 !-right-2 !size-10",
+                  savedRecipe.photoUrl && "lg:w-auto lg:px-4",
                 )}
               >
                 <CameraGlyph />
