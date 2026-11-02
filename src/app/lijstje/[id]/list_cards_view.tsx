@@ -1015,8 +1015,16 @@ export function ListCardsView(props: ListCardsViewProps) {
   return props.groupingMode === "day" ? <DayCards {...props} /> : <CategoryCards {...props} />;
 }
 
-function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPhotoUrl, uncheckedFirst, onCheckedChange, onAddToSection, edit }: ListCardsViewProps) {
+function DayCards({ sections: allSections, layout, dayLead, listDateStr, savedRecipes, getPhotoUrl, uncheckedFirst, onCheckedChange, onAddToSection, edit }: ListCardsViewProps) {
   const isDesktop = useIsDesktop();
+  // Diepvriesgerechten koop je niet: zonder dag staan ze in een eigen kaart, nooit bij «Algemeen · altijd nodig».
+  const { sections, undatedFreezer } = React.useMemo(() => {
+    const isFreezerDish = (item: ListItem) => item.fromStock === true && item.stockSource !== "pantry";
+    return {
+      sections: allSections.map((s) => (s.title === "Algemeen" ? { ...s, items: s.items.filter((item) => !isFreezerDish(item)) } : s)),
+      undatedFreezer: allSections.filter((s) => s.title === "Algemeen").flatMap((s) => s.items.filter(isFreezerDish)),
+    };
+  }, [allSections]);
   const days = React.useMemo(
     () =>
       sections
@@ -1221,6 +1229,29 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
   const dayCards = days.filter((d) => !d.isGeneral);
   const chronological = [...dayCards].sort((a, b) => (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0));
 
+  const renderUndatedFreezer = (wide: boolean) =>
+    undatedFreezer.length > 0 ? (
+      <Card
+        key="undated-freezer"
+        gradient="linear-gradient(90deg, var(--blue-50), var(--blue-25))"
+        items={[]}
+        collapsible={false}
+        header={
+          <>
+            <StockSourceIcon source="freezer" className="!size-5" colorClassName="bg-[var(--blue-500)]" />
+            <h3 className="text-[15px] font-bold text-text-primary">Uit de diepvries</h3>
+            <span className="text-xs text-[var(--text-tertiary)]">· nog geen dag</span>
+          </>
+        }
+      >
+        {edit ? (
+          <EditCardBody items={undatedFreezer} savedRecipes={savedRecipes} getPhotoUrl={getPhotoUrl} edit={edit} />
+        ) : (
+          <ItemsLayout items={undatedFreezer} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
+        )}
+      </Card>
+    ) : null;
+
   if (edit) {
     return isDesktop ? (
       <div className="grid grid-cols-2 items-start gap-5">
@@ -1230,11 +1261,16 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
         </div>
         <div className="flex flex-col gap-3.5">
           <span className="text-xs font-bold tracking-[0.06em] text-[var(--text-tertiary)]">GERECHTEN PER DAG</span>
+          {renderUndatedFreezer(true)}
           {chronological.map((d) => renderDay(d, true))}
         </div>
       </div>
     ) : (
-      <div className="flex flex-col gap-3">{days.map((d) => renderDay(d, false))}</div>
+      <div className="flex flex-col gap-3">
+        {general.map((d) => renderDay(d, false))}
+        {renderUndatedFreezer(false)}
+        {dayCards.map((d) => renderDay(d, false))}
+      </div>
     );
   }
 
@@ -1243,7 +1279,9 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
       {/* Mobiel: één kolom in de gewone volgorde. */}
       <div className="flex flex-col gap-3 lg:hidden">
         {dayLead}
-        {days.map((d) => renderDay(d, false))}
+        {general.map((d) => renderDay(d, false))}
+        {renderUndatedFreezer(false)}
+        {dayCards.map((d) => renderDay(d, false))}
       </div>
       {/* Desktop: links «Altijd nodig», rechts de gerechten per dag chronologisch. */}
       <div className="hidden gap-5 lg:grid lg:grid-cols-2 lg:items-start">
@@ -1254,6 +1292,7 @@ function DayCards({ sections, layout, dayLead, listDateStr, savedRecipes, getPho
         </div>
         <div className="flex flex-col gap-3.5">
           <span className="text-xs font-bold tracking-[0.06em] text-[var(--text-tertiary)]">GERECHTEN PER DAG</span>
+          {renderUndatedFreezer(true)}
           {chronological.map((d) => renderDay(d, true))}
         </div>
       </div>
