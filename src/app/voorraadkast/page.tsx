@@ -29,7 +29,8 @@ import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { DatePickerModal } from "@/components/list_date_stepper";
 import { toIsoDate } from "@/lib/calendar-utils";
-import { isPantryExpired, pantryExpiryLabel } from "@/lib/pantry-expiry";
+import { PantryExpiryNote } from "@/components/pantry_expiry_note";
+import { pantryExpiryLabel } from "@/lib/pantry-expiry";
 import { PANTRY_GRADIENT_CLASS, PantryDecor } from "@/components/ui/pantry_background";
 import { SearchBar } from "@/components/ui/search_bar";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
@@ -108,13 +109,6 @@ function PantryGroupCard({ title, children }: { title: string; children: React.R
       </ul>
     </section>
   );
-}
-
-/** Onderregel van een rij: de datum, rood als die voorbij is, of de uitnodiging om er een te kiezen. */
-function ExpiryNote({ expiryDate }: { expiryDate?: string | null }) {
-  const label = pantryExpiryLabel(expiryDate);
-  if (!label) return <span className="text-[var(--text-tertiary)]">+ vervaldatum</span>;
-  return <span className={cn(isPantryExpired(expiryDate) && "font-semibold text-[var(--error-400)]")}>{label}</span>;
 }
 
 type PantryFilter = "alles" | "bijnaOp" | PantryGroup;
@@ -260,9 +254,9 @@ export default function VoorraadkastPage() {
       name={item.name}
       subtitle={
         <>
-          {/* Vervallen: de melding krijgt de hele regel, anders valt de datum weg op een gsm. */}
-          {isPantryExpired(item.expiryDate) ? null : `${item.quantityPerPackage} ${item.unit} · `}
-          <ExpiryNote expiryDate={item.expiryDate} />
+          {item.quantityPerPackage} {item.unit}
+          {item.expiryDate ? " " : " · "}
+          <PantryExpiryNote expiryDate={item.expiryDate} />
         </>
       }
       trailing={stepper(item)}
@@ -285,7 +279,7 @@ export default function VoorraadkastPage() {
             </FilterChip>
           ))}
           <FilterChip selected={false} onClick={() => openExpiry(item)}>
-            {pantryExpiryLabel(item.expiryDate) ?? "+ vervaldatum"}
+            {pantryExpiryLabel(item.expiryDate) ?? "vervaldatum"}
           </FilterChip>
         </div>
       ) : null}
