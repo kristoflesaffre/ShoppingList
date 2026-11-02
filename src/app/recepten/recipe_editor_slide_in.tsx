@@ -375,27 +375,30 @@ export function RecipeEditorSlideIn({
           );
         })}
       </FilterChipRow>
-      {subcategoryOptions ? (
-        <div className="mt-3">
-          <FilterChipRow wrap ariaLabel="Soort">
-            {subcategoryOptions.map((sub) => {
-              const isActive = recipeSubcategory === sub.id;
-              return (
-                <FilterChip
-                  key={sub.id}
-                  selected={isActive}
-                  onClick={() => setRecipeSubcategory(isActive ? null : sub.id)}
-                  className={cn(!isActive && "!bg-[var(--white)] !text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-subtle)] [@media(hover:hover)]:hover:!bg-[var(--gray-25)]")}
-                >
-                  {sub.label}
-                </FilterChip>
-              );
-            })}
-          </FilterChipRow>
-        </div>
-      ) : null}
     </section>
   );
+
+  // Eigen sectie onder Categorie, enkel als de gekozen categorie subsecties heeft (nu: bijgerechten).
+  const soortSection = subcategoryOptions ? (
+    <section>
+      <SectionTitle>Soort bijgerecht</SectionTitle>
+      <FilterChipRow wrap ariaLabel="Soort bijgerecht">
+        {subcategoryOptions.map((sub) => {
+          const isActive = recipeSubcategory === sub.id;
+          return (
+            <FilterChip
+              key={sub.id}
+              selected={isActive}
+              onClick={() => setRecipeSubcategory(isActive ? null : sub.id)}
+              className={cn(!isActive && "!bg-[var(--white)] !text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-subtle)] [@media(hover:hover)]:hover:!bg-[var(--gray-25)]")}
+            >
+              {sub.label}
+            </FilterChip>
+          );
+        })}
+      </FilterChipRow>
+    </section>
+  ) : null;
 
   const bronSection = (
     <section>
@@ -519,6 +522,7 @@ export function RecipeEditorSlideIn({
           {isNew ? <AiFillBanner onPhoto={handlePickPhotosForAi} onLink={handleUseLinkForAi} /> : null}
           {basisCard}
           {categorieSection}
+          {soortSection}
           <div className="hidden md:block">{bronSection}</div>
         </div>
         <div className="flex flex-col gap-[22px]">
