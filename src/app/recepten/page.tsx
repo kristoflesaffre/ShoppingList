@@ -342,6 +342,19 @@ export default function ReceptenPage() {
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [recipeSearch, setRecipeSearch] = React.useState("");
   const [activeCategory, setActiveCategory] = React.useState<RecipeCategory | null>(null);
+  // De open sectie staat in het adres (?categorie=…), zodat «terug» vanuit een recept weer in die sectie uitkomt.
+  React.useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("categorie");
+    const match = RECIPE_CATEGORIES.find((c) => c.id === fromUrl);
+    if (match) setActiveCategory(match.id);
+  }, []);
+  const openCategory = React.useCallback((category: RecipeCategory | null) => {
+    setActiveCategory(category);
+    const url = new URL(window.location.href);
+    if (category) url.searchParams.set("categorie", category);
+    else url.searchParams.delete("categorie");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
   const [recipeEditorOpen, setRecipeEditorOpen] = React.useState(false);
   const [recipeEditorTarget, setRecipeEditorTarget] =
     React.useState<SavedRecipe | null>(null);
@@ -561,7 +574,7 @@ export default function ReceptenPage() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setActiveCategory(null)}
+                    onClick={() => openCategory(null)}
                     aria-label="Terug naar alle recepten"
                     className={headerRoundButtonClass}
                   >
@@ -649,7 +662,7 @@ export default function ReceptenPage() {
                     <RecipeCategoryLane
                       key={section.meta?.id ?? "overige"}
                       section={section}
-                      onShowAll={() => setActiveCategory(section.meta?.id ?? null)}
+                      onShowAll={() => openCategory(section.meta?.id ?? null)}
                     />
                   ))}
                 </div>
