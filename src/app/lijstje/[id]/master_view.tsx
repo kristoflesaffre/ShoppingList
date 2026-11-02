@@ -171,7 +171,7 @@ export function MasterLoyaltyLine({
      open als zwevend paneel over de inhoud eronder (niets verschuift). */
   return (
     <div ref={popRef} className="relative w-full">
-      <div className="flex h-14 w-full items-center gap-3 rounded-pill bg-[linear-gradient(100deg,#e7efff,#f1ecff)] pl-3 pr-2.5 [[data-theme=dark]_&]:bg-[linear-gradient(100deg,#1e2a48,#272241)]">
+      <div className="flex h-[60px] w-full items-center gap-3 rounded-[20px] pl-3.5 pr-2.5 [background:var(--gradient-store-default)] md:h-16 md:pl-4 md:pr-3">
         <span className="flex shrink-0">
           <Logo src={primaryLogo} />
           <Logo src={secondaryLogo} overlap />

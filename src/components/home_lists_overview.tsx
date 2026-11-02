@@ -12,6 +12,8 @@ import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { cn } from "@/lib/utils";
 import { homeListCardIconSrc } from "@/lib/list-product-icons";
 import { homeListCardItemCountLine } from "@/lib/landal-list-card";
+import { useItemPhotoUrl } from "@/lib/item-photos";
+import { storeGradientFromLogo } from "@/lib/store-gradient";
 
 export type HomeOverviewList = {
   id: string;
@@ -19,7 +21,7 @@ export type HomeOverviewList = {
   date: string;
   icon: string;
   order: number;
-  items?: { id: string }[];
+  items?: { id: string; name?: string; order?: number }[];
   isOwner: boolean;
   membershipIds?: string[];
   displayVariant: "default" | "shared" | "master" | "from-master";
@@ -151,6 +153,24 @@ function SortableListCard({
   );
 }
 
+/** Eerste producten van de favorietenlijst waarvoor een foto bestaat (max. 3 verschillende). */
+function useFavoritePreviewPhotos(list: HomeOverviewList): string[] | undefined {
+  const photoUrl = useItemPhotoUrl(160);
+  const isMaster = list.displayVariant === "master";
+  const items = list.items;
+  return React.useMemo(() => {
+    if (!isMaster) return undefined;
+    const photos = new Set<string>();
+    const sorted = [...(items ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    for (const item of sorted) {
+      const url = item.name ? photoUrl(item.name) : null;
+      if (url) photos.add(url);
+      if (photos.size === 3) break;
+    }
+    return Array.from(photos);
+  }, [isMaster, items, photoUrl]);
+}
+
 /** Standaardweergave (Figma 1148:8952): tegels onder elkaar, geen sleep-/edit-chrome. */
 function StaticDisplayListRow({
   list,
@@ -162,6 +182,7 @@ function StaticDisplayListRow({
   onStartFromMaster: () => void;
 }) {
   const router = useRouter();
+  const previewPhotos = useFavoritePreviewPhotos(list);
 
   const card = (
     <ListCard
@@ -185,6 +206,8 @@ function StaticDisplayListRow({
       onMasterAdd={
         list.displayVariant === "master" ? onStartFromMaster : undefined
       }
+      previewPhotos={previewPhotos}
+      fanBackground={storeGradientFromLogo(list.customIconUrl ?? homeListCardIconSrc(list))}
       className="cursor-pointer"
     />
   );

@@ -41,6 +41,12 @@
   --bg-elevated: var(--white);
   /* App-ondergrond (stijl 1 · Helder): vlak, licht koel grijs i.p.v. de lavendel-gradient */
   --bg-app: #f5f6fa;
+  /* Zachte winkelverlopen: favorietentegels en de banners op een favorietenlijst */
+  --gradient-store-lidl-delhaize: linear-gradient(100deg, #fff6d6, #fdebea);
+  --gradient-store-lidl: linear-gradient(100deg, #fff6d6, #e7efff);
+  --gradient-store-delhaize: linear-gradient(100deg, #fde6e6, #fff1ec);
+  --gradient-store-aldi: linear-gradient(100deg, #e4efff, #fff0e4);
+  --gradient-store-default: linear-gradient(100deg, #e7efff, #f1ecff);
   /* Haarlijn rond kaarten/tegels (deel van --shadow-card) */
   --card-hairline: #e6e8f0;
   /* Producttegels: iets duidelijker dan de generieke kaarthaarlijn, met rustige desktop-hover. */
@@ -220,6 +226,11 @@
   --gray-800: #e6e8f2;
   --gray-900: #eef0fb;
   --white: #1a1d2e;
+  --gradient-store-lidl-delhaize: linear-gradient(100deg, #3a3420, #3a2426);
+  --gradient-store-lidl: linear-gradient(100deg, #3a3420, #1e2a48);
+  --gradient-store-delhaize: linear-gradient(100deg, #3a2024, #3a2a24);
+  --gradient-store-aldi: linear-gradient(100deg, #1e2a48, #3a2c20);
+  --gradient-store-default: linear-gradient(100deg, #1e2a48, #272241);
 
   --blue-25: #1f2238;
   --blue-50: #24284a;

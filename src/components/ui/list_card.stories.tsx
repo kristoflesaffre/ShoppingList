@@ -206,6 +206,30 @@ export const AllVariants: Story = {
         onMasterAdd={fn()}
       />
       <ListCard
+        listName="Lidl / Delhaize"
+        itemCount="171 favorieten"
+        icon={<img src="/logos/logos-lidl-delhaize.svg" alt="" />}
+        state="default"
+        displayVariant="master"
+        previewPhotos={[
+          "/images/items/bananen_160.webp",
+          "/images/items/pepsi_max_160.webp",
+          "/images/items/boterwafel_160.webp",
+        ]}
+        fanBackground="var(--gradient-store-lidl-delhaize)"
+        onMasterAdd={fn()}
+      />
+      <ListCard
+        listName="Aldi"
+        itemCount="0 favorieten"
+        icon={<img src="/logos/logos-aldi.svg" alt="" />}
+        state="default"
+        displayVariant="master"
+        previewPhotos={[]}
+        fanBackground="var(--gradient-store-aldi)"
+        onMasterAdd={fn()}
+      />
+      <ListCard
         listName="Weekboodschappen"
         itemCount="6 items"
         icon={defaultIcon}
