@@ -117,8 +117,44 @@ describe("buildCalendarEntries", () => {
       ],
     );
     const day = entries.get("2026-10-12");
-    expect(day?.meals[0]).toMatchObject({ photoUrl: "https://foto/rucola.webp", fromStock: true });
-    expect(day?.looseIngredients[0]).toMatchObject({ photoUrl: "https://foto/noedel.webp" });
+    expect(day?.meals.find((m) => m.recipeName === "Rucolasoep")).toMatchObject({ photoUrl: "https://foto/rucola.webp", fromStock: true });
+    expect(day?.meals.find((m) => m.recipeName === "Noedelsoep")).toMatchObject({ photoUrl: "https://foto/noedel.webp" });
+  });
+
+  describe("meerdere soepen op één dag", () => {
+    const soupItem = (name: string, groupId?: string) => ({
+      name,
+      quantity: "1 portie",
+      section: "Maandag",
+      itemDate: "2026-10-12",
+      fromStock: true,
+      ...(groupId ? { recipeGroupId: groupId, recipeName: name } : {}),
+    });
+    const mealNames = (items: ReturnType<typeof soupItem>[]) => {
+      const day = buildCalendarEntries([{ date: "10-10-2026", items }], [{ id: "r2", name: "Wortelsoep", photoUrl: "https://foto/wortel.webp" }]).get("2026-10-12");
+      return { names: day?.meals.map((m) => m.recipeName), day };
+    };
+
+    it("zet rucolasoep altijd als secundair gerecht", () => {
+      expect(mealNames([soupItem("Rucolasoep", "recipe-r1-1791000000000"), soupItem("Wortelsoep", "recipe-r2-1791000000001")]).names).toEqual(["Wortelsoep", "Rucolasoep"]);
+    });
+
+    it("maakt van een losse diepvriessoep een gerecht", () => {
+      const { names, day } = mealNames([soupItem("Rucolasoep", "recipe-r1-1791000000000"), soupItem("Wortelsoep (diepvries)")]);
+      expect(names).toEqual(["Wortelsoep", "Rucolasoep"]);
+      expect(day?.meals[0]).toMatchObject({ recipeId: "r2", photoUrl: "https://foto/wortel.webp", fromStock: true });
+      expect(day?.looseIngredients).toEqual([]);
+    });
+
+    it("houdt de volgorde van twee andere soepen", () => {
+      expect(mealNames([soupItem("Tomatensoep", "recipe-r3-1791000000000"), soupItem("Wortelsoep", "recipe-r2-1791000000001")]).names).toEqual(["Tomatensoep", "Wortelsoep"]);
+    });
+
+    it("laat één soep en andere diepvriesitems met rust", () => {
+      const { names, day } = mealNames([soupItem("Rucolasoep", "recipe-r1-1791000000000"), soupItem("Soepgroenten (diepvries)")]);
+      expect(names).toEqual(["Rucolasoep"]);
+      expect(day?.looseIngredients).toHaveLength(1);
+    });
   });
 
   it("neemt Frituur op als afhaalgerecht en niet als los item", () => {

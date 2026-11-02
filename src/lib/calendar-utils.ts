@@ -45,6 +45,11 @@ const VEGGIE_PROTEIN_PATTERN = /\b(?:tofu|tempeh|seitan|eieren|ei|falafel|quorn|
 const FRUIT_NAME_PATTERN =
   /\b(?:appel\w*|banan\w*|mandarijn\w*|clementine\w*|sinaas\w*|kiwi\w*|peer|peren|druiven|aardbei\w*|framboz\w*|bosbes\w*|blauwe bessen|citroen\w*|limoen\w*|meloen\w*|ananas|mango\w*|perzik\w*|nectarine\w*|pruim\w*|kers\w*|abrikoz\w*|granaatappel\w*)\b/i;
 
+/** «Soepgroenten» en «soepballetjes» zijn geen soep; bouillon evenmin. */
+const SOUP_NAME_PATTERN = /soep(?:je)?\b|velout/i;
+export const isSoupName = (name: string) => SOUP_NAME_PATTERN.test(name);
+const isRucolaSoup = (name: string) => /rucola/i.test(name) && isSoupName(name);
+
 const isStarch = (name: string) => STARCH_NAME_PATTERN.test(name);
 const isProtein = (name: string) =>
   CALENDAR_PROTEIN_CATEGORIES.has(resolveItemCategoryFromName(name)) || VEGGIE_PROTEIN_PATTERN.test(name);
@@ -192,6 +197,38 @@ type AnyRecipe = {
 };
 
 /**
+ * Meerdere soepen op één dag: de eerste is het hoofdgerecht, de volgende het secundaire gerecht;
+ * rucolasoep is altijd secundair. Diepvriessoepen zonder receptgroep worden daarvoor gerechten.
+ */
+function arrangeDaySoups(iso: string, entry: DayEntry, recipeByName: Map<string, AnyRecipe>) {
+  const looseSoups = entry.looseIngredients.filter(
+    (i) => (i.fromStock || i.name.endsWith(" (diepvries)")) && isSoupName(i.name),
+  );
+  if (entry.meals.filter((m) => isSoupName(m.recipeName)).length + looseSoups.length < 2) return;
+
+  for (const soup of looseSoups) {
+    const name = soup.name.replace(/\s*\(diepvries\)$/, "").trim();
+    const recipe = recipeByName.get(name.toLowerCase()) ?? null;
+    entry.meals.push({
+      recipeGroupId: `stock-${iso}-${name}`,
+      recipeName: name,
+      recipeId: recipe?.id ?? null,
+      photoUrl: soup.photoUrl ?? recipe?.photoUrl ?? null,
+      ingredientCount: 0,
+      fromStock: true,
+    });
+  }
+  entry.looseIngredients = entry.looseIngredients.filter((i) => !looseSoups.includes(i));
+
+  const rucolaIndex = entry.meals.findIndex((m) => isRucolaSoup(m.recipeName));
+  const hasOtherSoup = entry.meals.some((m) => isSoupName(m.recipeName) && !isRucolaSoup(m.recipeName));
+  if (rucolaIndex < 0 || !hasOtherSoup) return;
+  const [rucola] = entry.meals.splice(rucolaIndex, 1);
+  const primaryIndex = entry.meals.findIndex((m) => isSoupName(m.recipeName) && !isRucolaSoup(m.recipeName));
+  entry.meals.splice(primaryIndex + 1, 0, rucola);
+}
+
+/**
  * Bouwt een Map<isoDate, DayEntry> op basis van alle lijsten + recepten.
  * Master-template lijsten worden overgeslagen.
  */
@@ -292,6 +329,8 @@ export function buildCalendarEntries(
       }
     }
   }
+
+  result.forEach((entry, iso) => arrangeDaySoups(iso, entry, recipeByName));
 
   return result;
 }

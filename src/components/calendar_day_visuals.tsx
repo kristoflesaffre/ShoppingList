@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { dayEntryHasContent, selectCalendarPreviewItems, type DayEntry } from "@/lib/calendar-utils";
+import { dayEntryHasContent, isSoupName, selectCalendarPreviewItems, type DayEntry } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { eatingOutPhotoFor } from "@/lib/agenda_photos";
 
@@ -17,6 +17,7 @@ export function calendarDaySummary(isoDate: string, entry: DayEntry | null) {
   const meal = entry.meals[0] ?? null;
   if (meal) {
     const extra = entry.meals.length - 1;
+    const second = entry.meals[1] ?? null;
     return {
       title: meal.recipeName,
       sub: meal.fromStock
@@ -29,6 +30,8 @@ export function calendarDaySummary(isoDate: string, entry: DayEntry | null) {
             ? "1 ingrediënt"
             : `${meal.ingredientCount} ingrediënten`,
       photo: meal.photoUrl ?? eatingOutPhotoFor(meal.recipeName),
+      /** Twee soepen: de secundaire soep klein rechtsonder op het bord. */
+      sidePhoto: second && isSoupName(meal.recipeName) && isSoupName(second.recipeName) ? second.photoUrl : null,
       loose: null as DayEntry["looseIngredients"] | null,
       fromStock: meal.fromStock === true,
       href: meal.recipeId ? `/recepten/${meal.recipeId}` : `/kalender?date=${isoDate}`,
@@ -45,6 +48,7 @@ export function calendarDaySummary(isoDate: string, entry: DayEntry | null) {
     title: items.length > 2 ? `${names.slice(0, 2).join(", ")} +${items.length - 2}` : names.join(", "),
     sub: items.length === 1 ? "1 item" : `${items.length} items`,
     photo: eatingOut as string | null,
+    sidePhoto: null as string | null,
     /** Losse items: bord met tot drie productfoto's (zoals op de kalenderpagina). */
     loose: eatingOut ? null : previewItems,
     fromStock: first?.fromStock === true,
@@ -84,11 +88,14 @@ export function CalendarDayPlate({
   size,
   freeze,
   shadow = false,
+  sideSrc = null,
 }: {
   src: string | null;
   size: number;
   freeze: boolean;
   shadow?: boolean;
+  /** Secundair gerecht: kleinere cirkel die rechtsonder over het bord valt. */
+  sideSrc?: string | null;
 }) {
   return (
     <span className="relative shrink-0" style={{ width: size, height: size }}>
@@ -112,6 +119,15 @@ export function CalendarDayPlate({
         ) : null}
       </span>
       {freeze ? <CalendarFreezeBadge size={Math.max(18, Math.round(size / 4))} /> : null}
+      {sideSrc ? (
+        <span
+          className="absolute -bottom-1 -right-1 overflow-hidden rounded-full border-2 border-[var(--white)] bg-[var(--white)] shadow-[0_2px_6px_rgba(16,17,48,0.2)]"
+          style={{ width: Math.round(size * 0.44), height: Math.round(size * 0.44) }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto */}
+          <img src={sideSrc} alt="" decoding="async" loading="lazy" className="size-full scale-[1.08] object-cover" />
+        </span>
+      ) : null}
     </span>
   );
 }

@@ -1218,7 +1218,7 @@ function HomeWeekColumn({
     <Link
       href={summary?.href ?? `/kalender?date=${day.isoDate}`}
       onClick={recipeHeroClickHandler(summary?.recipeId, summary?.photo)}
-      aria-label={`${fullLabel}${isToday ? ", vandaag" : ""}: ${summary?.title ?? "niets gepland"}`}
+      aria-label={`${fullLabel}${isToday ? ", vandaag" : ""}: ${summary?.title ?? "niets gepland"}${day.entry?.meals[1] && summary?.sidePhoto ? ` met ${day.entry.meals[1].recipeName}` : ""}`}
       style={summary ? { backgroundImage: `linear-gradient(180deg, ${tint.mid} 0%, transparent 70%)` } : undefined}
       className={cn(
         lane ? "w-[124px] flex-none snap-start" : "min-w-0 flex-1",
@@ -1243,7 +1243,7 @@ function HomeWeekColumn({
           summary.loose ? (
             <HomeLoosePlate photos={loosePhotos} size={96} />
           ) : (
-            <HomeDayPlate src={summary.photo} size={96} freeze={summary.fromStock} />
+            <HomeDayPlate src={summary.photo} size={96} freeze={summary.fromStock} sideSrc={summary.sidePhoto} />
           )
         ) : (
           <HomeEmptyDayIdea date={day.date} size={96} />
