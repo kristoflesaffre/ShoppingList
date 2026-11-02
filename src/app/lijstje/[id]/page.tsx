@@ -6029,8 +6029,8 @@ export default function ListDetailPage({
                 ) : null}
               </div>
               {isEditMode ? (
-                // Mobiel: «Gereed» zit in de zwevende balk onderaan.
-                <DoneButton onClick={() => setIsEditMode(false)} className="max-lg:!hidden" />
+                // «Gereed» zit in de zwevende balk onderaan (ook op de computer), zodat hij bij het scrollen blijft.
+                null
               ) : hasItems &&
                 (!isVenueCounterList ||
                   (isCafeList && !isMasterList && !isEditMode)) ? (
@@ -6466,10 +6466,12 @@ export default function ListDetailPage({
 
   const listBottomChrome = (
     <>
-      {/* Bewerkstand op mobiel: zwevende donkere balk met «Gereed» (zelfde patroon als «Favorieten toevoegen»). */}
+      {/* Bewerkstand: zwevende donkere balk met «Gereed» (zelfde patroon als «Favorieten toevoegen»); blijft staan
+          tijdens het scrollen. Op de computer rechtsonder op de plek van de plusknop, zoals bij Recepten. */}
       {isEditMode && !isMasterCategoryOrderMode ? (
-        <div className="pointer-events-none fixed inset-x-3 bottom-[calc(20px+env(safe-area-inset-bottom,0px))] z-30 lg:hidden">
-          <div className="pointer-events-auto flex items-center gap-2.5 rounded-[24px] bg-[var(--text-primary)] py-2 pl-3 pr-2 text-[var(--white)] shadow-[0_14px_30px_-12px_rgba(16,17,48,0.6)] motion-safe:animate-fade-up">
+        <div className="pointer-events-none fixed inset-x-3 bottom-[calc(20px+env(safe-area-inset-bottom,0px))] z-30 lg:inset-x-0 lg:bottom-[24px]">
+          <div className="lg:mx-auto lg:flex lg:max-w-[956px] lg:justify-end lg:px-4">
+          <div className="pointer-events-auto flex lg:w-[360px] items-center gap-2.5 rounded-[24px] bg-[var(--text-primary)] py-2 pl-3 pr-2 text-[var(--white)] shadow-[0_14px_30px_-12px_rgba(16,17,48,0.6)] motion-safe:animate-fade-up">
             <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.14)] [&_svg]:size-4">
               {RoundIcons.pencil}
             </span>
@@ -6489,6 +6491,7 @@ export default function ListDetailPage({
               </svg>
               Gereed
             </button>
+          </div>
           </div>
         </div>
       ) : null}
@@ -6519,7 +6522,8 @@ export default function ListDetailPage({
           className={cn(
             "pointer-events-none fixed inset-x-0 z-20 transition-[bottom] duration-200",
             snackbarMessage ? "bottom-[80px]" : APP_FAB_BOTTOM_NO_NAV_CLASS,
-            isEditMode && "max-lg:hidden",
+            // In de bewerkstand staat de «Gereed»-balk op die plek.
+            isEditMode && "hidden",
           )}
         >
           <div className={APP_FAB_INNER_PX4_CLASS}>

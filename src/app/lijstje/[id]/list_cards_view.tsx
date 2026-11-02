@@ -549,8 +549,14 @@ function EditRow({ item, getPhotoUrl, edit, first }: { item: ListItem; getPhotoU
 
 function EditRows({ items, getPhotoUrl, edit, indent = false }: { items: ListItem[]; getPhotoUrl?: GetPhotoUrl; edit: ListCardsEditHandlers; indent?: boolean }) {
   const rows = items.map((it, k) => <EditRow key={it.id} item={it} getPhotoUrl={getPhotoUrl} edit={edit} first={k === 0} />);
-  // Ingrediënten van een recept springen in onder de receptkop.
-  return indent ? <div className="pl-6">{rows}</div> : <>{rows}</>;
+  // Eigen sorteercontext per kaart (of recept): slepen schuift enkel de rijen hier op en hertekent niet
+  // elke rij van het hele lijstje bij elke beweging (dat haperde op lange lijstjes met foto's).
+  return (
+    <SortableContext items={items.map((it) => it.id)} strategy={verticalListSortingStrategy}>
+      {/* Ingrediënten van een recept springen in onder de receptkop. */}
+      {indent ? <div className="pl-6">{rows}</div> : rows}
+    </SortableContext>
+  );
 }
 
 export const RECIPE_BLOCK_PREFIX = "recipe-block:";
