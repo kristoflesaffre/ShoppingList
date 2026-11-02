@@ -130,6 +130,7 @@ const DEFAULT_CATEGORY_HINTS: Record<string, string> = {
   chocolade: SC,
   snoep: SC,
   marshmallow: SC,
+  marshmallows: SC,
   koeken: SC,
   koekjes: SC,
   koffie: WD,
