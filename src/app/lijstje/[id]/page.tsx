@@ -92,6 +92,7 @@ import {
 import {
   categoryHeadingDisplay,
   effectiveItemCategory,
+  isSupermarketCategory,
   orderedCategorySectionTitles,
   orderedCategorySectionTitlesWithMasterOverride,
   parseMasterCategoryOrderJson,
@@ -3613,7 +3614,10 @@ export default function ListDetailPage({
     return items.filter((i) => (i.section ?? "").trim() === target);
   }, [items, searchParams]);
 
-  /** Zet / ververs `itemCategory` via Excel-mapping. */
+  /**
+   * Vult `itemCategory` aan via de Excel-mapping. Een geldige supermarktcategorie blijft staan: die kan je zelf
+   * kiezen in «Item wijzigen». Alleen lege of onbekende categorieën worden (opnieuw) uit de naam afgeleid.
+   */
   React.useEffect(() => {
     if (!listId || !user || isLandalOrVakantieList) return;
     const txs = items
@@ -3621,7 +3625,7 @@ export default function ListDetailPage({
         const resolvedCategory = resolveListItemCategory(it.name);
         const storedCategory =
           typeof it.itemCategory === "string" ? it.itemCategory.trim() : "";
-        if (storedCategory === resolvedCategory) return null;
+        if (storedCategory === resolvedCategory || isSupermarketCategory(storedCategory)) return null;
         return db.tx.items[it.id].update({ itemCategory: resolvedCategory });
       })
       .filter((tx): tx is NonNullable<typeof tx> => tx != null);

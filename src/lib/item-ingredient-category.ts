@@ -229,6 +229,16 @@ export function effectiveItemCategory(item: {
   return resolveItemCategoryFromName(item.name);
 }
 
+/** De vaste supermarktcategorieën in winkelvolgorde (zelf te kiezen in «Item wijzigen»), met `Overig` achteraan. */
+export const SUPERMARKET_CATEGORIES: readonly string[] = [
+  ...data.categoryOrder.filter((category) => category !== ITEM_CATEGORY_OVERIG),
+  ITEM_CATEGORY_OVERIG,
+];
+
+export function isSupermarketCategory(category: string | null | undefined): boolean {
+  return typeof category === "string" && SUPERMARKET_CATEGORIES.includes(category.trim());
+}
+
 /** Sorteert categorieën volgens `categoryOrder` in JSON; onbekende sleutels achteraan. */
 export function orderedCategorySectionTitles(keys: string[]): string[] {
   const order = [

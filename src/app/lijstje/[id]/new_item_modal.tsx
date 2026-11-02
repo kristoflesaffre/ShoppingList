@@ -19,7 +19,8 @@ import { PlusCircleMaskIcon } from "@/components/ui/plus_circle_mask_icon";
 import { StockSourceIcon } from "@/components/ui/freeze_mask_icon";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
-import { resolveItemCategoryFromName, stockSourceLabel } from "@/lib/item-ingredient-category";
+import { SUPERMARKET_CATEGORIES, categoryHeadingDisplay, effectiveItemCategory, resolveItemCategoryFromName, stockSourceLabel } from "@/lib/item-ingredient-category";
+import { categoryColor } from "./list_cards_view";
 import { findFreezerItemForPlan } from "@/lib/freezer-planning";
 import { isPantryItem } from "@/lib/pantry";
 import { normalizeQuantity, parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
@@ -294,6 +295,8 @@ export function NewItemModal({
   const [nameSearchOpen, setNameSearchOpen] = React.useState(false);
   const [selectedDay, setSelectedDay] = React.useState("Geen");
   const [vacationCategory, setVacationCategory] = React.useState<string>("Andere");
+  /** «Item wijzigen» (supermarkt): de gekozen categorie; null = afleiden uit de naam. */
+  const [editCategory, setEditCategory] = React.useState<string | null>(null);
   const [tripPerson, setTripPerson] =
     React.useState<TripPersonTab>(DEFAULT_TRIP_PERSON_TAB);
   const [sourceFilter, setSourceFilter] =
@@ -472,6 +475,7 @@ export function NewItemModal({
       setEditingIngredientId(null);
     } else if (editingItem) {
       setItemName(editingItem.name);
+      setEditCategory(isVacationList ? null : effectiveItemCategory(editingItem));
       setItemStore(editingItem.store);
       setItemStoreOrigin(editingItem.storeOrigin);
       setAlsoFavorite(false);
@@ -555,6 +559,17 @@ export function NewItemModal({
     }
   }, [open, isVacationList, isEditMode, isSmall]);
 
+  /**
+   * Categorie bij «Item wijzigen»: je eigen keuze; liet je ze ongemoeid en veranderde de naam, dan opnieuw
+   * afgeleid uit de nieuwe naam.
+   */
+  const editedItemCategory = () => {
+    const fromName = resolveItemCategoryFromName(itemName.trim());
+    if (!editingItem || !editCategory) return fromName;
+    const unchanged = editCategory === effectiveItemCategory(editingItem);
+    return unchanged && itemName.trim() !== editingItem.name.trim() ? fromName : editCategory;
+  };
+
   const handleAdd = () => {
     if (!canAdd && !isEditMode) return;
     const section = selectedStore
@@ -576,7 +591,7 @@ export function NewItemModal({
         name: itemName.trim(),
         quantity: qty,
         section: isVacationList ? vacationSection : section,
-        itemCategory: isVacationList ? vacationCategory : resolveItemCategoryFromName(itemName.trim()),
+        itemCategory: isVacationList ? vacationCategory : editedItemCategory(),
         ...(isVacationList && !isPreDeparture ? { tripPerson: normalizeTripPerson(tripPerson) } : {}),
       }, { alsoFavorite: storeChoice != null && alsoFavorite });
     } else {
@@ -1591,6 +1606,28 @@ export function NewItemModal({
                   </div>
                   )}
                   {!isVacationList && !batchMode ? storeTiles(false) : null}
+                  {isEditMode && !isVacationList && editCategory ? (
+                    <div className="flex flex-col gap-2">
+                      <span id="edit-item-category" className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+                        Categorie
+                      </span>
+                      <div role="group" aria-labelledby="edit-item-category" className="flex flex-wrap gap-2">
+                        {SUPERMARKET_CATEGORIES.map((category) => {
+                          const [r, g, b] = categoryColor(category);
+                          return (
+                            <FilterChip
+                              key={category}
+                              selected={editCategory === category}
+                              dotColor={`rgb(${r}, ${g}, ${b})`}
+                              onClick={() => setEditCategory(category)}
+                            >
+                              {categoryHeadingDisplay(category)}
+                            </FilterChip>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
                   {showAlsoFavorite ? (
                     <label className="-mt-1 flex cursor-pointer items-center gap-2.5 text-[13.5px] text-[var(--text-secondary)]">
                       <input
