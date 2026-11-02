@@ -50,19 +50,20 @@ const sectionActionClass =
 
 /**
  * «Toon alle» als zacht drukvlak (canvas «Toon alle» K3): witte pil met grijze rand (zoals de pijlknoppen) met een kaartstapel-icoon, het
- * aantal en een chevron. Zonder aantal: icoon en chevron. `external` opent in een nieuw tabblad.
+ * aantal en een chevron. Zonder aantal: icoon en chevron. `external` opent in een nieuw tabblad; met `onClick` i.p.v. `href`
+ * een knop (bv. één receptcategorie openen op dezelfde pagina).
  */
 export function OverviewPill({
   href,
+  onClick,
   count,
   ariaLabel,
   external = false,
 }: {
-  href: string;
   count?: number;
   ariaLabel: string;
   external?: boolean;
-}) {
+} & ({ href: string; onClick?: never } | { href?: never; onClick: () => void })) {
   const className =
     "-mr-0.5 inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-pill bg-[var(--white)] pl-[11px] shadow-card pr-[9px] text-[15.5px] font-extrabold leading-5 tabular-nums text-[var(--text-primary)] no-underline transition-[background-color,transform] duration-fast motion-safe:active:scale-95 [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2";
   const inner = (
@@ -77,12 +78,19 @@ export function OverviewPill({
       </svg>
     </>
   );
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-label={ariaLabel} className={className}>
+        {inner}
+      </button>
+    );
+  }
   return external ? (
     <a href={href} target="_blank" rel="noopener noreferrer" aria-label={ariaLabel} className={className}>
       {inner}
     </a>
   ) : (
-    <Link href={href} aria-label={ariaLabel} className={className}>
+    <Link href={href!} aria-label={ariaLabel} className={className}>
       {inner}
     </Link>
   );

@@ -44,6 +44,7 @@ import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import { LongAgoSection, MostEatenSection, RecipeStatsSkeleton, useRecipeStats } from "@/app/recepten/recipe_stats_sections";
 import { recipeTintColors, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { EmptyStateFan } from "@/components/empty_state_fan";
+import { OverviewPill } from "@/components/list_section_header";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 
 /** Snapshot voor Snackbar-undo na verwijderen (zelfde ids als InstantDB). */
@@ -253,8 +254,8 @@ function EmptyStateRecipeFan() {
 }
 
 /**
- * Eén categorie als rij (canvas «Recepten 2»): mobiel een swipebare rij met «Alles»,
- * desktop zes kaarten naast elkaar met pijlknoppen.
+ * Eén categorie als rij (canvas «Recepten 2»): een veegrij (desktop zes kaarten breed) met rechts dezelfde
+ * «Toon alle»-pil als op de startpagina, die de hele categorie als raster opent.
  */
 function RecipeCategoryLane({
   section,
@@ -263,27 +264,7 @@ function RecipeCategoryLane({
   section: { meta: (typeof RECIPE_CATEGORIES)[0] | null; recipes: SavedRecipe[] };
   onShowAll: () => void;
 }) {
-  const laneRef = React.useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = React.useState({ atStart: true, atEnd: false });
-  const updateEdges = React.useCallback(() => {
-    const el = laneRef.current;
-    if (!el) return;
-    const atStart = el.scrollLeft <= 4;
-    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
-    setEdges((prev) => (prev.atStart === atStart && prev.atEnd === atEnd ? prev : { atStart, atEnd }));
-  }, []);
-  React.useEffect(() => {
-    updateEdges();
-    window.addEventListener("resize", updateEdges);
-    return () => window.removeEventListener("resize", updateEdges);
-  }, [updateEdges, section.recipes.length]);
-  const scrollPage = (dir: -1 | 1) => {
-    const el = laneRef.current;
-    if (el) el.scrollBy({ left: dir * el.clientWidth, behavior: "smooth" });
-  };
   const count = section.recipes.length;
-  const arrowClass =
-    "flex size-8 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-card transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 disabled:text-[var(--gray-200)] disabled:shadow-[0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 
   return (
     <section className="flex flex-col gap-3">
@@ -294,31 +275,10 @@ function RecipeCategoryLane({
         <h2 className="min-w-0 truncate text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
           {section.meta ? section.meta.labelPlural : "Overige"}
         </h2>
-        <span className="shrink-0 text-sm font-medium leading-20 text-[var(--text-secondary)] tabular-nums">{count}</span>
         <span className="flex-1" />
-        <button
-          type="button"
-          onClick={onShowAll}
-          className="rounded-pill px-2 py-1 text-sm font-medium leading-20 text-action-primary transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] md:hidden"
-        >
-          Alles
-        </button>
-        <span className="hidden gap-1.5 md:flex">
-          <button type="button" aria-label="Vorige recepten" disabled={edges.atStart} onClick={() => scrollPage(-1)} className={arrowClass}>
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
-              <path d="M10 3.5 5.5 8 10 12.5" />
-            </svg>
-          </button>
-          <button type="button" aria-label="Volgende recepten" disabled={edges.atEnd} onClick={() => scrollPage(1)} className={arrowClass}>
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
-              <path d="M6 3.5 10.5 8 6 12.5" />
-            </svg>
-          </button>
-        </span>
+        <OverviewPill onClick={onShowAll} count={count} ariaLabel={`Alle ${section.meta ? section.meta.labelPlural.toLowerCase() : "overige recepten"}`} />
       </div>
       <div
-        ref={laneRef}
-        onScroll={updateEdges}
         className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 py-1 [scrollbar-width:none] md:mx-0 md:gap-3.5 md:scroll-px-0 md:px-0 [&::-webkit-scrollbar]:hidden"
       >
         {section.recipes.map((r) => (
