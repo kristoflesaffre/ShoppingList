@@ -752,12 +752,6 @@ export function LijstjesBeherenClient({
             />
           )}
 
-
-          {section === "favorieten" && hasSectionLists && !isCardsEditMode ? (
-            <p className="text-center text-[12.5px] text-[var(--text-tertiary)]">
-              Tik «+ Lijstje» om een nieuw lijstje uit je favorieten te maken
-            </p>
-          ) : null}
         </div>
       </div>
 
