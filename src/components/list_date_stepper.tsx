@@ -156,8 +156,14 @@ export function DatePickerField({
   onChange,
   placeholder = "Kies een datum",
   pickerTitle,
+  quickPicks,
+  hideLabel = false,
 }: {
   label: string;
+  /** Snelkeuzes in de kalender. */
+  quickPicks?: { label: string; iso: string }[];
+  /** Het label staat al ernaast (formulierrij). */
+  hideLabel?: boolean;
   /** Titel van de kalender als het label daar te lang voor is. */
   pickerTitle?: string;
   /** ISO-datum "YYYY-MM-DD"; leeg = nog niets gekozen. */
@@ -169,9 +175,11 @@ export function DatePickerField({
   const display = value ? isoToDate(value).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : null;
   return (
     <div className="flex w-full flex-col gap-2">
-      <span aria-hidden className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-        {label}
-      </span>
+      {hideLabel ? null : (
+        <span aria-hidden className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
+          {label}
+        </span>
+      )}
       <button
         type="button"
         aria-haspopup="dialog"
@@ -189,6 +197,7 @@ export function DatePickerField({
         <DatePickerModal
           title={pickerTitle ?? label}
           value={value}
+          quickPicks={quickPicks}
           onClose={() => setOpen(false)}
           onPick={(iso) => {
             onChange(iso);

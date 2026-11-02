@@ -601,7 +601,7 @@ function SmallScreenAutocomplete({
 // ─── Publieke component: kiest automatisch op basis van schermgrootte ─────────
 
 /** Inhoud van het gekozen Productveld: foto-tegel (of monogram) · naam vet · «Wijzig». */
-function ChosenProductContent({ value, photoUrl }: { value: string; photoUrl: string | null }) {
+export function ChosenProductContent({ value, photoUrl }: { value: string; photoUrl: string | null }) {
   return (
     <>
       {photoUrl ? (

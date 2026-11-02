@@ -3,6 +3,15 @@ import { toIsoDate } from "@/lib/calendar-utils";
 /** Optionele vervaldatum van een voorraadkastproduct: `freezerItems.expiryDate` als "YYYY-MM-DD". */
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Snelkeuzes in de datumkiezer: houdbare producten vervallen meestal pas over maanden. */
+export function pantryExpiryQuickPicks(today: Date = new Date()): { label: string; iso: string }[] {
+  const inMonths = (months: number) => toIsoDate(new Date(today.getFullYear(), today.getMonth() + months, today.getDate()));
+  return [
+    { label: "Over 6 maanden", iso: inMonths(6) },
+    { label: "Over 1 jaar", iso: inMonths(12) },
+  ];
+}
+
 export function isPantryExpired(expiryDate: string | null | undefined, today: Date = new Date()): boolean {
   return Boolean(expiryDate && ISO_DATE.test(expiryDate) && expiryDate < toIsoDate(today));
 }

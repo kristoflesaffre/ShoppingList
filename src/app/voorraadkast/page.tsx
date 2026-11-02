@@ -9,16 +9,8 @@ import { db } from "@/lib/db";
 import { id as instantId } from "@instantdb/react";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { cn } from "@/lib/utils";
-import { normalizeForMatch, useItemPhotoUrl, useItemSlugs, useItemSynonyms } from "@/lib/item-photos";
-import { matchItemSlugsForAutocomplete } from "@/lib/item-slug-autocomplete";
-import { slugToDisplayName } from "@/components/ui/item_name_autocomplete";
-import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import {
-  PANTRY_PRODUCT_UNITS,
-  buildFreezerSearch,
-  freezerStockLabel,
   freezerUndoLines,
-  freezerUnitPatch,
   nextFreezerUndo,
   type FreezerEntry,
   type FreezerUndo,
@@ -28,14 +20,14 @@ import { CountStepper } from "@/components/ui/count_stepper";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { DatePickerModal } from "@/components/list_date_stepper";
-import { toIsoDate } from "@/lib/calendar-utils";
 import { PantryExpiryNote } from "@/components/pantry_expiry_note";
-import { pantryExpiryLabel } from "@/lib/pantry-expiry";
+import { pantryExpiryQuickPicks } from "@/lib/pantry-expiry";
+import { pantryNewPatch, pantryStockPatch } from "@/lib/pantry-add";
+import { PantryAddSheet, PantryProductPhoto, type PantryAddition } from "./pantry_add_sheet";
 import { PANTRY_GRADIENT_CLASS, PantryDecor } from "@/components/ui/pantry_background";
 import { SearchBar } from "@/components/ui/search_bar";
-import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 import { useLargeTitleCollapse } from "@/lib/use_large_title_collapse";
-import { isPantryItem, isPantryLow, isPantryProduct, pantryGroupOf, PANTRY_GROUPS, PANTRY_ITEM_TYPE, type PantryGroup } from "@/lib/pantry";
+import { isPantryItem, isPantryLow, pantryGroupOf, PANTRY_GROUPS, PANTRY_ITEM_TYPE, type PantryGroup } from "@/lib/pantry";
 
 /** Canvas «VK · Voorraadkast», C · Tweeling van de diepvries: snelle lijst met steppers op een warm verloop. */
 
@@ -45,18 +37,14 @@ function PantryRow({
   name,
   subtitle,
   trailing,
-  children,
   onOpen,
 }: {
   name: string;
   subtitle: React.ReactNode;
   trailing: React.ReactNode;
-  children?: React.ReactNode;
   /** Tik op de naam: vervaldatum instellen. */
   onOpen?: () => void;
 }) {
-  const getItemPhoto = useItemPhotoUrl(160);
-  const photo = getItemPhoto(name);
   const label = (
     <>
       <span className="block truncate text-[15px] font-semibold text-text-primary first-letter:uppercase">{name}</span>
@@ -65,33 +53,21 @@ function PantryRow({
   );
 
   return (
-    <div>
-      <div className="flex w-full items-center gap-3 py-[9px] pl-3 pr-2.5">
-        {photo ? (
-          <span className="flex size-11 shrink-0 items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
-            <img src={photo} alt="" width={36} height={36} className="size-9 object-contain mix-blend-multiply [[data-theme=dark]_&]:mix-blend-normal" />
-          </span>
-        ) : (
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] text-[17px] font-bold" style={teKopenMonogramStyle(name)} aria-hidden>
-            {name.trim().charAt(0).toUpperCase()}
-          </span>
-        )}
-        {onOpen ? (
-          <button
-            type="button"
-            onClick={onOpen}
-            aria-label={`Vervaldatum van ${name}`}
-            className="min-w-0 flex-1 rounded-[12px] text-left leading-[19px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-          >
-            {label}
-          </button>
-        ) : (
-          <span className="min-w-0 flex-1 leading-[19px]">{label}</span>
-        )}
-        {trailing}
-      </div>
-      {children}
+    <div className="flex w-full items-center gap-3 py-[9px] pl-3 pr-2.5">
+      <PantryProductPhoto name={name} />
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`Vervaldatum van ${name}`}
+          className="min-w-0 flex-1 rounded-[12px] text-left leading-[19px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          {label}
+        </button>
+      ) : (
+        <span className="min-w-0 flex-1 leading-[19px]">{label}</span>
+      )}
+      {trailing}
     </div>
   );
 }
@@ -115,22 +91,14 @@ type PantryFilter = "alles" | "bijnaOp" | PantryGroup;
 
 /** Zolang de melding staat, kan de hele reeks wijzigingen aan dit item ongedaan gemaakt worden. */
 const UNDO_VISIBLE_MS = 6000;
-const MAX_RESULTS = 8;
-
-/** Snelkeuze in de datumkiezer: houdbare producten vervallen meestal pas over maanden. */
-function isoInMonths(months: number): string {
-  const now = new Date();
-  return toIsoDate(new Date(now.getFullYear(), now.getMonth() + months, now.getDate()));
-}
 
 export default function VoorraadkastPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = db.useAuth();
   const [search, setSearch] = React.useState("");
   const [searchFocused, setSearchFocused] = React.useState(false);
-  const searchBarRef = React.useRef<HTMLDivElement>(null);
-  /** In deze zoekbeurt toegevoegd: blijft op zijn plaats in de resultaten staan (met stepper en eenheden). */
-  const [addedIds, setAddedIds] = React.useState<ReadonlySet<string>>(() => new Set());
+  /** Blad «Product toevoegen» open, met deze beginzoekterm. */
+  const [addQuery, setAddQuery] = React.useState<string | null>(null);
   const [filter, setFilter] = React.useState<PantryFilter>("alles");
   const [undo, setUndo] = React.useState<FreezerUndo | null>(null);
   /** Datumkiezer «Vervaldatum» open voor dit product. */
@@ -141,15 +109,6 @@ export default function VoorraadkastPage() {
   const searching = typed.length > 0;
 
   const { data, isLoading: dataLoading } = db.useQuery(user ? { freezerItems: {} } : null);
-  const itemSlugs = useItemSlugs();
-  const itemSynonyms = useItemSynonyms();
-  const productMatches = React.useMemo(() => {
-    const norm = normalizeForMatch(typed);
-    if (!norm || !itemSlugs.length) return [];
-    // Eerst filteren: anders vullen diepvries en vers de plaatsen van de maximumlijst op.
-    const pantrySlugs = itemSlugs.filter((slug) => isPantryProduct(slugToDisplayName(slug)));
-    return matchItemSlugsForAutocomplete(norm, pantrySlugs, itemSynonyms, MAX_RESULTS).map(slugToDisplayName);
-  }, [itemSlugs, itemSynonyms, typed]);
 
   React.useEffect(() => {
     if (!undo) return;
@@ -177,50 +136,35 @@ export default function VoorraadkastPage() {
   );
   const hasItems = allItems.length > 0;
   // Zoeken gaat altijd over de hele voorraadkast (de filters staan dan even weg).
-  const results = searching
-    ? buildFreezerSearch({ query: typed, items: allItems, recipes: [], productNames: productMatches, addedIds, filter: "product" })
-    : null;
-  const searchHasResults = results && (results.inFreezer.length > 0 || results.products.length > 0);
+  const searchResults = searching ? allItems.filter((i) => i.name.toLowerCase().includes(typed.toLowerCase())) : null;
 
-  function changeSearch(next: string) {
-    setSearch(next);
-    if (!next.trim()) setAddedIds(new Set());
-  }
-
-  /** Toevoegknop: toevoegen gebeurt via het zoekveld, dus daar gaat de cursor naartoe. */
-  function startAdding() {
-    searchBarRef.current?.scrollIntoView({ block: "center" });
-    searchBarRef.current?.querySelector("input")?.focus();
-  }
-
-  /** Tik op + : meteen in de voorraadkast (1 stuk), met «Ongedaan» en eenheden om bij te stellen. */
-  function addProduct(name: string) {
+  /** Knop «Toevoegen» in het blad: nieuw product, of het aantal erbij als je het al hebt; met «Ongedaan». */
+  function addProduct({ name, stock, quantity, unit, expiryDate }: PantryAddition) {
     if (!user) return;
-    const id = instantId();
-    const record = {
-      type: PANTRY_ITEM_TYPE,
-      name,
-      quantityPerPackage: 1,
-      unit: "stuk",
-      packages: 1,
-      ownerId: user.id,
-      order: allItems.reduce((max, fi) => Math.max(max, fi.order ?? 0), 0) + 1,
-    };
-    void db.transact(db.tx.freezerItems[id].update(record));
-    setAddedIds((current) => new Set(current).add(id));
-    setUndo({ id, before: null, after: { id, ...record } });
+    if (stock) {
+      const patch = pantryStockPatch(stock, quantity, expiryDate);
+      void db.transact(db.tx.freezerItems[stock.id].update(patch));
+      setUndo({ id: stock.id, before: stock, after: { ...stock, ...patch } });
+    } else {
+      const id = instantId();
+      const record = {
+        type: PANTRY_ITEM_TYPE,
+        name,
+        ownerId: user.id,
+        order: allItems.reduce((max, fi) => Math.max(max, fi.order ?? 0), 0) + 1,
+        ...pantryNewPatch(quantity, unit, expiryDate),
+      };
+      void db.transact(db.tx.freezerItems[id].update(record));
+      setUndo({ id, before: null, after: { id, ...record } });
+    }
+    setAddQuery(null);
+    setSearch("");
   }
 
   function handleChangeCount(item: PantryItem, next: number) {
     if (next <= 0) void db.transact(db.tx.freezerItems[item.id].delete());
     else void db.transact(db.tx.freezerItems[item.id].update({ packages: next }));
     setUndo((current) => nextFreezerUndo(current, item, next <= 0 ? null : { ...item, packages: next }));
-  }
-
-  function handleChangeUnit(item: PantryItem, unit: string) {
-    const patch = freezerUnitPatch(item, unit);
-    void db.transact(db.tx.freezerItems[item.id].update(patch));
-    setUndo((current) => nextFreezerUndo(current, item, { ...item, ...patch }));
   }
 
   function openExpiry(item: PantryItem) {
@@ -240,7 +184,7 @@ export default function VoorraadkastPage() {
     } else {
       const { id, ...fields } = undo.before;
       // Update op hetzelfde id zet ook een verwijderd item terug.
-      void db.transact(db.tx.freezerItems[id].update(JSON.parse(JSON.stringify(fields))));
+      void db.transact(db.tx.freezerItems[id].update(JSON.parse(JSON.stringify({ ...fields, expiryDate: fields.expiryDate ?? null }))));
     }
     setUndo(null);
   }
@@ -262,28 +206,6 @@ export default function VoorraadkastPage() {
       trailing={stepper(item)}
       onOpen={() => openExpiry(item)}
     />
-  );
-  const stockRow = (item: PantryItem) => (
-    <PantryRow
-      key={item.id}
-      name={item.name}
-      subtitle={<span className="font-bold text-[var(--blue-500)]">In voorraad: {freezerStockLabel(item)}</span>}
-      trailing={stepper(item)}
-      onOpen={() => openExpiry(item)}
-    >
-      {addedIds.has(item.id) ? (
-        <div role="group" aria-label={`Eenheid voor ${item.name}`} className="flex flex-wrap gap-1.5 pb-2.5 pl-[68px] pr-2.5">
-          {PANTRY_PRODUCT_UNITS.map((u) => (
-            <FilterChip key={u} selected={item.unit === u} onClick={() => handleChangeUnit(item, u)}>
-              {u}
-            </FilterChip>
-          ))}
-          <FilterChip selected={false} onClick={() => openExpiry(item)}>
-            {pantryExpiryLabel(item.expiryDate) ?? "vervaldatum"}
-          </FilterChip>
-        </div>
-      ) : null}
-    </PantryRow>
   );
 
   return (
@@ -338,20 +260,19 @@ export default function VoorraadkastPage() {
               Voorraadkast
             </h1>
             <div className="hidden shrink-0 lg:block">
-              <Button size="sm" onClick={startAdding}>+ Toevoegen</Button>
+              <Button size="sm" onClick={() => setAddQuery("")}>+ Toevoegen</Button>
             </div>
           </div>
 
-          {/* Zoals de diepvries: toevoegen gebeurt in het zoekveld; de toevoegknop en FAB brengen je daar. */}
+          {/* Het zoekveld zoekt in je eigen voorraad; toevoegen gebeurt in het blad «Product toevoegen». */}
           <div className="flex flex-col gap-2.5 lg:flex-row-reverse lg:items-center lg:justify-between lg:gap-4">
             <div className="flex min-w-0 items-center gap-3 lg:w-[400px]">
               <SearchBar
-                ref={searchBarRef}
                 surface="app"
-                placeholder="Zoek of voeg toe aan de voorraadkast"
-                aria-label="Zoek of voeg toe aan de voorraadkast"
+                placeholder="Zoek in je voorraadkast"
+                aria-label="Zoek in je voorraadkast"
                 value={search}
-                onValueChange={changeSearch}
+                onValueChange={setSearch}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
                 className="flex-1"
@@ -378,55 +299,25 @@ export default function VoorraadkastPage() {
             ) : null}
           </div>
 
-          {results ? (
-            /* ── Typen: eerst wat je al hebt, daaronder wat je kunt toevoegen ── */
-            <div className="flex flex-col">
-              {searchHasResults ? (
-                <div className="lg:columns-2 lg:gap-4">
-                  {results.inFreezer.length > 0 ? <PantryGroupCard title="In je voorraadkast">{results.inFreezer.map(stockRow)}</PantryGroupCard> : null}
-                  {results.products.length > 0 ? (
-                    <PantryGroupCard title="Producten">
-                      {results.products.map(({ name, stock }) =>
-                        stock ? (
-                          stockRow(stock)
-                        ) : (
-                          <PantryRow
-                            key={name}
-                            name={name}
-                            subtitle="Product"
-                            trailing={
-                              <RoundIconButton tone="primary" size={36} onClick={() => addProduct(name)} aria-label={`${name} toevoegen aan de voorraadkast`}>
-                                {RoundIcons.plus}
-                              </RoundIconButton>
-                            }
-                          />
-                        ),
-                      )}
-                    </PantryGroupCard>
-                  ) : null}
-                </div>
-              ) : null}
-              {results.createName ? (
-                <button
-                  type="button"
-                  onClick={() => addProduct(results.createName!)}
-                  className="flex h-12 w-full items-center gap-2.5 rounded-[14px] px-3 text-left text-[15px] font-semibold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden className="size-[18px] shrink-0">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  <span className="min-w-0 truncate">«{results.createName}» als nieuw product</span>
-                </button>
-              ) : null}
-            </div>
+          {searchResults ? (
+            searchResults.length > 0 ? (
+              <div className="lg:columns-2 lg:gap-4">
+                <PantryGroupCard title="In je voorraadkast">{searchResults.map(restRow)}</PantryGroupCard>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <p className="text-center text-[15px] text-[var(--text-secondary)]">«{typed}» staat nog niet in je voorraadkast</p>
+                <Button size="sm" onClick={() => setAddQuery(typed)}>+ Toevoegen</Button>
+              </div>
+            )
           ) : !hasItems ? (
-            /* ── Lege voorraadkast: het zoekveld hierboven is de ingang ── */
             <div className="flex flex-col items-center gap-4 py-10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/images/ingredients/bloem_320.webp" alt="" width={96} height={96} className="size-24 object-contain mix-blend-multiply motion-safe:animate-float [[data-theme=dark]_&]:mix-blend-normal" />
               <p className="max-w-[320px] text-center text-base font-medium leading-6 text-[var(--text-secondary)]">
-                Nog niets in je voorraadkast. Zoek hierboven bloem, olie, koekjes of chips om toe te voegen.
+                Nog niets in je voorraadkast. Voeg bloem, olie, koekjes of chips toe.
               </p>
+              <Button size="sm" onClick={() => setAddQuery("")}>+ Toevoegen</Button>
             </div>
           ) : visibleItems.length > 0 ? (
             <div className="lg:columns-2 lg:gap-4">
@@ -444,7 +335,7 @@ export default function VoorraadkastPage() {
       {!undo && !searching && !searchFocused ? (
         <div className={cn("pointer-events-none fixed inset-x-0 z-20 lg:hidden", APP_FAB_BOTTOM_NO_NAV_CLASS)}>
           <div className={APP_FAB_INNER_PX4_CLASS}>
-            <FloatingActionButton aria-label="Toevoegen aan de voorraadkast" className="pointer-events-auto" onClick={startAdding} />
+            <FloatingActionButton aria-label="Toevoegen aan de voorraadkast" className="pointer-events-auto" onClick={() => setAddQuery("")} />
           </div>
         </div>
       ) : null}
@@ -472,14 +363,15 @@ export default function VoorraadkastPage() {
         </div>
       ) : null}
 
+      {addQuery !== null ? (
+        <PantryAddSheet items={allItems} initialQuery={addQuery} onClose={() => setAddQuery(null)} onAdd={addProduct} />
+      ) : null}
+
       {expiryItem ? (
         <DatePickerModal
           title={`${expiryItem.name} houdbaar tot`}
           value={expiryItem.expiryDate ?? ""}
-          quickPicks={[
-            { label: "Over 6 maanden", iso: isoInMonths(6) },
-            { label: "Over 1 jaar", iso: isoInMonths(12) },
-          ]}
+          quickPicks={pantryExpiryQuickPicks()}
           onClose={() => setExpiryItem(null)}
           onPick={saveExpiry}
           onClear={expiryItem.expiryDate ? () => saveExpiry("") : undefined}
