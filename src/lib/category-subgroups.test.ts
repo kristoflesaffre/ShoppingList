@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categorySubgroupKey, categorySubgroups, isFruitName } from "./item-ingredient-category";
+import { categorySubgroupKey, categorySubgroups, isFruitName, resolveItemCategoryFromName } from "./item-ingredient-category";
 
 describe("isFruitName", () => {
   it("herkent het fruit van het lijstje", () => {
@@ -147,7 +147,7 @@ describe("Snoep & Chocolade", () => {
   const expected: Record<string, string[]> = {
     "Koek & wafels": ["Pick up koekjes", "pick up", "Speculoos koekjes", "Boterwafels", "Suikerwafels", "suikerwafel", "Leo go mini"],
     Chocolade: ["Raffaello", "Ferrero rocher chocolade", "Guylain zeevruchten", "Carres hele hazelnoten chocolade", "chocolade", "chocolade chloe", "chocolade mannetjes", "chocoladeparels", "melkchocolade hazelnoten", "melkchocolade karamel zeezout", "pure chocolade", "hagelslag", "hagelslag melk", "hagelslag puur", "kinder surprise", "paaseieren", "paaseieren noe", "paaseitjes"],
-    Snoep: ["kauwgom", "suikerspin", "ufo snoepjes", "zuur fruit snoep"],
+    Snoep: ["kauwgom", "suikerspin", "ufo snoepjes", "zuur fruit snoep", "Marshmallows"],
     Overig: ["iets onbekends"],
   };
   for (const [label, names] of Object.entries(expected)) {
@@ -155,6 +155,9 @@ describe("Snoep & Chocolade", () => {
       for (const n of names) expect(categorySubgroupKey(S, n), n).toBe(label);
     });
   }
+  it("marshmallows vallen onder Snoep & Chocolade", () => {
+    expect(resolveItemCategoryFromName("Marshmallows")).toBe(S);
+  });
   it("houdt de volgorde koek, chocolade, snoep aan", () => {
     const groups = categorySubgroups(S, ["Kauwgom", "Raffaello", "Boterwafels"], (n) => n);
     expect(groups.map((g) => g.label)).toEqual(["Koek & wafels", "Chocolade", "Snoep"]);

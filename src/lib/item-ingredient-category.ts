@@ -129,6 +129,7 @@ const DEFAULT_CATEGORY_HINTS: Record<string, string> = {
   popcorn: ZS,
   chocolade: SC,
   snoep: SC,
+  marshmallow: SC,
   koeken: SC,
   koekjes: SC,
   koffie: WD,
@@ -460,7 +461,7 @@ const SWEETS_SUBGROUPS: SubgroupDef[] = [
     label: "Chocolade",
     re: /choco|carres|ferrero|guylain|guylian|raffaello|kinder|paasei|hagelslag|praline|toblerone|milka|cote d.?or|twix|snickers|\bmars\b|bounty|kitkat|m&m/,
   },
-  { label: "Snoep", re: /snoep|kauwgom|suikerspin|\bufo\b|winegum|\bdrop\b|lolly|haribo|spekken/ },
+  { label: "Snoep", re: /snoep|kauwgom|suikerspin|\bufo\b|winegum|\bdrop\b|lolly|haribo|spekken|marshmallow/ },
   { label: "Overig" },
 ];
 
