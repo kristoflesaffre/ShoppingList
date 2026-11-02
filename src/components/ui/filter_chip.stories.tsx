@@ -66,3 +66,25 @@ export const Types: Story = { render: () => <TypeDemo /> };
 
 /** Categorieën met bolletje en aantal. */
 export const Categories: Story = { render: () => <CategoryDemo /> };
+
+function OnColorDemo() {
+  const [value, setValue] = React.useState("alles");
+  return (
+    <div style={{ padding: "var(--space-4)", background: "#f6dcae", borderRadius: 16 }}>
+      <FilterChipRow wrap ariaLabel="Filter de voorraadkast">
+        <FilterChip surface="onColor" selected={value === "alles"} onClick={() => setValue("alles")}>
+          Alles
+        </FilterChip>
+        <FilterChip surface="onColor" selected={value === "olie"} onClick={() => setValue("olie")}>
+          Olie en sauzen
+        </FilterChip>
+        <FilterChip surface="onColor" selected={value === "op"} dotColor="var(--status-warning)" count={2} onClick={() => setValue("op")}>
+          Bijna op
+        </FilterChip>
+      </FilterChipRow>
+    </div>
+  );
+}
+
+/** Op een gekleurde achtergrond (Frost, Voorraadkast): inactief wit. */
+export const OnColor: Story = { render: () => <OnColorDemo /> };

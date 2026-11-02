@@ -461,11 +461,12 @@ export default function DiepvriesvoorraadPage() {
               ) : null}
             </div>
             <FilterChipRow ariaLabel="Filter de diepvries">
-              <FilterChip selected={activeFilter === "alles"} onClick={() => setFilter("alles")}>Alles</FilterChip>
-              <FilterChip selected={activeFilter === "gerecht"} onClick={() => setFilter("gerecht")}>Gerechten</FilterChip>
-              <FilterChip selected={activeFilter === "product"} onClick={() => setFilter("product")}>Producten</FilterChip>
+              <FilterChip surface="onColor" selected={activeFilter === "alles"} onClick={() => setFilter("alles")}>Alles</FilterChip>
+              <FilterChip surface="onColor" selected={activeFilter === "gerecht"} onClick={() => setFilter("gerecht")}>Gerechten</FilterChip>
+              <FilterChip surface="onColor" selected={activeFilter === "product"} onClick={() => setFilter("product")}>Producten</FilterChip>
               {lowCount > 0 && !searching ? (
                 <FilterChip
+                  surface="onColor"
                   selected={activeFilter === "bijnaOp"}
                   onClick={() => setFilter("bijnaOp")}
                   dotColor="var(--status-warning)"

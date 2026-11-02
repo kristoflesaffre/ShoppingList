@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 /**
  * Design system «Filterchip»: compact (30px), halfvet. Actief vol blauw met witte tekst,
  * inactief lichtgrijs met grijze tekst. Optioneel een gekleurd bolletje (categorie) en een teller.
+ * Op een gekleurde achtergrond (Frost, Voorraadkast): `surface="onColor"`, inactief wit.
  */
 export function FilterChip({
   selected,
@@ -13,6 +14,7 @@ export function FilterChip({
   children,
   dotColor,
   count,
+  surface = "default",
   className,
 }: {
   selected: boolean;
@@ -22,6 +24,8 @@ export function FilterChip({
   dotColor?: string;
   /** Aantal achter het label, bv. «Groenten 9». */
   count?: number;
+  /** `onColor`: inactief wit i.p.v. grijs, voor op een gekleurde achtergrond. */
+  surface?: "default" | "onColor";
   className?: string;
 }) {
   return (
@@ -33,7 +37,9 @@ export function FilterChip({
         "inline-flex h-[30px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill px-[11px] text-[12.5px] font-semibold transition-[background-color,color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-1",
         selected
           ? "bg-[var(--blue-500)] text-white"
-          : "bg-[var(--gray-50)] text-[var(--text-secondary)] [@media(hover:hover)]:hover:bg-[var(--gray-100)]",
+          : surface === "onColor"
+            ? "bg-[var(--white)] text-[var(--text-secondary)] shadow-card [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
+            : "bg-[var(--gray-50)] text-[var(--text-secondary)] [@media(hover:hover)]:hover:bg-[var(--gray-100)]",
         className,
       )}
     >

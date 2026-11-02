@@ -330,12 +330,13 @@ export default function VoorraadkastPage() {
             </div>
             {hasItems && !searching ? (
               <FilterChipRow ariaLabel="Filter de voorraadkast">
-                <FilterChip selected={activeFilter === "alles"} onClick={() => setFilter("alles")}>Alles</FilterChip>
+                <FilterChip surface="onColor" selected={activeFilter === "alles"} onClick={() => setFilter("alles")}>Alles</FilterChip>
                 {presentGroups.map((g) => (
-                  <FilterChip key={g.key} selected={activeFilter === g.key} onClick={() => setFilter(g.key)}>{g.label}</FilterChip>
+                  <FilterChip surface="onColor" key={g.key} selected={activeFilter === g.key} onClick={() => setFilter(g.key)}>{g.label}</FilterChip>
                 ))}
                 {lowCount > 0 ? (
                   <FilterChip
+                    surface="onColor"
                     selected={activeFilter === "bijnaOp"}
                     onClick={() => setFilter("bijnaOp")}
                     dotColor="var(--status-warning)"
