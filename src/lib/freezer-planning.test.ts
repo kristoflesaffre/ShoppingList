@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { findFreezerItemForPlan, parseThawMarker, planFreezerDeductions, planFreezerLinks, planThawTaskActions, thawDueDate, thawPhotoUrl, thawTaskDescription } from "./freezer-planning";
+import { findFreezerItemForPlan, isThawDay, parseThawMarker, planFreezerDeductions, planFreezerLinks, planThawTaskActions, thawDueDate, thawPhotoUrl, thawTaskDescription } from "./freezer-planning";
 
 const dish = (over = {}) => ({ id: "i1", name: "Lasagne (diepvries)", fromStock: true, freezerItemId: "f1", itemDate: "2026-11-05", ...over });
+
+describe("isThawDay", () => {
+  it("geldt enkel op de dag van het gerecht zelf", () => {
+    const description = thawTaskDescription("i1", "2026-11-05");
+    expect(isThawDay(description, "2026-11-04")).toBe(false);
+    expect(isThawDay(description, "2026-11-05")).toBe(true);
+    expect(isThawDay(description, "2026-11-06")).toBe(false);
+    expect(isThawDay("Gewone taak", "2026-11-05")).toBe(false);
+  });
+});
 
 describe("thawPhotoUrl", () => {
   const description = thawTaskDescription("i1", "2026-11-05");

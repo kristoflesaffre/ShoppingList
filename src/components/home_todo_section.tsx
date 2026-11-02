@@ -8,7 +8,7 @@ import { MiniButton } from "@/components/ui/mini_button";
 import { TodoCheck, TodoNotice } from "@/components/todo_check";
 import { taskPhotoFor } from "@/lib/task_photos";
 import { db } from "@/lib/db";
-import { parseThawMarker, thawPhotoUrl } from "@/lib/freezer-planning";
+import { isThawDay, parseThawMarker, thawPhotoUrl } from "@/lib/freezer-planning";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 
 /**
@@ -81,22 +81,47 @@ function postitTilt(taskId: string, index: number): number {
 }
 
 /**
+ * Sticker op de dag van het gerecht (canvas «Diepvries-post-its», stickers C): rood rondje over de hoek dat dubbel
+ * klopt, met golven eruit. Meet mee met de note; op een kleine note steekt ze minder uit, anders valt ze van het paneel.
+ */
+function ThawHeartbeatSticker({ noteSize }: { noteSize: number }) {
+  const box = Math.max(58, Math.round(noteSize * 0.43));
+  const ring = "absolute inset-[5%] rounded-full border-[3px] border-[#d92d20]";
+  return (
+    <span className="absolute z-[2] rotate-[10deg]" style={{ width: box, height: box, top: -Math.round(box * (noteSize < 152 ? 0.2 : 0.33)), right: -Math.round(box * 0.28) }}>
+      <span aria-hidden className={cn(ring, "thaw-wave")} />
+      <span aria-hidden className={cn(ring, "thaw-wave thaw-wave-late")} />
+      <span
+        className="thaw-beat absolute inset-[5%] flex items-center justify-center rounded-full bg-[#d92d20] text-center font-extrabold tracking-[0.02em] text-fixed-white shadow-[inset_0_0_0_2.5px_#fff,0_3px_5px_rgba(60,10,5,0.45)]"
+        style={{ fontSize: box * 0.139, lineHeight: 1.2 }}
+      >
+        VANDAAG
+        <br />
+        ETEN!
+      </span>
+    </span>
+  );
+}
+
+/**
  * Taak als vierkante post-it op het prikbord (canvas «post-its op kurk» R2, zonder omgevouwen hoeken): mat
  * papier met scherpe hoeken, een stukje plakband bovenaan, geel — of rood als de taak te laat is. Herkende
  * taken krijgen hun foto in de rechteronderhoek: 45° gedraaid, of rechtop (telefoonscherm). Ontdooitaken
- * (canvas «Diepvries-post-its» A) zijn ijsblauw met een sneeuwvlok en de foto van het gerecht; te laat blijft rood.
+ * (canvas «Diepvries-post-its» A) zijn ijsblauw met een sneeuwvlok en de foto van het gerecht; op de dag van het
+ * gerecht blijven ze blauw en komt de sticker in de plaats van de datum. Anders te laat = rood.
  */
 export function TodoPostit({ task, due, index, onCheck, size = 168, thawPhoto = null }: { task: TodoTask; due: TodoDue; index: number; onCheck: (t: TodoTask) => void; size?: number; thawPhoto?: string | null }) {
   const thaw = parseThawMarker(task.description) !== null;
   const photo = thaw ? null : taskPhotoFor(task.content);
-  const late = due.overdue;
+  const thawDay = isThawDay(task.description, localIso(new Date()));
+  const late = due.overdue && !thawDay;
   const small = size < 152;
   const tiny = size < 140;
   // Foto in verhouding tot de note: blijft zo ook op een kleinere note onder drie regels titel.
   const img = Math.round(size * (photo?.upright ? 0.4 : small ? 0.38 : 0.42));
   const thawImg = Math.round(size * (small ? 0.44 : 0.52));
   return (
-    <div className="relative mt-3 shrink-0 snap-start" style={{ width: size, height: size, transform: `rotate(${postitTilt(task.id, index)}deg)` }}>
+    <div className={cn("relative mt-3 shrink-0 snap-start", thawDay && "z-[1]")} style={{ width: size, height: size, transform: `rotate(${postitTilt(task.id, index)}deg)` }}>
       <div
         className={cn(
           "absolute inset-0 flex flex-col gap-[9px] overflow-hidden px-3.5 pb-3.5 pt-4 shadow-[0_1px_1.5px_rgba(0,0,0,0.16),0_8px_14px_-6px_rgba(40,25,5,0.45)] [[data-theme=dark]_&]:brightness-[0.88]",
@@ -143,7 +168,7 @@ export function TodoPostit({ task, due, index, onCheck, size = 168, thawPhoto = 
         ) : null}
         <span className="relative flex min-h-[21px] items-center justify-between gap-2">
           <TodoCheck task={task} onCheck={onCheck} />
-          {due.label ? (
+          {due.label && !thawDay ? (
             <span className={cn("inline-flex items-center gap-1 text-[12px] font-extrabold leading-4", late ? "text-[#b42318]" : thaw ? "text-[#1c4fa3]" : due.rank === 1 ? "text-[#1f7a34]" : "text-[#6f6a12]")}>
               {thaw ? <FreezeMaskIcon className="size-[13px]" colorClassName="bg-current" /> : null}
               {due.label}
@@ -157,9 +182,10 @@ export function TodoPostit({ task, due, index, onCheck, size = 168, thawPhoto = 
       {/* Plakband bovenaan, telkens een tikje anders gedraaid. */}
       <span
         aria-hidden
-        className="absolute -top-2.5 left-1/2 z-[1] h-[21px] w-[62px] bg-[linear-gradient(180deg,rgba(255,255,255,0.66),rgba(255,255,255,0.48))] shadow-[0_1px_2px_rgba(0,0,0,0.12)]"
+        className={cn("absolute -top-2.5 z-[1] h-[21px] w-[62px] bg-[linear-gradient(180deg,rgba(255,255,255,0.66),rgba(255,255,255,0.48))] shadow-[0_1px_2px_rgba(0,0,0,0.12)]", thawDay ? "left-[38%]" : "left-1/2")}
         style={{ transform: `translateX(-50%) rotate(${TAPE_TILT[index % TAPE_TILT.length]}deg)` }}
       />
+      {thawDay ? <ThawHeartbeatSticker noteSize={size} /> : null}
     </div>
   );
 }

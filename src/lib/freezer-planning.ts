@@ -68,6 +68,11 @@ export function parseThawMarker(description: string | null | undefined): { itemI
   return match ? { itemId: match[1], itemDate: match[2] } : null;
 }
 
+/** Staat het gerecht van deze ontdooitaak vandaag op het menu? Dan moet het nu echt uit de diepvries. */
+export function isThawDay(description: string | null | undefined, todayIso: string): boolean {
+  return parseThawMarker(description)?.itemDate === todayIso;
+}
+
 /** Foto voor de ontdooi-post-it: het geplande gerecht via de markering in de taak, anders de foto van het diepvriesitem. */
 export function thawPhotoUrl(
   description: string | null | undefined,

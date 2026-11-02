@@ -170,6 +170,52 @@ body::after {
   }
 }
 
+/* Ontdooi-post-it op de dag van het gerecht: sticker die dubbel klopt, met golven eruit (TodoPostit). */
+@keyframes thaw-beat {
+  0%,
+  28%,
+  70%,
+  100% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(1.16);
+  }
+  42% {
+    transform: scale(1.1);
+  }
+}
+@keyframes thaw-wave {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(1.75);
+    opacity: 0;
+  }
+}
+.thaw-beat {
+  animation: thaw-beat 1.4s ease-in-out infinite;
+}
+.thaw-wave {
+  opacity: 0;
+  animation: thaw-wave 1.4s ease-out infinite;
+}
+.thaw-wave-late {
+  animation-delay: 0.3s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .thaw-beat,
+  .thaw-wave {
+    animation: none;
+  }
+}
+:root[data-aod] .thaw-beat,
+:root[data-aod] .thaw-wave {
+  animation: none;
+}
+
 /*
  * Always-on-scherm (tablet-dashboard, zie `src/lib/use_always_on.ts`). Alles hieronder is pure CSS-
  * animatie: die draait in de compositor, los van JavaScript-timers, en blijft dus lopen (faalveilig).
