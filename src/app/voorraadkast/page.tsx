@@ -307,7 +307,9 @@ export default function VoorraadkastPage() {
             ) : (
               <div className="flex flex-col items-center gap-3 py-8">
                 <p className="text-center text-[15px] text-[var(--text-secondary)]">«{typed}» staat nog niet in je voorraadkast</p>
-                <Button size="sm" onClick={() => setAddQuery(typed)}>+ Toevoegen</Button>
+                <div>
+                  <Button size="sm" onClick={() => setAddQuery(typed)}>+ Toevoegen</Button>
+                </div>
               </div>
             )
           ) : !hasItems ? (
@@ -317,7 +319,9 @@ export default function VoorraadkastPage() {
               <p className="max-w-[320px] text-center text-base font-medium leading-6 text-[var(--text-secondary)]">
                 Nog niets in je voorraadkast. Voeg bloem, olie, koekjes of chips toe.
               </p>
-              <Button size="sm" onClick={() => setAddQuery("")}>+ Toevoegen</Button>
+              <div>
+                <Button size="sm" onClick={() => setAddQuery("")}>+ Toevoegen</Button>
+              </div>
             </div>
           ) : visibleItems.length > 0 ? (
             <div className="lg:columns-2 lg:gap-4">
