@@ -50,6 +50,13 @@ const SOUP_NAME_PATTERN = /soep(?:je)?\b|velout/i;
 export const isSoupName = (name: string) => SOUP_NAME_PATTERN.test(name);
 const isRucolaSoup = (name: string) => /rucola/i.test(name) && isSoupName(name);
 
+/** Maaltijd uit losse componenten: aardappelgerecht als hoofdgerecht, vlees en groenten erbij. */
+export type DishRole = "potato" | "meat" | "vegetable";
+const POTATO_DISH_PATTERN = /aardappel|puree|purée|stoemp|mousseline|hutsepot|kroket|gratin|krielt|patat|friet/i;
+const MEAT_DISH_PATTERN =
+  /schnitzel|balletjes|gehakt|kip|kalkoen|vlees|steak|burger|worst|varken|rund|\blams?\b|\bvis\b|vissticks|zalm|kabeljauw|scampi|garna|stoof|stoverij|goulash|blanquette|vol-au-vent/i;
+const VEGETABLE_DISH_PATTERN = /kool|groent|wortel|erwt|boontjes|spruit|ratatouille|appelmoes/i;
+
 const isStarch = (name: string) => STARCH_NAME_PATTERN.test(name);
 const isProtein = (name: string) =>
   CALENDAR_PROTEIN_CATEGORIES.has(resolveItemCategoryFromName(name)) || VEGGIE_PROTEIN_PATTERN.test(name);
@@ -57,6 +64,15 @@ const isVegetable = (name: string) =>
   !isStarch(name) &&
   !FRUIT_NAME_PATTERN.test(name) &&
   resolveItemCategoryFromName(name) === CALENDAR_PRODUCE_CATEGORY;
+
+/** Rol van een gerecht op het bord; soep en bouillon staan daarbuiten. */
+export function dishRole(name: string): DishRole | null {
+  if (isSoupName(name) || /bouillon/i.test(name)) return null;
+  if (POTATO_DISH_PATTERN.test(name)) return "potato";
+  if (MEAT_DISH_PATTERN.test(name) || isProtein(name)) return "meat";
+  if (VEGETABLE_DISH_PATTERN.test(name) || isVegetable(name)) return "vegetable";
+  return null;
+}
 
 /**
  * Kiest maximaal drie representatieve losse items voor een kalendertegel, zoals een bord:
@@ -196,29 +212,40 @@ type AnyRecipe = {
   photoUrl?: string | null;
 };
 
-/**
- * Meerdere soepen op één dag: de eerste is het hoofdgerecht, de volgende het secundaire gerecht;
- * rucolasoep is altijd secundair. Diepvriessoepen zonder receptgroep worden daarvoor gerechten.
- */
-function arrangeDaySoups(iso: string, entry: DayEntry, recipeByName: Map<string, AnyRecipe>) {
-  const looseSoups = entry.looseIngredients.filter(
-    (i) => (i.fromStock || i.name.endsWith(" (diepvries)")) && isSoupName(i.name),
-  );
-  if (entry.meals.filter((m) => isSoupName(m.recipeName)).length + looseSoups.length < 2) return;
+const stockBaseName = (name: string) => name.replace(/\s*\(diepvries\)$/, "").trim();
+const isStockLooseItem = (item: DayEntry["looseIngredients"][number]) =>
+  item.fromStock === true || item.name.endsWith(" (diepvries)");
 
-  for (const soup of looseSoups) {
-    const name = soup.name.replace(/\s*\(diepvries\)$/, "").trim();
+/** Losse diepvriesitems worden gerechten, zodat ze een eigen plaats op de dagtegel krijgen. */
+function promoteLooseToMeals(
+  iso: string,
+  entry: DayEntry,
+  loose: DayEntry["looseIngredients"],
+  recipeByName: Map<string, AnyRecipe>,
+) {
+  for (const item of loose) {
+    const name = stockBaseName(item.name);
     const recipe = recipeByName.get(name.toLowerCase()) ?? null;
     entry.meals.push({
       recipeGroupId: `stock-${iso}-${name}`,
       recipeName: name,
       recipeId: recipe?.id ?? null,
-      photoUrl: soup.photoUrl ?? recipe?.photoUrl ?? null,
+      photoUrl: item.photoUrl ?? recipe?.photoUrl ?? null,
       ingredientCount: 0,
       fromStock: true,
     });
   }
-  entry.looseIngredients = entry.looseIngredients.filter((i) => !looseSoups.includes(i));
+  entry.looseIngredients = entry.looseIngredients.filter((i) => !loose.includes(i));
+}
+
+/**
+ * Meerdere soepen op één dag: de eerste is het hoofdgerecht, de volgende het secundaire gerecht;
+ * rucolasoep is altijd secundair. Diepvriessoepen zonder receptgroep worden daarvoor gerechten.
+ */
+function arrangeDaySoups(iso: string, entry: DayEntry, recipeByName: Map<string, AnyRecipe>) {
+  const looseSoups = entry.looseIngredients.filter((i) => isStockLooseItem(i) && isSoupName(i.name));
+  if (entry.meals.filter((m) => isSoupName(m.recipeName)).length + looseSoups.length < 2) return;
+  promoteLooseToMeals(iso, entry, looseSoups, recipeByName);
 
   const rucolaIndex = entry.meals.findIndex((m) => isRucolaSoup(m.recipeName));
   const hasOtherSoup = entry.meals.some((m) => isSoupName(m.recipeName) && !isRucolaSoup(m.recipeName));
@@ -226,6 +253,23 @@ function arrangeDaySoups(iso: string, entry: DayEntry, recipeByName: Map<string,
   const [rucola] = entry.meals.splice(rucolaIndex, 1);
   const primaryIndex = entry.meals.findIndex((m) => isSoupName(m.recipeName) && !isRucolaSoup(m.recipeName));
   entry.meals.splice(primaryIndex + 1, 0, rucola);
+}
+
+/** Aardappelgerecht met vlees of groenten erbij: de aardappelen zijn hoofdgerecht, daarna vlees, dan groenten. */
+function arrangeDaySideDishes(iso: string, entry: DayEntry, recipeByName: Map<string, AnyRecipe>) {
+  const looseDishes = entry.looseIngredients.filter((i) => isStockLooseItem(i) && dishRole(stockBaseName(i.name)));
+  const roles = [
+    ...entry.meals.map((m) => (m.takeout ? null : dishRole(m.recipeName))),
+    ...looseDishes.map((i) => dishRole(stockBaseName(i.name))),
+  ];
+  if (!roles.includes("potato") || !(roles.includes("meat") || roles.includes("vegetable"))) return;
+  promoteLooseToMeals(iso, entry, looseDishes, recipeByName);
+
+  const rank = (m: CalendarMeal) => {
+    const role = m.takeout ? null : dishRole(m.recipeName);
+    return role === "potato" ? 0 : role === "meat" ? 1 : role === "vegetable" ? 2 : 3;
+  };
+  entry.meals.sort((a, b) => rank(a) - rank(b));
 }
 
 /**
@@ -330,7 +374,10 @@ export function buildCalendarEntries(
     }
   }
 
-  result.forEach((entry, iso) => arrangeDaySoups(iso, entry, recipeByName));
+  result.forEach((entry, iso) => {
+    arrangeDaySoups(iso, entry, recipeByName);
+    arrangeDaySideDishes(iso, entry, recipeByName);
+  });
 
   return result;
 }

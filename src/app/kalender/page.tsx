@@ -12,6 +12,7 @@ import {
   calendarDaySummary,
   CalendarDayPlate,
   CalendarLoosePlate,
+  CalendarSidePlates,
   useLoosePhotos,
 } from "@/components/calendar_day_visuals";
 import {
@@ -174,8 +175,8 @@ type DayVisual = {
   summary: NonNullable<ReturnType<typeof calendarDaySummary>>;
   /** Foto van het hoofdgerecht (null bij losse items of recept zonder foto). */
   photo: string | null;
-  /** Bijgerecht: foto van het tweede gerecht. */
-  sidePhoto: string | null;
+  /** Bijgerechten: één cirkel, of twee rond het bord (vlees en groenten bij aardappelen). */
+  sidePhotos: string[];
   /** Losse items naast een gerecht: klein wit bord. */
   sideLoose: DayEntry["looseIngredients"] | null;
   kind: "stock" | "takeout" | "plain";
@@ -189,7 +190,7 @@ function dayVisual(isoDate: string, entry: DayEntry | null): DayVisual | null {
   return {
     summary,
     photo: summary.photo,
-    sidePhoto: second?.photoUrl ?? null,
+    sidePhotos: summary.sides.length > 0 ? summary.sides.map((d) => d.photo) : second?.photoUrl ? [second.photoUrl] : [],
     sideLoose: first && !second && entry.looseIngredients.length > 0 ? entry.looseIngredients : null,
     kind: summary.fromStock && first ? "stock" : first?.takeout ? "takeout" : "plain",
   };
@@ -249,8 +250,8 @@ function FocusDay({
     );
 
   const side = (size: number) =>
-    visual?.sidePhoto ? (
-      <RoundPlate src={visual.sidePhoto} style={{ width: size, height: size, ...plateShadow(tint, size) }} />
+    visual?.sidePhotos.length === 1 ? (
+      <RoundPlate src={visual.sidePhotos[0]} style={{ width: size, height: size, ...plateShadow(tint, size) }} />
     ) : visual?.sideLoose ? (
       <SideLoose photos={loosePhotos} size={size} style={plateShadow(tint, size)} />
     ) : null;
@@ -260,7 +261,11 @@ function FocusDay({
     const inner = (
       <span className="relative flex items-center justify-center" style={{ width: size, height: size }}>
         {plate(size)}
-        {side(sideSize) ? <span className={cn("absolute", sideClass)}>{side(sideSize)}</span> : null}
+        {visual && visual.sidePhotos.length > 1 ? (
+          <CalendarSidePlates photos={visual.sidePhotos} size={size} />
+        ) : side(sideSize) ? (
+          <span className={cn("absolute", sideClass)}>{side(sideSize)}</span>
+        ) : null}
       </span>
     );
     return recipeId ? (
@@ -410,9 +415,19 @@ function DayCard({
           </span>
         )}
       </span>
-      {visual.sidePhoto ? (
+      {visual.sidePhotos.length > 1 ? (
+        <>
+          {/* Het bord loopt rechts uit de kaart: de twee cirkels staan op de zichtbare rand, linksonder. */}
+          <span className="absolute -right-6 top-6 size-[120px] lg:hidden">
+            <CalendarSidePlates photos={visual.sidePhotos} size={120} angles={[135, 190]} />
+          </span>
+          <span className="absolute -right-9 top-7 hidden size-[176px] lg:block">
+            <CalendarSidePlates photos={visual.sidePhotos} size={176} angles={[135, 190]} />
+          </span>
+        </>
+      ) : visual.sidePhotos.length === 1 ? (
         <RoundPlate
-          src={visual.sidePhoto}
+          src={visual.sidePhotos[0]}
           className="absolute right-[72px] top-[80px] size-[46px] lg:right-[104px] lg:top-[96px] lg:size-[66px]"
           style={plateShadow(rgb, 46)}
         />

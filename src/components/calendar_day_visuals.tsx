@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { dayEntryHasContent, isSoupName, selectCalendarPreviewItems, type DayEntry } from "@/lib/calendar-utils";
+import { dayEntryHasContent, dishRole, isSoupName, selectCalendarPreviewItems, type CalendarMeal, type DayEntry } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { eatingOutPhotoFor } from "@/lib/agenda_photos";
 
@@ -11,13 +11,28 @@ import { eatingOutPhotoFor } from "@/lib/agenda_photos";
  * rond receptbord, wit bord met losse producten en de sneeuwvlokbadge.
  */
 
+type CalendarSideDish = { name: string; photo: string };
+
+/** Secundaire gerechten op het bord: de tweede soep, of vlees en groenten bij een aardappelgerecht. */
+function calendarSideDishes(meals: CalendarMeal[]): CalendarSideDish[] {
+  const [main, ...rest] = meals;
+  if (!main) return [];
+  const withPhoto = (list: CalendarMeal[]) =>
+    list.flatMap((m) => (m.photoUrl ? [{ name: m.recipeName, photo: m.photoUrl, role: dishRole(m.recipeName) }] : []));
+  if (isSoupName(main.recipeName)) return withPhoto(rest.slice(0, 1).filter((m) => isSoupName(m.recipeName)));
+  if (main.takeout || dishRole(main.recipeName) !== "potato") return [];
+  const sides = withPhoto(rest).filter((d) => d.role === "meat" || d.role === "vegetable");
+  const meat = sides.find((d) => d.role === "meat");
+  const vegetable = sides.find((d) => d.role === "vegetable");
+  return meat && vegetable ? [meat, vegetable] : sides.slice(0, 2);
+}
+
 /** Samenvatting van een kalenderdag (gerecht of losse items). */
 export function calendarDaySummary(isoDate: string, entry: DayEntry | null) {
   if (!entry || !dayEntryHasContent(entry)) return null;
   const meal = entry.meals[0] ?? null;
   if (meal) {
     const extra = entry.meals.length - 1;
-    const second = entry.meals[1] ?? null;
     return {
       title: meal.recipeName,
       sub: meal.fromStock
@@ -30,8 +45,7 @@ export function calendarDaySummary(isoDate: string, entry: DayEntry | null) {
             ? "1 ingrediënt"
             : `${meal.ingredientCount} ingrediënten`,
       photo: meal.photoUrl ?? eatingOutPhotoFor(meal.recipeName),
-      /** Twee soepen: de secundaire soep klein rechtsonder op het bord. */
-      sidePhoto: second && isSoupName(meal.recipeName) && isSoupName(second.recipeName) ? second.photoUrl : null,
+      sides: calendarSideDishes(entry.meals),
       loose: null as DayEntry["looseIngredients"] | null,
       fromStock: meal.fromStock === true,
       href: meal.recipeId ? `/recepten/${meal.recipeId}` : `/kalender?date=${isoDate}`,
@@ -48,7 +62,7 @@ export function calendarDaySummary(isoDate: string, entry: DayEntry | null) {
     title: items.length > 2 ? `${names.slice(0, 2).join(", ")} +${items.length - 2}` : names.join(", "),
     sub: items.length === 1 ? "1 item" : `${items.length} items`,
     photo: eatingOut as string | null,
-    sidePhoto: null as string | null,
+    sides: [] as CalendarSideDish[],
     /** Losse items: bord met tot drie productfoto's (zoals op de kalenderpagina). */
     loose: eatingOut ? null : previewItems,
     fromStock: first?.fromStock === true,
@@ -83,19 +97,56 @@ export function CalendarFreezeBadge({ size = 20 }: { size?: number }) {
   );
 }
 
+/**
+ * Secundaire gerechten als kleinere cirkels die over de rand van het bord vallen: één rechtsonder,
+ * twee rond die hoek. De ouder is even groot als het bord (`size`) en `relative`.
+ */
+export function CalendarSidePlates({
+  photos,
+  size,
+  angles,
+}: {
+  photos: string[];
+  size: number;
+  /** Graden op de rand van het bord (0 = rechts, 90 = onder). */
+  angles?: number[];
+}) {
+  const shown = photos.slice(0, 2);
+  const placed = angles ?? (shown.length > 1 ? [15, 75] : [45]);
+  const diameter = Math.round(size * (shown.length > 1 ? 0.36 : 0.44));
+  return (
+    <>
+      {shown.map((src, i) => {
+        const angle = ((placed[i] ?? placed[0]) * Math.PI) / 180;
+        const center = (axis: number) => size / 2 + size * 0.42 * axis - diameter / 2;
+        return (
+          <span
+            key={`${src}-${i}`}
+            className="absolute overflow-hidden rounded-full border-2 border-[var(--white)] bg-[var(--white)] shadow-[0_2px_6px_rgba(16,17,48,0.2)]"
+            style={{ width: diameter, height: diameter, left: center(Math.cos(angle)), top: center(Math.sin(angle)) }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto */}
+            <img src={src} alt="" decoding="async" loading="lazy" className="size-full scale-[1.08] object-cover" />
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 export function CalendarDayPlate({
   src,
   size,
   freeze,
   shadow = false,
-  sideSrc = null,
+  sidePhotos = [],
 }: {
   src: string | null;
   size: number;
   freeze: boolean;
   shadow?: boolean;
-  /** Secundair gerecht: kleinere cirkel die rechtsonder over het bord valt. */
-  sideSrc?: string | null;
+  /** Secundaire gerechten: kleinere cirkels die rechtsonder over het bord vallen. */
+  sidePhotos?: string[];
 }) {
   return (
     <span className="relative shrink-0" style={{ width: size, height: size }}>
@@ -119,15 +170,7 @@ export function CalendarDayPlate({
         ) : null}
       </span>
       {freeze ? <CalendarFreezeBadge size={Math.max(18, Math.round(size / 4))} /> : null}
-      {sideSrc ? (
-        <span
-          className="absolute -bottom-1 -right-1 overflow-hidden rounded-full border-2 border-[var(--white)] bg-[var(--white)] shadow-[0_2px_6px_rgba(16,17,48,0.2)]"
-          style={{ width: Math.round(size * 0.44), height: Math.round(size * 0.44) }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto */}
-          <img src={sideSrc} alt="" decoding="async" loading="lazy" className="size-full scale-[1.08] object-cover" />
-        </span>
-      ) : null}
+      <CalendarSidePlates photos={sidePhotos} size={size} />
     </span>
   );
 }

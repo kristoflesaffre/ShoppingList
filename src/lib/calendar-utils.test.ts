@@ -121,6 +121,40 @@ describe("buildCalendarEntries", () => {
     expect(day?.meals.find((m) => m.recipeName === "Noedelsoep")).toMatchObject({ photoUrl: "https://foto/noedel.webp" });
   });
 
+  describe("aardappelgerecht met bijgerechten", () => {
+    const dish = (name: string, groupId?: string) => ({
+      name,
+      quantity: "1 portie",
+      section: "Maandag",
+      itemDate: "2026-10-12",
+      fromStock: true,
+      ...(groupId ? { recipeGroupId: groupId, recipeName: name } : {}),
+    });
+    const dayOf = (items: ReturnType<typeof dish>[]) =>
+      buildCalendarEntries([{ date: "10-10-2026", items }], []).get("2026-10-12");
+
+    it("zet aardappelen eerst, dan vlees, dan groenten", () => {
+      const day = dayOf([
+        dish("Rode kool met appeltjes", "recipe-r1-1791000000000"),
+        dish("Schnitzel", "recipe-r2-1791000000001"),
+        dish("Aardappelpuree", "recipe-r3-1791000000002"),
+      ]);
+      expect(day?.meals.map((m) => m.recipeName)).toEqual(["Aardappelpuree", "Schnitzel", "Rode kool met appeltjes"]);
+    });
+
+    it("maakt van losse diepvriescomponenten gerechten", () => {
+      const day = dayOf([dish("Balletjes (diepvries)"), dish("Kroketten (diepvries)")]);
+      expect(day?.meals.map((m) => m.recipeName)).toEqual(["Kroketten", "Balletjes"]);
+      expect(day?.looseIngredients).toEqual([]);
+    });
+
+    it("laat een dag zonder aardappelgerecht met rust", () => {
+      const day = dayOf([dish("Rode kool (diepvries)"), dish("Schnitzel", "recipe-r2-1791000000001")]);
+      expect(day?.meals.map((m) => m.recipeName)).toEqual(["Schnitzel"]);
+      expect(day?.looseIngredients).toHaveLength(1);
+    });
+  });
+
   describe("meerdere soepen op één dag", () => {
     const soupItem = (name: string, groupId?: string) => ({
       name,
