@@ -148,12 +148,15 @@ const fanTileBase = "absolute size-14 rounded-[14px] md:size-[66px] md:rounded-2
 
 function ProductFan({ photos }: { photos: string[] }) {
   return (
-    <div className="relative h-[92px] w-[124px] shrink-0 md:h-[100px] md:w-[150px]" aria-hidden>
+    <div
+      className={cn("relative h-[92px] w-[124px] shrink-0 md:h-[100px] md:w-[150px]", photos.length === 0 && "opacity-55")}
+      aria-hidden
+    >
       {photos.length === 0
         ? FAN_SLOTS.map((slot) => (
             <span
               key={slot}
-              className={cn(fanTileBase, slot, "border-[1.5px] border-dashed border-[var(--gray-300)] bg-[var(--white)] opacity-55")}
+              className={cn(fanTileBase, slot, "border-[1.5px] border-dashed border-[var(--gray-300)] bg-[var(--white)]")}
             />
           ))
         : photos.slice(0, 3).map((src, i) => (
