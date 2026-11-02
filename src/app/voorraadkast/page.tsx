@@ -23,8 +23,10 @@ import {
   type FreezerEntry,
   type FreezerUndo,
 } from "@/lib/freezer-search";
+import { Button } from "@/components/ui/button";
 import { CountStepper } from "@/components/ui/count_stepper";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
+import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { PANTRY_GRADIENT_CLASS, PantryDecor } from "@/components/ui/pantry_background";
 import { SearchBar } from "@/components/ui/search_bar";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
@@ -99,6 +101,7 @@ export default function VoorraadkastPage() {
   const { user, isLoading: authLoading } = db.useAuth();
   const [search, setSearch] = React.useState("");
   const [searchFocused, setSearchFocused] = React.useState(false);
+  const searchBarRef = React.useRef<HTMLDivElement>(null);
   /** In deze zoekbeurt toegevoegd: blijft op zijn plaats in de resultaten staan (met stepper en eenheden). */
   const [addedIds, setAddedIds] = React.useState<ReadonlySet<string>>(() => new Set());
   const [filter, setFilter] = React.useState<PantryFilter>("alles");
@@ -157,6 +160,12 @@ export default function VoorraadkastPage() {
     changeSearch("");
     setSearchFocused(false);
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  }
+
+  /** Toevoegknop: toevoegen gebeurt via het zoekveld, dus daar gaat de cursor naartoe. */
+  function startAdding() {
+    searchBarRef.current?.scrollIntoView({ block: "center" });
+    searchBarRef.current?.querySelector("input")?.focus();
   }
 
   /** Tik op + : meteen in de voorraadkast (1 stuk), met «Ongedaan» en eenheden om bij te stellen. */
@@ -290,12 +299,16 @@ export default function VoorraadkastPage() {
             <span className="shrink-0 whitespace-nowrap text-[15px] font-bold tabular-nums text-[var(--blue-500)]">
               {allItems.length} {allItems.length === 1 ? "product" : "producten"}
             </span>
+            <div className="hidden shrink-0 lg:block">
+              <Button size="sm" onClick={startAdding}>+ Toevoegen</Button>
+            </div>
           </div>
 
-          {/* Zoals de diepvries: het zoekveld is ook de toevoegknop. */}
+          {/* Zoals de diepvries: toevoegen gebeurt in het zoekveld; de toevoegknop en FAB brengen je daar. */}
           <div className="flex flex-col gap-2.5 lg:flex-row-reverse lg:items-center lg:justify-between lg:gap-4">
             <div className="flex min-w-0 items-center gap-3 lg:w-[400px]">
               <SearchBar
+                ref={searchBarRef}
                 surface="app"
                 placeholder="Zoek of voeg toe aan de voorraadkast"
                 aria-label="Zoek of voeg toe aan de voorraadkast"
@@ -398,6 +411,14 @@ export default function VoorraadkastPage() {
           )}
         </div>
       </div>
+
+      {!undo && !searching && !searchFocused ? (
+        <div className={cn("pointer-events-none fixed inset-x-0 z-20 lg:hidden", APP_FAB_BOTTOM_NO_NAV_CLASS)}>
+          <div className={APP_FAB_INNER_PX4_CLASS}>
+            <FloatingActionButton aria-label="Toevoegen aan de voorraadkast" className="pointer-events-auto" onClick={startAdding} />
+          </div>
+        </div>
+      ) : null}
 
       {undo ? (
         <div className={cn("pointer-events-none fixed inset-x-0 z-20", APP_FAB_BOTTOM_NO_NAV_CLASS)}>
