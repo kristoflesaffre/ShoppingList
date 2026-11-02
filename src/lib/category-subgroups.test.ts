@@ -141,3 +141,22 @@ describe("Huishouden & Schoonmaak", () => {
     expect(groups.map((g) => g.label)).toEqual(["Papier, folie & zakken", "Schoonmaak", "Afwas & was", "Overig"]);
   });
 });
+
+describe("Snoep & Chocolade", () => {
+  const S = "Snoep & Chocolade";
+  const expected: Record<string, string[]> = {
+    "Koek & wafels": ["Pick up koekjes", "pick up", "Speculoos koekjes", "Boterwafels", "Suikerwafels", "suikerwafel", "Leo go mini"],
+    Chocolade: ["Raffaello", "Ferrero rocher chocolade", "Guylain zeevruchten", "Carres hele hazelnoten chocolade", "chocolade", "chocolade chloe", "chocolade mannetjes", "chocoladeparels", "melkchocolade hazelnoten", "melkchocolade karamel zeezout", "pure chocolade", "hagelslag", "hagelslag melk", "hagelslag puur", "kinder surprise", "paaseieren", "paaseieren noe", "paaseitjes"],
+    Snoep: ["kauwgom", "suikerspin", "ufo snoepjes", "zuur fruit snoep"],
+    Overig: ["iets onbekends"],
+  };
+  for (const [label, names] of Object.entries(expected)) {
+    it(`${label} herkent zijn producten`, () => {
+      for (const n of names) expect(categorySubgroupKey(S, n), n).toBe(label);
+    });
+  }
+  it("houdt de volgorde koek, chocolade, snoep aan", () => {
+    const groups = categorySubgroups(S, ["Kauwgom", "Raffaello", "Boterwafels"], (n) => n);
+    expect(groups.map((g) => g.label)).toEqual(["Koek & wafels", "Chocolade", "Snoep"]);
+  });
+});

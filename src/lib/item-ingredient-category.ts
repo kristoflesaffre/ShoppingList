@@ -453,6 +453,17 @@ const HOUSEHOLD_SUBGROUPS: SubgroupDef[] = [
   { label: "Overig" },
 ];
 
+/** Merken hebben vaak geen soort in de naam; koek eerst, zodat «chocoladekoekjes» bij de koeken staan. */
+const SWEETS_SUBGROUPS: SubgroupDef[] = [
+  { label: "Koek & wafels", re: /koek|wafel|speculoos|\bpick up\b|\bleo\b|biscuit|cookie|madeleine/ },
+  {
+    label: "Chocolade",
+    re: /choco|carres|ferrero|guylain|guylian|raffaello|kinder|paasei|hagelslag|praline|toblerone|milka|cote d.?or|twix|snickers|\bmars\b|bounty|kitkat|m&m/,
+  },
+  { label: "Snoep", re: /snoep|kauwgom|suikerspin|\bufo\b|winegum|\bdrop\b|lolly|haribo|spekken/ },
+  { label: "Overig" },
+];
+
 function subgroupDefs(categoryTitle: string): SubgroupDef[] | null {
   if (/groenten/i.test(categoryTitle) && /fruit/i.test(categoryTitle)) return PRODUCE_SUBGROUPS;
   if (/droogwaren/i.test(categoryTitle)) return DRY_GOODS_SUBGROUPS;
@@ -460,6 +471,7 @@ function subgroupDefs(categoryTitle: string): SubgroupDef[] | null {
   if (/conserven/i.test(categoryTitle)) return PANTRY_SUBGROUPS;
   if (/alcohol/i.test(categoryTitle)) return ALCOHOL_SUBGROUPS;
   if (/huishoud/i.test(categoryTitle)) return HOUSEHOLD_SUBGROUPS;
+  if (/snoep/i.test(categoryTitle)) return SWEETS_SUBGROUPS;
   return null;
 }
 
