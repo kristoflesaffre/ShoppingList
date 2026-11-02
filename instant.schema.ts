@@ -280,6 +280,8 @@ const schema = i.schema({
       recipePersons: i.number().optional(),
       /** Volgorde in de lijst. */
       order: i.number().optional(),
+      /** Optionele vervaldatum "YYYY-MM-DD" (voorraadkast). */
+      expiryDate: i.string().optional(),
     }),
     /** Persoonlijke "te kopen"-items: producten onafhankelijk van een lijstje. */
     shoppingShares: i.entity({

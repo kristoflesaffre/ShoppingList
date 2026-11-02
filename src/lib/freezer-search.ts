@@ -15,6 +15,7 @@ export interface FreezerEntry {
   recipePhotoUrl?: string;
   recipePersons?: number;
   order?: number;
+  expiryDate?: string | null;
 }
 
 export interface FreezerRecipeOption {

@@ -27,6 +27,9 @@ import { Button } from "@/components/ui/button";
 import { CountStepper } from "@/components/ui/count_stepper";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
+import { InputField } from "@/components/ui/input_field";
+import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { isPantryExpired, pantryExpiryLabel } from "@/lib/pantry-expiry";
 import { PANTRY_GRADIENT_CLASS, PantryDecor } from "@/components/ui/pantry_background";
 import { SearchBar } from "@/components/ui/search_bar";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
@@ -42,14 +45,23 @@ function PantryRow({
   subtitle,
   trailing,
   children,
+  onOpen,
 }: {
   name: string;
   subtitle: React.ReactNode;
   trailing: React.ReactNode;
   children?: React.ReactNode;
+  /** Tik op de naam: vervaldatum instellen. */
+  onOpen?: () => void;
 }) {
   const getItemPhoto = useItemPhotoUrl(160);
   const photo = getItemPhoto(name);
+  const label = (
+    <>
+      <span className="block truncate text-[15px] font-semibold text-text-primary first-letter:uppercase">{name}</span>
+      <span className="block truncate text-[13px] text-[var(--text-secondary)]">{subtitle}</span>
+    </>
+  );
 
   return (
     <div>
@@ -64,10 +76,18 @@ function PantryRow({
             {name.trim().charAt(0).toUpperCase()}
           </span>
         )}
-        <span className="min-w-0 flex-1 leading-[19px]">
-          <span className="block truncate text-[15px] font-semibold text-text-primary first-letter:uppercase">{name}</span>
-          <span className="block truncate text-[13px] text-[var(--text-secondary)]">{subtitle}</span>
-        </span>
+        {onOpen ? (
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-label={`Vervaldatum van ${name}`}
+            className="min-w-0 flex-1 rounded-[12px] text-left leading-[19px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+          >
+            {label}
+          </button>
+        ) : (
+          <span className="min-w-0 flex-1 leading-[19px]">{label}</span>
+        )}
         {trailing}
       </div>
       {children}
@@ -90,6 +110,13 @@ function PantryGroupCard({ title, children }: { title: string; children: React.R
   );
 }
 
+/** Onderregel van een rij: de datum, rood als die voorbij is, of de uitnodiging om er een te kiezen. */
+function ExpiryNote({ expiryDate }: { expiryDate?: string | null }) {
+  const label = pantryExpiryLabel(expiryDate);
+  if (!label) return <span className="text-[var(--text-tertiary)]">+ vervaldatum</span>;
+  return <span className={cn(isPantryExpired(expiryDate) && "font-semibold text-[var(--error-400)]")}>{label}</span>;
+}
+
 type PantryFilter = "alles" | "bijnaOp" | PantryGroup;
 
 /** Zolang de melding staat, kan de hele reeks wijzigingen aan dit item ongedaan gemaakt worden. */
@@ -106,6 +133,9 @@ export default function VoorraadkastPage() {
   const [addedIds, setAddedIds] = React.useState<ReadonlySet<string>>(() => new Set());
   const [filter, setFilter] = React.useState<PantryFilter>("alles");
   const [undo, setUndo] = React.useState<FreezerUndo | null>(null);
+  /** Blad «Vervaldatum»: het product en de datum zolang die nog niet bewaard is. */
+  const [expiryItem, setExpiryItem] = React.useState<PantryItem | null>(null);
+  const [expiryDraft, setExpiryDraft] = React.useState("");
   const { titleRef: largeTitleRef, collapsed: isLargeTitleCollapsed } = useLargeTitleCollapse<HTMLHeadingElement>(64);
 
   const typed = search.trim();
@@ -194,6 +224,17 @@ export default function VoorraadkastPage() {
     setUndo((current) => nextFreezerUndo(current, item, { ...item, ...patch }));
   }
 
+  function openExpiry(item: PantryItem) {
+    setExpiryItem(item);
+    setExpiryDraft(item.expiryDate ?? "");
+  }
+
+  function saveExpiry(value: string) {
+    if (!expiryItem) return;
+    void db.transact(db.tx.freezerItems[expiryItem.id].update({ expiryDate: value || null }));
+    setExpiryItem(null);
+  }
+
   function handleUndo() {
     if (!undo) return;
     if (!undo.before) {
@@ -215,10 +256,13 @@ export default function VoorraadkastPage() {
       name={item.name}
       subtitle={
         <>
-          {item.quantityPerPackage} {item.unit}
+          {/* Vervallen: de melding krijgt de hele regel, anders valt de datum weg op een gsm. */}
+          {isPantryExpired(item.expiryDate) ? null : `${item.quantityPerPackage} ${item.unit} · `}
+          <ExpiryNote expiryDate={item.expiryDate} />
         </>
       }
       trailing={stepper(item)}
+      onOpen={() => openExpiry(item)}
     />
   );
   const stockRow = (item: PantryItem) => (
@@ -227,6 +271,7 @@ export default function VoorraadkastPage() {
       name={item.name}
       subtitle={<span className="font-bold text-[var(--blue-500)]">In voorraad: {freezerStockLabel(item)}</span>}
       trailing={stepper(item)}
+      onOpen={() => openExpiry(item)}
     >
       {addedIds.has(item.id) ? (
         <div role="group" aria-label={`Eenheid voor ${item.name}`} className="flex flex-wrap gap-1.5 pb-2.5 pl-[68px] pr-2.5">
@@ -235,6 +280,9 @@ export default function VoorraadkastPage() {
               {u}
             </FilterChip>
           ))}
+          <FilterChip selected={false} onClick={() => openExpiry(item)}>
+            {pantryExpiryLabel(item.expiryDate) ?? "+ vervaldatum"}
+          </FilterChip>
         </div>
       ) : null}
     </PantryRow>
@@ -428,6 +476,31 @@ export default function VoorraadkastPage() {
           </div>
         </div>
       ) : null}
+
+      <SlideInModal
+        open={expiryItem !== null}
+        onClose={() => setExpiryItem(null)}
+        title="Vervaldatum"
+        footer={
+          <>
+            {expiryItem?.expiryDate ? (
+              <Button variant="secondary" onClick={() => saveExpiry("")}>
+                Datum wissen
+              </Button>
+            ) : null}
+            <Button variant="primary" onClick={() => saveExpiry(expiryDraft)}>
+              Bewaren
+            </Button>
+          </>
+        }
+      >
+        <InputField
+          label={`${expiryItem?.name ?? ""} is houdbaar tot (optioneel)`}
+          type="date"
+          value={expiryDraft}
+          onChange={(e) => setExpiryDraft(e.target.value)}
+        />
+      </SlideInModal>
     </div>
   );
 }
