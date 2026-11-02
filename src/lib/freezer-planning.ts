@@ -68,6 +68,18 @@ export function parseThawMarker(description: string | null | undefined): { itemI
   return match ? { itemId: match[1], itemDate: match[2] } : null;
 }
 
+/** Foto voor de ontdooi-post-it: het geplande gerecht via de markering in de taak, anders de foto van het diepvriesitem. */
+export function thawPhotoUrl(
+  description: string | null | undefined,
+  items: { id: string; freezerItemId?: string | null; stockPhotoUrl?: string | null }[],
+  freezerItems: { id: string; recipePhotoUrl?: string | null }[],
+): string | null {
+  const marker = parseThawMarker(description);
+  const item = marker ? items.find((it) => it.id === marker.itemId) : undefined;
+  if (!item) return null;
+  return item.stockPhotoUrl || freezerItems.find((it) => it.id === item.freezerItemId)?.recipePhotoUrl || null;
+}
+
 /**
  * Wat er in Todoist moet gebeuren. `items` = enkel gerechten uit de eigen diepvries.
  * Staat er al een `thawTaskId` maar geen open taak meer, dan werd ze afgevinkt: niet opnieuw aanmaken.

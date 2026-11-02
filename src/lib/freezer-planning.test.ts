@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { findFreezerItemForPlan, parseThawMarker, planFreezerDeductions, planFreezerLinks, planThawTaskActions, thawDueDate, thawTaskDescription } from "./freezer-planning";
+import { findFreezerItemForPlan, parseThawMarker, planFreezerDeductions, planFreezerLinks, planThawTaskActions, thawDueDate, thawPhotoUrl, thawTaskDescription } from "./freezer-planning";
 
 const dish = (over = {}) => ({ id: "i1", name: "Lasagne (diepvries)", fromStock: true, freezerItemId: "f1", itemDate: "2026-11-05", ...over });
+
+describe("thawPhotoUrl", () => {
+  const description = thawTaskDescription("i1", "2026-11-05");
+  it("neemt de foto van het geplande gerecht", () => {
+    expect(thawPhotoUrl(description, [dish({ stockPhotoUrl: "a.webp" })], [{ id: "f1", recipePhotoUrl: "b.webp" }])).toBe("a.webp");
+  });
+  it("valt terug op de foto van het diepvriesitem", () => {
+    expect(thawPhotoUrl(description, [dish()], [{ id: "f1", recipePhotoUrl: "b.webp" }])).toBe("b.webp");
+  });
+  it("geeft niets zonder foto, gerecht of markering", () => {
+    expect(thawPhotoUrl(description, [dish()], [{ id: "f1" }])).toBeNull();
+    expect(thawPhotoUrl(description, [], [{ id: "f1", recipePhotoUrl: "b.webp" }])).toBeNull();
+    expect(thawPhotoUrl("Gewone taak", [dish({ stockPhotoUrl: "a.webp" })], [])).toBeNull();
+  });
+});
 
 describe("planFreezerDeductions", () => {
   it("boekt pas af als de dag voorbij is", () => {

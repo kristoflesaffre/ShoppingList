@@ -12,6 +12,7 @@ import { sharedRead } from "@/lib/shared-read";
 export type TodoTask = {
   id: string;
   content: string;
+  description?: string | null;
   projectId: string | null;
   labels: string[];
   priority: number;

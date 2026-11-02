@@ -7,6 +7,9 @@ import { ListSectionHeader, OverviewPill } from "@/components/list_section_heade
 import { MiniButton } from "@/components/ui/mini_button";
 import { TodoCheck, TodoNotice } from "@/components/todo_check";
 import { taskPhotoFor } from "@/lib/task_photos";
+import { db } from "@/lib/db";
+import { parseThawMarker, thawPhotoUrl } from "@/lib/freezer-planning";
+import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 
 /**
  * Startpagina · «To-do»: je Todoist-taken in een swimlane. Enkel taken van vandaag of die te laat zijn
@@ -80,23 +83,37 @@ function postitTilt(taskId: string, index: number): number {
 /**
  * Taak als vierkante post-it op het prikbord (canvas «post-its op kurk» R2, zonder omgevouwen hoeken): mat
  * papier met scherpe hoeken, een stukje plakband bovenaan, geel — of rood als de taak te laat is. Herkende
- * taken krijgen hun foto in de rechteronderhoek: 45° gedraaid, of rechtop (telefoonscherm).
+ * taken krijgen hun foto in de rechteronderhoek: 45° gedraaid, of rechtop (telefoonscherm). Ontdooitaken
+ * (canvas «Diepvries-post-its» A) zijn ijsblauw met een sneeuwvlok en de foto van het gerecht; te laat blijft rood.
  */
-export function TodoPostit({ task, due, index, onCheck, size = 168 }: { task: TodoTask; due: TodoDue; index: number; onCheck: (t: TodoTask) => void; size?: number }) {
-  const photo = taskPhotoFor(task.content);
+export function TodoPostit({ task, due, index, onCheck, size = 168, thawPhoto = null }: { task: TodoTask; due: TodoDue; index: number; onCheck: (t: TodoTask) => void; size?: number; thawPhoto?: string | null }) {
+  const thaw = parseThawMarker(task.description) !== null;
+  const photo = thaw ? null : taskPhotoFor(task.content);
   const late = due.overdue;
   const small = size < 152;
   const tiny = size < 140;
   // Foto in verhouding tot de note: blijft zo ook op een kleinere note onder drie regels titel.
   const img = Math.round(size * (photo?.upright ? 0.4 : small ? 0.38 : 0.42));
+  const thawImg = Math.round(size * (small ? 0.44 : 0.52));
   return (
     <div className="relative mt-3 shrink-0 snap-start" style={{ width: size, height: size, transform: `rotate(${postitTilt(task.id, index)}deg)` }}>
       <div
         className={cn(
           "absolute inset-0 flex flex-col gap-[9px] overflow-hidden px-3.5 pb-3.5 pt-4 shadow-[0_1px_1.5px_rgba(0,0,0,0.16),0_8px_14px_-6px_rgba(40,25,5,0.45)] [[data-theme=dark]_&]:brightness-[0.88]",
-          late ? "bg-[linear-gradient(170deg,#f9d2cb,#f2c2b9)]" : "bg-[linear-gradient(170deg,#f3f1b4,#eceaa6)]",
+          late ? "bg-[linear-gradient(170deg,#f9d2cb,#f2c2b9)]" : thaw ? "bg-[linear-gradient(170deg,#dceaff,#c6dbfa)]" : "bg-[linear-gradient(170deg,#f3f1b4,#eceaa6)]",
         )}
       >
+        {thaw && thawPhoto ? (
+          // Rond uitgesneden: niet elke receptfoto is transparant. Geen z-index, zodat de titel leesbaar boven de foto blijft.
+          // eslint-disable-next-line @next/next/no-img-element -- externe receptfoto
+          <img
+            src={thawPhoto}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute rounded-full object-cover drop-shadow-[0_8px_10px_rgba(16,17,48,0.28)]"
+            style={{ width: thawImg, height: thawImg, right: -Math.round(thawImg * 0.16), bottom: -Math.round(thawImg * 0.27) }}
+          />
+        ) : null}
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element -- lokale, transparante webp
           <img
@@ -127,10 +144,13 @@ export function TodoPostit({ task, due, index, onCheck, size = 168 }: { task: To
         <span className="relative flex min-h-[21px] items-center justify-between gap-2">
           <TodoCheck task={task} onCheck={onCheck} />
           {due.label ? (
-            <span className={cn("text-[12px] font-extrabold leading-4", late ? "text-[#b42318]" : due.rank === 1 ? "text-[#1f7a34]" : "text-[#6f6a12]")}>{due.label}</span>
+            <span className={cn("inline-flex items-center gap-1 text-[12px] font-extrabold leading-4", late ? "text-[#b42318]" : thaw ? "text-[#1c4fa3]" : due.rank === 1 ? "text-[#1f7a34]" : "text-[#6f6a12]")}>
+              {thaw ? <FreezeMaskIcon className="size-[13px]" colorClassName="bg-current" /> : null}
+              {due.label}
+            </span>
           ) : null}
         </span>
-        <span lang="nl" className={cn("relative line-clamp-3 font-bold [hyphens:auto] [overflow-wrap:anywhere]", tiny ? "text-[11.5px] leading-[15px]" : small ? "text-[12.5px] leading-[16.5px]" : "text-[13.5px] leading-[18px]", late ? "text-[#4a1410]" : "text-[#2b2a10]")}>
+        <span lang="nl" className={cn("relative line-clamp-3 font-bold [hyphens:auto] [overflow-wrap:anywhere]", tiny ? "text-[11.5px] leading-[15px]" : small ? "text-[12.5px] leading-[16.5px]" : "text-[13.5px] leading-[18px]", late ? "text-[#4a1410]" : thaw ? "text-[#10284f]" : "text-[#2b2a10]")}>
           {plainTaskText(task.content)}
         </span>
       </div>
@@ -159,11 +179,25 @@ export function useNearTodos() {
       todayIso,
     );
   }, [state, todayIso]);
-  return { ...todo, sorted };
+  const thawPhotos = useThawPhotos(sorted);
+  return { ...todo, sorted, thawPhotos };
+}
+
+/** Taak-id → foto van het gerecht, voor de ontdooitaken. Leest de database enkel als er zo'n taak is. */
+function useThawPhotos(sorted: { task: TodoTask }[]): Map<string, string> {
+  const { user } = db.useAuth();
+  const thawTasks = sorted.map((s) => s.task).filter((t) => parseThawMarker(t.description));
+  const { data } = db.useQuery(user && thawTasks.length > 0 ? { items: { $: { where: { fromStock: true } } }, freezerItems: {} } : null);
+  const photos = new Map<string, string>();
+  for (const task of thawTasks) {
+    const url = thawPhotoUrl(task.description, data?.items ?? [], data?.freezerItems ?? []);
+    if (url) photos.set(task.id, url);
+  }
+  return photos;
 }
 
 export function HomeTodoSection() {
-  const { state, load, connect, closeTask, notice, clearNotice, sorted } = useNearTodos();
+  const { state, load, connect, closeTask, notice, clearNotice, sorted, thawPhotos } = useNearTodos();
   // Laatst getoonde notes: blijven staan terwijl het bord dichtklapt na de laatste vink.
   const lastShown = React.useRef(sorted);
   if (sorted.length > 0) lastShown.current = sorted;
@@ -240,7 +274,7 @@ export function HomeTodoSection() {
           <div className={cn("overflow-hidden rounded-[24px] shadow-[inset_0_2px_6px_rgba(60,35,10,0.35)]", CORK_DARK)} style={CORK_STYLE}>
             <div className="flex snap-x gap-5 overflow-x-auto scroll-px-4 px-5 pb-6 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {(hasCards ? sorted : lastShown.current).slice(0, 30).map(({ task, due }, i) => (
-                <TodoPostit key={task.id} task={task} due={due} index={i} onCheck={(t) => void closeTask(t)} />
+                <TodoPostit key={task.id} task={task} due={due} index={i} thawPhoto={thawPhotos.get(task.id)} onCheck={(t) => void closeTask(t)} />
               ))}
             </div>
           </div>
@@ -264,7 +298,7 @@ export function HomeTodoSection() {
  * meer, dan verdwijnt het paneel en vult de agenda de kolom.
  */
 export function DashboardTodoPanel({ height }: { height: number | null }) {
-  const { sorted: near, closeTask, connect, notice, clearNotice } = useNearTodos();
+  const { sorted: near, closeTask, connect, notice, clearNotice, thawPhotos } = useNearTodos();
   const todayIso = localIso(new Date());
   const sorted = near.filter(({ task }) => (daysUntil(task, todayIso) ?? 1) <= 0);
   if (sorted.length === 0) return null;
@@ -284,7 +318,7 @@ export function DashboardTodoPanel({ height }: { height: number | null }) {
       </div>
       <div className="-mt-1 flex min-h-0 flex-1 snap-x items-center gap-5 overflow-x-auto scroll-px-5 px-5 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sorted.slice(0, 20).map(({ task, due }, i) => (
-          <TodoPostit key={task.id} task={task} due={due} index={i} size={size} onCheck={(t) => void closeTask(t)} />
+          <TodoPostit key={task.id} task={task} due={due} index={i} size={size} thawPhoto={thawPhotos.get(task.id)} onCheck={(t) => void closeTask(t)} />
         ))}
       </div>
       <TodoNotice notice={notice} onReconnect={() => void connect()} onClose={clearNotice} />
