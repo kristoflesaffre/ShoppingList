@@ -432,11 +432,26 @@ const PANTRY_SUBGROUPS: SubgroupDef[] = [
   { label: "Overig" },
 ];
 
+/** Biermerken hebben vaak geen «bier» in de naam, dus die staan er apart in. */
+const ALCOHOL_SUBGROUPS: SubgroupDef[] = [
+  {
+    label: "Bier",
+    re: /bier|pils|tripel|quadrupel|trappist|kriek|chouffe|cornet|gouden carolus|jupiler|karmeliet|duvel|leffe|stella|westmalle|westvleteren|la trappe|hoegaarden|orval|chimay|rochefort|affligem|grimbergen|maes|primus|vedett/,
+  },
+  { label: "Wijn & bubbels", re: /wijn|champagne|cava\b|prosecco|cremant|\bsake\b|\bporto\b/ },
+  {
+    label: "Sterke drank",
+    re: /\brum\b|tequila|wodka|vodka|\bgin\b|whisk|cognac|jenever|likeur|baileys|amaretto|aperol|campari|vermout/,
+  },
+  { label: "Overig" },
+];
+
 function subgroupDefs(categoryTitle: string): SubgroupDef[] | null {
   if (/groenten/i.test(categoryTitle) && /fruit/i.test(categoryTitle)) return PRODUCE_SUBGROUPS;
   if (/droogwaren/i.test(categoryTitle)) return DRY_GOODS_SUBGROUPS;
   if (/zuivel/i.test(categoryTitle)) return DAIRY_SUBGROUPS;
   if (/conserven/i.test(categoryTitle)) return PANTRY_SUBGROUPS;
+  if (/alcohol/i.test(categoryTitle)) return ALCOHOL_SUBGROUPS;
   return null;
 }
 

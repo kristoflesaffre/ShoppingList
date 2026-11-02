@@ -103,3 +103,22 @@ describe("Conserven, Sauzen, Olie & Kruiden", () => {
     expect(groups.map((g) => g.label)).toEqual(["Conserven", "Sauzen", "Olie & vet", "Bouillon", "Kruiden & specerijen"]);
   });
 });
+
+describe("Alcoholische Dranken", () => {
+  const A = "Alcoholische Dranken";
+  const expected: Record<string, string[]> = {
+    Bier: ["Karmeliet", "Quadrupel", "chouffe", "cornet oaked and smoked", "gouden carolus", "jupiler", "witbier"],
+    "Wijn & bubbels": ["Rode wijn", "witte wijn", "Champagne", "Kleine flesje wijn rose", "Kleine flesje wijn wit", "kleine flesje wijn rood", "Sake", "prosecco"],
+    "Sterke drank": ["Wodka", "bruine rum", "tequila", "gin"],
+    Overig: ["iets onbekends"],
+  };
+  for (const [label, names] of Object.entries(expected)) {
+    it(`${label} herkent zijn producten`, () => {
+      for (const n of names) expect(categorySubgroupKey(A, n), n).toBe(label);
+    });
+  }
+  it("houdt de volgorde bier, wijn, sterke drank aan", () => {
+    const groups = categorySubgroups(A, ["Wodka", "Rode wijn", "Karmeliet"], (n) => n);
+    expect(groups.map((g) => g.label)).toEqual(["Bier", "Wijn & bubbels", "Sterke drank"]);
+  });
+});
