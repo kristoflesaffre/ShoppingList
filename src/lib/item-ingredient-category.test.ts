@@ -74,7 +74,7 @@ describe("goedgekeurde productindeling", () => {
     ["Iglo bowls noodles kip", "Diepvries"],
     ["Gevulde pasta", "Gekoeld & Vers"],
     ["Bladerdeeg", "Gekoeld & Vers"],
-    ["Verse gist", "Gekoeld & Vers"],
+    ["Verse gist", "Zuivel, Kaas & Eieren"],
     ["Tête de moine", "Zuivel, Kaas & Eieren"],
     ["Zelfrijzend bakmeel", "Droogwaren & Bakproducten"],
     ["Verse basilicum", "Groenten & Fruit"],

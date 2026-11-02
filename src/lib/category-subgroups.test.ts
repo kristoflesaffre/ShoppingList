@@ -70,7 +70,7 @@ describe("Zuivel, Kaas & Eieren", () => {
     "Boter & room": ["bakboter", "Bakboter vloeibaar", "smeerboter", "room 40 procent vet", "room 7 procent vet", "zure room", "slagroom", "mascarpone"],
     Kaas: ["geraspte kaas", "kaas blok", "kaas blokjes", "kaas sneetjes", "chaumes", "mozarella", "mozzarella", "parmezaan", "parmezaan blok", "parmezaan zakje", "boursin", "tete de moine", "roomkaas", "boterkaas"],
     Eieren: ["eieren", "Eieren 6", "Eieren 12", "ei"],
-    Overig: ["iets onbekends"],
+    Overig: ["Verse gist", "iets onbekends"],
   };
   for (const [label, names] of Object.entries(expected)) {
     it(`${label} herkent zijn producten`, () => {
