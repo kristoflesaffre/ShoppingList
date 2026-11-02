@@ -3,6 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { DoneButton } from "@/components/ui/title_edit_button";
+import { HeaderEditButton } from "@/components/ui/header_round_button";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -607,6 +608,8 @@ export default function ReceptDetailPage() {
             </div>
           ) : (
             <>
+              {/* Bewerken rechtsboven, zoals op de andere schermen. */}
+              <HeaderEditButton label="Recept bewerken" onClick={toggleDetailPhotoEditMode} />
               <button
                 type="button"
                 aria-label="Recept delen"
@@ -672,28 +675,13 @@ export default function ReceptDetailPage() {
                 />
               )}
             </div>
-            {!detailPhotoEditMode ? (
-              <button
-                type="button"
-                aria-label="Recept bewerken"
-                onClick={toggleDetailPhotoEditMode}
-                className={cn(
-                  plateActionBtn,
-                  "size-11",
-                  heroEnter(300).className,
-                )}
-                style={heroEnter(300).style}
-              >
-                <PencilIcon />
-              </button>
-            ) : null}
             {detailPhotoEditMode ? (
               <button
                 type="button"
                 disabled={photoSaving}
                 onClick={openPhotoSourceSlide}
                 aria-label={savedRecipe.photoUrl ? "Foto wijzigen" : "Foto toevoegen"}
-                // Mobiel identiek aan de potloodknop (zelfde plek, maat en schaduw); desktop een pil met «Foto».
+                // Mobiel een rond knopje op het bord; desktop een pil met «Foto».
                 // Zonder foto staat «Foto toevoegen» er al onder: dan overal enkel het rondje met camera.
                 className={cn(
                   plateActionBtn,
