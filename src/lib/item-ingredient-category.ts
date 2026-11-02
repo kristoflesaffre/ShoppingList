@@ -373,7 +373,7 @@ export function groupMeatSubtypes<T>(categoryTitle: string, items: T[], getName:
     .map((x) => x.item);
 }
 
-/* ─── Groenten & Fruit: subgroepen (geen aparte categorie) ─── */
+/* ─── Subgroepen binnen een categorie (geen aparte categorieën) ─── */
 
 /** Fruit herkennen op naam; alles wat overblijft (ook kruiden en aardappelen) telt als groente. */
 const FRUIT_NAME =
@@ -383,34 +383,72 @@ export function isFruitName(name: string): boolean {
   return FRUIT_NAME.test(normalizeMeatName(name));
 }
 
-/** Geldt voor «Groenten & Fruit». */
-export function isProduceCategory(categoryTitle: string): boolean {
-  return /groenten/i.test(categoryTitle) && /fruit/i.test(categoryTitle);
+/** Eén subkopje; zonder `re` vangt het alle namen op die nergens anders passen. */
+type SubgroupDef = { label: string; re?: RegExp };
+
+const PRODUCE_SUBGROUPS: SubgroupDef[] = [{ label: "Groenten" }, { label: "Fruit", re: FRUIT_NAME }];
+
+/** De volgorde telt ook voor het herkennen: «bloemsuiker» en «vanillesuiker» zijn eerst suiker. */
+const DRY_GOODS_SUBGROUPS: SubgroupDef[] = [
+  {
+    label: "Pasta, rijst & noedels",
+    re: /pasta|spaghetti|spirelli|penne|cappellini|macaroni|tagliatelle|fusilli|farfalle|linguine|lasagne|orzo|couscous|quinoa|bulgur|noedel|\brijst(?!e?(bloem|meel))|risotto/,
+  },
+  { label: "Suiker & zoetstof", re: /suiker|tagatesse|zusto|zoetstof|stevia|honing/ },
+  {
+    label: "Bloem & bakbasis",
+    re: /bloem|meel|maizena|bakpoeder|baking soda|bicarbonaat|gist|panko|(pannen?koek|naan|brood|cake|wafel|taart|muffin|brownie)\w*\s*mix|bakmix|pudding/,
+  },
+  { label: "Aroma's & bakextra's", re: /aroma|vanille|cacao|choco|rozijn|krent|noten|noot|amandel|kokos/ },
+  { label: "Overig" },
+];
+
+/** Ook hier telt de volgorde: «platte kaas» is eerst yoghurt, «roomkaas» en «boterkaas» blijven kaas. */
+const DAIRY_SUBGROUPS: SubgroupDef[] = [
+  { label: "Melk & drankjes", re: /melk|drink|cecemel|chocomel|fristi/ },
+  { label: "Yoghurt & desserts", re: /yoghurt|platte kaas|kwark|skyr|dessert|pudding|mousse|rijstpap/ },
+  { label: "Boter & room", re: /boter(?!kaas)|margarine|\broom\b|slagroom|kookroom|\bcreme\b|mascarpone/ },
+  {
+    label: "Kaas",
+    re: /kaas|chaumes|moz+arella|parmezaan|parmigiano|grana|pecorino|boursin|tete de moine|feta|\bbrie\b|camembert|gouda|cheddar|philadelphia|ricotta|halloumi|gruyere|emmental/,
+  },
+  { label: "Eieren", re: /\bei\b|\beieren\b|\beitjes?\b/ },
+  { label: "Overig" },
+];
+
+function subgroupDefs(categoryTitle: string): SubgroupDef[] | null {
+  if (/groenten/i.test(categoryTitle) && /fruit/i.test(categoryTitle)) return PRODUCE_SUBGROUPS;
+  if (/droogwaren/i.test(categoryTitle)) return DRY_GOODS_SUBGROUPS;
+  if (/zuivel/i.test(categoryTitle)) return DAIRY_SUBGROUPS;
+  return null;
 }
 
-/** Sleepgroep binnen een categorie: rijen slepen niet over het subkopje heen. */
+function subgroupLabel(defs: SubgroupDef[], name: string): string {
+  const n = normalizeMeatName(name);
+  return (defs.find((d) => d.re?.test(n)) ?? defs.find((d) => !d.re))!.label;
+}
+
+/** Sleepgroep binnen een categorie: rijen slepen niet over een subkopje heen. */
 export function categorySubgroupKey(categoryTitle: string, name: string): string {
-  if (!isProduceCategory(categoryTitle)) return "";
-  return isFruitName(name) ? "fruit" : "groenten";
+  const defs = subgroupDefs(categoryTitle);
+  return defs ? subgroupLabel(defs, name) : "";
 }
 
 /**
- * Deelt «Groenten & Fruit» op in Groenten (eerst) en Fruit, stabiel binnen elke groep. Staat er maar
- * één soort in, of gaat het om een andere categorie, dan één groep zonder label (geen subkopje).
+ * Deelt een categorie op in haar subgroepen (bv. Groenten / Fruit), stabiel binnen elke groep. Blijft
+ * er maar één groep over, of heeft de categorie geen subgroepen, dan één groep zonder label (geen subkopje).
  */
 export function categorySubgroups<T>(
   categoryTitle: string,
   items: T[],
   getName: (item: T) => string,
 ): Array<{ label: string | null; items: T[] }> {
-  if (isProduceCategory(categoryTitle)) {
-    const fruit = items.filter((item) => isFruitName(getName(item)));
-    if (fruit.length > 0 && fruit.length < items.length) {
-      return [
-        { label: "Groenten", items: items.filter((item) => !isFruitName(getName(item))) },
-        { label: "Fruit", items: fruit },
-      ];
-    }
+  const defs = subgroupDefs(categoryTitle);
+  if (defs) {
+    const groups = defs
+      .map((d) => ({ label: d.label, items: items.filter((item) => subgroupLabel(defs, getName(item)) === d.label) }))
+      .filter((g) => g.items.length > 0);
+    if (groups.length > 1) return groups;
   }
   return [{ label: null, items }];
 }
