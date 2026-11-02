@@ -156,12 +156,6 @@ export default function VoorraadkastPage() {
     if (!next.trim()) setAddedIds(new Set());
   }
 
-  function cancelSearch() {
-    changeSearch("");
-    setSearchFocused(false);
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-  }
-
   /** Toevoegknop: toevoegen gebeurt via het zoekveld, dus daar gaat de cursor naartoe. */
   function startAdding() {
     searchBarRef.current?.scrollIntoView({ block: "center" });
@@ -317,16 +311,6 @@ export default function VoorraadkastPage() {
                 onBlur={() => setSearchFocused(false)}
                 className="flex-1"
               />
-              {searchFocused || searching ? (
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={cancelSearch}
-                  className="shrink-0 text-[15px] font-semibold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  Annuleer
-                </button>
-              ) : null}
             </div>
             {hasItems && !searching ? (
               <FilterChipRow ariaLabel="Filter de voorraadkast">

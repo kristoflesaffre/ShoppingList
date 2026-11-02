@@ -152,8 +152,10 @@ const SearchBar = React.forwardRef<HTMLDivElement, SearchBarProps>(
           <button
             type="button"
             aria-label="Wis zoekopdracht"
+            // Cursor blijft in het veld, zodat je meteen opnieuw kunt typen.
+            onMouseDown={(e) => e.preventDefault()}
             onClick={handleClear}
-            className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--gray-200)] text-white transition-colors hover:bg-[var(--gray-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className="relative flex size-5 shrink-0 after:absolute after:-inset-2 after:content-[''] items-center justify-center rounded-full bg-[var(--gray-200)] text-white transition-colors hover:bg-[var(--gray-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" aria-hidden className="size-3">
               <path d="M7 7l10 10M17 7 7 17" />

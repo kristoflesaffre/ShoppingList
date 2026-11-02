@@ -7,7 +7,7 @@ Bouw schermen uit de gedeelde componenten in `src/components/ui/`. Style deze pa
 
 | Patroon | Component | Regels |
 | --- | --- | --- |
-| Zoekveld | `SearchBar`, `ItemNameAutocomplete` | Zacht grijs vlak (gray-25), geen rand, vergrootglas links, radius 16, h 48. **Op de grijze app-achtergrond altijd `surface="app"`** (wit met dun randje), anders valt het weg. Op mobiel opent het zoekblad met de zoekbalk bovenaan + «Annuleer», filterchips, rijen met foto + naam (geen plussen). |
+| Zoekveld | `SearchBar`, `ItemNameAutocomplete` | Zacht grijs vlak (gray-25), geen rand, vergrootglas links, radius 16, h 48. **Op de grijze app-achtergrond altijd `surface="app"`** (wit met dun randje), anders valt het weg. Op mobiel opent het zoekblad met de zoekbalk bovenaan + «Annuleer», filterchips, rijen met foto + naam (geen plussen). Zoekveld op de pagina zelf (Voorraadkast, Diepvries): geen «Annuleer» en het veld blijft even breed; wissen met de grijze ronde ✕ rechts in het veld (zodra er tekst staat). |
 | Invoerveld | `InputField` | Zelfde vorm als het zoekveld; focus = wit + lavendel rand. |
 | Keuzeveld | `SelectField` | Eén waarde uit een lijst in de vorm van het invoerveld (grijs, radius 16, h 48, chevron rechts), optioneel met gekleurd bolletje; eronder een gewone `<select>`. Gebruikt in «Item wijzigen» voor eenheid en categorie. |
 | Segmentknop | `SegmentedControl` (`PillTab` heeft dezelfde stijl) | 2–4 opties naast elkaar. Grijze trog (gray-50, radius 13), actief wit met donkere tekst. `size="lg"` (trog 44px) naast een zoekveld van 44px (`ItemNameAutocomplete dense`). |

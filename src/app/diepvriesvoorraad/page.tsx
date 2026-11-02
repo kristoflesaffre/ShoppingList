@@ -263,12 +263,6 @@ export default function DiepvriesvoorraadPage() {
     if (!next.trim()) setAddedIds(new Set());
   }
 
-  function cancelSearch() {
-    changeSearch("");
-    setSearchFocused(false);
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-  }
-
   /** Tik op + : meteen in de diepvries (1 portie of 1 stuk), met «Ongedaan». */
   function addToFreezer(fields: Omit<FreezerItem, "id" | "ownerId" | "order">) {
     if (!user) return;
@@ -449,16 +443,6 @@ export default function DiepvriesvoorraadPage() {
                 onBlur={() => setSearchFocused(false)}
                 className="flex-1"
               />
-              {searchFocused || searching ? (
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={cancelSearch}
-                  className="shrink-0 text-[15px] font-semibold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                >
-                  Annuleer
-                </button>
-              ) : null}
             </div>
             <FilterChipRow ariaLabel="Filter de diepvries">
               <FilterChip surface="onColor" selected={activeFilter === "alles"} onClick={() => setFilter("alles")}>Alles</FilterChip>
