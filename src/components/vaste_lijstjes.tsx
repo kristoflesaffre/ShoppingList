@@ -25,6 +25,7 @@ import { listIsMasterTemplate } from "@/lib/list-master";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { FilterChip } from "@/components/ui/filter_chip";
+import { Shimmer } from "@/components/ui/shimmer";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,7 @@ import {
   deepRgb,
   isVastList,
   mixWithWhiteRgb,
+  parseCachedTiles,
   tileIconPlacement,
   vastColor,
   vastIcon,
@@ -90,6 +92,24 @@ function summarize(row: ListRow, isOwner: boolean): VastListSummary {
   };
 }
 
+const tilesCacheKey = (userId: string) => `vaste-tegels:${userId}`;
+
+function readCachedTiles(userId: string | null | undefined): VastTileEntry[] | null {
+  if (!userId || typeof window === "undefined") return null;
+  try {
+    return parseCachedTiles<VastTileEntry>(localStorage.getItem(tilesCacheKey(userId)));
+  } catch {
+    return null;
+  }
+}
+
+function builtinTiles(teKopen: number | null, favorites: number | null): VastTileEntry[] {
+  return [
+    { id: "te-kopen", kind: "te-kopen", href: "/te-kopen", name: "Te kopen", count: teKopen, countLabel: "open", icon: "/images/ui/kopen_240.webp", color: VAST_COLORS.blauw },
+    { id: "favorieten", kind: "favorieten", href: "/lijstjes-beheren/favorieten", name: "Favorieten", count: favorites, countLabel: "lijstjes", icon: "/images/ui/ster_240.webp", color: VAST_COLORS.geel },
+  ];
+}
+
 /** Vaste lijstjes van de gebruiker (eigen + gedeeld) en het aantal open punten in «Te kopen». */
 export function useVasteLijstjes(userId: string | null | undefined) {
   const uid = userId ?? "__no_user__";
@@ -142,7 +162,7 @@ export function useVasteLijstjes(userId: string | null | undefined) {
   }, [data?.shoppingItems, data?.shoppingShares, data?.shoppingShareMembers, userId]);
 
   // Favorietenlijsten (master-templates) tellen voor de tegel «Favorieten».
-  const { data: favData } = db.useQuery({
+  const { isLoading: favLoading, data: favData } = db.useQuery({
     lists: { $: { where: { ownerId: uid } } },
     listMembers: { list: {}, $: { where: { instantUserId: uid } } },
   });
@@ -158,7 +178,7 @@ export function useVasteLijstjes(userId: string | null | undefined) {
   }, [favData?.lists, favData?.listMembers]);
 
   // Volgorde en verborgen tegels (per gebruiker, op het profiel).
-  const { data: profData } = db.useQuery({ profiles: { $: { where: { instantUserId: uid } } } });
+  const { isLoading: profLoading, data: profData } = db.useQuery({ profiles: { $: { where: { instantUserId: uid } } } });
   const profile = (profData?.profiles?.[0] ?? null) as { id: string; vasteLijstjesJson?: string | null } | null;
   const serverPrefs = React.useMemo(() => parseVastPrefs(profile?.vasteLijstjesJson), [profile?.vasteLijstjesJson]);
   // Optimistisch: eigen wijzigingen meteen tonen en als basis voor de volgende gebruiken.
@@ -169,10 +189,7 @@ export function useVasteLijstjes(userId: string | null | undefined) {
   const prefs = localPrefs ?? serverPrefs;
 
   const allEntries = React.useMemo((): VastTileEntry[] => {
-    const builtins: VastTileEntry[] = [
-      { id: "te-kopen", kind: "te-kopen", href: "/te-kopen", name: "Te kopen", count: teKopenOpen, countLabel: "open", icon: "/images/ui/kopen_240.webp", color: VAST_COLORS.blauw },
-      { id: "favorieten", kind: "favorieten", href: "/lijstjes-beheren/favorieten", name: "Favorieten", count: favoritesCount, countLabel: "lijstjes", icon: "/images/ui/ster_240.webp", color: VAST_COLORS.geel },
-    ];
+    const builtins = builtinTiles(teKopenOpen, favoritesCount);
     const own: VastTileEntry[] = lists.map((l) => ({
       id: l.id,
       kind: "vast",
@@ -193,13 +210,31 @@ export function useVasteLijstjes(userId: string | null | undefined) {
   }, [teKopenOpen, favoritesCount, lists, prefs.order]);
 
   const hiddenSet = React.useMemo(() => new Set(prefs.hidden), [prefs.hidden]);
-  const tiles = React.useMemo(() => allEntries.filter((e) => !hiddenSet.has(e.id)), [allEntries, hiddenSet]);
+  const liveTiles = React.useMemo(() => allEntries.filter((e) => !hiddenSet.has(e.id)), [allEntries, hiddenSet]);
+
+  // Tot alles binnen is: de tegels van de vorige keer, of (eerste keer op dit toestel) laadcijfers. Nooit een valse «0».
+  const tilesReady = !isLoading && !favLoading && !profLoading;
+  const cachedTiles = React.useMemo(() => readCachedTiles(userId), [userId]);
+  const tiles = React.useMemo(
+    () => (tilesReady ? liveTiles : (cachedTiles ?? builtinTiles(null, null))),
+    [tilesReady, liveTiles, cachedTiles],
+  );
+  React.useEffect(() => {
+    if (!userId || !tilesReady) return;
+    try {
+      localStorage.setItem(tilesCacheKey(userId), JSON.stringify(liveTiles.map(({ list: _list, ...tile }) => tile)));
+    } catch {
+      // Geen opslag (privévenster): volgende keer gewoon opnieuw laadcijfers.
+    }
+  }, [userId, tilesReady, liveTiles]);
+
   /** Verborgen ingebouwde tegels (Te kopen, Favorieten), om terug te zetten in bewerkstand. */
   const hiddenTiles = React.useMemo(() => allEntries.filter((e) => hiddenSet.has(e.id) && e.kind !== "vast"), [allEntries, hiddenSet]);
 
   const savePrefs = React.useCallback(
     (next: VastPrefs) => {
-      if (!userId) return;
+      // Zonder geladen profiel zou een sleepactie de verborgen tegels overschrijven.
+      if (!userId || profLoading) return;
       setLocalPrefs(next);
       const json = JSON.stringify(next);
       const tx = profile
@@ -207,7 +242,7 @@ export function useVasteLijstjes(userId: string | null | undefined) {
         : db.tx.profiles[iid()].update({ instantUserId: userId, vasteLijstjesJson: json });
       void db.transact(tx).catch(() => undefined);
     },
-    [profile, userId],
+    [profile, profLoading, userId],
   );
   const saveOrder = React.useCallback(
     (visibleIds: string[]) => savePrefs({ order: [...visibleIds, ...prefs.hidden.filter((id) => !visibleIds.includes(id))], hidden: prefs.hidden }),
@@ -231,7 +266,8 @@ export type VastTileEntry = {
   kind: "te-kopen" | "favorieten" | "vast";
   href: string;
   name: string;
-  count: number;
+  /** `null` = nog aan het laden. */
+  count: number | null;
   countLabel: string;
   icon: string;
   color: [number, number, number];
@@ -273,7 +309,8 @@ export function VastTile({
 }: {
   href: string;
   name: string;
-  count: number;
+  /** `null` = nog aan het laden: shimmer op de plek van het cijfer. */
+  count: number | null;
   icon: string;
   color: [number, number, number];
   className?: string;
@@ -294,11 +331,16 @@ export function VastTile({
   const editing = editingProp || onDelete != null;
   // Zelfde zichtbare grootte voor elke illustratie, deels van de tegel af (rechtsonder).
   const placement = tileIconPlacement(icon, wide ? 104 : 84, wide ? 10 : 14);
+  const linkLabel = count == null ? name : `${name}, ${count} ${countLabel}`;
   const body = (
     <>
-      <span className={cn("font-extrabold leading-none tabular-nums", wide ? "text-[34px]" : "text-[28px]")} style={{ color: deepRgb(color) }}>
-        {count}
-      </span>
+      {count == null ? (
+        <Shimmer className={cn("rounded-[8px]", wide ? "h-[34px] w-12" : "h-7 w-9")} style={{ backgroundColor: "rgba(255,255,255,0.55)" }} />
+      ) : (
+        <span className={cn("font-extrabold leading-none tabular-nums", wide ? "text-[34px]" : "text-[28px]")} style={{ color: deepRgb(color) }}>
+          {count}
+        </span>
+      )}
       <span className={cn("mt-1.5 line-clamp-2 pr-1 font-extrabold text-text-primary", wide ? "max-w-[60%] text-base leading-5" : "text-[13.5px] leading-[17px]")}>{name}</span>
       {/* eslint-disable-next-line @next/next/no-img-element -- lokale illustratie */}
       <img
@@ -362,7 +404,7 @@ export function VastTile({
   }
   if (!onAdd) {
     return (
-      <Link href={href} aria-label={`${name}, ${count} ${countLabel}`} className={cls} style={style}>
+      <Link href={href} aria-label={linkLabel} className={cls} style={style}>
         {body}
       </Link>
     );
@@ -370,7 +412,7 @@ export function VastTile({
   // Met «+»: de knop staat naast de link (geen knop in een link); de buitenste laag krijgt de maat.
   return (
     <div className={cn("relative h-[150px] w-[124px] shrink-0", className)}>
-      <Link href={href} aria-label={`${name}, ${count} ${countLabel}`} className={cn(surface, "size-full")} style={style}>
+      <Link href={href} aria-label={linkLabel} className={cn(surface, "size-full")} style={style}>
         {body}
       </Link>
       <button

@@ -132,3 +132,18 @@ export function tileIconPlacement(icon: string, size: number, overhang: number) 
     bottom: -overhang - (240 - b) * scale,
   };
 }
+
+/** Laatst bekende tegels op dit toestel uit localStorage; lege, kapotte of onvolledige data telt niet. */
+export function parseCachedTiles<T>(raw: string | null): T[] | null {
+  try {
+    const rows: unknown = raw ? JSON.parse(raw) : null;
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    const valid = rows.every(
+      (r: { id?: unknown; href?: unknown; name?: unknown; icon?: unknown; color?: unknown } | null) =>
+        typeof r?.id === "string" && typeof r.href === "string" && typeof r.name === "string" && typeof r.icon === "string" && Array.isArray(r.color),
+    );
+    return valid ? (rows as T[]) : null;
+  } catch {
+    return null;
+  }
+}
