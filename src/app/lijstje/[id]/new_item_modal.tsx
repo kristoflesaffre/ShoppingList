@@ -31,7 +31,9 @@ import {
   type TripPersonTab,
 } from "@/lib/trip-person";
 import type { ItemStore } from "@/lib/item-store";
-import { StoreChip, StoreChoiceTiles, StoreMarkMenu } from "./store_mark";
+import { StoreChip, StoreChoiceSegment, StoreChoiceTiles, StoreMarkMenu } from "./store_mark";
+import { SelectField } from "@/components/ui/select_field";
+import { DEFAULT_UNIT_OPTIONS } from "@/components/ui/quantity_unit_field";
 import { AddItemsDayStrip, useDayPlates } from "./add_items_day_strip";
 import { EmptyStateFan } from "@/components/empty_state_fan";
 import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
@@ -297,6 +299,8 @@ export function NewItemModal({
   const [vacationCategory, setVacationCategory] = React.useState<string>("Andere");
   /** «Item wijzigen» (supermarkt): de gekozen categorie; null = afleiden uit de naam. */
   const [editCategory, setEditCategory] = React.useState<string | null>(null);
+  /** «Item wijzigen»: eigen eenheid typen («Andere…») in plaats van een uit de lijst. */
+  const [editUnitCustom, setEditUnitCustom] = React.useState(false);
   const [tripPerson, setTripPerson] =
     React.useState<TripPersonTab>(DEFAULT_TRIP_PERSON_TAB);
   const [sourceFilter, setSourceFilter] =
@@ -476,6 +480,7 @@ export function NewItemModal({
     } else if (editingItem) {
       setItemName(editingItem.name);
       setEditCategory(isVacationList ? null : effectiveItemCategory(editingItem));
+      setEditUnitCustom(false);
       setItemStore(editingItem.store);
       setItemStoreOrigin(editingItem.storeOrigin);
       setAlsoFavorite(false);
@@ -1148,6 +1153,8 @@ export function NewItemModal({
         }}
       />
     ) : null;
+  /** «Item wijzigen» op een supermarktlijstje: de formulierrijen in plaats van het toevoegformulier. */
+  const editForm = isEditMode && !isVacationList && !batchMode;
   const showAlsoFavorite =
     storeChoice != null && isEditMode && !isMasterList && storeChoice.hasFavorite?.(itemName.trim()) === true;
 
@@ -1377,8 +1384,8 @@ export function NewItemModal({
       footer={showRecipeForm ? recipeFooter : itemFooter}
       disableEscapeClose={ingredientSlideOpen}
       bodyFullWidth={!masterItemFormOnly}
-      className={!masterItemFormOnly ? "h-[calc(100dvh-48px)]" : undefined}
-      size={!masterItemFormOnly ? "wide" : "dialog"}
+      className={!masterItemFormOnly && !editForm ? "h-[calc(100dvh-48px)]" : undefined}
+      size={masterItemFormOnly || editForm ? "dialog" : "wide"}
     >
       <div className="overflow-hidden pb-2">
         <div
@@ -1468,7 +1475,99 @@ export function NewItemModal({
                 </>
               ) : null}
 
-              {(isEditMode ||
+              {editForm ? (
+                /* Canvas «IE · 6 Formulierrijen»: per vraag één regel, label links en bediening rechts (gsm: label erboven). */
+                <div className="flex flex-col gap-3.5">
+                  <EditFormRow label="Product">
+                    <ItemNameAutocomplete
+                      searchVariant="top"
+                      showChosen
+                      ariaLabel="Product wijzigen"
+                      placeholder="Naam item"
+                      value={itemName}
+                      onChange={setItemName}
+                      onSelectItem={setItemName}
+                      slideInTitle="Product kiezen"
+                    />
+                  </EditFormRow>
+                  <EditFormRow label="Aantal">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-[150px] shrink-0">
+                        <Stepper value={stepperValue} onValueChange={setStepperValue} min={1} />
+                      </div>
+                      <SelectField
+                        className="flex-1"
+                        ariaLabel="Eenheid"
+                        value={editUnitCustom ? "__andere" : quantityDesc}
+                        onChange={(next) => {
+                          if (next === "__andere") {
+                            setEditUnitCustom(true);
+                            setQuantityDesc("");
+                          } else {
+                            setEditUnitCustom(false);
+                            setQuantityDesc(next);
+                          }
+                        }}
+                        options={[
+                          ...DEFAULT_UNIT_OPTIONS.map((u) => ({ value: u, label: u })),
+                          ...(!editUnitCustom && quantityDesc && !(DEFAULT_UNIT_OPTIONS as readonly string[]).includes(quantityDesc)
+                            ? [{ value: quantityDesc, label: quantityDesc }]
+                            : []),
+                          { value: "__andere", label: "Andere…" },
+                        ]}
+                      />
+                    </div>
+                    {editUnitCustom ? (
+                      <InputField
+                        className="mt-2.5"
+                        value={quantityDesc}
+                        onChange={(e) => setQuantityDesc(e.target.value)}
+                        placeholder="Eenheid, bv. doos"
+                        aria-label="Eenheid"
+                        autoFocus
+                      />
+                    ) : null}
+                  </EditFormRow>
+                  {storeChoice ? (
+                    <EditFormRow label="Winkel">
+                      <StoreChoiceSegment
+                        value={itemStore}
+                        onChange={(next) => {
+                          setItemStore(next);
+                          setItemStoreOrigin(undefined);
+                        }}
+                      />
+                      {storeOriginHint ? <p className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-[var(--text-secondary)]">{storeOriginHint}</p> : null}
+                    </EditFormRow>
+                  ) : null}
+                  {editCategory ? (
+                    <EditFormRow label="Categorie">
+                      <SelectField
+                        ariaLabel="Categorie"
+                        value={editCategory}
+                        onChange={setEditCategory}
+                        options={SUPERMARKET_CATEGORIES.map((category) => {
+                          const [r, g, b] = categoryColor(category);
+                          return { value: category, label: categoryHeadingDisplay(category), dotColor: `rgb(${r}, ${g}, ${b})` };
+                        })}
+                      />
+                    </EditFormRow>
+                  ) : null}
+                  {showAlsoFavorite ? (
+                    <label className="flex cursor-pointer items-center gap-2.5 text-[13.5px] text-[var(--text-secondary)] md:pl-[112px]">
+                      <input
+                        type="checkbox"
+                        checked={alsoFavorite}
+                        onChange={(e) => setAlsoFavorite(e.target.checked)}
+                        className="size-5 shrink-0 cursor-pointer rounded-[6px] accent-[var(--blue-500)]"
+                      />
+                      Ook in je favorieten aanpassen
+                    </label>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {!editForm && (isEditMode ||
                 sourceFilter === "all" ||
                 sourceFilter === "items" ||
                 isMasterList) &&
@@ -1607,28 +1706,6 @@ export function NewItemModal({
                   </div>
                   )}
                   {!isVacationList && !batchMode ? storeTiles(false) : null}
-                  {isEditMode && !isVacationList && editCategory ? (
-                    <div className="flex flex-col gap-2">
-                      <span id="edit-item-category" className="text-sm font-normal leading-20 tracking-normal text-[var(--text-primary)]">
-                        Categorie
-                      </span>
-                      <div role="group" aria-labelledby="edit-item-category" className="flex flex-wrap gap-2">
-                        {SUPERMARKET_CATEGORIES.map((category) => {
-                          const [r, g, b] = categoryColor(category);
-                          return (
-                            <FilterChip
-                              key={category}
-                              selected={editCategory === category}
-                              dotColor={`rgb(${r}, ${g}, ${b})`}
-                              onClick={() => setEditCategory(category)}
-                            >
-                              {categoryHeadingDisplay(category)}
-                            </FilterChip>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
                   {showAlsoFavorite ? (
                     <label className="-mt-1 flex cursor-pointer items-center gap-2.5 text-[13.5px] text-[var(--text-secondary)]">
                       <input
@@ -1964,5 +2041,15 @@ export function NewItemModal({
       slideClassName={!masterItemFormOnly ? "h-[calc(100dvh-48px)]" : undefined}
     />
     </>
+  );
+}
+
+/** Eén vraag in «Item wijzigen»: label links (96px) en de bediening rechts; op de gsm het label erboven. */
+function EditFormRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5 md:flex-row md:items-start md:gap-4">
+      <span className="text-sm leading-20 text-[var(--text-secondary)] md:w-[96px] md:shrink-0 md:pt-3.5">{label}</span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
   );
 }

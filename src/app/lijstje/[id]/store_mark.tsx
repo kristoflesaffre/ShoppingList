@@ -4,6 +4,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import type { ListItem } from "./new_item_modal";
 import { cn } from "@/lib/utils";
+import { SegmentedControl } from "@/components/ui/segmented_control";
 import { DELHAIZE_LOGO_SRC, LIDL_DELHAIZE_LOGO_SRC, LIDL_LOGO_SRC, type ItemStore } from "@/lib/item-store";
 
 /**
@@ -318,6 +319,32 @@ export function StoreChoiceTiles({
       </div>
       {hint ? <p className="flex items-center gap-1.5 text-[12.5px] text-[var(--text-secondary)]">{hint}</p> : null}
     </div>
+  );
+}
+
+/**
+ * «Waar koop je dit?» als segmentknop (Lidl · Delhaize · Allebei) met logo's: de compacte vorm voor
+ * formulierrijen (canvas «IE · 6 Formulierrijen»). Zonder keuze staat er geen optie aan.
+ */
+export function StoreChoiceSegment({ value, onChange }: { value?: ItemStore; onChange: (value: ItemStore) => void }) {
+  return (
+    <SegmentedControl<ItemStore | "">
+      ariaLabel="Waar koop je dit?"
+      size="lg"
+      value={value ?? ""}
+      onChange={(next) => {
+        if (next) onChange(next);
+      }}
+      options={STORE_OPTIONS.map((o) => ({
+        value: o.value,
+        label: (
+          <span className="flex items-center gap-1.5">
+            <StoreLogos store={o.value} size={18} ring={o.value === "both"} />
+            {o.label}
+          </span>
+        ),
+      }))}
+    />
   );
 }
 

@@ -86,6 +86,11 @@ export type ItemNameAutocompleteProps = {
   dense?: boolean;
   /** `top`: zacht grijs zoekveld met icoon links; mobiele zoek-slide-in met zoekbalk bovenaan. */
   searchVariant?: "default" | "top";
+  /**
+   * Ook op tablet en computer het gekozen product tonen als Productveld (foto · naam · «Wijzig»); «Wijzig» maakt er
+   * weer een zoekveld van. Voor bladen waar het product al vastligt, zoals «Item wijzigen».
+   */
+  showChosen?: boolean;
 };
 
 // ─── Large-screen dropdown ────────────────────────────────────────────────────
@@ -525,20 +530,7 @@ function SmallScreenAutocomplete({
           aria-label={ariaLabel ?? label ?? placeholder}
         >
           {value ? (
-            <>
-              {photoUrl ? (
-                <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--white)]">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
-                  <img src={photoUrl} alt="" width={34} height={34} className="size-[34px] object-contain" aria-hidden decoding="async" />
-                </span>
-              ) : (
-                <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] text-[17px] font-bold" style={teKopenMonogramStyle(value)} aria-hidden>
-                  {value.trim().charAt(0).toUpperCase()}
-                </span>
-              )}
-              <span className="min-w-0 flex-1 truncate text-base font-semibold text-[var(--text-primary)] first-letter:uppercase">{value}</span>
-              <span className="shrink-0 text-[13px] font-semibold text-[var(--blue-500)]">Wijzig</span>
-            </>
+            <ChosenProductContent value={value} photoUrl={photoUrl} />
           ) : (
             <>
               <SearchIcon className="shrink-0 text-[var(--text-tertiary)]" />
@@ -608,12 +600,67 @@ function SmallScreenAutocomplete({
 
 // ─── Publieke component: kiest automatisch op basis van schermgrootte ─────────
 
+/** Inhoud van het gekozen Productveld: foto-tegel (of monogram) · naam vet · «Wijzig». */
+function ChosenProductContent({ value, photoUrl }: { value: string; photoUrl: string | null }) {
+  return (
+    <>
+      {photoUrl ? (
+        <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--white)]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- lokale item-webp */}
+          <img src={photoUrl} alt="" width={34} height={34} className="size-[34px] object-contain" aria-hidden decoding="async" />
+        </span>
+      ) : (
+        <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[12px] text-[17px] font-bold" style={teKopenMonogramStyle(value)} aria-hidden>
+          {value.trim().charAt(0).toUpperCase()}
+        </span>
+      )}
+      <span className="min-w-0 flex-1 truncate text-base font-semibold text-[var(--text-primary)] first-letter:uppercase">{value}</span>
+      <span className="shrink-0 text-[13px] font-semibold text-[var(--blue-500)]">Wijzig</span>
+    </>
+  );
+}
+
+/** Tablet en computer met `showChosen`: het gekozen product als Productveld; «Wijzig» toont het zoekveld. */
+function LargeScreenChosenAutocomplete(props: ItemNameAutocompleteProps) {
+  const [searching, setSearching] = React.useState(false);
+  const getItemPhotoUrl = useItemPhotoUrl();
+  const getIngredientPhotoUrl = useIngredientPhotoUrl(160);
+  const getPhotoUrl = props.photoCatalog === "ingredients" ? getIngredientPhotoUrl : getItemPhotoUrl;
+  if (searching || !props.value.trim()) {
+    return (
+      <LargeScreenAutocomplete
+        {...props}
+        autoFocus={searching || props.autoFocus}
+        onSelectItem={(name) => {
+          props.onSelectItem?.(name);
+          setSearching(false);
+        }}
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setSearching(true)}
+      aria-label={`${props.ariaLabel ?? "Product"}: ${props.value}`}
+      className={cn(
+        "flex h-[58px] w-full items-center gap-3 rounded-[16px] bg-[var(--gray-25)] pl-2 pr-4 text-left transition-colors active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+        props.className,
+      )}
+    >
+      <ChosenProductContent value={props.value} photoUrl={getPhotoUrl(props.value)} />
+    </button>
+  );
+}
+
 export function ItemNameAutocomplete(props: ItemNameAutocompleteProps) {
   const isSmall = useIsSmallScreen();
   // Tijdens SSR/hydration (isSmall = false) renderen we de large versie;
   // na mount switcht hij correct.
   return isSmall ? (
     <SmallScreenAutocomplete {...props} />
+  ) : props.showChosen ? (
+    <LargeScreenChosenAutocomplete {...props} />
   ) : (
     <LargeScreenAutocomplete {...props} />
   );
