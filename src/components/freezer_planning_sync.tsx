@@ -3,8 +3,9 @@
 import * as React from "react";
 import { db } from "@/lib/db";
 import { toIsoDate } from "@/lib/calendar-utils";
-import { planFreezerDeductions, planThawTaskActions, type FreezerPlanItem } from "@/lib/freezer-planning";
+import { planFreezerDeductions, planFreezerLinks, planThawTaskActions, type FreezerPlanItem } from "@/lib/freezer-planning";
 import { useGoogleAuthToken } from "@/lib/google-client";
+import { isPantryItem } from "@/lib/pantry";
 import { todoistPost } from "@/lib/todoist-client";
 
 /**
@@ -26,7 +27,7 @@ export function FreezerPlanningSync() {
     };
   }, []);
 
-  const { data } = db.useQuery(user ? { items: { $: { where: { fromStock: true } } }, freezerItems: {} } : null);
+  const { data } = db.useQuery(user ? { items: { $: { where: { fromStock: true } }, list: {} }, freezerItems: {} } : null);
 
   const stock = React.useMemo(
     () =>
@@ -40,6 +41,24 @@ export function FreezerPlanningSync() {
     const own = new Set(stock.map((s) => s.id));
     return ((data?.items ?? []) as unknown as FreezerPlanItem[]).filter((it) => it.freezerItemId && own.has(it.freezerItemId));
   }, [data?.items, stock]);
+
+  // Geplande gerechten zonder koppeling (ouder dan deze functie of gekopieerd): enkel op eigen lijstjes, want op een
+  // gedeeld lijstje kan iemand anders ze gepland hebben. Daarna volgen de taak en de afboeking vanzelf.
+  const linked = React.useRef(new Set<string>());
+  React.useEffect(() => {
+    if (!data || !user) return;
+    const onOwnList = ((data.items ?? []) as unknown as Array<FreezerPlanItem & { list?: { ownerId?: string } | { ownerId?: string }[] }>).filter((it) => {
+      const list = Array.isArray(it.list) ? it.list[0] : it.list;
+      return list?.ownerId === user.id && !linked.current.has(it.id);
+    });
+    const freezer = ((data.freezerItems ?? []) as Array<{ id: string; name?: string; type?: string; ownerId?: string }>).filter(
+      (it) => !isPantryItem(it) && (!it.ownerId || it.ownerId === user.id),
+    );
+    const links = planFreezerLinks(onOwnList, freezer, today);
+    if (links.length === 0) return;
+    links.forEach((link) => linked.current.add(link.itemId));
+    void db.transact(links.map((link) => db.tx.items[link.itemId].update({ freezerItemId: link.freezerItemId })));
+  }, [data, user, today]);
 
   const handled = React.useRef(new Set<string>());
   React.useEffect(() => {

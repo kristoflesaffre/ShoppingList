@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findFreezerItemForPlan, parseThawMarker, planFreezerDeductions, planThawTaskActions, thawDueDate, thawTaskDescription } from "./freezer-planning";
+import { findFreezerItemForPlan, parseThawMarker, planFreezerDeductions, planFreezerLinks, planThawTaskActions, thawDueDate, thawTaskDescription } from "./freezer-planning";
 
 const dish = (over = {}) => ({ id: "i1", name: "Lasagne (diepvries)", fromStock: true, freezerItemId: "f1", itemDate: "2026-11-05", ...over });
 
@@ -71,5 +71,41 @@ describe("findFreezerItemForPlan", () => {
     expect(findFreezerItemForPlan(stock, { name: "Andere naam", recipeId: "r1" })?.id).toBe("b");
     expect(findFreezerItemForPlan(stock, { name: " soep " })?.id).toBe("a");
     expect(findFreezerItemForPlan(stock, { name: "Pizza" })).toBeUndefined();
+  });
+});
+
+describe("planFreezerLinks", () => {
+  const today = "2026-11-02";
+  const stock = [{ id: "f1", name: "Rucolasoep" }, { id: "f2", name: "Lasagne" }];
+  const open = (over = {}) => ({ id: "i1", name: "Rucolasoep", fromStock: true, itemDate: "2026-11-03", ...over });
+
+  it("koppelt een gepland gerecht zonder koppeling op naam", () => {
+    expect(planFreezerLinks([open()], stock, today)).toEqual([{ itemId: "i1", freezerItemId: "f1" }]);
+  });
+  it("negeert hoofdletters en het achtervoegsel (diepvries)", () => {
+    expect(planFreezerLinks([open({ name: "lasagne (diepvries)" })], stock, today)).toEqual([{ itemId: "i1", freezerItemId: "f2" }]);
+  });
+  it("koppelt ook een gerecht van vandaag", () => {
+    expect(planFreezerLinks([open({ itemDate: today })], stock, today)).toHaveLength(1);
+  });
+  it("laat voorbije gerechten met rust, zodat er niets met terugwerkende kracht afgaat", () => {
+    expect(planFreezerLinks([open({ itemDate: "2026-11-01" })], stock, today)).toEqual([]);
+  });
+  it("slaat over: al gekoppeld, afgeboekt, voorraadkast, geen dag, geen voorraad, geen diepvriesitem", () => {
+    const items = [
+      open({ freezerItemId: "f1" }),
+      open({ stockDeductedAt: 1 }),
+      open({ stockSource: "pantry" }),
+      open({ itemDate: undefined }),
+      open({ fromStock: false }),
+      open({ name: "Onbekend gerecht" }),
+    ];
+    expect(planFreezerLinks(items, stock, today)).toEqual([]);
+  });
+  it("een gekoppeld gerecht krijgt daarna een taak en wordt pas na de dag afgeboekt", () => {
+    const [link] = planFreezerLinks([open()], stock, today);
+    const linked = open({ freezerItemId: link.freezerItemId });
+    expect(planThawTaskActions([linked], [], today)[0]).toMatchObject({ kind: "create", dueDate: today });
+    expect(planFreezerDeductions([linked], [{ id: "f1", packages: 1 }], today).deductedItemIds).toEqual([]);
   });
 });

@@ -3,7 +3,7 @@ import { addDays, toIsoDate } from "@/lib/calendar-utils";
 /**
  * Diepvriesgerechten die op een dag gepland staan: één portie gaat uit de voorraad zodra de dag voorbij is, en
  * de dag ervoor staat er een afvinkbare Todoist-taak «Uit de diepvries halen». Enkel items met `freezerItemId`
- * doen mee, dus gerechten die vóór deze functie gepland werden, blijven ongemoeid.
+ * doen mee; gerechten van vandaag of later zonder koppeling krijgen die via `planFreezerLinks`, voorbije blijven ongemoeid.
  */
 
 export type FreezerPlanItem = {
@@ -96,6 +96,25 @@ export function planThawTaskActions(items: FreezerPlanItem[], openTasks: ThawTod
     }
   }
   return actions;
+}
+
+/**
+ * Geplande diepvriesgerechten zonder koppeling (ouder dan deze functie, of gekopieerd van een ander lijstje): koppelen
+ * op naam. Enkel vandaag of later, zodat er niets met terugwerkende kracht van de voorraad gaat.
+ */
+export function planFreezerLinks<T extends { id: string; name?: string }>(
+  items: FreezerPlanItem[],
+  freezerItems: T[],
+  todayIso: string,
+): { itemId: string; freezerItemId: string }[] {
+  const links: { itemId: string; freezerItemId: string }[] = [];
+  for (const item of items) {
+    if (item.fromStock !== true || item.stockSource === "pantry" || item.freezerItemId || item.stockDeductedAt) continue;
+    if (!item.itemDate || item.itemDate < todayIso) continue;
+    const match = findFreezerItemForPlan(freezerItems, { name: item.name.replace(/\s*\(diepvries\)$/, "") });
+    if (match) links.push({ itemId: item.id, freezerItemId: match.id });
+  }
+  return links;
 }
 
 /** Eigen diepvriesitem bij een recept of naam, voor de koppeling bij het plannen. */
