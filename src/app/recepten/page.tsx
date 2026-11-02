@@ -568,10 +568,8 @@ export default function ReceptenPage() {
                 </h1>
                 {isEditMode ? <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">Sleep om te ordenen</p> : null}
               </div>
-              {/* Rechts: toggle (normaal) of Gereed-knop (edit mode) */}
-              {isEditMode ? (
-                <DoneButton onClick={() => setIsEditMode(false)} />
-              ) : (
+              {/* Rechts: zoeken + potlood; in de bewerkstand staat «Gereed» in de zwevende balk onderaan. */}
+              {isEditMode ? null : (
                 <>
                   <div className="hidden w-[320px] shrink-0 md:block">
                     <SearchBar surface="app" placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
@@ -718,6 +716,21 @@ export default function ReceptenPage() {
           />
         </div>
       )}
+
+      {isEditMode ? (
+        /* Bewerkstand: «Gereed» zwevend onderaan (zelfde patroon als Lijstjes beheren), op de plek van de plusknop
+           zodat hij de navigatiebalk niet raakt; op de computer rechts naast de navigatie. */
+        <div className={cn("pointer-events-none fixed inset-x-0 z-20 lg:bottom-[38px]", APP_FAB_BOTTOM_CLASS)}>
+          <div className="px-[16px]">
+            <div className="mx-auto flex w-full max-w-[956px] justify-end">
+              <div className="pointer-events-auto flex w-full items-center gap-3 rounded-pill bg-[var(--white)] py-[7px] pl-[18px] pr-[7px] shadow-[0_10px_30px_-10px_rgba(16,17,48,0.35),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up lg:w-[260px]">
+                <span className="min-w-0 flex-1 truncate text-sm text-[var(--text-secondary)]">{savedRecipes.length} recepten</span>
+                <DoneButton onClick={() => setIsEditMode(false)} aria-label="Gereed met bewerken" className="h-[42px] px-5 text-[15px] shadow-[0_6px_16px_-6px_rgba(79,85,241,0.6)]" />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {!snackbarMessage && hasRecipes && !isEditMode ? (
         <div
