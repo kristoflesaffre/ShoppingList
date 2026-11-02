@@ -163,16 +163,24 @@ function SubsectionHeader({ label, count }: { label: string; count: number }) {
   );
 }
 
-/** Ronde gerechtfoto (canvas «Recepten 2»): cirkelvormige crop, schaduw naar rechtsonder zoals op de receptpagina. */
-function RecipePlate({ recipe }: { recipe: SavedRecipe }) {
+/**
+ * Ronde gerechtfoto (canvas «Recepten 2»): cirkelvormige crop, schaduw naar rechtsonder zoals op de receptpagina.
+ * Zonder foto (canvas «RM · 2 Wit bord»): wit bord met zachte schaduw, een rand in de categorietint en de
+ * beginletter licht en dun erop.
+ */
+function RecipePlate({ recipe, tone }: { recipe: SavedRecipe; tone: string | null }) {
   const hasPhoto = typeof recipe.photoUrl === "string" && recipe.photoUrl.trim().length > 0;
+  const ink = tone ?? "var(--blue-500)";
   return (
     <span
       data-hero-plate
       className={cn(
         "mx-auto flex aspect-square w-[84%] items-center justify-center overflow-hidden rounded-full",
-        hasPhoto ? "[filter:drop-shadow(2px_3px_3px_rgba(80,50,10,0.22))_drop-shadow(8px_11px_10px_rgba(110,70,20,0.3))]" : "bg-[var(--blue-25)]",
+        hasPhoto
+          ? "[filter:drop-shadow(2px_3px_3px_rgba(80,50,10,0.22))_drop-shadow(8px_11px_10px_rgba(110,70,20,0.3))]"
+          : "bg-[var(--white)]",
       )}
+      style={hasPhoto ? undefined : { boxShadow: `0 10px 22px -14px rgba(16,17,48,0.28), inset 0 0 0 6px color-mix(in srgb, ${ink} 7%, var(--white))` }}
     >
       {hasPhoto ? (
         // eslint-disable-next-line @next/next/no-img-element -- data-URL
@@ -185,9 +193,13 @@ function RecipePlate({ recipe }: { recipe: SavedRecipe }) {
           className="size-[108%] max-w-none object-cover"
         />
       ) : (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden>
-          <path d="M26 6H6C4.9 6 4 6.9 4 8v16c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 18H6V8h20v16zm-9-3l-4-5-3 4-2-2.5L5 21h22l-5-6-5 6z" fill="var(--blue-200,#b0b4f8)" />
-        </svg>
+        <span
+          aria-hidden
+          className="text-[42px] font-medium leading-none tracking-[-0.02em] opacity-70"
+          style={{ color: `color-mix(in srgb, ${ink} 78%, var(--text-primary))` }}
+        >
+          {recipe.name.trim().charAt(0).toUpperCase()}
+        </span>
       )}
     </span>
   );
@@ -195,10 +207,17 @@ function RecipePlate({ recipe }: { recipe: SavedRecipe }) {
 
 function RecipePlateCard({ recipe }: { recipe: SavedRecipe }) {
   // Tegel in de kleur van het gerecht, automatisch uit de foto (canvas «Receptkleur»).
-  const tint = recipeTintColors(useRecipeTint(recipe.photoUrl), useIsDarkTheme());
+  const dark = useIsDarkTheme();
+  const photoTint = recipeTintColors(useRecipeTint(recipe.photoUrl), dark);
   const n = recipe.ingredients.length;
   const itemCount = n === 1 ? "1 ingrediënt" : `${n} ingrediënten`;
   const dot = RECIPE_CATEGORIES.find((c) => c.id === recipe.category)?.dot ?? null;
+  // Zonder foto: verloop in de categoriekleur in plaats van de lavendel terugval.
+  const tint = !recipe.photoUrl?.trim() && dot
+    ? dark
+      ? { top: `color-mix(in srgb, ${dot} 22%, transparent)`, mid: `color-mix(in srgb, ${dot} 10%, transparent)` }
+      : { top: `color-mix(in srgb, ${dot} 11%, var(--white))`, mid: `color-mix(in srgb, ${dot} 5%, var(--white))` }
+    : photoTint;
   return (
     <Link
       href={`/recepten/${recipe.id}`}
@@ -206,7 +225,7 @@ function RecipePlateCard({ recipe }: { recipe: SavedRecipe }) {
       style={{ backgroundImage: `linear-gradient(180deg, ${tint.top} 0%, ${tint.mid} 55%, transparent 100%)` }}
       className="flex h-full flex-col gap-3 rounded-[18px] bg-[var(--white)] px-2.5 pb-3.5 pt-4 text-center no-underline shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
     >
-      <RecipePlate recipe={recipe} />
+      <RecipePlate recipe={recipe} tone={dot} />
       <span className="flex flex-1 flex-col items-center px-0.5">
         <span className="line-clamp-2 text-sm font-semibold leading-[19px] text-text-primary">{recipe.name}</span>
         <span className="mt-auto flex items-center gap-1.5 pt-[3px] text-xs leading-4 text-[var(--gray-400)]">
