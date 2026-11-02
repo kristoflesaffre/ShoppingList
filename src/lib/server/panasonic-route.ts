@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedUserId } from "./google-connection-store";
 import { loadPanasonic, panasonicConfigured, type PanasonicSession } from "./panasonic-store";
+import { requestOrigin } from "./request-origin";
 import { PanasonicReconnect, refreshPanasonic } from "./panasonic-cloud";
 // Serialise refreshes and writes per owner within a warm server instance; always reload persisted tokens.
 const pending = new Map<string, Promise<unknown>>();
@@ -9,7 +10,7 @@ export async function withPanasonic(request: NextRequest, run: (session: Panason
   // Bearer authentication plus same-origin writes, including on local HTTPS.
   const allowed = new Set(["https://shoppinglist-lesaffre.netlify.app", "https://shoppinglist-azure.vercel.app", "https://localhost:3011", "http://localhost:3000", ...(process.env.PANASONIC_ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean)]);
   const origin = request.headers.get("origin");
-  if (!origin || !allowed.has(origin) || origin !== request.nextUrl.origin) return reply({ error: "invalid-origin" }, 403);
+  if (!origin || !allowed.has(origin) || origin !== requestOrigin(request)) return reply({ error: "invalid-origin" }, 403);
   const ownerId = await verifiedUserId(request);
   if (!ownerId) return reply({ error: "not-signed-in" }, 401);
   if (!panasonicConfigured()) return reply({ configured: false, connected: false });

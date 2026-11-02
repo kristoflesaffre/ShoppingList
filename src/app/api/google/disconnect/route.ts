@@ -5,11 +5,12 @@ import {
   googleOAuthConfig,
   readGoogleAccounts,
 } from "@/lib/google-dashboard-auth";
+import { requestOrigin } from "@/lib/server/request-origin";
 import { loadGoogleConnection, saveGoogleConnection, verifiedUserId } from "@/lib/server/google-connection-store";
 
 /** Ontkoppelt alle accounts van de ingelogde gebruiker, of met `?email=` alleen dat ene account. */
 export async function POST(request: NextRequest) {
-  const config = googleOAuthConfig(request.nextUrl.origin);
+  const config = googleOAuthConfig(requestOrigin(request));
   const ownerId = await verifiedUserId(request);
   if (!ownerId) return NextResponse.json({ error: "not-signed-in" }, { status: 401 });
 

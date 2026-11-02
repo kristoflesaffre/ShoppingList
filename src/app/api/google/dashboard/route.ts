@@ -8,6 +8,7 @@ import {
   refreshGoogleAccount,
   type GoogleAccount,
 } from "@/lib/google-dashboard-auth";
+import { requestOrigin } from "@/lib/server/request-origin";
 import { loadGoogleConnection, saveGoogleConnection, verifiedUserId } from "@/lib/server/google-connection-store";
 
 export const runtime = "nodejs";
@@ -35,7 +36,7 @@ function localDayBounds(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const config = googleOAuthConfig(request.nextUrl.origin);
+  const config = googleOAuthConfig(requestOrigin(request));
   if (!config.configured) {
     return NextResponse.json({ configured: false, connected: false, events: [] });
   }

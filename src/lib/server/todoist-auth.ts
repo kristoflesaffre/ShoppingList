@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { requestOrigin } from "./request-origin";
 import { verifiedUserId } from "@/lib/server/google-connection-store";
 
 export const TODOIST_STATE_COOKIE = "shopping_todoist_state";
@@ -105,7 +106,8 @@ export function setTodoistConnection(response: NextResponse, connection: Todoist
 export async function todoistGuard(request: NextRequest) {
   const config = todoistConfig();
   // POST requests from the frontend must come from this exact configured deployment.
-  if (request.headers.get("origin") !== request.nextUrl.origin || (config.configured && request.nextUrl.origin !== config.origin)) return { config, error: todoistJson({ error: "invalid-origin" }, 403), ownerId: null };
+  const origin = requestOrigin(request);
+  if (request.headers.get("origin") !== origin || (config.configured && origin !== config.origin)) return { config, error: todoistJson({ error: "invalid-origin" }, 403), ownerId: null };
   const ownerId = await verifiedUserId(request);
   if (!ownerId) return { config, error: todoistJson({ error: "not-signed-in" }, 401), ownerId: null };
   return { config, error: null, ownerId };

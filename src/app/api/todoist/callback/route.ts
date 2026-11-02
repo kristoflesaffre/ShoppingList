@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requestOrigin } from "@/lib/server/request-origin";
 import { TODOIST_SCOPE, TODOIST_STATE_COOKIE, clearTodoistReconnect, readTodoistState, safeTodoistReturn, setTodoistConnection, todoistConfig, todoistCookieOptions, todoistJson, todoistTokens } from "@/lib/server/todoist-auth";
 export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   const config = todoistConfig();
   if (!config.configured) return todoistJson({ error: "not-configured" }, 503);
-  if (request.nextUrl.origin !== config.origin) return todoistJson({ error: "invalid-origin" }, 403);
+  if (requestOrigin(request) !== config.origin) return todoistJson({ error: "invalid-origin" }, 403);
   const expected = readTodoistState(request.cookies.get(TODOIST_STATE_COOKIE)?.value, config.secret);
   // Terug naar waar je op «Koppel» tikte (bv. /todo), anders het profiel; het resultaat staat in ?todoist=.
   const back = safeTodoistReturn(expected?.returnTo) ?? "/profiel";
