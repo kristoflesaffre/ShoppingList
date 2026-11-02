@@ -1,4 +1,4 @@
-import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
+import { categorySubgroupKey, resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
 
 /**
  * Voorraadkast (bloem, olie, koekjes, chips…): rijen in `freezerItems` met dit `type`. Zo gelden dezelfde
@@ -10,22 +10,28 @@ export function isPantryItem(row: { type?: unknown } | null | undefined): boolea
   return row?.type === PANTRY_ITEM_TYPE;
 }
 
-export type PantryGroup = "bakken" | "olie" | "snacks" | "overig";
+export type PantryGroup = "bakken" | "olie" | "kruiden" | "snacks" | "overig";
 
 /** Volgorde op de pagina. */
 export const PANTRY_GROUPS: { key: PantryGroup; label: string }[] = [
   { key: "bakken", label: "Bakken en droogwaren" },
   { key: "olie", label: "Olie en sauzen" },
+  { key: "kruiden", label: "Kruiden" },
   { key: "snacks", label: "Snacks" },
   { key: "overig", label: "Overig" },
 ];
 
+/** Kruiden en specerijen, ook als de catalogus de naam elders plaatst (oregano, paprikapoeder bij de groenten). In de kast zijn ze gedroogd. */
+const PANTRY_HERBS =
+  /kruiden(?!boter|kaas)|specerij|(paprika|curry|knoflook|uien?|chili)poeder|kerrie|oregano|tijm|rozemarijn|basilicum|peterselie|dille|koriander|komijn|kurkuma|kaneel|nootmuskaat|kruidnagel|laurier|saffraan|\bpeper\b|\bzout\b/i;
+
 /** Soort volgt uit de productnaam, zodat je niets hoeft te kiezen bij het toevoegen. */
 export function pantryGroupOf(name: string): PantryGroup {
   if (/(olie|azijn)/i.test(name)) return "olie";
+  if (PANTRY_HERBS.test(name)) return "kruiden";
   const category = resolveItemCategoryFromName(name);
   if (category === "Droogwaren & Bakproducten") return "bakken";
-  if (category === "Conserven, Sauzen, Olie & Kruiden") return "olie";
+  if (category === "Conserven, Sauzen, Olie & Kruiden") return categorySubgroupKey(category, name) === "Kruiden & specerijen" ? "kruiden" : "olie";
   if (category === "Zoute Snacks" || category === "Snoep & Chocolade") return "snacks";
   return "overig";
 }

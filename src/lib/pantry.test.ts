@@ -19,12 +19,31 @@ describe("pantryGroupOf", () => {
     ["Zonnebloemolie", "olie"],
     ["Azijn", "olie"],
     ["Mosterd", "olie"],
+    ["Arachideolie", "olie"],
+    ["Samoerai", "olie"],
+    ["Satekruiden", "kruiden"],
+    ["Zout", "kruiden"],
+    ["Peper", "kruiden"],
+    ["Paprikapoeder", "kruiden"],
+    ["Kaneel", "kruiden"],
+    ["Oregano", "kruiden"],
+    ["Nootmuskaat", "kruiden"],
+    ["Currypoeder", "kruiden"],
+    ["Knoflookpoeder", "kruiden"],
+    ["Kipkruiden", "kruiden"],
+    ["Tijm", "kruiden"],
+    ["Kruidenolie", "olie"],
+    ["Bakpoeder", "bakken"],
+    ["Waspoeder", "overig"],
     ["Chips", "snacks"],
     ["Koekjes", "snacks"],
     ["Nootjes", "snacks"],
     ["Wc-papier", "overig"],
   ])("%s → %s", (name, group) => {
     expect(pantryGroupOf(name)).toBe(group);
+  });
+  it.each(["Peperkoek", "Zoute pinda's", "Kruidenboter", "Kruidnoten"])("%s hoort niet bij de kruiden", (name) => {
+    expect(pantryGroupOf(name)).not.toBe("kruiden");
   });
 });
 
