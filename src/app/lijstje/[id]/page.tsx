@@ -5801,6 +5801,9 @@ export default function ListDetailPage({
     />
   );
 
+  /** Desktop: zonder «Winkel per product» staat de klantenkaartenpil rechts naast de titel i.p.v. op een eigen rij. */
+  const loyaltyNextToTitle = showLoyaltyLinkRows && showListDetailHeader && !isEditMode && !isMasterCategoryOrderMode && ingredientStoreOpenCount === 0;
+
   const hideFabOnLoyaltyPanel = showLoyaltySwipe && loyaltyPanel === "loyalty";
 
   if (authLoading || !user || isLoading) {
@@ -6036,6 +6039,7 @@ export default function ListDetailPage({
                   </div>
                 ) : null}
               </div>
+              {loyaltyNextToTitle ? <div className="hidden w-[340px] shrink-0 lg:block">{loyaltyLine}</div> : null}
               {isEditMode ? (
                 // «Gereed» zit in de zwevende balk onderaan (ook op de computer), zodat hij bij het scrollen blijft.
                 null
@@ -6140,7 +6144,7 @@ export default function ListDetailPage({
           ) : null}
 
           {isMasterList && isLidlDelhaizeList && !isEditMode && !isMasterCategoryOrderMode && (ingredientStoreOpenCount > 0 || showLoyaltyLinkRows) ? (
-            <div className="flex w-full min-w-0 flex-col gap-3">
+            <div className={cn("flex w-full min-w-0 flex-col gap-3", loyaltyNextToTitle && "lg:hidden")}>
               {/* Canvas «Favorieten · pillen C»: winkel per product en klantenkaarten als getinte pillen;
                   mobiel onder elkaar, vanaf tablet naast elkaar. */}
               <div className={cn("grid w-full grid-cols-1 items-start gap-2 md:gap-3", ingredientStoreOpenCount > 0 && showLoyaltyLinkRows && "md:grid-cols-2")}>
@@ -6167,7 +6171,9 @@ export default function ListDetailPage({
             </div>
           ) : null}
 
-          {!isMasterCategoryOrderMode && showLoyaltyLinkRows && !(isLidlDelhaizeList && !isEditMode) ? loyaltyLine : null}
+          {!isMasterCategoryOrderMode && showLoyaltyLinkRows && !(isLidlDelhaizeList && !isEditMode) ? (
+            <div className={cn("w-full min-w-0", loyaltyNextToTitle && "lg:hidden")}>{loyaltyLine}</div>
+          ) : null}
 
           {listSuggestions && !embedSuggestionsInDayCards ? listSuggestions : null}
 
