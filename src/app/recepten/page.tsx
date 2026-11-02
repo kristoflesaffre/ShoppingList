@@ -417,12 +417,16 @@ export default function ReceptenPage() {
       const newIndex = savedRecipes.findIndex((r) => r.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return;
       const reordered = arrayMove(savedRecipes, oldIndex, newIndex);
-      const txns = reordered.map((r, i) =>
-        db.tx.recipes[r.id].update({ order: i }),
+      // Alleen recepten die echt van plaats veranderen: één kleine transactie i.p.v. alle recepten.
+      const stored = new Map((recipeData?.recipes ?? []).map((r) => [r.id, r.order]));
+      const txns = reordered.flatMap((r, i) =>
+        stored.get(r.id) === i ? [] : [db.tx.recipes[r.id].update({ order: i })],
       );
-      void db.transact(txns);
+      if (txns.length === 0) return;
+      // Mislukt het (bv. een time-out), dan zet Instant de volgorde zelf terug; geen onafgehandelde fout.
+      db.transact(txns).catch((err) => console.warn("Recepten herschikken mislukt", err));
     },
-    [savedRecipes],
+    [savedRecipes, recipeData],
   );
 
   const buildRecipeUndoSnapshot = React.useCallback(
@@ -456,14 +460,14 @@ export default function ReceptenPage() {
       const snapshot = buildRecipeUndoSnapshot(recipeId);
       if (!snapshot) return;
 
-      void db.transact(
+      db.transact(
         [
           ...snapshot.ingredients.map((ing) =>
             db.tx.recipeIngredients[ing.id].delete(),
           ),
           db.tx.recipes[recipeId].delete(),
         ] as Parameters<typeof db.transact>[0],
-      );
+      ).catch((err) => console.warn("Recept verwijderen mislukt", err));
 
       if (recipeEditorTarget?.id === recipeId) {
         closeRecipeEditor();
@@ -497,7 +501,7 @@ export default function ReceptenPage() {
           .link({ recipe: s.id }),
       ),
     ];
-    void db.transact(txns as Parameters<typeof db.transact>[0]);
+    db.transact(txns as Parameters<typeof db.transact>[0]).catch((err) => console.warn("Recept terugzetten mislukt", err));
     setLastDeletedRecipe(null);
     setSnackbarMessage(null);
   }, [lastDeletedRecipe]);
