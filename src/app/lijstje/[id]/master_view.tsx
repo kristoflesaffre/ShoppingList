@@ -9,6 +9,7 @@ import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { cn } from "@/lib/utils";
 import { CategoryCard, CategorySubheading } from "@/components/ui/category_card";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
+import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { StoreBadge, useStoreLongPress, useStoreMark } from "./store_mark";
 
 type Section = { title: string; displayTitle?: string; items: ListItem[] };
@@ -46,6 +47,19 @@ function Logo({ src, faded, overlap }: { src: string; faded?: boolean; overlap?:
   );
 }
 
+/** Gsm (onder md): zelfde grens als waar SlideInModal van blad naar venster gaat. */
+function useIsPhone(): boolean {
+  const [isPhone, setIsPhone] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsPhone(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isPhone;
+}
+
 /**
  * Canvas «Favorieten beheren 1 · klantenkaart-staten»: één regel onder de titel voor 2, 1 of geen
  * gekoppelde kaart (combi Lidl / Delhaize) en voor een favorietenlijst van één winkel.
@@ -75,9 +89,10 @@ export function MasterLoyaltyLine({
 }) {
   const [open, setOpen] = React.useState(false);
   const popRef = React.useRef<HTMLDivElement>(null);
-  // Zwevend paneel: sluit bij klikken ernaast of Escape.
+  const isPhone = useIsPhone();
+  // Zwevend paneel (tablet en groter): sluit bij klikken ernaast of Escape. Op de gsm doet het blad dat zelf.
   React.useEffect(() => {
-    if (!open) return;
+    if (!open || isPhone) return;
     const onDown = (e: PointerEvent) => {
       if (!popRef.current?.contains(e.target as Node)) setOpen(false);
     };
@@ -90,7 +105,7 @@ export function MasterLoyaltyLine({
       document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, isPhone]);
   const shell = "flex w-full items-center gap-2.5 rounded-[16px] px-3 py-2.5";
   const white = "bg-[var(--white)] shadow-card";
 
@@ -167,8 +182,13 @@ export function MasterLoyaltyLine({
     );
   }
 
-  /* Canvas «Favorieten · pillen C»: getinte pil «2 klantenkaarten» met «Tonen»; de kaarten klappen
-     open als zwevend paneel over de inhoud eronder (niets verschuift). */
+  const cards = [
+    ["delhaize", primaryLogo, "Delhaize-kaart"],
+    ["lidl", secondaryLogo, "Lidl-kaart"],
+  ] as const;
+
+  /* Canvas «Favorieten · pillen C»: getinte pil «2 klantenkaarten» met «Tonen». Op de gsm opent een blad
+     van onderaan; vanaf tablet klappen de kaarten open als zwevend paneel over de inhoud eronder. */
   return (
     <div ref={popRef} className="relative w-full">
       <div className="flex h-[60px] w-full items-center gap-3 rounded-[20px] pl-3.5 pr-2.5 [background:var(--gradient-store-default)] md:h-16 md:pl-4 md:pr-3">
@@ -186,18 +206,39 @@ export function MasterLoyaltyLine({
           aria-expanded={open}
           className="inline-flex h-9 shrink-0 items-center gap-1 rounded-pill bg-[var(--white)] pl-3.5 pr-2.5 text-[13.5px] font-bold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
-          {open ? "Klaar" : "Tonen"}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn("size-4 transition-transform", open && "rotate-90")}>
+          {open && !isPhone ? "Klaar" : "Tonen"}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn("size-4 transition-transform", open && !isPhone && "rotate-90")}>
             <path d="M9 6l6 6-6 6" />
           </svg>
         </button>
       </div>
-      {open ? (
+      {isPhone ? (
+        <SlideInModal open={open} onClose={() => setOpen(false)} title="Klantenkaarten" titleId="master-loyalty-sheet-title">
+          <div className="flex flex-col">
+            {cards.map(([slot, logo, label], i) => (
+              <button
+                key={slot}
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onView(slot);
+                }}
+                className={cn(
+                  "flex min-h-14 w-full items-center gap-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
+                  i > 0 && "border-t border-[var(--border-subtle)]",
+                )}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- winkellogo */}
+                <img src={logo} alt="" width={32} height={32} className="size-8 shrink-0 object-contain" />
+                <span className="min-w-0 flex-1 text-[15px] font-medium text-text-primary">{label}</span>
+                <span className="shrink-0 text-[13px] font-semibold text-[var(--blue-500)]">Bekijken</span>
+              </button>
+            ))}
+          </div>
+        </SlideInModal>
+      ) : open ? (
         <div className="absolute inset-x-0 top-full z-30 mt-2 rounded-[16px] bg-[var(--white)] px-3 py-1 shadow-[0_14px_34px_-10px_rgba(16,17,48,0.32),0_0_0_1px_var(--border-subtle)] motion-safe:animate-fade-up">
-          {([
-            ["delhaize", primaryLogo, "Delhaize-kaart"],
-            ["lidl", secondaryLogo, "Lidl-kaart"],
-          ] as const).map(([slot, logo, label]) => (
+          {cards.map(([slot, logo, label]) => (
             <div key={slot} className="flex items-center gap-2.5 py-2">
               {/* eslint-disable-next-line @next/next/no-img-element -- winkellogo */}
               <img src={logo} alt="" width={20} height={20} className="size-5 shrink-0 object-contain" />
