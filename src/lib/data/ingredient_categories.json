@@ -307,6 +307,7 @@
     "tomaten": "Groenten & Fruit",
     "tomatenpuree": "Conserven, Sauzen, Olie & Kruiden",
     "tonic": "Koude Dranken",
+    "ufo snoepjes": "Snoep & Chocolade",
     "vaatwastabletten": "Huishouden & Schoonmaak",
     "vanillearoma": "Droogwaren & Bakproducten",
     "vanillestokjes": "Droogwaren & Bakproducten",
@@ -1111,6 +1112,9 @@
     "zure snoepjes": "zuur fruit snoep",
     "zuurtjes": "zuur fruit snoep",
     "zuur fruit": "zuur fruit snoep",
+    "ufo's": "ufo snoepjes",
+    "ufo snoepje": "ufo snoepjes",
+    "ufo snoep": "ufo snoepjes",
     "chipszakje": "chips",
     "snack": "chips"
   }
