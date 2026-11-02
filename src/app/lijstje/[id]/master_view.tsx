@@ -4,7 +4,7 @@ import * as React from "react";
 import type { ListItem } from "./new_item_modal";
 import { categoryColor } from "./list_cards_view";
 import type { ItemPhotoLookupOptions } from "@/lib/item-photos";
-import { categoryHeadingDisplay, categorySubgroups, groupMeatSubtypes } from "@/lib/item-ingredient-category";
+import { categoryHeadingDisplay, categorySubgroups } from "@/lib/item-ingredient-category";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
 import { cn } from "@/lib/utils";
 import { CategoryCard, CategorySubheading } from "@/components/ui/category_card";
@@ -255,7 +255,8 @@ export function MasterCategoryCards({
             }
           >
             <div className="px-2.5 pb-1 pt-0.5">
-              {categorySubgroups(s.title, groupMeatSubtypes(s.title, s.items, (i) => i.name), (i) => i.name).map((g) => (
+              {/* Zelfde volgorde als in de bewerkstand: wat je sleept, blijft staan na «Gereed». */}
+              {categorySubgroups(s.title, s.items, (i) => i.name).map((g) => (
                 <React.Fragment key={g.label ?? "all"}>
                   {g.label ? <CategorySubheading className="px-1 pb-0.5 pt-2.5">{g.label}</CategorySubheading> : null}
                   <ul>

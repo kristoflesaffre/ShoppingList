@@ -5,7 +5,7 @@ import type { ListItem } from "./new_item_modal";
 import type { SavedRecipe } from "@/lib/recipe_library";
 import type { ItemPhotoLookupOptions } from "@/lib/item-photos";
 import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate } from "@/lib/calendar-utils";
-import { categoryHeadingDisplay, categorySubgroups, groupMeatSubtypes, stockSourceLabel } from "@/lib/item-ingredient-category";
+import { categoryHeadingDisplay, categorySubgroups, stockSourceLabel } from "@/lib/item-ingredient-category";
 import { CategorySubheading } from "@/components/ui/category_card";
 import { StockSourceIcon } from "@/components/ui/freeze_mask_icon";
 import { mixWithWhite, pickDistinctTint, useTintMap, type Rgb } from "@/lib/recipe-tint";
@@ -1352,7 +1352,8 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
           </>
         }
       >
-        {categorySubgroups(s.title, groupMeatSubtypes(s.title, s.items, (i) => i.name), (i) => i.name).map((g) => (
+        {/* Zelfde volgorde als in de bewerkstand: wat je sleept, blijft staan na «Gereed». */}
+        {categorySubgroups(s.title, s.items, (i) => i.name).map((g) => (
           <React.Fragment key={g.label ?? "all"}>
             {g.label ? <CategorySubheading className="px-3.5 pt-2.5">{g.label}</CategorySubheading> : null}
             <ItemsLayout items={sortItems(g.items, uncheckedFirst)} layout={layout} getPhotoUrl={getPhotoUrl} onCheckedChange={onCheckedChange} wide={wide} />
