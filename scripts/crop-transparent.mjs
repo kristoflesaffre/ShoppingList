@@ -3,17 +3,17 @@
  * opnieuw vierkant (transparant aangevuld, beeld gecentreerd). Schrijft altijd PNG. Een foto zonder transparantie
  * (bv. witte achtergrond) wordt bijgesneden op de kleur van de hoek.
  *
- * Het origineel gaat naar de prullenmand, het resultaat komt op dezelfde plek als `<naam>.png`.
+ * Het origineel blijft staan; het resultaat komt in dezelfde map als `<naam>-bijgesneden.png`.
  *
  * Usage: node scripts/crop-transparent.mjs <bestand of map> […]
  * Of sleep bestanden op «Foto bijsnijden.app» (zie scripts/make-crop-droplet.sh).
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 
 const ALPHA_MIN = 10; // bijna-onzichtbare ruis van AI-uitsnijders telt niet mee
+const SUFFIX = "-bijgesneden";
 const EXTENSIONS = new Set([".png", ".webp", ".jpg", ".jpeg", ".avif", ".tif", ".tiff"]);
 
 async function contentBox(file) {
@@ -34,7 +34,7 @@ async function contentBox(file) {
 }
 
 async function cropOne(file) {
-  const input = fs.readFileSync(file); // in het geheugen, zodat we het origineel daarna veilig kunnen verplaatsen
+  const input = fs.readFileSync(file);
   const box = await contentBox(input);
   if (!box) return console.log(`⚠︎ ${path.basename(file)}: volledig transparant, overgeslagen`);
 
@@ -53,9 +53,7 @@ async function cropOne(file) {
     .png({ compressionLevel: 9 })
     .toBuffer();
 
-  const target = path.join(path.dirname(file), `${path.parse(file).name}.png`);
-  const trash = path.join(os.homedir(), ".Trash", `${path.parse(file).name}-origineel-${Date.now()}${path.extname(file)}`);
-  fs.renameSync(file, trash);
+  const target = path.join(path.dirname(file), `${path.parse(file).name}${SUFFIX}.png`);
   fs.writeFileSync(target, square);
   const before = await sharp(input).metadata();
   console.log(`✓ ${path.basename(target)}: ${before.width}×${before.height} → ${side}×${side}`);
@@ -63,7 +61,7 @@ async function cropOne(file) {
 
 const inputs = process.argv.slice(2).flatMap(arg =>
   fs.statSync(arg).isDirectory() ? fs.readdirSync(arg).map(name => path.join(arg, name)) : [arg],
-).filter(file => EXTENSIONS.has(path.extname(file).toLowerCase()));
+).filter(file => EXTENSIONS.has(path.extname(file).toLowerCase()) && !path.parse(file).name.endsWith(SUFFIX)); // een map opnieuw slepen snijdt de resultaten niet nog eens bij
 
 if (!inputs.length) {
   console.error("Usage: node scripts/crop-transparent.mjs <bestand of map> […]");
