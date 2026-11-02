@@ -5173,8 +5173,9 @@ export default function ListDetailPage({
     },
     [isMasterList, ingredientStoreMap, items, listId],
   );
-  const ingredientStoreChosen = React.useMemo(
-    () => ingredientStoreEntries.filter((e) => storeForIngredient(e.name)).length,
+  /** Producten zonder winkel; is er geen meer, dan verdwijnt de banner (per item kan het altijd nog). */
+  const ingredientStoreOpenCount = React.useMemo(
+    () => ingredientStoreEntries.filter((e) => !storeForIngredient(e.name)).length,
     [ingredientStoreEntries, storeForIngredient],
   );
 
@@ -6138,27 +6139,29 @@ export default function ListDetailPage({
             </div>
           ) : null}
 
-          {isMasterList && isLidlDelhaizeList && !isEditMode && !isMasterCategoryOrderMode ? (
+          {isMasterList && isLidlDelhaizeList && !isEditMode && !isMasterCategoryOrderMode && (ingredientStoreOpenCount > 0 || showLoyaltyLinkRows) ? (
             <div className="flex w-full min-w-0 flex-col gap-3">
               {/* Canvas «Favorieten · pillen C»: winkel per product en klantenkaarten als getinte pillen;
                   mobiel onder elkaar, vanaf tablet naast elkaar. */}
-              <div className="grid w-full grid-cols-1 items-start gap-2 md:grid-cols-2 md:gap-3">
-                <div className="flex h-[60px] w-full items-center gap-3 rounded-[20px] pl-3.5 pr-2.5 [background:var(--gradient-store-lidl-delhaize)] md:h-16 md:pl-4 md:pr-3">
-                  <span className="flex w-10 shrink-0 justify-center">
-                    <StoreLogos store="both" size={26} />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">Winkel per product</span>
-                  <button
-                    type="button"
-                    onClick={() => setIngredientStoreOpen(true)}
-                    className="inline-flex h-9 shrink-0 items-center gap-1 rounded-pill bg-[var(--white)] pl-3.5 pr-2.5 text-[13.5px] font-bold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                  >
-                    {ingredientStoreEntries.length - ingredientStoreChosen > 0 ? `${ingredientStoreEntries.length - ingredientStoreChosen} open` : "Bekijk"}
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
-                      <path d="M9 6l6 6-6 6" />
-                    </svg>
-                  </button>
-                </div>
+              <div className={cn("grid w-full grid-cols-1 items-start gap-2 md:gap-3", ingredientStoreOpenCount > 0 && showLoyaltyLinkRows && "md:grid-cols-2")}>
+                {ingredientStoreOpenCount > 0 ? (
+                  <div className="flex h-[60px] w-full items-center gap-3 rounded-[20px] pl-3.5 pr-2.5 [background:var(--gradient-store-lidl-delhaize)] md:h-16 md:pl-4 md:pr-3">
+                    <span className="flex w-10 shrink-0 justify-center">
+                      <StoreLogos store="both" size={26} />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">Winkel per product</span>
+                    <button
+                      type="button"
+                      onClick={() => setIngredientStoreOpen(true)}
+                      className="inline-flex h-9 shrink-0 items-center gap-1 rounded-pill bg-[var(--white)] pl-3.5 pr-2.5 text-[13.5px] font-bold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                    >
+                      {ingredientStoreOpenCount} open
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                        <path d="M9 6l6 6-6 6" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : null}
                 {showLoyaltyLinkRows ? loyaltyLine : null}
               </div>
             </div>
