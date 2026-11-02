@@ -60,6 +60,28 @@ function useIsPhone(): boolean {
   return isPhone;
 }
 
+const MINI_TILE_BARS = [2, 1, 1, 2, 1, 3, 1, 1, 2, 1, 2, 1, 1, 3, 1, 2];
+
+/** Klein kaartje in de winkelkleur (vaste merkkleur, ook in donker thema): logo op een wit rondje, barcode onderaan. */
+function LoyaltyMiniTile({ logo, color, className }: { logo: string; color: string; className: string }) {
+  return (
+    <span
+      className={cn("absolute h-[21px] w-[31px] overflow-hidden rounded-[4.5px] shadow-[0_2px_4px_rgba(16,17,48,0.28),inset_0_0_0_0.5px_rgba(255,255,255,0.3)]", className)}
+      style={{ backgroundColor: color }}
+    >
+      <span className="absolute left-[3px] top-[3px] flex size-[9px] items-center justify-center rounded-full bg-fixed-white">
+        {/* eslint-disable-next-line @next/next/no-img-element -- winkellogo uit /public/logos */}
+        <img src={logo} alt="" width={8} height={8} className="size-2 object-contain" />
+      </span>
+      <span className="absolute inset-x-[3px] bottom-[2.5px] flex h-1 justify-between">
+        {MINI_TILE_BARS.map((w, i) => (
+          <span key={i} className="h-full" style={{ width: w * 0.8, background: i % 2 === 0 ? "rgba(255,255,255,0.9)" : "transparent" }} />
+        ))}
+      </span>
+    </span>
+  );
+}
+
 /**
  * Canvas «Favorieten beheren 1 · klantenkaart-staten»: één regel onder de titel voor 2, 1 of geen
  * gekoppelde kaart (combi Lidl / Delhaize) en voor een favorietenlijst van één winkel.
@@ -192,14 +214,15 @@ export function MasterLoyaltyLine({
   return (
     <div ref={popRef} className="relative w-full">
       <div className="flex h-[60px] w-full items-center gap-3 rounded-[20px] pl-3.5 pr-2.5 [background:var(--gradient-store-default)] md:h-16 md:pl-4 md:pr-3">
-        {/* Zelfde breedte als het logo in «Winkel per product», zodat de tekst van beide pillen op één lijn start. Vast wit met zwart, ook in donker thema. */}
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-fixed-white shadow-[0_1px_2px_rgba(16,17,48,0.08)]">
-          <span
-            aria-hidden
-            className="size-6 bg-[#16181a] [mask:url('/icons/barcode_large.svg')_center/contain_no-repeat] [-webkit-mask:url('/icons/barcode_large.svg')_center/contain_no-repeat]"
-          />
+        {/* Zelfde breedte als het logo in «Winkel per product», zodat de tekst van beide pillen op één lijn start. */}
+        <span className="relative size-10 shrink-0" aria-hidden>
+          <LoyaltyMiniTile logo={primaryLogo} color="#a4242c" className="left-0 top-[5px] -rotate-[11deg]" />
+          <LoyaltyMiniTile logo={secondaryLogo} color="#0050aa" className="left-[9px] top-[15px] rotate-[7deg]" />
         </span>
-        <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">2 klantenkaarten</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-bold leading-[19px] text-text-primary">2 klantenkaarten</span>
+          <span className="block truncate text-xs font-medium leading-[15px] text-[var(--text-secondary)]">Delhaize · Lidl</span>
+        </span>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
