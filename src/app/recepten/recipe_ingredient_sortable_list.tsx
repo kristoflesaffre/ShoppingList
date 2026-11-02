@@ -29,6 +29,33 @@ import { DragGlyph, TrashGlyph, deleteTone, editIconBtn } from "@/app/recepten/r
 
 type ListVariant = "cards" | "rows" | "edit";
 
+
+/**
+ * Ingrediëntfoto met beginletter als terugval. Mislukt het laden (bv. een verbinding die even wegvalt),
+ * dan nog één keer proberen; lukt dat ook niet, dan de beginletter in plaats van een kapot icoontje.
+ */
+function IngredientThumb({ name, photoUrl, className, imageClassName, size }: {
+  name: string;
+  photoUrl: string | null;
+  className: string;
+  imageClassName: string;
+  size: number;
+}) {
+  const [attempt, setAttempt] = React.useState(0);
+  React.useEffect(() => setAttempt(0), [photoUrl]);
+  const src = photoUrl && attempt < 2 ? (attempt === 0 ? photoUrl : `${photoUrl}${photoUrl.includes("?") ? "&" : "?"}retry=1`) : null;
+  return (
+    <span aria-hidden className={cn("flex shrink-0 items-center justify-center", className, !src && "bg-[var(--gray-25)]")}>
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediëntfoto
+        <img src={src} alt="" width={size} height={size} className={cn("object-contain", imageClassName)} decoding="async" onError={() => setAttempt((n) => n + 1)} />
+      ) : (
+        <span className="text-sm font-bold text-[var(--blue-500)]">{name.trim().charAt(0).toUpperCase()}</span>
+      )}
+    </span>
+  );
+}
+
 function SortableIngredientCard({
   ingredient,
   onDelete,
@@ -121,14 +148,7 @@ function SortableIngredientRow({
         aria-label={`${ingredient.name}, ${ingredient.quantity} — wijzigen`}
         className="flex min-w-0 flex-1 items-center gap-3 py-2 pl-1 pr-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
       >
-        <span aria-hidden className={cn("flex size-10 shrink-0 items-center justify-center rounded-[12px]", !photoUrl && "bg-[var(--gray-25)]")}>
-          {photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediëntfoto
-            <img src={photoUrl} alt="" width={32} height={32} className="size-8 object-contain" decoding="async" />
-          ) : (
-            <span className="text-sm font-bold text-[var(--blue-500)]">{ingredient.name.trim().charAt(0).toUpperCase()}</span>
-          )}
-        </span>
+        <IngredientThumb name={ingredient.name} photoUrl={photoUrl} className="size-10 rounded-[12px]" imageClassName="size-8" size={32} />
         <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-[var(--text-primary)]">{ingredient.name}</span>
         <span className="shrink-0 text-sm tabular-nums text-[var(--text-secondary)]">{ingredient.quantity}</span>
       </button>
@@ -173,14 +193,7 @@ function SortableIngredientEditRow({
       >
         <DragGlyph />
       </button>
-      <span aria-hidden className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", !photoUrl && "bg-[var(--gray-25)]")}>
-        {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- lokale ingrediëntfoto
-          <img src={photoUrl} alt="" width={38} height={38} className="size-[38px] object-contain" decoding="async" />
-        ) : (
-          <span className="text-sm font-bold text-[var(--blue-500)]">{ingredient.name.trim().charAt(0).toUpperCase()}</span>
-        )}
-      </span>
+      <IngredientThumb name={ingredient.name} photoUrl={photoUrl} className="size-11 rounded-xl" imageClassName="size-[38px]" size={38} />
       <span className="min-w-0 flex-1 pl-1">
         <span className="block truncate text-[15px] font-semibold leading-5 text-[var(--text-primary)]">{ingredient.name}</span>
         <span className="block truncate text-[13px] leading-[18px] text-[var(--text-secondary)]">{ingredient.quantity}</span>
