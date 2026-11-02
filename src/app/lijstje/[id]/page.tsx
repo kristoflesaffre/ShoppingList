@@ -6144,7 +6144,9 @@ export default function ListDetailPage({
                   mobiel onder elkaar, vanaf tablet naast elkaar. */}
               <div className="grid w-full grid-cols-1 items-start gap-2 md:grid-cols-2 md:gap-3">
                 <div className="flex h-[60px] w-full items-center gap-3 rounded-[20px] pl-3.5 pr-2.5 [background:var(--gradient-store-lidl-delhaize)] md:h-16 md:pl-4 md:pr-3">
-                  <StoreLogos store="both" size={26} />
+                  <span className="flex w-10 shrink-0 justify-center">
+                    <StoreLogos store="both" size={26} />
+                  </span>
                   <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">Winkel per product</span>
                   <button
                     type="button"

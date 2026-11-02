@@ -172,9 +172,12 @@ export function MasterLoyaltyLine({
   return (
     <div ref={popRef} className="relative w-full">
       <div className="flex h-[60px] w-full items-center gap-3 rounded-[20px] pl-3.5 pr-2.5 [background:var(--gradient-store-default)] md:h-16 md:pl-4 md:pr-3">
-        <span className="flex shrink-0">
-          <Logo src={primaryLogo} />
-          <Logo src={secondaryLogo} overlap />
+        {/* Zelfde breedte als het logo in «Winkel per product», zodat de tekst van beide pillen op één lijn start. */}
+        <span className="flex w-10 shrink-0 justify-center">
+          <span
+            aria-hidden
+            className="size-7 bg-[var(--blue-500)] [mask:url('/icons/barcode_large.svg')_center/contain_no-repeat] [-webkit-mask:url('/icons/barcode_large.svg')_center/contain_no-repeat]"
+          />
         </span>
         <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">2 klantenkaarten</span>
         <button
