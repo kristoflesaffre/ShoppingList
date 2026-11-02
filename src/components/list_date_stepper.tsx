@@ -128,8 +128,13 @@ export function ListDateStepper({
         <ChevronIcon direction="right" />
       </button>
       {open ? (
-        <ListDatePickerModal
+        <DatePickerModal
+          title="Winkeldag kiezen"
           value={value}
+          quickPicks={[
+            { label: "Vandaag", iso: toIsoDate(today) },
+            { label: "Morgen", iso: toIsoDate(addDays(today, 1)) },
+          ]}
           onClose={() => setOpen(false)}
           onPick={(iso) => {
             onChange(iso);
@@ -141,19 +146,32 @@ export function ListDateStepper({
   );
 }
 
-function ListDatePickerModal({
+/**
+ * Datumkiezer (canvas «Datum A2 · modal»): gecentreerde kalender; een tik op een dag kiest die meteen.
+ * Onderaan snelkeuzes en, met `onClear`, «Datum wissen».
+ */
+export function DatePickerModal({
+  title,
   value,
+  quickPicks = [],
   onClose,
   onPick,
+  onClear,
 }: {
+  title: string;
+  /** ISO-datum "YYYY-MM-DD"; leeg = nog niets gekozen (de kalender opent op deze maand). */
   value: string;
+  quickPicks?: { label: string; iso: string }[];
   onClose: () => void;
   onPick: (iso: string) => void;
+  onClear?: () => void;
 }) {
   const today = startOfToday();
   const todayIso = toIsoDate(today);
-  const selected = isoToDate(value);
-  const [view, setView] = React.useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
+  const [view, setView] = React.useState(() => {
+    const start = value ? isoToDate(value) : today;
+    return new Date(start.getFullYear(), start.getMonth(), 1);
+  });
   const titleId = React.useId();
   const dialogRef = React.useRef<HTMLDivElement>(null);
 
@@ -192,8 +210,8 @@ function ListDatePickerModal({
         className="relative flex w-full max-w-[360px] flex-col gap-3 rounded-[24px] bg-[var(--white)] px-4 pb-[18px] pt-4 shadow-[0_24px_60px_-16px_rgba(16,17,48,0.4)] motion-safe:animate-fade-up"
       >
         <div className="relative flex h-8 items-center justify-center">
-          <h2 id={titleId} className="text-base font-semibold leading-6 text-[var(--text-primary)]">
-            Winkeldag kiezen
+          <h2 id={titleId} className="truncate px-8 text-base font-semibold leading-6 text-[var(--text-primary)]">
+            {title}
           </h2>
           <button
             type="button"
@@ -255,14 +273,20 @@ function ListDatePickerModal({
           </div>
         </div>
 
-        <div className="flex justify-center gap-2 pt-1">
-          <button type="button" onClick={() => onPick(todayIso)} className={quickBtn}>
-            Vandaag
-          </button>
-          <button type="button" onClick={() => onPick(toIsoDate(addDays(today, 1)))} className={quickBtn}>
-            Morgen
-          </button>
-        </div>
+        {quickPicks.length > 0 || onClear ? (
+          <div className="flex flex-wrap justify-center gap-2 pt-1">
+            {quickPicks.map((q) => (
+              <button key={q.label} type="button" onClick={() => onPick(q.iso)} className={quickBtn}>
+                {q.label}
+              </button>
+            ))}
+            {onClear ? (
+              <button type="button" onClick={onClear} className={cn(quickBtn, "bg-[var(--gray-50)] text-[var(--text-secondary)] [@media(hover:hover)]:hover:bg-[var(--gray-100)]")}>
+                Datum wissen
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>,
     document.body,

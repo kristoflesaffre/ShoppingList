@@ -27,8 +27,8 @@ import { Button } from "@/components/ui/button";
 import { CountStepper } from "@/components/ui/count_stepper";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
-import { InputField } from "@/components/ui/input_field";
-import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { DatePickerModal } from "@/components/list_date_stepper";
+import { toIsoDate } from "@/lib/calendar-utils";
 import { isPantryExpired, pantryExpiryLabel } from "@/lib/pantry-expiry";
 import { PANTRY_GRADIENT_CLASS, PantryDecor } from "@/components/ui/pantry_background";
 import { SearchBar } from "@/components/ui/search_bar";
@@ -123,6 +123,12 @@ type PantryFilter = "alles" | "bijnaOp" | PantryGroup;
 const UNDO_VISIBLE_MS = 6000;
 const MAX_RESULTS = 8;
 
+/** Snelkeuze in de datumkiezer: houdbare producten vervallen meestal pas over maanden. */
+function isoInMonths(months: number): string {
+  const now = new Date();
+  return toIsoDate(new Date(now.getFullYear(), now.getMonth() + months, now.getDate()));
+}
+
 export default function VoorraadkastPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = db.useAuth();
@@ -133,9 +139,8 @@ export default function VoorraadkastPage() {
   const [addedIds, setAddedIds] = React.useState<ReadonlySet<string>>(() => new Set());
   const [filter, setFilter] = React.useState<PantryFilter>("alles");
   const [undo, setUndo] = React.useState<FreezerUndo | null>(null);
-  /** Blad «Vervaldatum»: het product en de datum zolang die nog niet bewaard is. */
+  /** Datumkiezer «Vervaldatum» open voor dit product. */
   const [expiryItem, setExpiryItem] = React.useState<PantryItem | null>(null);
-  const [expiryDraft, setExpiryDraft] = React.useState("");
   const { titleRef: largeTitleRef, collapsed: isLargeTitleCollapsed } = useLargeTitleCollapse<HTMLHeadingElement>(64);
 
   const typed = search.trim();
@@ -226,7 +231,6 @@ export default function VoorraadkastPage() {
 
   function openExpiry(item: PantryItem) {
     setExpiryItem(item);
-    setExpiryDraft(item.expiryDate ?? "");
   }
 
   function saveExpiry(value: string) {
@@ -339,9 +343,6 @@ export default function VoorraadkastPage() {
             <h1 ref={largeTitleRef} className="min-w-0 flex-1 truncate text-page-title font-bold leading-32 tracking-tight text-[var(--text-primary)]">
               Voorraadkast
             </h1>
-            <span className="shrink-0 whitespace-nowrap text-[15px] font-bold tabular-nums text-[var(--blue-500)]">
-              {allItems.length} {allItems.length === 1 ? "product" : "producten"}
-            </span>
             <div className="hidden shrink-0 lg:block">
               <Button size="sm" onClick={startAdding}>+ Toevoegen</Button>
             </div>
@@ -477,30 +478,19 @@ export default function VoorraadkastPage() {
         </div>
       ) : null}
 
-      <SlideInModal
-        open={expiryItem !== null}
-        onClose={() => setExpiryItem(null)}
-        title="Vervaldatum"
-        footer={
-          <>
-            {expiryItem?.expiryDate ? (
-              <Button variant="secondary" onClick={() => saveExpiry("")}>
-                Datum wissen
-              </Button>
-            ) : null}
-            <Button variant="primary" onClick={() => saveExpiry(expiryDraft)}>
-              Bewaren
-            </Button>
-          </>
-        }
-      >
-        <InputField
-          label={`${expiryItem?.name ?? ""} is houdbaar tot (optioneel)`}
-          type="date"
-          value={expiryDraft}
-          onChange={(e) => setExpiryDraft(e.target.value)}
+      {expiryItem ? (
+        <DatePickerModal
+          title={`${expiryItem.name} houdbaar tot`}
+          value={expiryItem.expiryDate ?? ""}
+          quickPicks={[
+            { label: "Over 6 maanden", iso: isoInMonths(6) },
+            { label: "Over 1 jaar", iso: isoInMonths(12) },
+          ]}
+          onClose={() => setExpiryItem(null)}
+          onPick={saveExpiry}
+          onClear={expiryItem.expiryDate ? () => saveExpiry("") : undefined}
         />
-      </SlideInModal>
+      ) : null}
     </div>
   );
 }
