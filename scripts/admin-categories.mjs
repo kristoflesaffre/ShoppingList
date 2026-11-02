@@ -83,6 +83,7 @@ const BOODSCHAPPEN_CATEGORY_EMOJI = {
   'Snoep & Chocolade': '🍫',
   'Warme Dranken': '☕',
   'Koude Dranken': '🥤',
+  'Alcoholische Dranken': '🍷',
   'Diepvries': '❄️',
   'Huishouden & Schoonmaak': '🧹',
   'Persoonlijke Verzorging': '🧴',

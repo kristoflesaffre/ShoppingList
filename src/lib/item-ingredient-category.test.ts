@@ -19,6 +19,13 @@ describe("resolveItemCategoryFromName", () => {
     },
   );
 
+  it.each(["Rode wijn", "Champagne", "Karmeliet", "Wodka", "Kleine flesje wijn rose", "Bier"])(
+    "deelt %s in bij alcoholische dranken",
+    (name) => {
+      expect(resolveItemCategoryFromName(name)).toBe("Alcoholische Dranken");
+    },
+  );
+
   it.each(["Kippenvinken", "Witte pensen"])(
     "deelt %s in bij vlees en charcuterie",
     (name) => {

@@ -97,6 +97,7 @@ const CATEGORY_COLORS: Array<[RegExp, Rgb]> = [
   [/brood|bakker/i, [197, 138, 75]],
   [/droog|bak|pasta|rijst/i, [185, 139, 62]],
   [/conserv|saus|olie|kruid/i, [139, 108, 240]],
+  [/alcohol/i, [176, 64, 112]],
   [/drank|water|frisdrank/i, [47, 143, 224]],
   [/snack|chips|snoep|koek/i, [224, 120, 47]],
   [/diepvries/i, [63, 181, 214]],

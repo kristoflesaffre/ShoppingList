@@ -26,6 +26,7 @@ const ZS = "Zoute Snacks";
 const SC = "Snoep & Chocolade";
 const WD = "Warme Dranken";
 const KD = "Koude Dranken";
+const AD = "Alcoholische Dranken";
 const DP = "Diepvries";
 const H = "Huishouden & Schoonmaak";
 const PV = "Persoonlijke Verzorging";
@@ -137,8 +138,8 @@ const DEFAULT_CATEGORY_HINTS: Record<string, string> = {
   sap: KD,
   fruitsap: KD,
   limonade: KD,
-  bier: KD,
-  wijn: KD,
+  bier: AD,
+  wijn: AD,
   "red bull pink edition": KD,
   "red bull white edition": KD,
   pizza: DP,
