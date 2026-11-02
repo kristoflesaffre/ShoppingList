@@ -119,6 +119,7 @@ import { QueryErrorScreen } from "@/components/query_error_screen";
 import { useListItemsBuckets } from "@/hooks/use_list_items_buckets";
 import type { InstaQLEntity } from "@instantdb/react";
 import type schema from "../../instant.schema";
+import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 
 type AppSchema = typeof schema;
 
@@ -560,7 +561,7 @@ function HomeCalendarCard({
               </p>
               {firstStockItem.quantity ? (
                 <p className="truncate text-xs leading-5 text-[var(--gray-400)]">
-                  {firstStockItem.quantity}
+                  {displayQuantity(firstStockItem.quantity)}
                 </p>
               ) : null}
             </div>
@@ -806,13 +807,6 @@ type HomeShoppingItem = {
   ownerId?: string | null;
 };
 
-/** «4 stuk» → «4 stuks»; «1 stuk» blijft enkelvoud. Andere eenheden blijven zoals ingegeven. */
-function pluralizeShoppingQuantity(quantity: string): string {
-  const match = /^(\d+(?:[.,]\d+)?)\s*stuks?$/i.exec(quantity.trim());
-  if (!match) return quantity;
-  return match[1] === "1" ? "1 stuk" : `${match[1]} stuks`;
-}
-
 type ShoppingAddedBy = { firstName: string; avatarUrl: string | null };
 
 /** Aantal producten in de Te kopen-afvinklijst op mobiel. */
@@ -872,7 +866,7 @@ function HomeTeKopenChecklist({
                 type="button"
                 role="checkbox"
                 aria-checked={done}
-                aria-label={`${item.name}, ${pluralizeShoppingQuantity(item.quantity)}${done ? ", gekocht" : ""}`}
+                aria-label={`${item.name}, ${displayQuantity(item.quantity)}${done ? ", gekocht" : ""}`}
                 onClick={() => toggle(item.id)}
                 className="flex w-full items-center gap-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
               >
@@ -896,7 +890,7 @@ function HomeTeKopenChecklist({
                   {item.name}
                 </span>
                 <span className={cn("shrink-0 text-[13px] tabular-nums", done ? "text-[var(--gray-300)] line-through" : "text-[var(--text-secondary)]")}>
-                  {pluralizeShoppingQuantity(item.quantity)}
+                  {displayQuantity(item.quantity)}
                 </span>
                 {photoSrc ? (
                   <span className="flex size-[30px] shrink-0 items-center justify-center" aria-hidden>
@@ -940,7 +934,7 @@ function HomeTeKopenTile({
 }) {
   const getPhotoUrl = useItemPhotoUrl(160);
   const photoSrc = getPhotoUrl(item.name);
-  const quantity = pluralizeShoppingQuantity(item.quantity);
+  const quantity = displayQuantity(item.quantity);
 
   return (
     <Link

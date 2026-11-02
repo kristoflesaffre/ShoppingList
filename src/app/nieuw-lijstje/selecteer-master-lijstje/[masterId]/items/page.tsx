@@ -33,6 +33,7 @@ import { DoneButton } from "@/components/ui/title_edit_button";
 import { ListSuggestions, type Suggestion } from "@/app/lijstje/[id]/list_suggestions";
 import { categoryColor } from "@/app/lijstje/[id]/list_cards_view";
 import { QueryErrorScreen } from "@/components/query_error_screen";
+import { displayQuantity as readableQuantity } from "@/lib/recipe_ingredient_quantity";
 
 type TemplateItem = {
   id: string;
@@ -820,7 +821,7 @@ export default function SelecteerMasterItemsPage() {
                                 item={item}
                                 count={count}
                                 first={k === 0}
-                                displayQuantity={quantityForCount(item.quantity, count)}
+                                displayQuantity={readableQuantity(quantityForCount(item.quantity, count))}
                                 photoUrl={getPhotoUrl(item.name)}
                                 onAdd={() => setCount(item.id, 1)}
                                 onIncrement={() => setCount(item.id, count + 1)}

@@ -11,6 +11,7 @@ import { CategoryCard, CategorySubheading } from "@/components/ui/category_card"
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { StoreBadge, useStoreLongPress, useStoreMark } from "./store_mark";
+import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 
 type Section = { title: string; displayTitle?: string; items: ListItem[] };
 type GetPhotoUrl = (name: string, size?: number, options?: ItemPhotoLookupOptions) => string | null;
@@ -381,7 +382,7 @@ function MasterItemRow({
           </span>
           <span className="min-w-0 flex-1 leading-[19px]">
             <span className="block truncate text-[15px] font-medium text-text-primary first-letter:uppercase">{item.name}</span>
-            <span className="block truncate text-[13px] text-[var(--text-tertiary)]">{item.quantity}</span>
+            <span className="block truncate text-[13px] text-[var(--text-tertiary)]">{displayQuantity(item.quantity)}</span>
           </span>
           {storeMark && !item.store ? <span aria-hidden className="w-[74px] shrink-0" /> : null}
         </button>

@@ -41,6 +41,7 @@ import { RECIPE_CATEGORIES } from "@/lib/recipe_library";
 import { recipeTintColors, scaleQuantity, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { clearRecipeHeroTransition, peekRecipeHeroTransition } from "@/lib/recipe_hero_transition";
+import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 
 function BackArrowIcon({ className }: { className?: string }) {
   return (
@@ -1195,7 +1196,7 @@ function RecipeStepItem({
                   )}
                 </span>
                 {ing.name}
-                <span className="font-medium text-[var(--text-secondary)]">{ing.quantity}</span>
+                <span className="font-medium text-[var(--text-secondary)]">{displayQuantity(ing.quantity)}</span>
               </li>
             ))}
           </ul>

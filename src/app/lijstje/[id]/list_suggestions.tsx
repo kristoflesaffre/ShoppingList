@@ -4,6 +4,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { cn } from "@/lib/utils";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
+import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 
 export type Suggestion = {
   /** Unieke sleutel ("tk:<id>" of "vl:<naam>"), ook gebruikt om te verbergen. */
@@ -27,7 +28,7 @@ function SuggestionRow({ s, onAdd, onDismiss }: { s: Suggestion; onAdd: () => vo
       <span className="min-w-0 flex-1 leading-[18px]">
         <span className="block truncate text-[15px] font-semibold text-text-primary">{s.name}</span>
         <span className="block truncate text-[13px] text-[var(--text-tertiary)]">
-          {s.quantity}
+          {displayQuantity(s.quantity)}
           {s.meta ? ` · ${s.meta}` : ""}
         </span>
       </span>

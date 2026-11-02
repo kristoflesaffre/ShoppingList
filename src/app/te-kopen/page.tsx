@@ -29,6 +29,7 @@ import { teKopenMonogramStyle, teKopenStoreRgb } from "@/lib/te-kopen-style";
 import { StoreOrderPanel, loadStoreOrder, applySavedStoreOrder } from "@/app/te-kopen/store_order_panel";
 import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import { mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
+import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 
 const ShareListModal = dynamic(
   () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
@@ -182,7 +183,7 @@ function ShoppingRow({
       <span className="min-w-0 flex-1 leading-[19px]">
         <span className="block truncate text-[15px] font-semibold text-text-primary first-letter:uppercase">{item.name}</span>
         <span className="flex min-w-0 items-center gap-[5px] text-[13px] text-[var(--text-tertiary)]">
-          <span className="shrink-0">{item.quantity}</span>
+          <span className="shrink-0">{displayQuantity(item.quantity)}</span>
           {addedBy ? (
             <>
               <span aria-hidden>·</span>

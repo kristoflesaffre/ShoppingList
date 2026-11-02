@@ -27,6 +27,7 @@ import { mixWithWhite, RECIPE_TINT_FALLBACK, useIsDarkTheme, useRecipeTint, type
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { KalenderAgenda, KalenderAgendaPrefetch, agendaBand } from "@/components/kalender_agenda";
+import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 
 type Weergave = "eten" | "agenda";
 const WEERGAVE_KEY = "kalender-weergave";
@@ -316,7 +317,7 @@ function FocusDay({
                     ) : null}
                   </span>
                   {capitalize(ing.name)}
-                  {ing.quantity ? <span className="text-[var(--text-tertiary)]">{ing.quantity}</span> : null}
+                  {ing.quantity ? <span className="text-[var(--text-tertiary)]">{displayQuantity(ing.quantity)}</span> : null}
                 </li>
               );
             })}

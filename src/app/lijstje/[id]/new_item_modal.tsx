@@ -24,7 +24,7 @@ import { SUPERMARKET_CATEGORIES, categoryHeadingDisplay, effectiveItemCategory, 
 import { categoryColor } from "./list_cards_view";
 import { findFreezerItemForPlan } from "@/lib/freezer-planning";
 import { isPantryItem } from "@/lib/pantry";
-import { normalizeQuantity, parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
+import { displayQuantity, normalizeQuantity, parseRecipeIngredientQuantity } from "@/lib/recipe_ingredient_quantity";
 import {
   DEFAULT_TRIP_PERSON_TAB,
   TRIP_PERSON_TABS,
@@ -1273,7 +1273,7 @@ export function NewItemModal({
                   {isItem ? (
                     entry.item.fromStock ? (
                       <span className="inline-flex items-center gap-1">
-                        {entry.item.quantity} · <StockSourceIcon source={entry.item.stockSource === "pantry" ? "pantry" : "freezer"} className="!size-3.5" colorClassName="bg-[var(--blue-500)]" /> {stockSourceLabel(entry.item.stockSource)}
+                        {displayQuantity(entry.item.quantity)} · <StockSourceIcon source={entry.item.stockSource === "pantry" ? "pantry" : "freezer"} className="!size-3.5" colorClassName="bg-[var(--blue-500)]" /> {stockSourceLabel(entry.item.stockSource)}
                       </span>
                     ) : (
                       entry.item.quantity

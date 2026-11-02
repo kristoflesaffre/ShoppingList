@@ -14,6 +14,7 @@ import {
   nextFreezerUndo,
   type FreezerEntry,
   type FreezerUndo,
+  freezerStockLabel,
 } from "@/lib/freezer-search";
 import { Button } from "@/components/ui/button";
 import { CountStepper } from "@/components/ui/count_stepper";
@@ -198,7 +199,7 @@ export default function VoorraadkastPage() {
       name={item.name}
       subtitle={
         <>
-          {item.quantityPerPackage} {item.unit}
+          {freezerStockLabel(item)}
           {item.expiryDate ? " " : " · "}
           <PantryExpiryNote expiryDate={item.expiryDate} />
         </>

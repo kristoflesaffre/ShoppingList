@@ -76,7 +76,7 @@ function isLow(item: FreezerItem): boolean {
 
 function freezerSubtitle(item: FreezerItem): string {
   if (item.type === "gerecht") return "Gerecht";
-  return `${item.quantityPerPackage} ${item.unit}`;
+  return freezerStockLabel(item);
 }
 
 function personsLabel(persons?: number | null): string {

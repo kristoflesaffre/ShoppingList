@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { FROST_GRADIENT_CLASS, FrostDecor } from "@/components/ui/frost_background";
 import { PANTRY_GRADIENT_CLASS, PANTRY_TEXT_CLASS, PantryDecor } from "@/components/ui/pantry_background";
 import { isPantryLow, pantryStatsLabel } from "@/lib/pantry";
+import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 
 export type DashboardFreezerItem = {
   id: string;
@@ -484,7 +485,7 @@ export function HomeDashboardShoppingList({
                       {by.firstName}
                     </span>
                   ) : null}
-                  <span className="min-w-[52px] shrink-0 text-right text-[13.5px] text-[var(--text-secondary)]">{item.quantity}</span>
+                  <span className="min-w-[52px] shrink-0 text-right text-[13.5px] text-[var(--text-secondary)]">{displayQuantity(item.quantity)}</span>
                 </li>
               );
             })}

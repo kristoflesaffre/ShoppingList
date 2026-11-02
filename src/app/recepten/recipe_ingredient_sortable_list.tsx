@@ -26,6 +26,7 @@ import type { RecipeIngredient } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { useIngredientPhotoUrl } from "@/lib/ingredient-photos";
 import { DragGlyph, TrashGlyph, deleteTone, editIconBtn } from "@/app/recepten/recipe_steps_editor";
+import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 
 type ListVariant = "cards" | "rows" | "edit";
 
@@ -145,12 +146,12 @@ function SortableIngredientRow({
       <button
         type="button"
         onClick={onEdit}
-        aria-label={`${ingredient.name}, ${ingredient.quantity} — wijzigen`}
+        aria-label={`${ingredient.name}, ${displayQuantity(ingredient.quantity)} — wijzigen`}
         className="flex min-w-0 flex-1 items-center gap-3 py-2 pl-1 pr-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
       >
         <IngredientThumb name={ingredient.name} photoUrl={photoUrl} className="size-10 rounded-[12px]" imageClassName="size-8" size={32} />
         <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-[var(--text-primary)]">{ingredient.name}</span>
-        <span className="shrink-0 text-sm tabular-nums text-[var(--text-secondary)]">{ingredient.quantity}</span>
+        <span className="shrink-0 text-sm tabular-nums text-[var(--text-secondary)]">{displayQuantity(ingredient.quantity)}</span>
       </button>
     </div>
   );
@@ -196,7 +197,7 @@ function SortableIngredientEditRow({
       <IngredientThumb name={ingredient.name} photoUrl={photoUrl} className="size-11 rounded-xl" imageClassName="size-[38px]" size={38} />
       <span className="min-w-0 flex-1 pl-1">
         <span className="block truncate text-[15px] font-semibold leading-5 text-[var(--text-primary)]">{ingredient.name}</span>
-        <span className="block truncate text-[13px] leading-[18px] text-[var(--text-secondary)]">{ingredient.quantity}</span>
+        <span className="block truncate text-[13px] leading-[18px] text-[var(--text-secondary)]">{displayQuantity(ingredient.quantity)}</span>
       </span>
       <button
         type="button"

@@ -23,6 +23,7 @@ import {
   TAKEOUT_MEAL_CATEGORY,
   TAKEOUT_MEAL_PHOTO_URL,
 } from "@/lib/takeout-meal";
+import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 
 /** Weergave van de items in een kaart: rijen, twee kolommen of vierkante tegels (canvas «Lijstje 6b» + «Lijstje 2»). */
 export type ListCardLayout = "one" | "two" | "tiles";
@@ -179,7 +180,7 @@ function ItemQuantity({ item, className }: { item: ListItem; className?: string 
         item.checked ? "font-normal text-[var(--gray-300)] line-through" : "text-[var(--text-tertiary)]",
       )}
     >
-      {item.quantity}
+      {displayQuantity(item.quantity)}
     </span>
   );
 }
@@ -187,7 +188,7 @@ function ItemQuantity({ item, className }: { item: ListItem; className?: string 
 type ItemProps = { item: ListItem; getPhotoUrl?: GetPhotoUrl; onToggle: () => void };
 
 function itemLabel(item: ListItem) {
-  return `${item.name}${item.quantity ? `, ${item.quantity}` : ""}${item.checked ? ", gehaald" : ""}`;
+  return `${item.name}${item.quantity ? `, ${displayQuantity(item.quantity)}` : ""}${item.checked ? ", gehaald" : ""}`;
 }
 
 /** 1 kolom: rij met foto, naam/hoeveelheid en rond vinkje rechts. */
@@ -541,7 +542,7 @@ function EditRow({ item, getPhotoUrl, edit, first }: { item: ListItem; getPhotoU
         <ItemPhoto item={{ ...item, checked: false }} getPhotoUrl={getPhotoUrl} size={42} />
         <span className="min-w-0 flex-1 leading-[19px]">
           <span className="block truncate text-[15px] font-medium text-[var(--text-primary)]">{item.name}</span>
-          <span className="block truncate text-[13px] text-[var(--text-tertiary)]">{item.quantity}</span>
+          <span className="block truncate text-[13px] text-[var(--text-tertiary)]">{displayQuantity(item.quantity)}</span>
         </span>
       </button>
       <TrashButton label={`${item.name} verwijderen`} onClick={() => edit.onDelete(item.id)} />
