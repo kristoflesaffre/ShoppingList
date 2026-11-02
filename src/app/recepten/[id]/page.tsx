@@ -695,10 +695,15 @@ export default function ReceptDetailPage() {
                 onClick={openPhotoSourceSlide}
                 aria-label={savedRecipe.photoUrl ? "Foto wijzigen" : "Foto toevoegen"}
                 // Mobiel identiek aan de potloodknop (zelfde plek, maat en schaduw); desktop een pil met «Foto».
-                className={cn(plateActionBtn, "size-11 gap-1.5 text-sm font-bold disabled:opacity-60 lg:w-auto lg:px-4", !savedRecipe.photoUrl && "!-bottom-1 !-right-2 !size-10")}
+                // Zonder foto staat «Foto toevoegen» er al onder: dan overal enkel het rondje met camera.
+                className={cn(
+                  plateActionBtn,
+                  "size-11 gap-1.5 text-sm font-bold disabled:opacity-60",
+                  savedRecipe.photoUrl ? "lg:w-auto lg:px-4" : "!-bottom-1 !-right-2 !size-10",
+                )}
               >
                 <CameraGlyph />
-                <span className="hidden lg:inline">{photoSaving ? "Bezig…" : "Foto"}</span>
+                {savedRecipe.photoUrl ? <span className="hidden lg:inline">{photoSaving ? "Bezig…" : "Foto"}</span> : null}
               </button>
             ) : null}
           </div>
