@@ -219,7 +219,6 @@ export default function VoorraadkastPage() {
       name={item.name}
       subtitle={
         <>
-          {isPantryLow(item) ? <span className="font-bold text-[var(--secondary-700)]">Laatste · </span> : null}
           {item.quantityPerPackage} {item.unit}
         </>
       }
