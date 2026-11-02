@@ -961,7 +961,7 @@ export default function TeKopenPage() {
         <button
           type="button"
           onClick={() => void handleShareInvitePress()}
-          className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+          className="flex w-full items-center gap-4 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
         >
           <span className="flex-1 text-base font-medium leading-6 text-[var(--text-primary)]">
             Lijstje delen

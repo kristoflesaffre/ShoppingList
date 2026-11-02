@@ -367,7 +367,7 @@ function MasterItemRow({
           onClick={() => onEdit(item)}
           className={cn(
             pressCls,
-            "flex w-full items-center gap-3 bg-[var(--white)] px-1 py-[9px] text-left transition-colors duration-fast ease-out-strong [@media(hover:hover)]:hover:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
+            "flex w-full items-center gap-3 bg-[var(--white)] px-1 py-[9px] text-left transition-colors duration-fast ease-out-strong [@media(hover:hover)]:hover:bg-[var(--gray-25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
           )}
         >
           <span className={cn("relative flex size-[42px] shrink-0 items-center justify-center rounded-[12px]", !photo && "bg-[var(--gray-25)]")}>

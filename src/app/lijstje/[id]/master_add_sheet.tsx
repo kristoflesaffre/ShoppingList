@@ -233,7 +233,7 @@ export function MasterAddSheet({
         className={cn(
           "flex w-full items-center gap-3 rounded-[10px] px-1 py-[7px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]",
           !first && "border-t border-[var(--border-subtle)]",
-          sel ? "bg-[var(--blue-25)]" : "[@media(hover:hover)]:hover:bg-[var(--gray-50)]",
+          sel ? "bg-[var(--blue-25)]" : "[@media(hover:hover)]:hover:bg-[var(--gray-25)]",
         )}
       >
         <span className="flex size-10 shrink-0 items-center justify-center">
