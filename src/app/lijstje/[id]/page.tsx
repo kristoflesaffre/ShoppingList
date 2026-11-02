@@ -5801,8 +5801,27 @@ export default function ListDetailPage({
     />
   );
 
-  /** Desktop: zonder «Winkel per product» staat de klantenkaartenpil rechts naast de titel i.p.v. op een eigen rij. */
-  const loyaltyNextToTitle = showLoyaltyLinkRows && showListDetailHeader && !isEditMode && !isMasterCategoryOrderMode && ingredientStoreOpenCount === 0;
+  const showIngredientStorePill = ingredientStoreOpenCount > 0;
+  const ingredientStorePill = (
+    <div className="flex h-[60px] w-full items-center gap-3 rounded-[20px] pl-3.5 pr-2.5 [background:var(--gradient-store-lidl-delhaize)] md:h-16 md:pl-4 md:pr-3">
+      <span className="flex w-10 shrink-0 justify-center">
+        <StoreLogos store="both" size={26} />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">Winkel per product</span>
+      <button
+        type="button"
+        onClick={() => setIngredientStoreOpen(true)}
+        className="inline-flex h-9 shrink-0 items-center gap-1 rounded-pill bg-[var(--white)] pl-3.5 pr-2.5 text-[13.5px] font-bold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        {ingredientStoreOpenCount} open
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </button>
+    </div>
+  );
+  /** Desktop: «Winkel per product» en de klantenkaartenpil staan rechts naast de titel i.p.v. op een eigen rij. */
+  const pillsNextToTitle = showLoyaltyLinkRows && showListDetailHeader && !isEditMode && !isMasterCategoryOrderMode;
 
   const hideFabOnLoyaltyPanel = showLoyaltySwipe && loyaltyPanel === "loyalty";
 
@@ -6039,13 +6058,18 @@ export default function ListDetailPage({
                   </div>
                 ) : null}
               </div>
-              {loyaltyNextToTitle ? <div className="hidden w-[340px] shrink-0 lg:block">{loyaltyLine}</div> : null}
+              {pillsNextToTitle ? (
+                <div className="hidden shrink-0 items-start gap-3 lg:flex">
+                  {isLidlDelhaizeList && showIngredientStorePill ? <div className="w-[340px]">{ingredientStorePill}</div> : null}
+                  <div className="w-[340px]">{loyaltyLine}</div>
+                </div>
+              ) : null}
               {isEditMode ? (
                 // «Gereed» zit in de zwevende balk onderaan (ook op de computer), zodat hij bij het scrollen blijft.
                 null
               ) : hasItems &&
-                (!isVenueCounterList ||
-                  (isCafeList && !isMasterList && !isEditMode)) ? (
+                !isMasterList &&
+                (!isVenueCounterList || (isCafeList && !isEditMode)) ? (
                 <div className="flex shrink-0 items-center gap-2">
                   {showListGroupingControl && isLidlDelhaizeList ? (
                     <div className="hidden lg:block">
@@ -6060,15 +6084,13 @@ export default function ListDetailPage({
                       />
                     </div>
                   ) : null}
-                  {isMasterList ? null : (
-                    <ListLayoutToggle
-                      value={cardLayout}
-                      onChange={(v) => {
-                        setCardLayout(v);
-                        setListLayoutMode(v === "tiles" ? "grid" : "list");
-                      }}
-                    />
-                  )}
+                  <ListLayoutToggle
+                    value={cardLayout}
+                    onChange={(v) => {
+                      setCardLayout(v);
+                      setListLayoutMode(v === "tiles" ? "grid" : "list");
+                    }}
+                  />
                 </div>
               ) : null}
             </div>
@@ -6144,35 +6166,18 @@ export default function ListDetailPage({
           ) : null}
 
           {isMasterList && isLidlDelhaizeList && !isEditMode && !isMasterCategoryOrderMode && (ingredientStoreOpenCount > 0 || showLoyaltyLinkRows) ? (
-            <div className={cn("flex w-full min-w-0 flex-col gap-3", loyaltyNextToTitle && "lg:hidden")}>
+            <div className={cn("flex w-full min-w-0 flex-col gap-3", pillsNextToTitle && "lg:hidden")}>
               {/* Canvas «Favorieten · pillen C»: winkel per product en klantenkaarten als getinte pillen;
                   mobiel onder elkaar, vanaf tablet naast elkaar. */}
-              <div className={cn("grid w-full grid-cols-1 items-start gap-2 md:gap-3", ingredientStoreOpenCount > 0 && showLoyaltyLinkRows && "md:grid-cols-2")}>
-                {ingredientStoreOpenCount > 0 ? (
-                  <div className="flex h-[60px] w-full items-center gap-3 rounded-[20px] pl-3.5 pr-2.5 [background:var(--gradient-store-lidl-delhaize)] md:h-16 md:pl-4 md:pr-3">
-                    <span className="flex w-10 shrink-0 justify-center">
-                      <StoreLogos store="both" size={26} />
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">Winkel per product</span>
-                    <button
-                      type="button"
-                      onClick={() => setIngredientStoreOpen(true)}
-                      className="inline-flex h-9 shrink-0 items-center gap-1 rounded-pill bg-[var(--white)] pl-3.5 pr-2.5 text-[13.5px] font-bold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                    >
-                      {ingredientStoreOpenCount} open
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
-                        <path d="M9 6l6 6-6 6" />
-                      </svg>
-                    </button>
-                  </div>
-                ) : null}
+              <div className={cn("grid w-full grid-cols-1 items-start gap-2 md:gap-3", showIngredientStorePill && showLoyaltyLinkRows && "md:grid-cols-2")}>
+                {showIngredientStorePill ? ingredientStorePill : null}
                 {showLoyaltyLinkRows ? loyaltyLine : null}
               </div>
             </div>
           ) : null}
 
           {!isMasterCategoryOrderMode && showLoyaltyLinkRows && !(isLidlDelhaizeList && !isEditMode) ? (
-            <div className={cn("w-full min-w-0", loyaltyNextToTitle && "lg:hidden")}>{loyaltyLine}</div>
+            <div className={cn("w-full min-w-0", pillsNextToTitle && "lg:hidden")}>{loyaltyLine}</div>
           ) : null}
 
           {listSuggestions && !embedSuggestionsInDayCards ? listSuggestions : null}
