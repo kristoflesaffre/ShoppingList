@@ -5847,8 +5847,8 @@ export default function ListDetailPage({
             </button>
           ) : (
             <Link
-              href="/"
-              aria-label="Terug naar lijstjes"
+              href={isMasterList ? "/lijstjes-beheren/favorieten" : "/"}
+              aria-label={isMasterList ? "Terug naar favorieten" : "Terug naar lijstjes"}
               className={listRoundHeaderBtn}
             >
               <BackArrowIcon className="size-5" />
