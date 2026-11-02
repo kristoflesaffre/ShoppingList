@@ -80,7 +80,7 @@ const FROST_CARD_CLASS = cn("relative isolate overflow-hidden rounded-[24px]", F
 
 const MAX_FREEZER_ROWS = 4;
 
-export type DashboardFreezerRow = DashboardFreezerItem & { quantityPerPackage?: number; unit?: string; recipePersons?: number };
+export type DashboardFreezerRow = DashboardFreezerItem & { quantityPerPackage?: number; unit?: string };
 
 /**
  * Canvas «Combinatie · Voorraad A»: diepvries als hoge lichtblauwe kolom naast de lijstjes én
@@ -98,9 +98,7 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
   const row = (item: DashboardFreezerRow, first: boolean) => {
     const isDish = item.type === "gerecht";
     const sub = isDish
-      ? item.recipePersons
-        ? `Gerecht · ${plural(item.recipePersons, "persoon", "personen")}`
-        : "Gerecht"
+      ? "Gerecht"
       : item.quantityPerPackage && item.unit
         ? `${item.quantityPerPackage} ${item.unit} per pak`
         : "Product";

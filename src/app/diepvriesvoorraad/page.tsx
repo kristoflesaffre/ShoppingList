@@ -75,10 +75,7 @@ function isLow(item: FreezerItem): boolean {
 }
 
 function freezerSubtitle(item: FreezerItem): string {
-  if (item.type === "gerecht") {
-    const persons = item.recipePersons ?? item.quantityPerPackage;
-    return persons === 1 ? "1 persoon" : `${persons} personen`;
-  }
+  if (item.type === "gerecht") return "Gerecht";
   return `${item.quantityPerPackage} ${item.unit}`;
 }
 

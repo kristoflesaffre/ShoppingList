@@ -1759,11 +1759,8 @@ export function NewItemModal({
                     <div className="-mx-4 flex flex-col gap-4 px-4 pb-2">
                       {filteredFreezerItems.map((it) => {
                         const isGerecht = it.type === "gerecht";
-                        const personsCount = it.recipePersons ?? it.quantityPerPackage ?? 1;
                         const subtitle = isGerecht
-                          ? personsCount === 1
-                            ? "1 persoon"
-                            : `${personsCount} personen`
+                          ? "Gerecht"
                           : `${it.quantityPerPackage ?? 1} ${it.unit ?? "stuk"}`;
                         return (
                           <button
