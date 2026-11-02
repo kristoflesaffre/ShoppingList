@@ -32,7 +32,7 @@ export function CountStepper({
     <span
       className={cn(
         "inline-flex shrink-0 items-center rounded-pill",
-        soft ? "h-[38px] bg-[var(--blue-50)]" : "h-[34px] gap-0.5 bg-[var(--blue-500)] px-[3px]",
+        soft ? "h-[38px] bg-[var(--blue-25)]" : "h-[34px] gap-0.5 bg-[var(--blue-500)] px-[3px]",
         className,
       )}
     >
