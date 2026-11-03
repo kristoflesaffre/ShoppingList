@@ -158,7 +158,7 @@ function EpisodeBody({
     </button>
   ) : null;
   const cast = episode.cast.length > 0 ? (
-    <section className="min-w-0 flex-1">
+    <section className="min-w-0">
       <DetailSectionHead tone="cinema" title="Cast" action="Alles" onAction={onAllCast ?? (() => {})} />
       <div className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
         <div className="flex w-max gap-2.5">
@@ -203,15 +203,19 @@ function EpisodeBody({
           {projectorTmdbId ? <StremioEpisodeStatus tone="cinema" imdbId={imdbId} tmdbId={projectorTmdbId} at={at} /> : null}
           <p className="mt-5 text-[15px] leading-[23px] text-fixed-white/80 lg:hidden">{overview}</p>
         </div>
-        <div className="relative hidden w-[380px] shrink-0 overflow-hidden rounded-[18px] bg-fixed-white/10 shadow-[0_30px_60px_-24px_rgba(0,0,0,0.9),inset_0_0_0_1px_rgba(255,255,255,0.2)] lg:block">
-          {episode.stillUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={episode.stillUrl.replace("/w300/", "/w780/")} alt="" className="aspect-video w-full object-cover" />
-          ) : (
-            <div className="aspect-video" />
-          )}
-          <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,rgba(0,0,0,0.55))]" />
-          <span className="absolute bottom-2.5 left-3 text-[12px] font-bold text-fixed-white">Aflevering {at.e}{episode.runtime ? ` · ${episode.runtime}` : ""}</span>
+        {/* Desktop: still + «Volgende» samen rechts, onderkant gelijk met de knoppen en de voortgang. */}
+        <div className="hidden w-[380px] shrink-0 flex-col gap-3 lg:flex">
+          <div className="relative overflow-hidden rounded-[18px] bg-fixed-white/10 shadow-[0_30px_60px_-24px_rgba(0,0,0,0.9),inset_0_0_0_1px_rgba(255,255,255,0.2)]">
+            {episode.stillUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={episode.stillUrl.replace("/w300/", "/w780/")} alt="" className="aspect-video w-full object-cover" />
+            ) : (
+              <div className="aspect-video" />
+            )}
+            <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,rgba(0,0,0,0.55))]" />
+            <span className="absolute bottom-2.5 left-3 text-[12px] font-bold text-fixed-white">Aflevering {at.e}{episode.runtime ? ` · ${episode.runtime}` : ""}</span>
+          </div>
+          {nextCard}
         </div>
       </div>
 
@@ -224,10 +228,7 @@ function EpisodeBody({
         </section>
       ) : null}
 
-      <div className="mt-8 lg:flex lg:items-end lg:justify-between lg:gap-10">
-        {cast}
-        {nextCard ? <div className="hidden w-[380px] shrink-0 lg:block">{nextCard}</div> : null}
-      </div>
+      {cast ? <div className="mt-8 lg:mt-10">{cast}</div> : null}
     </div>
   );
 }
