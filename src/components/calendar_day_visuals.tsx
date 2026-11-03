@@ -158,8 +158,10 @@ export function CalendarSidePlates({
           <span
             key={`${src ?? name}-${i}`}
             className={cn(
-              "absolute flex items-center justify-center overflow-hidden rounded-full border-2 border-[var(--white)] shadow-[0_2px_6px_rgba(16,17,48,0.2)]",
-              src ? "bg-[var(--white)]" : "bg-[var(--blue-50)]",
+              "absolute flex items-center justify-center overflow-hidden rounded-full shadow-[0_2px_6px_rgba(16,17,48,0.2)]",
+              // Een gerecht staat op zijn eigen bord (geen witte rand); een product of monogram krijgt een wit bordje.
+              product || !src ? "border-2 border-[var(--white)]" : null,
+              !src ? "bg-[var(--blue-50)]" : product ? "bg-[var(--white)]" : null,
             )}
             style={{ width: diameter, height: diameter, left: center(Math.cos(angle)), top: center(Math.sin(angle)) }}
           >
