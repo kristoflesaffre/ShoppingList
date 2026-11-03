@@ -20,13 +20,15 @@ export type CalendarMeal = {
   fromStock?: boolean;
   /** Afhaalgerecht: gepland eten zonder afvinkbare ingrediënten. */
   takeout?: boolean;
+  /** «Voor Noë»: nooit hoofdgerecht als er iets anders gepland staat, altijd een bijbordje. */
+  forNoe?: boolean;
 };
 
 export type DayEntry = {
   date: Date;
   meals: CalendarMeal[];
   /** Items in een dagnaam-sectie zonder recipeGroupId. */
-  looseIngredients: { name: string; quantity: string; photoUrl?: string | null; fromStock?: boolean }[];
+  looseIngredients: { name: string; quantity: string; photoUrl?: string | null; fromStock?: boolean; forNoe?: boolean }[];
 };
 
 export function dayEntryHasContent(entry: DayEntry | undefined): boolean {
@@ -210,6 +212,7 @@ type AnyItem = {
   stockPhotoUrl?: string | null;
   /** "pantry" = uit de voorraadkast (geen diepvriesgerecht). */
   stockSource?: string | null;
+  forNoe?: boolean | null;
 };
 
 type AnyList = {
@@ -245,6 +248,7 @@ function promoteLooseToMeals(
       photoUrl: item.photoUrl ?? recipe?.photoUrl ?? null,
       ingredientCount: 0,
       fromStock: true,
+      forNoe: item.forNoe || undefined,
     });
   }
   entry.looseIngredients = entry.looseIngredients.filter((i) => !loose.includes(i));
@@ -286,13 +290,17 @@ function arrangeDaySideDishes(iso: string, entry: DayEntry, recipeByName: Map<st
 
 /**
  * Een volwaardig hoofdgerecht (tikka massala, lasagne…) staat altijd vooraan; puree, groenten en
- * andere gerechten worden dan bijgerechten.
+ * andere gerechten worden dan bijgerechten. Wat «voor Noë» is, is nooit het hoofdgerecht naast iets anders.
  */
 function arrangeMainDish(entry: DayEntry) {
+  // «Voor Noë» schuift achteraan (stabiel): het hoofdgerecht is wat de rest eet.
+  if (entry.meals.some((m) => !m.forNoe)) {
+    entry.meals = [...entry.meals.filter((m) => !m.forNoe), ...entry.meals.filter((m) => m.forNoe)];
+  }
   // Een soepdag blijft een soepdag: alleen een bijgerecht vooraan (puree, groenten, naan…) maakt plaats.
   const first = entry.meals[0];
   if (!first || first.takeout || isSoupName(first.recipeName) || isCompleteMainDish(first.recipeName)) return;
-  const index = entry.meals.findIndex((m) => !m.takeout && isCompleteMainDish(m.recipeName));
+  const index = entry.meals.findIndex((m) => !m.takeout && !m.forNoe && isCompleteMainDish(m.recipeName));
   if (index <= 0) return;
   const [main] = entry.meals.splice(index, 1);
   entry.meals.unshift(main);
@@ -374,6 +382,8 @@ export function buildCalendarEntries(
           };
           entry.meals.push(meal);
         }
+        // Eén onderdeel «voor Noë» maakt het hele gerecht voor Noë.
+        if (item.forNoe) meal.forNoe = true;
         if (item.fromStock) {
           meal.fromStock = true;
           if (!meal.photoUrl && item.stockPhotoUrl) meal.photoUrl = item.stockPhotoUrl;
@@ -395,6 +405,7 @@ export function buildCalendarEntries(
           photoUrl: loosePhotoUrl,
           // Voorraadkast (kruiden, bouillon…) is geen diepvriesgerecht: geen sneeuwvlok op de dag.
           fromStock: (item.fromStock === true && item.stockSource !== "pantry") || undefined,
+          forNoe: item.forNoe === true || undefined,
         });
       }
     }

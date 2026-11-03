@@ -157,6 +157,15 @@ describe("buildCalendarEntries", () => {
       expect(day?.meals.map((m) => m.recipeName)).toEqual(["Kip tikka massala", "Bloemkoolpuree", "Naan"]);
     });
 
+    it("zet wat «voor Noë» is nooit als hoofdgerecht naast iets anders", () => {
+      const day = dayOf([
+        { ...dish("Lasagne", "recipe-r1-1791000000000"), forNoe: true },
+        dish("Kip tikka massala", "recipe-r2-1791000000001"),
+      ] as ReturnType<typeof dish>[]);
+      expect(day?.meals.map((m) => m.recipeName)).toEqual(["Kip tikka massala", "Lasagne"]);
+      expect(day?.meals[1].forNoe).toBe(true);
+    });
+
     it("laat een dag zonder aardappelgerecht met rust", () => {
       const day = dayOf([dish("Rode kool (diepvries)"), dish("Schnitzel", "recipe-r2-1791000000001")]);
       expect(day?.meals.map((m) => m.recipeName)).toEqual(["Schnitzel"]);

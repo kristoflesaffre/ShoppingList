@@ -190,6 +190,7 @@ function ItemQuantity({ item, className }: { item: ListItem; className?: string 
       )}
     >
       {displayQuantity(item.quantity)}
+      {item.forNoe ? <span className={item.checked ? undefined : "font-semibold text-[var(--blue-500)]"}> · voor Noë</span> : null}
     </span>
   );
 }

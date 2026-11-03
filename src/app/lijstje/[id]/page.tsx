@@ -3531,6 +3531,7 @@ export default function ListDetailPage({
           freezerItemId: typeof row.freezerItemId === "string" ? row.freezerItemId : undefined,
           stockDeductedAt: typeof row.stockDeductedAt === "number" ? row.stockDeductedAt : undefined,
           itemDate: typeof row.itemDate === "string" && row.itemDate ? row.itemDate : undefined,
+          forNoe: row.forNoe === true || undefined,
           tripPerson: (() => {
             const rawTp = row.tripPerson ?? row.trip_person;
             if (typeof rawTp !== "string" || rawTp.trim().length === 0) {
@@ -5055,6 +5056,7 @@ export default function ListDetailPage({
         ...(isLandalOrVakantieList && !isPreDepartureItem
           ? { tripPerson: normalizeTripPerson(updatedItem.tripPerson) }
           : {}),
+        ...(updatedItem.forNoe !== undefined ? { forNoe: updatedItem.forNoe } : {}),
       }),
     );
     // Winkel: alleen een eigen keuze opslaan (een overgenomen winkel blijft overgenomen).

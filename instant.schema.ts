@@ -122,6 +122,8 @@ const schema = i.schema({
        * Landal/vakantie: «Samen» | «Kristof» | «Chloé» | «Noë». Ontbreekt → UI toont «Samen».
        */
       tripPerson: i.string().optional(),
+      /** «Voor Noë»: gerecht of item voor Noë; op de kalender altijd een bijbordje naast het hoofdgerecht. */
+      forNoe: i.boolean().optional(),
       /**
        * Lidl / Delhaize-lijstje: waar dit item gekocht wordt — «lidl» | «delhaize» | «both».
        * Ontbreekt → geen keuze (telt als allebei; weeklijstjes nemen de keuze van de favoriet over).

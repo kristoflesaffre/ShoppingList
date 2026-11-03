@@ -34,6 +34,7 @@ import {
 import type { ItemStore } from "@/lib/item-store";
 import { StoreChip, StoreChoiceSegment, StoreChoiceTiles, StoreMarkMenu } from "./store_mark";
 import { SelectField } from "@/components/ui/select_field";
+import { Switch } from "@/components/ui/switch";
 import { DEFAULT_UNIT_OPTIONS } from "@/components/ui/quantity_unit_field";
 import { AddItemsDayStrip, useDayPlates } from "./add_items_day_strip";
 import { EmptyStateFan } from "@/components/empty_state_fan";
@@ -87,6 +88,8 @@ export type ListItem = {
   itemDate?: string;
   /** Landal/vakantie: wie het item betreft. */
   tripPerson?: TripPersonTab;
+  /** «Voor Noë»: op de kalender altijd een bijbordje naast het hoofdgerecht. */
+  forNoe?: boolean;
   /** Per categorie samengevoegd kaartje: alle onderliggende item-id's (zelfde product op meerdere dagen). */
   mergedIds?: string[];
   /** Lidl / Delhaize-lijstje: winkelkeuze (eigen keuze of overgenomen van de favoriet). */
@@ -295,6 +298,7 @@ export function NewItemModal({
 }) {
   const isEditMode = editingItem != null;
   const isSmall = useIsSmallScreen();
+  const [forNoe, setForNoe] = React.useState(false);
   const [nameSearchOpen, setNameSearchOpen] = React.useState(false);
   const [selectedDay, setSelectedDay] = React.useState("Geen");
   const [vacationCategory, setVacationCategory] = React.useState<string>("Andere");
@@ -484,6 +488,7 @@ export function NewItemModal({
       setEditUnitCustom(false);
       setItemStore(editingItem.store);
       setItemStoreOrigin(editingItem.storeOrigin);
+      setForNoe(editingItem.forNoe === true);
       setAlsoFavorite(false);
       const { stepperValue: sv, quantityDesc: qd } =
         parseRecipeIngredientQuantity(editingItem.quantity);
@@ -599,6 +604,7 @@ export function NewItemModal({
         section: isVacationList ? vacationSection : section,
         itemCategory: isVacationList ? vacationCategory : editedItemCategory(),
         ...(isVacationList && !isPreDeparture ? { tripPerson: normalizeTripPerson(tripPerson) } : {}),
+        ...(!isVacationList ? { forNoe } : {}),
       }, { alsoFavorite: storeChoice != null && alsoFavorite });
     } else {
       onAdd({
@@ -1552,6 +1558,15 @@ export function NewItemModal({
                           return { value: category, label: categoryHeadingDisplay(category), dotColor: `rgb(${r}, ${g}, ${b})` };
                         })}
                       />
+                    </EditFormRow>
+                  ) : null}
+                  {!isVacationList && !isMasterList ? (
+                    <EditFormRow label="Voor Noë">
+                      {/* Schakelaar (geldt meteen bij bewaren): op de kalender staat dit altijd als bijbordje. */}
+                      <div className="flex min-h-[48px] items-center justify-between gap-3">
+                        <span className="text-[13.5px] text-[var(--text-secondary)]">Op de kalender naast het hoofdgerecht</span>
+                        <Switch checked={forNoe} onCheckedChange={setForNoe} aria-label="Voor Noë" />
+                      </div>
                     </EditFormRow>
                   ) : null}
                   {showAlsoFavorite ? (

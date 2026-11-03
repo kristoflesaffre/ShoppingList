@@ -30,20 +30,26 @@ function calendarSideDishes(meals: CalendarMeal[], loose: DayEntry["looseIngredi
   const [main, ...rest] = meals;
   if (!main || main.takeout) return [];
   const sides = rest.flatMap((m) =>
-    m.photoUrl && !m.takeout ? [{ name: m.recipeName, photo: m.photoUrl, role: dishRole(m.recipeName), soup: isSoupName(m.recipeName) }] : [],
+    // Zonder foto alleen «voor Noë» (dan de productfoto op naam): dat moet er altijd bij staan.
+    (m.photoUrl || m.forNoe) && !m.takeout
+      ? [{ name: m.recipeName, photo: m.photoUrl ?? null, role: dishRole(m.recipeName), soup: isSoupName(m.recipeName), forNoe: m.forNoe === true }]
+      : [],
   );
   const rank = (d: (typeof sides)[number]) =>
     isSoupName(main.recipeName) ? (d.soup ? 0 : 1) : dishRole(main.recipeName) === "potato" ? (d.role === "meat" ? 0 : d.role === "vegetable" ? 1 : 2) : 0;
-  const dishes: CalendarSideDish[] = sides
+  const dishes = sides
     .map((d, i) => ({ d, i }))
     .sort((a, b) => rank(a.d) - rank(b.d) || a.i - b.i)
-    .map(({ d }) => ({ name: d.name, photo: d.photo, kind: "dish" }));
-  const items: CalendarSideDish[] = loose.map((i) => ({
-    name: i.name.replace(/\s*\(diepvries\)$/, "").trim(),
-    photo: i.photoUrl ?? null,
-    kind: "item",
+    .map(({ d }) => ({ side: { name: d.name, photo: d.photo, kind: "dish" } as CalendarSideDish, forNoe: d.forNoe }));
+  const items = loose.map((i) => ({
+    side: { name: i.name.replace(/\s*\(diepvries\)$/, "").trim(), photo: i.photoUrl ?? null, kind: "item" } as CalendarSideDish,
+    forNoe: i.forNoe === true,
   }));
-  return [...dishes, ...items].slice(0, 3);
+  // «Voor Noë» krijgt altijd een plaats; de rest vult aan tot drie.
+  const all = [...dishes, ...items];
+  const noe = all.filter((s) => s.forNoe).slice(0, 3);
+  const others = all.filter((s) => !s.forNoe).slice(0, 3 - noe.length);
+  return all.filter((s) => noe.includes(s) || others.includes(s)).map((s) => s.side);
 }
 
 /** Samenvatting van een kalenderdag (gerecht of losse items). */
