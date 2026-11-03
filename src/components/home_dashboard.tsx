@@ -173,23 +173,17 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
   const getPhotoUrl = useItemPhotoUrl(160);
   const ordered = [...items.filter((i) => i.type === "gerecht"), ...items.filter((i) => i.type !== "gerecht")];
   const { shown, rest, empty } = stockTiles(ordered);
-  const stats = plural(items.length, "item", "items");
-
   return (
     <section aria-labelledby="dashboard-freezer" className="flex h-full min-w-0 flex-col gap-3">
       <div className="flex min-h-8 items-center justify-between gap-3">
         <h2 id="dashboard-freezer" className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
-          Voorraad
+          Voorraad diepvries
         </h2>
         {/* Canvas «Startpagina · Voorraad» A: openen via de overzichtspil, zoals de andere homesecties. */}
         {items.length > 0 ? <OverviewPill href="/diepvriesvoorraad" count={items.length} ariaLabel={`Diepvries openen (${items.length})`} /> : null}
       </div>
       <div className={cn(FROST_CARD_CLASS, "flex flex-1 flex-col p-5")}>
         <FrostDecor />
-        <p className="relative flex items-center gap-2 text-[12.5px] font-extrabold uppercase tracking-[0.06em] text-[#3f6dc0] [[data-theme=dark]_&]:text-[#9db8ee]">
-          {SNOWFLAKE}
-          Diepvries{items.length > 0 ? ` · ${stats}` : ""}
-        </p>
         {items.length === 0 ? (
           /* Lege diepvries: vriendelijke illustratie met één duidelijke actie. */
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-2 py-4 text-center">
@@ -219,7 +213,7 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
             </Link>
           </div>
         ) : (
-          <ul className="relative m-0 mt-3.5 grid list-none grid-cols-6 gap-1.5 pl-0">
+          <ul className="relative m-0 grid list-none grid-cols-6 gap-1.5 pl-0">
             {shown.map((item) => {
               const isDish = item.type === "gerecht";
               return (
@@ -273,14 +267,10 @@ export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRo
       </div>
       <div className={cn("relative isolate flex flex-1 flex-col overflow-hidden rounded-[24px] p-5", PANTRY_GRADIENT_CLASS)}>
         <PantryDecor />
-        <p className={cn("relative flex items-center gap-2 text-[12.5px] font-extrabold uppercase tracking-[0.06em]", PANTRY_TEXT_CLASS)}>
-          {PANTRY_ICON}
-          {items.length > 0 ? pantryStatsLabel(items) : "Nog leeg"}
-        </p>
         {items.length === 0 ? (
-          <p className="mt-3 text-[13.5px] leading-5 text-[var(--text-secondary)]">Hou bij hoeveel bloem, olie, koekjes of chips je nog in huis hebt.</p>
+          <p className="relative text-[13.5px] leading-5 text-[var(--text-secondary)]">Hou bij hoeveel bloem, olie, koekjes of chips je nog in huis hebt.</p>
         ) : (
-          <ul className="m-0 mt-3.5 grid list-none grid-cols-6 gap-1.5 pl-0">
+          <ul className="relative m-0 grid list-none grid-cols-6 gap-1.5 pl-0">
             {shown.map((item) => (
               <li key={item.id} className="min-w-0">
                 <StockPhotoTile
