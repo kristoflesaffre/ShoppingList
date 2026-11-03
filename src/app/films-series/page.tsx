@@ -1373,8 +1373,9 @@ export default function FilmsSeriesPage() {
                       return (
                         <div
                           key={item.id}
-                          /* Breedte = poster + tussenruimte (mobiel 120+12, desktop 140+16); 0 tijdens weghalen. */
-                          className="w-[132px] shrink-0 overflow-hidden pr-3 lg:w-[156px] lg:pr-4"
+                          /* Breedte = poster + tussenruimte van 12 (zoals de seriesrij, zodat de volgende poster even ver
+                             in beeld piept); 0 tijdens weghalen. */
+                          className="w-[132px] shrink-0 overflow-hidden pr-3 lg:w-[152px]"
                           style={{
                             ...(isCollapsed ? { width: 0 } : null),
                             opacity: isCollapsed ? 0 : 1,

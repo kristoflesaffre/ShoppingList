@@ -170,7 +170,8 @@ body::after {
   }
 }
 
-/* Horizontale posterrij op desktop: zachte fade waar nog iets volgt i.p.v. een harde snede (useEdgeFade). */
+/* Horizontale posterrij op desktop: korte fade waar nog iets volgt i.p.v. een harde snede
+   (useEdgeFade); kort genoeg dat alleen de poster die in beeld piept vervaagt. */
 @media (min-width: 1024px) {
   .edge-fade {
     --fade-start: 0px;
@@ -179,10 +180,10 @@ body::after {
     mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
   }
   .edge-fade[data-fade-start] {
-    --fade-start: 56px;
+    --fade-start: 32px;
   }
   .edge-fade[data-fade-end] {
-    --fade-end: 120px;
+    --fade-end: 36px;
   }
 }
 
