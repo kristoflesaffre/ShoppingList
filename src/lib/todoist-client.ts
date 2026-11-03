@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
+import { parseThawMarker, THAW_TASK_CLOSED_EVENT } from "@/lib/freezer-planning";
 import { sharedRead } from "@/lib/shared-read";
 
 /**
@@ -205,6 +206,9 @@ export function useTodoist() {
           return;
         }
         if (!res.ok && res.status !== 404) throw new Error(String(res.status));
+        // Ontdooitaak: het gerecht is nu uit de diepvries, dus de portie meteen afboeken.
+        const thaw = parseThawMarker(task.description);
+        if (thaw) window.dispatchEvent(new CustomEvent(THAW_TASK_CLOSED_EVENT, { detail: { itemId: thaw.itemId } }));
         if (task.due?.recurring) window.setTimeout(() => void load(), 800);
       } catch {
         setNotice({ text: "Afvinken lukte niet. Probeer het opnieuw.", reconnect: false });

@@ -1,8 +1,8 @@
 import { addDays, toIsoDate } from "@/lib/calendar-utils";
 
 /**
- * Diepvriesgerechten die op een dag gepland staan: één portie gaat uit de voorraad zodra de dag voorbij is, en
- * de dag ervoor staat er een afvinkbare Todoist-taak «Uit de diepvries halen». Enkel items met `freezerItemId`
+ * Diepvriesgerechten die op een dag gepland staan: de dag ervoor staat er een afvinkbare Todoist-taak «Uit de
+ * diepvries halen». Eén portie gaat uit de voorraad zodra die taak afgevinkt is, en anders zodra de dag voorbij is. Enkel items met `freezerItemId`
  * doen mee; gerechten van vandaag of later zonder koppeling krijgen die via `planFreezerLinks`, voorbije blijven ongemoeid.
  */
 
@@ -30,13 +30,18 @@ function isPlanned(item: FreezerPlanItem): item is FreezerPlanItem & { itemDate:
   return item.fromStock === true && item.stockSource !== "pantry" && Boolean(item.freezerItemId) && Boolean(item.itemDate);
 }
 
-/** Welke porties weg mogen: dag voorbij, nog niet afgeboekt en het diepvriesitem bestaat nog. */
-export function planFreezerDeductions(items: FreezerPlanItem[], stock: FreezerStock[], todayIso: string) {
+/** Welke porties weg mogen: dag voorbij of ontdooitaak afgevinkt (`thawedItemIds`), nog niet afgeboekt en het diepvriesitem bestaat nog. */
+export function planFreezerDeductions(
+  items: FreezerPlanItem[],
+  stock: FreezerStock[],
+  todayIso: string,
+  thawedItemIds: ReadonlySet<string> = new Set(),
+) {
   const left = new Map(stock.map((s) => [s.id, s.packages]));
   const deductedItemIds: string[] = [];
   const touched = new Set<string>();
   for (const item of items) {
-    if (!isPlanned(item) || item.stockDeductedAt || item.itemDate >= todayIso) continue;
+    if (!isPlanned(item) || item.stockDeductedAt || (item.itemDate >= todayIso && !thawedItemIds.has(item.id))) continue;
     const packages = left.get(item.freezerItemId);
     if (packages === undefined) continue;
     left.set(item.freezerItemId, Math.max(0, packages - 1));
@@ -66,6 +71,22 @@ export function thawTaskDescription(itemId: string, itemDate: string): string {
 export function parseThawMarker(description: string | null | undefined): { itemId: string; itemDate: string } | null {
   const match = description?.match(/\[shoppinglist-thaw:([^:\]]+):(\d{4}-\d{2}-\d{2})\]/);
   return match ? { itemId: match[1], itemDate: match[2] } : null;
+}
+
+/** Ontdooitaak afgevinkt in de app: `FreezerPlanningSync` boekt de portie dan meteen af. */
+export const THAW_TASK_CLOSED_EVENT = "shoppinglist:thaw-task-closed";
+
+/**
+ * Ontdooitaken die niet meer open staan (afgevinkt, ook in Todoist zelf) voor gerechten van vandaag of later:
+ * die porties zijn uit de diepvries. `openTasks` moet de volledige lijst open taken zijn.
+ */
+export function thawedItemIds(items: FreezerPlanItem[], openTasks: ThawTodoistTask[], todayIso: string): string[] {
+  const openIds = new Set(openTasks.map((t) => t.id));
+  const openItems = new Set(openTasks.map((t) => parseThawMarker(t.description)?.itemId).filter(Boolean));
+  return items
+    .filter((item) => isPlanned(item) && item.thawTaskId && !item.stockDeductedAt && item.itemDate >= todayIso)
+    .filter((item) => !openIds.has(item.thawTaskId!) && !openItems.has(item.id))
+    .map((item) => item.id);
 }
 
 /** Staat het gerecht van deze ontdooitaak vandaag op het menu? Dan moet het nu echt uit de diepvries. */

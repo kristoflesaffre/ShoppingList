@@ -3,13 +3,20 @@
 import * as React from "react";
 import { db } from "@/lib/db";
 import { toIsoDate } from "@/lib/calendar-utils";
-import { planFreezerDeductions, planFreezerLinks, planThawTaskActions, type FreezerPlanItem } from "@/lib/freezer-planning";
+import {
+  planFreezerDeductions,
+  planFreezerLinks,
+  planThawTaskActions,
+  THAW_TASK_CLOSED_EVENT,
+  thawedItemIds,
+  type FreezerPlanItem,
+} from "@/lib/freezer-planning";
 import { useGoogleAuthToken } from "@/lib/google-client";
 import { isPantryItem } from "@/lib/pantry";
 import { todoistPost } from "@/lib/todoist-client";
 
 /**
- * Altijd actief (geen scherm): boekt voorbije diepvriesgerechten af en houdt de Todoist-taken «Uit de diepvries
+ * Altijd actief (geen scherm): boekt diepvriesgerechten af (ontdooitaak afgevinkt of dag voorbij) en houdt de Todoist-taken «Uit de diepvries
  * halen» gelijk met de planning. De stand staat op de items, dus dit is veilig om vaak en op meerdere toestellen te draaien.
  */
 export function FreezerPlanningSync() {
@@ -60,10 +67,25 @@ export function FreezerPlanningSync() {
     void db.transact(links.map((link) => db.tx.items[link.itemId].update({ freezerItemId: link.freezerItemId })));
   }, [data, user, today]);
 
+  // Gerechten waarvan de ontdooitaak afgevinkt is: in de app (meteen) of in Todoist zelf (bij het gelijkzetten).
+  const [thawed, setThawed] = React.useState<ReadonlySet<string>>(() => new Set());
+  const addThawed = React.useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    setThawed((current) => (ids.every((id) => current.has(id)) ? current : new Set([...Array.from(current), ...ids])));
+  }, []);
+  React.useEffect(() => {
+    const onClosed = (event: Event) => {
+      const itemId = (event as CustomEvent<{ itemId?: string }>).detail?.itemId;
+      if (itemId) addThawed([itemId]);
+    };
+    window.addEventListener(THAW_TASK_CLOSED_EVENT, onClosed);
+    return () => window.removeEventListener(THAW_TASK_CLOSED_EVENT, onClosed);
+  }, [addThawed]);
+
   const handled = React.useRef(new Set<string>());
   React.useEffect(() => {
     if (!data) return;
-    const plan = planFreezerDeductions(items.filter((it) => !handled.current.has(it.id)), stock, today);
+    const plan = planFreezerDeductions(items.filter((it) => !handled.current.has(it.id)), stock, today, thawed);
     if (plan.deductedItemIds.length === 0) return;
     plan.deductedItemIds.forEach((id) => handled.current.add(id));
     void db.transact([
@@ -71,7 +93,7 @@ export function FreezerPlanningSync() {
       ...plan.updates.map((u) => db.tx.freezerItems[u.id].update({ packages: u.packages })),
       ...plan.deleteIds.map((id) => db.tx.freezerItems[id].delete()),
     ]);
-  }, [data, items, stock, today]);
+  }, [data, items, stock, today, thawed]);
 
   // Elke wijziging in de planning: even wachten (meerdere gerechten na elkaar) en dan Todoist gelijkzetten.
   const signature = data ? items.map((it) => `${it.id}:${it.itemDate}:${it.thawTaskId ?? ""}`).sort().join("|") : null;
@@ -90,7 +112,9 @@ export function FreezerPlanningSync() {
         if (!status.connected || !status.canWrite) return;
         const res = await todoistPost(token, "tasks", { limit: 200 });
         if (!res.ok) return;
-        const { tasks } = (await res.json()) as { tasks: { id: string; description?: string }[] };
+        const { tasks, nextCursor } = (await res.json()) as { tasks: { id: string; description?: string }[]; nextCursor?: string | null };
+        // Enkel met de volledige lijst: een taak op een volgende pagina is niet afgevinkt.
+        if (!nextCursor) addThawed(thawedItemIds(items, tasks, today));
         for (const action of planThawTaskActions(items, tasks, today)) {
           if (action.kind === "close") {
             await todoistPost(token, "close", { id: action.taskId });

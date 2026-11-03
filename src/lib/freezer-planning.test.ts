@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findFreezerItemForPlan, isThawDay, parseThawMarker, planFreezerDeductions, planFreezerLinks, planThawTaskActions, thawDueDate, thawPhotoUrl, thawTaskDescription } from "./freezer-planning";
+import { findFreezerItemForPlan, isThawDay, parseThawMarker, planFreezerDeductions, planFreezerLinks, planThawTaskActions, thawDueDate, thawedItemIds, thawPhotoUrl, thawTaskDescription } from "./freezer-planning";
 
 const dish = (over = {}) => ({ id: "i1", name: "Lasagne (diepvries)", fromStock: true, freezerItemId: "f1", itemDate: "2026-11-05", ...over });
 
@@ -29,6 +29,11 @@ describe("thawPhotoUrl", () => {
 });
 
 describe("planFreezerDeductions", () => {
+  it("boekt meteen af als de ontdooitaak afgevinkt is, ook voor de dag", () => {
+    const thawed = new Set(["i1"]);
+    expect(planFreezerDeductions([dish({ itemDate: "2026-11-05" })], [{ id: "f1", packages: 2 }], "2026-11-04", thawed)).toEqual({ deductedItemIds: ["i1"], updates: [{ id: "f1", packages: 1 }], deleteIds: [] });
+    expect(planFreezerDeductions([dish({ itemDate: "2026-11-05", stockDeductedAt: 1 })], [{ id: "f1", packages: 2 }], "2026-11-04", thawed).deductedItemIds).toEqual([]);
+  });
   it("boekt pas af als de dag voorbij is", () => {
     expect(planFreezerDeductions([dish({ itemDate: "2026-11-05" })], [{ id: "f1", packages: 2 }], "2026-11-05").deductedItemIds).toEqual([]);
     expect(planFreezerDeductions([dish({ itemDate: "2026-11-05" })], [{ id: "f1", packages: 2 }], "2026-11-06")).toEqual({ deductedItemIds: ["i1"], updates: [{ id: "f1", packages: 1 }], deleteIds: [] });
@@ -132,5 +137,22 @@ describe("planFreezerLinks", () => {
     const linked = open({ freezerItemId: link.freezerItemId });
     expect(planThawTaskActions([linked], [], today)[0]).toMatchObject({ kind: "create", dueDate: today });
     expect(planFreezerDeductions([linked], [{ id: "f1", packages: 1 }], today).deductedItemIds).toEqual([]);
+  });
+});
+
+describe("thawedItemIds", () => {
+  const planned = dish({ thawTaskId: "t1" });
+  it("vindt gerechten van vandaag of later waarvan de taak niet meer open staat", () => {
+    expect(thawedItemIds([planned], [], "2026-11-05")).toEqual(["i1"]);
+    expect(thawedItemIds([planned], [], "2026-11-04")).toEqual(["i1"]);
+  });
+  it("niet zolang de taak nog open staat, op id of op markering", () => {
+    expect(thawedItemIds([planned], [{ id: "t1" }], "2026-11-04")).toEqual([]);
+    expect(thawedItemIds([planned], [{ id: "t9", description: thawTaskDescription("i1", "2026-11-05") }], "2026-11-04")).toEqual([]);
+  });
+  it("laat gerechten zonder taak, al afgeboekte en voorbije met rust", () => {
+    expect(thawedItemIds([dish()], [], "2026-11-04")).toEqual([]);
+    expect(thawedItemIds([dish({ thawTaskId: "t1", stockDeductedAt: 1 })], [], "2026-11-04")).toEqual([]);
+    expect(thawedItemIds([planned], [], "2026-11-06")).toEqual([]);
   });
 });
