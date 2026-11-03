@@ -101,6 +101,8 @@ export function useWatchingTvItems() {
   const [rawSeasons, setRawSeasons] = React.useState<Record<string, TvSeasonInfo[]>>({});
   /** TMDB-status per serie («Returning Series», «Ended», …), voor automatisch volgen. */
   const [statuses, setStatuses] = React.useState<Record<string, string | null>>({});
+  /** Sfeerbeeld per serie, voor de teaserkaart «Nieuw seizoen». */
+  const [backdrops, setBackdrops] = React.useState<Record<string, string | null>>({});
   const [dismissedNewSeasons, setDismissedNewSeasons] = React.useState<Set<string>>(() => new Set());
   React.useEffect(() => setDismissedNewSeasons(readDismissedNewSeasons()), []);
   // Per titel één keer per bezoek: het effect loopt opnieuw zodra de bewaarde seizoenen veranderen.
@@ -125,9 +127,10 @@ export function useWatchingTvItems() {
         watchlist,
         seriesMeta,
         rawSeasonsByTmdbId: rawSeasons,
+        backdropByTmdbId: backdrops,
         dismissed: dismissedNewSeasons,
       }),
-    [watchedIds, watchlist, seriesMeta, rawSeasons, dismissedNewSeasons],
+    [watchedIds, watchlist, seriesMeta, rawSeasons, backdrops, dismissedNewSeasons],
   );
 
   const setNewSeasonDismissed = React.useCallback((item: NewSeasonItem, dismissed: boolean) => {
@@ -184,17 +187,19 @@ export function useWatchingTvItems() {
         title: string;
         year: string;
         posterUrl: string | null;
+        backdropUrl?: string | null;
         status?: string | null;
-        seasons?: { seasonNumber: number; episodeCount: number; name?: string; airDate?: string | null }[];
+        seasons?: { seasonNumber: number; episodeCount: number; name?: string; airDate?: string | null; posterUrl?: string | null }[];
       }>("tv", tmdbId)
         .then(
           (data) => {
             setStatuses((prev) => ({ ...prev, [tmdbId]: data.status ?? null }));
+            setBackdrops((prev) => ({ ...prev, [tmdbId]: data.backdropUrl ?? null }));
             setRawSeasons((prev) => ({
               ...prev,
               [tmdbId]: (data.seasons ?? [])
                 .filter((x) => x.seasonNumber > 0)
-                .map((x) => ({ seasonNumber: x.seasonNumber, episodeCount: x.episodeCount, name: x.name, airDate: x.airDate ?? null })),
+                .map((x) => ({ seasonNumber: x.seasonNumber, episodeCount: x.episodeCount, name: x.name, airDate: x.airDate ?? null, posterUrl: x.posterUrl ?? null })),
             }));
             const remoteSeasons = mapSeasonsFromDetail(data.seasons);
             if (remoteSeasons.length === 0) return;

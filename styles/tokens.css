@@ -204,6 +204,8 @@
   --cinema-butter: #ffc879;
   /* Afleveringpagina (canvas EP · A): bijna-zwart doek waarin het seriebeeld uitvloeit, in beide thema's gelijk. */
   --cinema-screen: #0c0e12;
+  /* «Nieuw seizoen»: groen NIEUW-label op een beeld, in beide thema's gelijk. */
+  --badge-new: #1f9d55;
 }
 
 /*

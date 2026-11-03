@@ -12,6 +12,8 @@ export type TvSeasonInfo = {
   name?: string;
   /** Eerste uitzenddatum (YYYY-MM-DD) volgens TMDB; ontbreekt bij oude metadata. */
   airDate?: string | null;
+  /** Poster van dit seizoen (TMDB), voor «Nieuw seizoen». */
+  posterUrl?: string | null;
 };
 
 export type WatchedProgress = {
@@ -256,6 +258,9 @@ export type NewSeasonItem = {
   released: boolean;
   /** Seizoenen die je al helemaal zag. */
   watchedThrough: number;
+  /** Poster van het nieuwe seizoen (anders `posterUrl`) en sfeerbeeld van de serie, voor de teaserkaart. */
+  seasonPosterUrl: string | null;
+  backdropUrl: string | null;
 };
 
 /**
@@ -268,6 +273,8 @@ export function buildNewSeasonItems(input: {
   seriesMeta: Record<string, { title: string; posterUrl: string | null; year: string; seasons?: TvSeasonInfo[] }>;
   /** Seizoenen zoals TMDB ze nu kent (ook aangekondigde zonder afleveringen). */
   rawSeasonsByTmdbId: Record<string, TvSeasonInfo[] | undefined>;
+  /** Sfeerbeeld (TMDB-backdrop) per serie. */
+  backdropByTmdbId?: Record<string, string | null | undefined>;
   dismissed: ReadonlySet<string>;
   today?: string;
 }): NewSeasonItem[] {
@@ -304,6 +311,8 @@ export function buildNewSeasonItems(input: {
       airDate: next.airDate,
       released: next.airDate <= today && next.episodeCount > 0,
       watchedThrough: last.season,
+      seasonPosterUrl: next.posterUrl ?? meta.posterUrl,
+      backdropUrl: input.backdropByTmdbId?.[tmdbId] ?? null,
     });
   }
   // Eerst wat al uit is (nieuwste bovenaan), dan wat binnenkort komt (eerstvolgende eerst).

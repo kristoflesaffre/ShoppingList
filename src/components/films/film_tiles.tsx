@@ -478,9 +478,17 @@ function formatShortDate(iso: string): string {
   return d.toLocaleDateString("nl-BE", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) }).replace(".", "");
 }
 
+function daysUntil(iso: string): number {
+  const d = new Date(`${iso}T12:00:00`);
+  const now = new Date();
+  now.setHours(12, 0, 0, 0);
+  return Math.round((d.getTime() - now.getTime()) / 86_400_000);
+}
+
 /**
- * Canvas «22 · Nieuw seizoen A»: kaart voor een serie die je helemaal zag en waarvan een
- * volgend seizoen uit is (groen NIEUW) of aangekondigd (grijs BINNENKORT).
+ * Canvas «Nieuw seizoen · A · Teaser met beeld»: kaart voor een serie die je helemaal zag en waarvan
+ * een volgend seizoen uit is (groen NIEUW · S5) of aangekondigd (glazen «Over 77 dagen»). Sfeerbeeld
+ * van de serie als achtergrond, poster van het nieuwe seizoen erop, één witte actie, ✕ rechtsboven.
  */
 export function NewSeasonCard({
   item,
@@ -489,58 +497,89 @@ export function NewSeasonCard({
   onDismiss,
   className,
 }: {
-  item: { title: string; posterUrl: string | null; season: number; airDate: string; released: boolean };
+  item: {
+    title: string;
+    posterUrl: string | null;
+    seasonPosterUrl?: string | null;
+    backdropUrl?: string | null;
+    season: number;
+    airDate: string;
+    released: boolean;
+  };
   onOpen: () => void;
   onAdd: () => void;
   onDismiss: () => void;
   className?: string;
 }) {
+  const days = item.released ? 0 : daysUntil(item.airDate);
+  const countdown = days <= 0 ? "VANDAAG" : days === 1 ? "MORGEN" : `OVER ${days} DAGEN`;
+  const poster = item.seasonPosterUrl ?? item.posterUrl;
+  const background = item.backdropUrl ?? poster;
   return (
-    <div className={cn("flex shrink-0 gap-3 rounded-[20px] bg-[var(--white)] p-2.5 shadow-[inset_0_0_0_1px_var(--border-subtle)]", className ?? "w-[300px] lg:w-auto")}>
-      <button type="button" onClick={onOpen} aria-label={`${item.title} bekijken`} className="w-[70px] shrink-0 rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]">
-        <Poster src={item.posterUrl} alt="" className="rounded-[12px]" />
+    <article
+      className={cn(
+        "relative isolate h-[204px] shrink-0 overflow-hidden rounded-[20px] bg-[var(--cinema-night)] shadow-[0_14px_30px_-18px_rgba(16,17,48,0.55)] lg:h-[224px]",
+        className ?? "w-[300px] lg:w-auto",
+      )}
+    >
+      {background ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={background}
+          alt=""
+          aria-hidden
+          className={cn("absolute inset-0 -z-10 size-full object-cover object-[50%_30%]", !item.backdropUrl && "scale-110 blur-md")}
+        />
+      ) : null}
+      <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(0deg,rgba(10,6,12,0.94)_0%,rgba(10,6,12,0.55)_48%,rgba(10,6,12,0.05)_100%)]" />
+      {/* Hele kaart opent de serie; de knoppen liggen erboven. */}
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`${item.title} bekijken`}
+        className="absolute inset-0 rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fixed-white/70"
+      />
+      <span
+        className={cn(
+          "pointer-events-none absolute left-3.5 top-3.5 inline-flex h-6 items-center rounded-pill px-2.5 text-[11px] font-extrabold tracking-[0.06em] text-fixed-white",
+          item.released
+            ? "bg-[var(--badge-new)]"
+            : "bg-fixed-white/[0.16] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)] backdrop-blur-md",
+        )}
+      >
+        {item.released ? `NIEUW · S${item.season}` : countdown}
+      </span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label={`Seizoen ${item.season} van ${item.title} verbergen`}
+        className="absolute right-3 top-3 flex size-[30px] items-center justify-center rounded-full bg-fixed-white/[0.14] text-fixed-white backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 [@media(hover:hover)]:hover:bg-fixed-white/[0.24]"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" aria-hidden className="size-3.5">
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
       </button>
-      <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
-        <button type="button" onClick={onOpen} className="min-w-0 text-left focus-visible:outline-none">
-          <span
-            className={cn(
-              "inline-flex h-5 items-center rounded-pill px-[7px] text-[10.5px] font-extrabold tracking-[0.05em]",
-              item.released ? "bg-[#e9f9ef] text-[#1f9d55]" : "bg-[var(--gray-50)] text-[var(--text-secondary)]",
-            )}
-          >
-            {item.released ? "NIEUW" : "BINNENKORT"}
-          </span>
-          <span className="mt-[5px] block truncate text-[15px] font-bold leading-5 text-[var(--text-primary)]">{item.title}</span>
-          <span className="mt-px block text-[12.5px] text-[var(--text-secondary)]">
+      <div className="pointer-events-none absolute inset-x-4 bottom-4 flex items-end gap-3.5">
+        <span className="w-[60px] shrink-0 lg:w-[64px]">
+          <Poster src={poster} alt="" className="rounded-[10px] shadow-[0_10px_24px_-10px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.12)]" />
+        </span>
+        <div className="min-w-0 flex-1 text-fixed-white">
+          <p className="truncate text-xs font-semibold text-fixed-white/70">
             Seizoen {item.season} · {item.released ? "sinds" : "vanaf"} {formatShortDate(item.airDate)}
-          </span>
-        </button>
-        <div className="mt-2 flex items-center gap-1.5">
+          </p>
+          <h3 className="mt-0.5 truncate text-[19px] font-extrabold leading-6 tracking-[-0.02em] lg:text-xl">{item.title}</h3>
           <button
             type="button"
             onClick={onAdd}
-            className={cn(
-              "inline-flex h-[30px] items-center gap-[5px] rounded-pill px-3 text-[12.5px] font-bold transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-              item.released ? "bg-[var(--blue-500)] text-white" : "bg-[var(--blue-50)] text-[var(--blue-500)]",
-            )}
+            className="pointer-events-auto mt-2.5 inline-flex h-[34px] items-center gap-1.5 whitespace-nowrap rounded-pill bg-fixed-white px-3.5 text-[13px] font-bold text-[var(--cinema-night)] transition-transform duration-fast ease-out-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 motion-safe:active:scale-95"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-3.5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" aria-hidden className="size-3.5">
               <path d="M12 5v14M5 12h14" />
             </svg>
-            {item.released ? "Watchlist" : "Alvast op watchlist"}
-          </button>
-          <button
-            type="button"
-            onClick={onDismiss}
-            aria-label={`Seizoen ${item.season} van ${item.title} verbergen`}
-            className="flex size-[30px] items-center justify-center rounded-full bg-[var(--gray-50)] text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-100)]"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-3.5">
-              <path d="M6 6l12 12M18 6 6 18" />
-            </svg>
+            {item.released ? "Op watchlist" : "Alvast op watchlist"}
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
