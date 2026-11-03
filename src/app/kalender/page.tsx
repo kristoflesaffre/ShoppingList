@@ -420,10 +420,10 @@ function DayCard({
         <>
           {/* Het bord loopt rechts uit de kaart: de twee cirkels staan op de zichtbare rand, linksonder. */}
           <span className="absolute -right-6 top-6 size-[120px] lg:hidden">
-            <CalendarSidePlates photos={visual.sidePhotos} size={120} angles={[135, 190]} />
+            <CalendarSidePlates photos={visual.sidePhotos} size={120} angles={[120, 165, 210]} />
           </span>
           <span className="absolute -right-9 top-7 hidden size-[176px] lg:block">
-            <CalendarSidePlates photos={visual.sidePhotos} size={176} angles={[135, 190]} />
+            <CalendarSidePlates photos={visual.sidePhotos} size={176} angles={[120, 165, 210]} />
           </span>
         </>
       ) : visual.sidePhotos.length === 1 ? (

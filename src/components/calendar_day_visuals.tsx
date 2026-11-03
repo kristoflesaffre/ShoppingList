@@ -13,18 +13,23 @@ import { eatingOutPhotoFor } from "@/lib/agenda_photos";
 
 type CalendarSideDish = { name: string; photo: string };
 
-/** Secundaire gerechten op het bord: de tweede soep, of vlees en groenten bij een aardappelgerecht. */
+/**
+ * Secundaire gerechten op het bord: alle andere gerechten van die dag met een foto (tot drie).
+ * Eerst wat bij het hoofdgerecht hoort: de tweede soep, of vlees en dan groenten bij een aardappelgerecht.
+ */
 function calendarSideDishes(meals: CalendarMeal[]): CalendarSideDish[] {
   const [main, ...rest] = meals;
-  if (!main) return [];
-  const withPhoto = (list: CalendarMeal[]) =>
-    list.flatMap((m) => (m.photoUrl ? [{ name: m.recipeName, photo: m.photoUrl, role: dishRole(m.recipeName) }] : []));
-  if (isSoupName(main.recipeName)) return withPhoto(rest.slice(0, 1).filter((m) => isSoupName(m.recipeName)));
-  if (main.takeout || dishRole(main.recipeName) !== "potato") return [];
-  const sides = withPhoto(rest).filter((d) => d.role === "meat" || d.role === "vegetable");
-  const meat = sides.find((d) => d.role === "meat");
-  const vegetable = sides.find((d) => d.role === "vegetable");
-  return meat && vegetable ? [meat, vegetable] : sides.slice(0, 2);
+  if (!main || main.takeout) return [];
+  const sides = rest.flatMap((m) =>
+    m.photoUrl && !m.takeout ? [{ name: m.recipeName, photo: m.photoUrl, role: dishRole(m.recipeName), soup: isSoupName(m.recipeName) }] : [],
+  );
+  const rank = (d: (typeof sides)[number]) =>
+    isSoupName(main.recipeName) ? (d.soup ? 0 : 1) : dishRole(main.recipeName) === "potato" ? (d.role === "meat" ? 0 : d.role === "vegetable" ? 1 : 2) : 0;
+  return sides
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => rank(a.d) - rank(b.d) || a.i - b.i)
+    .slice(0, 3)
+    .map(({ d }) => ({ name: d.name, photo: d.photo }));
 }
 
 /** Samenvatting van een kalenderdag (gerecht of losse items). */
@@ -99,7 +104,7 @@ export function CalendarFreezeBadge({ size = 20 }: { size?: number }) {
 
 /**
  * Secundaire gerechten als kleinere cirkels die over de rand van het bord vallen: één rechtsonder,
- * twee rond die hoek. De ouder is even groot als het bord (`size`) en `relative`.
+ * twee of drie rond die hoek. De ouder is even groot als het bord (`size`) en `relative`.
  */
 export function CalendarSidePlates({
   photos,
@@ -111,9 +116,9 @@ export function CalendarSidePlates({
   /** Graden op de rand van het bord (0 = rechts, 90 = onder). */
   angles?: number[];
 }) {
-  const shown = photos.slice(0, 2);
-  const placed = angles ?? (shown.length > 1 ? [15, 75] : [45]);
-  const diameter = Math.round(size * (shown.length > 1 ? 0.36 : 0.44));
+  const shown = photos.slice(0, 3);
+  const placed = angles ?? (shown.length > 2 ? [-5, 45, 95] : shown.length > 1 ? [15, 75] : [45]);
+  const diameter = Math.round(size * (shown.length > 2 ? 0.32 : shown.length > 1 ? 0.36 : 0.44));
   return (
     <>
       {shown.map((src, i) => {
