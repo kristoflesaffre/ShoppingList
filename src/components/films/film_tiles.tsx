@@ -4,6 +4,8 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { Shimmer } from "@/components/ui/shimmer";
+import { RoundIconButton } from "@/components/ui/round_icon_button";
+import { WatchOnProjector } from "@/components/films/watch_on_projector";
 import type { WatchlistItem } from "@/lib/watchlist";
 import type { WatchingTvItem } from "@/hooks/use_watching_tv_items";
 import { usePosterTint, posterTintColors } from "@/hooks/use_poster_tint";
@@ -304,15 +306,12 @@ export function WatchingCard({
             <PlayProgressRing percent={item.stremio?.percent ?? 0} />
             <span className="whitespace-nowrap text-[12.5px] font-semibold text-[var(--text-secondary)]">{timeLabel}</span>
           </button>
-          <div className="mt-auto flex items-center gap-0.5 pt-2.5">
-            <button
-              type="button"
-              onClick={onNext}
-              className="inline-flex h-[34px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill bg-[var(--action-primary)] px-3.5 text-[13.5px] font-bold text-[var(--action-primary-foreground)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--action-primary-hover)]"
-            >
-              <CheckIcon className="size-3" />
-              Gezien
-            </button>
+          <div className="mt-auto flex items-center gap-1.5 pt-2.5">
+            {/* Hoofdactie: de volgende aflevering op de projector; «Gezien» is secundair (zacht, enkel een oogje). */}
+            <WatchOnProjector tone="icon" type="tv" tmdbId={item.tmdbId} season={item.nextSeason} episode={item.nextEpisode} />
+            <RoundIconButton tone="primary" size={36} onClick={onNext} aria-label={`Aflevering ${item.nextEpisode} gezien`} title="Gezien">
+              <EyeIcon className="size-[18px]" />
+            </RoundIconButton>
             <button
               ref={dotsRef}
               type="button"

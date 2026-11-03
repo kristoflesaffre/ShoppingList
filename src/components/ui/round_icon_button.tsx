@@ -3,12 +3,14 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export type RoundIconButtonTone = "primary" | "danger" | "neutral" | "surface" | "onColor";
+export type RoundIconButtonTone = "primary" | "solid" | "danger" | "neutral" | "surface" | "onColor";
 export type RoundIconButtonSize = 28 | 32 | 36 | 42 | 48;
 
 const TONES: Record<RoundIconButtonTone, string> = {
   /** Zacht lavendel: acties (potlood, diepvries, +). */
   primary: "bg-[var(--blue-50)] text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--blue-100)]",
+  /** Vol blauw: de hoofdactie van een kaart, als enkel een icoon (bv. «Kijk op projector»). */
+  solid: "bg-[var(--action-primary)] text-[var(--action-primary-foreground)] shadow-[0_6px_14px_-8px_rgba(79,85,241,0.7)] [@media(hover:hover)]:hover:bg-[var(--action-primary-hover)]",
   /** Zacht rood: verwijderen. */
   danger: "bg-[var(--error-25)] text-[var(--error-400)] [@media(hover:hover)]:hover:bg-[var(--error-50,#fde2e2)]",
   /** Lichtgrijs: sluiten. */

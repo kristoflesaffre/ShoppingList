@@ -19,6 +19,7 @@ export const Tones: Story = {
   render: () => (
     <div className="flex items-center gap-3 rounded-[20px] bg-[var(--bg-app,#f5f6fa)] p-6">
       <RoundIconButton tone="primary" size={32} aria-label="Bewerken">{RoundIcons.pencil}</RoundIconButton>
+      <RoundIconButton tone="solid" size={36} aria-label="Hoofdactie">{RoundIcons.plus}</RoundIconButton>
       <RoundIconButton tone="danger" size={28} aria-label="Verwijderen">{RoundIcons.trash}</RoundIconButton>
       <RoundIconButton tone="neutral" size={36} aria-label="Sluiten">{RoundIcons.close}</RoundIconButton>
       <RoundIconButton tone="surface" size={36} aria-label="Zoeken">{RoundIcons.search}</RoundIconButton>

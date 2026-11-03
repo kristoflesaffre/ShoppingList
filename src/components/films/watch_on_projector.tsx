@@ -5,6 +5,7 @@ import { useGoogleAuthToken } from "@/lib/google-client";
 import { awaitProjectorReceipt } from "@/lib/projector-client";
 import { stremioLink, type StremioTarget } from "@/lib/stremio";
 import { cn } from "@/lib/utils";
+import { RoundIconButton } from "@/components/ui/round_icon_button";
 
 let launching = false;
 
@@ -15,10 +16,14 @@ export function ProjectorIcon({ className = "size-5" }: { className?: string }) 
   </svg>;
 }
 
-/** `tone="cinema"`: witte pil (50px) op het donkere doek van de afleveringpagina. */
+/**
+ * `tone="cinema"`: witte pil (50px) op het donkere doek van de afleveringpagina.
+ * `tone="icon"`: enkel het projector-icoon als volle blauwe ronde knop (36px), bv. op de kaart «Aan het kijken»;
+ * de melding verschijnt dan als ballonnetje onder de knop.
+ */
 export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone = "primary", className }: {
   imdbId?: string | null; type: "movie" | "tv"; tmdbId?: string | number; season?: number; episode?: number;
-  tone?: "primary" | "cinema"; className?: string;
+  tone?: "primary" | "cinema" | "icon"; className?: string;
 }) {
   const token = useGoogleAuthToken();
   const [busy, setBusy] = React.useState(false);
@@ -58,6 +63,21 @@ export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone =
     } finally { launching = false; setBusy(false); }
   }
   const cinema = tone === "cinema";
+  // Icoonvariant: de melding verdwijnt vanzelf na een tijdje (er is geen ruimte om ze blijvend te tonen).
+  React.useEffect(() => {
+    if (tone !== "icon" || !message || busy) return;
+    const id = window.setTimeout(() => setMessage(null), 9000);
+    return () => window.clearTimeout(id);
+  }, [tone, message, busy]);
+  if (tone === "icon") {
+    return <div className={cn("relative", className)}>
+      <RoundIconButton tone="solid" size={36} onClick={() => void watch()} disabled={!token || busy || (!imdbId && !tmdbId)} aria-busy={busy}
+        aria-label={busy ? "Even wachten…" : "Kijk op projector"} title="Kijk op projector" className="disabled:opacity-50">
+        {busy ? <span aria-hidden className="block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <ProjectorIcon />}
+      </RoundIconButton>
+      {message ? <p role="status" aria-live="polite" className="absolute left-0 top-[calc(100%+8px)] z-20 w-[240px] rounded-[14px] bg-[var(--white)] px-3 py-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)] shadow-[0_14px_30px_-12px_rgba(16,17,48,0.45),0_0_0_1px_var(--border-subtle)]">{message}</p> : null}
+    </div>;
+  }
   return <div className={cn("flex min-w-0 flex-col items-start gap-2", className)}>
     <button type="button" onClick={() => void watch()} disabled={!token || busy || (!imdbId && !tmdbId)} aria-busy={busy}
       className={cn(
