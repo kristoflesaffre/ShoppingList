@@ -3,6 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { CheckIcon, Poster, watchingTimeLabel } from "@/components/films/film_tiles";
+import { WatchOnProjector } from "@/components/films/watch_on_projector";
 import { useEpisodeInfo } from "@/hooks/use_episode_info";
 import type { WatchingTvItem } from "@/hooks/use_watching_tv_items";
 
@@ -45,7 +46,7 @@ export function CinemaHero({ children, compact = false }: { children: React.Reac
   );
 }
 
-/** «Verder kijken» in de kop: de serie die je laatst keek, groot met poster, voortgang en twee acties. */
+/** «Verder kijken» in de kop: de serie die je laatst keek, groot met poster, voortgang, «Speel op projector» en «gezien». */
 export function ContinueWatchingHero({
   item,
   onOpen,
@@ -84,16 +85,7 @@ export function ContinueWatchingHero({
           <span className="shrink-0 text-[12.5px] font-semibold text-fixed-white/75 lg:text-[13px]">{timeLabel}</span>
         </div>
         <div className="mt-4 flex gap-2 lg:mt-6 lg:gap-2.5">
-          <button
-            type="button"
-            onClick={onOpen}
-            className="inline-flex h-[42px] shrink-0 items-center gap-2 rounded-pill bg-fixed-white px-[18px] text-[14.5px] font-bold text-[var(--cinema-night)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 motion-safe:active:scale-[0.97] lg:h-[46px] lg:px-[22px] lg:text-[15px]"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden className="size-3.5">
-              <path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l11.2-7.2a1 1 0 0 0 0-1.72L8.5 3.94A1 1 0 0 0 7 4.8z" fill="currentColor" />
-            </svg>
-            Speel verder
-          </button>
+          <WatchOnProjector tone="hero" type="tv" tmdbId={item.tmdbId} season={item.nextSeason} episode={item.nextEpisode} />
           <button
             type="button"
             onClick={onNext}

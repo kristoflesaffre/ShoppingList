@@ -20,10 +20,11 @@ export function ProjectorIcon({ className = "size-5" }: { className?: string }) 
  * `tone="cinema"`: witte pil (50px) op het donkere doek van de afleveringpagina.
  * `tone="icon"`: enkel het projector-icoon als volle blauwe ronde knop (36px), bv. op de kaart «Aan het kijken»;
  * de melding verschijnt dan als ballonnetje onder de knop.
+ * `tone="hero"`: witte pil (42/46px) in de cinema-kop «Verder kijken»; melding als glazen ballonnetje eronder.
  */
 export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone = "primary", className }: {
   imdbId?: string | null; type: "movie" | "tv"; tmdbId?: string | number; season?: number; episode?: number;
-  tone?: "primary" | "cinema" | "icon"; className?: string;
+  tone?: "primary" | "cinema" | "icon" | "hero"; className?: string;
 }) {
   const token = useGoogleAuthToken();
   const [busy, setBusy] = React.useState(false);
@@ -63,12 +64,13 @@ export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone =
     } finally { launching = false; setBusy(false); }
   }
   const cinema = tone === "cinema";
-  // Icoonvariant: de melding verdwijnt vanzelf na een tijdje (er is geen ruimte om ze blijvend te tonen).
+  // Icoon- en kopvariant: de melding verdwijnt vanzelf na een tijdje (er is geen ruimte om ze blijvend te tonen).
+  const floating = tone === "icon" || tone === "hero";
   React.useEffect(() => {
-    if (tone !== "icon" || !message || busy) return;
+    if (!floating || !message || busy) return;
     const id = window.setTimeout(() => setMessage(null), 9000);
     return () => window.clearTimeout(id);
-  }, [tone, message, busy]);
+  }, [floating, message, busy]);
   if (tone === "icon") {
     return <div className={cn("relative", className)}>
       <RoundIconButton tone="solid" size={36} onClick={() => void watch()} disabled={!token || busy || (!imdbId && !tmdbId)} aria-busy={busy}
@@ -76,6 +78,16 @@ export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone =
         {busy ? <span aria-hidden className="block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <ProjectorIcon />}
       </RoundIconButton>
       {message ? <p role="status" aria-live="polite" className="absolute left-0 top-[calc(100%+8px)] z-20 w-[240px] rounded-[14px] bg-[var(--white)] px-3 py-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)] shadow-[0_14px_30px_-12px_rgba(16,17,48,0.45),0_0_0_1px_var(--border-subtle)]">{message}</p> : null}
+    </div>;
+  }
+  if (tone === "hero") {
+    return <div className={cn("relative shrink-0", className)}>
+      <button type="button" onClick={() => void watch()} disabled={!token || busy || (!imdbId && !tmdbId)} aria-busy={busy}
+        className="inline-flex h-[42px] items-center gap-2 rounded-pill bg-fixed-white px-[18px] text-[14.5px] font-bold text-[var(--cinema-night)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 disabled:opacity-60 motion-safe:active:scale-[0.97] lg:h-[46px] lg:px-[22px] lg:text-[15px]">
+        {busy ? <span aria-hidden className="block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <ProjectorIcon className="size-[18px]" />}
+        <span>{busy ? "Even wachten…" : "Speel op projector"}</span>
+      </button>
+      {message ? <p role="status" aria-live="polite" className="absolute left-0 top-[calc(100%+8px)] z-20 w-[260px] rounded-[14px] bg-[color-mix(in_srgb,var(--cinema-night)_82%,transparent)] px-3 py-2 text-[12.5px] leading-[17px] text-fixed-white/85 shadow-[0_14px_30px_-12px_rgba(0,0,0,0.6),inset_0_0_0_1px_rgba(255,255,255,0.14)] backdrop-blur-md">{message}</p> : null}
     </div>;
   }
   return <div className={cn("flex min-w-0 flex-col items-start gap-2", className)}>
