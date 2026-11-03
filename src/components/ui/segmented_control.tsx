@@ -37,7 +37,7 @@ export function SegmentedControl<T extends string>({
   disabled = false,
   surface = "default",
 }: {
-  /** `app` = op de grijze app-achtergrond: witte trog met dun randje (gray-100) en een grijze keuze (gray-100), zoals de chips ernaast. */
+  /** `app` = op de grijze app-achtergrond: witte trog met dun randje (gray-100) en een grijze keuze (gray-100), 34px hoog zoals de chips ernaast. */
   surface?: "default" | "app";
   /** Tijdelijk niet te bedienen (bv. terwijl een opdracht loopt): gedimd, tikken doet niets. */
   disabled?: boolean;
@@ -122,7 +122,8 @@ export function SegmentedControl<T extends string>({
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
               "flex items-center justify-center rounded-[10px] text-[13.5px] font-semibold disabled:cursor-not-allowed transition-[color,border-radius] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-              size === "lg" ? "h-[38px] px-4" : "h-8",
+              // Op de app-achtergrond even hoog als de chips ernaast (34px): opties 28px + 2×3px inzet.
+              size === "lg" ? "h-[38px] px-4" : surface === "app" ? "h-7" : "h-8",
               size === "icon" ? (fill ? "min-w-0 flex-1" : "w-9") : size === "lg" ? "" : "px-3",
               fill && size !== "icon" && "min-w-0 flex-1",
               on ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",

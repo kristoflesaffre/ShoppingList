@@ -1520,7 +1520,7 @@ export function ListGroupingMenuChip({
   ];
   const current = options.find((o) => o.value === value) ?? options[0];
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative flex">
       <button
         type="button"
         aria-haspopup="menu"
@@ -1634,7 +1634,7 @@ export function StoreFilterChip({
   const active = value !== "all";
   const current = options.find((o) => o.value === value) ?? options[0];
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative flex">
       <button
         type="button"
         aria-haspopup="menu"
