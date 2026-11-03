@@ -35,7 +35,10 @@ export function SegmentedControl<T extends string>({
   onSelect,
   commitDelay = 0,
   disabled = false,
+  surface = "default",
 }: {
+  /** `app` = op de grijze app-achtergrond: witte trog met dun randje (gray-100) en een grijze keuze (gray-100), zoals de chips ernaast. */
+  surface?: "default" | "app";
   /** Tijdelijk niet te bedienen (bv. terwijl een opdracht loopt): gedimd, tikken doet niets. */
   disabled?: boolean;
   /** ms tussen de tik en onChange: bij een zware wissel eerst de animatie afmaken, dan pas de inhoud. */
@@ -82,7 +85,8 @@ export function SegmentedControl<T extends string>({
       role="radiogroup"
       aria-label={ariaLabel}
       className={cn(
-        "relative isolate flex gap-0.5 rounded-[13px] bg-[var(--gray-50)] p-[3px]",
+        "relative isolate flex gap-0.5 rounded-[13px] p-[3px]",
+        surface === "app" ? "bg-[var(--white)] shadow-[inset_0_0_0_1px_var(--gray-100)]" : "bg-[var(--gray-50)]",
         // Zelfde curve als de pil: oppervlak, rand en hoeken lopen mee als «smart animate».
         "transition-[background-color,box-shadow,border-radius,backdrop-filter] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
         glass && GLASS_TROUGH,
@@ -94,7 +98,8 @@ export function SegmentedControl<T extends string>({
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute left-0 -z-10 rounded-[10px] bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.12)] motion-reduce:!transition-none",
+          "pointer-events-none absolute left-0 -z-10 rounded-[10px] motion-reduce:!transition-none",
+          surface === "app" ? "bg-[var(--gray-100)]" : "bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.12)]",
           glass && GLASS_PILL,
           // Geen geldige keuze (bv. twee rolluiken in een andere stand): geen pil.
           shownIndex < 0 && "opacity-0",

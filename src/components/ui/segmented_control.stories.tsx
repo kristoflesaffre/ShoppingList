@@ -85,7 +85,7 @@ function LargeDemo() {
 export const Large: Story = { render: () => <LargeDemo /> };
 
 /** Iconen (weergave: 1 kolom / 2 kolommen / tegels). */
-function IconsDemo() {
+function IconsDemo({ surface }: { surface?: "default" | "app" }) {
   {
     const [value, setValue] = React.useState<"one" | "two" | "tiles">("two");
     const icon = (rects: string) => (
@@ -96,6 +96,7 @@ function IconsDemo() {
         ariaLabel="Weergave"
         size="icon"
         fill={false}
+        surface={surface}
         value={value}
         onChange={setValue}
         options={[
@@ -108,6 +109,15 @@ function IconsDemo() {
   }
 }
 export const Icons: Story = { render: () => <IconsDemo /> };
+
+/** Op de grijze app-achtergrond (lijstkop naast de chips): witte trog met randje, grijze keuze. */
+export const OnApp: Story = {
+  render: () => (
+    <div className="rounded-[20px] bg-[var(--bg-app)] p-6">
+      <IconsDemo surface="app" />
+    </div>
+  ),
+};
 
 
 /** Niet te bedienen terwijl een opdracht loopt (bv. lamellen open · dicht): gedimd, tikken doet niets. */

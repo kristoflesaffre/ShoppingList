@@ -1478,6 +1478,7 @@ export function ListLayoutToggle({ value, onChange }: { value: ListCardLayout; o
       ariaLabel="Weergave"
       size="icon"
       fill={false}
+      surface="app"
       value={value}
       onChange={onChange}
       options={LAYOUT_OPTIONS.map((o) => ({ value: o.value, ariaLabel: o.label, label: <LayoutIcon kind={o.value} /> }))}
