@@ -193,7 +193,7 @@ export function PartnerAction({
  * «Aflevering n gezien» en een ⋯-menu voor het hele seizoen of de hele serie.
  */
 /** «Nog 15 min», «48 min» of «Nog 1 min · finale» onder de titel van een «Aan het kijken»-kaart. */
-function watchingTimeLabel(item: WatchingTvItem, info: EpisodeInfo | null): string {
+export function watchingTimeLabel(item: WatchingTvItem, info: EpisodeInfo | null): string {
   const s = item.stremio;
   let time = "";
   if (s && s.durationMs > 0 && s.positionMs > 0) time = `Nog ${Math.max(1, Math.ceil((s.durationMs - s.positionMs) / 60_000))} min`;

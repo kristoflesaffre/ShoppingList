@@ -1,6 +1,7 @@
 "use client";
 
-import { headerRoundButtonClass } from "@/components/ui/header_round_button";
+import { headerGlassButtonClass } from "@/components/ui/header_round_button";
+import { CinemaHero, ContinueWatchingHero } from "@/components/films/cinema_hero";
 import * as React from "react";
 import { createPortal, flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -231,13 +232,13 @@ const FILTER_CHIPS: { id: FilterOption; label: string }[] = [
   { id: "tv", label: "Series" },
 ];
 
-function SettingsButton({ onClick }: { onClick: () => void }) {
+function SettingsButton({ onClick, glass = false }: { onClick: () => void; glass?: boolean }) {
   return (
     <button
       type="button"
       aria-label="Instellingen"
       onClick={onClick}
-      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(16,17,48,0.1)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:text-[var(--blue-500)]"
+      className={glass ? headerGlassButtonClass : "flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(16,17,48,0.1)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:text-[var(--blue-500)]"}
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
         <circle cx="12" cy="12" r="3" />
@@ -677,6 +678,8 @@ export default function FilmsSeriesPage() {
   const [discoverIndex, setDiscoverIndex] = React.useState(0);
   const discoverCarouselRef = React.useRef<DiscoverCarouselHandle>(null);
   const [mounted, setMounted] = React.useState(false);
+  /** Laatst bekeken serie: groot in de cinema-kop («Verder kijken»). */
+  const heroItem = mounted && !dataLoading ? watchingItems[0] ?? null : null;
   const [query, setQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [results, setResults] = React.useState<SearchResult[]>([]);
@@ -1114,36 +1117,44 @@ export default function FilmsSeriesPage() {
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col">
-      {/* Canvas «20 · Films & series — voorstel»: grote titel, wit zoekveld, «Aan het kijken» bovenaan. */}
-      <div className="mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:pt-12">
+      {/* Canvas «C · Popcorn»: cinema-kop over de volle breedte met «Verder kijken»; daaronder de rijen. */}
+      <CinemaHero compact={hasQuery || !heroItem}>
         <div className="flex items-center justify-between lg:hidden">
           <button
             type="button"
             aria-label="Terug"
             onClick={() => router.push("/")}
-            className={headerRoundButtonClass}
+            className={headerGlassButtonClass}
           >
-            <MaskIcon src="/icons/arrow.svg" className="size-6 bg-[var(--blue-500)]" />
+            <MaskIcon src="/icons/arrow.svg" className="size-6 bg-fixed-white" />
           </button>
-          <SettingsButton onClick={() => router.push("/films-series/instellingen")} />
+          <SettingsButton glass onClick={() => router.push("/films-series/instellingen")} />
         </div>
         <div className="mt-1 flex flex-col gap-4 lg:mt-0 lg:flex-row lg:items-center lg:gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <PageBackButton href="/" label="Terug" />
-            <h1 className="text-[30px] font-bold leading-9 tracking-tight text-[var(--text-primary)] lg:text-[32px]">Films &amp; series</h1>
+            <PageBackButton href="/" label="Terug" tone="glass" />
+            <h1 className="text-[30px] font-bold leading-9 tracking-tight text-fixed-white lg:text-[32px]">Films &amp; series</h1>
           </div>
           <SearchBar
-            surface="app"
+            surface="glass"
             className="lg:w-[300px]"
             placeholder="Zoek film of serie"
             value={query}
             onValueChange={setQuery}
           />
           <span className="hidden lg:block">
-            <SettingsButton onClick={() => router.push("/films-series/instellingen")} />
+            <SettingsButton glass onClick={() => router.push("/films-series/instellingen")} />
           </span>
         </div>
-
+        {!hasQuery && heroItem ? (
+          <ContinueWatchingHero
+            item={heroItem}
+            onOpen={() => router.push(`/films-series/${heroItem.id}/episodes/s${heroItem.nextSeason}e${heroItem.nextEpisode}`)}
+            onNext={(e) => handleMarkNextEpisode(e, heroItem)}
+          />
+        ) : null}
+      </CinemaHero>
+      <div className="relative mx-auto -mt-6 flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] lg:-mt-10">
         {/* Filter chips — Figma 1652:46667 */}
         {hasQuery && (
           <div className="-mx-4 mt-3 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
@@ -1208,13 +1219,13 @@ export default function FilmsSeriesPage() {
               </section>
             )}
 
-            {/* Aan het kijken — bovenaan: wat je het vaakst gebruikt */}
-            {watchingItems.length > 0 && (
+            {/* Ook nog bezig — de andere series die je kijkt (de laatste staat groot in de kop) */}
+            {watchingItems.length > 1 && (
               <section className="flex flex-col gap-3">
-                <SectionHead title="Aan het kijken" href="/films-series/aan-het-kijken" />
+                <SectionHead title="Ook nog bezig" href="/films-series/aan-het-kijken" />
                 <div ref={watchingScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
                   <div className="flex w-max gap-3">
-                    {watchingItems.map((item) => (
+                    {watchingItems.slice(1).map((item) => (
                       <WatchingCard
                         key={item.id}
                         item={item}

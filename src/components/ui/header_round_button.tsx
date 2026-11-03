@@ -6,6 +6,10 @@
 export const headerRoundButtonClass =
   "flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [&_svg]:max-h-5 [&_svg]:max-w-5";
 
+/** Dezelfde kopknop op een donkere foto (cinema-kop van Films & series): doorschijnend wit glas, wit icoon. */
+export const headerGlassButtonClass =
+  "flex size-10 shrink-0 items-center justify-center rounded-full bg-fixed-white/[0.12] text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] backdrop-blur-md transition-[transform,background-color] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 [@media(hover:hover)]:hover:bg-fixed-white/[0.2] [&_svg]:max-h-5 [&_svg]:max-w-5";
+
 /** Achtergrond van een vaste kopbalk: pagina-achtergrond, licht doorschijnend met blur. */
 export const headerBarSurfaceClass = "bg-[color-mix(in_srgb,var(--bg-app)_86%,transparent)] backdrop-blur-md";
 

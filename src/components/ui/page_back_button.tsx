@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { RoundIcons } from "@/components/ui/round_icon_button";
-import { headerRoundButtonClass } from "@/components/ui/header_round_button";
+import { headerGlassButtonClass, headerRoundButtonClass } from "@/components/ui/header_round_button";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,12 +15,15 @@ export function PageBackButton({
   label = "Terug",
   className,
   onClick,
+  tone = "default",
 }: {
   href?: string;
   label?: string;
   className?: string;
   /** Eigen gedrag (bv. terug naar waar je vandaan kwam); anders naar `href`. */
   onClick?: () => void;
+  /** «glass»: op een donkere foto (cinema-kop). */
+  tone?: "default" | "glass";
 }) {
   const router = useRouter();
   return (
@@ -28,7 +31,7 @@ export function PageBackButton({
       type="button"
       aria-label={label}
       onClick={onClick ?? (() => router.push(href))}
-      className={cn(headerRoundButtonClass, "!hidden lg:!flex", className)}
+      className={cn(tone === "glass" ? headerGlassButtonClass : headerRoundButtonClass, "!hidden lg:!flex", className)}
     >
       {RoundIcons.back}
     </button>

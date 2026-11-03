@@ -150,6 +150,15 @@ export const AllVariants: Story = {
   ),
 };
 
+/** Op een donkere foto (cinema-kop van Films & series): doorschijnend glas, bij focus wit. */
+export const Glass: Story = {
+  render: () => (
+    <div className="w-[320px] rounded-[20px] bg-[var(--cinema-night)] p-6">
+      <SearchBar surface="glass" placeholder="Zoek film of serie" />
+    </div>
+  ),
+};
+
 export const AsChild: Story = {
   render: () => (
     <SearchBar asChild>

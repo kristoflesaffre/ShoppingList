@@ -28,8 +28,9 @@ export interface SearchBarProps
   /**
    * Ondergrond van het zoekveld. «sheet» (standaard): grijs vlak op wit (bladen, witte pagina's).
    * «app»: op de grijze app-achtergrond — wit met een dun randje, anders valt het weg.
+   * «glass»: op een donkere foto (cinema-kop) — doorschijnend wit met witte tekst; bij focus wit.
    */
-  surface?: "sheet" | "app";
+  surface?: "sheet" | "app" | "glass";
   /** When true, the single child replaces the default search UI and receives merged container props */
   asChild?: boolean;
   /** When asChild, the single child element to merge onto */
@@ -62,6 +63,10 @@ export function SearchIcon({ className }: { className?: string }) {
 /** Zoekveld op de grijze app-achtergrond: wit met een dun randje (focus-ring blijft). */
 export const SEARCH_FIELD_ON_APP_CLASS =
   "!bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04),inset_0_0_0_1px_var(--border-subtle)]";
+
+/** Zoekveld op een donkere foto: doorschijnend wit glas; bij focus het gewone witte veld. */
+export const SEARCH_FIELD_GLASS_CLASS =
+  "!bg-fixed-white/[0.12] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] backdrop-blur-md focus-within:!bg-[var(--white)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-300)]";
 
 export const SEARCH_FIELD_CLASS =
   "group flex h-12 w-full min-w-0 items-center gap-2.5 rounded-[16px] bg-[var(--gray-25)] px-3.5 transition-[background-color,box-shadow] duration-fast ease-out-strong focus-within:bg-[var(--white)] focus-within:shadow-[inset_0_0_0_1.5px_var(--blue-300)]";
@@ -114,6 +119,7 @@ const SearchBar = React.forwardRef<HTMLDivElement, SearchBarProps>(
     const containerClassName = cn(
       SEARCH_FIELD_CLASS,
       surface === "app" && SEARCH_FIELD_ON_APP_CLASS,
+      surface === "glass" && SEARCH_FIELD_GLASS_CLASS,
       sizeStyles[size],
       disabled && "cursor-not-allowed opacity-60",
       className
@@ -131,7 +137,11 @@ const SearchBar = React.forwardRef<HTMLDivElement, SearchBarProps>(
         <span
           className={cn(
             "flex shrink-0 items-center justify-center transition-colors duration-fast",
-            disabled ? "text-[var(--gray-300)]" : "text-[var(--text-tertiary)] group-focus-within:text-[var(--blue-500)]",
+            disabled
+              ? "text-[var(--gray-300)]"
+              : surface === "glass"
+                ? "text-fixed-white/75 group-focus-within:text-[var(--blue-500)]"
+                : "text-[var(--text-tertiary)] group-focus-within:text-[var(--blue-500)]",
           )}
           aria-hidden="true"
         >
@@ -145,7 +155,10 @@ const SearchBar = React.forwardRef<HTMLDivElement, SearchBarProps>(
           onChange={handleChange}
           placeholder={placeholder}
           disabled={disabled}
-          className={inputBase}
+          className={cn(
+            inputBase,
+            surface === "glass" && "text-fixed-white placeholder:text-fixed-white/70 group-focus-within:text-[var(--text-primary)] group-focus-within:placeholder:text-[var(--text-tertiary)]",
+          )}
           {...inputProps}
         />
         {hasContent && !disabled ? (
