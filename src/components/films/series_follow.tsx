@@ -26,6 +26,16 @@ export function nextSeasonLabel(series: SeasonState): { label: string; tone: "kn
   return { label: `Wacht op seizoen ${series.lastSeason + 1}`, tone: "waiting" };
 }
 
+/** Volgorde in «Series die je volgt»: datum bekend · aangekondigd · wachten · afgelopen (dan op datum). */
+export type FollowedSeriesOrder = { rank: number; date: string };
+
+export function followedSeriesOrder(series: SeasonState, ended: boolean): FollowedSeriesOrder {
+  if (ended) return { rank: 3, date: "" };
+  const tone = nextSeasonLabel(series).tone;
+  const rank = tone === "known" ? 0 : tone === "announced" ? 1 : 2;
+  return { rank, date: series.airing ? "" : (series.nextSeason?.airDate ?? "") };
+}
+
 const CHIP_TONES = {
   known: "bg-[#e9f9ef] text-[#1f9d55]",
   announced: "bg-[var(--blue-50)] text-[var(--blue-500)]",
@@ -208,11 +218,14 @@ export function FollowedSeriesTile({
   series,
   onOpen,
   onUnfollow,
+  onOrder,
   className,
 }: {
   series: { tmdbId: string; title: string; year: string; posterUrl: string | null };
   onOpen: () => void;
   onUnfollow?: () => void;
+  /** Meldt waar de serie in de lijst hoort zodra bekend is wat er over het volgende seizoen geweten is. */
+  onOrder?: (tmdbId: string, order: FollowedSeriesOrder) => void;
   className?: string;
 }) {
   const [detail, setDetail] = React.useState<FollowedDetail | null>(null);
@@ -226,7 +239,14 @@ export function FollowedSeriesTile({
   const title = series.title || detail?.title || "";
   const posterUrl = series.posterUrl ?? detail?.posterUrl ?? null;
   const ended = detail?.status != null && !isReturningStatus(detail.status);
-  const state = detail?.seasons ? nextSeasonLabel(seasonStatusFromDetail(detail.seasons)) : null;
+  const seasonState = detail?.seasons ? seasonStatusFromDetail(detail.seasons) : null;
+  const state = seasonState ? nextSeasonLabel(seasonState) : null;
+  const order = detail ? followedSeriesOrder(seasonState ?? { lastSeason: 0, nextSeason: null, airing: false }, ended) : null;
+  const orderKey = order ? `${order.rank}|${order.date}` : null;
+  React.useEffect(() => {
+    if (order && onOrder) onOrder(series.tmdbId, order);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderKey, series.tmdbId]);
   return (
     <div className={cn("relative shrink-0", className ?? "w-[120px] lg:w-[140px]")}>
       <button
