@@ -424,12 +424,13 @@ function DayCard({
       {visual.sidePhotos.length > 1 || typeof visual.sidePhotos[0] === "object" ? (
         <>
           {/* Het bord loopt rechts uit de kaart: drie gelijke bordjes in een boog op de zichtbare linkerrand,
-              half over de rand van het bord en met lucht ertussen (voorstel A, variant 2). */}
+              half over de rand van het bord. Ze schuiven 20% over elkaar: 23° op een baan van 0,48 geeft
+              2 × 0,48 × sin(11,5°) ≈ 0,19 = 80% van de diameter (0,24). */}
           <span className="absolute -right-6 top-6 size-[120px] lg:hidden">
-            <CalendarSidePlates photos={visual.sidePhotos} size={120} angles={[146, 185, 224]} ratio={0.24} orbit={0.48} />
+            <CalendarSidePlates photos={visual.sidePhotos} size={120} angles={[162, 185, 208]} ratio={0.24} orbit={0.48} />
           </span>
           <span className="absolute -right-9 top-7 hidden size-[176px] lg:block">
-            <CalendarSidePlates photos={visual.sidePhotos} size={176} angles={[146, 185, 224]} ratio={0.24} orbit={0.48} />
+            <CalendarSidePlates photos={visual.sidePhotos} size={176} angles={[162, 185, 208]} ratio={0.24} orbit={0.48} />
           </span>
         </>
       ) : typeof visual.sidePhotos[0] === "string" ? (
