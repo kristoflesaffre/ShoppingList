@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
       name: e.name,
       airDate: e.air_date ?? null,
       runtime,
+      runtimeMinutes: mins && mins > 0 ? mins : null,
       rating: avg > 0 ? Math.round(avg * 10) / 10 : null,
       overview: e.overview ?? "",
       stillUrl: e.still_path ? `${TMDB_IMG_STILL}${e.still_path}` : null,

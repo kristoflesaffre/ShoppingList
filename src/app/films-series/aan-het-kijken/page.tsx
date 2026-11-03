@@ -14,9 +14,8 @@ import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 import { cn } from "@/lib/utils";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { PageBackButton } from "@/components/ui/page_back_button";
-import { Shimmer } from "@/components/ui/shimmer";
 import { FilmIcons } from "@/components/films/film_detail_ui";
-import { WatchingCard } from "@/components/films/film_tiles";
+import { WatchingCard, WatchingCardSkeleton } from "@/components/films/film_tiles";
 
 
 type SnackbarModel =
@@ -213,17 +212,7 @@ export default function WatchingOverviewPage() {
         <div className="mt-[18px] flex flex-col gap-2.5 lg:mt-6 lg:grid lg:grid-cols-2 lg:gap-3.5">
           {!mounted || dataLoading ? (
             [0, 1, 2].map((i) => (
-              <div key={i} className="flex gap-3 rounded-[20px] bg-[var(--white)] p-2.5 shadow-[inset_0_0_0_1px_var(--border-subtle)]">
-                <Shimmer className="h-[104px] w-[70px] shrink-0 rounded-[12px]" />
-                <div className="flex flex-1 flex-col justify-between py-0.5">
-                  <div>
-                    <Shimmer className="h-4 w-3/4 rounded-md" />
-                    <Shimmer className="mt-2 h-3 w-1/2 rounded-md" />
-                    <Shimmer className="mt-3 h-1 w-full rounded-full" />
-                  </div>
-                  <Shimmer className="h-7 w-2/5 rounded-full" />
-                </div>
-              </div>
+              <WatchingCardSkeleton key={i} className="w-full" />
             ))
           ) : count === 0 ? (
             <p className="py-8 text-center text-sm text-[var(--text-secondary)] lg:col-span-2">Je kijkt momenteel geen series.</p>

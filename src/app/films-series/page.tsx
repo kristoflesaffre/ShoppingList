@@ -9,7 +9,7 @@ import { PageBackButton } from "@/components/ui/page_back_button";
 import { InlineClampText, ScoreSourceLink, SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
-import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard } from "@/components/films/film_tiles";
+import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard, WatchingCardSkeleton } from "@/components/films/film_tiles";
 import { SeriesFollowBanner } from "@/components/films/series_follow";
 import { useUnreviewedOngoingSeries } from "@/hooks/use_series_follow";
 
@@ -281,19 +281,9 @@ function FilmsOverviewSkeleton() {
       <section className="flex flex-col gap-3">
         {head("w-36")}
         <div className="-mx-4 overflow-hidden px-4 lg:mx-0 lg:px-0">
-          <div className="flex w-max gap-2.5 lg:grid lg:w-full lg:grid-cols-3 lg:gap-3.5">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex w-[300px] shrink-0 gap-3 rounded-[20px] bg-[var(--white)] p-2.5 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:w-auto">
-                <Shimmer className="h-[104px] w-[70px] shrink-0 rounded-[12px]" />
-                <div className="flex flex-1 flex-col justify-between py-0.5">
-                  <div>
-                    <Shimmer className="h-4 w-3/4 rounded-md" />
-                    <Shimmer className="mt-2 h-3 w-1/2 rounded-md" />
-                    <Shimmer className="mt-3 h-1 w-full rounded-full" />
-                  </div>
-                  <Shimmer className="h-7 w-3/5 rounded-full" />
-                </div>
-              </div>
+          <div className="flex w-max gap-3 lg:grid lg:w-full lg:grid-cols-2 lg:gap-x-4 lg:gap-y-2">
+            {[0, 1].map((i) => (
+              <WatchingCardSkeleton key={i} />
             ))}
           </div>
         </div>
@@ -1221,7 +1211,7 @@ export default function FilmsSeriesPage() {
               <section className="flex flex-col gap-3">
                 <SectionHead title="Aan het kijken" href="/films-series/aan-het-kijken" />
                 <div className="-mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:overflow-visible lg:px-0" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex w-max gap-2.5 lg:grid lg:w-full lg:grid-cols-3 lg:gap-3.5">
+                  <div className="flex w-max gap-3 lg:grid lg:w-full lg:grid-cols-2 lg:gap-x-4 lg:gap-y-2">
                     {watchingItems.map((item) => (
                       <WatchingCard
                         key={item.id}
