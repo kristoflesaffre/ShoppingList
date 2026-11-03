@@ -19,6 +19,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { CountStepper } from "@/components/ui/count_stepper";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
+import { CategoryCard, type Rgb } from "@/components/ui/category_card";
+import { SectionIndex } from "@/components/ui/section_index";
+import { categoryColor } from "@/app/lijstje/[id]/list_cards_view";
+import { scrollSpyId, useScrollSpy } from "@/lib/use_scroll_spy";
 import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { DatePickerModal } from "@/components/list_date_stepper";
 import { PantryExpiryNote } from "@/components/pantry_expiry_note";
@@ -73,22 +77,33 @@ function PantryRow({
   );
 }
 
-function PantryGroupCard({ title, children }: { title: string; children: React.ReactNode[] }) {
+function PantryGroupCard({ id, title, rgb, children }: { id?: string; title: string; rgb?: Rgb; children: React.ReactNode[] }) {
   return (
-    <section className="mb-3 break-inside-avoid lg:mb-4">
-      <h2 className="mb-[7px] ml-1 text-[13px] font-bold text-[var(--text-secondary)]">{title}</h2>
-      <ul className="overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
-        {children.map((child, k) => (
-          <li key={k} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>
-            {child}
-          </li>
-        ))}
-      </ul>
-    </section>
+    <div id={id}>
+      <CategoryCard rgb={rgb} title={title} count={children.length}>
+        <ul>
+          {children.map((child, k) => (
+            <li key={k} className="border-t border-[var(--border-subtle)]">
+              {child}
+            </li>
+          ))}
+        </ul>
+      </CategoryCard>
+    </div>
   );
 }
 
-type PantryFilter = "alles" | "bijnaOp" | PantryGroup;
+/** Kleur per groep: dezelfde tinten als de categoriekaarten op een lijstje; kruiden groen. */
+const GROUP_RGB: Record<PantryGroup, Rgb> = {
+  bakken: categoryColor("Bakproducten"),
+  olie: categoryColor("Olie"),
+  kruiden: categoryColor("Groente"),
+  snacks: categoryColor("Snacks"),
+  overig: [112, 119, 132],
+};
+const LOW_RGB: Rgb = [242, 166, 90];
+const rgbCss = (rgb: Rgb) => `rgb(${rgb.join(",")})`;
+const SPY_PREFIX = "voorraad";
 
 /** Zolang de melding staat, kan de hele reeks wijzigingen aan dit item ongedaan gemaakt worden. */
 const UNDO_VISIBLE_MS = 6000;
@@ -100,7 +115,11 @@ export default function VoorraadkastPage() {
   const [searchFocused, setSearchFocused] = React.useState(false);
   /** Blad «Product toevoegen» open, met deze beginzoekterm. */
   const [addQuery, setAddQuery] = React.useState<string | null>(null);
-  const [filter, setFilter] = React.useState<PantryFilter>("alles");
+  /** «Bijna op» is het enige filter; de groepen zijn een inhoudstafel die naar de sectie springt. */
+  const [lowOnly, setLowOnly] = React.useState(false);
+  /** Na het wissen van zoeken / «Bijna op» eerst renderen, dan springen. */
+  const [pendingJump, setPendingJump] = React.useState<string | null>(null);
+  const stickyRef = React.useRef<HTMLDivElement>(null);
   const [undo, setUndo] = React.useState<FreezerUndo | null>(null);
   /** Datumkiezer «Vervaldatum» open voor dit product. */
   const [expiryItem, setExpiryItem] = React.useState<PantryItem | null>(null);
@@ -110,6 +129,35 @@ export default function VoorraadkastPage() {
   const searching = typed.length > 0;
 
   const { data, isLoading: dataLoading } = db.useQuery(user ? { freezerItems: {} } : null);
+
+  const allItems = (data?.freezerItems ?? [])
+    .filter((item) => isPantryItem(item) && (!item.ownerId || item.ownerId === user?.id))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) as PantryItem[];
+  const presentGroups = PANTRY_GROUPS.filter((g) => allItems.some((i) => pantryGroupOf(i.name) === g.key));
+
+  // Gsm: de zoekbalk met chips plakt onder de topbalk; desktop: een kleine marge boven de sectie.
+  const spyOffset = React.useCallback(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches) return 24;
+    return stickyRef.current?.getBoundingClientRect().bottom ?? 0;
+  }, []);
+  const { active: activeGroup, jumpTo } = useScrollSpy(SPY_PREFIX, presentGroups.map((g) => g.key), spyOffset);
+
+  React.useEffect(() => {
+    if (!pendingJump) return;
+    if (pendingJump === "alles") window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    else jumpTo(pendingJump);
+    setPendingJump(null);
+  }, [pendingJump, jumpTo]);
+
+  // Gsm: de actieve chip schuift mee in beeld.
+  React.useEffect(() => {
+    const row = stickyRef.current?.querySelector<HTMLElement>("[data-jump-chips] > div");
+    const chip = row?.querySelector<HTMLElement>('button[aria-pressed="true"]');
+    if (!row || !chip) return;
+    const r = row.getBoundingClientRect();
+    const c = chip.getBoundingClientRect();
+    if (c.left < r.left + 16 || c.right > r.right - 16) row.scrollBy({ left: c.left - r.left - 16, behavior: "smooth" });
+  }, [activeGroup, lowOnly]);
 
   React.useEffect(() => {
     if (!undo) return;
@@ -123,18 +171,10 @@ export default function VoorraadkastPage() {
     return null;
   }
 
-  const allItems = (data?.freezerItems ?? [])
-    .filter((item) => isPantryItem(item) && (!item.ownerId || item.ownerId === user.id))
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) as PantryItem[];
-
-  const lowCount = allItems.filter(isPantryLow).length;
-  const presentGroups = PANTRY_GROUPS.filter((g) => allItems.some((i) => pantryGroupOf(i.name) === g.key));
-  // Filter zonder treffers meer (bv. net bijgevuld of laatste product weg): terug naar alles.
-  const filterStillUseful = filter === "alles" || (filter === "bijnaOp" ? lowCount > 0 : presentGroups.some((g) => g.key === filter));
-  const activeFilter: PantryFilter = filterStillUseful ? filter : "alles";
-  const visibleItems = allItems.filter(
-    (i) => activeFilter === "alles" || (activeFilter === "bijnaOp" ? isPantryLow(i) : pantryGroupOf(i.name) === activeFilter),
-  );
+  const lowItems = allItems.filter(isPantryLow);
+  const lowCount = lowItems.length;
+  // «Bijna op» zonder treffers meer (bv. net bijgevuld): terug naar alles.
+  const showLow = lowOnly && lowCount > 0;
   const hasItems = allItems.length > 0;
   // Zoeken gaat altijd over de hele voorraadkast (de filters staan dan even weg).
   const searchResults = searching ? allItems.filter((i) => i.name.toLowerCase().includes(typed.toLowerCase())) : null;
@@ -160,6 +200,19 @@ export default function VoorraadkastPage() {
     }
     setAddQuery(null);
     setSearch("");
+  }
+
+  /** Inhoudstafel: naar een groep springen (zoeken en «Bijna op» gaan dan uit). */
+  function goTo(key: string) {
+    if (key === "bijnaOp") {
+      setLowOnly(true);
+      setSearch("");
+      window.scrollTo({ top: 0 });
+      return;
+    }
+    setLowOnly(false);
+    setSearch("");
+    setPendingJump(key);
   }
 
   function handleChangeCount(item: PantryItem, next: number) {
@@ -220,7 +273,7 @@ export default function VoorraadkastPage() {
           "fixed left-0 right-0 top-0 z-20 pt-[env(safe-area-inset-top,0px)] transition-[background-color,box-shadow] duration-200",
           "lg:hidden",
           isLargeTitleCollapsed
-            ? "bg-[rgba(250,235,213,0.82)] shadow-[0_1px_0_var(--border-subtle)] backdrop-blur-xl [[data-theme=dark]_&]:bg-[rgba(46,35,25,0.82)]"
+            ? "bg-[rgba(250,235,213,0.82)] backdrop-blur-xl [[data-theme=dark]_&]:bg-[rgba(46,35,25,0.82)]"
             : "shadow-none",
         )}
       >
@@ -265,9 +318,38 @@ export default function VoorraadkastPage() {
             </div>
           </div>
 
-          {/* Het zoekveld zoekt in je eigen voorraad; toevoegen gebeurt in het blad «Product toevoegen». */}
-          <div className="flex flex-col gap-2.5 lg:flex-row-reverse lg:items-center lg:justify-between lg:gap-4">
-            <div className="flex min-w-0 items-center gap-3 lg:w-[400px]">
+          <div className={cn("flex flex-col gap-4", hasItems && "lg:grid lg:grid-cols-[236px_minmax(0,1fr)] lg:items-start lg:gap-6")}>
+          {hasItems ? (
+            <SectionIndex
+              ariaLabel="Groepen in je voorraadkast"
+              className="sticky top-10 hidden lg:block"
+              activeKey={searching ? null : showLow ? "bijnaOp" : activeGroup}
+              onSelect={goTo}
+              items={[
+                { key: "alles", label: "Alles", count: allItems.length, separatorAfter: lowCount === 0 },
+                ...(lowCount > 0 ? [{ key: "bijnaOp", label: "Bijna op", count: lowCount, dotColor: "var(--status-warning)", separatorAfter: true }] : []),
+                ...presentGroups.map((g) => ({
+                  key: g.key,
+                  label: g.label,
+                  count: allItems.filter((i) => pantryGroupOf(i.name) === g.key).length,
+                  dotColor: rgbCss(GROUP_RGB[g.key]),
+                })),
+              ]}
+            />
+          ) : null}
+          <div className="flex min-w-0 flex-col gap-4">
+          {/* Het zoekveld zoekt in je eigen voorraad; toevoegen gebeurt in het blad «Product toevoegen». Gsm: plakt met de chips onder de topbalk. */}
+          <div
+            ref={stickyRef}
+            className={cn(
+              "sticky top-[calc(64px+env(safe-area-inset-top,0px))] z-10 -mx-4 flex flex-col gap-2.5 px-4 py-2 transition-[background-color,box-shadow] duration-200",
+              "lg:static lg:mx-0 lg:p-0",
+              isLargeTitleCollapsed
+                ? "bg-[rgba(250,235,213,0.82)] shadow-[0_1px_0_var(--border-subtle)] backdrop-blur-xl [[data-theme=dark]_&]:bg-[rgba(46,35,25,0.82)] lg:bg-transparent lg:shadow-none lg:backdrop-blur-none"
+                : "",
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-3">
               <SearchBar
                 surface="app"
                 placeholder="Zoek in je voorraadkast"
@@ -280,31 +362,32 @@ export default function VoorraadkastPage() {
               />
             </div>
             {hasItems && !searching ? (
-              <FilterChipRow ariaLabel="Filter de voorraadkast">
-                <FilterChip surface="onColor" selected={activeFilter === "alles"} onClick={() => setFilter("alles")}>Alles</FilterChip>
-                {presentGroups.map((g) => (
-                  <FilterChip surface="onColor" key={g.key} selected={activeFilter === g.key} onClick={() => setFilter(g.key)}>{g.label}</FilterChip>
-                ))}
-                {lowCount > 0 ? (
-                  <FilterChip
-                    surface="onColor"
-                    selected={activeFilter === "bijnaOp"}
-                    onClick={() => setFilter("bijnaOp")}
-                    dotColor="var(--status-warning)"
-                    count={lowCount}
-                  >
-                    Bijna op
-                  </FilterChip>
-                ) : null}
-              </FilterChipRow>
+              <div data-jump-chips className="lg:hidden">
+                <FilterChipRow ariaLabel="Groepen in je voorraadkast">
+                  {lowCount > 0 ? (
+                    <FilterChip
+                      surface="onColor"
+                      selected={showLow}
+                      onClick={() => (showLow ? goTo("alles") : goTo("bijnaOp"))}
+                      dotColor="var(--status-warning)"
+                      count={lowCount}
+                    >
+                      Bijna op
+                    </FilterChip>
+                  ) : null}
+                  {presentGroups.map((g) => (
+                    <FilterChip surface="onColor" key={g.key} selected={!showLow && activeGroup === g.key} onClick={() => goTo(g.key)} dotColor={rgbCss(GROUP_RGB[g.key])}>
+                      {g.label}
+                    </FilterChip>
+                  ))}
+                </FilterChipRow>
+              </div>
             ) : null}
           </div>
 
           {searchResults ? (
             searchResults.length > 0 ? (
-              <div className="lg:columns-2 lg:gap-4">
-                <PantryGroupCard title="In je voorraadkast">{searchResults.map(restRow)}</PantryGroupCard>
-              </div>
+              <PantryGroupCard title="In je voorraadkast">{searchResults.map(restRow)}</PantryGroupCard>
             ) : (
               <div className="flex flex-col items-center gap-3 py-8">
                 <p className="text-center text-[15px] text-[var(--text-secondary)]">«{typed}» staat nog niet in je voorraadkast</p>
@@ -324,16 +407,19 @@ export default function VoorraadkastPage() {
                 <Button size="sm" onClick={() => setAddQuery("")}>+ Toevoegen</Button>
               </div>
             </div>
-          ) : visibleItems.length > 0 ? (
-            <div className="lg:columns-2 lg:gap-4">
-              {PANTRY_GROUPS.map((g) => {
-                const items = visibleItems.filter((i) => pantryGroupOf(i.name) === g.key);
-                return items.length > 0 ? <PantryGroupCard key={g.key} title={g.label}>{items.map(restRow)}</PantryGroupCard> : null;
-              })}
-            </div>
+          ) : showLow ? (
+            <PantryGroupCard title="Bijna op" rgb={LOW_RGB}>{lowItems.map(restRow)}</PantryGroupCard>
           ) : (
-            <p className="py-8 text-center text-[15px] text-[var(--text-secondary)]">Hier staat nu niets</p>
+            <div className="flex flex-col gap-3 lg:gap-4">
+              {presentGroups.map((g) => (
+                <PantryGroupCard key={g.key} id={scrollSpyId(SPY_PREFIX, g.key)} title={g.label} rgb={GROUP_RGB[g.key]}>
+                  {allItems.filter((i) => pantryGroupOf(i.name) === g.key).map(restRow)}
+                </PantryGroupCard>
+              ))}
+            </div>
           )}
+          </div>
+          </div>
         </div>
       </div>
 
