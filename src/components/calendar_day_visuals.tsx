@@ -23,15 +23,15 @@ export type SidePlatePhoto = string | { name: string };
 export const sidePlatePhoto = (d: CalendarSideDish): SidePlatePhoto => d.photo ?? { name: d.name };
 
 /**
- * Secundaire gerechten op het bord (tot drie): eerst de andere gerechten van die dag met een foto — de tweede
+ * Secundaire gerechten op het bord (tot drie): eerst de andere gerechten van die dag — de tweede
  * soep, of vlees en dan groenten bij een aardappelgerecht —, daarna de losse items (naanbrood, schnitzel…).
  */
 function calendarSideDishes(meals: CalendarMeal[], loose: DayEntry["looseIngredients"]): CalendarSideDish[] {
   const [main, ...rest] = meals;
   if (!main || main.takeout) return [];
   const sides = rest.flatMap((m) =>
-    // Zonder foto alleen «voor Noë» (dan de productfoto op naam): dat moet er altijd bij staan.
-    (m.photoUrl || m.forNoe) && !m.takeout
+    // Zonder gerechtfoto (bv. een diepvriesschnitzel) zoekt het bordje de productfoto op naam.
+    !m.takeout
       ? [{ name: m.recipeName, photo: m.photoUrl ?? null, role: dishRole(m.recipeName), soup: isSoupName(m.recipeName), forNoe: m.forNoe === true }]
       : [],
   );
@@ -131,7 +131,7 @@ export function CalendarSidePlates({
   size,
   angles,
 }: {
-  /** Gerechtfoto's, of `{ name }` voor een los item: dat bordje toont de productfoto (zonder foto: weggelaten). */
+  /** Gerechtfoto's, of `{ name }` voor een los item: dat bordje toont de productfoto (zonder foto: de beginletter). */
   photos: SidePlatePhoto[];
   size: number;
   /** Graden op de rand van het bord (0 = rechts, 90 = onder). */
@@ -139,34 +139,40 @@ export function CalendarSidePlates({
 }) {
   const getItemPhoto = useItemPhotoUrl(160);
   const shown = photos
-    .flatMap((p) => {
-      if (typeof p === "string") return [{ src: p, product: false }];
-      const src = getItemPhoto(p.name);
-      return src ? [{ src, product: true }] : [];
-    })
+    .map((p) => (typeof p === "string" ? { src: p, product: false, name: "" } : { src: getItemPhoto(p.name) ?? null, product: true, name: p.name }))
     .slice(0, 3);
   const placed = angles ?? (shown.length > 2 ? [-5, 45, 95] : shown.length > 1 ? [15, 75] : [45]);
   const diameter = Math.round(size * (shown.length > 2 ? 0.32 : shown.length > 1 ? 0.36 : 0.44));
   return (
     <>
-      {shown.map(({ src, product }, i) => {
+      {shown.map(({ src, product, name }, i) => {
         const angle = ((placed[i] ?? placed[0]) * Math.PI) / 180;
         const center = (axis: number) => size / 2 + size * 0.42 * axis - diameter / 2;
         return (
           <span
-            key={`${src}-${i}`}
-            className="absolute overflow-hidden rounded-full border-2 border-[var(--white)] bg-[var(--white)] shadow-[0_2px_6px_rgba(16,17,48,0.2)]"
+            key={`${src ?? name}-${i}`}
+            className={cn(
+              "absolute flex items-center justify-center overflow-hidden rounded-full border-2 border-[var(--white)] shadow-[0_2px_6px_rgba(16,17,48,0.2)]",
+              src ? "bg-[var(--white)]" : "bg-[var(--blue-50)]",
+            )}
             style={{ width: diameter, height: diameter, left: center(Math.cos(angle)), top: center(Math.sin(angle)) }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto */}
-            <img
-              src={src}
-              alt=""
-              decoding="async"
-              loading="lazy"
-              // Productfoto (uitgeknipt) past in het witte bordje; een gerechtfoto vult het.
-              className={product ? "size-full object-contain p-[14%]" : "size-full scale-[1.08] object-cover"}
-            />
+            {src ? (
+              // eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto
+              <img
+                src={src}
+                alt=""
+                decoding="async"
+                loading="lazy"
+                // Productfoto (uitgeknipt) past in het witte bordje; een gerechtfoto vult het.
+                className={product ? "size-full object-contain p-[14%]" : "size-full scale-[1.08] object-cover"}
+              />
+            ) : (
+              // Geen foto gevonden: de beginletter, zoals het monogram in het productveld.
+              <span aria-hidden className="font-bold text-[var(--blue-500)]" style={{ fontSize: Math.round(diameter * 0.42) }}>
+                {name.trim().charAt(0).toUpperCase()}
+              </span>
+            )}
           </span>
         );
       })}

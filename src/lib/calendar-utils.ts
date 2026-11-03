@@ -292,14 +292,25 @@ function arrangeDaySideDishes(iso: string, entry: DayEntry, recipeByName: Map<st
  * Een volwaardig hoofdgerecht (tikka massala, lasagne…) staat altijd vooraan; puree, groenten en
  * andere gerechten worden dan bijgerechten. Wat «voor Noë» is, is nooit het hoofdgerecht naast iets anders.
  */
-function arrangeMainDish(entry: DayEntry) {
+function arrangeMainDish(iso: string, entry: DayEntry, recipeByName: Map<string, AnyRecipe>) {
   // «Voor Noë» schuift achteraan (stabiel): het hoofdgerecht is wat de rest eet.
   if (entry.meals.some((m) => !m.forNoe)) {
     entry.meals = [...entry.meals.filter((m) => !m.forNoe), ...entry.meals.filter((m) => m.forNoe)];
   }
   // Een soepdag blijft een soepdag: alleen een bijgerecht vooraan (puree, groenten, naan…) maakt plaats.
   const first = entry.meals[0];
-  if (!first || first.takeout || isSoupName(first.recipeName) || isCompleteMainDish(first.recipeName)) return;
+  if (first && (first.takeout || isSoupName(first.recipeName) || isCompleteMainDish(first.recipeName))) return;
+  // Een los diepvriesgerecht als tikka massala wordt zelf het gerecht van de dag.
+  const looseMain = entry.looseIngredients.find((i) => {
+    const name = stockBaseName(i.name);
+    return isStockLooseItem(i) && !i.forNoe && COMPLETE_DISH_PATTERN.test(name) && isCompleteMainDish(name);
+  });
+  if (looseMain) {
+    promoteLooseToMeals(iso, entry, [looseMain], recipeByName);
+    entry.meals.unshift(entry.meals.pop()!);
+    return;
+  }
+  if (!first) return;
   const index = entry.meals.findIndex((m) => !m.takeout && !m.forNoe && isCompleteMainDish(m.recipeName));
   if (index <= 0) return;
   const [main] = entry.meals.splice(index, 1);
@@ -414,7 +425,7 @@ export function buildCalendarEntries(
   result.forEach((entry, iso) => {
     arrangeDaySoups(iso, entry, recipeByName);
     arrangeDaySideDishes(iso, entry, recipeByName);
-    arrangeMainDish(entry);
+    arrangeMainDish(iso, entry, recipeByName);
   });
 
   return result;

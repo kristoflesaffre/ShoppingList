@@ -166,6 +166,12 @@ describe("buildCalendarEntries", () => {
       expect(day?.meals[1].forNoe).toBe(true);
     });
 
+    it("maakt van een losse diepvries-tikka massala het hoofdgerecht, puree en schnitzel worden bijgerechten", () => {
+      const day = dayOf([dish("Bloemkoolpuree"), dish("Chicken tikka massala"), dish("Kipschnitzel")]);
+      expect(day?.meals.map((m) => m.recipeName)).toEqual(["Chicken tikka massala", "Bloemkoolpuree", "Kipschnitzel"]);
+      expect(day?.looseIngredients).toEqual([]);
+    });
+
     it("laat een dag zonder aardappelgerecht met rust", () => {
       const day = dayOf([dish("Rode kool (diepvries)"), dish("Schnitzel", "recipe-r2-1791000000001")]);
       expect(day?.meals.map((m) => m.recipeName)).toEqual(["Schnitzel"]);

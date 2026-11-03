@@ -4,7 +4,7 @@ import * as React from "react";
 import type { ListItem } from "./new_item_modal";
 import type { SavedRecipe } from "@/lib/recipe_library";
 import type { ItemPhotoLookupOptions } from "@/lib/item-photos";
-import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate } from "@/lib/calendar-utils";
+import { addDays, dutchDayToOffset, getMondayOfWeek, isCompleteMainDish, parseDutchDate } from "@/lib/calendar-utils";
 import { categoryHeadingDisplay, categorySubgroups, stockSourceLabel } from "@/lib/item-ingredient-category";
 import { CategorySubheading } from "@/components/ui/category_card";
 import { StockSourceIcon } from "@/components/ui/freeze_mask_icon";
@@ -92,6 +92,20 @@ function splitDay(items: ListItem[], savedRecipes: SavedRecipe[]) {
     }
   }
   return { recipes, stockDishes, takeoutDishes, loose };
+}
+
+/**
+ * Het hoofdgerecht van een dag, zoals op de kalender: een volwaardig gerecht (tikka massala, lasagne…) gaat
+ * voor op puree, vlees of groenten, en wat «voor Noë» is wordt nooit hoofdgerecht naast iets anders.
+ */
+function pickDayMain(split: ReturnType<typeof splitDay>): { recipe: Recipe } | { stock: ListItem } | null {
+  const candidates = [
+    ...split.recipes.map((recipe) => ({ main: { recipe } as const, name: recipe.name, forNoe: recipe.items.some((i) => i.forNoe) })),
+    ...split.stockDishes.map((stock) => ({ main: { stock } as const, name: stock.name.replace(/\s*\(diepvries\)$/, ""), forNoe: stock.forNoe === true })),
+  ];
+  const notNoe = candidates.filter((c) => !c.forNoe);
+  const pool = notNoe.length > 0 ? notNoe : candidates;
+  return (pool.find((c) => isCompleteMainDish(c.name)) ?? pool[0])?.main ?? null;
 }
 
 /* ─── Categoriekleuren (canvas «Lijstje 6») ─── */
@@ -1077,7 +1091,9 @@ function DayCards({ sections: allSections, layout, dayLead, listDateStr, savedRe
         used.push(takeoutColor);
         continue;
       }
+      const main = pickDayMain(d.split);
       const src =
+        (main ? ("recipe" in main ? main.recipe.photo : main.stock.stockPhotoUrl) : null) ??
         d.split.recipes.find((r) => r.photo)?.photo ??
         d.split.stockDishes.find((s) => s.stockPhotoUrl)?.stockPhotoUrl ??
         d.split.loose.map((i) => eatingOutPhotoFor(i.name)).find(Boolean);
@@ -1159,12 +1175,13 @@ function DayCards({ sections: allSections, layout, dayLead, listDateStr, savedRe
     }
     const label = dayLabel(section, listDateStr);
     const color = dayColor.get(section.title) ?? LAVENDER;
-    const mainRecipe = split.recipes[0] ?? null;
-    const takeout = !mainRecipe ? split.takeoutDishes[0] ?? null : null;
-    const stock = !mainRecipe && !takeout ? split.stockDishes[0] ?? null : null;
+    const dayMain = pickDayMain(split);
+    const mainRecipe = dayMain && "recipe" in dayMain ? dayMain.recipe : null;
+    const takeout = !dayMain ? split.takeoutDishes[0] ?? null : null;
+    const stock = dayMain && "stock" in dayMain ? dayMain.stock : null;
     const restItems = [
       ...(mainRecipe ? mainRecipe.items : []),
-      ...split.recipes.slice(1).flatMap((r) => r.items),
+      ...split.recipes.filter((r) => r !== mainRecipe).flatMap((r) => r.items),
       ...split.loose,
       ...split.stockDishes.filter((s) => s !== stock),
     ];
