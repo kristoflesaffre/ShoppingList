@@ -21,7 +21,7 @@ import {
   type TvSeasonInfo,
   type WatchingTvItem,
 } from "@/lib/tv-watching-progress";
-import { autoAddedMarkId, seasonsToAutoAdd } from "@/lib/series-follow";
+import { autoAddedMarkId, followMarkId, seasonsToAutoAdd, shouldAutoFollow } from "@/lib/series-follow";
 
 const NEW_SEASON_DISMISSED_KEY = "films_new_season_dismissed_v1";
 
@@ -98,6 +98,8 @@ export function useWatchingTvItems() {
   }, [mappingIds, hasStremioProgress, stremio.syncedAt]);
   /** Seizoenen zoals TMDB ze nu kent, ook aangekondigde zonder afleveringen (voor «Nieuw seizoen»). */
   const [rawSeasons, setRawSeasons] = React.useState<Record<string, TvSeasonInfo[]>>({});
+  /** TMDB-status per serie («Returning Series», «Ended», …), voor automatisch volgen. */
+  const [statuses, setStatuses] = React.useState<Record<string, string | null>>({});
   const [dismissedNewSeasons, setDismissedNewSeasons] = React.useState<Set<string>>(() => new Set());
   React.useEffect(() => setDismissedNewSeasons(readDismissedNewSeasons()), []);
   // Per titel één keer per bezoek: het effect loopt opnieuw zodra de bewaarde seizoenen veranderen.
@@ -181,10 +183,12 @@ export function useWatchingTvItems() {
         title: string;
         year: string;
         posterUrl: string | null;
+        status?: string | null;
         seasons?: { seasonNumber: number; episodeCount: number; name?: string; airDate?: string | null }[];
       }>("tv", tmdbId)
         .then(
           (data) => {
+            setStatuses((prev) => ({ ...prev, [tmdbId]: data.status ?? null }));
             setRawSeasons((prev) => ({
               ...prev,
               [tmdbId]: (data.seasons ?? [])
@@ -201,7 +205,7 @@ export function useWatchingTvItems() {
               year: existing?.year ?? data.year,
               posterUrl: existing?.posterUrl ?? data.posterUrl,
               seasons,
-            });
+            }).catch(() => { /* Volgende keer opnieuw bewaard. */ });
           },
         )
         // Mislukt: bij een volgende keer opnieuw proberen. Gelukt: blijft in de set, geen herhaling.
@@ -227,6 +231,21 @@ export function useWatchingTvItems() {
       }
     }
   }, [watchingTmdbIds, watchedIds, getSeasonsFor, isInWatchlist, removeFromWatchlist]);
+
+  // «Series volgen»: een lopende serie die je helemaal uitkeek, vanzelf volgen (tenzij je ze liet vallen).
+  const autoFollowedRef = React.useRef<Set<string>>(new Set());
+  React.useEffect(() => {
+    const watched = new Set(watchedIds);
+    for (const tmdbId of watchingTmdbIds) {
+      if (autoFollowedRef.current.has(tmdbId) || !(tmdbId in statuses)) continue;
+      const lastWatched = getHighestWatchedProgress(watchedIds, tmdbId);
+      const seasons = getSeasonsFor(tmdbId);
+      const fully = Boolean(lastWatched && seasons?.length && isSeriesFullyWatched(lastWatched, seasons));
+      if (!shouldAutoFollow(tmdbId, statuses[tmdbId], fully, watched)) continue;
+      autoFollowedRef.current.add(tmdbId);
+      void markWatched(followMarkId(tmdbId)).catch(() => autoFollowedRef.current.delete(tmdbId));
+    }
+  }, [watchingTmdbIds, watchedIds, statuses, getSeasonsFor, markWatched]);
 
   const markNextEpisode = React.useCallback(
     async (item: WatchingTvItem) => {

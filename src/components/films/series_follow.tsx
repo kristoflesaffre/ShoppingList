@@ -3,7 +3,10 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { SeasonPills, StarGlyph } from "@/components/films/film_detail_ui";
-import type { OngoingSeries } from "@/lib/series-follow";
+import { Poster } from "@/components/films/film_tiles";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
+import { fetchFilmDetail } from "@/lib/film-detail-client";
+import { isReturningStatus, seasonStatusFromDetail, type OngoingSeries } from "@/lib/series-follow";
 
 const MONTHS = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 
@@ -12,21 +15,31 @@ function formatDay(iso: string): string {
   return y && m && d ? `${d} ${MONTHS[m - 1]} ${y}` : iso;
 }
 
+type SeasonState = Pick<OngoingSeries, "lastSeason" | "nextSeason" | "airing">;
+
+/** Wat er over het volgende seizoen bekend is, als korte tekst en toon (groen / lavendel / grijs). */
+export function nextSeasonLabel(series: SeasonState): { label: string; tone: "known" | "announced" | "waiting" } {
+  const next = series.nextSeason;
+  if (series.airing) return { label: `Seizoen ${series.lastSeason} loopt nu`, tone: "known" };
+  if (next?.airDate) return { label: `Seizoen ${next.seasonNumber} · vanaf ${formatDay(next.airDate)}`, tone: "known" };
+  if (next) return { label: `Seizoen ${next.seasonNumber} aangekondigd`, tone: "announced" };
+  return { label: `Wacht op seizoen ${series.lastSeason + 1}`, tone: "waiting" };
+}
+
+const CHIP_TONES = {
+  known: "bg-[#e9f9ef] text-[#1f9d55]",
+  announced: "bg-[var(--blue-50)] text-[var(--blue-500)]",
+  waiting: "bg-[var(--gray-50)] text-[var(--text-secondary)]",
+} as const;
+
 /**
  * Canvas «Series volgen» 2: wat er over het volgende seizoen bekend is.
  * Groen = datum bekend of seizoen loopt nu, lavendel = aangekondigd, grijs = nog niets.
  */
-export function NextSeasonChip({ series, className }: { series: OngoingSeries; className?: string }) {
-  const next = series.nextSeason;
-  const [label, tone] = series.airing
-    ? [`Seizoen ${series.lastSeason} loopt nu`, "bg-[#e9f9ef] text-[#1f9d55]"]
-    : next?.airDate
-    ? [`Seizoen ${next.seasonNumber} · vanaf ${formatDay(next.airDate)}`, "bg-[#e9f9ef] text-[#1f9d55]"]
-    : next
-      ? [`Seizoen ${next.seasonNumber} aangekondigd`, "bg-[var(--blue-50)] text-[var(--blue-500)]"]
-      : [`Wacht op seizoen ${series.lastSeason + 1}`, "bg-[var(--gray-50)] text-[var(--text-secondary)]"];
+export function NextSeasonChip({ series, className }: { series: SeasonState; className?: string }) {
+  const { label, tone } = nextSeasonLabel(series);
   return (
-    <span className={cn("inline-flex h-6 items-center rounded-pill px-[9px] text-xs font-extrabold", tone, className)}>{label}</span>
+    <span className={cn("inline-flex h-6 items-center rounded-pill px-[9px] text-xs font-extrabold", CHIP_TONES[tone], className)}>{label}</span>
   );
 }
 
@@ -176,5 +189,80 @@ export function SeriesFollowBanner({
         </svg>
       </button>
     </section>
+  );
+}
+
+type FollowedDetail = {
+  title: string;
+  year: string;
+  posterUrl: string | null;
+  status?: string | null;
+  seasons?: { seasonNumber: number; episodeCount: number; airDate?: string | null }[];
+};
+
+/**
+ * Eén gevolgde serie in «Series die je volgt»: poster met ✕ (niet meer volgen), titel en wat er over
+ * het volgende seizoen bekend is (groen = datum, lavendel = aangekondigd, grijs = wachten, of «Afgelopen»).
+ */
+export function FollowedSeriesTile({
+  series,
+  onOpen,
+  onUnfollow,
+  className,
+}: {
+  series: { tmdbId: string; title: string; year: string; posterUrl: string | null };
+  onOpen: () => void;
+  onUnfollow?: () => void;
+  className?: string;
+}) {
+  const [detail, setDetail] = React.useState<FollowedDetail | null>(null);
+  React.useEffect(() => {
+    let active = true;
+    fetchFilmDetail<FollowedDetail>("tv", series.tmdbId).then((d) => active && setDetail(d), () => {});
+    return () => {
+      active = false;
+    };
+  }, [series.tmdbId]);
+  const title = series.title || detail?.title || "";
+  const posterUrl = series.posterUrl ?? detail?.posterUrl ?? null;
+  const ended = detail?.status != null && !isReturningStatus(detail.status);
+  const state = detail?.seasons ? nextSeasonLabel(seasonStatusFromDetail(detail.seasons)) : null;
+  return (
+    <div className={cn("relative shrink-0", className ?? "w-[120px] lg:w-[140px]")}>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="block w-full rounded-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      >
+        <Poster src={posterUrl} alt="" />
+        <p className="mt-2 truncate text-[13.5px] font-bold leading-[18px] text-[var(--text-primary)]">{title}</p>
+        {ended ? (
+          <p className="mt-0.5 truncate text-xs font-semibold text-[var(--text-tertiary)]">Afgelopen</p>
+        ) : state ? (
+          <p
+            className={cn(
+              "mt-0.5 truncate text-xs font-semibold",
+              state.tone === "known" ? "text-[#1f9d55]" : state.tone === "announced" ? "text-[var(--blue-500)]" : "text-[var(--text-secondary)]",
+            )}
+          >
+            {state.label}
+          </p>
+        ) : (
+          <span className="mt-1 block h-3 w-20 rounded-pill bg-[var(--gray-50)]" aria-hidden />
+        )}
+      </button>
+      {onUnfollow ? (
+        <RoundIconButton
+          tone="surface"
+          size={28}
+          onClick={onUnfollow}
+          aria-label={`${title} niet meer volgen`}
+          title="Niet meer volgen"
+          className="absolute right-1.5 top-1.5"
+        >
+          {RoundIcons.close}
+        </RoundIconButton>
+      ) : null}
+    </div>
   );
 }

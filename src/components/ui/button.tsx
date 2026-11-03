@@ -44,12 +44,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button";
 
     const base =
-      "inline-flex w-full max-w-[320px] items-center justify-center gap-1.5 overflow-hidden font-semibold whitespace-nowrap transition-[color,background-color,border-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
+      "inline-flex max-w-[320px] items-center justify-center gap-1.5 overflow-hidden font-semibold whitespace-nowrap transition-[color,background-color,border-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:pointer-events-none";
 
     const sizeStyles: Record<ButtonSize, string> = {
-      default: "h-[50px] px-6 text-base rounded-[var(--radius-pill)]",
-      lg: "h-[50px] px-6 text-base rounded-[var(--radius-pill)]",
-      md: "h-[42px] px-[18px] text-[15px] rounded-[var(--radius-pill)]",
+      default: "w-full h-[50px] px-6 text-base rounded-[var(--radius-pill)]",
+      lg: "w-full h-[50px] px-6 text-base rounded-[var(--radius-pill)]",
+      md: "w-full h-[42px] px-[18px] text-[15px] rounded-[var(--radius-pill)]",
       sm: "h-[34px] w-auto px-3.5 text-sm rounded-[var(--radius-pill)]",
     };
 

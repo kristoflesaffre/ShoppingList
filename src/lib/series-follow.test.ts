@@ -6,7 +6,9 @@ import {
   followedCount,
   isSeriesReviewed,
   ongoingFromTmdbDetail,
+  seasonStatusFromDetail,
   seasonsToAutoAdd,
+  shouldAutoFollow,
   skipMarkId,
 } from "./series-follow";
 
@@ -113,5 +115,32 @@ describe("seasonsToAutoAdd", () => {
     ];
     const watched = new Set([followMarkId("1"), followMarkId("3"), followMarkId("4"), autoAddedMarkId("4", 4)]);
     expect(seasonsToAutoAdd(items, watched).map((i) => i.tmdbId)).toEqual(["1"]);
+  });
+});
+
+describe("shouldAutoFollow", () => {
+  it("volgt een lopende serie die je helemaal zag", () => {
+    expect(shouldAutoFollow("1", "Returning Series", true, new Set())).toBe(true);
+  });
+  it("niet als ze afgelopen is, nog niet uitgekeken, al gevolgd of ooit gelaten", () => {
+    expect(shouldAutoFollow("1", "Ended", true, new Set())).toBe(false);
+    expect(shouldAutoFollow("1", "Returning Series", false, new Set())).toBe(false);
+    expect(shouldAutoFollow("1", "Returning Series", true, new Set([followMarkId("1")]))).toBe(false);
+    expect(shouldAutoFollow("1", "Returning Series", true, new Set([skipMarkId("1")]))).toBe(false);
+  });
+});
+
+describe("seasonStatusFromDetail", () => {
+  it("laatste uitgezonden seizoen en het volgende met datum", () => {
+    expect(
+      seasonStatusFromDetail(
+        [
+          { seasonNumber: 1, episodeCount: 8, airDate: "2023-01-01" },
+          { seasonNumber: 2, episodeCount: 8, airDate: "2025-01-01" },
+          { seasonNumber: 3, episodeCount: 0, airDate: "2027-02-01" },
+        ],
+        "2026-11-03",
+      ),
+    ).toEqual({ lastSeason: 2, nextSeason: { seasonNumber: 3, airDate: "2027-02-01" }, airing: false });
   });
 });

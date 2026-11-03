@@ -173,6 +173,8 @@ export async function GET(request: NextRequest) {
     scoreSource,
     imdbId,
     totalEpisodes,
+    /** TMDB-status van een serie («Returning Series», «Ended», …); null bij films. */
+    status: type === "tv" ? ((data.status as string | undefined) ?? null) : null,
     cast,
     trailerKey: (trailer?.key as string | undefined) ?? null,
   });

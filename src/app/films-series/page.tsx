@@ -11,8 +11,8 @@ import { InlineClampText, ScoreSourceLink, SoftPlayButton, TrailerOverlay } from
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
 import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard, WatchingCardSkeleton } from "@/components/films/film_tiles";
-import { SeriesFollowBanner } from "@/components/films/series_follow";
-import { useUnreviewedOngoingSeries } from "@/hooks/use_series_follow";
+import { FollowedSeriesTile, SeriesFollowBanner } from "@/components/films/series_follow";
+import { useFollowedSeries, useUnreviewedOngoingSeries } from "@/hooks/use_series_follow";
 
 const FOLLOW_BANNER_KEY = "films_series_follow_banner_hidden_v1";
 import { cn } from "@/lib/utils";
@@ -655,6 +655,7 @@ export default function FilmsSeriesPage() {
     unmarkWatched,
     reactToPartnerItem,
   } = useFilmsLibrary();
+  const { followed: followedSeries } = useFollowedSeries();
   const { watchingItems, markNextEpisode, markSeasonWatched, markSeriesWatched, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
   const [watchMenuFor, setWatchMenuFor] = React.useState<string | null>(null);
   const [followBannerHidden, setFollowBannerHidden] = React.useState(true);
@@ -1197,7 +1198,7 @@ export default function FilmsSeriesPage() {
 
         {!hasQuery && (!mounted || dataLoading) ? <FilmsOverviewSkeleton /> : null}
 
-        {mounted && !dataLoading && !hasQuery && (hasWatchlistItems || hasPartnerItems || watchingItems.length > 0 || hasDiscoverSection || newSeasonItems.length > 0) && (
+        {mounted && !dataLoading && !hasQuery && (hasWatchlistItems || hasPartnerItems || watchingItems.length > 0 || hasDiscoverSection || newSeasonItems.length > 0 || followedSeries.length > 0) && (
           <div className="mt-7 flex flex-col gap-7 lg:mt-8 lg:gap-8">
             {/* Nieuw seizoen — canvas «22 · Nieuw seizoen A»: series die je zag met een nieuw (of aangekondigd) seizoen */}
             {newSeasonItems.length > 0 && (
@@ -1451,6 +1452,20 @@ export default function FilmsSeriesPage() {
                 </div>
               </section>
             )}
+
+            {/* Lopende series die je volgt — beheren (toevoegen / niet meer volgen) op de eigen pagina */}
+            {followedSeries.length > 0 && (
+              <section className="flex flex-col gap-3">
+                <SectionHead title="Lopende series die je volgt" href="/films-series/gevolgde-series" count={followedSeries.length} />
+                <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex gap-3" style={{ width: "max-content" }}>
+                    {followedSeries.map((s) => (
+                      <FollowedSeriesTile key={s.tmdbId} series={s} onOpen={() => handleViewDetail(`tv-${s.tmdbId}`)} />
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>
@@ -1467,7 +1482,7 @@ export default function FilmsSeriesPage() {
       )}
 
       {/* Empty state — alleen zichtbaar zonder zoekterm en zonder watchlist items en zonder watching items */}
-      {mounted && !dataLoading && !hasQuery && !hasWatchlistItems && !hasPartnerItems && watchingItems.length === 0 && !hasDiscoverSection && newSeasonItems.length === 0 && (
+      {mounted && !dataLoading && !hasQuery && !hasWatchlistItems && !hasPartnerItems && watchingItems.length === 0 && !hasDiscoverSection && newSeasonItems.length === 0 && followedSeries.length === 0 && (
         <div className="absolute inset-x-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

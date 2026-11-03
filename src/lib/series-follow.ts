@@ -135,3 +135,43 @@ export function seasonsToAutoAdd<T extends { tmdbId: string; season: number; rel
     (i) => i.released && watched.has(followMarkId(i.tmdbId)) && !watched.has(autoAddedMarkId(i.tmdbId, i.season)),
   );
 }
+
+/** TMDB-statussen van een serie die nog seizoenen kan krijgen. */
+export function isReturningStatus(status: string | null | undefined): boolean {
+  return status === "Returning Series" || status === "In Production" || status === "Planned";
+}
+
+/**
+ * Automatisch volgen: een lopende serie die je helemaal zag (alles wat uit is), tenzij je ze al volgt
+ * of ooit liet vallen (`follow-no-tv-…`).
+ */
+export function shouldAutoFollow(
+  tmdbId: string,
+  status: string | null | undefined,
+  fullyWatched: boolean,
+  watched: ReadonlySet<string>,
+): boolean {
+  if (!fullyWatched || !isReturningStatus(status)) return false;
+  return !watched.has(followMarkId(tmdbId)) && !watched.has(skipMarkId(tmdbId));
+}
+
+type DetailSeason = { seasonNumber: number; episodeCount: number; airDate?: string | null };
+
+/**
+ * Stand van een gevolgde serie uit de seizoenen van de detailpagina: laatste uitgezonden seizoen,
+ * het volgende (met datum als die bekend is) en of het laatste nu nog loopt.
+ */
+export function seasonStatusFromDetail(
+  seasons: readonly DetailSeason[],
+  today = new Date().toISOString().slice(0, 10),
+): Pick<OngoingSeries, "lastSeason" | "nextSeason" | "airing"> {
+  const sorted = seasons.filter((s) => s.seasonNumber > 0).slice().sort((a, b) => a.seasonNumber - b.seasonNumber);
+  const aired = sorted.filter((s) => s.airDate && s.airDate <= today && s.episodeCount > 0);
+  const lastSeason = aired[aired.length - 1]?.seasonNumber ?? 0;
+  const next = sorted.find((s) => s.seasonNumber > lastSeason) ?? null;
+  return {
+    lastSeason,
+    nextSeason: next ? { seasonNumber: next.seasonNumber, airDate: next.airDate || null } : null,
+    airing: false,
+  };
+}

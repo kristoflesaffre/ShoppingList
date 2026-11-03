@@ -184,3 +184,47 @@ export function useSeriesFollow() {
     followedPosters,
   };
 }
+
+export type FollowedSeries = { tmdbId: string; title: string; year: string; posterUrl: string | null };
+
+/**
+ * «Lopende series die je volgt»: de gevolgde series (alfabetisch) met volgen en ontvolgen.
+ * Ontvolgen bewaart `follow-no-tv-…`, zodat een uitgekeken serie niet vanzelf terugkomt.
+ */
+export function useFollowedSeries() {
+  const { watchedIds, watchedSet, seriesMeta, dataLoading, markWatchedMany, unmarkWatchedMany, saveSeriesMeta } = useFilmsLibrary();
+  const followed = React.useMemo((): FollowedSeries[] => {
+    const list: FollowedSeries[] = [];
+    for (const id of watchedIds) {
+      const m = /^follow-tv-(\d+)$/.exec(id);
+      if (!m) continue;
+      const meta = seriesMeta[m[1]];
+      list.push({ tmdbId: m[1], title: meta?.title ?? "", year: meta?.year ?? "", posterUrl: meta?.posterUrl ?? null });
+    }
+    return list.sort((a, b) => a.title.localeCompare(b.title, "nl"));
+  }, [watchedIds, seriesMeta]);
+
+  const follow = React.useCallback(
+    async (series: FollowedSeries) => {
+      if (!seriesMeta[series.tmdbId]) {
+        await saveSeriesMeta(series.tmdbId, { title: series.title, year: series.year, posterUrl: series.posterUrl });
+      }
+      if (!watchedSet.has(followMarkId(series.tmdbId))) await markWatchedMany([followMarkId(series.tmdbId)]);
+      if (watchedSet.has(skipMarkId(series.tmdbId))) await unmarkWatchedMany([skipMarkId(series.tmdbId)]);
+    },
+    [seriesMeta, saveSeriesMeta, watchedSet, markWatchedMany, unmarkWatchedMany],
+  );
+
+  const unfollow = React.useCallback(
+    async (tmdbId: string) => {
+      // Eerst «niet meer volgen» bewaren: zonder beide markeringen zou automatisch volgen ze meteen terugzetten.
+      await markWatchedMany([skipMarkId(tmdbId)]);
+      await unmarkWatchedMany([followMarkId(tmdbId)]);
+    },
+    [markWatchedMany, unmarkWatchedMany],
+  );
+
+  const isFollowing = React.useCallback((tmdbId: string) => watchedSet.has(followMarkId(tmdbId)), [watchedSet]);
+
+  return { followed, loading: dataLoading, follow, unfollow, isFollowing };
+}
