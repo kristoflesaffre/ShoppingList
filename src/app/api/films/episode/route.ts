@@ -40,18 +40,23 @@ export async function GET(request: NextRequest) {
   const avg = (data.vote_average as number | undefined) ?? 0;
   const rating = avg > 0 ? Math.round(avg * 10) / 10 : null;
 
-  const credits = data.credits as { cast?: unknown[] } | undefined;
-  const cast = (
-    (credits?.cast ?? []) as {
-      name: string;
-      character: string;
-      profile_path?: string | null;
-    }[]
-  ).map((c) => ({
-    name: c.name,
-    character: c.character,
-    profileUrl: c.profile_path ? `${TMDB_IMG_PROFILE}${c.profile_path}` : null,
-  }));
+  type TmdbCastMember = { name: string; character: string; profile_path?: string | null };
+  const credits = data.credits as { cast?: unknown[]; guest_stars?: unknown[] } | undefined;
+  // `cast` van een aflevering is enkel de vaste cast (vaak maar een handvol); de gastacteurs van
+  // deze aflevering staan apart in `guest_stars`. Vaste cast eerst, dan de gasten, zonder dubbels.
+  const seen = new Set<string>();
+  const cast = [
+    ...((credits?.cast ?? []) as TmdbCastMember[]),
+    ...((credits?.guest_stars ?? []) as TmdbCastMember[]),
+  ].flatMap((c) => {
+    if (!c.name || seen.has(c.name)) return [];
+    seen.add(c.name);
+    return [{
+      name: c.name,
+      character: c.character,
+      profileUrl: c.profile_path ? `${TMDB_IMG_PROFILE}${c.profile_path}` : null,
+    }];
+  });
 
   return NextResponse.json({
     title: (data.name as string | undefined) ?? "",
