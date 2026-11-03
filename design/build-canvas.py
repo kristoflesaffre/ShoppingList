@@ -47,6 +47,8 @@ assets = (
     f"<script>{open(os.path.join(here, 'recipe-nophoto-boards.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'recipe-monogram-boards.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'item-edit-boards.js')).read()}</script>\n"
+    f"<script>{open(os.path.join(here, 'episode-detail-imgs.js')).read()}</script>\n"
+    f"<script>{open(os.path.join(here, 'episode-detail-boards.js')).read()}</script>\n"
     "<script>{const b=[...document.querySelectorAll('#world > section.board')].at(-1);if(b)b.dataset.newest='1';}</script>\n"
     f"<script>{open(os.path.join(here, 'voorraadkast-data.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'voorraadkast-boards.js')).read()}</script>\n"
