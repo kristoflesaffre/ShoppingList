@@ -46,16 +46,50 @@ function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** Foto van een diepvriesitem: gerecht = rond bord, product = afgeronde tegel. */
-function FreezerThumb({ item }: { item: DashboardFreezerItem }) {
-  const getPhotoUrl = useItemPhotoUrl(160);
-  const isDish = item.type === "gerecht";
-  const photo = item.recipePhotoUrl ?? (isDish ? null : getPhotoUrl(item.name));
+/** Startpagina · Voorraad: 4 × 3 fototegels; is er meer, dan wordt het twaalfde vak «+n meer». */
+const STOCK_TILE_SLOTS = 12;
+
+function stockTiles<T>(items: T[]): { shown: T[]; rest: number } {
+  if (items.length <= STOCK_TILE_SLOTS) return { shown: items, rest: 0 };
+  return { shown: items.slice(0, STOCK_TILE_SLOTS - 1), rest: items.length - (STOCK_TILE_SLOTS - 1) };
+}
+
+/**
+ * Canvas «Startpagina · Voorraad: enkel foto's» 2: vierkante glazen tegel met alleen de foto (gerecht = rond bord,
+ * product = vrijstaand) en het aantal als gevuld bolletje rechtsboven; oranje = het laatste exemplaar. De naam staat
+ * in de tooltip en het aria-label.
+ */
+function StockPhotoTile({
+  href,
+  name,
+  count,
+  countLabel,
+  photo,
+  dish = false,
+  low = false,
+  tone,
+}: {
+  href: string;
+  name: string;
+  count: number;
+  countLabel: string;
+  photo: string | null;
+  dish?: boolean;
+  low?: boolean;
+  tone: "frost" | "pantry";
+}) {
   return (
-    <span
+    <Link
+      href={href}
+      title={name}
+      aria-label={`${name}: ${countLabel}`}
       className={cn(
-        "flex size-11 shrink-0 items-center justify-center overflow-hidden bg-[var(--white)] shadow-[0_0_0_3px_rgba(255,255,255,0.6)]",
-        isDish ? "rounded-full" : "rounded-[14px]",
+        "relative flex aspect-square min-w-0 items-center justify-center rounded-[18px] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
+        tone === "frost"
+          ? "bg-[rgba(255,255,255,0.62)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8),0_6px_16px_-12px_rgba(47,95,179,0.45)] [[data-theme=dark]_&]:bg-[rgba(255,255,255,0.06)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+          : "bg-[rgba(255,255,255,0.66)] shadow-[0_1px_2px_rgba(97,66,36,0.06)] [[data-theme=dark]_&]:bg-[rgba(255,255,255,0.06)]",
+        "[@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.85)]",
       )}
     >
       {photo ? (
@@ -63,66 +97,68 @@ function FreezerThumb({ item }: { item: DashboardFreezerItem }) {
         <img
           src={photo}
           alt=""
-          width={44}
-          height={44}
-          className={isDish ? "size-full object-cover" : "size-9 object-contain"}
+          width={64}
+          height={64}
+          className={dish ? "size-[58%] rounded-full object-cover shadow-[0_0_0_3px_rgba(255,255,255,0.7)]" : "size-[56%] object-contain"}
           loading="lazy"
           decoding="async"
         />
       ) : (
-        <span className="text-sm font-bold text-[var(--blue-400)]" aria-hidden>
-          {item.name.trim().charAt(0).toUpperCase()}
+        <span
+          aria-hidden
+          className={cn(
+            "flex size-[52%] items-center justify-center bg-[var(--white)] text-lg font-bold",
+            dish ? "rounded-full" : "rounded-[14px]",
+            tone === "frost" ? "text-[var(--blue-400)]" : "text-[var(--secondary-700)]",
+          )}
+        >
+          {name.trim().charAt(0).toUpperCase()}
         </span>
       )}
-    </span>
+      <span
+        aria-hidden
+        className={cn(
+          "absolute right-1.5 top-1.5 flex h-[22px] min-w-[22px] items-center justify-center rounded-pill px-1.5 text-xs font-extrabold tabular-nums text-white",
+          low ? "bg-[var(--status-warning)]" : tone === "frost" ? "bg-[var(--blue-500)]" : "bg-[var(--secondary-800)] [[data-theme=dark]_&]:text-[#2e2218]",
+        )}
+      >
+        {count}
+      </span>
+    </Link>
+  );
+}
+
+function StockMoreTile({ href, rest, tone }: { href: string; rest: number; tone: "frost" | "pantry" }) {
+  return (
+    <Link
+      href={href}
+      aria-label={`Nog ${rest} meer`}
+      className={cn(
+        "flex aspect-square min-w-0 flex-col items-center justify-center rounded-[18px] border-[1.5px] border-dashed no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
+        tone === "frost"
+          ? "border-[rgba(63,109,192,0.35)] text-[#2f5fb3] [[data-theme=dark]_&]:text-[#9db8ee]"
+          : cn("border-[rgba(97,66,36,0.28)]", PANTRY_TEXT_CLASS),
+      )}
+    >
+      <span className="text-[19px] font-extrabold leading-none">+{rest}</span>
+      <span className="mt-1 text-[11.5px] font-semibold">meer</span>
+    </Link>
   );
 }
 
 const FROST_CARD_CLASS = cn("relative isolate overflow-hidden rounded-[24px]", FROST_GRADIENT_CLASS);
 
-const MAX_FREEZER_ROWS = 4;
-
 export type DashboardFreezerRow = DashboardFreezerItem & { quantityPerPackage?: number; unit?: string };
 
 /**
- * Canvas «Combinatie · Voorraad A»: diepvries als hoge lichtblauwe kolom naast de lijstjes én
- * Te kopen, gegroepeerd in gerechten en producten.
+ * Canvas «Startpagina · Voorraad: enkel foto's» 2: de diepvries als raster van fototegels, eerst de gerechten en
+ * dan de ingrediënten en andere producten.
  */
 export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerRow[] }) {
-  const dishes = items.filter((i) => i.type === "gerecht");
-  const products = items.filter((i) => i.type !== "gerecht");
-  // Even hoog als Te kopen: maximaal vijf items, de rest via de overzichtspil.
-  const shownDishes = dishes.slice(0, MAX_FREEZER_ROWS);
-  const shownProducts = products.slice(0, Math.max(0, MAX_FREEZER_ROWS - shownDishes.length));
-  const hiddenCount = items.length - shownDishes.length - shownProducts.length;
+  const getPhotoUrl = useItemPhotoUrl(160);
+  const ordered = [...items.filter((i) => i.type === "gerecht"), ...items.filter((i) => i.type !== "gerecht")];
+  const { shown, rest } = stockTiles(ordered);
   const stats = plural(items.length, "item", "items");
-
-  const row = (item: DashboardFreezerRow, first: boolean) => {
-    const isDish = item.type === "gerecht";
-    const sub = isDish
-      ? "Gerecht"
-      : item.quantityPerPackage && item.unit
-        ? `${item.quantityPerPackage} ${item.unit} per pak`
-        : "Product";
-    const count = isDish ? plural(item.packages, "portie", "porties") : plural(item.packages, "pak", "pakken");
-    return (
-      <li
-        key={item.id}
-        className={cn(
-          "flex items-center gap-3 rounded-[16px] bg-[rgba(255,255,255,0.58)] py-2 pl-2 pr-3.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.75),0_6px_16px_-12px_rgba(47,95,179,0.45)] backdrop-blur-[6px] [[data-theme=dark]_&]:bg-[rgba(255,255,255,0.06)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]",
-          !first && "mt-2",
-        )}
-      >
-        <FreezerThumb item={item} />
-        <span className="min-w-0 flex-1 leading-[18px]">
-          <span className="block truncate text-[15px] font-semibold text-text-primary first-letter:uppercase">{item.name}</span>
-          <span className="block truncate text-[12.5px] text-[var(--text-secondary)]">{sub}</span>
-        </span>
-        <span className="shrink-0 text-sm font-extrabold text-[#2f5fb3] [[data-theme=dark]_&]:text-[#9db8ee]">{count}</span>
-      </li>
-    );
-  };
-  const shown = [...shownDishes, ...shownProducts];
 
   return (
     <section aria-labelledby="dashboard-freezer" className="flex h-full min-w-0 flex-col gap-3">
@@ -168,12 +204,30 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
             </Link>
           </div>
         ) : (
-          <>
-            <ul className="relative m-0 mt-3.5 list-none pl-0">{shown.map((item, i) => row(item, i === 0))}</ul>
-            {hiddenCount > 0 ? (
-              <p className="relative mt-2.5 text-[13px] font-semibold text-[#4d79c7]">+ {hiddenCount} meer in de diepvries</p>
+          <ul className="relative m-0 mt-3.5 grid list-none grid-cols-4 gap-2 pl-0">
+            {shown.map((item) => {
+              const isDish = item.type === "gerecht";
+              return (
+                <li key={item.id} className="min-w-0">
+                  <StockPhotoTile
+                    href="/diepvriesvoorraad"
+                    tone="frost"
+                    name={item.name}
+                    count={item.packages}
+                    countLabel={isDish ? plural(item.packages, "portie", "porties") : plural(item.packages, "pak", "pakken")}
+                    photo={item.recipePhotoUrl ?? (isDish ? null : getPhotoUrl(item.name))}
+                    dish={isDish}
+                    low={item.packages <= 1}
+                  />
+                </li>
+              );
+            })}
+            {rest > 0 ? (
+              <li className="min-w-0">
+                <StockMoreTile href="/diepvriesvoorraad" rest={rest} tone="frost" />
+              </li>
             ) : null}
-          </>
+          </ul>
         )}
       </div>
     </section>
@@ -188,13 +242,10 @@ const PANTRY_ICON = (
   />
 );
 
-const MAX_PANTRY_ROWS = 5;
-
-/** Canvas «VK · Voorraadkast», C: warme tweeling van de diepvrieskolom op de computer. */
+/** Canvas «Startpagina · Voorraad: enkel foto's» 2: warme tweeling van de diepvrieskolom op de computer. */
 export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRow[] }) {
   const getPhotoUrl = useItemPhotoUrl(160);
-  const shown = items.slice(0, MAX_PANTRY_ROWS);
-  const hiddenCount = items.length - shown.length;
+  const { shown, rest } = stockTiles(items);
 
   return (
     <section aria-labelledby="dashboard-pantry" className="flex h-full min-w-0 flex-col gap-3">
@@ -213,37 +264,32 @@ export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRo
         {items.length === 0 ? (
           <p className="mt-3 text-[13.5px] leading-5 text-[var(--text-secondary)]">Hou bij hoeveel bloem, olie, koekjes of chips je nog in huis hebt.</p>
         ) : (
-          <ul className="m-0 mt-3.5 list-none pl-0">
-            {shown.map((item, i) => {
-              const photo = getPhotoUrl(item.name);
-              const low = isPantryLow(item);
-              return (
-                <li key={item.id} className={cn("flex items-center gap-3 rounded-[16px] bg-[rgba(255,255,255,0.6)] py-2 pl-2 pr-3.5 [[data-theme=dark]_&]:bg-[rgba(255,255,255,0.06)]", i > 0 && "mt-2")}>
-                  <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-[var(--white)]">
-                    {photo ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- lokale productfoto
-                      <img src={photo} alt="" width={44} height={44} className="size-9 object-contain" loading="lazy" decoding="async" />
-                    ) : (
-                      <span className="text-sm font-bold text-[var(--secondary-700)]" aria-hidden>{item.name.trim().charAt(0).toUpperCase()}</span>
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1 leading-[18px]">
-                    <span className="block truncate text-[15px] font-semibold text-text-primary first-letter:uppercase">{item.name}</span>
-                    <span className="block truncate text-[12.5px] text-[var(--text-secondary)]">{low ? "Laatste · " : ""}{item.quantityPerPackage} {item.unit}</span>
-                  </span>
-                  <span className={cn("shrink-0 text-sm font-extrabold", PANTRY_TEXT_CLASS)}>{item.packages}×</span>
-                </li>
-              );
-            })}
+          <ul className="m-0 mt-3.5 grid list-none grid-cols-4 gap-2 pl-0">
+            {shown.map((item) => (
+              <li key={item.id} className="min-w-0">
+                <StockPhotoTile
+                  href="/voorraadkast"
+                  tone="pantry"
+                  name={item.name}
+                  count={item.packages}
+                  countLabel={`${item.packages}× ${item.quantityPerPackage ?? ""} ${item.unit ?? ""}`.trim()}
+                  photo={getPhotoUrl(item.name)}
+                  low={isPantryLow(item)}
+                />
+              </li>
+            ))}
+            {rest > 0 ? (
+              <li className="min-w-0">
+                <StockMoreTile href="/voorraadkast" rest={rest} tone="pantry" />
+              </li>
+            ) : null}
           </ul>
         )}
-        {hiddenCount > 0 ? <p className={cn("mt-2.5 text-[13px] font-semibold", PANTRY_TEXT_CLASS)}>+ {hiddenCount} meer in de kast</p> : null}
       </div>
     </section>
   );
 }
 
-/** Canvas «VK · Voorraadkast», C: rij producten op een warme kaart (mobiel startscherm), zoals de diepvries. */
 export function HomePantryPlatesCard({ items }: { items: DashboardFreezerRow[] }) {
   const getPhotoUrl = useItemPhotoUrl(160);
   const tileClass = "flex flex-col items-center gap-1.5 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus rounded-[14px]";
