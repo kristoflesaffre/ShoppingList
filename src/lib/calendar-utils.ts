@@ -65,6 +65,18 @@ const isVegetable = (name: string) =>
   !FRUIT_NAME_PATTERN.test(name) &&
   resolveItemCategoryFromName(name) === CALENDAR_PRODUCE_CATEGORY;
 
+/** Volledig gerecht (curry, lasagne…): altijd hoofdgerecht, ook als er vlees in de naam staat. */
+const COMPLETE_DISH_PATTERN =
+  /curry|massala|masala|tikka|korma|tajine|chili|lasagne|spaghetti|pasta|risotto|paella|nasi|bami|wok|ovenschotel|stoofpot|moussaka|quiche|pizza|enchilada|burrito|biryani|dahl|dal\b|pad thai|ramen/i;
+/** Altijd bijgerecht: brood, rijst, saus, salade… ook zonder rol op het bord. */
+const SIDE_ONLY_PATTERN = /naan|brood|pita|wrap|tortilla|rijst|couscous|salade|saus|dip|raita|chutney|frietjes/i;
+
+/** Hoort bij het bord als volwaardig hoofdgerecht (geen soep, geen afhaal, geen bijgerecht). */
+export function isCompleteMainDish(name: string): boolean {
+  if (isSoupName(name) || SIDE_ONLY_PATTERN.test(name)) return false;
+  return COMPLETE_DISH_PATTERN.test(name) || dishRole(name) === null;
+}
+
 /** Rol van een gerecht op het bord; soep en bouillon staan daarbuiten. */
 export function dishRole(name: string): DishRole | null {
   if (isSoupName(name) || /bouillon/i.test(name)) return null;
@@ -273,6 +285,20 @@ function arrangeDaySideDishes(iso: string, entry: DayEntry, recipeByName: Map<st
 }
 
 /**
+ * Een volwaardig hoofdgerecht (tikka massala, lasagne…) staat altijd vooraan; puree, groenten en
+ * andere gerechten worden dan bijgerechten.
+ */
+function arrangeMainDish(entry: DayEntry) {
+  // Een soepdag blijft een soepdag: alleen een bijgerecht vooraan (puree, groenten, naan…) maakt plaats.
+  const first = entry.meals[0];
+  if (!first || first.takeout || isSoupName(first.recipeName) || isCompleteMainDish(first.recipeName)) return;
+  const index = entry.meals.findIndex((m) => !m.takeout && isCompleteMainDish(m.recipeName));
+  if (index <= 0) return;
+  const [main] = entry.meals.splice(index, 1);
+  entry.meals.unshift(main);
+}
+
+/**
  * Bouwt een Map<isoDate, DayEntry> op basis van alle lijsten + recepten.
  * Master-template lijsten worden overgeslagen.
  */
@@ -377,6 +403,7 @@ export function buildCalendarEntries(
   result.forEach((entry, iso) => {
     arrangeDaySoups(iso, entry, recipeByName);
     arrangeDaySideDishes(iso, entry, recipeByName);
+    arrangeMainDish(entry);
   });
 
   return result;

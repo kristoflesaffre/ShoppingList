@@ -148,6 +148,15 @@ describe("buildCalendarEntries", () => {
       expect(day?.looseIngredients).toEqual([]);
     });
 
+    it("zet een volwaardig hoofdgerecht vooraan, de puree wordt bijgerecht", () => {
+      const day = dayOf([
+        dish("Bloemkoolpuree", "recipe-r1-1791000000000"),
+        dish("Kip tikka massala", "recipe-r2-1791000000001"),
+        dish("Naan", "recipe-r3-1791000000002"),
+      ]);
+      expect(day?.meals.map((m) => m.recipeName)).toEqual(["Kip tikka massala", "Bloemkoolpuree", "Naan"]);
+    });
+
     it("laat een dag zonder aardappelgerecht met rust", () => {
       const day = dayOf([dish("Rode kool (diepvries)"), dish("Schnitzel", "recipe-r2-1791000000001")]);
       expect(day?.meals.map((m) => m.recipeName)).toEqual(["Schnitzel"]);

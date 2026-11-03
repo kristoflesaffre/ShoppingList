@@ -20,6 +20,7 @@ import {
   CalendarDayTrio as HomeDayTrio,
   CalendarFreezeBadge as HomeFreezeBadge,
   CalendarLoosePlate as HomeLoosePlate,
+  sidePlatePhoto,
   useLoosePhotos,
 } from "@/components/calendar_day_visuals";
 import { formatDefaultListNameForDisplay } from "@/lib/list-default-name";
@@ -1237,7 +1238,7 @@ function HomeWeekColumn({
           summary.loose ? (
             <HomeLoosePlate photos={loosePhotos} size={96} />
           ) : (
-            <HomeDayPlate src={summary.photo} size={96} freeze={summary.fromStock} sidePhotos={summary.sides.map((d) => d.photo)} />
+            <HomeDayPlate src={summary.photo} size={96} freeze={summary.fromStock} sidePhotos={summary.sides.map(sidePlatePhoto)} />
           )
         ) : (
           <HomeEmptyDayIdea date={day.date} size={96} />

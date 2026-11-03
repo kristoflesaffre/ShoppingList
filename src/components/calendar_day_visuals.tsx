@@ -11,13 +11,22 @@ import { eatingOutPhotoFor } from "@/lib/agenda_photos";
  * rond receptbord, wit bord met losse producten en de sneeuwvlokbadge.
  */
 
-type CalendarSideDish = { name: string; photo: string };
+/**
+ * Bijgerecht op het bord: een ander gerecht (`dish`, met receptfoto) of een los item van die dag (`item`,
+ * bv. naanbrood). Zonder eigen foto (`photo: null`) zoekt het bordje de productfoto op naam.
+ */
+export type CalendarSideDish = { name: string; photo: string | null; kind: "dish" | "item" };
+
+/** Wat een klein bordje toont: een gerechtfoto, of een product dat op naam wordt opgezocht. */
+export type SidePlatePhoto = string | { name: string };
+
+export const sidePlatePhoto = (d: CalendarSideDish): SidePlatePhoto => d.photo ?? { name: d.name };
 
 /**
- * Secundaire gerechten op het bord: alle andere gerechten van die dag met een foto (tot drie).
- * Eerst wat bij het hoofdgerecht hoort: de tweede soep, of vlees en dan groenten bij een aardappelgerecht.
+ * Secundaire gerechten op het bord (tot drie): eerst de andere gerechten van die dag met een foto — de tweede
+ * soep, of vlees en dan groenten bij een aardappelgerecht —, daarna de losse items (naanbrood, schnitzel…).
  */
-function calendarSideDishes(meals: CalendarMeal[]): CalendarSideDish[] {
+function calendarSideDishes(meals: CalendarMeal[], loose: DayEntry["looseIngredients"]): CalendarSideDish[] {
   const [main, ...rest] = meals;
   if (!main || main.takeout) return [];
   const sides = rest.flatMap((m) =>
@@ -25,11 +34,16 @@ function calendarSideDishes(meals: CalendarMeal[]): CalendarSideDish[] {
   );
   const rank = (d: (typeof sides)[number]) =>
     isSoupName(main.recipeName) ? (d.soup ? 0 : 1) : dishRole(main.recipeName) === "potato" ? (d.role === "meat" ? 0 : d.role === "vegetable" ? 1 : 2) : 0;
-  return sides
+  const dishes: CalendarSideDish[] = sides
     .map((d, i) => ({ d, i }))
     .sort((a, b) => rank(a.d) - rank(b.d) || a.i - b.i)
-    .slice(0, 3)
-    .map(({ d }) => ({ name: d.name, photo: d.photo }));
+    .map(({ d }) => ({ name: d.name, photo: d.photo, kind: "dish" }));
+  const items: CalendarSideDish[] = loose.map((i) => ({
+    name: i.name.replace(/\s*\(diepvries\)$/, "").trim(),
+    photo: i.photoUrl ?? null,
+    kind: "item",
+  }));
+  return [...dishes, ...items].slice(0, 3);
 }
 
 /** Samenvatting van een kalenderdag (gerecht of losse items). */
@@ -50,7 +64,7 @@ export function calendarDaySummary(isoDate: string, entry: DayEntry | null) {
             ? "1 ingrediënt"
             : `${meal.ingredientCount} ingrediënten`,
       photo: meal.photoUrl ?? eatingOutPhotoFor(meal.recipeName),
-      sides: calendarSideDishes(entry.meals),
+      sides: calendarSideDishes(entry.meals, entry.looseIngredients),
       loose: null as DayEntry["looseIngredients"] | null,
       fromStock: meal.fromStock === true,
       href: meal.recipeId ? `/recepten/${meal.recipeId}` : `/kalender?date=${isoDate}`,
@@ -111,17 +125,25 @@ export function CalendarSidePlates({
   size,
   angles,
 }: {
-  photos: string[];
+  /** Gerechtfoto's, of `{ name }` voor een los item: dat bordje toont de productfoto (zonder foto: weggelaten). */
+  photos: SidePlatePhoto[];
   size: number;
   /** Graden op de rand van het bord (0 = rechts, 90 = onder). */
   angles?: number[];
 }) {
-  const shown = photos.slice(0, 3);
+  const getItemPhoto = useItemPhotoUrl(160);
+  const shown = photos
+    .flatMap((p) => {
+      if (typeof p === "string") return [{ src: p, product: false }];
+      const src = getItemPhoto(p.name);
+      return src ? [{ src, product: true }] : [];
+    })
+    .slice(0, 3);
   const placed = angles ?? (shown.length > 2 ? [-5, 45, 95] : shown.length > 1 ? [15, 75] : [45]);
   const diameter = Math.round(size * (shown.length > 2 ? 0.32 : shown.length > 1 ? 0.36 : 0.44));
   return (
     <>
-      {shown.map((src, i) => {
+      {shown.map(({ src, product }, i) => {
         const angle = ((placed[i] ?? placed[0]) * Math.PI) / 180;
         const center = (axis: number) => size / 2 + size * 0.42 * axis - diameter / 2;
         return (
@@ -131,7 +153,14 @@ export function CalendarSidePlates({
             style={{ width: diameter, height: diameter, left: center(Math.cos(angle)), top: center(Math.sin(angle)) }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- data-URL of externe receptfoto */}
-            <img src={src} alt="" decoding="async" loading="lazy" className="size-full scale-[1.08] object-cover" />
+            <img
+              src={src}
+              alt=""
+              decoding="async"
+              loading="lazy"
+              // Productfoto (uitgeknipt) past in het witte bordje; een gerechtfoto vult het.
+              className={product ? "size-full object-contain p-[14%]" : "size-full scale-[1.08] object-cover"}
+            />
           </span>
         );
       })}
@@ -150,8 +179,8 @@ export function CalendarDayPlate({
   size: number;
   freeze: boolean;
   shadow?: boolean;
-  /** Secundaire gerechten: kleinere cirkels die rechtsonder over het bord vallen. */
-  sidePhotos?: string[];
+  /** Secundaire gerechten en losse items: kleinere cirkels die rechtsonder over het bord vallen. */
+  sidePhotos?: SidePlatePhoto[];
 }) {
   return (
     <span className="relative shrink-0" style={{ width: size, height: size }}>
