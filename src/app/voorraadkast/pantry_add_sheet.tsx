@@ -4,9 +4,12 @@ import * as React from "react";
 import { DatePickerField } from "@/components/list_date_stepper";
 import { Button } from "@/components/ui/button";
 import { EditFormRow } from "@/components/ui/edit_form_row";
-import { ChosenProductContent, slugToDisplayName } from "@/components/ui/item_name_autocomplete";
-import { QuantityUnitField } from "@/components/ui/quantity_unit_field";
+import { ChosenProductCard } from "@/components/ui/chosen_product_card";
+import { InputField } from "@/components/ui/input_field";
+import { slugToDisplayName } from "@/components/ui/item_name_autocomplete";
 import { SearchBar } from "@/components/ui/search_bar";
+import { SelectField } from "@/components/ui/select_field";
+import { Stepper } from "@/components/ui/stepper";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import {
   PANTRY_PRODUCT_UNITS,
@@ -16,12 +19,13 @@ import {
 } from "@/lib/freezer-search";
 import { normalizeForMatch, useItemPhotoUrl, useItemSlugs, useItemSynonyms } from "@/lib/item-photos";
 import { matchItemSlugsForAutocomplete } from "@/lib/item-slug-autocomplete";
-import { isPantryProduct } from "@/lib/pantry";
+import { isPantryProduct, pantryGroupOf, PANTRY_GROUPS } from "@/lib/pantry";
 import { pantryExpiryQuickPicks } from "@/lib/pantry-expiry";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 
 const MAX_RESULTS = 8;
 const NO_IDS: ReadonlySet<string> = new Set();
+const OTHER_UNIT = "__andere";
 
 export type PantryAddition = {
   name: string;
@@ -68,6 +72,7 @@ export function PantryAddSheet({
   const [chosen, setChosen] = React.useState<{ name: string; stock: FreezerEntry | null } | null>(null);
   const [quantity, setQuantity] = React.useState(1);
   const [unit, setUnit] = React.useState("stuk");
+  const [unitCustom, setUnitCustom] = React.useState(false);
   const [expiryDate, setExpiryDate] = React.useState("");
 
   const getItemPhoto = useItemPhotoUrl();
@@ -93,6 +98,7 @@ export function PantryAddSheet({
     setChosen({ name, stock });
     setQuantity(1);
     setUnit(stock?.unit ?? "stuk");
+    setUnitCustom(false);
     setExpiryDate(stock?.expiryDate ?? "");
   }
 
@@ -103,13 +109,14 @@ export function PantryAddSheet({
       title="Product toevoegen"
       cancelLabel="Annuleer"
       titleId="pantry-add-title"
-      className="h-[566px]"
+      // Zoeken: vaste hoogte zodat de resultaten niet verspringen. Na het kiezen zo hoog als de inhoud (canvas «Product toevoegen» A).
+      className={chosen ? undefined : "h-[566px]"}
       bodyClassName={chosen ? undefined : "!pt-0"}
       footer={
         <Button
           type="button"
-          disabled={!chosen}
-          onClick={() => chosen && onAdd({ ...chosen, quantity, unit, expiryDate })}
+          disabled={!chosen || !unit.trim()}
+          onClick={() => chosen && onAdd({ ...chosen, quantity, unit: unit.trim(), expiryDate })}
         >
           Toevoegen
         </Button>
@@ -117,34 +124,57 @@ export function PantryAddSheet({
     >
       {chosen ? (
         <div className="flex flex-col gap-4">
-          <EditFormRow label="Product">
-            <button
-              type="button"
-              onClick={() => setChosen(null)}
-              aria-label={`Product: ${chosen.name}`}
-              className="flex h-[58px] w-full items-center gap-3 rounded-[16px] bg-[var(--gray-25)] pl-2 pr-4 text-left transition-colors active:bg-[var(--gray-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              <ChosenProductContent value={chosen.name} photoUrl={getItemPhoto(chosen.name)} />
-            </button>
-            {chosen.stock ? (
-              <p className="mt-2 flex items-center gap-2 text-[13px] leading-[18px] text-[var(--text-secondary)]">
-                <span aria-hidden className="size-2 shrink-0 rounded-full bg-[var(--status-warning)]" />
-                Je hebt al {freezerStockLabel(chosen.stock)}. Dit komt erbij.
-              </p>
-            ) : null}
-          </EditFormRow>
+          <ChosenProductCard
+            name={chosen.name}
+            photoUrl={getItemPhoto(chosen.name)}
+            subtitle={
+              chosen.stock
+                ? `Je hebt al ${freezerStockLabel(chosen.stock)} · dit komt erbij`
+                : (
+                    <>
+                      {PANTRY_GROUPS.find((g) => g.key === pantryGroupOf(chosen.name))?.label ?? "Overig"}
+                      <span className="hidden md:inline"> · nieuw in je voorraadkast</span>
+                    </>
+                  )
+            }
+            onChange={() => setChosen(null)}
+          />
           <EditFormRow label="Aantal">
-            {chosen.stock ? (
-              <QuantityUnitField value={quantity} onValueChange={setQuantity} />
-            ) : (
-              <QuantityUnitField
-                value={quantity}
-                onValueChange={setQuantity}
-                unit={unit}
-                onUnitChange={setUnit}
-                units={PANTRY_PRODUCT_UNITS}
+            <div className="flex items-center gap-2.5">
+              <div className="w-[150px] shrink-0">
+                <Stepper value={quantity} onValueChange={setQuantity} min={1} />
+              </div>
+              {chosen.stock ? (
+                // Al in de kast: het aantal komt erbij in de bestaande eenheid.
+                <span className="min-w-0 truncate text-[15px] font-semibold text-[var(--text-secondary)]">{unit}</span>
+              ) : (
+                <SelectField
+                  className="flex-1"
+                  ariaLabel="Eenheid"
+                  value={unitCustom ? OTHER_UNIT : unit}
+                  onChange={(next) => {
+                    if (next === OTHER_UNIT) {
+                      setUnitCustom(true);
+                      setUnit("");
+                    } else {
+                      setUnitCustom(false);
+                      setUnit(next);
+                    }
+                  }}
+                  options={[...PANTRY_PRODUCT_UNITS.map((u) => ({ value: u, label: u })), { value: OTHER_UNIT, label: "Andere…" }]}
+                />
+              )}
+            </div>
+            {unitCustom && !chosen.stock ? (
+              <InputField
+                className="mt-2.5"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="Eenheid, bv. doos"
+                aria-label="Eenheid"
+                autoFocus
               />
-            )}
+            ) : null}
           </EditFormRow>
           <EditFormRow label="Vervaldatum">
             <DatePickerField
