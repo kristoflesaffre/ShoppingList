@@ -279,10 +279,22 @@ export function ProgressRing({ value, className, track, color }: { value: number
 export type SeasonPill = { seasonNumber: number; label: string; watched: number; total: number; isNew?: boolean };
 
 /** Canvas «21 · Seizoenpillen A»: niets zolang je niet begon, ringetje als je bezig bent, vinkje als het seizoen gezien is. */
-export function SeasonPills({ seasons, selected, onSelect, className }: { seasons: SeasonPill[]; selected: number; onSelect: (n: number) => void; className?: string }) {
+export function SeasonPills({
+  seasons,
+  selected,
+  onSelect,
+  className,
+  ariaLabel = "Seizoenen",
+}: {
+  seasons: SeasonPill[];
+  selected: number;
+  onSelect: (n: number) => void;
+  className?: string;
+  ariaLabel?: string;
+}) {
   return (
     <div className={cn("-mx-4 overflow-x-auto px-4", className)} style={{ scrollbarWidth: "none" }}>
-      <div role="tablist" aria-label="Seizoenen" className="flex w-max gap-2 py-0.5">
+      <div role="tablist" aria-label={ariaLabel} className="flex w-max gap-2 py-0.5">
         {seasons.map((s) => {
           const active = s.seasonNumber === selected;
           const value = s.total > 0 ? s.watched / s.total : 0;
@@ -292,7 +304,7 @@ export function SeasonPills({ seasons, selected, onSelect, className }: { season
               type="button"
               role="tab"
               aria-selected={active}
-              aria-label={`${s.label}, ${s.watched} van ${s.total} gezien`}
+              aria-label={s.total > 0 ? `${s.label}, ${s.watched} van ${s.total} gezien` : s.label}
               onClick={() => onSelect(s.seasonNumber)}
               className={cn(
                 "inline-flex h-[34px] shrink-0 items-center gap-[7px] whitespace-nowrap rounded-pill px-3.5 text-[13.5px] transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
@@ -772,6 +784,9 @@ export function DeckActionBar({
   onDown,
   onSeen,
   extra,
+  upIcon = THUMB_UP,
+  downLabel = "Niet voor mij",
+  seen,
 }: {
   upLabel: string;
   onUp: () => void;
@@ -779,12 +794,17 @@ export function DeckActionBar({
   onSeen: () => void;
   /** Optionele vierde knop (bv. «Ik kijk dit nu» bij een serie). */
   extra?: { label: string; icon: React.ReactNode; onClick: () => void };
+  /** Andere hoofdknop dan de duim (bv. een vinkje bij «Series volgen»). */
+  upIcon?: React.ReactNode;
+  downLabel?: string;
+  /** Andere rechterknop dan «Al gezien». */
+  seen?: { label: string; icon: React.ReactNode };
 }) {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-[linear-gradient(180deg,rgba(245,246,250,0),var(--bg-app)_38%)] pb-[calc(env(safe-area-inset-bottom,0px)+20px)] pt-10">
       <div className="pointer-events-auto mx-auto flex max-w-[956px] items-end justify-center gap-2.5">
         <DeckCircle
-          label="Niet voor mij"
+          label={downLabel}
           onClick={onDown}
           icon={
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-5">
@@ -792,12 +812,12 @@ export function DeckActionBar({
             </svg>
           }
         />
-        <DeckCircle label={upLabel} onClick={onUp} icon={THUMB_UP} primary />
+        <DeckCircle label={upLabel} onClick={onUp} icon={upIcon} primary />
         <DeckCircle
-          label="Al gezien"
+          label={seen?.label ?? "Al gezien"}
           onClick={onSeen}
           icon={
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
+            seen?.icon ?? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-5">
               <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
               <circle cx="12" cy="12" r="2.8" />
             </svg>

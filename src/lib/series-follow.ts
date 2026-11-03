@@ -1,0 +1,129 @@
+/**
+ * «Series volgen»: lopende series tussen twee seizoenen overlopen en onthouden welke je kijkt.
+ * Komt er een nieuw seizoen uit van een serie die je volgt, dan gaat ze vanzelf op de watchlist.
+ *
+ * Bewaard als gewone markeringen in `filmsWatchedMarks` (gedeeld met je partner, geen schemawijziging):
+ * - `ep-{id}-s{n}e{m}`: de afleveringen die je zag (zoals elders in de app);
+ * - `follow-tv-{id}`: je volgt de serie;
+ * - `follow-no-tv-{id}`: je kijkt ze niet, niet meer vragen;
+ * - `follow-added-tv-{id}-s{n}`: seizoen n al eens vanzelf op de watchlist gezet (niet opnieuw na verwijderen).
+ */
+
+export type OngoingSeason = {
+  seasonNumber: number;
+  episodeCount: number;
+  airDate: string | null;
+};
+
+export type OngoingSeries = {
+  tmdbId: string;
+  title: string;
+  year: string;
+  posterUrl: string | null;
+  overview: string;
+  score: number | null;
+  voteCount: number;
+  genres: string[];
+  /** Uitgezonden seizoenen (met afleveringen), oplopend. */
+  seasons: OngoingSeason[];
+  /** Laatste seizoen dat al (helemaal) uit is. */
+  lastSeason: number;
+  lastAirDate: string | null;
+  /** Volgend seizoen zoals TMDB het kent; airDate null = aangekondigd zonder datum. */
+  nextSeason: { seasonNumber: number; airDate: string | null } | null;
+};
+
+export const followMarkId = (tmdbId: string) => `follow-tv-${tmdbId}`;
+export const skipMarkId = (tmdbId: string) => `follow-no-tv-${tmdbId}`;
+export const autoAddedMarkId = (tmdbId: string, season: number) => `follow-added-tv-${tmdbId}-s${season}`;
+
+type TmdbEpisodeRef = { season_number?: number; air_date?: string | null } | null | undefined;
+
+/**
+ * Een TMDB-serie (detail) als kandidaat, of null als ze nu midden in een seizoen zit of nog
+ * niets uitzond. «Tussen twee seizoenen» = het laatst uitgezonden seizoen is af.
+ */
+export function ongoingFromTmdbDetail(
+  data: Record<string, unknown>,
+  imgBase: string,
+): OngoingSeries | null {
+  const last = data.last_episode_to_air as TmdbEpisodeRef;
+  const next = data.next_episode_to_air as TmdbEpisodeRef;
+  const lastSeason = last?.season_number ?? 0;
+  if (lastSeason <= 0) return null;
+  // Volgende aflevering in hetzelfde seizoen: het seizoen loopt nog.
+  if (next?.season_number === lastSeason) return null;
+
+  const rawSeasons = (data.seasons as { season_number: number; episode_count: number; air_date?: string | null }[] | undefined) ?? [];
+  const seasons: OngoingSeason[] = rawSeasons
+    .filter((s) => s.season_number > 0 && s.season_number <= lastSeason && s.episode_count > 0)
+    .map((s) => ({ seasonNumber: s.season_number, episodeCount: s.episode_count, airDate: s.air_date || null }))
+    .sort((a, b) => a.seasonNumber - b.seasonNumber);
+  if (seasons.length === 0) return null;
+
+  const upcoming = rawSeasons
+    .filter((s) => s.season_number > lastSeason)
+    .sort((a, b) => a.season_number - b.season_number)[0];
+  const nextAir = next?.air_date || upcoming?.air_date || null;
+  const nextNumber = next?.season_number ?? upcoming?.season_number ?? null;
+
+  const title = data.name as string | undefined;
+  if (!title) return null;
+  const avg = data.vote_average as number | undefined;
+  const posterPath = data.poster_path as string | null | undefined;
+  return {
+    tmdbId: String(data.id),
+    title,
+    year: ((data.first_air_date as string | undefined) ?? "").slice(0, 4),
+    posterUrl: posterPath ? `${imgBase}${posterPath}` : null,
+    overview: (data.overview as string | undefined) ?? "",
+    score: avg && avg > 0 ? Math.round(avg * 10) / 10 : null,
+    voteCount: (data.vote_count as number | undefined) ?? 0,
+    genres: ((data.genres as { name: string }[] | undefined) ?? []).map((g) => g.name),
+    seasons,
+    lastSeason,
+    lastAirDate: (last as { air_date?: string | null } | undefined)?.air_date ?? null,
+    nextSeason: nextNumber ? { seasonNumber: nextNumber, airDate: nextAir } : null,
+  };
+}
+
+/** Alle afleveringen t.e.m. seizoen `through`, als ep-ids. */
+export function episodeIdsThrough(tmdbId: string, seasons: readonly OngoingSeason[], through: number): string[] {
+  const ids: string[] = [];
+  for (const s of seasons) {
+    if (s.seasonNumber > through) continue;
+    for (let e = 1; e <= s.episodeCount; e++) ids.push(`ep-${tmdbId}-s${s.seasonNumber}e${e}`);
+  }
+  return ids;
+}
+
+/** Al eens beantwoord (of al bezig/op de watchlist): niet meer vragen in de wizard. */
+export function isSeriesReviewed(
+  tmdbId: string,
+  watched: ReadonlySet<string>,
+  watchlistIds: ReadonlySet<string>,
+): boolean {
+  if (watched.has(followMarkId(tmdbId)) || watched.has(skipMarkId(tmdbId))) return true;
+  if (watchlistIds.has(`tv-${tmdbId}`)) return true;
+  const prefix = `ep-${tmdbId}-s`;
+  for (const id of Array.from(watched)) if (id.startsWith(prefix)) return true;
+  return false;
+}
+
+/** Hoeveel series je volgt. */
+export function followedCount(watched: readonly string[]): number {
+  return watched.filter((id) => /^follow-tv-\d+$/.test(id)).length;
+}
+
+/**
+ * Nieuwe seizoenen die vanzelf op de watchlist moeten: uit, van een serie die je volgt, en
+ * nog niet eerder automatisch toegevoegd.
+ */
+export function seasonsToAutoAdd<T extends { tmdbId: string; season: number; released: boolean }>(
+  items: readonly T[],
+  watched: ReadonlySet<string>,
+): T[] {
+  return items.filter(
+    (i) => i.released && watched.has(followMarkId(i.tmdbId)) && !watched.has(autoAddedMarkId(i.tmdbId, i.season)),
+  );
+}

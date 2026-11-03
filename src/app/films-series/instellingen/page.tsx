@@ -12,6 +12,7 @@ import { cn, isIPhoneDevice } from "@/lib/utils";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { StremioConnection } from "@/components/films/stremio_progress";
+import { followedCount } from "@/lib/series-follow";
 
 const ShareListModal = dynamic(
   () => import("@/components/share_list_modal").then((m) => m.ShareListModal),
@@ -41,7 +42,8 @@ export default function FilmsSeriesInstellingenPage() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
   const [shareModalOpen, setShareModalOpen] = React.useState(false);
-  const { ownWatchlist, isFilmsListShared, partnerName, partnerAvatarUrl, userName, userAvatarUrl } = useFilmsLibrary();
+  const { ownWatchlist, isFilmsListShared, partnerName, partnerAvatarUrl, userName, userAvatarUrl, watchedIds } = useFilmsLibrary();
+  const following = followedCount(watchedIds);
   const filmCount = ownWatchlist.filter((i) => i.type === "movie").length;
   const seriesCount = ownWatchlist.filter((i) => i.type === "tv").length;
   const [localShareToken, setLocalShareToken] = React.useState<string | null>(null);
@@ -215,6 +217,29 @@ export default function FilmsSeriesInstellingenPage() {
                 <path d="M9 6l6 6-6 6" />
               </svg>
             </button>
+            {/* Canvas «Films · Series volgen»: altijd bereikbaar, ook als de banner verborgen is. */}
+            <Link
+              href="/films-series/series-volgen"
+              className="flex w-full items-center gap-3 border-t border-[var(--border-subtle)] px-1 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+            >
+              <span className="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)]" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="size-[17px]">
+                  <rect x="3" y="5" width="18" height="12" rx="2.5" />
+                  <path d="M8 21h8M10.5 9.2v3.6l3-1.8z" />
+                </svg>
+              </span>
+              <span className="min-w-0 flex-1 leading-[19px]">
+                <span className="block text-[15.5px] font-semibold text-[var(--text-primary)]">Series volgen</span>
+                <span className="block text-[13px] text-[var(--text-secondary)]">
+                  {following > 0
+                    ? `Je volgt ${following} ${following === 1 ? "serie" : "series"} · nieuw seizoen komt vanzelf op de watchlist`
+                    : "Lopende series overlopen · nieuw seizoen komt vanzelf op de watchlist"}
+                </span>
+              </span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4 shrink-0 text-[var(--text-tertiary)]">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
           </section>
         </div>
         <StremioConnection />

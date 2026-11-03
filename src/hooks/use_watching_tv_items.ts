@@ -21,6 +21,7 @@ import {
   type TvSeasonInfo,
   type WatchingTvItem,
 } from "@/lib/tv-watching-progress";
+import { autoAddedMarkId, seasonsToAutoAdd } from "@/lib/series-follow";
 
 const NEW_SEASON_DISMISSED_KEY = "films_new_season_dismissed_v1";
 
@@ -140,6 +141,19 @@ export function useWatchingTvItems() {
       return next;
     });
   }, []);
+
+  // «Series volgen»: een nieuw seizoen van een gevolgde serie één keer vanzelf op de watchlist.
+  const autoAddedRef = React.useRef<Set<string>>(new Set());
+  React.useEffect(() => {
+    for (const item of seasonsToAutoAdd(newSeasonItems, new Set(watchedIds))) {
+      const markId = autoAddedMarkId(item.tmdbId, item.season);
+      if (autoAddedRef.current.has(markId)) continue;
+      autoAddedRef.current.add(markId);
+      void addToWatchlist({ id: item.id, type: "tv", title: item.title, year: item.year, posterUrl: item.posterUrl, score: null })
+        .then(() => markWatched(markId))
+        .catch(() => autoAddedRef.current.delete(markId));
+    }
+  }, [newSeasonItems, watchedIds, addToWatchlist, markWatched]);
 
   const watchingTmdbIds = React.useMemo(() => {
     const ids = new Set<string>();

@@ -10,6 +10,10 @@ import { InlineClampText, ScoreSourceLink, SoftPlayButton, TrailerOverlay } from
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
 import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard } from "@/components/films/film_tiles";
+import { SeriesFollowBanner } from "@/components/films/series_follow";
+import { useUnreviewedOngoingSeries } from "@/hooks/use_series_follow";
+
+const FOLLOW_BANNER_KEY = "films_series_follow_banner_hidden_v1";
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
@@ -662,6 +666,24 @@ export default function FilmsSeriesPage() {
   } = useFilmsLibrary();
   const { watchingItems, markNextEpisode, markSeasonWatched, markSeriesWatched, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
   const [watchMenuFor, setWatchMenuFor] = React.useState<string | null>(null);
+  const [followBannerHidden, setFollowBannerHidden] = React.useState(true);
+  React.useEffect(() => {
+    try {
+      setFollowBannerHidden(localStorage.getItem(FOLLOW_BANNER_KEY) === "1");
+    } catch {
+      setFollowBannerHidden(false);
+    }
+  }, []);
+  const unreviewedSeries = useUnreviewedOngoingSeries(!followBannerHidden);
+  const followBannerVisible = !followBannerHidden && (unreviewedSeries?.length ?? 0) > 0;
+  const dismissFollowBanner = React.useCallback(() => {
+    setFollowBannerHidden(true);
+    try {
+      localStorage.setItem(FOLLOW_BANNER_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
   const [discoverIndex, setDiscoverIndex] = React.useState(0);
   const discoverCarouselRef = React.useRef<DiscoverCarouselHandle>(null);
   const [mounted, setMounted] = React.useState(false);
@@ -1216,6 +1238,16 @@ export default function FilmsSeriesPage() {
                 </div>
               </section>
             )}
+
+            {/* Canvas «Films · Series volgen» 1: lopende series overlopen */}
+            {followBannerVisible && unreviewedSeries ? (
+              <SeriesFollowBanner
+                count={unreviewedSeries.length}
+                posters={unreviewedSeries.map((s) => s.posterUrl).filter((p): p is string => Boolean(p))}
+                onStart={() => router.push("/films-series/series-volgen")}
+                onDismiss={dismissFollowBanner}
+              />
+            ) : null}
 
             {/* Watchlist partner */}
             {hasPartnerItems && (
