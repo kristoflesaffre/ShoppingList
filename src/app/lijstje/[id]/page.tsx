@@ -159,7 +159,6 @@ import { RECIPE_BLOCK_PREFIX,
   ListCardsView,
   CATEGORY_DRAG_PREFIX,
   ListGroupingMenuChip,
-  ListGroupingToggle,
   ListLayoutToggle,
   OpenFirstChip,
   StoreFilterChip,
@@ -6071,17 +6070,15 @@ export default function ListDetailPage({
                 !isMasterList &&
                 (!isVenueCounterList || (isCafeList && !isEditMode)) ? (
                 <div className="flex shrink-0 items-center gap-2">
+                  {/* Groepering als keuzemenu helemaal links, dan de winkel (zelfde chips als op mobiel). */}
+                  {showListGroupingControl ? (
+                    <div className="hidden lg:block">
+                      <ListGroupingMenuChip value={listGroupingMode} onChange={handleListGroupingChange} />
+                    </div>
+                  ) : null}
                   {showListGroupingControl && isLidlDelhaizeList ? (
                     <div className="hidden lg:block">
                       <StoreFilterChip value={storeFilter} onChange={handleStoreFilterChange} counts={storeFilterCounts} />
-                    </div>
-                  ) : null}
-                  {showListGroupingControl ? (
-                    <div className="hidden lg:block">
-                      <ListGroupingToggle
-                        value={listGroupingMode}
-                        onChange={handleListGroupingChange}
-                      />
                     </div>
                   ) : null}
                   <ListLayoutToggle

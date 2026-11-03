@@ -1485,27 +1485,6 @@ export function ListLayoutToggle({ value, onChange }: { value: ListCardLayout; o
   );
 }
 
-export function ListGroupingToggle({
-  value,
-  onChange,
-}: {
-  value: "day" | "category";
-  onChange: (value: "day" | "category") => void;
-}) {
-  return (
-    <SegmentedControl
-      ariaLabel="Groepering lijst"
-      fill={false}
-      value={value}
-      onChange={onChange}
-      options={[
-        { value: "day", label: <span className="min-w-[80px] text-center">Per dag</span> },
-        { value: "category", label: <span className="min-w-[80px] text-center">Per categorie</span> },
-      ]}
-    />
-  );
-}
-
 const CHIP_CLASS =
   "inline-flex h-[34px] shrink-0 items-center whitespace-nowrap rounded-pill bg-[var(--white)] text-[13px] font-semibold text-text-primary transition-[box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
 
