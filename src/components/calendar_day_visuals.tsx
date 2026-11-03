@@ -131,6 +131,7 @@ export function CalendarSidePlates({
   size,
   angles,
   ratio,
+  orbit = 0.42,
 }: {
   /** Gerechtfoto's, of `{ name }` voor een los item: dat bordje toont de productfoto (zonder foto: de beginletter). */
   photos: SidePlatePhoto[];
@@ -139,6 +140,8 @@ export function CalendarSidePlates({
   angles?: number[];
   /** Diameter van een bordje t.o.v. het bord; standaard kleiner naarmate er meer zijn. */
   ratio?: number;
+  /** Afstand van het midden van een bordje tot het midden van het bord, t.o.v. het bord (0,5 = op de rand). */
+  orbit?: number;
 }) {
   const getItemPhoto = useItemPhotoUrl(160);
   const shown = photos
@@ -150,7 +153,7 @@ export function CalendarSidePlates({
     <>
       {shown.map(({ src, product, name }, i) => {
         const angle = ((placed[i] ?? placed[0]) * Math.PI) / 180;
-        const center = (axis: number) => size / 2 + size * 0.42 * axis - diameter / 2;
+        const center = (axis: number) => size / 2 + size * orbit * axis - diameter / 2;
         return (
           <span
             key={`${src ?? name}-${i}`}

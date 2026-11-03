@@ -423,13 +423,13 @@ function DayCard({
       </span>
       {visual.sidePhotos.length > 1 || typeof visual.sidePhotos[0] === "object" ? (
         <>
-          {/* Het bord loopt rechts uit de kaart: de bordjes staan op de zichtbare linkerrand, boven de titel,
-              klein genoeg dat er lucht tussen zit. */}
+          {/* Het bord loopt rechts uit de kaart: drie gelijke bordjes in een boog op de zichtbare linkerrand,
+              net buiten het bord en met lucht ertussen (canvas «Bijbordjes» A). */}
           <span className="absolute -right-6 top-6 size-[120px] lg:hidden">
-            <CalendarSidePlates photos={visual.sidePhotos} size={120} angles={[145, 195, 245]} ratio={0.25} />
+            <CalendarSidePlates photos={visual.sidePhotos} size={120} angles={[155, 186, 218]} ratio={0.23} orbit={0.55} />
           </span>
           <span className="absolute -right-9 top-7 hidden size-[176px] lg:block">
-            <CalendarSidePlates photos={visual.sidePhotos} size={176} angles={[145, 195, 245]} ratio={0.25} />
+            <CalendarSidePlates photos={visual.sidePhotos} size={176} angles={[155, 186, 218]} ratio={0.23} orbit={0.55} />
           </span>
         </>
       ) : typeof visual.sidePhotos[0] === "string" ? (
@@ -443,9 +443,30 @@ function DayCard({
           <SideLoose photos={loosePhotos} size={44} style={plateShadow(rgb, 44)} />
         </span>
       ) : null}
+      {/* «Diepvries» / «Afhalen» als label rechtsboven, zodat de naam onderaan alleen staat.
+          Gsm: de kaart is te smal naast de dagnaam, dus daar enkel het sneeuwvlokje (afhalen blijft onder de naam). */}
+      {visual.kind !== "plain" ? (
+        <span className="absolute right-3 top-3.5 z-[2] hidden rounded-pill shadow-[0_1px_3px_rgba(16,17,48,0.12)] lg:flex">
+          <DaySubLabel kind={visual.kind} text={summary.sub} />
+        </span>
+      ) : null}
+      {visual.kind === "stock" ? (
+        <span
+          aria-label="Diepvries"
+          className="absolute right-2.5 top-2.5 z-[2] flex size-6 items-center justify-center rounded-full bg-[#e7f0fe] text-[#2f6fd8] shadow-[0_1px_3px_rgba(16,17,48,0.12)] lg:hidden [[data-theme=dark]_&]:bg-[#1d3646] [[data-theme=dark]_&]:text-[#8cc8ec]"
+        >
+          <FreezeMask className="size-3.5" />
+        </span>
+      ) : null}
       <span className="absolute inset-x-3.5 bottom-3.5 z-[1] flex flex-col items-start gap-1.5">
         <span className="block w-full truncate text-[13.5px] font-bold leading-[18px] text-text-primary first-letter:uppercase lg:text-[15px]">{summary.title}</span>
-        <DaySubLabel kind={visual.kind} text={summary.sub} />
+        {visual.kind === "plain" ? (
+          <DaySubLabel kind={visual.kind} text={summary.sub} />
+        ) : visual.kind === "takeout" ? (
+          <span className="lg:hidden">
+            <DaySubLabel kind={visual.kind} text={summary.sub} />
+          </span>
+        ) : null}
       </span>
     </Link>
   );
