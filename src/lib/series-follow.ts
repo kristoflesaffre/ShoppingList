@@ -31,6 +31,8 @@ export type OngoingSeries = {
   lastAirDate: string | null;
   /** Volgend seizoen zoals TMDB het kent; airDate null = aangekondigd zonder datum. */
   nextSeason: { seasonNumber: number; airDate: string | null } | null;
+  /** Het laatste seizoen loopt nog: `seasons` telt daarvan enkel de uitgezonden afleveringen. */
+  airing: boolean;
 };
 
 export const followMarkId = (tmdbId: string) => `follow-tv-${tmdbId}`;
@@ -40,8 +42,8 @@ export const autoAddedMarkId = (tmdbId: string, season: number) => `follow-added
 type TmdbEpisodeRef = { season_number?: number; air_date?: string | null } | null | undefined;
 
 /**
- * Een TMDB-serie (detail) als kandidaat, of null als ze nu midden in een seizoen zit of nog
- * niets uitzond. «Tussen twee seizoenen» = het laatst uitgezonden seizoen is af.
+ * Een TMDB-serie (detail) als kandidaat, of null als ze nog niets uitzond. Zit ze midden in een
+ * seizoen, dan telt dat seizoen enkel de afleveringen die al uit zijn (`airing`).
  */
 export function ongoingFromTmdbDetail(
   data: Record<string, unknown>,
@@ -52,20 +54,25 @@ export function ongoingFromTmdbDetail(
   const lastSeason = last?.season_number ?? 0;
   if (lastSeason <= 0) return null;
   // Volgende aflevering in hetzelfde seizoen: het seizoen loopt nog.
-  if (next?.season_number === lastSeason) return null;
+  const airing = next?.season_number === lastSeason;
+  const airedInLast = (last as { episode_number?: number } | undefined)?.episode_number ?? 0;
 
   const rawSeasons = (data.seasons as { season_number: number; episode_count: number; air_date?: string | null }[] | undefined) ?? [];
   const seasons: OngoingSeason[] = rawSeasons
     .filter((s) => s.season_number > 0 && s.season_number <= lastSeason && s.episode_count > 0)
-    .map((s) => ({ seasonNumber: s.season_number, episodeCount: s.episode_count, airDate: s.air_date || null }))
+    .map((s) => ({
+      seasonNumber: s.season_number,
+      episodeCount: airing && s.season_number === lastSeason && airedInLast > 0 ? Math.min(s.episode_count, airedInLast) : s.episode_count,
+      airDate: s.air_date || null,
+    }))
     .sort((a, b) => a.seasonNumber - b.seasonNumber);
   if (seasons.length === 0) return null;
 
   const upcoming = rawSeasons
     .filter((s) => s.season_number > lastSeason)
     .sort((a, b) => a.season_number - b.season_number)[0];
-  const nextAir = next?.air_date || upcoming?.air_date || null;
-  const nextNumber = next?.season_number ?? upcoming?.season_number ?? null;
+  const nextAir = airing ? upcoming?.air_date || null : next?.air_date || upcoming?.air_date || null;
+  const nextNumber = airing ? upcoming?.season_number ?? null : next?.season_number ?? upcoming?.season_number ?? null;
 
   const title = data.name as string | undefined;
   if (!title) return null;
@@ -84,6 +91,7 @@ export function ongoingFromTmdbDetail(
     lastSeason,
     lastAirDate: (last as { air_date?: string | null } | undefined)?.air_date ?? null,
     nextSeason: nextNumber ? { seasonNumber: nextNumber, airDate: nextAir } : null,
+    airing,
   };
 }
 

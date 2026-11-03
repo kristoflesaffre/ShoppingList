@@ -45,13 +45,17 @@ describe("ongoingFromTmdbDetail", () => {
     expect(s?.seasons.map((x) => x.seasonNumber)).toEqual([1, 2]);
   });
 
-  it("slaat een serie over die midden in een seizoen zit", () => {
-    expect(
-      ongoingFromTmdbDetail(
-        { ...base, last_episode_to_air: { season_number: 2 }, next_episode_to_air: { season_number: 2, air_date: "2022-12-09" } },
-        "img",
-      ),
-    ).toBeNull();
+  it("telt van een lopend seizoen enkel de uitgezonden afleveringen", () => {
+    const s = ongoingFromTmdbDetail(
+      {
+        ...base,
+        last_episode_to_air: { season_number: 2, episode_number: 4 },
+        next_episode_to_air: { season_number: 2, air_date: "2022-12-09" },
+      },
+      "img",
+    );
+    expect(s).toMatchObject({ airing: true, lastSeason: 2, nextSeason: { seasonNumber: 3, airDate: "2027-01-10" } });
+    expect(s?.seasons.map((x) => x.episodeCount)).toEqual([6, 4]);
   });
 
   it("neemt de datum van de volgende aflevering als het nieuwe seizoen al gepland is", () => {

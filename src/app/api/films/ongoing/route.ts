@@ -3,25 +3,42 @@ import { TMDB_BASE, tmdbHeaders } from "@/lib/tmdb";
 import { ongoingFromTmdbDetail, type OngoingSeries } from "@/lib/series-follow";
 
 const POSTER = "https://image.tmdb.org/t/p/w342";
-const PAGES = 5;
+const MAX_PAGES = 20;
 const DAY = 86400;
+const EXCLUDED_GENRES = "10767,10763,10764,10766,10762";
+const ANIMATION = 16;
+
+type DiscoverResult = { id: number; genre_ids?: number[]; original_language?: string };
+type DiscoverPage = { total_pages?: number; results?: DiscoverResult[] };
+
+/** Alle pagina's van één discover-zoekopdracht (tot MAX_PAGES). */
+async function discoverAll(query: string) {
+  const get = (page: number): Promise<DiscoverPage> =>
+    fetch(`${TMDB_BASE}/discover/tv?${query}&page=${page}`, { headers: tmdbHeaders, next: { revalidate: DAY } })
+      .then((r) => (r.ok ? (r.json() as Promise<DiscoverPage>) : { results: [] }))
+      .catch(() => ({ results: [] }));
+  const first = await get(1);
+  const pages = Math.min(first.total_pages ?? 1, MAX_PAGES);
+  const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, (_, i) => get(i + 2)));
+  return [first, ...rest].flatMap((p) => p.results ?? []);
+}
 
 /**
- * Populaire lopende series (TMDB «Returning Series», Engelstalig, score ≥ 7,5 met ≥ 400 stemmen,
- * geen talkshows, nieuws, reality, soaps of kinderreeksen) die nu tussen twee seizoenen zitten.
+ * Goede lopende series (TMDB «Returning Series» of «In Production», alle talen, score ≥ 7 met ≥ 200 stemmen;
+ * Nederlandstalige al vanaf 15 stemmen), zonder talkshows, nieuws, reality, soaps, kinderreeksen en anime.
+ * Ook series die nu midden in een seizoen zitten (`airing`).
  */
 export async function GET() {
-  const query =
-    "with_status=0&vote_average.gte=7.5&vote_count.gte=400&sort_by=popularity.desc" +
-    "&without_genres=10767,10763,10764,10766,10762&with_original_language=en&language=nl-NL";
-  const pages = await Promise.all(
-    Array.from({ length: PAGES }, (_, i) =>
-      fetch(`${TMDB_BASE}/discover/tv?${query}&page=${i + 1}`, { headers: tmdbHeaders, next: { revalidate: DAY } })
-        .then((r) => (r.ok ? (r.json() as Promise<{ results?: { id: number }[] }>) : { results: [] }))
-        .catch(() => ({ results: [] as { id: number }[] })),
-    ),
-  );
-  const ids = Array.from(new Set(pages.flatMap((p) => (p.results ?? []).map((r) => r.id))));
+  const common = `with_status=0|2&without_genres=${EXCLUDED_GENRES}&sort_by=popularity.desc&language=nl-NL`;
+  const found = (
+    await Promise.all([
+      discoverAll(`${common}&vote_average.gte=7&vote_count.gte=200`),
+      discoverAll(`${common}&vote_average.gte=6.8&vote_count.gte=15&with_original_language=nl`),
+    ])
+  ).flat();
+  const isAnime = (r: DiscoverResult) =>
+    Boolean(r.genre_ids?.includes(ANIMATION) && ["ja", "zh", "ko"].includes(r.original_language ?? ""));
+  const ids = Array.from(new Set(found.filter((r) => !isAnime(r)).map((r) => r.id)));
 
   const results: (OngoingSeries | null)[] = new Array(ids.length).fill(null);
   let index = 0;
@@ -40,6 +57,6 @@ export async function GET() {
 
   return NextResponse.json(
     { series: results.filter((s): s is OngoingSeries => s !== null) },
-    { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=86400" } },
+    { headers: { "Cache-Control": "public, max-age=0, s-maxage=86400, stale-while-revalidate=86400" } },
   );
 }

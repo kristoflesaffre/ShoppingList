@@ -14,11 +14,13 @@ function formatDay(iso: string): string {
 
 /**
  * Canvas «Series volgen» 2: wat er over het volgende seizoen bekend is.
- * Groen = datum bekend, lavendel = aangekondigd, grijs = nog niets.
+ * Groen = datum bekend of seizoen loopt nu, lavendel = aangekondigd, grijs = nog niets.
  */
 export function NextSeasonChip({ series, className }: { series: OngoingSeries; className?: string }) {
   const next = series.nextSeason;
-  const [label, tone] = next?.airDate
+  const [label, tone] = series.airing
+    ? [`Seizoen ${series.lastSeason} loopt nu`, "bg-[#e9f9ef] text-[#1f9d55]"]
+    : next?.airDate
     ? [`Seizoen ${next.seasonNumber} · vanaf ${formatDay(next.airDate)}`, "bg-[#e9f9ef] text-[#1f9d55]"]
     : next
       ? [`Seizoen ${next.seasonNumber} aangekondigd`, "bg-[var(--blue-50)] text-[var(--blue-500)]"]

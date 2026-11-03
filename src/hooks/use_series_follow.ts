@@ -11,12 +11,12 @@ import {
   type OngoingSeries,
 } from "@/lib/series-follow";
 
-/** Per bezoek één keer ophalen; banner en wizard delen het resultaat. */
+/** Per bezoek één keer ophalen; banner en wizard delen het resultaat. `v` = versie van de selectie (oude caches omzeilen). */
 let ongoingPromise: Promise<OngoingSeries[]> | null = null;
 
 export function fetchOngoingSeries(): Promise<OngoingSeries[]> {
   if (!ongoingPromise) {
-    ongoingPromise = fetch("/api/films/ongoing")
+    ongoingPromise = fetch("/api/films/ongoing?v=2")
       .then((r) => {
         if (!r.ok) throw new Error(`ongoing ${r.status}`);
         return r.json() as Promise<{ series: OngoingSeries[] }>;
