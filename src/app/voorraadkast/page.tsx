@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CountStepper } from "@/components/ui/count_stepper";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
-import { CategoryCard, type Rgb } from "@/components/ui/category_card";
+import type { Rgb } from "@/components/ui/category_card";
 import { SectionIndex } from "@/components/ui/section_index";
 import { categoryColor } from "@/app/lijstje/[id]/list_cards_view";
 import { scrollSpyId, useScrollSpy } from "@/lib/use_scroll_spy";
@@ -77,19 +77,38 @@ function PantryRow({
   );
 }
 
-function PantryGroupCard({ id, title, rgb, children }: { id?: string; title: string; rgb?: Rgb; children: React.ReactNode[] }) {
+/** Canvas «Voorraadkast · 4 layouts» A: witte kaart, kop = bolletje · titel · aantal; de actieve groep krijgt op desktop een blauw streepje links. */
+function PantryGroupCard({
+  id,
+  title,
+  dotColor,
+  active = false,
+  children,
+}: {
+  id?: string;
+  title: string;
+  dotColor?: string;
+  active?: boolean;
+  children: React.ReactNode[];
+}) {
   return (
-    <div id={id}>
-      <CategoryCard rgb={rgb} title={title} count={children.length}>
+    <section id={id} aria-label={title} className="relative overflow-visible">
+      {active ? <span aria-hidden className="absolute -left-3 top-3.5 hidden h-[22px] w-1 rounded-full bg-[var(--blue-500)] lg:block" /> : null}
+      <div className="overflow-hidden rounded-[20px] bg-[var(--white)] shadow-card">
+        <div className="flex items-center gap-2 px-3.5 pb-1.5 pt-3">
+          {dotColor ? <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: dotColor }} /> : null}
+          <h2 className="truncate text-[14px] font-bold text-[var(--text-primary)]">{title}</h2>
+          <span className="text-[13px] tabular-nums text-[var(--text-tertiary)]">{children.length}</span>
+        </div>
         <ul>
           {children.map((child, k) => (
-            <li key={k} className="border-t border-[var(--border-subtle)]">
+            <li key={k} className={cn(k > 0 && "border-t border-[var(--border-subtle)]")}>
               {child}
             </li>
           ))}
         </ul>
-      </CategoryCard>
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -101,8 +120,16 @@ const GROUP_RGB: Record<PantryGroup, Rgb> = {
   snacks: categoryColor("Snacks"),
   overig: [112, 119, 132],
 };
-const LOW_RGB: Rgb = [242, 166, 90];
 const rgbCss = (rgb: Rgb) => `rgb(${rgb.join(",")})`;
+
+function WarningIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="var(--status-warning)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 9v4M12 17h.01" />
+      <path d="M10.3 3.9L2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+    </svg>
+  );
+}
 const SPY_PREFIX = "voorraad";
 
 /** Zolang de melding staat, kan de hele reeks wijzigingen aan dit item ongedaan gemaakt worden. */
@@ -327,7 +354,7 @@ export default function VoorraadkastPage() {
               onSelect={goTo}
               items={[
                 { key: "alles", label: "Alles", count: allItems.length, separatorAfter: lowCount === 0 },
-                ...(lowCount > 0 ? [{ key: "bijnaOp", label: "Bijna op", count: lowCount, dotColor: "var(--status-warning)", separatorAfter: true }] : []),
+                ...(lowCount > 0 ? [{ key: "bijnaOp", label: "Bijna op", count: lowCount, icon: <WarningIcon />, separatorAfter: true }] : []),
                 ...presentGroups.map((g) => ({
                   key: g.key,
                   label: g.label,
@@ -408,11 +435,17 @@ export default function VoorraadkastPage() {
               </div>
             </div>
           ) : showLow ? (
-            <PantryGroupCard title="Bijna op" rgb={LOW_RGB}>{lowItems.map(restRow)}</PantryGroupCard>
+            <PantryGroupCard title="Bijna op" dotColor="var(--status-warning)">{lowItems.map(restRow)}</PantryGroupCard>
           ) : (
             <div className="flex flex-col gap-3 lg:gap-4">
               {presentGroups.map((g) => (
-                <PantryGroupCard key={g.key} id={scrollSpyId(SPY_PREFIX, g.key)} title={g.label} rgb={GROUP_RGB[g.key]}>
+                <PantryGroupCard
+                  key={g.key}
+                  id={scrollSpyId(SPY_PREFIX, g.key)}
+                  title={g.label}
+                  dotColor={rgbCss(GROUP_RGB[g.key])}
+                  active={activeGroup === g.key}
+                >
                   {allItems.filter((i) => pantryGroupOf(i.name) === g.key).map(restRow)}
                 </PantryGroupCard>
               ))}

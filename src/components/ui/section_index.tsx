@@ -7,8 +7,10 @@ export type SectionIndexItem = {
   key: string;
   label: string;
   count?: number;
-  /** Kleur van het bolletje (CSS-kleur), bv. de categoriekleur of `var(--status-warning)`. */
+  /** Kleur van het bolletje (CSS-kleur), bv. de categoriekleur. */
   dotColor?: string;
+  /** Klein icoon (15px) in plaats van een bolletje, bv. een waarschuwing bij «Bijna op». */
+  icon?: React.ReactNode;
   /** Dunne scheidingslijn onder deze rij (bv. na «Alles» en «Bijna op»). */
   separatorAfter?: boolean;
 };
@@ -17,6 +19,7 @@ export type SectionIndexItem = {
  * Design system «Inhoudstafel»: verticale lijst van secties naast de inhoud (desktop). Een rij springt
  * naar die sectie; de actieve rij (meestal via `useScrollSpy`) is wit met blauwe tekst. Op een
  * gekleurde achtergrond (Voorraadkast) een half doorzichtig wit vlak. Op gsm: een `FilterChipRow`.
+ * (`white` is een CSS-variabele zonder alfa; daarom `fixed-white` voor de doorzichtige vlakken.)
  */
 export function SectionIndex({
   items,
@@ -32,7 +35,7 @@ export function SectionIndex({
   className?: string;
 }) {
   return (
-    <nav aria-label={ariaLabel} className={cn("rounded-[20px] bg-white/45 p-2 [[data-theme=dark]_&]:bg-white/5", className)}>
+    <nav aria-label={ariaLabel} className={cn("rounded-[20px] bg-fixed-white/45 p-2 [[data-theme=dark]_&]:bg-fixed-white/5", className)}>
       <ul className="flex flex-col">
         {items.map((item) => {
           const active = item.key === activeKey;
@@ -47,14 +50,22 @@ export function SectionIndex({
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                   active
                     ? "bg-[var(--white)] font-bold text-[var(--blue-500)] shadow-card"
-                    : "font-semibold text-[var(--text-primary)] [@media(hover:hover)]:hover:bg-white/60 [[data-theme=dark]_&]:[@media(hover:hover)]:hover:bg-white/10",
+                    : "font-semibold text-[var(--text-primary)] [@media(hover:hover)]:hover:bg-fixed-white/60 [[data-theme=dark]_&]:[@media(hover:hover)]:hover:bg-fixed-white/10",
                 )}
               >
-                {item.dotColor ? <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: item.dotColor }} /> : null}
+                {item.icon ? (
+                  <span aria-hidden className="flex size-[15px] shrink-0 items-center justify-center">
+                    {item.icon}
+                  </span>
+                ) : item.dotColor ? (
+                  <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: item.dotColor }} />
+                ) : null}
                 <span className="min-w-0 flex-1 truncate">{item.label}</span>
                 {item.count != null ? <span className="shrink-0 text-[12.5px] font-semibold tabular-nums text-[var(--text-tertiary)]">{item.count}</span> : null}
               </button>
-              {item.separatorAfter ? <div aria-hidden className="mx-3 my-2 h-px bg-[var(--border-subtle)]" /> : null}
+              {item.separatorAfter ? (
+                <div aria-hidden className="mx-3 my-2 h-px bg-[color-mix(in_srgb,var(--secondary-800)_15%,transparent)]" />
+              ) : null}
             </li>
           );
         })}
