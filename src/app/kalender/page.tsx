@@ -423,12 +423,13 @@ function DayCard({
       </span>
       {visual.sidePhotos.length > 1 || typeof visual.sidePhotos[0] === "object" ? (
         <>
-          {/* Het bord loopt rechts uit de kaart: de twee cirkels staan op de zichtbare rand, linksonder. */}
+          {/* Het bord loopt rechts uit de kaart: de bordjes staan op de zichtbare linkerrand, boven de titel,
+              klein genoeg dat er lucht tussen zit. */}
           <span className="absolute -right-6 top-6 size-[120px] lg:hidden">
-            <CalendarSidePlates photos={visual.sidePhotos} size={120} angles={[120, 165, 210]} />
+            <CalendarSidePlates photos={visual.sidePhotos} size={120} angles={[145, 195, 245]} ratio={0.25} />
           </span>
           <span className="absolute -right-9 top-7 hidden size-[176px] lg:block">
-            <CalendarSidePlates photos={visual.sidePhotos} size={176} angles={[120, 165, 210]} />
+            <CalendarSidePlates photos={visual.sidePhotos} size={176} angles={[145, 195, 245]} ratio={0.25} />
           </span>
         </>
       ) : typeof visual.sidePhotos[0] === "string" ? (

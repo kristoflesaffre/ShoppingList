@@ -130,19 +130,22 @@ export function CalendarSidePlates({
   photos,
   size,
   angles,
+  ratio,
 }: {
   /** Gerechtfoto's, of `{ name }` voor een los item: dat bordje toont de productfoto (zonder foto: de beginletter). */
   photos: SidePlatePhoto[];
   size: number;
   /** Graden op de rand van het bord (0 = rechts, 90 = onder). */
   angles?: number[];
+  /** Diameter van een bordje t.o.v. het bord; standaard kleiner naarmate er meer zijn. */
+  ratio?: number;
 }) {
   const getItemPhoto = useItemPhotoUrl(160);
   const shown = photos
     .map((p) => (typeof p === "string" ? { src: p, product: false, name: "" } : { src: getItemPhoto(p.name) ?? null, product: true, name: p.name }))
     .slice(0, 3);
   const placed = angles ?? (shown.length > 2 ? [-5, 45, 95] : shown.length > 1 ? [15, 75] : [45]);
-  const diameter = Math.round(size * (shown.length > 2 ? 0.32 : shown.length > 1 ? 0.36 : 0.44));
+  const diameter = Math.round(size * (ratio ?? (shown.length > 2 ? 0.32 : shown.length > 1 ? 0.36 : 0.44)));
   return (
     <>
       {shown.map(({ src, product, name }, i) => {
