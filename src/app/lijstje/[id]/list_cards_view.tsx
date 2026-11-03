@@ -24,6 +24,7 @@ import {
   TAKEOUT_MEAL_PHOTO_URL,
 } from "@/lib/takeout-meal";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
+import { eatingOutPhotoFor } from "@/lib/agenda_photos";
 
 /** Weergave van de items in een kaart: rijen, twee kolommen of vierkante tegels (canvas «Lijstje 6b» + «Lijstje 2»). */
 export type ListCardLayout = "one" | "two" | "tiles";
@@ -80,7 +81,9 @@ function splitDay(items: ListItem[], savedRecipes: SavedRecipe[]) {
         const saved =
           (rid ? savedRecipes.find((s) => s.id === rid) : undefined) ??
           savedRecipes.find((s) => s.name.trim().toLowerCase() === item.recipeName!.trim().toLowerCase());
-        r = { groupId: item.recipeGroupId, name: item.recipeName, link: item.recipeLink, photo: saved?.photoUrl ?? null, items: [] };
+        // «restaurant», «uit eten»… zonder eigen foto: de restaurantfoto, zoals bij de recepten en op de kalender.
+        const photo = saved?.photoUrl ?? eatingOutPhotoFor(item.recipeName);
+        r = { groupId: item.recipeGroupId, name: item.recipeName, link: item.recipeLink, photo, items: [] };
         recipes.push(r);
       }
       r.items.push(item);
@@ -136,7 +139,8 @@ function RoundCheck({ done, size = 22 }: { done: boolean; size?: number }) {
 }
 
 function ItemPhoto({ item, getPhotoUrl, size, boxed = true }: { item: ListItem; getPhotoUrl?: GetPhotoUrl; size: number; boxed?: boolean }) {
-  const src = item.stockPhotoUrl ?? getPhotoUrl?.(item.name, size >= 56 ? 160 : 80) ?? null;
+  const eatingOut = !item.stockPhotoUrl ? eatingOutPhotoFor(item.name) : null;
+  const src = item.stockPhotoUrl ?? eatingOut ?? getPhotoUrl?.(item.name, size >= 56 ? 160 : 80) ?? null;
   return (
     <span
       className={cn("relative flex shrink-0 items-center justify-center", boxed && !src && "rounded-[10px] bg-[var(--gray-25)]")}
@@ -147,7 +151,12 @@ function ItemPhoto({ item, getPhotoUrl, size, boxed = true }: { item: ListItem; 
         <img
           src={src}
           alt=""
-          className={cn("object-contain transition-[opacity,filter]", item.checked && "opacity-40 grayscale-[40%]")}
+          className={cn(
+            "transition-[opacity,filter]",
+            // Restaurantfoto is een volle foto: rond bijgesneden zoals een bord, geen productfoto.
+            eatingOut ? "rounded-full object-cover" : "object-contain",
+            item.checked && "opacity-40 grayscale-[40%]",
+          )}
           style={{ width: Math.round(size * 0.82), height: Math.round(size * 0.82) }}
         />
       ) : null}
@@ -1035,7 +1044,10 @@ function DayCards({ sections: allSections, layout, dayLead, listDateStr, savedRe
   );
 
   // Alle foto's waaruit dagkleuren gemeten worden: receptfoto's, diepvriesfoto's en tot 4 productfoto's per losse dag.
-  const photoFor = React.useCallback((item: ListItem) => item.stockPhotoUrl ?? getPhotoUrl?.(item.name, 160) ?? null, [getPhotoUrl]);
+  const photoFor = React.useCallback(
+    (item: ListItem) => item.stockPhotoUrl ?? eatingOutPhotoFor(item.name) ?? getPhotoUrl?.(item.name, 160) ?? null,
+    [getPhotoUrl],
+  );
   const srcs = React.useMemo(() => {
     const out = new Set<string>();
     for (const d of days) {
@@ -1064,7 +1076,10 @@ function DayCards({ sections: allSections, layout, dayLead, listDateStr, savedRe
         used.push(takeoutColor);
         continue;
       }
-      const src = d.split.recipes.find((r) => r.photo)?.photo ?? d.split.stockDishes.find((s) => s.stockPhotoUrl)?.stockPhotoUrl;
+      const src =
+        d.split.recipes.find((r) => r.photo)?.photo ??
+        d.split.stockDishes.find((s) => s.stockPhotoUrl)?.stockPhotoUrl ??
+        d.split.loose.map((i) => eatingOutPhotoFor(i.name)).find(Boolean);
       const rgb = src ? tints.get(src) : undefined;
       if (rgb) {
         map.set(d.section.title, rgb);
@@ -1161,6 +1176,8 @@ function DayCards({ sections: allSections, layout, dayLead, listDateStr, savedRe
     const dishPhoto = mainRecipe?.photo ?? (takeout ? TAKEOUT_MEAL_PHOTO_URL : null) ?? stock?.stockPhotoUrl ?? null;
     const extraRecipes = mainRecipe ? split.recipes.length - 1 : 0;
     const looseNames = !dishName && wide ? section.items.map((i) => i.name).join(", ") : null;
+    /** Losse «restaurant», «uit eten»…: de restaurantfoto als volledig bord, zoals op de kalender. */
+    const eatingOutPhoto = !dishName ? section.items.map((i) => eatingOutPhotoFor(i.name)).find(Boolean) ?? null : null;
     const header = (
       <>
         {/* Desktop: gerechtfoto, of een wit bord met tot drie producten (zoals op de receptenpagina) i.p.v. de datumtegel. */}
@@ -1168,6 +1185,8 @@ function DayCards({ sections: allSections, layout, dayLead, listDateStr, savedRe
           <DateChip date={d.date} />
         ) : dishName ? (
           <Plate src={dishPhoto} size={46} freeze={Boolean(stock)} />
+        ) : eatingOutPhoto ? (
+          <Plate src={eatingOutPhoto} size={46} />
         ) : (
           <IngredientPlate
             photos={selectCalendarPreviewItems(
