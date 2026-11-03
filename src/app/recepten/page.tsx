@@ -593,6 +593,11 @@ export default function ReceptenPage() {
             </div>
           ) : null}
 
+          <div className="flex flex-wrap items-center gap-2">
+            <MiniButton asChild><Link href="/recepten/importeren">Importeer recept met AI</Link></MiniButton>
+            <MiniButton variant="secondary" onClick={() => openCategory("nog_te_testen")}>Nog te testen ({savedRecipes.filter(r => r.category === "nog_te_testen").length})</MiniButton>
+          </div>
+
           {hasRecipes ? (
             <>
               {activeCategory && !isEditMode ? (

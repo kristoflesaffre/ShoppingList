@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
+import { RecipeImportInfo } from "@/components/recipe_import_info";
 import { MiniButton } from "@/components/ui/mini_button";
 import dynamic from "next/dynamic";
 import type { RecipeCategory, RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
@@ -815,6 +816,11 @@ export default function ReceptDetailPage() {
                 </a>
               ) : null}
             </div>
+            <RecipeImportInfo
+              recipeId={savedRecipe.id}
+              category={savedRecipe.category ?? null}
+              onCategoryChange={(category) => db.transact(db.tx.recipes[savedRecipe.id].update({ category })).then(() => undefined)}
+            />
             {detailPhotoEditMode ? (
               <RecipeStepsEditor
                 key={savedRecipe.id}

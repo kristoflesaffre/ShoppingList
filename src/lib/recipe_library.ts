@@ -17,7 +17,8 @@ export type RecipeCategory =
   | "cocktail"
   | "ontbijt"
   | "soep"
-  | "snack";
+  | "snack"
+  | "nog_te_testen";
 
 export type RecipeCategoryMeta = {
   id: RecipeCategory;
@@ -37,6 +38,7 @@ export const RECIPE_CATEGORIES: RecipeCategoryMeta[] = [
   { id: "cocktail",     label: "Cocktail",     labelPlural: "Cocktails",      dot: "#AF52DE" },
   { id: "ontbijt",      label: "Ontbijt",      labelPlural: "Ontbijt",        dot: "#FFCC00" },
   { id: "snack",        label: "Snack",        labelPlural: "Snacks",         dot: "#30B0C7" },
+  { id: "nog_te_testen", label: "Nog te testen", labelPlural: "Nog te testen", dot: "#A9ADF4" },
 ];
 
 /** Subsecties binnen een categorie; nu enkel voor bijgerechten. Volgorde = volgorde in het overzicht. */

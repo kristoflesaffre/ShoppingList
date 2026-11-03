@@ -11,3 +11,9 @@ describe("recipe categories", () => {
     ]);
   });
 });
+
+it('biedt een aparte categorie voor geïmporteerde recepten die nog te testen zijn', () => {
+  expect(RECIPE_CATEGORIES.find(category => category.id === 'nog_te_testen')).toMatchObject({
+    label: 'Nog te testen', labelPlural: 'Nog te testen',
+  });
+});
