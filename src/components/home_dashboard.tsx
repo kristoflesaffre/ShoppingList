@@ -46,12 +46,27 @@ function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** Startpagina · Voorraad: 4 × 3 fototegels; is er meer, dan wordt het twaalfde vak «+n meer». */
-const STOCK_TILE_SLOTS = 12;
+/** Startpagina · Voorraad: 6 × 3 kleine fototegels; is er meer, dan wordt het laatste vak «+n meer». Lege vakken blijven zichtbaar. */
+const STOCK_TILE_COLUMNS = 6;
+const STOCK_TILE_SLOTS = STOCK_TILE_COLUMNS * 3;
 
-function stockTiles<T>(items: T[]): { shown: T[]; rest: number } {
-  if (items.length <= STOCK_TILE_SLOTS) return { shown: items, rest: 0 };
-  return { shown: items.slice(0, STOCK_TILE_SLOTS - 1), rest: items.length - (STOCK_TILE_SLOTS - 1) };
+function stockTiles<T>(items: T[]): { shown: T[]; rest: number; empty: number } {
+  if (items.length <= STOCK_TILE_SLOTS) return { shown: items, rest: 0, empty: STOCK_TILE_SLOTS - items.length };
+  return { shown: items.slice(0, STOCK_TILE_SLOTS - 1), rest: items.length - (STOCK_TILE_SLOTS - 1), empty: 0 };
+}
+
+/** Leeg vak in het raster: houdt de drie rijen vast, ook met weinig voorraad. */
+function StockEmptySlots({ count, tone }: { count: number; tone: "frost" | "pantry" }) {
+  return Array.from({ length: count }, (_, i) => (
+    <li
+      key={`leeg-${i}`}
+      aria-hidden
+      className={cn(
+        "aspect-square rounded-[14px]",
+        tone === "frost" ? "bg-[rgba(255,255,255,0.28)] [[data-theme=dark]_&]:bg-[rgba(255,255,255,0.03)]" : "bg-[rgba(255,255,255,0.3)] [[data-theme=dark]_&]:bg-[rgba(255,255,255,0.03)]",
+      )}
+    />
+  ));
 }
 
 /**
@@ -84,7 +99,7 @@ function StockPhotoTile({
       title={name}
       aria-label={`${name}: ${countLabel}`}
       className={cn(
-        "relative flex aspect-square min-w-0 items-center justify-center rounded-[18px] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
+        "relative flex aspect-square min-w-0 items-center justify-center rounded-[14px] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
         tone === "frost"
           ? "bg-[rgba(255,255,255,0.62)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8),0_6px_16px_-12px_rgba(47,95,179,0.45)] [[data-theme=dark]_&]:bg-[rgba(255,255,255,0.06)] [[data-theme=dark]_&]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
@@ -118,7 +133,7 @@ function StockPhotoTile({
       <span
         aria-hidden
         className={cn(
-          "absolute right-1.5 top-1.5 flex h-[22px] min-w-[22px] items-center justify-center rounded-pill px-1.5 text-xs font-extrabold tabular-nums text-white",
+          "absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-pill px-1 text-[10.5px] font-extrabold tabular-nums text-white",
           low ? "bg-[var(--status-warning)]" : tone === "frost" ? "bg-[var(--blue-500)]" : "bg-[var(--secondary-800)] [[data-theme=dark]_&]:text-[#2e2218]",
         )}
       >
@@ -134,14 +149,14 @@ function StockMoreTile({ href, rest, tone }: { href: string; rest: number; tone:
       href={href}
       aria-label={`Nog ${rest} meer`}
       className={cn(
-        "flex aspect-square min-w-0 flex-col items-center justify-center rounded-[18px] border-[1.5px] border-dashed no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
+        "flex aspect-square min-w-0 flex-col items-center justify-center rounded-[14px] border-[1.5px] border-dashed no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
         tone === "frost"
           ? "border-[rgba(63,109,192,0.35)] text-[#2f5fb3] [[data-theme=dark]_&]:text-[#9db8ee]"
           : cn("border-[rgba(97,66,36,0.28)]", PANTRY_TEXT_CLASS),
       )}
     >
-      <span className="text-[19px] font-extrabold leading-none">+{rest}</span>
-      <span className="mt-1 text-[11.5px] font-semibold">meer</span>
+      <span className="text-[15px] font-extrabold leading-none">+{rest}</span>
+      <span className="mt-0.5 text-[10.5px] font-semibold">meer</span>
     </Link>
   );
 }
@@ -157,7 +172,7 @@ export type DashboardFreezerRow = DashboardFreezerItem & { quantityPerPackage?: 
 export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerRow[] }) {
   const getPhotoUrl = useItemPhotoUrl(160);
   const ordered = [...items.filter((i) => i.type === "gerecht"), ...items.filter((i) => i.type !== "gerecht")];
-  const { shown, rest } = stockTiles(ordered);
+  const { shown, rest, empty } = stockTiles(ordered);
   const stats = plural(items.length, "item", "items");
 
   return (
@@ -204,7 +219,7 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
             </Link>
           </div>
         ) : (
-          <ul className="relative m-0 mt-3.5 grid list-none grid-cols-4 gap-2 pl-0">
+          <ul className="relative m-0 mt-3.5 grid list-none grid-cols-6 gap-1.5 pl-0">
             {shown.map((item) => {
               const isDish = item.type === "gerecht";
               return (
@@ -227,6 +242,7 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
                 <StockMoreTile href="/diepvriesvoorraad" rest={rest} tone="frost" />
               </li>
             ) : null}
+            <StockEmptySlots count={empty} tone="frost" />
           </ul>
         )}
       </div>
@@ -245,7 +261,7 @@ const PANTRY_ICON = (
 /** Canvas «Startpagina · Voorraad: enkel foto's» 2: warme tweeling van de diepvrieskolom op de computer. */
 export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRow[] }) {
   const getPhotoUrl = useItemPhotoUrl(160);
-  const { shown, rest } = stockTiles(items);
+  const { shown, rest, empty } = stockTiles(items);
 
   return (
     <section aria-labelledby="dashboard-pantry" className="flex h-full min-w-0 flex-col gap-3">
@@ -264,7 +280,7 @@ export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRo
         {items.length === 0 ? (
           <p className="mt-3 text-[13.5px] leading-5 text-[var(--text-secondary)]">Hou bij hoeveel bloem, olie, koekjes of chips je nog in huis hebt.</p>
         ) : (
-          <ul className="m-0 mt-3.5 grid list-none grid-cols-4 gap-2 pl-0">
+          <ul className="m-0 mt-3.5 grid list-none grid-cols-6 gap-1.5 pl-0">
             {shown.map((item) => (
               <li key={item.id} className="min-w-0">
                 <StockPhotoTile
@@ -283,6 +299,7 @@ export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRo
                 <StockMoreTile href="/voorraadkast" rest={rest} tone="pantry" />
               </li>
             ) : null}
+            <StockEmptySlots count={empty} tone="pantry" />
           </ul>
         )}
       </div>
