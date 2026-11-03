@@ -6,6 +6,7 @@ import { useItemPhotoUrl } from "@/lib/item-photos";
 import { cn } from "@/lib/utils";
 import { FROST_GRADIENT_CLASS, FrostDecor } from "@/components/ui/frost_background";
 import { PANTRY_GRADIENT_CLASS, PANTRY_TEXT_CLASS, PantryDecor } from "@/components/ui/pantry_background";
+import { OverviewPill } from "@/components/list_section_header";
 import { isPantryLow, pantryStatsLabel } from "@/lib/pantry";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 
@@ -90,7 +91,7 @@ export type DashboardFreezerRow = DashboardFreezerItem & { quantityPerPackage?: 
 export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerRow[] }) {
   const dishes = items.filter((i) => i.type === "gerecht");
   const products = items.filter((i) => i.type !== "gerecht");
-  // Even hoog als Te kopen: maximaal vijf items, de rest via «Diepvries openen».
+  // Even hoog als Te kopen: maximaal vijf items, de rest via de overzichtspil.
   const shownDishes = dishes.slice(0, MAX_FREEZER_ROWS);
   const shownProducts = products.slice(0, Math.max(0, MAX_FREEZER_ROWS - shownDishes.length));
   const hiddenCount = items.length - shownDishes.length - shownProducts.length;
@@ -129,6 +130,8 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
         <h2 id="dashboard-freezer" className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
           Voorraad
         </h2>
+        {/* Canvas «Startpagina · Voorraad» A: openen via de overzichtspil, zoals de andere homesecties. */}
+        {items.length > 0 ? <OverviewPill href="/diepvriesvoorraad" count={items.length} ariaLabel={`Diepvries openen (${items.length})`} /> : null}
       </div>
       <div className={cn(FROST_CARD_CLASS, "flex flex-1 flex-col p-5")}>
         <FrostDecor />
@@ -170,15 +173,6 @@ export function HomeDashboardFreezerColumn({ items }: { items: DashboardFreezerR
             {hiddenCount > 0 ? (
               <p className="relative mt-2.5 text-[13px] font-semibold text-[#4d79c7]">+ {hiddenCount} meer in de diepvries</p>
             ) : null}
-            <div className="min-h-4 flex-1" />
-            <div className="flex justify-end">
-              <Link
-                href="/diepvriesvoorraad"
-                className="flex h-10 items-center justify-center rounded-pill bg-[var(--white)] px-5 text-sm font-bold text-[var(--blue-500)] no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-              >
-                Diepvries openen
-              </Link>
-            </div>
           </>
         )}
       </div>
@@ -208,6 +202,7 @@ export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRo
         <h2 id="dashboard-pantry" className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
           Voorraadkast
         </h2>
+        <OverviewPill href="/voorraadkast" count={items.length || undefined} ariaLabel={items.length > 0 ? `Voorraadkast openen (${items.length})` : "Voorraadkast openen"} />
       </div>
       <div className={cn("relative isolate flex flex-1 flex-col overflow-hidden rounded-[24px] p-5", PANTRY_GRADIENT_CLASS)}>
         <PantryDecor />
@@ -243,15 +238,6 @@ export function HomeDashboardPantryColumn({ items }: { items: DashboardFreezerRo
           </ul>
         )}
         {hiddenCount > 0 ? <p className={cn("mt-2.5 text-[13px] font-semibold", PANTRY_TEXT_CLASS)}>+ {hiddenCount} meer in de kast</p> : null}
-        <div className="min-h-4 flex-1" />
-        <div className="flex justify-end">
-          <Link
-            href="/voorraadkast"
-            className="flex h-10 items-center justify-center rounded-pill bg-[var(--white)] px-5 text-sm font-bold text-[var(--blue-500)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-          >
-            Voorraadkast openen
-          </Link>
-        </div>
       </div>
     </section>
   );
