@@ -4,12 +4,21 @@ import * as React from "react";
 import { useGoogleAuthToken } from "@/lib/google-client";
 import { awaitProjectorReceipt } from "@/lib/projector-client";
 import { stremioLink, type StremioTarget } from "@/lib/stremio";
-import { ScreenIcon } from "@/components/dashboard_screen_panel";
+import { cn } from "@/lib/utils";
 
 let launching = false;
 
-export function WatchOnProjector({ imdbId, type, tmdbId, season, episode }: {
+/** Projector: behuizing, lens links, rooster en pootjes (canvas EP). */
+export function ProjectorIcon({ className = "size-5" }: { className?: string }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+    <rect x="2" y="7" width="20" height="10" rx="3" /><circle cx="8" cy="12" r="3" /><path d="M14.5 10.5h4M14.5 13.5h2.5" /><path d="M5.5 17v2M18.5 17v2" />
+  </svg>;
+}
+
+/** `tone="cinema"`: witte pil (50px) op het donkere doek van de afleveringpagina. */
+export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone = "primary", className }: {
   imdbId?: string | null; type: "movie" | "tv"; tmdbId?: string | number; season?: number; episode?: number;
+  tone?: "primary" | "cinema"; className?: string;
 }) {
   const token = useGoogleAuthToken();
   const [busy, setBusy] = React.useState(false);
@@ -48,11 +57,17 @@ export function WatchOnProjector({ imdbId, type, tmdbId, season, episode }: {
       setMessage(error instanceof Error && error.name !== "TimeoutError" ? error.message : "Geen bevestiging ontvangen. Controleer de projector; er wordt niets herhaald.");
     } finally { launching = false; setBusy(false); }
   }
-  return <div className="flex min-w-0 flex-col items-start gap-2">
+  const cinema = tone === "cinema";
+  return <div className={cn("flex min-w-0 flex-col items-start gap-2", className)}>
     <button type="button" onClick={() => void watch()} disabled={!token || busy || (!imdbId && !tmdbId)} aria-busy={busy}
-      className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg bg-[var(--blue-500)] px-4 py-2.5 text-sm font-bold text-fixed-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:opacity-40">
-      <ScreenIcon kind="preset" /><span>{busy ? "Even wachten…" : "Kijk op projector"}</span>
+      className={cn(
+        "inline-flex max-w-full items-center justify-center transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 disabled:opacity-40",
+        cinema
+          ? "h-[50px] w-full gap-2.5 rounded-pill bg-fixed-white px-6 text-base font-extrabold text-[var(--cinema-screen)] shadow-[0_14px_30px_-14px_rgba(0,0,0,0.6)] focus-visible:ring-fixed-white lg:w-auto"
+          : "min-h-11 gap-2 rounded-lg bg-[var(--blue-500)] px-4 py-2.5 text-sm font-bold text-fixed-white focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
+      )}>
+      <ProjectorIcon /><span>{busy ? "Even wachten…" : "Kijk op projector"}</span>
     </button>
-    {message ? <p role="status" aria-live="polite" className="max-w-md text-sm leading-5 text-[var(--text-secondary)]">{message}</p> : null}
+    {message ? <p role="status" aria-live="polite" className={cn("max-w-md text-sm leading-5", cinema ? "text-fixed-white/70" : "text-[var(--text-secondary)]")}>{message}</p> : null}
   </div>;
 }

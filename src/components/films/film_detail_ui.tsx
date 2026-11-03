@@ -457,10 +457,11 @@ function Initials({ name }: { name: string }) {
 }
 
 /** Ronde castfoto met naam en rol eronder (horizontale rij). */
-export function CastRound({ person }: { person: CastPerson }) {
+export function CastRound({ person, tone = "default" }: { person: CastPerson; tone?: "default" | "cinema" }) {
+  const cinema = tone === "cinema";
   return (
-    <div className="w-[84px] shrink-0 text-center">
-      <span className="mx-auto flex size-[72px] items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] shadow-[0_8px_16px_-10px_rgba(16,17,48,0.5)]">
+    <div className={cn("shrink-0 text-center", cinema ? "w-[92px]" : "w-[84px]")}>
+      <span className={cn("mx-auto flex items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)]", cinema ? "size-[76px] shadow-[0_0_0_2px_rgba(255,255,255,0.22)]" : "size-[72px] shadow-[0_8px_16px_-10px_rgba(16,17,48,0.5)]")}>
         {person.profileUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={person.profileUrl} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
@@ -468,8 +469,8 @@ export function CastRound({ person }: { person: CastPerson }) {
           <Initials name={person.name} />
         )}
       </span>
-      <p className="mt-2 line-clamp-2 text-[12.5px] font-bold leading-4 text-[var(--text-primary)]">{person.name}</p>
-      {person.character ? <p className="mt-px truncate text-[11.5px] leading-[15px] text-[var(--text-tertiary)]">{person.character}</p> : null}
+      <p className={cn("mt-2 line-clamp-2 text-[12.5px] font-bold leading-4", cinema ? "text-fixed-white" : "text-[var(--text-primary)]")}>{person.name}</p>
+      {person.character ? <p className={cn("mt-px truncate text-[11.5px] leading-[15px]", cinema ? "text-fixed-white/55" : "text-[var(--text-tertiary)]")}>{person.character}</p> : null}
     </div>
   );
 }
@@ -496,12 +497,14 @@ export function CastRow({ person, extra }: { person: CastPerson; extra?: React.R
 }
 
 /** Sectiekop: titel links, link rechts. */
-export function DetailSectionHead({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
+export function DetailSectionHead({ title, action, onAction, meta, tone = "default" }: { title: string; action?: string; onAction?: () => void; meta?: string; tone?: "default" | "cinema" }) {
+  const cinema = tone === "cinema";
   return (
     <div className="mb-3 flex items-center justify-between gap-3">
-      <h2 className="text-[19px] font-bold leading-6 text-[var(--text-primary)]">{title}</h2>
+      <h2 className={cn("text-[19px] font-bold leading-6", cinema ? "text-fixed-white" : "text-[var(--text-primary)]")}>{title}</h2>
+      {meta ? <span className={cn("shrink-0 text-sm font-semibold", cinema ? "text-fixed-white/55" : "text-[var(--text-tertiary)]")}>{meta}</span> : null}
       {action && onAction ? (
-        <button type="button" onClick={onAction} className="shrink-0 text-sm font-semibold text-[var(--blue-500)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] rounded">
+        <button type="button" onClick={onAction} className={cn("shrink-0 rounded text-sm font-semibold focus-visible:outline-none focus-visible:ring-2", cinema ? "text-fixed-white focus-visible:ring-fixed-white" : "text-[var(--blue-500)] focus-visible:ring-[var(--border-focus)]")}>
           {action}
         </button>
       ) : null}
@@ -909,6 +912,49 @@ export function InlineClampText({
         )}
       </p>
       <p ref={measureRef} aria-hidden className={cn(className, "pointer-events-none invisible absolute inset-x-0 top-0")} />
+    </div>
+  );
+}
+
+export type SeasonStripEpisode = { episodeNumber: number; name: string; runtime: string; stillUrl: string | null; watched: boolean };
+
+/**
+ * Afleveringen van één seizoen als strook met stills op het donkere doek (canvas EP · A):
+ * gezien = blauw vinkje, de open aflevering = witte ring + «Nu». Gsm: veegrij, desktop: gelijke kolommen.
+ */
+export function SeasonStrip({ episodes, current, onPick }: { episodes: SeasonStripEpisode[]; current: number; onPick?: (episodeNumber: number) => void }) {
+  return (
+    <div className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:overflow-visible lg:px-0" style={{ scrollbarWidth: "none" }}>
+      <div className="flex w-max gap-2.5 lg:grid lg:w-full lg:gap-3.5" style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(episodes.length, 4), 8)}, minmax(0, 1fr))` }}>
+        {episodes.map((ep) => {
+          const on = ep.episodeNumber === current;
+          return (
+            <button
+              key={ep.episodeNumber}
+              type="button"
+              aria-current={on ? "true" : undefined}
+              onClick={() => onPick?.(ep.episodeNumber)}
+              tabIndex={onPick ? undefined : -1}
+              className="group w-[150px] shrink-0 rounded-[12px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white lg:w-auto"
+            >
+              <span className={cn("relative block aspect-video overflow-hidden rounded-[12px] bg-fixed-white/10", on && "shadow-[0_0_0_3px_theme(colors.fixed-white)]")}>
+                {ep.stillUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={ep.stillUrl} alt="" loading="lazy" decoding="async" className={cn("size-full object-cover transition-opacity duration-base", !on && "opacity-60 [@media(hover:hover)]:group-hover:opacity-90")} />
+                ) : null}
+                {ep.watched && !on ? (
+                  <span aria-label="Gezien" className="absolute right-1.5 top-1.5 flex size-[22px] items-center justify-center rounded-full bg-[var(--blue-500)] text-fixed-white">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[13px]"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+                  </span>
+                ) : null}
+                {on ? <span className="absolute bottom-2 left-2 flex h-[22px] items-center rounded-pill bg-fixed-white px-2.5 text-[11.5px] font-extrabold text-[var(--cinema-screen)]">Nu</span> : null}
+              </span>
+              <span className="mt-2 block truncate text-[13.5px] font-bold text-fixed-white">{ep.episodeNumber}. {ep.name}</span>
+              <span className="block text-[12.5px] text-fixed-white/50">{ep.runtime}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

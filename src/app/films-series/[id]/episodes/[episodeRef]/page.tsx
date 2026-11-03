@@ -4,7 +4,7 @@ import * as React from "react";
 import { flushSync } from "react-dom";
 import { useRouter, useParams } from "next/navigation";
 import { backOr } from "@/lib/in_app_history";
-import { ActionPill, CastRound, DetailSectionHead, FilmIcons, GlassIconButton, StarGlyph, formatAirDate } from "@/components/films/film_detail_ui";
+import { ActionPill, CastRound, DetailSectionHead, FilmIcons, GlassIconButton, SeasonStrip, StarGlyph, formatAirDate, type SeasonStripEpisode } from "@/components/films/film_detail_ui";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { WatchOnProjector } from "@/components/films/watch_on_projector";
 import { StremioEpisodeStatus } from "@/components/films/stremio_progress";
@@ -36,20 +36,22 @@ type SeasonMeta = {
 type SeriesInfo = {
   imdbId: string | null;
   title: string;
+  backdropUrl: string | null;
   certification: string;
   seasons: SeasonMeta[];
 };
 
 
+/** Zelfde bovenruimte als EpisodeBody, zodat het seriebeeld tijdens het laden niet verspringt. */
 function DetailSkeleton() {
   return (
-    <div className="flex flex-col">
-      <div className="-mx-4 h-[260px] shimmer lg:mx-0 lg:h-[300px] lg:rounded-[24px]" />
-      <div className="flex flex-col gap-3 pt-5">
+    <div className="flex flex-col pt-[230px] lg:pt-[150px] [&_.shimmer]:opacity-[0.14]">
+      <div className="flex flex-col gap-3 lg:max-w-[560px]">
         <div className="h-3 w-1/2 rounded shimmer" />
-        <div className="h-7 w-3/4 rounded shimmer" />
+        <div className="h-10 w-3/4 rounded-[10px] shimmer lg:h-14" />
         <div className="h-4 w-2/3 rounded shimmer" />
-        {[...Array(4)].map((_, i) => (
+        <div className="mt-3 h-[50px] w-full rounded-pill shimmer lg:w-[230px]" />
+        {[...Array(3)].map((_, i) => (
           <div key={i} className="h-4 rounded shimmer" style={{ width: i % 2 === 0 ? "100%" : "83%" }} />
         ))}
       </div>
@@ -57,17 +59,27 @@ function DetailSkeleton() {
   );
 }
 
-function EpisodeHero({ stillUrl }: { stillUrl: string | null }) {
+/**
+ * Seriebeeld achter de pagina (canvas EP · A «Cinema»): over de volle breedte, vloeit links en onderaan
+ * weg in het donkere doek. Staat buiten de swipepanelen, zodat het blijft staan bij het wisselen.
+ */
+function CinemaBackdrop({ url }: { url: string | null }) {
+  const screen = (pct: number) => `color-mix(in srgb, var(--cinema-screen) ${pct}%, transparent)`;
   return (
-    <div className="relative -mx-4 h-[260px] overflow-hidden bg-[#1b1d3a] lg:mx-0 lg:h-[340px] lg:rounded-[24px]">
-      {stillUrl ? (
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[440px] overflow-hidden lg:h-[660px]">
+      {url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={stillUrl.replace("/w300/", "/w780/")} alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
+        <img src={url} alt="" decoding="async" className="absolute inset-0 size-full object-cover object-[52%_0%] lg:object-[50%_18%]" />
       ) : null}
       <div
-        aria-hidden
         className="absolute inset-0 lg:hidden"
-        style={{ background: "linear-gradient(180deg, rgba(16,17,48,0.3) 0%, rgba(16,17,48,0) 40%, rgba(16,17,48,0) 62%, var(--bg-app) 100%)" }}
+        style={{ background: `linear-gradient(180deg, ${screen(30)} 0%, transparent 28%, ${screen(72)} 64%, var(--cinema-screen) 88%)` }}
+      />
+      <div
+        className="absolute inset-0 hidden lg:block"
+        style={{
+          background: `linear-gradient(90deg, ${screen(92)} 0%, ${screen(55)} 36%, transparent 68%), linear-gradient(180deg, ${screen(40)} 0%, transparent 18%, transparent 46%, ${screen(85)} 76%, var(--cinema-screen) 98%)`,
+        }}
       />
     </div>
   );
@@ -75,7 +87,7 @@ function EpisodeHero({ stillUrl }: { stillUrl: string | null }) {
 
 function Eyebrow({ series, season, ep }: { series: string; season: number; ep: number }) {
   return (
-    <p className="text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-[var(--blue-500)]">
+    <p className="text-[12px] font-extrabold uppercase tracking-[0.09em] text-fixed-white/70 lg:text-[13px]">
       {[series, `Seizoen ${season}`, `Aflevering ${ep}`].filter(Boolean).join(" · ")}
     </p>
   );
@@ -100,6 +112,8 @@ function EpisodeBody({
   onAllCast,
   projectorTmdbId,
   imdbId,
+  seasonEpisodes,
+  onPickEpisode,
 }: {
   episode: EpisodeDetail;
   at: EpisodeRef;
@@ -113,81 +127,108 @@ function EpisodeBody({
   onAllCast?: () => void;
   projectorTmdbId?: string;
   imdbId?: string | null;
+  /** Afleveringen van dit seizoen voor de strook; null = (nog) niet bekend. */
+  seasonEpisodes?: SeasonStripEpisode[] | null;
+  onPickEpisode?: (episodeNumber: number) => void;
 }) {
   const metaLine = [formatAirDate(episode.airDate), episode.runtime, certification].filter(Boolean).join(" · ");
-  return (
-    <>
-      <div className="lg:flex lg:items-start lg:gap-8">
-        <div className="lg:w-[52%] lg:shrink-0">
-          <EpisodeHero stillUrl={episode.stillUrl} />
+  const overview = episode.overview || "Geen beschrijving beschikbaar.";
+  const nextCard = next ? (
+    <button
+      type="button"
+      onClick={onNext}
+      tabIndex={onNext ? undefined : -1}
+      className="flex w-full items-center gap-3.5 rounded-[20px] bg-fixed-white/10 py-2.5 pl-2.5 pr-3.5 text-left shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)] backdrop-blur-[16px] transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [@media(hover:hover)]:hover:bg-fixed-white/15"
+    >
+      <span className="h-[52px] w-[92px] shrink-0 overflow-hidden rounded-[10px] bg-fixed-white/10">
+        {nextData?.stillUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={nextData.stillUrl} alt="" className="size-full object-cover" />
+        ) : null}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-fixed-white/55">
+          {next.s !== at.s ? `Volgende · seizoen ${next.s}` : "Volgende"}
+        </span>
+        <span className="mt-0.5 block truncate text-[15px] font-bold text-fixed-white">
+          {next.e}. {nextData?.title ?? "\u00a0"}
+        </span>
+      </span>
+      <span className="text-fixed-white">{FilmIcons.chevron}</span>
+    </button>
+  ) : null;
+  const cast = episode.cast.length > 0 ? (
+    <section className="min-w-0 flex-1">
+      <DetailSectionHead tone="cinema" title="Cast" action="Alles" onAction={onAllCast ?? (() => {})} />
+      <div className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
+        <div className="flex w-max gap-2.5">
+          {episode.cast.map((m, i) => (
+            <CastRound key={i} person={m} tone="cinema" />
+          ))}
         </div>
-        <div className="relative -mt-[30px] min-w-0 flex-1 lg:mt-1">
+      </div>
+    </section>
+  ) : null;
+
+  return (
+    <div className="pt-[230px] lg:pt-[150px]">
+      {/* Canvas EP · A «Cinema»: tekst op het seriebeeld, still als kader rechts (desktop). */}
+      <div className="lg:flex lg:items-end lg:justify-between lg:gap-12">
+        <div className="min-w-0 lg:max-w-[580px]">
           <Eyebrow series={series} season={at.s} ep={at.e} />
-          <h1 className="mt-1.5 text-[26px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[var(--text-primary)] lg:text-[30px]">{episode.title}</h1>
-          <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[13.5px] text-[var(--text-secondary)]">
+          <h1 className="mt-2 text-[36px] font-extrabold leading-[1.05] tracking-[-0.03em] text-fixed-white [text-wrap:balance] lg:text-[64px] lg:tracking-[-0.035em]">{episode.title}</h1>
+          <p className="mt-3 flex flex-wrap items-center gap-1.5 text-[14px] text-fixed-white/70 lg:text-[15px]">
             {episode.rating != null ? (
               <>
                 <StarGlyph />
-                <b className="text-[var(--text-primary)]">{episode.rating.toFixed(1)}</b>
+                <b className="text-fixed-white">{episode.rating.toFixed(1)}</b>
               </>
             ) : null}
             {metaLine ? <span>{episode.rating != null ? "· " : ""}{metaLine}</span> : null}
           </p>
-          {projectorTmdbId ? <div className="mt-4"><WatchOnProjector type="tv" tmdbId={projectorTmdbId} season={at.s} episode={at.e} /></div> : null}
-          {projectorTmdbId ? <StremioEpisodeStatus imdbId={imdbId} tmdbId={projectorTmdbId} /> : null}
-          <p className="mt-4 text-[15px] leading-[22px] text-[var(--text-primary)]">{episode.overview || "Geen beschrijving beschikbaar."}</p>
-          <div className="mt-[18px] flex">
+          <p className="mt-4 hidden max-w-[520px] text-[16px] leading-[25px] text-fixed-white/85 lg:block">{overview}</p>
+          <div className="mt-5 flex flex-col gap-2.5 lg:mt-6 lg:flex-row lg:items-start lg:gap-3">
+            {projectorTmdbId ? <WatchOnProjector tone="cinema" type="tv" tmdbId={projectorTmdbId} season={at.s} episode={at.e} className="w-full lg:w-auto" /> : null}
             <ActionPill
-              tone={watched ? "soft" : "primary"}
+              tone={watched ? "primary" : "glass"}
               icon={watched ? FilmIcons.check : FilmIcons.eye}
               aria-pressed={watched}
               onClick={onToggleWatched}
               tabIndex={onToggleWatched ? undefined : -1}
-              className="flex-1 lg:flex-none lg:px-6"
+              className="h-[50px] px-6 text-base text-fixed-white backdrop-blur-[14px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] focus-visible:ring-fixed-white focus-visible:ring-offset-0"
             >
               Gezien
             </ActionPill>
           </div>
-          {next ? (
-            <button
-              type="button"
-              onClick={onNext}
-              tabIndex={onNext ? undefined : -1}
-              className="mt-3.5 flex w-full items-center gap-3 rounded-[18px] bg-[var(--white)] py-2.5 pl-2.5 pr-3 text-left shadow-[inset_0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
-            >
-              <span className="h-12 w-[84px] shrink-0 overflow-hidden rounded-[9px] bg-[var(--gray-100)]">
-                {nextData?.stillUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={nextData.stillUrl} alt="" className="size-full object-cover" />
-                ) : null}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[11.5px] font-extrabold uppercase tracking-[0.05em] text-[var(--text-tertiary)]">
-                  {next.s !== at.s ? `Volgende · seizoen ${next.s}` : "Volgende"}
-                </span>
-                <span className="block truncate text-sm font-bold text-[var(--text-primary)]">
-                  {next.e}. {nextData?.title ?? "\u00a0"}
-                </span>
-              </span>
-              <span className="text-[var(--blue-500)]">{FilmIcons.chevron}</span>
-            </button>
-          ) : null}
+          {projectorTmdbId ? <StremioEpisodeStatus tone="cinema" imdbId={imdbId} tmdbId={projectorTmdbId} at={at} /> : null}
+          <p className="mt-5 text-[15px] leading-[23px] text-fixed-white/80 lg:hidden">{overview}</p>
+        </div>
+        <div className="relative hidden w-[380px] shrink-0 overflow-hidden rounded-[18px] bg-fixed-white/10 shadow-[0_30px_60px_-24px_rgba(0,0,0,0.9),inset_0_0_0_1px_rgba(255,255,255,0.2)] lg:block">
+          {episode.stillUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={episode.stillUrl.replace("/w300/", "/w780/")} alt="" className="aspect-video w-full object-cover" />
+          ) : (
+            <div className="aspect-video" />
+          )}
+          <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,rgba(0,0,0,0.55))]" />
+          <span className="absolute bottom-2.5 left-3 text-[12px] font-bold text-fixed-white">Aflevering {at.e}{episode.runtime ? ` · ${episode.runtime}` : ""}</span>
         </div>
       </div>
 
-      {episode.cast.length > 0 && (
-        <section className="mt-[30px]">
-          <DetailSectionHead title="Cast" action="Alles" onAction={onAllCast ?? (() => {})} />
-          <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-            <div className="flex w-max gap-2">
-              {episode.cast.map((m, i) => (
-                <CastRound key={i} person={m} />
-              ))}
-            </div>
-          </div>
+      <div className="mt-6 lg:hidden">{nextCard}</div>
+
+      {seasonEpisodes && seasonEpisodes.length > 1 ? (
+        <section className="mt-8 lg:mt-12">
+          <DetailSectionHead tone="cinema" title={`Seizoen ${at.s}`} meta={`${seasonEpisodes.length} afleveringen`} />
+          <SeasonStrip episodes={seasonEpisodes} current={at.e} onPick={onPickEpisode} />
         </section>
-      )}
-    </>
+      ) : null}
+
+      <div className="mt-8 lg:flex lg:items-end lg:justify-between lg:gap-10">
+        {cast}
+        {nextCard ? <div className="hidden w-[380px] shrink-0 lg:block">{nextCard}</div> : null}
+      </div>
+    </div>
   );
 }
 
@@ -253,8 +294,14 @@ export default function EpisodeDetailPage() {
     if (!tmdbId) return;
     fetch(`/api/films/detail?type=tv&id=${tmdbId}`)
       .then((r) => r.json())
-      .then((data: { title: string; certification: string; seasons: SeasonMeta[]; imdbId?: string | null }) => {
-        setSeriesInfo({ title: data.title, certification: data.certification, seasons: data.seasons ?? [], imdbId: data.imdbId ?? null });
+      .then((data: { title: string; certification: string; seasons: SeasonMeta[]; imdbId?: string | null; backdropUrl?: string | null }) => {
+        setSeriesInfo({
+          title: data.title,
+          certification: data.certification,
+          seasons: data.seasons ?? [],
+          imdbId: data.imdbId ?? null,
+          backdropUrl: data.backdropUrl?.replace("/w780/", "/w1280/") ?? null,
+        });
       })
       .catch(() => {});
   }, [tmdbId]);
@@ -333,6 +380,30 @@ export default function EpisodeDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tmdbId, currentSeason, currentEp, seriesInfo]);
+
+  // Afleveringen per seizoen voor de strook (één keer per seizoen ophalen).
+  const [seasonLists, setSeasonLists] = React.useState<Record<number, Omit<SeasonStripEpisode, "watched">[]>>({});
+  React.useEffect(() => {
+    if (!tmdbId || seasonLists[currentSeason]) return;
+    let alive = true;
+    fetch(`/api/films/episodes?id=${tmdbId}&season=${currentSeason}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { episodes?: { episodeNumber: number; name: string; runtime: string; stillUrl: string | null }[] } | null) => {
+        if (!alive || !data?.episodes) return;
+        const list = data.episodes.map(({ episodeNumber, name, runtime, stillUrl }) => ({ episodeNumber, name, runtime, stillUrl }));
+        setSeasonLists((prev) => ({ ...prev, [currentSeason]: list }));
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [tmdbId, currentSeason, seasonLists]);
+
+  // Het doek loopt door tot buiten de pagina (overscroll op iOS, randen op desktop).
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const before = root.style.backgroundColor;
+    root.style.backgroundColor = "var(--cinema-screen)";
+    return () => { root.style.backgroundColor = before; };
+  }, []);
 
   const watchedId = `ep-${tmdbId}-s${currentSeason}e${currentEp}`;
   const watched = isWatched(watchedId);
@@ -559,9 +630,23 @@ export default function EpisodeDetailPage() {
     commitNavigationRef.current?.(dir);
   }
 
+  /** Rechtstreeks naar een aflevering uit de seizoenstrook (zonder schuifanimatie). */
+  function jumpToEpisode(s: number, e: number) {
+    if (animatingRef.current || (s === currentSeason && e === currentEp)) return;
+    const hit = episodeCache.current.get(`${tmdbId}-s${s}e${e}`);
+    setCurrentSeason(s);
+    setCurrentEp(e);
+    setEpisode(hit ?? null);
+    setLoading(!hit);
+    window.history.replaceState(null, "", `/films-series/${rawId}/episodes/s${s}e${e}`);
+    window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+
   const seriesTitle = seriesInfo?.title ?? "";
   const certification = seriesInfo?.certification ?? "";
   const watchedAt = (at: EpisodeRef) => isWatched(`ep-${tmdbId}-s${at.s}e${at.e}`);
+  const stripFor = (season: number): SeasonStripEpisode[] | null =>
+    seasonLists[season]?.map((ep) => ({ ...ep, watched: watchedAt({ s: season, e: ep.episodeNumber }) })) ?? null;
   const ghost = (at: EpisodeRef | null, after: EpisodeRef | null) => {
     const data = cached(at);
     if (!at || !data) return <DetailSkeleton />;
@@ -574,18 +659,24 @@ export default function EpisodeDetailPage() {
         watched={watchedAt(at)}
         next={after}
         nextData={cached(after)}
+        seasonEpisodes={stripFor(at.s)}
       />
     );
   };
 
+  const navButton = "flex size-10 items-center justify-center rounded-full bg-fixed-white/15 text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)] backdrop-blur-[14px] transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white disabled:opacity-35 [@media(hover:hover)]:hover:bg-fixed-white/25";
+  const backdrop = seriesInfo ? (seriesInfo.backdropUrl ?? episode?.stillUrl?.replace("/w300/", "/w780/") ?? null) : null;
+
   return (
     <div
       ref={containerRef}
-      className="relative flex min-h-dvh w-full flex-col overflow-x-hidden"
+      className="relative flex min-h-dvh w-full flex-col overflow-x-hidden bg-[var(--cinema-screen)]"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Terug / meer: glas op de still (mobiel), los erboven (desktop) */}
+      <CinemaBackdrop key={backdrop ?? "none"} url={backdrop} />
+
+      {/* Terug / meer: glas op het seriebeeld (mobiel), los erboven (desktop) */}
       <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top,0px)+12px)] z-20 flex justify-between lg:hidden">
         <GlassIconButton aria-label="Terug" onClick={() => backOr(router, `/films-series/${rawId}/episodes?s=${currentSeason}`)}>
           {FilmIcons.back}
@@ -595,34 +686,21 @@ export default function EpisodeDetailPage() {
         </GlassIconButton>
       </div>
 
-      {/* Canvas «21 · Aflevering — voorstel» */}
-      <div className="relative z-10 mx-auto flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] lg:pt-10">
-        <div className="mb-5 hidden items-center justify-between lg:flex">
+      <div className="relative z-10 mx-auto flex w-full max-w-[1180px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+48px)] lg:px-10 lg:pt-8">
+        <div className="absolute inset-x-4 top-8 z-20 hidden items-center justify-between lg:inset-x-10 lg:flex">
           <button
             type="button"
             aria-label="Terug"
             onClick={() => backOr(router, `/films-series/${rawId}/episodes?s=${currentSeason}`)}
-            className="flex size-10 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+            className={navButton}
           >
             {FilmIcons.back}
           </button>
           <div className="flex gap-2">
-            <button
-              type="button"
-              aria-label="Vorige aflevering"
-              onClick={() => navigateEpisode("prev")}
-              disabled={!hasPrev}
-              className="flex size-10 rotate-180 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] disabled:opacity-40"
-            >
+            <button type="button" aria-label="Vorige aflevering" onClick={() => navigateEpisode("prev")} disabled={!hasPrev} className={`${navButton} rotate-180`}>
               {FilmIcons.chevron}
             </button>
-            <button
-              type="button"
-              aria-label="Volgende aflevering"
-              onClick={() => navigateEpisode("next")}
-              disabled={!hasNext}
-              className="flex size-10 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] disabled:opacity-40"
-            >
+            <button type="button" aria-label="Volgende aflevering" onClick={() => navigateEpisode("next")} disabled={!hasNext} className={navButton}>
               {FilmIcons.chevron}
             </button>
           </div>
@@ -642,7 +720,7 @@ export default function EpisodeDetailPage() {
             {loading ? (
               <DetailSkeleton />
             ) : !episode ? (
-              <p className="pt-[calc(env(safe-area-inset-top,0px)+80px)] text-center text-sm text-[var(--text-secondary)]">Kan afleveringsdetails niet laden.</p>
+              <p className="pt-[calc(env(safe-area-inset-top,0px)+260px)] text-center text-sm text-fixed-white/70">Kan afleveringsdetails niet laden.</p>
             ) : (
               <EpisodeBody
                 episode={episode}
@@ -660,6 +738,8 @@ export default function EpisodeDetailPage() {
                 }}
                 onNext={() => navigateEpisode("next")}
                 onAllCast={() => router.push(`/films-series/${rawId}/cast`)}
+                seasonEpisodes={stripFor(currentSeason)}
+                onPickEpisode={(e) => jumpToEpisode(currentSeason, e)}
               />
             )}
           </div>
