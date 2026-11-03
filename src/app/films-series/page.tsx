@@ -13,6 +13,7 @@ import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster,
 import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
+import { useEdgeFade } from "@/hooks/use_edge_fade";
 import { useWatchingTvItems, type NewSeasonItem, type WatchingTvItem } from "@/hooks/use_watching_tv_items";
 import { Snackbar } from "@/components/ui/snackbar";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
@@ -678,6 +679,10 @@ export default function FilmsSeriesPage() {
   const seriesSectionRef = React.useRef<HTMLElement>(null);
   const filmsScrollRef = React.useRef<HTMLDivElement>(null);
   const seriesScrollRef = React.useRef<HTMLDivElement>(null);
+  const partnerScrollRef = React.useRef<HTMLDivElement>(null);
+  useEdgeFade(filmsScrollRef);
+  useEdgeFade(seriesScrollRef);
+  useEdgeFade(partnerScrollRef);
   const lastAddedItemRef = React.useRef<HTMLButtonElement | null>(null);
   const scrollPendingRef = React.useRef(false);
   const [discoverItems, setDiscoverItems] = React.useState<SearchResult[]>([]);
@@ -1229,7 +1234,7 @@ export default function FilmsSeriesPage() {
                     </span>
                   }
                 />
-                <div className="-mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                <div ref={partnerScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-3 lg:gap-4" style={{ width: "max-content" }}>
                     <OneByOneTile
                       posters={partnerWatchlist.map((p) => p.posterUrl)}
@@ -1361,7 +1366,7 @@ export default function FilmsSeriesPage() {
             {watchlistFilms.length > 0 && (
               <section ref={filmsSectionRef} className="flex flex-col gap-3">
                 <SectionHead title="Watchlist films" href="/films-series/watchlist/films" count={watchlistFilms.length} />
-                <div ref={filmsScrollRef} className="-mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                <div ref={filmsScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
                   <div className="flex" style={{ width: "max-content" }}>
                     {watchlistFilms.map((item) => {
                       const isCollapsed = removingFilmId === item.id || restoringFilmId === item.id;
@@ -1395,7 +1400,7 @@ export default function FilmsSeriesPage() {
             {watchlistSeries.length > 0 && (
               <section ref={seriesSectionRef} className="flex flex-col gap-3">
                 <SectionHead title="Watchlist series" href="/films-series/watchlist/series" count={watchlistSeries.length} />
-                <div ref={seriesScrollRef} className="-mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                <div ref={seriesScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-3" style={{ width: "max-content" }}>
                     {watchlistSeries.map((item) => (
                       <PosterTile

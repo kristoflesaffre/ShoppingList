@@ -170,6 +170,22 @@ body::after {
   }
 }
 
+/* Horizontale posterrij op desktop: zachte fade waar nog iets volgt i.p.v. een harde snede (useEdgeFade). */
+@media (min-width: 1024px) {
+  .edge-fade {
+    --fade-start: 0px;
+    --fade-end: 0px;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+  }
+  .edge-fade[data-fade-start] {
+    --fade-start: 56px;
+  }
+  .edge-fade[data-fade-end] {
+    --fade-end: 120px;
+  }
+}
+
 /* Ontdooi-post-it op de dag van het gerecht: sticker die dubbel klopt, met golven eruit (TodoPostit). */
 @keyframes thaw-beat {
   0%,
