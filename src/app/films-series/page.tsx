@@ -656,7 +656,7 @@ export default function FilmsSeriesPage() {
     reactToPartnerItem,
   } = useFilmsLibrary();
   const { followed: followedSeries } = useFollowedSeries();
-  const { watchingItems, markNextEpisode, markSeasonWatched, markSeriesWatched, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
+  const { watchingItems, markNextEpisode, markSeasonWatched, markSeriesWatched, markSeasonNotStarted, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
   const [watchMenuFor, setWatchMenuFor] = React.useState<string | null>(null);
   const [followBannerHidden, setFollowBannerHidden] = React.useState(true);
   React.useEffect(() => {
@@ -948,6 +948,12 @@ export default function FilmsSeriesPage() {
     });
   }
 
+  async function handleNotStarted(item: WatchingTvItem) {
+    setWatchMenuFor(null);
+    const markId = await markSeasonNotStarted(item);
+    showSnackbar(`${item.title} staat op je watchlist`, () => void unmarkEpisodes([markId]));
+  }
+
   // Menu «Aan het kijken» sluiten bij een tik ernaast.
   React.useEffect(() => {
     if (!watchMenuFor) return;
@@ -1236,6 +1242,7 @@ export default function FilmsSeriesPage() {
                         onNext={(e) => handleMarkNextEpisode(e, item)}
                         onSeason={() => void handleMarkSeason(item)}
                         onSeries={() => void handleMarkSeries(item)}
+                        onNotStarted={() => void handleNotStarted(item)}
                       />
                     ))}
                   </div>

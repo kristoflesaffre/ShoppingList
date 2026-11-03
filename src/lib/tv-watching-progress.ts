@@ -1,3 +1,11 @@
+import { autoAddedMarkId } from "@/lib/series-follow";
+
+/**
+ * Nieuw seizoen staat op de watchlist maar je begon er nog niet aan (`waiting-tv-{id}-s{n}`):
+ * niet in «Aan het kijken» tot je de eerste aflevering ziet.
+ */
+export const notStartedSeasonMarkId = (tmdbId: string, season: number) => `waiting-tv-${tmdbId}-s${season}`;
+
 export type TvSeasonInfo = {
   seasonNumber: number;
   episodeCount: number;
@@ -175,6 +183,7 @@ export function buildWatchingTvItems(input: {
   today?: string;
 }): WatchingTvItem[] {
   const today = input.today ?? new Date().toISOString().slice(0, 10);
+  const watched = new Set(input.watchedIds);
   const tmdbIds = new Set<string>();
   for (const id of input.watchedIds) {
     const parsed = parseEpisodeWatchedId(id);
@@ -212,6 +221,12 @@ export function buildWatchingTvItems(input: {
     // Seizoen helemaal gezien en de serie staat niet meer op de watchlist: dat is een
     // «nieuw seizoen» (zie buildNewSeasonItems), niet iets waar je mee bezig bent.
     if (!wlItem && next.season > lastWatched.season) continue;
+    // Nieuw seizoen dat vanzelf (of door jou) op de watchlist kwam, maar nog niet begonnen: blijft op de watchlist.
+    if (
+      next.season > lastWatched.season &&
+      (watched.has(autoAddedMarkId(tmdbId, next.season)) || watched.has(notStartedSeasonMarkId(tmdbId, next.season)))
+    )
+      continue;
 
     items.push({
       tmdbId,

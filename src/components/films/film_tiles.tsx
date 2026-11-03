@@ -231,6 +231,7 @@ export function WatchingCard({
   onNext,
   onSeason,
   onSeries,
+  onNotStarted,
   className,
 }: {
   item: WatchingTvItem;
@@ -240,6 +241,8 @@ export function WatchingCard({
   onNext: (e: React.MouseEvent) => void;
   onSeason: () => void;
   onSeries: () => void;
+  /** Bij een nieuw seizoen (aflevering 1): uit «Aan het kijken», blijft op de watchlist. */
+  onNotStarted?: () => void;
   /** Standaard 300px in een horizontale rij; op een eigen pagina `w-full`. */
   className?: string;
 }) {
@@ -276,9 +279,10 @@ export function WatchingCard({
     "--tint-label-dark": dark.label,
   } as React.CSSProperties;
   return (
-    <div data-watch-menu style={tintVars} className={cn("relative shrink-0 pt-5", className ?? "w-[300px] lg:w-[340px]")}>
-      {/* Canvas «C · Sfeerkleur van de poster»: de poster steekt boven de kaart uit, de kaart kleurt mee. */}
-      <div className="relative flex min-h-[136px] rounded-[20px] bg-[var(--white)] py-3.5 pl-[118px] pr-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] lg:min-h-[148px] lg:pl-[124px]">
+    <div data-watch-menu style={tintVars} className={cn("relative flex shrink-0 flex-col pt-5", className ?? "w-[300px] lg:w-[340px]")}>
+      {/* Canvas «C · Sfeerkleur van de poster»: de poster steekt boven de kaart uit, de kaart kleurt mee.
+          `flex-1`: in een rij zijn alle kaarten even hoog, ook zonder afleveringstitel. */}
+      <div className="relative flex min-h-[136px] flex-1 rounded-[20px] bg-[var(--white)] py-3.5 pl-[118px] pr-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] lg:min-h-[148px] lg:pl-[124px]">
         <span aria-hidden className="pointer-events-none absolute inset-0 rounded-[20px] [background:var(--tint-wash)] [[data-theme=dark]_&]:[background:var(--tint-wash-dark)]" />
         <button
           type="button"
@@ -355,6 +359,19 @@ export function WatchingCard({
               <span className="block text-[11.5px] text-[var(--text-secondary)]">Verder met seizoen {item.nextSeason + 1}</span>
             </span>
           </button>
+          {onNotStarted && item.nextEpisode === 1 && item.nextSeason > item.lastWatched.season ? (
+            <button type="button" role="menuitem" onClick={onNotStarted} className={cn(menuItem, "border-t border-[var(--border-subtle)]")}>
+              <span className={menuIcon}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                  <path d="M6.5 4.5h11v15l-5.5-3.6-5.5 3.6z" />
+                </svg>
+              </span>
+              <span>
+                <span className="block text-sm font-semibold text-[var(--text-primary)]">Nog niet aan begonnen</span>
+                <span className="block text-[11.5px] text-[var(--text-secondary)]">Blijft op de watchlist</span>
+              </span>
+            </button>
+          ) : null}
           <button type="button" role="menuitem" onClick={onSeries} className={cn(menuItem, "border-t border-[var(--border-subtle)]")}>
             <span className={menuIcon}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
@@ -379,8 +396,8 @@ export function WatchingCard({
 /** Laadvorm van `WatchingCard`: zelfde maten, poster steekt boven de kaart uit. */
 export function WatchingCardSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("shrink-0 pt-5", className ?? "w-[300px] lg:w-[340px]")}>
-      <div className="relative flex min-h-[136px] flex-col justify-between rounded-[20px] bg-[var(--white)] py-3.5 pl-[118px] pr-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:min-h-[148px] lg:pl-[124px]">
+    <div className={cn("flex shrink-0 flex-col pt-5", className ?? "w-[300px] lg:w-[340px]")}>
+      <div className="relative flex min-h-[136px] flex-1 flex-col justify-between rounded-[20px] bg-[var(--white)] py-3.5 pl-[118px] pr-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:min-h-[148px] lg:pl-[124px]">
         <Shimmer className="absolute -top-5 left-3.5 aspect-[2/3] w-[90px] rounded-[12px] lg:w-[96px]" />
         <div>
           <Shimmer className="h-2.5 w-2/5 rounded-md" />

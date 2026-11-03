@@ -88,6 +88,17 @@ describe("buildWatchingTvItems", () => {
     expect(items[0]?.nextEpisode).toBe(1);
   });
 
+  it("verbergt een nieuw seizoen dat je nog niet begon", () => {
+    const base = {
+      watchlist: [{ id: "tv-42", type: "tv", title: "Voorbeeldserie", year: "2024", posterUrl: null }],
+      seriesMeta: { "42": { title: "Voorbeeldserie", year: "2024", posterUrl: null, seasons: TWO_SEASON_SHOW } },
+    };
+    expect(buildWatchingTvItems({ ...base, watchedIds: ["ep-42-s1e8", "waiting-tv-42-s2"] })).toHaveLength(0);
+    expect(buildWatchingTvItems({ ...base, watchedIds: ["ep-42-s1e8", "follow-added-tv-42-s2"] })).toHaveLength(0);
+    // Eerste aflevering gezien: weer «aan het kijken».
+    expect(buildWatchingTvItems({ ...base, watchedIds: ["ep-42-s1e8", "waiting-tv-42-s2", "ep-42-s2e1"] })).toHaveLength(1);
+  });
+
   it("verbergt series waar het laatste seizoen volledig bekeken is", () => {
     const items = buildWatchingTvItems({
       watchedIds: ["ep-999-s1e6"],

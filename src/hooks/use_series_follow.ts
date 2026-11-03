@@ -10,6 +10,7 @@ import {
   skipMarkId,
   type OngoingSeries,
 } from "@/lib/series-follow";
+import { notStartedSeasonMarkId } from "@/lib/tv-watching-progress";
 
 /** Per bezoek één keer ophalen; banner en wizard delen het resultaat. `v` = versie van de selectie (oude caches omzeilen). */
 let ongoingPromise: Promise<OngoingSeries[]> | null = null;
@@ -116,7 +117,7 @@ export function useSeriesFollow() {
     [current, busy],
   );
 
-  /** «Ik kijk dit»: afleveringen t.e.m. `through` gezien, serie gevolgd. Nog niet bij? Dan ook op de watchlist. */
+  /** «Ik kijk dit»: afleveringen t.e.m. `through` gezien, serie gevolgd. Nog niet bij? Dan ook op de watchlist (niet «aan het kijken»). */
   const follow = (through: number) =>
     run(async (s) => {
       await saveSeriesMeta(s.tmdbId, {
@@ -125,8 +126,13 @@ export function useSeriesFollow() {
         posterUrl: s.posterUrl,
         seasons: s.seasons.map(({ seasonNumber, episodeCount }) => ({ seasonNumber, episodeCount })),
       });
-      const marked = await mark([...episodeIdsThrough(s.tmdbId, s.seasons, through), followMarkId(s.tmdbId)]);
       const behind = through < s.lastSeason && !isInWatchlist(`tv-${s.tmdbId}`);
+      // Achter: het volgende seizoen staat op de watchlist, maar je bent er nog niet mee bezig.
+      const marked = await mark([
+        ...episodeIdsThrough(s.tmdbId, s.seasons, through),
+        followMarkId(s.tmdbId),
+        ...(behind ? [notStartedSeasonMarkId(s.tmdbId, through + 1)] : []),
+      ]);
       if (behind) await addToWatchlist(watchlistItem(s));
       return { tmdbId: s.tmdbId, marked, addedToWatchlist: behind };
     });

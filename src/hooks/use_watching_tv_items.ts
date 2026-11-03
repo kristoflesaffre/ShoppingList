@@ -10,6 +10,7 @@ import { fetchFilmDetail } from "@/lib/film-detail-client";
 import {
   buildNewSeasonItems,
   buildWatchingTvItems,
+  notStartedSeasonMarkId,
   getEpisodeIdAfterWatchingNext,
   getHighestWatchedProgress,
   isSeriesFullyWatched,
@@ -330,6 +331,19 @@ export function useWatchingTvItems() {
     [getWatchedEpisodeIdsFor, removeFromWatchlist, unmarkWatched],
   );
 
+  /** Nieuw seizoen nog niet begonnen: uit «Aan het kijken», op de watchlist. Geeft de markering terug (voor «Zet terug»). */
+  const markSeasonNotStarted = React.useCallback(
+    async (item: WatchingTvItem): Promise<string> => {
+      const markId = notStartedSeasonMarkId(item.tmdbId, item.nextSeason);
+      if (!isInWatchlist(item.id)) {
+        await addToWatchlist({ id: item.id, type: "tv", title: item.title, year: item.year, posterUrl: item.posterUrl, score: null });
+      }
+      await markWatched(markId);
+      return markId;
+    },
+    [isInWatchlist, addToWatchlist, markWatched],
+  );
+
   const restoreWatchingItem = React.useCallback(
     async (snapshot: RemovedWatchingTvItemSnapshot) => {
       await addToWatchlist(snapshot.watchlistItem);
@@ -346,6 +360,7 @@ export function useWatchingTvItems() {
     unmarkEpisodes: unmarkWatchedMany,
     removeWatchingItem,
     restoreWatchingItem,
+    markSeasonNotStarted,
     unmarkWatchedEpisode: unmarkWatched,
     newSeasonItems,
     dismissNewSeason: (item: NewSeasonItem) => setNewSeasonDismissed(item, true),

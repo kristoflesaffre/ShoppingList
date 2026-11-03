@@ -41,6 +41,7 @@ export default function WatchingOverviewPage() {
     markNextEpisode,
     markSeasonWatched,
     markSeriesWatched,
+    markSeasonNotStarted,
     unmarkEpisodes,
     removeWatchingItem,
     restoreWatchingItem,
@@ -134,6 +135,12 @@ export default function WatchingOverviewPage() {
         if (res.watchlistItem) void addToWatchlist(res.watchlistItem);
       },
     });
+  }
+
+  async function handleNotStarted(item: WatchingTvItem) {
+    setMenuFor(null);
+    const markId = await markSeasonNotStarted(item);
+    showSnackbar({ message: `${item.title} staat op je watchlist`, actionLabel: "Zet terug", undoFn: () => void unmarkEpisodes([markId]) });
   }
 
   const handleRemove = React.useCallback(
@@ -235,6 +242,7 @@ export default function WatchingOverviewPage() {
                   }}
                   onSeason={() => void handleMarkSeason(item)}
                   onSeries={() => void handleMarkSeries(item)}
+                  onNotStarted={() => void handleNotStarted(item)}
                 />
               </SwipeToDelete>
             ))
