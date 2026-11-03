@@ -281,8 +281,8 @@ function FilmsOverviewSkeleton() {
       <section className="flex flex-col gap-3">
         {head("w-36")}
         <div className="-mx-4 overflow-hidden px-4 lg:mx-0 lg:px-0">
-          <div className="flex w-max gap-3 lg:grid lg:w-full lg:grid-cols-2 lg:gap-x-4 lg:gap-y-2">
-            {[0, 1].map((i) => (
+          <div className="flex w-max gap-3">
+            {[0, 1, 2].map((i) => (
               <WatchingCardSkeleton key={i} />
             ))}
           </div>
@@ -692,9 +692,11 @@ export default function FilmsSeriesPage() {
   const filmsScrollRef = React.useRef<HTMLDivElement>(null);
   const seriesScrollRef = React.useRef<HTMLDivElement>(null);
   const partnerScrollRef = React.useRef<HTMLDivElement>(null);
+  const watchingScrollRef = React.useRef<HTMLDivElement>(null);
   useEdgeFade(filmsScrollRef);
   useEdgeFade(seriesScrollRef);
   useEdgeFade(partnerScrollRef);
+  useEdgeFade(watchingScrollRef);
   const lastAddedItemRef = React.useRef<HTMLButtonElement | null>(null);
   const scrollPendingRef = React.useRef(false);
   const [discoverItems, setDiscoverItems] = React.useState<SearchResult[]>([]);
@@ -1210,8 +1212,8 @@ export default function FilmsSeriesPage() {
             {watchingItems.length > 0 && (
               <section className="flex flex-col gap-3">
                 <SectionHead title="Aan het kijken" href="/films-series/aan-het-kijken" />
-                <div className="-mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:overflow-visible lg:px-0" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex w-max gap-3 lg:grid lg:w-full lg:grid-cols-2 lg:gap-x-4 lg:gap-y-2">
+                <div ref={watchingScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex w-max gap-3">
                     {watchingItems.map((item) => (
                       <WatchingCard
                         key={item.id}

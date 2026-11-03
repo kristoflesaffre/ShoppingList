@@ -209,12 +209,12 @@ function PlayProgressRing({ percent }: { percent: number }) {
   const c = 2 * Math.PI * r;
   const shown = Math.min(100, Math.max(2, percent));
   return (
-    <span className="relative flex size-[38px] shrink-0 items-center justify-center text-[var(--blue-500)]">
+    <span className="relative flex size-6 shrink-0 items-center justify-center text-[var(--blue-500)]">
       <svg viewBox="0 0 38 38" aria-hidden className="absolute inset-0 size-full -rotate-90">
-        <circle cx="19" cy="19" r={r} fill="none" stroke="var(--gray-100)" strokeWidth={2.5} />
-        <circle cx="19" cy="19" r={r} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeDasharray={`${(shown / 100) * c} ${c}`} />
+        <circle cx="19" cy="19" r={r} fill="none" stroke="var(--gray-100)" strokeWidth={3.5} />
+        <circle cx="19" cy="19" r={r} fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeDasharray={`${(shown / 100) * c} ${c}`} />
       </svg>
-      <svg viewBox="0 0 24 24" aria-hidden className="ml-0.5 size-3.5">
+      <svg viewBox="0 0 24 24" aria-hidden className="ml-px size-2.5">
         <path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l11.2-7.2a1 1 0 0 0 0-1.72L8.5 3.94A1 1 0 0 0 7 4.8z" fill="currentColor" />
       </svg>
     </span>
@@ -274,46 +274,44 @@ export function WatchingCard({
     "--tint-label-dark": dark.label,
   } as React.CSSProperties;
   return (
-    <div data-watch-menu style={tintVars} className={cn("relative shrink-0 pt-6 lg:pt-7", className ?? "w-[312px] lg:w-auto")}>
+    <div data-watch-menu style={tintVars} className={cn("relative shrink-0 pt-5", className ?? "w-[300px] lg:w-[340px]")}>
       {/* Canvas «C · Sfeerkleur van de poster»: de poster steekt boven de kaart uit, de kaart kleurt mee. */}
-      <div className="relative flex min-h-[148px] gap-4 rounded-[20px] bg-[var(--white)] py-4 pl-[136px] pr-4 shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] lg:min-h-[224px] lg:gap-5 lg:py-6 lg:pl-[180px] lg:pr-6">
+      <div className="relative flex min-h-[136px] rounded-[20px] bg-[var(--white)] py-3.5 pl-[118px] pr-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] lg:min-h-[148px] lg:pl-[124px]">
         <span aria-hidden className="pointer-events-none absolute inset-0 rounded-[20px] [background:var(--tint-wash)] [[data-theme=dark]_&]:[background:var(--tint-wash-dark)]" />
         <button
           type="button"
           onClick={onOpen}
           aria-label={`${item.title}: seizoen ${item.nextSeason}, aflevering ${item.nextEpisode}`}
-          className="absolute -top-6 left-4 w-[104px] rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] lg:-top-7 lg:left-5 lg:w-[136px]"
+          className="absolute -top-5 left-3.5 w-[90px] rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] lg:w-[96px]"
         >
           <Poster src={item.posterUrl} alt="" className="rounded-[12px] shadow-[0_18px_28px_-16px_var(--tint-glow),0_8px_16px_-10px_rgba(16,17,48,0.45)]" />
         </button>
         <div className="relative flex min-w-0 flex-1 flex-col">
           <button type="button" onClick={onOpen} className="min-w-0 text-left focus-visible:outline-none">
-            <p className="text-[11px] font-bold uppercase leading-4 tracking-[0.12em] text-[var(--tint-label)] [[data-theme=dark]_&]:text-[var(--tint-label-dark)] lg:text-xs">
-              S{item.nextSeason} · <span className="lg:hidden">A{item.nextEpisode}</span>
-              <span className="hidden lg:inline">Aflevering {item.nextEpisode}</span>
+            <p className="text-[10.5px] font-bold uppercase leading-4 tracking-[0.12em] text-[var(--tint-label)] [[data-theme=dark]_&]:text-[var(--tint-label-dark)]">
+              S{item.nextSeason} · Aflevering {item.nextEpisode}
             </p>
-            <p className="mt-1 truncate text-[17px] font-bold leading-[22px] text-[var(--text-primary)] lg:mt-1.5 lg:text-[21px] lg:leading-7">{item.title}</p>
+            <p className="mt-0.5 truncate text-base font-bold leading-[21px] text-[var(--text-primary)]">{item.title}</p>
             {info?.name ? (
-              <p className="mt-0.5 truncate text-[13px] leading-[18px] text-[var(--text-secondary)] lg:text-[15px] lg:leading-5">{info.name}</p>
+              <p className="truncate text-[12.5px] leading-[17px] text-[var(--text-secondary)]">{info.name}</p>
             ) : null}
           </button>
           <button
             type="button"
             onClick={onOpen}
-            className="mt-3.5 hidden items-center gap-2.5 self-start rounded-pill text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] lg:inline-flex"
+            className="mt-1.5 hidden items-center gap-1.5 self-start rounded-pill text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] lg:inline-flex"
           >
             <PlayProgressRing percent={item.stremio?.percent ?? 0} />
-            <span className="whitespace-nowrap text-[15px] font-semibold text-[var(--text-primary)]">{timeLabel}</span>
+            <span className="whitespace-nowrap text-[12.5px] font-semibold text-[var(--text-secondary)]">{timeLabel}</span>
           </button>
-          <div className="mt-auto flex items-center gap-1 pt-3 lg:pt-4">
+          <div className="mt-auto flex items-center gap-0.5 pt-2.5">
             <button
               type="button"
               onClick={onNext}
-              className="inline-flex h-[38px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill bg-[var(--action-primary)] px-4 text-[15px] font-bold text-[var(--action-primary-foreground)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--action-primary-hover)] lg:h-[42px] lg:px-[18px] lg:text-base"
+              className="inline-flex h-[34px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill bg-[var(--action-primary)] px-3.5 text-[13.5px] font-bold text-[var(--action-primary-foreground)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--action-primary-hover)]"
             >
-              <CheckIcon className="size-3.5" />
-              <span className="lg:hidden">Gezien</span>
-              <span className="hidden lg:inline">A {item.nextEpisode} gezien</span>
+              <CheckIcon className="size-3" />
+              Gezien
             </button>
             <button
               ref={dotsRef}
@@ -322,11 +320,11 @@ export function WatchingCard({
               aria-expanded={menuOpen}
               onClick={onToggleMenu}
               className={cn(
-                "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-50)]",
+                "flex size-8 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--gray-50)]",
                 menuOpen ? "bg-[var(--blue-50)] text-[var(--blue-500)]" : "text-[var(--text-secondary)]",
               )}
             >
-              <ThreeDotsIcon className="size-5" />
+              <ThreeDotsIcon className="size-[18px]" />
             </button>
           </div>
         </div>
@@ -382,15 +380,15 @@ export function WatchingCard({
 /** Laadvorm van `WatchingCard`: zelfde maten, poster steekt boven de kaart uit. */
 export function WatchingCardSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("shrink-0 pt-6 lg:pt-7", className ?? "w-[312px] lg:w-auto")}>
-      <div className="relative flex min-h-[148px] flex-col justify-between rounded-[20px] bg-[var(--white)] py-4 pl-[136px] pr-4 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:min-h-[224px] lg:py-6 lg:pl-[180px] lg:pr-6">
-        <Shimmer className="absolute -top-6 left-4 aspect-[2/3] w-[104px] rounded-[12px] lg:-top-7 lg:left-5 lg:w-[136px]" />
+    <div className={cn("shrink-0 pt-5", className ?? "w-[300px] lg:w-[340px]")}>
+      <div className="relative flex min-h-[136px] flex-col justify-between rounded-[20px] bg-[var(--white)] py-3.5 pl-[118px] pr-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:min-h-[148px] lg:pl-[124px]">
+        <Shimmer className="absolute -top-5 left-3.5 aspect-[2/3] w-[90px] rounded-[12px] lg:w-[96px]" />
         <div>
-          <Shimmer className="h-3 w-2/5 rounded-md" />
-          <Shimmer className="mt-2.5 h-5 w-3/4 rounded-md" />
-          <Shimmer className="mt-2 h-3.5 w-1/2 rounded-md" />
+          <Shimmer className="h-2.5 w-2/5 rounded-md" />
+          <Shimmer className="mt-2 h-4 w-3/4 rounded-md" />
+          <Shimmer className="mt-1.5 h-3 w-1/2 rounded-md" />
         </div>
-        <Shimmer className="h-[38px] w-28 rounded-full lg:h-[42px] lg:w-36" />
+        <Shimmer className="h-[34px] w-24 rounded-full" />
       </div>
     </div>
   );

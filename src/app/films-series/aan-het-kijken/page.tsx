@@ -209,7 +209,7 @@ export default function WatchingOverviewPage() {
           </div>
         </div>
 
-        <div className="mt-[18px] flex flex-col gap-2.5 lg:mt-6 lg:grid lg:grid-cols-2 lg:gap-3.5">
+        <div className="mt-[18px] flex flex-col gap-2.5 lg:mt-6 lg:grid lg:grid-cols-3 lg:gap-x-3.5 lg:gap-y-1">
           {!mounted || dataLoading ? (
             [0, 1, 2].map((i) => (
               <WatchingCardSkeleton key={i} className="w-full" />

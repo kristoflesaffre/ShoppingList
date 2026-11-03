@@ -4,7 +4,7 @@ import * as React from "react";
 
 export type Rgb = [number, number, number];
 
-const CACHE_KEY = "sl-poster-tints-v1";
+const CACHE_KEY = "sl-poster-tints-v2";
 const cache = new Map<string, Rgb | null>();
 let cacheLoaded = false;
 
@@ -35,11 +35,11 @@ function saveCache() {
  * niet het donker dat op bijna elke poster overheerst.
  */
 async function measurePosterTint(src: string): Promise<Rgb | null> {
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.decoding = "async";
-  img.src = src;
-  await img.decode();
+  // Via fetch i.p.v. <img crossOrigin>: staat de poster al in het geheugen van een gewone <img>
+  // (andere rijen), dan krijgt een crossOrigin-beeld die besmette kopie en faalt getImageData.
+  const res = await fetch(src, { mode: "cors" });
+  if (!res.ok) return null;
+  const img = await createImageBitmap(await res.blob());
   const w = 24, h = 36;
   const canvas = document.createElement("canvas");
   canvas.width = w;
