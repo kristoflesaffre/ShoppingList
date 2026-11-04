@@ -8,7 +8,8 @@ import { MiniButton } from "@/components/ui/mini_button";
 import { TodoCheck, TodoNotice } from "@/components/todo_check";
 import { taskPhotoFor } from "@/lib/task_photos";
 import { db } from "@/lib/db";
-import { isThawDay, parseThawMarker, thawPhotoUrl } from "@/lib/freezer-planning";
+import { isThawDay, parseThawMarker, thawDishName, thawPhotoUrl } from "@/lib/freezer-planning";
+import { useItemPhotoUrl } from "@/lib/item-photos";
 import { FreezeMaskIcon } from "@/components/ui/freeze_mask_icon";
 
 /**
@@ -209,14 +210,15 @@ export function useNearTodos() {
   return { ...todo, sorted, thawPhotos };
 }
 
-/** Taak-id → foto van het gerecht, voor de ontdooitaken. Leest de database enkel als er zo'n taak is. */
+/** Taak-id → foto van het gerecht, of anders de productfoto op naam (zoals op de kalender), voor de ontdooitaken. Leest de database enkel als er zo'n taak is. */
 function useThawPhotos(sorted: { task: TodoTask }[]): Map<string, string> {
   const { user } = db.useAuth();
   const thawTasks = sorted.map((s) => s.task).filter((t) => parseThawMarker(t.description));
   const { data } = db.useQuery(user && thawTasks.length > 0 ? { items: { $: { where: { fromStock: true } } }, freezerItems: {} } : null);
+  const getItemPhoto = useItemPhotoUrl(240);
   const photos = new Map<string, string>();
   for (const task of thawTasks) {
-    const url = thawPhotoUrl(task.description, data?.items ?? [], data?.freezerItems ?? []);
+    const url = thawPhotoUrl(task.description, data?.items ?? [], data?.freezerItems ?? []) ?? getItemPhoto(thawDishName(task.content));
     if (url) photos.set(task.id, url);
   }
   return photos;

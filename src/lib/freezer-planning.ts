@@ -80,6 +80,11 @@ export function thawTaskContent(name: string): string {
   return `Uit de diepvries halen: ${name.replace(/\s*\(diepvries\)$/, "").trim()}`;
 }
 
+/** Omgekeerde van `thawTaskContent`: de naam van het gerecht of product. */
+export function thawDishName(content: string): string {
+  return content.replace(/^Uit de diepvries halen:\s*/, "").trim();
+}
+
 /** Herkenning van onze eigen taken in Todoist: zo vinden we ze terug, ook als een gerecht verwijderd of verplaatst werd. */
 export function thawTaskDescription(itemId: string, itemDate: string): string {
   return `Gepland in ShoppingList.\n[shoppinglist-thaw:${itemId}:${itemDate}]`;

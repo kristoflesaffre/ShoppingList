@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findFreezerItemForPlan, isThawDay, parseThawMarker, planFreezerDeductions, planFreezerLinks, planThawTaskActions, thawDueDate, thawedItemIds, thawPhotoUrl, thawTaskDescription } from "./freezer-planning";
+import { findFreezerItemForPlan, isThawDay, thawDishName, thawTaskContent, parseThawMarker, planFreezerDeductions, planFreezerLinks, planThawTaskActions, thawDueDate, thawedItemIds, thawPhotoUrl, thawTaskDescription } from "./freezer-planning";
 
 const dish = (over = {}) => ({ id: "i1", name: "Lasagne (diepvries)", fromStock: true, freezerItemId: "f1", itemDate: "2026-11-05", ...over });
 
@@ -10,6 +10,13 @@ describe("isThawDay", () => {
     expect(isThawDay(description, "2026-11-05")).toBe(true);
     expect(isThawDay(description, "2026-11-06")).toBe(false);
     expect(isThawDay("Gewone taak", "2026-11-05")).toBe(false);
+  });
+});
+
+describe("thawDishName", () => {
+  it("haalt de naam uit de taak", () => {
+    expect(thawDishName(thawTaskContent("Kipschnitzel (diepvries)"))).toBe("Kipschnitzel");
+    expect(thawDishName("Iets anders")).toBe("Iets anders");
   });
 });
 
