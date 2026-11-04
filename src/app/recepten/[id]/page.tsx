@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
+import { RecipePhotoGenerateButton } from "@/components/recipe_photo_generate_button";
 import { RecipeImportInfo } from "@/components/recipe_import_info";
 import { MiniButton } from "@/components/ui/mini_button";
 import dynamic from "next/dynamic";
@@ -701,6 +702,10 @@ export default function ReceptDetailPage() {
             <MiniButton type="button" variant="secondary" disabled={photoSaving} onClick={openPhotoSourceSlide} className="mt-3">
               {photoSaving ? "Bezig…" : "Foto toevoegen"}
             </MiniButton>
+          ) : null}
+
+          {savedRecipe.category === "nog_te_testen" && recipeData?.recipes?.find(r => r.id === savedRecipe.id)?.ownerId === user?.id ? (
+            <RecipePhotoGenerateButton key={savedRecipe.id} recipeId={savedRecipe.id} disabled={photoSaving} onBusyChange={setPhotoSaving} />
           ) : null}
 
           <div className={cn("mt-4 flex w-full max-w-full justify-center px-2", heroEnter(300).className)} style={heroEnter(300).style}>
