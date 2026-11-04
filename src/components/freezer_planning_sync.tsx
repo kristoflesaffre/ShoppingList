@@ -20,7 +20,7 @@ const RETRY_MS = 15 * 60_000;
 
 /**
  * Altijd actief (geen scherm): boekt diepvriesgerechten af (ontdooitaak afgevinkt of dag voorbij) en houdt de Todoist-taken «Uit de diepvries
- * halen» gelijk met de planning (de server doet dat ook elk uur, zie `runThawRound`, ook als de app nergens open staat): bij elke wijziging, en opnieuw bij terugkeren naar de app, weer online komen en om het kwartier, zodat een mislukte
+ * halen» gelijk met de planning (de server doet dat ook twee keer per dag, zie `runThawRound`, ook als de app nergens open staat): bij elke wijziging, en opnieuw bij terugkeren naar de app, weer online komen en om het kwartier, zodat een mislukte
  * poging vanzelf hersteld wordt. De stand staat op de items, dus dit is veilig om vaak en op meerdere toestellen te draaien.
  */
 export function FreezerPlanningSync() {

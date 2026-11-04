@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sealTodoist, type TodoistConnection } from "@/lib/server/todoist-auth";
-import { brusselsToday, isThawRoundAuthorized, runThawRound, thawRoundKey } from "./todoist-thaw-round";
+import { brusselsToday, isThawRoundAuthorized, runThawRound } from "./todoist-thaw-round";
 
 const origin = "https://shoppinglist-lesaffre.netlify.app";
 const secret = "todoist-test-secret-at-least-thirty-two-characters";
@@ -75,11 +75,12 @@ describe("runThawRound", () => {
 });
 
 describe("toegang en datum", () => {
-  it("enkel met de afgeleide sleutel", () => {
-    expect(isThawRoundAuthorized(`Bearer ${thawRoundKey(secret)}`, secret)).toBe(true);
-    expect(isThawRoundAuthorized(`Bearer ${secret}`, secret)).toBe(false);
-    expect(isThawRoundAuthorized(null, secret)).toBe(false);
-    expect(isThawRoundAuthorized(`Bearer ${thawRoundKey("")}`, "")).toBe(false);
+  it("enkel met de juiste sleutel, en nooit zonder ingestelde sleutel", () => {
+    expect(isThawRoundAuthorized("Bearer geheim", "geheim")).toBe(true);
+    expect(isThawRoundAuthorized("Bearer fout", "geheim")).toBe(false);
+    expect(isThawRoundAuthorized(null, "geheim")).toBe(false);
+    expect(isThawRoundAuthorized("Bearer ", "")).toBe(false);
+    expect(isThawRoundAuthorized("Bearer undefined", undefined)).toBe(false);
   });
   it("rekent in Belgische tijd", () => {
     expect(brusselsToday(new Date("2026-11-04T23:30:00Z"))).toBe("2026-11-05");

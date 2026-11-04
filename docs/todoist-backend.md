@@ -6,18 +6,18 @@ Backend only. No new screens or task mutations. Uses the current Todoist API v1 
 
 The Todoist application **Shopping List** is registered. Callback URLs:
 
-- Production: `https://shoppinglist-lesaffre.netlify.app/api/todoist/callback`
+- Production: `https://shoppinglist-azure.vercel.app/api/todoist/callback`
 - Local HTTPS: `https://localhost:3011/api/todoist/callback`
 
 Server variables: `TODOIST_CLIENT_ID`, `TODOIST_CLIENT_SECRET`, `TODOIST_REDIRECT_URI`, and `TODOIST_OAUTH_SECRET` (random secret, at least 32 characters). The existing `INSTANT_APP_ADMIN_TOKEN` is also required to verify the Shopping List login. No variable is prefixed `NEXT_PUBLIC_`.
 
-Local credentials are in ignored `.env.local`; production credentials are configured as Netlify production function secrets. Never copy these values into frontend code, prompts, or Git. Preview domains need a separate registered callback and matching environment configuration.
+Local credentials are in ignored `.env.local`; production credentials are configured as Vercel production environment variables. Never copy these values into frontend code, prompts, or Git. Preview domains need a separate registered callback and matching environment configuration.
 
 OAuth state expires after 10 minutes. Credentials are encrypted using AES-256-GCM and stored server-side in the InstantDB entity `todoistConnections` (permissions: nobody; server access only through `INSTANT_APP_ADMIN_TOKEN`), bound to the Shopping List user, the Todoist client ID and the origin, because local and production share a database but not their secret.
 
 The connection is **per user**: connecting once works on every browser and device. An older connection in a browser cookie moves to the server on the first request from that browser, and any leftover cookie is cleared. The server copy is the only source of truth, because Todoist rotates the refresh token. Disconnect removes it for all devices.
 
-Thaw tasks: `netlify/functions/thaw-tasks.mjs` runs hourly and calls `POST /api/cron/thaw-tasks`, authorized with a key derived from `TODOIST_OAUTH_SECRET`, so no extra setting is needed. Scheduled functions only run on the published production deploy.
+Thaw tasks: Vercel Cron (`vercel.json`) calls `GET /api/cron/thaw-tasks` twice a day, authorized with `CRON_SECRET` (Vercel production environment). Vercel's Hobby plan only allows daily jobs, which run somewhere within the scheduled hour.
 
 ## Requests
 

@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import { planThawTaskActions, thawItemsForOwner, type FreezerPlanItem } from "@/lib/freezer-planning";
 import { getInstantAdminDb } from "@/lib/server/instant-admin";
 import { mapTodoistTask } from "@/lib/server/todoist-read";
@@ -18,14 +18,10 @@ import {
  * ook als de app nergens open staat. Zelfde plan als `FreezerPlanningSync`; afboeken blijft bij de app.
  */
 
-/** Sleutel van de geplande functie, afgeleid van een bestaand geheim: er is geen extra instelling nodig. */
-export function thawRoundKey(secret: string): string {
-  return createHash("sha256").update(`thaw-round:${secret}`).digest("hex");
-}
-
-export function isThawRoundAuthorized(header: string | null, secret: string): boolean {
+/** Vercel Cron stuurt `CRON_SECRET` mee als bearer-token. */
+export function isThawRoundAuthorized(header: string | null, secret: string | undefined): boolean {
   if (!secret) return false;
-  const expected = Buffer.from(`Bearer ${thawRoundKey(secret)}`);
+  const expected = Buffer.from(`Bearer ${secret}`);
   const given = Buffer.from(header ?? "");
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
