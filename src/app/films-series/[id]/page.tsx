@@ -5,6 +5,7 @@ import { StremioEpisodeStatus } from "@/components/films/stremio_progress";
 
 import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import * as React from "react";
+import { SeriesTasteDetailRow } from "@/components/films/series_taste";
 import { useRouter, useParams } from "next/navigation";
 import { backOr } from "@/lib/in_app_history";
 import { cn } from "@/lib/utils";
@@ -621,6 +622,9 @@ export default function FilmDetailPage() {
               <div className="flex min-w-0 flex-1 flex-col gap-[30px] lg:gap-[34px]">
                 {/* Over */}
                 <section>
+                  {isTV ? (
+                    <SeriesTasteDetailRow series={{ id: Number(String(detail.id).replace(/^tv-/, "")), title: detail.title, year: detail.year ?? "", posterUrl: detail.posterUrl ?? null }} />
+                  ) : null}
                   <div className="mb-4"><WatchOnProjector imdbId={detail.imdbId} type={detail.type} /></div>
                   <StremioEpisodeStatus imdbId={detail.imdbId} tmdbId={detail.type === "tv" ? String(detail.id).replace(/^tv-/, "") : undefined} />
                   <h2 className="mb-2.5 hidden text-[19px] font-bold leading-6 text-[var(--text-primary)] lg:block">Over</h2>

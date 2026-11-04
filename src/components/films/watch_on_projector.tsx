@@ -85,7 +85,7 @@ export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone =
       <button type="button" onClick={() => void watch()} disabled={!token || busy || (!imdbId && !tmdbId)} aria-busy={busy}
         className="inline-flex h-[42px] items-center gap-2 rounded-pill bg-fixed-white px-[18px] text-[14.5px] font-bold text-[var(--cinema-night)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 disabled:opacity-60 motion-safe:active:scale-[0.97] lg:h-[46px] lg:px-[22px] lg:text-[15px]">
         {busy ? <span aria-hidden className="block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <ProjectorIcon className="size-[18px]" />}
-        {busy ? <span>Even wachten…</span> : <span><span className="hidden sm:inline">Speel op projector</span><span className="sm:hidden">Op projector</span></span>}
+        <span>{busy ? "Even wachten…" : "Speel op projector"}</span>
       </button>
       {message ? <p role="status" aria-live="polite" className="absolute left-0 top-[calc(100%+8px)] z-20 w-[260px] rounded-[14px] bg-[color-mix(in_srgb,var(--cinema-night)_82%,transparent)] px-3 py-2 text-[12.5px] leading-[17px] text-fixed-white/85 shadow-[0_14px_30px_-12px_rgba(0,0,0,0.6),inset_0_0_0_1px_rgba(255,255,255,0.14)] backdrop-blur-md">{message}</p> : null}
     </div>;

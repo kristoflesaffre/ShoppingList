@@ -96,7 +96,7 @@ export function Poster({ src, alt, children, className }: { src: string | null; 
 /** Score als donker glazen labeltje linksonder op de poster. */
 export function RatingChip({ score, source }: { score: number; source?: "imdb" | "tmdb" | null }) {
   return (
-    <span className="absolute bottom-[7px] left-[7px] inline-flex h-[22px] items-center gap-[3px] rounded-pill bg-[rgba(16,17,48,0.62)] px-[7px] text-[11.5px] font-bold text-fixed-white backdrop-blur-md">
+    <span className="absolute bottom-[7px] left-[7px] inline-flex h-[22px] items-center gap-[3px] rounded-pill bg-[rgba(16,17,48,0.62)] px-[7px] text-[11.5px] font-bold text-white backdrop-blur-md">
       <svg viewBox="0 0 24 24" aria-hidden className="size-3">
         <path fill={source === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
       </svg>
@@ -108,7 +108,7 @@ export function RatingChip({ score, source }: { score: number; source?: "imdb" |
 /** Film of serie op de poster: de score betekent iets anders bij een serie dan bij een film. */
 export function TypeChip({ type }: { type: "movie" | "tv" }) {
   return (
-    <span className="absolute left-[7px] top-[7px] inline-flex h-[22px] items-center rounded-pill bg-[rgba(16,17,48,0.62)] px-2 text-[11px] font-bold uppercase tracking-[0.04em] text-fixed-white backdrop-blur-md">
+    <span className="absolute left-[7px] top-[7px] inline-flex h-[22px] items-center rounded-pill bg-[rgba(16,17,48,0.62)] px-2 text-[11px] font-bold uppercase tracking-[0.04em] text-white backdrop-blur-md">
       {type === "movie" ? "Film" : "Serie"}
     </span>
   );
@@ -152,7 +152,7 @@ export function PosterTile({
           type="button"
           aria-label={seenLabel ?? `Markeer ${item.title} als bekeken`}
           onClick={onSeen}
-          className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-[rgba(16,17,48,0.5)] text-fixed-white backdrop-blur-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [@media(hover:hover)]:hover:bg-[rgba(16,17,48,0.7)]"
+          className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-[rgba(16,17,48,0.5)] text-white backdrop-blur-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:bg-[rgba(16,17,48,0.7)]"
         >
           <EyeIcon className="size-3.5" />
         </button>
@@ -455,7 +455,7 @@ export function OneByOneTile({
           );
         })}
         <span className="absolute inset-x-0 bottom-2.5 flex justify-center">
-          <span className="inline-flex h-7 items-center gap-[5px] rounded-pill bg-[var(--blue-500)] px-[11px] text-xs font-bold text-fixed-white shadow-[0_6px_14px_-6px_rgba(79,85,241,0.7)] transition-transform duration-fast ease-out-strong motion-safe:group-active:scale-95">
+          <span className="inline-flex h-7 items-center gap-[5px] rounded-pill bg-[var(--blue-500)] px-[11px] text-xs font-bold text-white shadow-[0_6px_14px_-6px_rgba(79,85,241,0.7)] transition-transform duration-fast ease-out-strong motion-safe:group-active:scale-95">
             <svg viewBox="0 0 24 24" aria-hidden className="size-3">
               <path d="M7.5 5.6v12.8a1 1 0 0 0 1.52.85l10.2-6.4a1 1 0 0 0 0-1.7L9.02 4.75A1 1 0 0 0 7.5 5.6z" transform="translate(-0.9 0)" fill="currentColor" />
             </svg>

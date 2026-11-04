@@ -1,0 +1,131 @@
+import { describe, expect, it } from "vitest";
+import {
+  autoLikedSeriesIds,
+  effectiveRatings,
+  parseTasteMediaId,
+  parseUnseenList,
+  recommendSeries,
+  tasteProfile,
+  tasteSeriesFromTmdb,
+  type TasteLevel,
+  type TasteSeries,
+} from "./series-taste";
+
+const series = (id: number, over: Partial<TasteSeries> = {}): TasteSeries => ({
+  id,
+  n: `Serie ${id}`,
+  y: 2015,
+  p: "/p.jpg",
+  r: 8,
+  v: 10000,
+  s: 3,
+  l: "en",
+  g: [],
+  c: [],
+  w: [],
+  k: [],
+  ...over,
+});
+
+describe("autoLikedSeriesIds", () => {
+  it("telt gevolgde, geziene en begonnen series mee", () => {
+    expect(Array.from(autoLikedSeriesIds(["follow-tv-1", "tv-2", "ep-3-s1e2"])).sort()).toEqual([1, 2, 3]);
+  });
+
+  it("negeert een startpunt, films en andere markeringen", () => {
+    expect(autoLikedSeriesIds(["ep-4-s1e0", "movie-5", "waiting-tv-6-s2", "follow-added-tv-7-s2"]).size).toBe(0);
+  });
+
+  it("telt een serie die je liet vallen niet mee, tenzij ze op gezien staat", () => {
+    expect(autoLikedSeriesIds(["ep-8-s1e1", "follow-no-tv-8"]).has(8)).toBe(false);
+    expect(autoLikedSeriesIds(["tv-9", "ep-9-s1e1", "follow-no-tv-9"]).has(9)).toBe(true);
+  });
+});
+
+describe("effectiveRatings", () => {
+  it("laat je eigen oordeel voorgaan op automatisch", () => {
+    const out = effectiveRatings(new Map<number, TasteLevel>([[1, "no"]]), new Set([1, 2]), new Set());
+    expect(out.get(1)).toEqual({ level: "no", auto: false });
+    expect(out.get(2)).toEqual({ level: "good", auto: true });
+  });
+
+  it("haalt een automatische serie eruit als je ze niet zag", () => {
+    expect(effectiveRatings(new Map(), new Set([1]), new Set([1])).has(1)).toBe(false);
+  });
+});
+
+describe("recommendSeries", () => {
+  const crime = (id: number) => series(id, { g: ["Misdaad"], k: ["maffia", "politie"] });
+  const comedy = (id: number) => series(id, { g: ["Komedie"], k: ["kantoor", "familie"] });
+  const catalog = [crime(1), crime(2), crime(3), crime(4), comedy(5), comedy(6), comedy(7)];
+  const rate = (entries: [number, TasteLevel][]) => effectiveRatings(new Map(entries), new Set(), new Set());
+
+  it("geeft niets zolang je te weinig goed vond", () => {
+    expect(recommendSeries(catalog, rate([[1, "top"], [2, "good"]]), new Set(), 5)).toEqual([]);
+  });
+
+  it("stelt voor wat lijkt op wat je goed vond en zegt waarop", () => {
+    const out = recommendSeries(catalog, rate([[1, "top"], [2, "great"], [3, "good"]]), new Set(), 5);
+    expect(out.map((r) => r.series.id)).toEqual([4]);
+    expect(out[0].because[0].id).toBe(1);
+  });
+
+  it("slaat beoordeelde en uitgesloten series over", () => {
+    const out = recommendSeries(catalog, rate([[1, "top"], [2, "great"], [3, "good"]]), new Set([4]), 5);
+    expect(out).toEqual([]);
+  });
+
+  it("laat een hoger oordeel zwaarder wegen", () => {
+    const makerA = series(10, { c: ["A"] });
+    const makerB = series(11, { c: ["B"] });
+    const out = recommendSeries(
+      [makerA, makerB, series(12, { c: ["A"] }), series(13, { c: ["B"] }), series(14, { c: ["C"] }), series(15, { c: ["C"] })],
+      rate([[10, "top"], [11, "good"], [14, "good"]]),
+      new Set(),
+      5,
+    );
+    expect(out[0].series.id).toBe(12);
+  });
+
+  it("zakt een serie die lijkt op wat je niet goed vond", () => {
+    const fan = series(20, { k: ["x", "y"] });
+    const hated = series(21, { k: ["y", "z"] });
+    const candidate = series(22, { k: ["x", "y", "z"] });
+    const other = series(23, { k: ["x"] });
+    const base = [[20, "top"], [24, "good"], [25, "good"]] as [number, TasteLevel][];
+    const cat = [fan, hated, candidate, other, series(24, { k: ["x"] }), series(25, { k: ["x"] })];
+    const without = recommendSeries(cat, rate(base), new Set(), 5).find((r) => r.series.id === 22)!;
+    const withDislike = recommendSeries(cat, rate([...base, [21, "no"]]), new Set(), 5).find((r) => r.series.id === 22);
+    expect(withDislike?.score ?? 0).toBeLessThan(without.score);
+  });
+});
+
+describe("hulpjes", () => {
+  it("leest ids uit de bewaarde vorm", () => {
+    expect(parseTasteMediaId("taste-tv-12")).toBe(12);
+    expect(parseTasteMediaId("tv-12")).toBeNull();
+    expect(parseUnseenList("1,2,,x,3")).toEqual([1, 2, 3]);
+    expect(parseUnseenList(null)).toEqual([]);
+  });
+
+  it("zet een TMDB-detail om naar de catalogusvorm", () => {
+    const s = tasteSeriesFromTmdb({
+      id: 1,
+      name: "Titel",
+      first_air_date: "2019-02-01",
+      poster_path: "/a.jpg",
+      vote_average: 7.84,
+      genres: [{ name: "Drama" }],
+      created_by: [{ name: "Maker" }],
+      keywords: { results: [{ name: "kw" }] },
+    });
+    expect(s).toMatchObject({ id: 1, n: "Titel", y: 2019, p: "/a.jpg", r: 7.8, g: ["Drama"], c: ["Maker"], k: ["kw"] });
+    expect(tasteSeriesFromTmdb({ id: 2 })).toBeNull();
+  });
+
+  it("vat je smaak samen en weegt je oordeel mee", () => {
+    const all = [series(1, { g: ["Misdaad"], c: ["Maker"] }), series(2, { g: ["Misdaad", "Drama"], c: ["Maker"] }), series(3, { g: ["Komedie"] })];
+    const ratings = effectiveRatings(new Map<number, TasteLevel>([[1, "top"], [2, "good"], [3, "no"]]), new Set(), new Set());
+    expect(tasteProfile(all, ratings)).toEqual({ genres: ["Misdaad", "Drama"], makers: ["Maker"] });
+  });
+});
