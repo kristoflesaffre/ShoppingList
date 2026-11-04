@@ -3,6 +3,7 @@
 import * as React from "react";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 import Link from "next/link";
+import { rememberScroll, useRestoreScroll } from "@/lib/use_restore_scroll";
 import { useRouter } from "next/navigation";
 import { id as iid } from "@instantdb/react";
 import { ListCard } from "@/components/ui/list_card";
@@ -2131,6 +2132,8 @@ export default function Home() {
   }, [baseData]);
   const { itemsByList, ready: itemsReady, error: itemsError, loaders: itemLoaders } = useListItemsBuckets(listIdsForItems);
   const isLoading = baseLoading || (!!baseData && !itemsReady);
+  // Terug uit «Homepagina aanpassen»: op de plek waar je de knop aantikte.
+  useRestoreScroll("home", !authLoading && !isLoading);
   const error = baseError ?? itemsError ?? undefined;
   type BaseData = NonNullable<typeof baseData>;
   type ItemEntity = InstaQLEntity<AppSchema, "items">;
@@ -3281,7 +3284,8 @@ export default function Home() {
           </div>
           <div className="mt-10 flex justify-center pb-4 md:[[data-home-view=dashboard]_&]:hidden">
             <Link
-              href="/beheer-homepagina"
+              href="/beheer-homepagina?from=home"
+              onClick={() => rememberScroll("home")}
               className="rounded-pill bg-[var(--white)] px-4 py-2 text-sm font-medium leading-5 text-action-primary shadow-card transition-colors [@media(hover:hover)]:hover:bg-action-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
             >
               Homepagina aanpassen

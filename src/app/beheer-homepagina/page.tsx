@@ -135,8 +135,12 @@ function SortableSectionRow({
 
 export default function BeheerHomepaginaPage() {
   const router = useRouter();
-  // Terug naar waar je vandaan kwam (startpagina of profiel); zonder geschiedenis in de app naar je profiel.
-  const goBack = React.useCallback(() => backOr(router, "/profiel"), [router]);
+  // Via de knop onderaan de startpagina: rechtstreeks terug naar de startpagina (die zet zelf de scrollpositie terug).
+  // Anders terug naar waar je vandaan kwam; zonder geschiedenis in de app naar je profiel.
+  const goBack = React.useCallback(() => {
+    if (new URLSearchParams(window.location.search).get("from") === "home") router.replace("/", { scroll: false });
+    else backOr(router, "/profiel");
+  }, [router]);
   const { titleRef, collapsed } = useLargeTitleCollapse<HTMLHeadingElement>(64);
 
   const [order, setOrder] = React.useState<HomeSectionId[]>(() => {
