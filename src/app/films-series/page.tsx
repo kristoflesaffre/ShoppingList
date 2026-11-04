@@ -7,6 +7,7 @@ import { createPortal, flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
+import { OverviewPill } from "@/components/list_section_header";
 import { InlineClampText, ScoreSourceLink, SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
@@ -1076,15 +1077,14 @@ export default function FilmsSeriesPage() {
     return () => cancelAnimationFrame(raf);
   }, [restoringFilmId, watchlistFilms]);
 
-  const SectionHead = ({ title, href, linkLabel = "Alles", count, avatar, extra }: { title: string; href?: string; linkLabel?: string; count?: number; avatar?: React.ReactNode; extra?: React.ReactNode }) => (
+  const SectionHead = ({ title, href, linkLabel, count, avatar, extra }: { title: string; href?: string; linkLabel?: string; count?: number; avatar?: React.ReactNode; extra?: React.ReactNode }) => (
     <div className="flex items-center gap-3">
       <h2 className="flex min-w-0 flex-1 items-center gap-2 text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
         {avatar}
         <span className="truncate">{title}</span>
-        {count != null ? <span className="text-[15px] font-medium text-[var(--text-tertiary)] tabular-nums">{count}</span> : null}
       </h2>
       {extra}
-      {href ? (
+      {href && linkLabel ? (
         <button
           type="button"
           onClick={() => router.push(href)}
@@ -1092,6 +1092,8 @@ export default function FilmsSeriesPage() {
         >
           {linkLabel}
         </button>
+      ) : href ? (
+        <OverviewPill href={href} count={count} ariaLabel={count ? `${title}: alle ${count} bekijken` : `${title}: alles bekijken`} />
       ) : null}
     </div>
   );
@@ -1229,7 +1231,7 @@ export default function FilmsSeriesPage() {
             {/* Ook nog bezig — de andere series die je kijkt (de laatste staat groot in de kop) */}
             {watchingItems.length > 1 && (
               <section className="flex flex-col gap-3">
-                <SectionHead title="Ook nog bezig" href="/films-series/aan-het-kijken" />
+                <SectionHead title="Ook nog bezig" href="/films-series/aan-het-kijken" count={watchingItems.length} />
                 <div ref={watchingScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
                   <div className="flex w-max gap-3">
                     {watchingItems.slice(1).map((item) => (
@@ -1266,6 +1268,7 @@ export default function FilmsSeriesPage() {
                 <SectionHead
                   title={`Watchlist ${partnerName ?? "partner"}`}
                   href="/films-series/partner-watchlist"
+                  count={partnerWatchlist.length}
                   avatar={
                     <span className="flex size-[26px] shrink-0 overflow-hidden rounded-full bg-[var(--blue-50)] shadow-[0_0_0_2px_var(--white)]">
                       {partnerAvatarUrl ? (
