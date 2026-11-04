@@ -73,6 +73,7 @@ Bouw schermen uit de gedeelde componenten in `src/components/ui/`. Style deze pa
 
 ## Git en publiceren
 
-- Werk op branch `login-redesign`; commit en push altijd alles ook naar `main` (`git push origin HEAD:login-redesign HEAD:main`). Zelf geen deploy starten naar Vercel of Netlify.
+- Werk altijd op `main`, zonder aparte branch; commit en push daar (`git push origin main`).
+- Na elke push meteen deployen. Netlify (productie, geplande functies) hangt niet aan Git: `npx netlify-cli deploy --build --prod`. Vercel volgt `main` vanzelf.
 - De database-schema (InstantDB) niet wijzigen zonder expliciete vraag.
 - Lokaal testen op http://localhost:3010.
