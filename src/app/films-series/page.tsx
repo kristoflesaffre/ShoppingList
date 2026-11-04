@@ -348,7 +348,7 @@ function DiscoverNav({ position, total, onPrev, onNext, tone }: { position: numb
   const btn = cn(
     "flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2",
     tone === "dark"
-      ? "size-10 bg-[rgba(255,255,255,0.16)] text-white focus-visible:ring-white [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.26)]"
+      ? "size-10 bg-[rgba(255,255,255,0.16)] text-fixed-white focus-visible:ring-fixed-white [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.26)]"
       : "size-8 bg-[var(--white)] text-[var(--blue-500)] shadow-[0_1px_3px_rgba(16,17,48,0.12)] focus-visible:ring-[var(--border-focus)]",
   );
   const chev = (d: string) => (
@@ -357,7 +357,7 @@ function DiscoverNav({ position, total, onPrev, onNext, tone }: { position: numb
     </svg>
   );
   return (
-    <div className={cn("flex items-center gap-2 text-[13px] font-bold", tone === "dark" ? "text-white" : "text-[var(--text-secondary)]")}>
+    <div className={cn("flex items-center gap-2 text-[13px] font-bold", tone === "dark" ? "text-fixed-white" : "text-[var(--text-secondary)]")}>
       <button type="button" onClick={onPrev} aria-label="Vorige suggestie" className={btn}>
         {chev("M15 6l-6 6 6 6")}
       </button>
@@ -422,7 +422,7 @@ function DiscoverFeature({
           <svg viewBox="0 0 24 24" aria-hidden className="size-3.5">
             <path fill={scoreSource === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
           </svg>
-          <b className="text-white">{item.score.toFixed(1)}</b>
+          <b className="text-fixed-white">{item.score.toFixed(1)}</b>
           <ScoreSourceLink source={scoreSource ?? "tmdb"} title={item.title} imdbId={extra?.imdbId} />
         </>
       ) : null}
@@ -440,7 +440,7 @@ function DiscoverFeature({
         lines={lines}
         onMore={onOpen}
         className="text-[13.5px] leading-5 text-[rgba(255,255,255,0.82)] lg:text-sm lg:leading-[21px]"
-        linkClassName="font-semibold text-white underline decoration-[rgba(255,255,255,0.6)] underline-offset-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:decoration-white"
+        linkClassName="font-semibold text-fixed-white underline decoration-[rgba(255,255,255,0.6)] underline-offset-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [@media(hover:hover)]:hover:decoration-white"
       />
     ) : null;
 
@@ -449,7 +449,7 @@ function DiscoverFeature({
       <button
         type="button"
         onClick={onAdd}
-        className="inline-flex h-10 items-center gap-1.5 rounded-pill bg-white px-[17px] text-sm font-bold text-[#16181a] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1b1d3a]"
+        className="inline-flex h-10 items-center gap-1.5 rounded-pill bg-fixed-white px-[17px] text-sm font-bold text-[#16181a] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1b1d3a]"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
           <path d="M12 5v14M5 12h14" />
@@ -459,7 +459,7 @@ function DiscoverFeature({
       <button
         type="button"
         onClick={onDismiss}
-        className="inline-flex h-10 items-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.14)] px-[15px] text-sm font-bold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.24)]"
+        className="inline-flex h-10 items-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.14)] px-[15px] text-sm font-bold text-fixed-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.24)]"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
           <path d="M6 6l12 12M18 6 6 18" />
@@ -486,7 +486,7 @@ function DiscoverFeature({
           <div aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(27,29,58,0)_45%,#1b1d3a_100%)]" />
           {playBtn(52, "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2")}
         </div>
-        <div className="flex flex-col gap-2 px-4 pb-4 pt-1 text-white">
+        <div className="flex flex-col gap-2 px-4 pb-4 pt-1 text-fixed-white">
           <button type="button" onClick={onOpen} className="text-left focus-visible:outline-none">
             <span className="line-clamp-2 text-[22px] font-extrabold leading-[1.2]">{item.title}</span>
           </button>
@@ -510,12 +510,12 @@ function DiscoverFeature({
         </div>
         <div className="relative flex h-full items-center gap-6 p-6">
           <div className="relative w-[154px] shrink-0">
-            <button type="button" onClick={onOpen} className="block w-full rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={`${item.title} bekijken`}>
+            <button type="button" onClick={onOpen} className="block w-full rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white" aria-label={`${item.title} bekijken`}>
               <Poster src={item.posterUrl} alt="" className="rounded-[14px]" />
             </button>
             {playBtn(44, "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2")}
           </div>
-          <div className="relative min-w-0 max-w-[460px] flex-1 text-white">
+          <div className="relative min-w-0 max-w-[460px] flex-1 text-fixed-white">
             <p className="text-[11.5px] font-extrabold tracking-[0.07em] text-[#c9cbff]">NIEUW VOOR JOU</p>
             <button type="button" onClick={onOpen} className="mt-2 block text-left focus-visible:outline-none">
               <span className="line-clamp-2 text-[30px] font-extrabold leading-[1.2] tracking-[-0.02em]">{item.title}</span>
@@ -1176,7 +1176,7 @@ export default function FilmsSeriesPage() {
                   className={cn(
                     "shrink-0 rounded-full px-3 py-1.5 text-[13px] leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
                     filter === chip.id
-                      ? "bg-[var(--blue-500)] font-medium text-white"
+                      ? "bg-[var(--blue-500)] font-medium text-fixed-white"
                       : "bg-white font-normal text-[var(--gray-500)] shadow-[0px_1px_2px_rgba(0,0,0,0.04)]",
                   )}
                 >
