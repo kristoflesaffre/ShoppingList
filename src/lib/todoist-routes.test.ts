@@ -8,6 +8,8 @@ import { POST as tasks } from "@/app/api/todoist/tasks/route";
 import { POST as projects } from "@/app/api/todoist/projects/route";
 import { TODOIST_AUTH_COOKIE, TODOIST_RECONNECT_COOKIE, TODOIST_STATE_COOKIE, readTodoistConnection, readTodoistState, resetTodoistRefreshesForTests, sealTodoist, type TodoistConnection } from "@/lib/server/todoist-auth";
 
+const instantAdmin = vi.hoisted(() => ({ get: vi.fn((): unknown => null) }));
+vi.mock("@/lib/server/instant-admin", () => ({ getInstantAdminDb: instantAdmin.get }));
 vi.mock("@/lib/server/google-connection-store", () => ({ verifiedUserId: async (r: Request) => r.headers.get("authorization") === "Bearer good" ? "user-1" : null }));
 const origin = "https://shoppinglist-lesaffre.netlify.app";
 const secret = "todoist-test-secret-at-least-thirty-two-characters";
@@ -303,5 +305,76 @@ describe("Todoist close route", () => {
     const { POST: close } = await import("@/app/api/todoist/close/route");
     const res = await close(new NextRequest("https://evil.example/api/todoist/close", { method: "POST", body: JSON.stringify({ id: "1" }) }));
     expect([401, 403]).toContain(res.status);
+  });
+});
+
+describe("Todoist-koppeling op de server", () => {
+  const store = { rows: new Map<string, { sealedConnection: string }>(), writes: 0 };
+  beforeEach(() => {
+    store.rows.clear();
+    store.writes = 0;
+    const fake = {
+      query: async () => ({ todoistConnections: Array.from(store.rows.values()) }),
+      transact: async (op: () => void) => op(),
+      tx: { todoistConnections: new Proxy({}, { get: (_, id: string) => ({
+        update: (data: { sealedConnection: string }) => () => { store.writes += 1; store.rows.set(id, data); },
+        delete: () => () => { store.rows.delete(id); },
+      }) }) },
+    };
+    instantAdmin.get.mockReturnValue(fake);
+  });
+  afterEach(() => instantAdmin.get.mockReturnValue(null));
+  const storedConnection = () => readTodoistConnection(Array.from(store.rows.values())[0]?.sealedConnection, secret, "user-1", "client");
+  const clearedCookie = (r: NextResponse) => r.cookies.get(TODOIST_AUTH_COOKIE)?.maxAge === 0;
+
+  it("verhuist een koppeling uit een cookie naar de server en wist het cookie", async () => {
+    const response = await status(request("status", {}, { ...connection(), scope: "data:read_write" }));
+    expect(await response.json()).toMatchObject({ connected: true, canWrite: true });
+    expect(storedConnection()?.refreshToken).toBe("private-refresh");
+    expect(clearedCookie(response)).toBe(true);
+  });
+  it("werkt daarna in elke browser, ook zonder cookie", async () => {
+    await status(request("status", {}, { ...connection(), scope: "data:read_write" }));
+    const other = request("status", {});
+    other.cookies.delete(TODOIST_AUTH_COOKIE);
+    expect(await (await status(other)).json()).toMatchObject({ connected: true, canWrite: true });
+  });
+  it("een oud cookie overschrijft de koppeling op de server niet", async () => {
+    await status(request("status", {}, { ...connection(), refreshToken: "nieuw", scope: "data:read_write" }));
+    const response = await status(request("status", {}, { ...connection(), refreshToken: "oud" }));
+    expect(storedConnection()?.refreshToken).toBe("nieuw");
+    expect(clearedCookie(response)).toBe(true);
+  });
+  it("bewaart een geroteerd token op de server, niet in een cookie", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "vers", refresh_token: "geroteerd", expires_in: 3600 })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ results: [], next_cursor: null })));
+    const response = await tasks(request("tasks", {}, { ...connection(), expiresAt: 1 }));
+    expect(response.status).toBe(200);
+    expect(storedConnection()?.refreshToken).toBe("geroteerd");
+    expect(clearedCookie(response)).toBe(true);
+  });
+  it("niet ontkoppelen als een andere aanvraag intussen vernieuwde", async () => {
+    await status(request("status", {}, { ...connection(), expiresAt: 1 + Date.now() + 3600_000, scope: "data:read_write" }));
+    vi.mocked(fetch).mockImplementation(async () => {
+      // De geplande ronde roteert het token terwijl deze aanvraag bezig is.
+      const id = Array.from(store.rows.keys())[0];
+      store.rows.set(id, { sealedConnection: sealTodoist({ ...connection(), refreshToken: "van-de-ronde" }, secret) });
+      return new Response(null, { status: 401 });
+    });
+    const response = await tasks(retried(request("tasks", {})));
+    expect(response.status).toBe(425);
+    expect(storedConnection()?.refreshToken).toBe("van-de-ronde");
+  });
+  it("ontkoppelen verwijdert de koppeling op de server", async () => {
+    await status(request("status", {}, { ...connection(), scope: "data:read_write" }));
+    await disconnect(request("disconnect", {}));
+    expect(store.rows.size).toBe(0);
+  });
+  it("een databasefout is tijdelijk en ontkoppelt niet", async () => {
+    instantAdmin.get.mockReturnValue({ query: async () => { throw new Error("down"); } });
+    const response = await tasks(request("tasks", {}));
+    expect(response.status).toBe(503);
+    expect(response.cookies.get(TODOIST_AUTH_COOKIE)).toBeUndefined();
   });
 });

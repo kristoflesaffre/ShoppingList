@@ -312,6 +312,16 @@ const schema = i.schema({
      * Google-agendakoppeling per gebruiker (enkel via de server-routes /api/google/*). `sealedAccounts`
      * is versleuteld met GOOGLE_OAUTH_COOKIE_SECRET; de app zelf leest of schrijft dit nooit.
      */
+    /**
+     * Todoist-koppeling per gebruiker en omgeving (`origin`), versleuteld met TODOIST_OAUTH_SECRET.
+     * Enkel de server leest dit, ook voor de geplande ontdooitaken; de rechten voor de app staan op «niemand».
+     */
+    todoistConnections: i.entity({
+      ownerId: i.string().indexed(),
+      origin: i.string().indexed(),
+      sealedConnection: i.string(),
+      updatedAt: i.number(),
+    }),
     googleConnections: i.entity({
       ownerId: i.string().unique().indexed(),
       sealedAccounts: i.string(),

@@ -9,6 +9,7 @@ import {
   planThawTaskActions,
   THAW_TASK_CLOSED_EVENT,
   thawedItemIds,
+  thawItemsForOwner,
   type FreezerPlanItem,
 } from "@/lib/freezer-planning";
 import { useGoogleAuthToken } from "@/lib/google-client";
@@ -19,7 +20,7 @@ const RETRY_MS = 15 * 60_000;
 
 /**
  * Altijd actief (geen scherm): boekt diepvriesgerechten af (ontdooitaak afgevinkt of dag voorbij) en houdt de Todoist-taken «Uit de diepvries
- * halen» gelijk met de planning: bij elke wijziging, en opnieuw bij terugkeren naar de app, weer online komen en om het kwartier, zodat een mislukte
+ * halen» gelijk met de planning (de server doet dat ook elk uur, zie `runThawRound`, ook als de app nergens open staat): bij elke wijziging, en opnieuw bij terugkeren naar de app, weer online komen en om het kwartier, zodat een mislukte
  * poging vanzelf hersteld wordt. De stand staat op de items, dus dit is veilig om vaak en op meerdere toestellen te draaien.
  */
 export function FreezerPlanningSync() {
@@ -52,15 +53,10 @@ export function FreezerPlanningSync() {
     return ((data?.items ?? []) as unknown as FreezerPlanItem[]).filter((it) => it.freezerItemId && own.has(it.freezerItemId));
   }, [data?.items, stock]);
 
-  // Wie een ontdooitaak krijgt: gerechten uit de eigen diepvries, en alles op een eigen lijstje dat als diepvries gepland
-  // staat, ook zonder koppeling met een diepvriesitem (bv. de laatste portie is weg, of de naam komt niet overeen).
-  const thawItems = React.useMemo(() => {
-    const own = new Set(stock.map((s) => s.id));
-    return ((data?.items ?? []) as unknown as Array<FreezerPlanItem & { list?: { ownerId?: string } | { ownerId?: string }[] }>).filter((it) => {
-      const list = Array.isArray(it.list) ? it.list[0] : it.list;
-      return list?.ownerId === user?.id || (it.freezerItemId && own.has(it.freezerItemId));
-    });
-  }, [data?.items, stock, user?.id]);
+  const thawItems = React.useMemo(
+    () => thawItemsForOwner((data?.items ?? []) as unknown as Array<FreezerPlanItem & { list?: { ownerId?: string } | { ownerId?: string }[] }>, new Set(stock.map((s) => s.id)), user?.id),
+    [data?.items, stock, user?.id],
+  );
 
   // Geplande gerechten zonder koppeling (ouder dan deze functie of gekopieerd): enkel op eigen lijstjes, want op een
   // gedeeld lijstje kan iemand anders ze gepland hebben. Daarna volgen de taak en de afboeking vanzelf.

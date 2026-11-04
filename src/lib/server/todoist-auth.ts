@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 import { NextRequest, NextResponse } from "next/server";
 import { requestOrigin } from "./request-origin";
 import { verifiedUserId } from "@/lib/server/google-connection-store";
+import { getInstantAdminDb } from "@/lib/server/instant-admin";
 
 export const TODOIST_STATE_COOKIE = "shopping_todoist_state";
 export const TODOIST_AUTH_COOKIE = "shopping_todoist_auth";
@@ -103,6 +104,45 @@ export function setTodoistConnection(response: NextResponse, connection: Todoist
   if (sealed.length > 3800) throw new Error("Todoist credential cookie too large");
   response.cookies.set(TODOIST_AUTH_COOKIE, sealed, { ...todoistCookieOptions, maxAge: 60 * 60 * 24 * 90 });
 }
+type TodoistConfig = ReturnType<typeof todoistConfig>;
+/** Vast id per gebruiker en omgeving: lokaal en productie delen de database maar niet hun geheim. */
+function storedConnectionId(ownerId: string, origin: string): string {
+  const h = createHash("sha256").update(`todoist-connection:${ownerId}:${origin}`).digest("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+export async function loadStoredTodoistConnection(ownerId: string, config: TodoistConfig): Promise<TodoistConnection | null> {
+  const db = getInstantAdminDb();
+  if (!db) return null;
+  const id = storedConnectionId(ownerId, config.origin);
+  const data = await db.query({ todoistConnections: { $: { where: { id } } } });
+  const row = (data.todoistConnections ?? [])[0] as { sealedConnection?: string } | undefined;
+  return readTodoistConnection(row?.sealedConnection, config.secret, ownerId, config.clientId);
+}
+/** Eén nieuwe poging: een verloren vernieuwingstoken betekent opnieuw koppelen. */
+export async function saveStoredTodoistConnection(connection: TodoistConnection, config: TodoistConfig): Promise<void> {
+  const db = getInstantAdminDb();
+  if (!db) return;
+  const write = () => db.transact(db.tx.todoistConnections[storedConnectionId(connection.ownerId, config.origin)].update({
+    ownerId: connection.ownerId, origin: config.origin, sealedConnection: sealTodoist(connection, config.secret), updatedAt: Date.now(),
+  }));
+  await write().catch(write);
+}
+export async function deleteStoredTodoistConnection(ownerId: string, config: TodoistConfig): Promise<void> {
+  const db = getInstantAdminDb();
+  if (db) await db.transact(db.tx.todoistConnections[storedConnectionId(ownerId, config.origin)].delete());
+}
+/**
+ * De koppeling van deze gebruiker. De server is de enige bron zodra er een database is: Todoist roteert het
+ * vernieuwingstoken, dus een tweede kopie in een cookie zou de andere ongeldig maken. Een oudere koppeling in een cookie verhuist hierheen.
+ */
+async function resolveTodoistConnection(cookie: string | undefined, ownerId: string, config: TodoistConfig) {
+  const usesStore = Boolean(getInstantAdminDb());
+  const stored = await loadStoredTodoistConnection(ownerId, config);
+  if (stored) return { connection: stored, usesStore, dropCookie: Boolean(cookie) };
+  const fromCookie = readTodoistConnection(cookie, config.secret, ownerId, config.clientId);
+  if (fromCookie && usesStore) await saveStoredTodoistConnection(fromCookie, config);
+  return { connection: fromCookie, usesStore, dropCookie: Boolean(fromCookie && usesStore) };
+}
 export async function todoistGuard(request: NextRequest) {
   const config = todoistConfig();
   // POST requests from the frontend must come from this exact configured deployment.
@@ -117,7 +157,7 @@ const refreshes = new Map<string, Promise<Refreshed>>();
 /** Recent geroteerde tokens per (verbruikt) vernieuwingstoken, voor aanvragen die nog met het oude cookie binnenkomen. */
 const rotated = new Map<string, { result: Refreshed; until: number }>();
 const ROTATED_TTL = 120_000;
-async function refresh(connection: TodoistConnection, config: ReturnType<typeof todoistConfig>): Promise<Refreshed> {
+async function refresh(connection: TodoistConnection, config: TodoistConfig): Promise<Refreshed> {
   if (!connection.refreshToken) throw new TodoistReconnectRequired();
   const id = createHash("sha256").update(`${config.clientId}:${connection.ownerId}:${connection.refreshToken}`).digest("hex");
   const now = Date.now();
@@ -176,7 +216,14 @@ export async function withTodoistConnection(request: NextRequest, run: (connecti
   const { config, error, ownerId } = await todoistGuard(request);
   if (error) return error;
   if (!config.configured) return todoistJson({ error: "not-configured" }, 503);
-  let connection = readTodoistConnection(request.cookies.get(TODOIST_AUTH_COOKIE)?.value, config.secret, ownerId!, config.clientId);
+  let resolved: Awaited<ReturnType<typeof resolveTodoistConnection>>;
+  try {
+    resolved = await resolveTodoistConnection(request.cookies.get(TODOIST_AUTH_COOKIE)?.value, ownerId!, config);
+  } catch {
+    return todoistJson({ error: "temporarily-unavailable" }, 503);
+  }
+  const { usesStore, dropCookie } = resolved;
+  let connection = resolved.connection;
   if (!connection) return todoistJson({ error: "not-connected", reconnect: todoistNeedsReconnect(request, ownerId!, config.secret) }, 409);
   const body = await readBoundedBody(request, 8192);
   if (body === null) return todoistJson({ error: "invalid-request" }, 400);
@@ -188,9 +235,15 @@ export async function withTodoistConnection(request: NextRequest, run: (connecti
     });
     connection = result.connection;
     refreshed = true;
-    persist ||= result.persist;
+    // Meteen bewaren: een parallelle aanvraag of de geplande ronde heeft het nieuwe token nodig.
+    if (result.persist && usesStore) await saveStoredTodoistConnection(connection, config);
+    else persist ||= result.persist;
   };
-  const save = (response: NextResponse) => { if (persist) setTodoistConnection(response, connection!, config.secret); return response; };
+  const save = (response: NextResponse) => {
+    if (persist) setTodoistConnection(response, connection!, config.secret);
+    else if (dropCookie) response.cookies.set(TODOIST_AUTH_COOKIE, "", { ...todoistCookieOptions, maxAge: 0 });
+    return response;
+  };
   try {
     if (connection.expiresAt <= Date.now() + 60_000) await renew();
     try {
@@ -208,6 +261,12 @@ export async function withTodoistConnection(request: NextRequest, run: (connecti
       return todoistJson({ error: "retry" }, 425);
     }
     if (cause instanceof TodoistReconnectRequired || cause instanceof TodoistUnauthorized) {
+      if (usesStore) {
+        // Intussen vernieuwd door de geplande ronde of een andere aanvraag: dat is geen weigering.
+        const latest = await loadStoredTodoistConnection(ownerId!, config).catch(() => connection);
+        if (latest && latest.refreshToken !== connection!.refreshToken) return todoistJson({ error: "retry" }, 425);
+        await deleteStoredTodoistConnection(ownerId!, config).catch(() => undefined);
+      }
       response = todoistJson({ error: "not-connected", reconnect: true }, 409);
       response.cookies.set(TODOIST_AUTH_COOKIE, "", { ...todoistCookieOptions, maxAge: 0 });
       response.cookies.set(TODOIST_RECONNECT_COOKIE, reconnectMark(ownerId!, config.secret), { ...todoistCookieOptions, maxAge: 60 * 60 * 24 * 90 });
@@ -219,6 +278,24 @@ export async function withTodoistConnection(request: NextRequest, run: (connecti
     } else response = todoistJson({ error: "temporarily-unavailable" }, 503);
     // Preserve rotated refresh tokens even when the subsequent task request fails.
     return save(response);
+  }
+}
+/**
+ * Voor de geplande ronde, zonder aanvraag: `run` met een geldig token. Vernieuwt en bewaart zo nodig; een weigering
+ * ontkoppelt hier niet, die handelt de app af bij de volgende aanvraag.
+ */
+export async function withStoredTodoistConnection<T>(stored: TodoistConnection, config: TodoistConfig, run: (connection: TodoistConnection) => Promise<T>): Promise<T> {
+  const renew = async () => {
+    const result = await refresh(stored, config);
+    if (result.persist) await saveStoredTodoistConnection(result.connection, config);
+    return result.connection;
+  };
+  const connection = stored.expiresAt <= Date.now() + 60_000 ? await renew() : stored;
+  try {
+    return await run(connection);
+  } catch (cause) {
+    if (!(cause instanceof TodoistUnauthorized) || connection !== stored || !stored.refreshToken) throw cause;
+    return run(await renew());
   }
 }
 /** Eén taak afvinken (POST /tasks/{id}/close). Het id is vooraf gecontroleerd; geen vrije paden. */

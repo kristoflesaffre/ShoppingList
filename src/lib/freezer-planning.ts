@@ -36,6 +36,17 @@ function needsThawTask(item: FreezerPlanItem): item is FreezerPlanItem & { itemD
   return item.fromStock === true && item.stockSource !== "pantry" && Boolean(item.itemDate);
 }
 
+/**
+ * Wie de ontdooitaak van deze gebruiker is: gerechten uit de eigen diepvries, en alles op een eigen lijstje dat als
+ * diepvries gepland staat, ook zonder koppeling met een diepvriesitem (de laatste portie is weg, of de naam komt niet overeen).
+ */
+export function thawItemsForOwner<T extends FreezerPlanItem & { list?: { ownerId?: string } | { ownerId?: string }[] | null }>(items: T[], ownStockIds: ReadonlySet<string>, ownerId: string | undefined): T[] {
+  return items.filter((item) => {
+    const list = Array.isArray(item.list) ? item.list[0] : item.list;
+    return (ownerId && list?.ownerId === ownerId) || (item.freezerItemId && ownStockIds.has(item.freezerItemId));
+  });
+}
+
 /** Welke porties weg mogen: dag voorbij of ontdooitaak afgevinkt (`thawedItemIds`), nog niet afgeboekt en het diepvriesitem bestaat nog. */
 export function planFreezerDeductions(
   items: FreezerPlanItem[],

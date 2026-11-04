@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getInstantAdminDb } from "@/lib/server/instant-admin";
 import { requestOrigin } from "@/lib/server/request-origin";
-import { TODOIST_SCOPE, TODOIST_STATE_COOKIE, clearTodoistReconnect, readTodoistState, safeTodoistReturn, setTodoistConnection, todoistConfig, todoistCookieOptions, todoistJson, todoistTokens } from "@/lib/server/todoist-auth";
+import { TODOIST_AUTH_COOKIE, TODOIST_SCOPE, TODOIST_STATE_COOKIE, clearTodoistReconnect, readTodoistState, safeTodoistReturn, saveStoredTodoistConnection, setTodoistConnection, todoistConfig, todoistCookieOptions, todoistJson, todoistTokens } from "@/lib/server/todoist-auth";
 export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   const config = todoistConfig();
@@ -24,7 +25,11 @@ export async function GET(request: NextRequest) {
     const tokens = await todoistTokens(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: config.redirectUri, code_verifier: expected.verifier }), config, { requireScope: true });
     const response = finish("connected");
     // Toegekende rechten bewaren (todoistTokens weigert een antwoord zonder lezen + schrijven).
-    setTodoistConnection(response, { ...tokens, ownerId: expected.ownerId, clientId: config.clientId, scope: TODOIST_SCOPE }, config.secret);
+    const connection = { ...tokens, ownerId: expected.ownerId, clientId: config.clientId, scope: TODOIST_SCOPE };
+    if (getInstantAdminDb()) {
+      await saveStoredTodoistConnection(connection, config);
+      response.cookies.set(TODOIST_AUTH_COOKIE, "", { ...todoistCookieOptions, maxAge: 0 });
+    } else setTodoistConnection(response, connection, config.secret);
     clearTodoistReconnect(response);
     return response;
   } catch { return finish("connection-failed"); }

@@ -13,9 +13,11 @@ Server variables: `TODOIST_CLIENT_ID`, `TODOIST_CLIENT_SECRET`, `TODOIST_REDIREC
 
 Local credentials are in ignored `.env.local`; production credentials are configured as Netlify production function secrets. Never copy these values into frontend code, prompts, or Git. Preview domains need a separate registered callback and matching environment configuration.
 
-OAuth state expires after 10 minutes. Credentials are encrypted using AES-256-GCM in Secure, HttpOnly, SameSite=Lax cookies, bound to both the Shopping List user and the Todoist client ID. The Todoist secret uses a separate encryption domain from Google and Hue. The browser cannot read the tokens. Logging into a different Shopping List account does not grant access to the first user's Todoist connection.
+OAuth state expires after 10 minutes. Credentials are encrypted using AES-256-GCM and stored server-side in the InstantDB entity `todoistConnections` (permissions: nobody; server access only through `INSTANT_APP_ADMIN_TOKEN`), bound to the Shopping List user, the Todoist client ID and the origin, because local and production share a database but not their secret.
 
-The connection is **per browser/device**, with a 90-day cookie renewed when tokens refresh. Clearing cookies or using another browser requires reconnecting. Disconnect clears this browser's local connection; revoke the integration in Todoist to remove the external grant as well.
+The connection is **per user**: connecting once works on every browser and device. An older connection in a browser cookie moves to the server on the first request from that browser, and any leftover cookie is cleared. The server copy is the only source of truth, because Todoist rotates the refresh token. Disconnect removes it for all devices.
+
+Thaw tasks: `netlify/functions/thaw-tasks.mjs` runs hourly and calls `POST /api/cron/thaw-tasks`, authorized with a key derived from `TODOIST_OAUTH_SECRET`, so no extra setting is needed. Scheduled functions only run on the published production deploy.
 
 ## Requests
 
