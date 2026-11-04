@@ -10,7 +10,7 @@ import { SearchBar } from "@/components/ui/search_bar";
 import { Shimmer } from "@/components/ui/shimmer";
 import { Snackbar } from "@/components/ui/snackbar";
 import { Poster } from "@/components/films/film_tiles";
-import { FollowedSeriesTile, type FollowedSeriesOrder } from "@/components/films/series_follow";
+import { FollowedSeriesTile, useFollowedSeriesOrder } from "@/components/films/series_follow";
 import { useFollowedSeries, useUnreviewedOngoingSeries, type FollowedSeries } from "@/hooks/use_series_follow";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 
@@ -54,19 +54,7 @@ export default function GevolgdeSeriesPage() {
   const unreviewed = useUnreviewedOngoingSeries(true);
   const [query, setQuery] = React.useState("");
   const results = useSeriesSearch(query);
-  /** Meest concreet bovenaan: datum bekend · aangekondigd · wachten · afgelopen; nog onbekend = bij «wachten». */
-  const [orders, setOrders] = React.useState<Record<string, FollowedSeriesOrder>>({});
-  const handleOrder = React.useCallback((tmdbId: string, order: FollowedSeriesOrder) => {
-    setOrders((prev) => (prev[tmdbId]?.rank === order.rank && prev[tmdbId]?.date === order.date ? prev : { ...prev, [tmdbId]: order }));
-  }, []);
-  const sortedFollowed = React.useMemo(
-    () =>
-      followed
-        .map((s, i) => ({ s, i, o: orders[s.tmdbId] ?? { rank: 2, date: "" } }))
-        .sort((a, b) => a.o.rank - b.o.rank || (a.o.date && b.o.date ? a.o.date.localeCompare(b.o.date) : a.o.date ? -1 : b.o.date ? 1 : 0) || a.i - b.i)
-        .map((x) => x.s),
-    [followed, orders],
-  );
+  const { sorted: sortedFollowed, onOrder } = useFollowedSeriesOrder(followed);
   const [snackbar, setSnackbar] = React.useState<{ message: string; undo: () => void } | null>(null);
   const snackbarTimer = React.useRef<number | null>(null);
   const showSnackbar = (message: string, undo: () => void) => {
@@ -173,7 +161,7 @@ export default function GevolgdeSeriesPage() {
                 <FollowedSeriesTile
                   key={s.tmdbId}
                   series={s}
-                  onOrder={handleOrder}
+                  onOrder={onOrder}
                   onOpen={() => router.push(`/films-series/tv-${s.tmdbId}`)}
                   onUnfollow={() => handleUnfollow(s)}
                   className="w-full"

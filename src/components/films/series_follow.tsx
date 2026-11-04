@@ -211,6 +211,26 @@ type FollowedDetail = {
 };
 
 /**
+ * Gevolgde series in hun volgorde: eerst aankomend op datum, dan aangekondigd, dan wachten, dan afgelopen;
+ * nog onbekend = bij «wachten». Geef `onOrder` door aan `FollowedSeriesTile`, die de stand ophaalt.
+ */
+export function useFollowedSeriesOrder<T extends { tmdbId: string }>(followed: T[]) {
+  const [orders, setOrders] = React.useState<Record<string, FollowedSeriesOrder>>({});
+  const onOrder = React.useCallback((tmdbId: string, order: FollowedSeriesOrder) => {
+    setOrders((prev) => (prev[tmdbId]?.rank === order.rank && prev[tmdbId]?.date === order.date ? prev : { ...prev, [tmdbId]: order }));
+  }, []);
+  const sorted = React.useMemo(
+    () =>
+      followed
+        .map((s, i) => ({ s, i, o: orders[s.tmdbId] ?? { rank: 2, date: "" } }))
+        .sort((a, b) => a.o.rank - b.o.rank || (a.o.date && b.o.date ? a.o.date.localeCompare(b.o.date) : a.o.date ? -1 : b.o.date ? 1 : 0) || a.i - b.i)
+        .map((x) => x.s),
+    [followed, orders],
+  );
+  return { sorted, onOrder };
+}
+
+/**
  * Eén gevolgde serie in «Series die je volgt»: poster met ✕ (niet meer volgen), titel en wat er over
  * het volgende seizoen bekend is (groen = datum, lavendel = aangekondigd, grijs = wachten, of «Afgelopen»).
  */

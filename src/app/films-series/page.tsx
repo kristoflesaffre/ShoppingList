@@ -12,7 +12,7 @@ import { InlineClampText, ScoreSourceLink, SoftPlayButton, TrailerOverlay } from
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
 import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard, WatchingCardSkeleton } from "@/components/films/film_tiles";
-import { FollowedSeriesTile, SeriesFollowBanner } from "@/components/films/series_follow";
+import { FollowedSeriesTile, SeriesFollowBanner, useFollowedSeriesOrder } from "@/components/films/series_follow";
 import { useFollowedSeries, useUnreviewedOngoingSeries } from "@/hooks/use_series_follow";
 import { useSeriesTaste } from "@/hooks/use_series_taste";
 import { SeriesTasteBanner, TasteRecommendationTile } from "@/components/films/series_taste";
@@ -662,6 +662,7 @@ export default function FilmsSeriesPage() {
     reactToPartnerItem,
   } = useFilmsLibrary();
   const { followed: followedSeries } = useFollowedSeries();
+  const { sorted: sortedFollowedSeries, onOrder: onFollowedOrder } = useFollowedSeriesOrder(followedSeries);
   const { watchingItems, markNextEpisode, markSeasonWatched, markSeriesWatched, markSeasonNotStarted, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
   const [watchMenuFor, setWatchMenuFor] = React.useState<string | null>(null);
   const taste = useSeriesTaste({ recommend: true });
@@ -1512,8 +1513,8 @@ export default function FilmsSeriesPage() {
                 <SectionHead title="Lopende series die je volgt" href="/films-series/gevolgde-series" count={followedSeries.length} />
                 <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-3" style={{ width: "max-content" }}>
-                    {followedSeries.map((s) => (
-                      <FollowedSeriesTile key={s.tmdbId} series={s} onOpen={() => handleViewDetail(`tv-${s.tmdbId}`)} />
+                    {sortedFollowedSeries.map((s) => (
+                      <FollowedSeriesTile key={s.tmdbId} series={s} onOrder={onFollowedOrder} onOpen={() => handleViewDetail(`tv-${s.tmdbId}`)} />
                     ))}
                   </div>
                 </div>
