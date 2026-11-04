@@ -176,7 +176,7 @@ export function SeriesFollowBanner({
         <button
           type="button"
           onClick={onStart}
-          className="mt-2.5 inline-flex h-[34px] items-center rounded-pill bg-[var(--blue-500)] px-3.5 text-[13.5px] font-bold text-white transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:hidden"
+          className="mt-2.5 inline-flex h-[34px] items-center rounded-pill bg-[var(--blue-500)] px-3.5 text-[13.5px] font-bold text-fixed-white transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:hidden"
         >
           Overlopen
         </button>
@@ -184,7 +184,7 @@ export function SeriesFollowBanner({
       <button
         type="button"
         onClick={onStart}
-        className="hidden h-[42px] shrink-0 items-center rounded-pill bg-[var(--blue-500)] px-[18px] text-[15px] font-bold text-white transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:mr-6 lg:inline-flex"
+        className="hidden h-[42px] shrink-0 items-center rounded-pill bg-[var(--blue-500)] px-[18px] text-[15px] font-bold text-fixed-white transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:mr-6 lg:inline-flex"
       >
         Overlopen
       </button>

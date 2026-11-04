@@ -199,9 +199,10 @@
   --dur-slow: 300ms;
   --dur-drawer: 380ms;
 
-  /* Cinema-kop op Films & series (popcorn): diep fluweelrood en botergeel, in beide thema's gelijk. */
+  /* Cinema-kop op Films & series (fluweel): diepe nacht, roze label en rode voortgang, in beide thema's gelijk. */
   --cinema-night: #170408;
-  --cinema-butter: #ffc879;
+  --cinema-rose: #f2b8c2;
+  --cinema-velvet: #e8485f;
   /* Afleveringpagina (canvas EP · A): bijna-zwart doek waarin het seriebeeld uitvloeit, in beide thema's gelijk. */
   --cinema-screen: #0c0e12;
   /* «Nieuw seizoen»: groen NIEUW-label op een beeld, in beide thema's gelijk. */
