@@ -1132,7 +1132,7 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 }
 
 const SWIMLANE_CLASSES =
-  "-mx-[var(--space-4)] flex gap-3 overflow-x-auto px-[var(--space-4)] pb-1";
+  "-mx-[var(--space-4)] flex gap-3 overflow-x-auto px-[var(--space-4)] pb-1 md:mx-0 md:px-0";
 
 const HOME_SWIMLANE_ARROW_CLASS =
   "flex size-8 items-center justify-center rounded-full bg-[var(--white)] text-[var(--blue-500)] shadow-card transition-[color,transform] duration-fast ease-out-strong motion-safe:active:scale-95 disabled:text-[var(--gray-200)] disabled:shadow-[0_0_0_1px_var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]";
