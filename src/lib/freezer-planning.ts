@@ -2,8 +2,9 @@ import { addDays, toIsoDate } from "@/lib/calendar-utils";
 
 /**
  * Diepvriesgerechten die op een dag gepland staan: de dag ervoor staat er een afvinkbare Todoist-taak «Uit de
- * diepvries halen». Eén portie gaat uit de voorraad zodra die taak afgevinkt is, en anders zodra de dag voorbij is. Enkel items met `freezerItemId`
- * doen mee; gerechten van vandaag of later zonder koppeling krijgen die via `planFreezerLinks`, voorbije blijven ongemoeid.
+ * diepvries halen». Elk gepland gerecht uit de diepvries krijgt die taak (`needsThawTask`), ook zonder koppeling met een diepvriesitem.
+ * Eén portie gaat uit de voorraad zodra die taak afgevinkt is, en anders zodra de dag voorbij is; daarvoor is wel een `freezerItemId` nodig.
+ * Gerechten van vandaag of later zonder koppeling krijgen die via `planFreezerLinks`, voorbije blijven ongemoeid.
  */
 
 export type FreezerPlanItem = {
@@ -28,6 +29,11 @@ export type ThawAction =
 
 function isPlanned(item: FreezerPlanItem): item is FreezerPlanItem & { itemDate: string; freezerItemId: string } {
   return item.fromStock === true && item.stockSource !== "pantry" && Boolean(item.freezerItemId) && Boolean(item.itemDate);
+}
+
+/** Moet uit de diepvries gehaald worden: gepland op een dag en niet uit de voorraadkast. De koppeling met de voorraad is niet nodig. */
+function needsThawTask(item: FreezerPlanItem): item is FreezerPlanItem & { itemDate: string } {
+  return item.fromStock === true && item.stockSource !== "pantry" && Boolean(item.itemDate);
 }
 
 /** Welke porties weg mogen: dag voorbij of ontdooitaak afgevinkt (`thawedItemIds`), nog niet afgeboekt en het diepvriesitem bestaat nog. */
@@ -112,15 +118,21 @@ export function thawPhotoUrl(
  */
 export function planThawTaskActions(items: FreezerPlanItem[], openTasks: ThawTodoistTask[], todayIso: string): ThawAction[] {
   const actions: ThawAction[] = [];
-  const planned = new Map(items.filter(isPlanned).map((item) => [item.id, item]));
+  const planned = new Map(items.filter(needsThawTask).map((item) => [item.id, item]));
   const taskByItem = new Map<string, { task: ThawTodoistTask; itemDate: string }>();
   for (const task of openTasks) {
     const marker = parseThawMarker(task.description);
     if (!marker) continue;
     const item = planned.get(marker.itemId);
     // Gerecht weg of dag voorbij: de taak heeft geen zin meer.
-    if (!item || item.itemDate < todayIso) actions.push({ kind: "close", taskId: task.id });
-    else taskByItem.set(marker.itemId, { task, itemDate: marker.itemDate });
+    if (!item || item.itemDate < todayIso) {
+      actions.push({ kind: "close", taskId: task.id });
+      continue;
+    }
+    // Twee toestellen tegelijk kunnen een dubbele taak maken: de gekoppelde blijft staan.
+    const other = taskByItem.get(marker.itemId);
+    if (other) actions.push({ kind: "close", taskId: item.thawTaskId === task.id ? other.task.id : task.id });
+    if (!other || item.thawTaskId === task.id) taskByItem.set(marker.itemId, { task, itemDate: marker.itemDate });
   }
   for (const item of Array.from(planned.values())) {
     if (item.itemDate < todayIso) continue;
@@ -129,7 +141,7 @@ export function planThawTaskActions(items: FreezerPlanItem[], openTasks: ThawTod
     if (open) {
       if (open.itemDate !== item.itemDate) actions.push({ kind: "update", taskId: open.task.id, ...fields });
       if (!item.thawTaskId) actions.push({ kind: "link", itemId: item.id, taskId: open.task.id });
-    } else if (!item.thawTaskId) {
+    } else if (!item.thawTaskId && !item.stockDeductedAt) {
       actions.push({ kind: "create", itemId: item.id, ...fields });
     }
   }

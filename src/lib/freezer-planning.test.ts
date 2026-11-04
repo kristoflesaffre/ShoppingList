@@ -89,6 +89,21 @@ describe("planThawTaskActions", () => {
     expect(planThawTaskActions([], [task("i1", "2026-11-05")], today)).toEqual([{ kind: "close", taskId: "t1" }]);
     expect(planThawTaskActions([dish({ thawTaskId: "t1", itemDate: "2026-10-30" })], [task("i1", "2026-10-30")], today)).toEqual([{ kind: "close", taskId: "t1" }]);
   });
+  it("maakt ook een taak voor een gerecht zonder koppeling met de voorraad", () => {
+    const actions = planThawTaskActions([dish({ freezerItemId: undefined, itemDate: "2026-11-04" })], [], "2026-11-04");
+    expect(actions).toMatchObject([{ kind: "create", itemId: "i1", dueDate: "2026-11-04" }]);
+  });
+  it("maakt geen taak voor de voorraadkast, zonder dag of als de portie al afgeboekt is", () => {
+    expect(planThawTaskActions([dish({ stockSource: "pantry" })], [], "2026-11-04")).toEqual([]);
+    expect(planThawTaskActions([dish({ itemDate: null })], [], "2026-11-04")).toEqual([]);
+    expect(planThawTaskActions([dish({ stockDeductedAt: 1 })], [], "2026-11-04")).toEqual([]);
+  });
+  it("sluit een dubbele taak en houdt de gekoppelde", () => {
+    const description = thawTaskDescription("i1", "2026-11-05");
+    const tasks = [{ id: "t1", description }, { id: "t2", description }];
+    expect(planThawTaskActions([dish({ thawTaskId: "t2" })], tasks, "2026-11-04")).toEqual([{ kind: "close", taskId: "t1" }]);
+    expect(planThawTaskActions([dish({ thawTaskId: "t1" })], tasks, "2026-11-04")).toEqual([{ kind: "close", taskId: "t2" }]);
+  });
   it("negeert gewone Todoist-taken", () => {
     expect(planThawTaskActions([], [{ id: "x", description: "Bel de dokter" }], today)).toEqual([]);
     expect(parseThawMarker(null)).toBeNull();
