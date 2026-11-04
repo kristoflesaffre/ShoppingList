@@ -74,6 +74,6 @@ Bouw schermen uit de gedeelde componenten in `src/components/ui/`. Style deze pa
 ## Git en publiceren
 
 - Werk altijd op `main`, zonder aparte branch; commit en push daar (`git push origin main`).
-- Elke push naar `main` is meteen een deploy: Vercel (`shoppinglist-azure.vercel.app`, de productie) volgt `main` vanzelf. Controleer na de push of die deploy «Ready» is (`vercel inspect shoppinglist-azure.vercel.app`). Netlify hangt niet aan Git en draait oude code; niet deployen zonder expliciete vraag.
+- Elke push naar `main` is meteen een deploy: Vercel (`shoppinglist-azure.vercel.app`, de productie) volgt `main` vanzelf. Controleer na de push of die deploy «Ready» is (`vercel inspect shoppinglist-azure.vercel.app`). Enkel Vercel: Netlify is maar een backup, hangt niet aan Git en krijgt geen deploys.
 - De database-schema (InstantDB) niet wijzigen zonder expliciete vraag.
 - Lokaal testen op http://localhost:3010.
