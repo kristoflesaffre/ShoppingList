@@ -82,17 +82,14 @@ export default function GevolgdeSeriesPage() {
             {RoundIcons.back}
           </button>
         </div>
-        <div className="flex items-center gap-3">
+        {/* Desktop: zoekveld rechts van de titel, smal; gsm: eronder over de volle breedte */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-3">
           <PageBackButton href="/films-series" label="Terug naar films en series" className="hidden lg:inline-flex" />
-          <div className="min-w-0">
-            <h1 className="text-[30px] font-bold leading-9 tracking-tight text-[var(--text-primary)] lg:text-[32px]">Series die je volgt</h1>
-            <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
-              Een nieuw seizoen komt vanzelf op jullie watchlist. Series die je uitkijkt, komen hier vanzelf bij.
-            </p>
+          <h1 className="min-w-0 flex-1 text-[30px] font-bold leading-9 tracking-tight text-[var(--text-primary)] lg:text-[32px]">Series die je volgt</h1>
+          <div className="w-full lg:w-[300px] lg:shrink-0">
+            <SearchBar surface="app" value={query} onValueChange={setQuery} placeholder="Serie zoeken om te volgen" aria-label="Serie zoeken om te volgen" />
           </div>
         </div>
-
-        <SearchBar surface="app" value={query} onValueChange={setQuery} placeholder="Serie zoeken om te volgen" aria-label="Serie zoeken om te volgen" />
 
         {searching ? (
           <section aria-label="Zoekresultaten" className="overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
