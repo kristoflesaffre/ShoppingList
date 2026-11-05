@@ -15,9 +15,7 @@ import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
-import { SlideInModal } from "@/components/ui/slide_in_modal";
-import { Button } from "@/components/ui/button";
-import { Stepper } from "@/components/ui/stepper";
+import { airedEpisodeIds, followMarkId, isReturningStatus, skipMarkId } from "@/lib/series-follow";
 import { setForcedDark } from "@/lib/theme";
 
 type Kind = "films" | "series";
@@ -119,8 +117,11 @@ export default function WatchlistKindPage() {
     removeFromWatchlist,
     addToWatchlist,
     updateWatchlistScore,
-    markWatched,
     watchedIds,
+    watchedSet,
+    markWatchedMany,
+    unmarkWatchedMany,
+    saveSeriesMeta,
   } = useFilmsLibrary();
 
   // tmdbIds van series die al "aan het kijken" zijn — die horen niet in de watchlist
@@ -137,12 +138,6 @@ export default function WatchlistKindPage() {
   const [query, setQuery] = React.useState("");
   const [listTab, setListTab] = React.useState<ListTab>("alleen");
   const [genreFilter, setGenreFilter] = React.useState<string>("Alles");
-  const [watchingSlide, setWatchingSlide] = React.useState<{
-    item: EnrichedItem;
-    seasons: { seasonNumber: number; name: string; episodeCount: number }[];
-    selectedSeason: number;
-    selectedEpisode: number;
-  } | null>(null);
 
   const hasScrolledRef = React.useRef(false);
   const [scoreSources, setScoreSources] = React.useState<Record<string, "imdb" | "tmdb">>({});
@@ -420,38 +415,83 @@ export default function WatchlistKindPage() {
   );
 
 
-  function handleSwipeWatching(item: EnrichedItem) {
+  /**
+   * Oogje bij een serie: alles wat al uitgezonden is op gezien, loopt de serie nog dan volg je ze
+   * («Lopende series die je volgt»), en ze gaat van de watchlist. «Zet terug» draait alles terug.
+   */
+  function handleSeriesSeen(item: EnrichedItem) {
+    if (removingIds.has(item.id)) return;
     const tmdbId = item.id.replace(/^tv-/, "");
-    fetch(`/api/films/detail?type=tv&id=${tmdbId}`)
-      .then((r) => r.json())
-      .then((data: { seasons?: { seasonNumber: number; name: string; episodeCount: number }[] }) => {
-        const seasons = (data.seasons ?? []).filter((s) => s.seasonNumber > 0);
-        if (seasons.length === 0) {
-          // Geen seizoeninfo — direct starten bij s1e1
-          void markWatched(`ep-${tmdbId}-s1e0`);
-          void addToWatchlist({ id: item.id, type: "tv", title: item.title, year: item.year, posterUrl: item.posterUrl ?? null, score: item.score });
-          setSnackbar({ message: `${item.title} toegevoegd aan 'Aan het kijken'`, undoFn: () => {} });
-          snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
-          return;
-        }
-        setWatchingSlide({ item, seasons, selectedSeason: seasons[0].seasonNumber, selectedEpisode: 1 });
-      })
-      .catch(() => {
-        void markWatched(`ep-${tmdbId}-s1e0`);
-        void addToWatchlist({ id: item.id, type: "tv", title: item.title, year: item.year, posterUrl: item.posterUrl ?? null, score: item.score });
+    removalSnapshotsRef.current.set(item.id, item);
+    setRemovingIds((prev) => new Set(prev).add(item.id));
+
+    const work = (async () => {
+      const res = await fetch(`/api/films/detail?type=tv&id=${tmdbId}`);
+      if (!res.ok) throw new Error("detail");
+      const data = (await res.json()) as {
+        seasons?: { seasonNumber: number; episodeCount: number }[];
+        lastAired?: { season: number; episode: number } | null;
+        status?: string | null;
+      };
+      const lastAired = data.lastAired ?? null;
+      const seasons = (data.seasons ?? []).filter((s) => s.seasonNumber > 0);
+      const episodeIds = airedEpisodeIds(tmdbId, seasons, lastAired);
+      const ongoing = isReturningStatus(data.status);
+      const toMark = [...episodeIds, ...(ongoing ? [followMarkId(tmdbId)] : [])].filter((id) => !watchedSet.has(id));
+      const unskip = ongoing && watchedSet.has(skipMarkId(tmdbId));
+      await saveSeriesMeta(tmdbId, {
+        title: item.title,
+        year: item.year,
+        posterUrl: item.posterUrl ?? null,
+        seasons: seasons
+          .filter((s) => !lastAired || s.seasonNumber <= lastAired.season)
+          .map((s) => ({
+            seasonNumber: s.seasonNumber,
+            episodeCount: lastAired && s.seasonNumber === lastAired.season ? Math.min(s.episodeCount, lastAired.episode) : s.episodeCount,
+          })),
       });
-  }
+      for (let i = 0; i < toMark.length; i += 150) await markWatchedMany(toMark.slice(i, i + 150));
+      if (unskip) await unmarkWatchedMany([skipMarkId(tmdbId)]);
+      return { marked: toMark, unskip, ongoing, episodes: episodeIds.length };
+    })();
 
-
-  function handleWatchingConfirm() {
-    if (!watchingSlide) return;
-    const { item, selectedSeason, selectedEpisode } = watchingSlide;
-    const tmdbId = item.id.replace(/^tv-/, "");
-    void markWatched(`ep-${tmdbId}-s${selectedSeason}e${selectedEpisode - 1}`);
-    void addToWatchlist({ id: item.id, type: "tv", title: item.title, year: item.year, posterUrl: item.posterUrl ?? null, score: item.score });
-    setSnackbar({ message: `${item.title} toegevoegd aan 'Aan het kijken'`, undoFn: () => {} });
-    snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
-    setWatchingSlide(null);
+    const timer = setTimeout(() => {
+      commitRemoval(item.id);
+      work
+        .then(({ marked, unskip, ongoing, episodes }) => {
+          if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
+          setSnackbar({
+            message:
+              episodes === 0
+                ? `${item.title} van je watchlist gehaald`
+                : ongoing
+                  ? `${item.title} gezien · je volgt de serie nu`
+                  : `${item.title} gezien`,
+            undoItem: { ...item },
+            undoEnriched: item,
+            undoFn: () => {
+              for (let i = 0; i < marked.length; i += 150) void unmarkWatchedMany(marked.slice(i, i + 150));
+              if (unskip) void markWatchedMany([skipMarkId(tmdbId)]);
+            },
+          });
+          snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+        })
+        .catch(() => {
+          // Geen gegevens: niets aangeduid, de serie komt terug op de watchlist.
+          cancelRemoval(item.id);
+          setDismissedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(item.id);
+            return next;
+          });
+          void addToWatchlist({ ...item });
+          setEnriched((prev) => ({ ...prev, [item.id]: item }));
+          if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
+          setSnackbar({ message: `Kon ${item.title} niet als gezien aanduiden`, undoFn: () => {} });
+          snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 4500);
+        });
+    }, REMOVE_ANIM_MS);
+    removalTimersRef.current.set(item.id, timer);
   }
 
   function handleMarkSeen(e: React.MouseEvent, item: EnrichedItem) {
@@ -491,6 +531,7 @@ export default function WatchlistKindPage() {
       if (snackbar.undoEnriched) {
         setEnriched((prev) => ({ ...prev, [snackbar.undoItem!.id]: snackbar.undoEnriched! }));
       }
+      snackbar.undoFn();
     } else {
       snackbar.undoFn();
     }
@@ -638,10 +679,10 @@ export default function WatchlistKindPage() {
                         sessionStorage.setItem("films-watchlist-return", `/films-series/watchlist/${kindParam}`);
                         router.push(`/films-series/${item.id}`);
                       }}
-                      seenLabel={config.mediaType === "tv" ? `Begin met kijken naar ${item.title}` : `${item.title} gezien`}
+                      seenLabel={`${item.title} gezien`}
                       onSeen={(e) => {
                         e.stopPropagation();
-                        if (config.mediaType === "tv") handleSwipeWatching(item);
+                        if (config.mediaType === "tv") handleSeriesSeen(item);
                         else handleMarkSeen(e, item);
                       }}
                     />
@@ -669,53 +710,6 @@ export default function WatchlistKindPage() {
         </div>
       )}
 
-      {/* Slide-in: episode selectie voor 'Aan het kijken' */}
-      <SlideInModal
-        open={watchingSlide !== null}
-        onClose={() => setWatchingSlide(null)}
-        title="Starten bij…"
-        bodyFullWidth
-        footer={
-          <Button variant="primary" onClick={handleWatchingConfirm}>
-            Bevestigen
-          </Button>
-        }
-      >
-        {watchingSlide && (
-          <>
-            {watchingSlide.seasons.length > 1 && (
-              <div className="overflow-x-auto pb-4 pl-4" style={{ scrollbarWidth: "none" }}>
-                <div className="flex gap-2 pr-4" style={{ width: "max-content" }}>
-                  {watchingSlide.seasons.map((s) => (
-                    <button
-                      key={s.seasonNumber}
-                      type="button"
-                      onClick={() => setWatchingSlide((prev) => prev ? { ...prev, selectedSeason: s.seasonNumber, selectedEpisode: 1 } : prev)}
-                      className={cn(
-                        "h-8 shrink-0 rounded-full px-3 text-[13px] leading-[18px] transition-colors focus-visible:outline-none",
-                        watchingSlide.selectedSeason === s.seasonNumber
-                          ? "bg-[var(--blue-500)] font-semibold text-white"
-                          : "bg-[var(--gray-100)] font-normal text-[var(--gray-500)]",
-                      )}
-                    >
-                      {s.name.startsWith("Seizoen") || s.name.startsWith("Season") ? s.name : `Seizoen ${s.seasonNumber}`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="px-4">
-              <Stepper
-                label="Aflevering waarmee je begint"
-                value={watchingSlide.selectedEpisode}
-                min={1}
-                max={watchingSlide.seasons.find((s) => s.seasonNumber === watchingSlide.selectedSeason)?.episodeCount ?? 50}
-                onValueChange={(v) => setWatchingSlide((prev) => prev ? { ...prev, selectedEpisode: v } : prev)}
-              />
-            </div>
-          </>
-        )}
-      </SlideInModal>
     </div>
 
     </>

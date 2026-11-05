@@ -105,6 +105,25 @@ export function episodeIdsThrough(tmdbId: string, seasons: readonly OngoingSeaso
   return ids;
 }
 
+/**
+ * Alle afleveringen die al uitgezonden zijn, t.e.m. de laatste (`lastAired` uit TMDB
+ * `last_episode_to_air`), als ep-ids. Zonder `lastAired` (nog niets uit): leeg.
+ */
+export function airedEpisodeIds(
+  tmdbId: string,
+  seasons: readonly { seasonNumber: number; episodeCount: number }[],
+  lastAired: { season: number; episode: number } | null,
+): string[] {
+  if (!lastAired || lastAired.season <= 0) return [];
+  const ids: string[] = [];
+  for (const s of seasons) {
+    if (s.seasonNumber <= 0 || s.seasonNumber > lastAired.season) continue;
+    const count = s.seasonNumber === lastAired.season ? Math.min(s.episodeCount, lastAired.episode) : s.episodeCount;
+    for (let e = 1; e <= count; e++) ids.push(`ep-${tmdbId}-s${s.seasonNumber}e${e}`);
+  }
+  return ids;
+}
+
 /** Al eens beantwoord (of al bezig/op de watchlist): niet meer vragen in de wizard. */
 export function isSeriesReviewed(
   tmdbId: string,

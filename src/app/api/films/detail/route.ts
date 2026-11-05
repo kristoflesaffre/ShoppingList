@@ -173,6 +173,16 @@ export async function GET(request: NextRequest) {
     scoreSource,
     imdbId,
     totalEpisodes,
+    /** Laatste uitgezonden aflevering van een serie (TMDB `last_episode_to_air`); null bij films of als er nog niets uit is. */
+    lastAired:
+      type === "tv"
+        ? (() => {
+            const last = data.last_episode_to_air as { season_number?: number; episode_number?: number } | null | undefined;
+            return last?.season_number && last.episode_number
+              ? { season: last.season_number, episode: last.episode_number }
+              : null;
+          })()
+        : null,
     /** TMDB-status van een serie («Returning Series», «Ended», …); null bij films. */
     status: type === "tv" ? ((data.status as string | undefined) ?? null) : null,
     cast,

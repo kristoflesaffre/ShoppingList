@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  airedEpisodeIds,
   autoAddedMarkId,
   episodeIdsThrough,
   followMarkId,
@@ -142,5 +143,25 @@ describe("seasonStatusFromDetail", () => {
         "2026-11-03",
       ),
     ).toEqual({ lastSeason: 2, nextSeason: { seasonNumber: 3, airDate: "2027-02-01" }, airing: false });
+  });
+});
+
+describe("airedEpisodeIds", () => {
+  const seasons = [
+    { seasonNumber: 1, episodeCount: 2 },
+    { seasonNumber: 2, episodeCount: 8 },
+    { seasonNumber: 3, episodeCount: 10 },
+  ];
+  it("stopt bij de laatste uitgezonden aflevering, ook midden in een seizoen", () => {
+    expect(airedEpisodeIds("9", seasons, { season: 2, episode: 3 })).toEqual([
+      "ep-9-s1e1",
+      "ep-9-s1e2",
+      "ep-9-s2e1",
+      "ep-9-s2e2",
+      "ep-9-s2e3",
+    ]);
+  });
+  it("is leeg als er nog niets uit is", () => {
+    expect(airedEpisodeIds("9", seasons, null)).toEqual([]);
   });
 });
