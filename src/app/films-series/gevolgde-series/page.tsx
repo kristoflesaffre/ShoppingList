@@ -13,6 +13,9 @@ import { Poster } from "@/components/films/film_tiles";
 import { FollowedSeriesTile, useFollowedSeriesOrder } from "@/components/films/series_follow";
 import { useFollowedSeries, useUnreviewedOngoingSeries, type FollowedSeries } from "@/hooks/use_series_follow";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
+import { setForcedDark } from "@/lib/theme";
+
+const useBrowserLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
 
 type SearchResult = { id: string; tmdbId: number; type: "movie" | "tv"; title: string; year: string; posterUrl: string | null };
 
@@ -50,6 +53,11 @@ function useSeriesSearch(query: string) {
  */
 export default function GevolgdeSeriesPage() {
   const router = useRouter();
+  // Donker zoals de andere filmpagina's (cinema-thema), ongeacht het gekozen thema.
+  useBrowserLayoutEffect(() => {
+    setForcedDark(true);
+    return () => setForcedDark(false);
+  }, []);
   const { followed, loading, follow, unfollow, isFollowing } = useFollowedSeries();
   const unreviewed = useUnreviewedOngoingSeries(true);
   const [query, setQuery] = React.useState("");
