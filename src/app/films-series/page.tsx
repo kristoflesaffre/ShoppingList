@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { useEdgeFade } from "@/hooks/use_edge_fade";
+import { useImageRegionIsLight, type ImageRegion } from "@/hooks/use_image_brightness";
 import { useWatchingTvItems, type NewSeasonItem, type WatchingTvItem } from "@/hooks/use_watching_tv_items";
 import { Snackbar } from "@/components/ui/snackbar";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
@@ -345,8 +346,17 @@ function loadDiscoverExtra(item: { id: string; type: string; tmdbId: number; pos
   return p;
 }
 
-/** ‹ n / N › voor «Nieuw voor jou»: op mobiel in de sectiekop, op desktop in de kaart. */
-function DiscoverNav({ position, total, onPrev, onNext, tone }: { position: number; total: number; onPrev: () => void; onNext: () => void; tone: "light" | "dark" }) {
+/**
+ * Rechtsboven in de desktopkaart, waar ‹ n / N › staat: rechts in de backdrop (66% breed, `object-cover`
+ * over 280px hoogte), ongeveer 20–60px van boven.
+ */
+const DISCOVER_NAV_REGION: ImageRegion = { x0: 0.76, y0: 0.18, x1: 1, y1: 0.4 };
+
+/**
+ * ‹ n / N › voor «Nieuw voor jou»: op mobiel in de sectiekop, op desktop in de kaart.
+ * `onLight`: de backdrop is daar licht, dus het geheel op een donker glazen vlak zodat het leesbaar blijft.
+ */
+function DiscoverNav({ position, total, onPrev, onNext, tone, onLight = false }: { position: number; total: number; onPrev: () => void; onNext: () => void; tone: "light" | "dark"; onLight?: boolean }) {
   if (total <= 1) return null;
   const btn = cn(
     "flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2",
@@ -360,7 +370,13 @@ function DiscoverNav({ position, total, onPrev, onNext, tone }: { position: numb
     </svg>
   );
   return (
-    <div className={cn("flex items-center gap-2 text-[13px] font-bold", tone === "dark" ? "text-fixed-white" : "text-[var(--text-secondary)]")}>
+    <div
+      className={cn(
+        "flex items-center gap-2 text-[13px] font-bold transition-colors duration-200",
+        tone === "dark" ? "text-fixed-white" : "text-[var(--text-secondary)]",
+        tone === "dark" && onLight && "rounded-pill bg-[rgba(16,17,48,0.55)] p-1 backdrop-blur-md",
+      )}
+    >
       <button type="button" onClick={onPrev} aria-label="Vorige suggestie" className={btn}>
         {chev("M15 6l-6 6 6 6")}
       </button>
@@ -404,6 +420,7 @@ function DiscoverFeature({
 }) {
   const [extra, setExtra] = React.useState<DiscoverExtra | null>(() => discoverExtraCache.get(item.id) ?? null);
   const [showTrailer, setShowTrailer] = React.useState(false);
+  const navOnLight = useImageRegionIsLight(extra?.backdropUrl, DISCOVER_NAV_REGION) === true;
   React.useEffect(() => {
     let cancelled = false;
     void loadDiscoverExtra(item).then((d) => {
@@ -522,7 +539,7 @@ function DiscoverFeature({
           </>
         ) : null}
         <div className="absolute right-5 top-5 z-[1]">
-          <DiscoverNav position={position} total={total} onPrev={onPrev} onNext={onNext} tone="dark" />
+          <DiscoverNav position={position} total={total} onPrev={onPrev} onNext={onNext} tone="dark" onLight={navOnLight} />
         </div>
         <div className="relative flex h-full items-center gap-6 p-6">
           <div className="relative w-[154px] shrink-0">
