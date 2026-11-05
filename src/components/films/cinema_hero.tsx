@@ -44,7 +44,7 @@ export function CinemaHero({ children, compact = false }: { children: React.Reac
       <div
         className={cn(
           "mx-auto w-full max-w-[956px] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:pt-12",
-          compact ? "pb-14 lg:pb-16" : "pb-20 lg:pb-32",
+          compact ? "pb-14 lg:pb-16" : "pb-[38px] lg:pb-[68px]",
         )}
       >
         {children}
