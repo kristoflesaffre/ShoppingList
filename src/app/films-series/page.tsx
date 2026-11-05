@@ -283,7 +283,7 @@ function FilmsOverviewSkeleton() {
   );
   return (
     <div aria-busy="true" aria-label="Films en series laden" className="mt-7 flex flex-col gap-7 lg:mt-8 lg:gap-8">
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-4 lg:gap-5">
         {head("w-36")}
         <div className="-mx-4 overflow-hidden px-4 lg:mx-0 lg:px-0">
           <div className="flex w-max gap-3">
@@ -293,15 +293,15 @@ function FilmsOverviewSkeleton() {
           </div>
         </div>
       </section>
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-4 lg:gap-5">
         {head("w-40")}
         {posterRow(true)}
       </section>
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-4 lg:gap-5">
         {head("w-32")}
         <Shimmer className="h-[400px] rounded-[24px] lg:h-[280px] lg:rounded-[26px]" />
       </section>
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-4 lg:gap-5">
         {head("w-36")}
         {posterRow(false)}
       </section>
@@ -1231,7 +1231,7 @@ export default function FilmsSeriesPage() {
           <div className="mt-7 flex flex-col gap-7 lg:mt-8 lg:gap-8">
             {/* Nieuw seizoen — canvas «22 · Nieuw seizoen A»: series die je zag met een nieuw (of aangekondigd) seizoen */}
             {newSeasonItems.length > 0 && (
-              <section className="flex flex-col gap-3">
+              <section className="flex flex-col gap-4 lg:gap-5">
                 <SectionHead title="Nieuw seizoen" />
                 <div className="-mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:overflow-visible lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex w-max gap-2.5 lg:grid lg:w-full lg:grid-cols-3 lg:gap-3.5">
@@ -1251,7 +1251,7 @@ export default function FilmsSeriesPage() {
 
             {/* Ook nog bezig — de andere series die je kijkt (de laatste staat groot in de kop) */}
             {watchingItems.length > 1 && (
-              <section className="flex flex-col gap-3">
+              <section className="flex flex-col gap-4 lg:gap-5">
                 <SectionHead title="Ook nog bezig" />
                 <div ref={watchingScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex w-max gap-3">
@@ -1292,7 +1292,7 @@ export default function FilmsSeriesPage() {
               />
             ) : null}
             {taste.recommendations.length > 0 ? (
-              <section className="flex flex-col gap-3">
+              <section className="flex flex-col gap-4 lg:gap-5">
                 <SectionHead title="Waarschijnlijk iets voor jou" href="/films-series/smaak" linkLabel="Jouw smaak" />
                 <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex items-start gap-3" style={{ width: "max-content" }}>
@@ -1306,7 +1306,7 @@ export default function FilmsSeriesPage() {
 
             {/* Watchlist partner */}
             {hasPartnerItems && (
-              <section className="flex flex-col gap-3">
+              <section className="flex flex-col gap-4 lg:gap-5">
                 <SectionHead
                   title={`Watchlist ${partnerName ?? "partner"}`}
                   href="/films-series/partner-watchlist"
@@ -1367,7 +1367,7 @@ export default function FilmsSeriesPage() {
 
             {/* Nieuw voor jou — één suggestie uit «Te ontdekken» */}
             {hasDiscoverSection && (
-              <section className="flex flex-col gap-3">
+              <section className="flex flex-col gap-4 lg:gap-5">
                 <div className="lg:hidden">
                   <SectionHead
                     title="Nieuw voor jou"
@@ -1452,7 +1452,7 @@ export default function FilmsSeriesPage() {
 
             {/* Watchlist films */}
             {watchlistFilms.length > 0 && (
-              <section ref={filmsSectionRef} className="flex flex-col gap-3">
+              <section ref={filmsSectionRef} className="flex flex-col gap-4 lg:gap-5">
                 <SectionHead title="Watchlist films" href="/films-series/watchlist/films" count={watchlistFilms.length} />
                 <div ref={filmsScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex" style={{ width: "max-content" }}>
@@ -1487,7 +1487,7 @@ export default function FilmsSeriesPage() {
 
             {/* Watchlist series */}
             {watchlistSeries.length > 0 && (
-              <section ref={seriesSectionRef} className="flex flex-col gap-3">
+              <section ref={seriesSectionRef} className="flex flex-col gap-4 lg:gap-5">
                 <SectionHead title="Watchlist series" href="/films-series/watchlist/series" count={watchlistSeries.length} />
                 <div ref={seriesScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-3" style={{ width: "max-content" }}>
@@ -1507,7 +1507,7 @@ export default function FilmsSeriesPage() {
 
             {/* Lopende series die je volgt — beheren (toevoegen / niet meer volgen) op de eigen pagina */}
             {followedSeries.length > 0 && (
-              <section className="flex flex-col gap-3">
+              <section className="flex flex-col gap-4 lg:gap-5">
                 <SectionHead title="Lopende series die je volgt" href="/films-series/gevolgde-series" count={followedSeries.length} />
                 <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-3" style={{ width: "max-content" }}>
