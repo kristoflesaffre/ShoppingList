@@ -14,12 +14,21 @@ import {
   getAllSeriesMeta as getLocalSeriesMeta,
 } from "@/lib/watched";
 import {
+  DISCOVER_DISMISSED_REACTION,
+  buildDiscoverExcludeIds,
+  discoverDismissMediaId,
   dismissDiscoverItem as dismissLocalDiscoverItem,
   getDismissedDiscoverIds as getLocalDismissedDiscoverIds,
+  isDiscoverDismissalsMigrated,
+  parseDiscoverDismissMediaId,
   restoreDiscoverItem as restoreLocalDiscoverItem,
+  setDiscoverDismissalsMigrated,
 } from "@/lib/discover-feedback";
 
 const PLACEHOLDER = "__films_library_none__";
+
+/** De hook draait op één pagina meermaals: de keuzes van dit toestel maar één keer overzetten. */
+const discoverMigrationsInFlight = new Set<string>();
 
 type DbWatchlistRow = {
   id: string;
@@ -384,26 +393,106 @@ export function useFilmsLibrary() {
 
   const watchedSet = React.useMemo(() => new Set(watchedIds), [watchedIds]);
 
-  const discoverDismissedIds = React.useMemo(
-    () => (mounted ? getLocalDismissedDiscoverIds() : []),
-    [mounted, localTick],
+  // Eigen reacties, ook die van vóór het delen (eigen groep): oordelen en «komt niet meer terug».
+  const ownReactionsQuery = React.useMemo(
+    () =>
+      user && groupOwnerId
+        ? ({
+            filmsPartnerReactions: {
+              $: { where: { groupOwnerId: { $in: Array.from(new Set([groupOwnerId, user.id])) } } },
+            },
+          } as unknown as Parameters<typeof db.useQuery>[0])
+        : null,
+    [user, groupOwnerId],
   );
+  const { data: ownReactionsData, isLoading: ownReactionsLoading } = db.useQuery(ownReactionsQuery);
+  const ownReactions = React.useMemo(
+    () =>
+      ((ownReactionsData?.filmsPartnerReactions ?? []) as DbPartnerReactionRow[]).filter(
+        (r) => r.reactingUserId === user?.id,
+      ),
+    [ownReactionsData?.filmsPartnerReactions, user?.id],
+  );
+
+  // «Zet terug» draait vanuit een melding van vóór het wegklikken: altijd de nieuwste rijen lezen.
+  const ownReactionsRef = React.useRef(ownReactions);
+  ownReactionsRef.current = ownReactions;
+
+  const discoverExcludeIds = React.useMemo(() => {
+    const useLocalChoices = !user || !isDiscoverDismissalsMigrated(user.id);
+    return buildDiscoverExcludeIds({
+      watchlistIds: watchlist.map((item) => item.id),
+      watchedIds,
+      dismissedIds: mounted && useLocalChoices ? getLocalDismissedDiscoverIds() : [],
+      ownReactions,
+    });
+    // localTick: de lokale keuzes en de overzetvlag staan niet in React.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, watchlist, watchedIds, ownReactions, mounted, localTick]);
+
+  // Keuzes die alleen op dit toestel stonden, gaan één keer mee naar de database.
+  React.useEffect(() => {
+    if (!mounted || !user || !groupOwnerId || ownReactionsLoading) return;
+    if (isDiscoverDismissalsMigrated(user.id) || discoverMigrationsInFlight.has(user.id)) return;
+    const known = new Set(ownReactions.map((r) => parseDiscoverDismissMediaId(r.mediaId)));
+    const todo = getLocalDismissedDiscoverIds().filter((id) => !known.has(id));
+    const userId = user.id;
+    discoverMigrationsInFlight.add(userId);
+    void (async () => {
+      for (let i = 0; i < todo.length; i += 100) {
+        await db.transact(
+          todo.slice(i, i + 100).map((id) =>
+            db.tx.filmsPartnerReactions[instantId()].update({
+              reactingUserId: userId,
+              mediaId: discoverDismissMediaId(id),
+              reaction: DISCOVER_DISMISSED_REACTION,
+              groupOwnerId: userId,
+            }),
+          ),
+        );
+      }
+      setDiscoverDismissalsMigrated(userId);
+      bumpLocal();
+    })()
+      .catch(() => {})
+      .finally(() => discoverMigrationsInFlight.delete(userId));
+  }, [mounted, user, groupOwnerId, ownReactionsLoading, ownReactions, bumpLocal]);
 
   const dismissDiscoverItem = React.useCallback(
     async (mediaId: string) => {
-      dismissLocalDiscoverItem(mediaId);
-      bumpLocal();
+      if (!user) {
+        dismissLocalDiscoverItem(mediaId);
+        bumpLocal();
+        return;
+      }
+      const rowId = discoverDismissMediaId(mediaId);
+      if (ownReactions.some((r) => r.mediaId === rowId)) return;
+      // In de eigen groep: zo blijft de keuze gelden als je later een lijst deelt of stopt met delen.
+      await db.transact(
+        db.tx.filmsPartnerReactions[instantId()].update({
+          reactingUserId: user.id,
+          mediaId: rowId,
+          reaction: DISCOVER_DISMISSED_REACTION,
+          groupOwnerId: user.id,
+        }),
+      );
     },
-    [bumpLocal],
+    [user, ownReactions, bumpLocal],
   );
 
   const restoreDiscoverItem = React.useCallback(
     async (mediaId: string) => {
       restoreLocalDiscoverItem(mediaId);
       bumpLocal();
+      const rowId = discoverDismissMediaId(mediaId);
+      const rows = ownReactionsRef.current.filter((r) => r.mediaId === rowId && r.id);
+      if (rows.length > 0) await db.transact(rows.map((r) => db.tx.filmsPartnerReactions[r.id!].delete()));
     },
     [bumpLocal],
   );
+
+  /** Pas tonen als alles binnen is, anders flitst een titel die je al beoordeelde nog even voorbij. */
+  const discoverReady = mounted && !authLoading && !shareLoading && (!user || (!libraryLoading && !personalLoading && !ownReactionsLoading));
 
   const seriesMeta = React.useMemo((): Record<string, SeriesMeta> => {
     const localMeta = mounted ? getLocalSeriesMeta() : {};
@@ -854,7 +943,8 @@ export function useFilmsLibrary() {
     partnerWatchlist,
     watchedIds,
     watchedSet,
-    discoverDismissedIds,
+    discoverExcludeIds,
+    discoverReady,
     seriesMeta,
     isInWatchlist,
     isWatched,

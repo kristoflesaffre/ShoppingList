@@ -66,12 +66,14 @@ export default function DiscoverCarouselPage() {
     markWatched,
     watchlist,
     watchedIds,
-    discoverDismissedIds,
+    discoverExcludeIds,
+    discoverReady,
     dismissDiscoverItem,
   } = useFilmsLibrary();
 
   const [items, setItems] = React.useState<DiscoverItem[]>([]);
-  const [listLoading, setListLoading] = React.useState(true);
+  const [listFetching, setListLoading] = React.useState(true);
+  const listLoading = listFetching || !discoverReady;
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [detail, setDetail] = React.useState<FilmDetail | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
@@ -115,16 +117,6 @@ export default function DiscoverCarouselPage() {
     if (prevPanelRef.current) prevPanelRef.current.style.transform = `translateX(${-w}px)`;
     if (nextPanelRef.current) nextPanelRef.current.style.transform = `translateX(${w}px)`;
   }, [listLoading]);
-
-  const discoverExcludeIds = React.useMemo(() => {
-    const ids = new Set<string>();
-    for (const item of watchlist) ids.add(item.id);
-    for (const id of watchedIds) {
-      if (id.startsWith("movie-") || id.startsWith("tv-")) ids.add(id);
-    }
-    for (const id of discoverDismissedIds) ids.add(id);
-    return ids;
-  }, [watchlist, watchedIds, discoverDismissedIds]);
 
   const discoverExcludeIdsRef = React.useRef(discoverExcludeIds);
   React.useEffect(() => {
