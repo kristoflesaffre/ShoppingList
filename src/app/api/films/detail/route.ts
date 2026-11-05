@@ -12,6 +12,20 @@ const tmdbHeaders = {
   "Content-Type": "application/json",
 };
 
+/** Nederlandse inhoud, anders de Engelse (of een andere) uit de vertalingen van TMDB. */
+function overviewWithFallback(data: Record<string, unknown>): string {
+  const nl = ((data.overview as string | undefined) ?? "").trim();
+  if (nl) return nl;
+  type Translation = { iso_639_1?: string; iso_3166_1?: string; data?: { overview?: string } };
+  const list = ((data.translations as { translations?: Translation[] } | undefined)?.translations ?? []).filter((t) => t.data?.overview?.trim());
+  const pick =
+    list.find((t) => t.iso_639_1 === "nl") ??
+    list.find((t) => t.iso_639_1 === "en" && t.iso_3166_1 === "US") ??
+    list.find((t) => t.iso_639_1 === "en") ??
+    list.find((t) => t.iso_639_1 === (data.original_language as string | undefined));
+  return pick?.data?.overview?.trim() ?? "";
+}
+
 export async function GET(request: NextRequest) {
   const type = request.nextUrl.searchParams.get("type") as "movie" | "tv" | null;
   const id = request.nextUrl.searchParams.get("id");
@@ -22,8 +36,8 @@ export async function GET(request: NextRequest) {
 
   const appendToResponse =
     type === "movie"
-      ? "videos,release_dates,external_ids"
-      : "videos,content_ratings,external_ids";
+      ? "videos,release_dates,external_ids,translations"
+      : "videos,content_ratings,external_ids,translations";
 
   // include_video_language=en: trailers zijn vrijwel altijd Engelstalig; nl-NL filtert ze anders weg
   // Credits apart ophalen met nl-NL zodat karakternamen gelokaliseerd zijn
@@ -166,7 +180,7 @@ export async function GET(request: NextRequest) {
     runtime,
     genres,
     seasons,
-    overview: (data.overview as string | undefined) ?? "",
+    overview: overviewWithFallback(data),
     posterUrl: data.poster_path ? `${TMDB_IMG_POSTER}${data.poster_path as string}` : null,
     backdropUrl: data.backdrop_path ? `${TMDB_IMG_BACKDROP}${data.backdrop_path as string}` : null,
     score,
