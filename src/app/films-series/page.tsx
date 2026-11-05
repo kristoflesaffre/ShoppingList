@@ -1336,18 +1336,6 @@ export default function FilmsSeriesPage() {
                 onDismiss={dismissTasteBanner}
               />
             ) : null}
-            {taste.recommendations.length > 0 ? (
-              <section className="flex flex-col gap-4 lg:gap-5">
-                <SectionHead title="Waarschijnlijk iets voor jou" href="/films-series/smaak" linkLabel="Jouw smaak" />
-                <div ref={tasteScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex items-start gap-3" style={{ width: "max-content" }}>
-                    {taste.recommendations.slice(0, 12).map((r) => (
-                      <TasteRecommendationTile key={r.series.id} recommendation={r} onOpen={() => handleViewDetail(`tv-${r.series.id}`)} />
-                    ))}
-                  </div>
-                </div>
-              </section>
-            ) : null}
 
             {/* Watchlist partner */}
             {hasPartnerItems && (
@@ -1579,6 +1567,20 @@ export default function FilmsSeriesPage() {
                 </div>
               </section>
             )}
+
+            {/* Waarschijnlijk iets voor jou — onderaan; de pil gaat naar «Jouw smaak» */}
+            {taste.recommendations.length > 0 ? (
+              <section className="flex flex-col gap-4 lg:gap-5">
+                <SectionHead title="Waarschijnlijk iets voor jou" href="/films-series/smaak" count={taste.recommendations.length} />
+                <div ref={tasteScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex items-start gap-3" style={{ width: "max-content" }}>
+                    {taste.recommendations.slice(0, 12).map((r) => (
+                      <TasteRecommendationTile key={r.series.id} recommendation={r} onOpen={() => handleViewDetail(`tv-${r.series.id}`)} />
+                    ))}
+                  </div>
+                </div>
+              </section>
+            ) : null}
           </div>
         )}
       </div>
