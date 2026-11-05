@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  TASTE_WALL_COLS,
+  TASTE_WALL_ROWS,
   autoLikedSeriesIds,
+  buildTasteWall,
   effectiveRatings,
   parseTasteMediaId,
   parseUnseenList,
@@ -127,5 +130,54 @@ describe("hulpjes", () => {
     const all = [series(1, { g: ["Misdaad"], c: ["Maker"] }), series(2, { g: ["Misdaad", "Drama"], c: ["Maker"] }), series(3, { g: ["Komedie"] })];
     const ratings = effectiveRatings(new Map<number, TasteLevel>([[1, "top"], [2, "good"], [3, "no"]]), new Set(), new Set());
     expect(tasteProfile(all, ratings)).toEqual({ genres: ["Misdaad", "Drama"], makers: ["Maker"] });
+  });
+});
+
+describe("buildTasteWall", () => {
+  const series = (id: number, level: TasteLevel, v = 1000 - id) =>
+    ({ id, n: `S${id}`, y: 2020, p: `/${id}.jpg`, r: 8, v, s: 1, l: "en", g: [], c: [], w: [], k: [], level, auto: false });
+  const covered = (tiles: ReturnType<typeof buildTasteWall>) => {
+    const cells = new Set<string>();
+    for (const t of tiles) {
+      for (let c = t.col; c < t.col + (t.big ? 2 : 1); c++) {
+        for (let r = t.row; r < t.row + (t.big ? 2 : 1); r++) {
+          expect(cells.has(`${c}:${r}`)).toBe(false);
+          cells.add(`${c}:${r}`);
+        }
+      }
+    }
+    return cells.size;
+  };
+
+  it("vult elk vak van de strook precies één keer", () => {
+    const rated = Array.from({ length: 200 }, (_, i) => series(i, i % 5 === 0 ? "top" : "no"));
+    expect(covered(buildTasteWall(rated))).toBe(TASTE_WALL_COLS * TASTE_WALL_ROWS);
+  });
+
+  it("hangt je beste series groot, de bekendste eerst", () => {
+    const rated = [...Array.from({ length: 60 }, (_, i) => series(i, "no")), series(100, "good", 9000), series(101, "top", 10), series(102, "top", 20), series(103, "great", 5)];
+    const big = buildTasteWall(rated).filter((t) => t.big);
+    expect(big.slice(0, 4).map((t) => t.series.id)).toEqual([102, 101, 103, 100]);
+    expect(big.every((t) => t.level !== "no")).toBe(true);
+  });
+
+  it("toont wat je goed vond ook tussen de kleine tegels", () => {
+    const rated = [...Array.from({ length: 30 }, (_, i) => series(i, "top")), ...Array.from({ length: 100 }, (_, i) => series(200 + i, "no"))];
+    const small = buildTasteWall(rated).filter((t) => !t.big);
+    expect(small.filter((t) => t.level === "top").length).toBeGreaterThan(15);
+    expect(small.filter((t) => t.level === "no").length).toBeGreaterThan(15);
+  });
+
+  it("herhaalt de reeks als er te weinig series zijn", () => {
+    const tiles = buildTasteWall([series(1, "top"), series(2, "no")]);
+    expect(covered(tiles)).toBe(TASTE_WALL_COLS * TASTE_WALL_ROWS);
+  });
+
+  it("toont de catalogus neutraal zonder oordelen, en niets zonder posters", () => {
+    const { level: _l, auto: _a, ...plain } = series(1, "no");
+    const tiles = buildTasteWall([], [plain]);
+    expect(tiles.every((t) => t.level === null)).toBe(true);
+    expect(buildTasteWall([], [])).toEqual([]);
+    expect(buildTasteWall([], [{ ...plain, p: null }])).toEqual([]);
   });
 });

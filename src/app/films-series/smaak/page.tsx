@@ -5,19 +5,23 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { PageBackButton } from "@/components/ui/page_back_button";
-import { headerRoundButtonClass } from "@/components/ui/header_round_button";
+import { headerGlassButtonClass } from "@/components/ui/header_round_button";
 import { RoundIcons } from "@/components/ui/round_icon_button";
 import { SearchBar } from "@/components/ui/search_bar";
 import { Shimmer } from "@/components/ui/shimmer";
 import { Poster } from "@/components/films/film_tiles";
-import { RatedSeriesTile, TasteRatingSheet, TasteRecommendationTile, TasteStars, type TasteSheetSeries } from "@/components/films/series_taste";
+import { RatedSeriesTile, TasteRatingSheet, TasteRecommendationTile, TasteStars, TasteWallBanner, type TasteSheetSeries } from "@/components/films/series_taste";
 import { useSeriesTaste } from "@/hooks/use_series_taste";
-import { MIN_LIKED_FOR_RECOMMENDATIONS, TASTE_LEVELS, tasteLabel, tastePosterUrl, tasteStars, type TasteLevel } from "@/lib/series-taste";
+import { MIN_LIKED_FOR_RECOMMENDATIONS, TASTE_LEVELS, buildTasteWall, tasteLabel, tastePosterUrl, tasteStars, type TasteLevel } from "@/lib/series-taste";
+import { setForcedDark } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 type SearchResult = { tmdbId: number; type: "movie" | "tv"; title: string; year: string; posterUrl: string | null };
 type Filter = "all" | TasteLevel;
 
 const nl = (n: number) => n.toLocaleString("nl-BE");
+
+const useBrowserLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
 
 /** Series zoeken bij TMDB (zelfde route als de zoekbalk op «Films & series»). */
 function useSeriesSearch(query: string) {
@@ -44,8 +48,9 @@ function useSeriesSearch(query: string) {
 }
 
 /**
- * «Jouw seriesmaak»: alle series die je goed vond (ook die vanzelf meetellen), wat je smaak daaruit
- * leert, en wat je waarschijnlijk ook goed zal vinden.
+ * «Jouw seriesmaak» (canvas «Smaak D · Alles aan de muur»): alle series die je beoordeelde als muur
+ * die traag voorbijschuift, wat je smaak daaruit leert, en wat je waarschijnlijk ook goed zal vinden.
+ * Altijd donker, ongeacht het gekozen thema. Met een filter gaat de rest weg en staan de series meteen onder de kop.
  */
 export default function SmaakPage() {
   const router = useRouter();
@@ -55,6 +60,10 @@ export default function SmaakPage() {
   const [query, setQuery] = React.useState("");
   const [sheet, setSheet] = React.useState<TasteSheetSeries | null>(null);
   const results = useSeriesSearch(query);
+  useBrowserLayoutEffect(() => {
+    setForcedDark(true);
+    return () => setForcedDark(false);
+  }, []);
   const searching = query.trim().length >= 2;
 
   const counts = React.useMemo(() => {
@@ -73,28 +82,79 @@ export default function SmaakPage() {
   const toGo = Math.max(0, catalogTotal - answeredInCatalog);
   const pct = catalogTotal > 0 ? (answeredInCatalog / catalogTotal) * 100 : 0;
   const likedCount = rated.length - counts.no;
+  const wall = React.useMemo(() => (loading ? [] : buildTasteWall(rated, catalog ?? [])), [loading, rated, catalog]);
+  const showOverview = !searching && filter === "all";
 
   const sheetRating = sheet ? ratings.get(sheet.id) : undefined;
   const closeSheet = () => setSheet(null);
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col">
-      <main className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-4 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+96px)] pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:gap-5 lg:pt-10">
-        <div className="flex h-11 items-center gap-2 lg:hidden">
-          <button type="button" aria-label="Terug naar films en series" onClick={() => router.push("/films-series")} className={headerRoundButtonClass}>
-            {RoundIcons.back}
-          </button>
-        </div>
-        <div className="flex items-center gap-3">
-          <PageBackButton href="/films-series" label="Terug naar films en series" className="hidden lg:inline-flex" />
-          <div className="min-w-0">
-            <h1 className="text-[30px] font-bold leading-9 tracking-tight text-[var(--text-primary)] lg:text-[32px]">Jouw seriesmaak</h1>
-            <p className="mt-0.5 text-sm text-[var(--text-secondary)]">Wat je goed vond, bepaalt wat de app je voorstelt. Series die je volgt of zag, tellen vanzelf mee.</p>
+      <TasteWallBanner tiles={wall} filter={filter} />
+      <div className="absolute inset-x-0 top-[calc(env(safe-area-inset-top,0px)+12px)] z-10 mx-auto w-full max-w-[1160px] px-4 lg:top-10">
+        <button type="button" aria-label="Terug naar films en series" onClick={() => router.push("/films-series")} className={cn(headerGlassButtonClass, "lg:hidden")}>
+          {RoundIcons.back}
+        </button>
+        <PageBackButton href="/films-series" label="Terug naar films en series" tone="glass" />
+      </div>
+
+      <main className="relative mx-auto flex w-full max-w-[1160px] flex-1 flex-col gap-8 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+96px)] pt-[252px] lg:gap-11 lg:pt-[398px]">
+        <header className="flex flex-col gap-4 lg:gap-5">
+          <div>
+            <h1 className="text-[38px] font-extrabold leading-[1.05] tracking-[-0.04em] text-[var(--text-primary)] lg:text-[72px] lg:leading-none">Jouw seriesmaak</h1>
+            <p className="mt-2 text-[14.5px] leading-5 text-[var(--text-secondary)] lg:mt-3 lg:text-[17px] lg:leading-6">
+              {loading
+                ? "\u00a0"
+                : rated.length > 0
+                  ? `${nl(rated.length)} ${rated.length === 1 ? "serie" : "series"} aan de muur. Hoe beter je ze vond, hoe groter en feller ze hangen.`
+                  : "Je muur is nog leeg. Wat je goed vindt, bepaalt wat de app je voorstelt."}
+            </p>
           </div>
-        </div>
+
+          {!taste.error && !loading && rated.length > 0 ? (
+            <FilterChipRow ariaLabel="Filter op oordeel">
+              <FilterChip selected={filter === "all"} onClick={() => setFilter("all")} count={rated.length}>
+                Alles
+              </FilterChip>
+              {TASTE_LEVELS.slice()
+                .reverse()
+                .map(({ level, label }) => (
+                  <FilterChip key={level} selected={filter === level} onClick={() => setFilter(level)} count={counts[level]}>
+                    {label}
+                  </FilterChip>
+                ))}
+            </FilterChipRow>
+          ) : null}
+
+          {!taste.error && !loading ? (
+            <section className="flex flex-col gap-3 rounded-[20px] bg-fixed-white/[0.07] p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] lg:flex-row lg:items-center lg:gap-5 lg:py-3.5 lg:pl-5 lg:pr-4">
+              <div className="min-w-0 lg:w-[340px] lg:shrink-0">
+                <p className="text-sm font-bold text-[var(--text-primary)]">{toGo > 0 ? `Nog ${nl(toGo)} van de ${nl(catalogTotal)} te overlopen` : `Je overliep alle ${nl(catalogTotal)} series`}</p>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-pill bg-fixed-white/10" aria-hidden>
+                  <div className="h-full rounded-pill bg-[var(--blue-500)]" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+              <SearchBar surface="glass" value={query} onValueChange={setQuery} placeholder="Serie zoeken om te beoordelen" aria-label="Serie zoeken om te beoordelen" className="min-w-0 lg:flex-1" />
+              {toGo > 0 || autoCount > 0 ? (
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                  {toGo > 0 ? (
+                    <Button size="md" onClick={() => router.push("/films-series/smaak/beoordelen")} className="w-full sm:w-auto sm:flex-1 lg:flex-none">
+                      Series beoordelen
+                    </Button>
+                  ) : null}
+                  {autoCount > 0 ? (
+                    <Button variant="secondary" size="md" onClick={() => router.push("/films-series/smaak/beoordelen?modus=automatisch")} className="w-full sm:w-auto sm:flex-1 lg:flex-none">
+                      {autoCount} automatisch verfijnen
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+        </header>
 
         {taste.error ? (
-          <div className="flex flex-col items-center gap-3 pt-16 text-center">
+          <div className="flex flex-col items-center gap-3 pt-10 text-center">
             <p className="text-[15px] text-[var(--text-secondary)]">De series konden niet geladen worden.</p>
             <Button variant="secondary" size="md" onClick={taste.retry}>
               Opnieuw proberen
@@ -102,7 +162,7 @@ export default function SmaakPage() {
           </div>
         ) : loading ? (
           <div className="flex flex-col gap-4">
-            <Shimmer className="h-[132px] rounded-[20px]" />
+            <Shimmer className="h-[72px] rounded-[20px]" />
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6 lg:gap-4">
               {Array.from({ length: 6 }, (_, i) => (
                 <Shimmer key={i} className="aspect-[2/3] rounded-[14px]" />
@@ -111,30 +171,6 @@ export default function SmaakPage() {
           </div>
         ) : (
           <>
-            <section className="flex flex-col gap-3 rounded-[20px] bg-[var(--white)] p-4 shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:flex-row lg:items-center lg:gap-6 lg:px-5">
-              <div className="min-w-0 flex-1">
-                <p className="text-[15px] font-bold text-[var(--text-primary)]">{toGo > 0 ? `Nog ${nl(toGo)} van de ${nl(catalogTotal)} series te overlopen` : `Je overliep alle ${nl(catalogTotal)} series`}</p>
-                <p className="mt-0.5 text-[13px] leading-[18px] text-[var(--text-secondary)]">IMDb 7,5 of hoger, gestart in de laatste 20 jaar. De bekendste komen eerst.</p>
-                <div className="mt-2.5 h-1.5 overflow-hidden rounded-pill bg-[var(--gray-100)]" aria-hidden>
-                  <div className="h-full rounded-pill bg-[var(--blue-500)]" style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-              <div className="flex shrink-0 flex-col gap-2 lg:flex-row">
-                {toGo > 0 ? (
-                  <Button size="md" onClick={() => router.push("/films-series/smaak/beoordelen")} className="w-full lg:w-auto">
-                    Series beoordelen
-                  </Button>
-                ) : null}
-                {autoCount > 0 ? (
-                  <Button variant="secondary" size="md" onClick={() => router.push("/films-series/smaak/beoordelen?modus=automatisch")} className="w-full lg:w-auto">
-                    {autoCount} automatische verfijnen
-                  </Button>
-                ) : null}
-              </div>
-            </section>
-
-            <SearchBar surface="app" value={query} onValueChange={setQuery} placeholder="Serie zoeken om te beoordelen" aria-label="Serie zoeken om te beoordelen" />
-
             {searching ? (
               <section aria-label="Zoekresultaten" className="overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
                 {results === null ? (
@@ -179,56 +215,47 @@ export default function SmaakPage() {
               </section>
             ) : null}
 
-            {!searching && recommendations.length > 0 ? (
-              <section aria-label="Waarschijnlijk iets voor jou" className="flex flex-col gap-3">
-                <h2 className="text-lg font-bold text-[var(--text-primary)]">Waarschijnlijk iets voor jou</h2>
-                <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex items-start gap-3" style={{ width: "max-content" }}>
+            {showOverview && recommendations.length > 0 ? (
+              <section aria-label="Waarschijnlijk iets voor jou" className="flex flex-col gap-3 lg:gap-4">
+                <h2 className="text-lg font-bold text-[var(--text-primary)] lg:text-[21px]">Waarschijnlijk iets voor jou</h2>
+                <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex items-start gap-3 lg:gap-[19px]" style={{ width: "max-content" }}>
                     {recommendations.map((r) => (
-                      <TasteRecommendationTile key={r.series.id} recommendation={r} onOpen={() => router.push(`/films-series/tv-${r.series.id}`)} />
+                      <TasteRecommendationTile key={r.series.id} recommendation={r} className="w-[132px] lg:w-[172px]" onOpen={() => router.push(`/films-series/tv-${r.series.id}`)} />
                     ))}
                   </div>
                 </div>
               </section>
-            ) : !searching && likedCount < MIN_LIKED_FOR_RECOMMENDATIONS ? (
-              <p className="rounded-[20px] bg-[var(--white)] p-4 text-[14px] leading-5 text-[var(--text-secondary)] shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+            ) : showOverview && likedCount < MIN_LIKED_FOR_RECOMMENDATIONS ? (
+              <p className="rounded-[20px] bg-fixed-white/[0.07] p-4 text-[14px] leading-5 text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]">
                 Nog {MIN_LIKED_FOR_RECOMMENDATIONS - likedCount} goede {MIN_LIKED_FOR_RECOMMENDATIONS - likedCount === 1 ? "serie" : "series"} en je krijgt hier je eerste voorstellen.
               </p>
             ) : null}
 
-            {!searching && (profile.genres.length > 0 || profile.makers.length > 0) ? (
-              <section aria-label="Wat je smaak zegt" className="flex flex-col gap-2 rounded-[20px] bg-[image:var(--gradient-store-default)] p-4 lg:px-5">
-                <p className="text-[11.5px] font-extrabold tracking-[0.06em] text-[var(--blue-500)]">JE SMAAK TOT NU TOE</p>
-                {profile.genres.length > 0 ? <p className="text-[15px] font-bold leading-[21px] text-[var(--text-primary)]">{profile.genres.join(" · ")}</p> : null}
-                {profile.makers.length > 0 ? <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">Vaak van {profile.makers.join(", ")}</p> : null}
+            {showOverview && (profile.genres.length > 0 || profile.makers.length > 0) ? (
+              <section aria-label="Wat je smaak zegt" className="flex flex-col gap-2 rounded-[20px] bg-fixed-white/[0.07] p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] lg:flex-row lg:items-center lg:gap-7 lg:px-6 lg:py-[22px]">
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[var(--cinema-rose)] lg:w-[150px] lg:shrink-0 lg:leading-[17px]">Je smaak tot nu toe</p>
+                {profile.genres.length > 0 ? (
+                  <p className="text-[22px] font-extrabold leading-7 tracking-[-0.025em] text-[var(--text-primary)] lg:shrink-0 lg:text-[28px] lg:leading-9">
+                    {profile.genres[0]}
+                    {profile.genres.length > 1 ? <span className="text-[var(--text-tertiary)]"> · {profile.genres.slice(1).join(" · ")}</span> : null}
+                  </p>
+                ) : null}
+                {profile.makers.length > 0 ? <p className="text-[13.5px] leading-5 text-[var(--text-secondary)] lg:ml-auto lg:max-w-[400px] lg:text-right lg:text-sm">Vaak van {profile.makers.join(", ")}</p> : null}
               </section>
             ) : null}
 
             {!searching ? (
-              <section aria-label="Beoordeelde series" className="flex flex-col gap-3">
-                <h2 className="text-lg font-bold text-[var(--text-primary)]">
-                  {nl(rated.length)} {rated.length === 1 ? "serie" : "series"} beoordeeld
+              <section aria-label="Beoordeelde series" className="flex flex-col gap-3 lg:gap-4">
+                <h2 className="text-lg font-bold text-[var(--text-primary)] lg:text-[21px]">
+                  {filter === "all" ? `${nl(rated.length)} ${rated.length === 1 ? "serie" : "series"} beoordeeld` : `${tasteLabel(filter)} · ${nl(visible.length)}`}
                 </h2>
-                {rated.length > 0 ? (
-                  <FilterChipRow ariaLabel="Filter op oordeel">
-                    <FilterChip selected={filter === "all"} onClick={() => setFilter("all")} count={rated.length}>
-                      Alles
-                    </FilterChip>
-                    {TASTE_LEVELS.slice()
-                      .reverse()
-                      .map(({ level, label }) => (
-                        <FilterChip key={level} selected={filter === level} onClick={() => setFilter(level)} count={counts[level]}>
-                          {label}
-                        </FilterChip>
-                      ))}
-                  </FilterChipRow>
-                ) : null}
                 {rated.length === 0 ? (
                   <p className="text-[14.5px] text-[var(--text-secondary)]">Nog niets beoordeeld. Begin met de bekendste series, of zoek er een hierboven.</p>
                 ) : visible.length === 0 ? (
                   <p className="text-[14.5px] text-[var(--text-secondary)]">Geen series met dit oordeel.</p>
                 ) : (
-                  <div className="grid grid-cols-3 gap-x-3 gap-y-4 sm:grid-cols-4 lg:grid-cols-6 lg:gap-x-4">
+                  <div className="grid grid-cols-3 gap-x-3 gap-y-4 sm:grid-cols-4 lg:grid-cols-6 lg:gap-x-[19px]">
                     {visible.map((s) => (
                       <RatedSeriesTile
                         key={s.id}

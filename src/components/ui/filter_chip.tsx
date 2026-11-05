@@ -36,7 +36,7 @@ export function FilterChip({
       className={cn(
         "inline-flex h-[30px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill px-[11px] text-[12.5px] font-semibold transition-[background-color,color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-1",
         selected
-          ? "bg-[var(--blue-500)] text-fixed-white"
+          ? "bg-[var(--blue-500)] text-[var(--action-primary-foreground)]"
           : surface === "onColor"
             ? "bg-[var(--white)] text-[var(--text-secondary)] shadow-card [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
             : "bg-[var(--gray-50)] text-[var(--text-secondary)] [@media(hover:hover)]:hover:bg-[var(--gray-100)]",

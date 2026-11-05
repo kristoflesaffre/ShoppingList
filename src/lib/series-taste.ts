@@ -67,6 +67,8 @@ export type TasteSeries = {
 };
 
 export const tastePosterUrl = (s: Pick<TasteSeries, "p">) => (s.p ? `https://image.tmdb.org/t/p/w342${s.p}` : null);
+/** Kleinere poster voor de kleine tegels op de muur. */
+export const tasteSmallPosterUrl = (s: Pick<TasteSeries, "p">) => (s.p ? `https://image.tmdb.org/t/p/w185${s.p}` : null);
 
 /** Een TMDB-serie (detail met `append_to_response=keywords`) in de vorm van de catalogus. */
 export function tasteSeriesFromTmdb(d: Record<string, unknown>): TasteSeries | null {
@@ -275,4 +277,91 @@ export function tasteProfile(
       .slice(0, count)
       .map(([key]) => key);
   return { genres: top(genres, 1, 5), makers: top(makers, 2, 4) };
+}
+
+/** Eén poster op de muur van «Jouw seriesmaak». `level` is leeg zolang je niets beoordeelde. */
+export type TasteWallTile = {
+  key: string;
+  series: TasteSeries;
+  level: TasteLevel | null;
+  big: boolean;
+  col: number;
+  row: number;
+};
+
+export const TASTE_WALL_COLS = 30;
+export const TASTE_WALL_ROWS = 3;
+/** Plek (kolom, rij) van de grote tegels (2×2): om en om bovenaan en onderaan, gelijk verdeeld over de strook. */
+const TASTE_WALL_BIG: readonly (readonly [number, number])[] = [
+  [2, 0],
+  [7, 1],
+  [12, 0],
+  [17, 1],
+  [22, 0],
+  [27, 1],
+];
+
+const byVotes = <T extends Pick<TasteSeries, "v">>(a: T, b: T) => b.v - a.v;
+
+/**
+ * Vult de strook van 30 × 3 vakken: je beste series groot, daartussen om en om wat je goed vond en
+ * wat je niet goed vond, de bekendste eerst. Is er te weinig, dan begint de reeks opnieuw. Zonder
+ * oordelen hangt `fallback` (de catalogus) er neutraal: een lege muur die zich nog moet vullen.
+ */
+export function buildTasteWall(rated: readonly (TasteSeries & { level: TasteLevel })[], fallback: readonly TasteSeries[] = []): TasteWallTile[] {
+  const withPoster = rated.filter((s) => s.p);
+  const entries: { series: TasteSeries; level: TasteLevel | null }[] = withPoster.map((s) => ({ series: s, level: s.level }));
+  if (entries.length === 0) {
+    fallback
+      .filter((s) => s.p)
+      .slice()
+      .sort(byVotes)
+      .slice(0, 72)
+      .forEach((series) => entries.push({ series, level: null }));
+  }
+  if (entries.length === 0) return [];
+
+  const queue = (level: TasteLevel | null) =>
+    entries
+      .filter((e) => e.level === level)
+      .sort((a, b) => byVotes(a.series, b.series));
+  const liked = [queue("top"), queue("great"), queue("good")];
+  const rest = [...queue("no"), ...queue(null)];
+  const bigPool = liked.flat();
+
+  const taken = new Set<number>();
+  const tiles: TasteWallTile[] = [];
+  const occupied = new Set<string>();
+  TASTE_WALL_BIG.forEach(([col, row], i) => {
+    const entry = bigPool.length > 0 ? bigPool[i % bigPool.length] : rest[i % rest.length];
+    taken.add(entry.series.id);
+    tiles.push({ key: `big-${col}`, ...entry, big: true, col, row });
+    for (const c of [col, col + 1]) for (const r of [row, row + 1]) occupied.add(`${c}:${r}`);
+  });
+
+  const likedQueues = liked.map((q) => q.filter((e) => !taken.has(e.series.id)));
+  const restQueue = rest.filter((e) => !taken.has(e.series.id));
+  let turn = 0;
+  let level = 0;
+  /** Volgende uit wat je goed vond, om en om per oordeel; `null` als die op zijn. */
+  const nextLiked = () => {
+    for (let i = 0; i < likedQueues.length; i++) {
+      const q = likedQueues[(level + i) % likedQueues.length];
+      if (q.length > 0) {
+        level = (level + i + 1) % likedQueues.length;
+        return q.shift()!;
+      }
+    }
+    return null;
+  };
+  let repeat = 0;
+  for (let col = 0; col < TASTE_WALL_COLS; col++) {
+    for (let row = 0; row < TASTE_WALL_ROWS; row++) {
+      if (occupied.has(`${col}:${row}`)) continue;
+      const preferLiked = turn++ % 3 === 0;
+      const entry = (preferLiked ? (nextLiked() ?? restQueue.shift()) : (restQueue.shift() ?? nextLiked())) ?? entries[repeat++ % entries.length];
+      tiles.push({ key: `${col}-${row}`, ...entry, big: false, col, row });
+    }
+  }
+  return tiles;
 }

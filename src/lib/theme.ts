@@ -31,9 +31,9 @@ export function resolveTheme(pref: ThemePreference): ResolvedTheme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-/** Pagina die altijd donker is, ongeacht de voorkeur (Films & series, zie `useForcedDarkPage`). */
-const ALWAYS_DARK_PATH = "/films-series";
-let forcedDark = typeof window !== "undefined" && window.location.pathname === ALWAYS_DARK_PATH;
+/** Pagina's die altijd donker zijn, ongeacht de voorkeur (`CinemaHero`, «Jouw seriesmaak»). */
+const ALWAYS_DARK_PATHS = ["/films-series", "/films-series/smaak"];
+let forcedDark = typeof window !== "undefined" && ALWAYS_DARK_PATHS.includes(window.location.pathname);
 
 /** Zet de pagina donker op `--cinema-screen` tot `setForcedDark(false)`; de voorkeur blijft ongemoeid. */
 export function setForcedDark(on: boolean) {
@@ -65,4 +65,4 @@ export function setThemePreference(pref: ThemePreference): void {
 }
 
 /** Inline in `<head>`: voorkomt een lichte flits bij donker thema. Houd synchroon met `applyTheme`. */
-export const THEME_INIT_SCRIPT = `(function(){try{var p=localStorage.getItem("${THEME_STORAGE_KEY}");var f=location.pathname==="${ALWAYS_DARK_PATH}";var d=f||p==="dark"||(p==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";if(f)document.documentElement.style.setProperty("--bg-app","var(--cinema-screen)");}catch(e){document.documentElement.dataset.theme="light";}})();`;
+export const THEME_INIT_SCRIPT = `(function(){try{var p=localStorage.getItem("${THEME_STORAGE_KEY}");var f=${JSON.stringify(ALWAYS_DARK_PATHS)}.indexOf(location.pathname)>=0;var d=f||p==="dark"||(p==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";if(f)document.documentElement.style.setProperty("--bg-app","var(--cinema-screen)");}catch(e){document.documentElement.dataset.theme="light";}})();`;

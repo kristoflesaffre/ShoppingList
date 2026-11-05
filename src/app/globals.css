@@ -233,6 +233,30 @@ body::after {
   animation: none;
 }
 
+/* Muur van «Jouw seriesmaak»: twee keer dezelfde strook, die traag naar links schuift en naadloos doorloopt. */
+@keyframes taste-wall-slide {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+.taste-wall-track {
+  animation: taste-wall-slide 180s linear infinite;
+  will-change: transform;
+}
+@media (hover: hover) {
+  .taste-wall:hover .taste-wall-track {
+    animation-play-state: paused;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .taste-wall-track {
+    animation: none;
+  }
+}
+:root[data-aod] .taste-wall-track {
+  animation: none;
+}
+
 /*
  * Always-on-scherm (tablet-dashboard, zie `src/lib/use_always_on.ts`). Alles hieronder is pure CSS-
  * animatie: die draait in de compositor, los van JavaScript-timers, en blijft dus lopen (faalveilig).

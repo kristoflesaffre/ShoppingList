@@ -7,7 +7,7 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Poster } from "@/components/films/film_tiles";
 import { PosterFan } from "@/components/films/series_follow";
 import { useSeriesTaste } from "@/hooks/use_series_taste";
-import { TASTE_LEVELS, tasteLabel, tastePosterUrl, tasteStars, type TasteLevel, type TasteRating, type TasteRecommendation, type TasteSeries } from "@/lib/series-taste";
+import { TASTE_LEVELS, TASTE_WALL_COLS, TASTE_WALL_ROWS, tasteLabel, tastePosterUrl, tasteSmallPosterUrl, tasteStars, type TasteLevel, type TasteRating, type TasteRecommendation, type TasteSeries, type TasteWallTile } from "@/lib/series-taste";
 
 const STAR_PATH = "M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z";
 
@@ -189,6 +189,69 @@ export function TasteRecommendationTile({ recommendation, onOpen, className }: {
         <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-[var(--text-secondary)]">Lijkt op {because.map((b) => b.n).join(" en ")}</p>
       ) : null}
     </button>
+  );
+}
+
+function wallTileClass(level: TasteLevel | null, filter: TasteLevel | "all") {
+  if (filter !== "all") return level === filter ? "" : "brightness-[0.34] grayscale";
+  if (level === "top" || level === "great") return "";
+  if (level === "good") return "brightness-[0.72] saturate-[0.9]";
+  return "brightness-[0.34] grayscale";
+}
+
+function TasteWallStrip({ tiles, filter }: { tiles: readonly TasteWallTile[]; filter: TasteLevel | "all" }) {
+  return (
+    <div
+      className="grid shrink-0"
+      style={{
+        gridTemplateColumns: `repeat(${TASTE_WALL_COLS}, var(--wall-cell-w))`,
+        gridTemplateRows: `repeat(${TASTE_WALL_ROWS}, var(--wall-cell-h))`,
+      }}
+    >
+      {tiles.map((t) => (
+        <div
+          key={t.key}
+          className="p-[3px]"
+          style={{ gridColumn: `${t.col + 1} / span ${t.big ? 2 : 1}`, gridRow: `${t.row + 1} / span ${t.big ? 2 : 1}` }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={(t.big ? tastePosterUrl(t.series) : tasteSmallPosterUrl(t.series)) ?? undefined}
+            alt=""
+            decoding="async"
+            draggable={false}
+            className={cn(
+              "size-full object-cover transition-[filter] duration-300",
+              t.big ? "rounded-[10px] lg:rounded-[12px]" : "rounded-[6px] lg:rounded-[7px]",
+              wallTileClass(t.level, filter),
+            )}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Canvas «Smaak D · Alles aan de muur»: strook van 30 × 3 posters over de volle breedte die traag
+ * van rechts naar links schuift. Hoe beter je een serie vond, hoe groter en feller ze hangt; wat je
+ * niet goed vond, zakt grijs weg. Met een filter lichten enkel de series met dat oordeel op.
+ * Staat stil bij «verminderde beweging» en pauzeert onder de muis.
+ */
+export function TasteWallBanner({ tiles, filter, className }: { tiles: readonly TasteWallTile[]; filter: TasteLevel | "all"; className?: string }) {
+  return (
+    <div aria-hidden className={cn("taste-wall absolute inset-x-0 top-0 h-[288px] overflow-hidden [--wall-cell-h:96px] [--wall-cell-w:64px] lg:h-[432px] lg:[--wall-cell-h:144px] lg:[--wall-cell-w:96px]", className)}>
+      {tiles.length > 0 ? (
+        <div className="taste-wall-track flex w-max">
+          <TasteWallStrip tiles={tiles} filter={filter} />
+          <TasteWallStrip tiles={tiles} filter={filter} />
+        </div>
+      ) : null}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "linear-gradient(180deg, color-mix(in srgb, var(--bg-app) 46%, transparent) 0%, transparent 20%, transparent 58%, var(--bg-app) 98%)" }}
+      />
+    </div>
   );
 }
 
