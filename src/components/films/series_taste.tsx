@@ -289,52 +289,36 @@ export function SeriesTasteBanner({ posters, onStart, onDismiss }: { posters: st
 export type TasteSheetSeries = { id: number; title: string; year: string; posterUrl: string | null };
 
 /**
- * «Je smaak tot nu toe»: genres als balkjes met het deel van je goede series, makers met hun aantal.
- * Gsm onder elkaar; desktop drie kolommen (uitleg · genres · makers).
+ * «Je smaak tot nu toe» (voorstel A · Woordwolk): alle genres die je goed vindt als pillen, groter naarmate ze
+ * vaker terugkomen. Geen cijfers.
  */
 export function TasteProfileCard({ profile }: { profile: TasteProfile }) {
   return (
     <section
       aria-label="Je smaak tot nu toe"
-      className="grid gap-4 rounded-[20px] bg-fixed-white/[0.07] p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] lg:grid-cols-[200px_minmax(0,1fr)_240px] lg:gap-8 lg:px-6 lg:py-5"
+      className="flex flex-col gap-3 rounded-[20px] bg-fixed-white/[0.07] p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] lg:px-6 lg:py-5"
     >
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-0.5">
         <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[var(--cinema-rose)]">Je smaak tot nu toe</p>
-        <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
-          Op basis van {profile.basis} {profile.basis === 1 ? "serie" : "series"} die je goed vond
-        </p>
+        <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">Genres die je goed vindt</p>
       </div>
-      {profile.genres.length > 0 ? (
-        <ul className="m-0 grid list-none gap-x-6 gap-y-3 pl-0 sm:grid-cols-2" aria-label="Genres">
-          {profile.genres.map((g) => {
-            const pct = Math.round(g.share * 100);
-            return (
-              <li key={g.name} className="flex min-w-0 flex-col gap-1.5">
-                <span className="flex items-baseline justify-between gap-3">
-                  <span className="truncate text-[15px] font-bold text-[var(--text-primary)]">{g.name}</span>
-                  <span className="shrink-0 text-[13px] font-semibold tabular-nums text-[var(--text-secondary)]">{pct}%</span>
-                </span>
-                <span aria-hidden className="block h-1.5 overflow-hidden rounded-pill bg-fixed-white/[0.1]">
-                  <span className="block h-full rounded-pill bg-[var(--cinema-rose)]" style={{ width: `${Math.max(4, pct)}%` }} />
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
-      {profile.makers.length > 0 ? (
-        <div className="flex flex-col gap-1.5 lg:border-l lg:border-fixed-white/[0.1] lg:pl-6">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Vaak van</p>
-          <ul className="m-0 flex list-none flex-col gap-1 pl-0">
-            {profile.makers.map((m) => (
-              <li key={m.name} className="flex items-baseline justify-between gap-3 text-[14px]">
-                <span className="truncate font-semibold text-[var(--text-primary)]">{m.name}</span>
-                <span className="shrink-0 text-[12.5px] tabular-nums text-[var(--text-tertiary)]">{m.count} series</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      <ul className="m-0 flex list-none flex-wrap items-center gap-2 pl-0">
+        {profile.genres.map((g) => (
+          <li
+            key={g.name}
+            className={cn(
+              "rounded-pill font-bold text-[var(--text-primary)]",
+              g.size === "lg"
+                ? "bg-[color:color-mix(in_srgb,var(--cinema-rose)_16%,transparent)] px-4 py-2 text-[18px] shadow-[inset_0_0_0_1px_rgba(242,184,194,0.35)] lg:text-[21px]"
+                : "bg-fixed-white/[0.09] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]",
+              g.size === "md" && "px-3.5 py-1.5 text-[15.5px] lg:text-[17px]",
+              g.size === "sm" && "px-3 py-1 text-[13.5px] lg:text-[14.5px]",
+            )}
+          >
+            {g.name}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

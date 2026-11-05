@@ -126,37 +126,32 @@ describe("hulpjes", () => {
     expect(tasteSeriesFromTmdb({ id: 2 })).toBeNull();
   });
 
-  it("vat je smaak samen op wat je goed vond, gewogen naar je oordeel", () => {
+  it("toont alle genres die je goed vindt, groter naarmate ze vaker terugkomen", () => {
     const all = [
-      series(1, { g: ["Misdaad", "Drama"], c: ["Maker"] }),
-      series(2, { g: ["Sci-Fi & Fantasy", "Drama"], c: ["Maker"] }),
-      series(3, { g: ["Sci-Fi & Fantasy"] }),
-      series(4, { g: ["Misdaad"] }),
-      series(5, { g: ["Western"], c: ["Iemand"] }),
+      ...[1, 2, 3, 4].map((id) => series(id, { g: ["Drama", "Sci-Fi & Fantasy"] })),
+      series(5, { g: ["Drama", "Misdaad"] }),
+      series(6, { g: ["Misdaad", "Komedie"] }),
+      series(7, { g: ["Western"] }),
+      ...[8, 9, 10].map((id) => series(id, { g: ["Komedie", "Drama"] })),
     ];
-    const ratings = effectiveRatings(new Map<number, TasteLevel>([[1, "top"], [2, "good"], [3, "great"], [4, "good"], [5, "no"]]), new Set(), new Set());
+    const ratings = effectiveRatings(
+      new Map<number, TasteLevel>([[1, "top"], [2, "good"], [3, "good"], [4, "good"], [5, "good"], [6, "good"], [7, "good"], [8, "no"], [9, "no"], [10, "no"]]),
+      new Set(),
+      new Set(),
+    );
     expect(tasteProfile(all, ratings)).toEqual({
-      basis: 4,
       genres: [
-        { name: "Misdaad", share: 0.6 },
-        { name: "Drama", share: 0.6 },
-        { name: "Sci-Fi & Fantasy", share: 0.4 },
+        { name: "Drama", size: "lg" },
+        { name: "Sci-Fi & Fantasy", size: "lg" },
+        { name: "Misdaad", size: "sm" },
       ],
-      makers: [{ name: "Maker", count: 2 }],
     });
   });
 
-  it("«niet goed» drukt een veelvoorkomend genre niet weg", () => {
-    const all = [series(1, { g: ["Drama", "Sci-Fi & Fantasy"] }), series(2, { g: ["Drama", "Sci-Fi & Fantasy"] }), ...[3, 4, 5].map((id) => series(id, { g: ["Drama"] }))];
-    const ratings = effectiveRatings(new Map<number, TasteLevel>([[1, "good"], [2, "good"], [3, "no"], [4, "no"], [5, "no"]]), new Set(), new Set());
-    expect(tasteProfile(all, ratings).genres.map((g) => g.name)).toEqual(["Drama", "Sci-Fi & Fantasy"]);
-  });
-
-  it("laat genres weg die niet vaker voorkomen dan in de catalogus, als er genoeg overblijven", () => {
-    const liked = [1, 2, 3, 4].map((id) => series(id, { g: id <= 2 ? ["Drama", "Sci-Fi & Fantasy", "Misdaad"] : id === 3 ? ["Drama", "Komedie", "Misdaad"] : ["Komedie", "Misdaad"] }));
-    const ratings = effectiveRatings(new Map<number, TasteLevel>(liked.map((s) => [s.id, "good"])), new Set(), new Set());
-    const catalog = [series(10, { g: ["Drama"] }), series(11, { g: ["Drama"] })];
-    expect(tasteProfile(liked, ratings, catalog).genres.map((g) => g.name)).toEqual(["Misdaad", "Sci-Fi & Fantasy", "Komedie"]);
+  it("telt vanaf één serie zolang je er nog maar een paar goed vond", () => {
+    const all = [series(1, { g: ["Western"] }), series(2, { g: ["Drama"] })];
+    const ratings = effectiveRatings(new Map<number, TasteLevel>([[1, "good"], [2, "great"]]), new Set(), new Set());
+    expect(tasteProfile(all, ratings).genres.map((g) => g.name)).toEqual(["Drama", "Western"]);
   });
 });
 

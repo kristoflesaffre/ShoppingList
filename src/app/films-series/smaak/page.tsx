@@ -246,7 +246,7 @@ export default function SmaakPage() {
               </p>
             ) : null}
 
-            {showOverview && (profile.genres.length > 0 || profile.makers.length > 0) ? <TasteProfileCard profile={profile} /> : null}
+            {showOverview && profile.genres.length > 0 ? <TasteProfileCard profile={profile} /> : null}
 
             {!searching ? (
               <section aria-label="Beoordeelde series" className="flex flex-col gap-3 lg:gap-4">
