@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linkPreviewFetchUrl } from "./link-preview-url";
+import { isBlockedPage, linkPreviewFetchUrl } from "./link-preview-url";
 
 const fetchUrl = (raw: string) => linkPreviewFetchUrl(new URL(raw)).toString();
 
@@ -19,5 +19,20 @@ describe("linkPreviewFetchUrl", () => {
   it("laat andere winkels ongemoeid", () => {
     expect(fetchUrl("https://www.bol.com/-/en/product/1")).toBe("https://www.bol.com/-/en/product/1");
     expect(fetchUrl("https://notamazon.nl/-/en/dp/1")).toBe("https://notamazon.nl/-/en/dp/1");
+  });
+});
+
+describe("isBlockedPage", () => {
+  it("herkent een weigerpagina met status 200", () => {
+    expect(isBlockedPage("<html><head><title>Server Busy</title></head></html>")).toBe(true);
+    expect(isBlockedPage("<title>Robot Check</title>")).toBe(true);
+    expect(isBlockedPage('<title>Amazon.nl</title><form action="/errors/validateCaptcha">')).toBe(true);
+    expect(isBlockedPage("<title>Just a moment...</title>")).toBe(true);
+  });
+
+  it("laat productpagina's door, ook met zo'n woord verderop in de titel", () => {
+    expect(isBlockedPage("<title>Vloeibare levensmiddelenkleurstof - 24 kleuren</title>")).toBe(false);
+    expect(isBlockedPage("<title>Mijn server busy-mok</title>")).toBe(false);
+    expect(isBlockedPage("<p>geen titel</p>")).toBe(false);
   });
 });

@@ -11,3 +11,14 @@ export function linkPreviewFetchUrl(url: URL): URL {
   out.pathname = pathname || "/";
   return out;
 }
+
+const BLOCKED_TITLE = /^\s*(server busy|robot check|access denied|just a moment|attention required|are you a robot|pardon our interruption|toegang geweigerd)\b/i;
+
+/**
+ * Een winkel die de server weigert, antwoordt soms met een gewone pagina (status 200) in plaats van
+ * een foutcode: bij Amazon «Server Busy» of een captcha. Dat is geen product, en vaak lukt het even later wel.
+ */
+export function isBlockedPage(html: string): boolean {
+  const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? "";
+  return BLOCKED_TITLE.test(title) || /\/errors\/validateCaptcha/i.test(html);
+}

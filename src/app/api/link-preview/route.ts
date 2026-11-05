@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import { linkPreviewFetchUrl } from "@/lib/link-preview-url";
+import { isBlockedPage, linkPreviewFetchUrl } from "@/lib/link-preview-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +21,9 @@ export type LinkPreview = {
 };
 
 const MAX_BYTES = 3_000_000;
+const RETRY_DELAYS_MS = [400, 900, 1600];
+/** Na zoveel tijd geen nieuwe poging meer. */
+const MAX_RETRY_MS = 6_000;
 
 function isPrivateAddress(ip: string): boolean {
   if (isIP(ip) === 6) {
@@ -233,6 +236,31 @@ async function readLimited(res: Response): Promise<string> {
   return new TextDecoder("utf-8").decode(Buffer.concat(chunks));
 }
 
+/** Haalt de pagina op. `html` is leeg als de winkel weigert; `retry` zegt of een nieuwe poging zin heeft. */
+async function fetchPage(target: URL): Promise<{ url: URL; html: string | null; retry: boolean }> {
+  // Omleidingen zelf volgen, zodat elke tussenstap ook een publiek adres moet zijn.
+  let url = target;
+  let res: Response | null = null;
+  for (let hop = 0; hop < 5; hop++) {
+    res = await fetch(linkPreviewFetchUrl(url), {
+      redirect: "manual",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.6",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    const loc = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
+    if (!loc) break;
+    url = await assertPublicUrl(new URL(loc, linkPreviewFetchUrl(url)).toString());
+  }
+  if (!res) return { url, html: null, retry: false };
+  if (!res.ok) return { url, html: null, retry: res.status === 429 || res.status === 503 };
+  const html = await readLimited(res);
+  return { url, html, retry: isBlockedPage(html) };
+}
+
 export async function POST(req: Request) {
   let target: URL;
   try {
@@ -245,26 +273,17 @@ export async function POST(req: Request) {
 
   const fallback: LinkPreview = { url: target.toString(), store: target.hostname.replace(/^www\./, ""), title: null, image: null, price: null };
   try {
-    // Omleidingen zelf volgen, zodat elke tussenstap ook een publiek adres moet zijn.
-    let url = target;
-    let res: Response | null = null;
-    for (let hop = 0; hop < 5; hop++) {
-      res = await fetch(linkPreviewFetchUrl(url), {
-        redirect: "manual",
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36",
-          Accept: "text/html,application/xhtml+xml",
-          "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.6",
-        },
-        signal: AbortSignal.timeout(10_000),
-      });
-      const loc = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
-      if (!loc) break;
-      url = await assertPublicUrl(new URL(loc, linkPreviewFetchUrl(url)).toString());
+    // Een winkel die weigert, laat het een poging later vaak wel toe. Binnen de tijd die een bezoeker wil wachten.
+    const started = Date.now();
+    let lastUrl = target;
+    for (let attempt = 0; attempt < RETRY_DELAYS_MS.length + 1; attempt++) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt - 1]));
+      const page = await fetchPage(target);
+      lastUrl = page.url;
+      if (page.html != null && !isBlockedPage(page.html)) return NextResponse.json(parsePreview(page.html, page.url));
+      if (!page.retry || Date.now() - started > MAX_RETRY_MS) break;
     }
-    if (!res || !res.ok) return NextResponse.json({ ...fallback, url: url.toString(), blocked: true });
-    const html = await readLimited(res);
-    return NextResponse.json(parsePreview(html, url));
+    return NextResponse.json({ ...fallback, url: lastUrl.toString(), blocked: true });
   } catch {
     return NextResponse.json({ ...fallback, blocked: true });
   }
