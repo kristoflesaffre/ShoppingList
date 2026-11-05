@@ -3,13 +3,16 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ActionPill, FilmIcons } from "@/components/films/film_detail_ui";
 import { PageBackButton } from "@/components/ui/page_back_button";
-import { headerRoundButtonClass } from "@/components/ui/header_round_button";
+import { headerGlassButtonClass } from "@/components/ui/header_round_button";
 import { RoundIcons } from "@/components/ui/round_icon_button";
 import { Shimmer } from "@/components/ui/shimmer";
 import { PosterFan } from "@/components/films/series_follow";
 import { SeriesTasteCard, TasteActionBar } from "@/components/films/series_taste";
 import { useSeriesTaste } from "@/hooks/use_series_taste";
+import { useFilmsLibrary } from "@/hooks/use_films_library";
+import { setForcedDark } from "@/lib/theme";
 import { fetchFilmDetail } from "@/lib/film-detail-client";
 import { tastePosterUrl, type TasteLevel, type TasteSeries } from "@/lib/series-taste";
 
@@ -22,21 +25,48 @@ const UNDO = (
   </svg>
 );
 
-/** Waar de serie over gaat; `undefined` zolang het laadt, `null` als er niets is. */
-function useOverview(id: number | undefined) {
-  const [loaded, setLoaded] = React.useState<{ id: number; overview: string | null } | null>(null);
+const useBrowserLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+
+type SeriesExtra = { overview: string | null; backdropUrl: string | null };
+
+/** Waar de serie over gaat + het sfeerbeeld; `undefined` zolang het laadt. */
+function useSeriesExtra(id: number | undefined) {
+  const [loaded, setLoaded] = React.useState<({ id: number } & SeriesExtra) | null>(null);
   React.useEffect(() => {
     if (!id) return;
     let active = true;
-    fetchFilmDetail<{ overview?: string | null }>("tv", String(id)).then(
-      (d) => active && setLoaded({ id, overview: d.overview || null }),
-      () => active && setLoaded({ id, overview: null }),
+    fetchFilmDetail<{ overview?: string | null; backdropUrl?: string | null }>("tv", String(id)).then(
+      (d) => active && setLoaded({ id, overview: d.overview || null, backdropUrl: d.backdropUrl || null }),
+      () => active && setLoaded({ id, overview: null, backdropUrl: null }),
     );
     return () => {
       active = false;
     };
   }, [id]);
-  return loaded && loaded.id === id ? loaded.overview : undefined;
+  return loaded && loaded.id === id ? loaded : undefined;
+}
+
+/** Sfeerbeeld van de serie bovenaan, dat onderaan en opzij uitvloeit in het donkere doek. */
+function Backdrop({ src, fallback }: { src: string | null | undefined; fallback: string | null }) {
+  const image = src ?? fallback;
+  if (!image) return null;
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[460px] overflow-hidden lg:h-[620px]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        key={image}
+        src={image}
+        alt=""
+        className={
+          src
+            ? "size-full object-cover object-top opacity-45"
+            : "size-full scale-110 object-cover opacity-30 blur-3xl"
+        }
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,14,18,0.35)_0%,rgba(12,14,18,0.55)_45%,var(--bg-app)_100%)]" />
+      <div className="absolute inset-0 hidden bg-[radial-gradient(ellipse_at_50%_20%,transparent_40%,var(--bg-app)_85%)] lg:block" />
+    </div>
+  );
 }
 
 function WizardSkeleton() {
@@ -44,7 +74,7 @@ function WizardSkeleton() {
     <div className="flex flex-col gap-6">
       <Shimmer className="h-1.5 w-full rounded-pill" />
       <div className="flex flex-col items-center gap-3 lg:flex-row lg:items-start lg:gap-8">
-        <Shimmer className="aspect-[2/3] w-[150px] rounded-[16px] lg:w-[200px] lg:rounded-[18px]" />
+        <Shimmer className="aspect-[2/3] w-[164px] rounded-[16px] lg:w-[260px] lg:rounded-[20px]" />
         <div className="flex w-full flex-col items-center gap-3 lg:items-start lg:pt-2">
           <Shimmer className="h-8 w-56 rounded" />
           <Shimmer className="h-4 w-44 rounded" />
@@ -57,6 +87,11 @@ function WizardSkeleton() {
 
 function BeoordelenInner() {
   const router = useRouter();
+  // Donker zoals de andere filmpagina's (cinema-thema), ongeacht het gekozen thema.
+  useBrowserLayoutEffect(() => {
+    setForcedDark(true);
+    return () => setForcedDark(false);
+  }, []);
   const refine = useSearchParams().get("modus") === "automatisch";
   const taste = useSeriesTaste();
   const { askable, loading, explicit, auto, unseenIds, rated } = taste;
@@ -80,7 +115,25 @@ function BeoordelenInner() {
 
   const current = queue?.[index] ?? null;
   const upcoming = queue?.[index + 1] ?? null;
-  const overview = useOverview(current?.id);
+  const extra = useSeriesExtra(current?.id);
+  const overview = extra === undefined ? undefined : extra.overview;
+  const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useFilmsLibrary();
+  const watchlistId = current ? `tv-${current.id}` : null;
+  const inWatchlist = watchlistId ? isInWatchlist(watchlistId) : false;
+  const toggleWatchlist = () => {
+    if (!current || !watchlistId) return;
+    if (inWatchlist) void removeFromWatchlist(watchlistId);
+    else
+      void addToWatchlist({
+        id: watchlistId,
+        type: "tv",
+        title: current.n,
+        year: current.y ? String(current.y) : "",
+        posterUrl: tastePosterUrl(current),
+        score: current.r,
+        overview: extra?.overview ?? null,
+      });
+  };
 
   const answer = React.useCallback(
     async (action: (id: number) => Promise<void>) => {
@@ -143,41 +196,57 @@ function BeoordelenInner() {
   const title = refine ? "Oordeel verfijnen" : "Series beoordelen";
   const back = () => router.push("/films-series/smaak");
   const undoButton = history.length > 0 && !done ? (
-    <Button variant="secondary" size="sm" onClick={() => void undo()} disabled={busy} className="gap-[5px]">
+    <button
+      type="button"
+      onClick={() => void undo()}
+      disabled={busy}
+      className="flex h-10 shrink-0 items-center gap-[6px] rounded-pill bg-fixed-white/[0.12] px-4 text-[14px] font-bold text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] backdrop-blur-md transition-[transform,background-color] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 disabled:opacity-60 [@media(hover:hover)]:hover:bg-fixed-white/[0.2]"
+    >
       {UNDO}
       Vorige
-    </Button>
+    </button>
   ) : (
     <span className="w-10" aria-hidden />
   );
-  const answered = history.length;
   const likedPosters = taste.rated
     .filter((s) => s.level !== "no")
     .slice(0, 3)
     .map(tastePosterUrl)
     .filter((p): p is string => Boolean(p));
 
+  const progress = (
+    <div className="flex items-center gap-3" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={index} aria-label="Voortgang">
+      <div className="h-1 flex-1 overflow-hidden rounded-pill bg-fixed-white/[0.14]">
+        <div className="h-full rounded-pill bg-fixed-white transition-[width] duration-300 ease-out-strong" style={{ width: `${Math.max(pct, 1)}%` }} />
+      </div>
+      <span className="shrink-0 text-[12.5px] font-bold tabular-nums text-fixed-white/70">
+        {(index + 1).toLocaleString("nl-BE")} / {total.toLocaleString("nl-BE")}
+      </span>
+    </div>
+  );
+
   return (
-    <div className="relative flex min-h-dvh w-full flex-col">
-      <main className="mx-auto flex w-full max-w-[956px] flex-1 flex-col gap-3.5 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+172px)] pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:pt-10">
-        <div className="flex h-11 items-center justify-between lg:hidden">
-          <button type="button" aria-label="Terug naar jouw seriesmaak" onClick={back} className={headerRoundButtonClass}>
+    <div className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)]">
+      {current && !done ? <Backdrop src={extra?.backdropUrl} fallback={extra === undefined ? null : tastePosterUrl(current)} /> : null}
+      <main className="relative mx-auto flex w-full max-w-[1040px] flex-1 flex-col gap-5 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+176px)] pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:gap-8 lg:px-8 lg:pb-[200px] lg:pt-10">
+        <div className="flex h-11 items-center justify-between gap-3 lg:hidden">
+          <button type="button" aria-label="Terug naar jouw seriesmaak" onClick={back} className={headerGlassButtonClass}>
             {RoundIcons.back}
           </button>
-          <p className="text-base font-semibold text-[var(--text-primary)]">{title}</p>
+          <p className="text-base font-semibold text-fixed-white">{title}</p>
           {undoButton}
         </div>
-        <div className="hidden items-center gap-3 lg:flex">
-          <PageBackButton href="/films-series/smaak" label="Terug naar jouw seriesmaak" />
-          <h1 className="text-[32px] font-bold leading-9 tracking-tight text-[var(--text-primary)]">{title}</h1>
-          <span className="flex-1" />
+        <div className="hidden items-center gap-4 lg:flex">
+          <PageBackButton href="/films-series/smaak" label="Terug naar jouw seriesmaak" tone="glass" />
+          <h2 className="shrink-0 text-[20px] font-bold tracking-[-0.01em] text-fixed-white">{title}</h2>
+          {current && !done ? <div className="mx-6 min-w-0 flex-1">{progress}</div> : <span className="flex-1" />}
           {undoButton}
         </div>
 
-        <div className="w-full lg:mx-auto lg:mt-4 lg:max-w-[760px]">
+        <div className="w-full">
           {taste.error ? (
             <div className="flex flex-col items-center gap-3 pt-24 text-center">
-              <p className="text-[15px] text-[var(--text-secondary)]">De series konden niet geladen worden.</p>
+              <p className="text-[15px] text-fixed-white/70">De series konden niet geladen worden.</p>
               <Button variant="secondary" size="md" onClick={taste.retry}>
                 Opnieuw proberen
               </Button>
@@ -187,8 +256,8 @@ function BeoordelenInner() {
           ) : done ? (
             <div className="flex flex-col items-center gap-3 pt-16 text-center lg:pt-10">
               {likedPosters.length > 0 ? <PosterFan posters={likedPosters} width={78} /> : null}
-              <h2 className="mt-2 text-[26px] font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">Alles overlopen</h2>
-              <p className="max-w-[320px] text-[14.5px] leading-[21px] text-[var(--text-secondary)]">
+              <h2 className="mt-2 text-[26px] font-extrabold tracking-[-0.02em] text-fixed-white">Alles overlopen</h2>
+              <p className="max-w-[320px] text-[14.5px] leading-[21px] text-fixed-white/70">
                 {total > 0 ? `Je overliep alle ${total} series.` : "Er zijn nu geen series om te overlopen."} Je oordelen tellen meteen mee voor je voorstellen.
               </p>
               <Button size="lg" onClick={back} className="mt-6 w-full max-w-[343px]">
@@ -196,20 +265,25 @@ function BeoordelenInner() {
               </Button>
             </div>
           ) : current ? (
-            <div className="flex flex-col gap-5 lg:gap-7">
-              <div className="flex items-center gap-2.5" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={index} aria-label="Voortgang">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-pill bg-[var(--gray-100)]">
-                  <div className="h-full rounded-pill bg-[var(--blue-500)] transition-[width] duration-300 ease-out-strong" style={{ width: `${pct}%` }} />
-                </div>
-                <span className="text-[12.5px] font-bold text-[var(--text-secondary)]">
-                  {(index + 1).toLocaleString("nl-BE")} van {total.toLocaleString("nl-BE")}
-                </span>
-              </div>
-              <SeriesTasteCard key={current.id} series={current} overview={overview} />
-              <p className="text-center text-[12.5px] text-[var(--text-tertiary)] lg:pl-[232px] lg:text-left">
-                <span className="hidden lg:inline">Toetsen: 0 niet goed · 1 goed · 2 heel goed · 3 topklasse · spatie niet gezien. </span>
-                {answered > 0 ? "Stoppen mag altijd: je gaat later verder waar je was." : "De bekendste series komen eerst. Stoppen mag altijd."}
-              </p>
+            <div className="flex flex-col gap-6 lg:pt-6">
+              <div className="lg:hidden">{progress}</div>
+              <SeriesTasteCard
+                key={current.id}
+                series={current}
+                overview={overview}
+                action={
+                  <ActionPill
+                    tone={inWatchlist ? "screen" : "glass"}
+                    icon={inWatchlist ? FilmIcons.check : FilmIcons.plus}
+                    aria-pressed={inWatchlist}
+                    aria-label={inWatchlist ? "Van je watchlist halen" : "Op je watchlist zetten"}
+                    onClick={toggleWatchlist}
+                    className="h-10 text-[14px]"
+                  >
+                    {inWatchlist ? "Op je watchlist" : "Watchlist"}
+                  </ActionPill>
+                }
+              />
               {upcoming?.p ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={tastePosterUrl(upcoming) ?? undefined} alt="" aria-hidden className="hidden" />

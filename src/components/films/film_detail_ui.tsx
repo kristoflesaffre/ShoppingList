@@ -153,13 +153,15 @@ export function ActionPill({
   children,
   className,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "primary" | "soft" | "surface" | "white" | "glass"; icon?: React.ReactNode }) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "primary" | "soft" | "surface" | "white" | "glass" | "screen"; icon?: React.ReactNode }) {
   const tones = {
     primary: "bg-[var(--blue-500)] text-white [@media(hover:hover)]:hover:bg-[var(--blue-600,#3f45e0)]",
     soft: "bg-[var(--blue-50)] text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--blue-100)]",
     surface: "bg-[var(--white)] text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-subtle)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]",
     white: "bg-white text-[var(--blue-500)]",
-    glass: "bg-[rgba(255,255,255,0.14)] text-white [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.22)]",
+    glass: "bg-[rgba(255,255,255,0.14)] text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)] backdrop-blur-md [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.22)]",
+    /** Wit vlak met donkere tekst op het cinema-doek (ook in het donkere thema). */
+    screen: "bg-fixed-white text-[var(--cinema-screen)] [@media(hover:hover)]:hover:bg-fixed-white/90",
   } as const;
   return (
     <button

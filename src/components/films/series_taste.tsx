@@ -62,13 +62,17 @@ export function TasteRatingButtons({
   value,
   onRate,
   disabled,
+  tone = "default",
   className,
 }: {
   value?: TasteLevel | null;
   onRate: (level: TasteLevel) => void;
   disabled?: boolean;
+  /** «glass»: op het donkere cinema-doek (wizard «Series beoordelen»). */
+  tone?: "default" | "glass";
   className?: string;
 }) {
+  const glass = tone === "glass";
   return (
     <div role="radiogroup" aria-label="Jouw oordeel" className={cn("grid grid-cols-4 gap-2", className)}>
       {TASTE_LEVELS.map(({ level, label, stars }) => {
@@ -83,12 +87,21 @@ export function TasteRatingButtons({
             onClick={() => onRate(level)}
             className={cn(
               "flex h-[66px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[16px] px-1 text-[12.5px] font-bold leading-4 transition-[background-color,box-shadow,transform] duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:opacity-60",
-              selected
-                ? "bg-[var(--blue-50)] text-[var(--blue-500)] shadow-[inset_0_0_0_2px_var(--blue-500)]"
-                : "bg-[var(--white)] text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]",
+              glass
+                ? selected
+                  ? "bg-fixed-white text-[var(--cinema-screen)]"
+                  : "bg-fixed-white/[0.08] text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)] backdrop-blur-md [@media(hover:hover)]:hover:bg-fixed-white/[0.15]"
+                : selected
+                  ? "bg-[var(--blue-50)] text-[var(--blue-500)] shadow-[inset_0_0_0_2px_var(--blue-500)]"
+                  : "bg-[var(--white)] text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] [@media(hover:hover)]:hover:bg-[var(--gray-25)]",
             )}
           >
-            <span className={cn("flex h-[18px] items-center", stars > 0 ? "text-[15px] text-[var(--blue-500)]" : "text-[var(--text-secondary)]")}>
+            <span
+              className={cn(
+                "flex h-[18px] items-center",
+                stars > 0 ? cn("text-[15px]", glass ? "text-[var(--cinema-butter)]" : "text-[var(--blue-500)]") : glass ? "text-fixed-white/70" : "text-[var(--text-secondary)]",
+              )}
+            >
               {stars > 0 ? <TasteStars count={stars} /> : CROSS}
             </span>
             <span className="truncate">{label}</span>
@@ -99,52 +112,61 @@ export function TasteRatingButtons({
   );
 }
 
-/** Vaste balk onderaan de wizard: vier oordelen, en daaronder «Niet gezien» (wat je het vaakst tikt). */
+/** Vaste balk onderaan de wizard op het donkere doek: vier oordelen, en daaronder «Niet gezien» (wat je het vaakst tikt). */
 export function TasteActionBar({ onRate, onUnseen, disabled }: { onRate: (level: TasteLevel) => void; onUnseen: () => void; disabled?: boolean }) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-[linear-gradient(180deg,rgba(245,246,250,0),var(--bg-app)_24px)] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] pt-7">
-      <div className="pointer-events-auto mx-auto flex max-w-[560px] flex-col gap-2">
-        <TasteRatingButtons onRate={onRate} disabled={disabled} />
-        <Button variant="secondary" size="md" onClick={onUnseen} disabled={disabled} className="w-full gap-2">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-[linear-gradient(180deg,transparent,var(--bg-app)_32px)] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] pt-9 lg:pb-8">
+      <div className="pointer-events-auto mx-auto flex max-w-[600px] flex-col gap-2">
+        <TasteRatingButtons tone="glass" onRate={onRate} disabled={disabled} />
+        <button
+          type="button"
+          onClick={onUnseen}
+          disabled={disabled}
+          className="flex h-[42px] w-full items-center justify-center gap-2 rounded-pill text-[14.5px] font-bold text-fixed-white/75 transition-[background-color,color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 disabled:opacity-60 [@media(hover:hover)]:hover:bg-fixed-white/[0.08] [@media(hover:hover)]:hover:text-fixed-white"
+        >
           {EYE_OFF}
           Niet gezien
-        </Button>
+        </button>
       </div>
     </div>
   );
 }
 
-/** Eén serie om te beoordelen: poster, titel, score en waar ze over gaat (die tekst laadt apart). */
-export function SeriesTasteCard({ series, overview }: { series: TasteSeries; overview: string | null | undefined }) {
+/**
+ * Eén serie om te beoordelen: poster, titel, score, genres, een actie (bv. watchlist)
+ * en waar ze over gaat (die tekst laadt apart). Gemaakt voor het donkere cinema-doek.
+ */
+export function SeriesTasteCard({ series, overview, action }: { series: TasteSeries; overview: string | null | undefined; action?: React.ReactNode }) {
   const poster = tastePosterUrl(series);
   const seasons = series.s ? `${series.s} ${series.s === 1 ? "seizoen" : "seizoenen"}` : null;
   return (
-    <div className="flex flex-col items-center gap-2.5 text-center lg:flex-row lg:items-start lg:gap-8 lg:text-left">
-      <div className="aspect-[2/3] w-[150px] shrink-0 overflow-hidden rounded-[16px] bg-[var(--gray-100)] shadow-[0_18px_30px_-16px_rgba(16,17,48,0.6)] lg:w-[200px] lg:rounded-[18px]">
+    <div className="flex flex-col items-center gap-4 text-center lg:flex-row lg:items-end lg:gap-10 lg:text-left">
+      <div className="aspect-[2/3] w-[164px] shrink-0 overflow-hidden rounded-[16px] bg-fixed-white/[0.06] shadow-[0_24px_48px_-18px_rgba(0,0,0,0.85),inset_0_0_0_1px_rgba(255,255,255,0.08)] lg:w-[260px] lg:rounded-[20px]">
         {poster ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={poster} alt={`Poster van ${series.n}`} className="size-full object-cover" />
         ) : null}
       </div>
-      <div className="flex w-full min-w-0 flex-col items-center gap-2 lg:w-auto lg:flex-1 lg:items-start lg:pt-1.5">
-        <h1 className="mt-1.5 text-[26px] font-extrabold leading-[30px] tracking-[-0.02em] text-[var(--text-primary)] lg:mt-0 lg:text-[36px] lg:leading-10">{series.n}</h1>
-        <p className="flex flex-wrap items-center justify-center gap-1 text-[13.5px] text-[var(--text-secondary)] lg:justify-start lg:text-sm">
+      <div className="flex w-full min-w-0 flex-col items-center gap-2.5 lg:w-auto lg:flex-1 lg:items-start lg:pb-1">
+        <h1 className="text-balance text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] text-fixed-white lg:text-[52px]">{series.n}</h1>
+        <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[13.5px] text-fixed-white/70 lg:justify-start lg:text-[15px]">
           <svg viewBox="0 0 24 24" aria-hidden className="size-3.5" fill="#f5b301">
             <path d={STAR_PATH} />
           </svg>
-          <b className="font-bold text-[var(--text-primary)]">{series.r.toFixed(1)}</b>
+          <b className="font-bold text-fixed-white">{series.r.toFixed(1)}</b>
           {series.y ? <span>· {series.y}</span> : null}
           {seasons ? <span>· {seasons}</span> : null}
+          {series.g.length > 0 ? <span>· {series.g.slice(0, 2).join(", ")}</span> : null}
         </p>
-        {series.g.length > 0 ? <p className="text-[13px] text-[var(--text-secondary)]">{series.g.slice(0, 3).join(" · ")}</p> : null}
         {overview === undefined ? (
-          <span className="flex w-full flex-col items-center gap-1.5 lg:items-start" aria-hidden>
+          <span className="mt-1 flex w-full max-w-[560px] flex-col items-center gap-1.5 lg:items-start" aria-hidden>
             <span className="shimmer h-3.5 w-full rounded" />
             <span className="shimmer h-3.5 w-4/5 rounded" />
           </span>
         ) : overview ? (
-          <p className="line-clamp-3 text-sm leading-5 text-[var(--text-secondary)] lg:line-clamp-5 lg:text-[15px] lg:leading-[22px] lg:text-[var(--text-primary)]">{overview}</p>
+          <p className="mt-1 line-clamp-3 max-w-[560px] text-[14px] leading-[21px] text-fixed-white/75 lg:line-clamp-4 lg:text-[15.5px] lg:leading-6">{overview}</p>
         ) : null}
+        {action ? <div className="mt-2 flex">{action}</div> : null}
       </div>
     </div>
   );
