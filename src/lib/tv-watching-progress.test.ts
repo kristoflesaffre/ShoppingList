@@ -1,12 +1,38 @@
 import { describe, expect, it } from "vitest";
 import {
   buildNewSeasonItems,
+  getEpisodeAfterNearEnd,
   getHighestWatchedProgress,
   getNextEpisodeToWatch,
   isSeriesFullyWatched,
   buildWatchingTvItems,
   mergeTvSeasons,
+  type WatchingTvItem,
 } from "@/lib/tv-watching-progress";
+
+describe("getEpisodeAfterNearEnd", () => {
+  const item = (percent: number | null, season = 1, episode = 7): WatchingTvItem => ({
+    tmdbId: "1", id: "tv-1", title: "Serie", posterUrl: null, year: "2026",
+    lastWatched: { season, episode: episode - 1 }, nextSeason: season, nextEpisode: episode,
+    stremio: { imdbId: "tt0000001", type: "tv", title: "Serie", season, episode, positionMs: 1, durationMs: 2, percent, lastWatchedAt: 1, stale: false },
+  });
+  const seasons = [{ seasonNumber: 1, episodeCount: 8 }, { seasonNumber: 2, episodeCount: 6 }];
+
+  it("biedt de volgende aflevering aan vanaf 85%", () => {
+    expect(getEpisodeAfterNearEnd(item(85), seasons)).toEqual({ season: 1, episode: 8 });
+    expect(getEpisodeAfterNearEnd(item(84), seasons)).toBeNull();
+    expect(getEpisodeAfterNearEnd(item(null), seasons)).toBeNull();
+  });
+  it("gaat door naar het volgende seizoen, maar niet als dat nog moet beginnen", () => {
+    expect(getEpisodeAfterNearEnd(item(95, 1, 8), seasons)).toEqual({ season: 2, episode: 1 });
+    const upcoming = [seasons[0], { ...seasons[1], airDate: "2027-01-01" }];
+    expect(getEpisodeAfterNearEnd(item(95, 1, 8), upcoming, "2026-11-05")).toBeNull();
+  });
+  it("biedt niets aan op het einde van de serie of zonder seizoensdata", () => {
+    expect(getEpisodeAfterNearEnd(item(95, 2, 6), seasons)).toBeNull();
+    expect(getEpisodeAfterNearEnd(item(95), undefined)).toBeNull();
+  });
+});
 
 const HALF_MAN_SEASONS = [{ seasonNumber: 1, episodeCount: 6 }];
 const TWO_SEASON_SHOW = [

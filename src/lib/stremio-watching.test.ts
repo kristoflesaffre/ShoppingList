@@ -41,6 +41,21 @@ it("keeps manual-only titles and labels unavailable sync as stale", () => {
   expect(result[0].stremio?.stale).toBe(true);
   expect(result[1]).toEqual(other);
 });
+it("keeps a series on top after its current episode is marked as watched", () => {
+  const other = { id: "tv-123", type: "tv" as const, title: "Other", year: "2026", posterUrl: null };
+  const otherProgress: StremioProgress = { ...progress, imdbId: "tt0000123", title: "Other", lastWatchedAt: 500 };
+  const result = mergeStremioWatching({
+    ...input,
+    manual: [{ ...manual, nextEpisode: 2 }],
+    watchlist: [other, carrie],
+    progress: [otherProgress, progress],
+    imdbByTmdbId: { ...input.imdbByTmdbId, "123": "tt0000123" },
+    watchedIds: ["ep-288673-s1e1"],
+  });
+  expect(result.map(item => item.id)).toEqual([carrie.id, other.id]);
+  expect(result[0]).toMatchObject({ nextEpisode: 2 });
+  expect(result[0].stremio).toBeUndefined();
+});
 it("removing the watchlist entry removes a Stremio-only card", () => {
   expect(mergeStremioWatching(input)).toHaveLength(1);
   expect(mergeStremioWatching({ ...input, watchlist: [] })).toEqual([]);

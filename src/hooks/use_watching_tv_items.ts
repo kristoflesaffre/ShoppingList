@@ -11,6 +11,7 @@ import {
   buildNewSeasonItems,
   buildWatchingTvItems,
   notStartedSeasonMarkId,
+  getEpisodeAfterNearEnd,
   getEpisodeIdAfterWatchingNext,
   getHighestWatchedProgress,
   isSeriesFullyWatched,
@@ -381,9 +382,15 @@ export function useWatchingTvItems() {
     [addToWatchlist, markWatched],
   );
 
+  const episodeAfterNearEnd = React.useCallback(
+    (item: WatchingTvItem) => getEpisodeAfterNearEnd(item, getSeasonsFor(item.tmdbId)),
+    [getSeasonsFor],
+  );
+
   return {
     watchingItems,
     watchingReady,
+    episodeAfterNearEnd,
     markNextEpisode,
     markSeasonWatched,
     markSeriesWatched,

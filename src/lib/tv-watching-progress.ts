@@ -173,6 +173,27 @@ export function getEpisodeIdAfterWatchingNext(
   return next;
 }
 
+/** Vanaf hier zit je normaal aan de aftiteling: dan is de volgende aflevering de logische keuze. */
+export const EPISODE_NEAR_END_PERCENT = 85;
+
+/**
+ * De aflevering die je kan starten als die van `item` bijna uit is, of null als je nog bezig bent,
+ * de seizoenen nog niet bekend zijn, de serie hier eindigt of het volgende seizoen nog moet beginnen.
+ * Of de aflevering zelf al uitgezonden is, staat pas in de afleveringsdata (zie `ContinueWatchingHero`).
+ */
+export function getEpisodeAfterNearEnd(
+  item: WatchingTvItem,
+  seasons: readonly TvSeasonInfo[] | undefined,
+  today: string = new Date().toISOString().slice(0, 10),
+): { season: number; episode: number } | null {
+  if ((item.stremio?.percent ?? 0) < EPISODE_NEAR_END_PERCENT) return null;
+  const known = normalizeTvSeasons(seasons);
+  if (known.length === 0) return null;
+  const next = getNextEpisodeToWatch({ season: item.nextSeason, episode: item.nextEpisode }, known);
+  if (!next || isSeasonUpcoming(known.find((s) => s.seasonNumber === next.season), today)) return null;
+  return next;
+}
+
 export function buildWatchingTvItems(input: {
   watchedIds: readonly string[];
   watchlist: readonly { id: string; type: string; title: string; year: string; posterUrl: string | null }[];

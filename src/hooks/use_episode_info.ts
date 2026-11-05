@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-type SeasonEpisode = { episodeNumber: number; name: string; runtimeMinutes?: number | null };
+type SeasonEpisode = { episodeNumber: number; name: string; airDate?: string | null; runtimeMinutes?: number | null };
 
 export type EpisodeInfo = {
   /** Afleveringstitel; leeg als TMDB enkel «Aflevering n» kent. */
@@ -10,6 +10,8 @@ export type EpisodeInfo = {
   minutes: number | null;
   /** Laatste aflevering van het seizoen. */
   finale: boolean;
+  /** Uitzenddatum (JJJJ-MM-DD); null als TMDB ze niet kent. */
+  airDate: string | null;
 };
 
 /** Eén verzoek per seizoen, gedeeld door alle kaarten op de pagina. */
@@ -31,12 +33,13 @@ function fetchSeason(tmdbId: string, season: number): Promise<SeasonEpisode[]> {
   return promise;
 }
 
-/** Titel, duur en «finale» van een aflevering (TMDB, via /api/films/episodes). */
-export function useEpisodeInfo(tmdbId: string, season: number, episode: number): EpisodeInfo | null {
+/** Titel, duur en «finale» van een aflevering (TMDB, via /api/films/episodes). Zonder seizoen of aflevering: null. */
+export function useEpisodeInfo(tmdbId: string, season: number | null, episode: number | null): EpisodeInfo | null {
   const [info, setInfo] = React.useState<EpisodeInfo | null>(null);
   React.useEffect(() => {
     let cancelled = false;
     setInfo(null);
+    if (season === null || episode === null) return;
     void fetchSeason(tmdbId, season).then((episodes) => {
       if (cancelled) return;
       const ep = episodes.find((e) => e.episodeNumber === episode);
@@ -46,6 +49,7 @@ export function useEpisodeInfo(tmdbId: string, season: number, episode: number):
         name: /^(aflevering|episode)\s*\d+$/i.test(ep.name.trim()) ? "" : ep.name,
         minutes: ep.runtimeMinutes ?? null,
         finale: last > 1 && episode === last,
+        airDate: ep.airDate ?? null,
       });
     });
     return () => {

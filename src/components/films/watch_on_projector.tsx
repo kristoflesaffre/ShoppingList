@@ -21,10 +21,13 @@ export function ProjectorIcon({ className = "size-5" }: { className?: string }) 
  * `tone="icon"`: enkel het projector-icoon als volle blauwe ronde knop (36px), bv. op de kaart «Aan het kijken»;
  * de melding verschijnt dan als ballonnetje onder de knop.
  * `tone="hero"`: witte pil (42/46px) in de cinema-kop «Verder kijken»; melding als glazen ballonnetje eronder.
+ * `tone="heroGlass"`: glazen pil (42/46px) in dezelfde kop, voor de tweede keuze naast de witte knop.
+ * `heroLabel` vervangt de tekst in de kop (`short` op gsm). `onStarted` loopt pas als de Pi de opdracht bevestigde.
  */
-export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone = "primary", className }: {
+export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone = "primary", heroLabel, ariaLabel, onStarted, className }: {
   imdbId?: string | null; type: "movie" | "tv"; tmdbId?: string | number; season?: number; episode?: number;
-  tone?: "primary" | "cinema" | "icon" | "hero"; className?: string;
+  tone?: "primary" | "cinema" | "icon" | "hero" | "heroGlass"; heroLabel?: { full: string; short?: string };
+  ariaLabel?: string; onStarted?: () => void; className?: string;
 }) {
   const token = useGoogleAuthToken();
   const [busy, setBusy] = React.useState(false);
@@ -58,6 +61,7 @@ export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone =
         throw new Error("De Pi kon de kijkopdracht niet volledig bevestigen. Controleer projector en verlichting; er wordt niets herhaald.");
       }
       setMessage("Samsung-tv staat uit, Cinema-verlichting geactiveerd en titelopdracht naar Stremio op Woonkamer TV verstuurd. Kies daar zo nodig een bron.");
+      onStarted?.();
       try { localStorage.setItem("dashboard-film-mode", "on"); window.dispatchEvent(new Event("dashboard-film-mode")); } catch { /* Storage is optional. */ }
     } catch (error) {
       setMessage(error instanceof Error && error.name !== "TimeoutError" ? error.message : "Geen bevestiging ontvangen. Controleer de projector; er wordt niets herhaald.");
@@ -65,7 +69,7 @@ export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone =
   }
   const cinema = tone === "cinema";
   // Icoon- en kopvariant: de melding verdwijnt vanzelf na een tijdje (er is geen ruimte om ze blijvend te tonen).
-  const floating = tone === "icon" || tone === "hero";
+  const floating = tone === "icon" || tone === "hero" || tone === "heroGlass";
   React.useEffect(() => {
     if (!floating || !message || busy) return;
     const id = window.setTimeout(() => setMessage(null), 9000);
@@ -80,12 +84,19 @@ export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone =
       {message ? <p role="status" aria-live="polite" className="absolute left-0 top-[calc(100%+8px)] z-20 w-[240px] rounded-[14px] bg-[var(--white)] px-3 py-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)] shadow-[0_14px_30px_-12px_rgba(16,17,48,0.45),0_0_0_1px_var(--border-subtle)]">{message}</p> : null}
     </div>;
   }
-  if (tone === "hero") {
+  if (tone === "hero" || tone === "heroGlass") {
+    const full = heroLabel?.full ?? "Speel op projector";
+    const short = heroLabel?.short ?? (heroLabel ? heroLabel.full : "Op projector");
     return <div className={cn("relative shrink-0", className)}>
-      <button type="button" onClick={() => void watch()} disabled={!token || busy || (!imdbId && !tmdbId)} aria-busy={busy}
-        className="inline-flex h-[42px] items-center gap-2 rounded-pill bg-fixed-white px-[18px] text-[14.5px] font-bold text-[var(--cinema-night)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 disabled:opacity-60 motion-safe:active:scale-[0.97] lg:h-[46px] lg:px-[22px] lg:text-[15px]">
+      <button type="button" onClick={() => void watch()} disabled={!token || busy || (!imdbId && !tmdbId)} aria-busy={busy} aria-label={ariaLabel}
+        className={cn(
+          "inline-flex h-[42px] items-center gap-2 rounded-pill transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 disabled:opacity-60 motion-safe:active:scale-[0.97] lg:h-[46px] lg:text-[15px]",
+          tone === "hero"
+            ? "bg-fixed-white px-[18px] text-[14.5px] font-bold text-[var(--cinema-night)] lg:px-[22px]"
+            : "bg-fixed-white/[0.08] px-4 text-[14.5px] font-semibold text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.26)] backdrop-blur-md [@media(hover:hover)]:hover:bg-fixed-white/[0.16] lg:px-5",
+        )}>
         {busy ? <span aria-hidden className="block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <ProjectorIcon className="size-[18px]" />}
-        {busy ? <span>Even wachten…</span> : <span><span className="hidden sm:inline">Speel op projector</span><span className="sm:hidden">Op projector</span></span>}
+        {busy ? <span>Even wachten…</span> : <span><span className="hidden sm:inline">{full}</span><span className="sm:hidden">{short}</span></span>}
       </button>
       {message ? <p role="status" aria-live="polite" className="absolute left-0 top-[calc(100%+8px)] z-20 w-[260px] rounded-[14px] bg-[color-mix(in_srgb,var(--cinema-night)_82%,transparent)] px-3 py-2 text-[12.5px] leading-[17px] text-fixed-white/85 shadow-[0_14px_30px_-12px_rgba(0,0,0,0.6),inset_0_0_0_1px_rgba(255,255,255,0.14)] backdrop-blur-md">{message}</p> : null}
     </div>;

@@ -664,7 +664,7 @@ export default function FilmsSeriesPage() {
   } = useFilmsLibrary();
   const { followed: followedSeries } = useFollowedSeries();
   const { sorted: sortedFollowedSeries, onOrder: onFollowedOrder } = useFollowedSeriesOrder(followedSeries);
-  const { watchingItems, watchingReady, markNextEpisode, markSeasonWatched, markSeriesWatched, markSeasonNotStarted, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
+  const { watchingItems, watchingReady, episodeAfterNearEnd, markNextEpisode, markSeasonWatched, markSeriesWatched, markSeasonNotStarted, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
   const [watchMenuFor, setWatchMenuFor] = React.useState<string | null>(null);
   const taste = useSeriesTaste({ recommend: true });
   const [tasteBannerHidden, setTasteBannerHidden] = React.useState(true);
@@ -906,8 +906,8 @@ export default function FilmsSeriesPage() {
     router.push(`/films-series/${id}`);
   }
 
-  function handleMarkNextEpisode(e: React.MouseEvent, item: WatchingTvItem) {
-    e.stopPropagation();
+  function handleMarkNextEpisode(e: React.MouseEvent | null, item: WatchingTvItem) {
+    e?.stopPropagation();
     setWatchMenuFor(null);
     void markNextEpisode(item).then((result) => {
       if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
@@ -1176,7 +1176,9 @@ export default function FilmsSeriesPage() {
           <ContinueWatchingHero
             item={heroItem}
             onOpen={() => router.push(`/films-series/${heroItem.id}/episodes/s${heroItem.nextSeason}e${heroItem.nextEpisode}`)}
+            episodeAfter={episodeAfterNearEnd(heroItem)}
             onNext={(e) => handleMarkNextEpisode(e, heroItem)}
+            onStartedEpisodeAfter={() => handleMarkNextEpisode(null, heroItem)}
           />
         ) : !hasQuery && watchingOrderPending ? (
           <ContinueWatchingHeroSkeleton />

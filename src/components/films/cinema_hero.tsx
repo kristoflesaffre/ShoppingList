@@ -73,18 +73,31 @@ export function ContinueWatchingHeroSkeleton() {
   );
 }
 
+/**
+ * Zit je aan de aftiteling (`episodeAfter`, zie `getEpisodeAfterNearEnd`), dan start de hoofdknop de volgende
+ * aflevering en is de huidige pas gezien zodra de projector dat bevestigde. De glazen knop kijkt de huidige verder.
+ */
 export function ContinueWatchingHero({
   item,
+  episodeAfter,
   onOpen,
   onNext,
+  onStartedEpisodeAfter,
 }: {
   item: WatchingTvItem;
+  episodeAfter: { season: number; episode: number } | null;
   onOpen: () => void;
   onNext: (e: React.MouseEvent) => void;
+  onStartedEpisodeAfter: () => void;
 }) {
   const info = useEpisodeInfo(item.tmdbId, item.nextSeason, item.nextEpisode);
+  const afterInfo = useEpisodeInfo(item.tmdbId, episodeAfter?.season ?? null, episodeAfter?.episode ?? null);
   const timeLabel = watchingTimeLabel(item, info);
   const percent = item.stremio?.percent ?? null;
+  // Pas aanbieden als zeker is dat de aflevering uit is: tijdens een lopend seizoen kent TMDB ook de komende.
+  const today = new Date().toISOString().slice(0, 10);
+  const upNext = episodeAfter && afterInfo?.airDate && afterInfo.airDate <= today ? episodeAfter : null;
+  const upNextIsNewSeason = upNext !== null && upNext.season !== item.nextSeason;
   return (
     <div className="mt-8 flex items-end gap-4 lg:mt-14 lg:gap-8">
       <button
@@ -96,7 +109,7 @@ export function ContinueWatchingHero({
         <Poster src={item.posterUrl} alt="" className="rounded-[14px] shadow-[0_30px_50px_-24px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.08)] lg:rounded-[16px]" />
       </button>
       <div className="min-w-0 flex-1 pb-1 text-fixed-white lg:max-w-[470px]">
-        <p className="text-[11px] font-bold uppercase leading-4 tracking-[0.2em] text-[var(--cinema-rose)] lg:text-xs">Verder kijken</p>
+        <p className="text-[11px] font-bold uppercase leading-4 tracking-[0.2em] text-[var(--cinema-rose)] lg:text-xs">{upNext ? "Bijna klaar" : "Verder kijken"}</p>
         <h2 className="mt-1.5 line-clamp-2 text-[26px] font-extrabold leading-[1.05] tracking-[-0.03em] lg:mt-2.5 lg:text-[52px] lg:leading-none">{item.title}</h2>
         <p className="mt-1.5 truncate text-[13.5px] text-fixed-white/80 lg:mt-3 lg:text-base">
           S{item.nextSeason} · Aflevering {item.nextEpisode}
@@ -110,17 +123,42 @@ export function ContinueWatchingHero({
           ) : null}
           <span className="shrink-0 text-[12.5px] font-semibold text-fixed-white/75 lg:text-[13px]">{timeLabel}</span>
         </div>
-        <div className="mt-4 flex gap-2 lg:mt-6 lg:gap-2.5">
-          <WatchOnProjector tone="hero" type="tv" tmdbId={item.tmdbId} season={item.nextSeason} episode={item.nextEpisode} />
-          <button
-            type="button"
-            onClick={onNext}
-            aria-label={`Aflevering ${item.nextEpisode} gezien`}
-            className="inline-flex size-[42px] shrink-0 items-center justify-center gap-1.5 rounded-pill bg-fixed-white/[0.08] text-[14.5px] font-semibold text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.26)] backdrop-blur-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 [@media(hover:hover)]:hover:bg-fixed-white/[0.16] sm:w-auto sm:px-4 lg:h-[46px] lg:px-5 lg:text-[15px]"
-          >
-            <CheckIcon className="size-4 sm:size-3.5" />
-            <span className="hidden sm:inline">Aflevering {item.nextEpisode} gezien</span>
-          </button>
+        <div className="mt-4 flex flex-wrap gap-2 lg:mt-6 lg:gap-2.5">
+          {upNext ? (
+            <WatchOnProjector
+              tone="hero"
+              type="tv"
+              tmdbId={item.tmdbId}
+              season={upNext.season}
+              episode={upNext.episode}
+              heroLabel={upNextIsNewSeason ? { full: `Start seizoen ${upNext.season}`, short: `Seizoen ${upNext.season}` } : { full: `Start aflevering ${upNext.episode}`, short: `Aflevering ${upNext.episode}` }}
+              ariaLabel={`${upNextIsNewSeason ? `Seizoen ${upNext.season}, aflevering ${upNext.episode}` : `Aflevering ${upNext.episode}`} op de projector starten en aflevering ${item.nextEpisode} als gezien markeren`}
+              onStarted={onStartedEpisodeAfter}
+            />
+          ) : (
+            <WatchOnProjector tone="hero" type="tv" tmdbId={item.tmdbId} season={item.nextSeason} episode={item.nextEpisode} />
+          )}
+          {upNext ? (
+            <WatchOnProjector
+              tone="heroGlass"
+              type="tv"
+              tmdbId={item.tmdbId}
+              season={item.nextSeason}
+              episode={item.nextEpisode}
+              heroLabel={{ full: `Kijk aflevering ${item.nextEpisode} verder`, short: `Kijk afl. ${item.nextEpisode} verder` }}
+              ariaLabel={`Kijk aflevering ${item.nextEpisode} verder op de projector`}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={onNext}
+              aria-label={`Aflevering ${item.nextEpisode} gezien`}
+              className="inline-flex size-[42px] shrink-0 items-center justify-center gap-1.5 rounded-pill bg-fixed-white/[0.08] text-[14.5px] font-semibold text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.26)] backdrop-blur-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 [@media(hover:hover)]:hover:bg-fixed-white/[0.16] sm:w-auto sm:px-4 lg:h-[46px] lg:px-5 lg:text-[15px]"
+            >
+              <CheckIcon className="size-4 sm:size-3.5" />
+              <span className="hidden sm:inline">Aflevering {item.nextEpisode} gezien</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

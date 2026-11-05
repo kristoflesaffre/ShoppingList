@@ -10,10 +10,14 @@ export function mergeStremioWatching(input: {
   const items = new Map(input.manual.map(item => [item.id, item]));
   const byImdb = new Map(input.progress.filter(item => item.type === "tv").map(item => [item.imdbId, item]));
   const watched = new Set(input.watchedIds);
+  // Volgorde = wanneer je de serie laatst keek, ook als die aflevering intussen als gezien gemarkeerd is:
+  // afvinken mag een serie niet naar onderen (en uit «Verder kijken») duwen.
+  const lastSeenAt = new Map<string, number>();
   for (const row of input.watchlist) {
     if (row.type !== "tv" || !/^tv-\d+$/.test(row.id)) continue;
     const tmdbId = row.id.slice(3), imdb = input.imdbByTmdbId[tmdbId];
     const progress = imdb ? byImdb.get(imdb) : undefined;
+    if (progress) lastSeenAt.set(row.id, progress.lastWatchedAt);
     if (!progress || progress.season === undefined || !progress.episode || progress.positionMs <= 0 || progress.durationMs <= 0 || progress.positionMs >= progress.durationMs) continue;
     if (watched.has(row.id) || watched.has(`ep-${tmdbId}-s${progress.season}e${progress.episode}`)) continue;
     const existing = items.get(row.id);
@@ -26,5 +30,5 @@ export function mergeStremioWatching(input: {
       stremio: { ...progress, stale: Boolean(input.stale) },
     });
   }
-  return Array.from(items.values()).sort((a, b) => (b.stremio?.lastWatchedAt ?? 0) - (a.stremio?.lastWatchedAt ?? 0));
+  return Array.from(items.values()).sort((a, b) => (lastSeenAt.get(b.id) ?? 0) - (lastSeenAt.get(a.id) ?? 0));
 }
