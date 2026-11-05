@@ -7,7 +7,7 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Poster } from "@/components/films/film_tiles";
 import { PosterFan } from "@/components/films/series_follow";
 import { useSeriesTaste } from "@/hooks/use_series_taste";
-import { TASTE_LEVELS, TASTE_WALL_COLS, TASTE_WALL_ROWS, tasteLabel, tastePosterUrl, tasteSmallPosterUrl, tasteStars, type TasteLevel, type TasteRating, type TasteRecommendation, type TasteSeries, type TasteWallTile } from "@/lib/series-taste";
+import { TASTE_LEVELS, TASTE_WALL_COLS, TASTE_WALL_ROWS, tasteLabel, tastePosterUrl, tasteSmallPosterUrl, tasteStars, type TasteLevel, type TasteRating, type TasteRecommendation, type TasteProfile, type TasteSeries, type TasteWallTile } from "@/lib/series-taste";
 
 const STAR_PATH = "M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z";
 
@@ -287,6 +287,57 @@ export function SeriesTasteBanner({ posters, onStart, onDismiss }: { posters: st
 }
 
 export type TasteSheetSeries = { id: number; title: string; year: string; posterUrl: string | null };
+
+/**
+ * «Je smaak tot nu toe»: genres als balkjes met het deel van je goede series, makers met hun aantal.
+ * Gsm onder elkaar; desktop drie kolommen (uitleg · genres · makers).
+ */
+export function TasteProfileCard({ profile }: { profile: TasteProfile }) {
+  return (
+    <section
+      aria-label="Je smaak tot nu toe"
+      className="grid gap-4 rounded-[20px] bg-fixed-white/[0.07] p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] lg:grid-cols-[200px_minmax(0,1fr)_240px] lg:gap-8 lg:px-6 lg:py-5"
+    >
+      <div className="flex flex-col gap-1">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[var(--cinema-rose)]">Je smaak tot nu toe</p>
+        <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
+          Op basis van {profile.basis} {profile.basis === 1 ? "serie" : "series"} die je goed vond
+        </p>
+      </div>
+      {profile.genres.length > 0 ? (
+        <ul className="m-0 grid list-none gap-x-6 gap-y-3 pl-0 sm:grid-cols-2" aria-label="Genres">
+          {profile.genres.map((g) => {
+            const pct = Math.round(g.share * 100);
+            return (
+              <li key={g.name} className="flex min-w-0 flex-col gap-1.5">
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="truncate text-[15px] font-bold text-[var(--text-primary)]">{g.name}</span>
+                  <span className="shrink-0 text-[13px] font-semibold tabular-nums text-[var(--text-secondary)]">{pct}%</span>
+                </span>
+                <span aria-hidden className="block h-1.5 overflow-hidden rounded-pill bg-fixed-white/[0.1]">
+                  <span className="block h-full rounded-pill bg-[var(--cinema-rose)]" style={{ width: `${Math.max(4, pct)}%` }} />
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      {profile.makers.length > 0 ? (
+        <div className="flex flex-col gap-1.5 lg:border-l lg:border-fixed-white/[0.1] lg:pl-6">
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Vaak van</p>
+          <ul className="m-0 flex list-none flex-col gap-1 pl-0">
+            {profile.makers.map((m) => (
+              <li key={m.name} className="flex items-baseline justify-between gap-3 text-[14px]">
+                <span className="truncate font-semibold text-[var(--text-primary)]">{m.name}</span>
+                <span className="shrink-0 text-[12.5px] tabular-nums text-[var(--text-tertiary)]">{m.count} series</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}
 
 /** Blad om één oordeel te geven of te wijzigen, vanuit het overzicht, zoeken of de detailpagina. */
 export function TasteRatingSheet({

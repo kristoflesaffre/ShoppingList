@@ -177,7 +177,7 @@ export function useSeriesTaste({ recommend = false }: { recommend?: boolean } = 
     return recommendSeries(catalog, ratings, exclude, 24, Array.from(extra.values()));
   }, [catalog, recommend, ratings, onWatchlist, extra]);
 
-  const profile = React.useMemo(() => tasteProfile(rated, ratings), [rated, ratings]);
+  const profile = React.useMemo(() => tasteProfile(rated, ratings, catalog ?? []), [rated, ratings, catalog]);
 
   const writeRate = React.useCallback(
     async (tmdbId: number, level: TasteLevel | null) => {

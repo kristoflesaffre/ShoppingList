@@ -11,7 +11,7 @@ import { RoundIcons } from "@/components/ui/round_icon_button";
 import { SearchBar } from "@/components/ui/search_bar";
 import { Shimmer } from "@/components/ui/shimmer";
 import { Poster } from "@/components/films/film_tiles";
-import { RatedSeriesTile, TasteRatingSheet, TasteRecommendationTile, TasteStars, TasteWallBanner, type TasteSheetSeries } from "@/components/films/series_taste";
+import { RatedSeriesTile, TasteProfileCard, TasteRatingSheet, TasteRecommendationTile, TasteStars, TasteWallBanner, type TasteSheetSeries } from "@/components/films/series_taste";
 import { useSeriesTaste } from "@/hooks/use_series_taste";
 import { MIN_LIKED_FOR_RECOMMENDATIONS, TASTE_LEVELS, buildTasteWall, tasteLabel, tastePosterUrl, tasteStars, type TasteLevel } from "@/lib/series-taste";
 import { setForcedDark } from "@/lib/theme";
@@ -58,6 +58,8 @@ export default function SmaakPage() {
   const taste = useSeriesTaste({ recommend: true });
   const { rated, recommendations, profile, askable, explicit, auto, unseenIds, ratings, loading } = taste;
   const [filter, setFilter] = React.useState<Filter>("all");
+  /** Genre binnen «… series beoordeeld»; `null` = alle genres. */
+  const [genre, setGenre] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState("");
   const [sheet, setSheet] = React.useState<TasteSheetSeries | null>(null);
   const results = useSeriesSearch(query);
@@ -74,7 +76,15 @@ export default function SmaakPage() {
     for (const s of rated) out[s.level]++;
     return out;
   }, [rated]);
-  const visible = React.useMemo(() => (filter === "all" ? rated : rated.filter((s) => s.level === filter)), [rated, filter]);
+  const byLevel = React.useMemo(() => (filter === "all" ? rated : rated.filter((s) => s.level === filter)), [rated, filter]);
+  /** Genres van wat het oordeel-filter toont, meest voorkomende eerst; het gekozen genre blijft staan, ook bij 0. */
+  const genreCounts = React.useMemo(() => {
+    const out = new Map<string, number>();
+    for (const s of byLevel) for (const g of s.g) out.set(g, (out.get(g) ?? 0) + 1);
+    if (genre && !out.has(genre)) out.set(genre, 0);
+    return Array.from(out.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "nl"));
+  }, [byLevel, genre]);
+  const visible = React.useMemo(() => (genre ? byLevel.filter((s) => s.g.includes(genre)) : byLevel), [byLevel, genre]);
   const autoCount = React.useMemo(() => rated.filter((s) => s.auto).length, [rated]);
 
   const catalogTotal = askable?.length ?? 0;
@@ -235,28 +245,31 @@ export default function SmaakPage() {
               </p>
             ) : null}
 
-            {showOverview && (profile.genres.length > 0 || profile.makers.length > 0) ? (
-              <section aria-label="Wat je smaak zegt" className="flex flex-col gap-2 rounded-[20px] bg-fixed-white/[0.07] p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] lg:flex-row lg:items-center lg:gap-7 lg:px-6 lg:py-[22px]">
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[var(--cinema-rose)] lg:w-[150px] lg:shrink-0 lg:leading-[17px]">Je smaak tot nu toe</p>
-                {profile.genres.length > 0 ? (
-                  <p className="text-[22px] font-extrabold leading-7 tracking-[-0.025em] text-[var(--text-primary)] lg:shrink-0 lg:text-[28px] lg:leading-9">
-                    {profile.genres[0]}
-                    {profile.genres.length > 1 ? <span className="text-[var(--text-tertiary)]"> · {profile.genres.slice(1).join(" · ")}</span> : null}
-                  </p>
-                ) : null}
-                {profile.makers.length > 0 ? <p className="text-[13.5px] leading-5 text-[var(--text-secondary)] lg:ml-auto lg:max-w-[400px] lg:text-right lg:text-sm">Vaak van {profile.makers.join(", ")}</p> : null}
-              </section>
-            ) : null}
+            {showOverview && (profile.genres.length > 0 || profile.makers.length > 0) ? <TasteProfileCard profile={profile} /> : null}
 
             {!searching ? (
               <section aria-label="Beoordeelde series" className="flex flex-col gap-3 lg:gap-4">
                 <h2 className="text-lg font-bold text-[var(--text-primary)] lg:text-[21px]">
-                  {filter === "all" ? `${nl(rated.length)} ${rated.length === 1 ? "serie" : "series"} beoordeeld` : `${tasteLabel(filter)} · ${nl(visible.length)}`}
+                  {filter === "all" && !genre
+                    ? `${nl(rated.length)} ${rated.length === 1 ? "serie" : "series"} beoordeeld`
+                    : `${[filter === "all" ? null : tasteLabel(filter), genre].filter(Boolean).join(" · ")} · ${nl(visible.length)}`}
                 </h2>
+                {genreCounts.length > 1 || genre ? (
+                  <FilterChipRow ariaLabel="Filter op genre">
+                    <FilterChip selected={genre === null} onClick={() => setGenre(null)} count={byLevel.length}>
+                      Alle genres
+                    </FilterChip>
+                    {genreCounts.map(([name, count]) => (
+                      <FilterChip key={name} selected={genre === name} onClick={() => setGenre(genre === name ? null : name)} count={count}>
+                        {name}
+                      </FilterChip>
+                    ))}
+                  </FilterChipRow>
+                ) : null}
                 {rated.length === 0 ? (
                   <p className="text-[14.5px] text-[var(--text-secondary)]">Nog niets beoordeeld. Begin met de bekendste series, of zoek er een hierboven.</p>
                 ) : visible.length === 0 ? (
-                  <p className="text-[14.5px] text-[var(--text-secondary)]">Geen series met dit oordeel.</p>
+                  <p className="text-[14.5px] text-[var(--text-secondary)]">{genre ? "Geen series in dit genre met dit oordeel." : "Geen series met dit oordeel."}</p>
                 ) : (
                   <div className="grid grid-cols-3 gap-x-3 gap-y-4 sm:grid-cols-4 lg:grid-cols-6 lg:gap-x-[19px]">
                     {visible.map((s) => (

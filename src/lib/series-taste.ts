@@ -255,28 +255,60 @@ export function recommendSeries(
   return out.sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
-/** Waar je smaak naartoe neigt: de genres en makers die het vaakst terugkomen, gewogen naar je oordeel. */
+export type TasteProfile = {
+  /** Aantal goede series met genres (de basis voor de percentages). */
+  basis: number;
+  /** `share` = deel van je goede series (gewogen naar je oordeel) met dit genre. */
+  genres: { name: string; share: number }[];
+  makers: { name: string; count: number }[];
+};
+
+/**
+ * Waar je smaak naartoe neigt, enkel op wat je goed vond («niet goed» telt niet mee: anders vallen genres die
+ * overal in zitten weg en blijven zeldzame over). Genres in volgorde van hoe vaak ze terugkomen, enkel als ze
+ * minstens zo vaak voorkomen als in de catalogus (`catalog`), aangevuld tot er twee zijn; makers vanaf twee series.
+ */
 export function tasteProfile(
   series: readonly TasteSeries[],
   ratings: ReadonlyMap<number, TasteRating>,
-): { genres: string[]; makers: string[] } {
-  const genres = new Map<string, number>();
-  const makers = new Map<string, number>();
-  const add = (map: Map<string, number>, key: string, weight: number) => map.set(key, (map.get(key) ?? 0) + weight);
+  catalog: readonly TasteSeries[] = [],
+): TasteProfile {
+  const genres = new Map<string, { weight: number; count: number }>();
+  const makers = new Map<string, { weight: number; count: number }>();
+  const add = (map: typeof genres, key: string, weight: number) => {
+    const cur = map.get(key) ?? { weight: 0, count: 0 };
+    map.set(key, { weight: cur.weight + weight, count: cur.count + 1 });
+  };
+  let total = 0;
+  let basis = 0;
   for (const s of series) {
     const rating = ratings.get(s.id);
-    if (!rating) continue;
+    if (!rating || rating.level === "no") continue;
     const weight = LEVEL_WEIGHT[rating.level];
-    for (const g of s.g) add(genres, g, weight);
     for (const c of s.c) add(makers, c, weight);
+    if (s.g.length === 0) continue;
+    total += weight;
+    basis++;
+    for (const g of s.g) add(genres, g, weight);
   }
-  const top = (map: Map<string, number>, min: number, count: number) =>
-    Array.from(map.entries())
-      .filter(([, value]) => value >= min)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, count)
-      .map(([key]) => key);
-  return { genres: top(genres, 1, 5), makers: top(makers, 2, 4) };
+  const catalogShare = new Map<string, number>();
+  for (const s of catalog) for (const g of s.g) catalogShare.set(g, (catalogShare.get(g) ?? 0) + 1 / catalog.length);
+  const minCount = Math.max(2, Math.ceil(basis * 0.08));
+  const ranked = Array.from(genres.entries())
+    .filter(([, v]) => v.count >= minCount)
+    .map(([name, v]) => ({ name, share: total > 0 ? v.weight / total : 0 }))
+    .sort((x, y) => y.share - x.share);
+  const typical = ranked.filter((g) => g.share >= (catalogShare.get(g.name) ?? 0));
+  const shown = (typical.length >= 2 ? typical : ranked).slice(0, 4);
+  return {
+    basis,
+    genres: shown.map((g) => ({ name: g.name, share: Math.round(g.share * 100) / 100 })),
+    makers: Array.from(makers.entries())
+      .filter(([, v]) => v.count >= 2)
+      .sort((x, y) => y[1].weight - x[1].weight)
+      .slice(0, 4)
+      .map(([name, v]) => ({ name, count: v.count })),
+  };
 }
 
 /** Eén poster op de muur van «Jouw seriesmaak». `level` is leeg zolang je niets beoordeelde. */
