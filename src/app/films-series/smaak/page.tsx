@@ -182,7 +182,7 @@ export default function SmaakPage() {
             {!searching && recommendations.length > 0 ? (
               <section aria-label="Waarschijnlijk iets voor jou" className="flex flex-col gap-3">
                 <h2 className="text-lg font-bold text-[var(--text-primary)]">Waarschijnlijk iets voor jou</h2>
-                <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex items-start gap-3" style={{ width: "max-content" }}>
                     {recommendations.map((r) => (
                       <TasteRecommendationTile key={r.series.id} recommendation={r} onOpen={() => router.push(`/films-series/tv-${r.series.id}`)} />

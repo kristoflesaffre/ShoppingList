@@ -261,7 +261,7 @@ function FilmsOverviewSkeleton() {
     </div>
   );
   const posterRow = (withActions: boolean) => (
-    <div className="-mx-4 overflow-hidden px-4">
+    <div className="-mx-4 overflow-hidden px-4 lg:mx-0 lg:px-0">
       <div className="flex w-max gap-3 lg:gap-4">
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="w-[120px] shrink-0 lg:w-[140px]">
@@ -651,7 +651,8 @@ export default function FilmsSeriesPage() {
     partnerName,
     partnerAvatarUrl,
     watchedIds,
-    discoverDismissedIds,
+    discoverExcludeIds,
+    discoverReady,
     dismissDiscoverItem,
     restoreDiscoverItem,
     isInWatchlist,
@@ -728,7 +729,8 @@ export default function FilmsSeriesPage() {
   const lastAddedItemRef = React.useRef<HTMLButtonElement | null>(null);
   const scrollPendingRef = React.useRef(false);
   const [discoverItems, setDiscoverItems] = React.useState<SearchResult[]>([]);
-  const [discoverLoading, setDiscoverLoading] = React.useState(true);
+  const [discoverFetching, setDiscoverLoading] = React.useState(true);
+  const discoverLoading = discoverFetching || !discoverReady;
   const [scoreSourceMap, setScoreSourceMap] = React.useState<Record<string, "imdb" | "tmdb">>({});
 
   React.useEffect(() => {
@@ -841,16 +843,6 @@ export default function FilmsSeriesPage() {
   const watchlistSeries = ownWatchlist.filter((r) => r.type === "tv");
   const hasWatchlistItems = ownWatchlist.length > 0;
   const hasPartnerItems = partnerWatchlist.length > 0;
-
-  const discoverExcludeIds = React.useMemo(() => {
-    const ids = new Set<string>();
-    for (const item of watchlist) ids.add(item.id);
-    for (const id of watchedIds) {
-      if (id.startsWith("movie-") || id.startsWith("tv-")) ids.add(id);
-    }
-    for (const id of discoverDismissedIds) ids.add(id);
-    return ids;
-  }, [watchlist, watchedIds, discoverDismissedIds]);
 
   const discoverVisible = React.useMemo(
     () => discoverItems.filter((item) => !discoverExcludeIds.has(item.id)),
@@ -1189,7 +1181,7 @@ export default function FilmsSeriesPage() {
       <div className="relative mx-auto -mt-6 flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] lg:-mt-10">
         {/* Filter chips — Figma 1652:46667 */}
         {hasQuery && (
-          <div className="-mx-4 mt-3 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+          <div className="-mx-4 mt-3 overflow-x-auto px-4 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
             <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
               {FILTER_CHIPS.map((chip) => (
                 <button
@@ -1255,7 +1247,7 @@ export default function FilmsSeriesPage() {
             {watchingItems.length > 1 && (
               <section className="flex flex-col gap-3">
                 <SectionHead title="Ook nog bezig" href="/films-series/aan-het-kijken" count={watchingItems.length} />
-                <div ref={watchingScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                <div ref={watchingScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex w-max gap-3">
                     {watchingItems.slice(1).map((item) => (
                       <WatchingCard
@@ -1296,7 +1288,7 @@ export default function FilmsSeriesPage() {
             {taste.recommendations.length > 0 ? (
               <section className="flex flex-col gap-3">
                 <SectionHead title="Waarschijnlijk iets voor jou" href="/films-series/smaak" linkLabel="Jouw smaak" />
-                <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex items-start gap-3" style={{ width: "max-content" }}>
                     {taste.recommendations.slice(0, 12).map((r) => (
                       <TasteRecommendationTile key={r.series.id} recommendation={r} onOpen={() => handleViewDetail(`tv-${r.series.id}`)} />
@@ -1324,7 +1316,7 @@ export default function FilmsSeriesPage() {
                     </span>
                   }
                 />
-                <div ref={partnerScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                <div ref={partnerScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-3 lg:gap-4" style={{ width: "max-content" }}>
                     <OneByOneTile
                       posters={partnerWatchlist.map((p) => p.posterUrl)}
@@ -1456,7 +1448,7 @@ export default function FilmsSeriesPage() {
             {watchlistFilms.length > 0 && (
               <section ref={filmsSectionRef} className="flex flex-col gap-3">
                 <SectionHead title="Watchlist films" href="/films-series/watchlist/films" count={watchlistFilms.length} />
-                <div ref={filmsScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                <div ref={filmsScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex" style={{ width: "max-content" }}>
                     {watchlistFilms.map((item) => {
                       const isCollapsed = removingFilmId === item.id || restoringFilmId === item.id;
@@ -1491,7 +1483,7 @@ export default function FilmsSeriesPage() {
             {watchlistSeries.length > 0 && (
               <section ref={seriesSectionRef} className="flex flex-col gap-3">
                 <SectionHead title="Watchlist series" href="/films-series/watchlist/series" count={watchlistSeries.length} />
-                <div ref={seriesScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                <div ref={seriesScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-3" style={{ width: "max-content" }}>
                     {watchlistSeries.map((item) => (
                       <PosterTile
@@ -1511,7 +1503,7 @@ export default function FilmsSeriesPage() {
             {followedSeries.length > 0 && (
               <section className="flex flex-col gap-3">
                 <SectionHead title="Lopende series die je volgt" href="/films-series/gevolgde-series" count={followedSeries.length} />
-                <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex gap-3" style={{ width: "max-content" }}>
                     {sortedFollowedSeries.map((s) => (
                       <FollowedSeriesTile key={s.tmdbId} series={s} onOrder={onFollowedOrder} onOpen={() => handleViewDetail(`tv-${s.tmdbId}`)} />

@@ -216,7 +216,7 @@ export default function SelectEpisodePage() {
 
         {/* Seizoentabs */}
         {seriesInfo && seriesInfo.seasons.length > 0 && (
-          <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+          <div className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
             <div className="flex gap-6 border-b border-[var(--gray-100)]" style={{ width: "max-content" }}>
               {seriesInfo.seasons.map((s) => {
                 const active = s.seasonNumber === selectedSeason;

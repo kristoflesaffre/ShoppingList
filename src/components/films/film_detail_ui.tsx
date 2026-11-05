@@ -293,7 +293,7 @@ export function SeasonPills({
   ariaLabel?: string;
 }) {
   return (
-    <div className={cn("-mx-4 overflow-x-auto px-4", className)} style={{ scrollbarWidth: "none" }}>
+    <div className={cn("-mx-4 overflow-x-auto px-4 lg:mx-0 lg:px-0", className)} style={{ scrollbarWidth: "none" }}>
       <div role="tablist" aria-label={ariaLabel} className="flex w-max gap-2 py-0.5">
         {seasons.map((s) => {
           const active = s.seasonNumber === selected;
@@ -689,7 +689,7 @@ export function DeckBody({
         {media.cast.length > 0 ? (
           <section className="mt-3">
             <DetailSectionHead title="Cast" action={onAllCast ? "Alles" : undefined} onAction={onAllCast} />
-            <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+            <div className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
               <div className="flex w-max gap-2">
                 {media.cast.slice(0, 12).map((m, i) => (
                   <CastRound key={i} person={m} />

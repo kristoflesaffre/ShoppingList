@@ -676,7 +676,7 @@ export default function FilmDetailPage() {
                 {detail.cast.length > 0 ? (
                   <section className="lg:hidden">
                     <DetailSectionHead title="Cast" action="Alles" onAction={() => router.push(`/films-series/${rawId}/cast`)} />
-                    <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                    <div className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                       <div className="flex w-max gap-2">
                         {detail.cast.slice(0, 12).map((m, i) => (
                           <CastRound key={i} person={m} />
