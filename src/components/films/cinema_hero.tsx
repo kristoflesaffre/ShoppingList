@@ -27,7 +27,7 @@ export function CinemaHero({ children, compact = false }: { children: React.Reac
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/images/films/cinema_velvet_1920.webp"
-        srcSet="/images/films/cinema_velvet_960.webp 960w, /images/films/cinema_velvet_1920.webp 1920w"
+        srcSet="/images/films/cinema_velvet_960.webp 960w, /images/films/cinema_velvet_1920.webp 1920w, /images/films/cinema_velvet_2880.webp 2880w"
         sizes="(min-width: 1024px) 97vw, 180vw"
         alt=""
         aria-hidden
