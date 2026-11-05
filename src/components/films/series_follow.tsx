@@ -284,8 +284,19 @@ export function FollowedSeriesTile({
               "mt-0.5 truncate text-xs font-semibold",
               state.tone === "known" ? "text-[#1f9d55]" : state.tone === "announced" ? "text-[var(--blue-500)]" : "text-[var(--text-secondary)]",
             )}
+            title={state.label}
           >
-            {state.label}
+            {state.tone === "announced" && seasonState?.nextSeason ? (
+              // Kort in de smalle tegel: ✓ Seizoen n (aangekondigd staat in tooltip en aria-label).
+              <span className="inline-flex items-center gap-1" aria-label={state.label}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3 shrink-0">
+                  <path d="M5 12.5l4.5 4.5L19 7.5" />
+                </svg>
+                Seizoen {seasonState.nextSeason.seasonNumber}
+              </span>
+            ) : (
+              state.label
+            )}
           </p>
         ) : (
           <span className="mt-1 block h-3 w-20 rounded-pill bg-[var(--gray-50)]" aria-hidden />
