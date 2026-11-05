@@ -22,5 +22,10 @@ export async function GET(request: NextRequest) {
     diversifyGenres: !isRefill,
   });
 
-  return NextResponse.json({ results, hasMore });
+  // Zelfde voorstellen voor iedereen (de URL bepaalt ze): Vercel serveert ze een uur uit de CDN
+  // en vernieuwt op de achtergrond, zodat niemand wacht op de dertig OMDb-scores.
+  return NextResponse.json(
+    { results, hasMore },
+    { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } },
+  );
 }

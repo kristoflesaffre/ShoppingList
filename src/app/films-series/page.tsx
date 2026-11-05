@@ -764,7 +764,17 @@ export default function FilmsSeriesPage() {
     fetch("/api/films/discover")
       .then((r) => r.json())
       .then((data: { results: SearchResult[] }) => {
-        setDiscoverItems(data.results ?? []);
+        const results = data.results ?? [];
+        // De API geeft de scorebron al mee: zo hoeft de pagina niet per titel nog de detail op te halen.
+        const sources: Record<string, "imdb" | "tmdb"> = {};
+        for (const item of results) {
+          if (item.scoreSource) {
+            setScoreSource(item.id, item.scoreSource);
+            sources[item.id] = item.scoreSource;
+          }
+        }
+        if (Object.keys(sources).length > 0) setScoreSourceMap((prev) => ({ ...prev, ...sources }));
+        setDiscoverItems(results);
         setDiscoverLoading(false);
       })
       .catch(() => setDiscoverLoading(false));
