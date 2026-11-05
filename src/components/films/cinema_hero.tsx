@@ -56,17 +56,22 @@ export function CinemaHero({ children, compact = false }: { children: React.Reac
 /** «Verder kijken» in de kop: de serie die je laatst keek, groot met poster, voortgang, «Speel op projector» en «gezien». */
 /** Laadvlak in de vorm van `ContinueWatchingHero`: de kop springt niet als de serie binnenkomt. */
 export function ContinueWatchingHeroSkeleton() {
+  // Glazen vlakken op het fluweel, zoals de witte tekst en knoppen van de echte kop; de witte knop iets lichter.
+  const glass = "bg-fixed-white/[0.09]";
   return (
     <div aria-hidden className="mt-8 flex items-end gap-4 lg:mt-14 lg:gap-8">
-      <Shimmer className="aspect-[2/3] w-[104px] shrink-0 rounded-[14px] lg:w-[180px] lg:rounded-[16px]" />
+      <Shimmer className={cn("aspect-[2/3] w-[104px] shrink-0 rounded-[14px] lg:w-[180px] lg:rounded-[16px]", glass)} />
       <div className="min-w-0 flex-1 pb-1 lg:max-w-[470px]">
-        <Shimmer className="h-4 w-24 rounded" />
-        <Shimmer className="mt-1.5 h-[27px] w-3/4 rounded lg:mt-2.5 lg:h-[52px]" />
-        <Shimmer className="mt-1.5 h-5 w-1/2 rounded lg:mt-3 lg:h-6" />
-        <Shimmer className="mt-2.5 h-[18px] w-full max-w-[360px] rounded lg:mt-4 lg:h-5" />
+        <Shimmer className={cn("h-3 w-24 rounded lg:h-3.5 lg:w-28", glass)} />
+        <Shimmer className={cn("mt-2.5 h-[26px] w-3/4 rounded-md lg:mt-3.5 lg:h-11", glass)} />
+        <Shimmer className={cn("mt-2.5 h-3.5 w-1/2 rounded lg:mt-4 lg:h-4", glass)} />
+        <div className="mt-3 flex max-w-[360px] items-center gap-3 lg:mt-5">
+          <Shimmer className={cn("h-1 flex-1 rounded-sm", glass)} />
+          <Shimmer className={cn("h-3 w-14 rounded", glass)} />
+        </div>
         <div className="mt-4 flex gap-2 lg:mt-6 lg:gap-2.5">
-          <Shimmer className="h-[42px] w-[132px] rounded-pill lg:h-[46px] lg:w-[180px]" />
-          <Shimmer className="size-[42px] rounded-pill sm:w-[150px] lg:h-[46px] lg:w-[180px]" />
+          <Shimmer className="h-[42px] w-[132px] rounded-pill bg-fixed-white/[0.16] lg:h-[46px] lg:w-[190px]" />
+          <Shimmer className={cn("size-[42px] rounded-pill sm:w-[170px] lg:h-[46px] lg:w-[200px]", glass)} />
         </div>
       </div>
     </div>

@@ -395,16 +395,25 @@ export function WatchingCard({
 
 /** Laadvorm van `WatchingCard`: zelfde maten, poster steekt boven de kaart uit. */
 export function WatchingCardSkeleton({ className }: { className?: string }) {
+  // Zelfde maten als `WatchingCard`: poster boven de kaart, label · titel · aflevering, (desktop) speelring, knoppen.
   return (
-    <div className={cn("flex shrink-0 flex-col pt-5", className ?? "w-[300px] lg:w-[340px]")}>
-      <div className="relative flex min-h-[136px] flex-1 flex-col justify-between rounded-[20px] bg-[var(--white)] py-3.5 pl-[118px] pr-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:min-h-[148px] lg:pl-[124px]">
+    <div aria-hidden className={cn("flex shrink-0 flex-col pt-5", className ?? "w-[300px] lg:w-[340px]")}>
+      <div className="relative flex min-h-[136px] flex-1 rounded-[20px] bg-[var(--white)] py-3.5 pl-[118px] pr-3.5 shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] lg:min-h-[148px] lg:pl-[124px]">
         <Shimmer className="absolute -top-5 left-3.5 aspect-[2/3] w-[90px] rounded-[12px] lg:w-[96px]" />
-        <div>
-          <Shimmer className="h-2.5 w-2/5 rounded-md" />
-          <Shimmer className="mt-2 h-4 w-3/4 rounded-md" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Shimmer className="mt-[3px] h-2.5 w-2/5 rounded-md" />
+          <Shimmer className="mt-[7px] h-4 w-3/4 rounded-md" />
           <Shimmer className="mt-1.5 h-3 w-1/2 rounded-md" />
+          <div className="mt-2 hidden items-center gap-1.5 lg:flex">
+            <Shimmer className="size-6 rounded-full" />
+            <Shimmer className="h-3 w-16 rounded-md" />
+          </div>
+          <div className="mt-auto flex items-center gap-1.5 pt-2.5">
+            <Shimmer className="size-9 rounded-full" />
+            <Shimmer className="size-9 rounded-full" />
+            <Shimmer className="size-8 rounded-full" />
+          </div>
         </div>
-        <Shimmer className="h-[34px] w-24 rounded-full" />
       </div>
     </div>
   );
