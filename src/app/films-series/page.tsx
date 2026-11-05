@@ -1,7 +1,7 @@
 "use client";
 
 import { headerGlassButtonClass } from "@/components/ui/header_round_button";
-import { CinemaHero, ContinueWatchingHero } from "@/components/films/cinema_hero";
+import { CinemaHero, ContinueWatchingHero, ContinueWatchingHeroSkeleton } from "@/components/films/cinema_hero";
 import * as React from "react";
 import { createPortal, flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -664,7 +664,7 @@ export default function FilmsSeriesPage() {
   } = useFilmsLibrary();
   const { followed: followedSeries } = useFollowedSeries();
   const { sorted: sortedFollowedSeries, onOrder: onFollowedOrder } = useFollowedSeriesOrder(followedSeries);
-  const { watchingItems, markNextEpisode, markSeasonWatched, markSeriesWatched, markSeasonNotStarted, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
+  const { watchingItems, watchingReady, markNextEpisode, markSeasonWatched, markSeriesWatched, markSeasonNotStarted, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
   const [watchMenuFor, setWatchMenuFor] = React.useState<string | null>(null);
   const taste = useSeriesTaste({ recommend: true });
   const [tasteBannerHidden, setTasteBannerHidden] = React.useState(true);
@@ -705,7 +705,9 @@ export default function FilmsSeriesPage() {
   const discoverCarouselRef = React.useRef<DiscoverCarouselHandle>(null);
   const [mounted, setMounted] = React.useState(false);
   /** Laatst bekeken serie: groot in de cinema-kop («Verder kijken»). */
-  const heroItem = mounted && !dataLoading ? watchingItems[0] ?? null : null;
+  const heroItem = mounted && !dataLoading && watchingReady ? watchingItems[0] ?? null : null;
+  /** Nog niet zeker welke serie vooraan staat (Stremio laadt): laadvlak, anders springt de kop van serie. */
+  const watchingOrderPending = !mounted || dataLoading || (!watchingReady && watchingItems.length > 0);
   const [query, setQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [results, setResults] = React.useState<SearchResult[]>([]);
@@ -1142,7 +1144,7 @@ export default function FilmsSeriesPage() {
   return (
     <div className="relative flex min-h-dvh w-full flex-col">
       {/* Canvas «C · Popcorn»: cinema-kop over de volle breedte met «Verder kijken»; daaronder de rijen. */}
-      <CinemaHero compact={hasQuery || !heroItem}>
+      <CinemaHero compact={hasQuery || (!heroItem && !watchingOrderPending)}>
         <div className="flex items-center justify-between lg:hidden">
           <button
             type="button"
@@ -1176,6 +1178,8 @@ export default function FilmsSeriesPage() {
             onOpen={() => router.push(`/films-series/${heroItem.id}/episodes/s${heroItem.nextSeason}e${heroItem.nextEpisode}`)}
             onNext={(e) => handleMarkNextEpisode(e, heroItem)}
           />
+        ) : !hasQuery && watchingOrderPending ? (
+          <ContinueWatchingHeroSkeleton />
         ) : null}
       </CinemaHero>
       <div className="relative mx-auto -mt-6 flex w-full max-w-[956px] flex-1 flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+40px)] lg:-mt-10">
@@ -1249,7 +1253,7 @@ export default function FilmsSeriesPage() {
                 <SectionHead title="Ook nog bezig" href="/films-series/aan-het-kijken" count={watchingItems.length} />
                 <div ref={watchingScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex w-max gap-3">
-                    {watchingItems.slice(1).map((item) => (
+                    {!watchingReady ? watchingItems.slice(1).map((item) => <WatchingCardSkeleton key={item.id} />) : watchingItems.slice(1).map((item) => (
                       <WatchingCard
                         key={item.id}
                         item={item}

@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { CheckIcon, Poster, watchingTimeLabel } from "@/components/films/film_tiles";
 import { WatchOnProjector } from "@/components/films/watch_on_projector";
+import { Shimmer } from "@/components/ui/shimmer";
 import { useEpisodeInfo } from "@/hooks/use_episode_info";
 import { setForcedDark } from "@/lib/theme";
 import type { WatchingTvItem } from "@/hooks/use_watching_tv_items";
@@ -53,6 +54,25 @@ export function CinemaHero({ children, compact = false }: { children: React.Reac
 }
 
 /** «Verder kijken» in de kop: de serie die je laatst keek, groot met poster, voortgang, «Speel op projector» en «gezien». */
+/** Laadvlak in de vorm van `ContinueWatchingHero`: de kop springt niet als de serie binnenkomt. */
+export function ContinueWatchingHeroSkeleton() {
+  return (
+    <div aria-hidden className="mt-8 flex items-end gap-4 lg:mt-14 lg:gap-8">
+      <Shimmer className="aspect-[2/3] w-[104px] shrink-0 rounded-[14px] lg:w-[180px] lg:rounded-[16px]" />
+      <div className="min-w-0 flex-1 pb-1 lg:max-w-[470px]">
+        <Shimmer className="h-4 w-24 rounded" />
+        <Shimmer className="mt-1.5 h-[27px] w-3/4 rounded lg:mt-2.5 lg:h-[52px]" />
+        <Shimmer className="mt-1.5 h-5 w-1/2 rounded lg:mt-3 lg:h-6" />
+        <Shimmer className="mt-2.5 h-[18px] w-full max-w-[360px] rounded lg:mt-4 lg:h-5" />
+        <div className="mt-4 flex gap-2 lg:mt-6 lg:gap-2.5">
+          <Shimmer className="h-[42px] w-[132px] rounded-pill lg:h-[46px] lg:w-[180px]" />
+          <Shimmer className="size-[42px] rounded-pill sm:w-[150px] lg:h-[46px] lg:w-[180px]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ContinueWatchingHero({
   item,
   onOpen,

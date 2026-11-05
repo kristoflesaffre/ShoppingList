@@ -40,8 +40,12 @@ export type RemovedWatchingTvItemSnapshot = {
   watchedEpisodeIds: string[];
 };
 
+/** Traag Stremio mag de pagina niet blokkeren: daarna tonen we wat er is. */
+const WATCHING_ORDER_MAX_WAIT_MS = 6000;
+
 export function useWatchingTvItems() {
   const {
+    dataLoading,
     watchedIds,
     watchlist,
     seriesMeta,
@@ -60,6 +64,8 @@ export function useWatchingTvItems() {
   const [imdbByTmdbId, setImdbByTmdbId] = React.useState<Record<string, string | null>>({});
   const mappingIds = watchlist.filter(item => item.type === "tv" && /^tv-\d+$/.test(item.id)).map(item => item.id.slice(3)).sort().join(",");
   const hasStremioProgress = stremio.connected && stremio.items.length > 0;
+  /** Voor welke watchlist alle koppelingen met Stremio bekend zijn: zonder koppeling staat een serie niet op haar plek. */
+  const [mappedFor, setMappedFor] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (!hasStremioProgress || !mappingIds) return;
     let active = true;
@@ -80,17 +86,22 @@ export function useWatchingTvItems() {
       });
     }
     // Opzoeken: eerst wat nog ontbreekt, daarna (op de achtergrond) wat al een tijd bewaard is.
-    const ids = [...all.filter(id => !stored[id]), ...all.filter(id => stored[id] && Date.now() - stored[id].at > STORED_MAPPING_FRESH_MS)];
+    const missing = all.filter(id => !stored[id]);
+    const ids = [...missing, ...all.filter(id => stored[id] && Date.now() - stored[id].at > STORED_MAPPING_FRESH_MS)];
+    let missingLeft = missing.length;
+    if (missingLeft === 0) setMappedFor(mappingIds);
     let index = 0;
     const worker = async () => {
       while (active && index < ids.length) {
-        const tmdbId = ids[index++];
+        const position = index++;
+        const tmdbId = ids[position];
         try {
           const mapping = await stremioTitleMapping(tmdbId);
           if (!active) return;
           setImdbByTmdbId(prev => prev[tmdbId] === mapping.imdbId ? prev : { ...prev, [tmdbId]: mapping.imdbId });
           setFetchedSeasons(prev => prev[tmdbId] === mapping.seasons ? prev : { ...prev, [tmdbId]: mapping.seasons });
         } catch { /* Retry unavailable metadata on the next Stremio snapshot. */ }
+        if (active && position < missing.length && --missingLeft === 0) setMappedFor(mappingIds);
       }
     };
     // Over HTTP/2 (lokaal) en op de gehoste site kunnen er meer tegelijk; zes houdt de TMDB-route rustig.
@@ -119,6 +130,19 @@ export function useWatchingTvItems() {
       }), watchlist, watchedIds, progress: stremio.connected ? stremio.items : [], imdbByTmdbId, stale: Boolean(stremio.error) }),
     [watchedIds, watchlist, seriesMeta, fetchedSeasons, stremio.connected, stremio.items, stremio.error, imdbByTmdbId],
   );
+
+  // Is de volgorde definitief? Eén keer waar blijft waar: een latere synchronisatie mag de pagina niet terug laten laden.
+  const [orderWaitOver, setOrderWaitOver] = React.useState(false);
+  React.useEffect(() => {
+    if (dataLoading) return;
+    const timer = setTimeout(() => setOrderWaitOver(true), WATCHING_ORDER_MAX_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, [dataLoading]);
+  const watchingReadyRef = React.useRef(false);
+  if (orderWaitOver || (!dataLoading && !stremio.loading && (!hasStremioProgress || !mappingIds || mappedFor === mappingIds))) {
+    watchingReadyRef.current = true;
+  }
+  const watchingReady = watchingReadyRef.current;
 
   const newSeasonItems = React.useMemo(
     (): NewSeasonItem[] =>
@@ -359,6 +383,7 @@ export function useWatchingTvItems() {
 
   return {
     watchingItems,
+    watchingReady,
     markNextEpisode,
     markSeasonWatched,
     markSeriesWatched,
