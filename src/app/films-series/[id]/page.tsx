@@ -78,9 +78,6 @@ type FilmDetail = {
 type PartnerFeedback = "up" | "down" | "seen";
 type FeedbackAvatar = { url: string | null; name: string | null };
 
-/** Afleveringen die de detailpagina toont (de rest staat op /episodes). */
-const PREVIEW_EPISODES = 3;
-
 function imdbUrl(title: string, imdbId: string | null): string {
   if (imdbId) return `https://www.imdb.com/title/${imdbId}/`;
   return `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`;
@@ -372,15 +369,6 @@ export default function FilmDetailPage() {
     else void markWatched(id);
   }
 
-  // Toon de afleveringen vanaf de eerste die je nog niet zag.
-  const previewEpisodes = React.useMemo(() => {
-    if (!episodes) return null;
-    const firstOpen = episodes.findIndex((e) => !watchedSet.has(epId(selectedSeason, e.episodeNumber)));
-    const start = firstOpen < 0 ? 0 : Math.min(firstOpen, Math.max(0, episodes.length - PREVIEW_EPISODES));
-    return episodes.slice(start, start + PREVIEW_EPISODES);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [episodes, selectedSeason, tmdbId]);
-
   // Canvas «22 · Nieuw seizoen — detail»: serie helemaal gezien en er is een volgend seizoen.
   const newSeason = React.useMemo(() => {
     if (!detail || detail.type !== "tv") return null;
@@ -656,9 +644,10 @@ export default function FilmDetailPage() {
                     />
                     <SeasonPills seasons={seasonPills} selected={selectedSeason} onSelect={setSelectedSeason} className="mb-3.5" />
                     <ListCard>
-                      {previewEpisodes === null
+                      {/* Alle afleveringen van het gekozen seizoen, niet enkel een voorproefje. */}
+                      {episodes === null
                         ? [1, 2, 3].map((i) => <EpisodeRowSkeleton key={i} />)
-                        : previewEpisodes.map((ep) => (
+                        : episodes.map((ep) => (
                             <EpisodeRow
                               key={ep.episodeNumber}
                               ep={ep}
