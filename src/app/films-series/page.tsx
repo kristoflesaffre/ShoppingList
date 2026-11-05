@@ -672,6 +672,7 @@ export default function FilmsSeriesPage() {
     addToWatchlist,
     removeFromWatchlist,
     updateWatchlistScore,
+    markWatched,
     unmarkWatched,
     reactToPartnerItem,
   } = useFilmsLibrary();
