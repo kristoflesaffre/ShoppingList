@@ -166,7 +166,10 @@ export function useSeriesTaste({ recommend = false }: { recommend?: boolean } = 
 
   const recommendations = React.useMemo((): TasteRecommendation[] => {
     if (!catalog || !recommend) return [];
-    return recommendSeries(catalog, ratings, onWatchlist, 24, Array.from(extra.values()));
+    // `x` = anime of buitenlands zonder Engelse titel (zie het catalogusscript): nooit voorstellen.
+    const exclude = new Set(onWatchlist);
+    for (const s of catalog as (TasteSeries & { x?: 1 })[]) if (s.x) exclude.add(s.id);
+    return recommendSeries(catalog, ratings, exclude, 24, Array.from(extra.values()));
   }, [catalog, recommend, ratings, onWatchlist, extra]);
 
   const profile = React.useMemo(() => tasteProfile(rated, ratings), [rated, ratings]);

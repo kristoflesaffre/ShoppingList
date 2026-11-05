@@ -134,6 +134,39 @@ async function worker() {
 await Promise.all(Array.from({ length: WORKERS }, worker));
 writeFileSync(cachePath, JSON.stringify(cache));
 
+// Zelfde regels als src/lib/recommendation-filter.ts: anime en buitenlands zonder Engelse titel krijgen
+// `x: 1` en worden niet voorgesteld. Heeft een buitenlandse serie wel een Engelse titel, dan tonen we die
+// als TMDB enkel de oorspronkelijke kent.
+const ANIMATION_GENRE = 16;
+const sameTitle = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+const isForeign = (e) => !["en", "nl"].includes(e.l);
+const englishPath = path.join(dir, "tmdb-english.json");
+const english = existsSync(englishPath) ? JSON.parse(readFileSync(englishPath, "utf8")) : {};
+const foreignIds = Array.from(new Set(Object.values(cache).filter((e) => e && isForeign(e)).map((e) => e.id))).filter((id) => !(id in english));
+let foreignIndex = 0;
+await Promise.all(
+  Array.from({ length: WORKERS }, async () => {
+    while (foreignIndex < foreignIds.length) {
+      const id = foreignIds[foreignIndex++];
+      const d = await tmdb(`/tv/${id}?language=en-US`);
+      if (d) english[id] = { name: d.name ?? null, original: d.original_name ?? "" };
+    }
+  }),
+);
+writeFileSync(englishPath, JSON.stringify(english));
+
+function withRecommendationFlag(e) {
+  const anime =
+    e.gi.includes(ANIMATION_GENRE) && (["ja", "zh", "ko", "cn"].includes(e.l) || e.k.some((k) => /\b(anime|manga|donghua)\b/i.test(k)));
+  if (!isForeign(e)) return anime ? { ...e, x: 1 } : e;
+  const titles = english[e.id];
+  // Zonder gegevens: niet voorstellen, net als de filter op de server.
+  const noEnglishTitle =
+    !titles || !titles.name || (sameTitle(titles.name, titles.original) && !/\b(the|of|and|to|how|for|with|my|your)\b/i.test(titles.original));
+  if (noEnglishTitle) return { ...e, x: 1 };
+  return { ...e, n: sameTitle(e.n, titles.original) ? titles.name : e.n, ...(anime ? { x: 1 } : {}) };
+}
+
 const seen = new Set();
 const entries = [];
 for (const c of candidates) {
@@ -142,7 +175,7 @@ for (const c of candidates) {
   if (cached.gi.some((g) => EXCLUDED_TMDB_GENRES.has(g))) continue;
   seen.add(cached.id);
   // Score en stemmen altijd vers uit IMDb, ook bij een hervatte run.
-  entries.push({ ...cached, r: c.rating, v: c.votes });
+  entries.push(withRecommendationFlag({ ...cached, r: c.rating, v: c.votes }));
 }
 
 // Trefwoorden die maar één serie heeft, zeggen niets over gelijkenis.

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { TMDB_BASE, tmdbHeaders } from "@/lib/tmdb";
 import { ongoingFromTmdbDetail, type OngoingSeries } from "@/lib/series-follow";
+import { checkRecommendation } from "@/lib/recommendation-filter";
 
 const POSTER = "https://image.tmdb.org/t/p/w342";
 const MAX_PAGES = 20;
 const DAY = 86400;
 const EXCLUDED_GENRES = "10767,10763,10764,10766,10762";
-const ANIMATION = 16;
 
-type DiscoverResult = { id: number; genre_ids?: number[]; original_language?: string };
+type DiscoverResult = { id: number; genre_ids?: number[]; original_language?: string; name?: string; original_name?: string };
 type DiscoverPage = { total_pages?: number; results?: DiscoverResult[] };
 
 /** Alle pagina's van één discover-zoekopdracht (tot MAX_PAGES). */
@@ -25,7 +25,7 @@ async function discoverAll(query: string) {
 
 /**
  * Goede lopende series (TMDB «Returning Series» of «In Production», alle talen, score ≥ 7 met ≥ 200 stemmen;
- * Nederlandstalige al vanaf 15 stemmen), zonder talkshows, nieuws, reality, soaps, kinderreeksen en anime.
+ * Nederlandstalige al vanaf 15 stemmen), zonder talkshows, nieuws, reality, soaps, kinderreeksen, anime en buitenlandse titels zonder Engelse titel.
  * Ook series die nu midden in een seizoen zitten (`airing`).
  */
 export async function GET() {
@@ -36,17 +36,17 @@ export async function GET() {
       discoverAll(`${common}&vote_average.gte=6.8&vote_count.gte=15&with_original_language=nl`),
     ])
   ).flat();
-  const isAnime = (r: DiscoverResult) =>
-    Boolean(r.genre_ids?.includes(ANIMATION) && ["ja", "zh", "ko"].includes(r.original_language ?? ""));
-  const ids = Array.from(new Set(found.filter((r) => !isAnime(r)).map((r) => r.id)));
+  const rows = Array.from(new Map(found.map((r) => [r.id, r])).values());
 
-  const results: (OngoingSeries | null)[] = new Array(ids.length).fill(null);
+  const results: (OngoingSeries | null)[] = new Array(rows.length).fill(null);
   let index = 0;
   const worker = async () => {
-    while (index < ids.length) {
+    while (index < rows.length) {
       const i = index++;
       try {
-        const res = await fetch(`${TMDB_BASE}/tv/${ids[i]}?language=nl-NL`, { headers: tmdbHeaders, next: { revalidate: DAY } });
+        const verdict = await checkRecommendation(rows[i] as Record<string, unknown>, "tv");
+        if (!verdict.allowed) continue;
+        const res = await fetch(`${TMDB_BASE}/tv/${rows[i].id}?language=nl-NL`, { headers: tmdbHeaders, next: { revalidate: DAY } });
         if (res.ok) results[i] = ongoingFromTmdbDetail((await res.json()) as Record<string, unknown>, POSTER);
       } catch {
         /* Deze serie overslaan. */

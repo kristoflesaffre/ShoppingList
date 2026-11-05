@@ -17,7 +17,7 @@ let ongoingPromise: Promise<OngoingSeries[]> | null = null;
 
 export function fetchOngoingSeries(): Promise<OngoingSeries[]> {
   if (!ongoingPromise) {
-    ongoingPromise = fetch("/api/films/ongoing?v=2")
+    ongoingPromise = fetch("/api/films/ongoing?v=3")
       .then((r) => {
         if (!r.ok) throw new Error(`ongoing ${r.status}`);
         return r.json() as Promise<{ series: OngoingSeries[] }>;

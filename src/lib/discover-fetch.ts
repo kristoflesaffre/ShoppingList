@@ -8,6 +8,7 @@ import {
   type TmdbMediaType,
 } from "@/lib/tmdb";
 import { hasOmdbKey, resolveImdbScore } from "@/lib/omdb";
+import { checkRecommendation, type RecommendationVerdict } from "@/lib/recommendation-filter";
 
 const OMDB_CONCURRENCY = 5;
 
@@ -43,6 +44,10 @@ function buildSourceUrls(page: number, dates: { pastStr: string; todayStr: strin
         ]
       : []),
   ];
+}
+
+function rowType(row: Record<string, unknown>): TmdbMediaType {
+  return row.media_type === "tv" || row.name != null ? "tv" : "movie";
 }
 
 export type FetchDiscoverOptions = {
@@ -122,27 +127,35 @@ export async function fetchDiscoverItems(options: FetchDiscoverOptions): Promise
 
   const map = new Map<string, TmdbDiscoverItem>();
   const genreCounts = new Map<number, number>();
+  const verdicts = new Map<string, RecommendationVerdict>();
 
   for (let page = 1; page <= MAX_TMDB_PAGES && map.size < limit; page++) {
     const urls = buildSourceUrls(page, dates);
     const batches = await Promise.all(urls.map(fetchResults));
     let pageAdded = 0;
 
+    // Anime en buitenlandse titels zonder Engelse titel komen nooit in de voorstellen.
+    await Promise.all(
+      batches.flat().map(async (row) => {
+        const type = rowType(row);
+        const key = `${type}-${row.id as number}`;
+        if (verdicts.has(key) || excludeIds.has(key)) return;
+        verdicts.set(key, { allowed: false, displayTitle: null });
+        verdicts.set(key, await checkRecommendation(row, type));
+      }),
+    );
+
     for (const rows of batches) {
       for (const row of rows) {
         if (map.size >= limit) break;
 
-        const type: TmdbMediaType =
-          typeof row.media_type === "string" && row.media_type === "tv"
-            ? "tv"
-            : row.name != null
-              ? "tv"
-              : "movie";
-
-        const item = mapTmdbRow(row, type);
+        const item = mapTmdbRow(row, rowType(row));
         if (!item) continue;
         if (excludeIds.has(item.id)) continue;
         if (map.has(item.id)) continue;
+        const verdict = verdicts.get(item.id);
+        if (!verdict?.allowed) continue;
+        if (verdict.displayTitle) item.title = verdict.displayTitle;
 
         if (diversifyGenres && page === 1) {
           const primaryGenre = item.genreIds[0];
