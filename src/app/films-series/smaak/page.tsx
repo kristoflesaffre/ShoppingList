@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useEdgeFade } from "@/hooks/use_edge_fade";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
@@ -65,6 +66,8 @@ export default function SmaakPage() {
     return () => setForcedDark(false);
   }, []);
   const searching = query.trim().length >= 2;
+  const recommendScrollRef = React.useRef<HTMLDivElement>(null);
+  useEdgeFade(recommendScrollRef);
 
   const counts = React.useMemo(() => {
     const out: Record<TasteLevel, number> = { top: 0, great: 0, good: 0, no: 0 };
@@ -218,7 +221,7 @@ export default function SmaakPage() {
             {showOverview && recommendations.length > 0 ? (
               <section aria-label="Waarschijnlijk iets voor jou" className="flex flex-col gap-3 lg:gap-4">
                 <h2 className="text-lg font-bold text-[var(--text-primary)] lg:text-[21px]">Waarschijnlijk iets voor jou</h2>
-                <div className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
+                <div ref={recommendScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1" style={{ scrollbarWidth: "none" }}>
                   <div className="flex items-start gap-3 lg:gap-[19px]" style={{ width: "max-content" }}>
                     {recommendations.map((r) => (
                       <TasteRecommendationTile key={r.series.id} recommendation={r} className="w-[132px] lg:w-[172px]" onOpen={() => router.push(`/films-series/tv-${r.series.id}`)} />
