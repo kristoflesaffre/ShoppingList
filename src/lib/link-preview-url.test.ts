@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isBlockedPage, linkPreviewFetchUrl } from "./link-preview-url";
+import { amazonFallbackUrl, isBlockedPage, linkPreviewFetchUrl } from "./link-preview-url";
 
 const fetchUrl = (raw: string) => linkPreviewFetchUrl(new URL(raw)).toString();
 
@@ -34,5 +34,20 @@ describe("isBlockedPage", () => {
     expect(isBlockedPage("<title>Vloeibare levensmiddelenkleurstof - 24 kleuren</title>")).toBe(false);
     expect(isBlockedPage("<title>Mijn server busy-mok</title>")).toBe(false);
     expect(isBlockedPage("<p>geen titel</p>")).toBe(false);
+  });
+});
+
+describe("amazonFallbackUrl", () => {
+  const fallback = (raw: string) => amazonFallbackUrl(new URL(raw))?.toString() ?? null;
+
+  it("wijst naar hetzelfde product op amazon.nl", () => {
+    expect(fallback("https://www.amazon.com.be/-/nl/Kleurstof/dp/B0DFCN7JD2/ref=asc_df?psc=1")).toBe("https://www.amazon.nl/dp/B0DFCN7JD2");
+    expect(fallback("https://www.amazon.de/gp/product/B0DFCN7JD2")).toBe("https://www.amazon.nl/dp/B0DFCN7JD2");
+  });
+
+  it("geeft niets voor amazon.nl zelf, andere winkels of pagina's zonder product", () => {
+    expect(fallback("https://www.amazon.nl/dp/B0DFCN7JD2")).toBeNull();
+    expect(fallback("https://www.bol.com/dp/B0DFCN7JD2")).toBeNull();
+    expect(fallback("https://www.amazon.com.be/s?k=kleurstof")).toBeNull();
   });
 });

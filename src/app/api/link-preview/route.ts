@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import { isBlockedPage, linkPreviewFetchUrl } from "@/lib/link-preview-url";
+import { amazonFallbackUrl, isBlockedPage, linkPreviewFetchUrl } from "@/lib/link-preview-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -283,7 +283,15 @@ export async function POST(req: Request) {
       if (page.html != null && !isBlockedPage(page.html)) return NextResponse.json(parsePreview(page.html, page.url));
       if (!page.retry || Date.now() - started > MAX_RETRY_MS) break;
     }
-    return NextResponse.json({ ...fallback, url: lastUrl.toString(), blocked: true });
+    const blocked = NextResponse.json({ ...fallback, url: lastUrl.toString(), blocked: true });
+    const sibling = amazonFallbackUrl(lastUrl);
+    if (!sibling) return blocked;
+    const page = await fetchPage(sibling).catch(() => null);
+    if (page?.html == null || isBlockedPage(page.html)) return blocked;
+    const preview = parsePreview(page.html, page.url);
+    if (!preview.title && !preview.image) return blocked;
+    // De link en winkel blijven die van de gebruiker; de prijs op amazon.nl hoeft daar niet te gelden.
+    return NextResponse.json({ ...preview, url: lastUrl.toString(), store: fallback.store, price: null });
   } catch {
     return NextResponse.json({ ...fallback, blocked: true });
   }

@@ -22,3 +22,13 @@ export function isBlockedPage(html: string): boolean {
   const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? "";
   return BLOCKED_TITLE.test(title) || /\/errors\/validateCaptcha/i.test(html);
 }
+
+/**
+ * Hetzelfde product op amazon.nl, als een andere Amazon-winkel de server blijft weigeren. Enkel voor
+ * naam en foto: de prijs kan per winkel verschillen.
+ */
+export function amazonFallbackUrl(url: URL): URL | null {
+  if (!/(^|\.)amazon\.[a-z.]+$/i.test(url.hostname) || /(^|\.)amazon\.nl$/i.test(url.hostname)) return null;
+  const asin = /\/(?:dp|gp\/product)\/([A-Z0-9]{10})(?:[/?]|$)/i.exec(url.pathname)?.[1];
+  return asin ? new URL(`https://www.amazon.nl/dp/${asin.toUpperCase()}`) : null;
+}
