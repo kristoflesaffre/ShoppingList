@@ -31,8 +31,8 @@ export function resolveTheme(pref: ThemePreference): ResolvedTheme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-/** Pagina's die altijd donker zijn, ongeacht de voorkeur (`CinemaHero`, «Jouw seriesmaak», «Series die je volgt»). */
-const ALWAYS_DARK_PATHS = ["/films-series", "/films-series/smaak", "/films-series/gevolgde-series"];
+/** Pagina's die altijd donker zijn, ongeacht de voorkeur (`CinemaHero`, «Jouw seriesmaak», «Series die je volgt», de watchlists). */
+const ALWAYS_DARK_PATHS = ["/films-series", "/films-series/smaak", "/films-series/gevolgde-series", "/films-series/watchlist/series", "/films-series/watchlist/films"];
 let forcedDark = typeof window !== "undefined" && ALWAYS_DARK_PATHS.includes(window.location.pathname);
 
 /** Zet de pagina donker op `--cinema-screen` tot `setForcedDark(false)`; de voorkeur blijft ongemoeid. */

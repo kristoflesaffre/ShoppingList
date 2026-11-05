@@ -18,6 +18,7 @@ import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
+import { setForcedDark } from "@/lib/theme";
 
 type Kind = "films" | "series";
 
@@ -94,8 +95,15 @@ function toEnriched(
   };
 }
 
+const useBrowserLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+
 export default function WatchlistKindPage() {
   const router = useRouter();
+  // Donker zoals de andere filmpagina's (cinema-thema), ongeacht het gekozen thema.
+  useBrowserLayoutEffect(() => {
+    setForcedDark(true);
+    return () => setForcedDark(false);
+  }, []);
   const params = useParams();
   const kindParam = params.kind as string;
   const kind: Kind | null =
