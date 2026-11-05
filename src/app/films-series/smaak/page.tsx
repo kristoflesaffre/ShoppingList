@@ -76,7 +76,8 @@ export default function SmaakPage() {
     for (const s of rated) out[s.level]++;
     return out;
   }, [rated]);
-  const byLevel = React.useMemo(() => (filter === "all" ? rated : rated.filter((s) => s.level === filter)), [rated, filter]);
+  /** Het raster toont bij «Alles» enkel wat je minstens goed vindt; «Niet goed» zie je via die chip. */
+  const byLevel = React.useMemo(() => rated.filter((s) => (filter === "all" ? s.level !== "no" : s.level === filter)), [rated, filter]);
   /** Genres van wat het oordeel-filter toont, meest voorkomende eerst; het gekozen genre blijft staan, ook bij 0. */
   const genreCounts = React.useMemo(() => {
     const out = new Map<string, number>();
@@ -251,7 +252,7 @@ export default function SmaakPage() {
               <section aria-label="Beoordeelde series" className="flex flex-col gap-3 lg:gap-4">
                 <h2 className="text-lg font-bold text-[var(--text-primary)] lg:text-[21px]">
                   {filter === "all" && !genre
-                    ? `${nl(rated.length)} ${rated.length === 1 ? "serie" : "series"} beoordeeld`
+                    ? `${nl(byLevel.length)} ${byLevel.length === 1 ? "serie" : "series"} die je goed vindt`
                     : `${[filter === "all" ? null : tasteLabel(filter), genre].filter(Boolean).join(" · ")} · ${nl(visible.length)}`}
                 </h2>
                 {genreCounts.length > 1 || genre ? (
