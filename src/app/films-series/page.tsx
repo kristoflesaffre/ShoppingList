@@ -651,8 +651,7 @@ export default function FilmsSeriesPage() {
     partnerName,
     partnerAvatarUrl,
     watchedIds,
-    discoverExcludeIds,
-    discoverReady,
+    discoverDismissedIds,
     dismissDiscoverItem,
     restoreDiscoverItem,
     isInWatchlist,
@@ -729,8 +728,7 @@ export default function FilmsSeriesPage() {
   const lastAddedItemRef = React.useRef<HTMLButtonElement | null>(null);
   const scrollPendingRef = React.useRef(false);
   const [discoverItems, setDiscoverItems] = React.useState<SearchResult[]>([]);
-  const [discoverFetching, setDiscoverLoading] = React.useState(true);
-  const discoverLoading = discoverFetching || !discoverReady;
+  const [discoverLoading, setDiscoverLoading] = React.useState(true);
   const [scoreSourceMap, setScoreSourceMap] = React.useState<Record<string, "imdb" | "tmdb">>({});
 
   React.useEffect(() => {
@@ -843,6 +841,16 @@ export default function FilmsSeriesPage() {
   const watchlistSeries = ownWatchlist.filter((r) => r.type === "tv");
   const hasWatchlistItems = ownWatchlist.length > 0;
   const hasPartnerItems = partnerWatchlist.length > 0;
+
+  const discoverExcludeIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of watchlist) ids.add(item.id);
+    for (const id of watchedIds) {
+      if (id.startsWith("movie-") || id.startsWith("tv-")) ids.add(id);
+    }
+    for (const id of discoverDismissedIds) ids.add(id);
+    return ids;
+  }, [watchlist, watchedIds, discoverDismissedIds]);
 
   const discoverVisible = React.useMemo(
     () => discoverItems.filter((item) => !discoverExcludeIds.has(item.id)),
