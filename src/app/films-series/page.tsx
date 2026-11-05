@@ -1284,9 +1284,9 @@ export default function FilmsSeriesPage() {
             ) : null}
 
             {/* Jouw seriesmaak: eerst beoordelen, daarna voorstellen */}
-            {!taste.loading && !tasteBannerHidden && taste.explicit.size === 0 && taste.catalog ? (
+            {!taste.loading && !tasteBannerHidden && taste.explicit.size === 0 && taste.askable ? (
               <SeriesTasteBanner
-                posters={taste.catalog.slice(0, 3).map(tastePosterUrl).filter((p): p is string => Boolean(p))}
+                posters={taste.askable.slice(0, 3).map(tastePosterUrl).filter((p): p is string => Boolean(p))}
                 onStart={() => router.push("/films-series/smaak")}
                 onDismiss={dismissTasteBanner}
               />

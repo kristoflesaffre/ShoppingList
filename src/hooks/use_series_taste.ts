@@ -70,6 +70,9 @@ function useExtraSeries(ids: readonly number[]) {
 
 export type RatedSeries = TasteSeries & { level: TasteLevel; auto: boolean };
 
+/** `x` = anime of buitenlands zonder Engelse titel (zie het catalogusscript): nooit voorstellen of naar vragen. */
+type CatalogSeries = TasteSeries & { x?: 1 };
+
 /**
  * Jouw seriesmaak: oordelen lezen en bewaren, de series die vanzelf meetellen, en wat je waarschijnlijk
  * goed zal vinden. Oordelen zijn per persoon; wat je volgt en zag deel je met je partner.
@@ -117,6 +120,9 @@ export function useSeriesTaste({ recommend = false }: { recommend?: boolean } = 
 
   const auto = React.useMemo(() => autoLikedSeriesIds(watchedIds), [watchedIds]);
   const ratings = React.useMemo(() => effectiveRatings(explicit, auto, unseenIds), [explicit, auto, unseenIds]);
+
+  /** De series waar we je naar vragen; `catalog` bevat ook de rest, zodat een eerder oordeel blijft tellen. */
+  const askable = React.useMemo(() => (catalog ? (catalog as CatalogSeries[]).filter((s) => !s.x) : null), [catalog]);
 
   const catalogById = React.useMemo(() => new Map((catalog ?? []).map((s) => [s.id, s])), [catalog]);
   const missingIds = React.useMemo(
@@ -166,9 +172,8 @@ export function useSeriesTaste({ recommend = false }: { recommend?: boolean } = 
 
   const recommendations = React.useMemo((): TasteRecommendation[] => {
     if (!catalog || !recommend) return [];
-    // `x` = anime of buitenlands zonder Engelse titel (zie het catalogusscript): nooit voorstellen.
     const exclude = new Set(onWatchlist);
-    for (const s of catalog as (TasteSeries & { x?: 1 })[]) if (s.x) exclude.add(s.id);
+    for (const s of catalog as CatalogSeries[]) if (s.x) exclude.add(s.id);
     return recommendSeries(catalog, ratings, exclude, 24, Array.from(extra.values()));
   }, [catalog, recommend, ratings, onWatchlist, extra]);
 
@@ -253,6 +258,7 @@ export function useSeriesTaste({ recommend = false }: { recommend?: boolean } = 
     error,
     retry: load,
     catalog,
+    askable,
     getSeries,
     explicit,
     auto,

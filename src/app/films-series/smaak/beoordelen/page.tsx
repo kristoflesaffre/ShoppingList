@@ -59,7 +59,7 @@ function BeoordelenInner() {
   const router = useRouter();
   const refine = useSearchParams().get("modus") === "automatisch";
   const taste = useSeriesTaste();
-  const { catalog, loading, explicit, auto, unseenIds, rated } = taste;
+  const { askable, loading, explicit, auto, unseenIds, rated } = taste;
 
   // De wachtrij wordt één keer vastgelegd, zodat je eigen keuzes ze niet door elkaar schudden.
   const [queue, setQueue] = React.useState<TasteSeries[] | null>(null);
@@ -68,15 +68,15 @@ function BeoordelenInner() {
   const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
-    if (queue || loading || !catalog) return;
+    if (queue || loading || !askable) return;
     // «Verfijnen» overloopt enkel wat vanzelf op «goed» staat.
     if (refine) {
       setQueue(rated.filter((s) => s.auto));
       return;
     }
     // De catalogus staat al op bekendheid: wat je waarschijnlijk zag, komt eerst.
-    setQueue(catalog.filter((s) => !explicit.has(s.id) && !auto.has(s.id) && !unseenIds.has(s.id)));
-  }, [queue, loading, catalog, explicit, auto, unseenIds, refine, rated]);
+    setQueue(askable.filter((s) => !explicit.has(s.id) && !auto.has(s.id) && !unseenIds.has(s.id)));
+  }, [queue, loading, askable, explicit, auto, unseenIds, refine, rated]);
 
   const current = queue?.[index] ?? null;
   const upcoming = queue?.[index + 1] ?? null;

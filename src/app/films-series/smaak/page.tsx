@@ -55,7 +55,7 @@ function useSeriesSearch(query: string) {
 export default function SmaakPage() {
   const router = useRouter();
   const taste = useSeriesTaste({ recommend: true });
-  const { rated, recommendations, profile, catalog, explicit, auto, unseenIds, ratings, loading } = taste;
+  const { rated, recommendations, profile, askable, explicit, auto, unseenIds, ratings, loading } = taste;
   const [filter, setFilter] = React.useState<Filter>("all");
   const [query, setQuery] = React.useState("");
   const [sheet, setSheet] = React.useState<TasteSheetSeries | null>(null);
@@ -74,15 +74,15 @@ export default function SmaakPage() {
   const visible = React.useMemo(() => (filter === "all" ? rated : rated.filter((s) => s.level === filter)), [rated, filter]);
   const autoCount = React.useMemo(() => rated.filter((s) => s.auto).length, [rated]);
 
-  const catalogTotal = catalog?.length ?? 0;
+  const catalogTotal = askable?.length ?? 0;
   const answeredInCatalog = React.useMemo(
-    () => (catalog ?? []).filter((s) => explicit.has(s.id) || auto.has(s.id) || unseenIds.has(s.id)).length,
-    [catalog, explicit, auto, unseenIds],
+    () => (askable ?? []).filter((s) => explicit.has(s.id) || auto.has(s.id) || unseenIds.has(s.id)).length,
+    [askable, explicit, auto, unseenIds],
   );
   const toGo = Math.max(0, catalogTotal - answeredInCatalog);
   const pct = catalogTotal > 0 ? (answeredInCatalog / catalogTotal) * 100 : 0;
   const likedCount = rated.length - counts.no;
-  const wall = React.useMemo(() => (loading ? [] : buildTasteWall(rated, catalog ?? [])), [loading, rated, catalog]);
+  const wall = React.useMemo(() => (loading ? [] : buildTasteWall(rated, askable ?? [])), [loading, rated, askable]);
   const showOverview = !searching && filter === "all";
 
   const sheetRating = sheet ? ratings.get(sheet.id) : undefined;
