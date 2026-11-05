@@ -5,8 +5,6 @@ import { amazonFallbackUrl, isBlockedPage, linkPreviewFetchUrl } from "@/lib/lin
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-/** In Europa: vanaf een Amerikaans adres toont amazon.nl geen prijs. */
-export const preferredRegion = "fra1";
 
 /**
  * Voorbeeld van een productlink (kado-ideeën): haalt de pagina op en leest titel, foto en prijs uit
