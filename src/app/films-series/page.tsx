@@ -386,6 +386,7 @@ function DiscoverFeature({
   total,
   onOpen,
   onAdd,
+  onSeen,
   onDismiss,
   onPrev,
   onNext,
@@ -396,6 +397,7 @@ function DiscoverFeature({
   total: number;
   onOpen: () => void;
   onAdd: () => void;
+  onSeen: () => void;
   onDismiss: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -461,13 +463,24 @@ function DiscoverFeature({
       </button>
       <button
         type="button"
-        onClick={onDismiss}
+        onClick={onSeen}
         className="inline-flex h-10 items-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.14)] px-[15px] text-sm font-bold text-fixed-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.24)]"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[15px]">
+          <path d="M5 12.5l4.5 4.5L19 7.5" />
+        </svg>
+        Gezien
+      </button>
+      {/* Op gsm is er geen plaats voor drie pillen: «Niet voor mij» wordt daar een rond kruisje. */}
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="inline-flex size-10 shrink-0 items-center justify-center gap-1.5 rounded-pill bg-[rgba(255,255,255,0.14)] text-sm font-bold text-fixed-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white lg:h-10 lg:w-auto lg:px-[15px] [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.24)]"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden className="size-[15px]">
           <path d="M6 6l12 12M18 6 6 18" />
         </svg>
-        Niet voor mij
+        <span className="sr-only lg:not-sr-only">Niet voor mij</span>
       </button>
     </div>
   );
@@ -1405,6 +1418,21 @@ export default function FilmsSeriesPage() {
                       position={(discoverIndex % discoverVisible.length) + 1}
                       total={discoverVisible.length}
                       onAdd={() => handleAdd(discoverFeature)}
+                      onSeen={() => {
+                        const seen = discoverFeature;
+                        const commit = () => {
+                          // Een film is af; een serie gaat enkel uit de voorstellen, niet al haar afleveringen op gezien.
+                          if (seen.type === "movie") {
+                            void markWatched(seen.id);
+                            showSnackbar(`${seen.title} als gezien gemarkeerd`, () => void unmarkWatched(seen.id));
+                          } else {
+                            void dismissDiscoverItem(seen.id);
+                            showSnackbar(`${seen.title} als gezien gemarkeerd`, () => void restoreDiscoverItem(seen.id));
+                          }
+                        };
+                        if (discoverCarouselRef.current) discoverCarouselRef.current.go("next", commit);
+                        else commit();
+                      }}
                       onDismiss={() => {
                         const gone = discoverFeature;
                         const commit = () => {
@@ -1432,6 +1460,7 @@ export default function FilmsSeriesPage() {
                           total={n}
                           onOpen={() => {}}
                           onAdd={() => {}}
+                          onSeen={() => {}}
                           onDismiss={() => {}}
                           onPrev={() => {}}
                           onNext={() => {}}
