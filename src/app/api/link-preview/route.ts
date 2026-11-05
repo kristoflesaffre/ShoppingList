@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { linkPreviewFetchUrl } from "@/lib/link-preview-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -248,7 +249,7 @@ export async function POST(req: Request) {
     let url = target;
     let res: Response | null = null;
     for (let hop = 0; hop < 5; hop++) {
-      res = await fetch(url, {
+      res = await fetch(linkPreviewFetchUrl(url), {
         redirect: "manual",
         headers: {
           "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36",
@@ -259,7 +260,7 @@ export async function POST(req: Request) {
       });
       const loc = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
       if (!loc) break;
-      url = await assertPublicUrl(new URL(loc, url).toString());
+      url = await assertPublicUrl(new URL(loc, linkPreviewFetchUrl(url)).toString());
     }
     if (!res || !res.ok) return NextResponse.json({ ...fallback, url: url.toString(), blocked: true });
     const html = await readLimited(res);
