@@ -1252,7 +1252,7 @@ export default function FilmsSeriesPage() {
             {/* Ook nog bezig — de andere series die je kijkt (de laatste staat groot in de kop) */}
             {watchingItems.length > 1 && (
               <section className="flex flex-col gap-3">
-                <SectionHead title="Ook nog bezig" href="/films-series/aan-het-kijken" count={watchingItems.length} />
+                <SectionHead title="Ook nog bezig" />
                 <div ref={watchingScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex w-max gap-3">
                     {!watchingReady ? watchingItems.slice(1).map((item) => <WatchingCardSkeleton key={item.id} />) : watchingItems.slice(1).map((item) => (
