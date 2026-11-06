@@ -1568,10 +1568,10 @@ export default function FilmsSeriesPage() {
               </section>
             )}
 
-            {/* Waarschijnlijk iets voor jou — onderaan; de pil gaat naar «Jouw smaak» */}
+            {/* Suggestie op basis van jouw smaak — onderaan; de pil gaat naar «Jouw smaak» */}
             {taste.recommendations.length > 0 ? (
               <section className="flex flex-col gap-4 lg:gap-5">
-                <SectionHead title="Waarschijnlijk iets voor jou" href="/films-series/smaak" count={taste.recommendations.length} />
+                <SectionHead title="Suggestie op basis van jouw smaak" href="/films-series/smaak" count={taste.recommendations.length} />
                 <div ref={tasteScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex items-start gap-3" style={{ width: "max-content" }}>
                     {taste.recommendations.slice(0, 12).map((r) => (
