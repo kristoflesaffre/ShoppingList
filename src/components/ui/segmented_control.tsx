@@ -100,6 +100,8 @@ export function SegmentedControl<T extends string>({
         className={cn(
           "pointer-events-none absolute left-0 -z-10 rounded-[10px] motion-reduce:!transition-none",
           surface === "app" ? "bg-[var(--gray-100)]" : "bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.12)]",
+          // Donker thema: wit en grijs liggen te dicht bij de trog; de keuze een duidelijk lichtere pil.
+          "[[data-theme=dark]_&]:bg-[var(--gray-200)] [[data-theme=dark]_&]:shadow-[0_2px_6px_rgba(0,0,0,0.35)]",
           glass && GLASS_PILL,
           // Geen geldige keuze (bv. twee rolluiken in een andere stand): geen pil.
           shownIndex < 0 && "opacity-0",
@@ -126,7 +128,9 @@ export function SegmentedControl<T extends string>({
               size === "lg" ? "h-[38px] px-4" : surface === "app" ? "h-7" : "h-8",
               size === "icon" ? (fill ? "min-w-0 flex-1" : "w-9") : size === "lg" ? "" : "px-3",
               fill && size !== "icon" && "min-w-0 flex-1",
-              on ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
+              on
+                ? "text-[var(--text-primary)] [[data-theme=dark]_&]:font-bold [[data-theme=dark]_&]:text-fixed-white"
+                : "text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
               glass && (on ? GLASS_TEXT_ON : GLASS_TEXT_OFF),
               glass && GLASS_ROUND,
             )}
