@@ -29,6 +29,7 @@ import { FloatingActionButton } from "@/components/ui/floating_action_button";
 import { RecipeTile } from "@/components/ui/recipe_tile";
 import { SearchBar } from "@/components/ui/search_bar";
 import { MiniButton } from "@/components/ui/mini_button";
+import { SegmentedControl } from "@/components/ui/segmented_control";
 import dynamic from "next/dynamic";
 
 const RecipeEditorSlideIn = dynamic(
@@ -326,6 +327,9 @@ function RecipeCategoryLane({
   );
 }
 
+type RecipeTab = "recepten" | "te_testen";
+const TO_TEST_CATEGORY: RecipeCategory = "nog_te_testen";
+
 export default function ReceptenPage() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
@@ -367,11 +371,27 @@ export default function ReceptenPage() {
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [recipeSearch, setRecipeSearch] = React.useState("");
   const [activeCategory, setActiveCategory] = React.useState<RecipeCategory | null>(null);
-  // De open sectie staat in het adres (?categorie=…), zodat «terug» vanuit een recept weer in die sectie uitkomt.
+  /* Tabs bovenaan (canvas «Recepten tabs · A»): alle recepten, of enkel de recepten die je nog wilt testen. */
+  const [recipeTab, setRecipeTab] = React.useState<RecipeTab>("recepten");
+  // De open sectie en tab staan in het adres (?categorie=… / ?tab=te-testen), zodat «terug» vanuit een recept daar weer uitkomt.
   React.useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get("categorie");
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get("categorie");
+    if (params.get("tab") === "te-testen" || fromUrl === TO_TEST_CATEGORY) {
+      setRecipeTab("te_testen");
+      return;
+    }
     const match = RECIPE_CATEGORIES.find((c) => c.id === fromUrl);
     if (match) setActiveCategory(match.id);
+  }, []);
+  const openTab = React.useCallback((tab: RecipeTab) => {
+    setRecipeTab(tab);
+    setActiveCategory(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("categorie");
+    if (tab === "te_testen") url.searchParams.set("tab", "te-testen");
+    else url.searchParams.delete("tab");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
   }, []);
   const openCategory = React.useCallback((category: RecipeCategory | null) => {
     setActiveCategory(category);
@@ -431,15 +451,21 @@ export default function ReceptenPage() {
     let result = savedRecipes;
     const q = recipeSearch.trim().toLowerCase();
     if (q) result = result.filter((r) => r.name.toLowerCase().includes(q));
+    if (recipeTab === "te_testen") result = result.filter((r) => r.category === TO_TEST_CATEGORY);
+    else result = result.filter((r) => r.category !== TO_TEST_CATEGORY);
     if (activeCategory) result = result.filter((r) => r.category === activeCategory);
     return result;
-  }, [savedRecipes, recipeSearch, activeCategory]);
+  }, [savedRecipes, recipeSearch, activeCategory, recipeTab]);
+  const toTestCount = React.useMemo(
+    () => savedRecipes.filter((r) => r.category === TO_TEST_CATEGORY).length,
+    [savedRecipes],
+  );
 
 
   // Group filtered recipes by category for the sectioned view
   const groupedSections = React.useMemo(() => {
-    if (recipeSearch.trim()) {
-      // Search active – flat list without sections
+    if (recipeSearch.trim() || recipeTab === "te_testen") {
+      // Zoeken of «Te testen»: één raster zonder secties
       return null;
     }
     // Group by category order; uncategorised at the end
@@ -453,7 +479,7 @@ export default function ReceptenPage() {
     // If everything is uncategorised, return null (render flat list as before)
     if (sections.length === 1 && sections[0].meta === null) return null;
     return sections.length > 0 ? sections : null;
-  }, [filteredRecipes, activeCategory, recipeSearch]);
+  }, [filteredRecipes, recipeSearch, recipeTab]);
 
   const displayRecipes = isEditMode ? savedRecipes : filteredRecipes;
   const activeCategoryMeta = RECIPE_CATEGORIES.find((c) => c.id === activeCategory) ?? null;
@@ -561,7 +587,31 @@ export default function ReceptenPage() {
 
   const hasRecipes = savedRecipes.length > 0;
   /* Statistieken enkel in het gewone overzicht (niet bij zoeken, één categorie of bewerken). */
-  const showStats = !isEditMode && !activeCategory && recipeSearch.trim() === "";
+  const showStats = !isEditMode && !activeCategory && recipeTab === "recepten" && recipeSearch.trim() === "";
+  const onToTestTab = recipeTab === "te_testen";
+  const searchPlaceholder = onToTestTab ? "Zoek in te testen" : "Zoek recept";
+  const tabControl = (fill: boolean) => (
+    <SegmentedControl<RecipeTab>
+      surface="app"
+      fill={fill}
+      ariaLabel="Welke recepten"
+      value={recipeTab}
+      onChange={openTab}
+      options={[
+        { value: "recepten", label: "Recepten" },
+        {
+          value: "te_testen",
+          label: (
+            <span className="flex items-center gap-1.5">
+              Te testen
+              <span className="text-[12px] font-bold tabular-nums text-[var(--text-tertiary)]">{toTestCount}</span>
+            </span>
+          ),
+          ariaLabel: `Te testen, ${toTestCount} recepten`,
+        },
+      ]}
+    />
+  );
 
   return (
     <div
@@ -584,18 +634,15 @@ export default function ReceptenPage() {
               {/* Rechts: zoeken + potlood; in de bewerkstand staat «Gereed» in de zwevende balk onderaan. */}
               {isEditMode ? null : (
                 <>
-                  <div className="hidden w-[320px] shrink-0 md:block">
-                    <SearchBar surface="app" placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
+                  <div className="hidden shrink-0 md:block">{tabControl(false)}</div>
+                  <div className="hidden w-[300px] shrink-0 md:block">
+                    <SearchBar surface="app" placeholder={searchPlaceholder} value={recipeSearch} onValueChange={setRecipeSearch} />
                   </div>
                   <HeaderEditButton onClick={() => setIsEditMode(true)} />
                 </>
               )}
             </div>
           ) : null}
-
-          <div className="flex flex-wrap items-center gap-2">
-            <MiniButton variant="secondary" onClick={() => openCategory("nog_te_testen")}>Nog te testen ({savedRecipes.filter(r => r.category === "nog_te_testen").length})</MiniButton>
-          </div>
 
           {hasRecipes ? (
             <>
@@ -620,8 +667,9 @@ export default function ReceptenPage() {
                   <span className="text-sm font-medium leading-20 text-[var(--text-secondary)] tabular-nums">{filteredRecipes.length}</span>
                 </div>
               ) : null}
-              <div className={cn("md:hidden", isEditMode && "hidden")}>
-                <SearchBar surface="app" placeholder="Zoek recept" value={recipeSearch} onValueChange={setRecipeSearch} />
+              <div className={cn("flex flex-col gap-3 md:hidden", isEditMode && "hidden")}>
+                {tabControl(true)}
+                <SearchBar surface="app" placeholder={searchPlaceholder} value={recipeSearch} onValueChange={setRecipeSearch} />
               </div>
 
               {showStats && recipeStats.isLoading ? (
@@ -635,7 +683,7 @@ export default function ReceptenPage() {
 
               {!isEditMode && filteredRecipes.length === 0 ? (
                 <p className="py-8 text-center text-base font-medium leading-24 text-[var(--text-tertiary)]">
-                  Geen recepten gevonden
+                  {onToTestTab && !recipeSearch.trim() ? "Geen recepten om te testen" : "Geen recepten gevonden"}
                 </p>
               ) : displayRecipes.length === 0 ? null : isEditMode ? (
                 <DndContext
