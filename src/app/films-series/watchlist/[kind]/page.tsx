@@ -17,6 +17,7 @@ import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
 import { airedEpisodeIds, followMarkId, isReturningStatus, skipMarkId } from "@/lib/series-follow";
 import { setForcedDark } from "@/lib/theme";
+import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
 
 type Kind = "films" | "series";
 
@@ -182,6 +183,9 @@ export default function WatchlistKindPage() {
     undoEnriched?: EnrichedItem;
   } | null>(null);
 
+  /** Bewerkmodus: meerdere titels kiezen en samen van de watchlist halen. */
+  const [editing, setEditing] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
   const snackbarTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const removalTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const removalSnapshotsRef = React.useRef<Map<string, EnrichedItem>>(new Map());
@@ -517,6 +521,46 @@ export default function WatchlistKindPage() {
   }
 
 
+  function toggleEditing() {
+    setEditing((on) => !on);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  /** Gekozen titels in één keer van de watchlist; «Zet terug» zet ze allemaal terug. */
+  function removeSelected() {
+    const items = displayItems.filter((i) => selectedIds.has(i.id));
+    if (items.length === 0) return;
+    const snapshots = items.map((i) => ({ ...i }));
+    for (const item of items) commitRemoval(item.id);
+    setEditing(false);
+    setSelectedIds(new Set());
+    if (snackbarTimerRef.current) clearTimeout(snackbarTimerRef.current);
+    const noun = config?.mediaType === "movie" ? (items.length === 1 ? "film" : "films") : items.length === 1 ? "serie" : "series";
+    setSnackbar({
+      message: items.length === 1 ? `${items[0].title} verwijderd` : `${items.length} ${noun} verwijderd`,
+      undoFn: () => {
+        const ids = new Set(snapshots.map((i) => i.id));
+        setDismissedIds((prev) => new Set(Array.from(prev).filter((id) => !ids.has(id))));
+        setEnriched((prev) => {
+          const next = { ...prev };
+          for (const item of snapshots) next[item.id] = item;
+          return next;
+        });
+        for (const item of snapshots) void addToWatchlist(item);
+      },
+    });
+    snackbarTimerRef.current = setTimeout(() => setSnackbar(null), 6000);
+  }
+
   function handleSnackbarUndo() {
     if (!snackbar) return;
     if (snackbar.undoItem) {
@@ -570,9 +614,18 @@ export default function WatchlistKindPage() {
           >
             {FilmIcons.back}
           </button>
-          <button type="button" aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")} className={headerRoundButtonClass}>
-            {FilmIcons.dots}
-          </button>
+          <div className="flex items-center gap-2">
+            {editing ? (
+              <DoneButton onClick={toggleEditing} />
+            ) : (
+              <>
+                {baseItems.length > 0 ? <TitleEditButton onClick={toggleEditing} aria-label="Watchlist bewerken" /> : null}
+                <button type="button" aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")} className={headerRoundButtonClass}>
+                  {FilmIcons.dots}
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="mt-1 flex flex-col gap-4 lg:mt-0 lg:flex-row lg:items-center lg:gap-3">
@@ -593,6 +646,12 @@ export default function WatchlistKindPage() {
             onValueChange={setQuery}
             className="lg:w-[300px] lg:shrink-0"
           />
+          {/* Desktop: bewerken rechtsboven, naast het zoekveld */}
+          {baseItems.length > 0 ? (
+            <div className="hidden lg:flex lg:shrink-0 lg:justify-end">
+              {editing ? <DoneButton onClick={toggleEditing} /> : <TitleEditButton onClick={toggleEditing} aria-label="Watchlist bewerken" />}
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-3 flex flex-col gap-3 lg:mt-6 lg:flex-row lg:items-center lg:gap-4">
@@ -674,7 +733,12 @@ export default function WatchlistKindPage() {
                       item={item}
                       scoreSource={scoreSources[item.id]}
                       className="w-full"
+                      selected={editing ? selectedIds.has(item.id) : undefined}
                       onOpen={() => {
+                        if (editing) {
+                          toggleSelected(item.id);
+                          return;
+                        }
                         sessionStorage.setItem(`watchlist-${kindParam}-anchor`, item.id);
                         sessionStorage.setItem("films-watchlist-return", `/films-series/watchlist/${kindParam}`);
                         router.push(`/films-series/${item.id}`);
@@ -694,7 +758,34 @@ export default function WatchlistKindPage() {
         </div>
       </div>
 
-      {snackbar && (
+      {/* Bewerkmodus: zwevende balk met het aantal gekozen titels en «Verwijderen». */}
+      {editing ? (
+        <div
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)]",
+            APP_SNACKBAR_NO_NAV_FIXTURE_CLASS,
+          )}
+        >
+          <div className="flex w-full max-w-[520px] items-center gap-3 rounded-pill bg-[var(--white)] py-2 pl-5 pr-2 shadow-[0_14px_30px_-12px_rgba(16,17,48,.6),inset_0_0_0_1px_var(--border-subtle)]">
+            <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold text-[var(--text-primary)]">
+              {selectedIds.size === 0 ? "Tik op wat weg mag" : `${selectedIds.size} gekozen`}
+            </span>
+            <button
+              type="button"
+              onClick={removeSelected}
+              disabled={selectedIds.size === 0}
+              className="inline-flex h-[42px] shrink-0 items-center gap-1.5 rounded-pill bg-[var(--action-danger)] px-4 text-[15px] font-bold text-fixed-white transition-[opacity,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
+                <path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+              </svg>
+              Verwijderen
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {snackbar && !editing && (
         <div
           className={cn(
             "fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)]",

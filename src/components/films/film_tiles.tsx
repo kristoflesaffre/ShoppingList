@@ -121,12 +121,15 @@ export function PosterTile({
   onOpen,
   onSeen,
   seenLabel,
+  selected,
   className,
 }: {
   item: WatchlistItem;
   scoreSource?: "imdb" | "tmdb";
   buttonRef?: (el: HTMLButtonElement | null) => void;
   onOpen: () => void;
+  /** Bewerkmodus (meerdere kiezen): rondje rechtsboven i.p.v. het oogje; `onOpen` kiest dan. */
+  selected?: boolean;
   onSeen?: (e: React.MouseEvent) => void;
   /** Toegankelijk label van de oogknop (standaard «Markeer … als bekeken»). */
   seenLabel?: string;
@@ -139,15 +142,37 @@ export function PosterTile({
         type="button"
         ref={buttonRef}
         onClick={onOpen}
+        aria-pressed={selected}
         className="block w-full rounded-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
       >
-        <Poster src={item.posterUrl} alt={item.title}>
+        <Poster
+          src={item.posterUrl}
+          alt={item.title}
+          className={cn(
+            "transition-[box-shadow,opacity] duration-fast",
+            selected === true && "shadow-[0_0_0_3px_var(--blue-500)]",
+            selected === false && "opacity-80",
+          )}
+        >
           {item.score != null ? <RatingChip score={item.score} source={scoreSource} /> : null}
+          {selected !== undefined ? (
+            <span
+              aria-hidden
+              className={cn(
+                "absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full",
+                selected
+                  ? "bg-[var(--blue-500)] text-fixed-white"
+                  : "bg-[rgba(16,17,48,0.35)] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.9)] backdrop-blur-md",
+              )}
+            >
+              {selected ? <CheckIcon className="size-3.5" /> : null}
+            </span>
+          ) : null}
         </Poster>
         <p className="mt-2 truncate text-[13.5px] font-bold leading-[18px] text-[var(--text-primary)]">{item.title}</p>
         <p className="text-xs leading-4 text-[var(--text-tertiary)]">{item.year}</p>
       </button>
-      {onSeen ? (
+      {onSeen && selected === undefined ? (
         <button
           type="button"
           aria-label={seenLabel ?? `Markeer ${item.title} als bekeken`}
