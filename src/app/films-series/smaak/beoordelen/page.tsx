@@ -16,7 +16,8 @@ import { setForcedDark } from "@/lib/theme";
 import { fetchFilmDetail } from "@/lib/film-detail-client";
 import { tastePosterUrl, type TasteLevel, type TasteSeries } from "@/lib/series-taste";
 
-type Step = { id: number; level: TasteLevel | null; unseen: boolean };
+/** `addedToWatchlist`: hier op de watchlist gezet, dus «Vorige» haalt de serie er ook weer af. */
+type Step = { id: number; level: TasteLevel | null; unseen: boolean; addedToWatchlist: boolean };
 
 const UNDO = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[15px]">
@@ -120,27 +121,12 @@ function BeoordelenInner() {
   const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useFilmsLibrary();
   const watchlistId = current ? `tv-${current.id}` : null;
   const inWatchlist = watchlistId ? isInWatchlist(watchlistId) : false;
-  const toggleWatchlist = () => {
-    if (!current || !watchlistId) return;
-    if (inWatchlist) void removeFromWatchlist(watchlistId);
-    else
-      void addToWatchlist({
-        id: watchlistId,
-        type: "tv",
-        title: current.n,
-        year: current.y ? String(current.y) : "",
-        posterUrl: tastePosterUrl(current),
-        score: current.r,
-        overview: extra?.overview ?? null,
-      });
-  };
-
   const answer = React.useCallback(
-    async (action: (id: number) => Promise<void>) => {
+    async (action: (id: number) => Promise<void>, addedToWatchlist = false) => {
       if (!current || busy) return;
       setBusy(true);
       try {
-        const step: Step = { id: current.id, level: explicit.get(current.id) ?? null, unseen: unseenIds.has(current.id) };
+        const step: Step = { id: current.id, level: explicit.get(current.id) ?? null, unseen: unseenIds.has(current.id), addedToWatchlist };
         await action(current.id);
         setHistory((h) => [...h, step]);
         setIndex((i) => i + 1);
@@ -155,12 +141,41 @@ function BeoordelenInner() {
   const handleRate = React.useCallback((level: TasteLevel) => answer((id) => rate(id, level)), [answer, rate]);
   const handleUnseen = React.useCallback(() => answer((id) => markUnseen(id)), [answer, markUnseen]);
 
+  const toggleWatchlist = () => {
+    if (!current || !watchlistId) return;
+    if (inWatchlist) {
+      void removeFromWatchlist(watchlistId);
+      return;
+    }
+    const add = () =>
+      addToWatchlist({
+        id: watchlistId,
+        type: "tv",
+        title: current.n,
+        year: current.y ? String(current.y) : "",
+        posterUrl: tastePosterUrl(current),
+        score: current.r,
+        overview: extra?.overview ?? null,
+      });
+    // Bij «verfijnen» zag je de serie al: dan telt ze niet als «niet gezien» en blijf je staan.
+    if (refine) {
+      void add();
+      return;
+    }
+    // Wat je nog wil zien, heb je niet gezien: dat is meteen je antwoord op deze serie.
+    void answer(async (id) => {
+      await add();
+      await markUnseen(id);
+    }, true);
+  };
+
   const undo = async () => {
     const last = history[history.length - 1];
     if (!last || busy) return;
     setBusy(true);
     try {
       await restore(last.id, last.level, last.unseen);
+      if (last.addedToWatchlist) await removeFromWatchlist(`tv-${last.id}`);
       setHistory((h) => h.slice(0, -1));
       setIndex((i) => Math.max(0, i - 1));
     } finally {
