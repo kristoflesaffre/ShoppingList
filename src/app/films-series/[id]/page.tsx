@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { buildNewSeasonItems } from "@/lib/tv-watching-progress";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
+import { OptionTile } from "@/components/ui/option_tile";
+import { airedEpisodeIds, followMarkId, isReturningStatus, skipMarkId } from "@/lib/series-follow";
 import { Button } from "@/components/ui/button";
 import {
   ActionPill,
@@ -71,6 +73,9 @@ type FilmDetail = {
   seasons: (Season & { airDate?: string | null })[];
   cast: CastMember[];
   trailerKey: string | null;
+  /** Laatst uitgezonden aflevering (enkel series). */
+  lastAired?: { season: number; episode: number } | null;
+  status?: string | null;
 };
 
 type PartnerFeedback = "up" | "down" | "seen";
@@ -223,6 +228,8 @@ export default function FilmDetailPage() {
     markWatched,
     unmarkWatched,
     saveSeriesMeta,
+    markWatchedMany,
+    unmarkWatchedMany,
     partnerName,
     partnerAvatarUrl,
     userName,
@@ -394,6 +401,24 @@ export default function FilmDetailPage() {
   }
 
   const epId = (season: number, ep: number) => `ep-${tmdbId}-s${season}e${ep}`;
+
+  /**
+   * «Alle afleveringen»: alles wat al uitgezonden is op gezien (zoals het oogje op de watchlist).
+   * Loopt de serie nog, dan volg je ze; ze gaat van de watchlist.
+   */
+  async function markAllEpisodesSeen() {
+    if (!detail) return;
+    const seasons = detail.seasons.filter((s) => s.seasonNumber > 0);
+    const last = seasons[seasons.length - 1];
+    const lastAired = detail.lastAired ?? (last ? { season: last.seasonNumber, episode: last.episodeCount } : null);
+    const ongoing = isReturningStatus(detail.status);
+    const toMark = [...airedEpisodeIds(tmdbId, seasons, lastAired), detail.id, ...(ongoing ? [followMarkId(tmdbId)] : [])].filter(
+      (id) => !watchedSet.has(id),
+    );
+    for (let i = 0; i < toMark.length; i += 150) await markWatchedMany(toMark.slice(i, i + 150));
+    if (ongoing && watchedSet.has(skipMarkId(tmdbId))) await unmarkWatchedMany([skipMarkId(tmdbId)]);
+    if (isInWatchlist(detail.id)) await removeFromWatchlist(detail.id);
+  }
   function toggleEpisode(ep: number) {
     const id = epId(selectedSeason, ep);
     if (watchedSet.has(id)) void unmarkWatched(id);
@@ -717,38 +742,57 @@ export default function FilmDetailPage() {
         <></>
       </SlideInModal>
 
-      {/* Slide-in: kies hoe je gezien wil markeren (alleen TV) */}
+      {/* Blad: kies hoe je een serie op gezien zet — drie gelijke keuzetegels (OptionTile). */}
       <SlideInModal
         open={showBekendenModal}
         onClose={() => setShowBekendenModal(false)}
-        title="Gezien"
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                if (!detail) return;
-                const firstSeason = detail.seasons[0]?.seasonNumber ?? 1;
-                void markWatched(epId(firstSeason, 1));
-                void markWatched(detail.id);
-                setShowBekendenModal(false);
-              }}
-            >
-              Eerste aflevering
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShowBekendenModal(false);
-                router.push(`/films-series/${rawId}/episodes/select`);
-              }}
-            >
-              Kies een aflevering
-            </Button>
-          </>
-        }
+        title="Wat heb je gezien?"
+        size="dialog"
       >
-        <></>
+        <div className="grid grid-cols-1 gap-2.5 pb-2 sm:grid-cols-3">
+          <OptionTile
+            icon={
+              <svg viewBox="0 0 24 24" aria-hidden className="size-6">
+                <path d="M8 5.6v12.8a1 1 0 0 0 1.52.85l10.2-6.4a1 1 0 0 0 0-1.7L9.52 4.75A1 1 0 0 0 8 5.6z" fill="currentColor" />
+              </svg>
+            }
+            title="Eerste aflevering"
+            subtitle="Je bent eraan begonnen"
+            onClick={() => {
+              if (!detail) return;
+              const firstSeason = detail.seasons[0]?.seasonNumber ?? 1;
+              void markWatched(epId(firstSeason, 1));
+              void markWatched(detail.id);
+              setShowBekendenModal(false);
+            }}
+          />
+          <OptionTile
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-6">
+                <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
+              </svg>
+            }
+            title="Kies een aflevering"
+            subtitle="Tot waar je zag"
+            onClick={() => {
+              setShowBekendenModal(false);
+              router.push(`/films-series/${rawId}/episodes/select`);
+            }}
+          />
+          <OptionTile
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-6">
+                <path d="M2.5 12.5l4 4L14 9M10 16.5l1 1L21.5 7" />
+              </svg>
+            }
+            title="Alle afleveringen"
+            subtitle="Alles wat al uit is"
+            onClick={() => {
+              setShowBekendenModal(false);
+              void markAllEpisodesSeen();
+            }}
+          />
+        </div>
       </SlideInModal>
     </div>
   );
