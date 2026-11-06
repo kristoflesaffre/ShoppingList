@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { OverviewPill } from "@/components/list_section_header";
-import { InlineClampText, ScoreSourceLink, SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
+import { HeroImdbChip, InlineClampText, ScoreSourceLink, SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
 import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard, WatchingCardSkeleton } from "@/components/films/film_tiles";
@@ -310,7 +310,15 @@ function FilmsOverviewSkeleton() {
   );
 }
 
-type DiscoverExtra = { trailerKey: string | null; backdropUrl: string | null; overview: string; runtime: string; imdbId: string | null };
+type DiscoverExtra = {
+  trailerKey: string | null;
+  backdropUrl: string | null;
+  overview: string;
+  runtime: string;
+  imdbId: string | null;
+  score: number | null;
+  scoreSource: "imdb" | "tmdb" | null;
+};
 
 /** Detailgegevens van suggesties, één keer opgehaald en bewaard (ook vooraf voor vorige/volgende). */
 const discoverExtraCache = new Map<string, DiscoverExtra>();
@@ -331,6 +339,8 @@ function loadDiscoverExtra(item: { id: string; type: string; tmdbId: number; pos
         overview: (d.overview as string) ?? "",
         runtime: (d.runtime as string) ?? "",
         imdbId: (d.imdbId as string | null) ?? null,
+        score: typeof d.score === "number" ? (d.score as number) : null,
+        scoreSource: (d.scoreSource as "imdb" | "tmdb" | undefined) ?? null,
       };
       discoverExtraCache.set(item.id, extra);
       // Beelden alvast in de browsercache, zodat de kaart meteen compleet verschijnt.
@@ -437,22 +447,31 @@ function DiscoverFeature({
       <SoftPlayButton size={size} onClick={() => setShowTrailer(true)} aria-label={`Trailer van ${item.title} afspelen`} className={className} />
     ) : null;
 
+  // IMDb-score uit de detail (OMDb) heeft voorrang; nieuwe series hebben in de TMDB-lijst vaak nog geen score.
+  const imdbScore = extra?.scoreSource === "imdb" ? extra.score : null;
+  // Geen IMDb-score: enkel de TMDB-score uit de lijst (die vraagt genoeg stemmen), niet die van de detail.
+  const score = imdbScore ?? item.score ?? null;
+  const source = imdbScore != null ? "imdb" : (scoreSource ?? "tmdb");
   const metaLine = (
-    <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-[rgba(255,255,255,0.75)] lg:text-[13.5px]">
-      {item.score != null ? (
+    <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-[rgba(255,255,255,0.75)] lg:text-[13.5px]">
+      {score != null ? (
         <>
           <svg viewBox="0 0 24 24" aria-hidden className="size-3.5">
-            <path fill={scoreSource === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
+            <path fill={source === "imdb" ? "#f5b301" : "#a9adf4"} d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
           </svg>
-          <b className="text-fixed-white">{item.score.toFixed(1)}</b>
-          <ScoreSourceLink source={scoreSource ?? "tmdb"} title={item.title} imdbId={extra?.imdbId} />
+          <b className="text-fixed-white">{score.toFixed(1)}</b>
+          {source === "tmdb" ? <ScoreSourceLink source="tmdb" title={item.title} imdbId={extra?.imdbId} /> : null}
         </>
       ) : null}
       <span>
-        {item.score != null ? "· " : ""}
+        {score != null ? "· " : ""}
         {[item.year, item.typeLabel, extra?.runtime].filter(Boolean).join(" · ")}
       </span>
-    </p>
+      {/* Altijd een link naar IMDb, ook zonder score: om de serie te kunnen inschatten. */}
+      <span className="ml-1">
+        <HeroImdbChip title={item.title} imdbId={extra?.imdbId ?? null} />
+      </span>
+    </div>
   );
 
   const overview = (lines: number) =>
