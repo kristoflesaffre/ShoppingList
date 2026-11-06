@@ -138,7 +138,6 @@ export default function WatchlistKindPage() {
 
   const [query, setQuery] = React.useState("");
   const [listTab, setListTab] = React.useState<ListTab>("alleen");
-  const [genreFilter, setGenreFilter] = React.useState<string>("Alles");
 
   const hasScrolledRef = React.useRef(false);
   const [scoreSources, setScoreSources] = React.useState<Record<string, "imdb" | "tmdb">>({});
@@ -321,46 +320,6 @@ export default function WatchlistKindPage() {
     });
   }, [baseItems, enriched, removingIds]);
 
-  const genreChips = React.useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const item of allEnrichedItems) {
-      for (const g of item.genres) {
-        counts.set(g, (counts.get(g) ?? 0) + 1);
-      }
-    }
-    const sorted = Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "nl"))
-      .map(([g]) => g);
-    return ["Alles", ...sorted];
-  }, [allEnrichedItems]);
-
-  // Cache genre chips in sessionStorage to avoid layout shift on re-visit
-  const genreCacheKey = `watchlist-${kindParam}-genres`;
-  // Na het mounten lezen: sessionStorage bestaat niet op de server (anders hydratiefout).
-  const [cachedGenreChips, setCachedGenreChips] = React.useState<string[]>([]);
-  React.useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(genreCacheKey);
-      if (raw) setCachedGenreChips(JSON.parse(raw) as string[]);
-    } catch { /* ignore */ }
-  }, [genreCacheKey]);
-  React.useEffect(() => {
-    if (genreChips.length > 1) {
-      try { sessionStorage.setItem(genreCacheKey, JSON.stringify(genreChips)); } catch { /* ignore */ }
-    }
-  }, [genreChips, genreCacheKey]);
-
-  // Show cached chips while enrichment is still running, fall back to live chips once ready
-  const visibleGenreChips = genreChips.length > 1 ? genreChips : cachedGenreChips;
-  // Show skeleton row to reserve space on first-ever load (no cache, items exist but genres not yet loaded)
-  const showGenreSkeleton = loadingDetails && visibleGenreChips.length <= 1 && baseItems.length > 0;
-
-  React.useEffect(() => {
-    if (genreFilter !== "Alles" && !genreChips.includes(genreFilter)) {
-      setGenreFilter("Alles");
-    }
-  }, [genreChips, genreFilter]);
-
   const displayItems = React.useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     const isFuture = (item: EnrichedItem) => {
@@ -372,7 +331,6 @@ export default function WatchlistKindPage() {
 
     const q = query.trim().toLowerCase();
     const filtered = allEnrichedItems.filter((item) => {
-      if (genreFilter !== "Alles" && !item.genres.includes(genreFilter)) return false;
       if (!q) return true;
       return (
         item.title.toLowerCase().includes(q) ||
@@ -383,7 +341,7 @@ export default function WatchlistKindPage() {
     });
 
     return [...filtered].sort((a, b) => (isFuture(a) ? 1 : 0) - (isFuture(b) ? 1 : 0));
-  }, [allEnrichedItems, query, genreFilter]);
+  }, [allEnrichedItems, query]);
 
   const cancelRemoval = React.useCallback((id: string) => {
     const timer = removalTimersRef.current.get(id);
@@ -639,25 +597,11 @@ export default function WatchlistKindPage() {
               <p className="mt-0.5 text-sm text-[var(--text-secondary)] lg:hidden">{countLabel}</p>
             </div>
           </div>
-          <SearchBar
-            surface="app"
-            placeholder="Zoek in je watchlist"
-            value={query}
-            onValueChange={setQuery}
-            className="lg:w-[300px] lg:shrink-0"
-          />
-          {/* Desktop: bewerken rechtsboven, naast het zoekveld */}
-          {baseItems.length > 0 ? (
-            <div className="hidden lg:flex lg:shrink-0 lg:justify-end">
-              {editing ? <DoneButton onClick={toggleEditing} /> : <TitleEditButton onClick={toggleEditing} aria-label="Watchlist bewerken" />}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-3 flex flex-col gap-3 lg:mt-6 lg:flex-row lg:items-center lg:gap-4">
+          {/* Alleen / Samen met … in de kop, zo breed als nodig (gsm: volle breedte onder de titel). */}
           {isFilmsListShared ? (
             <SegmentedControl
               ariaLabel="Watchlist weergave"
+              size="lg"
               value={listTab}
               onChange={(tab) => {
                 setListTab(tab);
@@ -667,38 +611,20 @@ export default function WatchlistKindPage() {
                 { value: "alleen", label: "Alleen" },
                 { value: "samen", label: partnerName ? `Samen met ${partnerName}` : "Samen" },
               ]}
-              className="lg:w-[300px] lg:shrink-0"
+              className="lg:w-auto lg:shrink-0 [&>button]:whitespace-nowrap lg:[&>button]:flex-none"
             />
           ) : null}
-
-          {visibleGenreChips.length > 1 || showGenreSkeleton ? (
-            <div className="-mx-4 min-w-0 overflow-x-auto px-4 lg:mx-0 lg:flex-1 lg:px-0" style={{ scrollbarWidth: "none" }}>
-              {visibleGenreChips.length > 1 ? (
-                <div className="flex w-max gap-1.5 py-0.5">
-                  {visibleGenreChips.map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      aria-pressed={genreFilter === chip}
-                      onClick={() => setGenreFilter(chip)}
-                      className={cn(
-                        "h-8 shrink-0 rounded-pill px-[13px] text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]",
-                        genreFilter === chip
-                          ? "bg-[var(--blue-500)] font-bold text-white"
-                          : "bg-[var(--white)] font-semibold text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle)]",
-                      )}
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex gap-1.5 py-0.5">
-                  {[56, 72, 80, 64].map((w) => (
-                    <Shimmer key={w} className="h-8 rounded-full" style={{ width: w }} />
-                  ))}
-                </div>
-              )}
+          <SearchBar
+            surface="app"
+            placeholder="Zoek in je watchlist"
+            value={query}
+            onValueChange={setQuery}
+            className="lg:w-[260px] lg:shrink-0"
+          />
+          {/* Desktop: bewerken rechtsboven, naast het zoekveld */}
+          {baseItems.length > 0 ? (
+            <div className="hidden lg:flex lg:shrink-0 lg:justify-end">
+              {editing ? <DoneButton onClick={toggleEditing} /> : <TitleEditButton onClick={toggleEditing} aria-label="Watchlist bewerken" />}
             </div>
           ) : null}
         </div>
