@@ -78,16 +78,13 @@ export function RecipePhotoGenerateButton({
       >
         {busy ? "Foto wordt gemaakt…" : "Maak gerechtfoto"}
       </MiniButton>
+      {/* Geen vaste uitleg meer onder de knop: enkel tijdens het maken, een melding of een fout. */}
       <p
         aria-live="polite"
         role={error ? "alert" : "status"}
-        className={`text-xs ${error ? "text-[var(--error-600)]" : "text-[var(--text-secondary)]"}`}
+        className={`text-xs empty:hidden ${error ? "text-[var(--error-600)]" : "text-[var(--text-secondary)]"}`}
       >
-        {error ||
-          message ||
-          (busy
-            ? "Even geduld. Je foto verschijnt hier vanzelf."
-            : "Rond bord in jouw stijl · ± $0,06 per foto")}
+        {error || message || (busy ? "Even geduld. Je foto verschijnt hier vanzelf." : "")}
       </p>
     </div>
   );
