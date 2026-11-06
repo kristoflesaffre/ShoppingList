@@ -35,6 +35,7 @@
     "mexicano": "snacks",
     "mini lucifers": "snacks",
     "sate": "snacks",
+    "spicy viandel": "snacks",
     "viandel": "snacks",
     "vlammetjes": "snacks",
     "vuurvreter": "snacks",
@@ -184,6 +185,12 @@
       "name": "Saté",
       "category": "snacks",
       "iconSrc": "/images/frituur/saté_160.webp"
+    },
+    {
+      "id": "spicy-viandel",
+      "name": "Spicy viandel",
+      "category": "snacks",
+      "iconSrc": "/images/frituur/viandel_160.webp"
     },
     {
       "id": "viandel",

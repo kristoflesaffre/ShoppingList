@@ -2144,6 +2144,13 @@ const FRITUUR_WIZARD_ITEMS_RAW: readonly FrituurWizardItem[] = [
     iconSrc: "/images/frituur/saté_160.webp",
   },
   {
+    id: "spicy-viandel",
+    name: "Spicy viandel",
+    category: "snacks",
+    defaultCount: 0,
+    iconSrc: "/images/frituur/viandel_160.webp",
+  },
+  {
     id: "viandel",
     name: "Viandel",
     category: "snacks",
