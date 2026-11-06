@@ -517,13 +517,16 @@ export default function FilmDetailPage() {
           {/* Canvas «Seriedetail donker · E»: seriebeeld over de volle breedte, vloeit links en onderaan weg in het doek. */}
           <DetailBackdrop url={detail.backdropUrl ?? detail.posterUrl} />
 
-          <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top,0px)+12px)] z-20 flex justify-between lg:inset-x-10 lg:top-8">
-            <GlassIconButton aria-label="Terug" onClick={goBack}>
-              {FilmIcons.back}
-            </GlassIconButton>
-            <GlassIconButton aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")}>
-              {FilmIcons.dots}
-            </GlassIconButton>
+          {/* Terug en ⋯ op dezelfde breedte als de inhoud eronder (max 1180, marge 16 / 64). */}
+          <div className="absolute inset-x-0 top-[calc(env(safe-area-inset-top,0px)+12px)] z-20 lg:top-8">
+            <div className="mx-auto flex w-full max-w-[1180px] justify-between px-4 lg:px-16">
+              <GlassIconButton aria-label="Terug" onClick={goBack}>
+                {FilmIcons.back}
+              </GlassIconButton>
+              <GlassIconButton aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")}>
+                {FilmIcons.dots}
+              </GlassIconButton>
+            </div>
           </div>
 
           <div className="relative z-10 mx-auto flex w-full max-w-[1180px] flex-col px-4 pt-[228px] lg:px-16 lg:pt-[150px]">

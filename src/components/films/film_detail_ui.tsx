@@ -66,7 +66,7 @@ export function GlassIconButton({ className, children, ...props }: React.ButtonH
     <button
       type="button"
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-full bg-[rgba(16,17,48,0.32)] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)] backdrop-blur-[10px] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+        "flex size-10 shrink-0 items-center justify-center rounded-full bg-[rgba(16,17,48,0.32)] text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)] backdrop-blur-[10px] transition-transform duration-fast ease-out-strong motion-safe:active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white",
         className,
       )}
       {...props}
