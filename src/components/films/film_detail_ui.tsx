@@ -498,6 +498,109 @@ export function CastRow({ person, extra }: { person: CastPerson; extra?: React.R
   );
 }
 
+/** Glazen paneel op het cinema-doek van de detailpagina (canvas «Seriedetail donker · E»). */
+export const glassPanelClass =
+  "rounded-[22px] bg-fixed-white/[0.06] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] backdrop-blur-xl";
+
+/** Glazen chip op het doek (Serie · jaar · genre). */
+export function GlassChip({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span className={cn("inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-pill bg-fixed-white/[0.08] px-3 text-[12.5px] font-bold text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]", className)}>
+      {children}
+    </span>
+  );
+}
+
+/** Groot cijfer met klein label eronder, in de cijferrij van de kop. */
+export function HeroStat({ value, label }: { value: React.ReactNode; label: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <div className="flex h-8 items-center text-[24px] font-extrabold leading-none text-fixed-white lg:h-9 lg:text-[30px]">{value}</div>
+      <p className="mt-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.1em] text-fixed-white/50 lg:text-[12px]">{label}</p>
+    </div>
+  );
+}
+
+/** Seizoen als glazen kaart: poster, naam, aantal afleveringen, voortgang. Gekozen = witte ring. */
+export function SeasonCard({
+  season,
+  year,
+  posterUrl,
+  selected,
+  onSelect,
+}: {
+  season: SeasonPill;
+  year?: string | null;
+  posterUrl: string | null;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const done = season.total > 0 && season.watched >= season.total;
+  const busy = season.watched > 0 && !done;
+  const meta = [`${season.total} ${season.total === 1 ? "aflevering" : "afleveringen"}`, year].filter(Boolean).join(" · ");
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={selected}
+      onClick={onSelect}
+      className={cn(
+        glassPanelClass,
+        "flex w-[264px] shrink-0 items-center gap-3.5 p-2.5 pr-3.5 text-left transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white lg:w-auto",
+        selected ? "bg-fixed-white/[0.14] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.75)]" : "[@media(hover:hover)]:hover:bg-fixed-white/[0.1]",
+      )}
+    >
+      <span className="h-[84px] w-14 shrink-0 overflow-hidden rounded-[12px] bg-fixed-white/10">
+        {posterUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={posterUrl} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+        ) : null}
+      </span>
+      <span className="min-w-0 flex-1">
+        {season.isNew ? (
+          <span className="mb-1.5 inline-flex h-[20px] items-center rounded-pill bg-[var(--badge-new)] px-2 text-[10.5px] font-extrabold tracking-[0.06em] text-fixed-white">NIEUW</span>
+        ) : null}
+        <span className="block truncate text-[16.5px] font-bold text-fixed-white">{season.label}</span>
+        <span className="mt-0.5 block truncate text-[13px] text-fixed-white/60">{meta}</span>
+        {done || busy ? (
+          <span className="mt-1.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-fixed-white/80">
+            {done ? (
+              <span aria-hidden className="flex size-4 items-center justify-center rounded-full bg-[var(--blue-500)] text-fixed-white">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round" className="size-2.5">
+                  <path d="M5 12.5l4.5 4.5L19 7.5" />
+                </svg>
+              </span>
+            ) : (
+              <ProgressRing value={season.watched / season.total} track="rgba(255,255,255,0.25)" color="#fff" />
+            )}
+            {done ? "Gezien" : `${season.watched} van ${season.total} gezien`}
+          </span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
+/** Castlid als glazen kaart met foto bovenaan (desktop-raster op de detailpagina). */
+export function CastCard({ person }: { person: CastPerson }) {
+  return (
+    <div className={cn(glassPanelClass, "min-w-0 overflow-hidden")}>
+      <span className="flex aspect-[4/5] w-full items-center justify-center bg-fixed-white/[0.06]">
+        {person.profileUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={person.profileUrl} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+        ) : (
+          <Initials name={person.name} />
+        )}
+      </span>
+      <div className="px-3 pb-3 pt-2.5">
+        <p className="truncate text-[13.5px] font-bold text-fixed-white">{person.name}</p>
+        {person.character ? <p className="mt-px truncate text-[12px] text-fixed-white/55">{person.character}</p> : null}
+      </div>
+    </div>
+  );
+}
+
 /** Sectiekop: titel links, link rechts. */
 export function DetailSectionHead({ title, action, onAction, meta, tone = "default" }: { title: string; action?: string; onAction?: () => void; meta?: string; tone?: "default" | "cinema" }) {
   const cinema = tone === "cinema";

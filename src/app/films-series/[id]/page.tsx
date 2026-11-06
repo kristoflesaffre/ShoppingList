@@ -3,7 +3,7 @@
 import { WatchOnProjector } from "@/components/films/watch_on_projector";
 import { StremioEpisodeStatus } from "@/components/films/stremio_progress";
 
-import { headerRoundButtonClass } from "@/components/ui/header_round_button";
+import { setForcedDark } from "@/lib/theme";
 import * as React from "react";
 import { SeriesTasteDetailRow } from "@/components/films/series_taste";
 import { useRouter, useParams } from "next/navigation";
@@ -15,23 +15,21 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Button } from "@/components/ui/button";
 import {
   ActionPill,
+  CastCard,
   CastRound,
-  CastRow,
   DetailSectionHead,
   EpisodeRow,
   EpisodeRowSkeleton,
-  ExternalChip,
   FilmIcons,
+  GlassChip,
   GlassIconButton,
-  HeroImdbChip,
-  ScoreSourceLink,
+  HeroStat,
   ImdbMark,
   ListCard,
-  SeasonPills,
-  SoftPlayButton,
+  SeasonCard,
   StarGlyph,
   TrailerOverlay,
-  YoutubeMark,
+  glassPanelClass,
   type EpisodeRowData,
 } from "@/components/films/film_detail_ui";
 
@@ -98,34 +96,26 @@ function CloseIcon() {
 
 function AvatarCircle({ person, className }: { person: FeedbackAvatar; className?: string }) {
   return (
-    <span className={cn("flex size-[26px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--blue-50)] shadow-[0_0_0_2px_var(--white)]", className)}>
+    <span className={cn("flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-fixed-white/15 shadow-[0_0_0_2px_var(--cinema-screen)]", className)}>
       {person.url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={person.url} alt="" className="size-full object-cover" />
       ) : (
-        <span className="text-[11px] font-bold text-[var(--blue-500)]">{(person.name ?? "?").slice(0, 1).toUpperCase()}</span>
+        <span className="text-[15px] font-extrabold text-fixed-white">{(person.name ?? "?").slice(0, 1).toUpperCase()}</span>
       )}
     </span>
   );
 }
 
-function feedbackText({
-  reaction,
-  mediaType,
-  partnerName,
-}: {
-  reaction: PartnerFeedback;
-  mediaType: "movie" | "tv";
-  partnerName: string | null;
-}): string {
-  const name = partnerName ?? "Je partner";
+function feedbackText(reaction: PartnerFeedback, mediaType: "movie" | "tv"): string {
   const label = mediaType === "tv" ? "serie" : "film";
-  if (reaction === "up") return `Je kijkt deze ${label} samen met ${name}`;
-  if (reaction === "down") return `${name} wil deze ${label} niet zien`;
-  return `${name} heeft deze ${label} al gezien`;
+  if (reaction === "up") return `Kijkt deze ${label} samen met jou`;
+  if (reaction === "down") return `Wil deze ${label} niet zien`;
+  return `Heeft deze ${label} al gezien`;
 }
 
-function PartnerFeedbackBanner({
+/** Wat je partner van deze titel vindt, als glazen paneel naast «Jouw oordeel». */
+function PartnerFeedbackPanel({
   reaction,
   mediaType,
   partnerName,
@@ -145,40 +135,75 @@ function PartnerFeedbackBanner({
       {reaction === "up" ? (
         <span className="flex shrink-0">
           <AvatarCircle person={userAvatar} className="z-[1]" />
-          <AvatarCircle person={partnerAvatar} className="-ml-[9px]" />
+          <AvatarCircle person={partnerAvatar} className="-ml-3" />
         </span>
       ) : (
         <AvatarCircle person={partnerAvatar} />
       )}
-      <span className="min-w-0 flex-1 text-left text-[13.5px] font-semibold leading-[18px] text-[var(--text-primary)]">
-        {feedbackText({ reaction, mediaType, partnerName })}
+      <span className="min-w-0 flex-1 text-left">
+        <span className="block truncate text-[11.5px] font-bold uppercase tracking-[0.12em] text-fixed-white/50">{partnerName ?? "Je partner"}</span>
+        <span className="mt-0.5 block text-[15px] font-bold leading-5 text-fixed-white">{feedbackText(reaction, mediaType)}</span>
       </span>
-      {onClick ? <span className="text-[var(--blue-500)]">{FilmIcons.chevron}</span> : null}
+      {onClick ? <span className="text-fixed-white/70">{FilmIcons.chevron}</span> : null}
     </>
   );
-  const cls = "flex w-full items-center gap-3 rounded-[18px] bg-[var(--blue-25)] px-3.5 py-3 shadow-[inset_0_0_0_1px_var(--blue-50)]";
+  const cls = cn(glassPanelClass, "flex w-full items-center gap-3.5 px-4 py-3.5 lg:px-5");
   if (!onClick) return <div className={cls}>{content}</div>;
   return (
-    <button type="button" onClick={onClick} className={cn(cls, "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]")}>
+    <button type="button" onClick={onClick} className={cn(cls, "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [@media(hover:hover)]:hover:bg-fixed-white/[0.1]")}>
       {content}
     </button>
   );
 }
 
+const TrailerIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden className="size-[18px]">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M10 8.8l5 3.2-5 3.2z" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+/** Seriebeeld over de volle breedte achter de kop; vloeit links (tekst) en onderaan weg in het doek. */
+function DetailBackdrop({ url }: { url: string | null }) {
+  const screen = (pct: number) => `color-mix(in srgb, var(--cinema-screen) ${pct}%, transparent)`;
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[460px] overflow-hidden md:h-[640px] lg:h-[780px]">
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url.replace("/w780/", "/w1280/")} alt="" decoding="async" className="absolute inset-0 size-full object-cover object-[60%_10%] lg:object-[50%_20%]" />
+      ) : null}
+      <div
+        className="absolute inset-0 md:hidden"
+        style={{ background: `linear-gradient(180deg, ${screen(35)} 0%, transparent 26%, ${screen(70)} 58%, var(--cinema-screen) 92%)` }}
+      />
+      <div
+        className="absolute inset-0 hidden md:block"
+        style={{
+          background: `linear-gradient(90deg, var(--cinema-screen) 0%, ${screen(88)} 32%, ${screen(20)} 62%, transparent 80%), linear-gradient(0deg, var(--cinema-screen) 0%, transparent 45%), linear-gradient(180deg, ${screen(45)} 0%, transparent 16%)`,
+        }}
+      />
+    </div>
+  );
+}
+
 function DetailSkeleton() {
   return (
-    <div className="flex flex-col">
-      <div className="h-[300px] shimmer lg:mx-auto lg:mt-[88px] lg:h-[400px] lg:w-full lg:max-w-[956px] lg:rounded-[28px]" />
-      <div className="mx-auto flex w-full max-w-[956px] flex-col gap-4 px-4 pt-5">
-        <div className="h-7 w-2/3 rounded shimmer" />
-        <div className="h-4 w-1/2 rounded shimmer" />
-        <div className="flex gap-2.5">
-          <div className="h-11 flex-1 rounded-full shimmer" />
-          <div className="h-11 flex-1 rounded-full shimmer" />
-        </div>
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-4 rounded shimmer" style={{ width: i % 2 === 0 ? "100%" : "83%" }} />
+    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-4 px-4 pt-[228px] lg:px-16 lg:pt-[150px]">
+      <div className="flex gap-1.5">
+        {[56, 48, 64].map((w) => (
+          <div key={w} className="h-7 rounded-full shimmer" style={{ width: w }} />
         ))}
+      </div>
+      <div className="h-12 w-2/3 rounded-[12px] shimmer lg:h-[88px] lg:w-[440px]" />
+      <div className="h-9 w-64 rounded shimmer" />
+      <div className="flex gap-2.5">
+        {[180, 120, 110].map((w) => (
+          <div key={w} className="h-[46px] rounded-full shimmer" style={{ width: w }} />
+        ))}
+      </div>
+      <div className="grid max-w-[640px] gap-3 sm:grid-cols-2">
+        <div className="h-[84px] rounded-[22px] shimmer" />
+        <div className="h-[84px] rounded-[22px] shimmer" />
       </div>
     </div>
   );
@@ -220,6 +245,12 @@ export default function FilmDetailPage() {
   const [showBekendenModal, setShowBekendenModal] = React.useState(false);
   const [showAskAgainSlideIn, setShowAskAgainSlideIn] = React.useState(false);
   const [askAgainLoading, setAskAgainLoading] = React.useState(false);
+
+  // Canvas «Seriedetail donker · E»: de detailpagina is altijd donker (cinema-doek), ongeacht het thema.
+  React.useEffect(() => {
+    setForcedDark(true);
+    return () => setForcedDark(false);
+  }, []);
 
   const tmdbId = React.useMemo(() => {
     const dashIdx = rawId?.indexOf("-") ?? -1;
@@ -391,303 +422,247 @@ export default function FilmDetailPage() {
     watched: seasonProgress(s.seasonNumber),
   }));
 
-  const eyebrow = detail
-    ? [isTV ? "Serie" : "Film", detail.year, detail.certification].filter(Boolean).join(" · ")
-    : "";
-  const scoreLine = detail ? (
-    <>
-      {detail.score != null ? (
-        <>
-          <StarGlyph source={detail.scoreSource} />
-          <b className="font-bold">{detail.score.toFixed(1)}</b>
-          <ScoreSourceLink source={detail.scoreSource} title={detail.title} imdbId={detail.imdbId} />
-        </>
-      ) : null}
-      {detail.runtime ? <span>{detail.score != null ? "· " : ""}{detail.runtime}</span> : null}
-    </>
-  ) : null;
+  const seasonCount = (detail?.seasons ?? []).filter((x) => x.seasonNumber > 0).length || (detail?.seasons.length ?? 0);
+  const chips = detail ? [isTV ? "Serie" : "Film", detail.year, detail.certification, ...detail.genres.slice(0, 2)].filter(Boolean) as string[] : [];
+  const imdbHref = detail ? imdbUrl(detail.title, detail.imdbId) : "#";
+  const stats: { value: React.ReactNode; label: React.ReactNode }[] = detail
+    ? [
+        ...(detail.score != null
+          ? [{ value: <span className="flex items-center gap-1.5"><StarGlyph source={detail.scoreSource} className="size-[0.7em]" />{detail.score.toFixed(1)}</span>, label: detail.scoreSource === "imdb" ? "IMDb" : "TMDB" }]
+          : []),
+        ...(isTV
+          ? [
+              { value: seasonCount, label: seasonCount === 1 ? "Seizoen" : "Seizoenen" },
+              ...(detail.totalEpisodes ? [{ value: detail.totalEpisodes, label: "Afleveringen" }] : []),
+            ]
+          : detail.runtime
+            ? [{ value: detail.runtime, label: "Speelduur" }]
+            : []),
+        {
+          value: (
+            <a href={imdbHref} target="_blank" rel="noopener noreferrer" aria-label={`${detail.title} bekijken op IMDb`} className="rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white">
+              <ImdbMark />
+            </a>
+          ),
+          label: (
+            <a href={imdbHref} target="_blank" rel="noopener noreferrer" tabIndex={-1} className="inline-flex items-center gap-1 [@media(hover:hover)]:hover:text-fixed-white">
+              Openen {FilmIcons.external}
+            </a>
+          ),
+        },
+      ]
+    : [];
 
-  const seenPill = (onDark: boolean) =>
-    isTV ? (
-      <ActionPill tone={onDark ? "glass" : "surface"} icon={FilmIcons.eye} onClick={handleSeen} className="flex-1 lg:flex-none">
-        Gezien…
-      </ActionPill>
-    ) : (
-      <ActionPill
-        tone={watched ? (onDark ? "white" : "soft") : onDark ? "glass" : "surface"}
-        icon={watched ? FilmIcons.check : FilmIcons.eye}
-        aria-pressed={watched}
-        onClick={handleSeen}
-        className="flex-1 lg:flex-none"
-      >
-        Gezien
-      </ActionPill>
-    );
-  const watchlistPill = (onDark: boolean) => (
+  const heroPill = "h-[42px] lg:h-[46px]";
+  const seenPill = isTV ? (
+    <ActionPill tone="glass" icon={FilmIcons.eye} onClick={handleSeen} className={heroPill}>
+      Gezien…
+    </ActionPill>
+  ) : (
+    <ActionPill tone={watched ? "screen" : "glass"} icon={watched ? FilmIcons.check : FilmIcons.eye} aria-pressed={watched} onClick={handleSeen} className={heroPill}>
+      Gezien
+    </ActionPill>
+  );
+  const watchlistPill = (
     <ActionPill
-      tone={inWatchlist ? (onDark ? "white" : "soft") : "primary"}
+      tone={inWatchlist ? "screen" : "glass"}
       icon={inWatchlist ? FilmIcons.check : FilmIcons.plus}
       aria-pressed={inWatchlist}
       aria-label={inWatchlist ? "Van je watchlist halen" : "Op je watchlist zetten"}
       onClick={toggleWatchlist}
-      className="flex-1 lg:flex-none"
+      className={heroPill}
     >
       {inWatchlist ? "Op je watchlist" : "Watchlist"}
     </ActionPill>
   );
 
-  const playButton = (size: number) =>
-    activeTrailerKey ? <SoftPlayButton size={size} aria-label={`Trailer van ${detail?.title ?? ""} afspelen`} onClick={() => setShowTrailer(true)} /> : null;
-
   return (
-    <div className="relative flex min-h-dvh w-full flex-col pb-[calc(env(safe-area-inset-bottom,0px)+40px)]">
+    <div className="relative isolate flex min-h-dvh w-full flex-col overflow-x-hidden bg-[var(--cinema-screen)] pb-[calc(env(safe-area-inset-bottom,0px)+48px)]">
       {loading ? (
         <DetailSkeleton />
       ) : !detail ? (
-        <div className="mx-auto w-full max-w-[956px] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)]">
-          <button type="button" aria-label="Terug" onClick={goBack} className={headerRoundButtonClass}>
+        <div className="mx-auto w-full max-w-[1180px] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:px-16 lg:pt-8">
+          <GlassIconButton aria-label="Terug" onClick={goBack}>
             {FilmIcons.back}
-          </button>
-          <p className="py-8 text-center text-sm text-[var(--text-secondary)]">Kan details niet laden.</p>
+          </GlassIconButton>
+          <p className="py-8 text-center text-sm text-fixed-white/60">Kan details niet laden.</p>
         </div>
       ) : (
         <>
-          {/* ── Mobiel: backdrop die in de achtergrond overloopt, poster erover ── */}
-          <div className="relative h-[300px] lg:hidden">
-            {detail.backdropUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={detail.backdropUrl} alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
-            ) : (
-              <div aria-hidden className="absolute inset-0 bg-[#1b1d3a]" />
-            )}
-            <div
-              aria-hidden
-              className="absolute inset-0"
-              style={{ background: "linear-gradient(180deg, rgba(16,17,48,0.28) 0%, rgba(16,17,48,0) 34%, rgba(16,17,48,0) 58%, var(--bg-app) 100%)" }}
-            />
-            <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top,0px)+12px)] flex justify-between">
-              <GlassIconButton aria-label="Terug" onClick={goBack}>
-                {FilmIcons.back}
-              </GlassIconButton>
-              <GlassIconButton aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")}>
-                {FilmIcons.dots}
-              </GlassIconButton>
-            </div>
-            <div className="absolute left-1/2 top-[128px] -translate-x-1/2">{playButton(52)}</div>
-          </div>
-          <div className="relative -mt-[92px] flex items-end gap-4 px-4 lg:hidden">
-            <button
-              type="button"
-              aria-label="Poster vergroten"
-              onClick={() => detail.posterUrl && setPosterFullscreen(true)}
-              className="h-[168px] w-28 shrink-0 overflow-hidden rounded-[14px] bg-[var(--gray-100)] shadow-[0_18px_30px_-16px_rgba(16,17,48,0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-            >
-              {detail.posterUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={detail.posterUrl} alt={`Poster van ${detail.title}`} className="size-full object-cover" />
-              ) : null}
-            </button>
-            <div className="min-w-0 flex-1 pb-1">
-              <p className="text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-[var(--blue-500)]">{eyebrow}</p>
-              <h1 className="mt-1 line-clamp-3 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em] text-[var(--text-primary)]">{detail.title}</h1>
-              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[13.5px] text-[var(--text-secondary)] [&_b]:text-[var(--text-primary)]">{scoreLine}</p>
-            </div>
+          {/* Canvas «Seriedetail donker · E»: seriebeeld over de volle breedte, vloeit links en onderaan weg in het doek. */}
+          <DetailBackdrop url={detail.backdropUrl ?? detail.posterUrl} />
+
+          <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top,0px)+12px)] z-20 flex justify-between lg:inset-x-10 lg:top-8">
+            <GlassIconButton aria-label="Terug" onClick={goBack}>
+              {FilmIcons.back}
+            </GlassIconButton>
+            <GlassIconButton aria-label="Instellingen" onClick={() => router.push("/films-series/instellingen")}>
+              {FilmIcons.dots}
+            </GlassIconButton>
           </div>
 
-          {/* ── Desktop: donkere herokaart ── */}
-          <div className="mx-auto hidden w-full max-w-[956px] px-4 pt-10 lg:block lg:px-0">
-            <div className="mb-5 flex justify-between">
-              <button
-                type="button"
-                aria-label="Terug"
-                onClick={goBack}
-                className={headerRoundButtonClass}
-              >
-                {FilmIcons.back}
-              </button>
-              <button
-                type="button"
-                aria-label="Instellingen"
-                onClick={() => router.push("/films-series/instellingen")}
-                className="flex size-10 items-center justify-center rounded-full bg-[var(--white)] text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(16,17,48,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-              >
-                {FilmIcons.dots}
-              </button>
-            </div>
-            <div className="relative h-[400px] overflow-hidden rounded-[28px] bg-[#1b1d3a]">
-              {detail.backdropUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={detail.backdropUrl} alt="" aria-hidden className="absolute right-0 top-0 h-full w-[72%] object-cover" />
-              ) : null}
-              <div aria-hidden className="absolute inset-0 bg-[linear-gradient(90deg,#1b1d3a_30%,rgba(27,29,58,0.75)_52%,rgba(27,29,58,0.05)_85%)]" />
-              <div className="absolute right-[190px] top-1/2 -translate-y-1/2">{playButton(60)}</div>
-              <div className="absolute inset-y-10 left-9 flex items-center gap-7">
-                <button
-                  type="button"
-                  aria-label="Poster vergroten"
-                  onClick={() => detail.posterUrl && setPosterFullscreen(true)}
-                  className="h-80 w-[213px] shrink-0 overflow-hidden rounded-[16px] bg-[rgba(255,255,255,0.08)] shadow-[0_20px_40px_-18px_rgba(0,0,0,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                >
-                  {detail.posterUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={detail.posterUrl} alt={`Poster van ${detail.title}`} className="size-full object-cover" />
+          <div className="relative z-10 mx-auto flex w-full max-w-[1180px] flex-col px-4 pt-[228px] lg:px-16 lg:pt-[150px]">
+            <div className="min-w-0 lg:max-w-[640px]">
+              <div className="flex flex-wrap gap-1.5">
+                {chips.map((c) => (
+                  <GlassChip key={c}>{c}</GlassChip>
+                ))}
+              </div>
+              <h1 className="mt-4 bg-gradient-to-b from-fixed-white from-30% to-fixed-white/60 bg-clip-text pb-1 text-[44px] font-black leading-[0.98] tracking-[-0.04em] text-transparent [text-wrap:balance] lg:mt-5 lg:text-[96px] lg:leading-[0.95] lg:tracking-[-0.05em]">
+                {detail.title}
+              </h1>
+
+              <div className="mt-4 flex items-stretch gap-4 lg:mt-5 lg:gap-7">
+                {stats.map((s, i) => (
+                  <React.Fragment key={i}>
+                    {i > 0 ? <span aria-hidden className="w-px shrink-0 bg-fixed-white/15" /> : null}
+                    <HeroStat value={s.value} label={s.label} />
+                  </React.Fragment>
+                ))}
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-2.5 lg:mt-7">
+                <WatchOnProjector
+                  imdbId={detail.imdbId}
+                  type={detail.type}
+                  tmdbId={isTV ? tmdbId : undefined}
+                  tone="heroPrimary"
+                  heroLabel={{ full: "Kijk op projector", short: "Projector" }}
+                />
+                {watchlistPill}
+                {seenPill}
+                {activeTrailerKey ? (
+                  <ActionPill tone="glass" icon={TrailerIcon} onClick={() => setShowTrailer(true)} className="h-[42px] lg:h-[46px]">
+                    Trailer
+                  </ActionPill>
+                ) : (
+                  <a
+                    href={youtubeTrailerSearchUrl(detail.title, isTV ? selectedSeason : undefined)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-[42px] items-center gap-[7px] rounded-pill bg-[rgba(255,255,255,0.14)] px-4 text-[15px] font-bold text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)] backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white lg:h-[46px] [@media(hover:hover)]:hover:bg-[rgba(255,255,255,0.22)]"
+                  >
+                    {TrailerIcon}
+                    Trailer
+                  </a>
+                )}
+              </div>
+              <StremioEpisodeStatus tone="cinema" imdbId={detail.imdbId} tmdbId={isTV ? tmdbId : undefined} />
+
+              {isTV || partnerFeedback || newSeason ? (
+                <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:mt-7">
+                  {isTV ? (
+                    <SeriesTasteDetailRow
+                      tone="glass"
+                      series={{ id: Number(tmdbId), title: detail.title, year: detail.year ?? "", posterUrl: detail.posterUrl ?? null }}
+                    />
                   ) : null}
-                </button>
-                <div className="w-[360px] text-white">
-                  <p className="text-xs font-extrabold uppercase tracking-[0.07em] text-[#c9cbff]">{eyebrow}</p>
-                  <h1 className="mt-2 line-clamp-2 text-[44px] font-extrabold leading-[1.05] tracking-[-0.02em]">{detail.title}</h1>
-                  <p className="mt-2.5 flex items-center gap-1.5 text-sm text-[rgba(255,255,255,0.75)] [&_b]:text-white">{scoreLine}</p>
-                  <div className="mt-3.5 flex flex-wrap gap-1.5">
-                    {detail.genres.map((g) => (
-                      <span key={g} className="inline-flex h-7 items-center rounded-pill bg-[rgba(255,255,255,0.14)] px-[11px] text-[12.5px] font-semibold">
-                        {g}
+                  {partnerFeedback ? (
+                    <PartnerFeedbackPanel
+                      reaction={partnerFeedback}
+                      mediaType={detail.type}
+                      partnerName={partnerName}
+                      userAvatar={userAvatar}
+                      partnerAvatar={partnerAvatar}
+                      onClick={canAskPartnerAgain ? () => setShowAskAgainSlideIn(true) : undefined}
+                    />
+                  ) : null}
+                  {newSeason ? (
+                    <div className={cn(glassPanelClass, "flex items-center gap-3 px-4 py-3.5 sm:col-span-2 lg:px-5")}>
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--badge-new)] text-fixed-white" aria-hidden>
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="size-[18px]">
+                          <path d="M12 2.5l2.1 6.1 6.4.3-5 4 1.8 6.2L12 15.4l-5.3 3.7 1.8-6.2-5-4 6.4-.3z" />
+                        </svg>
                       </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[15px] font-bold text-fixed-white">
+                          Seizoen {newSeason.season} {newSeason.released ? "is uit" : `komt op ${new Date(`${newSeason.airDate}T12:00:00`).toLocaleDateString("nl-BE", { day: "numeric", month: "long", year: "numeric" })}`}
+                        </p>
+                        <p className="text-[12.5px] text-fixed-white/60">
+                          {newSeason.watchedThrough === 1 ? "Je zag seizoen 1 al helemaal" : `Je zag seizoen 1 tot ${newSeason.watchedThrough} al helemaal`}
+                        </p>
+                      </div>
+                      <ActionPill tone={newSeason.released ? "primary" : "glass"} icon={FilmIcons.plus} onClick={toggleWatchlist} className="h-[34px] shrink-0 px-[13px] text-[13px]">
+                        {newSeason.released ? "Watchlist" : "Alvast"}
+                      </ActionPill>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <p className={cn("mt-6 max-w-[600px] text-[15px] leading-[23px] text-fixed-white/75 lg:mt-7 lg:text-[16px] lg:leading-[26px]", !overviewExpanded && "line-clamp-4 lg:line-clamp-none")}>
+                {activeOverview || "Geen beschrijving beschikbaar."}
+              </p>
+              {!overviewExpanded && activeOverview.length > 180 ? (
+                <button type="button" onClick={() => setOverviewExpanded(true)} className="mt-1 rounded text-[15px] font-bold text-fixed-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white lg:hidden">
+                  Meer lezen
+                </button>
+              ) : null}
+            </div>
+
+            {/* Seizoenen als glazen kaarten; de gekozen kaart bepaalt de afleveringen eronder. */}
+            {isTV && detail.seasons.length > 0 ? (
+              <section className="mt-10 lg:mt-14">
+                <DetailSectionHead tone="cinema" title="Seizoenen" meta={detail.totalEpisodes ? `${seasonCount} ${seasonCount === 1 ? "seizoen" : "seizoenen"} · ${detail.totalEpisodes} afleveringen` : undefined} />
+                <div className="-mx-4 overflow-x-auto px-4 py-0.5 lg:mx-0 lg:overflow-visible lg:px-0" style={{ scrollbarWidth: "none" }}>
+                  <div role="tablist" aria-label="Seizoenen" className="flex w-max gap-3 lg:grid lg:w-full lg:grid-cols-3">
+                    {detail.seasons.map((s, i) => (
+                      <SeasonCard
+                        key={s.seasonNumber}
+                        season={seasonPills[i]}
+                        year={s.airDate ? s.airDate.slice(0, 4) : null}
+                        posterUrl={s.posterUrl ?? detail.posterUrl}
+                        selected={s.seasonNumber === selectedSeason}
+                        onSelect={() => setSelectedSeason(s.seasonNumber)}
+                      />
                     ))}
-                    <HeroImdbChip title={detail.title} imdbId={detail.imdbId} />
-                  </div>
-                  <div className="mt-[22px] flex gap-2.5">
-                    {watchlistPill(true)}
-                    {seenPill(true)}
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          <div className="mx-auto flex w-full max-w-[956px] flex-col px-4 lg:px-0">
-            {/* Mobiel: genres + acties */}
-            <div className="flex flex-col gap-4 pt-[18px] lg:hidden">
-              {detail.genres.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {detail.genres.map((g) => (
-                    <span key={g} className="inline-flex h-7 items-center rounded-pill bg-[var(--white)] px-[11px] text-[12.5px] font-semibold text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-subtle)]">
-                      {g}
-                    </span>
+                <div className="mt-8">
+                  <DetailSectionHead
+                    tone="cinema"
+                    title={`Afleveringen · ${detail.seasons.find((s) => s.seasonNumber === selectedSeason)?.name ?? `Seizoen ${selectedSeason}`}`}
+                    action="Alles"
+                    onAction={() => router.push(`/films-series/${rawId}/episodes?s=${selectedSeason}`)}
+                  />
+                  <ListCard className="bg-fixed-white/[0.04] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]">
+                    {/* Alle afleveringen van het gekozen seizoen, niet enkel een voorproefje. */}
+                    {episodes === null
+                      ? [1, 2, 3].map((i) => <EpisodeRowSkeleton key={i} />)
+                      : episodes.map((ep) => (
+                          <EpisodeRow
+                            key={ep.episodeNumber}
+                            ep={ep}
+                            watched={watchedSet.has(epId(selectedSeason, ep.episodeNumber))}
+                            showOverview={false}
+                            onOpen={() => router.push(`/films-series/${rawId}/episodes/s${selectedSeason}e${ep.episodeNumber}`)}
+                            onToggle={() => toggleEpisode(ep.episodeNumber)}
+                          />
+                        ))}
+                  </ListCard>
+                </div>
+              </section>
+            ) : null}
+
+            {detail.cast.length > 0 ? (
+              <section className="mt-10 lg:mt-12">
+                <DetailSectionHead tone="cinema" title="Cast" action="Alles" onAction={() => router.push(`/films-series/${rawId}/cast`)} />
+                {/* Gsm: ronde foto's in een veegrij; desktop: glazen kaarten in zes kolommen. */}
+                <div className="-mx-4 overflow-x-auto px-4 lg:hidden" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex w-max gap-2.5">
+                    {detail.cast.slice(0, 12).map((m, i) => (
+                      <CastRound key={i} person={m} tone="cinema" />
+                    ))}
+                  </div>
+                </div>
+                <div className="hidden grid-cols-6 gap-3.5 lg:grid">
+                  {detail.cast.slice(0, 6).map((m, i) => (
+                    <CastCard key={i} person={m} />
                   ))}
                 </div>
-              ) : null}
-              <div className="flex gap-2.5">
-                {watchlistPill(false)}
-                {seenPill(false)}
-              </div>
-            </div>
-
-            {partnerFeedback ? (
-              <div className="mt-4 lg:mt-[18px]">
-                <PartnerFeedbackBanner
-                  reaction={partnerFeedback}
-                  mediaType={detail.type}
-                  partnerName={partnerName}
-                  userAvatar={userAvatar}
-                  partnerAvatar={partnerAvatar}
-                  onClick={canAskPartnerAgain ? () => setShowAskAgainSlideIn(true) : undefined}
-                />
-              </div>
+              </section>
             ) : null}
-
-            {newSeason ? (
-              <div className="mt-4 flex items-center gap-3 rounded-[18px] bg-[#eef9f2] p-3.5 shadow-[inset_0_0_0_1px_#d3f0de] lg:mt-[18px]">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--white)] text-[#1f9d55]" aria-hidden>
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="size-[18px]">
-                    <path d="M12 2.5l2.1 6.1 6.4.3-5 4 1.8 6.2L12 15.4l-5.3 3.7 1.8-6.2-5-4 6.4-.3z" />
-                  </svg>
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14.5px] font-bold text-[var(--text-primary)]">
-                    Seizoen {newSeason.season} {newSeason.released ? "is uit" : `komt op ${new Date(`${newSeason.airDate}T12:00:00`).toLocaleDateString("nl-BE", { day: "numeric", month: "long", year: "numeric" })}`}
-                  </p>
-                  <p className="text-[12.5px] text-[var(--text-secondary)]">
-                    {newSeason.watchedThrough === 1 ? "Je zag seizoen 1 al helemaal" : `Je zag seizoen 1 tot ${newSeason.watchedThrough} al helemaal`}
-                  </p>
-                </div>
-                <ActionPill tone={newSeason.released ? "primary" : "soft"} icon={FilmIcons.plus} onClick={toggleWatchlist} className="h-[34px] shrink-0 px-[13px] text-[13px]">
-                  {newSeason.released ? "Watchlist" : "Alvast"}
-                </ActionPill>
-              </div>
-            ) : null}
-
-            <div className="mt-4 flex flex-col gap-[30px] lg:mt-[30px] lg:flex-row lg:items-start lg:gap-9">
-              <div className="flex min-w-0 flex-1 flex-col gap-[30px] lg:gap-[34px]">
-                {/* Over */}
-                <section>
-                  {isTV ? (
-                    <SeriesTasteDetailRow series={{ id: Number(String(detail.id).replace(/^tv-/, "")), title: detail.title, year: detail.year ?? "", posterUrl: detail.posterUrl ?? null }} />
-                  ) : null}
-                  <div className="mb-4"><WatchOnProjector imdbId={detail.imdbId} type={detail.type} /></div>
-                  <StremioEpisodeStatus imdbId={detail.imdbId} tmdbId={detail.type === "tv" ? String(detail.id).replace(/^tv-/, "") : undefined} />
-                  <h2 className="mb-2.5 hidden text-[19px] font-bold leading-6 text-[var(--text-primary)] lg:block">Over</h2>
-                  <p className={cn("text-[15px] leading-[22px] text-[var(--text-primary)] lg:text-[15.5px] lg:leading-6", !overviewExpanded && "line-clamp-4 lg:line-clamp-none")}>
-                    {activeOverview || "Geen beschrijving beschikbaar."}
-                  </p>
-                  {!overviewExpanded && activeOverview.length > 180 ? (
-                    <button type="button" onClick={() => setOverviewExpanded(true)} className="mt-1 text-[15px] font-bold text-[var(--blue-500)] focus-visible:outline-none lg:hidden">
-                      Meer lezen
-                    </button>
-                  ) : null}
-                  <div className="mt-3.5 flex gap-2">
-                    <ExternalChip href={imdbUrl(detail.title, detail.imdbId)} label={`${detail.title} bekijken op IMDb`}>
-                      <ImdbMark />
-                    </ExternalChip>
-                    <ExternalChip href={youtubeTrailerSearchUrl(detail.title, isTV ? selectedSeason : undefined)} label={`Trailer van ${detail.title} zoeken op YouTube`}>
-                      <YoutubeMark />
-                    </ExternalChip>
-                  </div>
-                </section>
-
-                {/* Afleveringen */}
-                {isTV && detail.seasons.length > 0 ? (
-                  <section>
-                    <DetailSectionHead
-                      title="Afleveringen"
-                      action={detail.totalEpisodes ? `Alle ${detail.totalEpisodes}` : "Alle"}
-                      onAction={() => router.push(`/films-series/${rawId}/episodes?s=${selectedSeason}`)}
-                    />
-                    <SeasonPills seasons={seasonPills} selected={selectedSeason} onSelect={setSelectedSeason} className="mb-3.5" />
-                    <ListCard>
-                      {/* Alle afleveringen van het gekozen seizoen, niet enkel een voorproefje. */}
-                      {episodes === null
-                        ? [1, 2, 3].map((i) => <EpisodeRowSkeleton key={i} />)
-                        : episodes.map((ep) => (
-                            <EpisodeRow
-                              key={ep.episodeNumber}
-                              ep={ep}
-                              watched={watchedSet.has(epId(selectedSeason, ep.episodeNumber))}
-                              showOverview={false}
-                              onOpen={() => router.push(`/films-series/${rawId}/episodes/s${selectedSeason}e${ep.episodeNumber}`)}
-                              onToggle={() => toggleEpisode(ep.episodeNumber)}
-                            />
-                          ))}
-                    </ListCard>
-                  </section>
-                ) : null}
-
-                {/* Cast — mobiel als rij ronde foto's */}
-                {detail.cast.length > 0 ? (
-                  <section className="lg:hidden">
-                    <DetailSectionHead title="Cast" action="Alles" onAction={() => router.push(`/films-series/${rawId}/cast`)} />
-                    <div className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
-                      <div className="flex w-max gap-2">
-                        {detail.cast.slice(0, 12).map((m, i) => (
-                          <CastRound key={i} person={m} />
-                        ))}
-                      </div>
-                    </div>
-                  </section>
-                ) : null}
-              </div>
-
-              {/* Cast — desktop als lijst rechts */}
-              {detail.cast.length > 0 ? (
-                <aside className="hidden w-80 shrink-0 lg:block">
-                  <DetailSectionHead title="Cast" action="Alles" onAction={() => router.push(`/films-series/${rawId}/cast`)} />
-                  <ListCard>
-                    {detail.cast.slice(0, 6).map((m, i) => (
-                      <CastRow key={i} person={m} />
-                    ))}
-                  </ListCard>
-                </aside>
-              ) : null}
-            </div>
           </div>
         </>
       )}

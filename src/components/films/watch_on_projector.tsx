@@ -22,11 +22,12 @@ export function ProjectorIcon({ className = "size-5" }: { className?: string }) 
  * de melding verschijnt dan als ballonnetje onder de knop.
  * `tone="hero"`: witte pil (42/46px) in de cinema-kop «Verder kijken»; melding als glazen ballonnetje eronder.
  * `tone="heroGlass"`: glazen pil (42/46px) in dezelfde kop, voor de tweede keuze naast de witte knop.
+ * `tone="heroPrimary"`: blauwe pil met gloed (42/46px) op het doek van de detailpagina (canvas «Seriedetail donker · E»).
  * `heroLabel` vervangt de tekst in de kop (`short` op gsm). `onStarted` loopt pas als de Pi de opdracht bevestigde.
  */
 export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone = "primary", heroLabel, ariaLabel, onStarted, className }: {
   imdbId?: string | null; type: "movie" | "tv"; tmdbId?: string | number; season?: number; episode?: number;
-  tone?: "primary" | "cinema" | "icon" | "hero" | "heroGlass"; heroLabel?: { full: string; short?: string };
+  tone?: "primary" | "cinema" | "icon" | "hero" | "heroGlass" | "heroPrimary"; heroLabel?: { full: string; short?: string };
   ariaLabel?: string; onStarted?: () => void; className?: string;
 }) {
   const token = useGoogleAuthToken();
@@ -69,7 +70,7 @@ export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone =
   }
   const cinema = tone === "cinema";
   // Icoon- en kopvariant: de melding verdwijnt vanzelf na een tijdje (er is geen ruimte om ze blijvend te tonen).
-  const floating = tone === "icon" || tone === "hero" || tone === "heroGlass";
+  const floating = tone === "icon" || tone === "hero" || tone === "heroGlass" || tone === "heroPrimary";
   React.useEffect(() => {
     if (!floating || !message || busy) return;
     const id = window.setTimeout(() => setMessage(null), 9000);
@@ -84,7 +85,7 @@ export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone =
       {message ? <p role="status" aria-live="polite" className="absolute left-0 top-[calc(100%+8px)] z-20 w-[240px] rounded-[14px] bg-[var(--white)] px-3 py-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)] shadow-[0_14px_30px_-12px_rgba(16,17,48,0.45),0_0_0_1px_var(--border-subtle)]">{message}</p> : null}
     </div>;
   }
-  if (tone === "hero" || tone === "heroGlass") {
+  if (tone === "hero" || tone === "heroGlass" || tone === "heroPrimary") {
     const full = heroLabel?.full ?? "Speel op projector";
     const short = heroLabel?.short ?? (heroLabel ? heroLabel.full : "Op projector");
     return <div className={cn("relative shrink-0", className)}>
@@ -93,6 +94,8 @@ export function WatchOnProjector({ imdbId, type, tmdbId, season, episode, tone =
           "inline-flex h-[42px] items-center gap-2 rounded-pill transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white/70 disabled:opacity-60 motion-safe:active:scale-[0.97] lg:h-[46px] lg:text-[15px]",
           tone === "hero"
             ? "bg-fixed-white px-[18px] text-[14.5px] font-bold text-[var(--cinema-night)] lg:px-[22px]"
+            : tone === "heroPrimary"
+            ? "bg-[var(--blue-500)] px-[18px] text-[14.5px] font-bold text-fixed-white shadow-[0_14px_34px_-12px_color-mix(in_srgb,var(--blue-500)_85%,transparent)] [@media(hover:hover)]:hover:bg-[var(--blue-600,var(--blue-500))] lg:px-[22px]"
             : "bg-fixed-white/[0.08] px-4 text-[14.5px] font-semibold text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.26)] backdrop-blur-md [@media(hover:hover)]:hover:bg-fixed-white/[0.16] lg:px-5",
         )}>
         {busy ? <span aria-hidden className="block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <ProjectorIcon className="size-[18px]" />}

@@ -399,10 +399,69 @@ export function TasteRatingSheet({
 }
 
 /** Op de detailpagina van een serie: jouw oordeel bekijken en wijzigen. */
-export function SeriesTasteDetailRow({ series }: { series: TasteSheetSeries }) {
+/**
+ * Oordeel op de detailpagina. `tone="glass"`: glazen paneel op het cinema-doek met de vier oordelen als
+ * chips (canvas «Seriedetail donker · E»); een tik op het gekozen oordeel opent het blad (o.a. «Niet gezien»).
+ */
+export function SeriesTasteDetailRow({ series, tone = "default", className }: { series: TasteSheetSeries; tone?: "default" | "glass"; className?: string }) {
   const { ratings, rate, markUnseen } = useSeriesTaste();
   const [open, setOpen] = React.useState(false);
   const rating = ratings.get(series.id);
+  const sheet = (
+    <TasteRatingSheet
+      series={open ? series : null}
+      value={rating?.level ?? null}
+      auto={Boolean(rating?.auto)}
+      onClose={() => setOpen(false)}
+      onRate={(level) => {
+        void rate(series.id, level, { title: series.title, year: series.year, posterUrl: series.posterUrl });
+        setOpen(false);
+      }}
+      onUnseen={() => {
+        void markUnseen(series.id);
+        setOpen(false);
+      }}
+    />
+  );
+  if (tone === "glass") {
+    return (
+      <>
+        <div className={cn("rounded-[22px] bg-fixed-white/[0.06] px-4 py-3.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] backdrop-blur-xl lg:px-5 lg:py-4", className)}>
+          <p className="text-[11.5px] font-bold uppercase tracking-[0.12em] text-fixed-white/50">
+            Jouw oordeel{rating?.auto ? " · automatisch" : ""}
+          </p>
+          <div role="radiogroup" aria-label="Jouw oordeel" className="mt-2.5 flex flex-wrap gap-1">
+            {TASTE_LEVELS.map((l) => {
+              const on = rating?.level === l.level && !rating.auto;
+              return (
+                <button
+                  key={l.level}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  aria-label={l.label}
+                  title={l.label}
+                  onClick={() => (on ? setOpen(true) : void rate(series.id, l.level, { title: series.title, year: series.year, posterUrl: series.posterUrl }))}
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-pill px-2.5 text-[12.5px] font-bold transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white",
+                    on
+                      ? "bg-fixed-white text-[var(--cinema-screen)]"
+                      : rating?.level === l.level
+                        ? "bg-fixed-white/[0.16] text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5)]"
+                        : "bg-fixed-white/[0.08] text-fixed-white/85 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] [@media(hover:hover)]:hover:bg-fixed-white/[0.14]",
+                  )}
+                >
+                  {l.stars > 0 ? <TasteStars count={l.stars} className="text-[12px]" /> : null}
+                  {l.stars <= 1 ? l.label : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {sheet}
+      </>
+    );
+  }
   return (
     <>
       <div className="mb-4 flex items-center gap-3 rounded-[16px] bg-[var(--white)] px-4 py-2.5 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
@@ -424,20 +483,7 @@ export function SeriesTasteDetailRow({ series }: { series: TasteSheetSeries }) {
           {rating ? "Wijzig" : "Beoordeel"}
         </Button>
       </div>
-      <TasteRatingSheet
-        series={open ? series : null}
-        value={rating?.level ?? null}
-        auto={Boolean(rating?.auto)}
-        onClose={() => setOpen(false)}
-        onRate={(level) => {
-          void rate(series.id, level, { title: series.title, year: series.year, posterUrl: series.posterUrl });
-          setOpen(false);
-        }}
-        onUnseen={() => {
-          void markUnseen(series.id);
-          setOpen(false);
-        }}
-      />
+      {sheet}
     </>
   );
 }
