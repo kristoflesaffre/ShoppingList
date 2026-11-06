@@ -6,6 +6,7 @@ import { StremioEpisodeStatus } from "@/components/films/stremio_progress";
 import { setForcedDark } from "@/lib/theme";
 import * as React from "react";
 import { SeriesTasteDetailRow } from "@/components/films/series_taste";
+import { MOVIE_TASTE, SERIES_TASTE } from "@/lib/taste-kinds";
 import { useRouter, useParams } from "next/navigation";
 import { backOr } from "@/lib/in_app_history";
 import { cn } from "@/lib/utils";
@@ -577,46 +578,43 @@ export default function FilmDetailPage() {
               </div>
               <StremioEpisodeStatus tone="cinema" imdbId={detail.imdbId} tmdbId={isTV ? tmdbId : undefined} />
 
-              {isTV || partnerFeedback || newSeason ? (
-                <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:mt-7">
-                  {isTV ? (
-                    <SeriesTasteDetailRow
-                      tone="glass"
-                      series={{ id: Number(tmdbId), title: detail.title, year: detail.year ?? "", posterUrl: detail.posterUrl ?? null }}
-                    />
-                  ) : null}
-                  {partnerFeedback ? (
-                    <PartnerFeedbackPanel
-                      reaction={partnerFeedback}
-                      mediaType={detail.type}
-                      partnerName={partnerName}
-                      userAvatar={userAvatar}
-                      partnerAvatar={partnerAvatar}
-                      onClick={canAskPartnerAgain ? () => setShowAskAgainSlideIn(true) : undefined}
-                    />
-                  ) : null}
-                  {newSeason ? (
-                    <div className={cn(glassPanelClass, "flex items-center gap-3 px-4 py-3.5 sm:col-span-2 lg:px-5")}>
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--badge-new)] text-fixed-white" aria-hidden>
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="size-[18px]">
-                          <path d="M12 2.5l2.1 6.1 6.4.3-5 4 1.8 6.2L12 15.4l-5.3 3.7 1.8-6.2-5-4 6.4-.3z" />
-                        </svg>
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[15px] font-bold text-fixed-white">
-                          Seizoen {newSeason.season} {newSeason.released ? "is uit" : `komt op ${new Date(`${newSeason.airDate}T12:00:00`).toLocaleDateString("nl-BE", { day: "numeric", month: "long", year: "numeric" })}`}
-                        </p>
-                        <p className="text-[12.5px] text-fixed-white/60">
-                          {newSeason.watchedThrough === 1 ? "Je zag seizoen 1 al helemaal" : `Je zag seizoen 1 tot ${newSeason.watchedThrough} al helemaal`}
-                        </p>
-                      </div>
-                      <ActionPill tone={newSeason.released ? "primary" : "glass"} icon={FilmIcons.plus} onClick={toggleWatchlist} className="h-[34px] shrink-0 px-[13px] text-[13px]">
-                        {newSeason.released ? "Watchlist" : "Alvast"}
-                      </ActionPill>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:mt-7">
+                <SeriesTasteDetailRow
+                  tone="glass"
+                  kind={isTV ? SERIES_TASTE : MOVIE_TASTE}
+                  series={{ id: Number(tmdbId), title: detail.title, year: detail.year ?? "", posterUrl: detail.posterUrl ?? null }}
+                />
+                {partnerFeedback ? (
+                  <PartnerFeedbackPanel
+                    reaction={partnerFeedback}
+                    mediaType={detail.type}
+                    partnerName={partnerName}
+                    userAvatar={userAvatar}
+                    partnerAvatar={partnerAvatar}
+                    onClick={canAskPartnerAgain ? () => setShowAskAgainSlideIn(true) : undefined}
+                  />
+                ) : null}
+                {newSeason ? (
+                  <div className={cn(glassPanelClass, "flex items-center gap-3 px-4 py-3.5 sm:col-span-2 lg:px-5")}>
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--badge-new)] text-fixed-white" aria-hidden>
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="size-[18px]">
+                        <path d="M12 2.5l2.1 6.1 6.4.3-5 4 1.8 6.2L12 15.4l-5.3 3.7 1.8-6.2-5-4 6.4-.3z" />
+                      </svg>
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[15px] font-bold text-fixed-white">
+                        Seizoen {newSeason.season} {newSeason.released ? "is uit" : `komt op ${new Date(`${newSeason.airDate}T12:00:00`).toLocaleDateString("nl-BE", { day: "numeric", month: "long", year: "numeric" })}`}
+                      </p>
+                      <p className="text-[12.5px] text-fixed-white/60">
+                        {newSeason.watchedThrough === 1 ? "Je zag seizoen 1 al helemaal" : `Je zag seizoen 1 tot ${newSeason.watchedThrough} al helemaal`}
+                      </p>
                     </div>
-                  ) : null}
-                </div>
-              ) : null}
+                    <ActionPill tone={newSeason.released ? "primary" : "glass"} icon={FilmIcons.plus} onClick={toggleWatchlist} className="h-[34px] shrink-0 px-[13px] text-[13px]">
+                      {newSeason.released ? "Watchlist" : "Alvast"}
+                    </ActionPill>
+                  </div>
+                ) : null}
+              </div>
 
               <p className={cn("mt-6 max-w-[600px] text-[15px] leading-[23px] text-fixed-white/75 lg:mt-7 lg:text-[16px] lg:leading-[26px]", !overviewExpanded && "line-clamp-4 lg:line-clamp-none")}>
                 {activeOverview || "Geen beschrijving beschikbaar."}

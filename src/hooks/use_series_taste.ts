@@ -6,45 +6,44 @@ import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { db } from "@/lib/db";
 import {
   tasteProgress,
-  TASTE_UNSEEN_ID,
-  autoLikedSeriesIds,
   effectiveRatings,
   isTasteLevel,
-  parseTasteMediaId,
   parseUnseenList,
   recommendSeries,
-  tasteMediaId,
   tasteProfile,
   type TasteLevel,
   type TasteRecommendation,
   type TasteSeries,
 } from "@/lib/series-taste";
+import { MOVIE_TASTE, SERIES_TASTE, type TasteKind } from "@/lib/taste-kinds";
 
 type Row = { id: string; reactingUserId: string; mediaId: string; reaction: string };
 
 /** Per bezoek één keer ophalen; banner, overzicht en detailpagina delen het resultaat. */
-let catalogPromise: Promise<TasteSeries[]> | null = null;
+const catalogPromises = new Map<string, Promise<TasteSeries[]>>();
 
-function fetchTasteCatalog(): Promise<TasteSeries[]> {
+function fetchTasteCatalog(url: string): Promise<TasteSeries[]> {
+  let catalogPromise = catalogPromises.get(url);
   if (!catalogPromise) {
-    catalogPromise = fetch("/data/series-taste-catalog.json")
+    catalogPromise = fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error(`catalog ${r.status}`);
         return r.json() as Promise<{ series: TasteSeries[] }>;
       })
       .then((d) => d.series ?? [])
       .catch((err) => {
-        catalogPromise = null;
+        catalogPromises.delete(url);
         throw err;
       });
+    catalogPromises.set(url, catalogPromise);
   }
   return catalogPromise;
 }
 
 const EXTRA_CHUNK = 40;
 
-/** Series die je beoordeelde of zag maar die niet in de catalogus staan. */
-function useExtraSeries(ids: readonly number[]) {
+/** Titels die je beoordeelde of zag maar die niet in de catalogus staan. */
+function useExtraSeries(ids: readonly number[], extrasUrl: string) {
   const [loaded, setLoaded] = React.useState<Map<number, TasteSeries>>(new Map());
   const requested = React.useRef(new Set<number>());
   const key = ids.join(",");
@@ -53,7 +52,7 @@ function useExtraSeries(ids: readonly number[]) {
     if (todo.length === 0) return;
     todo.forEach((id) => requested.current.add(id));
     for (let i = 0; i < todo.length; i += EXTRA_CHUNK) {
-      fetch(`/api/films/taste-series?ids=${todo.slice(i, i + EXTRA_CHUNK).join(",")}`)
+      fetch(`${extrasUrl}&ids=${todo.slice(i, i + EXTRA_CHUNK).join(",")}`)
         .then((r) => (r.ok ? (r.json() as Promise<{ series: TasteSeries[] }>) : { series: [] }))
         .then((d) =>
           setLoaded((prev) => {
@@ -76,19 +75,25 @@ type CatalogSeries = TasteSeries & { x?: 1 };
 
 const NO_IDS: number[] = [];
 
+type TasteOptions = {
+  recommend?: boolean;
+  /** Ook titels buiten de catalogus ophalen; niet nodig voor enkel de voortgang. */
+  loadExtras?: boolean;
+};
+
 /**
- * Jouw seriesmaak: oordelen lezen en bewaren, de series die vanzelf meetellen, en wat je waarschijnlijk
+ * Jouw series- of filmsmaak: oordelen lezen en bewaren, de titels die vanzelf meetellen, en wat je waarschijnlijk
  * goed zal vinden. Oordelen zijn per persoon; wat je volgt en zag deel je met je partner.
  */
-export function useSeriesTaste({ recommend = false, loadExtras = true }: { recommend?: boolean; /** Ook series buiten de catalogus ophalen; niet nodig voor enkel de voortgang. */ loadExtras?: boolean } = {}) {
+export function useTaste(kind: TasteKind, { recommend = false, loadExtras = true }: TasteOptions = {}) {
   const { user, groupOwnerId, watchedIds, watchlist, dataLoading, seriesMeta, saveSeriesMeta } = useFilmsLibrary();
   const [catalog, setCatalog] = React.useState<TasteSeries[] | null>(null);
   const [error, setError] = React.useState(false);
 
   const load = React.useCallback(() => {
     setError(false);
-    fetchTasteCatalog().then(setCatalog, () => setError(true));
-  }, []);
+    fetchTasteCatalog(kind.catalogUrl).then(setCatalog, () => setError(true));
+  }, [kind.catalogUrl]);
   React.useEffect(load, [load]);
 
   const query = React.useMemo(
@@ -112,16 +117,16 @@ export function useSeriesTaste({ recommend = false, loadExtras = true }: { recom
   const explicit = React.useMemo(() => {
     const out = new Map<number, TasteLevel>();
     for (const r of rows) {
-      const id = parseTasteMediaId(r.mediaId);
+      const id = kind.parseMediaId(r.mediaId);
       if (id !== null && isTasteLevel(r.reaction)) out.set(id, r.reaction);
     }
     return out;
-  }, [rows]);
+  }, [rows, kind]);
 
-  const unseenRow = React.useMemo(() => rows.find((r) => r.mediaId === TASTE_UNSEEN_ID) ?? null, [rows]);
+  const unseenRow = React.useMemo(() => rows.find((r) => r.mediaId === kind.unseenId) ?? null, [rows, kind.unseenId]);
   const unseenIds = React.useMemo(() => new Set(parseUnseenList(unseenRow?.reaction)), [unseenRow?.reaction]);
 
-  const auto = React.useMemo(() => autoLikedSeriesIds(watchedIds), [watchedIds]);
+  const auto = React.useMemo(() => kind.autoLiked(watchedIds), [kind, watchedIds]);
   const ratings = React.useMemo(() => effectiveRatings(explicit, auto, unseenIds), [explicit, auto, unseenIds]);
 
   /** De series waar we je naar vragen; `catalog` bevat ook de rest, zodat een eerder oordeel blijft tellen. */
@@ -132,7 +137,7 @@ export function useSeriesTaste({ recommend = false, loadExtras = true }: { recom
     () => (catalog ? Array.from(ratings.keys()).filter((id) => !catalogById.has(id)).sort((a, b) => a - b) : []),
     [catalog, catalogById, ratings],
   );
-  const extra = useExtraSeries(loadExtras ? missingIds : NO_IDS);
+  const extra = useExtraSeries(loadExtras ? missingIds : NO_IDS, kind.extrasUrl);
 
   const getSeries = React.useCallback((id: number) => catalogById.get(id) ?? extra.get(id) ?? null, [catalogById, extra]);
 
@@ -141,7 +146,8 @@ export function useSeriesTaste({ recommend = false, loadExtras = true }: { recom
     const out: RatedSeries[] = [];
     ratings.forEach((rating, id) => {
       const series = getSeries(id);
-      const meta = seriesMeta[String(id)];
+      // De titelgegevens van series staan op TMDB-nummer; een film met hetzelfde nummer mag die niet lenen.
+      const meta = kind.type === "tv" ? seriesMeta[String(id)] : undefined;
       if (series) out.push({ ...series, ...rating });
       else if (meta)
         out.push({
@@ -162,16 +168,17 @@ export function useSeriesTaste({ recommend = false, loadExtras = true }: { recom
     });
     const order: Record<TasteLevel, number> = { top: 0, great: 1, good: 2, no: 3 };
     return out.sort((a, b) => order[a.level] - order[b.level] || b.v - a.v);
-  }, [ratings, getSeries, seriesMeta]);
+  }, [kind.type, ratings, getSeries, seriesMeta]);
 
   const onWatchlist = React.useMemo(() => {
     const ids = new Set<number>();
     for (const item of watchlist) {
-      const m = /^tv-(\d+)$/.exec(item.id);
+      if (item.type !== kind.type) continue;
+      const m = /-(\d+)$/.exec(item.id);
       if (m) ids.add(Number(m[1]));
     }
     return ids;
-  }, [watchlist]);
+  }, [watchlist, kind.type]);
 
   const recommendations = React.useMemo((): TasteRecommendation[] => {
     if (!catalog || !recommend) return [];
@@ -185,7 +192,7 @@ export function useSeriesTaste({ recommend = false, loadExtras = true }: { recom
   const writeRate = React.useCallback(
     async (tmdbId: number, level: TasteLevel | null) => {
       if (!user || !groupOwnerId) return;
-      const mediaId = tasteMediaId(tmdbId);
+      const mediaId = kind.mediaId(tmdbId);
       const existing = rows.filter((r) => r.mediaId === mediaId);
       const txs: Parameters<typeof db.transact>[0] = existing.slice(level ? 1 : 0).map((r) => db.tx.filmsPartnerReactions[r.id].delete());
       if (level) {
@@ -195,7 +202,7 @@ export function useSeriesTaste({ recommend = false, loadExtras = true }: { recom
       }
       if (txs.length > 0) await db.transact(txs);
     },
-    [user, groupOwnerId, rows],
+    [user, groupOwnerId, rows, kind],
   );
 
   /** De lijst loopt voor op de database: snel na elkaar tikken mag niets kwijtspelen. */
@@ -219,23 +226,23 @@ export function useSeriesTaste({ recommend = false, loadExtras = true }: { recom
       await db.transact(
         db.tx.filmsPartnerReactions[unseenRowId.current].update({
           reactingUserId: user.id,
-          mediaId: TASTE_UNSEEN_ID,
+          mediaId: kind.unseenId,
           reaction: Array.from(next).join(","),
           groupOwnerId,
         }),
       );
     },
-    [user, groupOwnerId, unseenIds],
+    [user, groupOwnerId, unseenIds, kind.unseenId],
   );
 
   /** Oordeel geven of wijzigen. Series buiten de catalogus krijgen hun titel en poster mee. */
   const rate = React.useCallback(
     async (tmdbId: number, level: TasteLevel, info?: { title: string; year: string; posterUrl: string | null }) => {
-      if (info && !catalogById.has(tmdbId) && !seriesMeta[String(tmdbId)]) await saveSeriesMeta(String(tmdbId), info);
+      if (kind.type === "tv" && info && !catalogById.has(tmdbId) && !seriesMeta[String(tmdbId)]) await saveSeriesMeta(String(tmdbId), info);
       await writeRate(tmdbId, level);
       await writeUnseen(tmdbId, false);
     },
-    [catalogById, seriesMeta, saveSeriesMeta, writeRate, writeUnseen],
+    [kind.type, catalogById, seriesMeta, saveSeriesMeta, writeRate, writeUnseen],
   );
 
   /** «Niet gezien»: geen oordeel, en niet meer vragen. */
@@ -278,3 +285,6 @@ export function useSeriesTaste({ recommend = false, loadExtras = true }: { recom
     restore,
   };
 }
+
+export const useSeriesTaste = (options?: TasteOptions) => useTaste(SERIES_TASTE, options);
+export const useMovieTaste = (options?: TasteOptions) => useTaste(MOVIE_TASTE, options);

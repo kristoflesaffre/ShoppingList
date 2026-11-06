@@ -14,7 +14,7 @@ import { Shimmer } from "@/components/ui/shimmer";
 import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard, WatchingCardSkeleton } from "@/components/films/film_tiles";
 import { FollowedSeriesTile, SeriesFollowBanner, useFollowedSeriesOrder } from "@/components/films/series_follow";
 import { useFollowedSeries, useUnreviewedOngoingSeries } from "@/hooks/use_series_follow";
-import { useSeriesTaste } from "@/hooks/use_series_taste";
+import { useMovieTaste, useSeriesTaste } from "@/hooks/use_series_taste";
 import { SeriesTasteBanner, TasteRecommendationTile } from "@/components/films/series_taste";
 import { tastePosterUrl } from "@/lib/series-taste";
 
@@ -695,6 +695,7 @@ const DiscoverCarousel = React.forwardRef<
 });
 
 const TASTE_BANNER_KEY = "films.taste-banner-hidden";
+const MOVIE_TASTE_BANNER_KEY = "films.movie-taste-banner-hidden";
 
 export default function FilmsSeriesPage() {
   const router = useRouter();
@@ -723,12 +724,24 @@ export default function FilmsSeriesPage() {
   const { watchingItems, watchingReady, episodeAfterNearEnd, markNextEpisode, markSeasonWatched, markSeriesWatched, markSeasonNotStarted, unmarkEpisodes, newSeasonItems, dismissNewSeason, restoreNewSeason } = useWatchingTvItems();
   const [watchMenuFor, setWatchMenuFor] = React.useState<string | null>(null);
   const taste = useSeriesTaste({ recommend: true });
+  const movieTaste = useMovieTaste({ recommend: true });
   const [tasteBannerHidden, setTasteBannerHidden] = React.useState(true);
+  const [movieTasteBannerHidden, setMovieTasteBannerHidden] = React.useState(true);
   React.useEffect(() => {
     try {
       setTasteBannerHidden(window.localStorage.getItem(TASTE_BANNER_KEY) === "1");
+      setMovieTasteBannerHidden(window.localStorage.getItem(MOVIE_TASTE_BANNER_KEY) === "1");
     } catch {
       setTasteBannerHidden(false);
+      setMovieTasteBannerHidden(false);
+    }
+  }, []);
+  const dismissMovieTasteBanner = React.useCallback(() => {
+    setMovieTasteBannerHidden(true);
+    try {
+      window.localStorage.setItem(MOVIE_TASTE_BANNER_KEY, "1");
+    } catch {
+      /* Dan komt de banner volgende keer terug. */
     }
   }, []);
   const dismissTasteBanner = React.useCallback(() => {
@@ -787,6 +800,8 @@ export default function FilmsSeriesPage() {
   const tasteScrollRef = React.useRef<HTMLDivElement>(null);
   const followedScrollRef = React.useRef<HTMLDivElement>(null);
   useEdgeFade(tasteScrollRef);
+  const movieTasteScrollRef = React.useRef<HTMLDivElement>(null);
+  useEdgeFade(movieTasteScrollRef);
   useEdgeFade(followedScrollRef);
   const lastAddedItemRef = React.useRef<HTMLButtonElement | null>(null);
   const scrollPendingRef = React.useRef(false);
@@ -1353,12 +1368,20 @@ export default function FilmsSeriesPage() {
               />
             ) : null}
 
-            {/* Jouw seriesmaak: eerst beoordelen, daarna voorstellen */}
+            {/* Jouw seriesmaak: eerst beoordelen, daarna voorstellen. De filmbanner wacht op zijn beurt: nooit twee tegelijk. */}
             {!taste.loading && !tasteBannerHidden && taste.explicit.size === 0 && taste.askable ? (
               <SeriesTasteBanner
                 posters={taste.askable.slice(0, 3).map(tastePosterUrl).filter((p): p is string => Boolean(p))}
                 onStart={() => router.push("/films-series/smaak")}
                 onDismiss={dismissTasteBanner}
+              />
+            ) : !taste.loading && !movieTaste.loading && !movieTasteBannerHidden && movieTaste.explicit.size === 0 && movieTaste.askable ? (
+              <SeriesTasteBanner
+                title="Welke films vond je goed?"
+                text="Geef de goede films een oordeel. Zo leert de app wat je waarschijnlijk ook goed zal vinden."
+                posters={movieTaste.askable.slice(0, 3).map(tastePosterUrl).filter((p): p is string => Boolean(p))}
+                onStart={() => router.push("/films-series/filmsmaak")}
+                onDismiss={dismissMovieTasteBanner}
               />
             ) : null}
 
@@ -1596,11 +1619,24 @@ export default function FilmsSeriesPage() {
             {/* Suggestie op basis van jouw smaak — onderaan; de pil gaat naar «Jouw smaak» */}
             {taste.recommendations.length > 0 ? (
               <section className="flex flex-col gap-4 lg:gap-5">
-                <SectionHead title="Suggestie op basis van jouw smaak" href="/films-series/smaak" count={taste.recommendations.length} />
+                <SectionHead title="Seriessuggesties op basis van jouw smaak" href="/films-series/smaak" count={taste.recommendations.length} />
                 <div ref={tasteScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
                   <div className="flex items-start gap-3" style={{ width: "max-content" }}>
                     {taste.recommendations.slice(0, 12).map((r) => (
                       <TasteRecommendationTile key={r.series.id} recommendation={r} onOpen={() => handleViewDetail(`tv-${r.series.id}`)} />
+                    ))}
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {movieTaste.recommendations.length > 0 ? (
+              <section className="flex flex-col gap-4 lg:gap-5">
+                <SectionHead title="Filmsuggesties op basis van jouw smaak" href="/films-series/filmsmaak" count={movieTaste.recommendations.length} />
+                <div ref={movieTasteScrollRef} className="edge-fade -mx-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" style={{ scrollbarWidth: "none" }}>
+                  <div className="flex items-start gap-3" style={{ width: "max-content" }}>
+                    {movieTaste.recommendations.slice(0, 12).map((r) => (
+                      <TasteRecommendationTile key={r.series.id} recommendation={r} onOpen={() => handleViewDetail(`movie-${r.series.id}`)} />
                     ))}
                   </div>
                 </div>

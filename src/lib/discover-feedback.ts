@@ -94,9 +94,9 @@ export function buildDiscoverExcludeIds(input: DiscoverExclusionInput): Set<stri
       ids.add(dismissed);
       continue;
     }
-    const taste = /^taste-tv-(\d+)$/.exec(mediaId);
+    const taste = /^taste-(tv|movie)-(\d+)$/.exec(mediaId);
     if (taste) {
-      if (TASTE_REACTIONS.has(reaction)) ids.add(`tv-${taste[1]}`);
+      if (TASTE_REACTIONS.has(reaction)) ids.add(`${taste[1]}-${taste[2]}`);
       continue;
     }
     // Duim omhoog, omlaag of «gezien» op een titel van je partner.

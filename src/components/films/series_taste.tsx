@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Poster } from "@/components/films/film_tiles";
 import { PosterFan } from "@/components/films/series_follow";
-import { useSeriesTaste } from "@/hooks/use_series_taste";
+import { useTaste } from "@/hooks/use_series_taste";
+import { SERIES_TASTE, type TasteKind } from "@/lib/taste-kinds";
 import { TASTE_LEVELS, TASTE_WALL_COLS, TASTE_WALL_ROWS, tasteLabel, tastePosterUrl, tasteSmallPosterUrl, tasteStars, type TasteLevel, type TasteProgress, type TasteRating, type TasteRecommendation, type TasteProfile, type TasteSeries, type TasteWallTile } from "@/lib/series-taste";
 
 const STAR_PATH = "M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z";
@@ -327,16 +328,28 @@ export function SeriesTasteProgressCard({
 }
 
 /** Banner op «Films & series» zolang je nog niets beoordeelde. */
-export function SeriesTasteBanner({ posters, onStart, onDismiss }: { posters: string[]; onStart: () => void; onDismiss: () => void }) {
+export function SeriesTasteBanner({
+  posters,
+  onStart,
+  onDismiss,
+  title = "Welke series vond je goed?",
+  text = "Geef de goede series van de laatste 20 jaar een oordeel. Zo leert de app wat je waarschijnlijk ook goed zal vinden.",
+}: {
+  posters: string[];
+  onStart: () => void;
+  onDismiss: () => void;
+  title?: string;
+  text?: string;
+}) {
   return (
     <section className="relative flex items-center gap-3 rounded-[20px] bg-[image:var(--gradient-store-default)] p-4 lg:gap-[18px] lg:px-[22px] lg:py-[18px]">
       <PosterFan posters={posters} width={46} className="lg:hidden" />
       <PosterFan posters={posters} width={56} className="hidden lg:block" />
       <div className="min-w-0 flex-1 pr-5 lg:pr-0">
         <p className="text-[11.5px] font-extrabold tracking-[0.06em] text-[var(--blue-500)]">JOUW SMAAK</p>
-        <h2 className="mt-[3px] text-base font-extrabold text-[var(--text-primary)] lg:text-lg">Welke series vond je goed?</h2>
+        <h2 className="mt-[3px] text-base font-extrabold text-[var(--text-primary)] lg:text-lg">{title}</h2>
         <p className="mt-[3px] text-[12.5px] leading-[17px] text-[var(--text-secondary)] lg:text-[13.5px] lg:leading-[19px]">
-          Geef de goede series van de laatste 20 jaar een oordeel. Zo leert de app wat je waarschijnlijk ook goed zal vinden.
+          {text}
         </p>
         <Button size="sm" onClick={onStart} className="mt-2.5 lg:hidden">
           Beoordelen
@@ -403,6 +416,7 @@ export function TasteRatingSheet({
   onRate,
   onUnseen,
   onOpenSeries,
+  kind = SERIES_TASTE,
 }: {
   series: TasteSheetSeries | null;
   value: TasteLevel | null;
@@ -410,8 +424,9 @@ export function TasteRatingSheet({
   onClose: () => void;
   onRate: (level: TasteLevel) => void;
   onUnseen: () => void;
-  /** Weg als je al op de pagina van de serie zit. */
+  /** Weg als je al op de pagina van de serie of film zit. */
   onOpenSeries?: () => void;
+  kind?: TasteKind;
 }) {
   return (
     <SlideInModal open={Boolean(series)} onClose={onClose} title="Jouw oordeel" titleId="taste-sheet-title">
@@ -425,7 +440,7 @@ export function TasteRatingSheet({
               <p className="truncate text-[17px] font-bold text-[var(--text-primary)]">{series.title}</p>
               <p className="text-[13px] text-[var(--text-secondary)]">
                 {series.year}
-                {auto ? `${series.year ? " · " : ""}Telt vanzelf mee als goed, omdat je ze volgt of zag` : ""}
+                {auto ? `${series.year ? " · " : ""}Telt vanzelf mee als goed, ${kind.words.autoReason}` : ""}
               </p>
             </div>
           </div>
@@ -437,7 +452,7 @@ export function TasteRatingSheet({
             </Button>
             {onOpenSeries ? (
               <Button variant="secondary" size="md" onClick={onOpenSeries} className="flex-1">
-                Naar de serie
+                Naar {kind.words.theOne}
               </Button>
             ) : null}
           </div>
@@ -447,13 +462,12 @@ export function TasteRatingSheet({
   );
 }
 
-/** Op de detailpagina van een serie: jouw oordeel bekijken en wijzigen. */
 /**
- * Oordeel op de detailpagina. `tone="glass"`: glazen paneel op het cinema-doek met de vier oordelen als
+ * Oordeel op de detailpagina van een serie of film. `tone="glass"`: glazen paneel op het cinema-doek met de vier oordelen als
  * chips (canvas «Seriedetail donker · E»); een tik op het gekozen oordeel opent het blad (o.a. «Niet gezien»).
  */
-export function SeriesTasteDetailRow({ series, tone = "default", className }: { series: TasteSheetSeries; tone?: "default" | "glass"; className?: string }) {
-  const { ratings, rate, markUnseen } = useSeriesTaste();
+export function SeriesTasteDetailRow({ series, tone = "default", kind = SERIES_TASTE, className }: { series: TasteSheetSeries; tone?: "default" | "glass"; kind?: TasteKind; className?: string }) {
+  const { ratings, rate, markUnseen } = useTaste(kind);
   const [open, setOpen] = React.useState(false);
   const rating = ratings.get(series.id);
   const sheet = (
@@ -461,6 +475,7 @@ export function SeriesTasteDetailRow({ series, tone = "default", className }: { 
       series={open ? series : null}
       value={rating?.level ?? null}
       auto={Boolean(rating?.auto)}
+      kind={kind}
       onClose={() => setOpen(false)}
       onRate={(level) => {
         void rate(series.id, level, { title: series.title, year: series.year, posterUrl: series.posterUrl });

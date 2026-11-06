@@ -234,6 +234,23 @@ export default function FilmsSeriesInstellingenPage() {
                 <path d="M9 6l6 6-6 6" />
               </svg>
             </Link>
+            <Link
+              href="/films-series/filmsmaak"
+              className="flex w-full items-center gap-3 border-t border-[var(--border-subtle)] px-1 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)]"
+            >
+              <span className="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--blue-50)] text-[var(--blue-500)]" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="currentColor" className="size-[17px]">
+                  <path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
+                </svg>
+              </span>
+              <span className="min-w-0 flex-1 leading-[19px]">
+                <span className="block text-[15.5px] font-semibold text-[var(--text-primary)]">Jouw filmsmaak</span>
+                <span className="block text-[13px] text-[var(--text-secondary)]">Films beoordelen en zien wat je waarschijnlijk goed zal vinden</span>
+              </span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4 shrink-0 text-[var(--text-tertiary)]">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
             {/* Canvas «Films · Series volgen»: altijd bereikbaar, ook als de banner verborgen is. */}
             <Link
               href="/films-series/series-volgen"
