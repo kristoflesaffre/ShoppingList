@@ -30,6 +30,7 @@ import { RecipeTile } from "@/components/ui/recipe_tile";
 import { SearchBar } from "@/components/ui/search_bar";
 import { MiniButton } from "@/components/ui/mini_button";
 import { SegmentedControl } from "@/components/ui/segmented_control";
+import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import dynamic from "next/dynamic";
 
 const RecipeEditorSlideIn = dynamic(
@@ -329,6 +330,12 @@ function RecipeCategoryLane({
 
 type RecipeTab = "recepten" | "te_testen";
 const TO_TEST_CATEGORY: RecipeCategory = "nog_te_testen";
+const OTHER_KIND = "andere";
+const TO_TEST_KIND_IDS = new Set(RECIPE_CATEGORIES.map((c) => c.id).filter((id) => id !== TO_TEST_CATEGORY));
+/** Soort gerecht van een te testen recept (subcategory), anders «andere». */
+function toTestKindOf(r: SavedRecipe): string {
+  return r.subcategory && TO_TEST_KIND_IDS.has(r.subcategory as RecipeCategory) ? r.subcategory : OTHER_KIND;
+}
 
 export default function ReceptenPage() {
   const router = useRouter();
@@ -373,12 +380,15 @@ export default function ReceptenPage() {
   const [activeCategory, setActiveCategory] = React.useState<RecipeCategory | null>(null);
   /* Tabs bovenaan (canvas «Recepten tabs · A»): alle recepten, of enkel de recepten die je nog wilt testen. */
   const [recipeTab, setRecipeTab] = React.useState<RecipeTab>("recepten");
+  /* Filter op soort gerecht binnen «Te testen» (subcategory); null = alles. */
+  const [toTestKind, setToTestKind] = React.useState<string | null>(null);
   // De open sectie en tab staan in het adres (?categorie=… / ?tab=te-testen), zodat «terug» vanuit een recept daar weer uitkomt.
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const fromUrl = params.get("categorie");
     if (params.get("tab") === "te-testen" || fromUrl === TO_TEST_CATEGORY) {
       setRecipeTab("te_testen");
+      setToTestKind(params.get("soort"));
       return;
     }
     const match = RECIPE_CATEGORIES.find((c) => c.id === fromUrl);
@@ -387,8 +397,10 @@ export default function ReceptenPage() {
   const openTab = React.useCallback((tab: RecipeTab) => {
     setRecipeTab(tab);
     setActiveCategory(null);
+    setToTestKind(null);
     const url = new URL(window.location.href);
     url.searchParams.delete("categorie");
+    url.searchParams.delete("soort");
     if (tab === "te_testen") url.searchParams.set("tab", "te-testen");
     else url.searchParams.delete("tab");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
@@ -451,11 +463,34 @@ export default function ReceptenPage() {
     let result = savedRecipes;
     const q = recipeSearch.trim().toLowerCase();
     if (q) result = result.filter((r) => r.name.toLowerCase().includes(q));
-    if (recipeTab === "te_testen") result = result.filter((r) => r.category === TO_TEST_CATEGORY);
-    else result = result.filter((r) => r.category !== TO_TEST_CATEGORY);
+    if (recipeTab === "te_testen") {
+      result = result.filter((r) => r.category === TO_TEST_CATEGORY);
+      if (toTestKind) result = result.filter((r) => toTestKindOf(r) === toTestKind);
+    } else result = result.filter((r) => r.category !== TO_TEST_CATEGORY);
     if (activeCategory) result = result.filter((r) => r.category === activeCategory);
     return result;
-  }, [savedRecipes, recipeSearch, activeCategory, recipeTab]);
+  }, [savedRecipes, recipeSearch, activeCategory, recipeTab, toTestKind]);
+  /* Chips «Alles · Hoofdgerechten · …» voor «Te testen», enkel soorten die voorkomen, met hun aantal. */
+  const toTestKindChips = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of savedRecipes) {
+      if (r.category !== TO_TEST_CATEGORY) continue;
+      const k = toTestKindOf(r);
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    const chips: { id: string; label: string; dot?: string; count: number }[] = RECIPE_CATEGORIES.filter(
+      (c) => c.id !== TO_TEST_CATEGORY && counts.has(c.id),
+    ).map((c) => ({ id: c.id, label: c.labelPlural, dot: c.dot, count: counts.get(c.id) ?? 0 }));
+    if (counts.has(OTHER_KIND)) chips.push({ id: OTHER_KIND, label: "Andere", count: counts.get(OTHER_KIND) ?? 0 });
+    return chips;
+  }, [savedRecipes]);
+  const chooseToTestKind = React.useCallback((kind: string | null) => {
+    setToTestKind(kind);
+    const url = new URL(window.location.href);
+    if (kind) url.searchParams.set("soort", kind);
+    else url.searchParams.delete("soort");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
   const toTestCount = React.useMemo(
     () => savedRecipes.filter((r) => r.category === TO_TEST_CATEGORY).length,
     [savedRecipes],
@@ -592,8 +627,9 @@ export default function ReceptenPage() {
   const searchPlaceholder = onToTestTab ? "Zoek in te testen" : "Zoek recept";
   const tabControl = (fill: boolean) => (
     <SegmentedControl<RecipeTab>
-      surface="app"
+      size="lg"
       fill={fill}
+      className="[&>button]:whitespace-nowrap"
       ariaLabel="Welke recepten"
       value={recipeTab}
       onChange={openTab}
@@ -671,6 +707,25 @@ export default function ReceptenPage() {
                 {tabControl(true)}
                 <SearchBar surface="app" placeholder={searchPlaceholder} value={recipeSearch} onValueChange={setRecipeSearch} />
               </div>
+
+              {onToTestTab && !isEditMode && toTestKindChips.length > 1 ? (
+                <FilterChipRow ariaLabel="Soort gerecht">
+                  <FilterChip selected={toTestKind == null} onClick={() => chooseToTestKind(null)} count={toTestCount}>
+                    Alles
+                  </FilterChip>
+                  {toTestKindChips.map((c) => (
+                    <FilterChip
+                      key={c.id}
+                      selected={toTestKind === c.id}
+                      onClick={() => chooseToTestKind(toTestKind === c.id ? null : c.id)}
+                      dotColor={c.dot}
+                      count={c.count}
+                    >
+                      {c.label}
+                    </FilterChip>
+                  ))}
+                </FilterChipRow>
+              ) : null}
 
               {showStats && recipeStats.isLoading ? (
                 <RecipeStatsSkeleton />
