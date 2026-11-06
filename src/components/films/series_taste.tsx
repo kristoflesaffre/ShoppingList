@@ -3,6 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Poster } from "@/components/films/film_tiles";
 import { PosterFan } from "@/components/films/series_follow";
@@ -358,14 +359,9 @@ export function SeriesTasteBanner({
       <Button size="md" onClick={onStart} className="hidden shrink-0 lg:mr-6 lg:inline-flex">
         Beoordelen
       </Button>
-      <button
-        type="button"
-        onClick={onDismiss}
-        aria-label="Banner verbergen"
-        className="absolute right-2.5 top-2.5 flex size-6 items-center justify-center rounded-full bg-[rgba(255,255,255,0.7)] text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [&_svg]:size-3"
-      >
-        {CROSS}
-      </button>
+      <RoundIconButton tone="neutral" size={28} onClick={onDismiss} aria-label="Banner verbergen" className="absolute right-2.5 top-2.5">
+        {RoundIcons.close}
+      </RoundIconButton>
     </section>
   );
 }

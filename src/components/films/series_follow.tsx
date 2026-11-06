@@ -188,16 +188,9 @@ export function SeriesFollowBanner({
       >
         Overlopen
       </button>
-      <button
-        type="button"
-        onClick={onDismiss}
-        aria-label="Banner verbergen"
-        className="absolute right-2.5 top-2.5 flex size-6 items-center justify-center rounded-full bg-[rgba(255,255,255,0.7)] text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" aria-hidden className="size-3">
-          <path d="M6 6l12 12M18 6 6 18" />
-        </svg>
-      </button>
+      <RoundIconButton tone="neutral" size={28} onClick={onDismiss} aria-label="Banner verbergen" className="absolute right-2.5 top-2.5">
+        {RoundIcons.close}
+      </RoundIconButton>
     </section>
   );
 }
