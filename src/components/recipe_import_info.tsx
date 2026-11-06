@@ -2,8 +2,6 @@
 import * as React from "react";
 import { db } from "@/lib/db";
 import { MiniButton } from "@/components/ui/mini_button";
-import { RECIPE_CATEGORIES, type RecipeCategory } from "@/lib/recipe_library";
-import { SelectField } from "@/components/ui/select_field";
 type ImportInfo = {
   id: string;
   description: string;
@@ -54,23 +52,12 @@ function ImportImage({ id, token }: { id: string; token: string }) {
     />
   ) : null;
 }
-export function RecipeImportInfo({
-  recipeId,
-  category,
-  onCategoryChange,
-}: {
-  recipeId: string;
-  category: RecipeCategory | null;
-  onCategoryChange: (category: RecipeCategory) => Promise<void>;
-}) {
+export function RecipeImportInfo({ recipeId }: { recipeId: string }) {
   const { user } = db.useAuth();
   const [open, setOpen] = React.useState(false);
   const panelId = React.useId();
   React.useEffect(() => setOpen(false), [recipeId]);
-  const [data, setData] = React.useState<ImportInfo | null>(null),
-    [target, setTarget] = React.useState<RecipeCategory>("hoofdgerecht"),
-    [busy, setBusy] = React.useState(false),
-    [error, setError] = React.useState("");
+  const [data, setData] = React.useState<ImportInfo | null>(null);
   React.useEffect(() => {
     if (!user) return;
     let active = true;
@@ -159,47 +146,6 @@ export function RecipeImportInfo({
             {data.usage.input} inputtokens, {data.usage.output} outputtokens,{" "}
             {data.usage.thinking} thinkingtokens.
           </p>
-          {category === "nog_te_testen" && (
-            <div className="flex flex-col gap-3 border-t border-[var(--border-subtle)] pt-4">
-              <h3 className="font-semibold">Gemaakt en goedgekeurd?</h3>
-              <p className="text-sm text-[var(--text-secondary)]">
-                Kies waar je dit geteste recept wilt bewaren.
-              </p>
-              <SelectField
-                ariaLabel="Categorie na het testen"
-                value={target}
-                onChange={(value) => setTarget(value as RecipeCategory)}
-                options={RECIPE_CATEGORIES.filter(
-                  (c) => c.id !== "nog_te_testen",
-                ).map((c) => ({
-                  value: c.id,
-                  label: c.label,
-                  dotColor: c.dot,
-                }))}
-              />
-              <MiniButton
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  setError("");
-                  try {
-                    await onCategoryChange(target);
-                  } catch {
-                    setError("Verplaatsen mislukt. Probeer opnieuw.");
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                {busy ? "Bewaren…" : "Getest: verplaats naar mijn recepten"}
-              </MiniButton>
-              {error && (
-                <p role="alert" className="text-sm text-[var(--error-500)]">
-                  {error}
-                </p>
-              )}
-            </div>
-          )}
         </section>
       )}
     </div>

@@ -11,6 +11,7 @@ import { id as iid } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { RecipePhotoGenerateButton } from "@/components/recipe_photo_generate_button";
 import { RecipeImportInfo } from "@/components/recipe_import_info";
+import { RecipeTestCard } from "@/app/recepten/recipe_test_card";
 import { MiniButton } from "@/components/ui/mini_button";
 import dynamic from "next/dynamic";
 import type { RecipeCategory, RecipeIngredient, SavedRecipe } from "@/lib/recipe_library";
@@ -549,6 +550,9 @@ export default function ReceptDetailPage() {
     );
   }
 
+  // Alleen de eigenaar beslist of een recept uit «Nog te testen» blijft.
+  const isTestRecipeOwner =
+    savedRecipe.category === "nog_te_testen" && recipeData?.recipes?.find((r) => r.id === savedRecipe.id)?.ownerId === user?.id;
   const recipeSteps = (savedRecipe.steps ?? "")
     .split(/\r?\n/)
     .map((s) => s.trim().replace(/^\d+[.)]\s*/, ""))
@@ -704,7 +708,7 @@ export default function ReceptDetailPage() {
             </MiniButton>
           ) : null}
 
-          {savedRecipe.category === "nog_te_testen" && recipeData?.recipes?.find(r => r.id === savedRecipe.id)?.ownerId === user?.id ? (
+          {isTestRecipeOwner ? (
             <RecipePhotoGenerateButton key={savedRecipe.id} recipeId={savedRecipe.id} disabled={photoSaving} onBusyChange={setPhotoSaving} />
           ) : null}
 
@@ -716,6 +720,16 @@ export default function ReceptDetailPage() {
             )}
           </div>
         </section>
+
+        {/* «Nog te testen»: bewaren bij je recepten of verwijderen (canvas «Recept nog te testen» B). */}
+        {isTestRecipeOwner && !detailPhotoEditMode ? (
+          <div className={cn("mt-6 lg:mt-8", heroEnter(400).className)} style={heroEnter(400).style}>
+            <RecipeTestCard
+              onKeep={(category) => db.transact(db.tx.recipes[savedRecipe.id].update({ category })).then(() => undefined)}
+              onDelete={() => setDeleteConfirmOpen(true)}
+            />
+          </div>
+        ) : null}
 
         {/* Ingrediënten en bereiding: onder elkaar (mobiel), naast elkaar (desktop) */}
         <div className={cn("mt-[22px] flex flex-col gap-3.5 lg:mt-10 lg:flex-row lg:items-start lg:gap-[22px]", heroEnter(460).className)} style={heroEnter(460).style}>
@@ -821,11 +835,7 @@ export default function ReceptDetailPage() {
                 </a>
               ) : null}
             </div>
-            <RecipeImportInfo
-              recipeId={savedRecipe.id}
-              category={savedRecipe.category ?? null}
-              onCategoryChange={(category) => db.transact(db.tx.recipes[savedRecipe.id].update({ category })).then(() => undefined)}
-            />
+            <RecipeImportInfo recipeId={savedRecipe.id} />
             {detailPhotoEditMode ? (
               <RecipeStepsEditor
                 key={savedRecipe.id}
