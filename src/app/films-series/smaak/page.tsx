@@ -86,15 +86,7 @@ export default function SmaakPage() {
     return Array.from(out.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "nl"));
   }, [byLevel, genre]);
   const visible = React.useMemo(() => (genre ? byLevel.filter((s) => s.g.includes(genre)) : byLevel), [byLevel, genre]);
-  const autoCount = React.useMemo(() => rated.filter((s) => s.auto).length, [rated]);
-
-  const catalogTotal = askable?.length ?? 0;
-  const answeredInCatalog = React.useMemo(
-    () => (askable ?? []).filter((s) => explicit.has(s.id) || auto.has(s.id) || unseenIds.has(s.id)).length,
-    [askable, explicit, auto, unseenIds],
-  );
-  const toGo = Math.max(0, catalogTotal - answeredInCatalog);
-  const pct = catalogTotal > 0 ? (answeredInCatalog / catalogTotal) * 100 : 0;
+  const { total: catalogTotal, toGo, pct, autoCount } = taste.progress;
   const likedCount = rated.length - counts.no;
   const wall = React.useMemo(() => (loading ? [] : buildTasteWall(rated, askable ?? [])), [loading, rated, askable]);
   const showOverview = !searching && filter === "all";

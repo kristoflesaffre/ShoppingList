@@ -373,3 +373,29 @@ export function buildTasteWall(rated: readonly (TasteSeries & { level: TasteLeve
   }
   return tiles;
 }
+
+export type TasteProgress = {
+  /** Series waar we je naar vragen. */
+  total: number;
+  answered: number;
+  toGo: number;
+  /** 0 tot 100. */
+  pct: number;
+  /** Series die vanzelf meetellen en die je nog kan verfijnen. */
+  autoCount: number;
+};
+
+/** Hoe ver je bent: een serie telt als overlopen met een oordeel, automatisch, of als «niet gezien». */
+export function tasteProgress(
+  askable: readonly Pick<TasteSeries, "id">[],
+  ratings: ReadonlyMap<number, TasteRating>,
+  unseen: ReadonlySet<number>,
+): TasteProgress {
+  const total = askable.length;
+  const answered = askable.filter((s) => ratings.has(s.id) || unseen.has(s.id)).length;
+  let autoCount = 0;
+  ratings.forEach((r) => {
+    if (r.auto) autoCount++;
+  });
+  return { total, answered, toGo: Math.max(0, total - answered), pct: total > 0 ? (answered / total) * 100 : 0, autoCount };
+}

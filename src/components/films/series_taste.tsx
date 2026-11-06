@@ -7,7 +7,7 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { Poster } from "@/components/films/film_tiles";
 import { PosterFan } from "@/components/films/series_follow";
 import { useSeriesTaste } from "@/hooks/use_series_taste";
-import { TASTE_LEVELS, TASTE_WALL_COLS, TASTE_WALL_ROWS, tasteLabel, tastePosterUrl, tasteSmallPosterUrl, tasteStars, type TasteLevel, type TasteRating, type TasteRecommendation, type TasteProfile, type TasteSeries, type TasteWallTile } from "@/lib/series-taste";
+import { TASTE_LEVELS, TASTE_WALL_COLS, TASTE_WALL_ROWS, tasteLabel, tastePosterUrl, tasteSmallPosterUrl, tasteStars, type TasteLevel, type TasteProgress, type TasteRating, type TasteRecommendation, type TasteProfile, type TasteSeries, type TasteWallTile } from "@/lib/series-taste";
 
 const STAR_PATH = "M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z";
 
@@ -274,6 +274,55 @@ export function TasteWallBanner({ tiles, filter, className }: { tiles: readonly 
         style={{ background: "linear-gradient(180deg, color-mix(in srgb, var(--bg-app) 46%, transparent) 0%, transparent 20%, transparent 58%, var(--bg-app) 98%)" }}
       />
     </div>
+  );
+}
+
+/**
+ * Voortgang van je seriesmaak op de startpagina: hoeveel je nog moet overlopen, met de knop om verder
+ * te gaan. Zelfde balk als op «Jouw seriesmaak», zonder het zoekveld. Te smal = de knoppen eronder.
+ */
+export function SeriesTasteProgressCard({
+  progress,
+  onStart,
+  onRefine,
+  className,
+}: {
+  progress: TasteProgress;
+  onStart: () => void;
+  onRefine: () => void;
+  className?: string;
+}) {
+  const { total, answered, toGo, pct, autoCount } = progress;
+  const nl = (n: number) => n.toLocaleString("nl-BE");
+  return (
+    <section aria-label="Jouw seriesmaak" className={cn("flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[20px] bg-[var(--white)] p-4 shadow-card lg:py-3.5 lg:pl-5 lg:pr-4", className)}>
+      <div className="min-w-[240px] flex-1">
+        <p className="flex items-baseline justify-between gap-3 text-sm font-bold text-[var(--text-primary)]">
+          <span>Nog {nl(toGo)} van de {nl(total)} te overlopen</span>
+          <span className="shrink-0 text-[13px] font-bold text-[var(--blue-500)]">{Math.floor(pct)}%</span>
+        </p>
+        <div
+          role="progressbar"
+          aria-label="Series overlopen"
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuenow={answered}
+          className="mt-2 h-1.5 overflow-hidden rounded-pill bg-[var(--gray-100)]"
+        >
+          <div className="h-full rounded-pill bg-[var(--blue-500)]" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        <Button size="md" onClick={onStart} className="w-full sm:w-auto">
+          Series beoordelen
+        </Button>
+        {autoCount > 0 ? (
+          <Button variant="secondary" size="md" onClick={onRefine} className="w-full sm:w-auto">
+            {autoCount} automatisch verfijnen
+          </Button>
+        ) : null}
+      </div>
+    </section>
   );
 }
 

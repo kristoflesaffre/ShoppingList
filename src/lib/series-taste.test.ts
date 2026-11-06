@@ -9,6 +9,7 @@ import {
   parseUnseenList,
   recommendSeries,
   tasteProfile,
+  tasteProgress,
   tasteSeriesFromTmdb,
   type TasteLevel,
   type TasteSeries,
@@ -201,5 +202,26 @@ describe("buildTasteWall", () => {
     expect(tiles.every((t) => t.level === null)).toBe(true);
     expect(buildTasteWall([], [])).toEqual([]);
     expect(buildTasteWall([], [{ ...plain, p: null }])).toEqual([]);
+  });
+});
+
+describe("tasteProgress", () => {
+  const askable = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
+
+  it("telt oordelen, automatische series en «niet gezien» als overlopen", () => {
+    const ratings = new Map([
+      [1, { level: "top" as const, auto: false }],
+      [2, { level: "good" as const, auto: true }],
+    ]);
+    expect(tasteProgress(askable, ratings, new Set([3]))).toEqual({ total: 4, answered: 3, toGo: 1, pct: 75, autoCount: 1 });
+  });
+
+  it("telt een oordeel buiten de catalogus niet mee als overlopen, wel als verfijnbaar", () => {
+    const ratings = new Map([[99, { level: "good" as const, auto: true }]]);
+    expect(tasteProgress(askable, ratings, new Set())).toEqual({ total: 4, answered: 0, toGo: 4, pct: 0, autoCount: 1 });
+  });
+
+  it("geeft 0% zonder catalogus", () => {
+    expect(tasteProgress([], new Map(), new Set())).toEqual({ total: 0, answered: 0, toGo: 0, pct: 0, autoCount: 0 });
   });
 });

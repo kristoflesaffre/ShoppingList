@@ -5,6 +5,7 @@ import { id as instantId } from "@instantdb/react";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { db } from "@/lib/db";
 import {
+  tasteProgress,
   TASTE_UNSEEN_ID,
   autoLikedSeriesIds,
   effectiveRatings,
@@ -73,11 +74,13 @@ export type RatedSeries = TasteSeries & { level: TasteLevel; auto: boolean };
 /** `x` = anime of buitenlands zonder Engelse titel (zie het catalogusscript): nooit voorstellen of naar vragen. */
 type CatalogSeries = TasteSeries & { x?: 1 };
 
+const NO_IDS: number[] = [];
+
 /**
  * Jouw seriesmaak: oordelen lezen en bewaren, de series die vanzelf meetellen, en wat je waarschijnlijk
  * goed zal vinden. Oordelen zijn per persoon; wat je volgt en zag deel je met je partner.
  */
-export function useSeriesTaste({ recommend = false }: { recommend?: boolean } = {}) {
+export function useSeriesTaste({ recommend = false, loadExtras = true }: { recommend?: boolean; /** Ook series buiten de catalogus ophalen; niet nodig voor enkel de voortgang. */ loadExtras?: boolean } = {}) {
   const { user, groupOwnerId, watchedIds, watchlist, dataLoading, seriesMeta, saveSeriesMeta } = useFilmsLibrary();
   const [catalog, setCatalog] = React.useState<TasteSeries[] | null>(null);
   const [error, setError] = React.useState(false);
@@ -129,7 +132,7 @@ export function useSeriesTaste({ recommend = false }: { recommend?: boolean } = 
     () => (catalog ? Array.from(ratings.keys()).filter((id) => !catalogById.has(id)).sort((a, b) => a - b) : []),
     [catalog, catalogById, ratings],
   );
-  const extra = useExtraSeries(missingIds);
+  const extra = useExtraSeries(loadExtras ? missingIds : NO_IDS);
 
   const getSeries = React.useCallback((id: number) => catalogById.get(id) ?? extra.get(id) ?? null, [catalogById, extra]);
 
@@ -253,12 +256,15 @@ export function useSeriesTaste({ recommend = false }: { recommend?: boolean } = 
     [writeRate, writeUnseen],
   );
 
+  const progress = React.useMemo(() => tasteProgress(askable ?? [], ratings, unseenIds), [askable, ratings, unseenIds]);
+
   return {
     loading: !error && (catalog === null || dataLoading || (query !== null && rowsLoading)),
     error,
     retry: load,
     catalog,
     askable,
+    progress,
     getSeries,
     explicit,
     auto,

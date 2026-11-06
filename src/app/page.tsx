@@ -114,6 +114,9 @@ import {
 } from "@/lib/home-section-config";
 import { useFilmsLibrary } from "@/hooks/use_films_library";
 import { useWatchingTvItems } from "@/hooks/use_watching_tv_items";
+import { Shimmer } from "@/components/ui/shimmer";
+import { useSeriesTaste } from "@/hooks/use_series_taste";
+import { SeriesTasteProgressCard } from "@/components/films/series_taste";
 import { isVastList } from "@/lib/vaste-lijstjes";
 import { HomeListsDesktopRow, VasteLijstjesLane, VasteLijstjesTiles } from "@/components/vaste_lijstjes";
 import { IconPrimaryMask, NewListFlow, type NewListFlowHandle } from "@/components/new_list_flow";
@@ -1942,6 +1945,22 @@ function filmMetaLine(type: "movie" | "tv", year: string): string {
   return [type === "tv" ? "Serie" : "Film", year].filter(Boolean).join(" · ");
 }
 
+/** Hoe ver je seriesmaak staat; weg zodra alles overlopen is of als de catalogus niet laadt. */
+function HomeSeriesTasteProgress() {
+  const router = useRouter();
+  const { progress, loading, error } = useSeriesTaste({ loadExtras: false });
+  if (error) return null;
+  if (loading) return <Shimmer className="h-[72px] rounded-[20px]" />;
+  if (progress.toGo === 0) return null;
+  return (
+    <SeriesTasteProgressCard
+      progress={progress}
+      onStart={() => router.push("/films-series/smaak/beoordelen")}
+      onRefine={() => router.push("/films-series/smaak/beoordelen?modus=automatisch")}
+    />
+  );
+}
+
 /**
  * Startpagina: films en series (canvas «Home · Films · 2 posters met status»). Eerst wat je aan het kijken bent
  * met de volgende aflevering op de poster, daarna je hele watchlist met score; titel en soort onder elke poster.
@@ -2072,6 +2091,7 @@ function HomeFilmsSeriesSection({
           </button>
         ))}
       </div>
+      <HomeSeriesTasteProgress />
     </div>
   );
 }
