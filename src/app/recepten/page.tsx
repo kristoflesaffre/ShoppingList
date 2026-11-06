@@ -30,7 +30,6 @@ import { RecipeTile } from "@/components/ui/recipe_tile";
 import { SearchBar } from "@/components/ui/search_bar";
 import { MiniButton } from "@/components/ui/mini_button";
 import { SegmentedControl } from "@/components/ui/segmented_control";
-import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import dynamic from "next/dynamic";
 
 const RecipeEditorSlideIn = dynamic(
@@ -291,11 +290,18 @@ function EmptyStateRecipeFan() {
 function RecipeCategoryLane({
   section,
   onShowAll,
+  label,
+  flat = false,
 }: {
   section: { meta: (typeof RECIPE_CATEGORIES)[0] | null; recipes: SavedRecipe[] };
   onShowAll: () => void;
+  /** Titel als die niet uit de categorie komt (bv. «Andere» bij «Te testen»). */
+  label?: string;
+  /** Geen subsecties: bij «Te testen» staat de soort al in `subcategory`. */
+  flat?: boolean;
 }) {
   const count = section.recipes.length;
+  const title = label ?? (section.meta ? section.meta.labelPlural : "Overige");
 
   return (
     <section className="flex flex-col gap-3">
@@ -304,13 +310,13 @@ function RecipeCategoryLane({
           <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: section.meta.dot }} />
         ) : null}
         <h2 className="min-w-0 truncate text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
-          {section.meta ? section.meta.labelPlural : "Overige"}
+          {title}
         </h2>
         <span className="flex-1" />
-        <OverviewPill onClick={onShowAll} count={count} ariaLabel={`Alle ${section.meta ? section.meta.labelPlural.toLowerCase() : "overige recepten"}`} />
+        <OverviewPill onClick={onShowAll} count={count} ariaLabel={`Alle ${title.toLowerCase()}`} />
       </div>
       {/* Categorieën met subsecties (bijgerechten): één veegrij per subsectie, elk met een kleine kop. */}
-      {(groupBySubcategory(section.meta?.id, section.recipes) ?? [{ id: "", label: "", recipes: section.recipes }]).map((group) => (
+      {((!flat && groupBySubcategory(section.meta?.id, section.recipes)) || [{ id: "", label: "", recipes: section.recipes }]).map((group) => (
         <div key={group.id || "alle"} className="flex flex-col gap-2">
           {group.label ? <SubsectionHeader label={group.label} count={group.recipes.length} /> : null}
           <div
@@ -495,6 +501,19 @@ export default function ReceptenPage() {
     () => savedRecipes.filter((r) => r.category === TO_TEST_CATEGORY).length,
     [savedRecipes],
   );
+  /* «Te testen» zonder zoekterm of gekozen soort: één veegrij per soort gerecht, zoals de categorieën bij «Recepten». */
+  const toTestSections = React.useMemo(() => {
+    if (recipeTab !== "te_testen" || recipeSearch.trim() || toTestKind || toTestKindChips.length < 2) return null;
+    return toTestKindChips
+      .map((c) => ({
+        id: c.id,
+        label: c.label,
+        meta: RECIPE_CATEGORIES.find((cat) => cat.id === c.id) ?? null,
+        recipes: filteredRecipes.filter((r) => toTestKindOf(r) === c.id),
+      }))
+      .filter((sec) => sec.recipes.length > 0);
+  }, [recipeTab, recipeSearch, toTestKind, toTestKindChips, filteredRecipes]);
+  const openToTestKind = toTestKind ? toTestKindChips.find((c) => c.id === toTestKind) ?? null : null;
 
 
   // Group filtered recipes by category for the sectioned view
@@ -708,23 +727,26 @@ export default function ReceptenPage() {
                 <SearchBar surface="app" placeholder={searchPlaceholder} value={recipeSearch} onValueChange={setRecipeSearch} />
               </div>
 
-              {onToTestTab && !isEditMode && toTestKindChips.length > 1 ? (
-                <FilterChipRow wrap="md" ariaLabel="Soort gerecht">
-                  <FilterChip selected={toTestKind == null} onClick={() => chooseToTestKind(null)} count={toTestCount}>
-                    Alles
-                  </FilterChip>
-                  {toTestKindChips.map((c) => (
-                    <FilterChip
-                      key={c.id}
-                      selected={toTestKind === c.id}
-                      onClick={() => chooseToTestKind(toTestKind === c.id ? null : c.id)}
-                      dotColor={c.dot}
-                      count={c.count}
-                    >
-                      {c.label}
-                    </FilterChip>
-                  ))}
-                </FilterChipRow>
+              {onToTestTab && !isEditMode && toTestKind ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => chooseToTestKind(null)}
+                    aria-label="Terug naar alle te testen recepten"
+                    className={headerRoundButtonClass}
+                  >
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+                      <path d="M10 3.5 5.5 8 10 12.5" />
+                    </svg>
+                  </button>
+                  {openToTestKind?.dot ? (
+                    <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: openToTestKind.dot }} />
+                  ) : null}
+                  <h2 className="text-section-title font-semibold leading-24 tracking-tight text-[var(--text-primary)]">
+                    {openToTestKind?.label ?? "Te testen"}
+                  </h2>
+                  <span className="text-sm font-medium leading-20 text-[var(--text-secondary)] tabular-nums">{filteredRecipes.length}</span>
+                </div>
               ) : null}
 
               {showStats && recipeStats.isLoading ? (
@@ -788,6 +810,18 @@ export default function ReceptenPage() {
                     )}
                   </SortableContext>
                 </DndContext>
+              ) : toTestSections ? (
+                <div className="flex flex-col gap-7">
+                  {toTestSections.map((section) => (
+                    <RecipeCategoryLane
+                      key={section.id}
+                      section={section}
+                      label={section.label}
+                      flat
+                      onShowAll={() => chooseToTestKind(section.id)}
+                    />
+                  ))}
+                </div>
               ) : groupedSections && !activeCategory ? (
                 <div className="flex flex-col gap-7">
                   {groupedSections.map((section) => (
