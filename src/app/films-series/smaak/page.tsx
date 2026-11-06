@@ -119,15 +119,15 @@ export default function SmaakPage() {
             <p className="mt-2 text-[14.5px] leading-5 text-[var(--text-secondary)] lg:mt-3 lg:text-[17px] lg:leading-6">
               {loading
                 ? "\u00a0"
-                : rated.length > 0
-                  ? `${nl(rated.length)} ${rated.length === 1 ? "serie" : "series"} aan de muur. Hoe beter je ze vond, hoe groter en feller ze hangen.`
+                : likedCount > 0
+                  ? `${nl(likedCount)} ${likedCount === 1 ? "serie" : "series"} die je goed vindt. Hoe beter je ze vond, hoe groter en feller ze hangen.`
                   : "Je muur is nog leeg. Wat je goed vindt, bepaalt wat de app je voorstelt."}
             </p>
           </div>
 
           {!taste.error && !loading && rated.length > 0 ? (
             <FilterChipRow ariaLabel="Filter op oordeel">
-              <FilterChip selected={filter === "all"} onClick={() => setFilter("all")} count={rated.length}>
+              <FilterChip selected={filter === "all"} onClick={() => setFilter("all")} count={likedCount}>
                 Alles
               </FilterChip>
               {TASTE_LEVELS.slice()
