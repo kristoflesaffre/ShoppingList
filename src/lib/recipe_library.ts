@@ -49,6 +49,8 @@ export const RECIPE_SUBCATEGORIES: Partial<Record<RecipeCategory, { id: string; 
     { id: "brood", label: "Brood" },
     { id: "puree", label: "Aardappelgerechten" },
   ],
+  /* «Te testen»: de soort gerecht, zodat je erop kunt filteren (de categorie blijft «nog_te_testen»). */
+  nog_te_testen: RECIPE_CATEGORIES.filter((c) => c.id !== "nog_te_testen").map((c) => ({ id: c.id, label: c.label })),
 };
 
 /**

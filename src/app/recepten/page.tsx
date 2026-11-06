@@ -331,7 +331,7 @@ function RecipeCategoryLane({
 type RecipeTab = "recepten" | "te_testen";
 const TO_TEST_CATEGORY: RecipeCategory = "nog_te_testen";
 const OTHER_KIND = "andere";
-const TO_TEST_KIND_IDS = new Set(RECIPE_CATEGORIES.map((c) => c.id).filter((id) => id !== TO_TEST_CATEGORY));
+const TO_TEST_KIND_IDS = new Set<RecipeCategory>(RECIPE_CATEGORIES.map((c) => c.id).filter((id) => id !== TO_TEST_CATEGORY));
 /** Soort gerecht van een te testen recept (subcategory), anders «andere». */
 function toTestKindOf(r: SavedRecipe): string {
   return r.subcategory && TO_TEST_KIND_IDS.has(r.subcategory as RecipeCategory) ? r.subcategory : OTHER_KIND;
@@ -709,7 +709,7 @@ export default function ReceptenPage() {
               </div>
 
               {onToTestTab && !isEditMode && toTestKindChips.length > 1 ? (
-                <FilterChipRow ariaLabel="Soort gerecht">
+                <FilterChipRow wrap="md" ariaLabel="Soort gerecht">
                   <FilterChip selected={toTestKind == null} onClick={() => chooseToTestKind(null)} count={toTestCount}>
                     Alles
                   </FilterChip>

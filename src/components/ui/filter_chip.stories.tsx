@@ -67,6 +67,19 @@ export const Types: Story = { render: () => <TypeDemo /> };
 /** Categorieën met bolletje en aantal. */
 export const Categories: Story = { render: () => <CategoryDemo /> };
 
+/** `wrap="md"`: veegrij op de gsm, vanaf tablet op meerdere regels (Recepten · Te testen). */
+export const WrapFromTablet: Story = {
+  render: () => (
+    <FilterChipRow wrap="md" ariaLabel="Soort gerecht">
+      {["Alles", "Soepen", "Hoofdgerechten", "Bijgerechten", "Desserts", "Voorgerechten", "Cocktails", "Ontbijt", "Snacks", "Andere"].map((l, i) => (
+        <FilterChip key={l} selected={i === 0} onClick={() => {}} count={10 + i}>
+          {l}
+        </FilterChip>
+      ))}
+    </FilterChipRow>
+  ),
+};
+
 function OnColorDemo() {
   const [value, setValue] = React.useState("alles");
   return (

@@ -381,8 +381,8 @@ export function RecipeEditorSlideIn({
   // Eigen sectie onder Categorie, enkel als de gekozen categorie subsecties heeft (nu: bijgerechten).
   const soortSection = subcategoryOptions ? (
     <section>
-      <SectionTitle>Soort bijgerecht</SectionTitle>
-      <FilterChipRow wrap ariaLabel="Soort bijgerecht">
+      <SectionTitle>{recipeCategory === "nog_te_testen" ? "Soort gerecht" : "Soort bijgerecht"}</SectionTitle>
+      <FilterChipRow wrap ariaLabel={recipeCategory === "nog_te_testen" ? "Soort gerecht" : "Soort bijgerecht"}>
         {subcategoryOptions.map((sub) => {
           const isActive = recipeSubcategory === sub.id;
           return (

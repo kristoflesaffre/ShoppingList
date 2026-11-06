@@ -50,7 +50,10 @@ export function FilterChip({
   );
 }
 
-/** Horizontaal scrollbare rij chips die tot aan de schermrand doorloopt (of laat ze wrappen met `wrap`). */
+/**
+ * Horizontaal scrollbare rij chips die tot aan de schermrand doorloopt (of laat ze wrappen met `wrap`).
+ * `wrap="md"`: op de gsm een veegrij, vanaf tablet wrappen zodat alle chips zichtbaar zijn.
+ */
 export function FilterChipRow({
   children,
   wrap = false,
@@ -58,11 +61,20 @@ export function FilterChipRow({
   className,
 }: {
   children: React.ReactNode;
-  wrap?: boolean;
+  wrap?: boolean | "md";
   ariaLabel?: string;
   className?: string;
 }) {
-  if (wrap) {
+  // Bij het openen (bv. terug uit een detail met een filter actief) de gekozen chip in beeld schuiven.
+  const scrollerRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const scroller = scrollerRef.current;
+    const chip = scroller?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!scroller || !chip || scroller.scrollWidth <= scroller.clientWidth) return;
+    const left = chip.offsetLeft - (scroller.clientWidth - chip.offsetWidth) / 2;
+    scroller.scrollLeft = Math.max(0, left);
+  }, []);
+  if (wrap === true) {
     return (
       <div role="group" aria-label={ariaLabel} className={cn("flex flex-wrap gap-1.5", className)}>
         {children}
@@ -70,8 +82,15 @@ export function FilterChipRow({
     );
   }
   return (
-    <div className={cn("-mx-4 min-w-0 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}>
-      <div role="group" aria-label={ariaLabel} className="flex w-max gap-1.5 pb-0.5">
+    <div
+      ref={scrollerRef}
+      className={cn(
+        "-mx-4 min-w-0 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        wrap === "md" && "md:mx-0 md:overflow-visible md:px-0",
+        className,
+      )}
+    >
+      <div role="group" aria-label={ariaLabel} className={cn("flex w-max gap-1.5 pb-0.5", wrap === "md" && "md:w-auto md:flex-wrap")}>
         {children}
       </div>
     </div>
