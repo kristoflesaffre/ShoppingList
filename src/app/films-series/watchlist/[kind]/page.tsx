@@ -115,6 +115,7 @@ export default function WatchlistKindPage() {
     ownWatchlist,
     isFilmsListShared,
     partnerName,
+    partnerAvatarUrl,
     removeFromWatchlist,
     addToWatchlist,
     updateWatchlistScore,
@@ -609,7 +610,19 @@ export default function WatchlistKindPage() {
               }}
               options={[
                 { value: "alleen", label: "Alleen" },
-                { value: "samen", label: partnerName ? `Samen met ${partnerName}` : "Samen" },
+                {
+                  value: "samen",
+                  ariaLabel: partnerName ? `Met ${partnerName}` : "Samen",
+                  label: (
+                    <span className="inline-flex items-center gap-1.5">
+                      {partnerAvatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={partnerAvatarUrl} alt="" className="size-5 shrink-0 rounded-full object-cover" />
+                      ) : null}
+                      {partnerName ? `Met ${partnerName}` : "Samen"}
+                    </span>
+                  ),
+                },
               ]}
               className="lg:w-auto lg:shrink-0 [&>button]:whitespace-nowrap lg:[&>button]:flex-none"
             />
