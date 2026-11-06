@@ -78,6 +78,12 @@ export function matchIngredientPhotoUrl(
     }
     return url(synonymSlug);
   }
+  // Synoniem naar een foto die enkel per aantal bestaat (bv. «ei» → eieren_1 … eieren_6): kies de variant
+  // voor het aantal, zonder aantal de kleinste.
+  if (synonymSlug && !slugs.includes(synonymSlug)) {
+    const countMatch = pickCountVariant(synonymSlug, slugs, count ?? 1);
+    if (countMatch) return url(countMatch);
+  }
 
   if (slugs.includes(normalized)) return url(normalized);
 

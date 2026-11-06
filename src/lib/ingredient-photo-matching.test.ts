@@ -25,4 +25,11 @@ describe("matchIngredientPhotoUrl", () => {
       ),
     ).toBe("/images/ingredients/kroketjes_240.webp");
   });
+
+  it("volgt een synoniem naar een foto die enkel per aantal bestaat", () => {
+    const slugs = ["eieren_1", "eieren_2", "eieren_6"];
+    const synonyms = { ei: "eieren" };
+    expect(matchIngredientPhotoUrl("Ei", slugs, synonyms, 160)).toBe("/images/ingredients/eieren_1_160.webp");
+    expect(matchIngredientPhotoUrl("Ei", slugs, synonyms, 160, "3")).toBe("/images/ingredients/eieren_2_160.webp");
+  });
 });
