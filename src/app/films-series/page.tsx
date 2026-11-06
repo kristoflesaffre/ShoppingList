@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/search_bar";
 import { PageBackButton } from "@/components/ui/page_back_button";
 import { OverviewPill } from "@/components/list_section_header";
-import { HeroImdbChip, InlineClampText, ScoreSourceLink, SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
+import { ImdbMark, InlineClampText, ScoreSourceLink, SoftPlayButton, TrailerOverlay } from "@/components/films/film_detail_ui";
 import { MiniButton } from "@/components/ui/mini_button";
 import { Shimmer } from "@/components/ui/shimmer";
 import { CheckIcon, EyeIcon, NewSeasonCard, OneByOneTile, PartnerAction, Poster, PosterTile, RatingChip, TypeChip, WatchingCard, WatchingCardSkeleton } from "@/components/films/film_tiles";
@@ -468,9 +468,15 @@ function DiscoverFeature({
         {[item.year, item.typeLabel, extra?.runtime].filter(Boolean).join(" · ")}
       </span>
       {/* Altijd een link naar IMDb, ook zonder score: om de serie te kunnen inschatten. */}
-      <span className="ml-1">
-        <HeroImdbChip title={item.title} imdbId={extra?.imdbId ?? null} />
-      </span>
+      <a
+        href={extra?.imdbId ? `https://www.imdb.com/title/${extra.imdbId}/` : `https://www.imdb.com/find/?q=${encodeURIComponent(item.title)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${item.title} bekijken op IMDb`}
+        className="ml-1 inline-flex rounded-[4px] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white [@media(hover:hover)]:hover:opacity-85"
+      >
+        <ImdbMark />
+      </a>
     </div>
   );
 
