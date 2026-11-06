@@ -501,6 +501,7 @@ export default function ReceptenPage() {
     () => savedRecipes.filter((r) => r.category === TO_TEST_CATEGORY).length,
     [savedRecipes],
   );
+  const recipesCount = savedRecipes.length - toTestCount;
   /* «Te testen» zonder zoekterm of gekozen soort: één veegrij per soort gerecht, zoals de categorieën bij «Recepten». */
   const toTestSections = React.useMemo(() => {
     if (recipeTab !== "te_testen" || recipeSearch.trim() || toTestKind || toTestKindChips.length < 2) return null;
@@ -653,7 +654,16 @@ export default function ReceptenPage() {
       value={recipeTab}
       onChange={openTab}
       options={[
-        { value: "recepten", label: "Recepten" },
+        {
+          value: "recepten",
+          label: (
+            <span className="flex items-center gap-1.5">
+              Recepten
+              <span className="text-[12px] font-bold tabular-nums text-[var(--text-tertiary)]">{recipesCount}</span>
+            </span>
+          ),
+          ariaLabel: `Recepten, ${recipesCount} recepten`,
+        },
         {
           value: "te_testen",
           label: (
