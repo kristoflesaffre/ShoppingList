@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { matchIngredientPhotoUrl } from "@/lib/ingredient-photo-matching";
+import synonyms from "../../public/ingredient-synonyms.json";
 
 describe("matchIngredientPhotoUrl", () => {
+  it("gebruikt de bestaande zwarte peperfoto in plaats van generieke witte peper", () => {
+    expect(matchIngredientPhotoUrl("zwarte peper", ["peper", "zwarte_peperbollen"], synonyms, 320)).toBe("/images/ingredients/zwarte_peperbollen_320.webp");
+  });
+  it.each(["baking soda", "zuiveringszout", "Sugar snaps"])("koppelt de goedgekeurde ingrediëntfoto voor %s", (name) => {
+    const slug = name === "Sugar snaps" ? "sugar_snaps" : "baking_soda";
+    for (const size of [160, 240, 320] as const) {
+      expect(matchIngredientPhotoUrl(name, ["baking_soda", "sugar_snaps", "bakpoeder"], synonyms, size)).toBe(`/images/ingredients/${slug}_${size}.webp`);
+    }
+  });
+
   const recipeOnlySlugs = [
     "bechamelsaus",
     "bladerdeeg",
