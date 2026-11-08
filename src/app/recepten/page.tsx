@@ -39,7 +39,7 @@ const RecipeEditorSlideIn = dynamic(
 import { Snackbar } from "@/components/ui/snackbar";
 import { APP_FAB_BOTTOM_CLASS, APP_SNACKBAR_FIXTURE_CLASS } from "@/lib/app-layout";
 import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
-import { RECIPE_CATEGORIES, groupBySubcategory } from "@/lib/recipe_library";
+import { RECIPE_CATEGORIES, groupBySubcategory, isRecentImport, recipeImportedAt } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import { LongAgoSection, MostEatenSection, RecipeStatsSkeleton, useRecipeStats } from "@/app/recepten/recipe_stats_sections";
@@ -219,13 +219,20 @@ function RecipePlateCard({ recipe }: { recipe: SavedRecipe }) {
       ? { top: `color-mix(in srgb, ${dot} 22%, transparent)`, mid: `color-mix(in srgb, ${dot} 10%, transparent)` }
       : { top: `color-mix(in srgb, ${dot} 11%, var(--white))`, mid: `color-mix(in srgb, ${dot} 5%, var(--white))` }
     : photoTint;
+  const isNew = isRecentImport(recipe);
   return (
     <Link
       href={`/recepten/${recipe.id}`}
       onClick={recipeHeroClickHandler(recipe.id, recipe.photoUrl)}
       style={{ backgroundImage: `linear-gradient(180deg, ${tint.top} 0%, ${tint.mid} 55%, transparent 100%)` }}
-      className="flex h-full flex-col gap-3 rounded-[18px] bg-[var(--white)] px-2.5 pb-3.5 pt-4 text-center no-underline shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      className="relative flex h-full flex-col gap-3 rounded-[18px] bg-[var(--white)] px-2.5 pb-3.5 pt-4 text-center no-underline shadow-[inset_0_0_0_1px_var(--border-subtle),0_1px_2px_rgba(16,17,48,0.04)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
     >
+      {isNew ? (
+        /* Zelfde groene NIEUW-stempel als bij een nieuw seizoen (`--badge-new`). */
+        <span className="absolute left-2 top-2 z-[1] inline-flex h-5 items-center rounded-pill bg-[var(--badge-new)] px-2 text-[10.5px] font-extrabold tracking-[0.06em] text-fixed-white shadow-[0_2px_6px_-2px_rgba(16,17,48,0.35)]">
+          NIEUW
+        </span>
+      ) : null}
       <RecipePlate recipe={recipe} tone={dot} />
       <span className="flex flex-1 flex-col items-center px-0.5">
         <span className="line-clamp-2 text-sm font-semibold leading-[19px] text-text-primary">{recipe.name}</span>
@@ -337,6 +344,8 @@ function RecipeCategoryLane({
 type RecipeTab = "recepten" | "te_testen";
 const TO_TEST_CATEGORY: RecipeCategory = "nog_te_testen";
 const OTHER_KIND = "andere";
+/** Rij bovenaan «Te testen» met wat de importer de laatste dagen toevoegde (`isRecentImport`). */
+const NEW_KIND = "nieuw";
 const TO_TEST_KIND_IDS = new Set<RecipeCategory>(RECIPE_CATEGORIES.map((c) => c.id).filter((id) => id !== TO_TEST_CATEGORY));
 /** Soort gerecht van een te testen recept (subcategory), anders «andere». */
 function toTestKindOf(r: SavedRecipe): string {
@@ -371,6 +380,7 @@ export default function ReceptenPage() {
         category: ((r as Record<string, unknown>).category as RecipeCategory | undefined) ?? null,
         subcategory: ((r as Record<string, unknown>).subcategory as string | undefined) ?? null,
         canBeFrozen: ((r as Record<string, unknown>).canBeFrozen as boolean | undefined) ?? false,
+        importedAt: recipeImportedAt(r.order),
         ingredients: [...(r.ingredients ?? [])]
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .map((ing) => ({
@@ -471,7 +481,8 @@ export default function ReceptenPage() {
     if (q) result = result.filter((r) => r.name.toLowerCase().includes(q));
     if (recipeTab === "te_testen") {
       result = result.filter((r) => r.category === TO_TEST_CATEGORY);
-      if (toTestKind) result = result.filter((r) => toTestKindOf(r) === toTestKind);
+      if (toTestKind === NEW_KIND) result = result.filter((r) => isRecentImport(r));
+      else if (toTestKind) result = result.filter((r) => toTestKindOf(r) === toTestKind);
     } else result = result.filter((r) => r.category !== TO_TEST_CATEGORY);
     if (activeCategory) result = result.filter((r) => r.category === activeCategory);
     return result;
@@ -504,17 +515,26 @@ export default function ReceptenPage() {
   const recipesCount = savedRecipes.length - toTestCount;
   /* «Te testen» zonder zoekterm of gekozen soort: één veegrij per soort gerecht, zoals de categorieën bij «Recepten». */
   const toTestSections = React.useMemo(() => {
-    if (recipeTab !== "te_testen" || recipeSearch.trim() || toTestKind || toTestKindChips.length < 2) return null;
-    return toTestKindChips
-      .map((c) => ({
+    if (recipeTab !== "te_testen" || recipeSearch.trim() || toTestKind) return null;
+    // Nieuwste eerst: de importer geeft een recenter recept een lagere `order`.
+    const recent = filteredRecipes.filter((r) => isRecentImport(r));
+    if (toTestKindChips.length < 2 && recent.length === 0) return null;
+    return [
+      { id: NEW_KIND, label: "Nieuw", meta: null, recipes: recent },
+      ...toTestKindChips.map((c) => ({
         id: c.id,
         label: c.label,
         meta: RECIPE_CATEGORIES.find((cat) => cat.id === c.id) ?? null,
         recipes: filteredRecipes.filter((r) => toTestKindOf(r) === c.id),
-      }))
-      .filter((sec) => sec.recipes.length > 0);
+      })),
+    ].filter((sec) => sec.recipes.length > 0);
   }, [recipeTab, recipeSearch, toTestKind, toTestKindChips, filteredRecipes]);
-  const openToTestKind = toTestKind ? toTestKindChips.find((c) => c.id === toTestKind) ?? null : null;
+  const openToTestKind =
+    toTestKind === NEW_KIND
+      ? { id: NEW_KIND, label: "Nieuw", dot: undefined }
+      : toTestKind
+        ? toTestKindChips.find((c) => c.id === toTestKind) ?? null
+        : null;
 
 
   // Group filtered recipes by category for the sectioned view

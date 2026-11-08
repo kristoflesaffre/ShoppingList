@@ -83,4 +83,21 @@ export type SavedRecipe = {
   subcategory?: string | null;
   canBeFrozen?: boolean | null;
   ingredients: RecipeIngredient[];
+  /** Wanneer de TikTok-importer het recept toevoegde (ms), anders null. Zie `recipeImportedAt`. */
+  importedAt?: number | null;
 };
+
+/**
+ * De TikTok-importer zet een nieuw recept op `order: -Date.now()`, zodat het vooraan staat. Zo kennen we de
+ * importtijd zonder extra veld. Gewone volgordes zijn kleine getallen; na herschikken is de tijd weg.
+ */
+export function recipeImportedAt(order: number | null | undefined): number | null {
+  return typeof order === "number" && order < -1_000_000_000_000 ? -order : null;
+}
+
+/** Hoe lang een geïmporteerd recept «Nieuw» heet. */
+export const RECENT_IMPORT_MS = 3 * 24 * 60 * 60 * 1000;
+
+export function isRecentImport(recipe: Pick<SavedRecipe, "importedAt">, now = Date.now()): boolean {
+  return recipe.importedAt != null && now - recipe.importedAt < RECENT_IMPORT_MS && recipe.importedAt <= now + 60_000;
+}
