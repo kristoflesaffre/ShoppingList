@@ -3,6 +3,12 @@ import { matchIngredientPhotoUrl } from "@/lib/ingredient-photo-matching";
 import synonyms from "../../public/ingredient-synonyms.json";
 
 describe("matchIngredientPhotoUrl", () => {
+  it.each(["sambal oelek", "oestersaus"])("koppelt de aanvullende sausfoto voor %s", (name) => {
+    const slug = name.replace(/ /g, "_");
+    for (const size of [160, 240, 320] as const) {
+      expect(matchIngredientPhotoUrl(name, ["sambal_oelek", "oestersaus"], synonyms, size)).toBe(`/images/ingredients/${slug}_${size}.webp`);
+    }
+  });
   it("gebruikt de bestaande zwarte peperfoto in plaats van generieke witte peper", () => {
     expect(matchIngredientPhotoUrl("zwarte peper", ["peper", "zwarte_peperbollen"], synonyms, 320)).toBe("/images/ingredients/zwarte_peperbollen_320.webp");
   });

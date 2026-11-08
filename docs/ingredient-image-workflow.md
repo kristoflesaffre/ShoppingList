@@ -8,7 +8,7 @@ Before generation check both filename and aliases. Do not confuse baking soda (s
 
 ## Style References
 
-Use these existing images as the initial fixed references; the owner can revise this selection after reviewing the first trial. Always view the actual reference before generating and include it as a referenced image in imagegen.
+The owner approved the trial style and requested automatic handling on 2026-11-08. Use these existing images as fixed references. Always view the actual reference before generating and include it as a referenced image in imagegen.
 
 | Category | Reference | Composition |
 | --- | --- | --- |
@@ -36,7 +36,7 @@ node scripts/ingredient-images.mjs prepare --slug baking_soda --source /absolute
 
 This preserves an original and writes normalized 160/240/320 transparent WebP images, a checksummed manifest, and `preview.html` under `outputs/ingredient-images/baking_soda/`. The preview compares the reference and candidate at 48px on light/dark surfaces and at 160px. Nothing is placed in the active catalog. The script only crops transparent padding, centers, resizes and encodes; it never removes an opaque background or reconstructs the subject.
 
-Inspect anatomy, lighting, edge halos, padding and small-size readability. White/checkerboard backgrounds baked into pixels require a new imagegen edit, not an improvised background-removal algorithm. Ask the user to approve the actual candidate. After rejection, stage a different version under a different slug-directory or archive the rejected staging folder explicitly; do not overwrite it silently.
+Inspect anatomy, lighting, edge halos, padding and small-size readability. White/checkerboard backgrounds baked into pixels require a new imagegen edit, not an improvised background-removal algorithm. For requested missing images, accept candidates automatically only when they match the approved style and pass the checks. Ask only for ambiguous identity, a new style/category decision, replacement of an existing image, or unresolved quality problems. After rejection, stage a different version under a different slug-directory or archive the rejected staging folder explicitly; do not overwrite it silently.
 
 ## Publish Approved Candidate
 
@@ -44,14 +44,14 @@ Inspect anatomy, lighting, edge halos, padding and small-size readability. White
 node scripts/ingredient-images.mjs publish --slug baking_soda --approved
 ```
 
-Only run after user approval. This verifies the staged hashes and image properties and creates all three catalog files with exclusive writes. It refuses to replace existing variants. The flag records the caller's approval assertion; it is not a substitute for asking the user.
+For requested missing images, the owner's standing approval covers candidates that pass visual and technical checks in the established style. The `--approved` flag records acceptance under that approval; it must never skip quality review. The script verifies the staged hashes and image properties and creates all three catalog files with exclusive writes. It refuses to replace existing variants.
 
 If needed, add precise aliases to `public/ingredient-synonyms.json` after approval. Baking soda already maps to `baking_soda`; `Sugar snaps` resolves directly to `sugar_snaps`. Do not map `peultjes` to sugar snaps: they are different ingredients.
 
-Run `npx vitest run scripts/ingredient-images.test.mjs src/lib/ingredient-photo-matching.test.ts`. Verify the actual ingredient names resolve to the published URLs and the files load in the app. The client catalog is cached for the page lifetime; a full refresh can be necessary. Adding files locally does not deploy them to the hosted app.
+Run `npx vitest run scripts/ingredient-images.test.mjs src/lib/ingredient-photo-matching.test.ts`. Verify the actual ingredient names resolve to the published URLs and the files load in the app. The client catalog is cached for the page lifetime; a full refresh can be necessary. Adding files locally does not deploy them to the hosted app. For a requested image task, commit only its relevant assets/tests/workflow files and push to the existing Vercel-connected branch under the owner's standing request to publish automatically, subject to tool permissions. Wait for the Vercel deployment result and report the live URL or the concrete failure. Do not include unrelated work or claim that local changes are online.
 
 ## Simple Request
 
 “Vul de ontbrekende ingrediëntenafbeeldingen van dit recept aan volgens onze ingrediëntenstijl.”
 
-Codex should then audit names, generate only missing items with references, prepare previews, and ask for approval before publication. It should not build or use a new image-generation API endpoint for this manual workflow.
+Codex should then audit names, generate only missing items with references, inspect staged previews, add passing candidates, test, and publish on Vercel automatically. No special skill name is necessary in this repository because `AGENTS.md` routes these requests to the skill. An explicit invocation also works: `$shoppinglist-ingredient-images`. This does not run continuously in the background or when recipes are added without a Codex request. It should not build or use a new image-generation API endpoint for this workflow.
