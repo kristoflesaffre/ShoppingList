@@ -1,5 +1,16 @@
 # Home Assistant on the Raspberry Pi
 
+## Blinds wait for the screen (2026-11-09)
+
+After 1.12.0 the screen no longer stopped at its height on «Start film» (8/11 and 9/11, both commands «sent», no
+errors). History showed the left blind starting 2 s after the screen's UP and the right one moving until 35 s later,
+right over the timed STOP (±10.5 s). The BroadLink screen and the BREL hub share 433 MHz, so the STOP got drowned out.
+Bridge v1.13.0: on a cinema start the blinds only start after the screen task ended (its STOP sent, also when opening
+failed) plus `RF_GAP` (1.5 s); opened by hand they wait the calibrated screen duration + 1.5 s. The Samsung did turn
+off on both evenings according to HA (on since 16:37, off at 20:14:16, stayed off); that path is unchanged.
+Install: paste `outputs/cinema-bridge-1.13.0-install.txt` (not in Git) in the Terminal & SSH web UI; it backs up both
+files, prints the hash and version, then `ha core check && ha core restart`.
+
 ## Blinds on screen open (2026-10-30)
 
 The BREL hub (192.168.132.222) was added to HA through the official Motion Blinds integration (key entered by the

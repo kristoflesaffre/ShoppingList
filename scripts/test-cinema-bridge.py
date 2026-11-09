@@ -41,7 +41,7 @@ class BridgeTests(unittest.IsolatedAsyncioTestCase):
             task = asyncio.create_task(cinema.start_cinema(hass, screen, 'scene.cinema', lambda: action('projector')))
             try:
                 await asyncio.wait_for(ready.wait(), 1)
-                self.assertEqual(started, ['samsung', 'lights', 'projector', 'screen'])
+                self.assertEqual(started, ['screen', 'samsung', 'lights', 'projector'])
                 self.assertFalse(task.done())
             finally:
                 finish.set()
@@ -118,7 +118,7 @@ class BridgeTests(unittest.IsolatedAsyncioTestCase):
         hass.async_create_background_task = lambda coroutine, _name: captured.append(coroutine) or types.SimpleNamespace(cancel=lambda: None)
         await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
         # The last sleep ends the worker after one iteration; no real network or hardware.
-        with patch.object(cinema.asyncio, 'open_connection', AsyncMock(side_effect=OSError)), patch.object(cinema.asyncio, 'sleep', AsyncMock(side_effect=asyncio.CancelledError)):
+        with patch.object(cinema.asyncio, 'open_connection', AsyncMock(side_effect=OSError)), patch.object(cinema.asyncio, 'sleep', AsyncMock(side_effect=asyncio.CancelledError)), patch.object(cinema, 'pause', AsyncMock()):
             with self.assertRaises(asyncio.CancelledError): await captured[0]
         for coroutine in captured[1:]: coroutine.close()
         return calls, writes
@@ -241,7 +241,8 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
         def change(old, new, restored=False):
             listener(types.SimpleNamespace(data={'old_state': types.SimpleNamespace(state=old), 'new_state': types.SimpleNamespace(state=new, attributes={'restored': restored})}))
         async def run_tasks():
-            with patch.object(cinema.asyncio, 'open_connection', AsyncMock(side_effect=OSError)):
+            # The blinds wait for the screen's run time; no real waiting in tests.
+            with patch.object(cinema.asyncio, 'open_connection', AsyncMock(side_effect=OSError)), patch.object(cinema, 'pause', AsyncMock()):
                 while tasks: await tasks.pop(0)
         return change, run_tasks, calls
 
@@ -390,5 +391,36 @@ class BlindsTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_failing_hub_never_raises(self):
         self.assertEqual(await self.run_blinds(20, 30, 30, fail=True), [])
+
+    async def test_blinds_wait_for_the_screen_stop(self):
+        # Same 433 MHz band: no blind may move before the screen got its STOP.
+        events = []
+        release = asyncio.Event()
+        async def screen_action():
+            events.append('screen-up')
+            await release.wait()
+            events.append('screen-stop')
+        async def blinds():
+            events.append('blinds')
+        hass = types.SimpleNamespace(states=types.SimpleNamespace(get=lambda _: types.SimpleNamespace(state='off')))
+        screen = types.SimpleNamespace(check=lambda: True, open_if_closed=screen_action)
+        with patch.object(cinema, 'RF_GAP', 0), patch.object(cinema, 'turn_off_samsung', AsyncMock()), patch.object(cinema, 'ensure_cinema_lights', AsyncMock()):
+            task = asyncio.create_task(cinema.start_cinema(hass, screen, 'scene.cinema', AsyncMock(), blinds()))
+            await asyncio.sleep(0.05)
+            self.assertEqual(events, ['screen-up'])
+            release.set()
+            await task
+        self.assertEqual(events, ['screen-up', 'screen-stop', 'blinds'])
+
+    async def test_blinds_still_move_when_the_screen_failed(self):
+        moved = []
+        async def failed_screen(): raise RuntimeError('screen-opening-not-confirmed')
+        async def blinds(): moved.append(True)
+        hass = types.SimpleNamespace(states=types.SimpleNamespace(get=lambda _: types.SimpleNamespace(state='off')))
+        screen = types.SimpleNamespace(check=lambda: True, open_if_closed=failed_screen)
+        with patch.object(cinema, 'RF_GAP', 0), patch.object(cinema, 'turn_off_samsung', AsyncMock()), patch.object(cinema, 'ensure_cinema_lights', AsyncMock()):
+            with self.assertRaisesRegex(RuntimeError, 'screen-opening-not-confirmed'):
+                await cinema.start_cinema(hass, screen, 'scene.cinema', AsyncMock(), blinds())
+        self.assertEqual(moved, [True])
 
 if __name__ == '__main__': unittest.main()

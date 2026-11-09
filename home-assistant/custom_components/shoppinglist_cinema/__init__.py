@@ -31,6 +31,9 @@ BLIND_LEFT = 'cover.rollershutter_0002'
 BLIND_RIGHT = 'cover.rollershutter_0001'
 EVENING_HOUR = 19
 CAT_DOOR_POSITION = 50
+# The BREL hub and the BroadLink screen share the 433 MHz band: a blind moving while the screen gets its timed STOP
+# drowned that STOP out (screen kept going up). Blinds only start once the screen has stopped, plus a short gap.
+RF_GAP = 1.5
 
 
 def blind_targets(hour):
@@ -109,6 +112,28 @@ async def set_blinds_for_screen(hass):
             _LOGGER.warning('Blind %s could not be positioned after the screen opened', entity)
 
 
+async def pause(seconds):
+    # A plain timer, separate from the worker loop's polling sleep.
+    loop = asyncio.get_running_loop()
+    done = loop.create_future()
+    handle = loop.call_later(seconds, lambda: done.done() or done.set_result(None))
+    try:
+        await done
+    finally:
+        handle.cancel()
+
+
+async def blinds_after(screen_task, blinds):
+    # Wait for the screen's STOP (also when opening failed), then move the blinds on a quiet radio band.
+    try:
+        await asyncio.wait({screen_task})
+        await pause(RF_GAP)
+    except BaseException:
+        blinds.close()
+        raise
+    await blinds
+
+
 async def start_cinema(hass, screen, scene, ensure_on, blinds=None):
     # Validate before any side effect; each parallel motor action rechecks its own guard.
     try:
@@ -120,13 +145,13 @@ async def start_cinema(hass, screen, scene, ensure_on, blinds=None):
         if blinds:
             blinds.close()
         raise
-    tasks = [asyncio.create_task(action) for action in (
+    screen_task = asyncio.create_task(screen.open_if_closed())
+    tasks = [screen_task, *(asyncio.create_task(action) for action in (
         turn_off_samsung(hass),
         ensure_cinema_lights(hass, scene),
         ensure_on(),
-        screen.open_if_closed(),
-        *([blinds] if blinds else []),
-    )]
+        *([blinds_after(screen_task, blinds)] if blinds else []),
+    ))]
     try:
         # Drain all actions even on failure: never abandon a moving screen before its STOP.
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -279,9 +304,17 @@ async def async_setup(hass, config):
         except Exception as failure:
             _LOGGER.warning('Living room lights after screen %s failed: %s', 'opened' if opened else 'closed', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
 
+    async def blinds_after_hand_open():
+        # Opened with the remote or wall switch: its STOP comes during the run, so stay off the radio band until the
+        # screen's own run time has passed.
+        duration = settings.get('screen', {}).get('duration')
+        wait = duration if isinstance(duration, (int, float)) and not isinstance(duration, bool) and 0 < duration <= 60 else 15
+        await pause(wait + RF_GAP)
+        await set_blinds_for_screen(hass)
+
     async def opened_by_hand(wake, samsung):
         async with busy:
-            await asyncio.gather(lights_for_screen(True), set_blinds_for_screen(hass), *([samsung_off_for_screen()] if samsung else []), *([projector_on_for_screen()] if wake else []))
+            await asyncio.gather(lights_for_screen(True), blinds_after_hand_open(), *([samsung_off_for_screen()] if samsung else []), *([projector_on_for_screen()] if wake else []))
 
     async def projector_off_for_screen():
         try:
