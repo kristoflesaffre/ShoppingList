@@ -74,6 +74,7 @@ import {
 } from "@/components/home_tablet_dashboard";
 import { HomeAgendaSection } from "@/components/home_agenda_section";
 import { useAlwaysOn } from "@/lib/use_always_on";
+import { useLandscapeLock } from "@/lib/use_landscape_lock";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { HomeTodoSection } from "@/components/home_todo_section";
@@ -3126,6 +3127,8 @@ export default function Home() {
 
   // Tablet-dashboard: na 2 min zonder aanraking het donkere always-on-scherm (zelfde opbouw).
   useAlwaysOn(tabletHomeView === "dashboard");
+  // Dashboard blijft liggend (180° omdraaien mag), ook als je de tablet rechtop zet.
+  useLandscapeLock(tabletHomeView === "dashboard");
 
   const agendaFirstOnDesktop =
     !homeSectionConfig.hidden.includes("agenda") &&
