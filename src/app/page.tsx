@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useCurrentDay } from "@/hooks/use_current_day";
 import { teKopenMonogramStyle } from "@/lib/te-kopen-style";
 import Link from "next/link";
 import { rememberScroll, useRestoreScroll } from "@/lib/use_restore_scroll";
@@ -2752,6 +2753,8 @@ export default function Home() {
     }
   }, [homeShoppingItems.length]);
 
+  // Verspringt om middernacht: het dashboard blijft dagen open en mag niet het eten van gisteren tonen.
+  const currentDay = useCurrentDay();
   const { homeCalendarEntries, hasEverUsedCalendar, homeWeekDays, todayIso } = React.useMemo(() => {
     if (!data) {
       return {
@@ -2761,9 +2764,8 @@ export default function Home() {
         todayIso: "",
       };
     }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayIso = toIsoDate(today);
+    const today = new Date(`${currentDay}T00:00:00`);
+    const todayIso = currentDay;
 
     const calMap = buildCalendarEntries(
       (data.lists ?? []) as Parameters<typeof buildCalendarEntries>[0],
@@ -2788,7 +2790,7 @@ export default function Home() {
       weekDays.push({ isoDate: iso, date, entry: calMap.get(iso) ?? null });
     }
     return { homeCalendarEntries: result, hasEverUsedCalendar, homeWeekDays: weekDays, todayIso };
-  }, [data]);
+  }, [data, currentDay]);
 
   const todayDashboard = React.useMemo(() => {
     const todayIndex = homeWeekDays.findIndex((day) => day.isoDate === todayIso);

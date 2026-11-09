@@ -11,6 +11,7 @@ import {
 } from "@/hooks/use_watching_tv_items";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { useFilmMode } from "@/components/use_film_mode";
+import { filmTarget } from "@/lib/film-mode";
 import { fetchFilmDetail } from "@/lib/film-detail-client";
 import {
   CastRound,
@@ -203,13 +204,23 @@ function WatchingSlide({ media, onOpen }: { media: EveningMedia; onOpen: (m: Eve
  * «Cinema») en daarna «Film stoppen» (projector uit, scherm omlaag, woonkamer op 20 %). Zelfde stand als in het
  * bedieningsvenster (use_film_mode).
  */
-function FilmModeButton() {
+function FilmModeButton({ media }: { media: EveningMedia | null }) {
   const { on, busy, message, toggle, disabled } = useFilmMode();
+  // Starten opent ook de serie die in de tegel staat (volgende aflevering) in Stremio.
+  const start = () => {
+    const parsed = media ? parseMediaId(media.id) : null;
+    const target = parsed
+      ? filmTarget({ ...parsed, season: media?.next?.season, episode: media?.next?.episode }, (type, tmdbId) =>
+          fetchFilmDetail<{ imdbId?: string | null }>(type, tmdbId).then((d) => d.imdbId ?? null),
+        )
+      : null;
+    void toggle(target);
+  };
   return (
     <span className="absolute right-3 top-3 z-[3] flex max-w-[70%] flex-col items-end gap-1.5">
       <button
         type="button"
-        onClick={() => void toggle()}
+        onClick={() => (on ? void toggle() : start())}
         disabled={disabled}
         aria-pressed={on}
         aria-label={on ? "Film stoppen: projector uit, scherm omlaag, woonkamer op 20 procent" : "Film starten: projector aan, scherm naar je hoogte, woonkamer op Cinema"}
@@ -261,7 +272,7 @@ export function WatchingTile({ items, onOpen }: { items: EveningMedia[]; onOpen:
       }
     >
       <span className="pointer-events-none absolute left-[18px] top-4 z-[2] text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/80">AAN HET KIJKEN</span>
-      <FilmModeButton />
+      <FilmModeButton media={items[Math.min(active, items.length - 1)] ?? null} />
       <div
         ref={laneRef}
         onScroll={onScroll}
