@@ -1,3 +1,20 @@
+import withSerwistInit from "@serwist/next";
+
+/**
+ * Service worker (Serwist): de app opent ook zonder internet. Zie src/app/sw.ts voor wat er bewaard wordt.
+ * Uit tijdens `next dev`, zodat lokaal testen nooit uit een oude cache komt.
+ */
+const withSerwist = withSerwistInit({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV === "development",
+  // Niets uit public/ vooraf (± 120 MB foto's): iconen en foto's komen in de cache zodra je ze ziet.
+  globPublicPatterns: [],
+  additionalPrecacheEntries: [{ url: "/offline", revision: process.env.VERCEL_GIT_COMMIT_SHA ?? String(Date.now()) }],
+  // Na terug online niet herladen: InstantDB synchroniseert vanzelf, herladen zou invoer onderbreken.
+  reloadOnOnline: false,
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Keep the HTTPS Hue preview separate from the existing HTTP preview/build.
@@ -30,4 +47,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

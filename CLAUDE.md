@@ -81,3 +81,4 @@ Bouw schermen uit de gedeelde componenten in `src/components/ui/`. Style deze pa
 - Elke push naar `main` is meteen een deploy: Vercel (`shoppinglist-azure.vercel.app`, de productie) volgt `main` vanzelf. Controleer na de push of die deploy «Ready» is (`vercel inspect shoppinglist-azure.vercel.app`). Enkel Vercel: Netlify is maar een backup, hangt niet aan Git en krijgt geen deploys.
 - De database-schema (InstantDB) niet wijzigen zonder expliciete vraag.
 - Lokaal testen op http://localhost:3010.
+- Offline: service worker via Serwist (`src/app/sw.ts`, ingesteld in `next.config.mjs`, gebouwd naar `public/sw.js`, niet in Git). Pagina's eerst via het netwerk, offline uit de cache; `/api/*` nooit uit de cache; vangnet `/offline`. Staat uit in `next dev`: offline testen met `next build` + `next start`.

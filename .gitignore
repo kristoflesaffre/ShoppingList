@@ -53,3 +53,8 @@ exported-recipe-photos/
 
 # Local Netlify folder
 .netlify
+
+# Service worker (gebouwd door Serwist uit src/app/sw.ts)
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
