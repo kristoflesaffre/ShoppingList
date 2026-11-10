@@ -4,6 +4,14 @@
 
 The dashboard's stop sent the screen DOWN through the Mac-only BroadLink route (`/api/broadlink`), which the
 dashboard cannot reach, so the screen stayed up (9/11 21:57: projector off and lights 20 % did happen, contact stayed
+Bridge v1.15.0 adds the service `shoppinglist_cinema.toggle` (`services.yaml`): screen closed (contact `off`) → the
+same flow as «cinema» (screen up with its timed STOP, Samsung off if on, Cinema, projector on, blinds after the
+STOP); screen open → the same flow as «cinema-stop» (screen down, projector off, living room 20 %). A press while the
+screen moves or another cinema action runs is ignored. The SONOFF SNZB-01P button (ZHA, ieee
+`8c:73:da:ff:fe:ef:e8:89`) calls it on a single press via the automation `knop_bioscoop_snzb01p` («Knop: bioscoop aan
+of uit»); double press (`on`) and long press (`off`) are still free. Install: paste
+`outputs/cinema-bridge-1.15.0-install.txt` (not in Git) in the Terminal & SSH web UI.
+
 open). Bridge v1.14.0 adds the relay action `cinema-stop` (also allowed in `RELAY_ACTIONS`, 120 s): screen DOWN once
 when the contact reads open (motor runs to its end stop, no STOP; done when the contact reads closed, else
 `screen-closing-not-confirmed` after 90 s, never repeated), projector `turn_off` when awake, and

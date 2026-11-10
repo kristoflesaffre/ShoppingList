@@ -1,0 +1,5 @@
+toggle:
+  name: Bioscoop aan of uit
+  description: >-
+    Scherm dicht: bioscoop starten (scherm omhoog met stop, tv uit, Cinema-licht, projector aan, rolluiken dicht).
+    Scherm open: film stoppen (scherm omlaag, projector uit, woonkamer 20 %).

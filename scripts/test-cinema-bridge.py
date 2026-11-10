@@ -113,7 +113,7 @@ class BridgeTests(unittest.IsolatedAsyncioTestCase):
             if entity == cinema.CINEMA_SELECTOR: return types.SimpleNamespace(state=selected_scene)
             if entity == cinema.CINEMA_LIGHTS: return types.SimpleNamespace(state=lights)
             return object() if scene else None
-        hass = types.SimpleNamespace(session=Session(), states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service), bus=types.SimpleNamespace(async_listen_once=lambda *_: None, async_listen=lambda *_: lambda: None))
+        hass = types.SimpleNamespace(session=Session(), states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service, async_register=lambda *_: None), bus=types.SimpleNamespace(async_listen_once=lambda *_: None, async_listen=lambda *_: lambda: None))
         captured = []
         hass.async_create_background_task = lambda coroutine, _name: captured.append(coroutine) or types.SimpleNamespace(cancel=lambda: None)
         await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
@@ -230,7 +230,7 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
             if entity == cinema.CINEMA_SELECTOR: return types.SimpleNamespace(state=scene)
             if entity == cinema.CINEMA_LIGHTS: return types.SimpleNamespace(state='on')
             return types.SimpleNamespace(state=state['power']) if entity == cinema.PLAYER else None
-        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service), bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service, async_register=lambda *_: None), bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
         hass.async_create_background_task = lambda coroutine, _name: coroutine.close() or types.SimpleNamespace(cancel=lambda: None)
         hass.async_create_task = lambda coroutine: tasks.append(coroutine)
         contact_listeners.clear()
@@ -344,7 +344,7 @@ class StremioLightsTests(unittest.IsolatedAsyncioTestCase):
             if entity == cinema.CINEMA_SELECTOR: return types.SimpleNamespace(state='Helder')
             if entity == cinema.CINEMA_LIGHTS: return types.SimpleNamespace(state='on')
             return types.SimpleNamespace(state='off', attributes={})
-        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service), bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service, async_register=lambda *_: None), bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
         hass.async_create_background_task = lambda coroutine, name: captured.append((name, coroutine)) or types.SimpleNamespace(cancel=lambda: None)
         hass.async_create_task = lambda coroutine: coroutine.close()
         await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
@@ -474,5 +474,57 @@ class StopTests(unittest.IsolatedAsyncioTestCase):
                 await screen.close_if_open(timeout=-1)
         self.assertEqual(sum(1 for c in calls if c[0] == 'remote'), 1)
         self.assertFalse(screen.moving)
+
+
+class ButtonToggleTests(unittest.IsolatedAsyncioTestCase):
+    async def setup_toggle(self, contact):
+        registered, tasks = {}, []
+        def get_state(entity):
+            if entity == cinema.CONTACT: return types.SimpleNamespace(state=contact, attributes={})
+            if entity == 'scene.cinema': return types.SimpleNamespace(state='scening')
+            return None
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state),
+            services=types.SimpleNamespace(async_call=AsyncMock(), async_register=lambda domain, name, handler: registered.__setitem__(f'{domain}.{name}', handler)),
+            bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
+        hass.async_create_background_task = lambda coroutine, _name: coroutine.close() or types.SimpleNamespace(cancel=lambda: None)
+        hass.async_create_task = lambda coroutine: tasks.append(coroutine)
+        contact_listeners.clear()
+        await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
+        return registered['shoppinglist_cinema.toggle'], tasks
+
+    async def test_closed_screen_starts_cinema(self):
+        press, tasks = await self.setup_toggle('off')
+        with patch.object(cinema, 'start_cinema', AsyncMock()) as start, patch.object(cinema, 'stop_cinema', AsyncMock()) as stop:
+            await press(None)
+            while tasks: await tasks.pop(0)
+        start.assert_awaited_once()
+        stop.assert_not_awaited()
+
+    async def test_open_screen_stops_cinema(self):
+        press, tasks = await self.setup_toggle('on')
+        with patch.object(cinema, 'start_cinema', AsyncMock()) as start, patch.object(cinema, 'stop_cinema', AsyncMock()) as stop:
+            await press(None)
+            while tasks: await tasks.pop(0)
+        stop.assert_awaited_once()
+        start.assert_not_awaited()
+
+    async def test_second_press_while_running_is_ignored(self):
+        press, tasks = await self.setup_toggle('off')
+        with patch.object(cinema, 'start_cinema', AsyncMock()) as start:
+            await press(None)
+            await press(None)
+            self.assertEqual(len(tasks), 1)
+            while tasks: await tasks.pop(0)
+            await press(None)
+            while tasks: await tasks.pop(0)
+        self.assertEqual(start.await_count, 2)
+
+    async def test_unknown_screen_sensor_does_nothing(self):
+        press, tasks = await self.setup_toggle('unavailable')
+        with patch.object(cinema, 'start_cinema', AsyncMock()) as start, patch.object(cinema, 'stop_cinema', AsyncMock()) as stop:
+            await press(None)
+            while tasks: await tasks.pop(0)
+        start.assert_not_awaited()
+        stop.assert_not_awaited()
 
 if __name__ == '__main__': unittest.main()

@@ -394,6 +394,36 @@ async def async_setup(hass, config):
             previous = current
             await asyncio.sleep(PLAYBACK_POLL if current else 5)
 
+    button_running = [False]
+
+    async def toggle_cinema():
+        # Button (SNZB-01P, single press): screen closed → the full cinema start (screen up with its timed STOP,
+        # Samsung off if on, Cinema lights, projector on, blinds after the STOP); open → «Film stoppen» (screen
+        # down, projector off, living room 20 %). Exactly the same flows as the app's film buttons.
+        try:
+            contact = hass.states.get(CONTACT)
+            if not contact or contact.state not in ('on', 'off'):
+                _LOGGER.warning('Cinema button ignored: screen-sensor-unavailable')
+                return
+            action = 'cinema-stop' if contact.state == 'on' else 'cinema'
+            try:
+                async with busy:
+                    await execute(action)
+            except Exception as failure:
+                _LOGGER.warning('Cinema button %s failed: %s', action, failure if isinstance(failure, RuntimeError) else 'device-action-failed')
+        finally:
+            button_running[0] = False
+
+    async def handle_toggle(_call):
+        # A press while the screen moves or another cinema action runs is ignored, never queued.
+        if button_running[0] or busy.locked() or screen.moving:
+            _LOGGER.info('Cinema button ignored: already busy')
+            return
+        button_running[0] = True
+        hass.async_create_task(toggle_cinema())
+
+    hass.services.async_register(DOMAIN, 'toggle', handle_toggle)
+
     unsubscribe = async_track_state_change_event(hass, [CONTACT], on_contact)
     task = hass.async_create_background_task(worker(), 'ShoppingList cinema queue')
     watcher = hass.async_create_background_task(playback_watcher(), 'ShoppingList Stremio lights')
