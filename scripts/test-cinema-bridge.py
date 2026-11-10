@@ -423,4 +423,56 @@ class BlindsTests(unittest.IsolatedAsyncioTestCase):
                 await cinema.start_cinema(hass, screen, 'scene.cinema', AsyncMock(), blinds())
         self.assertEqual(moved, [True])
 
+class StopTests(unittest.IsolatedAsyncioTestCase):
+    """«Film stoppen»: screen down, projector off, living room 20 %."""
+
+    def make(self, contact='on', down='RE9XTg==', closes=True):
+        calls = []
+        state = {'contact': contact}
+        async def service(domain, action, data, **_):
+            calls.append((domain, action, data.get('command') or data.get('brightness_pct') or data.get('entity_id')))
+            if domain == 'remote' and closes:
+                state['contact'] = 'off'
+        def get_state(entity):
+            if entity == cinema.CONTACT: return types.SimpleNamespace(state=state['contact'], attributes={})
+            if entity == 'remote.rm4': return types.SimpleNamespace(state='on')
+            return None
+        hass = types.SimpleNamespace(states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service))
+        settings = {'remote_entity': 'remote.rm4', 'battery_entity': 'sensor.battery', 'up': 'VVA=', 'stop': 'U1RPUA=='}
+        if down: settings['down'] = down
+        return hass, cinema.ScreenGuard(hass, settings), calls
+
+    async def test_stop_closes_screen_turns_projector_off_and_dims(self):
+        hass, screen, calls = self.make()
+        off = AsyncMock()
+        await cinema.stop_cinema(hass, screen, off)
+        off.assert_awaited_once()
+        self.assertIn(('remote', 'send_command', 'b64:RE9XTg=='), calls)
+        self.assertIn(('light', 'turn_on', 20), calls)
+        self.assertEqual(sum(1 for c in calls if c[0] == 'remote'), 1)
+
+    async def test_closed_screen_gets_no_command_but_lights_and_projector_still_go(self):
+        hass, screen, calls = self.make(contact='off')
+        off = AsyncMock()
+        await cinema.stop_cinema(hass, screen, off)
+        off.assert_awaited_once()
+        self.assertEqual([c for c in calls if c[0] == 'remote'], [])
+        self.assertIn(('light', 'turn_on', 20), calls)
+
+    async def test_missing_down_code_still_dims_and_turns_off_then_reports(self):
+        hass, screen, calls = self.make(down=None)
+        off = AsyncMock()
+        with self.assertRaisesRegex(RuntimeError, 'screen-down-not-configured'):
+            await cinema.stop_cinema(hass, screen, off)
+        off.assert_awaited_once()
+        self.assertIn(('light', 'turn_on', 20), calls)
+
+    async def test_screen_that_never_closes_is_reported_without_a_second_down(self):
+        hass, screen, calls = self.make(closes=False)
+        with patch.object(cinema.asyncio, 'sleep', AsyncMock()):
+            with self.assertRaisesRegex(RuntimeError, 'screen-closing-not-confirmed'):
+                await screen.close_if_open(timeout=-1)
+        self.assertEqual(sum(1 for c in calls if c[0] == 'remote'), 1)
+        self.assertFalse(screen.moving)
+
 if __name__ == '__main__': unittest.main()

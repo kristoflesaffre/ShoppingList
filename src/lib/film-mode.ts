@@ -1,10 +1,10 @@
-import { awaitProjectorReceipt, sendProjectorCommand } from "./projector-client";
+import { awaitProjectorReceipt } from "./projector-client";
 import { stremioLink, type StremioTarget } from "./stremio";
 
 /**
  * Starting uses one sensor-guarded Pi command, without a local RF fallback. With a title it is the same cinema start
  * that also opens that title in Stremio (the series you are watching); without one, it only starts the cinema.
- * Stopping retains the existing explicit projector/screen/light actions.
+ * Stopping is one Pi command too («cinema-stop»): screen down, projector off, living room to 20 %.
  */
 export type FilmStep = "projector" | "screen" | "light";
 export type FilmResult = Record<FilmStep, boolean>;
@@ -12,8 +12,6 @@ export type FilmResult = Record<FilmStep, boolean>;
 export const FILM_ROOM = "Woonkamer";
 export const FILM_SCENE = "Cinema";
 export const FILM_STOP_BRIGHTNESS = 20;
-
-const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
 
 async function post(path: string, token: string, body: unknown): Promise<{ ok: boolean; data: Record<string, unknown> | null }> {
   const response = await fetch(path, {
@@ -26,31 +24,15 @@ async function post(path: string, token: string, body: unknown): Promise<{ ok: b
   return { ok: response.ok, data };
 }
 
-async function screen(start: boolean, token: string): Promise<boolean> {
-  if (start) return false;
-  const { ok, data } = await post("/api/broadlink", token, { action: start ? "preset" : "down", projector: false });
-  return ok && data?.accepted === true;
+/**
+ * Wat er misging bij «cinema-stop»: de Pi doet de drie stappen naast elkaar en meldt de eerste fout. Een schermfout
+ * (screen-…) laat projector en licht bevestigd; elke andere fout telt voor alles.
+ */
+export function stopResult(result: { accepted?: boolean; detail?: unknown }): FilmResult {
+  if (result.accepted === true) return { projector: true, screen: true, light: true };
+  const screenOnly = typeof result.detail === "string" && result.detail.startsWith("screen-");
+  return { projector: screenOnly, screen: false, light: screenOnly };
 }
-
-async function light(start: boolean, token: string): Promise<boolean> {
-  if (start) {
-    const { ok, data } = await post("/api/hue/scene", token, { room: FILM_ROOM, scene: FILM_SCENE, othersOff: false });
-    return ok && data?.ok === true;
-  }
-  const rooms = await post("/api/hue/rooms", token, {});
-  const list = Array.isArray(rooms.data?.rooms) ? (rooms.data.rooms as { id: string; name: string }[]) : [];
-  const room = list.find((r) => norm(r.name) === norm(FILM_ROOM));
-  if (!rooms.ok || !room) return false;
-  const { ok, data } = await post("/api/hue/light", token, { id: room.id, on: true, brightness: FILM_STOP_BRIGHTNESS });
-  return ok && data?.ok === true;
-}
-
-async function projector(start: boolean, token: string): Promise<boolean> {
-  const result = await sendProjectorCommand(start ? "on" : "off", token);
-  return result.accepted === true;
-}
-
-const settle = (p: Promise<boolean>) => p.catch(() => false);
 
 export async function runFilmMode(start: boolean, token: string, target?: StremioTarget | null): Promise<FilmResult> {
   if (start) {
@@ -62,8 +44,13 @@ export async function runFilmMode(start: boolean, token: string, target?: Stremi
       return { projector: accepted, screen: accepted, light: accepted };
     } catch { return { projector: false, screen: false, light: false }; }
   }
-  const [p, s, l] = await Promise.all([settle(projector(start, token)), settle(screen(start, token)), settle(light(start, token))]);
-  return { projector: p, screen: s, light: l };
+  // Stoppen gaat net als starten via de Pi: scherm omlaag tot het contact dicht is, projector uit, woonkamer op 20 %.
+  try {
+    const { ok, data } = await post("/api/projector", token, { action: "cinema-stop" });
+    if (!ok || !data) return { projector: false, screen: false, light: false };
+    const result = data.pending ? await awaitProjectorReceipt(data as Parameters<typeof awaitProjectorReceipt>[0], token, undefined, 125_000) : data;
+    return stopResult(result as { accepted?: boolean; detail?: unknown });
+  } catch { return { projector: false, screen: false, light: false }; }
 }
 
 const LABEL: Record<FilmStep, string> = { projector: "projector", screen: "scherm", light: "licht" };

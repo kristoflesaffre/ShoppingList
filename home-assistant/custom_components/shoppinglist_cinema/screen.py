@@ -41,6 +41,35 @@ class ScreenGuard:
             'num_repeats': 1,
         }, blocking=True)
 
+    async def close_if_open(self, timeout=90):
+        # «Film stoppen»: one DOWN, the motor runs to its own end stop (no STOP needed). Done when the contact
+        # reads closed again; an uncertain DOWN is never repeated.
+        contact = self.hass.states.get(CONTACT)
+        if not contact or contact.state not in ('on', 'off'):
+            raise RuntimeError('screen-sensor-unavailable')
+        if contact.state == 'off':
+            return
+        if not self.settings.get('down'):
+            raise RuntimeError('screen-down-not-configured')
+        if self.moving:
+            raise RuntimeError('screen-already-moving')
+        remote = self.hass.states.get(self.settings['remote_entity'])
+        if not remote or remote.state in ('unknown', 'unavailable'):
+            raise RuntimeError('screen-remote-unavailable')
+        self.moving = True
+        try:
+            await asyncio.wait_for(self.send('down'), 5)
+            started = self.clock()
+            while True:
+                contact = self.hass.states.get(CONTACT)
+                if contact and contact.state == 'off':
+                    return
+                if self.clock() - started > timeout:
+                    raise RuntimeError('screen-closing-not-confirmed')
+                await asyncio.sleep(0.5)
+        finally:
+            self.moving = False
+
     async def open_if_closed(self):
         if not self.check():
             return

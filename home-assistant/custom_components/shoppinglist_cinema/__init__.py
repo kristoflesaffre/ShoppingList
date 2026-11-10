@@ -165,6 +165,17 @@ async def start_cinema(hass, screen, scene, ensure_on, blinds=None):
             raise result
 
 
+async def stop_cinema(hass, screen, projector_off):
+    # «Film stoppen»: screen down, projector off and the living room to 20 %, side by side. Each step runs to the
+    # end (a moving screen is never abandoned); the first failure is reported afterwards.
+    async def lights():
+        await hass.services.async_call('light', 'turn_on', {'entity_id': CINEMA_LIGHTS, 'brightness_pct': CLOSED_BRIGHTNESS}, blocking=True)
+    results = await asyncio.gather(screen.close_if_open(), projector_off(), lights(), return_exceptions=True)
+    for result in results:
+        if isinstance(result, BaseException):
+            raise result
+
+
 def target_link(action):
     match = re.fullmatch(r'watch:(movie|tv):(tt\d{7,10})(?::(\d{1,3}):(\d{1,4}))?', action)
     if not match:
@@ -183,7 +194,8 @@ async def async_setup(hass, config):
     session = async_get_clientsession(hass)
     headers = {'App-Id': APP_ID, 'As-Token': settings['token']}
     bridge = settings['bridge_id']
-    screen = ScreenGuard(hass, settings.get('screen', {}))
+    # The DOWN code came later than the rest of the screen config, as its own key in shoppinglist-cinema.yaml.
+    screen = ScreenGuard(hass, {**settings.get('screen', {}), **({'down': settings['screen_down']} if settings.get('screen_down') else {})})
 
     async def database(endpoint, body):
         async with session.post(f'https://api.instantdb.com/admin/{endpoint}', headers=headers, json=body, timeout=12) as response:
@@ -233,6 +245,13 @@ async def async_setup(hass, config):
             elif power_state() != 'off':
                 raise RuntimeError('power-state-unknown')
             return
+        if action == 'cinema-stop':
+            async def projector_off():
+                # Unreachable (unavailable) after a film means the projector already went to sleep: nothing to send.
+                if power_state() in AWAKE:
+                    await hass.services.async_call('media_player', 'turn_off', {'entity_id': PLAYER}, blocking=True)
+            await stop_cinema(hass, screen, projector_off)
+            return
         link = target_link(action)
         if not link and action != 'cinema':
             raise RuntimeError('invalid-title')
@@ -263,7 +282,7 @@ async def async_setup(hass, config):
                     command = commands[0]
                     valid = command['expiresAt'] > time.time() * 1000 and command['createdAt'] <= time.time() * 1000
                     action = command.get('action', '')
-                    if valid and (action in ('on', 'off', 'cinema') or target_link(action)):
+                    if valid and (action in ('on', 'off', 'cinema', 'cinema-stop') or target_link(action)):
                         # Permission rules enforce pending -> claimed atomically. Never retry a claim or dispatch.
                         await update('projectorCommands', command['id'], {'state': 'claimed'})
                         error = ''

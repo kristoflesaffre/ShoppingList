@@ -1,5 +1,16 @@
 # Home Assistant on the Raspberry Pi
 
+## «Film stoppen» through the Pi (2026-11-10)
+
+The dashboard's stop sent the screen DOWN through the Mac-only BroadLink route (`/api/broadlink`), which the
+dashboard cannot reach, so the screen stayed up (9/11 21:57: projector off and lights 20 % did happen, contact stayed
+open). Bridge v1.14.0 adds the relay action `cinema-stop` (also allowed in `RELAY_ACTIONS`, 120 s): screen DOWN once
+when the contact reads open (motor runs to its end stop, no STOP; done when the contact reads closed, else
+`screen-closing-not-confirmed` after 90 s, never repeated), projector `turn_off` when awake, and
+`light.woonkamer_woonkamer` to 20 %, side by side. The DOWN code lives as `screen_down:` in
+`shoppinglist-cinema.yaml` (added by the 1.14.0 installer, `outputs/cinema-bridge-1.14.0-install.txt`, not in Git).
+`runFilmMode(false)` now sends only this command; a `screen-…` error keeps projector and light confirmed.
+
 ## Blinds wait for the screen (2026-11-09)
 
 After 1.12.0 the screen no longer stopped at its height on «Start film» (8/11 and 9/11, both commands «sent», no

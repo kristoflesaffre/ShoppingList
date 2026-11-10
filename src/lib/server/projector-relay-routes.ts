@@ -15,7 +15,7 @@ export async function projectorRemote(request: NextRequest): Promise<NextRespons
     const bridge = await ownerBridge(owner);
     if (!bridge) return null;
     const body = await request.clone().json().catch(() => null);
-    if (!body || Array.isArray(body) || Object.keys(body).length !== 1 || !["on", "off", "cinema", "status"].includes(body.action)) return reply({ error: "invalid-command" }, 400);
+    if (!body || Array.isArray(body) || Object.keys(body).length !== 1 || !["on", "off", "cinema", "cinema-stop", "status"].includes(body.action)) return reply({ error: "invalid-command" }, 400);
     if (!bridgeOnline(bridge)) return reply({ configured: true, accepted: false, error: "bridge-offline" }, 503);
     if (body.action === "status") return reply({ configured: true, accepted: true, isOn: bridge.reportedState === "on" ? true : bridge.reportedState === "off" ? false : null });
     const command = await enqueueProjector(bridge, body.action);

@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { filmMessage, runFilmMode } from "./film-mode";
+import { filmMessage, runFilmMode, stopResult } from "./film-mode";
 
 type Call = { path: string; body: Record<string, unknown> };
 function stubFetch(replies: Record<string, { status?: number; json: unknown }>) {
@@ -28,12 +28,15 @@ it("starts with one guarded Pi command and no local screen or scene fallback", a
   expect(calls[0].body).toEqual({ action: "cinema" });
 });
 
-it("stops: projector off, screen down, living room at 20 %", async () => {
+it("stops with one Pi command: screen down, projector off, living room at 20 %", async () => {
   const calls = stubFetch(ok);
   expect(await runFilmMode(false, "t")).toEqual({ projector: true, screen: true, light: true });
-  expect(calls.find((c) => c.path === "/api/projector")?.body).toEqual({ action: "off" });
-  expect(calls.find((c) => c.path === "/api/broadlink")?.body).toEqual({ action: "down", projector: false });
-  expect(calls.find((c) => c.path === "/api/hue/light")?.body).toEqual({ id: "b", on: true, brightness: 20 });
+  expect(calls).toEqual([{ path: "/api/projector", body: { action: "cinema-stop" } }]);
+});
+
+it("a screen fault on stop leaves projector and light confirmed", () => {
+  expect(stopResult({ accepted: false, detail: "screen-closing-not-confirmed" })).toEqual({ projector: true, screen: false, light: true });
+  expect(stopResult({ accepted: false, detail: "device-action-failed" })).toEqual({ projector: false, screen: false, light: false });
 });
 
 it("fails closed without local fallback or retries when the Pi rejects cinema", async () => {
@@ -42,12 +45,6 @@ it("fails closed without local fallback or retries when the Pi rejects cinema", 
   expect(result).toEqual({ projector: false, screen: false, light: false });
   expect(calls).toHaveLength(1);
   expect(filmMessage(true, result)).toBe("Niets bevestigd. Controleer projector, scherm en licht voor je opnieuw probeert.");
-});
-
-it("does not dim a room it cannot find", async () => {
-  const calls = stubFetch({ ...ok, "/api/hue/rooms": { json: { rooms: [{ id: "a", name: "Keuken" }] } } });
-  expect((await runFilmMode(false, "t")).light).toBe(false);
-  expect(calls.some((c) => c.path === "/api/hue/light")).toBe(false);
 });
 
 it("summarises a full success", () => {
