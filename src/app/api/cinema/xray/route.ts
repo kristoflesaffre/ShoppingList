@@ -3,7 +3,7 @@ import { verifiedUserId } from "@/lib/server/google-connection-store";
 import { googleRequestOrigin } from "@/lib/google-dashboard-auth";
 import { readBoundedText } from "@/lib/server/read-bounded-text";
 import { isRateLimited } from "@/lib/server/instant-admin";
-import { askXray, playPauseStremio, rewindStremio, stopCinema, transcribeXray, xrayState, startXrayTest, stopXrayTest, controlXrayTest } from "@/lib/server/cinema-xray";
+import { askXray, playPauseStremio, rewindStremio, stopCinema, transcribeXray, xrayState, startXrayTest, stopXrayTest, controlXrayTest, parseXrayLength } from "@/lib/server/cinema-xray";
 import { XRAY_KINDS, type XrayKind } from "@/lib/cinema-xray";
 
 export const runtime = "nodejs";
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     if (body.action === "stop") return reply(await stopCinema(owner));
     if (body.action === "ask" && XRAY_KINDS.includes(body.kind)) {
       const question = body.kind === "vraag" && typeof body.question === "string" ? body.question : null;
-      return reply(await askXray(owner, body.kind as XrayKind, question, test));
+      return reply(await askXray(owner, body.kind as XrayKind, question, test, parseXrayLength(body.length)));
     }
     return reply({ error: "invalid-request" }, 400);
   } catch (e) {

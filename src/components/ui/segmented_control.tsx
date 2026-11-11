@@ -21,6 +21,9 @@ export type SegmentedOption<T extends string> = {
  * `tone="glass"` (dashboard, canvas «Schakelaar in glas» G3): op de avondlucht ([data-sunset]) een rookglazen
  * pil met witte keuze; in het donkere thema en always-on een donker glas met een licht glasplaatje als keuze
  * (een witte pil zou daar verblinden). Op een lichte achtergrond blijft het de gewone grijze trog.
+ *
+ * `tone="cinema"` (X-Ray op het donkere doek): altijd dat donkere glas met een licht glasplaatje, ongeacht het
+ * gekozen thema, want die schermen zijn altijd donker.
  */
 export function SegmentedControl<T extends string>({
   options,
@@ -43,7 +46,7 @@ export function SegmentedControl<T extends string>({
   disabled?: boolean;
   /** ms tussen de tik en onChange: bij een zware wissel eerst de animatie afmaken, dan pas de inhoud. */
   commitDelay?: number;
-  tone?: "default" | "glass";
+  tone?: "default" | "glass" | "cinema";
   /** Glas zodra déze optie gekozen is: de stijl wisselt mee met de pil, op hetzelfde moment (geen wachten op de ouder). */
   glassFor?: T;
   /** Meteen bij de tik (vóór de vertraagde onChange), bv. om de achtergrond tegelijk te laten meelopen. */
@@ -70,6 +73,7 @@ export function SegmentedControl<T extends string>({
     else requestAnimationFrame(() => requestAnimationFrame(() => onChange(v)));
   };
   const glass = glassFor !== undefined ? shown === glassFor : tone === "glass";
+  const cinema = tone === "cinema";
   const shownIndex = options.findIndex((o) => o.value === shown);
   const { containerRef, indicatorStyle } = useSlidingIndicator(Math.max(0, shownIndex));
   const onKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -90,6 +94,7 @@ export function SegmentedControl<T extends string>({
         // Zelfde curve als de pil: oppervlak, rand en hoeken lopen mee als «smart animate».
         "transition-[background-color,box-shadow,border-radius,backdrop-filter] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
         glass && GLASS_TROUGH,
+        cinema && "rounded-[19px] bg-[rgba(0,0,0,0.28)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] backdrop-blur-[14px]",
         disabled && "opacity-40",
         fill ? "w-full" : "w-fit shrink-0",
         className,
@@ -103,6 +108,7 @@ export function SegmentedControl<T extends string>({
           // Donker thema: wit en grijs liggen te dicht bij de trog; de keuze een duidelijk lichtere pil.
           "[[data-theme=dark]_&]:bg-[var(--gray-200)] [[data-theme=dark]_&]:shadow-[0_2px_6px_rgba(0,0,0,0.35)]",
           glass && GLASS_PILL,
+          cinema && "rounded-[16px] bg-fixed-white/[0.16] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]",
           // Geen geldige keuze (bv. twee rolluiken in een andere stand): geen pil.
           shownIndex < 0 && "opacity-0",
         )}
@@ -133,6 +139,7 @@ export function SegmentedControl<T extends string>({
                 : "text-[var(--text-secondary)] [@media(hover:hover)]:hover:text-[var(--text-primary)]",
               glass && (on ? GLASS_TEXT_ON : GLASS_TEXT_OFF),
               glass && GLASS_ROUND,
+              cinema && cn("rounded-[16px]", on ? "font-bold text-fixed-white" : "text-fixed-white/60 [@media(hover:hover)]:hover:text-fixed-white"),
             )}
           >
             {o.label}

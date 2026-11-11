@@ -127,3 +127,15 @@ export const Disabled: Story = {
       options={[{ value: "open", label: "≡", ariaLabel: "Lamellen open" }, { value: "dicht", label: "⫽", ariaLabel: "Lamellen dicht" }]} />
   ),
 };
+
+function CinemaDemo() {
+  const [value, setValue] = React.useState<"kort" | "normaal" | "lang">("normaal");
+  return (
+    <div className="rounded-[24px] bg-[var(--cinema-screen)] p-6">
+      <SegmentedControl ariaLabel="Lengte van de antwoorden" tone="cinema" fill={false} value={value} onChange={setValue}
+        options={[{ value: "kort", label: "Kort" }, { value: "normaal", label: "Normaal" }, { value: "lang", label: "Lang" }]} />
+    </div>
+  );
+}
+/** Op het donkere doek (X-Ray): altijd donker glas met een licht glasplaatje, ook in het lichte thema. */
+export const Cinema: Story = { render: () => <CinemaDemo /> };

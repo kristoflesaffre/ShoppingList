@@ -11,7 +11,7 @@ import { tmdbHeaders, TMDB_BASE } from "../tmdb";
 import { isPcmWav } from "../wav";
 import type { StremioProgress } from "../stremio-progress";
 import {
-  XRAY_CHAT_MODEL_DEFAULT, XRAY_KINDS, XRAY_MODEL_DEFAULT, matchIdentity, xrayCutoff, xrayCostUsd, type XrayIdentity, type XrayKind, type XrayMessage,
+  XRAY_CHAT_MODEL_DEFAULT, XRAY_KINDS, XRAY_LENGTHS, XRAY_LENGTH_DEFAULT, type XrayLength, XRAY_MODEL_DEFAULT, matchIdentity, xrayCutoff, xrayCostUsd, type XrayIdentity, type XrayKind, type XrayMessage,
 } from "../cinema-xray";
 
 /**
@@ -260,7 +260,15 @@ const QUICK: Record<Exclude<XrayKind, "vraag">, string> = {
 };
 const QUICK_MOVIE: Partial<Record<XrayKind, string>> = { afl: "Wat is er tot hier in de film gebeurd?" };
 
-export async function askXray(owner: string, kind: XrayKind, question: string | null, test = false): Promise<XrayMessage> {
+/** Lengte van het antwoord: instructie + ruimte in tokens. Vraagt de kijker zelf om korter of langer, dan wint de vraag. */
+const LENGTH: Record<XrayLength, { rule: string; net: number; other: number }> = {
+  kort: { rule: "Antwoord kort en bondig: net gebeurd in 2–3 zinnen, samenvattingen in hoogstens 6 korte punten, een vrije vraag in 1–3 zinnen.", net: 350, other: 700 },
+  normaal: { rule: "Antwoord met voldoende uitleg: net gebeurd in 4–6 zinnen, samenvattingen in hoogstens 10 punten met telkens een volledige zin, een vrije vraag in één of twee alinea's.", net: 700, other: 1200 },
+  lang: { rule: "Antwoord uitgebreid en gedetailleerd: net gebeurd in twee tot drie alinea's met wie wat zei en waarom het ertoe doet, samenvattingen in hoogstens 18 punten, een vrije vraag in meerdere alinea's met alle relevante details uit het materiaal.", net: 1400, other: 2400 },
+};
+export const parseXrayLength = (v: unknown): XrayLength => XRAY_LENGTHS.includes(v as XrayLength) ? v as XrayLength : XRAY_LENGTH_DEFAULT;
+
+export async function askXray(owner: string, kind: XrayKind, question: string | null, test = false, length: XrayLength = XRAY_LENGTH_DEFAULT): Promise<XrayMessage> {
   if (!XRAY_KINDS.includes(kind)) throw new Error("invalid-question");
   const source = test ? testCurrent : current;
   const s = await source(owner), p = s.playback;
@@ -321,7 +329,7 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
   }
   if (!validCueIds.size && !labels.size) throw new Error("no-dialogue");
 
-  const jobKey = `xray-job:${digest([id.videoId, kind, asked, Math.floor(cutoff / 15000), offset, subs.name])}`;
+  const jobKey = `xray-job:${digest([id.videoId, kind, asked, Math.floor(cutoff / 15000), offset, subs.name, length])}`;
   const existing = await getData<{ result?: XrayMessage }>(owner, jobKey);
   if (existing?.result) return existing.result;
   if (!await claim(owner, jobKey, 120_000)) throw new Error("analysis-busy");
@@ -333,14 +341,14 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
     "Gebruik ALLEEN de aangeleverde dialoog en samenvattingen. Gebruik geen eigen kennis over deze film of serie en verklap nooit iets dat later gebeurt. " +
     "Een naam in de dialoog betekent niet dat iemand in beeld is. Je mag redelijke conclusies trekken uit wat gezegd wordt; zeg dan «lijkt» of «wellicht». " +
     "Als het antwoord echt niet uit het materiaal blijkt, zeg dat eerlijk en kort. " +
-    "Antwoord in het Nederlands, vriendelijk en beknopt (net gebeurd: 2–3 zinnen; samenvattingen: hoogstens 8 korte zinnen of punten). " +
+    "Antwoord in het Nederlands, vriendelijk. " + LENGTH[length].rule + " Vraagt de kijker in de vraag zelf om een korter of langer antwoord, volg dan de vraag. " +
     (kind === "wie" ? "Geef de belangrijkste personages tot nu toe, elk op een eigen regel als «Naam – wie ze zijn en hun band met de anderen». Enkel wie in de dialoog voorkomt. " : "") +
     (kind === "open" ? "Som de mysteries, conflicten en onbeantwoorde vragen op die tot nu toe in het verhaal openstaan, zonder te gokken naar de afloop. " : "") +
     'Geef JSON: {"answer": string, "refs": string[]} waarbij refs de ids tussen vierkante haken zijn waarop je steunt (dialoog-ids zoals cue-12 of afleveringen zoals S1 A3), hoogstens 6.';
-  const r = await gemini(system, `Vraag: ${asked}\n\nHuidig kijkmoment: ${clockTime(cutoff)}.\n\n${blocks.join("\n\n")}`, kind === "net" ? 350 : 700, true, kind === "vraag");
+  const r = await gemini(system, `Vraag: ${asked}\n\nHuidig kijkmoment: ${clockTime(cutoff)}.\n\n${blocks.join("\n\n")}`, kind === "net" ? LENGTH[length].net : LENGTH[length].other, true, kind === "vraag");
   let parsed: { answer?: unknown; refs?: unknown };
   try { parsed = JSON.parse(r.text); } catch { throw new Error("invalid-ai-output"); }
-  const answer = typeof parsed.answer === "string" && parsed.answer.trim() ? parsed.answer.trim().slice(0, 3000) : "Dat is op dit moment nog niet duidelijk in het verhaal.";
+  const answer = typeof parsed.answer === "string" && parsed.answer.trim() ? parsed.answer.trim().slice(0, 8000) : "Dat is op dit moment nog niet duidelijk in het verhaal.";
   const refs = (Array.isArray(parsed.refs) ? parsed.refs : []).slice(0, 6).flatMap((ref): XrayMessage["refs"] => {
     if (typeof ref !== "string") return [];
     if (validCueIds.has(ref)) { const cue = subs.cues.find(c => c.id === ref); return cue ? [{ label: clockTime(cue.startMs + offset), timeMs: cue.startMs + offset }] : []; }

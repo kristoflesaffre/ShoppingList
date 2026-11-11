@@ -4,6 +4,10 @@ import type { StremioProgress } from "./stremio-progress";
 /** X-Ray: snelle vragen (serie: net · afl · seizoen · eerder; film: net · afl · wie · open) + een vrije vraag. */
 export const XRAY_KINDS = ["net", "afl", "seizoen", "eerder", "wie", "open", "vraag"] as const;
 export type XrayKind = (typeof XRAY_KINDS)[number];
+/** Hoe uitgebreid X-Ray antwoordt (keuze in de chat, onthouden per toestel). */
+export const XRAY_LENGTHS = ["kort", "normaal", "lang"] as const;
+export type XrayLength = (typeof XRAY_LENGTHS)[number];
+export const XRAY_LENGTH_DEFAULT: XrayLength = "normaal";
 
 export type XrayIdentity = {
   imdbId: string; type: "movie" | "series"; season: number | null; episode: number | null;

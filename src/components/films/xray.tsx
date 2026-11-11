@@ -7,7 +7,8 @@ import { useGoogleAuthToken } from "@/lib/google-client";
 import { cn } from "@/lib/utils";
 import { useDictation } from "@/hooks/use_dictation";
 import { clockTime, displayPosition, freshPlayback, parsePlayback, type Playback } from "@/lib/cinema-companion";
-import type { XrayIdentity, XrayKind, XrayMessage } from "@/lib/cinema-xray";
+import { XRAY_LENGTH_DEFAULT, XRAY_LENGTHS, type XrayIdentity, type XrayKind, type XrayLength, type XrayMessage } from "@/lib/cinema-xray";
+import { SegmentedControl } from "@/components/ui/segmented_control";
 
 /**
  * X-Ray tijdens het afspelen (canvas «X-Ray · A2» en «X-Ray · gsm · variant 4 Ladder»).
@@ -60,6 +61,13 @@ const ERRORS: Record<string, string> = {
   "no-test-title": "Ik vond geen titel met ondertitels in je Stremio-lijst om mee te testen.",
 };
 
+const LENGTH_KEY = "xray-answer-length";
+const LENGTH_OPTIONS = [{ value: "kort", label: "Kort" }, { value: "normaal", label: "Normaal" }, { value: "lang", label: "Lang" }] as const;
+/** Keuze Kort · Normaal · Lang voor de antwoorden (segmentknop `tone="cinema"`, op het donkere doek). */
+function LengthToggle({ x, className }: { x: X; className?: string }) {
+  return <SegmentedControl options={LENGTH_OPTIONS} value={x.length} onChange={x.setLength} ariaLabel="Lengte van de antwoorden" tone="cinema" fill={false} className={className} />;
+}
+
 const icon = (path: React.ReactNode, size = 18, fill = false) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill ? "currentColor" : "none"} stroke={fill ? "none" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{path}</svg>
 );
@@ -107,6 +115,10 @@ function useXray(active: boolean, testStart = false) {
   React.useEffect(() => { if (testStart) setTest(true); }, [testStart]);
   const [state, setState] = React.useState<XrayState | null>(null);
   const receivedAt = React.useRef(0);
+  // Lengte van de antwoorden (Kort · Normaal · Lang), onthouden per toestel.
+  const [length, setLengthState] = React.useState<XrayLength>(XRAY_LENGTH_DEFAULT);
+  React.useEffect(() => { try { const v = localStorage.getItem(LENGTH_KEY); if (XRAY_LENGTHS.includes(v as XrayLength)) setLengthState(v as XrayLength); } catch { /* geen opslag */ } }, []);
+  const setLength = (v: XrayLength) => { setLengthState(v); try { localStorage.setItem(LENGTH_KEY, v); } catch { /* geen opslag */ } };
   const testPlayback = test ? state?.playback ?? null : null;
   const playback = test ? testPlayback : real.playback;
   const live = test ? !!testPlayback : real.live;
@@ -156,7 +168,7 @@ function useXray(active: boolean, testStart = false) {
     if (busy) return;
     setBusy(kind); setError("");
     try {
-      const m: XrayMessage = await post({ action: "ask", kind, question });
+      const m: XrayMessage = await post({ action: "ask", kind, question, length });
       setState(s => s ? { ...s, messages: [...s.messages.filter(x => x.id !== m.id), m] } : s);
     } catch (e) { fail(e, "X-Ray is even niet bereikbaar."); }
     finally { setBusy(null); }
@@ -213,7 +225,7 @@ function useXray(active: boolean, testStart = false) {
       if (v?.playback) { receivedAt.current = Date.now(); setState(v); } else void startTest();
     })();
   }, [test, token]); // eslint-disable-line react-hooks/exhaustive-deps
-  return { state, playback, live, now, position, error, busy, rewinding, toast, playing, pending, ask, rewind, playPause, stop, setError, transcribe, test, starting, startTest, signedOut };
+  return { state, playback, live, now, position, error, busy, rewinding, toast, playing, pending, ask, rewind, playPause, stop, setError, transcribe, test, starting, startTest, signedOut, length, setLength };
 }
 
 type X = ReturnType<typeof useXray>;
@@ -352,7 +364,8 @@ function ChatInput({ x, id }: { x: X; id: string }) {
           aria-label={dictation.status === "transcribing" ? "Bezig met omzetten" : live ? "Stoppen met luisteren" : "Vraag inspreken"} aria-pressed={live}
           className={cn("relative flex size-[38px] shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-60",
             live ? "bg-[var(--cinema-rose)] text-[var(--cinema-screen)]" : "bg-fixed-white/15 text-fixed-white [@media(hover:hover)]:hover:bg-fixed-white/20")}>
-          {live && dictation.status !== "transcribing" && <span className="absolute inset-0 rounded-full bg-[var(--cinema-rose)] opacity-50 motion-safe:animate-ping" aria-hidden />}
+          {dictation.status === "listening" && <span className="absolute inset-0 rounded-full bg-[var(--cinema-rose)] opacity-50 motion-safe:animate-ping" aria-hidden />}
+          {dictation.status === "recording" && <span className="absolute inset-0 rounded-full bg-[var(--cinema-rose)] opacity-40 transition-transform duration-100 motion-reduce:hidden" style={{ transform: `scale(${1 + dictation.level * 0.6})` }} aria-hidden />}
           {dictation.status === "transcribing"
             ? <span className="size-4 rounded-full border-2 border-current border-t-transparent motion-safe:animate-spin" aria-hidden />
             : <span className="relative">{icon(live ? ICONS.stop : ICONS.mic, live ? 14 : 18, live)}</span>}
@@ -455,7 +468,7 @@ export function XrayTablet({ x, onBack }: { x: X; onBack: () => void }) {
         <section aria-label="Vraag het X-Ray" className="flex w-[min(420px,40%)] shrink-0 flex-col gap-3 rounded-[24px] bg-[color-mix(in_srgb,var(--cinema-screen)_80%,transparent)] p-[18px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] backdrop-blur-xl">
           <div className="flex items-center gap-2">
             <h2 className="text-[16px] font-extrabold">Vraag het X-Ray</h2>
-            <span className="ml-auto text-[12px] font-bold text-fixed-white/55">Zonder spoilers</span>
+            <LengthToggle x={x} className="ml-auto" />
           </div>
           <Conversation x={x} />
           <ChatInput x={x} id="xray-tablet-vraag" />
@@ -529,7 +542,13 @@ export function XrayPhone({ x, onBack }: { x: X; onBack: () => void }) {
           </div>
         )}
         <Conversation x={x} className={hasMessages ? "" : "flex-none"} hint={false} />
-        <div className="sticky bottom-[calc(12px+env(safe-area-inset-bottom,0px))]"><ChatInput x={x} id="xray-gsm-vraag" /></div>
+        <div className="sticky bottom-[calc(12px+env(safe-area-inset-bottom,0px))] flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[12px] font-extrabold tracking-[.06em] text-fixed-white/55">ANTWOORD</span>
+            <LengthToggle x={x} />
+          </div>
+          <ChatInput x={x} id="xray-gsm-vraag" />
+        </div>
       </div>
     </div>
   );

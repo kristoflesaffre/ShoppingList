@@ -4,10 +4,11 @@ import * as React from "react";
 import { bytesToBase64, encodeWav } from "@/lib/wav";
 
 /**
- * Spraak naar tekst voor X-Ray. Eerst de ingebouwde herkenning van de browser (gratis, live tekst; op de iPad dezelfde
- * als de microfoon van het toetsenbord) in de gekozen taal. Lukt die niet (bv. niet toegelaten in een app op het
- * beginscherm, of geen netwerk voor de herkenning), dan neemt de app zelf op tot je stil valt en zet de server het om
- * (Gemini, herkent zelf Nederlands en Engels).
+ * Spraak naar tekst voor X-Ray. Op iPad en iPhone neemt de app zelf op tot je stil valt en zet de server het om
+ * (Gemini, herkent zelf Nederlands en Engels): Safari's eigen spraakherkenning werkt daar maar één keer en geeft
+ * daarna stil niets meer. Elders eerst de ingebouwde herkenning van de browser (gratis, live tekst) in de gekozen
+ * taal; start die niet echt (geen geluid binnen 3 s), stopt ze meteen zonder resultaat of geeft ze een fout, dan
+ * alsnog opnemen + server.
  */
 
 export type DictationLang = "nl" | "en";
@@ -32,6 +33,22 @@ const MAX_MS = 20_000;
 const SILENCE_MS = 1_400;
 const NO_SPEECH_MS = 7_000;
 const LOUD = 0.02;
+/** Zoveel ms mag de browserherkenning nodig hebben om echt geluid te krijgen. */
+const AUDIO_START_MS = 3_000;
+
+/** iPad (meldt zich als Mac met aanraakscherm), iPhone, iPod. */
+function isAppleMobile() {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+}
+
+/** Eén gedeelde AudioContext: iOS laat er maar enkele toe en start een nieuwe buiten een tik «gepauzeerd» (dan hoort de
+ *  stiltemeting niets). In de tik zelf `resume()`. */
+let sharedCtx: AudioContext | null = null;
+function audioCtx() {
+  if (!sharedCtx || sharedCtx.state === "closed") sharedCtx = new AudioContext();
+  return sharedCtx;
+}
 
 function recognitionCtor(): RecognitionCtor | null {
   if (typeof window === "undefined") return null;
@@ -42,9 +59,8 @@ const canRecord = () => typeof window !== "undefined" && !!navigator.mediaDevice
 
 /** Opname naar 16 kHz mono WAV (base64). */
 async function toWavBase64(blob: Blob): Promise<string> {
-  const ctx = new AudioContext();
-  try {
-    const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
+  {
+    const decoded = await audioCtx().decodeAudioData(await blob.arrayBuffer());
     const offline = new OfflineAudioContext(1, Math.max(1, Math.ceil(decoded.duration * TARGET_RATE)), TARGET_RATE);
     const source = offline.createBufferSource();
     source.buffer = decoded;
@@ -52,7 +68,7 @@ async function toWavBase64(blob: Blob): Promise<string> {
     source.start();
     const rendered = await offline.startRendering();
     return bytesToBase64(encodeWav(rendered.getChannelData(0), TARGET_RATE));
-  } finally { void ctx.close(); }
+  }
 }
 
 export function useDictation({ onText, onError, transcribe }: {
@@ -65,6 +81,8 @@ export function useDictation({ onText, onError, transcribe }: {
   const [status, setStatus] = React.useState<DictationStatus>("idle");
   const [lang, setLangState] = React.useState<DictationLang>("nl");
   const [supported, setSupported] = React.useState({ browser: false, any: false });
+  /** Geluidsniveau 0–1 tijdens het opnemen (de knop ademt mee, zodat je ziet dat hij luistert). */
+  const [level, setLevel] = React.useState(0);
   const stopRef = React.useRef<(() => void) | null>(null);
   const cancelRef = React.useRef<(() => void) | null>(null);
   // Weigert de browserherkenning het één keer (bv. app op het beginscherm), dan meteen opnemen de volgende keren.
@@ -73,7 +91,7 @@ export function useDictation({ onText, onError, transcribe }: {
   cb.current = { onText, onError, transcribe };
 
   React.useEffect(() => {
-    const browser = !!recognitionCtor();
+    const browser = !!recognitionCtor() && !isAppleMobile();
     setSupported({ browser, any: browser || canRecord() });
     try { const v = localStorage.getItem(LANG_KEY); if (v === "nl" || v === "en") setLangState(v); } catch { /* geen opslag */ }
   }, []);
@@ -86,13 +104,13 @@ export function useDictation({ onText, onError, transcribe }: {
 
   const record = async () => {
     if (!canRecord()) { setStatus("idle"); cb.current.onError("Spraak wordt op dit toestel niet ondersteund."); return; }
-    // AudioContext nog binnen de tik aanmaken (iOS laat hem anders niet starten).
-    const meter = new AudioContext();
+    const meter = audioCtx();
+    void meter.resume().catch(() => {});
+    setStatus("recording");
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     } catch {
-      void meter.close();
       setStatus("idle");
       cb.current.onError("Geef X-Ray toegang tot de microfoon om een vraag in te spreken.");
       return;
@@ -103,24 +121,32 @@ export function useDictation({ onText, onError, transcribe }: {
     let heard = false, cancelled = false, timer = 0;
     const analyser = meter.createAnalyser();
     analyser.fftSize = 1024;
-    meter.createMediaStreamSource(stream).connect(analyser);
+    const sourceNode = meter.createMediaStreamSource(stream);
+    sourceNode.connect(analyser);
+    if (meter.state !== "running") await meter.resume().catch(() => {});
+    // Kan de meter toch niet lopen, dan geen stiltemeting: opnemen tot je opnieuw tikt (hoogstens MAX_MS).
+    const metered = meter.state === "running";
     const buf = new Float32Array(analyser.fftSize);
     const startedAt = Date.now();
     let lastLoud = startedAt;
     const finish = () => { window.clearInterval(timer); if (recorder.state !== "inactive") recorder.stop(); };
     timer = window.setInterval(() => {
+      const now = Date.now();
+      if (!metered) { heard = true; if (now - startedAt > MAX_MS) finish(); return; }
       analyser.getFloatTimeDomainData(buf);
       let sum = 0;
       for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-      const now = Date.now();
-      if (Math.sqrt(sum / buf.length) > LOUD) { heard = true; lastLoud = now; }
+      const rms = Math.sqrt(sum / buf.length);
+      setLevel(Math.min(1, rms * 12));
+      if (rms > LOUD) { heard = true; lastLoud = now; }
       if ((heard && now - lastLoud > SILENCE_MS) || (!heard && now - startedAt > NO_SPEECH_MS) || now - startedAt > MAX_MS) finish();
     }, 100);
     recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
     recorder.onstop = async () => {
       window.clearInterval(timer);
       stream.getTracks().forEach(t => t.stop());
-      void meter.close();
+      sourceNode.disconnect();
+      setLevel(0);
       stopRef.current = null;
       if (cancelled) { setStatus("idle"); return; }
       if (!heard || !chunks.length) { setStatus("idle"); cb.current.onError("Ik hoorde niets. Tik op de microfoon en stel je vraag."); return; }
@@ -136,20 +162,24 @@ export function useDictation({ onText, onError, transcribe }: {
     // Tik tijdens het opnemen = nu stoppen en omzetten. Weggaan = stoppen zonder omzetten.
     stopRef.current = () => { if (recorder.state === "inactive") return; finish(); };
     cancelRef.current = () => { cancelled = true; finish(); };
-    recorder.start();
-    setStatus("recording");
+    recorder.start(250);
   };
 
   const start = () => {
     if (status !== "idle") return;
     const Ctor = recognitionCtor();
-    if (!Ctor || browserBlocked.current) { void record(); return; }
+    if (!Ctor || browserBlocked.current || isAppleMobile()) { void record(); return; }
     const rec = new Ctor();
     rec.lang = BROWSER_LANG[lang];
     rec.interimResults = true;
     rec.continuous = false;
     rec.maxAlternatives = 1;
-    let got = "", fellBack = false;
+    let got = "", fellBack = false, audio = false;
+    const startedAt = Date.now();
+    const fallBack = () => { if (fellBack) return; fellBack = true; browserBlocked.current = true; window.clearTimeout(watchdog); try { rec.abort(); } catch { /* al gestopt */ } void record(); };
+    // Krijgt de herkenning geen geluid, dan hangt ze stil: na AUDIO_START_MS overschakelen op opnemen.
+    const watchdog = window.setTimeout(() => { if (!audio && !got) fallBack(); }, AUDIO_START_MS);
+    (rec as unknown as { onaudiostart: (() => void) | null }).onaudiostart = () => { audio = true; };
     rec.onresult = e => {
       let text = "", final = true;
       for (let i = 0; i < e.results.length; i++) { text += e.results[i][0].transcript; final = final && e.results[i].isFinal; }
@@ -157,25 +187,25 @@ export function useDictation({ onText, onError, transcribe }: {
       if (got) cb.current.onText(got, final);
     };
     rec.onerror = e => {
-      if (!got && FALLBACK_ERRORS.has(e.error)) {
-        fellBack = true;
-        if (e.error === "not-allowed" || e.error === "service-not-allowed") browserBlocked.current = true;
-        void record();
-      } else if (e.error === "no-speech") cb.current.onError("Ik hoorde niets. Tik op de microfoon en stel je vraag.");
+      if (!got && FALLBACK_ERRORS.has(e.error)) fallBack();
+      else if (e.error === "no-speech") cb.current.onError("Ik hoorde niets. Tik op de microfoon en stel je vraag.");
       else if (e.error === "audio-capture") cb.current.onError("Er is geen microfoon gevonden.");
     };
     rec.onend = () => {
+      window.clearTimeout(watchdog);
       if (fellBack) return;
+      // Meteen weer gestopt zonder fout en zonder tekst = de herkenning werkt hier niet: opnemen.
+      if (!got && !audio && Date.now() - startedAt < 1500) { fallBack(); return; }
       stopRef.current = null;
       setStatus("idle");
       if (got) cb.current.onText(got, true);
     };
     stopRef.current = () => rec.stop();
-    cancelRef.current = () => { fellBack = true; rec.abort(); };
+    cancelRef.current = () => { fellBack = true; window.clearTimeout(watchdog); rec.abort(); };
     try { rec.start(); setStatus("listening"); }
-    catch { browserBlocked.current = true; void record(); }
+    catch { fallBack(); }
   };
 
   const stop = () => stopRef.current?.();
-  return { status, lang, setLang, supported: supported.any, chooseLang: supported.browser && !browserBlocked.current, start, stop };
+  return { status, level, lang, setLang, supported: supported.any, chooseLang: supported.browser && !browserBlocked.current, start, stop };
 }
