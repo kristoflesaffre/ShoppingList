@@ -17,7 +17,7 @@ import type { XrayIdentity, XrayKind, XrayMessage } from "@/lib/cinema-xray";
  */
 
 type XrayInfo = { name: string; backdrop: string | null; poster: string | null; episodeTitle: string | null } | null;
-type XrayState = { playback: Playback | null; live: boolean; identity: XrayIdentity | null; info: XrayInfo; messages: XrayMessage[]; hidden: number; aiConfigured: boolean };
+type XrayState = { playback: Playback | null; live: boolean; identity: XrayIdentity | null; info: XrayInfo; messages: XrayMessage[]; hidden: number; aiConfigured: boolean; test?: boolean };
 type QuickKind = Exclude<XrayKind, "vraag">;
 type Question = { kind: QuickKind; label: string; short: string; scope: string };
 
@@ -57,6 +57,7 @@ const ERRORS: Record<string, string> = {
   "projector-busy": "De projector is nog bezig met een vorige opdracht.",
   "database-busy": "X-Ray heeft het even te druk. Probeer het over een paar seconden opnieuw.",
   "invalid-audio": "De opname kon niet gelezen worden. Probeer het opnieuw.",
+  "no-test-title": "Ik vond geen titel met ondertitels in je Stremio-lijst om mee te testen.",
 };
 
 const icon = (path: React.ReactNode, size = 18, fill = false) => (
@@ -93,10 +94,26 @@ export function useLivePlayback() {
   return { playback, live: fresh || graced, now, position: playback ? displayPosition(playback, now) : 0 };
 }
 
-function useXray(active: boolean) {
+/**
+ * `testStart`: testmodus (gesimuleerde kijksessie van een willekeurige titel uit je Stremio-lijst, zie
+ * `startXrayTest`). Dan komen titel en positie van de server i.p.v. de projector en raakt niets de Pi.
+ */
+function useXray(active: boolean, testStart = false) {
   const token = useGoogleAuthToken();
-  const { playback, live, now, position } = useLivePlayback();
+  const auth = db.useAuth();
+  const signedOut = !auth.isLoading && !auth.user;
+  const real = useLivePlayback();
+  const [test, setTest] = React.useState(testStart);
+  React.useEffect(() => { if (testStart) setTest(true); }, [testStart]);
   const [state, setState] = React.useState<XrayState | null>(null);
+  const receivedAt = React.useRef(0);
+  const testPlayback = test ? state?.playback ?? null : null;
+  const playback = test ? testPlayback : real.playback;
+  const live = test ? !!testPlayback : real.live;
+  const now = real.now;
+  const position = test
+    ? testPlayback ? Math.min(testPlayback.durationMs, testPlayback.positionMs + (testPlayback.state === "playing" ? Math.max(0, now - receivedAt.current) : 0)) : 0
+    : real.position;
   const [error, setError] = React.useState("");
   const [busy, setBusy] = React.useState<XrayKind | null>(null);
   const [rewinding, setRewinding] = React.useState<number | null>(null);
@@ -105,16 +122,17 @@ function useXray(active: boolean) {
   const load = React.useCallback(async () => {
     if (!token) return;
     try {
-      const r = await fetch("/api/cinema/xray", { headers: { authorization: `Bearer ${token}` }, cache: "no-store" });
+      const r = await fetch(`/api/cinema/xray${test ? "?test=1" : ""}`, { headers: { authorization: `Bearer ${token}` }, cache: "no-store" });
       const v: XrayState = await r.json();
       if (!r.ok) return;
+      receivedAt.current = Date.now();
       // Titel en cover nooit laten wegvallen door één mislukte herkenning tijdens dezelfde sessie.
       setState(prev => {
         const same = prev?.playback?.sessionId && prev.playback.sessionId === v.playback?.sessionId;
         return same ? { ...v, identity: v.identity ?? prev!.identity, info: v.info ?? prev!.info } : v;
       });
     } catch { /* volgende poging */ }
-  }, [token]);
+  }, [token, test]);
   const sessionKey = `${playback?.sessionId ?? ""}`;
   const jumpKey = playback ? Math.floor(playback.positionMs / 30_000) : 0;
   React.useEffect(() => { if (!active) return; void load(); const t = setInterval(() => { if (!document.hidden) void load(); }, 20_000); return () => clearInterval(t); }, [active, load, sessionKey]);
@@ -128,7 +146,7 @@ function useXray(active: boolean) {
   React.useEffect(() => { if (!pending) return; const t = setTimeout(() => setPending(null), 12_000); return () => clearTimeout(t); }, [pending]);
 
   const post = async (body: object) => {
-    const r = await fetch("/api/cinema/xray", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body) });
+    const r = await fetch("/api/cinema/xray", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(test ? { ...body, test: true } : body) });
     const v = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(typeof v.error === "string" ? v.error : "xray-unavailable");
     return v;
@@ -146,7 +164,7 @@ function useXray(active: boolean) {
   const rewind = async (minutes: number) => {
     if (rewinding) return;
     setRewinding(minutes); setError("");
-    try { await post({ action: "rewind", minutes }); setToast(`Stremio springt ${minutes} min terug`); }
+    try { await post({ action: "rewind", minutes }); setToast(test ? `Test: ${minutes} min terug` : `Stremio springt ${minutes} min terug`); if (test) void load(); }
     catch (e) { fail(e, "Terugspoelen lukte niet."); }
     finally { setTimeout(() => setRewinding(null), 2500); }
   };
@@ -154,19 +172,48 @@ function useXray(active: boolean) {
   const playPause = async () => {
     if (pending) return;
     setPending(playing ? "pause" : "play"); setError("");
-    try { await post({ action: "play-pause" }); }
+    try { await post({ action: "play-pause" }); if (test) void load(); }
     catch (e) { setPending(null); fail(e, "Pauzeren lukte niet."); }
   };
   const stop = async () => {
     setPending("stop"); setError("");
-    try { await post({ action: "stop" }); setToast("Bioscoop stopt: scherm omlaag, projector uit"); }
+    try {
+      await post({ action: "stop" });
+      if (test) { setTest(false); setState(null); setPending(null); return; }
+      setToast("Bioscoop stopt: scherm omlaag, projector uit");
+    }
     catch (e) { setPending(null); fail(e, "Stoppen lukte niet."); }
   };
   const transcribe = async (audio: string) => {
     try { return String((await post({ action: "transcribe", audio, hint: state?.info?.name ?? "" })).text ?? ""); }
     catch (e) { throw new Error(ERRORS[e instanceof Error ? e.message : ""] ?? "Omzetten naar tekst lukte niet. Probeer het opnieuw."); }
   };
-  return { state, playback, live, now, position, error, busy, rewinding, toast, playing, pending, ask, rewind, playPause, stop, setError, transcribe };
+  const [starting, setStarting] = React.useState(false);
+  /** Testmodus starten, of in de testmodus een andere willekeurige titel kiezen. */
+  const startTest = async () => {
+    if (starting || !token) return;
+    setStarting(true); setError("");
+    try {
+      const r = await fetch("/api/cinema/xray", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ action: "test-start" }) });
+      const v = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(typeof v.error === "string" ? v.error : "xray-unavailable");
+      receivedAt.current = Date.now();
+      setTest(true); setState(v as XrayState); setPending(null);
+    } catch (e) { fail(e, "De testmodus kon niet starten."); }
+    finally { setStarting(false); }
+  };
+  // Testmodus via het adres (`?test=1`) zonder lopende test: meteen een titel kiezen.
+  const autoStarted = React.useRef(false);
+  React.useEffect(() => {
+    if (!test || !token || autoStarted.current) return;
+    autoStarted.current = true;
+    void (async () => {
+      const r = await fetch("/api/cinema/xray?test=1", { headers: { authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null);
+      const v: XrayState | null = r?.ok ? await r.json() : null;
+      if (v?.playback) { receivedAt.current = Date.now(); setState(v); } else void startTest();
+    })();
+  }, [test, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { state, playback, live, now, position, error, busy, rewinding, toast, playing, pending, ask, rewind, playPause, stop, setError, transcribe, test, starting, startTest, signedOut };
 }
 
 type X = ReturnType<typeof useXray>;
@@ -177,6 +224,21 @@ function Progress({ position, duration, className }: { position: number; duratio
     <div className={cn("h-1.5 overflow-hidden rounded-full bg-fixed-white/20", className)} role="progressbar" aria-label="Voortgang" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}>
       {pct !== null && <div className="h-full rounded-full bg-[var(--cinema-velvet)]" style={{ width: `${pct}%` }} />}
     </div>
+  );
+}
+
+/** Testmodus: gele pil + «Andere titel» (kiest een nieuwe willekeurige titel). */
+function TestPill({ x }: { x: X }) {
+  return (
+    <span className="flex items-center gap-2">
+      <span className="inline-flex h-[26px] items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--cinema-screen)_55%,transparent)] px-2.5 text-[12px] font-bold text-[var(--cinema-butter)] backdrop-blur-md">
+        <span className="size-[7px] rounded-full bg-[var(--cinema-butter)]" aria-hidden />TESTMODUS
+      </span>
+      <button type="button" onClick={() => void x.startTest()} disabled={x.starting}
+        className={cn(glassPill, "h-[30px] bg-[color-mix(in_srgb,var(--cinema-screen)_72%,transparent)] px-3 text-[12.5px] font-bold [@media(hover:hover)]:hover:bg-[color-mix(in_srgb,var(--cinema-screen)_86%,transparent)]")}>
+        {icon(<><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" /></>, 14)}{x.starting ? "Even zoeken…" : "Andere titel"}
+      </button>
+    </span>
   );
 }
 
@@ -354,7 +416,7 @@ export function XrayTablet({ x, onBack }: { x: X; onBack: () => void }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-3">
             <BackPill onBack={onBack} />
-            <LivePill />
+            {x.test ? <TestPill x={x} /> : <LivePill />}
           </div>
           <div className="mt-auto max-h-full overflow-y-auto">
             <div className="flex max-w-[620px] flex-col gap-3 rounded-[24px] bg-[color-mix(in_srgb,var(--cinema-screen)_72%,transparent)] p-5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] backdrop-blur-xl">
@@ -416,7 +478,7 @@ export function XrayPhone({ x, onBack }: { x: X; onBack: () => void }) {
           <CoverImage src={x.state?.info?.backdrop} className="h-full w-full object-cover" />
           <div className="absolute inset-x-4 top-3 flex items-center gap-2.5">
             <BackPill onBack={onBack} />
-            <LivePill />
+            {x.test ? <TestPill x={x} /> : <LivePill />}
           </div>
         </div>
       </div>
@@ -492,18 +554,37 @@ function useDemo(x: X, on: boolean, movie: boolean): X {
 /** Volledige X-Ray-pagina (`/films-series/nu-kijken`): A2 vanaf tablet, ladder op gsm. */
 export function XrayPage({ onBack }: { onBack: () => void }) {
   const [demo, setDemo] = React.useState<null | "series" | "movie">(null);
+  const [testFromUrl, setTestFromUrl] = React.useState(false);
   React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setTestFromUrl(params.get("test") === "1");
     if (process.env.NODE_ENV !== "development") return;
-    const v = new URLSearchParams(location.search).get("demo");
+    const v = params.get("demo");
     setDemo(v === "1" ? "series" : v === "film" ? "movie" : null);
   }, []);
-  const x = useDemo(useXray(!demo), !!demo, demo === "movie");
+  const x = useDemo(useXray(!demo, testFromUrl), !!demo, demo === "movie");
+  if (x.test && !x.playback) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[var(--cinema-screen)] px-6 text-center text-fixed-white">
+        {x.error || x.signedOut
+          ? <><p className="max-w-[340px] text-[15px] text-fixed-white/75">{x.signedOut ? "Log eerst in om de testmodus te gebruiken." : x.error}</p><button type="button" onClick={onBack} className="h-[42px] rounded-full bg-fixed-white px-5 text-[15px] font-bold text-[var(--cinema-screen)]">Terug</button></>
+          : <><span className="size-8 rounded-full border-[3px] border-fixed-white/80 border-t-transparent motion-safe:animate-spin" aria-hidden /><p className="text-[15px] text-fixed-white/70">Testmodus: een titel uit je Stremio-lijst kiezen…</p></>}
+      </div>
+    );
+  }
   if (!x.live && !x.playback) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[var(--cinema-screen)] px-6 text-center text-fixed-white">
         <h1 className="text-[22px] font-extrabold">Er speelt nu niets op de projector</h1>
         <p className="max-w-[340px] text-[15px] text-fixed-white/65">Start een film of aflevering in Stremio; X-Ray verschijnt dan vanzelf.</p>
-        <button type="button" onClick={onBack} className="h-[42px] rounded-full bg-fixed-white px-5 text-[15px] font-bold text-[var(--cinema-screen)]">Terug</button>
+        <div className="flex flex-wrap justify-center gap-2.5">
+          <button type="button" onClick={onBack} className="h-[42px] rounded-full bg-fixed-white px-5 text-[15px] font-bold text-[var(--cinema-screen)]">Terug</button>
+          <button type="button" onClick={() => void x.startTest()} disabled={x.starting}
+            className="h-[42px] rounded-full bg-fixed-white/10 px-5 text-[15px] font-bold text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] disabled:opacity-60">
+            {x.starting ? "Titel kiezen…" : "Testmodus"}
+          </button>
+        </div>
+        {x.error && <p className="max-w-[340px] text-[13.5px] font-semibold text-[var(--cinema-rose)]">{x.error}</p>}
       </div>
     );
   }

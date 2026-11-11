@@ -233,10 +233,21 @@ async function summaries(owner: string, imdbId: string, eps: { season: number; e
 }
 
 // ---------- Berichten ----------
-const historyKey = (id: XrayIdentity) => `xray:${id.videoId}`;
+/**
+ * Gesprek per titel/aflevering als één record (hoogstens 60 berichten, 30 dagen). Eén record i.p.v. een rij per
+ * bericht: de velden om rijen per gesprek op te zoeken (kind/sessionId/createdAt) staan niet in de live database,
+ * waardoor elk antwoord bij het bewaren mislukte («X-Ray is even niet bereikbaar»).
+ */
+const historyKey = (id: XrayIdentity) => `xray-history:${id.videoId}`;
+const MAX_HISTORY = 60;
+const HISTORY_TTL = 30 * 86400_000;
 export async function readXrayMessages(owner: string, id: XrayIdentity): Promise<XrayMessage[]> {
-  const data = await db().query({ cinemaCompanionData: { $: { where: { ownerId: owner, kind: "xray", sessionId: historyKey(id) }, order: { createdAt: "desc" }, limit: 60 } } });
-  return data.cinemaCompanionData.filter(r => r.expiresAt > Date.now()).map(r => r.payload as XrayMessage).reverse();
+  const stored = await getData<{ messages: XrayMessage[] }>(owner, historyKey(id));
+  return Array.isArray(stored?.messages) ? stored!.messages : [];
+}
+async function saveXrayMessage(owner: string, id: XrayIdentity, message: XrayMessage) {
+  const messages = (await readXrayMessages(owner, id)).filter(m => m.id !== message.id);
+  await putData(owner, historyKey(id), { messages: [...messages, message].slice(-MAX_HISTORY) }, HISTORY_TTL);
 }
 
 const QUICK: Record<Exclude<XrayKind, "vraag">, string> = {
@@ -249,9 +260,10 @@ const QUICK: Record<Exclude<XrayKind, "vraag">, string> = {
 };
 const QUICK_MOVIE: Partial<Record<XrayKind, string>> = { afl: "Wat is er tot hier in de film gebeurd?" };
 
-export async function askXray(owner: string, kind: XrayKind, question: string | null): Promise<XrayMessage> {
+export async function askXray(owner: string, kind: XrayKind, question: string | null, test = false): Promise<XrayMessage> {
   if (!XRAY_KINDS.includes(kind)) throw new Error("invalid-question");
-  const s = await current(owner), p = s.playback;
+  const source = test ? testCurrent : current;
+  const s = await source(owner), p = s.playback;
   if (!p || !s.live) throw new Error("no-active-session");
   const id = await identify(owner, p);
   if (!id) throw new Error("title-unknown");
@@ -339,23 +351,90 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
     askedAtMs: cutoff, contextEndMs: cutoff, createdAt: Date.now(), costUsd: xrayCostUsd(r.model, r.inTokens, r.outTokens), model: r.model,
   };
   // Teruggespoeld of een andere aflevering intussen? Dan het antwoord niet meer tonen.
-  const latest = await current(owner);
+  const latest = await source(owner);
   if (!latest.playback || xrayCutoff(latest.playback, Date.now()) + 30_000 < cutoff) throw new Error("scene-changed");
   await putData(owner, jobKey, { result: message }, 120_000);
-  const key = `${owner}:xray-message:${message.id}`;
-  await db().transact(db().tx.cinemaCompanionData[companionId(key)].update({ ownerId: owner, key, payload: message, expiresAt: Date.now() + 30 * 86400_000, kind: "xray", sessionId: historyKey(id), createdAt: message.createdAt }));
+  await saveXrayMessage(owner, id, message);
   return message;
 }
 
-export async function xrayState(owner: string) {
-  const s = await current(owner), p = s.playback;
+export async function xrayState(owner: string, test = false) {
+  const s = await (test ? testCurrent : current)(owner), p = s.playback;
   if (!p) return { playback: null, live: false, identity: null, info: null, messages: [], hidden: 0, aiConfigured: !!process.env.GEMINI_API_KEY };
   const id = await identify(owner, p).catch(() => null);
   const info = id ? await titleInfo(id).catch(() => null) : null;
   const all = id ? await readXrayMessages(owner, id) : [];
   const cutoff = xrayCutoff(p, Date.now());
   const messages = all.filter(m => m.contextEndMs <= cutoff + 30_000);
-  return { playback: p, live: s.live, identity: id, info, messages, hidden: all.length - messages.length, aiConfigured: !!process.env.GEMINI_API_KEY, position: displayPosition(p) };
+  return { playback: p, live: s.live, identity: id, info, messages, hidden: all.length - messages.length, aiConfigured: !!process.env.GEMINI_API_KEY, position: displayPosition(p), test };
+}
+
+// ---------- Testmodus ----------
+/**
+ * X-Ray uitproberen zonder projector: een gesimuleerde kijksessie van een willekeurige titel uit je Stremio-lijst
+ * (met ondertitels), op het punt waar je bleef of ergens in het midden. Play/pauze en terugspoelen werken op die
+ * sessie; er gaat niets naar de Pi en het tablet-dashboard ziet er niets van (dat leest enkel de echte projector).
+ */
+const TEST_KEY = "xray-test";
+const TEST_TTL = 6 * 3600_000;
+const MIN_TEST_DURATION = 15 * 60_000;
+
+/** Positie van de test nu, en de sessie herschreven naar «nu» (zodat ze als vers telt). */
+function testNow(p: Playback, now = Date.now()): Playback {
+  const positionMs = Math.min(p.durationMs, p.positionMs + (p.state === "playing" ? Math.max(0, now - p.observedAt) : 0));
+  return { ...p, positionMs, observedAt: now, state: positionMs >= p.durationMs ? "paused" : p.state };
+}
+async function testCurrent(owner: string) {
+  const stored = await getData<Playback>(owner, TEST_KEY);
+  const playback = stored ? testNow(stored) : null;
+  return { playback, live: !!playback, settings: { offsetMs: 0 } };
+}
+
+export async function startXrayTest(owner: string) {
+  const session = await loadStremio(owner);
+  if (!session) throw new Error("no-test-title");
+  let items: StremioProgress[] = [];
+  try { items = (await readStremioProgress(session)).items; } catch { throw new Error("no-test-title"); }
+  const previous = (await getData<Playback>(owner, TEST_KEY))?.imdbId;
+  const pool = items.filter(i => i.durationMs >= MIN_TEST_DURATION && i.imdbId !== previous).slice(0, 40);
+  // Willekeurige volgorde; de eerste met ondertitels wint (hoogstens 5 pogingen, elk een snelle opzoeking).
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  for (const item of pool.slice(0, 5)) {
+    const series = item.type === "tv" && !!item.season && !!item.episode;
+    const videoId = series ? `${item.imdbId}:${item.season}:${item.episode}` : item.imdbId;
+    const subs = await subtitlesFor(owner, series ? "series" : "movie", videoId, item.durationMs).catch(() => null);
+    if (!subs?.cues.length) continue;
+    // Waar je bleef, als dat tussen 10 en 90 % ligt; anders ergens tussen 30 en 60 %.
+    const saved = item.positionMs / item.durationMs;
+    const positionMs = Math.round(saved > 0.1 && saved < 0.9 ? item.positionMs : item.durationMs * (0.3 + Math.random() * 0.3));
+    const now = Date.now();
+    const playback: Playback = {
+      sessionId: `test-${digest([owner, videoId, now]).slice(0, 16)}`, sequence: 1, mediaKey: `test:${videoId}`, streamFingerprint: "0".repeat(64),
+      imdbId: item.imdbId, mediaType: series ? "series" : "movie", season: series ? item.season! : null, episode: series ? item.episode! : null,
+      title: item.title, positionMs, durationMs: item.durationMs, speed: 1, state: "playing", observedAt: now, uncertaintyMs: 0, deviceUpdateElapsedMs: null,
+    };
+    await putData(owner, TEST_KEY, playback, TEST_TTL);
+    return xrayState(owner, true);
+  }
+  throw new Error("no-test-title");
+}
+
+export async function stopXrayTest(owner: string) {
+  await putData(owner, TEST_KEY, null, 1);
+  return { ok: true };
+}
+
+/** Play/pauze en terugspoelen in de testmodus: enkel de gesimuleerde sessie, nooit de projector. */
+export async function controlXrayTest(owner: string, action: "play-pause" | "rewind", minutes = 0) {
+  const stored = await getData<Playback>(owner, TEST_KEY);
+  if (!stored) throw new Error("no-active-session");
+  const p = testNow(stored);
+  if (action === "rewind" && ![1, 2, 5].includes(minutes)) throw new Error("invalid-request");
+  const next: Playback = action === "rewind"
+    ? { ...p, positionMs: Math.max(0, p.positionMs - minutes * 60_000), sequence: p.sequence + 1 }
+    : { ...p, state: p.state === "playing" ? "paused" : "playing", sequence: p.sequence + 1 };
+  await putData(owner, TEST_KEY, next, TEST_TTL);
+  return { ok: true };
 }
 
 /** Pauze of verder spelen in Stremio (Pi-bridge ≥ 1.18.0). */
