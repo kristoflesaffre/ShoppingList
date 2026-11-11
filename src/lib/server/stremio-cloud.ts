@@ -4,7 +4,7 @@ import type { StremioSession } from "./stremio-session";
 import { readBoundedText } from "./read-bounded-text";
 
 /** Deliberately no arbitrary endpoints, logout, datastorePut, or library mutations. */
-async function request(endpoint: "login" | "datastoreGet", body: unknown): Promise<unknown> {
+async function request(endpoint: "login" | "datastoreGet" | "addonCollectionGet", body: unknown): Promise<unknown> {
   const response = await fetch(`https://api.strem.io/api/${endpoint}`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15_000),
@@ -15,6 +15,11 @@ async function request(endpoint: "login" | "datastoreGet", body: unknown): Promi
   if (response.status === 401 || response.status === 403 || data?.error) throw new Error(endpoint === "login" ? "login-failed" : "session-expired");
   if (!response.ok || !data || typeof data !== "object" || Array.isArray(data) || !("result" in data)) throw new Error("upstream-unavailable");
   return data.result;
+}
+/** Read-only discovery; never installs, reorders or removes account add-ons. */
+export async function hasOfficialSubtitleAddon(session: StremioSession): Promise<boolean> {
+  const result = await request("addonCollectionGet", { type: "AddonCollectionGet", authKey: session.authKey, update: false }) as { addons?: { transportUrl?: unknown }[] } | null;
+  return Array.isArray(result?.addons) && result.addons.some(addon => addon.transportUrl === "https://opensubtitles-v3.strem.io/manifest.json");
 }
 export async function loginStremio(email: string, password: string): Promise<string> {
   const result = await request("login", { type: "Login", email, password, facebook: false }) as { authKey?: unknown } | null;

@@ -10,6 +10,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util import dt as dt_util
 from .screen import CONTACT, ScreenGuard
+from .companion import Telemetry, parse_media_session, parse_probe_metadata
 
 _LOGGER = logging.getLogger(__name__)
 DOMAIN = 'shoppinglist_cinema'
@@ -363,11 +364,38 @@ async def async_setup(hass, config):
         else:
             hass.async_create_task(closed_by_hand())
 
+    telemetry = Telemetry()
+    display_metadata = [None]
+    metadata_attempt = [None, 0]
+
     async def stremio_state():
         response = await hass.services.async_call('androidtv', 'adb_command', {
-            'entity_id': ADB_PLAYER, 'command': "dumpsys media_session | grep -E 'package=|state=PlaybackState'",
+            'entity_id': ADB_PLAYER, 'command': ("dumpsys media_session | sed -n '/package=com.stremio.one/,/queueTitle=/p'; echo COMPANION_UPTIME; cat /proc/uptime" if settings.get('companion_enabled') else "dumpsys media_session | grep -E 'package=|state=PlaybackState'"),
         }, blocking=True, return_response=True)
-        return stremio_playback(((response or {}).get(ADB_PLAYER) or {}).get('adb_response'))
+        raw = ((response or {}).get(ADB_PLAYER) or {}).get('adb_response')
+        if settings.get('companion_enabled') and settings.get('owner_id'):
+            measured_at = int(time.time() * 1000)
+            reading = parse_media_session(raw)
+            # Optional one-shot helper installed separately. Only TITLE/DURATION are
+            # cached; these never establish exact-file or subtitle verification.
+            title = reading['title'] if reading else None
+            if settings.get('companion_metadata_probe') and title and (not display_metadata[0] or display_metadata[0]['title'] != title) and (metadata_attempt[0] != title or time.monotonic() - metadata_attempt[1] > 60):
+                metadata_attempt[:] = [title, time.monotonic()]
+                try:
+                    result = await hass.services.async_call('androidtv', 'adb_command', {
+                        'entity_id': ADB_PLAYER,
+                        'command': 'CLASSPATH=/data/local/tmp/shoppinglist-cinema-metadata-v5.dex app_process /system/bin CinemaMetadataProbe',
+                    }, blocking=True, return_response=True)
+                    display_metadata[0] = parse_probe_metadata(((result or {}).get(ADB_PLAYER) or {}).get('adb_response'))
+                except Exception:
+                    display_metadata[0] = None
+            payload = telemetry.snapshot(raw, now=measured_at, metadata=display_metadata[0])
+            if payload:
+                try:
+                    await update('cinemaPlayback', bridge, {'ownerId': settings['owner_id'], 'bridgeId': bridge, 'payload': payload})
+                except Exception:
+                    _LOGGER.warning('Companion telemetry unavailable; lighting watcher continues')
+        return stremio_playback(raw)
 
     async def playback_watcher():
         # Stremio paused: living room to 20 % (a bit of light for a drink); playing (again): Cinema.

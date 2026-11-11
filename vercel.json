@@ -1,6 +1,16 @@
 {
   "crons": [
-    { "path": "/api/cron/thaw-tasks?run=morning", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/thaw-tasks?run=evening", "schedule": "0 16 * * *" }
+    {
+      "path": "/api/cron/thaw-tasks?run=morning",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/thaw-tasks?run=evening",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/cinema-companion",
+      "schedule": "30 3 * * *"
+    }
   ]
 }

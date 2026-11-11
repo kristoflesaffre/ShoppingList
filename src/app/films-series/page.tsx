@@ -1239,6 +1239,7 @@ export default function FilmsSeriesPage() {
           >
             <MaskIcon src="/icons/arrow.svg" className="size-6 bg-fixed-white" />
           </button>
+          <button type="button" onClick={() => router.push("/films-series/nu-kijken")} className="rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-[#101130] focus-visible:outline focus-visible:outline-2">X-Ray</button>
           <SettingsButton glass onClick={() => router.push("/films-series/instellingen")} />
         </div>
         <div className="mt-1 flex flex-col gap-4 lg:mt-0 lg:flex-row lg:items-center lg:gap-3">
@@ -1253,7 +1254,8 @@ export default function FilmsSeriesPage() {
             value={query}
             onValueChange={setQuery}
           />
-          <span className="hidden lg:block">
+          <span className="hidden items-center gap-3 lg:flex">
+            <button type="button" onClick={() => router.push("/films-series/nu-kijken")} className="rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-[#101130] focus-visible:outline focus-visible:outline-2">X-Ray</button>
             <SettingsButton glass onClick={() => router.push("/films-series/instellingen")} />
           </span>
         </div>

@@ -328,6 +328,9 @@ const schema = i.schema({
       updatedAt: i.number(),
     }),
     /** Server-only, scoped outbound projector bridge. Client access must be denied. */
+    /** Companion: private server storage; playback projection is owner-readable only. */
+    cinemaPlayback: i.entity({ ownerId: i.string().indexed(), bridgeId: i.string().indexed(), payload: i.json() }),
+    cinemaCompanionData: i.entity({ ownerId: i.string().indexed(), key: i.string().unique().indexed(), payload: i.json(), expiresAt: i.number().indexed(), kind: i.string().optional().indexed(), sessionId: i.string().optional().indexed(), createdAt: i.number().optional().indexed() }),
     projectorBridges: i.entity({
       ownerId: i.string().unique().indexed(),
       tokenHash: i.string().unique().indexed(),

@@ -1,0 +1,11 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+import {NextRequest} from 'next/server';
+const f=vi.hoisted(()=>({user:vi.fn(),create:vi.fn(),status:vi.fn(),revoke:vi.fn()}));
+vi.mock('@/lib/server/google-connection-store',()=>({verifiedUserId:f.user}));
+vi.mock('@/lib/google-dashboard-auth',()=>({googleRequestOrigin:()=> 'https://home.example'}));
+vi.mock('@/lib/server/cinema-addon',()=>({createAddon:f.create,addonStatus:f.status,revokeAddon:f.revoke,addonBase:()=> 'https://home.example/private-addon'}));
+import {GET,POST,DELETE} from './route';
+beforeEach(()=>{for(const v of Object.values(f))v.mockReset();f.user.mockResolvedValue(null);});
+it('requires the owner session for status, setup and revocation',async()=>{expect((await GET(new NextRequest('https://home.example/api/cinema/companion/addon'))).status).toBe(401);for(const fn of [POST,DELETE])expect((await fn(new NextRequest('https://home.example/api/cinema/companion/addon',{method:fn===POST?'POST':'DELETE',headers:{origin:'https://home.example'}}))).status).toBe(401);expect(f.create).not.toHaveBeenCalled();expect(f.revoke).not.toHaveBeenCalled();});
+it('refuses cross-origin setup and revocation even for a signed-in owner',async()=>{f.user.mockResolvedValue('owner');for(const fn of [POST,DELETE])expect((await fn(new NextRequest('https://home.example/api/cinema/companion/addon',{method:fn===POST?'POST':'DELETE',headers:{origin:'https://evil.example'}}))).status).toBe(403);expect(f.create).not.toHaveBeenCalled();expect(f.revoke).not.toHaveBeenCalled();});
+it('returns only the owner projection and prevents caching',async()=>{f.user.mockResolvedValue('owner');f.status.mockResolvedValue({manifestUrl:null,request:null,receipt:null});const r=await GET(new NextRequest('https://home.example/api/cinema/companion/addon'));expect(r.headers.get('cache-control')).toContain('no-store');expect(f.status).toHaveBeenCalledWith('owner','https://home.example');});

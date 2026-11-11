@@ -31,6 +31,10 @@ const serwist = new Serwist({
   navigationPreload: true,
   runtimeCaching: [
     {
+      matcher: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith("/films-series/nu-kijken"),
+      handler: new NetworkOnly(),
+    },
+    {
       matcher: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith("/api/"),
       handler: new NetworkOnly(),
     },

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 const identity = JSON.parse(await fs.readFile(".cache/projector-relay/cinema-direct.json", "utf8"));
 const files = {};
-for (const name of ["manifest.json", "__init__.py", "screen.py"]) files[`custom_components/shoppinglist_cinema/${name}`] = await fs.readFile(`home-assistant/custom_components/shoppinglist_cinema/${name}`, "utf8");
+for (const name of ["manifest.json", "__init__.py", "screen.py", "companion.py"]) files[`custom_components/shoppinglist_cinema/${name}`] = await fs.readFile(`home-assistant/custom_components/shoppinglist_cinema/${name}`, "utf8");
 const screen = JSON.parse(await fs.readFile(".cache/broadlink/screen.json", "utf8"));
 const timing = JSON.parse(await fs.readFile(".cache/broadlink/screen-timing.json", "utf8"));
 const bridge = JSON.parse(await fs.readFile(".cache/projector-relay/bridge.json", "utf8"));
