@@ -26,14 +26,21 @@ it('downloads the exact returned track, stores private cues and keeps it unverif
  await relayTrack(owner,segments.at(-2)!,segments.at(-1)!);expect(f.fetch).toHaveBeenCalledTimes(2);
 });
 it('does not invent a file hash when the player omits one',async()=>{f.fetch.mockResolvedValue(list());await relaySubtitles(owner,config,['subtitles','movie','tt1234567.json']);expect((await addonStatus(owner)).request?.video.videoHash).toBeNull();});
-it('rejects stale sessions and switches that occur while downloading',async()=>{
- f.state.mockResolvedValueOnce({live:false,playback:null});await expect(relaySubtitles(owner,config,parts)).rejects.toThrow('no-active-session');expect(f.fetch).not.toHaveBeenCalled();
- f.fetch.mockImplementationOnce(async()=>{f.state.mockResolvedValue({live:true,playback:{...state().playback,sessionId:'different'}});return list();});await expect(relaySubtitles(owner,config,parts)).rejects.toThrow('scene-changed');expect(f.rows.size).toBe(0);
+it('serves subtitle choices before the first device heartbeat without inventing a session',async()=>{
+ f.state.mockResolvedValue({live:false,playback:null});f.fetch.mockResolvedValue(list());
+ const r=await relaySubtitles(owner,config,parts);expect(r.subtitles).toHaveLength(1);const status=await addonStatus(owner);expect(status.request?.video.videoHash).toBe('0123456789abcdef');expect(status.request?.deviceMatched).toBe(false);expect(status.receipt).toBeNull();expect(Array.from(f.rows.keys()).some(k=>k.endsWith(':validation')||k.includes(':track:'))).toBe(false);
+});
+it('does not attach a listing to a device session that changed during the upstream request',async()=>{
+ f.fetch.mockImplementationOnce(async()=>{f.state.mockResolvedValue({live:true,playback:{...state().playback,sessionId:'different'}});return list();});const r=await relaySubtitles(owner,config,parts);expect(r.subtitles).toHaveLength(1);const status=await addonStatus(owner);expect(status.request?.deviceMatched).toBe(false);
 });
 it('records an unavailable provider without creating subtitle context',async()=>{f.fetch.mockResolvedValue(new Response('provider down',{status:520}));await expect(relaySubtitles(owner,config,parts)).rejects.toThrow('subtitle-provider-unavailable');expect((await addonStatus(owner)).request?.providerStatus).toBe('unavailable');expect(Array.from(f.rows.keys()).some(k=>k.includes('candidate'))).toBe(false);});
 it('rejects unknown and old track links before making a download',async()=>{await expect(relayTrack(owner,'11111111-1111-4111-a111-111111111111','a'.repeat(32)+'.srt')).rejects.toThrow('scene-changed');expect(f.fetch).not.toHaveBeenCalled();});
-it('does not deliver or store late subtitle cues after a device-session switch',async()=>{
+it('serves captions after a device-session switch but leaves their timing and binding unknown',async()=>{
  f.fetch.mockResolvedValueOnce(list());const listed=await relaySubtitles(owner,config,parts);const segments=new URL(listed.subtitles[0].url).pathname.split('/');
- f.fetch.mockImplementationOnce(async()=>{f.state.mockResolvedValue({live:true,playback:{...state().playback,sessionId:'new-session'}});return new Response('1\n00:00:01,000 --> 00:00:03,000\nFuture scene.');});
- await expect(relayTrack(owner,segments.at(-2)!,segments.at(-1)!)).rejects.toThrow('scene-changed');expect(Array.from(f.rows.keys()).some(k=>k.includes('candidate')||k.includes('addon-file:')||k.endsWith('addon-loaded'))).toBe(false);
+ f.fetch.mockImplementationOnce(async()=>{f.state.mockResolvedValue({live:true,playback:{...state().playback,sessionId:'new-session'}});return new Response('1\n00:00:01,000 --> 00:00:03,000\nCaption.');});
+ await expect(relayTrack(owner,segments.at(-2)!,segments.at(-1)!)).resolves.toContain('Caption.');const status=await addonStatus(owner);expect(status.receipt).toMatchObject({sessionId:null,deviceFingerprint:null,positionMs:null,status:'loaded-unverified'});expect(Array.from(f.rows.keys()).some(k=>k.endsWith(':validation')||k.includes(':track:'))).toBe(false);
+});
+it('serves an auto-selected track before playback starts without granting story context',async()=>{
+ f.state.mockResolvedValue({live:false,playback:null});f.fetch.mockResolvedValueOnce(list()).mockResolvedValueOnce(new Response('1\n00:00:01,000 --> 00:00:03,000\nCaption.'));
+ const listed=await relaySubtitles(owner,config,parts),segments=new URL(listed.subtitles[0].url).pathname.split('/');await expect(relayTrack(owner,segments.at(-2)!,segments.at(-1)!)).resolves.toContain('Caption.');expect((await addonStatus(owner)).receipt).toMatchObject({sessionId:null,positionMs:null,status:'loaded-unverified'});
 });
