@@ -31,7 +31,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.20.0'
+BRIDGE_VERSION = '1.20.1'
 # Android TV (ADB) config entry of the projector: reloaded when ADB keeps failing (at most every ADB_RELOAD_EVERY s).
 ADB_ENTRY = '01M64FE12GJ4ED6MR8PMCTGN46'
 ADB_FAILS_BEFORE_RELOAD = 3
@@ -442,10 +442,11 @@ async def async_setup(hass, config):
             return
         now = int(time.time() * 1000)
         record = f'{owner}:bridge-status'
+        # Also after a failed write (e.g. no permission for this record): wait STATUS_EVERY s, never retry every round.
+        status_sent[:] = [key, time.monotonic()]
         try:
             await update('cinemaCompanionData', companion_id(record), {'ownerId': owner, 'key': record, 'expiresAt': now + 7 * 86400_000,
                                                                      'payload': {**fields, 'at': now, 'version': BRIDGE_VERSION}})
-            status_sent[:] = [key, time.monotonic()]
         except Exception:
             pass
 

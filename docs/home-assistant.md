@@ -15,9 +15,12 @@ Bridge v1.20.0:
   stremio · publish-failed, `appId`, `playerState`, short `error`, `version`) on a change or every 60 s, never titles.
   The X-Ray page shows it when nothing is live («de Pi kan de projector niet uitlezen (ADB)…»), and it can be read
   back for diagnosis without the HA log.
-Tests: `scripts/test-cinema-bridge.py` (50), `scripts/test-cinema-companion.py` (11). Install: paste
-`outputs/cinema-bridge-1.20.0-install.txt` (not in Git) in the Terminal & SSH web UI; it backs up the five files and
-restarts Core.
+Tests: `scripts/test-cinema-bridge.py` (50), `scripts/test-cinema-companion.py` (11). Installed 11/11 ±19:55: playback
+was published again within seconds. The status record was not: the Pi's scoped token may only write its heartbeat,
+playback and command states (`scripts/setup-cinema-companion.mjs`, `setup-cinema-direct.mjs`), and `cinemaCompanionData`
+is server-only. 1.20.0 then retried that write every round; v1.20.1 waits 60 s after a failed status write too
+(`outputs/cinema-bridge-1.20.1-install.txt`). The status only appears once the permissions allow the Pi to write its
+own `bridge-status` record.
 
 ## X-Ray: rate limit, play after pause (2026-11-11)
 
