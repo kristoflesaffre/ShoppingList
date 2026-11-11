@@ -11,6 +11,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util import dt as dt_util
 from .screen import CONTACT, ScreenGuard
 from .companion import Telemetry, parse_media_session, parse_probe_metadata
+from .control_dex import DEX_BASE64, DEX_SHA256
 
 _LOGGER = logging.getLogger(__name__)
 DOMAIN = 'shoppinglist_cinema'
@@ -24,6 +25,9 @@ WAKE_COOLDOWN = 120
 CLOSED_BRIGHTNESS = 20
 # ADB connection to the same projector: Android TV Remote cannot see playback, the media session can.
 ADB_PLAYER = 'media_player.android_tv_192_168_132_133'
+# X-Ray «1 · 2 · 5 min terug»: a one-shot helper (scripts/android/CinemaControl.java) that only seeks Stremio back.
+CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v1.dex'
+SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
 # BREL blinds via Motion Blinds (HA position: 0 = closed, 100 = open). Before 19:00 the right one stays half open
@@ -236,7 +240,26 @@ async def async_setup(hass, config):
                 raise RuntimeError('projector-not-ready')
             await asyncio.sleep(2)
 
+    async def adb(command):
+        response = await hass.services.async_call('androidtv', 'adb_command', {'entity_id': ADB_PLAYER, 'command': command},
+                                                  blocking=True, return_response=True)
+        return str(((response or {}).get(ADB_PLAYER) or {}).get('adb_response') or '')
+
+    async def seek_back(delta_ms):
+        # Install the helper once (or after a projector reset); verify its hash before every use.
+        check = f"sha256sum {CONTROL_DEX} 2>/dev/null | cut -c1-64"
+        if (await adb(check)).strip() != DEX_SHA256:
+            await adb(f"echo {DEX_BASE64} | base64 -d > {CONTROL_DEX} && chmod 644 {CONTROL_DEX}")
+            if (await adb(check)).strip() != DEX_SHA256:
+                raise RuntimeError('seek-helper-install-failed')
+        output = await adb(f"CLASSPATH={CONTROL_DEX} app_process /system/bin CinemaControl seek-back {int(delta_ms)}")
+        if '"ok":true' not in output:
+            raise RuntimeError('seek-failed')
+
     async def execute(action):
+        if action in SEEK_BACK:
+            await seek_back(SEEK_BACK[action])
+            return
         if action == 'on':
             await ensure_on()
             return
@@ -283,7 +306,7 @@ async def async_setup(hass, config):
                     command = commands[0]
                     valid = command['expiresAt'] > time.time() * 1000 and command['createdAt'] <= time.time() * 1000
                     action = command.get('action', '')
-                    if valid and (action in ('on', 'off', 'cinema', 'cinema-stop') or target_link(action)):
+                    if valid and (action in ('on', 'off', 'cinema', 'cinema-stop') or action in SEEK_BACK or target_link(action)):
                         # Permission rules enforce pending -> claimed atomically. Never retry a claim or dispatch.
                         await update('projectorCommands', command['id'], {'state': 'claimed'})
                         error = ''

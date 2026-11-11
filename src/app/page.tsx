@@ -75,6 +75,7 @@ import {
 import { HomeAgendaSection } from "@/components/home_agenda_section";
 import { useAlwaysOn } from "@/lib/use_always_on";
 import { useLandscapeLock } from "@/lib/use_landscape_lock";
+import { XrayDashboardOverlay, XrayHomeBanner } from "@/components/films/xray";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
 import { HomeTodoSection } from "@/components/home_todo_section";
@@ -3159,6 +3160,8 @@ export default function Home() {
   return (
     <div className={cn("relative flex min-h-dvh w-full flex-col px-[var(--space-4)]", !hasLists && "bg-[var(--bg-app)]")}>
       {itemLoaders}
+      {/* Tablet-dashboard: tijdens het afspelen schermvullend X-Ray (canvas «X-Ray · A2»). */}
+      {tabletHomeView === "dashboard" ? <XrayDashboardOverlay /> : null}
       <div
         className={cn(
           "flex flex-1 flex-col pb-[calc(195px+env(safe-area-inset-bottom,0px))] pt-[calc(var(--space-4)+env(safe-area-inset-top,0px))]",
@@ -3205,6 +3208,8 @@ export default function Home() {
               !hasLists ? "gap-6 pt-6 pb-2" : "gap-7 pt-6",
             )}
           >
+            {/* Tijdens het afspelen op de projector: banner naar X-Ray (canvas «X-Ray · A2 · gsm»). */}
+            <XrayHomeBanner className="-mb-2" />
             {homeSectionConfig.order
               .filter((sectionId) => !homeSectionConfig.hidden.includes(sectionId))
               .map((sectionId, index) => {

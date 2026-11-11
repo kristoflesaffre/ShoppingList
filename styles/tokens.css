@@ -207,6 +207,9 @@
   --cinema-butter: #ffc879;
   /* Afleveringpagina (canvas EP · A): bijna-zwart doek waarin het seriebeeld uitvloeit, in beide thema's gelijk. */
   --cinema-screen: #0c0e12;
+  /* X-Ray (canvas «X-Ray · A2»): eigen vraag-ballon en tint van «Dit seizoen» / «Vorige afleveringen», in beide thema's gelijk. */
+  --cinema-lavender: #a9acff;
+  --cinema-mint: #8fd3c1;
   /* «Nieuw seizoen»: groen NIEUW-label op een beeld, in beide thema's gelijk. */
   --badge-new: #1f9d55;
 }
