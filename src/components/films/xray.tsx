@@ -18,7 +18,8 @@ import type { BridgeStatus } from "@/lib/server/cinema-xray";
  * (serie of film) en een chat. Alles past binnen het scherm, ook met de veilige zones van een iPad.
  */
 
-type XrayInfo = { name: string; backdrop: string | null; poster: string | null; episodeTitle: string | null } | null;
+type XrayInfo = { tmdbId?: number | null; name: string; backdrop: string | null; poster: string | null; episodeTitle: string | null } | null;
+type CastMember = { name: string; character: string; profileUrl: string | null };
 type XrayState = { playback: Playback | null; live: boolean; identity: XrayIdentity | null; info: XrayInfo; messages: XrayMessage[]; hidden: number; aiConfigured: boolean; test?: boolean; bridge?: BridgeStatus | null };
 type QuickKind = Exclude<XrayKind, "vraag">;
 type Question = { kind: QuickKind; label: string; short: string; scope: string };
@@ -346,7 +347,7 @@ function Message({ m }: { m: XrayMessage }) {
 }
 
 /** Vraagveld met microfoon: spreek je vraag in (Nederlands of Engels), de tekst komt in het veld en je verstuurt zelf. */
-function ChatInput({ x, id }: { x: X; id: string }) {
+function ChatInput({ x, id, floating }: { x: X; id: string; floating?: boolean }) {
   const [text, setText] = React.useState("");
   const input = React.useRef<HTMLInputElement>(null);
   const dictation = useDictation({
@@ -358,7 +359,11 @@ function ChatInput({ x, id }: { x: X; id: string }) {
   const send = () => { const q = text.trim(); if (!q || x.busy || live) return; setText(""); void x.ask("vraag", q); };
   const placeholder = dictation.status === "transcribing" ? "Even omzetten…" : live ? "Ik luister… stel je vraag" : "Vraag iets over wat je zag…";
   return (
-    <form className="flex h-[52px] shrink-0 items-center gap-2 rounded-2xl bg-fixed-white/10 pl-4 pr-[7px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]" onSubmit={e => { e.preventDefault(); send(); }}>
+    <form onSubmit={e => { e.preventDefault(); send(); }}
+      className={cn("flex h-[52px] shrink-0 items-center gap-2 pl-4 pr-[7px]",
+        floating
+          ? "rounded-full bg-[color-mix(in_srgb,var(--cinema-screen)_45%,transparent)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2),0_20px_40px_-18px_rgba(0,0,0,0.7)] backdrop-blur-[18px] backdrop-saturate-[1.2]"
+          : "rounded-2xl bg-fixed-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]")}>
       <label htmlFor={id} className="sr-only">Vraag iets over wat je zag</label>
       <input ref={input} id={id} value={text} onChange={e => setText(e.target.value)} maxLength={600} placeholder={placeholder} enterKeyHint="send" readOnly={live}
         className="min-w-0 flex-1 bg-transparent text-[16px] text-fixed-white outline-none placeholder:text-fixed-white/50" />
@@ -428,62 +433,173 @@ function CoverImage({ src, className }: { src: string | null | undefined; classN
   return <img src={src} alt="" aria-hidden decoding="async" className={className} />;
 }
 
-/** Tablet en desktop: canvas «X-Ray · A2», met de cover schermvullend. Past binnen elk scherm (iPad: veilige zones). */
+/** Rookglas van canvas «XD · 3 Hoeken»: weinig tint en veel vervaging, zodat de cover doorschijnt. */
+const smokeGlass = "bg-[color-mix(in_srgb,var(--cinema-screen)_38%,transparent)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12),0_24px_50px_-20px_rgba(0,0,0,0.65)] backdrop-blur-[18px] backdrop-saturate-[1.2]";
+
+/** Cast van wat er speelt (TMDB): de aflevering (vaste cast + gasten) of de film. */
+function useXrayCast(x: X): CastMember[] {
+  const info = x.state?.info, id = x.state?.identity;
+  const tmdbId = info?.tmdbId ?? null;
+  const url = !tmdbId || !id ? null
+    : id.type === "series" ? (id.season && id.episode ? `/api/films/episode?id=${tmdbId}&season=${id.season}&episode=${id.episode}` : `/api/films/cast?type=tv&id=${tmdbId}`)
+    : `/api/films/cast?type=movie&id=${tmdbId}`;
+  const [cast, setCast] = React.useState<{ url: string; cast: CastMember[] } | null>(null);
+  React.useEffect(() => {
+    if (!url || cast?.url === url) return;
+    let alive = true;
+    fetch(url).then(r => (r.ok ? r.json() : null)).then((v: { cast?: CastMember[] } | null) => {
+      if (alive && Array.isArray(v?.cast)) setCast({ url, cast: v.cast.filter(c => c?.name).slice(0, 80) });
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [url, cast?.url]);
+  return cast?.url === url ? cast.cast : [];
+}
+
+function CastFace({ c, size = 64 }: { c: CastMember; size?: number }) {
+  return (
+    <div className="flex w-[96px] flex-col items-center text-center">
+      <span className="block shrink-0 overflow-hidden rounded-full bg-fixed-white/10 shadow-[0_0_0_2px_rgba(255,255,255,0.18)]" style={{ width: size, height: size }}>
+        {c.profileUrl
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={c.profileUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+          : <span className="flex h-full w-full items-center justify-center text-[22px] font-extrabold text-fixed-white/70">{c.name.charAt(0)}</span>}
+      </span>
+      <b className="mt-2 line-clamp-2 text-[13px] font-extrabold leading-4">{c.name}</b>
+      {c.character && <span className="line-clamp-2 text-[12px] font-semibold leading-[15px] text-fixed-white/70">{c.character}</span>}
+    </div>
+  );
+}
+
+/** Ronde knoppen rechtsboven in het bedieningspaneel: pauze (wit) en stop (glas), even groot. Stop vraagt eerst bevestiging. */
+function RoundControls({ x, onStop }: { x: X; onStop: () => void }) {
+  return (
+    <div className="flex shrink-0 gap-2">
+      <PlayButton x={x} size={44} />
+      <button type="button" onClick={onStop} disabled={x.pending === "stop"} aria-label="Bioscoop stoppen: scherm omlaag, projector uit"
+        className="flex size-11 shrink-0 items-center justify-center rounded-full bg-fixed-white/15 text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)] transition-colors disabled:opacity-60 [@media(hover:hover)]:hover:bg-fixed-white/25">
+        {x.pending === "stop" ? <span className="size-4 rounded-full border-2 border-current border-t-transparent motion-safe:animate-spin" aria-hidden /> : icon(ICONS.stop, 16, true)}
+      </button>
+    </div>
+  );
+}
+
+/** Dikkere voortgangsbalk met bolletje (canvas «XD»). */
+function ProgressKnob({ position, duration }: { position: number; duration: number }) {
+  const pct = duration > 0 ? Math.min(100, (position / duration) * 100) : null;
+  return (
+    <div className="relative mt-4 h-1.5 rounded-full bg-fixed-white/20" role="progressbar" aria-label="Voortgang" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}>
+      {pct !== null && <>
+        <div className="absolute inset-y-0 left-0 rounded-full bg-[var(--cinema-velvet)]" style={{ width: `${pct}%` }} />
+        <span className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-fixed-white shadow-[0_1px_6px_rgba(0,0,0,0.4)]" style={{ left: `${pct}%` }} aria-hidden />
+      </>}
+    </div>
+  );
+}
+
+/** Alle acteurs van wat er speelt, als glazen raster boven de cover. */
+function CastOverlay({ cast, onClose }: { cast: CastMember[]; onClose: () => void }) {
+  React.useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; addEventListener("keydown", k); return () => removeEventListener("keydown", k); }, [onClose]);
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Alle acteurs" className="absolute inset-0 z-20 flex flex-col bg-[color-mix(in_srgb,var(--cinema-screen)_55%,transparent)] px-[max(24px,env(safe-area-inset-left,0px))] pb-[max(24px,env(safe-area-inset-bottom,0px))] pt-[max(24px,env(safe-area-inset-top,0px))] backdrop-blur-[22px]">
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={onClose} aria-label="Sluiten" className={cn(glassPill, "size-11 bg-fixed-white/15")}>{icon(<path d="M15 6l-6 6 6 6" />, 18)}</button>
+        <h2 className="text-[28px] font-extrabold tracking-[-.02em]">Alle acteurs</h2>
+        <span className="rounded-full bg-fixed-white/15 px-2.5 py-0.5 text-[14px] font-extrabold">{cast.length}</span>
+      </div>
+      <div className="mt-6 grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(120px,1fr))] content-start gap-x-3 gap-y-6 overflow-y-auto overscroll-contain pb-4">
+        {cast.map(c => <div key={`${c.name}-${c.character}`} className="flex justify-center"><CastFace c={c} size={84} /></div>)}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Tablet en desktop: canvas «XD · 3 Hoeken». Elk blok in zijn eigen hoek in rookglas, het midden blijft beeld:
+ * bediening linksboven (pauze + stop rechtsboven, 1 · 2 · 5 min), cast linksonder met «Alle n», vragen rechtsonder
+ * (meteen een vraagveld met microfoon, snelle vragen erboven; het gesprek verschijnt erboven zodra er een is).
+ */
 export function XrayTablet({ x, onBack }: { x: X; onBack: () => void }) {
   const p = x.playback, { title, eyebrow } = titleLines(x);
+  const cast = useXrayCast(x);
+  const [allCast, setAllCast] = React.useState(false);
+  const [confirmStop, setConfirmStop] = React.useState(false);
+  React.useEffect(() => { if (!confirmStop) return; const t = setTimeout(() => setConfirmStop(false), 6000); return () => clearTimeout(t); }, [confirmStop]);
+  const hasConversation = (x.state?.messages.length ?? 0) > 0 || !!x.busy || !!x.error || (x.state?.hidden ?? 0) > 0;
+  const inset = "px-[max(24px,env(safe-area-inset-left,0px))] pb-[max(24px,env(safe-area-inset-bottom,0px))] pt-[max(24px,env(safe-area-inset-top,0px))] pr-[max(24px,env(safe-area-inset-right,0px))]";
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--cinema-screen)] text-fixed-white">
       <CoverImage src={x.state?.info?.backdrop} className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
       <Toast x={x} />
-      <div className="relative flex h-full gap-5 px-[max(24px,env(safe-area-inset-left,0px))] pb-[max(24px,env(safe-area-inset-bottom,0px))] pt-[max(24px,env(safe-area-inset-top,0px))] pr-[max(24px,env(safe-area-inset-right,0px))]">
-        <div className="flex min-w-0 flex-1 flex-col">
+      <div className={cn("relative grid h-full grid-cols-[minmax(0,400px)_1fr_minmax(0,440px)] grid-rows-[auto_1fr] gap-4", inset)}>
+        {/* Linksboven: terug + bediening */}
+        <div className="col-start-1 row-start-1 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <BackPill onBack={onBack} />
             {x.test ? <TestPill x={x} /> : <LivePill />}
           </div>
-          <div className="mt-auto max-h-full overflow-y-auto">
-            <div className="flex max-w-[620px] flex-col gap-3 rounded-[24px] bg-[color-mix(in_srgb,var(--cinema-screen)_72%,transparent)] p-5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] backdrop-blur-xl">
-              {/* Titel links; play/pauze als los element rechtsboven in het paneel, «Stop» eronder. */}
-              <div className="flex items-start gap-4">
-                <div className="flex min-w-0 flex-1 flex-col gap-3">
-                  <div className="text-[13px] font-extrabold uppercase tracking-[.08em] text-[var(--cinema-rose)]">{eyebrow}</div>
-                  <h1 className="text-[clamp(32px,4.2vw,56px)] font-extrabold leading-none tracking-[-.03em]">{title}</h1>
-                  {p && (
-                    <div className="flex items-center gap-3 text-[14px] font-bold">
-                      <span>{clockTime(x.position)}</span>
-                      <Progress position={x.position} duration={p.durationMs} className="min-w-0 flex-1" />
-                      {p.durationMs > 0 && <span className="whitespace-nowrap text-fixed-white/60">nog {clockTime(p.durationMs - x.position)}</span>}
-                    </div>
-                  )}
-                </div>
-                <div className="flex w-[104px] shrink-0 flex-col items-center gap-2.5">
-                  <PlayButton x={x} />
-                  <StopButton x={x} compact stacked />
-                </div>
+          <section aria-label="Bediening" className={cn("rounded-[22px] px-[18px] pb-4 pt-4", smokeGlass)}>
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[11.5px] font-extrabold uppercase tracking-[.12em] text-[var(--cinema-rose)]">{eyebrow}</div>
+                <h1 className="mt-1 line-clamp-2 text-[28px] font-extrabold leading-8 tracking-[-.02em] [text-shadow:0_1px_12px_rgba(0,0,0,0.35)]">{title}</h1>
               </div>
-              <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                <RewindButtons x={x} />
-              </div>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {questionsFor(x).map(q => (
-                  <button key={q.kind} type="button" disabled={!!x.busy} onClick={() => void x.ask(q.kind)}
-                    className={cn(glassPill, "h-10 bg-fixed-white/10 px-3.5 text-[13.5px] font-bold [@media(hover:hover)]:hover:bg-fixed-white/20")}>
-                    {icon(ICONS[q.kind], 15)}{x.busy === q.kind ? "Even denken…" : q.short}
-                  </button>
-                ))}
-              </div>
+              <RoundControls x={x} onStop={() => setConfirmStop(true)} />
             </div>
-          </div>
+            {p && <>
+              <ProgressKnob position={x.position} duration={p.durationMs} />
+              <div className="mt-2 flex justify-between text-[12px] font-bold tabular-nums text-fixed-white/70">
+                <span>{clockTime(x.position)}</span>
+                {p.durationMs > 0 && <span>nog {clockTime(p.durationMs - x.position)}</span>}
+              </div>
+            </>}
+            {confirmStop ? (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="mr-auto min-w-0 text-[13px] font-bold leading-4 text-fixed-white/85">Scherm omlaag, projector uit?</span>
+                <button type="button" onClick={() => setConfirmStop(false)} className={cn(glassPill, "h-9 shrink-0 whitespace-nowrap bg-fixed-white/15 px-3 text-[13px] font-bold")}>Annuleer</button>
+                <button type="button" onClick={() => { setConfirmStop(false); void x.stop(); }} className={cn(glassPill, "h-9 shrink-0 whitespace-nowrap bg-[var(--cinema-velvet)] px-3 text-[13px] font-extrabold shadow-none")}>{icon(ICONS.stop, 13, true)}Stop</button>
+              </div>
+            ) : (
+              <div className="mt-3 flex gap-2"><RewindButtons x={x} stretch /></div>
+            )}
+          </section>
         </div>
-        <section aria-label="Vraag het X-Ray" className="flex w-[min(420px,40%)] shrink-0 flex-col gap-3 rounded-[24px] bg-[color-mix(in_srgb,var(--cinema-screen)_80%,transparent)] p-[18px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] backdrop-blur-xl">
-          <div className="flex items-center gap-2">
-            <h2 className="text-[16px] font-extrabold">Vraag het X-Ray</h2>
-            <LengthToggle x={x} className="ml-auto" />
+
+        {/* Linksonder: cast van wat er speelt, met «Alle n» */}
+        {cast.length > 0 && (
+          <section aria-label="Cast" className={cn("col-start-1 row-start-2 self-end justify-self-start rounded-[22px] p-4", smokeGlass, "w-[min(100%,330px)]")}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-[16px] font-extrabold">Cast</h2>
+              <button type="button" onClick={() => setAllCast(true)} className={cn(glassPill, "h-[30px] gap-0.5 bg-fixed-white/15 pl-3 pr-2 text-[12.5px] font-extrabold [@media(hover:hover)]:hover:bg-fixed-white/25")}>
+                Alle {cast.length}{icon(ICONS.chev, 15)}
+              </button>
+            </div>
+            <div className="flex gap-1">{cast.slice(0, 3).map(c => <CastFace key={`${c.name}-${c.character}`} c={c} />)}</div>
+          </section>
+        )}
+
+        {/* Rechtsonder: vragen, meteen met vraagveld en microfoon */}
+        <section aria-label="Vraag het X-Ray" className="col-start-3 row-span-2 row-start-1 flex min-h-0 flex-col justify-end gap-2.5">
+          {hasConversation && (
+            <div className={cn("flex min-h-0 flex-col gap-3 rounded-[22px] p-4", smokeGlass)}>
+              <div className="flex items-center gap-2">
+                <h2 className="text-[15px] font-extrabold">X-Ray</h2>
+                <LengthToggle x={x} className="ml-auto" />
+              </div>
+              <Conversation x={x} hint={false} />
+            </div>
+          )}
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {questionsFor(x).map(q => (
+              <button key={q.kind} type="button" disabled={!!x.busy} onClick={() => void x.ask(q.kind)}
+                className={cn(glassPill, "h-[34px] bg-[color-mix(in_srgb,var(--cinema-screen)_40%,transparent)] px-3 text-[13px] font-bold backdrop-blur-[16px] [@media(hover:hover)]:hover:bg-[color-mix(in_srgb,var(--cinema-screen)_60%,transparent)]")}>
+                {icon(ICONS[q.kind], 14)}{x.busy === q.kind ? "Even denken…" : q.short}
+              </button>
+            ))}
           </div>
-          <Conversation x={x} />
-          <ChatInput x={x} id="xray-tablet-vraag" />
+          <ChatInput x={x} id="xray-tablet-vraag" floating />
         </section>
       </div>
+      {allCast && <CastOverlay cast={cast} onClose={() => setAllCast(false)} />}
     </div>
   );
 }
@@ -576,7 +692,8 @@ function useDemo(x: X, on: boolean, movie: boolean): X {
   ] : [];
   return { ...x, playback, live: true, position: 1_425_000, now, playing, pending: null,
     state: { playback, live: true, identity: { imdbId: "tt0000000", type: movie ? "movie" : "series", season: movie ? null : 2, episode: movie ? null : 4, videoId: "demo", title: "Vuurtoren", source: "stremio" },
-      info: { name: "Vuurtoren (voorbeeld)", backdrop: "/images/films/cinema_velvet_1920.webp", poster: null, episodeTitle: movie ? null : "Laag water" }, messages, hidden: 0, aiConfigured: true },
+      // tmdbId: echte cast in de demo (series: Slow Horses, film: Oppenheimer), enkel om de castpanelen te bekijken.
+      info: { tmdbId: movie ? 872585 : 95480, name: "Vuurtoren (voorbeeld)", backdrop: "/images/films/cinema_velvet_1920.webp", poster: null, episodeTitle: movie ? null : "Laag water" }, messages, hidden: 0, aiConfigured: true },
     ask: async () => setChat(true), rewind: async () => {}, playPause: async () => setPlaying(v => !v), stop: async () => {} };
 }
 

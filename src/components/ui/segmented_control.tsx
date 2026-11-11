@@ -90,7 +90,8 @@ export function SegmentedControl<T extends string>({
       aria-label={ariaLabel}
       className={cn(
         "relative isolate flex gap-0.5 rounded-[13px] p-[3px]",
-        surface === "app" ? "bg-[var(--white)] shadow-[inset_0_0_0_1px_var(--gray-100)]" : "bg-[var(--gray-50)]",
+        // Cinema heeft een eigen trog: de standaardachtergrond niet ook zetten (tailwind-merge ziet var() en rgba() niet als dezelfde eigenschap).
+        !cinema && (surface === "app" ? "bg-[var(--white)] shadow-[inset_0_0_0_1px_var(--gray-100)]" : "bg-[var(--gray-50)]"),
         // Zelfde curve als de pil: oppervlak, rand en hoeken lopen mee als «smart animate».
         "transition-[background-color,box-shadow,border-radius,backdrop-filter] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
         glass && GLASS_TROUGH,
@@ -104,9 +105,9 @@ export function SegmentedControl<T extends string>({
         aria-hidden
         className={cn(
           "pointer-events-none absolute left-0 -z-10 rounded-[10px] motion-reduce:!transition-none",
-          surface === "app" ? "bg-[var(--gray-100)]" : "bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.12)]",
+          !cinema && (surface === "app" ? "bg-[var(--gray-100)]" : "bg-[var(--white)] shadow-[0_1px_3px_rgba(16,17,48,0.12)]"),
           // Donker thema: wit en grijs liggen te dicht bij de trog; de keuze een duidelijk lichtere pil.
-          "[[data-theme=dark]_&]:bg-[var(--gray-200)] [[data-theme=dark]_&]:shadow-[0_2px_6px_rgba(0,0,0,0.35)]",
+          !cinema && "[[data-theme=dark]_&]:bg-[var(--gray-200)] [[data-theme=dark]_&]:shadow-[0_2px_6px_rgba(0,0,0,0.35)]",
           glass && GLASS_PILL,
           cinema && "rounded-[16px] bg-fixed-white/[0.16] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]",
           // Geen geldige keuze (bv. twee rolluiken in een andere stand): geen pil.
