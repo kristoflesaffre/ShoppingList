@@ -19,8 +19,10 @@ Tests: `scripts/test-cinema-bridge.py` (50), `scripts/test-cinema-companion.py` 
 was published again within seconds. The status record was not: the Pi's scoped token may only write its heartbeat,
 playback and command states (`scripts/setup-cinema-companion.mjs`, `setup-cinema-direct.mjs`), and `cinemaCompanionData`
 is server-only. 1.20.0 then retried that write every round; v1.20.1 waits 60 s after a failed status write too
-(`outputs/cinema-bridge-1.20.1-install.txt`). The status only appears once the permissions allow the Pi to write its
-own `bridge-status` record.
+(`outputs/cinema-bridge-1.20.1-install.txt`). Permissions (11/11, with the owner's OK): `scripts/allow-bridge-status.mjs
+--apply` lets the Pi's scoped account create/update exactly that one record (fixed id and key, only payload/expiresAt;
+no read, no delete, no other record; backup of the previous rules in `.cache/cinema-companion/`), and tests the
+refusals. Right after: `{"stage":"stremio","appId":"com.stremio.one","playerState":"on","error":null,"version":"1.20.0"}`.
 
 ## X-Ray: rate limit, play after pause (2026-11-11)
 
