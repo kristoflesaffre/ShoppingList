@@ -75,6 +75,7 @@ import {
 import { HomeAgendaSection } from "@/components/home_agenda_section";
 import { useAlwaysOn } from "@/lib/use_always_on";
 import { useLandscapeLock } from "@/lib/use_landscape_lock";
+import { useAppUpdate } from "@/lib/use_app_update";
 import { XrayDashboardOverlay, XrayHomeBanner } from "@/components/films/xray";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
@@ -3130,6 +3131,8 @@ export default function Home() {
   useAlwaysOn(tabletHomeView === "dashboard");
   // Dashboard blijft liggend (180° omdraaien mag), ook als je de tablet rechtop zet.
   useLandscapeLock(tabletHomeView === "dashboard");
+  // Dashboard blijft dagen open: na een nieuwe versie van de app vanzelf herladen.
+  useAppUpdate(tabletHomeView === "dashboard");
 
   const agendaFirstOnDesktop =
     !homeSectionConfig.hidden.includes("agenda") &&
