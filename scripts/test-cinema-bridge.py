@@ -548,6 +548,10 @@ class SeekHelperTests(unittest.TestCase):
     def test_only_three_rewind_steps_are_allowed(self):
         self.assertEqual(cinema.SEEK_BACK, {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000})
 
+    def test_play_pause_is_a_bridge_action(self):
+        import inspect
+        self.assertIn("'play-pause'", inspect.getsource(cinema.async_setup))
+
     def test_embedded_helper_matches_its_hash(self):
         import base64, hashlib
         self.assertEqual(hashlib.sha256(base64.b64decode(cinema.DEX_BASE64)).hexdigest(), cinema.DEX_SHA256)

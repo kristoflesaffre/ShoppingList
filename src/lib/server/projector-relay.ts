@@ -4,10 +4,10 @@ import { cinemaTarget } from "../stremio";
 
 export const COMMAND_TTL = 30_000;
 export const BRIDGE_FRESHNESS = 45_000;
-/** X-Ray: Stremio 1, 2 of 5 minuten terugspoelen (Pi-bridge ≥ 1.17.0). */
+/** X-Ray: Stremio 1, 2 of 5 minuten terugspoelen (Pi-bridge ≥ 1.17.0); «play-pause» = pauze/verder (≥ 1.18.0). */
 export const SEEK_BACK_ACTIONS = ["seek-back:60", "seek-back:120", "seek-back:300"] as const;
 /** «cinema» = film starten, «cinema-stop» = scherm omlaag + projector uit + woonkamer 20 % (Pi-bridge ≥ 1.14.0). */
-export const RELAY_ACTIONS: readonly string[] = ["on", "off", "cinema", "cinema-stop", ...SEEK_BACK_ACTIONS];
+export const RELAY_ACTIONS: readonly string[] = ["on", "off", "cinema", "cinema-stop", "play-pause", ...SEEK_BACK_ACTIONS];
 export type Bridge = { id: string; ownerId: string; tokenHash: string; enabled: boolean; lastSeenAt: number; reportedState: string };
 export type RelayCommand = { id: string; bridgeId: string; action: string; createdAt: number; expiresAt: number; state: string; error?: string };
 type Lock = { id: string; key: string; commandId: string; expiresAt: number };

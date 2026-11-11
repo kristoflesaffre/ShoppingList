@@ -46,11 +46,18 @@ async function budget(owner: string, kind: "answer" | "summary") {
 // ---------- Welke titel speelt er? ----------
 export async function identify(owner: string, p: Playback): Promise<XrayIdentity | null> {
   if (p.imdbId) return matchIdentity(p, []);
+  // Eén keer herkend = vast voor deze kijksessie (een nieuwe titel of aflevering geeft op de Pi een nieuwe sessie).
+  // Zo verdwijnen titel en cover niet als Stremio of de Pi een keer traag antwoordt.
+  const key = `xray-identity:${p.sessionId}`;
+  const cached = await getData<XrayIdentity>(owner, key);
+  if (cached) return cached;
   const session = await loadStremio(owner);
   if (!session) return null;
   let items: StremioProgress[] = [];
   try { items = (await readStremioProgress(session)).items; } catch { return null; }
-  return matchIdentity(p, items);
+  const id = matchIdentity(p, items);
+  if (id) await putData(owner, key, id, 12 * 3600_000);
+  return id;
 }
 
 type TitleInfo = { tmdbId: number | null; name: string; backdrop: string | null; poster: string | null; episodeTitle: string | null; seasons: { season: number; episodes: number }[] };
@@ -204,7 +211,10 @@ const QUICK: Record<Exclude<XrayKind, "vraag">, string> = {
   afl: "Wat is er tot hier in de aflevering gebeurd?",
   seizoen: "Wat is er tot hier in het seizoen gebeurd?",
   eerder: "Wat moet ik weten uit vorige afleveringen?",
+  wie: "Wie is wie tot nu toe?",
+  open: "Welke vragen staan nog open?",
 };
+const QUICK_MOVIE: Partial<Record<XrayKind, string>> = { afl: "Wat is er tot hier in de film gebeurd?" };
 
 export async function askXray(owner: string, kind: XrayKind, question: string | null): Promise<XrayMessage> {
   if (!XRAY_KINDS.includes(kind)) throw new Error("invalid-question");
@@ -219,7 +229,7 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
   const subs = await subtitlesFor(owner, id.type, id.videoId, p.durationMs);
   if (!subs) throw new Error("no-subtitles");
   const seen = subs.cues.filter(c => c.endMs + offset <= cutoff);
-  const asked = kind === "vraag" ? (question ?? "").trim() : QUICK[kind];
+  const asked = kind === "vraag" ? (question ?? "").trim() : (movie ? QUICK_MOVIE[kind] : undefined) ?? QUICK[kind];
   if (!asked || asked.length > 600) throw new Error("invalid-question");
   const info = await titleInfo(id).catch(() => null);
   const where = movie ? `de film «${info?.name ?? id.title}»` : `«${info?.name ?? id.title}», seizoen ${id.season} aflevering ${id.episode}${info?.episodeTitle ? ` («${info.episodeTitle}»)` : ""}`;
@@ -238,7 +248,7 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
   const before = !movie && id.season && id.episode && info ? previousEpisodes(info, id.season, id.episode, kind === "seizoen") : [];
 
   if (kind === "net") addCues("Dialoog van de laatste minuten:", seen.filter(c => c.endMs + offset >= cutoff - 150_000), 8000, "end");
-  if (kind === "afl") addCues(movie ? "Dialoog van de film tot nu:" : "Dialoog van deze aflevering tot nu:", seen, 45_000, "start");
+  if (kind === "afl" || kind === "wie" || kind === "open") addCues(movie ? "Dialoog van de film tot nu:" : "Dialoog van deze aflevering tot nu:", seen, 45_000, "start");
   if (kind === "seizoen") {
     addSummaries("Samenvattingen van de eerdere afleveringen van dit seizoen:", await summaries(owner, id.imdbId, before));
     addCues("Dialoog van de huidige aflevering tot nu:", seen, 25_000, "end");
@@ -279,6 +289,8 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
     "Een naam in de dialoog betekent niet dat iemand in beeld is. Je mag redelijke conclusies trekken uit wat gezegd wordt; zeg dan «lijkt» of «wellicht». " +
     "Als het antwoord echt niet uit het materiaal blijkt, zeg dat eerlijk en kort. " +
     "Antwoord in het Nederlands, vriendelijk en beknopt (net gebeurd: 2–3 zinnen; samenvattingen: hoogstens 8 korte zinnen of punten). " +
+    (kind === "wie" ? "Geef de belangrijkste personages tot nu toe, elk op een eigen regel als «Naam – wie ze zijn en hun band met de anderen». Enkel wie in de dialoog voorkomt. " : "") +
+    (kind === "open" ? "Som de mysteries, conflicten en onbeantwoorde vragen op die tot nu toe in het verhaal openstaan, zonder te gokken naar de afloop. " : "") +
     'Geef JSON: {"answer": string, "refs": string[]} waarbij refs de ids tussen vierkante haken zijn waarop je steunt (dialoog-ids zoals cue-12 of afleveringen zoals S1 A3), hoogstens 6.';
   const r = await gemini(system, `Vraag: ${asked}\n\nHuidig kijkmoment: ${clockTime(cutoff)}.\n\n${blocks.join("\n\n")}`, kind === "net" ? 350 : 700, true, kind === "vraag");
   let parsed: { answer?: unknown; refs?: unknown };
@@ -305,12 +317,30 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
 export async function xrayState(owner: string) {
   const s = await current(owner), p = s.playback;
   if (!p) return { playback: null, live: false, identity: null, info: null, messages: [], hidden: 0, aiConfigured: !!process.env.GEMINI_API_KEY };
-  const id = s.live ? await identify(owner, p).catch(() => null) : null;
+  const id = await identify(owner, p).catch(() => null);
   const info = id ? await titleInfo(id).catch(() => null) : null;
   const all = id ? await readXrayMessages(owner, id) : [];
   const cutoff = xrayCutoff(p, Date.now());
   const messages = all.filter(m => m.contextEndMs <= cutoff + 30_000);
   return { playback: p, live: s.live, identity: id, info, messages, hidden: all.length - messages.length, aiConfigured: !!process.env.GEMINI_API_KEY, position: displayPosition(p) };
+}
+
+/** Pauze of verder spelen in Stremio (Pi-bridge ≥ 1.18.0). */
+export async function playPauseStremio(owner: string) {
+  const bridge = await ownerBridge(owner);
+  if (!bridge) throw new Error("bridge-unavailable");
+  const command = await enqueueProjector(bridge, "play-pause");
+  if (!command) throw new Error("projector-busy");
+  return { id: command.id };
+}
+
+/** «Stop» = de hele bioscoop af: scherm omlaag, projector uit, woonkamer 20 % (zelfde als «Film stoppen»). */
+export async function stopCinema(owner: string) {
+  const bridge = await ownerBridge(owner);
+  if (!bridge) throw new Error("bridge-unavailable");
+  const command = await enqueueProjector(bridge, "cinema-stop");
+  if (!command) throw new Error("projector-busy");
+  return { id: command.id };
 }
 
 export async function rewindStremio(owner: string, minutes: number) {

@@ -257,6 +257,13 @@ async def async_setup(hass, config):
             raise RuntimeError('seek-failed')
 
     async def execute(action):
+        if action == 'play-pause':
+            # X-Ray: pauze / verder spelen. Enkel als Stremio vooraan staat; nooit de projector aan- of uitzetten.
+            player = hass.states.get(ADB_PLAYER)
+            if not player or player.state not in ('playing', 'paused', 'idle', 'on') or player.attributes.get('app_id') != STREMIO:
+                raise RuntimeError('stremio-not-playing')
+            await hass.services.async_call('media_player', 'media_play_pause', {'entity_id': ADB_PLAYER}, blocking=True)
+            return
         if action in SEEK_BACK:
             await seek_back(SEEK_BACK[action])
             return
@@ -306,7 +313,7 @@ async def async_setup(hass, config):
                     command = commands[0]
                     valid = command['expiresAt'] > time.time() * 1000 and command['createdAt'] <= time.time() * 1000
                     action = command.get('action', '')
-                    if valid and (action in ('on', 'off', 'cinema', 'cinema-stop') or action in SEEK_BACK or target_link(action)):
+                    if valid and (action in ('on', 'off', 'cinema', 'cinema-stop', 'play-pause') or action in SEEK_BACK or target_link(action)):
                         # Permission rules enforce pending -> claimed atomically. Never retry a claim or dispatch.
                         await update('projectorCommands', command['id'], {'state': 'claimed'})
                         error = ''
@@ -321,7 +328,8 @@ async def async_setup(hass, config):
                 raise
             except Exception:
                 _LOGGER.warning('Cinema queue unavailable; no command retried')
-            await asyncio.sleep(5)
+            # Projector aan: elke 2 s kijken, zodat X-Ray-knoppen (pauze, terugspoelen) snel reageren; anders elke 5 s.
+            await asyncio.sleep(2 if power_state() in AWAKE else 5)
 
     async def samsung_off_for_screen():
         # Same paired Samsung as cinema start; only an awake TV gets one turn-off, never a power toggle.

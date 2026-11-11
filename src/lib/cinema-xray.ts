@@ -1,8 +1,8 @@
 import { displayPosition, type Playback } from "./cinema-companion";
 import type { StremioProgress } from "./stremio-progress";
 
-/** X-Ray: de vier snelle vragen + een vrije vraag. */
-export const XRAY_KINDS = ["net", "afl", "seizoen", "eerder", "vraag"] as const;
+/** X-Ray: snelle vragen (serie: net · afl · seizoen · eerder; film: net · afl · wie · open) + een vrije vraag. */
+export const XRAY_KINDS = ["net", "afl", "seizoen", "eerder", "wie", "open", "vraag"] as const;
 export type XrayKind = (typeof XRAY_KINDS)[number];
 
 export type XrayIdentity = {

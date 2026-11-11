@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifiedUserId } from "@/lib/server/google-connection-store";
 import { googleRequestOrigin } from "@/lib/google-dashboard-auth";
 import { readBoundedText } from "@/lib/server/read-bounded-text";
-import { askXray, rewindStremio, xrayState } from "@/lib/server/cinema-xray";
+import { askXray, playPauseStremio, rewindStremio, stopCinema, xrayState } from "@/lib/server/cinema-xray";
 import { XRAY_KINDS, type XrayKind } from "@/lib/cinema-xray";
 
 export const runtime = "nodejs";
@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
     const body = JSON.parse(await readBoundedText(request.body, 10_000));
     if (!body || typeof body !== "object" || Array.isArray(body)) return reply({ error: "invalid-request" }, 400);
     if (body.action === "rewind") return reply(await rewindStremio(owner, Number(body.minutes)));
+    if (body.action === "play-pause") return reply(await playPauseStremio(owner));
+    if (body.action === "stop") return reply(await stopCinema(owner));
     if (body.action === "ask" && XRAY_KINDS.includes(body.kind)) {
       const question = body.kind === "vraag" && typeof body.question === "string" ? body.question : null;
       return reply(await askXray(owner, body.kind as XrayKind, question));
