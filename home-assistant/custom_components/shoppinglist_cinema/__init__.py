@@ -415,8 +415,13 @@ async def async_setup(hass, config):
             button_running[0] = False
 
     async def handle_toggle(_call):
-        # A press while the screen moves or another cinema action runs is ignored, never queued.
-        if button_running[0] or busy.locked() or screen.moving:
+        # A press while the screen moves is an emergency STOP. A press while another cinema action runs is ignored,
+        # never queued.
+        if screen.moving:
+            _LOGGER.warning('Cinema button pressed while the screen moves: STOP')
+            hass.async_create_task(screen.stop_burst('button'))
+            return
+        if button_running[0] or busy.locked():
             _LOGGER.info('Cinema button ignored: already busy')
             return
         button_running[0] = True

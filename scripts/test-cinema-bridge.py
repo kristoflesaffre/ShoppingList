@@ -519,6 +519,22 @@ class ButtonToggleTests(unittest.IsolatedAsyncioTestCase):
             while tasks: await tasks.pop(0)
         self.assertEqual(start.await_count, 2)
 
+    async def test_press_while_the_screen_moves_is_an_emergency_stop(self):
+        guards = []
+        class Captured(cinema.ScreenGuard):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                guards.append(self)
+        with patch.object(cinema, 'ScreenGuard', Captured):
+            press, tasks = await self.setup_toggle('on')
+        guards[0].moving = True
+        with patch.object(Captured, 'stop_burst', AsyncMock()) as burst, patch.object(cinema, 'start_cinema', AsyncMock()) as start, patch.object(cinema, 'stop_cinema', AsyncMock()) as stop:
+            await press(None)
+            while tasks: await tasks.pop(0)
+        burst.assert_awaited_once_with('button')
+        start.assert_not_awaited()
+        stop.assert_not_awaited()
+
     async def test_unknown_screen_sensor_does_nothing(self):
         press, tasks = await self.setup_toggle('unavailable')
         with patch.object(cinema, 'start_cinema', AsyncMock()) as start, patch.object(cinema, 'stop_cinema', AsyncMock()) as stop:

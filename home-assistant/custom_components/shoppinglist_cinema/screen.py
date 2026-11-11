@@ -1,10 +1,21 @@
 """Fail-closed screen movement, gated by a live closed reading of the contact sensor."""
 import asyncio
+import logging
 import math
 import time
 
+_LOGGER = logging.getLogger(__name__)
+
 CONTACT = 'binary_sensor.gang_beneden_voordeur_opening'
 MIN_BATTERY = 10
+# The screen has no position feedback: a STOP that never reaches the motor lets it run to its end stop. «Sent» from
+# the BroadLink does not mean received (433 MHz is shared with the BREL blinds) and a single failing call used to
+# end the attempt. So STOP goes out several times, and a failing send keeps being retried for a short window.
+# The learned codes are fixed (no rolling code): a STOP to a motor that already stands still does nothing.
+STOP_BURST = 3
+STOP_GAP = 0.6
+STOP_RETRY_WINDOW = 8
+STOP_SEND_TIMEOUT = 3
 
 
 class ScreenGuard:
@@ -40,6 +51,30 @@ class ScreenGuard:
             'command': 'b64:' + self.settings[action],
             'num_repeats': 1,
         }, blocking=True)
+
+    async def stop_burst(self, reason='run-ended'):
+        """STOP_BURST successful STOPs, STOP_GAP apart; failures are retried until STOP_RETRY_WINDOW has passed.
+        Never cancelled half-way by the caller (shielded) and never raises before it tried: raises only when not
+        a single STOP could be sent, so the failure is reported instead of swallowed."""
+        async def run():
+            started = self.clock()
+            sent = failed = 0
+            while sent < STOP_BURST:
+                try:
+                    await asyncio.wait_for(self.send('stop'), STOP_SEND_TIMEOUT)
+                    sent += 1
+                except Exception as failure:
+                    failed += 1
+                    _LOGGER.warning('Screen STOP attempt %s failed (%s): %s', sent + failed, reason, type(failure).__name__)
+                if sent >= STOP_BURST or self.clock() - started > STOP_RETRY_WINDOW:
+                    break
+                await asyncio.sleep(STOP_GAP)
+            if sent:
+                _LOGGER.info('Screen STOP sent %s× (%s, %s failed)', sent, reason, failed)
+            else:
+                _LOGGER.error('Screen STOP could not be sent (%s): the screen may still be moving', reason)
+                raise RuntimeError('screen-stop-not-sent')
+        await asyncio.shield(asyncio.ensure_future(run()))
 
     async def close_if_open(self, timeout=90):
         # «Film stoppen»: one DOWN, the motor runs to its own end stop (no STOP needed). Done when the contact
@@ -101,8 +136,8 @@ class ScreenGuard:
             if not left_closed:
                 raise RuntimeError('screen-opening-not-confirmed')
         finally:
-            # An uncertain UP is never repeated; still attempt one bounded STOP.
+            # An uncertain UP is never repeated; STOP always goes out (a burst, retried on failure).
             try:
-                await asyncio.shield(asyncio.wait_for(self.send('stop'), 5))
+                await self.stop_burst()
             finally:
                 self.moving = False

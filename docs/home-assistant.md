@@ -1,5 +1,22 @@
 # Home Assistant on the Raspberry Pi
 
+## Screen STOP made robust (2026-11-11)
+
+11/11 around noon: a cinema start with the SONOFF button and the screen did not stop at its height. The screen has
+no position feedback, so the only thing that stops it is the timed STOP (30.55 s after UP). Up to 1.15.0 that STOP
+went out once: a failing send (BroadLink busy or a Wi-Fi hiccup, `wait_for` 5 s) or an RF STOP drowned out on the
+shared 433 MHz band (BREL blinds) was never repeated, so the motor ran on to its end stop. Bridge v1.16.0
+(`screen.py`, `stop_burst`): after the run the STOP goes out `STOP_BURST` (3) times, `STOP_GAP` (0.6 s) apart, and a
+failing send is retried until `STOP_RETRY_WINDOW` (8 s) has passed; only when not a single STOP went out does the
+start fail with `screen-stop-not-sent` (logged as an error). The burst is shielded, so a cancelled start (HA restart,
+failure elsewhere) still sends every STOP. The learned codes are fixed codes, not a rolling code, so a STOP to a
+motor that already stands still does nothing. Pressing the button while the screen moves is now an emergency STOP
+(it used to be ignored). Every STOP is logged (`Screen STOP sent 3× …`), so the next incident can be read back in the
+system log. The cause of the 11/11 run itself depends on the HA log of that moment. Install: paste
+`outputs/cinema-bridge-1.16.0-install.txt` (not in Git) in the Terminal & SSH web UI; it backs up `__init__.py`,
+`screen.py`, `manifest.json` and `companion.py`, installs the same `__init__.py` and `companion.py` as the companion
+installer of that morning plus this change, and restarts Core.
+
 ## «Film stoppen» through the Pi (2026-11-10)
 
 The dashboard's stop sent the screen DOWN through the Mac-only BroadLink route (`/api/broadlink`), which the
