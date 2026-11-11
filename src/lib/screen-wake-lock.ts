@@ -95,6 +95,8 @@ export function keepScreenAwake({
   view.addEventListener("touchstart", interact, { capture: true, passive: true });
   view.addEventListener("keydown", interact, { capture: true });
   void request();
+  // Opening from the Home Screen can race Safari becoming fully active, even without a tap.
+  scheduleRetry();
 
   return () => {
     stopped = true;

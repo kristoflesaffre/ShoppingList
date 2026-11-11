@@ -31,6 +31,12 @@ describe("iPad dashboard screen wake lock", () => {
     expect(request).toHaveBeenLastCalledWith("screen");
     expect(s.states.at(-1)).toBe("active"); s.stop();
   });
+  it("retries a not-yet-active Home Screen launch once without requiring a touch", async () => {
+    const s = setup(vi.fn().mockRejectedValueOnce(new Error("document not active")).mockResolvedValueOnce(new Sentinel()));
+    await flush(); expect(s.states.at(-1)).toBe("blocked");
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(s.request).toHaveBeenCalledTimes(2); expect(s.states.at(-1)).toBe("active"); s.stop();
+  });
   it("reacquires after iPadOS releases the lock while the page is still visible", async () => {
     const first = new Sentinel(), second = new Sentinel();
     const s = setup(vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(second)); await flush();
@@ -69,7 +75,7 @@ describe("iPad dashboard screen wake lock", () => {
   });
   it("does not poll indefinitely when iPadOS refuses the lock", async () => {
     const s = setup(vi.fn().mockRejectedValue(new Error("Low Power Mode"))); await flush();
-    await vi.advanceTimersByTimeAsync(60_000); expect(s.request).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(60_000); expect(s.request).toHaveBeenCalledTimes(2);
     expect(s.states.at(-1)).toBe("blocked"); s.stop();
   });
   it("keeps unsupported browsers usable without claiming the screen is held awake", () => {
