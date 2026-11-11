@@ -24,6 +24,7 @@ import { getVisibleShoppingOwnerIds } from "@/lib/shopping-share";
 import {
   categoryHeadingDisplay,
   categorySubgroups,
+  effectiveItemCategory,
   groupMeatSubtypes,
   orderedCategorySectionTitles,
   resolveItemCategoryFromName,
@@ -41,6 +42,8 @@ type TemplateItem = {
   quantity: string;
   section: string;
   order?: number;
+  /** Categorie zoals in de favorietenlijst (zelf gekozen in «Item wijzigen»); leeg = uit de naam. */
+  itemCategory?: string;
   recipeGroupId?: string;
   recipeName?: string;
   recipeLink?: string;
@@ -251,6 +254,7 @@ export default function SelecteerMasterItemsPage() {
         quantity: String(i.quantity),
         section: String(i.section),
         order: typeof i.order === "number" ? i.order : undefined,
+        itemCategory: typeof i.itemCategory === "string" ? i.itemCategory : undefined,
         recipeGroupId:
           typeof i.recipeGroupId === "string" ? i.recipeGroupId : undefined,
         recipeName: typeof i.recipeName === "string" ? i.recipeName : undefined,
@@ -503,7 +507,8 @@ export default function SelecteerMasterItemsPage() {
     for (const item of masterList.items) {
       if (teKopenNames.has(item.name.trim().toLowerCase())) continue;
       if (addedPrevNames.has(item.name.trim().toLowerCase())) continue;
-      const category = resolveItemCategoryFromName(item.name);
+      // Zelfde categorie als in de favorietenlijst: een zelf gekozen categorie gaat voor op de naam.
+      const category = effectiveItemCategory(item);
       const existing = grouped.get(category) ?? [];
       existing.push(item);
       grouped.set(category, existing);
@@ -668,7 +673,7 @@ export default function SelecteerMasterItemsPage() {
             quantity: quantityForCount(item.quantity, item.count),
             checked: false,
             section: item.section,
-            itemCategory: resolveItemCategoryFromName(item.name),
+            itemCategory: effectiveItemCategory(item),
             order: selectedTeKopenItems.length + selectedPrevItems.length + index,
             recipeGroupId: item.recipeGroupId ?? "",
             recipeName: item.recipeName ?? "",
