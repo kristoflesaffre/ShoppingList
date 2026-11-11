@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { applyTheme, readThemePreference } from "@/lib/theme";
+import { keepScreenAwake } from "@/lib/screen-wake-lock";
 
 /**
  * Always-on-scherm voor het tablet-dashboard (AMOLED): na `idleMs` zonder aanraking wordt het
@@ -32,27 +33,20 @@ export function useAlwaysOn(enabled: boolean, idleMs = 2 * 60_000): boolean {
   }, []);
   const on = enabled && wide;
 
-  // Scherm aan houden zolang het dashboard zichtbaar is.
+  // Safari kan de aanvraag bij het openen weigeren of de lock later zelf loslaten.
+  // Herstel bij de eerste aanraking, na terugkeren en na een release van iPadOS.
   React.useEffect(() => {
-    if (!on || !("wakeLock" in navigator)) return;
-    let lock: WakeLockSentinel | null = null;
-    let cancelled = false;
-    const request = () => {
-      if (document.visibilityState !== "visible") return;
-      navigator.wakeLock
-        .request("screen")
-        .then((l) => {
-          if (cancelled) void l.release();
-          else lock = l;
-        })
-        .catch(() => undefined);
-    };
-    request();
-    document.addEventListener("visibilitychange", request);
+    if (!on) return;
+    const root = document.documentElement;
+    const stop = keepScreenAwake({
+      wakeLock: navigator.wakeLock,
+      document,
+      window,
+      onState: (state) => { root.dataset.aodWakeLock = state; },
+    });
     return () => {
-      cancelled = true;
-      document.removeEventListener("visibilitychange", request);
-      void lock?.release().catch(() => undefined);
+      stop();
+      delete root.dataset.aodWakeLock;
     };
   }, [on]);
 
