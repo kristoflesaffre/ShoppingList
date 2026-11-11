@@ -16,4 +16,4 @@ Apple ondersteunt wake locks in geïnstalleerde Home Screen Web Apps vanaf iPadO
 
 ## Controle (11 november 2026)
 
-Regressietests in `src/lib/screen-wake-lock.test.ts` dekken weigering bij starten plus herstel bij touch, systeem-release terwijl de app zichtbaar blijft, overlappende events, achtergrond/terugkeer met Safari-vertraging, cleanup tijdens een nog lopende aanvraag, blijvende weigering en een ontbrekende API. De volledige lokale suite (920 tests), TypeScript-controle en een productiebuild uit een geïsoleerde checkout met alleen deze wijzigingen slagen. Geen fysieke iPad getest.
+Regressietests in `src/lib/screen-wake-lock.test.ts` dekken weigering bij starten plus herstel bij touch, systeem-release terwijl de app zichtbaar blijft, overlappende events, achtergrond/terugkeer met Safari-vertraging, cleanup tijdens een nog lopende aanvraag, blijvende weigering en een ontbrekende API. De volledige lokale suite (921 tests), TypeScript-controle en een productiebuild uit een geïsoleerde checkout met alleen deze wijzigingen slagen. Geen fysieke iPad getest.

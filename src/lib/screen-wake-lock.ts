@@ -65,7 +65,9 @@ export function keepScreenAwake({
     if (stopped || page.visibilityState !== "visible") return;
     retry = view.setTimeout(() => { retry = undefined; void request(); }, 1000);
   };
-  function onRelease() {
+  function onRelease(event: Event) {
+    // A delayed event from an older sentinel must not discard a newly acquired lock.
+    if (event.target !== lock) return;
     lock = null;
     if (stopped) return;
     onState("waiting");

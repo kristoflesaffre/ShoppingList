@@ -44,6 +44,16 @@ describe("iPad dashboard screen wake lock", () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(s.request).toHaveBeenCalledTimes(2); expect(s.states.at(-1)).toBe("active"); s.stop();
   });
+  it("ignores a delayed release event belonging to an older lock", async () => {
+    const first = new Sentinel(), second = new Sentinel();
+    const s = setup(vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(second)); await flush();
+    first.released = true; // iPadOS updates the flag before delivering its queued release event.
+    s.view.dispatchEvent(new Event("focus")); await flush();
+    first.dispatchEvent(new Event("release"));
+    s.view.dispatchEvent(new Event("touchstart")); await vi.advanceTimersByTimeAsync(1500);
+    expect(s.request).toHaveBeenCalledTimes(2); expect(s.states.at(-1)).toBe("active"); s.stop();
+    expect(second.release).toHaveBeenCalledTimes(1);
+  });
   it("holds only one lock despite overlapping focus, visibility, touch and pointer events", async () => {
     let resolve!: (lock: WakeLockSentinel) => void;
     const request = vi.fn(() => new Promise<WakeLockSentinel>(r => { resolve = r; }));
