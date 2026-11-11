@@ -60,5 +60,10 @@ COMPANION_UPTIME
    pos['v']=1000;self.assertIsNotNone(t.snapshot(RAW,13500))
    pos['state']='paused';self.assertIsNotNone(t.snapshot(RAW,14000))
   finally:m.parse_media_session=orig
+ def test_unknown_once_when_stremio_gone(self):
+  t=m.Telemetry();self.assertIsNotNone(t.snapshot(RAW,1000));other='package=other\nstate=PlaybackState {state=PLAYING}\nCOMPANION_UPTIME\n10.0 3.0'
+  first=t.snapshot(other,3000);self.assertEqual(first['state'],'unknown')
+  self.assertEqual([t.snapshot(other,n) for n in range(5000,60000,2000)],[None]*28)
+  self.assertIsNotNone(t.snapshot(RAW,61000))
  def test_no_false_verification(self):self.assertNotIn('verified',m.parse_media_session(RAW))
 if __name__=='__main__':unittest.main()

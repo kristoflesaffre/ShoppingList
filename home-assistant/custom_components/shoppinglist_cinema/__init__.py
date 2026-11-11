@@ -1,5 +1,6 @@
 """Scoped outbound cinema queue; no app server or Mac is involved in execution."""
 import asyncio
+import hashlib
 import logging
 import re
 import time
@@ -30,6 +31,21 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
+BRIDGE_VERSION = '1.20.0'
+# Android TV (ADB) config entry of the projector: reloaded when ADB keeps failing (at most every ADB_RELOAD_EVERY s).
+ADB_ENTRY = '01M64FE12GJ4ED6MR8PMCTGN46'
+ADB_FAILS_BEFORE_RELOAD = 3
+ADB_RELOAD_EVERY = 300
+# Bridge status for the app (cinemaCompanionData «bridge-status»): on every change, otherwise every STATUS_EVERY s.
+STATUS_EVERY = 60
+
+
+def companion_id(key):
+    # Same record id as companionId() in the app (src/lib/server/cinema-companion.ts).
+    h = hashlib.sha256(key.encode()).hexdigest()
+    return f'{h[0:8]}-{h[8:12]}-4{h[13:16]}-a{h[17:20]}-{h[20:32]}'
+
+
 # Bridge heartbeat in the database (projectorBridges.lastSeenAt); the app treats the bridge as online for 60 s.
 HEARTBEAT_EVERY = 20
 # BREL blinds via Motion Blinds (HA position: 0 = closed, 100 = open). Before 19:00 the right one stays half open
@@ -410,12 +426,37 @@ async def async_setup(hass, config):
     telemetry = Telemetry()
     display_metadata = [None]
     metadata_attempt = [None, 0]
+    publish_error = [None]
+    status_sent = [None, float('-inf')]
+    adb_failures = [0, float('-inf')]
+
+    async def report_status(stage, player=None, error=None):
+        # What the Pi sees, for the app (X-Ray explains why nothing shows) and for diagnosis without the HA log:
+        # projector-off · adb-failed · no-stremio-session · stremio · publish-failed. Never titles or positions.
+        owner = settings.get('owner_id')
+        if not owner:
+            return
+        fields = {'stage': stage, 'appId': (player.attributes.get('app_id') if player else None), 'playerState': (player.state if player else None), 'error': error}
+        key = tuple(fields.values())
+        if key == status_sent[0] and time.monotonic() - status_sent[1] < STATUS_EVERY:
+            return
+        now = int(time.time() * 1000)
+        record = f'{owner}:bridge-status'
+        try:
+            await update('cinemaCompanionData', companion_id(record), {'ownerId': owner, 'key': record, 'expiresAt': now + 7 * 86400_000,
+                                                                     'payload': {**fields, 'at': now, 'version': BRIDGE_VERSION}})
+            status_sent[:] = [key, time.monotonic()]
+        except Exception:
+            pass
 
     async def stremio_state():
         response = await hass.services.async_call('androidtv', 'adb_command', {
             'entity_id': ADB_PLAYER, 'command': ("dumpsys media_session | sed -n '/package=com.stremio.one/,/queueTitle=/p'; echo COMPANION_UPTIME; cat /proc/uptime" if settings.get('companion_enabled') else "dumpsys media_session | grep -E 'package=|state=PlaybackState'"),
         }, blocking=True, return_response=True)
         raw = ((response or {}).get(ADB_PLAYER) or {}).get('adb_response')
+        # With the companion the command always prints COMPANION_UPTIME: no output at all = ADB did not run.
+        if settings.get('companion_enabled') and 'COMPANION_UPTIME' not in str(raw or ''):
+            raise RuntimeError('adb-no-output')
         if settings.get('companion_enabled') and settings.get('owner_id'):
             measured_at = int(time.time() * 1000)
             reading = parse_media_session(raw)
@@ -436,7 +477,9 @@ async def async_setup(hass, config):
             if payload:
                 try:
                     await update('cinemaPlayback', bridge, {'ownerId': settings['owner_id'], 'bridgeId': bridge, 'payload': payload})
-                except Exception:
+                    publish_error[0] = None
+                except Exception as failure:
+                    publish_error[0] = str(failure)[:80] or 'publish-failed'
                     _LOGGER.warning('Companion telemetry unavailable; lighting watcher continues')
         return stremio_playback(raw)
 
@@ -446,15 +489,33 @@ async def async_setup(hass, config):
         while True:
             player = hass.states.get(PLAYER)
             current = None
-            # Keep reading while a title was playing, also when Home Assistant stops reporting Stremio as the app in front
-            # (that happens on pause): otherwise X-Ray never learns about the pause and loses the session.
-            if player and player.state in AWAKE and (player.attributes.get('app_id') == STREMIO or previous is not None) and hass.states.get(ADB_PLAYER):
+            # Read Stremio's media session whenever the projector is awake. Not only when Home Assistant reports Stremio as
+            # the app in front: that attribute is unreliable (gone on pause, or another app id after a restart), and then
+            # nothing reached the app (no X-Ray, no dashboard). The ADB dump is local and cheap; without a Stremio session
+            # it simply finds nothing.
+            if player and player.state in AWAKE and hass.states.get(ADB_PLAYER):
                 try:
                     current = await stremio_state()
+                    adb_failures[0] = 0
+                    stage = 'publish-failed' if publish_error[0] else 'stremio' if current else 'no-stremio-session'
+                    await report_status(stage, player, publish_error[0])
                 except asyncio.CancelledError:
                     raise
-                except Exception:
+                except Exception as failure:
                     current = None
+                    adb_failures[0] += 1
+                    await report_status('adb-failed', player, str(failure)[:80] or type(failure).__name__)
+                    # ADB to the projector keeps failing (often after a Home Assistant restart or a projector reboot):
+                    # reload the Android TV (ADB) integration, at most every ADB_RELOAD_EVERY s.
+                    if adb_failures[0] >= ADB_FAILS_BEFORE_RELOAD and time.monotonic() - adb_failures[1] >= ADB_RELOAD_EVERY:
+                        adb_failures[1] = time.monotonic()
+                        _LOGGER.warning('ADB to the projector failed %s times in a row: reloading the Android TV integration', adb_failures[0])
+                        try:
+                            await hass.config_entries.async_reload(ADB_ENTRY)
+                        except Exception as reload_failure:
+                            _LOGGER.warning('Reloading the Android TV integration failed: %s', type(reload_failure).__name__)
+            else:
+                await report_status('projector-off', player)
             action = playback_lights(previous, current)
             if action and not busy.locked():
                 try:

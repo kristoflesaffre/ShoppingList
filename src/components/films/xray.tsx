@@ -9,6 +9,7 @@ import { useDictation } from "@/hooks/use_dictation";
 import { clockTime, displayPosition, freshPlayback, parsePlayback, type Playback } from "@/lib/cinema-companion";
 import { XRAY_LENGTH_DEFAULT, XRAY_LENGTHS, type XrayIdentity, type XrayKind, type XrayLength, type XrayMessage } from "@/lib/cinema-xray";
 import { SegmentedControl } from "@/components/ui/segmented_control";
+import type { BridgeStatus } from "@/lib/server/cinema-xray";
 
 /**
  * X-Ray tijdens het afspelen (canvas «X-Ray · A2» en «X-Ray · gsm · variant 4 Ladder»).
@@ -18,7 +19,7 @@ import { SegmentedControl } from "@/components/ui/segmented_control";
  */
 
 type XrayInfo = { name: string; backdrop: string | null; poster: string | null; episodeTitle: string | null } | null;
-type XrayState = { playback: Playback | null; live: boolean; identity: XrayIdentity | null; info: XrayInfo; messages: XrayMessage[]; hidden: number; aiConfigured: boolean; test?: boolean };
+type XrayState = { playback: Playback | null; live: boolean; identity: XrayIdentity | null; info: XrayInfo; messages: XrayMessage[]; hidden: number; aiConfigured: boolean; test?: boolean; bridge?: BridgeStatus | null };
 type QuickKind = Exclude<XrayKind, "vraag">;
 type Question = { kind: QuickKind; label: string; short: string; scope: string };
 
@@ -59,6 +60,15 @@ const ERRORS: Record<string, string> = {
   "database-busy": "X-Ray heeft het even te druk. Probeer het over een paar seconden opnieuw.",
   "invalid-audio": "De opname kon niet gelezen worden. Probeer het opnieuw.",
   "no-test-title": "Ik vond geen titel met ondertitels in je Stremio-lijst om mee te testen.",
+};
+
+/** Wat de Pi ziet als er niets live is (bridge ≥ 1.20.0). */
+const BRIDGE_HINT: Record<BridgeStatus["stage"], string | null> = {
+  "projector-off": "De Pi ziet de projector als uitgeschakeld.",
+  "adb-failed": "De projector staat aan, maar de Pi kan hem niet uitlezen (ADB). Hij herstelt die verbinding zelf binnen enkele minuten.",
+  "no-stremio-session": "De projector staat aan, maar de Pi ziet niets spelen in Stremio.",
+  "publish-failed": "De Pi ziet Stremio spelen, maar kan het even niet doorsturen.",
+  stremio: null,
 };
 
 const LENGTH_KEY = "xray-answer-length";
@@ -596,6 +606,9 @@ export function XrayPage({ onBack }: { onBack: () => void }) {
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[var(--cinema-screen)] px-6 text-center text-fixed-white">
         <h1 className="text-[22px] font-extrabold">Er speelt nu niets op de projector</h1>
         <p className="max-w-[340px] text-[15px] text-fixed-white/65">Start een film of aflevering in Stremio; X-Ray verschijnt dan vanzelf.</p>
+        {x.state?.bridge && BRIDGE_HINT[x.state.bridge.stage] && (
+          <p className="max-w-[360px] rounded-2xl bg-fixed-white/10 px-4 py-3 text-[13.5px] font-semibold text-fixed-white/80">{BRIDGE_HINT[x.state.bridge.stage]}</p>
+        )}
         <div className="flex flex-wrap justify-center gap-2.5">
           <button type="button" onClick={onBack} className="h-[42px] rounded-full bg-fixed-white px-5 text-[15px] font-bold text-[var(--cinema-screen)]">Terug</button>
           <button type="button" onClick={() => void x.startTest()} disabled={x.starting}

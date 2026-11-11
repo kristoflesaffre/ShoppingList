@@ -1,5 +1,24 @@
 # Home Assistant on the Raspberry Pi
 
+## Dashboard showed nothing while Stremio played (2026-11-11)
+
+Evening of 11/11: Stremio played on the projector, the tablet dashboard (always-on) showed no X-Ray. The Pi was online
+(heartbeat every 20 s, projector `on`) but `cinemaPlayback` had not changed since 17:52. The watcher only read Stremio's
+media session while `media_player.woonkamer_tv_2` reported `app_id` `com.stremio.one`, and an ADB failure was skipped
+silently, so either cause gave nothing at all without a trace (the exact one needs the HA log of that evening).
+Bridge v1.20.0:
+- reads the media session whenever the projector is awake, whatever HA says about the app in front; without a Stremio
+  session the companion reports `unknown` once and then stays quiet (no write every few seconds);
+- with the companion on, an ADB reply without `COMPANION_UPTIME` counts as an ADB failure; after 3 failures in a row
+  the Android TV (ADB) entry `01M64FE12GJ4ED6MR8PMCTGN46` is reloaded, at most every 5 minutes;
+- writes `cinemaCompanionData` «{owner}:bridge-status» (`stage` projector-off · adb-failed · no-stremio-session ·
+  stremio · publish-failed, `appId`, `playerState`, short `error`, `version`) on a change or every 60 s, never titles.
+  The X-Ray page shows it when nothing is live («de Pi kan de projector niet uitlezen (ADB)…»), and it can be read
+  back for diagnosis without the HA log.
+Tests: `scripts/test-cinema-bridge.py` (50), `scripts/test-cinema-companion.py` (11). Install: paste
+`outputs/cinema-bridge-1.20.0-install.txt` (not in Git) in the Terminal & SSH web UI; it backs up the five files and
+restarts Core.
+
 ## X-Ray: rate limit, play after pause (2026-11-11)
 
 Evening of 11/11 («The Swedish Connection»): X-Ray answered «niet bereikbaar» and play after a pause did nothing.

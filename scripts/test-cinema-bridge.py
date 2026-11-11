@@ -356,6 +356,42 @@ class StremioLightsTests(unittest.IsolatedAsyncioTestCase):
         # First reading PLAYING already brings Cinema; pause dims; play again brings Cinema back.
         self.assertEqual(calls, ['cinema_scene', 'lights_20', 'cinema_scene'])
 
+    async def watch(self, app_id, adb, sleeps):
+        calls, captured, reloads = [], [], []
+        async def service(domain, action, data, **_):
+            if domain == 'androidtv':
+                return adb()
+            calls.append('cinema_scene' if domain == 'scene' else f"lights_{data['brightness_pct']}")
+        def get_state(entity):
+            if entity == cinema.PLAYER: return types.SimpleNamespace(state='on', attributes={'app_id': app_id})
+            if entity == cinema.CINEMA_SELECTOR: return types.SimpleNamespace(state='Helder')
+            if entity == cinema.CINEMA_LIGHTS: return types.SimpleNamespace(state='on')
+            return types.SimpleNamespace(state='off', attributes={})
+        async def reload(entry): reloads.append(entry)
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service, async_register=lambda *_: None), bus=types.SimpleNamespace(async_listen_once=lambda *_: None),
+                                     config_entries=types.SimpleNamespace(async_reload=reload))
+        hass.async_create_background_task = lambda coroutine, name: captured.append((name, coroutine)) or types.SimpleNamespace(cancel=lambda: None)
+        hass.async_create_task = lambda coroutine: coroutine.close()
+        await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
+        watcher = next(c for n, c in captured if 'Stremio' in n)
+        for n, c in captured:
+            if c is not watcher: c.close()
+        with patch.object(cinema.asyncio, 'sleep', AsyncMock(side_effect=[None] * sleeps + [asyncio.CancelledError])):
+            with self.assertRaises(asyncio.CancelledError): await watcher
+        return calls, reloads
+
+    async def test_watcher_reads_stremio_even_when_ha_reports_another_app(self):
+        # Home Assistant's app_id is unreliable (gone on pause, other id after a restart): read whenever the projector is on.
+        readings = iter(['PLAYING', 'PAUSED'])
+        calls, _ = await self.watch('com.google.android.tvlauncher', lambda: {cinema.ADB_PLAYER: {'adb_response': self.SAMPLE % next(readings)}}, 1)
+        self.assertEqual(calls, ['cinema_scene', 'lights_20'])
+
+    async def test_failing_adb_reloads_the_integration_once(self):
+        def adb(): raise RuntimeError('adb-unavailable')
+        calls, reloads = await self.watch('com.stremio.one', adb, 6)
+        self.assertEqual(calls, [])
+        self.assertEqual(reloads, [cinema.ADB_ENTRY])
+
 class BlindsTests(unittest.IsolatedAsyncioTestCase):
     """Screen opened: blinds closed; before 19:00 the right one half open for the cat."""
 

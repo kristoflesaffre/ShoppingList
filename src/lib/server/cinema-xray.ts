@@ -366,15 +366,19 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
   return message;
 }
 
+export type BridgeStatus = { stage: "projector-off" | "adb-failed" | "no-stremio-session" | "stremio" | "publish-failed"; appId: string | null; playerState: string | null; error: string | null; at: number; version: string };
 export async function xrayState(owner: string, test = false) {
   const s = await (test ? testCurrent : current)(owner), p = s.playback;
-  if (!p) return { playback: null, live: false, identity: null, info: null, messages: [], hidden: 0, aiConfigured: !!process.env.GEMINI_API_KEY };
+  // Niets live: zeg wat de Pi ziet (record «bridge-status», bridge ≥ 1.20.0), zodat duidelijk is waarom er niets verschijnt.
+  const status = !test && !s.live ? await getData<BridgeStatus>(owner, "bridge-status").catch(() => null) : null;
+  const bridge = status && Date.now() - status.at < 180_000 ? status : null;
+  if (!p) return { playback: null, live: false, identity: null, info: null, messages: [], hidden: 0, aiConfigured: !!process.env.GEMINI_API_KEY, bridge };
   const id = await identify(owner, p).catch(() => null);
   const info = id ? await titleInfo(id).catch(() => null) : null;
   const all = id ? await readXrayMessages(owner, id) : [];
   const cutoff = xrayCutoff(p, Date.now());
   const messages = all.filter(m => m.contextEndMs <= cutoff + 30_000);
-  return { playback: p, live: s.live, identity: id, info, messages, hidden: all.length - messages.length, aiConfigured: !!process.env.GEMINI_API_KEY, position: displayPosition(p), test };
+  return { playback: p, live: s.live, identity: id, info, messages, hidden: all.length - messages.length, aiConfigured: !!process.env.GEMINI_API_KEY, position: displayPosition(p), test, bridge };
 }
 
 // ---------- Testmodus ----------

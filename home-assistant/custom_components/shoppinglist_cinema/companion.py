@@ -96,7 +96,9 @@ class Telemetry:
         now = int(time.time() * 1000) if now is None else now
         p = parse_media_session(raw, metadata)
         if p is None:
-            if not self.last:
+            # No Stremio session (another app, or Stremio closed): report «unknown» once, then stay quiet; the bridge now
+            # reads whenever the projector is on, so a heartbeat here would be a database write every few seconds.
+            if not self.last or self.last['state'] == 'unknown':
                 return None
             p = {**self.last, 'state': 'unknown', 'speed': 0}
         identity = (p['mediaKey'], p['streamFingerprint'])
