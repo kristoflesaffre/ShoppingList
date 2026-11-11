@@ -8,6 +8,7 @@ import { readBoundedText } from "./read-bounded-text";
 import { trustedSubtitleUrl } from "../cinema-addon";
 import { clockTime, displayPosition, parseSubtitles, type Cue, type Playback } from "../cinema-companion";
 import { tmdbHeaders, TMDB_BASE } from "../tmdb";
+import { isPcmWav } from "../wav";
 import type { StremioProgress } from "../stremio-progress";
 import {
   XRAY_CHAT_MODEL_DEFAULT, XRAY_KINDS, XRAY_MODEL_DEFAULT, matchIdentity, xrayCutoff, xrayCostUsd, type XrayIdentity, type XrayKind, type XrayMessage,
@@ -26,6 +27,9 @@ const SUMMARY_TTL = 365 * 86400_000;
 const SUBS_TTL = 60 * 86400_000;
 const ANSWERS_PER_HOUR = 40;
 const SUMMARIES_PER_HOUR = 80;
+const TRANSCRIPTIONS_PER_HOUR = 60;
+/** ± 30 s spraak als 16 kHz mono WAV, in base64. */
+const MAX_AUDIO_BASE64 = 1_400_000;
 const MAX_PREVIOUS_EPISODES = 40;
 const digest = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).digest("hex");
 
@@ -43,12 +47,32 @@ async function claim(owner: string, key: string, ttl: number) {
 }
 /** Hoeveel vragen/samenvattingen dit uur: één teller (lezen + schrijven) i.p.v. tot 40 losse reserveringen. Een zachte
  *  grens: twee vragen op exact hetzelfde moment kunnen er samen één over gaan, dat is geen probleem. */
-async function budget(owner: string, kind: "answer" | "summary") {
-  const hour = Math.floor(Date.now() / 3600_000), max = kind === "answer" ? ANSWERS_PER_HOUR : SUMMARIES_PER_HOUR;
+async function budget(owner: string, kind: "answer" | "summary" | "transcribe") {
+  const hour = Math.floor(Date.now() / 3600_000);
+  const max = kind === "answer" ? ANSWERS_PER_HOUR : kind === "summary" ? SUMMARIES_PER_HOUR : TRANSCRIPTIONS_PER_HOUR;
   const key = `xray-budget:${kind}:${hour}`;
   const used = (await getData<{ used: number }>(owner, key))?.used ?? 0;
   if (used >= max) throw new Error("hourly-limit");
   await putData(owner, key, { used: used + 1 }, 7200_000);
+}
+
+/**
+ * Ingesproken vraag naar tekst (reserve voor als de spraakherkenning van de browser niet werkt). Gemini herkent zelf
+ * Nederlands (ook Vlaams) en Engels, ook door elkaar. De titel die speelt helpt bij namen van personages.
+ */
+export async function transcribeXray(owner: string, audio: unknown, hint: unknown): Promise<{ text: string }> {
+  if (typeof audio !== "string" || audio.length < 100 || audio.length > MAX_AUDIO_BASE64 || !/^[A-Za-z0-9+/]+=*$/.test(audio)) throw new Error("invalid-audio");
+  if (!isPcmWav(new Uint8Array(Buffer.from(audio.slice(0, 64), "base64")))) throw new Error("invalid-audio");
+  await budget(owner, "transcribe");
+  const title = typeof hint === "string" ? hint.replace(/[\r\n]+/g, " ").slice(0, 120).trim() : "";
+  const system = [
+    "Je zet een korte ingesproken vraag om naar tekst.",
+    "De spreker praat Nederlands (vaak Vlaams) of Engels, soms door elkaar. Schrijf letterlijk wat gezegd wordt, in de taal waarin het gezegd wordt, met hoofdletters en leestekens.",
+    "Niet vertalen, niet beantwoorden, geen uitleg en geen aanhalingstekens: enkel de tekst. Hoor je geen verstaanbare spraak, geef dan niets terug.",
+    title ? `De vraag gaat over de film of serie «${title}»; namen van personages en acteurs uit die titel mag je zo schrijven.` : "",
+  ].filter(Boolean).join("\n");
+  const r = await gemini(system, [{ text: "Zet deze opname om naar tekst." }, { inlineData: { mimeType: "audio/wav", data: audio } }], 400, false);
+  return { text: r.text.replace(/\s+/g, " ").trim().slice(0, 600) };
 }
 
 // ---------- Welke titel speelt er? ----------
@@ -137,7 +161,8 @@ export async function subtitlesFor(owner: string, type: "movie" | "series", vide
 
 // ---------- Gemini ----------
 type GeminiResult = { text: string; inTokens: number; outTokens: number; model: string };
-async function gemini(system: string, user: string, maxOut: number, json: boolean, chat = false): Promise<GeminiResult> {
+type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+async function gemini(system: string, user: string | GeminiPart[], maxOut: number, json: boolean, chat = false): Promise<GeminiResult> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("ai-not-configured");
   const model = chat ? process.env.GEMINI_XRAY_CHAT_MODEL || XRAY_CHAT_MODEL_DEFAULT : process.env.GEMINI_XRAY_MODEL || XRAY_MODEL_DEFAULT;
@@ -145,7 +170,7 @@ async function gemini(system: string, user: string, maxOut: number, json: boolea
     method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, signal: AbortSignal.timeout(45000),
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: "user", parts: [{ text: user }] }],
+      contents: [{ role: "user", parts: typeof user === "string" ? [{ text: user }] : user }],
       // Geen «denken»: dat zijn betaalde extra tokens en voor uitleg uit dialoog niet nodig.
       // 3.8 Flash kent geen «minimal»; daar is «low» het zuinigste.
       generationConfig: { temperature: 0.2, maxOutputTokens: maxOut, thinkingConfig: { thinkingLevel: /flash-lite/.test(model) ? "minimal" : "low" }, ...(json ? { responseMimeType: "application/json" } : {}) },

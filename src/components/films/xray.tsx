@@ -5,6 +5,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { useGoogleAuthToken } from "@/lib/google-client";
 import { cn } from "@/lib/utils";
+import { useDictation } from "@/hooks/use_dictation";
 import { clockTime, displayPosition, freshPlayback, parsePlayback, type Playback } from "@/lib/cinema-companion";
 import type { XrayIdentity, XrayKind, XrayMessage } from "@/lib/cinema-xray";
 
@@ -55,6 +56,7 @@ const ERRORS: Record<string, string> = {
   "bridge-unavailable": "De Pi is niet bereikbaar, de projector kan nu niet bediend worden.",
   "projector-busy": "De projector is nog bezig met een vorige opdracht.",
   "database-busy": "X-Ray heeft het even te druk. Probeer het over een paar seconden opnieuw.",
+  "invalid-audio": "De opname kon niet gelezen worden. Probeer het opnieuw.",
 };
 
 const icon = (path: React.ReactNode, size = 18, fill = false) => (
@@ -73,6 +75,7 @@ const ICONS = {
   play: <><path d="M8 5.5v13l11-6.5-11-6.5z" /></>,
   pause: <><rect x="6.5" y="5" width="4" height="14" rx="1.2" /><rect x="13.5" y="5" width="4" height="14" rx="1.2" /></>,
   stop: <><rect x="6" y="6" width="12" height="12" rx="2" /></>,
+  mic: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" /></>,
 };
 
 /** Live projectorstatus (compact record, owner-only). Een korte hapering van de Pi (tot 60 s) telt nog als «live». */
@@ -159,7 +162,11 @@ function useXray(active: boolean) {
     try { await post({ action: "stop" }); setToast("Bioscoop stopt: scherm omlaag, projector uit"); }
     catch (e) { setPending(null); fail(e, "Stoppen lukte niet."); }
   };
-  return { state, playback, live, now, position, error, busy, rewinding, toast, playing, pending, ask, rewind, playPause, stop, setError };
+  const transcribe = async (audio: string) => {
+    try { return String((await post({ action: "transcribe", audio, hint: state?.info?.name ?? "" })).text ?? ""); }
+    catch (e) { throw new Error(ERRORS[e instanceof Error ? e.message : ""] ?? "Omzetten naar tekst lukte niet. Probeer het opnieuw."); }
+  };
+  return { state, playback, live, now, position, error, busy, rewinding, toast, playing, pending, ask, rewind, playPause, stop, setError, transcribe };
 }
 
 type X = ReturnType<typeof useXray>;
@@ -254,16 +261,43 @@ function Message({ m }: { m: XrayMessage }) {
   );
 }
 
+/** Vraagveld met microfoon: spreek je vraag in (Nederlands of Engels), de tekst komt in het veld en je verstuurt zelf. */
 function ChatInput({ x, id }: { x: X; id: string }) {
   const [text, setText] = React.useState("");
-  const send = () => { const q = text.trim(); if (!q || x.busy) return; setText(""); void x.ask("vraag", q); };
+  const input = React.useRef<HTMLInputElement>(null);
+  const dictation = useDictation({
+    onText: (t, final) => { setText(t.slice(0, 600)); if (final) x.setError(""); },
+    onError: message => x.setError(message),
+    transcribe: x.transcribe,
+  });
+  const live = dictation.status !== "idle";
+  const send = () => { const q = text.trim(); if (!q || x.busy || live) return; setText(""); void x.ask("vraag", q); };
+  const placeholder = dictation.status === "transcribing" ? "Even omzetten…" : live ? "Ik luister… stel je vraag" : "Vraag iets over wat je zag…";
   return (
     <form className="flex h-[52px] shrink-0 items-center gap-2 rounded-2xl bg-fixed-white/10 pl-4 pr-[7px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]" onSubmit={e => { e.preventDefault(); send(); }}>
       <label htmlFor={id} className="sr-only">Vraag iets over wat je zag</label>
-      <input id={id} value={text} onChange={e => setText(e.target.value)} maxLength={600} placeholder="Vraag iets over wat je zag…" enterKeyHint="send"
+      <input ref={input} id={id} value={text} onChange={e => setText(e.target.value)} maxLength={600} placeholder={placeholder} enterKeyHint="send" readOnly={live}
         className="min-w-0 flex-1 bg-transparent text-[16px] text-fixed-white outline-none placeholder:text-fixed-white/50" />
-      <button type="submit" aria-label="Vraag versturen" disabled={!text.trim() || !!x.busy}
-        className="flex size-[38px] items-center justify-center rounded-full bg-[var(--cinema-lavender)] text-[var(--cinema-screen)] disabled:opacity-40">{icon(ICONS.send)}</button>
+      {dictation.supported && dictation.chooseLang && !text && !live && (
+        <button type="button" onClick={() => dictation.setLang(dictation.lang === "nl" ? "en" : "nl")}
+          aria-label={`Taal van de microfoon: ${dictation.lang === "nl" ? "Nederlands" : "Engels"}. Tik om te wisselen.`}
+          className="h-[28px] shrink-0 rounded-full bg-fixed-white/10 px-2.5 text-[12px] font-bold tracking-wide text-fixed-white/75 [@media(hover:hover)]:hover:bg-fixed-white/20">
+          {dictation.lang === "nl" ? "NL" : "EN"}
+        </button>
+      )}
+      {dictation.supported && (
+        <button type="button" onClick={() => live ? dictation.stop() : dictation.start()} disabled={dictation.status === "transcribing" || !!x.busy}
+          aria-label={dictation.status === "transcribing" ? "Bezig met omzetten" : live ? "Stoppen met luisteren" : "Vraag inspreken"} aria-pressed={live}
+          className={cn("relative flex size-[38px] shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-60",
+            live ? "bg-[var(--cinema-rose)] text-[var(--cinema-screen)]" : "bg-fixed-white/15 text-fixed-white [@media(hover:hover)]:hover:bg-fixed-white/20")}>
+          {live && dictation.status !== "transcribing" && <span className="absolute inset-0 rounded-full bg-[var(--cinema-rose)] opacity-50 motion-safe:animate-ping" aria-hidden />}
+          {dictation.status === "transcribing"
+            ? <span className="size-4 rounded-full border-2 border-current border-t-transparent motion-safe:animate-spin" aria-hidden />
+            : <span className="relative">{icon(live ? ICONS.stop : ICONS.mic, live ? 14 : 18, live)}</span>}
+        </button>
+      )}
+      <button type="submit" aria-label="Vraag versturen" disabled={!text.trim() || !!x.busy || live}
+        className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-[var(--cinema-lavender)] text-[var(--cinema-screen)] disabled:opacity-40">{icon(ICONS.send)}</button>
     </form>
   );
 }
