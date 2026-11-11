@@ -33,7 +33,7 @@ export async function addonStatus(owner:string,requestOrigin?:string){
  let installReady=false;try{installReady=addonOrigin(c?.origin??process.env.CINEMA_ADDON_ORIGIN??requestOrigin??'').startsWith('https://');}catch{}
  return {installReady,manifestUrl:c&&c.expiresAt>Date.now()?`${addonBase(owner,c)}/manifest.json`:null,expiresAt:c?.expiresAt??null,
   request:pending?{id:pending.id,video:pending.video,requestedAt:pending.requestedAt,trackCount:pending.tracks.length,providerStatus:pending.providerStatus,deviceMatched:belongs(pending)}:null,
-  receipt:receipt?.id===pending?.id?receipt:null};
+  receipt:receipt&&(belongs(receipt)||receipt.id===pending?.id)?receipt:null};
 }
 export async function relaySubtitles(owner:string,c:AddonConfig,parts:string[]){
  const video=parseAddonVideo(parts);if(!video)throw Error('invalid-addon-request');

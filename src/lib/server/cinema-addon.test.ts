@@ -44,3 +44,10 @@ it('serves an auto-selected track before playback starts without granting story 
  f.state.mockResolvedValue({live:false,playback:null});f.fetch.mockResolvedValueOnce(list()).mockResolvedValueOnce(new Response('1\n00:00:01,000 --> 00:00:03,000\nCaption.'));
  const listed=await relaySubtitles(owner,config,parts),segments=new URL(listed.subtitles[0].url).pathname.split('/');await expect(relayTrack(owner,segments.at(-2)!,segments.at(-1)!)).resolves.toContain('Caption.');expect((await addonStatus(owner)).receipt).toMatchObject({sessionId:null,positionMs:null,status:'loaded-unverified'});
 });
+
+it('keeps a loaded track visible when Stremio refreshes the list with richer file metadata',async()=>{
+ f.fetch.mockResolvedValueOnce(list()).mockResolvedValueOnce(new Response('1\n00:00:01,000 --> 00:00:03,000\nCaption.')).mockResolvedValueOnce(list());
+ const first=await relaySubtitles(owner,config,['subtitles','movie','tt1234567.json']),segments=new URL(first.subtitles[0].url).pathname.split('/');
+ await relayTrack(owner,segments.at(-2)!,segments.at(-1)!);await relaySubtitles(owner,config,parts);
+ const status=await addonStatus(owner);expect(status.request?.video.videoHash).toBe('0123456789abcdef');expect(status.receipt?.cueCount).toBe(1);expect(status.receipt?.video.videoHash).toBeNull();expect(status.receipt?.status).toBe('loaded-unverified');
+});

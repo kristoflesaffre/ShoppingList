@@ -24,7 +24,7 @@ export function AddonSetup({token}:{token:string|null}){
    <Button size="sm" variant="secondary" disabled={busy} onClick={()=>void refresh()}>Controleer ontvangst</Button>{' '}
    <Button size="sm" variant="tertiary" tertiaryTone="danger" disabled={busy} onClick={()=>void change('DELETE')}>Trek koppeling in</Button>
    <p role="status">{state.receipt?`Track opgehaald: ${state.receipt.name} · ${state.receipt.cueCount} regels. Dit bewijst nog niet dat de projector deze track toont; scènesynchronisatie blijft ongevalideerd.`:state.request?.providerStatus==='unavailable'?'De aanvraag uit Stremio is ontvangen, maar de ondertitelbron is tijdelijk niet bereikbaar.':state.request?`Ondertitellijst opgevraagd voor ${state.request.video.videoId}: ${state.request.trackCount} keuzes. Er is nog geen track opgehaald.`:'Wachten op een ondertitelaanvraag uit Stremio.'}</p>
-   {state.request&&!state.request.video.videoHash&&<p>Stremio heeft bij deze aanvraag geen bestands-hash meegestuurd. Een exacte bestandsmatch is daarmee nog niet aangetoond.</p>}
+   {(state.receipt?!state.receipt.video.videoHash:state.request&&!state.request.video.videoHash)&&<p>Stremio heeft bij deze trackaanvraag geen bestands-hash meegestuurd. Een exacte bestandsmatch is daarmee nog niet aangetoond.</p>}
   </>}
  </details>;
 }
