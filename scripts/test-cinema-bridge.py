@@ -551,6 +551,9 @@ class SeekHelperTests(unittest.TestCase):
     def test_play_pause_is_a_bridge_action(self):
         import inspect
         self.assertIn("'play-pause'", inspect.getsource(cinema.async_setup))
+        # Resume after pause: the Stremio media session decides, not Home Assistant's foreground-app state.
+        self.assertIn("await control('play-pause', 'play-pause-failed')", inspect.getsource(cinema.async_setup))
+        self.assertNotIn('stremio-not-playing', inspect.getsource(cinema.async_setup))
 
     def test_embedded_helper_matches_its_hash(self):
         import base64, hashlib

@@ -26,10 +26,12 @@ CLOSED_BRIGHTNESS = 20
 # ADB connection to the same projector: Android TV Remote cannot see playback, the media session can.
 ADB_PLAYER = 'media_player.android_tv_192_168_132_133'
 # X-Ray «1 · 2 · 5 min terug»: a one-shot helper (scripts/android/CinemaControl.java) that only seeks Stremio back.
-CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v1.dex'
+CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
+# Bridge heartbeat in the database (projectorBridges.lastSeenAt); the app treats the bridge as online for 60 s.
+HEARTBEAT_EVERY = 20
 # BREL blinds via Motion Blinds (HA position: 0 = closed, 100 = open). Before 19:00 the right one stays half open
 # so the cat can use the door.
 BLIND_LEFT = 'cover.rollershutter_0002'
@@ -245,24 +247,26 @@ async def async_setup(hass, config):
                                                   blocking=True, return_response=True)
         return str(((response or {}).get(ADB_PLAYER) or {}).get('adb_response') or '')
 
-    async def seek_back(delta_ms):
+    async def control(args, error):
         # Install the helper once (or after a projector reset); verify its hash before every use.
         check = f"sha256sum {CONTROL_DEX} 2>/dev/null | cut -c1-64"
         if (await adb(check)).strip() != DEX_SHA256:
             await adb(f"echo {DEX_BASE64} | base64 -d > {CONTROL_DEX} && chmod 644 {CONTROL_DEX}")
             if (await adb(check)).strip() != DEX_SHA256:
-                raise RuntimeError('seek-helper-install-failed')
-        output = await adb(f"CLASSPATH={CONTROL_DEX} app_process /system/bin CinemaControl seek-back {int(delta_ms)}")
+                raise RuntimeError('control-helper-install-failed')
+        output = await adb(f"CLASSPATH={CONTROL_DEX} app_process /system/bin CinemaControl {args}")
         if '"ok":true' not in output:
-            raise RuntimeError('seek-failed')
+            raise RuntimeError(error)
+
+    async def seek_back(delta_ms):
+        await control(f"seek-back {int(delta_ms)}", 'seek-failed')
 
     async def execute(action):
         if action == 'play-pause':
-            # X-Ray: pauze / verder spelen. Enkel als Stremio vooraan staat; nooit de projector aan- of uitzetten.
-            player = hass.states.get(ADB_PLAYER)
-            if not player or player.state not in ('playing', 'paused', 'idle', 'on') or player.attributes.get('app_id') != STREMIO:
-                raise RuntimeError('stremio-not-playing')
-            await hass.services.async_call('media_player', 'media_play_pause', {'entity_id': ADB_PLAYER}, blocking=True)
+            # X-Ray: pauze / verder spelen op Stremio's eigen mediasessie (speelt = pauze, anders play); nooit de projector
+            # aan- of uitzetten. Niet via de toestand van Home Assistant: een gepauzeerde Stremio meldde daar geen
+            # Stremio-app meer, waardoor verder spelen geweigerd werd.
+            await control('play-pause', 'play-pause-failed')
             return
         if action in SEEK_BACK:
             await seek_back(SEEK_BACK[action])
@@ -295,9 +299,17 @@ async def async_setup(hass, config):
                 'entity_id': PLAYER, 'media_content_type': 'url', 'media_content_id': link,
             }, blocking=True)
 
+    last_beat = [0.0, None]
+
     async def heartbeat():
+        # Only when the state changes or every HEARTBEAT_EVERY s (the app calls the bridge offline after 60 s): the
+        # queue is read every 2 s, and a write on every round on top of that hit InstantDB's rate limit.
         state = power_state()
-        await update('projectorBridges', bridge, {'lastSeenAt': int(time.time() * 1000), 'reportedState': 'on' if state in AWAKE else 'off' if state == 'off' else 'unknown'})
+        reported = 'on' if state in AWAKE else 'off' if state == 'off' else 'unknown'
+        if reported == last_beat[1] and time.monotonic() - last_beat[0] < HEARTBEAT_EVERY:
+            return
+        await update('projectorBridges', bridge, {'lastSeenAt': int(time.time() * 1000), 'reportedState': reported})
+        last_beat[:] = [time.monotonic(), reported]
 
     async def worker():
         while True:
@@ -434,7 +446,9 @@ async def async_setup(hass, config):
         while True:
             player = hass.states.get(PLAYER)
             current = None
-            if player and player.state in AWAKE and player.attributes.get('app_id') == STREMIO and hass.states.get(ADB_PLAYER):
+            # Keep reading while a title was playing, also when Home Assistant stops reporting Stremio as the app in front
+            # (that happens on pause): otherwise X-Ray never learns about the pause and loses the session.
+            if player and player.state in AWAKE and (player.attributes.get('app_id') == STREMIO or previous is not None) and hass.states.get(ADB_PLAYER):
                 try:
                     current = await stremio_state()
                 except asyncio.CancelledError:

@@ -77,6 +77,11 @@ def parse_media_session(raw, metadata=None):
     return None
 
 
+# Heartbeat while nothing changes (the app treats a reading older than 12 s as stale) and the seek threshold.
+HEARTBEAT_MS = 6000
+SEEK_MS = 2500
+
+
 class Telemetry:
     def __init__(self):
         self.session = uuid.uuid4().hex
@@ -84,6 +89,7 @@ class Telemetry:
         self.sequence = int(time.time() * 1000)
         self.last = None
         self.sent_at = 0
+        self.published = None
         self.boot_uptime = None
 
     def snapshot(self, raw, now=None, metadata=None):
@@ -99,10 +105,15 @@ class Telemetry:
             self.identity = identity
         self.sequence += 1
         p.update(sessionId=self.session, sequence=self.sequence, observedAt=now)
-        # State/seek changes publish immediately; paused heartbeats at most every 5 seconds.
-        changed = not self.last or p['state'] != self.last['state'] or abs(p['positionMs'] - self.last['positionMs']) >= 1000 or p['sessionId'] != self.last.get('sessionId')
+        # State, title and seek changes publish immediately. Steady playback only needs a heartbeat: the app extrapolates
+        # the position from observedAt and speed, so every 2 s poll used to be a database write (and with the command
+        # queue that hit InstantDB's rate limit, which broke X-Ray). A seek = more than SEEK_MS off the extrapolation.
+        last = self.published
+        expected = None if not last else last['positionMs'] + (max(0, now - last['observedAt']) * last['speed'] if last['state'] == 'playing' else 0)
+        changed = not last or p['state'] != last['state'] or p['sessionId'] != last.get('sessionId') or abs(p['positionMs'] - expected) >= SEEK_MS
         self.last = p
-        if not changed and now - self.sent_at < 5000:
+        if not changed and now - self.sent_at < HEARTBEAT_MS:
             return None
         self.sent_at = now
+        self.published = p
         return p

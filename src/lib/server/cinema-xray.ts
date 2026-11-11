@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { getInstantAdminDb } from "./instant-admin";
+import { getInstantAdminDb, isRateLimited } from "./instant-admin";
 import { companionId, current, getData, putData } from "./cinema-companion";
 import { enqueueProjector, ownerBridge } from "./projector-relay";
 import { loadStremio } from "./stremio-store";
@@ -35,12 +35,20 @@ async function claim(owner: string, key: string, ttl: number) {
   try {
     await db().transact(db().tx.cinemaCompanionData[companionId(`${owner}:${key}`)].create({ ownerId: owner, key: `${owner}:${key}`, payload: { pending: true }, expiresAt: Date.now() + ttl }));
     return true;
-  } catch { return false; }
+  } catch (e) {
+    // «Bestaat al» = iemand anders is bezig. Een overbelaste database is iets anders en mag geen «bezig» worden.
+    if (isRateLimited(e)) throw new Error("database-busy");
+    return false;
+  }
 }
+/** Hoeveel vragen/samenvattingen dit uur: één teller (lezen + schrijven) i.p.v. tot 40 losse reserveringen. Een zachte
+ *  grens: twee vragen op exact hetzelfde moment kunnen er samen één over gaan, dat is geen probleem. */
 async function budget(owner: string, kind: "answer" | "summary") {
   const hour = Math.floor(Date.now() / 3600_000), max = kind === "answer" ? ANSWERS_PER_HOUR : SUMMARIES_PER_HOUR;
-  for (let i = 0; i < max; i++) if (await claim(owner, `xray-budget:${kind}:${hour}:${i}`, 7200_000)) return;
-  throw new Error("hourly-limit");
+  const key = `xray-budget:${kind}:${hour}`;
+  const used = (await getData<{ used: number }>(owner, key))?.used ?? 0;
+  if (used >= max) throw new Error("hourly-limit");
+  await putData(owner, key, { used: used + 1 }, 7200_000);
 }
 
 // ---------- Welke titel speelt er? ----------

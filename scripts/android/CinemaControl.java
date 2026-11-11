@@ -1,8 +1,10 @@
 import java.lang.reflect.*;
 import java.util.*;
 
-/** One-shot Stremio transport helper for the ADB shell: only «seek-back <ms>» on the Stremio media session.
- * Run: CLASSPATH=/data/local/tmp/shoppinglist-cinema-control-v1.dex app_process /system/bin CinemaControl seek-back 60000
+/** One-shot Stremio transport helper for the ADB shell, on the Stremio media session only:
+ * «seek-back <ms>» and «play-pause» (pause when playing or buffering, otherwise play; the session's own state decides,
+ * so a paused Stremio can always be resumed, whatever Home Assistant reports about the foreground app).
+ * Run: CLASSPATH=/data/local/tmp/shoppinglist-cinema-control-v2.dex app_process /system/bin CinemaControl seek-back 60000
  * Prints one JSON line. No other transport actions, no metadata output, no network.
  */
 public final class CinemaControl {
@@ -12,9 +14,10 @@ public final class CinemaControl {
   public static void main(String[] args) {
     String stage="args";
     try {
-      if(args.length!=2||!"seek-back".equals(args[0]))throw new IllegalArgumentException();
-      long delta=Long.parseLong(args[1]);
-      if(delta!=60000&&delta!=120000&&delta!=300000)throw new IllegalArgumentException();
+      boolean toggle=args.length==1&&"play-pause".equals(args[0]);
+      if(!toggle&&(args.length!=2||!"seek-back".equals(args[0])))throw new IllegalArgumentException();
+      long delta=toggle?0:Long.parseLong(args[1]);
+      if(!toggle&&delta!=60000&&delta!=120000&&delta!=300000)throw new IllegalArgumentException();
       stage="looper";
       Class<?> looper=Class.forName("android.os.Looper");
       if(looper.getMethod("getMainLooper").invoke(null)==null)looper.getMethod("prepareMainLooper").invoke(null);
@@ -38,6 +41,14 @@ public final class CinemaControl {
         if(state==null){System.out.println("{\"ok\":false,\"error\":\"no-state\"}");System.exit(1);}
         long position=(Long)call(state,"getPosition",new Class<?>[]{});
         int playing=(Integer)call(state,"getState",new Class<?>[]{});
+        if(toggle){
+          stage="play-pause";
+          Object controls=call(controller,"getTransportControls",new Class<?>[]{});
+          boolean pause=playing==3||playing==6;
+          call(controls,pause?"pause":"play",new Class<?>[]{});
+          System.out.println("{\"ok\":true,\"action\":\""+(pause?"pause":"play")+"\",\"from\":"+playing+"}");
+          return;
+        }
         if(playing==3){
           long updated=(Long)call(state,"getLastPositionUpdateTime",new Class<?>[]{});
           float speed=(Float)call(state,"getPlaybackSpeed",new Class<?>[]{});

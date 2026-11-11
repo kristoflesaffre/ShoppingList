@@ -5,8 +5,6 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { useGoogleAuthToken } from "@/lib/google-client";
 import { cn } from "@/lib/utils";
-import { RoundIcons } from "@/components/ui/round_icon_button";
-import { headerGlassButtonClass } from "@/components/ui/header_round_button";
 import { clockTime, displayPosition, freshPlayback, parsePlayback, type Playback } from "@/lib/cinema-companion";
 import type { XrayIdentity, XrayKind, XrayMessage } from "@/lib/cinema-xray";
 
@@ -56,6 +54,7 @@ const ERRORS: Record<string, string> = {
   "scene-changed": "Je spoelde terug of de aflevering veranderde. Stel de vraag opnieuw.",
   "bridge-unavailable": "De Pi is niet bereikbaar, de projector kan nu niet bediend worden.",
   "projector-busy": "De projector is nog bezig met een vorige opdracht.",
+  "database-busy": "X-Ray heeft het even te druk. Probeer het over een paar seconden opnieuw.",
 };
 
 const icon = (path: React.ReactNode, size = 18, fill = false) => (
@@ -184,6 +183,16 @@ function LivePill() {
 
 const glassPill = "inline-flex items-center justify-center gap-1.5 rounded-full text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] backdrop-blur-md transition-colors disabled:opacity-60";
 
+/** Terug: duidelijke glazen pil met pijl en tekst, op dezelfde donkere glaslaag als de panelen (leesbaar op elke cover). */
+function BackPill({ onBack }: { onBack: () => void }) {
+  return (
+    <button type="button" onClick={onBack} aria-label="Terug"
+      className={cn(glassPill, "h-11 bg-[color-mix(in_srgb,var(--cinema-screen)_72%,transparent)] pl-3 pr-4 text-[14px] font-bold [@media(hover:hover)]:hover:bg-[color-mix(in_srgb,var(--cinema-screen)_86%,transparent)]")}>
+      {icon(<path d="M15 6l-6 6 6 6" />, 18)}Terug
+    </button>
+  );
+}
+
 function PlayButton({ x, size = 64 }: { x: X; size?: number }) {
   return (
     <button type="button" onClick={() => void x.playPause()} disabled={x.pending === "stop"} aria-label={x.playing ? "Pauzeren" : "Verder spelen"}
@@ -208,12 +217,12 @@ function RewindButtons({ x, stretch }: { x: X; stretch?: boolean }) {
 }
 
 /** «Stop» = hele bioscoop af. Eerst bevestigen: dit brengt het scherm omlaag en zet de projector uit. */
-function StopButton({ x, compact }: { x: X; compact?: boolean }) {
+function StopButton({ x, compact, stacked }: { x: X; compact?: boolean; stacked?: boolean }) {
   const [confirm, setConfirm] = React.useState(false);
   React.useEffect(() => { if (!confirm) return; const t = setTimeout(() => setConfirm(false), 6000); return () => clearTimeout(t); }, [confirm]);
   if (x.pending === "stop") return <span className={cn(glassPill, "h-11 bg-fixed-white/[0.12] px-4 text-[14px] font-bold")}>Stoppen…</span>;
   return confirm ? (
-    <span className="inline-flex items-center gap-1.5">
+    <span className={cn("inline-flex items-center gap-1.5", stacked && "flex-col items-stretch")}>
       <button type="button" onClick={() => { setConfirm(false); void x.stop(); }} className={cn(glassPill, "h-11 bg-[var(--cinema-velvet)] px-4 text-[14px] font-extrabold shadow-none")}>
         {icon(ICONS.stop, 15, true)}{compact ? "Stop" : "Ja, stop alles"}
       </button>
@@ -310,24 +319,31 @@ export function XrayTablet({ x, onBack }: { x: X; onBack: () => void }) {
       <div className="relative flex h-full gap-5 px-[max(24px,env(safe-area-inset-left,0px))] pb-[max(24px,env(safe-area-inset-bottom,0px))] pt-[max(24px,env(safe-area-inset-top,0px))] pr-[max(24px,env(safe-area-inset-right,0px))]">
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-3">
-            <button type="button" aria-label="Terug" onClick={onBack} className={headerGlassButtonClass}>{RoundIcons.back}</button>
+            <BackPill onBack={onBack} />
             <LivePill />
           </div>
           <div className="mt-auto max-h-full overflow-y-auto">
             <div className="flex max-w-[620px] flex-col gap-3 rounded-[24px] bg-[color-mix(in_srgb,var(--cinema-screen)_72%,transparent)] p-5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] backdrop-blur-xl">
-              <div className="text-[13px] font-extrabold uppercase tracking-[.08em] text-[var(--cinema-rose)]">{eyebrow}</div>
-              <h1 className="text-[clamp(32px,4.2vw,56px)] font-extrabold leading-none tracking-[-.03em]">{title}</h1>
-              {p && (
-                <div className="flex items-center gap-3 text-[14px] font-bold">
-                  <span>{clockTime(x.position)}</span>
-                  <Progress position={x.position} duration={p.durationMs} className="min-w-0 flex-1" />
-                  {p.durationMs > 0 && <span className="whitespace-nowrap text-fixed-white/60">nog {clockTime(p.durationMs - x.position)}</span>}
+              {/* Titel links; play/pauze als los element rechtsboven in het paneel, «Stop» eronder. */}
+              <div className="flex items-start gap-4">
+                <div className="flex min-w-0 flex-1 flex-col gap-3">
+                  <div className="text-[13px] font-extrabold uppercase tracking-[.08em] text-[var(--cinema-rose)]">{eyebrow}</div>
+                  <h1 className="text-[clamp(32px,4.2vw,56px)] font-extrabold leading-none tracking-[-.03em]">{title}</h1>
+                  {p && (
+                    <div className="flex items-center gap-3 text-[14px] font-bold">
+                      <span>{clockTime(x.position)}</span>
+                      <Progress position={x.position} duration={p.durationMs} className="min-w-0 flex-1" />
+                      {p.durationMs > 0 && <span className="whitespace-nowrap text-fixed-white/60">nog {clockTime(p.durationMs - x.position)}</span>}
+                    </div>
+                  )}
                 </div>
-              )}
+                <div className="flex w-[104px] shrink-0 flex-col items-center gap-2.5">
+                  <PlayButton x={x} />
+                  <StopButton x={x} compact stacked />
+                </div>
+              </div>
               <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                <PlayButton x={x} />
                 <RewindButtons x={x} />
-                <span className="ml-auto"><StopButton x={x} /></span>
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
                 {questionsFor(x).map(q => (
@@ -365,7 +381,7 @@ export function XrayPhone({ x, onBack }: { x: X; onBack: () => void }) {
         <div className="relative aspect-video w-full overflow-hidden bg-fixed-white/5">
           <CoverImage src={x.state?.info?.backdrop} className="h-full w-full object-cover" />
           <div className="absolute inset-x-4 top-3 flex items-center gap-2.5">
-            <button type="button" aria-label="Terug" onClick={onBack} className={headerGlassButtonClass}>{RoundIcons.back}</button>
+            <BackPill onBack={onBack} />
             <LivePill />
           </div>
         </div>

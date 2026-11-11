@@ -46,5 +46,19 @@ COMPANION_UPTIME
   t=m.Telemetry();a=t.snapshot(RAW,1000);b=t.snapshot(RAW.replace(':2:4',':2:5'),2000);self.assertNotEqual(a['sessionId'],b['sessionId']);self.assertGreater(b['sequence'],a['sequence'])
  def test_paused_heartbeat(self):
   t=m.Telemetry();raw=RAW.replace('PLAYING','PAUSED');self.assertIsNotNone(t.snapshot(raw,1000));self.assertIsNone(t.snapshot(raw,2000));self.assertIsNotNone(t.snapshot(raw,7000))
+ def test_steady_playback_only_heartbeats_but_seek_and_pause_publish_at_once(self):
+  orig=m.parse_media_session
+  pos={'v':10000,'state':'playing'}
+  m.parse_media_session=lambda raw,metadata=None:{**orig(RAW),'positionMs':pos['v'],'state':pos['state'],'speed':1.0 if pos['state']=='playing' else 0}
+  try:
+   t=m.Telemetry();self.assertIsNotNone(t.snapshot(RAW,1000))
+   published=0
+   for now in range(3000,13000,2000):
+    pos['v']=10000+(now-1000)
+    published+=t.snapshot(RAW,now) is not None
+   self.assertEqual(published,1)
+   pos['v']=1000;self.assertIsNotNone(t.snapshot(RAW,13500))
+   pos['state']='paused';self.assertIsNotNone(t.snapshot(RAW,14000))
+  finally:m.parse_media_session=orig
  def test_no_false_verification(self):self.assertNotIn('verified',m.parse_media_session(RAW))
 if __name__=='__main__':unittest.main()

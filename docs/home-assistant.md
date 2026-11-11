@@ -1,5 +1,23 @@
 # Home Assistant on the Raspberry Pi
 
+## X-Ray: rate limit, play after pause (2026-11-11)
+
+Evening of 11/11 («The Swedish Connection»): X-Ray answered «niet bereikbaar» and play after a pause did nothing.
+- X-Ray: the server got «Your request exceeded the rate limit» from InstantDB. Since bridge 1.18.0 the Pi read the
+  command queue every 2 s and wrote its heartbeat on every round, and the companion wrote the playback position every
+  2 s; on top of that each question reserved its hourly budget with up to 40 separate writes, and a refused write
+  counted as «budget full». Now: the admin client (`src/lib/server/instant-admin.ts`) retries a rate-limited query or
+  transact twice (0.4 s, 1.2 s), the budget is one counter per hour, a rate limit that remains becomes `database-busy`
+  («X-Ray heeft het even te druk»), and unknown errors are logged by `/api/cinema/xray` instead of swallowed.
+  Bridge v1.19.0: heartbeat only on a change or every 20 s; telemetry publishes state, title and seek changes at once
+  but steady playback only every 6 s (the app extrapolates the position; stale after 12 s).
+- Play after pause: the Pi refused it with `stremio-not-playing` (16:46:52, 16:47:07; the pause at 16:46:38 was
+  `sent`): paused, Home Assistant no longer reports Stremio as the app in front. Bridge v1.19.0 sends play-pause to
+  Stremio's own media session through the helper (`scripts/android/CinemaControl.java` `play-pause`: playing or
+  buffering → pause, else play; dex v2, `control_dex.py`), and keeps reading the session after a pause.
+Install: paste `outputs/cinema-bridge-1.19.0-install.txt` (not in Git) in the Terminal & SSH web UI; it backs up
+`__init__.py`, `companion.py`, `control_dex.py`, `manifest.json` and `screen.py` and restarts Core.
+
 ## Screen STOP made robust (2026-11-11)
 
 11/11 around noon: a cinema start with the SONOFF button and the screen did not stop at its height. The screen has
