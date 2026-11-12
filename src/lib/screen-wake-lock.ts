@@ -5,6 +5,15 @@ type WakeLockSource = Pick<WakeLock, "request">;
 type WakeDocument = Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener">;
 type WakeWindow = Pick<Window, "addEventListener" | "removeEventListener" | "setTimeout" | "clearTimeout">;
 
+/** Events that give WebKit "transient activation" (HTML spec: activation-triggering input events). */
+export const ACTIVATION_EVENTS = ["pointerup", "touchend", "click", "mousedown", "keydown"] as const;
+
+/**
+ * Keeps the screen on while the dashboard is visible. iPadOS rules (WebKit source):
+ * - a request is granted without a tap only after this page got one granted during a tap; a fresh
+ *   page load (Home Screen launch, app update reload) therefore needs one tap before it holds;
+ * - the lock is dropped whenever the page is hidden and is restored on return without a tap.
+ */
 export function keepScreenAwake({
   wakeLock,
   document: page,
@@ -92,10 +101,11 @@ export function keepScreenAwake({
   page.addEventListener("visibilitychange", resume);
   view.addEventListener("pageshow", resume);
   view.addEventListener("focus", resume);
-  // Capture runs before the dark dashboard swallows the first wake-up tap.
-  view.addEventListener("pointerdown", interact, { capture: true, passive: true });
-  view.addEventListener("touchstart", interact, { capture: true, passive: true });
-  view.addEventListener("keydown", interact, { capture: true });
+  // WebKit only grants a wake lock without an earlier grant during "transient activation", which
+  // a touch gives at its END (touchend / pointerup / click), never at touchstart or pointerdown.
+  // Requesting on touchstart would be denied and, while pending, would also swallow this attempt.
+  // Capture runs before the dark dashboard swallows the wake-up tap.
+  for (const type of ACTIVATION_EVENTS) view.addEventListener(type, interact, { capture: true, passive: true });
   void request();
   // Opening from the Home Screen can race Safari becoming fully active, even without a tap.
   scheduleRetry();
@@ -106,9 +116,7 @@ export function keepScreenAwake({
     page.removeEventListener("visibilitychange", resume);
     view.removeEventListener("pageshow", resume);
     view.removeEventListener("focus", resume);
-    view.removeEventListener("pointerdown", interact, true);
-    view.removeEventListener("touchstart", interact, true);
-    view.removeEventListener("keydown", interact, true);
+    for (const type of ACTIVATION_EVENTS) view.removeEventListener(type, interact, true);
     if (lock) {
       lock.removeEventListener("release", onRelease);
       release(lock);

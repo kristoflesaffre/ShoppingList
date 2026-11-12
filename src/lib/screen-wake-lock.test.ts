@@ -21,12 +21,12 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe("iPad dashboard screen wake lock", () => {
-  it("retries a rejected mount request on the first touch, including the dark-view wake-up tap", async () => {
+  it("retries a rejected mount request at the end of the first touch, including the dark-view wake-up tap", async () => {
     const sentinel = new Sentinel();
     const request = vi.fn().mockRejectedValueOnce(new Error("NotAllowedError")).mockResolvedValue(sentinel);
     const s = setup(request); await flush();
     expect(s.states.at(-1)).toBe("blocked");
-    s.view.dispatchEvent(new Event("touchstart")); await flush();
+    s.view.dispatchEvent(new Event("touchend")); await flush();
     expect(request).toHaveBeenCalledTimes(2);
     expect(request).toHaveBeenLastCalledWith("screen");
     expect(s.states.at(-1)).toBe("active"); s.stop();
@@ -50,7 +50,7 @@ describe("iPad dashboard screen wake lock", () => {
     first.released = true; // iPadOS updates the flag before delivering its queued release event.
     s.view.dispatchEvent(new Event("focus")); await flush();
     first.dispatchEvent(new Event("release"));
-    s.view.dispatchEvent(new Event("touchstart")); await vi.advanceTimersByTimeAsync(1500);
+    s.view.dispatchEvent(new Event("pointerup")); await vi.advanceTimersByTimeAsync(1500);
     expect(s.request).toHaveBeenCalledTimes(2); expect(s.states.at(-1)).toBe("active"); s.stop();
     expect(second.release).toHaveBeenCalledTimes(1);
   });
@@ -58,11 +58,11 @@ describe("iPad dashboard screen wake lock", () => {
     let resolve!: (lock: WakeLockSentinel) => void;
     const request = vi.fn(() => new Promise<WakeLockSentinel>(r => { resolve = r; }));
     const s = setup(request);
-    for (const type of ["pageshow", "focus", "pointerdown", "touchstart", "keydown"]) s.view.dispatchEvent(new Event(type));
+    for (const type of ["pageshow", "focus", "pointerup", "touchend", "click", "keydown"]) s.view.dispatchEvent(new Event(type));
     s.page.dispatchEvent(new Event("visibilitychange"));
     expect(request).toHaveBeenCalledTimes(1);
     resolve(new Sentinel() as unknown as WakeLockSentinel); await flush();
-    s.view.dispatchEvent(new Event("pointerdown")); await vi.advanceTimersByTimeAsync(2000);
+    s.view.dispatchEvent(new Event("pointerup")); await vi.advanceTimersByTimeAsync(2000);
     expect(request).toHaveBeenCalledTimes(1); s.stop();
   });
   it("releases on backgrounding and restores on return, with a delayed retry if Safari is not ready", async () => {
@@ -80,13 +80,21 @@ describe("iPad dashboard screen wake lock", () => {
     const s = setup(vi.fn(() => new Promise<WakeLockSentinel>(r => { resolve = r; })));
     s.stop(); const lock = new Sentinel(); resolve(lock as unknown as WakeLockSentinel); await flush();
     expect(lock.release).toHaveBeenCalledTimes(1);
-    s.view.dispatchEvent(new Event("pageshow")); s.view.dispatchEvent(new Event("touchstart"));
+    s.view.dispatchEvent(new Event("pageshow")); s.view.dispatchEvent(new Event("touchend"));
     await vi.advanceTimersByTimeAsync(5000); expect(s.request).toHaveBeenCalledTimes(1);
   });
   it("does not poll indefinitely when iPadOS refuses the lock", async () => {
     const s = setup(vi.fn().mockRejectedValue(new Error("Low Power Mode"))); await flush();
     await vi.advanceTimersByTimeAsync(60_000); expect(s.request).toHaveBeenCalledTimes(2);
     expect(s.states.at(-1)).toBe("blocked"); s.stop();
+  });
+  it("does not request at touchstart or pointerdown, where iPadOS would deny it and block the real attempt", async () => {
+    const request = vi.fn().mockRejectedValueOnce(new Error("NotAllowedError")).mockResolvedValue(new Sentinel());
+    const s = setup(request); await flush();
+    s.view.dispatchEvent(new Event("touchstart")); s.view.dispatchEvent(new Event("pointerdown")); await flush();
+    expect(request).toHaveBeenCalledTimes(1);
+    s.view.dispatchEvent(new Event("click")); await flush();
+    expect(request).toHaveBeenCalledTimes(2); expect(s.states.at(-1)).toBe("active"); s.stop();
   });
   it("keeps unsupported browsers usable without claiming the screen is held awake", () => {
     const states: ScreenWakeLockState[] = [];

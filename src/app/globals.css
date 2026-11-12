@@ -236,6 +236,47 @@ body::after {
   animation: none;
 }
 
+/*
+ * Tablet-dashboard: iPadOS weigert de wake lock na een verse start of update tot iemand één keer tikt
+ * (src/lib/screen-wake-lock.ts); zonder die tik vergrendelt het scherm. Dan vraagt deze pil erom.
+ * Op <html> en niet in de pagina: in always-on schuift `body` (pixelbaan), en `position: fixed` in een
+ * verschoven body zou dan aan de body hangen in plaats van aan het scherm. Tikken mag overal.
+ */
+:root[data-home-view="dashboard"][data-aod-wake-lock="blocked"]::before {
+  content: "Tik één keer op het scherm, dan blijft het aan";
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 9999px;
+  background: var(--white);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 14px 30px -12px rgba(16, 17, 48, 0.6);
+  pointer-events: none;
+  transform: translateX(-50%);
+  /* Kort wachten: na een vrijgave volgt eerst nog een poging zonder tik. */
+  animation: wake-lock-hint-in 300ms ease-out 2s both;
+}
+@keyframes wake-lock-hint-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-home-view="dashboard"][data-aod-wake-lock="blocked"]::before {
+    animation-name: none;
+  }
+}
+
 /* Muur van «Jouw seriesmaak»: twee keer dezelfde strook, die traag naar links schuift en naadloos doorloopt. */
 @keyframes taste-wall-slide {
   to {
