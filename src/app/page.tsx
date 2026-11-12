@@ -76,6 +76,7 @@ import { HomeAgendaSection } from "@/components/home_agenda_section";
 import { useAlwaysOn } from "@/lib/use_always_on";
 import { useLandscapeLock } from "@/lib/use_landscape_lock";
 import { useAppUpdate } from "@/lib/use_app_update";
+import { useLiveSyncWatchdog } from "@/lib/use_live_sync_watchdog";
 import { XrayDashboardOverlay, XrayHomeBanner } from "@/components/films/xray";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { HomeOnboardingEmptyCard } from "@/components/home_onboarding_empty_card";
@@ -3133,6 +3134,8 @@ export default function Home() {
   useLandscapeLock(tabletHomeView === "dashboard");
   // Dashboard blijft dagen open: na een nieuwe versie van de app vanzelf herladen.
   useAppUpdate(tabletHomeView === "dashboard");
+  // Blijft het scherm wakker, dan kan de live verbinding stilvallen: controleren en herstarten.
+  useLiveSyncWatchdog(tabletHomeView === "dashboard");
 
   const agendaFirstOnDesktop =
     !homeSectionConfig.hidden.includes("agenda") &&
