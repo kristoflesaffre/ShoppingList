@@ -12,12 +12,14 @@ import { agendaPhotoFor } from "@/lib/agenda_photos";
 import { agendaDisplayTitle, dedupeBirthdays } from "@/lib/agenda_birthdays";
 import { dropAllDayDuplicates, mergeAllDayDuplicates } from "@/lib/agenda_duplicates";
 import { RouteButton } from "@/components/home_agenda_section";
+import { KalenderTodoBoard } from "@/components/home_todo_section";
 
 /**
- * Kalender › Agenda (canvas «Kalender · B · kalenderillustratie + tegel per afspraak»): bovenaan de
- * volgende afspraak groot naast de kalenderillustratie (met het uur erop) en «Nu: …» als er iets
- * bezig is; daaronder «Deze week», één tegel per afspraak in de kleur van zijn agenda.
- * Opbouw en maten volgen de etenskalender (Podium + Overzicht).
+ * Kalender › Agenda (canvas «KC · eten linksboven, afspraak tikken»): linksboven enkel het eten van vandaag
+ * (zelfde bord als «Eten»), rechts ernaast de to-do's van vandaag als post-its; daaronder «Komende afspraken»,
+ * één tegel per afspraak in de kleur van zijn agenda, met het eten van vandaag als tegel op de plaats van
+ * vandaag. Tik op een tegel = die afspraak (of de hele-dagafspraken van die dag) linksboven; de eetegel of
+ * «Eten van vandaag» zet het eten terug, en na 3 minuten zonder aanraking gebeurt dat vanzelf.
  */
 
 type ApiEvent = {
@@ -32,7 +34,7 @@ type ApiEvent = {
 };
 type ApiState = { configured: boolean; connected: boolean; events: ApiEvent[] };
 
-type WeekEvent = ApiEvent & {
+export type WeekEvent = ApiEvent & {
   startAt: Date;
   endAt: Date;
   dayIso: string;
@@ -109,7 +111,7 @@ export function KalenderAgendaPrefetch() {
 }
 
 /** Afspraken van een paar dagen terug tot 7 dagen verder; gecachet, ververst bij focus en elke 5 minuten. */
-function useAgendaWeek() {
+export function useAgendaWeek() {
   const { token, state, failed, now } = useCachedAgenda<ApiState>(weekRange);
 
   const future = useAgendaFuture(state?.events ?? [], weekRange().timeMax, token);
@@ -165,117 +167,174 @@ function ChevronIcon({ direction }: { direction: "left" | "right" }) {
   );
 }
 
-/** Bovenaan: kalenderillustratie met het uur + de volgende afspraak. */
-function NextHero({ next, current, now }: { next: WeekEvent | null; current: WeekEvent | null; now: Date }) {
-  // Zelfde vak als het bord op «Eten» (250 / 330 px), zodat tekst en rij op dezelfde plaats staan.
-  const illustration = (box: number, size = Math.round(box * 0.8)) => (
+/** Kalenderillustratie met een pil erop (uur of «Hele dag»), in hetzelfde vak als het bord van het eten. */
+function CalendarIllustration({ box, label, color }: { box: number; label: string; color: Rgb }) {
+  const size = Math.round(box * 0.8);
+  return (
     <span className="flex shrink-0 items-center justify-center" style={{ width: box, height: box }}>
       <span className="relative block shrink-0" style={{ width: size, height: size }}>
         <Image src="/images/ui/kalender_320.webp" alt="" width={320} height={320} priority className="size-full object-contain drop-shadow-[0_24px_30px_rgba(120,60,0,0.25)]" />
-        {next ? (
-          <span
-            className="absolute bottom-[12%] left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap rounded-pill bg-[var(--white)] font-extrabold shadow-[0_8px_18px_-10px_rgba(0,0,0,0.35)]"
-            style={{ height: size * 0.16, paddingInline: size * 0.06, fontSize: size * 0.09, color: deep(next.color, 0.6) }}
-          >
-            {next.allDay ? "Hele dag" : hhmm(next.startAt)}
-          </span>
-        ) : null}
+        <span
+          className="absolute bottom-[12%] left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap rounded-pill bg-[var(--white)] font-extrabold shadow-[0_8px_18px_-10px_rgba(0,0,0,0.35)]"
+          style={{ height: size * 0.16, paddingInline: size * 0.06, fontSize: size * 0.09, color: deep(color, 0.6) }}
+        >
+          {label}
+        </span>
       </span>
     </span>
   );
-  const dateLabel = next
-    ? next.startAt.toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "long" }).toUpperCase()
-    : "";
-  // Canvas «Kalender · hero met foto · C»: heeft de volgende afspraak een foto, dan vult die de bovenband.
-  const photo = next && !next.allDay ? agendaPhotoFor(next.title, next.location) : null;
-  // Zachte maskers i.p.v. vaste kleuren: de foto vloeit uit in elke tint (en in het donkere thema).
-  const deskMask =
-    "linear-gradient(90deg, transparent 0%, transparent 38%, #000 70%), linear-gradient(180deg, transparent 0%, #000 24%, #000 66%, transparent 100%)";
-  // Mobiel: bovenaan langer uitgewassen, zodat de kop («Kalender», Eten/Agenda) leesbaar blijft.
-  const mobileMask = "linear-gradient(180deg, transparent 0%, transparent 8%, #000 36%, #000 54%, transparent 100%)";
+}
+
+/** «Eten van vandaag»: terug naar het gerecht linksboven. */
+function BackToFood({ thumb, onClick }: { thumb: string | null; onClick: () => void }) {
   return (
-    <section
-      aria-label={next ? `Volgende afspraak: ${agendaDisplayTitle(next.title)}` : "Geen afspraken meer deze week"}
-      className="relative flex flex-col items-center gap-2 text-center lg:flex-row lg:items-center lg:gap-12 lg:pl-6 lg:text-left"
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-[42px] items-center gap-2 rounded-pill bg-[var(--white)]/85 pl-1.5 pr-4 text-[15px] font-bold text-text-primary shadow-[0_1px_2px_rgba(16,17,48,0.06)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
     >
-      {photo ? (
-        <span aria-hidden className="pointer-events-none absolute left-1/2 top-[-72px] h-[420px] w-screen -translate-x-1/2 lg:top-[-104px] lg:h-[calc(100%+150px)]">
-          <span className="absolute inset-0 lg:hidden" style={{ WebkitMaskImage: mobileMask, maskImage: mobileMask }}>
-            <Image src={`${photo}_full.webp`} alt="" fill priority sizes="100vw" className="object-cover saturate-[.95]" />
-          </span>
-          <span
-            className="absolute inset-0 hidden lg:block"
-            style={{ WebkitMaskImage: deskMask, maskImage: deskMask, WebkitMaskComposite: "source-in", maskComposite: "intersect" }}
-          >
-            <Image src={`${photo}_full.webp`} alt="" fill priority sizes="100vw" className="object-cover object-center saturate-[.95]" />
-          </span>
-        </span>
-      ) : null}
-      {photo ? (
-        // Zelfde ruimte als de illustratie, zodat titel en rij op dezelfde plaats blijven; de foto toont erachter.
-        <span aria-hidden className="block h-[250px] w-full lg:hidden" />
+      {thumb ? (
+        // eslint-disable-next-line @next/next/no-img-element -- receptfoto (data-URL of extern)
+        <img src={thumb} alt="" className="size-[30px] rounded-full object-cover" />
       ) : (
-        <>
-          <span className="lg:hidden">{illustration(250)}</span>
-          <span className="hidden lg:block">{illustration(330)}</span>
-        </>
+        <span aria-hidden className="size-[30px] rounded-full border-[1.5px] border-dashed border-[var(--blue-200)] bg-[var(--blue-25)]" />
       )}
-      {/* Mobiel: plaats voor een titel van twee regels, zodat de rij eronder bij «Eten» en «Agenda» even hoog staat. */}
-      <div
-        className={cn(
-          "relative flex min-w-0 flex-col items-center max-lg:min-h-[146px] lg:flex-1 lg:items-start",
-          photo && "lg:min-h-[330px] lg:justify-center",
-        )}
-      >
-        {next ? (
-          <>
-            <span className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-[var(--blue-500)] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]">
-              {untilLabel(next.startAt, now)}
-            </span>
-            <span className="text-[13px] font-bold tracking-[0.02em] text-[var(--text-secondary)] lg:text-sm">{dateLabel}</span>
-            <h2 className="mt-1.5 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em] text-text-primary lg:mt-2 lg:max-w-[520px] lg:text-[46px] lg:leading-[1.04] lg:tracking-[-0.03em]">
-              {agendaDisplayTitle(next.title)}
-            </h2>
-            <p className="mt-1.5 text-sm font-semibold text-[var(--text-secondary)] lg:mt-2.5 lg:text-[15px]">
-              {next.allDay ? "Hele dag" : `${hhmm(next.startAt)} – ${hhmm(next.endAt)}`}
-              {next.location ? ` · ${next.location}` : ""}
-            </p>
-          </>
-        ) : (
-          <>
-            <h2 className="text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em] text-text-primary lg:text-[40px]">Niets meer gepland</h2>
-            <p className="mt-1.5 text-sm font-semibold text-[var(--text-secondary)]">Deze week staat er verder niets in je agenda.</p>
-          </>
-        )}
-        {current ? (
-          <span className="mt-4 inline-flex max-w-full items-center gap-2.5 rounded-[16px] bg-[var(--white)]/75 px-3.5 py-2.5 text-[13.5px] text-text-primary lg:mt-5 lg:text-sm">
-            <span className="size-2 shrink-0 rounded-full bg-[#e06a6a]" aria-hidden />
-            <span className="truncate">
-              <b>Nu:</b> {agendaDisplayTitle(current.title)} · tot {hhmm(current.endAt)}
-            </span>
-          </span>
-        ) : null}
+      Eten van vandaag
+    </button>
+  );
+}
+
+/**
+ * Linksboven na een tik op een afspraak (canvas «KC» B): foto met afgeronde hoeken (geen bord, zodat je ziet
+ * dat het geen gerecht is) of de kalenderillustratie met het uur; dag, titel, uur en plaats; route en terug.
+ */
+function EventHero({ e, now, foodThumb, onBack }: { e: WeekEvent; now: Date; foodThumb: string | null; onBack: () => void }) {
+  const photo = agendaPhotoFor(e.title, e.location);
+  const nowMs = now.getTime();
+  const busy = !e.allDay && e.startAt.getTime() <= nowMs && e.endAt.getTime() > nowMs;
+  const past = e.endAt.getTime() <= nowMs;
+  const pill = busy ? `Nu · tot ${hhmm(e.endAt)}` : past ? "Voorbij" : `${dayLabel(e.startAt, now)} · ${hhmm(e.startAt)}`;
+  const dateLabel = e.startAt.toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "long" });
+  const media = (box: number, radius: number) =>
+    photo ? (
+      <span className="flex shrink-0 items-center justify-center" style={{ width: box, height: box }}>
+        <span
+          className="relative block overflow-hidden"
+          style={{ width: box * 0.92, height: box * 0.92, borderRadius: radius, boxShadow: `0 0 0 6px rgba(255,255,255,0.75), 0 26px 40px -18px ${rgb(e.color, 0.55)}` }}
+        >
+          <Image src={`${photo}_480.webp`} alt="" fill sizes="260px" className="object-cover" />
+        </span>
+      </span>
+    ) : (
+      <CalendarIllustration box={box} label={hhmm(e.startAt)} color={e.color} />
+    );
+  return (
+    <section aria-label={`Afspraak: ${agendaDisplayTitle(e.title)}`} className="flex flex-col items-center gap-2 text-center lg:flex-row lg:items-center lg:gap-8 lg:pl-2 lg:text-left">
+      <span className="lg:hidden">{media(220, 36)}</span>
+      <span className="hidden lg:block">{media(260, 44)}</span>
+      <div className="flex min-w-0 flex-col items-center max-lg:min-h-[146px] lg:flex-1 lg:items-start">
+        <span
+          className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]"
+          style={{ color: deep(e.color, 0.6) }}
+        >
+          {pill}
+        </span>
+        <span className="text-[13px] font-bold text-[var(--text-secondary)] first-letter:uppercase lg:text-sm">
+          {dateLabel}
+          {/* Agendanaam enkel als het een echte naam is (een Google-agenda heet vaak gewoon het e-mailadres). */}
+          {e.calendarName && !e.calendarName.includes("@") ? ` · ${e.calendarName}` : ""}
+        </span>
+        <h2 className="mt-1.5 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em] text-text-primary lg:mt-2 lg:max-w-[460px] lg:text-[40px] lg:leading-[1.05] lg:tracking-[-0.03em]">
+          {agendaDisplayTitle(e.title)}
+        </h2>
+        <p className="mt-1.5 text-sm font-semibold text-[var(--text-secondary)] lg:mt-2.5 lg:text-[15px]">
+          {`${hhmm(e.startAt)} – ${hhmm(e.endAt)}`}
+          {e.location ? ` · ${e.location}` : ""}
+        </p>
+        <span className="mt-4 flex items-center gap-2.5 lg:mt-5">
+          {e.location && !past ? <RouteButton location={e.location} color={e.color} className="static size-[42px]" /> : null}
+          <BackToFood thumb={foodThumb} onClick={onBack} />
+        </span>
       </div>
     </section>
   );
 }
 
-function EventTile({ e, now, isNext }: { e: WeekEvent; now: Date; isNext: boolean }) {
+/** Linksboven na een tik op een «Hele dag»-tegel: de dag en al zijn hele-dagafspraken. */
+function AllDayHero({ events, now, foodThumb, onBack }: { events: WeekEvent[]; now: Date; foodThumb: string | null; onBack: () => void }) {
+  const c = events[0].color;
+  const dateLabel = events[0].startAt.toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "long" });
+  const label = dayLabel(events[0].startAt, now);
+  return (
+    <section aria-label={`Hele dag, ${dateLabel}`} className="flex flex-col items-center gap-2 text-center lg:flex-row lg:items-center lg:gap-8 lg:pl-2 lg:text-left">
+      <span className="lg:hidden"><CalendarIllustration box={220} label="Hele dag" color={c} /></span>
+      <span className="hidden lg:block"><CalendarIllustration box={260} label="Hele dag" color={c} /></span>
+      <div className="flex min-w-0 flex-col items-center max-lg:min-h-[146px] lg:flex-1 lg:items-start">
+        <span
+          className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]"
+          style={{ color: deep(c, 0.6) }}
+        >
+          {label} · hele dag
+        </span>
+        <span className="text-[13px] font-bold text-[var(--text-secondary)] first-letter:uppercase lg:text-sm">{dateLabel}</span>
+        <ul className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0 text-left">
+          {events.map((e) => (
+            <li key={e.id} className="flex items-stretch gap-2.5">
+              <span aria-hidden className="w-1 shrink-0 rounded-sm" style={{ backgroundColor: rgb(e.color) }} />
+              <span className="text-[22px] font-extrabold leading-[1.15] tracking-[-0.02em] text-text-primary lg:text-[30px]">{agendaDisplayTitle(e.title)}</span>
+            </li>
+          ))}
+        </ul>
+        <span className="mt-4 lg:mt-5">
+          <BackToFood thumb={foodThumb} onClick={onBack} />
+        </span>
+      </div>
+    </section>
+  );
+}
+
+/** Klikbare tegel: tik (of Enter/spatie) kiest de afspraak; knoppen en links in de tegel (route) gaan voor. */
+function selectProps(selected: boolean, onSelect: () => void) {
+  return {
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-pressed": selected,
+    onClick: (ev: React.MouseEvent) => {
+      if ((ev.target as HTMLElement).closest("a,button")) return;
+      onSelect();
+    },
+    onKeyDown: (ev: React.KeyboardEvent) => {
+      if (ev.target !== ev.currentTarget || (ev.key !== "Enter" && ev.key !== " ")) return;
+      ev.preventDefault();
+      onSelect();
+    },
+  };
+}
+/** Gekozen tegel: blauwe rand zoals de gekozen dag op «Eten». De volgende afspraak krijgt enkel het label «Volgende», geen rand, zodat die niet op een keuze lijkt. */
+const SELECTED_RING = "0 0 0 2px var(--blue-500), 0 0 0 5px var(--blue-50)";
+const TILE_INTERACTIVE =
+  "cursor-pointer transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+
+type Selectable = { selected: boolean; onSelect: () => void };
+
+function EventTile({ e, now, isNext, selected, onSelect }: { e: WeekEvent; now: Date; isNext: boolean } & Selectable) {
   const past = e.endAt.getTime() <= now.getTime();
   const photo = agendaPhotoFor(e.title, e.location);
-  if (photo) return <PhotoEventTile e={e} now={now} isNext={isNext} past={past} photo={photo} />;
+  if (photo) return <PhotoEventTile e={e} now={now} isNext={isNext} past={past} photo={photo} selected={selected} onSelect={onSelect} />;
   return (
     <article
+      {...selectProps(selected, onSelect)}
       data-next={isNext ? "true" : undefined}
       aria-label={`${dayLabel(e.startAt, now).toLowerCase()}, ${e.allDay ? "hele dag" : hhmm(e.startAt)}: ${agendaDisplayTitle(e.title)}`}
       className={cn(
         "relative h-[190px] w-[150px] flex-none snap-start rounded-[26px] p-3.5 lg:h-[230px] lg:w-[220px] lg:p-4",
-        past && "opacity-50",
+        TILE_INTERACTIVE,
+        past && !selected && "opacity-50",
       )}
       style={{
         backgroundImage: `linear-gradient(170deg, ${rgb(e.color, 0.2)} 0%, transparent 75%)`,
         backgroundColor: "var(--white)",
-        boxShadow: isNext ? `0 0 0 2.5px ${rgb(e.color)}, 0 14px 30px -18px ${rgb(e.color, 0.7)}` : "inset 0 0 0 1px var(--border-subtle)",
+        boxShadow: selected ? SELECTED_RING : "inset 0 0 0 1px var(--border-subtle)",
       }}
     >
       {isNext ? <NextBadge color={e.color} /> : null}
@@ -315,7 +374,7 @@ function NextBadge({ color }: { color: Rgb }) {
  * lichter en zachter met een witte waas, onderaan wazig en ingekleurd in de lichte afspraakkleur. Dag + uur
  * in een witte pil, titel en uur · plaats in een donkere tint van die kleur; route-knop rechtsboven.
  */
-function PhotoEventTile({ e, now, isNext, past, photo }: { e: WeekEvent; now: Date; isNext: boolean; past: boolean; photo: string }) {
+function PhotoEventTile({ e, now, isNext, past, photo, selected, onSelect }: { e: WeekEvent; now: Date; isNext: boolean; past: boolean; photo: string } & Selectable) {
   const c = e.color;
   const light = c.map((v) => Math.round(255 - (255 - v) * 0.2));
   const tint = (a: number) => `rgba(${light[0]},${light[1]},${light[2]},${a})`;
@@ -327,10 +386,11 @@ function PhotoEventTile({ e, now, isNext, past, photo }: { e: WeekEvent; now: Da
   const day = dayLabel(e.startAt, now);
   return (
     <article
+      {...selectProps(selected, onSelect)}
       data-next={isNext ? "true" : undefined}
       aria-label={`${dayLabel(e.startAt, now).toLowerCase()}, ${hhmm(e.startAt)}: ${title}`}
-      className={cn("relative h-[190px] w-[150px] flex-none snap-start rounded-[26px] lg:h-[230px] lg:w-[220px]", past && "opacity-50")}
-      style={{ boxShadow: isNext ? `0 0 0 2.5px ${rgb(c)}, 0 14px 30px -18px ${rgb(c, 0.7)}` : "0 12px 24px -18px rgba(16,17,48,0.45)" }}
+      className={cn("relative h-[190px] w-[150px] flex-none snap-start rounded-[26px] lg:h-[230px] lg:w-[220px]", TILE_INTERACTIVE, past && !selected && "opacity-50")}
+      style={{ boxShadow: selected ? SELECTED_RING : "0 12px 24px -18px rgba(16,17,48,0.45)" }}
     >
       <span className="pointer-events-none absolute inset-0 isolate overflow-hidden rounded-[26px]" aria-hidden>
         <Image src={`${photo}_480.webp`} alt="" fill sizes="(min-width: 1024px) 220px, 150px" className="object-cover brightness-[1.2] contrast-[.78] saturate-[.82]" />
@@ -381,22 +441,24 @@ function PhotoEventTile({ e, now, isNext, past, photo }: { e: WeekEvent; now: Da
  * Alle hele-dag-afspraken van één dag in één tegel (zelfde stijl als «Hele dag» op de startpagina):
  * dag + aantal, «Hele dag» groot, daaronder de afspraken met een kleurstreepje. Geen foto.
  */
-function AllDayTile({ events, now, isNext }: { events: WeekEvent[]; now: Date; isNext: boolean }) {
+function AllDayTile({ events, now, isNext, selected, onSelect }: { events: WeekEvent[]; now: Date; isNext: boolean } & Selectable) {
   const c = events[0].color;
   const past = events.every((e) => e.endAt.getTime() <= now.getTime());
   const shown = events.slice(0, 3);
   return (
     <article
+      {...selectProps(selected, onSelect)}
       data-next={isNext ? "true" : undefined}
       aria-label={`${dayLabel(events[0].startAt, now).toLowerCase()}, hele dag: ${events.map((e) => agendaDisplayTitle(e.title)).join(", ")}`}
       className={cn(
         "relative flex h-[190px] w-[150px] flex-none snap-start flex-col rounded-[26px] p-3.5 lg:h-[230px] lg:w-[220px] lg:p-4",
-        past && "opacity-50",
+        TILE_INTERACTIVE,
+        past && !selected && "opacity-50",
       )}
       style={{
         backgroundImage: `linear-gradient(170deg, ${rgb(c, 0.16)} 0%, transparent 62%)`,
         backgroundColor: "var(--white)",
-        boxShadow: isNext ? `0 0 0 2.5px ${rgb(c)}, 0 14px 30px -18px ${rgb(c, 0.7)}` : "inset 0 0 0 1px var(--border-subtle)",
+        boxShadow: selected ? SELECTED_RING : "inset 0 0 0 1px var(--border-subtle)",
       }}
     >
       {isNext ? (
@@ -495,19 +557,70 @@ function TileSkeleton() {
   );
 }
 
-/** Agendaweergave van de kalender. `onTint` geeft de kleur van de volgende afspraak voor de band bovenaan. */
-export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) {
+/** Het eten van vandaag, aangeleverd door de kalenderpagina (zelfde bord en dagkaart als «Eten»). */
+export type AgendaFood = {
+  /** Linksboven: het gerecht van vandaag. */
+  hero: React.ReactNode;
+  /** Tegel in de rij op de plaats van vandaag. */
+  tile: (p: { selected: boolean; onSelect: () => void }) => React.ReactNode;
+  /** Kleine foto voor «Eten van vandaag». */
+  thumb: string | null;
+};
+
+type Selection = { kind: "food" } | { kind: "event"; id: string } | { kind: "allDay"; day: string };
+/** Zonder aanraking springt de keuze na zoveel tijd terug naar het eten. */
+const BACK_TO_FOOD_MS = 3 * 60_000;
+
+/**
+ * Agendaweergave van de kalender. `onTint` geeft de kleur van de gekozen afspraak voor de band bovenaan
+ * (null = het eten is gekozen; dan kleurt de pagina mee met het gerecht).
+ */
+export function KalenderAgenda({ onTint, food }: { onTint: (c: Rgb | null) => void; food: AgendaFood }) {
   const { state, failed, events, now, future, connect } = useAgendaWeek();
   const nowMs = now.getTime();
   const upcoming = events.filter((e) => e.endAt.getTime() > nowMs);
-  const current = upcoming.find((e) => !e.allDay && e.startAt.getTime() <= nowMs) ?? null;
   const next = upcoming.find((e) => e.startAt.getTime() > nowMs) ?? null;
   // In de rij: de vorige dagen (vervaagd), vandaag en de rest van de week; hele-dag per dag gebundeld.
   const lane = buildLane(events);
+  // Het eten van vandaag staat op de plaats van vandaag: vóór de eerste tegel van vandaag of later.
+  const todayIso = dayIso(now);
+  const foodAt = (() => {
+    const i = lane.findIndex((item) => (item.kind === "event" ? item.e.dayIso : item.day) >= todayIso);
+    return i === -1 ? lane.length : i;
+  })();
+
+  const [sel, setSel] = React.useState<Selection>({ kind: "food" });
+  const selectedEvent = sel.kind === "event" ? (events.find((e) => e.id === sel.id) ?? null) : null;
+  const selectedAllDay =
+    sel.kind === "allDay" ? (lane.find((item): item is Extract<LaneItem, { kind: "allDay" }> => item.kind === "allDay" && item.day === sel.day) ?? null) : null;
+  const showFood = !selectedEvent && !selectedAllDay;
+  const tint = selectedEvent?.color ?? selectedAllDay?.events[0]?.color ?? null;
 
   React.useEffect(() => {
-    onTint(next?.color ?? current?.color ?? null);
-  }, [next?.color, current?.color, onTint]);
+    onTint(tint);
+  }, [tint, onTint]);
+
+  // Na een paar minuten zonder aanraking terug naar het eten.
+  React.useEffect(() => {
+    if (showFood) return;
+    let timer = window.setTimeout(() => setSel({ kind: "food" }), BACK_TO_FOOD_MS);
+    const reset = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setSel({ kind: "food" }), BACK_TO_FOOD_MS);
+    };
+    window.addEventListener("pointerdown", reset, { passive: true });
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("pointerdown", reset);
+    };
+  }, [showFood]);
+
+  const choose = (next: Selection) => {
+    setSel(next);
+    // Gsm: het detail staat bovenaan, de rij een stuk lager.
+    if (window.matchMedia("(max-width: 1023px)").matches) window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const backToFood = () => setSel({ kind: "food" });
 
   const laneRef = React.useRef<HTMLDivElement>(null);
   const moreRef = React.useRef<HTMLDivElement>(null);
@@ -520,19 +633,18 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
     if (!el) return;
     setCanScroll({ back: el.scrollLeft > 4, forward: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
   }, []);
-  // Bij laden: de volgende afspraak links in beeld, met een stukje van de vorige ervoor.
-  const nextId = next?.id ?? null;
+  // Bij laden: de eetegel van vandaag links in beeld, met een stukje van de vorige tegel ervoor.
   React.useLayoutEffect(() => {
     const el = laneRef.current;
     if (!el) return;
-    const tile = el.querySelector<HTMLElement>('[data-next="true"]');
+    const tile = el.querySelector<HTMLElement>('[data-lane-anchor="true"]');
     // Zelfde plaats als het snappunt: scroll-padding laat een derde van de vorige tegel zien.
     if (!positioned.current) {
       if (tile) el.scrollLeft = Math.max(0, tile.offsetLeft - el.offsetLeft - (parseFloat(getComputedStyle(el).scrollPaddingLeft) || 0));
       positioned.current = true;
     }
     updateArrows();
-  }, [nextId, lane.length, updateArrows]);
+  }, [foodAt, lane.length, updateArrows]);
   React.useEffect(() => {
     const root = laneRef.current;
     const target = moreRef.current;
@@ -559,20 +671,25 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
     el.scrollBy({ left: dir * Math.max(240, el.clientWidth * 0.8), behavior: "smooth" });
   };
 
+  // Linksboven: het eten (standaard) of de gekozen afspraak; rechts de to-do's (gsm: onder de rij).
+  const hero = selectedEvent ? (
+    <EventHero e={selectedEvent} now={now} foodThumb={food.thumb} onBack={backToFood} />
+  ) : selectedAllDay ? (
+    <AllDayHero events={selectedAllDay.events} now={now} foodThumb={food.thumb} onBack={backToFood} />
+  ) : (
+    food.hero
+  );
+  const shell = (laneBlock: React.ReactNode) => (
+    <div className="grid grid-cols-[minmax(0,1fr)] [grid-template-areas:'hero''lane''todo'] lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-8 lg:[grid-template-areas:'hero_todo''lane_lane']">
+      <div className="mt-2 [grid-area:hero] lg:mt-4">{hero}</div>
+      <KalenderTodoBoard className="mt-8 [grid-area:todo] lg:mt-6 lg:w-[440px] lg:self-start" />
+      <div className="min-w-0 [grid-area:lane]">{laneBlock}</div>
+    </div>
+  );
+
   if (!state && !failed) {
-    return (
+    return shell(
       <div aria-label="Agenda laden" aria-busy>
-        <div className="mt-2 flex flex-col items-center gap-2 lg:mt-4 lg:flex-row lg:gap-12 lg:pl-6">
-          <span className="flex size-[250px] items-center justify-center lg:size-[330px]">
-            <span className="shimmer block size-[200px] rounded-[40px] lg:size-[264px]" />
-          </span>
-          <span className="flex flex-col items-center gap-2.5 lg:items-start">
-            <span className="shimmer block h-6 w-32 rounded-pill" />
-            <span className="shimmer block h-3.5 w-44 rounded-md" />
-            <span className="shimmer block h-10 w-64 rounded-md lg:h-12 lg:w-96" />
-            <span className="shimmer block h-3.5 w-52 rounded-md" />
-          </span>
-        </div>
         <div className="mb-1.5 mt-8 lg:mt-10">
           <span className="shimmer block h-5 w-28 rounded-md" />
         </div>
@@ -581,36 +698,35 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
             <TileSkeleton key={i} />
           ))}
         </div>
-      </div>
+      </div>,
     );
   }
 
   if (!state?.connected) {
-    return (
-      <section className="flex min-h-[min(520px,calc(100dvh-12rem))] flex-1 flex-col items-center justify-center">
-        <div className="flex w-full max-w-[380px] flex-col items-center text-center">
-          <Image src="/images/ui/kalender_320.webp" alt="" width={320} height={320} className="size-28 object-contain" />
-          <p className="mt-5 text-xl font-extrabold text-text-primary">Je agenda, naast je eten</p>
-          <p className="mt-1.5 text-[15px] leading-6 text-[var(--text-secondary)]">Koppel je Google-agenda om je afspraken van deze week hier te zien. De app kan ze enkel lezen.</p>
-          <button
-            type="button"
-            onClick={connect}
-            disabled={state?.configured === false}
-            className="mt-5 inline-flex h-12 items-center rounded-pill bg-action-primary px-6 text-[15px] font-bold text-white shadow-[0_10px_22px_-10px_rgba(79,85,241,0.8)] disabled:opacity-50"
-          >
-            Google-agenda koppelen
-          </button>
-        </div>
-      </section>
+    return shell(
+      <section className="mt-10 flex flex-col items-center rounded-[20px] bg-[var(--white)] px-6 py-8 text-center shadow-[0_1px_2px_rgba(16,17,48,0.04)] lg:mt-12">
+        <Image src="/images/ui/kalender_320.webp" alt="" width={320} height={320} className="size-24 object-contain" />
+        <p className="mt-4 text-xl font-extrabold text-text-primary">Je agenda, naast je eten</p>
+        <p className="mt-1.5 max-w-[380px] text-[15px] leading-6 text-[var(--text-secondary)]">Koppel je Google-agenda om je afspraken van deze week hier te zien. De app kan ze enkel lezen.</p>
+        <button
+          type="button"
+          onClick={connect}
+          disabled={state?.configured === false}
+          className="mt-5 inline-flex h-12 items-center rounded-pill bg-action-primary px-6 text-[15px] font-bold text-white shadow-[0_10px_22px_-10px_rgba(79,85,241,0.8)] disabled:opacity-50"
+        >
+          Google-agenda koppelen
+        </button>
+      </section>,
     );
   }
 
-  return (
+  const foodTile = (
+    <div key="food" data-lane-anchor="true" className="flex flex-none snap-start">
+      {food.tile({ selected: showFood, onSelect: () => choose({ kind: "food" }) })}
+    </div>
+  );
+  return shell(
     <>
-      <div className="mt-2 lg:mt-4">
-        <NextHero next={next} current={current} now={now} />
-      </div>
-
       <div className="mb-1.5 mt-8 flex items-center justify-between lg:mt-10">
         <h2 className="text-[19px] font-bold tracking-[-0.01em] text-text-primary">Komende afspraken</h2>
         <span className="flex items-center gap-2 max-lg:hidden">
@@ -626,31 +742,43 @@ export function KalenderAgenda({ onTint }: { onTint: (c: Rgb | null) => void }) 
         Geladen tot {new Date(future.loadedUntil.getFullYear(), future.loadedUntil.getMonth(), future.loadedUntil.getDate() - 1).toLocaleDateString("nl-BE", { day: "numeric", month: "long", year: "numeric" })}
       </div>
       <div
-          ref={laneRef}
-          onScroll={updateArrows}
-          className="-mx-4 flex -mt-2 snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-3.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden"
-        >
-          {lane.map((item) =>
+        ref={laneRef}
+        onScroll={updateArrows}
+        className="-mx-4 -mt-2 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-3.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden"
+      >
+        {lane.flatMap((item, i) => {
+          const tile =
             item.kind === "event" ? (
-              <EventTile key={item.e.id} e={item.e} now={now} isNext={item.e.id === next?.id} />
+              <EventTile
+                key={item.e.id}
+                e={item.e}
+                now={now}
+                isNext={item.e.id === next?.id}
+                selected={selectedEvent?.id === item.e.id}
+                onSelect={() => choose({ kind: "event", id: item.e.id })}
+              />
             ) : (
               <AllDayTile
                 key={`allday-${item.day}`}
                 events={item.events}
                 now={now}
                 isNext={item.events.some((e) => e.id === next?.id)}
+                selected={selectedAllDay?.day === item.day}
+                onSelect={() => choose({ kind: "allDay", day: item.day })}
               />
-            ),
-          )}
-          <div ref={moreRef} className="flex h-[190px] w-[150px] flex-none snap-start flex-col items-center justify-center gap-3 rounded-[26px] bg-[var(--white)]/60 p-4 text-center shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:h-[230px] lg:w-[220px]" aria-busy={future.loading}>
-            <p className="text-sm text-[var(--text-secondary)]">{future.failed ? "Laden is niet gelukt." : lane.length === 0 ? "Geen afspraken in de geladen periode." : "Verder kijken in je agenda"}</p>
-            <button type="button" disabled={future.loading} onClick={() => void future.loadMore()} className="min-h-11 rounded-pill bg-action-primary px-4 text-sm font-bold text-white disabled:opacity-50">
-              {future.loading ? "Afspraken laden…" : future.failed ? "Opnieuw proberen" : "Volgende 30 dagen"}
-            </button>
-          </div>
+            );
+          return i === foodAt ? [foodTile, tile] : [tile];
+        })}
+        {foodAt === lane.length ? foodTile : null}
+        <div ref={moreRef} className="flex h-[190px] w-[150px] flex-none snap-start flex-col items-center justify-center gap-3 rounded-[26px] bg-[var(--white)]/60 p-4 text-center shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:h-[230px] lg:w-[220px]" aria-busy={future.loading}>
+          <p className="text-sm text-[var(--text-secondary)]">{future.failed ? "Laden is niet gelukt." : lane.length === 0 ? "Geen afspraken in de geladen periode." : "Verder kijken in je agenda"}</p>
+          <button type="button" disabled={future.loading} onClick={() => void future.loadMore()} className="min-h-11 rounded-pill bg-action-primary px-4 text-sm font-bold text-white disabled:opacity-50">
+            {future.loading ? "Afspraken laden…" : future.failed ? "Opnieuw proberen" : "Volgende 30 dagen"}
+          </button>
         </div>
+      </div>
       {failed ? <p className="mt-3 text-sm text-[var(--text-secondary)]">Niet alle afspraken konden geladen worden.</p> : null}
-    </>
+    </>,
   );
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { plainTaskText, TODO_NEAR_DAYS, daysUntil, localIso, sortTasks, useTodoist, type TodoDue, type TodoTask } from "@/lib/todoist-client";
 import { ListSectionHeader, OverviewPill } from "@/components/list_section_header";
@@ -349,6 +350,54 @@ export function DashboardTodoPanel({ height }: { height: number | null }) {
           <TodoPostit key={task.id} task={task} due={due} index={i} size={size} thawPhoto={thawPhotos.get(task.id)} onCheck={(t) => void closeTask(t)} />
         ))}
       </div>
+      <TodoNotice notice={notice} onReconnect={() => void connect()} onClose={clearNotice} />
+    </section>
+  );
+}
+
+/**
+ * Kalender › Agenda (canvas «KC»): de to-do's van vandaag en wat te laat is als losse post-its naast het eten
+ * (zonder kurk), met «+ n later deze week». Niets te doen of Todoist niet gekoppeld: niets tonen.
+ */
+export function KalenderTodoBoard({ size = 130, className }: { size?: number; className?: string }) {
+  const { state, sorted: near, closeTask, connect, notice, clearNotice, thawPhotos } = useNearTodos();
+  const todayIso = localIso(new Date());
+  const sorted = near.filter(({ task }) => (daysUntil(task, todayIso) ?? 1) <= 0);
+  const later =
+    state.kind === "ready"
+      ? state.tasks.filter((t) => {
+          const d = daysUntil(t, todayIso);
+          return d !== null && d > 0 && d <= 7;
+        }).length
+      : 0;
+  if (sorted.length === 0) return null;
+  return (
+    <section aria-label="Te doen" className={cn("flex min-w-0 flex-col", className)}>
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-[19px] font-bold tracking-[-0.01em] text-text-primary">
+          To do
+          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-pill bg-[var(--blue-50)] px-1.5 text-[13px] font-extrabold text-[var(--blue-500)]">{sorted.length}</span>
+        </h2>
+        <Link
+          href="/todo"
+          className="inline-flex items-center gap-0.5 rounded-pill text-[13px] font-bold text-action-primary no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          Alle taken
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3.5">
+            <path d="M6 3.5 10.5 8 6 12.5" />
+          </svg>
+        </Link>
+      </div>
+      <div className="-mx-4 flex snap-x items-center gap-4 overflow-x-auto scroll-px-4 px-4 pb-1 pt-1 [scrollbar-width:none] lg:mx-0 lg:px-1 [&::-webkit-scrollbar]:hidden">
+        {sorted.slice(0, 20).map(({ task, due }, i) => (
+          <TodoPostit key={task.id} task={task} due={due} index={i} size={size} thawPhoto={thawPhotos.get(task.id)} onCheck={(t) => void closeTask(t)} />
+        ))}
+      </div>
+      {later > 0 ? (
+        <p className="mt-3 text-[13px] font-bold text-[var(--text-secondary)]">
+          + {later} later deze week
+        </p>
+      ) : null}
       <TodoNotice notice={notice} onReconnect={() => void connect()} onClose={clearNotice} />
     </section>
   );

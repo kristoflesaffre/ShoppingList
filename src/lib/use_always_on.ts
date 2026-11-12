@@ -15,7 +15,7 @@ import { keepScreenAwake } from "@/lib/screen-wake-lock";
  * - nachtstand 22–7 u: alles extra gedimd (`data-aod="night"`);
  * - elementen leven: foto's zoomen traag, wolken drijven, de klok knippert, voorbije afspraken vervagen;
  * - het scherm blijft aan via Screen Wake Lock zolang het dashboard open en zichtbaar is.
- * Een tik eender waar zet het gewone dashboard terug; die eerste tik opent niets.
+ * Een tik eender waar zet het gewone dashboard terug; die eerste tik opent niets (behalve op `[data-aod-pass]`).
  * Met `?aod=1` in de adresbalk start het meteen (handig om te testen). Met `?aod=demo` start het meteen
  * én loopt alles versneld (pixelbaan elke 3 s, pixelrust elke 30 s), zodat je ziet dat het werkt.
  */
@@ -75,6 +75,8 @@ export function useAlwaysOn(enabled: boolean, idleMs = 2 * 60_000): boolean {
   React.useEffect(() => {
     if (!active) return;
     const wake = (e: Event) => {
+      // Elementen met `data-aod-pass` (bv. een gerecht op de always-on-kalender) werken meteen, zonder eerst wakker te maken.
+      if (e.target instanceof Element && e.target.closest("[data-aod-pass]")) return;
       e.preventDefault();
       e.stopPropagation();
       setActive(false);

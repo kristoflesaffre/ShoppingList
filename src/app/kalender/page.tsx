@@ -30,6 +30,8 @@ import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import { SegmentedControl } from "@/components/ui/segmented_control";
 import { KalenderAgenda, KalenderAgendaPrefetch, agendaBand } from "@/components/kalender_agenda";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
+import { useAlwaysOn } from "@/lib/use_always_on";
+import { KalenderAlwaysOn } from "@/components/kalender_always_on";
 
 type Weergave = "eten" | "agenda";
 const WEERGAVE_KEY = "kalender-weergave";
@@ -209,12 +211,15 @@ function FocusDay({
   entry,
   isToday,
   tint,
+  compact = false,
 }: {
   isoDate: string;
   date: Date;
   entry: DayEntry | null;
   isToday: boolean;
   tint: Rgb | null;
+  /** Agenda: kleiner bord op computer, zodat de to-do's ernaast passen. */
+  compact?: boolean;
 }) {
   const visual = dayVisual(isoDate, entry);
   const loosePhotos = useLoosePhotos(visual?.summary.loose ?? visual?.sideLoose);
@@ -291,19 +296,19 @@ function FocusDay({
   return (
     <section
       aria-label={`${date.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}${isToday ? ", vandaag" : ""}`}
-      className="flex flex-col items-center gap-2 text-center lg:flex-row lg:items-center lg:gap-12 lg:pl-6 lg:text-left"
+      className={cn("flex flex-col items-center gap-2 text-center lg:flex-row lg:items-center lg:text-left", compact ? "lg:gap-8 lg:pl-2" : "lg:gap-12 lg:pl-6")}
     >
-      <span className="lg:hidden">{plateBlock(250, 86, "-bottom-1 right-1")}</span>
-      <span className="hidden lg:block">{plateBlock(330, 110, "-bottom-1 -right-5")}</span>
+      <span className="lg:hidden">{compact ? plateBlock(220, 76, "-bottom-1 right-0") : plateBlock(250, 86, "-bottom-1 right-1")}</span>
+      <span className="hidden lg:block">{compact ? plateBlock(260, 88, "-bottom-1 -right-4") : plateBlock(330, 110, "-bottom-1 -right-5")}</span>
       {/* Mobiel: plaats voor een titel van twee regels, zodat de rij eronder bij «Eten» en «Agenda» even hoog staat. */}
       <div className="flex min-w-0 flex-col items-center max-lg:min-h-[146px] lg:flex-1 lg:items-start">
         {isToday ? (
           <span className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold tracking-[0.04em] text-[var(--blue-500)] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]">
-            VANDAAG
+            {compact ? "VANDAAG ETEN WE" : "VANDAAG"}
           </span>
         ) : null}
         <span className="text-[13px] font-bold tracking-[0.02em] text-[var(--text-secondary)] lg:text-sm">{dateLabel}</span>
-        <h2 className="mt-1.5 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em] text-text-primary lg:mt-2 lg:max-w-[460px] lg:text-[46px] lg:leading-[1.04] lg:tracking-[-0.03em]">
+        <h2 className={cn("mt-1.5 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em] text-text-primary lg:mt-2 lg:max-w-[460px] lg:leading-[1.04] lg:tracking-[-0.03em]", compact ? "lg:text-[40px]" : "lg:text-[46px]")}>
           {title}
         </h2>
         {subParts.length > 0 ? (
@@ -348,6 +353,7 @@ function DayCard({
   entry,
   past,
   selected,
+  onSelect,
 }: {
   isoDate: string;
   date: Date;
@@ -355,6 +361,8 @@ function DayCard({
   past: boolean;
   /** De dag die bovenaan groot staat: blauwe selectierand. */
   selected: boolean;
+  /** Agenda: tik kiest het eten (linksboven) i.p.v. naar het recept te gaan. */
+  onSelect?: () => void;
 }) {
   const visual = dayVisual(isoDate, entry);
   const loosePhotos = useLoosePhotos(visual?.summary.loose ?? visual?.sideLoose);
@@ -377,7 +385,24 @@ function DayCard({
     selected && "shadow-[0_0_0_2px_var(--blue-500),0_0_0_5px_var(--blue-50)]",
   );
 
+  const pressable =
+    "text-left transition-[transform,opacity] duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2";
+
   if (!visual) {
+    if (onSelect) {
+      return (
+        <button
+          type="button"
+          onClick={onSelect}
+          aria-label={`${full}: niets gepland`}
+          aria-pressed={selected}
+          className={cn(cardClass, pressable, "bg-[var(--white)]/60", !selected && "shadow-[inset_0_0_0_1px_var(--border-subtle)]")}
+        >
+          {head}
+          <span className="absolute inset-x-3.5 bottom-3.5 text-[13px] leading-[18px] text-[var(--text-tertiary)]">Nog niets gepland</span>
+        </button>
+      );
+    }
     return (
       <div
         aria-label={`${full}: niets gepland`}
@@ -393,19 +418,8 @@ function DayCard({
   const { summary } = visual;
   const href = summary.recipeId ? `/recepten/${summary.recipeId}` : `/kalender?date=${isoDate}`;
   const plateSize = "size-[120px] lg:size-[176px]";
-  return (
-    <Link
-      href={href}
-      scroll={!summary.recipeId ? false : undefined}
-      onClick={summary.recipeId ? recipeHeroClickHandler(summary.recipeId, visual.photo) : undefined}
-      aria-label={`${full}: ${summary.title}`}
-      aria-current={selected ? "date" : undefined}
-      style={{ backgroundImage: `linear-gradient(180deg, ${colors.top} 0%, ${colors.bottom} 100%)` }}
-      className={cn(
-        cardClass,
-        "no-underline transition-[transform,opacity] duration-fast ease-out-strong motion-safe:active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
-      )}
-    >
+  const body = (
+    <>
       {head}
       <span className="absolute -right-6 top-6 lg:-right-9 lg:top-7" style={plateShadow(rgb, 120)}>
         {summary.loose ? (
@@ -469,6 +483,27 @@ function DayCard({
           </span>
         ) : null}
       </span>
+    </>
+  );
+  const cardStyle = { backgroundImage: `linear-gradient(180deg, ${colors.top} 0%, ${colors.bottom} 100%)` };
+  if (onSelect) {
+    return (
+      <button type="button" onClick={onSelect} aria-label={`${full}: ${summary.title}`} aria-pressed={selected} style={cardStyle} className={cn(cardClass, pressable)}>
+        {body}
+      </button>
+    );
+  }
+  return (
+    <Link
+      href={href}
+      scroll={!summary.recipeId ? false : undefined}
+      onClick={summary.recipeId ? recipeHeroClickHandler(summary.recipeId, visual.photo) : undefined}
+      aria-label={`${full}: ${summary.title}`}
+      aria-current={selected ? "date" : undefined}
+      style={cardStyle}
+      className={cn(cardClass, pressable, "no-underline [@media(hover:hover)]:hover:opacity-100")}
+    >
+      {body}
     </Link>
   );
 }
@@ -510,6 +545,18 @@ export default function KalenderPage() {
   };
   const [agendaTint, setAgendaTint] = React.useState<Rgb | null>(null);
 
+  // Always-on (canvas «KB»): enkel op een aanraaktablet (of met ?aod=1 om te testen), na 2 minuten zonder aanraking.
+  const [alwaysOnDevice, setAlwaysOnDevice] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(pointer: coarse)");
+    const forced = new URLSearchParams(window.location.search).has("aod");
+    const update = () => setAlwaysOnDevice(forced || mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  const alwaysOn = useAlwaysOn(alwaysOnDevice);
+
   const { isLoading: dataLoading, data } = db.useQuery(
     ownerId
       ? {
@@ -548,13 +595,20 @@ export default function KalenderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusIso]);
 
+  // Agenda: altijd het eten van vandaag (los van ?date=).
+  const todayDate = startOfDay(new Date());
+  const todayEntry = calendarMap.get(todayKey) ?? null;
+  const todaySummary = calendarDaySummary(todayKey, todayEntry);
+  const todayLoosePhotos = useLoosePhotos(todaySummary?.loose);
+  const todayRgb = useRecipeTint(todaySummary?.photo ?? todayLoosePhotos.find(Boolean) ?? null);
+
   const focusEntry = calendarMap.get(focusIso) ?? null;
   const focusSummary = calendarDaySummary(focusIso, focusEntry);
   const focusLoosePhotos = useLoosePhotos(focusSummary?.loose);
   const focusRgb = useRecipeTint(focusSummary?.photo ?? focusLoosePhotos.find(Boolean) ?? null);
   const band =
     weergave === "agenda"
-      ? (agendaBand(agendaTint, dark) ?? tintColors(null, dark, 0.42, 0.2))
+      ? (agendaBand(agendaTint, dark) ?? tintColors(todaySummary ? todayRgb : null, dark, 0.42, 0.2))
       : tintColors(focusSummary ? focusRgb : null, dark, 0.42, 0.2);
 
   // Bij laden (en bij een andere gekozen dag): de gekozen dag links, de dag ervoor piept nog binnen.
@@ -584,6 +638,7 @@ export default function KalenderPage() {
   };
 
   if (authLoading || !user || dataLoading) return <PageSpinner />;
+  if (alwaysOn) return <KalenderAlwaysOn calendarMap={calendarMap} />;
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)]">
@@ -616,7 +671,16 @@ export default function KalenderPage() {
 
         {weergave === "eten" ? <KalenderAgendaPrefetch /> : null}
         {weergave === "agenda" ? (
-          <KalenderAgenda onTint={setAgendaTint} />
+          <KalenderAgenda
+            onTint={setAgendaTint}
+            food={{
+              hero: <FocusDay key={`agenda-${todayKey}`} isoDate={todayKey} date={todayDate} entry={todayEntry} isToday tint={todaySummary ? todayRgb : null} compact />,
+              tile: ({ selected, onSelect }) => (
+                <DayCard isoDate={todayKey} date={todayDate} entry={todayEntry} past={false} selected={selected} onSelect={onSelect} />
+              ),
+              thumb: todaySummary?.photo ?? null,
+            }}
+          />
         ) : calendarIsEmpty ? (
           <section className="flex min-h-[min(520px,calc(100dvh-12rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] flex-1 flex-col items-center justify-center">
             <div className="flex w-full max-w-[358px] flex-col items-center text-center">
