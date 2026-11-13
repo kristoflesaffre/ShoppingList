@@ -23,14 +23,18 @@ export type XrayMessage = {
 };
 
 /**
- * Model (prijzen Google AI Studio, betaald niveau, nov. 2026): Gemini 3.1 Flash-Lite, $0,25 / $1,50 per miljoen tokens.
- * Gemini 2.5 Flash is niet meer beschikbaar voor nieuwe sleutels. Getest op samenvatten en op een «waarom»-vraag
- * uit dialoog: 3.1 Flash-Lite gaf het beste onderbouwde antwoord (1 s); 3.5 Flash-Lite en 3.8 Flash waren te letterlijk
- * en 3.8 Flash rekent bovendien altijd 200–500 «denk»-tokens aan (3–6 s). Daarom één model, zonder extra denken.
+ * Modellen (prijzen Google AI Studio, betaald niveau, nov. 2026).
+ * - Snelle vragen en samenvattingen: Gemini 3.1 Flash-Lite ($0,25 / $1,50 per miljoen tokens), zonder extra denken:
+ *   die vatten enkel samen wat in de dialoog staat, en daar was Flash-Lite het snelst en best onderbouwd.
+ * - Eigen vragen: Gemini 3.8 Flash met Google Search. Uit geheugen alleen verzon elk model een ander verhaal
+ *   (getest: «waarom wordt de pizzabezorger neergeschoten», Mayor of Kingstown S1 A4); met zoeken gaven 3.8 Flash
+ *   en 3.1 Pro allebei het juiste antwoord uit een recap, 3.8 Flash in ± 8 s, Pro in ± 25 s.
  * Te wijzigen met GEMINI_XRAY_MODEL (snelle vragen, samenvattingen) en GEMINI_XRAY_CHAT_MODEL (eigen vragen).
  */
 export const XRAY_MODEL_DEFAULT = "gemini-3.1-flash-lite";
-export const XRAY_CHAT_MODEL_DEFAULT = "gemini-3.1-flash-lite";
+export const XRAY_CHAT_MODEL_DEFAULT = "gemini-3.8-flash";
+/** Google Search bij Gemini 3: $14 per 1000 zoekopdrachten. */
+export const XRAY_SEARCH_USD = 0.014;
 
 /** USD per miljoen tokens. Onbekend model = het duurste bekende tarief, zodat de schatting nooit te laag is. */
 const PRICES: Record<string, { input: number; output: number }> = {

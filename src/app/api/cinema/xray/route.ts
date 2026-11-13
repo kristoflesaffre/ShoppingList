@@ -10,7 +10,8 @@ import { requestFrame, sceneAi } from "@/lib/server/xray-scene";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // «Vorige afleveringen» maakt de eerste keer samenvattingen van eerdere afleveringen (daarna uit de cache).
-export const maxDuration = 60;
+// Een eigen vraag = zoeken + antwoord + spoilercontrole (samen soms 30–60 s).
+export const maxDuration = 120;
 
 const reply = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { "Cache-Control": "no-store, private" } });
 const KNOWN = ["frame-unavailable", "no-active-session", "title-unknown", "no-subtitles", "subtitle-provider-unavailable", "no-dialogue", "analysis-busy", "hourly-limit",
