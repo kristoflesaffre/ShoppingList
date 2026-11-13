@@ -717,7 +717,7 @@ export function HomeTabletDashboard({
         )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-        {/* Post-its met open taken bovenaan, even hoog als de bovenste rij links; de agenda vult de rest, en zonder
+        {/* Post-its met open taken bovenaan, net zo hoog als ze nodig hebben; de agenda vult de rest, en zonder
             open taken de volle hoogte. Ook 's ochtends lopen morgen en de volgende dagen door in de agenda. */}
         <DashboardTodoPanel height={topRowHeight} />
         <AgendaColumn />

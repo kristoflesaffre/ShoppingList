@@ -322,8 +322,9 @@ export function HomeTodoSection() {
 }
 
 /**
- * Tabletdashboard: de post-its op een kurken prikbord bovenaan de rechterkolom (boven de agenda), even hoog als
- * de bovenste rij links (`height`); de notes schalen mee zodat ze er precies in passen. De agenda vult de rest. Enkel wat vandaag moet of te laat is (morgen en later niet); is dat er niet
+ * Tabletdashboard: de post-its op een kurken prikbord bovenaan de rechterkolom (boven de agenda). Het bord is net zo
+ * hoog als de post-its nodig hebben (met wat marge boven en onder); de agenda eronder krijgt de rest. De grootte van
+ * de notes volgt nog de bovenste rij links (`height`), zodat ze op een laag scherm kleiner worden. Enkel wat vandaag moet of te laat is (morgen en later niet); is dat er niet
  * meer, dan verdwijnt het paneel en vult de agenda de kolom.
  */
 export function DashboardTodoPanel({ height }: { height: number | null }) {
@@ -339,13 +340,13 @@ export function DashboardTodoPanel({ height }: { height: number | null }) {
       // Always-on: ontkleurd en gedimd (zoals de rest van het nachtscherm), geen fel kurk en papier op een tablet die
       // de hele tijd aanstaat.
       className={cn("flex shrink-0 flex-col overflow-hidden rounded-[24px] pt-4 shadow-[inset_0_2px_6px_rgba(60,35,10,0.35),0_18px_40px_-26px_rgba(60,35,10,0.6)] transition-[filter] duration-500 [[data-aod]_&]:shadow-none [[data-aod]_&]:[filter:saturate(0.65)_brightness(0.58)_contrast(1.08)] [[data-theme=dark]_&]:shadow-[inset_0_2px_6px_rgba(0,0,0,0.45)]", CORK_DARK)}
-      style={height ? { ...CORK_STYLE, height } : CORK_STYLE}
+      style={CORK_STYLE}
     >
       <div className="flex items-center justify-between px-5">
         <span className="text-[11.5px] font-extrabold tracking-[0.08em] text-fixed-white/90 [text-shadow:0_1px_2px_rgba(60,35,10,0.45)]">TE DOEN</span>
         <span className="text-[12px] font-bold text-fixed-white/80 [text-shadow:0_1px_2px_rgba(60,35,10,0.45)]">{sorted.length}</span>
       </div>
-      <div className="-mt-1 flex min-h-0 flex-1 snap-x items-center gap-5 overflow-x-auto scroll-px-5 px-5 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="-mt-1 flex snap-x items-center gap-5 overflow-x-auto scroll-px-5 px-5 pb-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sorted.slice(0, 20).map(({ task, due }, i) => (
           <TodoPostit key={task.id} task={task} due={due} index={i} size={size} thawPhoto={thawPhotos.get(task.id)} onCheck={(t) => void closeTask(t)} />
         ))}
