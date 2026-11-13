@@ -18,7 +18,8 @@ const GAP = 4;
  *
  * Meet opnieuw als de inhoud of het scherm van grootte verandert. Enkel in de brede opbouw (lg, 1024 px).
  */
-export function useFitToScreen(enabled: boolean, designWidth: number) {
+/** `spread`: de pagina gebruikt `--fit-spare` (marges die meegroeien); enkel dan wordt die ruimte berekend. */
+export function useFitToScreen(enabled: boolean, designWidth: number, max = 1, spread = false) {
   const [frame, setFrame] = React.useState<HTMLElement | null>(null);
   const [content, setContent] = React.useState<HTMLElement | null>(null);
 
@@ -37,15 +38,29 @@ export function useFitToScreen(enabled: boolean, designWidth: number) {
     let current = 1;
     let previous = 1;
     let appliedAt = 0;
+    // Vergroot maar nog ruimte over (de breedte was op voor de hoogte): de rest als `--fit-spare` (in paginapixels),
+    // zodat de pagina die tussen haar blokken verdeelt i.p.v. een lege strook onderaan te laten.
+    let spare = 0;
+    const setSpare = (px: number) => {
+      const next = Math.max(0, Math.floor(px));
+      if (Math.abs(next - spare) < 2) return;
+      spare = next;
+      if (spare > 0) frame.style.setProperty("--fit-spare", `${spare}px`);
+      else frame.style.removeProperty("--fit-spare");
+    };
     const apply = (zoom: number) => {
       previous = current;
       current = zoom;
       appliedAt = performance.now();
       if (zoom === 1) {
         frame.style.removeProperty("zoom");
+        frame.style.removeProperty("min-height");
         delete frame.dataset.fit;
       } else {
         frame.style.setProperty("zoom", String(zoom));
+        // Vergroot: `min-h-dvh` zou mee vergroten en de pagina hoger maken dan het scherm.
+        if (zoom > 1) frame.style.minHeight = `calc(100dvh / ${zoom} - 1px)`; // − 1px: afronding mag niet laten scrollen
+        else frame.style.removeProperty("min-height");
         frame.dataset.fit = "";
       }
     };
@@ -57,14 +72,23 @@ export function useFitToScreen(enabled: boolean, designWidth: number) {
       }
       const unit = ruler.getBoundingClientRect().height / 100;
       if (!(unit > 0)) return;
-      const natural = (content.getBoundingClientRect().bottom - frame.getBoundingClientRect().top) / unit;
+      // Een verschuiving van het binnenkomen (fade-up) telt niet mee: die is na een fractie van een seconde weg.
+      let shift = 0;
+      for (let el: HTMLElement | null = content; el && el !== frame; el = el.parentElement) {
+        const t = getComputedStyle(el).transform;
+        if (t && t !== "none") shift += new DOMMatrixReadOnly(t).m42;
+      }
+      // Zonder de verdeelde extra ruimte: die hangt zelf van de uitkomst af.
+      const natural = (content.getBoundingClientRect().bottom - frame.getBoundingClientRect().top) / unit - shift - spare;
       // Tot waar mag de inhoud komen? Tot aan de tabbalk: haar hoogte plus haar afstand tot de schermrand. Niet de
       // plaats van de balk zelf meten: in always-on verschuift `body` (pixelbaan) en hangt de vaste balk aan de
       // pagina in plaats van aan het scherm. Ze is dan onzichtbaar maar telt nog mee, zodat de pagina bij het
       // indommelen niet van grootte verandert.
       const nav = document.querySelector<HTMLElement>("[data-app-bottom-nav]");
       const reserve = nav ? nav.offsetHeight + (parseFloat(getComputedStyle(nav).bottom) || 0) : 16;
-      const next = fitZoom({ available: window.innerHeight - reserve - GAP, content: natural, viewportWidth: document.documentElement.clientWidth, designWidth });
+      const available = window.innerHeight - reserve - GAP;
+      const next = fitZoom({ available, content: natural, viewportWidth: document.documentElement.clientWidth, designWidth, max });
+      setSpare(spread && next > 1 ? available / next - natural : 0);
       if (Math.abs(next - current) < 0.002) return;
       // Breekt een titel bij de ene zoom net wel en bij de andere net niet af, dan zou de pagina tussen twee
       // groottes blijven springen. Terug naar de grootte van daarnet mag daarom niet meteen: de kleinste blijft.
@@ -95,10 +119,12 @@ export function useFitToScreen(enabled: boolean, designWidth: number) {
       wide.removeEventListener("change", schedule);
       frame.removeEventListener("animationend", schedule);
       ruler.remove();
+      frame.style.removeProperty("--fit-spare");
       frame.style.removeProperty("zoom");
+      frame.style.removeProperty("min-height");
       delete frame.dataset.fit;
     };
-  }, [enabled, frame, content, designWidth]);
+  }, [enabled, frame, content, designWidth, max, spread]);
 
   return { frameRef: setFrame, contentRef: setContent };
 }

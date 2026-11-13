@@ -715,7 +715,8 @@ export function KalenderAgenda({ onTint, food, idle = false }: { onTint: (c: Rgb
   );
   const shell = (laneBlock: React.ReactNode) => (
     <div className="grid grid-cols-[minmax(0,1fr)] [grid-template-areas:'hero''lane''todo'] lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-8 lg:[grid-template-areas:'hero_todo''lane_lane']">
-      <div className="mt-2 [grid-area:hero] lg:mt-4">{hero}</div>
+      {/* Groot tabletscherm: wat er na het vergroten overblijft (`--fit-spare`) komt half boven het eten, half boven de rij. */}
+      <div className="mt-2 [grid-area:hero] lg:mt-4 lg:[[data-tablet]_&]:mt-[calc(16px+var(--fit-spare,0px)/2)]">{hero}</div>
       <KalenderTodoBoard className="mt-8 [grid-area:todo] lg:mt-6 lg:w-[440px] lg:self-start" />
       <div className="min-w-0 [grid-area:lane]">{laneBlock}</div>
     </div>
@@ -779,7 +780,7 @@ export function KalenderAgenda({ onTint, food, idle = false }: { onTint: (c: Rgb
       <div
         ref={laneRef}
         onScroll={updateArrows}
-        className="-mx-4 -mt-2 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-3.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden lg:[[data-tablet]_&]:-mx-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:scroll-px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:mt-6"
+        className="-mx-4 -mt-2 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-3.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden lg:[[data-tablet]_&]:-mx-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:scroll-px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:mt-[calc(24px+var(--fit-spare,0px)/2)]"
       >
         {lane.flatMap((item, i) => {
           const tile =

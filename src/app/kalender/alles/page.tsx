@@ -152,7 +152,7 @@ export default function KalenderAllesPage() {
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
-  const { frameRef, contentRef } = useFitToScreen(tablet, PAGE_MAX_WIDTH);
+  const { frameRef, contentRef } = useFitToScreen(tablet, PAGE_MAX_WIDTH, 1.4);
   React.useEffect(() => {
     if (!tablet) return;
     const back = () => router.replace("/kalender");
@@ -210,7 +210,7 @@ export default function KalenderAllesPage() {
         />
       ) : null}
       <div
-        className="relative mx-auto flex w-full flex-1 flex-col px-4 pb-[calc(120px+env(safe-area-inset-bottom,0px))] pt-[env(safe-area-inset-top,0px)] motion-safe:animate-fade-up lg:px-6 lg:pt-[calc(40px+env(safe-area-inset-top,0px))] [[data-fit]_&]:pb-0 lg:[[data-tablet]_&]:pb-10"
+        className="relative mx-auto flex w-full flex-1 flex-col px-4 pb-[calc(120px+env(safe-area-inset-bottom,0px))] pt-[env(safe-area-inset-top,0px)] motion-safe:animate-fade-up lg:px-6 lg:pt-[calc(40px+env(safe-area-inset-top,0px))] [[data-fit]_&]:pb-0 lg:[[data-tablet]:not([data-fit])_&]:pb-10"
         style={{ maxWidth: PAGE_MAX_WIDTH }}
       >
         <div ref={contentRef} className="flex flex-col">

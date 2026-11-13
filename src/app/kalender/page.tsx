@@ -49,6 +49,8 @@ const PAST_DAYS = 28;
 const NEXT_DAYS = 6;
 /** Breedte van de pagina; `useFitToScreen` houdt die aan als de pagina op een lager tabletscherm verkleint. */
 const PAGE_MAX_WIDTH = 1040;
+/** Hoeveel groter dan ontworpen de pagina op een groot tabletscherm mag worden. */
+const TABLET_MAX_ZOOM = 1.4;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -674,7 +676,8 @@ export default function KalenderPage() {
   // Tablet: de hele pagina past in één scherm (lager scherm = kleiner), zodat de rij tegels nooit wegvalt.
   // De lege staat van «Eten» vult zelf het scherm en hoeft dat niet.
   const emptyFood = weergave === "eten" && calendarIsEmpty;
-  const { frameRef, contentRef } = useFitToScreen(tabletDevice && !emptyFood, PAGE_MAX_WIDTH);
+  // Groter scherm (iPad Air 13"): de pagina groeit mee tot ze de hoogte vult.
+  const { frameRef, contentRef } = useFitToScreen(tabletDevice && !emptyFood, PAGE_MAX_WIDTH, TABLET_MAX_ZOOM, true);
 
   if (authLoading || !user || dataLoading) return <PageSpinner />;
 
@@ -741,7 +744,7 @@ export default function KalenderPage() {
           </section>
         ) : (
           <>
-            <div className="mt-2 lg:mt-4">
+            <div className="mt-2 lg:mt-4 lg:[[data-tablet]_&]:mt-[calc(16px+var(--fit-spare,0px)/2)]">
               <FocusDay key={focusIso} isoDate={focusIso} date={focusDate} entry={focusEntry} isToday={isToday} tint={focusSummary ? focusRgb : null} />
               {!isToday ? (
                 <div className="mt-3 flex justify-center lg:justify-start lg:pl-[402px]">
@@ -778,7 +781,7 @@ export default function KalenderPage() {
             <div
               ref={laneRef}
               onScroll={updateArrows}
-              className="-mx-4 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-1.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden lg:[[data-tablet]_&]:-mx-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:scroll-px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:mt-8"
+              className="-mx-4 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-1.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden lg:[[data-tablet]_&]:-mx-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:scroll-px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:mt-[calc(32px+var(--fit-spare,0px)/2)]"
             >
               {laneDays.map((d) => (
                 <div key={d.iso} data-lane-day={d.iso} className="flex-none">

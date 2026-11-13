@@ -32,6 +32,18 @@ describe("fitZoom", () => {
     expect(fitZoom({ viewportWidth: 1024, designWidth: 1040, available: 600, content: 716 })).toBe(0.837);
   });
 
+  it("grows on a taller tablet when allowed (iPad Air 13\" landscape, 1366 × 1024)", () => {
+    const zoom = fitZoom({ viewportWidth: 1366, designWidth: 1040, available: 920, content: 716, max: 1.4 });
+    expect(zoom).toBe(1.284);
+    expect(716 * zoom).toBeLessThanOrEqual(920);
+    expect(1040 * zoom).toBeLessThanOrEqual(1366);
+  });
+
+  it("does not grow for a sliver of extra room, nor past max", () => {
+    expect(fitZoom({ viewportWidth: 1366, designWidth: 1040, available: 726, content: 716, max: 1.4 })).toBe(1);
+    expect(fitZoom({ viewportWidth: 2400, designWidth: 1040, available: 1400, content: 716, max: 1.3 })).toBe(1.3);
+  });
+
   it("stops at the lower limit", () => {
     expect(fitZoom({ ...base, available: 200, content: 716 })).toBe(0.5);
     expect(fitZoom({ ...base, available: 200, content: 716, min: 0.6 })).toBe(0.6);
