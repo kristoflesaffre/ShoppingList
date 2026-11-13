@@ -102,6 +102,16 @@ function weekRange() {
   return { key: `week:${localDayIso(today)}`, timeMin, timeMax };
 }
 
+/**
+ * Waar de gekozen tegel in de rij staat (het snappunt). Op een tablet loopt de rij van rand tot rand en volgt
+ * het snappunt de paginabreedte (`cqw`); dan geeft de browser soms de formule terug i.p.v. pixels, en is de
+ * binnenmarge van de rij dezelfde waarde.
+ */
+export function lanePeek(el: HTMLElement): number {
+  const cs = getComputedStyle(el);
+  return cs.scrollPaddingLeft.endsWith("px") ? parseFloat(cs.scrollPaddingLeft) || 0 : parseFloat(cs.paddingLeft) || 0;
+}
+
 /** Laadt de agendaweek alvast op de achtergrond (bv. terwijl «Eten» open staat). */
 export function usePrefetchAgendaWeek() {
   const token = useGoogleAuthToken();
@@ -664,7 +674,7 @@ export function KalenderAgenda({ onTint, food, idle = false }: { onTint: (c: Rgb
     const tile = el.querySelector<HTMLElement>('[data-lane-anchor="true"]');
     // Zelfde plaats als het snappunt: scroll-padding laat een derde van de vorige tegel zien.
     if (!positioned.current) {
-      if (tile) el.scrollLeft = Math.max(0, tile.offsetLeft - el.offsetLeft - (parseFloat(getComputedStyle(el).scrollPaddingLeft) || 0));
+      if (tile) el.scrollLeft = Math.max(0, tile.offsetLeft - el.offsetLeft - lanePeek(el));
       positioned.current = true;
     }
     updateArrows();
@@ -751,7 +761,8 @@ export function KalenderAgenda({ onTint, food, idle = false }: { onTint: (c: Rgb
   );
   return shell(
     <>
-      <div className="mb-1.5 mt-8 flex items-center justify-between lg:mt-10">
+      {/* Tablet: geen kop boven de rij (titel, pijlen, «Geladen tot»); de rij loopt van rand tot rand. */}
+      <div className="mb-1.5 mt-8 flex items-center justify-between lg:mt-10 lg:[[data-tablet]_&]:hidden">
         <h2 className="text-[19px] font-bold tracking-[-0.01em] text-text-primary">Komende afspraken</h2>
         <span className="flex items-center gap-2 max-lg:hidden">
           <button type="button" aria-label="Eerdere afspraken" disabled={!canScroll.back} onClick={() => scrollLane(-1)} className={cn(headerRoundButtonClass, "disabled:opacity-40")}>
@@ -762,13 +773,13 @@ export function KalenderAgenda({ onTint, food, idle = false }: { onTint: (c: Rgb
           </button>
         </span>
       </div>
-      <div className="mb-2 text-xs text-[var(--text-tertiary)]" aria-live="polite">
+      <div className="mb-2 text-xs text-[var(--text-tertiary)] lg:[[data-tablet]_&]:hidden" aria-live="polite">
         Geladen tot {new Date(future.loadedUntil.getFullYear(), future.loadedUntil.getMonth(), future.loadedUntil.getDate() - 1).toLocaleDateString("nl-BE", { day: "numeric", month: "long", year: "numeric" })}
       </div>
       <div
         ref={laneRef}
         onScroll={updateArrows}
-        className="-mx-4 -mt-2 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-3.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden"
+        className="-mx-4 -mt-2 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-3.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden lg:[[data-tablet]_&]:-mx-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:scroll-px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:mt-6"
       >
         {lane.flatMap((item, i) => {
           const tile =

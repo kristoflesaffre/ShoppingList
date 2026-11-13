@@ -29,7 +29,7 @@ import { useItemPhotoUrl } from "@/lib/item-photos";
 import { mixWithWhite, RECIPE_TINT_FALLBACK, useIsDarkTheme, useRecipeTint, type Rgb } from "@/lib/recipe-tint";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import { SegmentedControl } from "@/components/ui/segmented_control";
-import { KalenderAgenda, KalenderAgendaPrefetch, agendaBand } from "@/components/kalender_agenda";
+import { KalenderAgenda, KalenderAgendaPrefetch, agendaBand, lanePeek } from "@/components/kalender_agenda";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 import { useAlwaysOn } from "@/lib/use_always_on";
 import { useFitToScreen } from "@/lib/use_fit_to_screen";
@@ -45,7 +45,8 @@ const WEERGAVE_KEY = "kalender-weergave";
 
 /** Hoeveel dagen je in de rij terug kunt schuiven. */
 const PAST_DAYS = 28;
-const NEXT_DAYS = 3;
+/** Een week vooruit: op een tablet loopt de rij tot de rechterrand en moet ze daar ook gevuld zijn. */
+const NEXT_DAYS = 6;
 /** Breedte van de pagina; `useFitToScreen` houdt die aan als de pagina op een lager tabletscherm verkleint. */
 const PAGE_MAX_WIDTH = 1040;
 
@@ -650,7 +651,7 @@ export default function KalenderPage() {
     const next = el.querySelector<HTMLElement>(`[data-lane-day="${focusIso}"]`);
     if (!next) return;
     // Zelfde plaats als het snappunt: scroll-padding laat een derde van de vorige dag zien (zoals «Agenda»).
-    const peek = parseFloat(getComputedStyle(el).scrollPaddingLeft) || 0;
+    const peek = lanePeek(el);
     el.scrollLeft = Math.max(0, next.offsetLeft - el.offsetLeft - peek);
     updateArrows();
     // `alwaysOn`: begint het always-on-scherm, dan staat de rij weer op de gekozen dag.
@@ -671,7 +672,9 @@ export default function KalenderPage() {
   if (authLoading || !user || dataLoading) return <PageSpinner />;
 
   return (
-    <div ref={frameRef} className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)]">
+    // `data-tablet`: de rij tegels loopt van rand tot rand en de kop van de rij (titel, pijlen) valt weg; vegen volstaat.
+    // Container, zodat de rij de paginabreedte kent (`cqw`), ook als de pagina verkleind is.
+    <div ref={frameRef} data-tablet={tabletDevice ? "" : undefined} className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)] [container-type:inline-size]">
       {weergave === "agenda" || !calendarIsEmpty ? (
         <div
           aria-hidden
@@ -746,7 +749,7 @@ export default function KalenderPage() {
               ) : null}
             </div>
 
-            <div className="mb-1.5 mt-8 flex items-center justify-between lg:mt-10">
+            <div className="mb-1.5 mt-8 flex items-center justify-between lg:mt-10 lg:[[data-tablet]_&]:hidden">
               <h2 className="text-[19px] font-bold tracking-[-0.01em] text-text-primary">Overzicht</h2>
               <span className="flex items-center gap-2 max-lg:hidden">
                 <button type="button" aria-label="Eerdere dagen" disabled={!canScroll.back} onClick={() => scrollLane(-1)} className={cn(headerRoundButtonClass, "disabled:opacity-40")}>
@@ -768,7 +771,7 @@ export default function KalenderPage() {
             <div
               ref={laneRef}
               onScroll={updateArrows}
-              className="-mx-4 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-1.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden"
+              className="-mx-4 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-1.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden lg:[[data-tablet]_&]:-mx-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:scroll-px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:mt-8"
             >
               {laneDays.map((d) => (
                 <div key={d.iso} data-lane-day={d.iso} className="flex-none">
