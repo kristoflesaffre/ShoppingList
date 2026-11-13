@@ -16,6 +16,8 @@ export type CalendarMeal = {
   recipeId: string | null;
   photoUrl: string | null;
   ingredientCount: number;
+  /** De ingrediënten van dit gerecht op het lijstje van die dag (naam + hoeveelheid zoals gepland). */
+  ingredients?: { name: string; quantity: string }[];
   /** Gerecht uit de diepvries: geen ingrediënten om te kopen. */
   fromStock?: boolean;
   /** Afhaalgerecht: gepland eten zonder afvinkbare ingrediënten. */
@@ -400,6 +402,7 @@ export function buildCalendarEntries(
           if (!meal.photoUrl && item.stockPhotoUrl) meal.photoUrl = item.stockPhotoUrl;
         } else {
           meal.ingredientCount++;
+          (meal.ingredients ??= []).push({ name: item.name, quantity: item.quantity });
         }
       } else {
         let loosePhotoUrl: string | null = null;

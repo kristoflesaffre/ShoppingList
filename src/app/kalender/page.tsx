@@ -283,6 +283,7 @@ function FocusDay({
     ) : null;
 
   const recipeId = first?.recipeId ?? null;
+  const showAll = Boolean(entry) && (meals.length > 1 || (first ? entry!.looseIngredients.length > 0 : entry!.looseIngredients.length > 1));
   const plateBlock = (size: number, sideSize: number, sideClass: string) => {
     const inner = (
       <span className="relative flex items-center justify-center" style={{ width: size, height: size }}>
@@ -348,7 +349,13 @@ function FocusDay({
             })}
           </ul>
         ) : null}
-        {recipeId ? (
+        {/* Meer dan één recept, of iets erbij: eerst «Alles van vandaag» (canvas «KO» A); anders meteen het recept. */}
+        {showAll ? (
+          <Link href={`/kalender/alles?datum=${isoDate}`} className="mt-4 inline-flex h-11 items-center rounded-pill bg-[#16181a] px-[22px] text-[15px] font-bold text-white no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:mt-5 lg:h-12 lg:px-[26px] [[data-theme=dark]_&]:bg-fixed-white [[data-theme=dark]_&]:text-[#16181a] gap-1">
+            Bekijk alles
+            <ChevronIcon direction="right" />
+          </Link>
+        ) : recipeId ? (
           <Link
             href={`/recepten/${recipeId}`}
             className="mt-4 inline-flex h-11 items-center rounded-pill bg-[#16181a] px-[22px] text-[15px] font-bold text-white no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:mt-5 lg:h-12 lg:px-[26px] [[data-theme=dark]_&]:bg-fixed-white [[data-theme=dark]_&]:text-[#16181a]"
