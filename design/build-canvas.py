@@ -55,6 +55,8 @@ assets = (
     f"<script>{open(os.path.join(here, 'kalender-aod-meals.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'kalender-postits-boards.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'kalender-food-hero-boards.js')).read()}</script>\n"
+    f"<script>{open(os.path.join(here, 'kalender-overview-imgs.js')).read()}</script>\n"
+    f"<script>{open(os.path.join(here, 'kalender-overview-boards.js')).read()}</script>\n"
     "<script>{const b=[...document.querySelectorAll('#world > section.board')].at(-1);if(b)b.dataset.newest='1';}</script>\n"
     f"<script>{open(os.path.join(here, 'voorraadkast-data.js')).read()}</script>\n"
     f"<script>{open(os.path.join(here, 'voorraadkast-boards.js')).read()}</script>\n"
