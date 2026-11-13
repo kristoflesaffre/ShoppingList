@@ -1,6 +1,9 @@
 """Scoped outbound cinema queue; no app server or Mac is involved in execution."""
 import asyncio
+import base64
+import binascii
 import hashlib
+import io
 import logging
 import re
 import time
@@ -31,13 +34,36 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.20.1'
+BRIDGE_VERSION = '1.21.0'
 # Android TV (ADB) config entry of the projector: reloaded when ADB keeps failing (at most every ADB_RELOAD_EVERY s).
 ADB_ENTRY = '01M64FE12GJ4ED6MR8PMCTGN46'
 ADB_FAILS_BEFORE_RELOAD = 3
 ADB_RELOAD_EVERY = 300
 # Bridge status for the app (cinemaCompanionData «bridge-status»): on every change, otherwise every STATUS_EVERY s.
 STATUS_EVERY = 60
+# X-Ray «Nu in beeld»: one screenshot of the projector on request, as a small JPEG in cinemaCompanionData
+# «{owner}:xray-frame» (expires by itself). Never stored on the Pi or the projector.
+FRAME_WIDTH = 960
+FRAME_QUALITY = 72
+FRAME_TTL_MS = 10 * 60_000
+FRAME_COMMAND = "screencap -p | base64 | tr -d '\\n'"
+
+
+def encode_frame(png_base64):
+    """PNG from `screencap` (base64) -> (width, height, JPEG base64, mean brightness 0-255). Runs in the executor."""
+    from PIL import Image, ImageStat
+    try:
+        raw = base64.b64decode(png_base64, validate=True)
+    except (binascii.Error, ValueError) as failure:
+        raise RuntimeError('frame-unreadable') from failure
+    if len(raw) < 1000:
+        raise RuntimeError('frame-empty')
+    image = Image.open(io.BytesIO(raw)).convert('RGB')
+    image.thumbnail((FRAME_WIDTH, FRAME_WIDTH))
+    brightness = sum(ImageStat.Stat(image.convert('L')).mean)
+    out = io.BytesIO()
+    image.save(out, 'JPEG', quality=FRAME_QUALITY, optimize=True)
+    return image.width, image.height, base64.b64encode(out.getvalue()).decode(), round(brightness, 1)
 
 
 def companion_id(key):
@@ -277,7 +303,21 @@ async def async_setup(hass, config):
     async def seek_back(delta_ms):
         await control(f"seek-back {int(delta_ms)}", 'seek-failed')
 
+    async def capture_frame():
+        # X-Ray «Nu in beeld»: what the projector shows now, for face recognition on the tablet or the AI button.
+        owner = settings.get('owner_id')
+        if not owner:
+            raise RuntimeError('frame-owner-missing')
+        width, height, jpeg, brightness = await hass.async_add_executor_job(encode_frame, await adb(FRAME_COMMAND))
+        now = int(time.time() * 1000)
+        record = f'{owner}:xray-frame'
+        await update('cinemaCompanionData', companion_id(record), {'ownerId': owner, 'key': record, 'expiresAt': now + FRAME_TTL_MS,
+                                                                 'payload': {'at': now, 'width': width, 'height': height, 'brightness': brightness, 'jpeg': jpeg, 'version': BRIDGE_VERSION}})
+
     async def execute(action):
+        if action == 'xray-frame':
+            await capture_frame()
+            return
         if action == 'play-pause':
             # X-Ray: pauze / verder spelen op Stremio's eigen mediasessie (speelt = pauze, anders play); nooit de projector
             # aan- of uitzetten. Niet via de toestand van Home Assistant: een gepauzeerde Stremio meldde daar geen
@@ -341,7 +381,7 @@ async def async_setup(hass, config):
                     command = commands[0]
                     valid = command['expiresAt'] > time.time() * 1000 and command['createdAt'] <= time.time() * 1000
                     action = command.get('action', '')
-                    if valid and (action in ('on', 'off', 'cinema', 'cinema-stop', 'play-pause') or action in SEEK_BACK or target_link(action)):
+                    if valid and (action in ('on', 'off', 'cinema', 'cinema-stop', 'play-pause', 'xray-frame') or action in SEEK_BACK or target_link(action)):
                         # Permission rules enforce pending -> claimed atomically. Never retry a claim or dispatch.
                         await update('projectorCommands', command['id'], {'state': 'claimed'})
                         error = ''

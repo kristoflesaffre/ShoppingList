@@ -591,6 +591,28 @@ class SeekHelperTests(unittest.TestCase):
         self.assertIn("await control('play-pause', 'play-pause-failed')", inspect.getsource(cinema.async_setup))
         self.assertNotIn('stremio-not-playing', inspect.getsource(cinema.async_setup))
 
+    def test_xray_frame_is_a_bridge_action(self):
+        import inspect
+        source = inspect.getsource(cinema.async_setup)
+        self.assertIn("'xray-frame'", source)
+        self.assertIn("f'{owner}:xray-frame'", source)
+        self.assertIn('FRAME_TTL_MS', source)
+
+    def test_frame_is_a_small_jpeg_with_brightness(self):
+        import base64, io
+        from PIL import Image
+        png = io.BytesIO()
+        Image.new('RGB', (1920, 1080), (200, 30, 40)).save(png, 'PNG')
+        width, height, jpeg, brightness = cinema.encode_frame(base64.b64encode(png.getvalue()).decode())
+        self.assertEqual((width, height), (960, 540))
+        self.assertTrue(base64.b64decode(jpeg).startswith(b'\xff\xd8'))
+        self.assertLess(len(jpeg), 60_000)
+        self.assertGreater(brightness, 50)
+        with self.assertRaises(RuntimeError):
+            cinema.encode_frame('not base64!')
+        with self.assertRaises(RuntimeError):
+            cinema.encode_frame(base64.b64encode(b'tiny').decode())
+
     def test_embedded_helper_matches_its_hash(self):
         import base64, hashlib
         self.assertEqual(hashlib.sha256(base64.b64decode(cinema.DEX_BASE64)).hexdigest(), cinema.DEX_SHA256)

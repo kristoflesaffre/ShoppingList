@@ -236,7 +236,24 @@ function useXray(active: boolean, testStart = false) {
       if (v?.playback) { receivedAt.current = Date.now(); setState(v); } else void startTest();
     })();
   }, [test, token]); // eslint-disable-line react-hooks/exhaustive-deps
-  return { state, playback, live, now, position, error, busy, rewinding, toast, playing, pending, ask, rewind, playPause, stop, setError, transcribe, test, starting, startTest, signedOut, length, setLength };
+  // Serie herkend: de samenvattingen van alle eerdere afleveringen alvast laten maken (zes per oproep, tot alles er is),
+  // zodat een eigen vraag over de hele serie meteen alles kent. Eén keer per aflevering.
+  const warmFor = state?.identity?.type === "series" ? state.identity.videoId : null;
+  const warmed = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!active || !token || !warmFor || warmed.current === warmFor) return;
+    warmed.current = warmFor;
+    let stop = false;
+    void (async () => {
+      for (let round = 0; round < 20 && !stop; round++) {
+        const r = await fetch("/api/cinema/xray", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ action: "warm", ...(test ? { test: true } : {}) }) }).catch(() => null);
+        const v = r?.ok ? await r.json().catch(() => null) as { left?: number } | null : null;
+        if (!v || !v.left) break;
+      }
+    })();
+    return () => { stop = true; };
+  }, [active, token, warmFor, test]);
+  return { state, playback, live, now, position, error, busy, rewinding, toast, playing, pending, ask, rewind, playPause, stop, setError, transcribe, test, starting, startTest, signedOut, length, setLength, post, demo: false };
 }
 
 type X = ReturnType<typeof useXray>;
@@ -470,6 +487,133 @@ function CastFace({ c, size = 64 }: { c: CastMember; size?: number }) {
   );
 }
 
+type SceneStatus = "starting" | "looking" | "found" | "none" | "dark" | "unavailable";
+type ScenePerson = CastMember & { position?: string };
+type Scene = { status: SceneStatus; people: ScenePerson[]; source: "free" | "ai"; at: number; aiBusy: boolean; aiError: string };
+const SCENE_EVERY_MS = 30_000;
+/** Onder deze helderheid (0–255) is het screenshot te donker om gezichten te zoeken. */
+const SCENE_DARK = 14;
+const SCENE_ERRORS: Record<string, string> = { "hourly-limit": "De limiet van AI-vragen dit uur is bereikt.", "frame-unavailable": "Geen beeld van de projector.", "bridge-unavailable": "De Pi is niet bereikbaar.", "title-unknown": "De titel is nog niet herkend." };
+
+/**
+ * «Nu in beeld»: zolang X-Ray open staat en er iets speelt, elke 30 s (en meteen bij pauze) een screenshot van de
+ * projector; de tablet herkent de gezichten zelf tegen de castfoto's (gratis, src/lib/face). «Gebruik AI» vraagt het
+ * aan Gemini. Geen screenshot tijdens pauzeren/terugspoelen, zodat de projector vrij blijft voor die knoppen.
+ */
+function useNowInView(x: X, cast: CastMember[]): Scene & { useAi: () => void } {
+  const [scene, setScene] = React.useState<Scene>({ status: "starting", people: [], source: "free", at: 0, aiBusy: false, aiError: "" });
+  const running = React.useRef(false);
+  const castRef = React.useRef(cast);
+  castRef.current = cast;
+  const xRef = React.useRef(x);
+  xRef.current = x;
+  const canLook = x.live && !x.test && cast.length > 0;
+
+  const look = React.useCallback(async () => {
+    const cur = xRef.current;
+    if (running.current || document.hidden || cur.pending || cur.rewinding) return;
+    running.current = true;
+    setScene(s => ({ ...s, status: s.status === "starting" ? "looking" : s.status }));
+    try {
+      // Demo (enkel development): echte herkenning op een TMDB-still van de demo-aflevering (Slow Horses S2 A4).
+      const frame = cur.demo
+        ? { image: "https://image.tmdb.org/t/p/w780/wCnfdJi05f5GCSNu3GJmOStJPGM.jpg", brightness: 80, at: Date.now() }
+        : await cur.post({ action: "frame" }) as { image: string; brightness: number; at: number };
+      if (frame.brightness < SCENE_DARK) { setScene(s => ({ ...s, status: "dark", people: [], source: "free", at: frame.at })); return; }
+      const { recognize } = await import("@/lib/face/recognizer");
+      const matches = await recognize(frame.image, castRef.current);
+      // Een antwoord van «Gebruik AI» blijft minstens een minuut staan, tenzij de gratis herkenning zelf iemand vindt.
+      setScene(s => (s.source === "ai" && !matches.length && Date.now() - s.at < 60_000) ? s
+        : { ...s, status: matches.length ? "found" : "none", people: matches.map(m => m.item), source: "free", at: frame.at });
+    } catch {
+      setScene(s => ({ ...s, status: "unavailable", people: [], source: "free" }));
+    } finally { running.current = false; }
+  }, []);
+
+  React.useEffect(() => {
+    if (!canLook) return;
+    void import("@/lib/face/recognizer").then(m => m.preloadRecognizer());
+    void look();
+    const t = setInterval(() => void look(), SCENE_EVERY_MS);
+    return () => clearInterval(t);
+  }, [canLook, look]);
+  // Net gepauzeerd: meteen kijken wie er in beeld staat (zoals X-Ray bij Prime).
+  const paused = x.playback?.state === "paused";
+  React.useEffect(() => { if (canLook && paused) { const t = setTimeout(() => void look(), 1500); return () => clearTimeout(t); } }, [canLook, paused, look]);
+
+  const useAi = React.useCallback(() => {
+    void (async () => {
+      const cur = xRef.current;
+      setScene(s => (s.aiBusy ? s : { ...s, aiBusy: true, aiError: "" }));
+      try {
+        if (cur.demo) {
+          await new Promise(r => setTimeout(r, 1400));
+          setScene(s => ({ ...s, aiBusy: false, status: "found", source: "ai", at: Date.now(), people: castRef.current.slice(0, 3).map((c, i) => ({ ...c, position: ["links", "midden", "achtergrond"][i] })) }));
+          return;
+        }
+        const r = await cur.post({ action: "scene-ai" }) as { people: ScenePerson[]; at: number };
+        setScene(s => ({ ...s, aiBusy: false, status: r.people.length ? "found" : "none", people: r.people, source: "ai", at: Date.now() }));
+      } catch (e) {
+        const code = e instanceof Error ? e.message : "";
+        setScene(s => ({ ...s, aiBusy: false, aiError: SCENE_ERRORS[code] ?? ERRORS[code] ?? "De AI kon het beeld niet bekijken." }));
+      }
+    })();
+  }, []);
+  return { ...scene, useAi };
+}
+
+const sparkle = <path d="M12 2.5c.5 3.9 2.6 6 6.5 6.5-3.9.5-6 2.6-6.5 6.5-.5-3.9-2.6-6-6.5-6.5 3.9-.5 6-2.6 6.5-6.5zM19 14.5c.25 1.9 1.1 2.75 3 3-1.9.25-2.75 1.1-3 3-.25-1.9-1.1-2.75-3-3 1.9-.25 2.75-1.1 3-3z" />;
+
+/** Paneel linksonder (canvas «XD · 3 Hoeken»): wie er nu in beeld is, «Alle n» en «Gebruik AI». */
+function NowInView({ x, cast, onAll }: { x: X; cast: CastMember[]; onAll: () => void }) {
+  const scene = useNowInView(x, cast);
+  const message = scene.status === "dark" ? "Het beeld is te donker om iemand te herkennen."
+    : scene.status === "none" ? (scene.source === "ai" ? "Volgens de AI staat er niemand uit de cast in beeld." : "Niemand met zekerheid herkend.")
+    : scene.status === "unavailable" ? "Geen beeld van de projector. De cast staat achter «Alle»."
+    : null;
+  return (
+    <section aria-label="Nu in beeld" aria-live="polite" className={cn("col-start-1 row-start-2 self-end justify-self-start rounded-[22px] p-4", smokeGlass, "w-[min(100%,330px)]")}>
+      <div className="mb-3 flex items-center gap-2">
+        <h2 className="text-[16px] font-extrabold">Nu in beeld</h2>
+        {scene.source === "ai" && scene.status === "found" && (
+          <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--cinema-lavender)_24%,transparent)] px-2 text-[11px] font-extrabold text-[var(--cinema-lavender)]">{icon(sparkle, 12, true)}AI</span>
+        )}
+        <button type="button" onClick={onAll} className={cn(glassPill, "ml-auto h-[30px] gap-0.5 bg-fixed-white/15 pl-3 pr-2 text-[12.5px] font-extrabold [@media(hover:hover)]:hover:bg-fixed-white/25")}>
+          Alle {cast.length}{icon(ICONS.chev, 15)}
+        </button>
+      </div>
+      {scene.status === "starting" || (scene.status === "looking" && !scene.people.length) ? (
+        <div className="flex gap-1" aria-label="Even kijken wie er in beeld is">
+          {[0, 1].map(i => (
+            <div key={i} className="flex w-[96px] flex-col items-center gap-2">
+              <span className="shimmer size-16 rounded-full" /><span className="shimmer h-3 w-16 rounded-full" /><span className="shimmer h-2.5 w-12 rounded-full" />
+            </div>
+          ))}
+        </div>
+      ) : scene.people.length ? (
+        <div className="flex gap-1">
+          {scene.people.slice(0, 3).map(c => (
+            <div key={`${c.name}-${c.character}`} className="relative">
+              <CastFace c={c} />
+              <span className="pointer-events-none absolute left-1/2 top-0 size-16 -translate-x-1/2 rounded-full shadow-[0_0_0_2px_var(--cinema-mint)]" aria-hidden />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[13.5px] font-semibold leading-5 text-fixed-white/75">{message}</p>
+      )}
+      <div className="mt-3.5 flex items-center justify-between gap-2.5">
+        <span className="text-[12px] font-semibold leading-[15px] text-fixed-white/70">{scene.aiError || "Klopt het niet of mist er iemand?"}</span>
+        <button type="button" onClick={scene.useAi} disabled={scene.aiBusy || !x.live}
+          className={cn(glassPill, "h-[34px] shrink-0 bg-[color-mix(in_srgb,var(--cinema-lavender)_28%,transparent)] px-3.5 text-[13px] font-extrabold shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--cinema-lavender)_45%,transparent)] [@media(hover:hover)]:hover:bg-[color-mix(in_srgb,var(--cinema-lavender)_40%,transparent)]")}>
+          {scene.aiBusy ? <span className="size-3.5 rounded-full border-2 border-current border-t-transparent motion-safe:animate-spin" aria-hidden /> : icon(sparkle, 15, true)}
+          {scene.aiBusy ? "Even kijken…" : "Gebruik AI"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 /** Ronde knoppen rechtsboven in het bedieningspaneel: pauze (wit) en stop (glas), even groot. Stop vraagt eerst bevestiging. */
 function RoundControls({ x, onStop }: { x: X; onStop: () => void }) {
   return (
@@ -564,18 +708,8 @@ export function XrayTablet({ x, onBack }: { x: X; onBack: () => void }) {
           </section>
         </div>
 
-        {/* Linksonder: cast van wat er speelt, met «Alle n» */}
-        {cast.length > 0 && (
-          <section aria-label="Cast" className={cn("col-start-1 row-start-2 self-end justify-self-start rounded-[22px] p-4", smokeGlass, "w-[min(100%,330px)]")}>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-[16px] font-extrabold">Cast</h2>
-              <button type="button" onClick={() => setAllCast(true)} className={cn(glassPill, "h-[30px] gap-0.5 bg-fixed-white/15 pl-3 pr-2 text-[12.5px] font-extrabold [@media(hover:hover)]:hover:bg-fixed-white/25")}>
-                Alle {cast.length}{icon(ICONS.chev, 15)}
-              </button>
-            </div>
-            <div className="flex gap-1">{cast.slice(0, 3).map(c => <CastFace key={`${c.name}-${c.character}`} c={c} />)}</div>
-          </section>
-        )}
+        {/* Linksonder: wie er nu in beeld is, «Alle n» en «Gebruik AI» */}
+        {cast.length > 0 && <NowInView x={x} cast={cast} onAll={() => setAllCast(true)} />}
 
         {/* Rechtsonder: vragen, meteen met vraagveld en microfoon */}
         <section aria-label="Vraag het X-Ray" className="col-start-3 row-span-2 row-start-1 flex min-h-0 flex-col justify-end gap-2.5">
@@ -694,7 +828,7 @@ function useDemo(x: X, on: boolean, movie: boolean): X {
     state: { playback, live: true, identity: { imdbId: "tt0000000", type: movie ? "movie" : "series", season: movie ? null : 2, episode: movie ? null : 4, videoId: "demo", title: "Vuurtoren", source: "stremio" },
       // tmdbId: echte cast in de demo (series: Slow Horses, film: Oppenheimer), enkel om de castpanelen te bekijken.
       info: { tmdbId: movie ? 872585 : 95480, name: "Vuurtoren (voorbeeld)", backdrop: "/images/films/cinema_velvet_1920.webp", poster: null, episodeTitle: movie ? null : "Laag water" }, messages, hidden: 0, aiConfigured: true },
-    ask: async () => setChat(true), rewind: async () => {}, playPause: async () => setPlaying(v => !v), stop: async () => {} };
+    ask: async () => setChat(true), rewind: async () => {}, playPause: async () => setPlaying(v => !v), stop: async () => {}, demo: true };
 }
 
 /** Volledige X-Ray-pagina (`/films-series/nu-kijken`): A2 vanaf tablet, ladder op gsm. */

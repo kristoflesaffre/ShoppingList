@@ -1,5 +1,22 @@
 # Home Assistant on the Raspberry Pi
 
+## X-Ray «Nu in beeld»: screenshot on request (2026-11-11)
+
+Bridge v1.21.0 adds one command, `xray-frame` (`RELAY_ACTIONS`, `src/lib/server/projector-relay.ts`): over the existing
+ADB entry it runs `screencap -p | base64`, Pillow (part of HA Core) turns the PNG into a 960 px JPEG (quality 72,
+± 60–120 KB) and computes the mean brightness, and the bridge writes it to `cinemaCompanionData` «{owner}:xray-frame»
+(`payload` = at · width · height · brightness · jpeg · version, expires after 10 minutes). Nothing is stored on the Pi
+or the projector. Tested 11/11 by hand on the XGIMI XR16A: the screenshot shows the real picture (not black), 1920×1080,
+± 4–6 s. The app asks for a frame only while X-Ray is open and something plays (every 30 s and on pause, never during
+pause/rewind) or when «Gebruik AI» is pressed (`src/lib/server/xray-scene.ts`). Faces are recognised on the tablet
+(`src/lib/face`, InsightFace buffalo_s via onnxruntime-web; models non-commercial only), the AI button sends the frame
++ cast to Gemini (30 per hour).
+Needs, with the owner's OK: `node scripts/allow-bridge-frame.mjs --apply` (the Pi's scoped account may also
+create/update exactly «{owner}:xray-frame», same narrow rule as «bridge-status»; tests the refusals, backup in
+`.cache/cinema-companion/`), then paste `outputs/cinema-bridge-1.21.0-install.txt` (not in Git) in the Terminal & SSH
+web UI (backups `*.before-<timestamp>`, `ha core check && ha core restart`). Tests: `scripts/test-cinema-bridge.py` (52).
+Until both are done the panel says «Geen beeld van de projector» and «Gebruik AI» answers «frame-unavailable».
+
 ## Dashboard showed nothing while Stremio played (2026-11-11)
 
 Evening of 11/11: Stremio played on the projector, the tablet dashboard (always-on) showed no X-Ray. The Pi was online
