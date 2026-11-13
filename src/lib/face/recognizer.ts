@@ -19,8 +19,10 @@ type Embedded = { face: Face; embedding: Float32Array };
 let engine: Promise<{ ort: Ort; det: InferenceSession; rec: InferenceSession }> | null = null;
 function load() {
   engine ??= (async () => {
-    const ort = (await import("onnxruntime-web/wasm")) as unknown as Ort;
-    ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
+    // Uit de CDN in de browser, niet via webpack: Next 14's minifier struikelt over `import.meta` in de ORT-bundel.
+    const base = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
+    const ort = (await import(/* webpackIgnore: true */ `${base}ort.wasm.min.mjs`)) as Ort;
+    ort.env.wasm.wasmPaths = base;
     ort.env.wasm.numThreads = 1; // geen cross-origin-isolatie op de site: één thread
     const options = { executionProviders: ["wasm"], graphOptimizationLevel: "all" as const };
     const [det, rec] = await Promise.all([InferenceSessionFrom(ort, MODELS.det, options), InferenceSessionFrom(ort, MODELS.rec, options)]);
