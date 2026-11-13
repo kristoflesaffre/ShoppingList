@@ -561,7 +561,8 @@ export default function KalenderPage() {
     ownerId
       ? {
           lists: { $: { where: { ownerId } }, items: {} },
-          recipes: {},
+          // buildCalendarEntries gebruikt enkel naam en foto.
+          recipes: { $: { fields: ["name", "photoUrl"] } },
         }
       : null,
   );

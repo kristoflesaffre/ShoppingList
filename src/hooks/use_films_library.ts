@@ -3,6 +3,7 @@
 import * as React from "react";
 import { id as instantId } from "@instantdb/react";
 import { db } from "@/lib/db";
+import { seriesMetaId } from "@/lib/stable-uuid";
 import { resolveFilmsGroupOwnerId } from "@/lib/films-share";
 import {
   type WatchlistItem,
@@ -567,7 +568,7 @@ export function useFilmsLibrary() {
 
     for (const [tmdbId, meta] of Object.entries(localMeta)) {
       txs.push(
-        db.tx.filmsSeriesMeta[instantId()].update({
+        db.tx.filmsSeriesMeta[seriesMetaId(user.id, tmdbId)].update({
           tmdbId,
           title: meta.title,
           year: meta.year,
@@ -833,28 +834,20 @@ export function useFilmsLibrary() {
         bumpLocal();
         return;
       }
-      const existing = ((libraryData?.filmsSeriesMeta ?? []) as DbSeriesMetaRow[]).find(
-        (r) => r.tmdbId === tmdbId,
+      // Eén vaste rij per serie (id uit groep + serie): ook als de query nog niet geladen is, overschrijft een
+      // update dezelfde rij. Vroeger kwam er bij elke start een kopie bij (9.416 rijen voor 45 series).
+      const rows = (libraryData?.filmsSeriesMeta ?? []) as DbSeriesMetaRow[];
+      const same = rows.find((r) => r.tmdbId === tmdbId);
+      if (same && same.title === meta.title && same.year === meta.year && (same.posterUrl ?? null) === (meta.posterUrl ?? null)) return;
+      await db.transact(
+        db.tx.filmsSeriesMeta[seriesMetaId(groupOwnerId, tmdbId)].update({
+          tmdbId,
+          title: meta.title,
+          year: meta.year,
+          posterUrl: meta.posterUrl ?? undefined,
+          groupOwnerId,
+        }),
       );
-      if (existing?.id) {
-        await db.transact(
-          db.tx.filmsSeriesMeta[existing.id].update({
-            title: meta.title,
-            year: meta.year,
-            posterUrl: meta.posterUrl ?? undefined,
-          }),
-        );
-      } else {
-        await db.transact(
-          db.tx.filmsSeriesMeta[instantId()].update({
-            tmdbId,
-            title: meta.title,
-            year: meta.year,
-            posterUrl: meta.posterUrl ?? undefined,
-            groupOwnerId,
-          }),
-        );
-      }
     },
     [user, groupOwnerId, libraryData?.filmsSeriesMeta, bumpLocal],
   );

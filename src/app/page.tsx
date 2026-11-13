@@ -2136,7 +2136,8 @@ export default function Home() {
     supermarktPickerStats: {
       $: { where: { ownerId } },
     },
-    recipes: {},
+    // Enkel wat de kalender op de startpagina gebruikt (naam + foto); bereidingen en de rest blijven weg.
+    recipes: { $: { fields: ["name", "photoUrl"] } },
     freezerItems: {},
     shoppingItems: {},
     shoppingShares: {
