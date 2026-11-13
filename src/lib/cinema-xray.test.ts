@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchIdentity, xrayCostUsd, xrayCutoff } from "./cinema-xray";
+import { SCREEN_QUESTION, matchIdentity, xrayCostUsd, xrayCutoff } from "./cinema-xray";
 import type { Playback } from "./cinema-companion";
 import type { StremioProgress } from "./stremio-progress";
 
@@ -44,5 +44,14 @@ describe("xrayCostUsd", () => {
   });
   it("schat een onbekend model nooit te laag", () => {
     expect(xrayCostUsd("iets-nieuws", 1_000_000, 0)).toBe(1.5);
+  });
+});
+
+describe("SCREEN_QUESTION", () => {
+  it("herkent vragen over wat er nu in beeld is", () => {
+    for (const q of ["Wie is die man?", "wie is dat", "Wat is dat voor een gebouw?", "die vrouw met de rode jas, wie is dat?", "Wie zie ik nu op het scherm?", "who is that guy"]) expect(SCREEN_QUESTION.test(q)).toBe(true);
+  });
+  it("laat gewone verhaalvragen zonder beeld", () => {
+    for (const q of ["Wie is Bunny?", "Waarom wil Milo dat Mike Iris redt?", "Wat is er tot hier gebeurd?", "Hoe loopt deze aflevering af?"]) expect(SCREEN_QUESTION.test(q)).toBe(false);
   });
 });

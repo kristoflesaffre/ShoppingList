@@ -9,10 +9,10 @@ import { trustedSubtitleUrl } from "../cinema-addon";
 import { clockTime, displayPosition, parseSubtitles, type Cue, type Playback } from "../cinema-companion";
 import { tmdbHeaders, TMDB_BASE } from "../tmdb";
 import { isPcmWav } from "../wav";
-import { sceneCast } from "./xray-scene";
+import { requestFrame, sceneCast } from "./xray-scene";
 import type { StremioProgress } from "../stremio-progress";
 import {
-  XRAY_CHAT_MODEL_DEFAULT, XRAY_KINDS, XRAY_LENGTHS, XRAY_LENGTH_DEFAULT, type XrayLength, XRAY_MODEL_DEFAULT, XRAY_SEARCH_USD, matchIdentity, xrayCutoff, xrayCostUsd, type XrayIdentity, type XrayKind, type XrayMessage,
+  XRAY_CHAT_MODEL_DEFAULT, XRAY_KINDS, XRAY_LENGTHS, XRAY_LENGTH_DEFAULT, type XrayLength, XRAY_MODEL_DEFAULT, XRAY_SEARCH_USD, SCREEN_QUESTION, matchIdentity, xrayCutoff, xrayCostUsd, type XrayIdentity, type XrayKind, type XrayMessage,
 } from "../cinema-xray";
 
 /**
@@ -468,7 +468,7 @@ function whereNow(movie: boolean, name: string, id: XrayIdentity, info: TitleInf
   return { title, boundary: movie ? `${at} in ${title}` : `${at} in S${id.season} A${id.episode} van «${name}»` };
 }
 
-export async function askXray(owner: string, kind: XrayKind, question: string | null, test = false, length: XrayLength = XRAY_LENGTH_DEFAULT): Promise<XrayMessage> {
+export async function askXray(owner: string, kind: XrayKind, question: string | null, test = false, length: XrayLength = XRAY_LENGTH_DEFAULT, spoilers = false): Promise<XrayMessage> {
   if (!XRAY_KINDS.includes(kind)) throw new Error("invalid-question");
   const source = test ? testCurrent : current;
   const s = await source(owner), p = s.playback;
@@ -477,6 +477,8 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
   if (!id) throw new Error("title-unknown");
   const movie = id.type === "movie";
   if (movie && (kind === "seizoen" || kind === "eerder")) throw new Error("invalid-question");
+  // «Verklap het toch» kan enkel bij een eigen vraag.
+  if (spoilers && kind !== "vraag") throw new Error("invalid-question");
   const offset = s.settings.offsetMs;
   const cutoff = xrayCutoff(p, Date.now());
   const subs = await subtitlesFor(owner, id.type, id.videoId, p.durationMs);
@@ -556,7 +558,7 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
     if (before.length) addSummaries("Geheugen van de eerdere afleveringen (oudste eerst):", await knownSummaries(owner, id.imdbId, before.slice(-RECENT_MEMORIES), INLINE_SUMMARIES, ctx));
     for (const ep of before.slice(-2)) await previousDialogue(ep, 50_000);
     addCues(movie ? "Dialoog van de film tot nu (oudste eerst):" : "Dialoog van deze aflevering tot nu (oudste eerst):", seen, 120_000, "end");
-    const history = (await readXrayMessages(owner, id)).filter(m => m.contextEndMs <= cutoff).slice(-12);
+    const history = (await readXrayMessages(owner, id)).filter(m => m.contextEndMs <= cutoff && (spoilers || !m.spoiler)).slice(-12);
     if (history.length) blocks.push(`Eerdere vragen en antwoorden in dit gesprek:\n${history.map(m => `V: ${m.question}\nA: ${m.answer}`).join("\n")}`);
   }
   // Wat nog komt in deze aflevering/film: enkel om te weten óf iets later duidelijk wordt en voor de spoilercontrole,
@@ -564,15 +566,24 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
   const ahead = kind === "vraag" || kind === "open" ? subs.cues.filter(c => c.startMs + offset > cutoff) : [];
   const future = ahead.length ? capLines(ahead.map(c => `${clockTime(c.startMs + offset)} ${c.text.replace(/\s+/g, " ")}`), 14_000, "start") : [];
   if (!validCueIds.size && !labels.size && !open) throw new Error("no-dialogue");
+  if (spoilers) {
+    // Uitdrukkelijk gevraagd: de rest van deze aflevering/film en de inhoud van latere afleveringen mogen mee.
+    if (future.length) blocks.push(`Wat nog komt in ${movie ? "deze film" : "deze aflevering"} (na het kijkmoment):\n${capLines(ahead.map(c => `${clockTime(c.startMs + offset)} ${c.speaker ? `${c.speaker}: ` : ""}${c.text.replace(/\s+/g, " ")}`), 60_000, "both").join("\n")}`);
+    if (later.length) blocks.push(`Officiële korte inhoud van latere afleveringen:\n${later.slice(0, 40).map(e => `[S${e.season} A${e.episode}] ${e.name ? `«${e.name}» ` : ""}${e.overview}`).join("\n")}`);
+  }
+  // Een vraag over wat er nu in beeld is: een screenshot van de projector gaat mee (niet in de testmodus).
+  const frame = open && !test && SCREEN_QUESTION.test(asked) ? await requestFrame(owner, 8000).catch(() => null) : null;
 
-  const jobKey = `xray-job:${digest([2, id.videoId, kind, asked, Math.floor(cutoff / 15000), offset, subs.name, length])}`;
+  const jobKey = `xray-job:${digest([2, spoilers, id.videoId, kind, asked, Math.floor(cutoff / 15000), offset, subs.name, length])}`;
   const existing = await getData<{ result?: XrayMessage }>(owner, jobKey);
   if (existing?.result) return existing.result;
   if (!await claim(owner, jobKey, 120_000)) throw new Error("analysis-busy");
   await budget(owner, "answer");
 
   const minutesIn = Math.floor(cutoff / 60_000);
-  const knowledge = open
+  const knowledge = spoilers
+    ? "De kijker vraagt UITDRUKKELIJK om spoilers. Vertel eerlijk en concreet hoe het verder gaat of afloopt, ook uit latere afleveringen of seizoenen: gebruik de aangeleverde rest van het verhaal, je eigen kennis en Google Search. Begin zonder waarschuwing; de app toont zelf dat het een spoiler is. Zet \"answered\" op true als je het antwoord geeft. "
+    : open
     ? "Je mag je eigen kennis van " + (movie ? "deze film" : "deze serie") + " gebruiken en Google Search (recaps, wiki's, afleveringsgidsen), net zoals een kijker die de serie goed kent — " +
       "maar UITSLUITEND over wat de kijker al gezien heeft: " + (movie ? "de film tot het kijkmoment" : "alle afleveringen vóór deze, en van deze aflevering enkel wat vóór het kijkmoment ligt") + ". " +
       (movie ? "" : `Zoek gericht per aflevering (bv. «${name} S${id.season}E${Math.max(1, (id.episode ?? 1) - 1)} recap»), nooit naar seizoens- of reeksoverzichten, finales of «ending explained». `) +
@@ -585,8 +596,9 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
     knowledge +
     "Een vraag over de hele serie, een personage of een vroegere aflevering beantwoord je met alles wat de kijker daarover al kan weten, en noem de aflevering (bv. «in S1 A3»). " +
     (!movie && minutesIn < 12 ? `De kijker is pas ${minutesIn} minuten in deze aflevering: «op het einde», «net», «daarnet» of «die scène» gaan dan vaak over het einde van de vorige aflevering. ` : "") +
-    "Verklap NOOIT iets dat na het kijkmoment gebeurt, ook niet als hint. " +
-    "Zet \"answered\" op false als het eigenlijke antwoord op de vraag (nog) niet bekend is op dit kijkmoment; geef dan in \"answer\" enkel wat de kijker er tot nu toe wél over weet. Een vraag naar wat nog moet gebeuren (hoe iets afloopt, wat er gaat gebeuren, wie het blijkt te zijn) is altijd \"answered\": false. " +
+    (spoilers ? "" : "Verklap NOOIT iets dat na het kijkmoment gebeurt, ook niet als hint. ") +
+    (frame ? "Bij de vraag zit een screenshot van wat nu op het scherm staat; gebruik het om te zien over wie of wat de vraag gaat (gezichten, plek, voorwerpen) en koppel gezichten aan de cast als je het zeker weet. " : "") +
+    (spoilers ? "" : "Zet \"answered\" op true zodra je de kern van de vraag beantwoordt, ook als er rond het onderwerp nog vragen openstaan. Zet het enkel op false als de kern van de vraag op dit kijkmoment nog niet te beantwoorden is; geef dan in \"answer\" enkel wat de kijker er tot nu toe wél over weet. Een vraag naar wat nog moet gebeuren (hoe iets afloopt, wat er gaat gebeuren, wie het blijkt te zijn) is altijd \"answered\": false. ") +
     (movie ? "" : "Weet je zeker dat dit in een latere aflevering of later seizoen uitgelegd wordt, zet dan \"laterEpisode\" op true; schrijf daar NOOIT iets over in het antwoord. ") +
     "Een naam in de dialoog betekent niet dat iemand in beeld is. Gebruik de namen uit de lijst met personages. Je mag redelijke conclusies trekken; zeg dan «lijkt» of «wellicht». " +
     "Vertel het als iemand die de serie samen met de kijker volgt: noem nooit je bronnen of je werkwijze (geen «samenvattingen», «geheugen», «personagelijst», «dialoog», «ondertitels», «het materiaal», «zoekresultaten», «volgens de verstrekte…»). " +
@@ -596,14 +608,16 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
     (kind === "open" ? "Som de mysteries, conflicten en onbeantwoorde vragen op die tot nu toe in het verhaal openstaan, zonder te gokken naar de afloop. " : "") +
     'Geef JSON: {"answer": string, "answered": boolean, "laterEpisode": boolean, "refs": string[]} waarbij refs de ids tussen vierkante haken zijn waarop je steunt (zet die ids nooit in de tekst van answer) (dialoog-ids zoals cue-12 of afleveringen zoals S1 A3), hoogstens 6.';
   const maxOut = (kind === "net" ? LENGTH[length].net : LENGTH[length].other) + (open ? 6000 : 0);
-  const r = await gemini(system, `${blocks.join("\n\n")}\n\nKijkmoment: ${boundary}.\n\nVraag: ${asked}`, maxOut, true, open, open ? { search: true, thinking: "low" } : {});
+  const text = `${blocks.join("\n\n")}\n\nKijkmoment: ${boundary}.\n\nVraag: ${asked}`;
+  const user: string | GeminiPart[] = frame ? [{ text: `${blocks.join("\n\n")}\n\nScreenshot van wat nu op het scherm staat:` }, { inlineData: { mimeType: "image/jpeg", data: frame.jpeg } }, { text: `Kijkmoment: ${boundary}.\n\nVraag: ${asked}` }] : text;
+  const r = await gemini(system, user, maxOut, true, open, open ? { search: true, thinking: "low" } : {});
   let parsed: { answer?: unknown; refs?: unknown; answered?: unknown; laterEpisode?: unknown };
   try { parsed = JSON.parse(r.text.replace(/^```(?:json)?\s*|\s*```$/g, "")); } catch { throw new Error("invalid-ai-output"); }
   // Verwijzingen horen in «refs», niet in de tekst («[cue-107, S1 A3]»).
   const cleaned = typeof parsed.answer === "string" ? parsed.answer.replace(/\s*\[(?:cue-\d+|S\d+ A\d+)(?:\s*,\s*(?:cue-\d+|S\d+ A\d+))*\]/g, "").trim() : "";
   let answer = cleaned ? cleaned.slice(0, 8000) : "Dat is op dit moment nog niet duidelijk in het verhaal.";
   let cost = costOf(r);
-  if (open) {
+  if (open && !spoilers) {
     // Eigen kennis en zoekresultaten kunnen verder gaan dan het kijkmoment: apart nakijken en zo nodig inkorten.
     const guard = await spoilerGuard(asked, answer, boundary, future, later.slice(0, 30));
     answer = guard.answer;
@@ -611,7 +625,7 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
   }
   // Nog niet beantwoord: komt het later? Een aparte, kleine vraag kijkt in de rest van deze aflevering en mag enkel
   // ja/nee zeggen; het antwoordmodel ziet die rest nooit, zodat er niets van kan uitlekken.
-  if (parsed.answered === false) {
+  if (parsed.answered === false && !spoilers) {
     const laterHere = future.length ? await laterInThisPart(asked, future).catch(() => null) : null;
     if (laterHere) cost += laterHere.costUsd;
     const whereLater = movie ? "later in de film" : "later in deze aflevering";
@@ -626,6 +640,7 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
   const message: XrayMessage = {
     id: digest([jobKey, Date.now()]).slice(0, 32), videoId: id.videoId, kind, question: asked, answer, refs,
     askedAtMs: cutoff, contextEndMs: cutoff, createdAt: Date.now(), costUsd: Math.round(cost * 1e6) / 1e6, model: r.model,
+    ...(parsed.answered === false && !spoilers ? { unanswered: true } : {}), ...(spoilers ? { spoiler: true } : {}), ...(frame ? { sawFrame: true } : {}),
   };
   // Teruggespoeld of een andere aflevering intussen? Dan het antwoord niet meer tonen.
   const latest = await source(owner);

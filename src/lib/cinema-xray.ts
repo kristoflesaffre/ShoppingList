@@ -20,7 +20,16 @@ export type XrayMessage = {
   refs: { label: string; timeMs: number | null }[];
   /** Kijkmoment waarop de vraag gesteld is; ook de grens van wat de AI mocht zien. */
   askedAtMs: number; contextEndMs: number; createdAt: number; costUsd: number; model: string;
+  /** Het antwoord was er op dit kijkmoment nog niet: dan kan de kijker vragen om het «toch te verklappen». */
+  unanswered?: boolean;
+  /** Antwoord met spoilers, op uitdrukkelijke vraag («Verklap het toch»). */
+  spoiler?: boolean;
+  /** Er ging een screenshot van het scherm mee (vraag over wat je nu ziet). */
+  sawFrame?: boolean;
 };
+
+/** Gaat een vraag over wat er nu in beeld is («wie is die man?», «wat is dat?»)? Dan gaat er een screenshot mee. */
+export const SCREEN_QUESTION = /\b(wie|wat|waar)\s+(is|zijn|was)\s+(die|dat|dit|deze|hij|zij|ze|hem|haar)\b|\b(die|deze|dat|dit)\s+(man|vrouw|kerel|gast|vent|meisje|jongen|kind|persoon|mensen|acteur|actrice|ding|plek|plaats|auto|wagen|huis|gebouw|kamer|stad|wapen|tattoo|tatoeage|logo|brief|foto|kleren|jas)\b|\b(in beeld|op het scherm|op (de )?tv|nu te zien|zie ik)\b|\b(who|what|where)\s+(is|are)\s+(that|this|he|she|they)\b/i;
 
 /**
  * Modellen (prijzen Google AI Studio, betaald niveau, nov. 2026).

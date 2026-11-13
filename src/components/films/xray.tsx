@@ -175,11 +175,11 @@ function useXray(active: boolean, testStart = false) {
     return v;
   };
   const fail = (e: unknown, fallback: string) => setError(ERRORS[e instanceof Error ? e.message : ""] ?? fallback);
-  const ask = async (kind: XrayKind, question?: string) => {
+  const ask = async (kind: XrayKind, question?: string, spoilers = false) => {
     if (busy) return;
     setBusy(kind); setError("");
     try {
-      const m: XrayMessage = await post({ action: "ask", kind, question, length });
+      const m: XrayMessage = await post({ action: "ask", kind, question, length, ...(spoilers ? { spoilers: true } : {}) });
       setState(s => s ? { ...s, messages: [...s.messages.filter(x => x.id !== m.id), m] } : s);
     } catch (e) { fail(e, "X-Ray is even niet bereikbaar."); }
     finally { setBusy(null); }
@@ -344,7 +344,7 @@ function StopButton({ x, compact, stacked }: { x: X; compact?: boolean; stacked?
   );
 }
 
-function Message({ m }: { m: XrayMessage }) {
+function Message({ m, x }: { m: XrayMessage; x: X }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex max-w-[86%] flex-col items-end gap-1 self-end">
@@ -352,7 +352,19 @@ function Message({ m }: { m: XrayMessage }) {
         <span className="text-[11px] font-semibold text-fixed-white/50">Vraag op {clockTime(m.askedAtMs)}</span>
       </div>
       <div className="flex max-w-[94%] flex-col gap-1.5 self-start">
-        <div className="whitespace-pre-line rounded-[18px_18px_18px_6px] bg-fixed-white/10 px-3.5 py-3 text-[14.5px] leading-[1.5] text-fixed-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]">{m.answer}</div>
+        {(m.spoiler || m.sawFrame) && (
+          <div className="flex flex-wrap gap-1.5">
+            {m.spoiler && <span className="inline-flex h-[22px] items-center rounded-full bg-[color-mix(in_srgb,var(--cinema-rose)_18%,transparent)] px-2 text-[11px] font-extrabold uppercase tracking-[.08em] text-[var(--cinema-rose)]">Spoiler</span>}
+            {m.sawFrame && <span className="inline-flex h-[22px] items-center rounded-full bg-fixed-white/10 px-2 text-[11px] font-bold text-fixed-white/70">Met beeld</span>}
+          </div>
+        )}
+        <div className={cn("whitespace-pre-line rounded-[18px_18px_18px_6px] px-3.5 py-3 text-[14.5px] leading-[1.5] text-fixed-white", m.spoiler ? "bg-[color-mix(in_srgb,var(--cinema-rose)_12%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--cinema-rose)_35%,transparent)]" : "bg-fixed-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]")}>{m.answer}</div>
+        {m.unanswered && m.kind === "vraag" && !x.state?.messages.some(o => o.spoiler && o.question === m.question) && (
+          <button type="button" disabled={!!x.busy} onClick={() => void x.ask("vraag", m.question, true)}
+            className={cn(glassPill, "h-8 self-start bg-fixed-white/[0.08] px-3 text-[12.5px] font-bold [@media(hover:hover)]:hover:bg-fixed-white/[0.14]")}>
+            Verklap het toch
+          </button>
+        )}
         {m.refs.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {m.refs.map(r => <span key={r.label} className="inline-flex h-[22px] items-center rounded-full bg-[color-mix(in_srgb,var(--cinema-butter)_16%,transparent)] px-2 text-[11px] font-bold text-[var(--cinema-butter)]">{r.label}</span>)}
@@ -422,7 +434,7 @@ function Conversation({ x, className, hint = true }: { x: X; className?: string;
       {x.state && x.state.hidden > 0 && (
         <p className="self-center text-center text-[12px] font-semibold text-fixed-white/55">{x.state.hidden} {x.state.hidden === 1 ? "antwoord gaat" : "antwoorden gaan"} over later in het verhaal en {x.state.hidden === 1 ? "is" : "zijn"} even verborgen</p>
       )}
-      {messages.map(m => <Message key={m.id} m={m} />)}
+      {messages.map(m => <Message key={m.id} m={m} x={x} />)}
       {x.busy && <div className="self-start rounded-[18px_18px_18px_6px] bg-fixed-white/10 px-4 py-3 text-[14px] text-fixed-white/70">X-Ray denkt na…</div>}
       {x.error && <p className="self-start text-[13.5px] font-semibold text-[var(--cinema-rose)]">{x.error}</p>}
       <div ref={end} />
@@ -823,6 +835,9 @@ function useDemo(x: X, on: boolean, movie: boolean): X {
   const playback: Playback = { sessionId: "demo-session-01", sequence: 1, mediaKey: "demo", streamFingerprint: "0".repeat(64), imdbId: null, mediaType: movie ? "movie" : "series", season: movie ? null : 2, episode: movie ? null : 4, title: "Vuurtoren", positionMs: 1_425_000, durationMs: 2_890_000, speed: 1, state: playing ? "playing" : "paused", observedAt: now, uncertaintyMs: 1500, deviceUpdateElapsedMs: null };
   const messages: XrayMessage[] = chat ? [
     { id: "d1", videoId: "demo", kind: "net", question: "Wat is er net gebeurd?", answer: "Voorbeeld: Lotte vindt in de kelder het logboek van haar vader en verstopt het voor Jonas.", refs: [{ label: "21:40", timeMs: 1_300_000 }, { label: "23:10", timeMs: 1_390_000 }], askedAtMs: 1_400_000, contextEndMs: 1_400_000, createdAt: now, costUsd: 0.0006, model: "demo" },
+    { id: "d2", videoId: "demo", kind: "vraag", question: "Wie is die man met de lantaarn?", answer: "Voorbeeld: dat is Jonas, de vuurtorenwachter. Hij kwam al in A2 langs bij Lotte.", refs: [{ label: "S2 A2", timeMs: null }], askedAtMs: 1_405_000, contextEndMs: 1_405_000, createdAt: now, costUsd: 0.02, model: "demo", sawFrame: true },
+    { id: "d3", videoId: "demo", kind: "vraag", question: "Waarom verstopt ze het logboek?", answer: "Voorbeeld: dat is op dit moment nog niet duidelijk; we weten enkel dat ze Jonas niet vertrouwt.\n\nDat wordt later in deze aflevering duidelijk.", refs: [], askedAtMs: 1_410_000, contextEndMs: 1_410_000, createdAt: now, costUsd: 0.02, model: "demo", unanswered: true },
+    { id: "d4", videoId: "demo", kind: "vraag", question: "Wie heeft de vader van Lotte vermoord?", answer: "Voorbeeld: in A6 blijkt dat het de havenmeester was.", refs: [], askedAtMs: 1_412_000, contextEndMs: 1_412_000, createdAt: now, costUsd: 0.03, model: "demo", spoiler: true },
   ] : [];
   return { ...x, playback, live: true, position: 1_425_000, now, playing, pending: null,
     state: { playback, live: true, identity: { imdbId: "tt0000000", type: movie ? "movie" : "series", season: movie ? null : 2, episode: movie ? null : 4, videoId: "demo", title: "Vuurtoren", source: "stremio" },

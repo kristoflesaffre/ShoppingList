@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     }
     if (body.action === "ask" && XRAY_KINDS.includes(body.kind)) {
       const question = body.kind === "vraag" && typeof body.question === "string" ? body.question : null;
-      return reply(await askXray(owner, body.kind as XrayKind, question, test, parseXrayLength(body.length)));
+      return reply(await askXray(owner, body.kind as XrayKind, question, test, parseXrayLength(body.length), body.spoilers === true));
     }
     return reply({ error: "invalid-request" }, 400);
   } catch (e) {
