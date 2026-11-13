@@ -7,7 +7,7 @@ import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import { startGoogleConnect, useGoogleAuthToken } from "@/lib/google-client";
 import { fetchAgenda, localDayIso, useCachedAgenda } from "@/lib/agenda_cache";
 import { useAgendaFuture } from "@/lib/use_agenda_future";
-import { mixWithWhite, type Rgb } from "@/lib/recipe-tint";
+import { mixWithWhite, useIsDarkTheme, type Rgb } from "@/lib/recipe-tint";
 import { agendaPhotoFor } from "@/lib/agenda_photos";
 import { agendaDisplayTitle, dedupeBirthdays } from "@/lib/agenda_birthdays";
 import { dropAllDayDuplicates, mergeAllDayDuplicates } from "@/lib/agenda_duplicates";
@@ -62,6 +62,14 @@ function hhmm(d: Date): string {
 }
 const rgb = (c: Rgb, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const deep = (c: Rgb, f = 0.62) => `rgb(${Math.round(c[0] * f)},${Math.round(c[1] * f)},${Math.round(c[2] * f)})`;
+/** Lichte tint van de agendakleur (f = 0 wit, 1 de kleur zelf): tekst op een donker vlak. */
+const pale = (c: Rgb, f: number) => `rgb(${c.map((v) => Math.round(255 - (255 - v) * f)).join(",")})`;
+/**
+ * Tekst in een donkere tint van de agendakleur is op een donker vlak (donker thema, always-on) onleesbaar:
+ * daar neemt ze de lichte tint uit `--on-dark`. Gebruik samen met `onDark(c)` in `style`.
+ */
+const ON_DARK_TEXT = "[[data-theme=dark]_&]:!text-[color:var(--on-dark)]";
+const onDark = (c: Rgb, f = 0.55) => ({ ["--on-dark" as string]: pale(c, f) });
 
 /** Hele-dag-afspraken: «2026-10-14» lokaal om middernacht (niet UTC). */
 function parseStart(e: ApiEvent): Date | null {
@@ -175,8 +183,8 @@ function CalendarIllustration({ box, label, color }: { box: number; label: strin
       <span className="relative block shrink-0" style={{ width: size, height: size }}>
         <Image src="/images/ui/kalender_320.webp" alt="" width={320} height={320} priority className="size-full object-contain drop-shadow-[0_24px_30px_rgba(120,60,0,0.25)]" />
         <span
-          className="absolute bottom-[12%] left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap rounded-pill bg-[var(--white)] font-extrabold shadow-[0_8px_18px_-10px_rgba(0,0,0,0.35)]"
-          style={{ height: size * 0.16, paddingInline: size * 0.06, fontSize: size * 0.09, color: deep(color, 0.6) }}
+          className={cn("absolute bottom-[12%] left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap rounded-pill bg-[var(--white)] font-extrabold shadow-[0_8px_18px_-10px_rgba(0,0,0,0.35)]", ON_DARK_TEXT)}
+          style={{ height: size * 0.16, paddingInline: size * 0.06, fontSize: size * 0.09, color: deep(color, 0.6), ...onDark(color) }}
         >
           {label}
         </span>
@@ -208,7 +216,7 @@ function BackToFood({ thumb, onClick }: { thumb: string | null; onClick: () => v
  * Linksboven na een tik op een afspraak (canvas «KC» B): foto met afgeronde hoeken (geen bord, zodat je ziet
  * dat het geen gerecht is) of de kalenderillustratie met het uur; dag, titel, uur en plaats; route en terug.
  */
-function EventHero({ e, now, foodThumb, onBack }: { e: WeekEvent; now: Date; foodThumb: string | null; onBack: () => void }) {
+function EventHero({ e, now, foodThumb, onBack, dark }: { e: WeekEvent; now: Date; foodThumb: string | null; onBack: () => void; dark: boolean }) {
   const photo = agendaPhotoFor(e.title, e.location);
   const nowMs = now.getTime();
   const busy = !e.allDay && e.startAt.getTime() <= nowMs && e.endAt.getTime() > nowMs;
@@ -220,7 +228,7 @@ function EventHero({ e, now, foodThumb, onBack }: { e: WeekEvent; now: Date; foo
       <span className="flex shrink-0 items-center justify-center" style={{ width: box, height: box }}>
         <span
           className="relative block overflow-hidden"
-          style={{ width: box * 0.92, height: box * 0.92, borderRadius: radius, boxShadow: `0 0 0 6px rgba(255,255,255,0.75), 0 26px 40px -18px ${rgb(e.color, 0.55)}` }}
+          style={{ width: box * 0.92, height: box * 0.92, borderRadius: radius, boxShadow: `0 0 0 6px rgba(255,255,255,${dark ? 0.14 : 0.75}), 0 26px 40px -18px ${rgb(e.color, 0.55)}` }}
         >
           <Image src={`${photo}_480.webp`} alt="" fill sizes="260px" className="object-cover" />
         </span>
@@ -234,8 +242,8 @@ function EventHero({ e, now, foodThumb, onBack }: { e: WeekEvent; now: Date; foo
       <span className="hidden lg:block">{media(260, 44)}</span>
       <div className="flex min-w-0 flex-col items-center max-lg:min-h-[146px] lg:flex-1 lg:items-start">
         <span
-          className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]"
-          style={{ color: deep(e.color, 0.6) }}
+          className={cn("mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]", ON_DARK_TEXT)}
+          style={{ color: deep(e.color, 0.6), ...onDark(e.color) }}
         >
           {pill}
         </span>
@@ -271,8 +279,8 @@ function AllDayHero({ events, now, foodThumb, onBack }: { events: WeekEvent[]; n
       <span className="hidden lg:block"><CalendarIllustration box={260} label="Hele dag" color={c} /></span>
       <div className="flex min-w-0 flex-col items-center max-lg:min-h-[146px] lg:flex-1 lg:items-start">
         <span
-          className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]"
-          style={{ color: deep(c, 0.6) }}
+          className={cn("mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]", ON_DARK_TEXT)}
+          style={{ color: deep(c, 0.6), ...onDark(c) }}
         >
           {label} · hele dag
         </span>
@@ -317,10 +325,10 @@ const TILE_INTERACTIVE =
 
 type Selectable = { selected: boolean; onSelect: () => void };
 
-function EventTile({ e, now, isNext, selected, onSelect }: { e: WeekEvent; now: Date; isNext: boolean } & Selectable) {
+function EventTile({ e, now, isNext, selected, onSelect, dark }: { e: WeekEvent; now: Date; isNext: boolean; dark: boolean } & Selectable) {
   const past = e.endAt.getTime() <= now.getTime();
   const photo = agendaPhotoFor(e.title, e.location);
-  if (photo) return <PhotoEventTile e={e} now={now} isNext={isNext} past={past} photo={photo} selected={selected} onSelect={onSelect} />;
+  if (photo) return <PhotoEventTile e={e} now={now} isNext={isNext} past={past} photo={photo} selected={selected} onSelect={onSelect} dark={dark} />;
   return (
     <article
       {...selectProps(selected, onSelect)}
@@ -373,11 +381,13 @@ function NextBadge({ color }: { color: Rgb }) {
  * Fototegel zoals op de startpagina (canvas «Fototegel blur · 2» + «L1 · Licht uitgewassen»): volle foto,
  * lichter en zachter met een witte waas, onderaan wazig en ingekleurd in de lichte afspraakkleur. Dag + uur
  * in een witte pil, titel en uur · plaats in een donkere tint van die kleur; route-knop rechtsboven.
+ * Donker thema en always-on: omgekeerd, dus de foto donkerder met een donkere waas in de afspraakkleur,
+ * een donkere pil en lichte tekst, zodat de tegel niet als enige fel oplicht.
  */
-function PhotoEventTile({ e, now, isNext, past, photo, selected, onSelect }: { e: WeekEvent; now: Date; isNext: boolean; past: boolean; photo: string } & Selectable) {
+function PhotoEventTile({ e, now, isNext, past, photo, selected, onSelect, dark }: { e: WeekEvent; now: Date; isNext: boolean; past: boolean; photo: string; dark: boolean } & Selectable) {
   const c = e.color;
-  const light = c.map((v) => Math.round(255 - (255 - v) * 0.2));
-  const tint = (a: number) => `rgba(${light[0]},${light[1]},${light[2]},${a})`;
+  const wash = c.map((v) => (dark ? Math.round(v * 0.2) : Math.round(255 - (255 - v) * 0.2)));
+  const tint = (a: number) => `rgba(${wash[0]},${wash[1]},${wash[2]},${a})`;
   const mask = "linear-gradient(180deg, transparent 40%, #000 68%)";
   const meta = [`${hhmm(e.startAt)} – ${hhmm(e.endAt)}`, e.location].filter(Boolean).join(" · ");
   const title = agendaDisplayTitle(e.title);
@@ -393,14 +403,20 @@ function PhotoEventTile({ e, now, isNext, past, photo, selected, onSelect }: { e
       style={{ boxShadow: selected ? SELECTED_RING : "0 12px 24px -18px rgba(16,17,48,0.45)" }}
     >
       <span className="pointer-events-none absolute inset-0 isolate overflow-hidden rounded-[26px]" aria-hidden>
-        <Image src={`${photo}_480.webp`} alt="" fill sizes="(min-width: 1024px) 220px, 150px" className="object-cover brightness-[1.2] contrast-[.78] saturate-[.82]" />
-        <span className="absolute inset-0" style={{ backgroundColor: "rgba(255,255,255,0.25)" }} />
+        <Image
+          src={`${photo}_480.webp`}
+          alt=""
+          fill
+          sizes="(min-width: 1024px) 220px, 150px"
+          className={cn("object-cover", dark ? "brightness-[0.82] saturate-[.85]" : "brightness-[1.2] contrast-[.78] saturate-[.82]")}
+        />
+        {dark ? null : <span className="absolute inset-0" style={{ backgroundColor: "rgba(255,255,255,0.25)" }} />}
         <Image
           src={`${photo}_240.webp`}
           alt=""
           fill
           sizes="(min-width: 1024px) 220px, 150px"
-          className="scale-110 object-cover blur-[14px] brightness-[1.15] saturate-[1.1]"
+          className={cn("scale-110 object-cover blur-[14px] saturate-[1.1]", dark ? "brightness-[0.55]" : "brightness-[1.15]")}
           style={{ WebkitMaskImage: mask, maskImage: mask }}
         />
         <span className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${tint(0)} 36%, ${tint(0.86)} 70%, ${tint(0.97)} 100%)` }} />
@@ -408,27 +424,27 @@ function PhotoEventTile({ e, now, isNext, past, photo, selected, onSelect }: { e
       {isNext ? <NextBadge color={c} /> : null}
       <span
         className="absolute left-2.5 top-2.5 z-[2] inline-flex h-7 items-center rounded-pill px-2.5 shadow-[0_2px_8px_-3px_rgba(16,17,48,0.3)] lg:left-3 lg:top-3 lg:h-8 lg:px-3"
-        style={{ backgroundColor: "rgba(255,255,255,0.95)" }}
+        style={{ backgroundColor: dark ? "rgba(14,15,22,0.72)" : "rgba(255,255,255,0.95)" }}
       >
         {/* Dag en uur allebei verticaal gecentreerd in de pil. */}
         <span className="inline-flex items-center gap-1.5 leading-none">
           <span
             className={cn("text-[10px] font-extrabold uppercase leading-none tracking-[0.06em] lg:text-[10.5px]", hasRoute && "max-lg:hidden")}
-            style={{ color: deep(c, 0.45) }}
+            style={{ color: dark ? pale(c, 0.55) : deep(c, 0.45) }}
           >
             {day}
           </span>
-          <span className="text-sm font-extrabold leading-none tabular-nums lg:text-[15px]" style={{ color: deep(c, 0.6) }}>
+          <span className="text-sm font-extrabold leading-none tabular-nums lg:text-[15px]" style={{ color: dark ? pale(c, 0.3) : deep(c, 0.6) }}>
             {hhmm(e.startAt)}
           </span>
         </span>
       </span>
       {hasRoute ? <RouteButton location={e.location!} color={c} className="lg:right-3 lg:top-3 lg:size-8" /> : null}
       <span className="absolute inset-x-3.5 bottom-3 z-[1] flex flex-col lg:inset-x-4 lg:bottom-3.5">
-        <span className="line-clamp-2 text-[15px] font-extrabold leading-[19px] lg:text-base lg:leading-5" style={{ color: deep(c, 0.35) }}>
+        <span className="line-clamp-2 text-[15px] font-extrabold leading-[19px] lg:text-base lg:leading-5" style={{ color: dark ? pale(c, 0.14) : deep(c, 0.35) }}>
           {title}
         </span>
-        <span className="mt-0.5 truncate text-xs font-medium lg:text-[12.5px]" style={{ color: deep(c, 0.5) }}>
+        <span className="mt-0.5 truncate text-xs font-medium lg:text-[12.5px]" style={{ color: dark ? pale(c, 0.45) : deep(c, 0.5) }}>
           {hasRoute ? <span className="lg:hidden">{day.charAt(0) + day.slice(1).toLowerCase()} · </span> : null}
           {meta}
         </span>
@@ -470,13 +486,13 @@ function AllDayTile({ events, now, isNext, selected, onSelect }: { events: WeekE
         </span>
       ) : null}
       <span className="flex items-center justify-between">
-        <span className="text-[11px] font-extrabold tracking-[0.06em]" style={{ color: deep(c, 0.55) }}>
+        <span className={cn("text-[11px] font-extrabold tracking-[0.06em]", ON_DARK_TEXT)} style={{ color: deep(c, 0.55), ...onDark(c) }}>
           {dayLabel(events[0].startAt, now)}
         </span>
         {events.length > 1 ? (
           <span
-            className="flex h-5 min-w-5 items-center justify-center rounded-pill px-1.5 text-[11px] font-extrabold"
-            style={{ backgroundColor: rgb(c, 0.16), color: deep(c, 0.55) }}
+            className={cn("flex h-5 min-w-5 items-center justify-center rounded-pill px-1.5 text-[11px] font-extrabold", ON_DARK_TEXT)}
+            style={{ backgroundColor: rgb(c, 0.16), color: deep(c, 0.55), ...onDark(c) }}
           >
             {events.length}
           </span>
@@ -573,10 +589,12 @@ const BACK_TO_FOOD_MS = 3 * 60_000;
 
 /**
  * Agendaweergave van de kalender. `onTint` geeft de kleur van de gekozen afspraak voor de band bovenaan
- * (null = het eten is gekozen; dan kleurt de pagina mee met het gerecht).
+ * (null = het eten is gekozen; dan kleurt de pagina mee met het gerecht). `idle` = always-on: dezelfde
+ * weergave, maar terug op het eten van vandaag en de rij terug op vandaag, want niemand kijkt nog mee.
  */
-export function KalenderAgenda({ onTint, food }: { onTint: (c: Rgb | null) => void; food: AgendaFood }) {
+export function KalenderAgenda({ onTint, food, idle = false }: { onTint: (c: Rgb | null) => void; food: AgendaFood; idle?: boolean }) {
   const { state, failed, events, now, future, connect } = useAgendaWeek();
+  const dark = useIsDarkTheme();
   const nowMs = now.getTime();
   const upcoming = events.filter((e) => e.endAt.getTime() > nowMs);
   const next = upcoming.find((e) => e.startAt.getTime() > nowMs) ?? null;
@@ -633,6 +651,12 @@ export function KalenderAgenda({ onTint, food }: { onTint: (c: Rgb | null) => vo
     if (!el) return;
     setCanScroll({ back: el.scrollLeft > 4, forward: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
   }, []);
+  // Always-on begint: terug naar het eten en de rij terug op vandaag (het effect hieronder zet ze daar).
+  React.useLayoutEffect(() => {
+    if (!idle) return;
+    setSel({ kind: "food" });
+    positioned.current = false;
+  }, [idle]);
   // Bij laden: de eetegel van vandaag links in beeld, met een stukje van de vorige tegel ervoor.
   React.useLayoutEffect(() => {
     const el = laneRef.current;
@@ -644,7 +668,7 @@ export function KalenderAgenda({ onTint, food }: { onTint: (c: Rgb | null) => vo
       positioned.current = true;
     }
     updateArrows();
-  }, [foodAt, lane.length, updateArrows]);
+  }, [foodAt, lane.length, idle, updateArrows]);
   React.useEffect(() => {
     const root = laneRef.current;
     const target = moreRef.current;
@@ -673,7 +697,7 @@ export function KalenderAgenda({ onTint, food }: { onTint: (c: Rgb | null) => vo
 
   // Linksboven: het eten (standaard) of de gekozen afspraak; rechts de to-do's (gsm: onder de rij).
   const hero = selectedEvent ? (
-    <EventHero e={selectedEvent} now={now} foodThumb={food.thumb} onBack={backToFood} />
+    <EventHero e={selectedEvent} now={now} foodThumb={food.thumb} onBack={backToFood} dark={dark} />
   ) : selectedAllDay ? (
     <AllDayHero events={selectedAllDay.events} now={now} foodThumb={food.thumb} onBack={backToFood} />
   ) : (
@@ -756,6 +780,7 @@ export function KalenderAgenda({ onTint, food }: { onTint: (c: Rgb | null) => vo
                 isNext={item.e.id === next?.id}
                 selected={selectedEvent?.id === item.e.id}
                 onSelect={() => choose({ kind: "event", id: item.e.id })}
+                dark={dark}
               />
             ) : (
               <AllDayTile

@@ -388,7 +388,8 @@ export function KalenderTodoBoard({ size = 130, className }: { size?: number; cl
           </svg>
         </Link>
       </div>
-      <div className="-mx-4 flex snap-x items-center gap-4 overflow-x-auto scroll-px-4 px-4 pb-1 pt-1 [scrollbar-width:none] lg:mx-0 lg:px-1 [&::-webkit-scrollbar]:hidden">
+      {/* Always-on: het papier is het felste vlak op het scherm, dus extra ontkleurd en gedimd (zoals op het dashboard). */}
+      <div className="-mx-4 flex snap-x items-center gap-4 overflow-x-auto scroll-px-4 px-4 pb-1 pt-1 [scrollbar-width:none] lg:mx-0 lg:px-1 [&::-webkit-scrollbar]:hidden [[data-aod]_&]:[filter:saturate(0.75)_brightness(0.82)]">
         {sorted.slice(0, 20).map(({ task, due }, i) => (
           <TodoPostit key={task.id} task={task} due={due} index={i} size={size} thawPhoto={thawPhotos.get(task.id)} onCheck={(t) => void closeTask(t)} />
         ))}

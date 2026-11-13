@@ -96,6 +96,18 @@ export function calendarDaySummary(isoDate: string, entry: DayEntry | null) {
   };
 }
 
+/**
+ * Wat er die dag nog bij het gerecht komt, bij naam: de andere gerechten en de losse items («groene asperges»,
+ * «hamburger»). Een dag met enkel losse items geeft niets: die staan dan al in de titel.
+ */
+export function calendarDayExtras(entry: DayEntry | null): string[] {
+  if (!entry || entry.meals.length === 0) return [];
+  return [
+    ...entry.meals.slice(1).map((m) => m.recipeName),
+    ...entry.looseIngredients.map((i) => i.name.replace(/\s*\(diepvries\)$/, "").trim().toLowerCase()),
+  ];
+}
+
 export function CalendarFreezeBadge({ size = 20 }: { size?: number }) {
   return (
     <span

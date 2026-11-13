@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import {
+  calendarDayExtras,
   calendarDaySummary,
   CalendarDayPlate,
   CalendarLoosePlate,
@@ -31,7 +32,7 @@ import { SegmentedControl } from "@/components/ui/segmented_control";
 import { KalenderAgenda, KalenderAgendaPrefetch, agendaBand } from "@/components/kalender_agenda";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 import { useAlwaysOn } from "@/lib/use_always_on";
-import { KalenderAlwaysOn } from "@/components/kalender_always_on";
+import { useFitToScreen } from "@/lib/use_fit_to_screen";
 
 type Weergave = "eten" | "agenda";
 const WEERGAVE_KEY = "kalender-weergave";
@@ -45,6 +46,8 @@ const WEERGAVE_KEY = "kalender-weergave";
 /** Hoeveel dagen je in de rij terug kunt schuiven. */
 const PAST_DAYS = 28;
 const NEXT_DAYS = 3;
+/** Breedte van de pagina; `useFitToScreen` houdt die aan als de pagina op een lager tabletscherm verkleint. */
+const PAGE_MAX_WIDTH = 1040;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,18 +66,35 @@ function isoToDate(iso: string | null): Date | null {
   return startOfDay(new Date(yy, mm - 1, dd));
 }
 
+/** Vandaag als «JJJJ-MM-DD»; springt mee om middernacht, want op een tablet blijft de kalender dagen open staan. */
+function useTodayKey(): string {
+  const [key, setKey] = React.useState(() => toIsoDate(new Date()));
+  React.useEffect(() => {
+    const update = () => setKey(toIsoDate(new Date()));
+    const id = window.setInterval(update, 60_000);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, []);
+  return key;
+}
+
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function ingredientCountLabel(n: number): string {
-  return n === 1 ? "1 ingrediënt" : `${n} ingrediënten`;
-}
-
-/** «A», «A en B», «A, B +2». */
+/** Kort, voor een tegel: «A», «A en B», «A, B +2». */
 function joinNames(names: string[]): string {
   if (names.length <= 2) return names.join(" en ");
   return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+}
+
+/** Voluit, bij het grote gerecht: «A», «A en B», «A, B en C». */
+function listNames(names: string[]): string {
+  if (names.length <= 1) return names.join("");
+  return `${names.slice(0, -1).join(", ")} en ${names[names.length - 1]}`;
 }
 
 /** Kleuren voor de band en de dagkaarten; donker thema = zachte tint over het donkere vlak. */
@@ -143,7 +163,7 @@ function DaySubLabel({ kind, text }: { kind: "stock" | "takeout" | "plain"; text
       </span>
     );
   }
-  return <span className="text-[13px] leading-[18px] text-[var(--text-secondary)]">{text}</span>;
+  return <span className="block max-w-full truncate text-[13px] leading-[18px] text-[var(--text-secondary)] first-letter:uppercase">{text}</span>;
 }
 
 /**
@@ -228,16 +248,10 @@ function FocusDay({
   const meals = entry?.meals ?? [];
   const first = meals[0] ?? null;
 
-  const companions = [
-    ...meals.slice(1).map((m) => m.recipeName),
-    ...(first ? (entry?.looseIngredients ?? []).map((i) => i.name.toLowerCase()) : []),
-  ];
-  const subParts = first
-    ? [first.fromStock ? "Uit de diepvries" : first.takeout ? "Afhalen" : ingredientCountLabel(first.ingredientCount)]
-    : visual
-      ? [visual.summary.sub]
-      : [];
-  if (companions.length > 0) subParts.push(`met ${joinNames(companions)}`);
+  // Onder het gerecht: geen aantal ingrediënten, wel wat er die dag nog bij komt, bij naam.
+  const extras = calendarDayExtras(entry);
+  const subParts = first ? (first.fromStock ? ["Uit de diepvries"] : first.takeout ? ["Afhalen"] : []) : visual ? [visual.summary.sub] : [];
+  if (extras.length > 0) subParts.push(`met ${listNames(extras)}`);
 
   const looseItems = !first ? (entry?.looseIngredients ?? []) : [];
   const title = first ? first.recipeName : visual ? capitalize(visual.summary.title) : "Nog niets gepland";
@@ -312,7 +326,7 @@ function FocusDay({
           {title}
         </h2>
         {subParts.length > 0 ? (
-          <p className="mt-1.5 text-sm font-semibold text-[var(--text-secondary)] first-letter:uppercase lg:mt-2.5 lg:text-[15px]">{subParts.join(" · ")}</p>
+          <p className="mt-1.5 line-clamp-2 max-w-[420px] text-sm font-semibold text-[var(--text-secondary)] first-letter:uppercase lg:mt-2.5 lg:max-w-[460px] lg:text-[15px]">{subParts.join(" · ")}</p>
         ) : null}
         {looseItems.length > 0 ? (
           <ul className="m-0 mt-3 flex max-w-[420px] list-none flex-wrap justify-center gap-1.5 p-0 lg:justify-start">
@@ -336,7 +350,7 @@ function FocusDay({
         {recipeId ? (
           <Link
             href={`/recepten/${recipeId}`}
-            className="mt-4 inline-flex h-11 items-center rounded-pill bg-[#16181a] px-[22px] text-[15px] font-bold text-white no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:mt-5 lg:h-12 lg:px-[26px] [[data-theme=dark]_&]:bg-white [[data-theme=dark]_&]:text-[#16181a]"
+            className="mt-4 inline-flex h-11 items-center rounded-pill bg-[#16181a] px-[22px] text-[15px] font-bold text-white no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:mt-5 lg:h-12 lg:px-[26px] [[data-theme=dark]_&]:bg-fixed-white [[data-theme=dark]_&]:text-[#16181a]"
           >
             Bekijk recept
           </Link>
@@ -416,6 +430,10 @@ function DayCard({
   }
 
   const { summary } = visual;
+  // Onder de naam: wat er die dag nog bij komt («met groene asperges, hamburger»), geen aantal ingrediënten.
+  // Een dag met enkel losse items houdt zijn aantal, want daar is de titel al de opsomming.
+  const extras = calendarDayExtras(entry);
+  const subText = entry?.meals[0] ? (extras.length > 0 ? `met ${joinNames(extras)}` : null) : summary.sub;
   const href = summary.recipeId ? `/recepten/${summary.recipeId}` : `/kalender?date=${isoDate}`;
   const plateSize = "size-[120px] lg:size-[176px]";
   const body = (
@@ -475,11 +493,15 @@ function DayCard({
       ) : null}
       <span className="absolute inset-x-3.5 bottom-3.5 z-[1] flex flex-col items-start gap-1.5">
         <span className="block w-full truncate text-[13.5px] font-bold leading-[18px] text-text-primary first-letter:uppercase lg:text-[15px]">{summary.title}</span>
-        {visual.kind === "plain" ? (
-          <DaySubLabel kind={visual.kind} text={summary.sub} />
-        ) : visual.kind === "takeout" ? (
+        {visual.kind === "takeout" ? (
           <span className="lg:hidden">
             <DaySubLabel kind={visual.kind} text={summary.sub} />
+          </span>
+        ) : null}
+        {/* Gsm: naast de afhaalpil is er geen plaats meer voor een regel. */}
+        {subText ? (
+          <span className={cn("block max-w-full", visual.kind === "takeout" && "max-lg:hidden")}>
+            <DaySubLabel kind="plain" text={subText} />
           </span>
         ) : null}
       </span>
@@ -519,7 +541,7 @@ export default function KalenderPage() {
   const searchParams = useSearchParams();
   const dark = useIsDarkTheme();
 
-  const todayKey = toIsoDate(startOfDay(new Date()));
+  const todayKey = useTodayKey();
   /** Gekozen dag bovenaan: ?date= of vandaag. */
   const focusDate = isoToDate(searchParams.get("date")) ?? startOfDay(new Date());
   const focusIso = toIsoDate(focusDate);
@@ -545,17 +567,19 @@ export default function KalenderPage() {
   };
   const [agendaTint, setAgendaTint] = React.useState<Rgb | null>(null);
 
-  // Always-on (canvas «KB»): enkel op een aanraaktablet (of met ?aod=1 om te testen), na 2 minuten zonder aanraking.
-  const [alwaysOnDevice, setAlwaysOnDevice] = React.useState(false);
+  // Tablet aan de muur: een aanraakscherm (of ?aod=1 / ?tablet=1 om te testen).
+  const [tabletDevice, setTabletDevice] = React.useState(false);
   React.useEffect(() => {
     const mq = window.matchMedia("(pointer: coarse)");
-    const forced = new URLSearchParams(window.location.search).has("aod");
-    const update = () => setAlwaysOnDevice(forced || mq.matches);
+    const params = new URLSearchParams(window.location.search);
+    const forced = params.has("aod") || params.has("tablet");
+    const update = () => setTabletDevice(forced || mq.matches);
     update();
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
-  const alwaysOn = useAlwaysOn(alwaysOnDevice);
+  // Always-on: na 2 minuten zonder aanraking dezelfde pagina, donker en gedimd (thema en dimmen via `data-aod`).
+  const alwaysOn = useAlwaysOn(tabletDevice);
 
   const { isLoading: dataLoading, data } = db.useQuery(
     ownerId
@@ -629,8 +653,9 @@ export default function KalenderPage() {
     const peek = parseFloat(getComputedStyle(el).scrollPaddingLeft) || 0;
     el.scrollLeft = Math.max(0, next.offsetLeft - el.offsetLeft - peek);
     updateArrows();
+    // `alwaysOn`: begint het always-on-scherm, dan staat de rij weer op de gekozen dag.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusIso, dataLoading, calendarIsEmpty, weergave, updateArrows]);
+  }, [focusIso, dataLoading, calendarIsEmpty, weergave, alwaysOn, updateArrows]);
 
   const scrollLane = (dir: -1 | 1) => {
     const el = laneRef.current;
@@ -638,11 +663,15 @@ export default function KalenderPage() {
     el.scrollBy({ left: dir * Math.max(240, el.clientWidth * 0.8), behavior: "smooth" });
   };
 
+  // Tablet: de hele pagina past in één scherm (lager scherm = kleiner), zodat de rij tegels nooit wegvalt.
+  // De lege staat van «Eten» vult zelf het scherm en hoeft dat niet.
+  const emptyFood = weergave === "eten" && calendarIsEmpty;
+  const { frameRef, contentRef } = useFitToScreen(tabletDevice && !emptyFood, PAGE_MAX_WIDTH);
+
   if (authLoading || !user || dataLoading) return <PageSpinner />;
-  if (alwaysOn) return <KalenderAlwaysOn calendarMap={calendarMap} />;
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)]">
+    <div ref={frameRef} className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)]">
       {weergave === "agenda" || !calendarIsEmpty ? (
         <div
           aria-hidden
@@ -650,7 +679,13 @@ export default function KalenderPage() {
           style={{ backgroundImage: `linear-gradient(180deg, ${band.top} 0%, ${band.bottom} 55%, var(--bg-app) 100%)` }}
         />
       ) : null}
-      <div className="relative mx-auto flex w-full max-w-[1040px] flex-1 flex-col px-4 pb-[calc(120px+env(safe-area-inset-bottom,0px))] pt-[env(safe-area-inset-top,0px)] motion-safe:animate-fade-up lg:px-6 lg:pt-[calc(40px+env(safe-area-inset-top,0px))]">
+      {/* Past de pagina niet in het scherm van de tablet, dan verkleint ze (`data-fit`) en valt de ondermarge voor de tabbalk weg. */}
+      <div
+        className="relative mx-auto flex w-full flex-1 flex-col px-4 pb-[calc(120px+env(safe-area-inset-bottom,0px))] pt-[env(safe-area-inset-top,0px)] motion-safe:animate-fade-up lg:px-6 lg:pt-[calc(40px+env(safe-area-inset-top,0px))] [[data-fit]_&]:pb-0"
+        style={{ maxWidth: PAGE_MAX_WIDTH }}
+      >
+        {/* Always-on: dezelfde pagina in het donkere thema op zwart, alles wat gedimd (foto's, tegels, post-its). */}
+        <div ref={contentRef} className={cn("flex flex-col transition-[filter] duration-500 [[data-aod]_&]:[filter:brightness(0.74)_saturate(0.9)]", emptyFood && "flex-1")}>
         {/* Kop: ronde terugknop; titel in het midden op mobiel, links ernaast op desktop. */}
         {/* Boven de foto van de agenda-hero (die loopt tot achter de kop). */}
         <header className="relative z-[2] flex h-16 items-center gap-3 lg:h-auto lg:gap-3.5">
@@ -674,6 +709,7 @@ export default function KalenderPage() {
         {weergave === "agenda" ? (
           <KalenderAgenda
             onTint={setAgendaTint}
+            idle={alwaysOn}
             food={{
               hero: <FocusDay key={`agenda-${todayKey}`} isoDate={todayKey} date={todayDate} entry={todayEntry} isToday tint={todaySummary ? todayRgb : null} compact />,
               tile: ({ selected, onSelect }) => (
@@ -742,6 +778,7 @@ export default function KalenderPage() {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   );
