@@ -9,6 +9,11 @@ import { db } from "@/lib/db";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { headerRoundButtonClass, HeaderEditButton } from "@/components/ui/header_round_button";
 import { SwipeToDelete } from "@/components/ui/swipe_to_delete";
+import { DoneButton } from "@/components/ui/title_edit_button";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
+import { Snackbar } from "@/components/ui/snackbar";
+import { APP_SNACKBAR_NO_NAV_FIXTURE_CLASS } from "@/lib/app-layout";
+import { VastEditRows } from "./vast_edit_rows";
 import { VastListSheet } from "@/components/vaste_lijstjes";
 import { useAutoShare } from "@/lib/auto-share";
 import { KadoIdeeen, type KadoItem } from "@/components/kado_ideeen";
@@ -21,6 +26,7 @@ import {
   formatEventDate,
   isVastList,
   mixWithWhiteRgb,
+  orderChanges,
   vastColor,
   vastIcon,
   vastType,
@@ -69,6 +75,18 @@ export default function VastLijstjePage() {
   const [editOpen, setEditOpen] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  /** Bewerkmodus (potlood): slepen om te ordenen en snel verwijderen; het lijstje zelf wijzig je via ⋯. */
+  const [editing, setEditing] = React.useState(false);
+  const [snackbar, setSnackbar] = React.useState<{ message: string; undo: () => void } | null>(null);
+  const snackbarTimer = React.useRef<number | null>(null);
+  const showSnackbar = (message: string, undo: () => void) => {
+    if (snackbarTimer.current) window.clearTimeout(snackbarTimer.current);
+    setSnackbar({ message, undo });
+    snackbarTimer.current = window.setTimeout(() => setSnackbar(null), 6000);
+  };
+  React.useEffect(() => () => {
+    if (snackbarTimer.current) window.clearTimeout(snackbarTimer.current);
+  }, []);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -144,6 +162,18 @@ export default function VastLijstjePage() {
   };
   const toggle = (item: ItemRow) => void db.transact(db.tx.items[item.id].update({ checked: !item.checked })).catch(() => undefined);
   const remove = (item: ItemRow) => void db.transact(db.tx.items[item.id].delete()).catch(() => undefined);
+  /** Verwijderen vanuit de bewerkmodus, met «Zet terug» (alle velden van het item komen terug). */
+  const removeWithUndo = (item: ItemRow) => {
+    const { id, ...fields } = item as ItemRow & Record<string, unknown>;
+    void db.transact(db.tx.items[id].delete()).catch(() => undefined);
+    const label = item.name.length > 40 ? `${item.name.slice(0, 40)}…` : item.name;
+    showSnackbar(`«${label}» verwijderd`, () => void db.transact(db.tx.items[id].update(fields as never).link({ list: list.id })).catch(() => undefined));
+  };
+  /** Nieuwe volgorde van de open items: `order` = plaats in de rij; enkel wat verschuift wordt bewaard. */
+  const reorder = (ids: string[]) => {
+    const changes = orderChanges(items, ids).map((c) => db.tx.items[c.id].update({ order: c.order }));
+    if (changes.length > 0) void db.transact(changes).catch(() => undefined);
+  };
   const clearDone = () => void db.transact(done.map((i) => db.tx.items[i.id].delete())).catch(() => undefined);
   const deleteList = () => {
     void db
@@ -169,7 +199,13 @@ export default function VastLijstjePage() {
             </svg>
           </Link>
           <span className="relative flex gap-2">
-            {list.ownerId === user.id ? <HeaderEditButton label="Lijstje wijzigen" onClick={() => setEditOpen(true)} /> : null}
+            {list.ownerId === user.id ? (
+              editing ? (
+                <DoneButton onClick={() => setEditing(false)} aria-label="Gereed met bewerken" className="h-10 px-4" />
+              ) : (
+                <HeaderEditButton label={isKado ? "Ideeën ordenen of verwijderen" : "Items ordenen of verwijderen"} onClick={() => { setEditing(true); setMenuOpen(false); }} />
+              )
+            ) : null}
             {list.ownerId === user.id ? (
               <button type="button" aria-label="Meer opties" aria-expanded={menuOpen} onClick={() => { setMenuOpen((v) => !v); setConfirmDelete(false); }} className={headerRoundButtonClass}>
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-5">
@@ -193,6 +229,16 @@ export default function VastLijstjePage() {
                   </div>
                 ) : (
                   <>
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); setEditOpen(true); }}
+                    className="flex h-11 w-full items-center gap-2.5 rounded-[12px] px-3 text-left text-[15px] font-medium text-text-primary [@media(hover:hover)]:hover:bg-[var(--gray-25)]"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-[18px]">
+                      <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4" />
+                    </svg>
+                    Lijstje wijzigen
+                  </button>
                   {/* Delen per persoon: bv. een kado-lijstje voor Chloé niet met Chloé delen. */}
                   {Array.from(new Set([...partnerIds, ...(list.memberships ?? []).map((m) => m.instantUserId ?? "")]))
                     .filter((id) => id && id !== user.id)
@@ -293,6 +339,9 @@ export default function VastLijstjePage() {
             color={color}
             userId={user.id}
             emptyIcon={icon}
+            editing={editing}
+            onReorder={reorder}
+            onDelete={(item) => removeWithUndo(item as ItemRow)}
           />
         ) : (
           <>
@@ -322,7 +371,9 @@ export default function VastLijstjePage() {
           </section>
 
           <div className="rounded-[22px] bg-[var(--white)] px-4 pb-3 pt-1 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]">
-            {open.length > 0 ? (
+            {open.length > 0 && editing ? (
+              <VastEditRows items={open} onReorder={reorder} onDelete={(id) => { const it = open.find((o) => o.id === id); if (it) removeWithUndo(it); }} />
+            ) : open.length > 0 ? (
               <ul className="m-0 list-none p-0">
                 {open.map((item, i) => (
                   <li key={item.id} className={cn(i > 0 && "border-t border-[var(--border-subtle)]")}>
@@ -382,6 +433,11 @@ export default function VastLijstjePage() {
                   <li key={item.id} className={cn("flex items-center gap-3 py-3", i > 0 && "border-t border-[var(--border-subtle)]")}>
                     <CheckCircle checked color={color} onClick={() => toggle(item)} label={`${item.name} terugzetten`} />
                     <span className="min-w-0 flex-1 text-[15px] text-[var(--text-tertiary)] line-through">{item.name}</span>
+                    {editing ? (
+                      <RoundIconButton tone="danger" size={28} aria-label={`${item.name} verwijderen`} onClick={() => removeWithUndo(item)}>
+                        {RoundIcons.trash}
+                      </RoundIconButton>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -390,6 +446,19 @@ export default function VastLijstjePage() {
           </>
         )}
       </div>
+
+      {snackbar ? (
+        <div className={APP_SNACKBAR_NO_NAV_FIXTURE_CLASS} role="region" aria-label="Melding">
+          <Snackbar
+            message={snackbar.message}
+            actionLabel="Zet terug"
+            onAction={() => {
+              snackbar.undo();
+              setSnackbar(null);
+            }}
+          />
+        </div>
+      ) : null}
 
       <VastListSheet
         open={editOpen}

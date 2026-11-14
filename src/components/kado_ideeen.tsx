@@ -3,8 +3,21 @@
 import * as React from "react";
 import Link from "next/link";
 import { id as iid } from "@instantdb/react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { arrayMove, rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
@@ -196,46 +209,93 @@ export function ClaimBadge({
   );
 }
 
+const GripIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+    <circle cx="9" cy="6" r="1.5" />
+    <circle cx="15" cy="6" r="1.5" />
+    <circle cx="9" cy="12" r="1.5" />
+    <circle cx="15" cy="12" r="1.5" />
+    <circle cx="9" cy="18" r="1.5" />
+    <circle cx="15" cy="18" r="1.5" />
+  </svg>
+);
+
 function KadoCard({
   item,
   listId,
   color,
   userId,
   emptyIcon,
+  editing,
+  onDelete,
+  dragHandle,
 }: {
   item: KadoItem;
   listId: string;
   color: Rgb;
   userId: string;
   emptyIcon: string;
+  /** Bewerkmodus: geen link, wel een greepje (slepen) en een rode ronde vuilbak. */
+  editing?: boolean;
+  onDelete?: () => void;
+  dragHandle?: React.ButtonHTMLAttributes<HTMLButtonElement>;
 }) {
   const store = item.linkStore || storeOf(item.linkUrl);
+  const body = (
+    <>
+      <KadoPhoto
+        item={item}
+        color={color}
+        emptyIcon={emptyIcon}
+        className="aspect-square rounded-[18px]"
+      />
+      <span className="mt-2.5 line-clamp-2 min-h-[36px] px-1.5 text-sm font-bold leading-[18px] text-text-primary">
+        {item.name}
+      </span>
+      {item.linkPrice ? (
+        <span className="mt-1.5 px-1.5 text-base font-extrabold text-text-primary">
+          {item.linkPrice}
+        </span>
+      ) : null}
+      {store ? <StoreChip store={store} className="mt-1.5 px-1.5" /> : null}
+      {item.note ? (
+        <span className="mx-1.5 mt-1.5 inline-flex h-[22px] w-fit max-w-full items-center truncate rounded-pill bg-[var(--gray-25)] px-2 text-[11.5px] font-bold text-[var(--text-secondary)]">
+          {item.note}
+        </span>
+      ) : null}
+    </>
+  );
+  if (editing) {
+    return (
+      <div className="relative flex flex-col rounded-[22px] bg-[var(--white)] p-1.5 pb-3 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]">
+        <div className="flex flex-col rounded-[18px]">{body}</div>
+        <button
+          type="button"
+          aria-label={`Verplaats ${item.name}`}
+          className="absolute left-3.5 top-3.5 flex size-9 cursor-grab touch-none items-center justify-center rounded-full bg-[var(--white)] text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(16,17,48,0.12)] transition-colors active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:text-action-primary"
+          {...dragHandle}
+        >
+          <GripIcon className="size-[18px]" />
+        </button>
+        <RoundIconButton
+          tone="danger"
+          size={36}
+          aria-label={`${item.name} verwijderen`}
+          onClick={onDelete}
+          className="absolute right-3.5 top-3.5 shadow-[0_1px_3px_rgba(16,17,48,0.12)]"
+        >
+          {RoundIcons.trash}
+        </RoundIconButton>
+      </div>
+    );
+  }
   return (
     <div className="relative flex flex-col rounded-[22px] bg-[var(--white)] p-1.5 pb-3 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)] transition-transform duration-fast ease-out-strong has-[a:active]:motion-safe:scale-[0.98]">
       <Link
         href={`/vast/${listId}/idee/${item.id}`}
         className="flex flex-col rounded-[18px] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
-        <KadoPhoto
-          item={item}
-          color={color}
-          emptyIcon={emptyIcon}
-          className="aspect-square rounded-[18px]"
-        />
-        <span className="mt-2.5 line-clamp-2 min-h-[36px] px-1.5 text-sm font-bold leading-[18px] text-text-primary">
-          {item.name}
-        </span>
-        {item.linkPrice ? (
-          <span className="mt-1.5 px-1.5 text-base font-extrabold text-text-primary">
-            {item.linkPrice}
-          </span>
-        ) : null}
-        {store ? <StoreChip store={store} className="mt-1.5 px-1.5" /> : null}
-        {item.note ? (
-          <span className="mx-1.5 mt-1.5 inline-flex h-[22px] w-fit max-w-full items-center truncate rounded-pill bg-[var(--gray-25)] px-2 text-[11.5px] font-bold text-[var(--text-secondary)]">
-            {item.note}
-          </span>
-        ) : null}
+        {body}
       </Link>
       <span className="pointer-events-none absolute left-3.5 top-3.5">
         <ClaimBadge item={item} userId={userId} />
@@ -251,6 +311,20 @@ function KadoCard({
           <ExternalIcon className="size-[15px]" />
         </a>
       ) : null}
+    </div>
+  );
+}
+
+/** Een kaart in de bewerkmodus: sleepbaar op het greepje (op een raster, dus `rectSortingStrategy`). */
+function SortableKadoCard(props: Omit<React.ComponentProps<typeof KadoCard>, "editing" | "dragHandle">) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.item.id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(isDragging && "relative z-10 drop-shadow-[0_14px_20px_rgba(16,17,48,0.25)]")}
+    >
+      <KadoCard {...props} editing dragHandle={{ ...attributes, ...listeners }} />
     </div>
   );
 }
@@ -312,9 +386,17 @@ export function KadoIdeeen({
   userId,
   emptyIcon,
   header,
+  editing = false,
+  onReorder,
+  onDelete,
 }: {
   /** Kop (illustratie + naam); op desktop staat de plakbalk ernaast. */
   header?: React.ReactNode;
+  /** Bewerkmodus (potlood): slepen om te ordenen en een ronde vuilbak per idee. */
+  editing?: boolean;
+  /** De open ideeën in hun nieuwe volgorde (alleen de ids). */
+  onReorder?: (ids: string[]) => void;
+  onDelete?: (item: KadoItem) => void;
   listId: string;
   listName: string;
   items: KadoItem[];
@@ -331,6 +413,20 @@ export function KadoIdeeen({
   const [showDone, setShowDone] = React.useState(false);
   const [pasteHint, setPasteHint] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 100, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = open.map((i) => i.id);
+    const from = ids.indexOf(String(active.id));
+    const to = ids.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    onReorder?.(arrayMove(ids, from, to));
+  };
 
   const nextOrder = () =>
     items.length > 0 ? Math.max(...items.map((i) => i.order ?? 0)) + 1 : 0;
@@ -522,7 +618,9 @@ export function KadoIdeeen({
         <h2 className="text-[17px] font-bold text-text-primary">
           {open.length} {open.length === 1 ? "idee" : "ideeën"}
         </h2>
-        {total > 0 ? (
+        {editing ? (
+          <span className="text-[13px] font-semibold text-[var(--text-secondary)]">Sleep aan het greepje om te ordenen</span>
+        ) : total > 0 ? (
           <span className="text-[13px] font-semibold text-[var(--text-secondary)]">
             {new Intl.NumberFormat("nl-BE", {
               style: "currency",
@@ -534,18 +632,38 @@ export function KadoIdeeen({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
-        {open.map((item) => (
-          <KadoCard
-            key={item.id}
-            item={item}
-            listId={listId}
-            color={color}
-            userId={userId}
-            emptyIcon={emptyIcon}
-          />
-        ))}
-      </div>
+      {editing ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={open.map((i) => i.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
+              {open.map((item) => (
+                <SortableKadoCard
+                  key={item.id}
+                  item={item}
+                  listId={listId}
+                  color={color}
+                  userId={userId}
+                  emptyIcon={emptyIcon}
+                  onDelete={() => onDelete?.(item)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
+          {open.map((item) => (
+            <KadoCard
+              key={item.id}
+              item={item}
+              listId={listId}
+              color={color}
+              userId={userId}
+              emptyIcon={emptyIcon}
+            />
+          ))}
+        </div>
+      )}
       {open.length === 0 ? (
         <p className="mt-3 px-2 text-center text-sm text-[var(--text-tertiary)]">
           Plak de link van een product: AI zoekt de foto, prijs en omschrijving. Of voeg zelf iets toe met een foto.
@@ -574,6 +692,19 @@ export function KadoIdeeen({
                   key={item.id}
                   className="flex items-center gap-3 rounded-[18px] bg-[var(--white)] py-2 pl-2 pr-4 shadow-[0_0_0_1px_var(--border-subtle)]"
                 >
+                  {editing ? (
+                    <div className="flex min-w-0 flex-1 items-center gap-3 opacity-60">
+                      <KadoPhoto
+                        item={item}
+                        color={color}
+                        emptyIcon={emptyIcon}
+                        className="size-11 shrink-0 rounded-[12px]"
+                      />
+                      <span className="truncate text-sm font-semibold text-[var(--text-secondary)] line-through">
+                        {item.name}
+                      </span>
+                    </div>
+                  ) : (
                   <Link
                     href={`/vast/${listId}/idee/${item.id}`}
                     className="flex min-w-0 flex-1 items-center gap-3 no-underline opacity-60"
@@ -588,6 +719,12 @@ export function KadoIdeeen({
                       {item.name}
                     </span>
                   </Link>
+                  )}
+                  {editing ? (
+                    <RoundIconButton tone="danger" size={28} aria-label={`${item.name} verwijderen`} onClick={() => onDelete?.(item)}>
+                      {RoundIcons.trash}
+                    </RoundIconButton>
+                  ) : null}
                   <CheckDot
                     checked
                     color={color}

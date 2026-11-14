@@ -147,3 +147,12 @@ export function parseCachedTiles<T>(raw: string | null): T[] | null {
     return null;
   }
 }
+
+/**
+ * Bewerkmodus van een vast lijstje: `ids` zijn de open items in hun nieuwe volgorde. Geeft enkel de items waarvan
+ * `order` verandert (nieuwe plaats = index); afgevinkte items krijgen er geen mee, die staan apart.
+ */
+export function orderChanges(items: { id: string; order?: number }[], ids: string[]): { id: string; order: number }[] {
+  const current = new Map(items.map((i) => [i.id, i.order]));
+  return ids.flatMap((id, index) => (current.has(id) && current.get(id) !== index ? [{ id, order: index }] : []));
+}
