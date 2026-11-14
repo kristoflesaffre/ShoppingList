@@ -13,6 +13,7 @@ const ALLOWED_KINDS = new Set([
   "profile-avatar",
   "recipe-photo",
   "generated-recipe-photo",
+  "gift-photo",
 ]);
 
 function getAdminDb() {

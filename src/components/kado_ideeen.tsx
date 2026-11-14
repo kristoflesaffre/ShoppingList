@@ -9,11 +9,13 @@ import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { InputField } from "@/components/ui/input_field";
 import { Button } from "@/components/ui/button";
 import { deepRgb, mixWithWhiteRgb } from "@/lib/vaste-lijstjes";
+import { fileToGiftPhotoDataUrl, uploadUserImageDataUrl } from "@/lib/image-storage";
 
 /**
  * Kado-ideeën (canvas «Kado's met links»): elk idee is een link naar een webwinkel met foto, titel en
- * prijs uit de pagina (`/api/link-preview`). Eerst om terug te bekijken en de winkel te openen;
- * afvinken («Gekocht») is bijzaak.
+ * prijs uit de pagina (`/api/link-preview`), aangevuld door Gemini (`/api/link-preview/ai`: naam, omschrijving,
+ * prijs, productfoto). Of zelf toevoegen met een foto (plakken uit het klembord of kiezen). Eerst om terug te
+ * bekijken en de winkel te openen; afvinken («Gekocht») is bijzaak.
  */
 
 export type KadoItem = {
@@ -26,6 +28,7 @@ export type KadoItem = {
   linkPrice?: string | null;
   linkStore?: string | null;
   note?: string | null;
+  description?: string | null;
   claimedByInstantUserId?: string | null;
   claimedByDisplayName?: string | null;
 };
@@ -322,7 +325,9 @@ export function KadoIdeeen({
   const open = items.filter((i) => !i.checked);
   const done = items.filter((i) => i.checked);
   const [draft, setDraft] = React.useState("");
-  const [sheetUrl, setSheetUrl] = React.useState<string | null>(null);
+  const [sheet, setSheet] = React.useState<KadoDraft | null>(null);
+  const { user } = db.useAuth();
+  const token = (user as { refresh_token?: string } | null | undefined)?.refresh_token ?? null;
   const [showDone, setShowDone] = React.useState(false);
   const [pasteHint, setPasteHint] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -330,28 +335,12 @@ export function KadoIdeeen({
   const nextOrder = () =>
     items.length > 0 ? Math.max(...items.map((i) => i.order ?? 0)) + 1 : 0;
 
-  /** Link → voorbeeld-blad; gewone tekst → idee zonder link. */
+  /** Link → blad met lezer + AI; gewone tekst → blad «zelf toevoegen» met die naam (foto, prijs erbij). */
   const submit = (text: string) => {
     const t = text.trim();
     if (!t) return;
     const link = findLink(t);
-    if (link) {
-      setSheetUrl(link);
-    } else {
-      void db
-        .transact(
-          db.tx.items[iid()]
-            .update({
-              name: t,
-              quantity: "",
-              checked: false,
-              section: "Algemeen",
-              order: nextOrder(),
-            })
-            .link({ list: listId }),
-        )
-        .catch(() => undefined);
-    }
+    setSheet(link ? { kind: "link", url: link } : { kind: "manual", name: t, photo: null });
     setDraft("");
   };
 
@@ -406,7 +395,7 @@ export function KadoIdeeen({
   // ⌘V / Ctrl+V ergens op de pagina (niet in een tekstveld) voegt de link toe.
   const submitRef = React.useRef(submit);
   submitRef.current = submit;
-  const sheetOpen = sheetUrl != null;
+  const sheetOpen = sheet != null;
   React.useEffect(() => {
     if (sheetOpen) return;
     const onPaste = (e: ClipboardEvent) => {
@@ -417,6 +406,13 @@ export function KadoIdeeen({
           t.isContentEditable)
       )
         return;
+      // Een geplakte foto (screenshot, gekopieerde afbeelding) = zelf toevoegen met die foto.
+      const img = imageFromPaste(e);
+      if (img) {
+        e.preventDefault();
+        setSheet({ kind: "manual", name: "", photo: img });
+        return;
+      }
       const text = e.clipboardData?.getData("text") ?? "";
       if (!findLink(text)) return;
       e.preventDefault();
@@ -454,6 +450,13 @@ export function KadoIdeeen({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onPaste={(e) => {
+              const img = imageFromPaste(e);
+              if (img) {
+                e.preventDefault();
+                setSheet({ kind: "manual", name: draft.trim(), photo: img });
+                setDraft("");
+                return;
+              }
               const text = e.clipboardData.getData("text");
               if (findLink(text)) {
                 e.preventDefault();
@@ -501,6 +504,19 @@ export function KadoIdeeen({
           {pasteHint}
         </p>
       ) : null}
+      <div className="mx-1 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 lg:ml-auto lg:w-[440px] lg:px-3">
+        <span className="flex items-center gap-1 text-[12.5px] text-[var(--text-tertiary)]">
+          <SparkleIcon className="size-3.5 text-action-primary" />
+          AI zoekt foto, prijs en omschrijving
+        </span>
+        <button
+          type="button"
+          onClick={() => setSheet({ kind: "manual", name: "", photo: null })}
+          className="ml-auto inline-flex h-8 items-center gap-1 rounded-pill px-1 text-[13px] font-bold text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        >
+          + Zelf toevoegen met foto
+        </button>
+      </div>
 
       <div className="mx-1 mb-2.5 mt-5 flex items-center justify-between">
         <h2 className="text-[17px] font-bold text-text-primary">
@@ -532,7 +548,7 @@ export function KadoIdeeen({
       </div>
       {open.length === 0 ? (
         <p className="mt-3 px-2 text-center text-sm text-[var(--text-tertiary)]">
-          Kopieer de link van een product en plak hem hier; foto en prijs komen er vanzelf bij.
+          Plak de link van een product: AI zoekt de foto, prijs en omschrijving. Of voeg zelf iets toe met een foto.
         </p>
       ) : null}
 
@@ -592,8 +608,10 @@ export function KadoIdeeen({
       ) : null}
 
       <KadoAddSheet
-        url={sheetUrl}
-        onClose={() => setSheetUrl(null)}
+        draft={sheet}
+        onClose={() => setSheet(null)}
+        userId={userId}
+        token={token}
         listId={listId}
         listName={listName}
         order={nextOrder()}
@@ -605,9 +623,149 @@ export function KadoIdeeen({
   );
 }
 
-/** Blad «Idee toevoegen»: haalt het voorbeeld op en laat titel, prijs en notitie aanvullen. */
+/** Wat het blad «Idee toevoegen» opent: een link (lezen + AI) of zelf invullen (met of zonder foto). */
+export type KadoDraft = { kind: "link"; url: string } | { kind: "manual"; name: string; photo: Blob | null };
+
+const pasteKeys = () => (typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.userAgent) ? "⌘V" : "Ctrl+V");
+
+/** Eerste afbeelding uit een plak-gebeurtenis (screenshot, gekopieerde foto). */
+export function imageFromPaste(e: ClipboardEvent | React.ClipboardEvent): File | null {
+  const files = Array.from(e.clipboardData?.files ?? []);
+  const fromFiles = files.find((f) => f.type.startsWith("image/"));
+  if (fromFiles) return fromFiles;
+  for (const it of Array.from(e.clipboardData?.items ?? [])) {
+    if (it.kind === "file" && it.type.startsWith("image/")) return it.getAsFile();
+  }
+  return null;
+}
+
+/** Afbeelding uit het klembord via de knop; `null` als de browser het niet toelaat of er geen foto op staat. */
+export async function readClipboardImage(): Promise<Blob | "denied" | null> {
+  try {
+    if (!navigator.clipboard?.read) return "denied";
+    for (const item of await navigator.clipboard.read()) {
+      const type = item.types.find((t) => t.startsWith("image/"));
+      if (type) return await item.getType(type);
+    }
+    return null;
+  } catch {
+    return "denied";
+  }
+}
+
+/** Foto van een kado-idee naar de opslag (verkleind); geeft de publieke URL. */
+export async function uploadKadoPhoto(photo: Blob, ownerId: string): Promise<string> {
+  const dataUrl = await fileToGiftPhotoDataUrl(photo);
+  return (await uploadUserImageDataUrl({ dataUrl, ownerId, kind: "gift-photo" })).url;
+}
+
+export const SparkleIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+    <path d="M10 2.5l1.6 4.9a3 3 0 0 0 1.9 1.9l4.9 1.6-4.9 1.6a3 3 0 0 0-1.9 1.9L10 19.3l-1.6-4.9a3 3 0 0 0-1.9-1.9L1.6 10.9l4.9-1.6a3 3 0 0 0 1.9-1.9L10 2.5zM19 14l.8 2.2 2.2.8-2.2.8L19 20l-.8-2.2-2.2-.8 2.2-.8L19 14z" />
+  </svg>
+);
+const PhotoIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+    <rect x="3" y="5" width="18" height="15" rx="3" />
+    <circle cx="9" cy="11" r="2" />
+    <path d="M21 17l-5-5-7 7" />
+  </svg>
+);
+const ClipboardIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+    <rect x="7" y="4" width="10" height="4" rx="1.5" />
+    <path d="M7 6H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-1" />
+  </svg>
+);
+
+const softPill =
+  "inline-flex h-9 items-center gap-1.5 rounded-pill bg-[var(--blue-50)] px-3 text-[13px] font-bold text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] disabled:opacity-50";
+
+/** «Plakken» + «Kies foto» voor de foto van een idee (ook op de detailpagina). */
+export function KadoPhotoButtons({
+  onPhoto,
+  onHint,
+  hasPhoto,
+  onRemove,
+  disabled,
+}: {
+  onPhoto: (photo: Blob) => void;
+  onHint: (hint: string) => void;
+  hasPhoto?: boolean;
+  onRemove?: () => void;
+  disabled?: boolean;
+}) {
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const paste = async () => {
+    const got = await readClipboardImage();
+    if (got && got !== "denied") onPhoto(got);
+    else onHint(got === "denied" ? `Je browser laat de knop niet in het klembord kijken. Druk ${pasteKeys()} om de foto te plakken.` : "Geen foto op het klembord. Kopieer eerst een afbeelding.");
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button type="button" disabled={disabled} onClick={() => void paste()} className={softPill}>
+        <ClipboardIcon className="size-4" />
+        Foto plakken
+      </button>
+      <button type="button" disabled={disabled} onClick={() => fileRef.current?.click()} className={softPill}>
+        <PhotoIcon className="size-4" />
+        Kies foto
+      </button>
+      {hasPhoto && onRemove ? (
+        <button type="button" disabled={disabled} onClick={onRemove} className="h-9 rounded-pill px-2 text-[13px] font-semibold text-[var(--text-secondary)]">
+          Verwijder
+        </button>
+      ) : null}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onPhoto(f);
+          e.target.value = "";
+        }}
+      />
+    </div>
+  );
+}
+
+/** Lokale voorbeeld-URL voor een geplakte of gekozen foto (opgeruimd bij wissel). */
+function useObjectUrl(blob: Blob | null): string | null {
+  const [url, setUrl] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!blob) {
+      setUrl(null);
+      return;
+    }
+    const u = URL.createObjectURL(blob);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [blob]);
+  return url;
+}
+
+type AiInfo = { title: string | null; description: string | null; price: string | null; image: string | null; url?: string; store?: string };
+
+/** Gemini leest de link (naam, omschrijving, prijs, foto). */
+export async function askKadoAi(url: string, token: string): Promise<AiInfo> {
+  const r = await fetch("/api/link-preview/ai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ url }),
+  });
+  const j = (await r.json().catch(() => null)) as (AiInfo & { error?: string }) | null;
+  if (!r.ok || !j || j.error) throw new Error(j?.error ?? "ai-unavailable");
+  return j;
+}
+
+/**
+ * Blad «Idee toevoegen». Met een link: eerst de snelle lezer, dan Gemini die naam, omschrijving, prijs en foto
+ * aanvult (wat je zelf al typte blijft staan). Zelf invullen: naam, foto (plakken of kiezen), prijs, omschrijving.
+ */
 function KadoAddSheet({
-  url,
+  draft,
   onClose,
   listId,
   listName,
@@ -615,8 +773,10 @@ function KadoAddSheet({
   color,
   emptyIcon,
   accent,
+  userId,
+  token,
 }: {
-  url: string | null;
+  draft: KadoDraft | null;
   onClose: () => void;
   listId: string;
   listName: string;
@@ -624,65 +784,137 @@ function KadoAddSheet({
   color: Rgb;
   emptyIcon: string;
   accent: string;
+  userId: string;
+  token: string | null;
 }) {
+  const url = draft?.kind === "link" ? draft.url : null;
   const [preview, setPreview] = React.useState<Preview | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const [ai, setAi] = React.useState<"idle" | "busy" | "done" | "failed">("idle");
   const [title, setTitle] = React.useState("");
   const [price, setPrice] = React.useState("");
+  const [description, setDescription] = React.useState("");
   const [note, setNote] = React.useState("");
+  const [image, setImage] = React.useState<string | null>(null);
+  const [photo, setPhoto] = React.useState<Blob | null>(null);
+  const [hint, setHint] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const photoUrl = useObjectUrl(photo);
+  // Velden die je zelf aanpaste, laat de AI met rust.
+  const touched = React.useRef(new Set<string>());
+  const run = React.useRef(0);
+
+  const runAi = React.useCallback(
+    (link: string) => {
+      if (!token) return;
+      const id = run.current;
+      setAi("busy");
+      askKadoAi(link, token)
+        .then((r) => {
+          if (run.current !== id) return;
+          if (r.title && !touched.current.has("title")) setTitle(r.title);
+          if (r.price && !touched.current.has("price")) setPrice(r.price);
+          if (r.description && !touched.current.has("description")) setDescription(r.description);
+          if (r.image) setImage(r.image);
+          setPreview((p) => (p ? { ...p, title: p.title ?? r.title, price: p.price ?? r.price, image: r.image ?? p.image } : p));
+          setAi("done");
+        })
+        .catch(() => {
+          if (run.current === id) setAi("failed");
+        });
+    },
+    [token],
+  );
 
   React.useEffect(() => {
-    if (!url) return;
-    let cancelled = false;
+    if (!draft) return;
+    run.current += 1;
+    const id = run.current;
+    touched.current = new Set();
     setPreview(null);
-    setTitle("");
+    setTitle(draft.kind === "manual" ? draft.name : "");
     setPrice("");
+    setDescription("");
     setNote("");
+    setImage(null);
+    setPhoto(draft.kind === "manual" ? draft.photo : null);
+    setHint(null);
+    setSaving(false);
+    setAi("idle");
+    if (draft.kind !== "link") {
+      setLoading(false);
+      return;
+    }
+    const link = draft.url;
     setLoading(true);
     fetch("/api/link-preview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url: link }),
     })
       .then((r) => r.json() as Promise<Preview & { error?: string }>)
       .then((p) => {
-        if (cancelled) return;
+        if (run.current !== id) return;
         const pv: Preview = {
-          url: p.url || url,
-          store: p.store || storeOf(url) || "",
+          url: p.url || link,
+          store: p.store || storeOf(link) || "",
           title: p.title ?? null,
           image: p.image ?? null,
           price: p.price ?? null,
           blocked: p.blocked || !!p.error,
         };
         setPreview(pv);
-        setTitle((t) => t || pv.title || "");
-        setPrice((v) => v || pv.price || "");
+        if (!touched.current.has("title")) setTitle((t) => t || pv.title || "");
+        if (!touched.current.has("price")) setPrice((v) => v || pv.price || "");
+        setImage((v) => v ?? pv.image);
       })
       .catch(() => {
-        if (!cancelled)
-          setPreview({
-            url,
-            store: storeOf(url) ?? "",
-            title: null,
-            image: null,
-            price: null,
-            blocked: true,
-          });
+        if (run.current === id) setPreview({ url: link, store: storeOf(link) ?? "", title: null, image: null, price: null, blocked: true });
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (run.current === id) setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
+    runAi(link);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- enkel bij een nieuw concept
+  }, [draft]);
 
-  const found = preview && (preview.title || preview.image || preview.price);
-  const canSave = !!url && !loading && title.trim().length > 0;
-  const save = () => {
-    if (!url || !canSave) return;
-    void db
+  // ⌘V / Ctrl+V met een afbeelding terwijl het blad openstaat = foto van dit idee.
+  React.useEffect(() => {
+    if (!draft) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const img = imageFromPaste(e);
+      if (!img) return;
+      e.preventDefault();
+      setPhoto(img);
+      setHint(null);
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [draft]);
+
+  React.useEffect(() => {
+    if (!hint) return;
+    const t = setTimeout(() => setHint(null), 6000);
+    return () => clearTimeout(t);
+  }, [hint]);
+
+  const found = !!(title || image || price);
+  const canSave = !!draft && !saving && title.trim().length > 0;
+  const save = async () => {
+    if (!draft || !canSave) return;
+    setSaving(true);
+    let finalImage = image;
+    if (photo) {
+      try {
+        finalImage = await uploadKadoPhoto(photo, userId);
+      } catch (e) {
+        setHint(e instanceof Error ? e.message : "De foto kon niet bewaard worden.");
+        setSaving(false);
+        return;
+      }
+    }
+    const link = url ? preview?.url || url : null;
+    await db
       .transact(
         db.tx.items[iid()]
           .update({
@@ -691,122 +923,93 @@ function KadoAddSheet({
             checked: false,
             section: "Algemeen",
             order,
-            linkUrl: preview?.url || url,
-            linkStore: preview?.store || storeOf(url) || "",
-            ...(preview?.image ? { linkImage: preview.image } : {}),
+            ...(link ? { linkUrl: link, linkStore: preview?.store || storeOf(link) || "" } : {}),
+            ...(finalImage ? { linkImage: finalImage } : {}),
             ...(price.trim() ? { linkPrice: price.trim() } : {}),
+            ...(description.trim() ? { description: description.trim() } : {}),
             ...(note.trim() ? { note: note.trim() } : {}),
           })
           .link({ list: listId }),
       )
       .catch(() => undefined);
+    setSaving(false);
     onClose();
   };
 
-  const item: KadoItem = {
-    id: "preview",
-    name: title,
-    linkImage: preview?.image ?? null,
+  const shown: KadoItem = { id: "preview", name: title, linkImage: photoUrl ?? image };
+  const edit = (field: string, set: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    touched.current.add(field);
+    set(e.target.value);
   };
+  const statusLabel = (text: string, tone: string, icon?: React.ReactNode) => (
+    <span className="flex items-center gap-1 text-[11.5px] font-extrabold tracking-[0.04em]" style={{ color: tone }}>
+      {icon}
+      {text}
+    </span>
+  );
+
   return (
     <SlideInModal
-      open={url != null}
+      open={draft != null}
       onClose={onClose}
       title="Idee toevoegen"
       footer={
-        <Button variant="primary" disabled={!canSave} onClick={save}>
-          Toevoegen aan {listName}
+        <Button variant="primary" disabled={!canSave} onClick={() => void save()}>
+          {saving ? "Bewaren…" : `Toevoegen aan ${listName}`}
         </Button>
       }
     >
       <div className="flex flex-col gap-4">
-        <div className="flex h-11 items-center gap-2 overflow-hidden rounded-[14px] bg-[var(--blue-25)] px-3.5 text-[13px] font-semibold text-action-primary">
-          <LinkIcon className="size-4 shrink-0" />
-          <span className="truncate">
-            {url?.replace(/^https?:\/\/(www\.)?/, "")}
-          </span>
-        </div>
+        {url ? (
+          <div className="flex h-11 items-center gap-2 overflow-hidden rounded-[14px] bg-[var(--blue-25)] px-3.5 text-[13px] font-semibold text-action-primary">
+            <LinkIcon className="size-4 shrink-0" />
+            <span className="truncate">{url.replace(/^https?:\/\/(www\.)?/, "")}</span>
+          </div>
+        ) : null}
         <div className="flex gap-3.5">
-          {loading ? (
-            <div className="size-[120px] shrink-0 animate-pulse rounded-[16px] bg-[var(--gray-25)]" />
+          {loading && !photoUrl && !image ? (
+            <div className="shimmer size-[120px] shrink-0 rounded-[16px] bg-[var(--gray-25)]" />
           ) : (
-            <KadoPhoto
-              item={item}
-              color={color}
-              emptyIcon={emptyIcon}
-              className="size-[120px] shrink-0 rounded-[16px]"
-            />
+            <KadoPhoto item={shown} color={color} emptyIcon={emptyIcon} className="size-[120px] shrink-0 rounded-[16px]" />
           )}
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
-            {loading ? (
-              <>
-                <span className="text-[11.5px] font-extrabold tracking-[0.04em] text-[var(--text-tertiary)]">
-                  PAGINA LEZEN…
-                </span>
-                <span className="h-4 w-4/5 animate-pulse rounded bg-[var(--gray-25)]" />
-                <span className="h-4 w-1/2 animate-pulse rounded bg-[var(--gray-25)]" />
-              </>
-            ) : found ? (
-              <>
-                <span className="flex items-center gap-1 text-[11.5px] font-extrabold tracking-[0.04em] text-[#2f8f5a]">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2.6}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                    className="size-3.5"
-                  >
-                    <path d="M5 12.5l4.2 4L19 7" />
-                  </svg>
-                  GEVONDEN OP DE PAGINA
-                </span>
-                {preview?.price ? (
-                  <span className="text-lg font-extrabold text-text-primary">
-                    {preview.price}
-                  </span>
-                ) : null}
-                {preview?.store ? (
-                  <StoreChip store={preview.store} className="text-[12.5px]" />
-                ) : null}
-              </>
-            ) : (
-              <>
-                <span
-                  className="text-[11.5px] font-extrabold tracking-[0.04em]"
-                  style={{ color: accent }}
-                >
-                  NIETS GEVONDEN
-                </span>
-                <span className="text-[13px] leading-[18px] text-[var(--text-secondary)]">
-                  Deze winkel laat de pagina niet lezen. Vul zelf een naam in;
-                  de link blijft bewaard.
-                </span>
-              </>
-            )}
+            {url && ai === "busy"
+              ? statusLabel("AI LEEST DE PAGINA…", "var(--action-primary)", <SparkleIcon className="size-3.5 motion-safe:animate-pulse" />)
+              : url && ai === "done"
+                ? statusLabel("AANGEVULD MET AI", "var(--success-soft-fg)", <SparkleIcon className="size-3.5" />)
+                : url && loading
+                  ? statusLabel("PAGINA LEZEN…", "var(--text-tertiary)")
+                  : url && found
+                    ? statusLabel("GEVONDEN OP DE PAGINA", "var(--success-soft-fg)")
+                    : url
+                      ? statusLabel("NIETS GEVONDEN", accent)
+                      : statusLabel("ZELF TOEVOEGEN", accent, <PhotoIcon className="size-3.5" />)}
+            {url && ai !== "busy" && !found && !loading ? (
+              <span className="text-[13px] leading-[18px] text-[var(--text-secondary)]">Deze winkel laat de pagina niet lezen. Vul zelf aan; de link blijft bewaard.</span>
+            ) : null}
+            {url && ai === "failed" ? (
+              <button type="button" onClick={() => runAi(url)} className="flex w-fit items-center gap-1 text-[13px] font-bold text-action-primary">
+                <SparkleIcon className="size-3.5" />
+                Opnieuw met AI
+              </button>
+            ) : null}
+            {price && url ? <span className="text-lg font-extrabold text-text-primary">{price}</span> : null}
+            {preview?.store ? <StoreChip store={preview.store} className="text-[12.5px]" /> : null}
+            {!url ? <span className="text-[13px] leading-[18px] text-[var(--text-secondary)]">Plak een foto ({pasteKeys()}) of kies er een.</span> : null}
           </div>
         </div>
-        <InputField
-          label="Naam"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="bv. Lego Duplo trein"
-        />
-        <InputField
-          label="Prijs"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          placeholder="bv. € 24,95"
-          inputMode="decimal"
-        />
-        <InputField
-          label="Notitie"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="bv. maat 27"
-        />
+        <KadoPhotoButtons onPhoto={(b) => setPhoto(b)} onHint={setHint} hasPhoto={!!photo} onRemove={() => setPhoto(null)} disabled={saving} />
+        {hint ? (
+          <p role="status" className="-mt-2 text-[13px] font-semibold text-action-primary">
+            {hint}
+          </p>
+        ) : null}
+        <InputField label="Naam" value={title} onChange={edit("title", setTitle)} placeholder="bv. Lego Duplo trein" />
+        <InputField label="Prijs" value={price} onChange={edit("price", setPrice)} placeholder="bv. € 24,95" inputMode="decimal" />
+        <InputField label="Omschrijving" asChild className="h-auto min-h-[96px] resize-none py-3">
+          <textarea rows={3} value={description} onChange={edit("description", setDescription)} placeholder={url && ai === "busy" ? "AI schrijft een korte omschrijving…" : "Wat is het, wat maakt het leuk?"} />
+        </InputField>
+        <InputField label="Notitie" value={note} onChange={(e) => setNote(e.target.value)} placeholder="bv. maat 27" />
       </div>
     </SlideInModal>
   );

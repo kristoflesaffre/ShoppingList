@@ -139,6 +139,8 @@ const schema = i.schema({
       linkStore: i.string().optional(),
       /** Vrije notitie bij een kado-idee (bv. «maat 27»). */
       note: i.string().optional(),
+      /** Omschrijving van een kado-idee: door Gemini uit de link gehaald (`/api/link-preview/ai`) of zelf getypt. */
+      description: i.string().optional(),
     }),
     recipes: i.entity({
       name: i.string(),

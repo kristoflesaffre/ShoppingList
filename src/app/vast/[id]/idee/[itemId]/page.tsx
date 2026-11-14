@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { db } from "@/lib/db";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { headerRoundButtonClass } from "@/components/ui/header_round_button";
-import { ClaimBadge, KadoPhoto, StoreChip, storeOf, type KadoItem } from "@/components/kado_ideeen";
+import { askKadoAi, ClaimBadge, imageFromPaste, KadoPhoto, KadoPhotoButtons, SparkleIcon, StoreChip, storeOf, uploadKadoPhoto, type KadoItem } from "@/components/kado_ideeen";
 import { formatEventDate, mixWithWhiteRgb, vastColor, vastIcon } from "@/lib/vaste-lijstjes";
 
 /**
@@ -23,13 +23,54 @@ export default function KadoIdeePage() {
   const { data: profData } = db.useQuery({ profiles: { $: { where: { instantUserId: user?.id ?? "__none__" } } } });
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [note, setNote] = React.useState<string | null>(null);
+  const [description, setDescription] = React.useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = React.useState(false);
+  const [aiBusy, setAiBusy] = React.useState(false);
+  const [hint, setHint] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
   }, [authLoading, user, router]);
 
+  const token = (user as { refresh_token?: string } | null | undefined)?.refresh_token ?? null;
   const item = (data?.items?.[0] ?? null) as (KadoItem & { list?: { id: string; name: string; eventDate?: string; colorKey?: string; vastType?: string; icon?: string } }) | null;
   const back = `/vast/${listId}`;
+
+  /** Nieuwe foto (geplakt of gekozen) → opslag → op het idee. */
+  const setPhoto = React.useCallback(
+    async (photo: Blob) => {
+      if (!user || !itemId) return;
+      setPhotoBusy(true);
+      setHint(null);
+      try {
+        const url = await uploadKadoPhoto(photo, user.id);
+        await db.transact(db.tx.items[itemId].update({ linkImage: url }));
+      } catch (e) {
+        setHint(e instanceof Error ? e.message : "De foto kon niet bewaard worden.");
+      } finally {
+        setPhotoBusy(false);
+      }
+    },
+    [user, itemId],
+  );
+  // ⌘V / Ctrl+V met een afbeelding (niet in een tekstveld) = nieuwe foto voor dit idee.
+  React.useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("input, textarea, [contenteditable='true']")) return;
+      const img = imageFromPaste(e);
+      if (!img) return;
+      e.preventDefault();
+      void setPhoto(img);
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [setPhoto]);
+  React.useEffect(() => {
+    if (!hint) return;
+    const t = setTimeout(() => setHint(null), 6000);
+    return () => clearTimeout(t);
+  }, [hint]);
 
   if (authLoading || !user || isLoading) return <PageSpinner />;
   if (!item) {
@@ -65,6 +106,34 @@ export default function KadoIdeePage() {
     const v = note.trim();
     if (v !== (item.note ?? "")) void db.transact(db.tx.items[item.id].update({ note: v })).catch(() => undefined);
     setNote(null);
+  };
+  const saveDescription = () => {
+    if (description == null) return;
+    const v = description.trim();
+    if (v !== (item.description ?? "")) void db.transact(db.tx.items[item.id].update({ description: v })).catch(() => undefined);
+    setDescription(null);
+  };
+  /** Gemini leest de link opnieuw: omschrijving, en foto/prijs als die nog ontbreken. */
+  const fillWithAi = async () => {
+    if (!item.linkUrl || !token) return;
+    setAiBusy(true);
+    setHint(null);
+    try {
+      const r = await askKadoAi(item.linkUrl, token);
+      await db.transact(
+        db.tx.items[item.id].update({
+          ...(r.description ? { description: r.description } : {}),
+          ...(r.image && !item.linkImage ? { linkImage: r.image } : {}),
+          ...(r.price && !item.linkPrice ? { linkPrice: r.price } : {}),
+          ...(r.title && item.name.length > 90 ? { name: r.title } : {}),
+        }),
+      );
+      if (!r.description && !r.image && !r.price) setHint("AI vond niets nieuws op die pagina.");
+    } catch {
+      setHint("AI kon de pagina nu niet lezen. Probeer later opnieuw.");
+    } finally {
+      setAiBusy(false);
+    }
   };
   const remove = () => {
     void db.transact(db.tx.items[item.id].delete()).catch(() => undefined);
@@ -107,15 +176,34 @@ export default function KadoIdeePage() {
         </header>
 
         <div className="relative mt-1">
-          <KadoPhoto item={item} color={color} emptyIcon={icon} className="aspect-square max-h-[420px] w-full rounded-[26px] bg-[var(--white)]" />
+          <KadoPhoto item={item} color={color} emptyIcon={icon} className={`aspect-square max-h-[420px] w-full rounded-[26px] bg-[var(--white)]${photoBusy ? " shimmer" : ""}`} />
           <span className="absolute left-3 top-3">
             <ClaimBadge item={item} userId={user.id} />
           </span>
         </div>
+        <div className="mt-3">
+          <KadoPhotoButtons onPhoto={(b) => void setPhoto(b)} onHint={setHint} disabled={photoBusy} />
+        </div>
+        {hint ? (
+          <p role="status" className="mt-2 text-[13px] font-semibold text-action-primary">
+            {hint}
+          </p>
+        ) : null}
 
         {store ? <StoreChip store={store} className="mt-4 text-[13px]" /> : null}
         <h1 className="mt-2 text-2xl font-extrabold leading-tight tracking-[-0.01em] text-text-primary">{item.name}</h1>
         {item.linkPrice ? <p className="mt-2 text-2xl font-extrabold text-text-primary">{item.linkPrice}</p> : null}
+        {item.linkUrl ? (
+          <button
+            type="button"
+            disabled={aiBusy || !token}
+            onClick={() => void fillWithAi()}
+            className="mt-3 inline-flex h-9 w-fit items-center gap-1.5 rounded-pill bg-[var(--blue-50)] px-3 text-[13px] font-bold text-action-primary disabled:opacity-60"
+          >
+            <SparkleIcon className={`size-4${aiBusy ? " motion-safe:animate-pulse" : ""}`} />
+            {aiBusy ? "AI leest de pagina…" : item.description ? "Opnieuw aanvullen met AI" : "Aanvullen met AI"}
+          </button>
+        ) : null}
 
         <div className="mt-4 rounded-[22px] bg-[var(--white)] px-4 py-1 shadow-[0_1px_2px_rgba(16,17,48,0.04),0_0_0_1px_var(--border-subtle)]">
           <div className="flex items-center gap-3 py-3">
@@ -125,6 +213,17 @@ export default function KadoIdeePage() {
               {eventLabel ? ` · ${eventLabel}` : ""}
             </span>
           </div>
+          <label className="flex items-start gap-3 border-t border-[var(--border-subtle)] py-1.5">
+            <span className="w-[92px] shrink-0 pt-2 text-sm text-[var(--text-secondary)]">Omschrijving</span>
+            <textarea
+              value={description ?? item.description ?? ""}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={saveDescription}
+              rows={Math.min(6, Math.max(2, Math.ceil(((description ?? item.description ?? "").length || 1) / 38)))}
+              placeholder="Omschrijving toevoegen"
+              className="min-w-0 flex-1 resize-none bg-transparent py-2 text-[15px] leading-[21px] text-text-primary outline-none placeholder:text-[var(--text-tertiary)]"
+            />
+          </label>
           <label className="flex items-center gap-3 border-t border-[var(--border-subtle)] py-1.5">
             <span className="w-[92px] shrink-0 text-sm text-[var(--text-secondary)]">Notitie</span>
             <input
