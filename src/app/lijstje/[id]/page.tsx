@@ -5214,11 +5214,14 @@ export default function ListDetailPage({
       return result;
     }
 
+    // «Enkel open» (boodschappenlijstjes): afgevinkte items en volledig afgevinkte groepen verdwijnen.
+    const onlyOpen = showUncheckedFirst && !isEditMode && !isMasterList && !isLandalOrVakantieList;
     const useDaySections =
       !isMasterList && effectiveListGroupingMode === "day";
     if (useDaySections) {
       const grouped = new Map<string, ListItem[]>();
       for (const item of itemsForStoreView) {
+        if (onlyOpen && item.checked) continue;
         const existing = grouped.get(item.section) ?? [];
         existing.push(item);
         grouped.set(item.section, existing);
@@ -5252,6 +5255,9 @@ export default function ListDetailPage({
       .filter((t) => grouped.has(t))
       .map((t) => ({ title: t, displayTitle: undefined as string | undefined, items: grouped.get(t)!, isGroupHeader: false as boolean | undefined }));
 
+    if (onlyOpen) {
+      return normalSections.map((s) => ({ ...s, items: s.items.filter((i) => !i.checked) })).filter((s) => s.items.length > 0);
+    }
     if (!showUncheckedFirst || isEditMode) {
       return normalSections;
     }
@@ -6377,6 +6383,13 @@ export default function ListDetailPage({
                     />
                   </SortableContext>
                 </DndContext>
+              </div>
+            ) : useCardView && sections.length === 0 && showUncheckedFirst && !isEditMode && hasItems ? (
+              /* «Enkel open» terwijl alles al afgevinkt is. */
+              <div className="flex flex-col items-center gap-3 rounded-[20px] bg-[var(--white)] px-6 py-10 text-center shadow-card">
+                <p className="text-[17px] font-semibold text-[var(--text-primary)]">Alles is afgevinkt</p>
+                <p className="text-[14px] text-[var(--text-secondary)]">Er staat niets meer open op dit lijstje.</p>
+                <Button variant="secondary" size="sm" onClick={() => setShowUncheckedFirst(false)}>Toon alles</Button>
               </div>
             ) : useCardView ? (
               <StoreMarkProvider value={storeMarkApi}>

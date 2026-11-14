@@ -1601,14 +1601,14 @@ export function ListGroupingMenuChip({
   );
 }
 
-/** «Open eerst» met rond schuifje: niet-afgevinkte items bovenaan (canvas «Open eerst · O1»). */
+/** «Enkel open» met rond schuifje: aan = afgevinkte items verbergen, minder visuele drukte (canvas «Open eerst · O1»). */
 export function OpenFirstChip({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={value}
-      aria-label="Niet afgevinkte items eerst"
+      aria-label="Enkel niet afgevinkte items tonen"
       onClick={() => onChange(!value)}
       className={cn(
         CHIP_CLASS,
@@ -1616,7 +1616,7 @@ export function OpenFirstChip({ value, onChange }: { value: boolean; onChange: (
         value ? "shadow-[inset_0_0_0_1px_var(--blue-200)]" : "shadow-[inset_0_0_0_1px_var(--gray-100)]",
       )}
     >
-      Open eerst
+      Enkel open
       <span
         aria-hidden
         className={cn("relative inline-block h-[18px] w-[30px] shrink-0 rounded-full transition-colors", value ? "bg-[var(--blue-500)]" : "bg-[var(--gray-200)]")}
