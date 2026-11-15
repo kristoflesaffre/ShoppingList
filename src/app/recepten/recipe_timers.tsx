@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Button } from "@/components/ui/button";
 import { FilterChip } from "@/components/ui/filter_chip";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { cn } from "@/lib/utils";
@@ -285,23 +286,24 @@ export function StepTimerChips({
 }) {
   if (durations.length === 0) return null;
   return (
-    // Tikken hier kiest de stap niet (de kaart zelf is een knop). `contents`: de knoppen staan mee in
-    // de rij met de ingrediënten van de stap.
-    <div className="contents" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+    // Tikken hier kiest de stap niet (de kaart zelf is een knop). Rechts uitgelijnd op de rij met de
+    // ingrediënten van de stap (`ml-auto`), als echte knop (`Button` sm, 34px) en niet als label.
+    <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       {durations.map((d) => {
         const timer = timers.find((t) => t.id === timerId(stepIndex, d.ms));
         if (!timer) {
           return (
-            <button
+            <Button
               key={d.ms}
               type="button"
+              size="sm"
               onClick={() => onStart(stepIndex, d)}
               aria-label={`Timer van ${d.label} starten voor stap ${stepIndex + 1}`}
-              className="inline-flex h-[30px] items-center gap-1.5 rounded-pill bg-[var(--blue-50)] pl-[9px] pr-3 text-[13px] font-semibold text-[var(--blue-500)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--blue-100)]"
+              className="pl-3 shadow-[0_1px_2px_rgba(16,17,48,0.12)]"
             >
               <ClockGlyph className="size-[15px]" />
               Timer {d.label}
-            </button>
+            </Button>
           );
         }
         const ringingNow = timer.endsAt <= now;
@@ -309,7 +311,7 @@ export function StepTimerChips({
           <span key={d.ms} className="inline-flex items-center gap-1.5">
             <span
               className={cn(
-                "inline-flex h-[30px] items-center gap-1.5 rounded-pill pl-[6px] pr-3 text-[13px] font-bold tabular-nums",
+                "inline-flex h-[34px] items-center gap-1.5 rounded-pill pl-[7px] pr-3.5 text-sm font-bold tabular-nums",
                 ringingNow ? "bg-[var(--secondary-500)] text-[var(--secondary-900)]" : "bg-[var(--blue-500)] text-fixed-white",
               )}
               role="timer"
@@ -324,6 +326,81 @@ export function StepTimerChips({
           </span>
         );
       })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Timergeluid kiezen: in de lijst «Timers» en vooraf via de knop naast «Bereiding»
+// ---------------------------------------------------------------------------
+
+function TimerSoundChips({ labelledBy, sound, onChoose }: { labelledBy: string; sound: TimerSoundId; onChoose: (id: TimerSoundId) => void }) {
+  return (
+    <>
+      <p className="mb-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">Tik om te beluisteren; je keuze blijft op dit toestel.</p>
+      <div role="group" aria-labelledby={labelledBy} className="flex flex-wrap gap-1.5">
+        {TIMER_SOUNDS.map((s) => (
+          <FilterChip key={s.id} selected={sound === s.id} onClick={() => onChoose(s.id)}>
+            {s.label}
+          </FilterChip>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function SoundGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M11 5 6 9H3v6h3l5 4z" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+      <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+    </svg>
+  );
+}
+
+/** Ronde knop naast de titel «Bereiding»: het timergeluid kiezen voor je een timer start. */
+export function TimerSoundButton({ sound, onChoose }: { sound: TimerSoundId; onChoose: (id: TimerSoundId) => void }) {
+  const [open, setOpen] = React.useState(false);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  const current = TIMER_SOUNDS.find((s) => s.id === sound)?.label ?? "";
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <RoundIconButton
+        tone="primary"
+        size={32}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={`Timergeluid kiezen, nu ${current}`}
+        title="Timergeluid"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(open && "shadow-[0_0_0_3px_var(--blue-100)]")}
+      >
+        <SoundGlyph />
+      </RoundIconButton>
+      {open ? (
+        <div
+          role="dialog"
+          aria-labelledby="timer-sound-title"
+          className="absolute right-0 top-[calc(100%+8px)] z-30 w-[min(300px,calc(100vw-48px))] rounded-[20px] bg-[var(--white)] px-3.5 pb-3.5 pt-3 shadow-[0_2px_4px_rgba(16,17,48,0.06),0_18px_40px_-10px_rgba(16,17,48,0.35)] motion-safe:animate-fade-up"
+        >
+          <p id="timer-sound-title" className="text-[15px] font-bold text-text-primary">Timergeluid</p>
+          <TimerSoundChips labelledBy="timer-sound-title" sound={sound} onChoose={onChoose} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -435,15 +512,8 @@ export function TimerDock({
           </ul>
           <p className="border-t border-[var(--border-subtle)] pt-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">Tik op een timer om naar zijn stap te springen.</p>
           <div className="mt-2.5 border-t border-[var(--border-subtle)] pt-2.5">
-            <p id="timer-sound-label" className="text-[13px] font-semibold text-text-primary">Geluid</p>
-            <p className="mb-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">Tik om te beluisteren; je keuze blijft op dit toestel.</p>
-            <div role="radiogroup" aria-labelledby="timer-sound-label" className="flex flex-wrap gap-1.5">
-              {TIMER_SOUNDS.map((s) => (
-                <FilterChip key={s.id} selected={sound === s.id} onClick={() => onChooseSound(s.id)}>
-                  {s.label}
-                </FilterChip>
-              ))}
-            </div>
+            <p id="timer-dock-sound" className="text-[13px] font-semibold text-text-primary">Geluid</p>
+            <TimerSoundChips labelledBy="timer-dock-sound" sound={sound} onChoose={onChooseSound} />
           </div>
         </div>
       ) : null}

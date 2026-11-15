@@ -46,7 +46,7 @@ import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loadin
 import { clearRecipeHeroTransition, peekRecipeHeroTransition } from "@/lib/recipe_hero_transition";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 import { findStepDurations } from "@/lib/recipe-timers";
-import { StepTimerChips, TimerAlarm, TimerDock, useRecipeTimers, useTimerSound } from "@/app/recepten/recipe_timers";
+import { StepTimerChips, TimerAlarm, TimerDock, TimerSoundButton, useRecipeTimers, useTimerSound } from "@/app/recepten/recipe_timers";
 
 function BackArrowIcon({ className }: { className?: string }) {
   return (
@@ -563,6 +563,7 @@ export default function ReceptDetailPage() {
     .map((s) => s.trim().replace(/^\d+[.)]\s*/, ""))
     .filter((s) => s.length > 0);
   const stepIngredientIds = matchStepIngredients(recipeSteps, savedRecipe.ingredients);
+  const hasStepTimers = recipeSteps.some((step) => findStepDurations(step).length > 0);
   const activeStep = selectedStep != null && selectedStep < recipeSteps.length ? selectedStep : null;
   const nowNeededIds = new Set(activeStep != null ? stepIngredientIds[activeStep] : []);
   const usedIds = new Set<string>();
@@ -833,6 +834,7 @@ export default function ReceptDetailPage() {
           <section aria-label="Bereiding" className="flex-1 rounded-[22px] bg-[var(--white)] px-4 pb-5 pt-[18px] lg:px-6">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-xl font-bold leading-7 text-text-primary">Bereiding</h2>
+              <div className="flex min-w-0 items-center gap-2">
               {detailPhotoEditMode ? (
                 <RecipeLinkEditor key={savedRecipe.id} link={savedRecipe.link} onSave={(link) => saveRecipeFields({ link })} />
               ) : doneCount > 0 ? (
@@ -851,6 +853,8 @@ export default function ReceptDetailPage() {
                   Origineel recept
                 </a>
               ) : null}
+              {!detailPhotoEditMode && hasStepTimers ? <TimerSoundButton sound={timerSound.sound} onChoose={timerSound.choose} /> : null}
+              </div>
             </div>
             <RecipeImportInfo recipeId={savedRecipe.id} />
             {detailPhotoEditMode ? (
@@ -1241,10 +1245,9 @@ function RecipeStepItem({
             </span>
           </button>
         </div>
-        {/* De timerknop vooraan op de rij met ingrediënten, zodat hij ook op een gsm op de eerste regel staat. */}
+        {/* Ingrediënten links, de timerknop rechts op dezelfde rij (canvas «Recept · Wekkers»). */}
         {ingredients.length > 0 || timer ? (
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {timer}
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
           <ul className="contents">
             {ingredients.map((ing) => (
               <li
@@ -1267,6 +1270,7 @@ function RecipeStepItem({
               </li>
             ))}
           </ul>
+          {timer}
           </div>
         ) : null}
       </div>
