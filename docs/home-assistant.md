@@ -2,6 +2,14 @@
 
 ## X-Ray «Nu in beeld»: screenshot on request (2026-11-11)
 
+Bridge v1.23.0: the screen sometimes ran into the ceiling. The STOP is timed (30.55 s after UP) and was sent on time by
+the bridge's clock, but went out 0.5–2.5 s late on the runs that overshot (14/11 and 15/11 19:51: 37.0 s from opening
+to the blinds instead of 34.6 s) because Home Assistant's event loop stalled at that moment (the Android TV integration was
+reconnecting to the booting projector). Now the timed STOP is sent from its own thread straight through the BroadLink
+device (`ScreenGuard._broadlink_api`: the python-broadlink object behind `remote.broadlink_rm4_pro`), independent of the
+event loop; the usual burst through Home Assistant follows as a backup. Logged: «Home Assistant was n s late at the screen
+STOP moment» when the loop was late, and a warning when no BroadLink device is found (then the old path only).
+
 Bridge v1.22.0: the Samsung TV sometimes stayed on during a cinema start. Home Assistant's Samsung entity marks the TV
 «off» as soon as a turn_off is sent, also when the TV missed it, and the bridge trusted that state. Now the TV's own REST API
 (`http://192.168.132.111:8001/api/v2/`, `device.PowerState` = on / standby) decides: a TV that reports «on» is turned off

@@ -1,5 +1,7 @@
 """Exercise the Pi worker without a Home Assistant install or physical commands."""
 import asyncio
+import base64
+import time
 import importlib.util
 from pathlib import Path
 import sys
@@ -651,5 +653,52 @@ class SamsungPowerTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaisesRegex(RuntimeError, 'samsung-off-not-confirmed'):
                 await cinema.turn_off_samsung(hass)
         self.assertEqual(call.await_count, 3)
+
+
+class TimedStopTests(unittest.IsolatedAsyncioTestCase):
+    """The timed STOP after an UP comes from its own thread, so a stalled event loop cannot delay it."""
+    def guard(self):
+        screen_module = sys.modules['cinema.screen']
+        sent = []
+        class Api:
+            def send_data(self, packet): sent.append((time.monotonic(), packet))
+        states = {'contact': 'off'}
+        def get_state(entity):
+            if entity == screen_module.CONTACT: return types.SimpleNamespace(state=states['contact'], attributes={})
+            if entity == 'sensor.battery': return types.SimpleNamespace(state='80')
+            if entity == 'remote.broadlink': return types.SimpleNamespace(state='on')
+            return None
+        async def service(*_args, **_kwargs):
+            states['contact'] = 'on'
+        hass = types.SimpleNamespace(states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service))
+        guard = screen_module.ScreenGuard(hass, {'battery_entity': 'sensor.battery', 'remote_entity': 'remote.broadlink', 'duration': 0.4,
+                                                 'up': 'VVA=', 'stop': base64.b64encode(b'STOP').decode()})
+        guard._broadlink_api = lambda: Api()
+        return guard, sent
+
+    async def test_stop_goes_out_on_time_even_when_the_event_loop_stalls(self):
+        guard, sent = self.guard()
+        started = time.monotonic()
+        async def stall():
+            await asyncio.sleep(0.2)
+            time.sleep(0.9)  # blocks the event loop past the STOP moment
+        await asyncio.gather(guard.open_if_closed(), stall())
+        self.assertGreaterEqual(len(sent), 1)
+        first = sent[0][0] - started
+        self.assertLess(first, 0.65, f'first STOP after {first:.2f}s')
+        self.assertEqual(sent[0][1], b'STOP')
+        self.assertFalse(guard.moving)
+
+    async def test_without_broadlink_device_the_home_assistant_stop_still_goes_out(self):
+        guard, sent = self.guard()
+        guard._broadlink_api = lambda: None
+        calls = []
+        guard.send = AsyncMock(side_effect=lambda action: calls.append(action))
+        with patch.object(sys.modules['cinema.screen'].ScreenGuard, 'check', lambda self: True):
+            guard.hass.states = types.SimpleNamespace(get=lambda e: types.SimpleNamespace(state='on', attributes={}))
+            await guard.open_if_closed()
+        self.assertEqual(sent, [])
+        self.assertEqual(calls[0], 'up')
+        self.assertIn('stop', calls)
 
 if __name__ == '__main__': unittest.main()
