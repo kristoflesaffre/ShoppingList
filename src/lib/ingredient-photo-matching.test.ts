@@ -3,6 +3,12 @@ import { matchIngredientPhotoUrl } from "@/lib/ingredient-photo-matching";
 import synonyms from "../../public/ingredient-synonyms.json";
 
 describe("matchIngredientPhotoUrl", () => {
+  it.each(["Shimeji paddenstoelen", "Shimeji-paddenstoelen", "shimeji", "witte shimeji", "witte beukenzwammen", "bunapi shimeji", "shimejipaddenstoelen"])("koppelt witte shimeji aan de eigen foto voor %s", (name) => {
+    for (const size of [160, 240, 320] as const) {
+      expect(matchIngredientPhotoUrl(name, ["champignons", "shimeji_paddenstoelen"], synonyms, size)).toBe(`/images/ingredients/shimeji_paddenstoelen_${size}.webp`);
+    }
+  });
+
   it.each(["sambal oelek", "oestersaus"])("koppelt de aanvullende sausfoto voor %s", (name) => {
     const slug = name.replace(/ /g, "_");
     for (const size of [160, 240, 320] as const) {

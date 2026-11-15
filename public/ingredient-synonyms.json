@@ -786,5 +786,12 @@
   "raclettekaas": "raclette_kaas",
   "dille": "verse_dille",
   "chilipeper": "chilipepers",
-  "asperges": "groene_asperges"
+  "asperges": "groene_asperges",
+  "shimeji": "shimeji_paddenstoelen",
+  "shimeji_paddenstoel": "shimeji_paddenstoelen",
+  "shimejipaddenstoelen": "shimeji_paddenstoelen",
+  "witte_shimeji": "shimeji_paddenstoelen",
+  "witte_shimeji_paddenstoelen": "shimeji_paddenstoelen",
+  "witte_beukenzwammen": "shimeji_paddenstoelen",
+  "bunapi_shimeji": "shimeji_paddenstoelen"
 }
