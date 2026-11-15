@@ -45,6 +45,8 @@ import { recipeTintColors, scaleQuantity, useIsDarkTheme, useRecipeTint } from "
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { clearRecipeHeroTransition, peekRecipeHeroTransition } from "@/lib/recipe_hero_transition";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
+import { findStepDurations } from "@/lib/recipe-timers";
+import { StepTimerChips, TimerAlarm, TimerDock, useRecipeTimers } from "@/app/recepten/recipe_timers";
 
 function BackArrowIcon({ className }: { className?: string }) {
   return (
@@ -137,6 +139,8 @@ export default function ReceptDetailPage() {
    */
   const [doneSteps, setDoneSteps] = React.useState<Set<number>>(() => new Set());
   const [selectedStep, setSelectedStep] = React.useState<number | null>(null);
+  /** Wekkers per stap (canvas «Recept · Wekkers» A), per toestel bewaard. */
+  const recipeTimers = useRecipeTimers(recipeId);
   React.useEffect(() => {
     setDoneSteps(new Set());
     setSelectedStep(null);
@@ -615,6 +619,16 @@ export default function ReceptDetailPage() {
             </div>
           ) : (
             <>
+              <TimerDock
+                timers={recipeTimers.running}
+                now={recipeTimers.now}
+                stepText={(i) => recipeSteps[i] ?? ""}
+                onRemove={recipeTimers.remove}
+                onJump={(i) => {
+                  setSelectedStep(i);
+                  document.getElementById(`stap-${i + 1}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+              />
               {/* Bewerken rechtsboven, zoals op de andere schermen. */}
               <HeaderEditButton label="Recept bewerken" onClick={toggleDetailPhotoEditMode} />
               <button
@@ -855,6 +869,16 @@ export default function ReceptDetailPage() {
                     selected={activeStep === index}
                     onSelect={() => setSelectedStep((cur) => (cur === index ? null : index))}
                     onToggleDone={() => toggleStepDone(index, recipeSteps.length)}
+                    timer={
+                      <StepTimerChips
+                        stepIndex={index}
+                        durations={findStepDurations(step)}
+                        timers={recipeTimers.timers}
+                        now={recipeTimers.now}
+                        onStart={recipeTimers.start}
+                        onRemove={recipeTimers.remove}
+                      />
+                    }
                     ingredients={(stepIngredientIds[index] ?? []).flatMap((id) => {
                       const ing = ingredientById.get(id);
                       return ing ? [{ id, name: ing.name, quantity: scaleQuantity(ing.quantity, factor), photo: getPhotoUrl(ing.name, ing.quantity) }] : [];
@@ -918,6 +942,17 @@ export default function ReceptDetailPage() {
             })}
           </ul>
         </div>
+      ) : null}
+
+      {recipeTimers.ringing[0] ? (
+        <TimerAlarm
+          timer={recipeTimers.ringing[0]}
+          stepText={(i) => recipeSteps[i] ?? ""}
+          others={recipeTimers.running}
+          now={recipeTimers.now}
+          onStop={recipeTimers.remove}
+          onSnooze={recipeTimers.snooze}
+        />
       ) : null}
 
       <RecipeShareSlideIn
@@ -1119,6 +1154,7 @@ function RecipeStepItem({
   onSelect,
   onToggleDone,
   ingredients,
+  timer,
 }: {
   index: number;
   text: string;
@@ -1128,9 +1164,11 @@ function RecipeStepItem({
   onSelect: () => void;
   onToggleDone: () => void;
   ingredients: StepIngredient[];
+  /** Wekkerknoppen voor de tijden in deze stap. */
+  timer?: React.ReactNode;
 }) {
   return (
-    <li className="flex gap-3">
+    <li id={`stap-${index + 1}`} className="flex scroll-mt-24 gap-3">
       <div className="flex flex-col items-center pt-3.5" aria-hidden>
         <span
           className={cn(
@@ -1222,6 +1260,7 @@ function RecipeStepItem({
             ))}
           </ul>
         ) : null}
+        {timer}
       </div>
     </li>
   );
