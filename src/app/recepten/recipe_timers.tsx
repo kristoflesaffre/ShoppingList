@@ -265,7 +265,7 @@ export function stepShortName(text: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// In de stap: «Wekker 20 min» → «Nog 14:32» + ✕
+// In de stap: «Timer 20 min» → «Nog 14:32» + ✕
 // ---------------------------------------------------------------------------
 
 export function StepTimerChips({
@@ -285,8 +285,9 @@ export function StepTimerChips({
 }) {
   if (durations.length === 0) return null;
   return (
-    // Tikken hier kiest de stap niet (de kaart zelf is een knop).
-    <div className="mt-2.5 flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+    // Tikken hier kiest de stap niet (de kaart zelf is een knop). `contents`: de knoppen staan mee in
+    // de rij met de ingrediënten van de stap.
+    <div className="contents" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       {durations.map((d) => {
         const timer = timers.find((t) => t.id === timerId(stepIndex, d.ms));
         if (!timer) {
@@ -295,11 +296,11 @@ export function StepTimerChips({
               key={d.ms}
               type="button"
               onClick={() => onStart(stepIndex, d)}
-              aria-label={`Wekker van ${d.label} starten voor stap ${stepIndex + 1}`}
+              aria-label={`Timer van ${d.label} starten voor stap ${stepIndex + 1}`}
               className="inline-flex h-[30px] items-center gap-1.5 rounded-pill bg-[var(--blue-50)] pl-[9px] pr-3 text-[13px] font-semibold text-[var(--blue-500)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--blue-100)]"
             >
               <ClockGlyph className="size-[15px]" />
-              Wekker {d.label}
+              Timer {d.label}
             </button>
           );
         }
@@ -312,12 +313,12 @@ export function StepTimerChips({
                 ringingNow ? "bg-[var(--secondary-500)] text-[var(--secondary-900)]" : "bg-[var(--blue-500)] text-fixed-white",
               )}
               role="timer"
-              aria-label={ringingNow ? `Wekker van stap ${stepIndex + 1} is afgelopen` : `Nog ${formatRemaining(timer.endsAt - now)} voor stap ${stepIndex + 1}`}
+              aria-label={ringingNow ? `Timer van stap ${stepIndex + 1} is afgelopen` : `Nog ${formatRemaining(timer.endsAt - now)} voor stap ${stepIndex + 1}`}
             >
               <TimerRing fraction={remainingFraction(timer, now)} size={18} stroke={2.5} track="rgba(255,255,255,0.35)" color="#ffffff" />
               {ringingNow ? "Tijd om" : `Nog ${formatRemaining(timer.endsAt - now)}`}
             </span>
-            <RoundIconButton tone="danger" size={28} onClick={() => onRemove(timer.id)} aria-label={`Wekker van stap ${stepIndex + 1} verwijderen`}>
+            <RoundIconButton tone="danger" size={28} onClick={() => onRemove(timer.id)} aria-label={`Timer van stap ${stepIndex + 1} verwijderen`}>
               {RoundIcons.close}
             </RoundIconButton>
           </span>
@@ -378,7 +379,7 @@ export function TimerDock({
         type="button"
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={`${timers.length === 1 ? "1 wekker loopt" : `${timers.length} wekkers lopen`}, de eerste is klaar over ${formatRemaining(first.endsAt - now)}`}
+        aria-label={`${timers.length === 1 ? "1 timer loopt" : `${timers.length} timers lopen`}, de eerste is klaar over ${formatRemaining(first.endsAt - now)}`}
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "flex h-10 items-center gap-1.5 rounded-pill bg-[var(--blue-500)] pl-[9px] text-fixed-white shadow-[0_2px_4px_rgba(79,85,241,0.24),0_8px_20px_-4px_rgba(79,85,241,0.45)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2",
@@ -396,11 +397,11 @@ export function TimerDock({
       {open ? (
         <div
           role="dialog"
-          aria-label="Wekkers"
+          aria-label="Timers"
           className="fixed inset-x-3 top-[calc(env(safe-area-inset-top,0px)+68px)] z-30 rounded-[20px] lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+8px)] lg:w-[320px] bg-[var(--white)] px-3.5 pb-2.5 pt-3.5 shadow-[0_2px_4px_rgba(16,17,48,0.06),0_18px_40px_-10px_rgba(16,17,48,0.35)] motion-safe:animate-fade-up"
         >
           <div className="mb-1.5 flex items-baseline justify-between">
-            <p className="text-[17px] font-bold text-text-primary">Wekkers</p>
+            <p className="text-[17px] font-bold text-text-primary">Timers</p>
             <p className="text-[13px] text-[var(--text-secondary)]">{timers.length === 1 ? "1 loopt" : `${timers.length} lopen`}</p>
           </div>
           <ul>
@@ -426,13 +427,13 @@ export function TimerDock({
                     </span>
                   </span>
                 </button>
-                <RoundIconButton tone="danger" size={32} onClick={() => onRemove(t.id)} aria-label={`Wekker van stap ${t.stepIndex + 1} verwijderen`}>
+                <RoundIconButton tone="danger" size={32} onClick={() => onRemove(t.id)} aria-label={`Timer van stap ${t.stepIndex + 1} verwijderen`}>
                   {RoundIcons.close}
                 </RoundIconButton>
               </li>
             ))}
           </ul>
-          <p className="border-t border-[var(--border-subtle)] pt-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">Tik op een wekker om naar zijn stap te springen.</p>
+          <p className="border-t border-[var(--border-subtle)] pt-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">Tik op een timer om naar zijn stap te springen.</p>
           <div className="mt-2.5 border-t border-[var(--border-subtle)] pt-2.5">
             <p id="timer-sound-label" className="text-[13px] font-semibold text-text-primary">Geluid</p>
             <p className="mb-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">Tik om te beluisteren; je keuze blijft op dit toestel.</p>
@@ -516,7 +517,7 @@ export function TimerAlarm({
             onClick={() => onStop(timer.id)}
             className="h-[42px] flex-1 rounded-pill bg-[var(--white)] text-[15px] font-bold text-[var(--blue-800)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--blue-800)]"
           >
-            Stop wekker
+            Stop timer
           </button>
           <button type="button" onClick={() => onSnooze(timer.id, 60_000)} className={glassBtn}>
             +1 min

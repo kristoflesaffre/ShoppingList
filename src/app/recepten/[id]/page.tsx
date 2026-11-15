@@ -873,14 +873,16 @@ export default function ReceptDetailPage() {
                     onSelect={() => setSelectedStep((cur) => (cur === index ? null : index))}
                     onToggleDone={() => toggleStepDone(index, recipeSteps.length)}
                     timer={
-                      <StepTimerChips
-                        stepIndex={index}
-                        durations={findStepDurations(step)}
-                        timers={recipeTimers.timers}
-                        now={recipeTimers.now}
-                        onStart={recipeTimers.start}
-                        onRemove={recipeTimers.remove}
-                      />
+                      findStepDurations(step).length > 0 ? (
+                        <StepTimerChips
+                          stepIndex={index}
+                          durations={findStepDurations(step)}
+                          timers={recipeTimers.timers}
+                          now={recipeTimers.now}
+                          onStart={recipeTimers.start}
+                          onRemove={recipeTimers.remove}
+                        />
+                      ) : null
                     }
                     ingredients={(stepIngredientIds[index] ?? []).flatMap((id) => {
                       const ing = ingredientById.get(id);
@@ -1167,7 +1169,7 @@ function RecipeStepItem({
   onSelect: () => void;
   onToggleDone: () => void;
   ingredients: StepIngredient[];
-  /** Wekkerknoppen voor de tijden in deze stap. */
+  /** Timerknoppen voor de tijden in deze stap (op dezelfde rij als de ingrediënten). */
   timer?: React.ReactNode;
 }) {
   return (
@@ -1239,8 +1241,11 @@ function RecipeStepItem({
             </span>
           </button>
         </div>
-        {ingredients.length > 0 ? (
-          <ul className="mt-2.5 flex flex-wrap gap-1.5">
+        {/* De timerknop vooraan op de rij met ingrediënten, zodat hij ook op een gsm op de eerste regel staat. */}
+        {ingredients.length > 0 || timer ? (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {timer}
+          <ul className="contents">
             {ingredients.map((ing) => (
               <li
                 key={ing.id}
@@ -1262,8 +1267,8 @@ function RecipeStepItem({
               </li>
             ))}
           </ul>
+          </div>
         ) : null}
-        {timer}
       </div>
     </li>
   );
