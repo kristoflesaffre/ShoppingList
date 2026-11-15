@@ -563,7 +563,8 @@ export default function ReceptDetailPage() {
     .map((s) => s.trim().replace(/^\d+[.)]\s*/, ""))
     .filter((s) => s.length > 0);
   const stepIngredientIds = matchStepIngredients(recipeSteps, savedRecipe.ingredients);
-  const hasStepTimers = recipeSteps.some((step) => findStepDurations(step).length > 0);
+  const timerLabels = Array.from(new Set(recipeSteps.flatMap((step) => findStepDurations(step).map((d) => d.label))));
+  const hasStepTimers = timerLabels.length > 0;
   const activeStep = selectedStep != null && selectedStep < recipeSteps.length ? selectedStep : null;
   const nowNeededIds = new Set(activeStep != null ? stepIngredientIds[activeStep] : []);
   const usedIds = new Set<string>();
@@ -885,6 +886,7 @@ export default function ReceptDetailPage() {
                           now={recipeTimers.now}
                           onStart={recipeTimers.start}
                           onRemove={recipeTimers.remove}
+                          allLabels={timerLabels}
                         />
                       ) : null
                     }

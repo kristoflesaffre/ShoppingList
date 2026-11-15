@@ -266,11 +266,25 @@ export function stepShortName(text: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// In de stap: «Timer 20 min» → «Nog 14:32» + ✕
+// In de stap: «20 min» → «Nog 14:32» + ✕
 // ---------------------------------------------------------------------------
 
-/** Vaste breedte voor elke timerknop in een stap, past «Timer 1 u 15 min» en «Nog 1:14:32». */
-const TIMER_BUTTON_WIDTH = "w-[160px] max-w-none";
+/**
+ * Label in een timerknop, even breed als het langste label van het recept: alle labels staan
+ * onzichtbaar in dezelfde rastercel, dus de knop neemt de breedte van de breedste.
+ */
+function SizedLabel({ text, sizeTo }: { text: string; sizeTo: string[] }) {
+  return (
+    <span className="grid justify-items-center">
+      <span className="[grid-area:1/1]">{text}</span>
+      {sizeTo.map((l) => (
+        <span key={l} aria-hidden className="invisible [grid-area:1/1]">
+          {l}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export function StepTimerChips({
   stepIndex,
@@ -279,9 +293,12 @@ export function StepTimerChips({
   now,
   onStart,
   onRemove,
+  allLabels,
 }: {
   stepIndex: number;
   durations: StepDuration[];
+  /** Alle tijden van het recept («2 min», «1 u 15 min»): elke knop wordt zo breed als de breedste. */
+  allLabels: string[];
   timers: RecipeTimer[];
   now: number;
   onStart: (stepIndex: number, duration: StepDuration) => void;
@@ -291,7 +308,7 @@ export function StepTimerChips({
   return (
     // Tikken hier kiest de stap niet (de kaart zelf is een knop). Rechts uitgelijnd op de rij met de
     // ingrediënten van de stap (`ml-auto`), als echte knop (`Button` outline sm, 34px) en niet als label.
-    // Alle timerknoppen even breed (`TIMER_BUTTON_WIDTH`), ook terwijl ze lopen.
+    // Alle timerknoppen van het recept even breed als de breedste (`SizedLabel`), ook terwijl ze lopen.
     <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       {durations.map((d) => {
         const timer = timers.find((t) => t.id === timerId(stepIndex, d.ms));
@@ -304,10 +321,10 @@ export function StepTimerChips({
               variant="outline"
               onClick={() => onStart(stepIndex, d)}
               aria-label={`Timer van ${d.label} starten voor stap ${stepIndex + 1}`}
-              className={cn(TIMER_BUTTON_WIDTH, "px-2")}
+              className="px-3"
             >
               <ClockGlyph className="size-[15px]" />
-              Timer {d.label}
+              <SizedLabel text={d.label} sizeTo={allLabels} />
             </Button>
           );
         }
@@ -316,15 +333,14 @@ export function StepTimerChips({
           <span key={d.ms} className="inline-flex items-center gap-1.5">
             <span
               className={cn(
-                "inline-flex h-[34px] items-center justify-center gap-1.5 rounded-pill px-2 text-sm font-bold tabular-nums",
-                TIMER_BUTTON_WIDTH,
+                "inline-flex h-[34px] items-center justify-center gap-1.5 rounded-pill px-3 text-sm font-bold tabular-nums",
                 ringingNow ? "bg-[var(--secondary-500)] text-[var(--secondary-900)]" : "bg-[var(--blue-500)] text-fixed-white",
               )}
               role="timer"
               aria-label={ringingNow ? `Timer van stap ${stepIndex + 1} is afgelopen` : `Nog ${formatRemaining(timer.endsAt - now)} voor stap ${stepIndex + 1}`}
             >
               <TimerRing fraction={remainingFraction(timer, now)} size={18} stroke={2.5} track="rgba(255,255,255,0.35)" color="#ffffff" />
-              {ringingNow ? "Tijd om" : `Nog ${formatRemaining(timer.endsAt - now)}`}
+              <SizedLabel text={ringingNow ? "Tijd om" : `Nog ${formatRemaining(timer.endsAt - now)}`} sizeTo={allLabels} />
             </span>
             <RoundIconButton tone="danger" size={28} onClick={() => onRemove(timer.id)} aria-label={`Timer van stap ${stepIndex + 1} verwijderen`}>
               {RoundIcons.close}
