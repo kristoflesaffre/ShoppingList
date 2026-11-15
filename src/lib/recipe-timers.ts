@@ -121,3 +121,22 @@ export function parseStoredTimers(raw: string | null): RecipeTimer[] {
     return [];
   }
 }
+
+/** Wekkergeluiden (public/sounds/timer/<id>.mp3, gemaakt met scripts/generate-timer-sounds.mjs). */
+export const TIMER_SOUNDS = [
+  { id: "klokje", label: "Zacht klokje" },
+  { id: "bel", label: "Belletje" },
+  { id: "kalimba", label: "Kalimba" },
+  { id: "harp", label: "Harp" },
+] as const;
+
+export type TimerSoundId = (typeof TIMER_SOUNDS)[number]["id"];
+export const DEFAULT_TIMER_SOUND: TimerSoundId = "klokje";
+/** Gekozen geluid, per toestel. */
+export const TIMER_SOUND_STORAGE_KEY = "recipe-timer-sound";
+
+export function parseTimerSound(raw: string | null): TimerSoundId {
+  return TIMER_SOUNDS.some((s) => s.id === raw) ? (raw as TimerSoundId) : DEFAULT_TIMER_SOUND;
+}
+
+export const timerSoundUrl = (id: TimerSoundId) => `/sounds/timer/${id}.mp3`;

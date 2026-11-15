@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findStepDurations, formatRemaining, parseStoredTimers } from "./recipe-timers";
+import { findStepDurations, formatRemaining, parseStoredTimers, parseTimerSound } from "./recipe-timers";
 
 const labels = (text: string) => findStepDurations(text).map((d) => d.label);
 
@@ -52,5 +52,13 @@ describe("parseStoredTimers", () => {
     expect(parseStoredTimers(JSON.stringify([ok, { id: 3 }, null]))).toEqual([ok]);
     expect(parseStoredTimers("geen json")).toEqual([]);
     expect(parseStoredTimers(null)).toEqual([]);
+  });
+});
+
+describe("parseTimerSound", () => {
+  it("valt terug op het zachte klokje", () => {
+    expect(parseTimerSound("harp")).toBe("harp");
+    expect(parseTimerSound("sirene")).toBe("klokje");
+    expect(parseTimerSound(null)).toBe("klokje");
   });
 });

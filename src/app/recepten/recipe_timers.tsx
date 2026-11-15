@@ -1,11 +1,17 @@
 "use client";
 
 import * as React from "react";
+import { FilterChip } from "@/components/ui/filter_chip";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { cn } from "@/lib/utils";
 import {
   formatRemaining,
   parseStoredTimers,
+  parseTimerSound,
+  TIMER_SOUND_STORAGE_KEY,
+  TIMER_SOUNDS,
+  timerSoundUrl,
+  type TimerSoundId,
   timerId,
   timersStorageKey,
   type RecipeTimer,
@@ -19,47 +25,118 @@ import {
  */
 
 // ---------------------------------------------------------------------------
-// Geluid: korte pieptonen via Web Audio. De context moet starten tijdens een tik (iOS), dus bij «start».
+// Geluid: het gekozen wekkergeluid via Web Audio. De context moet starten tijdens een tik (iOS),
+// dus bij «start» en bij het kiezen van een geluid; het bestand wordt dan ook meteen ingeladen.
 // ---------------------------------------------------------------------------
 
 let audioContext: AudioContext | null = null;
+const soundBuffers = new Map<TimerSoundId, Promise<AudioBuffer | null>>();
 
-function unlockAudio() {
-  if (typeof window === "undefined") return;
+function unlockAudio(): AudioContext | null {
+  if (typeof window === "undefined") return null;
   try {
     const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) return;
+    if (!Ctor) return null;
     audioContext ??= new Ctor();
     if (audioContext.state === "suspended") void audioContext.resume();
+    return audioContext;
   } catch {
     audioContext = null;
+    return null;
   }
 }
 
-function beep() {
+function loadSound(id: TimerSoundId): Promise<AudioBuffer | null> {
+  const ctx = audioContext;
+  if (!ctx) return Promise.resolve(null);
+  let pending = soundBuffers.get(id);
+  if (!pending) {
+    pending = fetch(timerSoundUrl(id))
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+      .then((data) => ctx.decodeAudioData(data))
+      .then(normalize)
+      .catch(() => {
+        soundBuffers.delete(id);
+        return null;
+      });
+    soundBuffers.set(id, pending);
+  }
+  return pending;
+}
+
+/** De gemaakte geluiden verschillen sterk in volume: breng elk naar dezelfde piek. */
+function normalize(buffer: AudioBuffer): AudioBuffer {
+  let peak = 0;
+  for (let c = 0; c < buffer.numberOfChannels; c += 1) {
+    const data = buffer.getChannelData(c);
+    for (let i = 0; i < data.length; i += 1) peak = Math.max(peak, Math.abs(data[i]));
+  }
+  if (peak > 0.001) {
+    const gain = 0.8 / peak;
+    for (let c = 0; c < buffer.numberOfChannels; c += 1) {
+      const data = buffer.getChannelData(c);
+      for (let i = 0; i < data.length; i += 1) data[i] *= gain;
+    }
+  }
+  return buffer;
+}
+
+/** Zachte pieptoon als het geluidsbestand (nog) niet geladen is. */
+function fallbackBeep(ctx: AudioContext) {
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.value = 660;
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.25, t + 0.03);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + 0.65);
+}
+
+async function playSound(id: TimerSoundId) {
   const ctx = audioContext;
   if (!ctx) return;
-  const start = ctx.currentTime;
-  for (let i = 0; i < 3; i += 1) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 880;
-    const t = start + i * 0.22;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.18);
+  const buffer = await loadSound(id);
+  if (!buffer) {
+    fallbackBeep(ctx);
+    return;
   }
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(ctx.destination);
+  source.start();
+}
+
+/** Gekozen wekkergeluid (per toestel); kiezen speelt het meteen even af. */
+export function useTimerSound() {
+  const [sound, setSound] = React.useState<TimerSoundId>("klokje");
+  React.useEffect(() => {
+    try {
+      setSound(parseTimerSound(window.localStorage.getItem(TIMER_SOUND_STORAGE_KEY)));
+    } catch {
+      /* geen opslag: standaardgeluid */
+    }
+  }, []);
+  const choose = React.useCallback((id: TimerSoundId) => {
+    setSound(id);
+    try {
+      window.localStorage.setItem(TIMER_SOUND_STORAGE_KEY, id);
+    } catch {
+      /* enkel voor deze keer */
+    }
+    if (unlockAudio()) void playSound(id);
+  }, []);
+  return { sound, choose };
 }
 
 // ---------------------------------------------------------------------------
 // Toestand
 // ---------------------------------------------------------------------------
 
-export function useRecipeTimers(recipeId: string) {
+export function useRecipeTimers(recipeId: string, sound: TimerSoundId) {
   const [timers, setTimers] = React.useState<RecipeTimer[]>([]);
   const [now, setNow] = React.useState(() => Date.now());
   /** Voor welk recept de bewaarde wekkers al ingelezen zijn: eerder bewaren zou ze wissen. */
@@ -106,7 +183,7 @@ export function useRecipeTimers(recipeId: string) {
   React.useEffect(() => {
     if (!isRinging) return;
     const ring = () => {
-      beep();
+      void playSound(sound);
       try {
         navigator.vibrate?.([300, 150, 300]);
       } catch {
@@ -114,19 +191,20 @@ export function useRecipeTimers(recipeId: string) {
       }
     };
     ring();
-    const interval = window.setInterval(ring, 1500);
+    // Het geluid duurt ± 2,5 s: daarna even stilte, dan opnieuw.
+    const interval = window.setInterval(ring, 4000);
     return () => window.clearInterval(interval);
-  }, [isRinging]);
+  }, [isRinging, sound]);
 
   const start = React.useCallback((stepIndex: number, duration: StepDuration) => {
-    unlockAudio();
+    if (unlockAudio()) void loadSound(sound);
     const id = timerId(stepIndex, duration.ms);
     setNow(Date.now());
     setTimers((cur) => [
       ...cur.filter((t) => t.id !== id),
       { id, stepIndex, durationMs: duration.ms, label: duration.label, endsAt: Date.now() + duration.ms },
     ]);
-  }, []);
+  }, [sound]);
 
   const remove = React.useCallback((id: string) => setTimers((cur) => cur.filter((t) => t.id !== id)), []);
 
@@ -259,6 +337,8 @@ export function TimerDock({
   stepText,
   onRemove,
   onJump,
+  sound,
+  onChooseSound,
 }: {
   /** Lopende wekkers, eerst afgelopen eerst. */
   timers: RecipeTimer[];
@@ -266,6 +346,8 @@ export function TimerDock({
   stepText: (stepIndex: number) => string;
   onRemove: (id: string) => void;
   onJump: (stepIndex: number) => void;
+  sound: TimerSoundId;
+  onChooseSound: (id: TimerSoundId) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -351,6 +433,17 @@ export function TimerDock({
             ))}
           </ul>
           <p className="border-t border-[var(--border-subtle)] pt-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">Tik op een wekker om naar zijn stap te springen.</p>
+          <div className="mt-2.5 border-t border-[var(--border-subtle)] pt-2.5">
+            <p id="timer-sound-label" className="text-[13px] font-semibold text-text-primary">Geluid</p>
+            <p className="mb-2 text-[12.5px] leading-[17px] text-[var(--text-secondary)]">Tik om te beluisteren; je keuze blijft op dit toestel.</p>
+            <div role="radiogroup" aria-labelledby="timer-sound-label" className="flex flex-wrap gap-1.5">
+              {TIMER_SOUNDS.map((s) => (
+                <FilterChip key={s.id} selected={sound === s.id} onClick={() => onChooseSound(s.id)}>
+                  {s.label}
+                </FilterChip>
+              ))}
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

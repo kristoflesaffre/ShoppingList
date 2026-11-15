@@ -46,7 +46,7 @@ import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loadin
 import { clearRecipeHeroTransition, peekRecipeHeroTransition } from "@/lib/recipe_hero_transition";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 import { findStepDurations } from "@/lib/recipe-timers";
-import { StepTimerChips, TimerAlarm, TimerDock, useRecipeTimers } from "@/app/recepten/recipe_timers";
+import { StepTimerChips, TimerAlarm, TimerDock, useRecipeTimers, useTimerSound } from "@/app/recepten/recipe_timers";
 
 function BackArrowIcon({ className }: { className?: string }) {
   return (
@@ -140,7 +140,8 @@ export default function ReceptDetailPage() {
   const [doneSteps, setDoneSteps] = React.useState<Set<number>>(() => new Set());
   const [selectedStep, setSelectedStep] = React.useState<number | null>(null);
   /** Wekkers per stap (canvas «Recept · Wekkers» A), per toestel bewaard. */
-  const recipeTimers = useRecipeTimers(recipeId);
+  const timerSound = useTimerSound();
+  const recipeTimers = useRecipeTimers(recipeId, timerSound.sound);
   React.useEffect(() => {
     setDoneSteps(new Set());
     setSelectedStep(null);
@@ -624,6 +625,8 @@ export default function ReceptDetailPage() {
                 now={recipeTimers.now}
                 stepText={(i) => recipeSteps[i] ?? ""}
                 onRemove={recipeTimers.remove}
+                sound={timerSound.sound}
+                onChooseSound={timerSound.choose}
                 onJump={(i) => {
                   setSelectedStep(i);
                   document.getElementById(`stap-${i + 1}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
