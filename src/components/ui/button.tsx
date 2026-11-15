@@ -4,7 +4,8 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
-export type ButtonVariant = "primary" | "secondary" | "tertiary";
+/** `outline` = wit met blauwe rand en blauwe tekst: lichter dan primair, duidelijker een knop dan secundair. */
+export type ButtonVariant = "primary" | "secondary" | "outline" | "tertiary";
 /** Design system «Knop»: lg 50px (hoofdactie onderaan een blad), md 42px, sm 34px. `default` = lg. */
 export type ButtonSize = "default" | "lg" | "md" | "sm";
 
@@ -83,6 +84,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         default:
           "bg-[var(--blue-25)] text-[var(--blue-500)] hover:bg-[var(--blue-50)]",
         disabled: "bg-[var(--gray-25)] text-[var(--blue-300)]",
+      },
+      /* Design system: outline = wit vlak, rand en tekst in actieblauw (bv. «Timer 2 min» in een receptstap). */
+      outline: {
+        default:
+          "bg-[var(--white)] text-[var(--blue-500)] shadow-[inset_0_0_0_1.5px_var(--blue-500)] hover:bg-[var(--blue-25)]",
+        disabled: "bg-[var(--white)] text-[var(--blue-300)] shadow-[inset_0_0_0_1.5px_var(--blue-200)]",
       },
       tertiary: tertiaryToneStyles[tertiaryTone],
     };

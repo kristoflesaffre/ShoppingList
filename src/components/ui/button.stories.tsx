@@ -27,7 +27,7 @@ const meta: Meta<typeof Button> = {
   argTypes: {
     variant: {
       control: "select",
-      options: ["primary", "secondary", "tertiary"],
+      options: ["primary", "secondary", "outline", "tertiary"],
       description: "Visual variant",
     },
     size: {
@@ -85,6 +85,29 @@ export const SecondaryDisabled: Story = {
   },
 };
 
+export const Outline: Story = {
+  args: {
+    variant: "outline",
+    children: "Outline",
+  },
+};
+
+export const OutlineSmall: Story = {
+  args: {
+    variant: "outline",
+    size: "sm",
+    children: "Timer 2 min",
+  },
+};
+
+export const OutlineDisabled: Story = {
+  args: {
+    variant: "outline",
+    disabled: true,
+    children: "Outline disabled",
+  },
+};
+
 export const Tertiary: Story = {
   args: {
     variant: "tertiary",
@@ -127,6 +150,10 @@ export const AllVariants: Story = {
       <Button variant="secondary">Secondary</Button>
       <Button variant="secondary" disabled>
         Secondary disabled
+      </Button>
+      <Button variant="outline">Outline</Button>
+      <Button variant="outline" disabled>
+        Outline disabled
       </Button>
       <Button variant="tertiary">Tertiary</Button>
       <Button variant="tertiary" disabled>
