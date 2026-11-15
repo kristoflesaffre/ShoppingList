@@ -617,4 +617,39 @@ class SeekHelperTests(unittest.TestCase):
         import base64, hashlib
         self.assertEqual(hashlib.sha256(base64.b64decode(cinema.DEX_BASE64)).hexdigest(), cinema.DEX_SHA256)
 
+
+class SamsungPowerTests(unittest.IsolatedAsyncioTestCase):
+    """The TV's own PowerState decides; Home Assistant's «off» can be stale after a missed turn_off."""
+    def hass(self, ha_state):
+        call = AsyncMock()
+        return types.SimpleNamespace(states=types.SimpleNamespace(get=lambda _e: types.SimpleNamespace(state=ha_state)), services=types.SimpleNamespace(async_call=call)), call
+
+    async def test_tv_really_on_while_home_assistant_says_off_is_turned_off(self):
+        hass, call = self.hass('off')
+        with patch.object(cinema, 'samsung_power', AsyncMock(side_effect=['on', 'standby'])), patch.object(cinema.asyncio, 'sleep', AsyncMock()):
+            await cinema.turn_off_samsung(hass)
+        call.assert_awaited_once_with('media_player', 'turn_off', {'entity_id': cinema.SAMSUNG_TV}, blocking=True)
+
+    async def test_missed_turn_off_is_sent_again_while_the_tv_still_reports_on(self):
+        hass, call = self.hass('on')
+        powers = ['on'] + ['on'] * 2 + ['standby']
+        clock = iter([0, 0, 9, 10, 10])
+        with patch.object(cinema, 'samsung_power', AsyncMock(side_effect=powers)), patch.object(cinema.asyncio, 'sleep', AsyncMock()), patch.object(cinema.time, 'monotonic', side_effect=lambda: next(clock)):
+            await cinema.turn_off_samsung(hass)
+        self.assertEqual(call.await_count, 2)
+
+    async def test_tv_in_standby_gets_no_power_command(self):
+        hass, call = self.hass('on')
+        with patch.object(cinema, 'samsung_power', AsyncMock(return_value='standby')):
+            await cinema.turn_off_samsung(hass)
+        call.assert_not_awaited()
+
+    async def test_gives_up_after_three_attempts(self):
+        hass, call = self.hass('on')
+        clock = iter(range(0, 1000, 9))
+        with patch.object(cinema, 'samsung_power', AsyncMock(return_value='on')), patch.object(cinema.asyncio, 'sleep', AsyncMock()), patch.object(cinema.time, 'monotonic', side_effect=lambda: next(clock)):
+            with self.assertRaisesRegex(RuntimeError, 'samsung-off-not-confirmed'):
+                await cinema.turn_off_samsung(hass)
+        self.assertEqual(call.await_count, 3)
+
 if __name__ == '__main__': unittest.main()

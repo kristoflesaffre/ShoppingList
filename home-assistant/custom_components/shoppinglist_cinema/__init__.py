@@ -22,6 +22,10 @@ DOMAIN = 'shoppinglist_cinema'
 APP_ID = 'c63df57f-510a-46bc-8687-912d030c9359'
 PLAYER = 'media_player.woonkamer_tv_2'
 SAMSUNG_TV = 'media_player.samsung_q60_series_82_qe82q60ralxxn'
+# The TV's own REST API reports its real power state ('on' / 'standby'). Home Assistant's Samsung entity marks
+# the TV «off» as soon as a turn_off is sent, even when the TV missed it, so that state alone is not proof.
+SAMSUNG_HOST = '192.168.132.111'
+SAMSUNG_OFF_ATTEMPTS = 3
 CINEMA_SELECTOR = 'select.woonkamer_woonkamer_scene'
 CINEMA_LIGHTS = 'light.woonkamer_woonkamer'
 AWAKE = {'on', 'playing', 'paused', 'idle', 'buffering'}
@@ -130,22 +134,50 @@ async def ensure_cinema_lights(hass, scene):
     await hass.services.async_call('scene', 'turn_on', {'entity_id': scene}, blocking=True)
 
 
+async def samsung_power(hass):
+    """'on', 'standby' (or another reported state), or None when the TV does not answer."""
+    try:
+        session = async_get_clientsession(hass)
+        response = await asyncio.wait_for(session.get(f'http://{SAMSUNG_HOST}:8001/api/v2/'), 3)
+        async with response:
+            data = await response.json(content_type=None)
+        power = ((data or {}).get('device') or {}).get('PowerState')
+        return power if isinstance(power, str) else None
+    except Exception:
+        return None
+
+
 async def turn_off_samsung(hass):
+    # Ask the TV itself first: Home Assistant may still say «off» from an earlier, missed turn_off.
+    power = await samsung_power(hass)
     state = hass.states.get(SAMSUNG_TV)
-    if state and state.state in {'off', 'standby'}:
-        return
-    if not state or state.state not in AWAKE:
-        raise RuntimeError('samsung-state-unknown')
-    # Use the paired Samsung TV, not the Cast player's playback state or a power toggle.
-    await hass.services.async_call('media_player', 'turn_off', {'entity_id': SAMSUNG_TV}, blocking=True)
-    deadline = time.monotonic() + 15
-    while True:
-        state = hass.states.get(SAMSUNG_TV)
+    if power is None:
         if state and state.state in {'off', 'standby'}:
             return
-        if time.monotonic() >= deadline:
-            raise RuntimeError('samsung-off-not-confirmed')
-        await asyncio.sleep(1)
+        if not state or state.state not in AWAKE:
+            raise RuntimeError('samsung-state-unknown')
+    elif power != 'on':
+        return
+    for attempt in range(SAMSUNG_OFF_ATTEMPTS):
+        # Use the paired Samsung TV, not the Cast player's playback state. Only resent while the TV itself
+        # still reports «on», so a repeated power key can never switch it back on.
+        await hass.services.async_call('media_player', 'turn_off', {'entity_id': SAMSUNG_TV}, blocking=True)
+        deadline = time.monotonic() + 8
+        while True:
+            power = await samsung_power(hass)
+            if power is not None and power != 'on':
+                return
+            if power is None:
+                state = hass.states.get(SAMSUNG_TV)
+                if state and state.state in {'off', 'standby'}:
+                    return
+            if time.monotonic() >= deadline:
+                break
+            await asyncio.sleep(1)
+        if power is None:
+            break
+        _LOGGER.warning('Samsung still on after turn_off (attempt %s): sending it again', attempt + 1)
+    raise RuntimeError('samsung-off-not-confirmed')
 
 
 async def set_blinds_for_screen(hass):
@@ -456,8 +488,8 @@ async def async_setup(hass, config):
         if not change or busy.locked() or screen.moving:
             return
         if change == 'opened':
-            samsung = hass.states.get(SAMSUNG_TV)
-            samsung_on = bool(samsung and samsung.state in AWAKE)
+            # turn_off_samsung asks the TV itself; Home Assistant's state can be a stale «off».
+            samsung_on = True
             wake = time.monotonic() - last_wake[0] >= WAKE_COOLDOWN and power_state() not in AWAKE
             hass.async_create_task(opened_by_hand(wake, samsung_on))
         else:

@@ -2,6 +2,13 @@
 
 ## X-Ray «Nu in beeld»: screenshot on request (2026-11-11)
 
+Bridge v1.22.0: the Samsung TV sometimes stayed on during a cinema start. Home Assistant's Samsung entity marks the TV
+«off» as soon as a turn_off is sent, also when the TV missed it, and the bridge trusted that state. Now the TV's own REST API
+(`http://192.168.132.111:8001/api/v2/`, `device.PowerState` = on / standby) decides: a TV that reports «on» is turned off
+even when Home Assistant says «off»; the turn_off is sent again (at most 3 times, 8 s apart) only while the TV itself
+still reports «on», so a repeated power key can never switch it back on. No answer from the TV = fall back on Home
+Assistant's state as before. A screen opened by hand also always lets this check decide.
+
 Bridge v1.21.0 adds one command, `xray-frame` (`RELAY_ACTIONS`, `src/lib/server/projector-relay.ts`): over the existing
 ADB entry it runs `screencap -p | base64`, Pillow (part of HA Core) turns the PNG into a 960 px JPEG (quality 72,
 ± 60–120 KB) and computes the mean brightness, and the bridge writes it to `cinemaCompanionData` «{owner}:xray-frame»
