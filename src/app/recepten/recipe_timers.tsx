@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@/components/ui/button";
 import { FilterChip } from "@/components/ui/filter_chip";
 import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { cn } from "@/lib/utils";
@@ -286,24 +285,23 @@ export function StepTimerChips({
 }) {
   if (durations.length === 0) return null;
   return (
-    // Tikken hier kiest de stap niet (de kaart zelf is een knop). Rechts uitgelijnd op de rij met de
-    // ingrediënten van de stap (`ml-auto`), als echte knop (`Button` sm, 34px) en niet als label.
-    <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+    // Tikken hier kiest de stap niet (de kaart zelf is een knop). `contents`: de knoppen staan mee in
+    // de rij met de ingrediënten van de stap.
+    <div className="contents" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       {durations.map((d) => {
         const timer = timers.find((t) => t.id === timerId(stepIndex, d.ms));
         if (!timer) {
           return (
-            <Button
+            <button
               key={d.ms}
               type="button"
-              size="sm"
               onClick={() => onStart(stepIndex, d)}
               aria-label={`Timer van ${d.label} starten voor stap ${stepIndex + 1}`}
-              className="pl-3 shadow-[0_1px_2px_rgba(16,17,48,0.12)]"
+              className="inline-flex h-[30px] items-center gap-1.5 rounded-pill bg-[var(--blue-50)] pl-[9px] pr-3 text-[13px] font-semibold text-[var(--blue-500)] transition-[background-color,transform] duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] [@media(hover:hover)]:hover:bg-[var(--blue-100)]"
             >
               <ClockGlyph className="size-[15px]" />
               Timer {d.label}
-            </Button>
+            </button>
           );
         }
         const ringingNow = timer.endsAt <= now;
@@ -311,7 +309,7 @@ export function StepTimerChips({
           <span key={d.ms} className="inline-flex items-center gap-1.5">
             <span
               className={cn(
-                "inline-flex h-[34px] items-center gap-1.5 rounded-pill pl-[7px] pr-3.5 text-sm font-bold tabular-nums",
+                "inline-flex h-[30px] items-center gap-1.5 rounded-pill pl-[6px] pr-3 text-[13px] font-bold tabular-nums",
                 ringingNow ? "bg-[var(--secondary-500)] text-[var(--secondary-900)]" : "bg-[var(--blue-500)] text-fixed-white",
               )}
               role="timer"

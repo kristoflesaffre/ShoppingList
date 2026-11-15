@@ -1245,9 +1245,10 @@ function RecipeStepItem({
             </span>
           </button>
         </div>
-        {/* Ingrediënten links, de timerknop rechts op dezelfde rij (canvas «Recept · Wekkers»). */}
+        {/* De timerknop vooraan op de rij met ingrediënten, zodat hij ook op een gsm op de eerste regel staat. */}
         {ingredients.length > 0 || timer ? (
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {timer}
           <ul className="contents">
             {ingredients.map((ing) => (
               <li
@@ -1270,7 +1271,6 @@ function RecipeStepItem({
               </li>
             ))}
           </ul>
-          {timer}
           </div>
         ) : null}
       </div>
