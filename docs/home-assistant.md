@@ -2,6 +2,13 @@
 
 ## X-Ray «Nu in beeld»: screenshot on request (2026-11-11)
 
+Bridge v1.25.0: still into the ceiling on 16/11 20:16 with 1.24.0, while the log showed no delay at all (Home Assistant
+on time, STOP sent quickly). So the STOP left on time and the motor still went on. Since 1.16.0 (12/11) the STOP went
+out three times, 0.6 s apart, on the assumption that a STOP to a stationary motor does nothing; since then almost every
+start overshot (36–38 s from opening to the blinds instead of 34.5 s). Many RF motors treat a second STOP while
+stationary as «go on» or «go to the favourite position». 1.25.0 sends ONE STOP per run (`STOP_BURST = 1`), as up to
+1.15.0; only a send that fails (exception/timeout) is retried within 8 s. To be confirmed at the next start.
+
 Bridge v1.24.0 (replaces 1.23.0): the screen sometimes ran into the ceiling. The STOP is timed (30.55 s after UP); on the
 runs that overshot it went out 0.5–2.5 s late (37 s from opening to the blinds instead of 34.6 s), very likely because
 Home Assistant's event loop stalled at that moment while the Android TV integration reconnected to the booting projector.

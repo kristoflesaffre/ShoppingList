@@ -8,11 +8,12 @@ _LOGGER = logging.getLogger(__name__)
 
 CONTACT = 'binary_sensor.gang_beneden_voordeur_opening'
 MIN_BATTERY = 10
-# The screen has no position feedback: a STOP that never reaches the motor lets it run to its end stop. «Sent» from
-# the BroadLink does not mean received (433 MHz is shared with the BREL blinds) and a single failing call used to
-# end the attempt. So STOP goes out several times, and a failing send keeps being retried for a short window.
-# The learned codes are fixed (no rolling code): a STOP to a motor that already stands still does nothing.
-STOP_BURST = 3
+# The screen has no position feedback: the timed STOP is the only thing that stops it. ONE STOP per run. From
+# 1.16.0 to 1.24.0 STOP went out three times (0.6 s apart) on the assumption that a STOP to a motor that already
+# stands still does nothing; since then almost every start ran into the ceiling (12–16/11), consistent with this motor
+# treating a second STOP while stationary as «go on / go to the favourite position». A send that fails (exception or
+# timeout) is still retried within STOP_RETRY_WINDOW; a send that succeeded is never repeated.
+STOP_BURST = 1
 STOP_GAP = 0.6
 STOP_RETRY_WINDOW = 8
 STOP_SEND_TIMEOUT = 3
