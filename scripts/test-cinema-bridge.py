@@ -655,50 +655,27 @@ class SamsungPowerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(call.await_count, 3)
 
 
-class TimedStopTests(unittest.IsolatedAsyncioTestCase):
-    """The timed STOP after an UP comes from its own thread, so a stalled event loop cannot delay it."""
-    def guard(self):
+class StopTimingTests(unittest.IsolatedAsyncioTestCase):
+    """After the run the STOP goes out right away; nothing is awaited in between."""
+    async def test_stop_follows_the_run_without_waiting(self):
         screen_module = sys.modules['cinema.screen']
-        sent = []
-        class Api:
-            def send_data(self, packet): sent.append((time.monotonic(), packet))
         states = {'contact': 'off'}
         def get_state(entity):
             if entity == screen_module.CONTACT: return types.SimpleNamespace(state=states['contact'], attributes={})
             if entity == 'sensor.battery': return types.SimpleNamespace(state='80')
-            if entity == 'remote.broadlink': return types.SimpleNamespace(state='on')
-            return None
-        async def service(*_args, **_kwargs):
+            return types.SimpleNamespace(state='on')
+        times = []
+        async def service(_domain, _action, data, **_kwargs):
+            times.append((data['command'], time.monotonic()))
             states['contact'] = 'on'
         hass = types.SimpleNamespace(states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service))
-        guard = screen_module.ScreenGuard(hass, {'battery_entity': 'sensor.battery', 'remote_entity': 'remote.broadlink', 'duration': 0.4,
-                                                 'up': 'VVA=', 'stop': base64.b64encode(b'STOP').decode()})
-        guard._broadlink_api = lambda: Api()
-        return guard, sent
-
-    async def test_stop_goes_out_on_time_even_when_the_event_loop_stalls(self):
-        guard, sent = self.guard()
+        guard = screen_module.ScreenGuard(hass, {'battery_entity': 'sensor.battery', 'remote_entity': 'remote.broadlink', 'duration': 0.3, 'up': 'UP', 'stop': 'STOP'})
         started = time.monotonic()
-        async def stall():
-            await asyncio.sleep(0.2)
-            time.sleep(0.9)  # blocks the event loop past the STOP moment
-        await asyncio.gather(guard.open_if_closed(), stall())
-        self.assertGreaterEqual(len(sent), 1)
-        first = sent[0][0] - started
-        self.assertLess(first, 0.65, f'first STOP after {first:.2f}s')
-        self.assertEqual(sent[0][1], b'STOP')
-        self.assertFalse(guard.moving)
-
-    async def test_without_broadlink_device_the_home_assistant_stop_still_goes_out(self):
-        guard, sent = self.guard()
-        guard._broadlink_api = lambda: None
-        calls = []
-        guard.send = AsyncMock(side_effect=lambda action: calls.append(action))
-        with patch.object(sys.modules['cinema.screen'].ScreenGuard, 'check', lambda self: True):
-            guard.hass.states = types.SimpleNamespace(get=lambda e: types.SimpleNamespace(state='on', attributes={}))
+        with patch.object(screen_module, 'STOP_GAP', 0):
             await guard.open_if_closed()
-        self.assertEqual(sent, [])
-        self.assertEqual(calls[0], 'up')
-        self.assertIn('stop', calls)
+        stops = [t for command, t in times if command == 'b64:STOP']
+        self.assertEqual(len(stops), screen_module.STOP_BURST)
+        self.assertLess(stops[0] - started, 0.45)
+        self.assertFalse(guard.moving)
 
 if __name__ == '__main__': unittest.main()

@@ -38,7 +38,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.23.0'
+BRIDGE_VERSION = '1.24.0'
 # Android TV (ADB) config entry of the projector: reloaded when ADB keeps failing (at most every ADB_RELOAD_EVERY s).
 ADB_ENTRY = '01M64FE12GJ4ED6MR8PMCTGN46'
 ADB_FAILS_BEFORE_RELOAD = 3
@@ -560,6 +560,11 @@ async def async_setup(hass, config):
         # Stremio paused: living room to 20 % (a bit of light for a drink); playing (again): Cinema.
         previous = None
         while True:
+            # While the screen moves, leave the projector alone: no ADB reads or reconnects. Connecting to a booting
+            # projector can stall Home Assistant for seconds, and the screen's STOP is timed.
+            if screen.moving:
+                await asyncio.sleep(1)
+                continue
             player = hass.states.get(PLAYER)
             current = None
             # Read Stremio's media session whenever the projector is awake. Not only when Home Assistant reports Stremio as

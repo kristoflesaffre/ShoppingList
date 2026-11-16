@@ -2,13 +2,14 @@
 
 ## X-Ray «Nu in beeld»: screenshot on request (2026-11-11)
 
-Bridge v1.23.0: the screen sometimes ran into the ceiling. The STOP is timed (30.55 s after UP) and was sent on time by
-the bridge's clock, but went out 0.5–2.5 s late on the runs that overshot (14/11 and 15/11 19:51: 37.0 s from opening
-to the blinds instead of 34.6 s) because Home Assistant's event loop stalled at that moment (the Android TV integration was
-reconnecting to the booting projector). Now the timed STOP is sent from its own thread straight through the BroadLink
-device (`ScreenGuard._broadlink_api`: the python-broadlink object behind `remote.broadlink_rm4_pro`), independent of the
-event loop; the usual burst through Home Assistant follows as a backup. Logged: «Home Assistant was n s late at the screen
-STOP moment» when the loop was late, and a warning when no BroadLink device is found (then the old path only).
+Bridge v1.24.0 (replaces 1.23.0): the screen sometimes ran into the ceiling. The STOP is timed (30.55 s after UP); on the
+runs that overshot it went out 0.5–2.5 s late (37 s from opening to the blinds instead of 34.6 s), very likely because
+Home Assistant's event loop stalled at that moment while the Android TV integration reconnected to the booting projector.
+1.23.0 tried to send the timed STOP from its own thread through the BroadLink object, but this Home Assistant's
+python-broadlink is async (`rmmini.send_data` is a coroutine): nothing was sent and the normal STOP even waited ± 1.2 s
+for it (16/11 20:02: 38 s). 1.24.0 removes that timer: STOP goes out right away again; while the screen moves the bridge
+does no ADB reads or reconnects; logged: «Home Assistant was n s late at the screen STOP moment» and «First screen STOP
+took n s to send» whenever either is over 0.5 s, so the next overshoot shows where the delay is.
 
 Bridge v1.22.0: the Samsung TV sometimes stayed on during a cinema start. Home Assistant's Samsung entity marks the TV
 «off» as soon as a turn_off is sent, also when the TV missed it, and the bridge trusted that state. Now the TV's own REST API
