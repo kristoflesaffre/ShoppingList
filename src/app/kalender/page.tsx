@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
@@ -20,34 +20,23 @@ import {
 } from "@/components/calendar_day_visuals";
 import {
   buildCalendarEntries,
-  addDays,
   toIsoDate,
-  dayEntryHasContent,
   type DayEntry,
 } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { mixWithWhite, RECIPE_TINT_FALLBACK, useIsDarkTheme, useRecipeTint, type Rgb } from "@/lib/recipe-tint";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
-import { SegmentedControl } from "@/components/ui/segmented_control";
-import { KalenderAgenda, KalenderAgendaPrefetch, agendaBand, lanePeek } from "@/components/kalender_agenda";
+import { KalenderAgenda, agendaBand } from "@/components/kalender_agenda";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 import { useAlwaysOn } from "@/lib/use_always_on";
 import { useFitToScreen } from "@/lib/use_fit_to_screen";
 import { useCalendarLists } from "@/hooks/use_calendar_lists";
 
-type Weergave = "eten" | "agenda";
-const WEERGAVE_KEY = "kalender-weergave";
-
 /**
- * Kalender (canvas «Kalender · C · Podium»): de bovenkant kleurt mee met het gerecht van de gekozen dag
- * (standaard vandaag), groot bord in het midden; daaronder «Overzicht»: die dag (blauwe rand) en de drie
- * volgende dagen als gekleurde kaarten in een rij waarin je naar links terug in de tijd schuift.
+ * Kalender (canvas «KC»): de agenda met linksboven het eten van vandaag en in «Komende afspraken» de eettegel van
+ * vandaag. De aparte weergave «Eten» (en de schakelaar «Eten | Agenda») is weg: de agenda toont het eten zelf.
  */
 
-/** Hoeveel dagen je in de rij terug kunt schuiven. */
-const PAST_DAYS = 28;
-/** Een week vooruit: op een tablet loopt de rij tot de rechterrand en moet ze daar ook gevuld zijn. */
-const NEXT_DAYS = 6;
 /** Breedte van de pagina; `useFitToScreen` houdt die aan als de pagina op een lager tabletscherm verkleint. */
 const PAGE_MAX_WIDTH = 1040;
 /** Hoeveel groter dan ontworpen de pagina op een groot tabletscherm mag worden. */
@@ -61,13 +50,6 @@ function startOfDay(date: Date): Date {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;
-}
-
-function isoToDate(iso: string | null): Date | null {
-  if (!iso) return null;
-  const [yy, mm, dd] = iso.split("-").map((x) => parseInt(x, 10));
-  if (isNaN(yy) || isNaN(mm) || isNaN(dd)) return null;
-  return startOfDay(new Date(yy, mm - 1, dd));
 }
 
 /** Vandaag als «JJJJ-MM-DD»; springt mee om middernacht, want op een tablet blijft de kalender dagen open staan. */
@@ -549,33 +531,9 @@ export default function KalenderPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = db.useAuth();
   const ownerId = user?.id;
-  const searchParams = useSearchParams();
   const dark = useIsDarkTheme();
 
   const todayKey = useTodayKey();
-  /** Gekozen dag bovenaan: ?date= of vandaag. */
-  const focusDate = isoToDate(searchParams.get("date")) ?? startOfDay(new Date());
-  const focusIso = toIsoDate(focusDate);
-  const isToday = focusIso === todayKey;
-
-  /** Schakelaar «Eten | Agenda»: ?weergave=agenda of de laatst gekozen weergave op dit toestel. */
-  const [weergave, setWeergave] = React.useState<Weergave>(() => {
-    const fromUrl = searchParams.get("weergave");
-    if (fromUrl === "agenda" || fromUrl === "eten") return fromUrl;
-    try {
-      return typeof window !== "undefined" && window.localStorage.getItem(WEERGAVE_KEY) === "agenda" ? "agenda" : "eten";
-    } catch {
-      return "eten";
-    }
-  });
-  const changeWeergave = (w: Weergave) => {
-    setWeergave(w);
-    try {
-      window.localStorage.setItem(WEERGAVE_KEY, w);
-    } catch {
-      /* niet bewaren */
-    }
-  };
   const [agendaTint, setAgendaTint] = React.useState<Rgb | null>(null);
 
   // Tablet aan de muur: een aanraakscherm (of ?aod=1 / ?tablet=1 om te testen).
@@ -603,23 +561,6 @@ export default function KalenderPage() {
     return buildCalendarEntries(data.lists, data.recipes);
   }, [data]);
 
-  const calendarIsEmpty = React.useMemo(
-    () => !Array.from(calendarMap.values()).some((entry) => dayEntryHasContent(entry)),
-    [calendarMap],
-  );
-
-  /** Rij «Overzicht»: eerdere dagen (links, terug te schuiven), de gekozen dag en de drie dagen erna. */
-  const laneDays = React.useMemo(() => {
-    const out: { iso: string; date: Date; past: boolean; selected: boolean }[] = [];
-    for (let i = -PAST_DAYS; i <= NEXT_DAYS; i++) {
-      const d = startOfDay(addDays(focusDate, i));
-      out.push({ iso: toIsoDate(d), date: d, past: i < 0, selected: i === 0 });
-    }
-    return out;
-    // focusIso dekt focusDate
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusIso]);
-
   // Agenda: altijd het eten van vandaag (los van ?date=).
   const todayDate = startOfDay(new Date());
   const todayEntry = calendarMap.get(todayKey) ?? null;
@@ -627,47 +568,11 @@ export default function KalenderPage() {
   const todayLoosePhotos = useLoosePhotos(todaySummary?.loose);
   const todayRgb = useRecipeTint(todaySummary?.photo ?? todayLoosePhotos.find(Boolean) ?? null);
 
-  const focusEntry = calendarMap.get(focusIso) ?? null;
-  const focusSummary = calendarDaySummary(focusIso, focusEntry);
-  const focusLoosePhotos = useLoosePhotos(focusSummary?.loose);
-  const focusRgb = useRecipeTint(focusSummary?.photo ?? focusLoosePhotos.find(Boolean) ?? null);
-  const band =
-    weergave === "agenda"
-      ? (agendaBand(agendaTint, dark) ?? tintColors(todaySummary ? todayRgb : null, dark, 0.42, 0.2))
-      : tintColors(focusSummary ? focusRgb : null, dark, 0.42, 0.2);
-
-  // Bij laden (en bij een andere gekozen dag): de gekozen dag links, de dag ervoor piept nog binnen.
-  const laneRef = React.useRef<HTMLDivElement>(null);
-  const [canScroll, setCanScroll] = React.useState({ back: true, forward: false });
-  const updateArrows = React.useCallback(() => {
-    const el = laneRef.current;
-    if (!el) return;
-    setCanScroll({ back: el.scrollLeft > 4, forward: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
-  }, []);
-  React.useLayoutEffect(() => {
-    const el = laneRef.current;
-    if (!el) return;
-    const next = el.querySelector<HTMLElement>(`[data-lane-day="${focusIso}"]`);
-    if (!next) return;
-    // Zelfde plaats als het snappunt: scroll-padding laat een derde van de vorige dag zien (zoals «Agenda»).
-    const peek = lanePeek(el);
-    el.scrollLeft = Math.max(0, next.offsetLeft - el.offsetLeft - peek);
-    updateArrows();
-    // `alwaysOn`: begint het always-on-scherm, dan staat de rij weer op de gekozen dag.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusIso, dataLoading, calendarIsEmpty, weergave, alwaysOn, updateArrows]);
-
-  const scrollLane = (dir: -1 | 1) => {
-    const el = laneRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * Math.max(240, el.clientWidth * 0.8), behavior: "smooth" });
-  };
+  const band = agendaBand(agendaTint, dark) ?? tintColors(todaySummary ? todayRgb : null, dark, 0.42, 0.2);
 
   // Tablet: de hele pagina past in één scherm (lager scherm = kleiner), zodat de rij tegels nooit wegvalt.
-  // De lege staat van «Eten» vult zelf het scherm en hoeft dat niet.
-  const emptyFood = weergave === "eten" && calendarIsEmpty;
   // Groter scherm (iPad Air 13"): de pagina groeit mee tot ze de hoogte vult.
-  const { frameRef, contentRef } = useFitToScreen(tabletDevice && !emptyFood, PAGE_MAX_WIDTH, TABLET_MAX_ZOOM, true);
+  const { frameRef, contentRef } = useFitToScreen(tabletDevice, PAGE_MAX_WIDTH, TABLET_MAX_ZOOM, true);
 
   if (authLoading || !user || dataLoading) {
     return (
@@ -683,20 +588,18 @@ export default function KalenderPage() {
     // Container, zodat de rij de paginabreedte kent (`cqw`), ook als de pagina verkleind is.
     <div ref={frameRef} data-tablet={tabletDevice ? "" : undefined} className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)] [container-type:inline-size]">
       {loaders}
-      {weergave === "agenda" || !calendarIsEmpty ? (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[600px] lg:h-[620px]"
-          style={{ backgroundImage: `linear-gradient(180deg, ${band.top} 0%, ${band.bottom} 55%, var(--bg-app) 100%)` }}
-        />
-      ) : null}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[600px] lg:h-[620px]"
+        style={{ backgroundImage: `linear-gradient(180deg, ${band.top} 0%, ${band.bottom} 55%, var(--bg-app) 100%)` }}
+      />
       {/* Past de pagina niet in het scherm van de tablet, dan verkleint ze (`data-fit`) en valt de ondermarge voor de tabbalk weg. */}
       <div
         className="relative mx-auto flex w-full flex-1 flex-col px-4 pb-[calc(120px+env(safe-area-inset-bottom,0px))] pt-[env(safe-area-inset-top,0px)] motion-safe:animate-fade-up lg:px-6 lg:pt-[calc(40px+env(safe-area-inset-top,0px))] [[data-fit]_&]:pb-0"
         style={{ maxWidth: PAGE_MAX_WIDTH }}
       >
         {/* Always-on: dezelfde pagina in het donkere thema op zwart, alles wat gedimd (foto's, tegels, post-its). */}
-        <div ref={contentRef} className={cn("flex flex-col transition-[filter] duration-500 [[data-aod]_&]:[filter:brightness(0.74)_saturate(0.9)]", emptyFood && "flex-1")}>
+        <div ref={contentRef} className="flex flex-col transition-[filter] duration-500 [[data-aod]_&]:[filter:brightness(0.74)_saturate(0.9)]">
         {/* Kop: ronde terugknop; titel in het midden op mobiel, links ernaast op desktop. */}
         {/* Boven de foto van de agenda-hero (die loopt tot achter de kop). */}
         <header className="relative z-[2] flex h-16 items-center gap-3 lg:h-auto lg:gap-3.5">
@@ -704,21 +607,9 @@ export default function KalenderPage() {
             <ChevronIcon direction="left" className="size-5" />
           </Link>
           <h1 className="min-w-0 flex-1 text-left text-[22px] font-extrabold text-text-primary">Kalender</h1>
-          <SegmentedControl
-            ariaLabel="Kalenderweergave"
-            fill={false}
-            value={weergave}
-            onChange={changeWeergave}
-            options={[
-              { value: "eten", label: "Eten" },
-              { value: "agenda", label: "Agenda" },
-            ]}
-          />
         </header>
 
-        {weergave === "eten" ? <KalenderAgendaPrefetch /> : null}
-        {weergave === "agenda" ? (
-          <KalenderAgenda
+        <KalenderAgenda
             onTint={setAgendaTint}
             idle={alwaysOn}
             food={{
@@ -729,66 +620,6 @@ export default function KalenderPage() {
               thumb: todaySummary?.photo ?? null,
             }}
           />
-        ) : calendarIsEmpty ? (
-          <section className="flex min-h-[min(520px,calc(100dvh-12rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] flex-1 flex-col items-center justify-center">
-            <div className="flex w-full max-w-[358px] flex-col items-center text-center">
-              <div className="relative size-24 shrink-0 overflow-hidden">
-                <Image src="/images/ui/kalender_320.webp" alt="" width={320} height={320} className="size-full object-contain" priority />
-              </div>
-              <p className="mt-6 w-full text-base font-medium leading-6 tracking-normal text-[var(--gray-500)]">
-                Voeg items toe in je boodschappenlijstje op een weekdag en ze verschijnen hier in je kalender.
-              </p>
-            </div>
-          </section>
-        ) : (
-          <>
-            <div className="mt-2 lg:mt-4 lg:[[data-tablet]_&]:mt-[calc(16px+var(--fit-spare,0px)/2)]">
-              <FocusDay key={focusIso} isoDate={focusIso} date={focusDate} entry={focusEntry} isToday={isToday} tint={focusSummary ? focusRgb : null} />
-              {!isToday ? (
-                <div className="mt-3 flex justify-center lg:justify-start lg:pl-[402px]">
-                  <Link
-                    href="/kalender"
-                    scroll={false}
-                    className="rounded-pill px-2 text-sm font-semibold text-action-primary no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-                  >
-                    Naar vandaag
-                  </Link>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="mb-1.5 mt-8 flex items-center justify-between lg:mt-10 lg:[[data-tablet]_&]:hidden">
-              <h2 className="text-[19px] font-bold tracking-[-0.01em] text-text-primary">Overzicht</h2>
-              <span className="flex items-center gap-2 max-lg:hidden">
-                <button type="button" aria-label="Eerdere dagen" disabled={!canScroll.back} onClick={() => scrollLane(-1)} className={cn(headerRoundButtonClass, "disabled:opacity-40")}>
-                  <ChevronIcon direction="left" />
-                </button>
-                <button type="button" aria-label="Latere dagen" disabled={!canScroll.forward} onClick={() => scrollLane(1)} className={cn(headerRoundButtonClass, "disabled:opacity-40")}>
-                  <ChevronIcon direction="right" />
-                </button>
-              </span>
-              <button
-                type="button"
-                onClick={() => scrollLane(-1)}
-                className="inline-flex items-center gap-0.5 rounded-pill text-[13px] font-semibold text-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] lg:hidden"
-              >
-                <ChevronIcon direction="left" />
-                Eerder
-              </button>
-            </div>
-            <div
-              ref={laneRef}
-              onScroll={updateArrows}
-              className="-mx-4 flex snap-x snap-mandatory scroll-pl-[78px] scroll-pr-4 gap-3 overflow-x-auto px-4 pb-3 pt-1.5 [scrollbar-width:none] lg:-mx-1 lg:scroll-pl-[93px] lg:scroll-pr-1 lg:gap-4 lg:px-1 [&::-webkit-scrollbar]:hidden lg:[[data-tablet]_&]:-mx-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:scroll-px-[calc((100cqw-min(100cqw,1040px))/2+24px)] lg:[[data-tablet]_&]:mt-[calc(32px+var(--fit-spare,0px)/2)]"
-            >
-              {laneDays.map((d) => (
-                <div key={d.iso} data-lane-day={d.iso} className="flex-none">
-                  <DayCard isoDate={d.iso} date={d.date} entry={calendarMap.get(d.iso) ?? null} past={d.past} selected={d.selected} />
-                </div>
-              ))}
-            </div>
-          </>
-        )}
         </div>
       </div>
     </div>
