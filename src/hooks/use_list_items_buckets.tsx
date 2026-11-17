@@ -49,7 +49,14 @@ export function useListItemsBuckets(listIds: string[]) {
 
   const [results, setResults] = React.useState<Record<number, BucketResult>>({});
   const onResult = React.useCallback((bucket: number, result: BucketResult) => {
-    setResults((prev) => (prev[bucket] === result ? prev : { ...prev, [bucket]: result }));
+    setResults((prev) => {
+      if (prev[bucket] === result) return prev;
+      // Een fout (bv. «Operation timed out» na het terugkeren uit de achtergrond) wist de items die er al
+      // waren niet: anders verdwijnen die lijstjes even en ziet de kalender een dag als leeg.
+      const before = prev[bucket];
+      if ("error" in result && before && "items" in before) return prev;
+      return { ...prev, [bucket]: result };
+    });
   }, []);
 
   const ready = Array.from(groups.keys()).every((b) => results[b] !== undefined);

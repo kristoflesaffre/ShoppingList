@@ -33,6 +33,7 @@ import { KalenderAgenda, KalenderAgendaPrefetch, agendaBand, lanePeek } from "@/
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 import { useAlwaysOn } from "@/lib/use_always_on";
 import { useFitToScreen } from "@/lib/use_fit_to_screen";
+import { useCalendarLists } from "@/hooks/use_calendar_lists";
 
 type Weergave = "eten" | "agenda";
 const WEERGAVE_KEY = "kalender-weergave";
@@ -591,15 +592,7 @@ export default function KalenderPage() {
   // Always-on: na 2 minuten zonder aanraking dezelfde pagina, donker en gedimd (thema en dimmen via `data-aod`).
   const alwaysOn = useAlwaysOn(tabletDevice);
 
-  const { isLoading: dataLoading, data } = db.useQuery(
-    ownerId
-      ? {
-          lists: { $: { where: { ownerId } }, items: {} },
-          // buildCalendarEntries gebruikt enkel naam en foto.
-          recipes: { $: { fields: ["name", "photoUrl"] } },
-        }
-      : null,
-  );
+  const { isLoading: dataLoading, data, loaders } = useCalendarLists(ownerId);
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
@@ -607,10 +600,7 @@ export default function KalenderPage() {
 
   const calendarMap = React.useMemo(() => {
     if (!data) return new Map<string, DayEntry>();
-    return buildCalendarEntries(
-      (data.lists ?? []) as Parameters<typeof buildCalendarEntries>[0],
-      (data.recipes ?? []) as Parameters<typeof buildCalendarEntries>[1],
-    );
+    return buildCalendarEntries(data.lists, data.recipes);
   }, [data]);
 
   const calendarIsEmpty = React.useMemo(
@@ -679,12 +669,20 @@ export default function KalenderPage() {
   // Groter scherm (iPad Air 13"): de pagina groeit mee tot ze de hoogte vult.
   const { frameRef, contentRef } = useFitToScreen(tabletDevice && !emptyFood, PAGE_MAX_WIDTH, TABLET_MAX_ZOOM, true);
 
-  if (authLoading || !user || dataLoading) return <PageSpinner />;
+  if (authLoading || !user || dataLoading) {
+    return (
+      <>
+        {loaders}
+        <PageSpinner />
+      </>
+    );
+  }
 
   return (
     // `data-tablet`: de rij tegels loopt van rand tot rand en de kop van de rij (titel, pijlen) valt weg; vegen volstaat.
     // Container, zodat de rij de paginabreedte kent (`cqw`), ook als de pagina verkleind is.
     <div ref={frameRef} data-tablet={tabletDevice ? "" : undefined} className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)] [container-type:inline-size]">
+      {loaders}
       {weergave === "agenda" || !calendarIsEmpty ? (
         <div
           aria-hidden

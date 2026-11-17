@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { headerRoundButtonClass } from "@/components/ui/header_round_button";
 import { calendarDayExtras, calendarDaySummary, CalendarLoosePlate, useLoosePhotos } from "@/components/calendar_day_visuals";
+import { useCalendarLists } from "@/hooks/use_calendar_lists";
 import { buildCalendarEntries, toIsoDate, type CalendarMeal, type DayEntry } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { mixWithWhite, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
@@ -120,9 +121,7 @@ export default function KalenderAllesPage() {
   const date = new Date(yy, mm - 1, dd);
   const isToday = iso === todayIso;
 
-  const { isLoading: dataLoading, data } = db.useQuery(
-    ownerId ? { lists: { $: { where: { ownerId } }, items: {} }, recipes: { $: { fields: ["name", "photoUrl"] } } } : null,
-  );
+  const { isLoading: dataLoading, data, loaders } = useCalendarLists(ownerId);
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
@@ -130,10 +129,7 @@ export default function KalenderAllesPage() {
 
   const entry = React.useMemo(() => {
     if (!data) return null;
-    const map = buildCalendarEntries(
-      (data.lists ?? []) as Parameters<typeof buildCalendarEntries>[0],
-      (data.recipes ?? []) as Parameters<typeof buildCalendarEntries>[1],
-    );
+    const map = buildCalendarEntries(data.lists, data.recipes);
     return map.get(iso) ?? null;
   }, [data, iso]);
 
@@ -168,7 +164,14 @@ export default function KalenderAllesPage() {
     };
   }, [tablet, router]);
 
-  if (authLoading || !user || dataLoading) return <PageSpinner />;
+  if (authLoading || !user || dataLoading) {
+    return (
+      <>
+        {loaders}
+        <PageSpinner />
+      </>
+    );
+  }
 
   const groups = entry ? dayGroups(entry, (name) => getItemPhoto(name)) : [];
   const extras = calendarDayExtras(entry);
@@ -202,6 +205,7 @@ export default function KalenderAllesPage() {
   return (
     // Geen tabbalk op deze pagina: op een tablet volstaat een kleine ondermarge (anders scrolt ze net).
     <div ref={frameRef} data-tablet={tablet ? "" : undefined} className="relative flex min-h-dvh w-full flex-col overflow-x-clip bg-[var(--bg-app)]">
+      {loaders}
       {band ? (
         <div
           aria-hidden
