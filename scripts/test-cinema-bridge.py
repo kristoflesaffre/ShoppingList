@@ -505,12 +505,12 @@ class StopTests(unittest.IsolatedAsyncioTestCase):
         off.assert_awaited_once()
         self.assertIn(('light', 'turn_on', 20), calls)
 
-    async def test_screen_that_never_closes_is_reported_without_a_second_down(self):
+    async def test_screen_that_never_closes_gets_one_more_down_then_is_reported(self):
         hass, screen, calls = self.make(closes=False)
         with patch.object(cinema.asyncio, 'sleep', AsyncMock()):
             with self.assertRaisesRegex(RuntimeError, 'screen-closing-not-confirmed'):
-                await screen.close_if_open(timeout=-1)
-        self.assertEqual(sum(1 for c in calls if c[0] == 'remote'), 1)
+                await screen.close_if_open(timeout=-1, retry_timeout=-1)
+        self.assertEqual(sum(1 for c in calls if c[0] == 'remote'), 2)
         self.assertFalse(screen.moving)
 
 

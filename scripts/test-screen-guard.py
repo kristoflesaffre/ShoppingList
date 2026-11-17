@@ -1,5 +1,6 @@
 """Screen safety checks without sending RF commands."""
 import asyncio
+import base64
 import importlib.util
 from pathlib import Path
 from types import SimpleNamespace as NS
@@ -141,6 +142,80 @@ class GuardTests(unittest.IsolatedAsyncioTestCase):
         self.guard.send = send
         with patch.object(screen.asyncio, 'sleep', sleep): await self.guard.stop_burst('button')
         self.assertEqual(self.calls, ['stop'] * screen.STOP_BURST)
+
+
+# A learned DOWN capture like the real one: header, one partial and one clean frame, trailing gap (BroadLink 0xb0).
+FRAME = [9, 20, 20, 9] * 24 + [9, 20]
+HEADER = [104, 155, 5, 1030, *([12] * 101), 165]
+def capture(frames):
+    pulses = HEADER + [157] + (FRAME + [165, 157]) * (frames - 1) + FRAME + [1500]
+    body = b''.join(bytes([v]) if v < 256 else b'\x00' + v.to_bytes(2, 'big') for v in pulses)
+    return base64.b64encode(bytes([0xb0, 0xc0]) + len(body).to_bytes(2, 'little') + body).decode()
+
+
+class DownCodeTests(unittest.TestCase):
+    def test_short_down_capture_gets_six_frames_and_keeps_every_learned_pulse(self):
+        short = capture(1)
+        self.assertEqual(screen.rf_frames(short), 2)
+        long = screen.with_min_frames(short)
+        self.assertEqual(screen.rf_frames(long), screen.RF_MIN_FRAMES)
+        old = base64.b64decode(short); new = base64.b64decode(long)
+        self.assertEqual(new[:2], old[:2])
+        self.assertEqual(int.from_bytes(new[2:4], 'little'), len(new) - 4)
+        a, b = screen._pulses(old[4:]), screen._pulses(new[4:])
+        self.assertEqual(b[:len(a) - 1], a[:-1])
+        self.assertEqual(b[-1], a[-1])
+        self.assertEqual(len(b) % 2, 0)
+        self.assertEqual(screen.with_min_frames(long), long)
+
+    def test_codes_with_enough_frames_or_unreadable_stay_unchanged(self):
+        for code in (capture(6), 'RE9XTg==', 'not base64!', ''):
+            self.assertEqual(screen.with_min_frames(code), code)
+
+    def test_guard_sends_the_lengthened_down(self):
+        guard = screen.ScreenGuard(NS(), {'down': capture(1)})
+        self.assertEqual(screen.rf_frames(guard.settings['down']), screen.RF_MIN_FRAMES)
+
+
+class CloseTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.now = 0
+        self.calls = []
+        self.states = {screen.CONTACT: NS(state='on'), 'remote': NS(state='on')}
+        self.hass = NS(states=NS(get=self.states.get))
+        self.guard = screen.ScreenGuard(self.hass, {'remote_entity': 'remote', 'down': 'RE9XTg==', 'stop': 'STOP'}, lambda: self.now)
+
+    async def run_close(self, close_after=None, stop_at=None):
+        async def send(action):
+            self.calls.append((action, self.now))
+            if action == 'down' and close_after is not None and len(self.calls) == close_after:
+                self.states[screen.CONTACT] = NS(state='off')
+        async def sleep(seconds):
+            self.now += seconds
+            if stop_at is not None and self.now >= stop_at and not any(a == 'stop' for a, _ in self.calls):
+                await self.guard.stop_burst('button')
+        self.guard.send = send
+        with patch.object(screen.asyncio, 'sleep', sleep):
+            await self.guard.close_if_open()
+
+    async def test_screen_that_closes_gets_one_down(self):
+        await self.run_close(close_after=1)
+        self.assertEqual([a for a, _ in self.calls], ['down'])
+
+    async def test_missed_down_is_sent_once_more_after_the_normal_closing_time(self):
+        await self.run_close(close_after=2)
+        self.assertEqual([a for a, _ in self.calls], ['down', 'down'])
+        self.assertGreater(self.calls[1][1], 35)
+        self.assertFalse(self.guard.moving)
+
+    async def test_screen_that_never_closes_gets_two_downs_then_an_error(self):
+        with self.assertRaisesRegex(RuntimeError, 'closing-not-confirmed'): await self.run_close()
+        self.assertEqual([a for a, _ in self.calls], ['down', 'down'])
+
+    async def test_emergency_stop_while_closing_never_sends_down_again(self):
+        with self.assertRaisesRegex(RuntimeError, 'closing-stopped'): await self.run_close(stop_at=10)
+        self.assertEqual([a for a, _ in self.calls], ['down', 'stop'])
+        self.assertFalse(self.guard.moving)
 
 
 if __name__ == '__main__': unittest.main()

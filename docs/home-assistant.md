@@ -2,6 +2,17 @@
 
 ## X-Ray «Nu in beeld»: screenshot on request (2026-11-11)
 
+Bridge v1.26.0: the SONOFF button did not always close the screen. Closing (DOWN → contact closed) takes 34–35 s; on
+15/11 17:03, 15/11 21:59 and 16/11 21:59 it took 46, 44 and 41 s (closed by hand), and on 12/11 a second press was needed.
+Each time the bridge sent DOWN without error (lights to 20 % and projector off did happen; blinds did not move). Cause:
+the learned DOWN code holds the button's frame only once (182 ms, a very short press while learning), UP and STOP hold it
+six times (± 450 ms). The motor needs a few matching frames in a row, so a single frame is easily missed; UP never failed.
+1.26.0 sends DOWN with its last frame repeated to six frames (`with_min_frames`, `RF_MIN_FRAMES`; 396 ms, every learned
+pulse kept, one continuous transmission like a held button; UP and STOP unchanged), and checks the result: still open
+45 s after DOWN → DOWN once more (logged «Screen still open 45 s after DOWN»), still open 50 s later →
+`screen-closing-not-confirmed`. Never after an emergency STOP with the button during closing (`screen-closing-stopped`).
+The codes on the Pi (`shoppinglist-cinema.yaml`) are not changed; the lengthening happens in the bridge.
+
 Bridge v1.25.0: still into the ceiling on 16/11 20:16 with 1.24.0, while the log showed no delay at all (Home Assistant
 on time, STOP sent quickly). So the STOP left on time and the motor still went on. Since 1.16.0 (12/11) the STOP went
 out three times, 0.6 s apart, on the assumption that a STOP to a stationary motor does nothing; since then almost every
