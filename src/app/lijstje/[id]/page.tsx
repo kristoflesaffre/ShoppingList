@@ -326,14 +326,24 @@ const SECTION_ORDER = [
   "Zondag",
 ] as const;
 
-const WEEK_DAYS = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"] as const;
-
-/** Bouwt de dagvolgorde op startend vanaf vandaag (today-first). */
-function buildDaySectionOrder(): readonly string[] {
-  // getDay(): 0=zo,1=ma,…,6=za → omrekenen naar ma=0…zo=6
-  const todayIdx = (new Date().getDay() + 6) % 7;
-  const rotatedDays = [...WEEK_DAYS.slice(todayIdx), ...WEEK_DAYS.slice(0, todayIdx)];
-  return ["Algemeen", ...rotatedDays];
+/**
+ * Dag-secties chronologisch: «Algemeen» eerst, dan elke dag op zijn echte datum (opgeslagen datum, anders afgeleid
+ * van de lijstdatum), dus «Zaterdag 14 · Zondag 15 · Maandag 16 · Dinsdag 17» ook als vandaag dinsdag is.
+ * Een dag zonder bekende datum volgt de weekvolgorde (ma → zo) achter de gedateerde dagen.
+ */
+function orderDaySections(titles: string[], listDateStr: string, itemsBySection: Map<string, ListItem[]>): string[] {
+  const key = (title: string): [number, number] => {
+    if (title === "Algemeen") return [0, 0];
+    const date = daySectionDate(title, listDateStr, itemsBySection.get(title)?.find((i) => i.itemDate)?.itemDate);
+    if (date) return [1, date.getTime()];
+    const offset = dutchDayToOffset(title);
+    return [2, offset ?? 7];
+  };
+  return [...titles].sort((a, b) => {
+    const [ga, va] = key(a);
+    const [gb, vb] = key(b);
+    return ga !== gb ? ga - gb : va - vb;
+  });
 }
 
 
@@ -571,22 +581,28 @@ function RecipeGroupHeader({
  * Bij onbekende dag of ontbrekende lijstdatum: geeft `sectionTitle` terug.
  */
 function dayTitleWithDate(sectionTitle: string, listDateStr: string, storedIsoDate?: string): string {
+  const date = daySectionDate(sectionTitle, listDateStr, storedIsoDate);
+  if (!date) return sectionTitle;
+  return `${sectionTitle} ${date.getDate()} ${date.toLocaleDateString("nl-NL", { month: "long" })}`;
+}
+
+/** Datum van een dag-sectie: de opgeslagen datum, anders afgeleid van de lijstdatum (nooit vóór de lijstdatum). */
+function daySectionDate(sectionTitle: string, listDateStr: string, storedIsoDate?: string): Date | null {
   if (storedIsoDate) {
     // Absolute datum opgeslagen bij aanmaken — nooit herschikken.
     const [y, m, d] = storedIsoDate.split("-").map(Number);
-    const date = new Date(y, m - 1, d);
-    return `${sectionTitle} ${date.getDate()} ${date.toLocaleDateString("nl-NL", { month: "long" })}`;
+    if (y && m && d) return new Date(y, m - 1, d);
   }
   // Legacy: bereken vanuit lijstdatum.
   const offset = dutchDayToOffset(sectionTitle);
-  if (offset === null) return sectionTitle;
+  if (offset === null) return null;
   const listDate = parseDutchDate(listDateStr);
-  if (!listDate) return sectionTitle;
+  if (!listDate) return null;
   const monday = getMondayOfWeek(listDate);
   let itemDate = addDays(monday, offset);
   // Als de berekende dag vóór de aanmaakdatum valt, schuif één week op (zelfde logica als calendar-utils).
   if (itemDate < listDate) itemDate = addDays(itemDate, 7);
-  return `${sectionTitle} ${itemDate.getDate()} ${itemDate.toLocaleDateString("nl-NL", { month: "long" })}`;
+  return itemDate;
 }
 
 /** Renders sortable item cards; must be inside DndContext for drag state. */
@@ -5226,8 +5242,7 @@ export default function ListDetailPage({
         existing.push(item);
         grouped.set(item.section, existing);
       }
-      const order = buildDaySectionOrder();
-      return order.filter((s) => grouped.has(s)).map((s) => ({
+      return orderDaySections(Array.from(grouped.keys()), listDateStr, grouped).map((s) => ({
         title: s,
         items: grouped.get(s)!,
       }));
@@ -5286,6 +5301,7 @@ export default function ListDetailPage({
     effectiveCategoryOrder,
     showUncheckedFirst,
     isEditMode,
+    listDateStr,
   ]);
 
   mergedIdsRef.current = new Map(
