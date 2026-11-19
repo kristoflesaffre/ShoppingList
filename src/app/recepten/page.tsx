@@ -39,7 +39,8 @@ const RecipeEditorSlideIn = dynamic(
 import { Snackbar } from "@/components/ui/snackbar";
 import { APP_FAB_BOTTOM_CLASS, APP_SNACKBAR_FIXTURE_CLASS } from "@/lib/app-layout";
 import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
-import { RECIPE_CATEGORIES, groupBySubcategory, isRecentImport, recipeImportedAt } from "@/lib/recipe_library";
+import { RECIPE_CATEGORIES, RECIPE_CUISINES, groupBySubcategory, isRecentImport, isRecipeCuisine, recipeImportedAt } from "@/lib/recipe_library";
+import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { cn } from "@/lib/utils";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import { LongAgoSection, MostEatenSection, RecipeStatsSkeleton, useRecipeStats } from "@/app/recepten/recipe_stats_sections";
@@ -379,6 +380,7 @@ export default function ReceptenPage() {
         photoUrl: r.photoUrl ?? null,
         category: ((r as Record<string, unknown>).category as RecipeCategory | undefined) ?? null,
         subcategory: ((r as Record<string, unknown>).subcategory as string | undefined) ?? null,
+        cuisine: isRecipeCuisine((r as Record<string, unknown>).cuisine) ? ((r as Record<string, unknown>).cuisine as SavedRecipe["cuisine"]) : null,
         canBeFrozen: ((r as Record<string, unknown>).canBeFrozen as boolean | undefined) ?? false,
         importedAt: recipeImportedAt(r.order),
         ingredients: [...(r.ingredients ?? [])]
@@ -398,6 +400,8 @@ export default function ReceptenPage() {
   const [recipeTab, setRecipeTab] = React.useState<RecipeTab>("recepten");
   /* Filter op soort gerecht binnen «Te testen» (subcategory); null = alles. */
   const [toTestKind, setToTestKind] = React.useState<string | null>(null);
+  /* Keukenfilter binnen «Te testen» (canvas «Te testen ordenen» B): chips op één veegrij; null = alles. */
+  const [toTestCuisine, setToTestCuisine] = React.useState<string | null>(null);
   // De open sectie en tab staan in het adres (?categorie=… / ?tab=te-testen), zodat «terug» vanuit een recept daar weer uitkomt.
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -405,6 +409,8 @@ export default function ReceptenPage() {
     if (params.get("tab") === "te-testen" || fromUrl === TO_TEST_CATEGORY) {
       setRecipeTab("te_testen");
       setToTestKind(params.get("soort"));
+      const keuken = params.get("keuken");
+      setToTestCuisine(isRecipeCuisine(keuken) ? keuken : null);
       return;
     }
     const match = RECIPE_CATEGORIES.find((c) => c.id === fromUrl);
@@ -414,9 +420,11 @@ export default function ReceptenPage() {
     setRecipeTab(tab);
     setActiveCategory(null);
     setToTestKind(null);
+    setToTestCuisine(null);
     const url = new URL(window.location.href);
     url.searchParams.delete("categorie");
     url.searchParams.delete("soort");
+    url.searchParams.delete("keuken");
     if (tab === "te_testen") url.searchParams.set("tab", "te-testen");
     else url.searchParams.delete("tab");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
@@ -483,10 +491,51 @@ export default function ReceptenPage() {
       result = result.filter((r) => r.category === TO_TEST_CATEGORY);
       if (toTestKind === NEW_KIND) result = result.filter((r) => isRecentImport(r));
       else if (toTestKind) result = result.filter((r) => toTestKindOf(r) === toTestKind);
+      if (toTestCuisine) result = result.filter((r) => r.cuisine === toTestCuisine);
     } else result = result.filter((r) => r.category !== TO_TEST_CATEGORY);
     if (activeCategory) result = result.filter((r) => r.category === activeCategory);
     return result;
-  }, [savedRecipes, recipeSearch, activeCategory, recipeTab, toTestKind]);
+  }, [savedRecipes, recipeSearch, activeCategory, recipeTab, toTestKind, toTestCuisine]);
+  /* Keukenchips «Alles · Aziatisch 86 · …»: enkel keukens die voorkomen in «Te testen» (binnen de open soort). */
+  const toTestCuisineChips = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of savedRecipes) {
+      if (r.category !== TO_TEST_CATEGORY || !r.cuisine) continue;
+      if (toTestKind === NEW_KIND ? !isRecentImport(r) : toTestKind ? toTestKindOf(r) !== toTestKind : false) continue;
+      counts.set(r.cuisine, (counts.get(r.cuisine) ?? 0) + 1);
+    }
+    return RECIPE_CUISINES.filter((c) => counts.has(c.id)).map((c) => ({ ...c, count: counts.get(c.id) ?? 0 }));
+  }, [savedRecipes, toTestKind]);
+  const chooseToTestCuisine = React.useCallback((cuisine: string | null) => {
+    setToTestCuisine(cuisine);
+    const url = new URL(window.location.href);
+    if (cuisine) url.searchParams.set("keuken", cuisine);
+    else url.searchParams.delete("keuken");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+
+  /* Recepten zonder keuken (bv. net geïmporteerd): Gemini vult die op de server in, telkens CUISINE_BATCH tegelijk. */
+  const missingCuisine = React.useMemo(() => savedRecipes.filter((r) => !r.cuisine).length, [savedRecipes]);
+  const cuisineRun = React.useRef(false);
+  const refreshToken = user?.refresh_token;
+  React.useEffect(() => {
+    if (!refreshToken || missingCuisine === 0 || cuisineRun.current) return;
+    cuisineRun.current = true;
+    void (async () => {
+      try {
+        for (let round = 0; round < 8; round++) {
+          const r = await fetch("/api/recipes/cuisine", { method: "POST", headers: { authorization: `Bearer ${refreshToken}` } });
+          const j = (await r.json().catch(() => null)) as { classified?: number; remaining?: number } | null;
+          if (!r.ok || !j || !j.classified || !j.remaining) break;
+        }
+      } catch {
+        /* volgende keer opnieuw */
+      } finally {
+        // Na een minuut mag een volgende reeks (bv. een nieuwe import terwijl de pagina open staat).
+        window.setTimeout(() => { cuisineRun.current = false; }, 60_000);
+      }
+    })();
+  }, [refreshToken, missingCuisine]);
   /* Chips «Alles · Hoofdgerechten · …» voor «Te testen», enkel soorten die voorkomen, met hun aantal. */
   const toTestKindChips = React.useMemo(() => {
     const counts = new Map<string, number>();
@@ -756,6 +805,25 @@ export default function ReceptenPage() {
                 {tabControl(true)}
                 <SearchBar surface="app" placeholder={searchPlaceholder} value={recipeSearch} onValueChange={setRecipeSearch} />
               </div>
+
+              {onToTestTab && !isEditMode && toTestCuisineChips.length > 1 ? (
+                <FilterChipRow ariaLabel="Keuken">
+                  <FilterChip selected={!toTestCuisine} onClick={() => chooseToTestCuisine(null)}>
+                    Alles
+                  </FilterChip>
+                  {toTestCuisineChips.map((c) => (
+                    <FilterChip
+                      key={c.id}
+                      selected={toTestCuisine === c.id}
+                      onClick={() => chooseToTestCuisine(toTestCuisine === c.id ? null : c.id)}
+                      dotColor={c.dot}
+                      count={c.count}
+                    >
+                      {c.label}
+                    </FilterChip>
+                  ))}
+                </FilterChipRow>
+              ) : null}
 
               {onToTestTab && !isEditMode && toTestKind ? (
                 <div className="flex items-center gap-2">

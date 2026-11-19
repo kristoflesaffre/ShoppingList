@@ -159,6 +159,8 @@ const schema = i.schema({
       category: i.string().optional(),
       /** Subsectie binnen een categorie (nu enkel bijgerechten): "vlees" | "groentjes" | "brood" | "puree". */
       subcategory: i.string().optional(),
+      /** Keuken (zie RECIPE_CUISINES): "aziatisch" | "indiaas" | … | "andere"; één keer ingevuld door Gemini, aan te passen in de editor. */
+      cuisine: i.string().optional(),
       /** Meerdere porties om in te vriezen (recepteditor). */
       canBeFrozen: i.boolean().optional(),
     }),

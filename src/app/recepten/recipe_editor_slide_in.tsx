@@ -13,8 +13,8 @@ import {
 } from "@/components/recipe_ingredient_form_slide_in";
 import { RecipeLinkSlideIn, type ExtractedRecipeLinkData } from "@/components/recipe_link_slide_in";
 import { RecipePhotoUploadSlideIn, type ExtractedRecipeData } from "@/components/recipe_photo_upload_slide_in";
-import type { RecipeIngredient, SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
-import { RECIPE_CATEGORIES, RECIPE_SUBCATEGORIES } from "@/lib/recipe_library";
+import type { RecipeIngredient, SavedRecipe, RecipeCategory, RecipeCuisine } from "@/lib/recipe_library";
+import { RECIPE_CATEGORIES, RECIPE_CUISINES, RECIPE_SUBCATEGORIES } from "@/lib/recipe_library";
 import { cn } from "@/lib/utils";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { useNormalizeIngredientName } from "@/lib/ingredient-photos";
@@ -50,6 +50,8 @@ export function RecipeEditorSlideIn({
   const [recipeCategory, setRecipeCategory] = React.useState<RecipeCategory | null>(null);
   const [recipeSubcategory, setRecipeSubcategory] = React.useState<string | null>(null);
   const subcategoryOptions = recipeCategory ? RECIPE_SUBCATEGORIES[recipeCategory] : undefined;
+  /* Keuken (filter in «Te testen»); null = nog niet gekozen, dan vult Gemini het later in. */
+  const [recipeCuisine, setRecipeCuisine] = React.useState<RecipeCuisine | null>(null);
   const [canBeFrozen, setCanBeFrozen] = React.useState(false);
   const [ingredients, setIngredients] = React.useState<RecipeIngredient[]>([]);
   const normalizeIngredientName = useNormalizeIngredientName();
@@ -77,6 +79,7 @@ export function RecipeEditorSlideIn({
       setRecipePersons(recipeToEdit.persons);
       setRecipeCategory(recipeToEdit.category ?? null);
       setRecipeSubcategory(recipeToEdit.subcategory ?? null);
+      setRecipeCuisine(recipeToEdit.cuisine ?? null);
       setCanBeFrozen(recipeToEdit.canBeFrozen ?? false);
       setIngredients(recipeToEdit.ingredients);
     } else {
@@ -86,6 +89,7 @@ export function RecipeEditorSlideIn({
       setRecipePersons(2);
       setRecipeCategory(null);
       setRecipeSubcategory(null);
+      setRecipeCuisine(null);
       setCanBeFrozen(false);
       setIngredients([]);
     }
@@ -144,6 +148,8 @@ export function RecipeEditorSlideIn({
           ...(recipeCategory != null ? { category: recipeCategory } : {}),
           // Enkel bewaren als die bij de gekozen categorie hoort; anders wissen (bv. na wisselen van categorie).
           subcategory: subcategoryOptions?.some((o) => o.id === recipeSubcategory) ? recipeSubcategory : null,
+          // Enkel een gekozen keuken bewaren; leeg laten = Gemini vult ze later in (een bestaande blijft staan).
+          ...(recipeCuisine ? { cuisine: recipeCuisine } : {}),
           canBeFrozen,
           ...photoPatch,
           ...(isNew && ownerId ? { ownerId } : {}),
@@ -172,6 +178,7 @@ export function RecipeEditorSlideIn({
       recipeCategory,
       recipeSubcategory,
       subcategoryOptions,
+      recipeCuisine,
       canBeFrozen,
       ingredients,
       recipeToEdit,
@@ -400,6 +407,28 @@ export function RecipeEditorSlideIn({
     </section>
   ) : null;
 
+  // Keuken: dezelfde chips als «Soort gerecht»; nog eens tikken = leeg.
+  const keukenSection = (
+    <section>
+      <SectionTitle>Keuken</SectionTitle>
+      <FilterChipRow wrap ariaLabel="Keuken">
+        {RECIPE_CUISINES.map((c) => {
+          const isActive = recipeCuisine === c.id;
+          return (
+            <FilterChip
+              key={c.id}
+              selected={isActive}
+              onClick={() => setRecipeCuisine(isActive ? null : c.id)}
+              className={cn(!isActive && "!bg-[var(--white)] !text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-subtle)] [@media(hover:hover)]:hover:!bg-[var(--gray-25)]")}
+            >
+              {c.label}
+            </FilterChip>
+          );
+        })}
+      </FilterChipRow>
+    </section>
+  );
+
   const bronSection = (
     <section>
       <SectionTitle>Bron</SectionTitle>
@@ -523,6 +552,7 @@ export function RecipeEditorSlideIn({
           {basisCard}
           {categorieSection}
           {soortSection}
+          {keukenSection}
           <div className="hidden md:block">{bronSection}</div>
         </div>
         <div className="flex flex-col gap-[22px]">

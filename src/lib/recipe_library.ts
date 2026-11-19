@@ -41,6 +41,26 @@ export const RECIPE_CATEGORIES: RecipeCategoryMeta[] = [
   { id: "nog_te_testen", label: "Nog te testen", labelPlural: "Nog te testen", dot: "#A9ADF4" },
 ];
 
+/**
+ * Keuken van een recept (`recipes.cuisine`), vooral om «Te testen» te filteren. Gemini vult het één keer in
+ * (`/api/recipes/cuisine`), daarna aan te passen in de editor. Volgorde = volgorde van de chips.
+ */
+export const RECIPE_CUISINES = [
+  { id: "aziatisch", label: "Aziatisch", dot: "#E5484D" },
+  { id: "indiaas", label: "Indiaas", dot: "#F0A33B" },
+  { id: "italiaans", label: "Italiaans", dot: "#3E9B5F" },
+  { id: "mexicaans", label: "Mexicaans", dot: "#2F80C9" },
+  { id: "mediterraan", label: "Mediterraan", dot: "#14A3A3" },
+  { id: "amerikaans", label: "Amerikaans", dot: "#C2410C" },
+  { id: "klassiek", label: "Klassiek", dot: "#8A6FD8" },
+  { id: "andere", label: "Andere", dot: "#A9ADB5" },
+] as const;
+export type RecipeCuisine = (typeof RECIPE_CUISINES)[number]["id"];
+const CUISINE_IDS = new Set<string>(RECIPE_CUISINES.map((c) => c.id));
+export function isRecipeCuisine(value: unknown): value is RecipeCuisine {
+  return typeof value === "string" && CUISINE_IDS.has(value);
+}
+
 /** Subsecties binnen een categorie; nu enkel voor bijgerechten. Volgorde = volgorde in het overzicht. */
 export const RECIPE_SUBCATEGORIES: Partial<Record<RecipeCategory, { id: string; label: string }[]>> = {
   bijgerecht: [
@@ -81,6 +101,8 @@ export type SavedRecipe = {
   category?: RecipeCategory | null;
   /** Subsectie binnen de categorie (zie RECIPE_SUBCATEGORIES). */
   subcategory?: string | null;
+  /** Keuken (zie RECIPE_CUISINES); null = nog niet ingevuld. */
+  cuisine?: RecipeCuisine | null;
   canBeFrozen?: boolean | null;
   ingredients: RecipeIngredient[];
   /** Wanneer de TikTok-importer het recept toevoegde (ms), anders null. Zie `recipeImportedAt`. */
