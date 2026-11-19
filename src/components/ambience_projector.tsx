@@ -307,6 +307,12 @@ export function TvMaskSheet({ open, token, initial, onClose, onSaved }: { open: 
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="flex justify-between text-sm font-semibold text-text-primary">
+              Video rond de tv <span className="font-normal text-[var(--text-secondary)]">{mask.spread.toFixed(1).replace(".", ",")} × de tv</span>
+            </span>
+            <input type="range" min={1.2} max={3} step={0.1} value={mask.spread} onChange={(e) => setMask((m) => ({ ...m, spread: Number(e.target.value) }))} className="w-full accent-[var(--blue-500)]" />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="flex justify-between text-sm font-semibold text-text-primary">
               Zachte rand <span className="font-normal text-[var(--text-secondary)]">{SOFT_LABEL[mask.soft]}</span>
             </span>
             <input type="range" min={0} max={3} step={1} value={mask.soft} onChange={(e) => setMask((m) => ({ ...m, soft: Number(e.target.value) }))} className="w-full accent-[var(--blue-500)]" />
@@ -316,7 +322,7 @@ export function TvMaskSheet({ open, token, initial, onClose, onSaved }: { open: 
               <span id="tv-mask-blur" className="block text-sm font-semibold text-text-primary">
                 Licht vervagen
               </span>
-              <span className="block text-[13px] leading-[18px] text-[var(--text-secondary)]">Wat zachter en groter op de muur, meer zoals ambilight.</span>
+              <span className="block text-[13px] leading-[18px] text-[var(--text-secondary)]">Wat zachter op de muur, meer zoals ambilight.</span>
             </span>
             <Switch checked={mask.blur} onCheckedChange={(blur) => setMask((m) => ({ ...m, blur }))} aria-labelledby="tv-mask-blur" />
           </div>

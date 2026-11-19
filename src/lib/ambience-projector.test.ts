@@ -9,6 +9,7 @@ import {
   nextLead,
   parseLoungeChunks,
   parseMask,
+  videoFrame,
   syncAction,
   tvPositionAt,
   type TvNowPlaying,
@@ -101,5 +102,18 @@ describe("ambienceShowAction", () => {
     expect(parseAmbienceShow("ambience-show@10.0.0.5:3000")).toEqual({ host: "10.0.0.5", port: 3000 });
     expect(parseAmbienceShow("ambience-show@1.2.3.4:3000")).toBeNull();
     expect(parseAmbienceShow("ambience-show@192.168.1.2:3000;reboot")).toBeNull();
+  });
+});
+
+describe("videoFrame", () => {
+  it("legt de video op het midden van de tv, spread × de tv-breedte", () => {
+    const f = videoFrame({ ...DEFAULT_MASK, spread: 2 }, 1000, 1000);
+    expect(f.width).toBeCloseTo(800);
+    expect(f.left + f.width / 2).toBeCloseTo(500);
+    expect(f.top + f.height / 2).toBeCloseTo(500);
+  });
+  it("vult een ontbrekende spread aan", () => {
+    const { spread: _s, ...old } = DEFAULT_MASK;
+    expect(parseMask(old)?.spread).toBe(1.8);
   });
 });

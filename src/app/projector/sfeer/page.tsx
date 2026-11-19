@@ -8,6 +8,7 @@ import {
   SEEK_LEAD,
   softEdgePx,
   syncAction,
+  videoFrame,
   type ProjectorMask,
   type TvPlayState,
 } from "@/lib/ambience-projector";
@@ -190,17 +191,21 @@ export default function ProjectorAmbiencePage() {
   const polygon = mask ? maskPolygon(mask, size.w, size.h) : null;
   const points = polygon?.map((p) => p.join(",")).join(" ");
   const corners = mask ? CORNER_KEYS.map((k) => [mask.corners[k][0] * size.w, mask.corners[k][1] * size.h]) : [];
+  const frame = mask ? videoFrame(mask, size.w, size.h) : { left: 0, top: 0, width: size.w, height: size.h };
 
   return (
     <div className="fixed inset-0 z-[100] cursor-none overflow-hidden bg-[#000]">
-      {/* Video, iets groter en vervaagd als «Licht vervagen» aan staat. */}
+      {/* Video op het middelpunt van de tv, groter dan de tv (`spread`): naast de tv loopt het tv-beeld verder. */}
       <div
         aria-hidden
-        className="absolute inset-0 transition-opacity duration-700"
+        className="absolute overflow-hidden transition-opacity duration-700"
         style={{
+          left: frame.left,
+          top: frame.top,
+          width: frame.width,
+          height: frame.height,
           opacity: showVideo ? 1 : 0,
-          filter: mask?.blur ? "blur(14px) saturate(1.15)" : undefined,
-          transform: mask?.blur ? "scale(1.08)" : undefined,
+          filter: mask?.blur ? `blur(${Math.round(frame.width * 0.008)}px) saturate(1.15)` : undefined,
         }}
       >
         {/* Iets groter dan het beeld: de titelbalk en het logo van YouTube vallen erbuiten. */}

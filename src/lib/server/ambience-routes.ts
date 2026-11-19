@@ -90,7 +90,7 @@ async function projectorStatus() {
   const report = lastProjectorReport();
   return {
     enabled: settings.enabled,
-    mask: { corners: settings.corners, margin: settings.margin, soft: settings.soft, blur: settings.blur },
+    mask: { corners: settings.corners, margin: settings.margin, soft: settings.soft, blur: settings.blur, spread: settings.spread },
     report: report?.status ?? null,
     tv: settings.enabled ? tvNowPlaying().state : null,
   };
@@ -159,7 +159,7 @@ export async function ambienceProjector(request: NextRequest) {
     return reply({ accepted: true });
   }
   const calib = calibration();
-  const mask = calib?.mask ?? { corners: settings.corners, margin: settings.margin, soft: settings.soft, blur: settings.blur };
+  const mask = calib?.mask ?? { corners: settings.corners, margin: settings.margin, soft: settings.soft, blur: settings.blur, spread: settings.spread };
   const tv = settings.enabled || calib ? tvNowPlaying() : null;
   return reply({ serverNow: Date.now(), enabled: settings.enabled, calibrating: Boolean(calib), mask, tv });
 }

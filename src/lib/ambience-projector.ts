@@ -16,9 +16,16 @@ export type ProjectorMask = {
   margin: number;
   /** Zachte rand: 0 geen · 1 licht · 2 middel · 3 sterk. */
   soft: number;
-  /** Het beeld rond de tv licht vervagen en iets vergroten. */
+  /** Het beeld rond de tv licht vervagen. */
   blur: boolean;
+  /**
+   * Hoe groot de video rond de tv is, als veelvoud van de tv-breedte (1,2–3). De video ligt op hetzelfde middelpunt als
+   * de tv, zodat wat naast de tv valt de rand van het tv-beeld voortzet (zoals ambilight).
+   */
+  spread: number;
 };
+
+export const DEFAULT_SPREAD = 1.8;
 
 export type ProjectorSettings = ProjectorMask & { enabled: boolean };
 
@@ -27,6 +34,7 @@ export const DEFAULT_MASK: ProjectorMask = {
   margin: 2,
   soft: 1,
   blur: true,
+  spread: DEFAULT_SPREAD,
 };
 
 export const CORNER_KEYS = ["tl", "tr", "br", "bl"] as const;
@@ -50,7 +58,9 @@ export function parseMask(value: unknown): ProjectorMask | null {
   if (typeof data.margin !== "number" || !Number.isFinite(data.margin)) return null;
   if (typeof data.soft !== "number" || !Number.isFinite(data.soft)) return null;
   if (typeof data.blur !== "boolean") return null;
-  return { corners, margin: clamp(Math.round(data.margin * 2) / 2, 0, 10), soft: clamp(Math.round(data.soft), 0, 3), blur: data.blur };
+  // Ouder masker zonder `spread`: standaard.
+  const spread = typeof data.spread === "number" && Number.isFinite(data.spread) ? clamp(Math.round(data.spread * 10) / 10, 1.2, 3) : DEFAULT_SPREAD;
+  return { corners, margin: clamp(Math.round(data.margin * 2) / 2, 0, 10), soft: clamp(Math.round(data.soft), 0, 3), blur: data.blur, spread };
 }
 
 /**
@@ -68,6 +78,21 @@ export function maskPolygon(mask: ProjectorMask, width: number, height: number):
     const len = Math.hypot(dx, dy) || 1;
     return [x + (dx / len) * grow * Math.SQRT2, y + (dy / len) * grow * Math.SQRT2];
   });
+}
+
+/**
+ * Waar de video op het beeld van de projector ligt (pixels): 16:9, op het middelpunt van de tv, `spread` × de tv-breedte.
+ * Zo sluit wat naast de tv valt aan op de rand van het tv-beeld; wat buiten het beeld van de projector valt, valt weg.
+ */
+export function videoFrame(mask: ProjectorMask, width: number, height: number): { left: number; top: number; width: number; height: number } {
+  const xs = CORNER_KEYS.map((k) => mask.corners[k][0] * width);
+  const ys = CORNER_KEYS.map((k) => mask.corners[k][1] * height);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const tvWidth = Math.max(...xs) - Math.min(...xs);
+  const w = tvWidth * mask.spread;
+  const h = (w * 9) / 16;
+  return { left: cx - w / 2, top: cy - h / 2, width: w, height: h };
 }
 
 /** Breedte van de zachte rand in pixels. */
