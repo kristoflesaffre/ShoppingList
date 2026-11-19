@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { getInstantAdminDb } from "./instant-admin";
 import { cinemaTarget } from "../stremio";
+import { parseAmbienceShow } from "../ambience-projector";
 
 export const COMMAND_TTL = 30_000;
 export const BRIDGE_FRESHNESS = 45_000;
@@ -22,7 +23,7 @@ export function relayResult(command: RelayCommand, now = Date.now()) {
   return { configured: true, accepted: false, pending: true, commandId: command.id };
 }
 export function commandDispatchable(command: RelayCommand, bridgeId: string, now = Date.now()) {
-  return command.bridgeId === bridgeId && command.state === "pending" && command.createdAt <= now && command.expiresAt > now && (RELAY_ACTIONS.includes(command.action) || cinemaTarget(command.action) !== null);
+  return command.bridgeId === bridgeId && command.state === "pending" && command.createdAt <= now && command.expiresAt > now && (RELAY_ACTIONS.includes(command.action) || cinemaTarget(command.action) !== null || parseAmbienceShow(command.action) !== null);
 }
 function database() {
   const db = getInstantAdminDb();
@@ -49,7 +50,7 @@ async function lockFor(key: string): Promise<Lock | undefined> {
   return data.projectorLocks[0] as Lock | undefined;
 }
 export async function enqueueProjector(bridge: Bridge, action: string): Promise<RelayCommand | null> {
-  if (!RELAY_ACTIONS.includes(action) && !cinemaTarget(action)) throw new Error("invalid-command");
+  if (!RELAY_ACTIONS.includes(action) && !cinemaTarget(action) && !parseAmbienceShow(action)) throw new Error("invalid-command");
   const now = Date.now();
   const db = database();
   const active = await lockFor(`active:${bridge.id}`);
@@ -58,7 +59,7 @@ export async function enqueueProjector(bridge: Bridge, action: string): Promise<
     if (!previous || !["sent", "failed"].includes(previous.state)) return null;
   }
   if (active) await db.transact(db.tx.projectorLocks[active.id].delete());
-  const command: RelayCommand = { id: randomUUID(), bridgeId: bridge.id, action, createdAt: now, expiresAt: now + (action === "cinema" || cinemaTarget(action) ? 180_000 : action === "cinema-stop" || action === "ambience-show" ? 120_000 : COMMAND_TTL), state: "pending" };
+  const command: RelayCommand = { id: randomUUID(), bridgeId: bridge.id, action, createdAt: now, expiresAt: now + (action === "cinema" || cinemaTarget(action) ? 180_000 : action === "cinema-stop" || action.startsWith("ambience-show") ? 120_000 : COMMAND_TTL), state: "pending" };
   try {
     // A unique active key also serializes concurrent requests in different server instances.
     await db.transact([

@@ -6,7 +6,8 @@ import { formatYoutubeDuration, isYoutubeVideoId } from "@/lib/samsung-tv-protoc
 import { verifiedUserId } from "./google-connection-store";
 import { screenLanHost } from "./projector-temporary";
 import { readTvConfig, startAmbience, tvPlayback, tvPower } from "./samsung-tv";
-import { parseMask, type ProjectorMask } from "@/lib/ambience-projector";
+import { networkInterfaces } from "node:os";
+import { ambienceShowAction, parseMask, type ProjectorMask } from "@/lib/ambience-projector";
 import {
   calibration,
   lastProjectorReport,
@@ -58,10 +59,26 @@ export function ambienceRequest(value: unknown): AmbienceCommand | null {
 }
 
 /** De Pi opent de projectorpagina (of zet de projector weer uit). Mislukt = enkel op tv, nooit een fout voor de tv. */
-async function projectorCommand(ownerId: string, action: "ambience-show" | "ambience-hide"): Promise<string | null> {
+/** Huidig adres van deze Mac op het thuisnetwerk (wifi eerst). */
+function macLanAddress(): string | null {
+  const nets = networkInterfaces();
+  const names = Object.keys(nets).sort((a, b) => (a === "en0" ? -1 : b === "en0" ? 1 : a.localeCompare(b)));
+  for (const name of names) {
+    for (const net of nets[name] ?? []) {
+      if (net.family === "IPv4" && !net.internal && ambienceShowAction(net.address, 1000)) return net.address;
+    }
+  }
+  return null;
+}
+
+async function projectorCommand(ownerId: string, kind: "ambience-show" | "ambience-hide", request: NextRequest): Promise<string | null> {
   try {
     const bridge = await ownerBridge(ownerId);
     if (!bridge || !bridgeOnline(bridge)) return "bridge-offline";
+    // Het adres van de Mac verandert soms: stuur het huidige mee (de poort van deze server).
+    const host = macLanAddress();
+    const port = Number(request.nextUrl.port || process.env.PORT || 3010);
+    const action = kind === "ambience-show" && host ? ambienceShowAction(host, port) ?? kind : kind;
     return (await enqueueProjector(bridge, action)) ? null : "bridge-busy";
   } catch {
     return "bridge-offline";
@@ -92,12 +109,12 @@ export async function ambienceTv(request: NextRequest) {
     await saveProjectorSettings({ enabled: parsed.enabled });
     // Aan terwijl de tv al iets speelt: meteen de projector erbij. Uit: projector uit.
     const playing = parsed.enabled && (await tvPower(config.host)) === "on";
-    const problem = parsed.enabled ? (playing ? await projectorCommand(guard.ownerId, "ambience-show") : null) : await projectorCommand(guard.ownerId, "ambience-hide");
+    const problem = parsed.enabled ? (playing ? await projectorCommand(guard.ownerId, "ambience-show", request) : null) : await projectorCommand(guard.ownerId, "ambience-hide", request);
     return reply({ accepted: true, projector: await projectorStatus(), problem });
   }
   if (parsed.action === "calibrate") {
     setCalibration(parsed.on);
-    const problem = parsed.on ? await projectorCommand(guard.ownerId, "ambience-show") : null;
+    const problem = parsed.on ? await projectorCommand(guard.ownerId, "ambience-show", request) : null;
     return reply({ accepted: true, problem });
   }
   if (parsed.action === "mask") {
@@ -114,7 +131,7 @@ export async function ambienceTv(request: NextRequest) {
     }
     const { wasOn } = await startAmbience(config, parsed.videoId);
     const settings = await readProjectorSettings();
-    const problem = settings.enabled ? await projectorCommand(guard.ownerId, "ambience-show") : null;
+    const problem = settings.enabled ? await projectorCommand(guard.ownerId, "ambience-show", request) : null;
     return reply({ accepted: true, wasOn, ...(settings.enabled ? { projector: problem ?? "starting" } : {}) });
   } catch (error) {
     const code = error instanceof Error && /^[a-z-]+$/.test(error.message) ? error.message : "command-not-confirmed";

@@ -1,5 +1,12 @@
 # Home Assistant on the Raspberry Pi
 
+## «Ook rond de tv»: adres van de Mac meesturen, bridge 1.30.0 (2026-11-19)
+
+A fixed DHCP lease for the Mac dropped its connection, so its address can change. The app now sends its current
+address with every start: `ambience-show@<private IPv4>:<port>` (`ambienceShowAction`, the Mac's own en0 address and the
+port of the server that got the request). The bridge accepts only a private IPv4 address (`AMBIENCE_SHOW_AT`) and always
+takes the key from `ambience_url` in `shoppinglist-cinema.yaml`; plain `ambience-show` still uses that whole URL.
+
 ## «Ook rond de tv»: localhost-doorgeefluik in de app, bridge 1.29.0 (2026-11-19)
 
 Test with 1.28.0: the app installed and opened, the mask was right, but YouTube showed «This video is unavailable».

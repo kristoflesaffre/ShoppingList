@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  ambienceShowAction,
   applyLoungeEvent,
+  parseAmbienceShow,
   DEFAULT_MASK,
   isProjectorKey,
   maskPolygon,
@@ -89,5 +91,15 @@ describe("isProjectorKey", () => {
     expect(isProjectorKey("a".repeat(43))).toBe(true);
     expect(isProjectorKey("kort")).toBe(false);
     expect(isProjectorKey("a".repeat(40) + "/../")).toBe(false);
+  });
+});
+
+describe("ambienceShowAction", () => {
+  it("stuurt enkel een privé-adres mee", () => {
+    expect(ambienceShowAction("192.168.132.183", 3010)).toBe("ambience-show@192.168.132.183:3010");
+    expect(ambienceShowAction("8.8.8.8", 3010)).toBeNull();
+    expect(parseAmbienceShow("ambience-show@10.0.0.5:3000")).toEqual({ host: "10.0.0.5", port: 3000 });
+    expect(parseAmbienceShow("ambience-show@1.2.3.4:3000")).toBeNull();
+    expect(parseAmbienceShow("ambience-show@192.168.1.2:3000;reboot")).toBeNull();
   });
 });
