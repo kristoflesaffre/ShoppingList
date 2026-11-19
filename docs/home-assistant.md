@@ -8,6 +8,8 @@ and `http://127.0.0.1:3010` fail while `http://localhost:3010` and `http://krist
 versionCode 2 (`LocalProxy`): the WebView loads the page from `http://localhost:<random port>` on the projector itself
 (listens on 127.0.0.1 only) and forwards every request to the Mac in `ambience_url`. Tested on the Mac with the same Java
 class: the video plays through the proxy. Bridge 1.29.0 only carries the new APK (`APK_VERSION = 2`).
+Tested 19/11 on the projector with 1.29.0: app updated and opened (60 s incl. waking), screenshot shows the blurred
+fireplace video with the black mask; the mask still has the default corners until «Tv afdekken» is done.
 
 ## «Ook rond de tv»: eigen app op de projector, bridge 1.28.0 (2026-11-19)
 
