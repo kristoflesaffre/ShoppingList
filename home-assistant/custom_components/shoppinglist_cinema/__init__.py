@@ -39,7 +39,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.28.0'
+BRIDGE_VERSION = '1.29.0'
 # «Ook rond de tv» (ambience): the projector shows the app's projector page (same YouTube video as the TV, the TV
 # itself masked black). Only this exact LAN page (Mac + key from shoppinglist-cinema.yaml `ambience_url`) can be opened.
 AMBIENCE_URL = re.compile(r'^http://(?:10|192\.168|172\.(?:1[6-9]|2\d|3[01]))(?:\.\d{1,3}){2,3}:\d{2,5}/projector/sfeer\?key=[A-Za-z0-9_-]{32,64}$')

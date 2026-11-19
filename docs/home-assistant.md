@@ -1,5 +1,14 @@
 # Home Assistant on the Raspberry Pi
 
+## «Ook rond de tv»: localhost-doorgeefluik in de app, bridge 1.29.0 (2026-11-19)
+
+Test with 1.28.0: the app installed and opened, the mask was right, but YouTube showed «This video is unavailable».
+YouTube refuses an embedded video when the page comes from an IP address: also on the Mac, `http://192.168.132.183:3010`
+and `http://127.0.0.1:3010` fail while `http://localhost:3010` and `http://kristofs-macbook-air.local:3010` play. App
+versionCode 2 (`LocalProxy`): the WebView loads the page from `http://localhost:<random port>` on the projector itself
+(listens on 127.0.0.1 only) and forwards every request to the Mac in `ambience_url`. Tested on the Mac with the same Java
+class: the video plays through the proxy. Bridge 1.29.0 only carries the new APK (`APK_VERSION = 2`).
+
 ## «Ook rond de tv»: eigen app op de projector, bridge 1.28.0 (2026-11-19)
 
 First real test with 1.27.0: the projector woke and the VIEW intent was sent, but a screenshot showed only the Google TV

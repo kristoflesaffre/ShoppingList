@@ -67,9 +67,24 @@ public final class MainActivity extends Activity {
       finish();
       return;
     }
-    origin = data.getScheme() + "://" + data.getAuthority();
-    web.loadUrl(url);
+    // De pagina komt via http://localhost:<poort> (LocalProxy): YouTube weigert ingesloten video's op een IP-adres.
+    String mac = data.getScheme() + "://" + data.getAuthority();
+    try {
+      if (proxy == null || !mac.equals(proxyTarget)) {
+        if (proxy != null) proxy.close();
+        proxy = new LocalProxy(mac);
+        proxyTarget = mac;
+      }
+    } catch (java.io.IOException e) {
+      finish();
+      return;
+    }
+    origin = "http://localhost:" + proxy.port();
+    web.loadUrl(origin + data.getEncodedPath() + "?" + data.getEncodedQuery());
   }
+
+  private LocalProxy proxy;
+  private String proxyTarget;
 
   @Override
   public void onWindowFocusChanged(boolean hasFocus) {
@@ -95,6 +110,7 @@ public final class MainActivity extends Activity {
 
   @Override
   protected void onDestroy() {
+    if (proxy != null) proxy.close();
     if (web != null) {
       web.loadUrl("about:blank");
       web.destroy();
