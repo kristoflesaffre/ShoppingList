@@ -1,11 +1,25 @@
 # Home Assistant on the Raspberry Pi
 
+## «Ook rond de tv»: eigen app op de projector, bridge 1.28.0 (2026-11-19)
+
+First real test with 1.27.0: the projector woke and the VIEW intent was sent, but a screenshot showed only the Google TV
+home screen: the XGIMI has no browser (Stremio, Netflix, Disney+, Prime, VRT MAX, PLAY, Apple TV, YouTube). The first
+attempt also failed because the ADB entity was still unavailable right after waking (`device-action-failed`).
+1.28.0: own one-screen app «ShoppingList Sfeer» (`android/sfeer`, package `be.shoppinglist.sfeer`, ±13 kB): a full-screen
+WebView without address bar, video may start without a tap (`setMediaPlaybackRequiresUserGesture(false)`), only the
+projector page on a private IPv4 address (same rule as `AMBIENCE_URL`), «back» closes it. Built with
+`node scripts/build-sfeer-apk.mjs` (JDK 17 via Homebrew `openjdk@17`, Android SDK `build-tools;34.0.0` +
+`platforms;android-34` via Homebrew `android-commandlinetools`; signing key in `.cache/sfeer/`, not in Git, keep it)
+into `sfeer_apk.py`. `ambience-show` now waits for the ADB entity (max 60 s), retries ADB calls, installs/updates the app
+when its versionCode is lower (hash checked) and starts it with `am start -n be.shoppinglist.sfeer/.MainActivity -d <url>`.
+`ambience_browser` is gone. Install: `outputs/cinema-bridge-1.28.0-install.txt` (no python3 in the Terminal add-on).
+
 ## «Ook rond de tv»: ambience ook op de projector (2026-11-19)
 
 Bridge v1.27.0 adds two commands (`RELAY_ACTIONS`, `src/lib/server/projector-relay.ts`):
 - `ambience-show`: refuses while the projection screen is down (`screen-open`, the picture belongs on the wall), wakes the
-  projector (`ensure_on`) and opens exactly the page in `shoppinglist-cinema.yaml` `ambience_url` with
-  `am start -a android.intent.action.VIEW` (optional `ambience_browser` = package). Only
+  projector (`ensure_on`) and opens exactly the page in `shoppinglist-cinema.yaml` `ambience_url` (since 1.28.0 in our own
+  app, see above). Only
   `http://<private IPv4>:<port>/projector/sfeer?key=<32–64 URL-safe chars>` is accepted (`AMBIENCE_URL`). No browser on
   the projector = `no-browser`.
 - `ambience-hide`: projector off, never while Stremio is in front.

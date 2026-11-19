@@ -16,6 +16,7 @@ from homeassistant.util import dt as dt_util
 from .screen import CONTACT, ScreenGuard
 from .companion import Telemetry, parse_media_session, parse_probe_metadata
 from .control_dex import DEX_BASE64, DEX_SHA256
+from .sfeer_apk import APK_BASE64, APK_PACKAGE, APK_SHA256, APK_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 DOMAIN = 'shoppinglist_cinema'
@@ -38,11 +39,13 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.27.0'
+BRIDGE_VERSION = '1.28.0'
 # «Ook rond de tv» (ambience): the projector shows the app's projector page (same YouTube video as the TV, the TV
 # itself masked black). Only this exact LAN page (Mac + key from shoppinglist-cinema.yaml `ambience_url`) can be opened.
 AMBIENCE_URL = re.compile(r'^http://(?:10|192\.168|172\.(?:1[6-9]|2\d|3[01]))(?:\.\d{1,3}){2,3}:\d{2,5}/projector/sfeer\?key=[A-Za-z0-9_-]{32,64}$')
-AMBIENCE_PACKAGE = re.compile(r'^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$')
+# The projector has no browser: our own one-screen app «ShoppingList Sfeer» (android/sfeer, scripts/build-sfeer-apk.mjs)
+# shows the page. Installed or updated over ADB when its versionCode is lower than APK_VERSION; hash checked first.
+SFEER_APK = '/data/local/tmp/shoppinglist-sfeer.apk'
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide')
 # Android TV (ADB) config entry of the projector: reloaded when ADB keeps failing (at most every ADB_RELOAD_EVERY s).
 ADB_ENTRY = '01M64FE12GJ4ED6MR8PMCTGN46'
@@ -351,6 +354,41 @@ async def async_setup(hass, config):
         await update('cinemaCompanionData', companion_id(record), {'ownerId': owner, 'key': record, 'expiresAt': now + FRAME_TTL_MS,
                                                                  'payload': {'at': now, 'width': width, 'height': height, 'brightness': brightness, 'jpeg': jpeg, 'version': BRIDGE_VERSION}})
 
+    async def adb_ready():
+        # Just after waking, the Android TV (ADB) entity is still unavailable for a while: wait for it (max 60 s),
+        # then retry a failing call a few times instead of giving up on the first one.
+        deadline = time.monotonic() + 60
+        while True:
+            state = hass.states.get(ADB_PLAYER)
+            if state and state.state not in ('unavailable', 'unknown'):
+                return
+            if time.monotonic() >= deadline:
+                raise RuntimeError('adb-not-ready')
+            await asyncio.sleep(2)
+
+    async def adb_retry(command, attempts=4):
+        for attempt in range(attempts):
+            try:
+                return await adb(command)
+            except Exception:
+                if attempt == attempts - 1:
+                    raise RuntimeError('adb-failed')
+                await asyncio.sleep(3)
+
+    async def ensure_sfeer():
+        dump = await adb_retry(f"dumpsys package {APK_PACKAGE} | grep -o 'versionCode=[0-9]*' | head -1")
+        found = re.search(r'versionCode=(\d+)', dump)
+        if found and int(found.group(1)) >= APK_VERSION:
+            return
+        check = f"sha256sum {SFEER_APK} 2>/dev/null | cut -c1-64"
+        await adb_retry(f"echo {APK_BASE64} | base64 -d > {SFEER_APK}")
+        if (await adb_retry(check)).strip() != APK_SHA256:
+            raise RuntimeError('sfeer-copy-failed')
+        result = await adb_retry(f"pm install -r {SFEER_APK}; rm -f {SFEER_APK}")
+        if 'Success' not in result:
+            _LOGGER.warning('ShoppingList Sfeer install: %s', result.strip()[:200])
+            raise RuntimeError('sfeer-install-failed')
+
     async def show_ambience():
         url = settings.get('ambience_url') or ''
         if not AMBIENCE_URL.match(url):
@@ -360,15 +398,12 @@ async def async_setup(hass, config):
         if contact and contact.state == 'on':
             raise RuntimeError('screen-open')
         await ensure_on()
-        package = settings.get('ambience_browser') or ''
-        command = f"am start -a android.intent.action.VIEW -d '{url}'"
-        if package:
-            if not AMBIENCE_PACKAGE.match(package):
-                raise RuntimeError('ambience-browser-invalid')
-            command += f" -p {package}"
-        output = await adb(command)
-        if 'Error' in output or 'No Activity' in output:
-            raise RuntimeError('no-browser')
+        await adb_ready()
+        await ensure_sfeer()
+        output = await adb_retry(f"am start -n {APK_PACKAGE}/.MainActivity -a android.intent.action.VIEW -d '{url}'")
+        if 'Error' in output:
+            _LOGGER.warning('ShoppingList Sfeer start: %s', output.strip()[:200])
+            raise RuntimeError('sfeer-start-failed')
 
     async def hide_ambience():
         # Never switch the projector off under a film: only when it shows the ambience page (or nothing at all).
