@@ -6,6 +6,18 @@ import { formatYoutubeDuration, isYoutubeVideoId } from "@/lib/samsung-tv-protoc
 import { verifiedUserId } from "./google-connection-store";
 import { screenLanHost } from "./projector-temporary";
 import { readTvConfig, startAmbience, tvPlayback, tvPower } from "./samsung-tv";
+import { parseMask, type ProjectorMask } from "@/lib/ambience-projector";
+import {
+  calibration,
+  lastProjectorReport,
+  projectorKeyMatches,
+  readProjectorSettings,
+  reportFromProjector,
+  saveProjectorSettings,
+  setCalibration,
+  tvNowPlaying,
+} from "./ambience-projector";
+import { bridgeOnline, enqueueProjector, ownerBridge } from "./projector-relay";
 
 const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 const loopback = ["localhost", "127.0.0.1", "[::1]"];
@@ -22,13 +34,49 @@ async function localOwner(request: NextRequest): Promise<{ ownerId: string } | N
   return { ownerId };
 }
 
-/** `{ action: "status" | "pause" | "resume" }` or `{ action: "play", videoId }`. */
-export function ambienceRequest(value: unknown): { action: "status" | "pause" | "resume" } | { action: "play"; videoId: string } | null {
+/** Wat de tablet mag vragen. «projector»/«calibrate»/«mask» = «Ook rond de tv» (canvas «Ambience · Ook op de projector» A). */
+export type AmbienceCommand =
+  | { action: "status" | "pause" | "resume" }
+  | { action: "play"; videoId: string }
+  | { action: "projector"; enabled: boolean }
+  | { action: "calibrate"; on: boolean }
+  | { action: "mask"; mask: ProjectorMask; save: boolean };
+
+export function ambienceRequest(value: unknown): AmbienceCommand | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const data = value as Record<string, unknown>;
-  if ((data.action === "status" || data.action === "pause" || data.action === "resume") && Object.keys(data).length === 1) return { action: data.action };
-  if (data.action === "play" && Object.keys(data).length === 2 && isYoutubeVideoId(data.videoId)) return { action: "play", videoId: data.videoId };
+  const keys = Object.keys(data).length;
+  if ((data.action === "status" || data.action === "pause" || data.action === "resume") && keys === 1) return { action: data.action };
+  if (data.action === "play" && keys === 2 && isYoutubeVideoId(data.videoId)) return { action: "play", videoId: data.videoId };
+  if (data.action === "projector" && keys === 2 && typeof data.enabled === "boolean") return { action: "projector", enabled: data.enabled };
+  if (data.action === "calibrate" && keys === 2 && typeof data.on === "boolean") return { action: "calibrate", on: data.on };
+  if (data.action === "mask" && keys === 3 && typeof data.save === "boolean") {
+    const mask = parseMask(data.mask);
+    return mask ? { action: "mask", mask, save: data.save } : null;
+  }
   return null;
+}
+
+/** De Pi opent de projectorpagina (of zet de projector weer uit). Mislukt = enkel op tv, nooit een fout voor de tv. */
+async function projectorCommand(ownerId: string, action: "ambience-show" | "ambience-hide"): Promise<string | null> {
+  try {
+    const bridge = await ownerBridge(ownerId);
+    if (!bridge || !bridgeOnline(bridge)) return "bridge-offline";
+    return (await enqueueProjector(bridge, action)) ? null : "bridge-busy";
+  } catch {
+    return "bridge-offline";
+  }
+}
+
+async function projectorStatus() {
+  const settings = await readProjectorSettings();
+  const report = lastProjectorReport();
+  return {
+    enabled: settings.enabled,
+    mask: { corners: settings.corners, margin: settings.margin, soft: settings.soft, blur: settings.blur },
+    report: report?.status ?? null,
+    tv: settings.enabled ? tvNowPlaying().state : null,
+  };
 }
 
 export async function ambienceTv(request: NextRequest) {
@@ -39,18 +87,64 @@ export async function ambienceTv(request: NextRequest) {
   const config = await readTvConfig();
   if (!config) return reply({ error: "not-configured", configured: false }, 503);
   if (config.ownerId !== guard.ownerId) return reply({ error: "not-authorized" }, 403);
-  if (parsed.action === "status") return reply({ configured: true, power: await tvPower(config.host), youtubeSearch: Boolean(process.env.YOUTUBE_API_KEY) });
+  if (parsed.action === "status") return reply({ configured: true, power: await tvPower(config.host), youtubeSearch: Boolean(process.env.YOUTUBE_API_KEY), projector: await projectorStatus() });
+  if (parsed.action === "projector") {
+    await saveProjectorSettings({ enabled: parsed.enabled });
+    // Aan terwijl de tv al iets speelt: meteen de projector erbij. Uit: projector uit.
+    const playing = parsed.enabled && (await tvPower(config.host)) === "on";
+    const problem = parsed.enabled ? (playing ? await projectorCommand(guard.ownerId, "ambience-show") : null) : await projectorCommand(guard.ownerId, "ambience-hide");
+    return reply({ accepted: true, projector: await projectorStatus(), problem });
+  }
+  if (parsed.action === "calibrate") {
+    setCalibration(parsed.on);
+    const problem = parsed.on ? await projectorCommand(guard.ownerId, "ambience-show") : null;
+    return reply({ accepted: true, problem });
+  }
+  if (parsed.action === "mask") {
+    if (parsed.save) {
+      await saveProjectorSettings(parsed.mask);
+      setCalibration(false);
+    } else setCalibration(true, parsed.mask);
+    return reply({ accepted: true });
+  }
   try {
     if (parsed.action !== "play") {
       await tvPlayback(config, parsed.action === "pause" ? "pause" : "resume");
       return reply({ accepted: true });
     }
     const { wasOn } = await startAmbience(config, parsed.videoId);
-    return reply({ accepted: true, wasOn });
+    const settings = await readProjectorSettings();
+    const problem = settings.enabled ? await projectorCommand(guard.ownerId, "ambience-show") : null;
+    return reply({ accepted: true, wasOn, ...(settings.enabled ? { projector: problem ?? "starting" } : {}) });
   } catch (error) {
     const code = error instanceof Error && /^[a-z-]+$/.test(error.message) ? error.message : "command-not-confirmed";
     return reply({ error: code }, code === "busy" ? 409 : 503);
   }
+}
+
+/**
+ * De projectorpagina (op de projector, via het thuisnetwerk naar deze Mac): wat de tv speelt, waar de tv zit, en of
+ * er ingesteld wordt. Geen aanmelding op de projector: een lange sleutel in de url (`.cache/samsung-tv/projector.json`).
+ * POST = melding van de pagina (`embed-blocked`, `playing`, …) voor het blad op de tablet.
+ */
+export async function ambienceProjector(request: NextRequest) {
+  if (process.env.NETLIFY || process.env.VERCEL) return reply({ error: "mac-required" }, 503);
+  const settings = await readProjectorSettings();
+  const given = request.method === "GET" ? request.nextUrl.searchParams.get("key") : ((await request.clone().json().catch(() => null)) as { key?: unknown } | null)?.key;
+  if (!projectorKeyMatches(settings.key, given)) return reply({ error: "not-authorized" }, 403);
+  const config = await readTvConfig();
+  if (!config) return reply({ error: "not-configured" }, 503);
+  if (request.method === "POST") {
+    const body = (await request.json().catch(() => null)) as { status?: unknown; videoId?: unknown } | null;
+    const status = typeof body?.status === "string" && /^[a-z-]{1,32}$/.test(body.status) ? body.status : null;
+    if (!status) return reply({ error: "invalid-report" }, 400);
+    reportFromProjector(status, isYoutubeVideoId(body?.videoId) ? body.videoId : null);
+    return reply({ accepted: true });
+  }
+  const calib = calibration();
+  const mask = calib?.mask ?? { corners: settings.corners, margin: settings.margin, soft: settings.soft, blur: settings.blur };
+  const tv = settings.enabled || calib ? tvNowPlaying() : null;
+  return reply({ serverNow: Date.now(), enabled: settings.enabled, calibrating: Boolean(calib), mask, tv });
 }
 
 export type AmbienceVideo = { id: string; title: string; channel: string; thumbnail: string; duration: string | null; live: boolean };

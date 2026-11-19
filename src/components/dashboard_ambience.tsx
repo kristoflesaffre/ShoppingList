@@ -19,10 +19,13 @@ import {
   subscribePlayState,
   tvPlaybackCommand,
   type AmbienceVideo,
+  type ProjectorState,
 } from "@/lib/ambience-client";
 import { cn } from "@/lib/utils";
 import { RoundIconButton } from "@/components/ui/round_icon_button";
 import { MiniButton } from "@/components/ui/mini_button";
+import { ProjectorAmbienceRow, TvMaskSheet } from "@/components/ambience_projector";
+import { DEFAULT_MASK } from "@/lib/ambience-projector";
 
 const tile = "relative overflow-hidden rounded-[24px]";
 const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white";
@@ -77,10 +80,11 @@ function useTvPlayer(token: string | null) {
       setElapsed(0);
       setMessage(null);
       try {
-        await playAmbienceOnTv(token, video.id);
+        const { projector } = await playAmbienceOnTv(token, video.id);
         saveLastAmbience(video);
         setPlayState("playing");
-        setMessage(`«${video.title}» speelt op de tv.`);
+        const around = projector === "starting" ? " De projector start rond de tv (± 30 s)." : projector ? ` ${ambienceErrorText(projector, "Rond de tv lukt nu niet.")}` : "";
+        setMessage(`«${video.title}» speelt op de tv.${around}`);
         return true;
       } catch (error) {
         setMessage(ambienceErrorText((error as Error).message, "De tv bevestigde de opdracht niet. Kijk even op de tv en probeer opnieuw."));
@@ -204,10 +208,15 @@ export function AmbienceModal({ onClose }: { onClose: () => void }) {
   const seasonalCount = shelves.findIndex((s) => s.key === "haardvuur");
   const playingRef = React.useRef(player.playing);
   playingRef.current = player.playing;
+  /** «Tv afdekken» open: Escape en tikken naast het blad sluiten dan enkel dat venster. */
+  const [maskFor, setMaskFor] = React.useState<ProjectorState | null>(null);
+  const maskOpenRef = React.useRef(false);
+  maskOpenRef.current = !!maskFor;
+  const [rowKey, setRowKey] = React.useState(0);
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !playingRef.current) onClose();
+      if (e.key === "Escape" && !playingRef.current && !maskOpenRef.current) onClose();
     };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -270,6 +279,18 @@ export function AmbienceModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
         </div>
+
+        <ProjectorAmbienceRow key={rowKey} token={token} onOpenMask={setMaskFor} />
+        <TvMaskSheet
+          open={!!maskFor}
+          token={token}
+          initial={maskFor?.mask ?? DEFAULT_MASK}
+          onClose={() => setMaskFor(null)}
+          onSaved={() => {
+            setMaskFor(null);
+            setRowKey((k) => k + 1);
+          }}
+        />
 
         <div className="-mx-4 flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-4 pb-2 md:-mx-7 md:px-7">
           {searchShelf ? <Shelf key={searchShelf.query} shelf={searchShelf} seasonal={false} token={token} player={player} onPlayed={onPlayed} /> : null}

@@ -38,7 +38,12 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.26.0'
+BRIDGE_VERSION = '1.27.0'
+# «Ook rond de tv» (ambience): the projector shows the app's projector page (same YouTube video as the TV, the TV
+# itself masked black). Only this exact LAN page (Mac + key from shoppinglist-cinema.yaml `ambience_url`) can be opened.
+AMBIENCE_URL = re.compile(r'^http://(?:10|192\.168|172\.(?:1[6-9]|2\d|3[01]))(?:\.\d{1,3}){2,3}:\d{2,5}/projector/sfeer\?key=[A-Za-z0-9_-]{32,64}$')
+AMBIENCE_PACKAGE = re.compile(r'^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$')
+AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide')
 # Android TV (ADB) config entry of the projector: reloaded when ADB keeps failing (at most every ADB_RELOAD_EVERY s).
 ADB_ENTRY = '01M64FE12GJ4ED6MR8PMCTGN46'
 ADB_FAILS_BEFORE_RELOAD = 3
@@ -346,7 +351,41 @@ async def async_setup(hass, config):
         await update('cinemaCompanionData', companion_id(record), {'ownerId': owner, 'key': record, 'expiresAt': now + FRAME_TTL_MS,
                                                                  'payload': {'at': now, 'width': width, 'height': height, 'brightness': brightness, 'jpeg': jpeg, 'version': BRIDGE_VERSION}})
 
+    async def show_ambience():
+        url = settings.get('ambience_url') or ''
+        if not AMBIENCE_URL.match(url):
+            raise RuntimeError('ambience-not-configured')
+        contact = hass.states.get(CONTACT)
+        # Projection screen down: the picture would land on the screen, not on the wall around the TV.
+        if contact and contact.state == 'on':
+            raise RuntimeError('screen-open')
+        await ensure_on()
+        package = settings.get('ambience_browser') or ''
+        command = f"am start -a android.intent.action.VIEW -d '{url}'"
+        if package:
+            if not AMBIENCE_PACKAGE.match(package):
+                raise RuntimeError('ambience-browser-invalid')
+            command += f" -p {package}"
+        output = await adb(command)
+        if 'Error' in output or 'No Activity' in output:
+            raise RuntimeError('no-browser')
+
+    async def hide_ambience():
+        # Never switch the projector off under a film: only when it shows the ambience page (or nothing at all).
+        state = hass.states.get(PLAYER)
+        app = (state.attributes.get('app_id') if state else None) or ''
+        if app == STREMIO:
+            return
+        if power_state() in AWAKE:
+            await hass.services.async_call('media_player', 'turn_off', {'entity_id': PLAYER}, blocking=True)
+
     async def execute(action):
+        if action == 'ambience-show':
+            await show_ambience()
+            return
+        if action == 'ambience-hide':
+            await hide_ambience()
+            return
         if action == 'xray-frame':
             await capture_frame()
             return
@@ -413,7 +452,7 @@ async def async_setup(hass, config):
                     command = commands[0]
                     valid = command['expiresAt'] > time.time() * 1000 and command['createdAt'] <= time.time() * 1000
                     action = command.get('action', '')
-                    if valid and (action in ('on', 'off', 'cinema', 'cinema-stop', 'play-pause', 'xray-frame') or action in SEEK_BACK or target_link(action)):
+                    if valid and (action in ('on', 'off', 'cinema', 'cinema-stop', 'play-pause', 'xray-frame') or action in AMBIENCE_ACTIONS or action in SEEK_BACK or target_link(action)):
                         # Permission rules enforce pending -> claimed atomically. Never retry a claim or dispatch.
                         await update('projectorCommands', command['id'], {'state': 'claimed'})
                         error = ''

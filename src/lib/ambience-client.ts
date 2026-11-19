@@ -1,6 +1,7 @@
 "use client";
 import { googleAuthHeaders } from "@/lib/google-client";
 import type { AmbienceVideo } from "@/lib/server/ambience-routes";
+import type { ProjectorMask } from "@/lib/ambience-projector";
 
 export type { AmbienceVideo };
 
@@ -12,6 +13,10 @@ export const AMBIENCE_ERRORS: Record<string, string> = {
   "tv-not-waking": "De tv reageert niet. Staat «Inschakelen met mobiel» aan en zit de netwerkkabel erin?",
   "tv-remote-unauthorized": "De tv weigert de bediening. Koppel opnieuw en klik «Toestaan» op de tv.",
   busy: "De tv is al bezig met een vorige opdracht.",
+  "bridge-offline": "De Pi antwoordt niet: rond de tv lukt nu niet. Op tv speelt het gewoon.",
+  "bridge-busy": "De projector is nog bezig met een vorige opdracht. Probeer zo opnieuw.",
+  "embed-blocked": "Deze maker laat de video niet rond de tv afspelen. Op tv speelt hij wel.",
+  "video-error": "Rond de tv lukt deze video niet. Op tv speelt hij wel.",
 };
 
 export const ambienceErrorText = (code: string, fallback: string) => AMBIENCE_ERRORS[code] ?? fallback;
@@ -81,9 +86,37 @@ export function prefetchAmbience(token: string | null, queries: string[]): void 
   for (const q of queries) void searchAmbience(token, q).catch(() => undefined);
 }
 
-export async function playAmbienceOnTv(token: string | null, videoId: string): Promise<void> {
-  const data = await post<{ accepted?: boolean }>("/api/tv/ambience", token, { action: "play", videoId });
+/** Speelt een video op de tv. `projector`: met «Ook rond de tv» aan «starting», of een probleemcode (bv. `bridge-offline`). */
+export async function playAmbienceOnTv(token: string | null, videoId: string): Promise<{ projector?: string }> {
+  const data = await post<{ accepted?: boolean; projector?: string }>("/api/tv/ambience", token, { action: "play", videoId });
   if (!data.accepted) throw new Error("command-not-confirmed");
+  return { projector: data.projector };
+}
+
+// ---------------- «Ook rond de tv» (projector) ----------------
+
+export type ProjectorState = { enabled: boolean; mask: ProjectorMask; report: string | null; tv: string | null };
+
+export async function projectorState(token: string | null): Promise<ProjectorState | null> {
+  const data = await post<{ projector?: ProjectorState }>("/api/tv/ambience", token, { action: "status" });
+  return data.projector ?? null;
+}
+
+/** Aan/uit. Geeft een probleemcode terug als de Pi de projector niet kon aansturen. */
+export async function setProjectorEnabled(token: string | null, enabled: boolean): Promise<string | null> {
+  const data = await post<{ problem?: string | null }>("/api/tv/ambience", token, { action: "projector", enabled });
+  return data.problem ?? null;
+}
+
+/** Instellen aan/uit: de projector toont dan een raster met een wit kader. */
+export async function setProjectorCalibrating(token: string | null, on: boolean): Promise<string | null> {
+  const data = await post<{ problem?: string | null }>("/api/tv/ambience", token, { action: "calibrate", on });
+  return data.problem ?? null;
+}
+
+/** `save` false = enkel live tonen tijdens het instellen; true = bewaren. */
+export async function sendProjectorMask(token: string | null, mask: ProjectorMask, save: boolean): Promise<void> {
+  await post("/api/tv/ambience", token, { action: "mask", mask, save });
 }
 
 export async function tvPlaybackCommand(token: string | null, action: "pause" | "resume"): Promise<void> {

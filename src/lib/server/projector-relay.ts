@@ -8,7 +8,8 @@ export const BRIDGE_FRESHNESS = 45_000;
 export const SEEK_BACK_ACTIONS = ["seek-back:60", "seek-back:120", "seek-back:300"] as const;
 /** «cinema» = film starten, «cinema-stop» = scherm omlaag + projector uit + woonkamer 20 % (Pi-bridge ≥ 1.14.0). */
 /** «xray-frame» = één screenshot van de projector voor X-Ray «Nu in beeld» (Pi-bridge ≥ 1.21.0). */
-export const RELAY_ACTIONS: readonly string[] = ["on", "off", "cinema", "cinema-stop", "play-pause", "xray-frame", ...SEEK_BACK_ACTIONS];
+/** «ambience-show» = projectorpagina van «Ook rond de tv» openen, «ambience-hide» = projector uit (Pi-bridge ≥ 1.27.0). */
+export const RELAY_ACTIONS: readonly string[] = ["on", "off", "cinema", "cinema-stop", "play-pause", "xray-frame", "ambience-show", "ambience-hide", ...SEEK_BACK_ACTIONS];
 export type Bridge = { id: string; ownerId: string; tokenHash: string; enabled: boolean; lastSeenAt: number; reportedState: string };
 export type RelayCommand = { id: string; bridgeId: string; action: string; createdAt: number; expiresAt: number; state: string; error?: string };
 type Lock = { id: string; key: string; commandId: string; expiresAt: number };
@@ -57,7 +58,7 @@ export async function enqueueProjector(bridge: Bridge, action: string): Promise<
     if (!previous || !["sent", "failed"].includes(previous.state)) return null;
   }
   if (active) await db.transact(db.tx.projectorLocks[active.id].delete());
-  const command: RelayCommand = { id: randomUUID(), bridgeId: bridge.id, action, createdAt: now, expiresAt: now + (action === "cinema" || cinemaTarget(action) ? 180_000 : action === "cinema-stop" ? 120_000 : COMMAND_TTL), state: "pending" };
+  const command: RelayCommand = { id: randomUUID(), bridgeId: bridge.id, action, createdAt: now, expiresAt: now + (action === "cinema" || cinemaTarget(action) ? 180_000 : action === "cinema-stop" || action === "ambience-show" ? 120_000 : COMMAND_TTL), state: "pending" };
   try {
     // A unique active key also serializes concurrent requests in different server instances.
     await db.transact([

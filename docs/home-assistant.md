@@ -1,5 +1,31 @@
 # Home Assistant on the Raspberry Pi
 
+## «Ook rond de tv»: ambience ook op de projector (2026-11-19)
+
+Bridge v1.27.0 adds two commands (`RELAY_ACTIONS`, `src/lib/server/projector-relay.ts`):
+- `ambience-show`: refuses while the projection screen is down (`screen-open`, the picture belongs on the wall), wakes the
+  projector (`ensure_on`) and opens exactly the page in `shoppinglist-cinema.yaml` `ambience_url` with
+  `am start -a android.intent.action.VIEW` (optional `ambience_browser` = package). Only
+  `http://<private IPv4>:<port>/projector/sfeer?key=<32–64 URL-safe chars>` is accepted (`AMBIENCE_URL`). No browser on
+  the projector = `no-browser`.
+- `ambience-hide`: projector off, never while Stremio is in front.
+
+The page (`src/app/projector/sfeer/page.tsx`) is served by the Mac (`http://192.168.132.183:3010`, the dev server; the
+Mac needs a fixed address) and polls `/api/tv/ambience/projector?key=…` every second. The Mac follows the Samsung's
+YouTube through one Lounge connection as a remote (`src/lib/server/ambience-projector.ts`: `nowPlaying` /
+`onStateChange`, `getNowPlaying` every 15 s; only while the page asks, closed 30 s after). Measured 19/11 against the
+real TV in a desktop browser: after the first jump the player stays within ± 0.1 s of the TV (the jump lead is learned,
+`nextLead`). Settings (on/off, TV corners, margin, soft edge, blur, key) in `.cache/samsung-tv/projector.json` (not in Git).
+
+Note 19/11: `.cache/samsung-tv/config.json` still had host `192.168.132.200`; the TV answers on `192.168.132.111`
+(MAC a4:30:7a:32:47:51), so «Sfeer op tv» could not reach it. Host corrected (backup `config.json.before-111`);
+a DHCP reservation for the TV avoids this.
+
+Install: paste `outputs/cinema-bridge-1.27.0-install.txt` (not in Git: holds the page key) in the Terminal & SSH web UI
+(backups `*.before-<timestamp>`, also of `shoppinglist-cinema.yaml`; `ha core check && ha core restart`).
+Not yet tested on the projector itself: whether the XGIMI has a browser that opens the page full screen and plays a
+muted YouTube video by itself.
+
 ## X-Ray «Nu in beeld»: screenshot on request (2026-11-11)
 
 Bridge v1.26.0: the SONOFF button did not always close the screen. Closing (DOWN → contact closed) takes 34–35 s; on

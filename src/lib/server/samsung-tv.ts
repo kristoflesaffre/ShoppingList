@@ -126,19 +126,26 @@ async function restartYoutube(host: string): Promise<void> {
   if (!response.ok) throw new Error("youtube-not-started");
 }
 
-/** One command to the TV's YouTube app through the Lounge API (like the phone app as a remote). */
-async function loungeSend(host: string, command: Record<string, string>): Promise<void> {
+/** Lounge token of the TV's YouTube app (DIAL screenId → YouTube). Also used to follow playback (ambience-projector). */
+export async function loungeToken(host: string): Promise<string> {
   const screenId = dialScreenId(await (await fetch(`http://${host}:8080/ws/apps/YouTube`, { signal: AbortSignal.timeout(5000) })).text());
   if (!screenId) throw new Error("youtube-no-screen");
   const tokens = await (await fetch("https://www.youtube.com/api/lounge/pairing/get_lounge_token_batch", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ screen_ids: screenId }),
+    signal: AbortSignal.timeout(8000),
   })).json();
-  const loungeToken = tokens?.screens?.[0]?.loungeToken;
-  if (typeof loungeToken !== "string") throw new Error("youtube-no-lounge-token");
+  const token = tokens?.screens?.[0]?.loungeToken;
+  if (typeof token !== "string") throw new Error("youtube-no-lounge-token");
+  return token;
+}
+
+/** One command to the TV's YouTube app through the Lounge API (like the phone app as a remote). */
+async function loungeSend(host: string, command: Record<string, string>): Promise<void> {
+  const idToken = await loungeToken(host);
   const base = "https://www.youtube.com/api/lounge/bc/bind";
-  const common = { device: "REMOTE_CONTROL", id: randomUUID(), name: "ShoppingList", app: "youtube-desktop", "mdx-version": "3", loungeIdToken: loungeToken, VER: "8", v: "2", CVER: "1", theme: "cl", capabilities: "", ui: "", t: "1" };
+  const common = { device: "REMOTE_CONTROL", id: randomUUID(), name: "ShoppingList", app: "youtube-desktop", "mdx-version": "3", loungeIdToken: idToken, VER: "8", v: "2", CVER: "1", theme: "cl", capabilities: "", ui: "", t: "1" };
   let rid = 10_000 + Math.floor(Math.random() * 80_000);
   const form = { "Content-Type": "application/x-www-form-urlencoded" };
   const bind = await fetch(`${base}?${new URLSearchParams({ ...common, RID: String(rid++), zx: randomBytes(6).toString("hex") })}`, { method: "POST", headers: form, body: "count=0" });
