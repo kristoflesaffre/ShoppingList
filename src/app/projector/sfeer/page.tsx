@@ -20,6 +20,13 @@ import {
  * Lounge). Over de tv ligt een zwart vlak. Tijdens het instellen («Tv afdekken») een raster met een wit kader.
  */
 
+/** Randen van de video: links/rechts en boven/onder ± 12 % zacht naar transparant. */
+const FRAME_FADE =
+  "linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%)";
+/** Randen van het projectorbeeld: links en rechts 10 %, boven 8 % naar zwart. */
+const SCREEN_FADE =
+  "linear-gradient(to right, #000 0%, rgba(0,0,0,0) 10%, rgba(0,0,0,0) 90%, #000 100%), linear-gradient(to bottom, #000 0%, rgba(0,0,0,0) 8%)";
+
 type Snapshot = {
   serverNow: number;
   enabled: boolean;
@@ -206,6 +213,11 @@ export default function ProjectorAmbiencePage() {
           height: frame.height,
           opacity: showVideo ? 1 : 0,
           filter: mask?.blur ? `blur(${Math.round(frame.width * 0.008)}px) saturate(1.15)` : undefined,
+          // De randen van de video lopen zacht uit in het donker (zoals bovenaan), nooit een harde lijn.
+          WebkitMaskImage: FRAME_FADE,
+          maskImage: FRAME_FADE,
+          WebkitMaskComposite: "source-in",
+          maskComposite: "intersect",
         }}
       >
         {/* Iets groter dan het beeld: de titelbalk en het logo van YouTube vallen erbuiten. */}
@@ -213,6 +225,9 @@ export default function ProjectorAmbiencePage() {
           <div ref={holderRef} />
         </div>
       </div>
+
+      {/* Ook aan de randen van het projectorbeeld zelf (links, rechts, boven) zacht uitlopen in het donker. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: SCREEN_FADE }} />
 
       {calibrating ? (
         <div
