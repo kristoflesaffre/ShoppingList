@@ -1,5 +1,30 @@
 # Home Assistant on the Raspberry Pi
 
+## «Sfeer op tv» + «Ook rond de tv» zonder Mac, bridge 1.31.0 (2026-11-19)
+
+The Mac no longer has to be on. Three jobs moved:
+- **TV control → the Pi** (`ambience.py`): `tv-play:<video id>` wakes the Samsung (WOL to a4:30:7a:32:47:51 when its REST
+  API does not say «on»), restarts YouTube (REST `/api/v2/applications/111299001912`), presses LEFT×4 + ENTER through
+  Home Assistant's Samsung remote entity (Chloé = leftmost profile) and plays the video through YouTube's Lounge API;
+  `tv-pause` / `tv-resume`. With «Ook rond de tv» on, the projector app opens afterwards (a projector failure never
+  fails the TV command).
+- **The page → inside the projector app** (`src/projector-app/main.ts`, bundled with esbuild into `assets/page.html`
+  by `scripts/build-sfeer-apk.mjs`; same `src/lib/ambience-projector.ts` rules). Served from `http://localhost:<port>`
+  by the app (`LocalServer`), so YouTube accepts the embed.
+- **Following the TV → the projector app** (`LoungeFollower`, Java port of the Mac's Lounge reader): binds to the
+  TV's YouTube as a remote (DIAL screenId → lounge token), long-polls `nowPlaying` / `onStateChange`, refreshes every 15 s.
+
+Settings (on/off, corners, margin, soft edge, blur, spread, calibrating) live online in `cinemaCompanionData`
+«{owner}:ambience-settings» (`src/lib/server/ambience-relay.ts`) and travel with `ambience-set:<base64url JSON>` (with
+`open`: show · show-if-tv · hide · push); the bridge validates every field (`parse_settings`), keeps the last ones in
+`/homeassistant/shoppinglist-ambience.json` and starts the app with `am start -n be.shoppinglist.sfeer/.MainActivity
+--es tv 192.168.132.111 --es settings <base64url>` (a new intent updates the running page). `/api/tv/ambience` goes
+through the Pi for every account with a bridge, on Vercel and on the Mac; without a bridge the old Mac-only TV path
+stays (no projector). YouTube search works on Vercel too (signed in, same origin). Removed: the Mac's projector page,
+`/api/tv/ambience/projector`, the Mac's Lounge reader and the `ambience-show@<ip>:<port>` command. `ambience_url` in
+`shoppinglist-cinema.yaml` is no longer used. Tests: `scripts/test-cinema-ambience.py`, `src/lib/ambience-relay.test.ts`.
+Install: `outputs/cinema-bridge-1.31.0-install.txt` (installs app versionCode 3 on the next show).
+
 ## «Ook rond de tv»: adres van de Mac meesturen, bridge 1.30.0 (2026-11-19)
 
 A fixed DHCP lease for the Mac dropped its connection, so its address can change. The app now sends its current

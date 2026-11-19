@@ -34,8 +34,15 @@ const manifest = await fs.readFile(path.join(src, "AndroidManifest.xml"), "utf8"
 const versionCode = Number(/android:versionCode="(\d+)"/.exec(manifest)?.[1]);
 if (!versionCode) throw new Error("versionCode ontbreekt in AndroidManifest.xml");
 
-// 1. Manifest → basis-APK (geen resources nodig).
-run(path.join(tools, "aapt2"), ["link", "-o", path.join(out, "base.apk"), "-I", androidJar, "--manifest", path.join(src, "AndroidManifest.xml"), "--min-sdk-version", "26", "--target-sdk-version", "34"]);
+// 0. De projectorpagina (src/projector-app/main.ts + de gedeelde rekenregels) bundelen en in assets/page.html zetten.
+const assets = path.join(out, "assets");
+await fs.mkdir(assets, { recursive: true });
+run(path.resolve("node_modules/.bin/esbuild"), [path.resolve("src/projector-app/main.ts"), "--bundle", "--minify", "--format=iife", "--target=chrome80", `--tsconfig=${path.resolve("tsconfig.json")}`, `--outfile=${path.join(out, "page.js")}`]);
+const pageJs = (await fs.readFile(path.join(out, "page.js"), "utf8")).replace(/<\/script/gi, "<\\/script");
+const html = (await fs.readFile(path.join(src, "page.html"), "utf8")).replace("/*PAGE_JS*/", () => pageJs);
+await fs.writeFile(path.join(assets, "page.html"), html);
+// 1. Manifest + assets → basis-APK.
+run(path.join(tools, "aapt2"), ["link", "-o", path.join(out, "base.apk"), "-I", androidJar, "--manifest", path.join(src, "AndroidManifest.xml"), "-A", assets, "--min-sdk-version", "26", "--target-sdk-version", "34"]);
 // 2. Java → classes → dex.
 const sources = [];
 for await (const f of fs.glob ? fs.glob("src/**/*.java", { cwd: src }) : []) sources.push(path.join(src, f));

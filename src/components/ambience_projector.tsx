@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * «Ook rond de tv» in «Kies je sfeer» (canvas «Ambience · Ook op de projector» A): schakelaar + «Tv afdekken».
- * De projector speelt dezelfde video op de muur rond de tv, gelijk met de tv (`src/app/projector/sfeer`).
+ * De projector speelt dezelfde video op de muur rond de tv, gelijk met de tv: de Pi opent de projector-app «ShoppingList Sfeer» (android/sfeer).
  */
 
 const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fixed-white";
@@ -148,11 +148,23 @@ export function TvMaskSheet({ open, token, initial, onClose, onSaved }: { open: 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- enkel bij openen
   }, [open]);
 
-  // Elke wijziging meteen live op de muur (kort uitgesteld, zodat slepen niet elke pixel verstuurt).
+  // Wijzigingen live op de muur, via de Pi: kort uitgesteld (slepen stuurt niet elke pixel), en opnieuw als de Pi nog
+  // bezig was, zodat de laatste stand altijd aankomt.
   React.useEffect(() => {
     if (!open) return;
-    const timer = window.setTimeout(() => void sendProjectorMask(token, mask, false).catch(() => undefined), 120);
-    return () => window.clearTimeout(timer);
+    let cancelled = false;
+    let timer = 0;
+    const push = () =>
+      void sendProjectorMask(token, mask, false)
+        .then(({ busy }) => {
+          if (busy && !cancelled) timer = window.setTimeout(push, 1500);
+        })
+        .catch(() => undefined);
+    timer = window.setTimeout(push, 450);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [open, token, mask]);
 
   const moveCorner = (key: CornerKey, x: number, y: number) =>
@@ -176,7 +188,12 @@ export function TvMaskSheet({ open, token, initial, onClose, onSaved }: { open: 
   const save = async () => {
     setSaving(true);
     try {
-      await sendProjectorMask(token, mask, true);
+      // Bewaren moet bij de Pi aankomen: zolang die nog bezig is, even later opnieuw.
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const { busy } = await sendProjectorMask(token, mask, true);
+        if (!busy) break;
+        await new Promise((r) => window.setTimeout(r, 1500));
+      }
       onSaved(mask);
     } catch {
       setProblem("Bewaren lukte niet. Probeer opnieuw.");
@@ -254,7 +271,7 @@ export function TvMaskSheet({ open, token, initial, onClose, onSaved }: { open: 
               );
             })}
           </div>
-          <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">Het kader staat tegelijk op de projector. Zwart = daar valt geen licht.</p>
+          <p className="text-[13px] leading-[18px] text-[var(--text-secondary)]">Het kader verschijnt na een tel ook op de muur. Zwart = daar valt geen licht.</p>
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-5">

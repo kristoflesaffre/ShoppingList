@@ -233,21 +233,3 @@ export function syncAction(
   if (Math.abs(player.position - tv.position) > DRIFT_LIMIT) return { kind: "seek", at: tv.position + lead };
   return player.playing ? { kind: "none" } : { kind: "play" };
 }
-
-/** Sleutel in de url van de projectorpagina: alleen URL-veilige tekens, 32–64 lang. */
-export const isProjectorKey = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9_-]{32,64}$/.test(value);
-
-/**
- * «ambience-show@192.168.132.183:3010»: de Mac stuurt bij elke start zijn huidige adres mee (een vast adres lukt niet
- * altijd); de Pi aanvaardt enkel een privé-IPv4-adres en vult zelf de sleutel in (Pi-bridge ≥ 1.30.0).
- */
-const PRIVATE_V4 = /^(?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}$/;
-export function ambienceShowAction(host: string, port: number): string | null {
-  return PRIVATE_V4.test(host) && Number.isInteger(port) && port >= 10 && port <= 65535 ? `ambience-show@${host}:${port}` : null;
-}
-export function parseAmbienceShow(action: string): { host: string; port: number } | null {
-  const m = /^ambience-show@([0-9.]{7,15}):(\d{2,5})$/.exec(action);
-  if (!m || !PRIVATE_V4.test(m[1])) return null;
-  const port = Number(m[2]);
-  return port >= 10 && port <= 65535 ? { host: m[1], port } : null;
-}

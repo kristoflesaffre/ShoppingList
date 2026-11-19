@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShoppingList Sfeer</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+  #frame { position: absolute; overflow: hidden; transition: opacity 700ms; opacity: 0; }
+  #crop { position: absolute; left: -7%; right: -7%; top: -9%; bottom: -9%; pointer-events: none; }
+  #crop iframe { width: 100%; height: 100%; border: 0; }
+  #fade, #grid, #mask { position: absolute; inset: 0; pointer-events: none; }
+  #grid { display: none; background-color: #1d2033; background-image: linear-gradient(rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.14) 1px, transparent 1px); }
+</style>
+</head>
+<body>
+<!-- Video op het middelpunt van de tv; randen zacht; raster tijdens «Tv afdekken»; zwart vlak over de tv. -->
+<div id="frame"><div id="crop"><div id="player"></div></div></div>
+<div id="fade"></div>
+<div id="grid"></div>
+<svg id="mask" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>/*PAGE_JS*/</script>
+</body>
+</html>

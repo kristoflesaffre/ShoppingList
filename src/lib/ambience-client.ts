@@ -9,6 +9,9 @@ export const AMBIENCE_ERRORS: Record<string, string> = {
   "no-api-key": "Zoeken staat nog niet aan: zet YOUTUBE_API_KEY in .env.local op je Mac en herstart de app.",
   "quota-or-key": "YouTube weigert de zoekopdracht (sleutel of daglimiet). Probeer het later opnieuw.",
   "mac-required": "Open de app op je Mac (of op het thuisnetwerk) om de tv te bedienen.",
+  "bridge-required": "Rond de tv werkt via de Pi; die is voor dit account niet ingesteld.",
+  "tv-remote-missing": "De Pi vindt de afstandsbediening van de Samsung niet in Home Assistant.",
+  "screen-open": "Het projectiescherm hangt naar beneden: rol het eerst op.",
   "not-configured": "De tv is nog niet gekoppeld.",
   "tv-not-waking": "De tv reageert niet. Staat «Inschakelen met mobiel» aan en zit de netwerkkabel erin?",
   "tv-remote-unauthorized": "De tv weigert de bediening. Koppel opnieuw en klik «Toestaan» op de tv.",
@@ -114,9 +117,13 @@ export async function setProjectorCalibrating(token: string | null, on: boolean)
   return data.problem ?? null;
 }
 
-/** `save` false = enkel live tonen tijdens het instellen; true = bewaren. */
-export async function sendProjectorMask(token: string | null, mask: ProjectorMask, save: boolean): Promise<void> {
-  await post("/api/tv/ambience", token, { action: "mask", mask, save });
+/**
+ * `save` false = enkel live tonen tijdens het instellen; true = bewaren. Via de Pi kan een opdracht even moeten wachten:
+ * `busy` = de Pi was nog bezig (het masker staat wel al online; stuur het zo opnieuw).
+ */
+export async function sendProjectorMask(token: string | null, mask: ProjectorMask, save: boolean): Promise<{ busy: boolean }> {
+  const data = await post<{ busy?: boolean }>("/api/tv/ambience", token, { action: "mask", mask, save });
+  return { busy: data.busy === true };
 }
 
 export async function tvPlaybackCommand(token: string | null, action: "pause" | "resume"): Promise<void> {

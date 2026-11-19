@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Base64;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -12,25 +13,39 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
+import org.json.JSONObject;
 
 /**
- * «ShoppingList Sfeer» op de projector: één WebView, schermvullend, zonder adresbalk, die enkel de projectorpagina
- * van «Ook rond de tv» toont (http://<Mac op het thuisnetwerk>:<poort>/projector/sfeer?key=…). Video mag starten
- * zonder tik (de pagina speelt altijd zonder geluid). Geopend door de Pi-bridge (`ambience-show`); «terug» sluit ze.
+ * «ShoppingList Sfeer» op de projector, zonder Mac: toont de ingebouwde pagina (assets/page.html) schermvullend, volgt
+ * zelf YouTube op de tv (LoungeFollower) en krijgt de instellingen (aan/uit, waar de tv zit, instellen) van de Pi:
+ *   am start -n be.shoppinglist.sfeer/.MainActivity --es tv 192.168.132.111 --es settings <base64url JSON>
+ * Een volgende `am start` met nieuwe instellingen werkt de pagina meteen bij. «Terug» sluit de app.
  */
-public final class MainActivity extends Activity {
-  /** Dezelfde regel als de bridge (AMBIENCE_URL): enkel een privé-IPv4-adres, enkel deze pagina. */
-  private static final Pattern PAGE = Pattern.compile(
-      "^http://(?:10|192\\.168|172\\.(?:1[6-9]|2\\d|3[01]))(?:\\.\\d{1,3}){2,3}:\\d{2,5}/projector/sfeer\\?key=[A-Za-z0-9_-]{32,64}$");
+public final class MainActivity extends Activity implements LocalServer.Source {
+  private static final Pattern PRIVATE_V4 = Pattern.compile("^(?:10\\.\\d{1,3}|192\\.168|172\\.(?:1[6-9]|2\\d|3[01]))\\.\\d{1,3}\\.\\d{1,3}$");
 
   private WebView web;
-  private String origin;
+  private LocalServer server;
+  private LoungeFollower follower;
+  private String followerHost;
+  private byte[] page;
+  private volatile JSONObject settings = new JSONObject();
 
   @Override
   protected void onCreate(Bundle state) {
     super.onCreate(state);
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | WindowManager.LayoutParams.FLAG_FULLSCREEN);
+    try {
+      page = readAsset("page.html");
+      server = new LocalServer(this);
+    } catch (Exception e) {
+      finish();
+      return;
+    }
     web = new WebView(this);
     web.setBackgroundColor(Color.BLACK);
     WebSettings s = web.getSettings();
@@ -40,51 +55,74 @@ public final class MainActivity extends Activity {
     s.setAllowFileAccess(false);
     s.setAllowContentAccess(false);
     s.setSupportMultipleWindows(false);
+    final String origin = "http://localhost:" + server.port();
     web.setWebViewClient(new WebViewClient() {
       @Override
       public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-        // Enkel binnen de eigen pagina navigeren; de YouTube-speler laadt als iframe en valt hier niet onder.
         Uri u = request.getUrl();
-        return origin == null || !(u.getScheme() + "://" + u.getAuthority()).equals(origin);
+        return !(u.getScheme() + "://" + u.getAuthority()).equals(origin);
       }
     });
     setContentView(web);
     hideSystemUi();
-    open(getIntent());
+    apply(getIntent());
+    web.loadUrl(origin + "/");
   }
 
   @Override
   protected void onNewIntent(Intent intent) {
     super.onNewIntent(intent);
     setIntent(intent);
-    open(intent);
+    apply(intent);
   }
 
-  private void open(Intent intent) {
-    Uri data = intent == null ? null : intent.getData();
-    String url = data == null ? null : data.toString();
-    if (url == null || !PAGE.matcher(url).matches()) {
-      finish();
-      return;
+  /** Tv-adres en instellingen uit de opdracht van de Pi; ongeldige waarden worden genegeerd. */
+  private void apply(Intent intent) {
+    if (intent == null) return;
+    String tv = intent.getStringExtra("tv");
+    if (tv != null && PRIVATE_V4.matcher(tv).matches() && !tv.equals(followerHost)) {
+      if (follower != null) follower.stop();
+      follower = new LoungeFollower(tv);
+      followerHost = tv;
     }
-    // De pagina komt via http://localhost:<poort> (LocalProxy): YouTube weigert ingesloten video's op een IP-adres.
-    String mac = data.getScheme() + "://" + data.getAuthority();
-    try {
-      if (proxy == null || !mac.equals(proxyTarget)) {
-        if (proxy != null) proxy.close();
-        proxy = new LocalProxy(mac);
-        proxyTarget = mac;
+    String raw = intent.getStringExtra("settings");
+    if (raw != null && raw.length() < 4000) {
+      try {
+        String json = new String(Base64.decode(raw, Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING), StandardCharsets.UTF_8);
+        settings = new JSONObject(json);
+      } catch (Exception ignored) {
+        // Ongeldig: de vorige instellingen blijven.
       }
-    } catch (java.io.IOException e) {
-      finish();
-      return;
     }
-    origin = "http://localhost:" + proxy.port();
-    web.loadUrl(origin + data.getEncodedPath() + "?" + data.getEncodedQuery());
   }
 
-  private LocalProxy proxy;
-  private String proxyTarget;
+  @Override
+  public byte[] page() {
+    return page;
+  }
+
+  @Override
+  public String state() {
+    JSONObject o = new JSONObject();
+    try {
+      JSONObject s = settings;
+      o.put("enabled", s.optBoolean("enabled", false));
+      o.put("calibrating", s.optBoolean("calibrating", false));
+      o.put("mask", s.opt("mask") == null ? JSONObject.NULL : s.opt("mask"));
+      o.put("tv", follower == null ? JSONObject.NULL : follower.snapshot());
+    } catch (Exception ignored) {
+    }
+    return o.toString();
+  }
+
+  private byte[] readAsset(String name) throws Exception {
+    try (InputStream in = getAssets().open(name)) {
+      ByteArrayOutputStream b = new ByteArrayOutputStream();
+      byte[] buf = new byte[16384];
+      for (int n; (n = in.read(buf)) != -1; ) b.write(buf, 0, n);
+      return b.toByteArray();
+    }
+  }
 
   @Override
   public void onWindowFocusChanged(boolean hasFocus) {
@@ -110,7 +148,8 @@ public final class MainActivity extends Activity {
 
   @Override
   protected void onDestroy() {
-    if (proxy != null) proxy.close();
+    if (follower != null) follower.stop();
+    if (server != null) server.close();
     if (web != null) {
       web.loadUrl("about:blank");
       web.destroy();

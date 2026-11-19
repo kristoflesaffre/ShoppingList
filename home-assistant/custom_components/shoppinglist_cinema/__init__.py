@@ -17,6 +17,9 @@ from .screen import CONTACT, ScreenGuard
 from .companion import Telemetry, parse_media_session, parse_probe_metadata
 from .control_dex import DEX_BASE64, DEX_SHA256
 from .sfeer_apk import APK_BASE64, APK_PACKAGE, APK_SHA256, APK_VERSION
+from .ambience import (
+    DEFAULT_TV_MAC, VIDEO_ID, SettingsStore, app_extra, lounge_send, parse_settings, remote_entity, restart_youtube, send_wol, youtube_running,
+)
 
 _LOGGER = logging.getLogger(__name__)
 DOMAIN = 'shoppinglist_cinema'
@@ -39,17 +42,20 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.30.0'
-# «Ook rond de tv» (ambience): the projector shows the app's projector page (same YouTube video as the TV, the TV
-# itself masked black). Only this exact LAN page (Mac + key from shoppinglist-cinema.yaml `ambience_url`) can be opened.
-AMBIENCE_URL = re.compile(r'^http://(?:10|192\.168|172\.(?:1[6-9]|2\d|3[01]))(?:\.\d{1,3}){2,3}:\d{2,5}/projector/sfeer\?key=[A-Za-z0-9_-]{32,64}$')
-# The projector has no browser: our own one-screen app «ShoppingList Sfeer» (android/sfeer, scripts/build-sfeer-apk.mjs)
-# shows the page. Installed or updated over ADB when its versionCode is lower than APK_VERSION; hash checked first.
-SFEER_APK = '/data/local/tmp/shoppinglist-sfeer.apk'
-AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide')
-# The Mac's address changes (a fixed lease broke its connection): the app sends it along, «ambience-show@<ip>:<port>».
-# Only a private IPv4 address; the key always comes from shoppinglist-cinema.yaml.
-AMBIENCE_SHOW_AT = re.compile(r'^ambience-show@((?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}):(\d{2,5})$')
+BRIDGE_VERSION = '1.31.0'
+# «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
+# projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
+AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
+
+
+def ambience_command(action):
+    """`ambience-set:<base64url>` or `tv-play:<video id>`, else None."""
+    if action.startswith('ambience-set:'):
+        settings = parse_settings(action[len('ambience-set:'):])
+        return ('set', settings) if settings else None
+    if action.startswith('tv-play:') and VIDEO_ID.match(action[len('tv-play:'):]):
+        return ('play', action[len('tv-play:'):])
+    return None
 # Android TV (ADB) config entry of the projector: reloaded when ADB keeps failing (at most every ADB_RELOAD_EVERY s).
 ADB_ENTRY = '01M64FE12GJ4ED6MR8PMCTGN46'
 ADB_FAILS_BEFORE_RELOAD = 3
@@ -392,26 +398,36 @@ async def async_setup(hass, config):
             _LOGGER.warning('ShoppingList Sfeer install: %s', result.strip()[:200])
             raise RuntimeError('sfeer-install-failed')
 
-    async def show_ambience(at=None):
-        url = settings.get('ambience_url') or ''
-        if not AMBIENCE_URL.match(url):
-            raise RuntimeError('ambience-not-configured')
-        if at:
-            key = url.split('?key=', 1)[1]
-            url = f"http://{at.group(1)}:{at.group(2)}/projector/sfeer?key={key}"
-            if not AMBIENCE_URL.match(url):
-                raise RuntimeError('ambience-address-invalid')
+    config_dir = getattr(hass, 'config', None)
+    ambience_store = SettingsStore(config_dir.path('shoppinglist-ambience.json') if config_dir else None)
+    if config_dir:
+        await hass.async_add_executor_job(ambience_store.load)
+
+    def ambience_settings():
+        return ambience_store.value or {'enabled': False, 'calibrating': False, 'mask': None}
+
+    async def start_sfeer():
+        await adb_ready()
+        await ensure_sfeer()
+        extra = app_extra(ambience_settings())
+        output = await adb_retry(f"am start -n {APK_PACKAGE}/.MainActivity --es tv {SAMSUNG_HOST} --es settings {extra}")
+        if 'Error' in output:
+            _LOGGER.warning('ShoppingList Sfeer start: %s', output.strip()[:200])
+            raise RuntimeError('sfeer-start-failed')
+
+    async def show_ambience():
         contact = hass.states.get(CONTACT)
         # Projection screen down: the picture would land on the screen, not on the wall around the TV.
         if contact and contact.state == 'on':
             raise RuntimeError('screen-open')
         await ensure_on()
-        await adb_ready()
-        await ensure_sfeer()
-        output = await adb_retry(f"am start -n {APK_PACKAGE}/.MainActivity -a android.intent.action.VIEW -d '{url}'")
-        if 'Error' in output:
-            _LOGGER.warning('ShoppingList Sfeer start: %s', output.strip()[:200])
-            raise RuntimeError('sfeer-start-failed')
+        await start_sfeer()
+
+    async def push_ambience():
+        # New settings while the app is in front: hand them over without waking anything.
+        state = hass.states.get(PLAYER)
+        if power_state() in AWAKE and state and state.attributes.get('app_id') == APK_PACKAGE:
+            await start_sfeer()
 
     async def hide_ambience():
         # Never switch the projector off under a film: only when it shows the ambience page (or nothing at all).
@@ -422,16 +438,74 @@ async def async_setup(hass, config):
         if power_state() in AWAKE:
             await hass.services.async_call('media_player', 'turn_off', {'entity_id': PLAYER}, blocking=True)
 
+    async def tv_play(video_id):
+        session = async_get_clientsession(hass)
+        was_on = await samsung_power(hass) == 'on'
+        if not was_on:
+            mac = settings.get('tv_mac') or DEFAULT_TV_MAC
+            for attempt in range(25):
+                if attempt % 3 == 0:
+                    await hass.async_add_executor_job(send_wol, SAMSUNG_HOST, mac)
+                await asyncio.sleep(1)
+                if await samsung_power(hass) == 'on':
+                    break
+            else:
+                raise RuntimeError('tv-not-waking')
+            await asyncio.sleep(3)  # Tizen answers before its app framework is ready.
+        await restart_youtube(session, SAMSUNG_HOST)
+        await asyncio.sleep(7)  # Until «Wie kijkt er?» is on screen.
+        remote = remote_entity(hass, SAMSUNG_TV)
+        if not remote:
+            raise RuntimeError('tv-remote-missing')
+        await hass.services.async_call('remote', 'send_command', {
+            'entity_id': remote, 'command': ['KEY_LEFT', 'KEY_LEFT', 'KEY_LEFT', 'KEY_LEFT', 'KEY_ENTER'], 'delay_secs': 0.4,
+        }, blocking=True)  # Chloé = first (leftmost) profile.
+        await asyncio.sleep(4)
+        await lounge_send(session, SAMSUNG_HOST, {'_sc': 'setPlaylist', 'videoId': video_id, 'currentTime': '0', 'currentIndex': '0', 'listId': '',
+                                                   'videoIds': video_id, 'audioOnly': 'false', 'params': '', 'playerParams': ''})
+        if ambience_settings().get('enabled'):
+            try:
+                await show_ambience()
+            except Exception as failure:
+                # The TV plays; the projector around it is a bonus and never fails the command.
+                _LOGGER.warning('Ambience projector after TV play failed: %s', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
+
+    async def tv_playback(action):
+        if await samsung_power(hass) != 'on':
+            raise RuntimeError('tv-off')
+        await lounge_send(async_get_clientsession(hass), SAMSUNG_HOST, {'_sc': 'pause' if action == 'tv-pause' else 'play'})
+
+    async def set_ambience(new):
+        await hass.async_add_executor_job(ambience_store.save, {key: new[key] for key in ('enabled', 'calibrating', 'mask')})
+        how = new['open']
+        if how == 'show':
+            await show_ambience()
+        elif how == 'show-if-tv':
+            if await samsung_power(hass) == 'on' and await youtube_running(async_get_clientsession(hass), SAMSUNG_HOST):
+                await show_ambience()
+            else:
+                await push_ambience()
+        elif how == 'hide':
+            await hide_ambience()
+        else:
+            await push_ambience()
+
     async def execute(action):
         if action == 'ambience-show':
             await show_ambience()
             return
-        at = AMBIENCE_SHOW_AT.match(action)
-        if at:
-            await show_ambience(at)
-            return
         if action == 'ambience-hide':
             await hide_ambience()
+            return
+        if action in ('tv-pause', 'tv-resume'):
+            await tv_playback(action)
+            return
+        command = ambience_command(action)
+        if command and command[0] == 'set':
+            await set_ambience(command[1])
+            return
+        if command and command[0] == 'play':
+            await tv_play(command[1])
             return
         if action == 'xray-frame':
             await capture_frame()
@@ -499,7 +573,7 @@ async def async_setup(hass, config):
                     command = commands[0]
                     valid = command['expiresAt'] > time.time() * 1000 and command['createdAt'] <= time.time() * 1000
                     action = command.get('action', '')
-                    if valid and (action in ('on', 'off', 'cinema', 'cinema-stop', 'play-pause', 'xray-frame') or action in AMBIENCE_ACTIONS or AMBIENCE_SHOW_AT.match(action) or action in SEEK_BACK or target_link(action)):
+                    if valid and (action in ('on', 'off', 'cinema', 'cinema-stop', 'play-pause', 'xray-frame') or action in AMBIENCE_ACTIONS or ambience_command(action) or action in SEEK_BACK or target_link(action)):
                         # Permission rules enforce pending -> claimed atomically. Never retry a claim or dispatch.
                         await update('projectorCommands', command['id'], {'state': 'claimed'})
                         error = ''

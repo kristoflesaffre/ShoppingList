@@ -1,7 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { getInstantAdminDb } from "./instant-admin";
 import { cinemaTarget } from "../stremio";
-import { parseAmbienceShow } from "../ambience-projector";
 
 export const COMMAND_TTL = 30_000;
 export const BRIDGE_FRESHNESS = 45_000;
@@ -9,8 +8,12 @@ export const BRIDGE_FRESHNESS = 45_000;
 export const SEEK_BACK_ACTIONS = ["seek-back:60", "seek-back:120", "seek-back:300"] as const;
 /** «cinema» = film starten, «cinema-stop» = scherm omlaag + projector uit + woonkamer 20 % (Pi-bridge ≥ 1.14.0). */
 /** «xray-frame» = één screenshot van de projector voor X-Ray «Nu in beeld» (Pi-bridge ≥ 1.21.0). */
-/** «ambience-show» = projectorpagina van «Ook rond de tv» openen, «ambience-hide» = projector uit (Pi-bridge ≥ 1.27.0). */
-export const RELAY_ACTIONS: readonly string[] = ["on", "off", "cinema", "cinema-stop", "play-pause", "xray-frame", "ambience-show", "ambience-hide", ...SEEK_BACK_ACTIONS];
+/**
+ * «Sfeer op tv» via de Pi (bridge ≥ 1.31.0): «tv-pause» / «tv-resume», «tv-play:<video>» (tv aan, YouTube, profiel,
+ * video), «ambience-set:<base64url>» (instellingen + projector tonen/verbergen), «ambience-show» / «ambience-hide».
+ */
+export const RELAY_ACTIONS: readonly string[] = ["on", "off", "cinema", "cinema-stop", "play-pause", "xray-frame", "ambience-show", "ambience-hide", "tv-pause", "tv-resume", ...SEEK_BACK_ACTIONS];
+export const isAmbienceCommand = (action: string) => /^ambience-set:[A-Za-z0-9_-]{1,1500}$/.test(action) || /^tv-play:[A-Za-z0-9_-]{11}$/.test(action);
 export type Bridge = { id: string; ownerId: string; tokenHash: string; enabled: boolean; lastSeenAt: number; reportedState: string };
 export type RelayCommand = { id: string; bridgeId: string; action: string; createdAt: number; expiresAt: number; state: string; error?: string };
 type Lock = { id: string; key: string; commandId: string; expiresAt: number };
@@ -23,7 +26,7 @@ export function relayResult(command: RelayCommand, now = Date.now()) {
   return { configured: true, accepted: false, pending: true, commandId: command.id };
 }
 export function commandDispatchable(command: RelayCommand, bridgeId: string, now = Date.now()) {
-  return command.bridgeId === bridgeId && command.state === "pending" && command.createdAt <= now && command.expiresAt > now && (RELAY_ACTIONS.includes(command.action) || cinemaTarget(command.action) !== null || parseAmbienceShow(command.action) !== null);
+  return command.bridgeId === bridgeId && command.state === "pending" && command.createdAt <= now && command.expiresAt > now && (RELAY_ACTIONS.includes(command.action) || cinemaTarget(command.action) !== null || isAmbienceCommand(command.action));
 }
 function database() {
   const db = getInstantAdminDb();
@@ -50,7 +53,7 @@ async function lockFor(key: string): Promise<Lock | undefined> {
   return data.projectorLocks[0] as Lock | undefined;
 }
 export async function enqueueProjector(bridge: Bridge, action: string): Promise<RelayCommand | null> {
-  if (!RELAY_ACTIONS.includes(action) && !cinemaTarget(action) && !parseAmbienceShow(action)) throw new Error("invalid-command");
+  if (!RELAY_ACTIONS.includes(action) && !cinemaTarget(action) && !isAmbienceCommand(action)) throw new Error("invalid-command");
   const now = Date.now();
   const db = database();
   const active = await lockFor(`active:${bridge.id}`);
@@ -59,7 +62,7 @@ export async function enqueueProjector(bridge: Bridge, action: string): Promise<
     if (!previous || !["sent", "failed"].includes(previous.state)) return null;
   }
   if (active) await db.transact(db.tx.projectorLocks[active.id].delete());
-  const command: RelayCommand = { id: randomUUID(), bridgeId: bridge.id, action, createdAt: now, expiresAt: now + (action === "cinema" || cinemaTarget(action) ? 180_000 : action === "cinema-stop" || action.startsWith("ambience-show") ? 120_000 : COMMAND_TTL), state: "pending" };
+  const command: RelayCommand = { id: randomUUID(), bridgeId: bridge.id, action, createdAt: now, expiresAt: now + (action === "cinema" || cinemaTarget(action) ? 180_000 : action === "cinema-stop" || action.startsWith("ambience-") || action.startsWith("tv-play:") ? 120_000 : COMMAND_TTL), state: "pending" };
   try {
     // A unique active key also serializes concurrent requests in different server instances.
     await db.transact([

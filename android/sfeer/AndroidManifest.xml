@@ -2,8 +2,8 @@
 <!-- «ShoppingList Sfeer»: toont enkel de projectorpagina van «Ook rond de tv» schermvullend (zie MainActivity). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="be.shoppinglist.sfeer"
-    android:versionCode="2"
-    android:versionName="1.1">
+    android:versionCode="3"
+    android:versionName="2.0">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -14,7 +14,7 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="true"
         android:hardwareAccelerated="true">
-        <!-- Exported: de Pi start ze via ADB (`am start -n`). De activity zelf laat enkel de projectorpagina op het thuisnetwerk toe. -->
+        <!-- Exported: de Pi start ze via ADB (am start met het tv-adres en de instellingen als extra). Toont enkel de ingebouwde pagina. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

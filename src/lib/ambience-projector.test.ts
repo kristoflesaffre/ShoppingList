@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  ambienceShowAction,
   applyLoungeEvent,
-  parseAmbienceShow,
   DEFAULT_MASK,
-  isProjectorKey,
   maskPolygon,
   nextLead,
   parseLoungeChunks,
@@ -84,24 +81,6 @@ describe("syncAction", () => {
   it("pauzeert mee, ook bij reclame", () => {
     expect(syncAction({ ...tv, state: "paused" }, { videoId: tv.videoId, position: 100, playing: true }).kind).toBe("pause");
     expect(syncAction({ ...tv, state: "ad" }, { videoId: tv.videoId, position: 100, playing: true }).kind).toBe("pause");
-  });
-});
-
-describe("isProjectorKey", () => {
-  it("vraagt een lange URL-veilige sleutel", () => {
-    expect(isProjectorKey("a".repeat(43))).toBe(true);
-    expect(isProjectorKey("kort")).toBe(false);
-    expect(isProjectorKey("a".repeat(40) + "/../")).toBe(false);
-  });
-});
-
-describe("ambienceShowAction", () => {
-  it("stuurt enkel een privé-adres mee", () => {
-    expect(ambienceShowAction("192.168.132.183", 3010)).toBe("ambience-show@192.168.132.183:3010");
-    expect(ambienceShowAction("8.8.8.8", 3010)).toBeNull();
-    expect(parseAmbienceShow("ambience-show@10.0.0.5:3000")).toEqual({ host: "10.0.0.5", port: 3000 });
-    expect(parseAmbienceShow("ambience-show@1.2.3.4:3000")).toBeNull();
-    expect(parseAmbienceShow("ambience-show@192.168.1.2:3000;reboot")).toBeNull();
   });
 });
 

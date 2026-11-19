@@ -6,19 +6,8 @@ import { formatYoutubeDuration, isYoutubeVideoId } from "@/lib/samsung-tv-protoc
 import { verifiedUserId } from "./google-connection-store";
 import { screenLanHost } from "./projector-temporary";
 import { readTvConfig, startAmbience, tvPlayback, tvPower } from "./samsung-tv";
-import { networkInterfaces } from "node:os";
-import { ambienceShowAction, parseMask, type ProjectorMask } from "@/lib/ambience-projector";
-import {
-  calibration,
-  lastProjectorReport,
-  projectorKeyMatches,
-  readProjectorSettings,
-  reportFromProjector,
-  saveProjectorSettings,
-  setCalibration,
-  tvNowPlaying,
-} from "./ambience-projector";
-import { bridgeOnline, enqueueProjector, ownerBridge } from "./projector-relay";
+import { parseMask, type ProjectorMask } from "@/lib/ambience-projector";
+import { ambienceViaPi } from "./ambience-relay";
 
 const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 const loopback = ["localhost", "127.0.0.1", "[::1]"];
@@ -58,110 +47,30 @@ export function ambienceRequest(value: unknown): AmbienceCommand | null {
   return null;
 }
 
-/** De Pi opent de projectorpagina (of zet de projector weer uit). Mislukt = enkel op tv, nooit een fout voor de tv. */
-/** Huidig adres van deze Mac op het thuisnetwerk (wifi eerst). */
-function macLanAddress(): string | null {
-  const nets = networkInterfaces();
-  const names = Object.keys(nets).sort((a, b) => (a === "en0" ? -1 : b === "en0" ? 1 : a.localeCompare(b)));
-  for (const name of names) {
-    for (const net of nets[name] ?? []) {
-      if (net.family === "IPv4" && !net.internal && ambienceShowAction(net.address, 1000)) return net.address;
-    }
-  }
-  return null;
-}
-
-async function projectorCommand(ownerId: string, kind: "ambience-show" | "ambience-hide", request: NextRequest): Promise<string | null> {
-  try {
-    const bridge = await ownerBridge(ownerId);
-    if (!bridge || !bridgeOnline(bridge)) return "bridge-offline";
-    // Het adres van de Mac verandert soms: stuur het huidige mee (de poort van deze server).
-    const host = macLanAddress();
-    const port = Number(request.nextUrl.port || process.env.PORT || 3010);
-    const action = kind === "ambience-show" && host ? ambienceShowAction(host, port) ?? kind : kind;
-    return (await enqueueProjector(bridge, action)) ? null : "bridge-busy";
-  } catch {
-    return "bridge-offline";
-  }
-}
-
-async function projectorStatus() {
-  const settings = await readProjectorSettings();
-  const report = lastProjectorReport();
-  return {
-    enabled: settings.enabled,
-    mask: { corners: settings.corners, margin: settings.margin, soft: settings.soft, blur: settings.blur, spread: settings.spread },
-    report: report?.status ?? null,
-    tv: settings.enabled ? tvNowPlaying().state : null,
-  };
-}
-
 export async function ambienceTv(request: NextRequest) {
+  const parsed = ambienceRequest(await request.clone().json().catch(() => null));
+  // Met een Pi: alles via de Pi (werkt ook zonder Mac). Zonder Pi: de oude bediening vanaf de Mac, zonder projector.
+  const viaPi = await ambienceViaPi(request, parsed);
+  if (viaPi) return viaPi;
   const guard = await localOwner(request);
   if (guard instanceof NextResponse) return guard;
-  const parsed = ambienceRequest(await request.json().catch(() => null));
   if (!parsed) return reply({ error: "invalid-command" }, 400);
+  if (parsed.action === "projector" || parsed.action === "calibrate" || parsed.action === "mask") return reply({ error: "bridge-required" }, 503);
   const config = await readTvConfig();
   if (!config) return reply({ error: "not-configured", configured: false }, 503);
   if (config.ownerId !== guard.ownerId) return reply({ error: "not-authorized" }, 403);
-  if (parsed.action === "status") return reply({ configured: true, power: await tvPower(config.host), youtubeSearch: Boolean(process.env.YOUTUBE_API_KEY), projector: await projectorStatus() });
-  if (parsed.action === "projector") {
-    await saveProjectorSettings({ enabled: parsed.enabled });
-    // Aan terwijl de tv al iets speelt: meteen de projector erbij. Uit: projector uit.
-    const playing = parsed.enabled && (await tvPower(config.host)) === "on";
-    const problem = parsed.enabled ? (playing ? await projectorCommand(guard.ownerId, "ambience-show", request) : null) : await projectorCommand(guard.ownerId, "ambience-hide", request);
-    return reply({ accepted: true, projector: await projectorStatus(), problem });
-  }
-  if (parsed.action === "calibrate") {
-    setCalibration(parsed.on);
-    const problem = parsed.on ? await projectorCommand(guard.ownerId, "ambience-show", request) : null;
-    return reply({ accepted: true, problem });
-  }
-  if (parsed.action === "mask") {
-    if (parsed.save) {
-      await saveProjectorSettings(parsed.mask);
-      setCalibration(false);
-    } else setCalibration(true, parsed.mask);
-    return reply({ accepted: true });
-  }
+  if (parsed.action === "status") return reply({ configured: true, power: await tvPower(config.host), youtubeSearch: Boolean(process.env.YOUTUBE_API_KEY) });
   try {
     if (parsed.action !== "play") {
       await tvPlayback(config, parsed.action === "pause" ? "pause" : "resume");
       return reply({ accepted: true });
     }
     const { wasOn } = await startAmbience(config, parsed.videoId);
-    const settings = await readProjectorSettings();
-    const problem = settings.enabled ? await projectorCommand(guard.ownerId, "ambience-show", request) : null;
-    return reply({ accepted: true, wasOn, ...(settings.enabled ? { projector: problem ?? "starting" } : {}) });
+    return reply({ accepted: true, wasOn });
   } catch (error) {
     const code = error instanceof Error && /^[a-z-]+$/.test(error.message) ? error.message : "command-not-confirmed";
     return reply({ error: code }, code === "busy" ? 409 : 503);
   }
-}
-
-/**
- * De projectorpagina (op de projector, via het thuisnetwerk naar deze Mac): wat de tv speelt, waar de tv zit, en of
- * er ingesteld wordt. Geen aanmelding op de projector: een lange sleutel in de url (`.cache/samsung-tv/projector.json`).
- * POST = melding van de pagina (`embed-blocked`, `playing`, …) voor het blad op de tablet.
- */
-export async function ambienceProjector(request: NextRequest) {
-  if (process.env.NETLIFY || process.env.VERCEL) return reply({ error: "mac-required" }, 503);
-  const settings = await readProjectorSettings();
-  const given = request.method === "GET" ? request.nextUrl.searchParams.get("key") : ((await request.clone().json().catch(() => null)) as { key?: unknown } | null)?.key;
-  if (!projectorKeyMatches(settings.key, given)) return reply({ error: "not-authorized" }, 403);
-  const config = await readTvConfig();
-  if (!config) return reply({ error: "not-configured" }, 503);
-  if (request.method === "POST") {
-    const body = (await request.json().catch(() => null)) as { status?: unknown; videoId?: unknown } | null;
-    const status = typeof body?.status === "string" && /^[a-z-]{1,32}$/.test(body.status) ? body.status : null;
-    if (!status) return reply({ error: "invalid-report" }, 400);
-    reportFromProjector(status, isYoutubeVideoId(body?.videoId) ? body.videoId : null);
-    return reply({ accepted: true });
-  }
-  const calib = calibration();
-  const mask = calib?.mask ?? { corners: settings.corners, margin: settings.margin, soft: settings.soft, blur: settings.blur, spread: settings.spread };
-  const tv = settings.enabled || calib ? tvNowPlaying() : null;
-  return reply({ serverNow: Date.now(), enabled: settings.enabled, calibrating: Boolean(calib), mask, tv });
 }
 
 export type AmbienceVideo = { id: string; title: string; channel: string; thumbnail: string; duration: string | null; live: boolean };
@@ -193,8 +102,9 @@ function saveSearchCache(): void {
 
 /** `{ q }` → up to 24 YouTube videos (Data API v3: search.list 100 units + videos.list 1 unit). */
 export async function youtubeSearch(request: NextRequest) {
-  const guard = await localOwner(request);
-  if (guard instanceof NextResponse) return guard;
+  // Ook op Vercel (zonder Mac): aangemeld en vanaf de eigen app volstaat; de sleutel blijft op de server.
+  if (request.headers.get("origin") !== googleRequestOrigin(request)) return reply({ error: "invalid-origin" }, 403);
+  if (!(await verifiedUserId(request))) return reply({ error: "not-signed-in" }, 401);
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return reply({ error: "no-api-key" }, 503);
   const body = (await request.json().catch(() => null)) as { q?: unknown } | null;

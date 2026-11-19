@@ -3,16 +3,7 @@ import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({ verify: vi.fn(), config: vi.fn(), power: vi.fn(), start: vi.fn(), playback: vi.fn() }));
 vi.mock("@/lib/server/google-connection-store", () => ({ verifiedUserId: mocks.verify }));
 vi.mock("@/lib/server/samsung-tv", () => ({ readTvConfig: mocks.config, tvPower: mocks.power, startAmbience: mocks.start, tvPlayback: mocks.playback }));
-vi.mock("@/lib/server/ambience-projector", () => ({
-  readProjectorSettings: async () => ({ enabled: false, key: "k".repeat(43), corners: { tl: [0.3, 0.27], tr: [0.7, 0.27], br: [0.7, 0.73], bl: [0.3, 0.73] }, margin: 2, soft: 1, blur: true }),
-  saveProjectorSettings: vi.fn(),
-  setCalibration: vi.fn(),
-  calibration: () => null,
-  lastProjectorReport: () => null,
-  reportFromProjector: vi.fn(),
-  projectorKeyMatches: () => false,
-  tvNowPlaying: () => ({ videoId: null, position: 0, state: "idle", duration: null, connected: false }),
-}));
+vi.mock("@/lib/server/ambience-relay", () => ({ ambienceViaPi: async () => null }));
 import { ambienceRequest, ambienceTv, youtubeSearch } from "./server/ambience-routes";
 const request = (body: unknown, origin = "https://localhost:3011", url = "https://localhost:3011/api/tv/ambience") => new NextRequest(url, { method: "POST", headers: { origin, "content-type": "application/json" }, body: JSON.stringify(body) });
 beforeEach(() => {
