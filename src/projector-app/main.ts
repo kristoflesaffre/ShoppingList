@@ -45,6 +45,7 @@ const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const frameEl = $("frame");
 const gridEl = $("grid");
 const maskSvg = document.getElementById("mask") as unknown as SVGSVGElement;
+const outlineSvg = document.getElementById("outline") as unknown as SVGSVGElement;
 
 let player: YtPlayer | null = null;
 let ready = false;
@@ -82,17 +83,22 @@ void loadApi().then(() => {
   });
 });
 
+/**
+ * Alles in procenten van het scherm (vw / %), nooit in pixels: de WebView van de projector meldt een andere breedte dan
+ * het beeld (op de XGIMI vier keer te groot), waardoor een pixelopbouw buiten beeld viel. Rekent op een 16:9-beeld.
+ */
+const W = 1000;
+const H = 562.5;
+
 function render(mask: ProjectorMask, calibrating: boolean, showVideo: boolean) {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  const f = videoFrame(mask, w, h);
+  const f = videoFrame(mask, W, H);
   Object.assign(frameEl.style, {
-    left: `${f.left}px`,
-    top: `${f.top}px`,
-    width: `${f.width}px`,
-    height: `${f.height}px`,
+    left: `${(f.left / W) * 100}%`,
+    top: `${(f.top / H) * 100}%`,
+    width: `${(f.width / W) * 100}%`,
+    height: `${(f.height / H) * 100}%`,
     opacity: showVideo ? "1" : "0",
-    filter: mask.blur ? `blur(${Math.round(f.width * 0.008)}px) saturate(1.15)` : "none",
+    filter: mask.blur ? `blur(${((f.width / W) * 100 * 0.008).toFixed(3)}vw) saturate(1.15)` : "none",
   });
   frameEl.style.setProperty("-webkit-mask-image", FRAME_FADE);
   frameEl.style.setProperty("mask-image", FRAME_FADE);
@@ -100,35 +106,39 @@ function render(mask: ProjectorMask, calibrating: boolean, showVideo: boolean) {
   frameEl.style.setProperty("mask-composite", "intersect");
   $("fade").style.background = SCREEN_FADE;
   gridEl.style.display = calibrating ? "block" : "none";
-  gridEl.style.backgroundSize = `${w / 24}px ${w / 24}px`;
+  gridEl.style.backgroundSize = "4.1667vw 4.1667vw";
 
-  maskSvg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  maskSvg.setAttribute("width", String(w));
-  maskSvg.setAttribute("height", String(h));
-  while (maskSvg.firstChild) maskSvg.removeChild(maskSvg.firstChild);
+  // Zwart vlak (zachte rand = de hele laag vervagen) en, tijdens het instellen, een scherp wit kader erboven.
+  for (const svg of [maskSvg, outlineSvg]) {
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.setAttribute("preserveAspectRatio", "none");
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+  }
   const cover = document.createElementNS(SVG, "polygon");
-  cover.setAttribute("points", maskPolygon(mask, w, h).map((p) => p.join(",")).join(" "));
+  cover.setAttribute("points", maskPolygon(mask, W, H).map((p) => p.join(",")).join(" "));
   cover.setAttribute("fill", "#000");
-  if (mask.soft > 0) cover.setAttribute("style", `filter: blur(${softEdgePx(mask.soft, w)}px)`);
   maskSvg.appendChild(cover);
+  maskSvg.style.filter = mask.soft > 0 ? `blur(${((softEdgePx(mask.soft, W) / W) * 100).toFixed(3)}vw)` : "none";
   if (calibrating) {
-    const pts = CORNER_KEYS.map((k) => [mask.corners[k][0] * w, mask.corners[k][1] * h]);
+    const pts = CORNER_KEYS.map((k) => [mask.corners[k][0] * W, mask.corners[k][1] * H]);
     const outline = document.createElementNS(SVG, "polygon");
     outline.setAttribute("points", pts.map((p) => p.join(",")).join(" "));
     outline.setAttribute("fill", "none");
     outline.setAttribute("stroke", "#fff");
-    outline.setAttribute("stroke-width", "4");
+    outline.setAttribute("stroke-width", "2");
     outline.setAttribute("stroke-linejoin", "round");
-    maskSvg.appendChild(outline);
+    outline.setAttribute("vector-effect", "non-scaling-stroke");
+    outlineSvg.appendChild(outline);
     for (const [x, y] of pts) {
-      const dot = document.createElementNS(SVG, "circle");
+      const dot = document.createElementNS(SVG, "ellipse");
       dot.setAttribute("cx", String(x));
       dot.setAttribute("cy", String(y));
-      dot.setAttribute("r", "14");
+      dot.setAttribute("rx", "7");
+      dot.setAttribute("ry", "7");
       dot.setAttribute("fill", "#4f55f1");
       dot.setAttribute("stroke", "#fff");
-      dot.setAttribute("stroke-width", "4");
-      maskSvg.appendChild(dot);
+      dot.setAttribute("stroke-width", "2");
+      outlineSvg.appendChild(dot);
     }
   }
 }
@@ -175,6 +185,10 @@ async function tick() {
     const mask = parseMask(s.mask) ?? DEFAULT_MASK;
     const showVideo = s.enabled && !s.calibrating && !!s.tv?.videoId && s.tv.state !== "idle" && s.tv.state !== "ended";
     render(mask, s.calibrating, showVideo);
+    // Tijdens het instellen: wat de app van de tv ziet (om na te kijken), klein in een hoek.
+    const info = $("info");
+    info.style.display = s.calibrating ? "block" : "none";
+    if (s.calibrating) info.textContent = s.tv ? `Tv: ${s.tv.state}${s.tv.videoId ? ` · ${Math.round(s.tv.position)} s` : ""}` : "Tv: nog geen verbinding";
     sync(s);
   } catch {
     /* app nog niet klaar: volgende ronde */
