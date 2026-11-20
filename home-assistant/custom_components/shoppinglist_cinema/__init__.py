@@ -17,8 +17,9 @@ from .screen import CONTACT, ScreenGuard
 from .companion import Telemetry, parse_media_session, parse_probe_metadata
 from .control_dex import DEX_BASE64, DEX_SHA256
 from .sfeer_apk import APK_BASE64, APK_PACKAGE, APK_SHA256, APK_VERSION
+from .ambience_pool import POOL as AMBIENCE_POOL
 from .ambience import (
-    DEFAULT_TV_MAC, VIDEO_ID, color_distance, frame_color, SettingsStore, app_extra, lounge_send, parse_settings, remote_entity, restart_youtube, send_wol, youtube_running,
+    DEFAULT_TV_MAC, VIDEO_ID, color_distance, frame_color, pick_video, SettingsStore, app_extra, lounge_send, parse_settings, remote_entity, restart_youtube, send_wol, youtube_running,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.33.0'
+BRIDGE_VERSION = '1.34.0'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
@@ -56,6 +57,10 @@ AMBIENCE_LIGHT_EVERY = 6
 AMBIENCE_LED_TRANSITION = 3
 # How the living room was before «Ook rond de tv» took over, restored when it ends (not when a film takes over).
 AMBIENCE_BEFORE_SCENE = 'shoppinglist_ambience_before'
+# SONOFF SNZB-01P (ZHA): single press = cinema (automation), long press («off») = a random seasonal ambience video on
+# the TV with the projector around it and the dimmed lights, whatever the «Ook rond de tv» switch says.
+BUTTON_IEEE = '8c:73:da:ff:fe:ef:e8:89'
+BUTTON_LONG = 'off'
 
 
 def ambience_command(action):
@@ -419,19 +424,22 @@ async def async_setup(hass, config):
     async def start_sfeer():
         await adb_ready()
         await ensure_sfeer()
-        extra = app_extra(ambience_settings())
+        current = ambience_settings()
+        extra = app_extra({**current, 'enabled': bool(current.get('enabled') or forced_ambience[0])})
         output = await adb_retry(f"am start -n {APK_PACKAGE}/.MainActivity --es tv {SAMSUNG_HOST} --es settings {extra}")
         if 'Error' in output:
             _LOGGER.warning('ShoppingList Sfeer start: %s', output.strip()[:200])
             raise RuntimeError('sfeer-start-failed')
 
     light_task = [None]
+    # Long button press: ambience around the TV now, even with the switch off (until it is hidden again).
+    forced_ambience = [False]
 
     def ambience_in_front():
         state = hass.states.get(PLAYER)
         current = ambience_settings()
         return (power_state() in AWAKE and state is not None and state.attributes.get('app_id') == APK_PACKAGE
-                and current.get('enabled') and not current.get('calibrating'))
+                and (current.get('enabled') or forced_ambience[0]) and not current.get('calibrating'))
 
     lights_saved = [False]
 
@@ -508,6 +516,7 @@ async def async_setup(hass, config):
             ensure_ambience_lights()
 
     async def hide_ambience():
+        forced_ambience[0] = False
         # Never switch the projector off under a film: only when it shows the ambience page (or nothing at all).
         state = hass.states.get(PLAYER)
         app = (state.attributes.get('app_id') if state else None) or ''
@@ -520,7 +529,7 @@ async def async_setup(hass, config):
         except Exception as failure:
             _LOGGER.warning('Restoring the living room after ambience failed: %s', repr(failure)[:200])
 
-    async def tv_play(video_id):
+    async def tv_play(video_id, projector=False):
         session = async_get_clientsession(hass)
         was_on = await samsung_power(hass) == 'on'
         if not was_on:
@@ -545,7 +554,7 @@ async def async_setup(hass, config):
         await asyncio.sleep(4)
         await lounge_send(session, SAMSUNG_HOST, {'_sc': 'setPlaylist', 'videoId': video_id, 'currentTime': '0', 'currentIndex': '0', 'listId': '',
                                                    'videoIds': video_id, 'audioOnly': 'false', 'params': '', 'playerParams': ''})
-        if ambience_settings().get('enabled'):
+        if projector or ambience_settings().get('enabled'):
             # The TV plays; the projector around it is a bonus and never fails the command. Just after waking, ADB
             # may still be reloading: one more try 15 s later.
             for attempt in range(2):
@@ -887,11 +896,43 @@ async def async_setup(hass, config):
 
     hass.services.async_register(DOMAIN, 'toggle', handle_toggle)
 
+    last_random = [None]
+
+    async def random_ambience():
+        try:
+            async with busy:
+                now = dt_util.now()
+                video = pick_video(AMBIENCE_POOL, now.month, now.day, last_random[0])
+                if not video:
+                    _LOGGER.warning('Ambience button: no videos for this season')
+                    return
+                last_random[0] = video
+                forced_ambience[0] = True
+                await tv_play(video, projector=True)
+        except Exception as failure:
+            _LOGGER.warning('Ambience button failed: %s', failure if isinstance(failure, RuntimeError) else repr(failure)[:200])
+        finally:
+            button_running[0] = False
+
+    @callback
+    def on_button(event):
+        data = event.data or {}
+        if data.get('device_ieee') != BUTTON_IEEE or data.get('command') != BUTTON_LONG:
+            return
+        if button_running[0] or busy.locked() or screen.moving:
+            _LOGGER.info('Ambience button ignored: already busy')
+            return
+        button_running[0] = True
+        hass.async_create_task(random_ambience())
+
+    unsubscribe_button = hass.bus.async_listen('zha_event', on_button)
+
     unsubscribe = async_track_state_change_event(hass, [CONTACT], on_contact)
     task = hass.async_create_background_task(worker(), 'ShoppingList cinema queue')
     watcher = hass.async_create_background_task(playback_watcher(), 'ShoppingList Stremio lights')
     async def shutdown(_event):
         unsubscribe()
+        unsubscribe_button()
         task.cancel()
         watcher.cancel()
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, shutdown)

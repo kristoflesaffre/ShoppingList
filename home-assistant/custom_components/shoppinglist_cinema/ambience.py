@@ -221,3 +221,28 @@ def frame_color(png_base64):
 
 def color_distance(a, b):
     return sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5
+
+
+def season_keys(month, day):
+    """Seasons for the long button press, same rules as the app (src/lib/ambience-seasons.ts `seasonalShelves`)."""
+    if month == 12 or (month == 1 and day <= 6):
+        return ['kerst', 'winter']
+    if month == 10 and day >= 15:
+        return ['halloween', 'herfst']
+    if month <= 2:
+        return ['winter']
+    if month <= 5:
+        return ['lente']
+    if month <= 8:
+        return ['zomer']
+    return ['herfst']
+
+
+def pick_video(pool, month, day, last=None, rng=None):
+    """A random fitting video for today (never the same as the last one when there is a choice)."""
+    import random
+    rng = rng or random
+    choices = [v for key in season_keys(month, day) for v in pool.get(key, [])]
+    if len(choices) > 1 and last in choices:
+        choices = [v for v in choices if v != last]
+    return rng.choice(choices) if choices else None

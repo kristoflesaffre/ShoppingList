@@ -1,5 +1,18 @@
 # Home Assistant on the Raspberry Pi
 
+## SONOFF-knop lang indrukken: willekeurige seizoensambience, bridge 1.34.0 (2026-11-20)
+
+The bridge listens to `zha_event` itself (no automation change): button `8c:73:da:ff:fe:ef:e8:89`, command `off` (long
+press; single press stays the cinema automation, double press is still free). It picks a random video for today's
+season (`season_keys` = the app's `seasonalShelves`: Christmas + winter in December up to 6 January, Halloween + autumn
+15–31 October, otherwise the meteorological season; never the same video twice in a row) from `ambience_pool.py` and runs
+`tv-play` with the projector forced on (`forced_ambience`, also for the light loop) whatever the «Ook rond de tv» switch
+says: TV on, YouTube, Chloé, the video, the projector app around the TV, the other lights at 10 % and the LED strip in the
+colour of the picture. Ignored while the screen moves or another cinema action runs. `ambience-hide` (switch off) ends the
+forced mode and puts the lights back. The pool (10 long, embeddable, non-live videos per season, no music compilations or
+games) comes from `node --env-file=.env.local scripts/build-ambience-pool.mjs` (the Pi has no YouTube key) and is not
+refreshed by itself: rebuild when videos disappear. Tests: `scripts/test-cinema-ambience.py`.
+
 ## «Ook rond de tv»: lampen dimmen en ledstrip in de kleur van het beeld, bridge 1.32.0 (2026-11-20)
 
 When the projector app shows (`show_ambience`, also after `tv-play` and when settings change while it is in front), the

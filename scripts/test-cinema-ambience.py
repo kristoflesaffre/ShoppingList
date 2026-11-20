@@ -85,5 +85,32 @@ class FrameColorTests(unittest.TestCase):
         self.assertIsNone(ambience.frame_color('not-a-picture'))
 
 
+class SeasonTests(unittest.TestCase):
+    def test_seasons_follow_the_app(self):
+        self.assertEqual(ambience.season_keys(12, 20), ['kerst', 'winter'])
+        self.assertEqual(ambience.season_keys(1, 6), ['kerst', 'winter'])
+        self.assertEqual(ambience.season_keys(1, 7), ['winter'])
+        self.assertEqual(ambience.season_keys(10, 20), ['halloween', 'herfst'])
+        self.assertEqual(ambience.season_keys(4, 1), ['lente'])
+        self.assertEqual(ambience.season_keys(7, 1), ['zomer'])
+        self.assertEqual(ambience.season_keys(11, 20), ['herfst'])
+
+    def test_pick_never_repeats_when_there_is_a_choice(self):
+        import random
+        pool = {'herfst': ['aaaaaaaaaaa', 'bbbbbbbbbbb']}
+        for seed in range(20):
+            self.assertEqual(ambience.pick_video(pool, 11, 20, 'aaaaaaaaaaa', random.Random(seed)), 'bbbbbbbbbbb')
+        self.assertIsNone(ambience.pick_video({}, 11, 20))
+
+    def test_generated_pool_has_videos_for_every_season(self):
+        spec2 = importlib.util.spec_from_file_location('pool', source.parent / 'ambience_pool.py')
+        pool = importlib.util.module_from_spec(spec2)
+        spec2.loader.exec_module(pool)
+        for key in ('kerst', 'winter', 'lente', 'zomer', 'herfst', 'halloween'):
+            self.assertGreaterEqual(len(pool.POOL[key]), 5)
+            for video in pool.POOL[key]:
+                self.assertTrue(ambience.VIDEO_ID.match(video))
+
+
 if __name__ == '__main__':
     unittest.main()

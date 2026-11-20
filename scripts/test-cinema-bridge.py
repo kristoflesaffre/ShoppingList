@@ -232,7 +232,7 @@ class ScreenWakeTests(unittest.IsolatedAsyncioTestCase):
             if entity == cinema.CINEMA_SELECTOR: return types.SimpleNamespace(state=scene)
             if entity == cinema.CINEMA_LIGHTS: return types.SimpleNamespace(state='on')
             return types.SimpleNamespace(state=state['power']) if entity == cinema.PLAYER else None
-        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service, async_register=lambda *_: None), bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service, async_register=lambda *_: None), bus=types.SimpleNamespace(async_listen_once=lambda *_: None, async_listen=lambda *_: lambda: None))
         hass.async_create_background_task = lambda coroutine, _name: coroutine.close() or types.SimpleNamespace(cancel=lambda: None)
         hass.async_create_task = lambda coroutine: tasks.append(coroutine)
         contact_listeners.clear()
@@ -346,7 +346,7 @@ class StremioLightsTests(unittest.IsolatedAsyncioTestCase):
             if entity == cinema.CINEMA_SELECTOR: return types.SimpleNamespace(state='Helder')
             if entity == cinema.CINEMA_LIGHTS: return types.SimpleNamespace(state='on')
             return types.SimpleNamespace(state='off', attributes={})
-        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service, async_register=lambda *_: None), bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service, async_register=lambda *_: None), bus=types.SimpleNamespace(async_listen_once=lambda *_: None, async_listen=lambda *_: lambda: None))
         hass.async_create_background_task = lambda coroutine, name: captured.append((name, coroutine)) or types.SimpleNamespace(cancel=lambda: None)
         hass.async_create_task = lambda coroutine: coroutine.close()
         await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
@@ -370,7 +370,7 @@ class StremioLightsTests(unittest.IsolatedAsyncioTestCase):
             if entity == cinema.CINEMA_LIGHTS: return types.SimpleNamespace(state='on')
             return types.SimpleNamespace(state='off', attributes={})
         async def reload(entry): reloads.append(entry)
-        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service, async_register=lambda *_: None), bus=types.SimpleNamespace(async_listen_once=lambda *_: None),
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state), services=types.SimpleNamespace(async_call=service, async_register=lambda *_: None), bus=types.SimpleNamespace(async_listen_once=lambda *_: None, async_listen=lambda *_: lambda: None),
                                      config_entries=types.SimpleNamespace(async_reload=reload))
         hass.async_create_background_task = lambda coroutine, name: captured.append((name, coroutine)) or types.SimpleNamespace(cancel=lambda: None)
         hass.async_create_task = lambda coroutine: coroutine.close()
@@ -523,7 +523,7 @@ class ButtonToggleTests(unittest.IsolatedAsyncioTestCase):
             return None
         hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state),
             services=types.SimpleNamespace(async_call=AsyncMock(), async_register=lambda domain, name, handler: registered.__setitem__(f'{domain}.{name}', handler)),
-            bus=types.SimpleNamespace(async_listen_once=lambda *_: None))
+            bus=types.SimpleNamespace(async_listen_once=lambda *_: None, async_listen=lambda *_: lambda: None))
         hass.async_create_background_task = lambda coroutine, _name: coroutine.close() or types.SimpleNamespace(cancel=lambda: None)
         hass.async_create_task = lambda coroutine: tasks.append(coroutine)
         contact_listeners.clear()
