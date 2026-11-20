@@ -1,5 +1,13 @@
 # Home Assistant on the Raspberry Pi
 
+## Ledkleur volgt witte beelden, bridge 1.34.2 (2026-11-20)
+
+`frame_color` weighed colourful pixels up to 20x more than grey ones and then pushed the saturation up (+0.1 floor), so
+a mostly white or grey scene with a few warm lights gave a pink or red strip. Now every lit pixel counts by its
+brightness, colourful ones at most 2.5x more, averaged in linear light; the saturation is only raised 1.25x and a near
+neutral average (< 0.06) stays white. On the saved projector frames: fires and autumn stay orange, the grey Google TV
+home goes from pink (255, 178, 183) to near white (255, 231, 235). Install: `outputs/cinema-bridge-1.34.2-install.txt`.
+
 ## Sneller starten en netjes afsluiten, bridge 1.34.1 (2026-11-20)
 
 `adb_ready` now waits until a real ADB call (`echo adb-ready`) answers, every 2 s for at most 90 s, instead of only

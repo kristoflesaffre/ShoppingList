@@ -78,6 +78,21 @@ class FrameColorTests(unittest.TestCase):
         self.assertGreater(color[1], color[2])
         self.assertGreater(level, 0.5)
 
+    def test_snowy_picture_with_a_few_warm_lights_stays_white(self):
+        import io
+        from PIL import Image
+        image = Image.new('RGB', (96, 54), (225, 230, 240))
+        image.paste((220, 40, 20), (0, 0, 15, 10))
+        image.paste((255, 150, 40), (80, 40, 96, 54))
+        out = io.BytesIO()
+        image.save(out, 'PNG')
+        color, _ = ambience.frame_color(base64.b64encode(out.getvalue()).decode())
+        self.assertGreater(min(color), 200)
+
+    def test_grey_picture_is_not_pink(self):
+        color, _ = ambience.frame_color(self.png((90, 85, 85)))
+        self.assertGreater(min(color), 200)
+
     def test_black_picture_gives_no_colour(self):
         self.assertIsNone(ambience.frame_color(self.png((5, 5, 5))))
 

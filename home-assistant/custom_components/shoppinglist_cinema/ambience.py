@@ -185,8 +185,10 @@ def remote_entity(hass, media_player):
 
 def frame_color(png_base64):
     """Screenshot of the projector (PNG, base64) -> ((r, g, b), brightness 0-1), or None when the picture is (nearly)
-    black. Runs in the executor. Pixels are weighted by how colourful and bright they are, so the black TV mask and dark
-    corners do not drown the colour; the result is made a bit more vivid for the LED strip."""
+    black. Runs in the executor. Every lit pixel counts by its brightness, colourful pixels a bit more (at most 2.5x a
+    grey one), so a few warm lights in a snowy, mostly white video no longer turn the strip red; the black TV mask and
+    dark corners are skipped. The average keeps its own saturation (only a little stronger): a white scene gives a
+    near-white strip, a fire gives orange."""
     import colorsys
     import io
     from PIL import Image
@@ -204,17 +206,19 @@ def frame_color(png_base64):
             continue
         sat = (high - min(r, g, b)) / high
         val = high / 255
-        weight = sat * val + 0.05
-        total[0] += r * weight
-        total[1] += g * weight
-        total[2] += b * weight
+        weight = val * (0.4 + 0.6 * sat)
+        # Linear light, so bright areas count as bright as they look.
+        total[0] += (r / 255) ** 2.2 * weight
+        total[1] += (g / 255) ** 2.2 * weight
+        total[2] += (b / 255) ** 2.2 * weight
         weight_sum += weight
         values.append(val)
     if weight_sum <= 0 or len(values) < 20:
         return None
-    r, g, b = (c / weight_sum / 255 for c in total)
+    r, g, b = ((c / weight_sum) ** (1 / 2.2) for c in total)
     h, s, v = colorsys.rgb_to_hsv(r, g, b)
-    r, g, b = colorsys.hsv_to_rgb(h, min(1.0, s * 1.35 + 0.1), 1.0)
+    s = 0.0 if s < 0.06 else min(1.0, s * 1.25)
+    r, g, b = colorsys.hsv_to_rgb(h, s, 1.0)
     level = sum(values) / len(values)
     return (round(r * 255), round(g * 255), round(b * 255)), level
 
