@@ -42,10 +42,12 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.31.0'
+BRIDGE_VERSION = '1.31.1'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
+# The projector app is copied here over ADB before `pm install` (hash checked), then removed.
+SFEER_APK = '/data/local/tmp/shoppinglist-sfeer.apk'
 
 
 def ambience_command(action):
@@ -464,11 +466,15 @@ async def async_setup(hass, config):
         await lounge_send(session, SAMSUNG_HOST, {'_sc': 'setPlaylist', 'videoId': video_id, 'currentTime': '0', 'currentIndex': '0', 'listId': '',
                                                    'videoIds': video_id, 'audioOnly': 'false', 'params': '', 'playerParams': ''})
         if ambience_settings().get('enabled'):
-            try:
-                await show_ambience()
-            except Exception as failure:
-                # The TV plays; the projector around it is a bonus and never fails the command.
-                _LOGGER.warning('Ambience projector after TV play failed: %s', failure if isinstance(failure, RuntimeError) else 'device-action-failed')
+            # The TV plays; the projector around it is a bonus and never fails the command. Just after waking, ADB
+            # may still be reloading: one more try 15 s later.
+            for attempt in range(2):
+                try:
+                    await show_ambience()
+                    break
+                except Exception as failure:
+                    _LOGGER.warning('Ambience projector after TV play failed (attempt %s): %s', attempt + 1, failure if isinstance(failure, RuntimeError) else repr(failure)[:200])
+                    await asyncio.sleep(15)
 
     async def tv_playback(action):
         if await samsung_power(hass) != 'on':
@@ -582,7 +588,7 @@ async def async_setup(hass, config):
                                 await execute(action)
                         except Exception as failure:
                             error = str(failure) if isinstance(failure, RuntimeError) else 'device-action-failed'
-                            _LOGGER.warning('Cinema command failed: %s', error)
+                            _LOGGER.warning('Cinema command failed: %s', error if isinstance(failure, RuntimeError) else repr(failure)[:300])
                         await update('projectorCommands', command['id'], {'state': 'failed' if error else 'sent', 'error': error})
             except asyncio.CancelledError:
                 raise
