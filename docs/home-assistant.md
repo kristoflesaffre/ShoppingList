@@ -24,6 +24,12 @@ stays (no projector). YouTube search works on Vercel too (signed in, same origin
 `/api/tv/ambience/projector`, the Mac's Lounge reader and the `ambience-show@<ip>:<port>` command. `ambience_url` in
 `shoppinglist-cinema.yaml` is no longer used. Tests: `scripts/test-cinema-ambience.py`, `src/lib/ambience-relay.test.ts`.
 Install: `outputs/cinema-bridge-1.31.0-install.txt` (installs app versionCode 3 on the next show).
+Follow-ups 20/11: 1.31.1 restores `SFEER_APK` (lost in the clean-up; every app install failed with
+`device-action-failed`) and retries the projector once after `tv-play`; app 4 (bridge 1.31.2) lays the page out in % / vw:
+the XGIMI WebView reports a width four times the real one, so pixel geometry fell off-screen (black projector).
+Tested 20/11 with the Mac's server off: `tv-play` played the fireplace on the Samsung (Chloé's profile selected through
+HA's Samsung remote), app 4 followed the TV itself («Tv: playing · 9043 s» in calibrate mode) and the projector showed the
+blurred video around the masked TV.
 
 ## «Ook rond de tv»: adres van de Mac meesturen, bridge 1.30.0 (2026-11-19)
 
