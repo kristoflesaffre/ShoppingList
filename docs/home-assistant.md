@@ -11,7 +11,8 @@ colour moved noticeably. Stops as soon as the app is no longer in front, «Ook r
 off; five failed captures in a row also stop it. Since 1.33.0 the room is put back: just before dimming the bridge
 snapshots every light of the group + the strip (`scene.create` → `scene.shoppinglist_ambience_before`) and turns that
 scene on again (transition 2 s) when «Ook rond de tv» is switched off, the projector goes off or another app comes in
-front, but not when Stremio took over (the cinema scene owns the lights then). Tested on real screenshots:
+front, but not when Stremio took over (the cinema scene owns the lights then). Tested 20/11: room at 2237 K 100 % + strip
+(255, 189, 86) 100 % → ambience: others 10 %, strip (255, 69, 0) 45 % → `ambience-hide`: back to exactly the same values. Tested on real screenshots:
 fireplace → orange (255, 66, 0) at 46 %.
 
 ## «Sfeer op tv» + «Ook rond de tv» zonder Mac, bridge 1.31.0 (2026-11-19)
