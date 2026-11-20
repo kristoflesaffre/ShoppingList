@@ -16,6 +16,11 @@ const memory = new Map<string, AgendaCacheEntry<unknown>>();
 const inflight = new Map<string, Promise<void>>();
 const listeners = new Map<string, Set<(e: AgendaCacheEntry<unknown>) => void>>();
 
+/** Milliseconden tot net na de volgende lokale middernacht (2 s marge); klopt ook bij zomer- en wintertijd. */
+export function msUntilNextDay(now: Date = new Date()): number {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 2).getTime() - now.getTime();
+}
+
 export function localDayIso(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -77,7 +82,9 @@ export function clearAgendaCache() {
 }
 
 /**
- * Agenda voor een periode met cache. `range` geeft sleutel + periode; ververst bij focus en elke 5 minuten.
+ * Agenda voor een periode met cache. `range` geeft sleutel + periode; ververst elke 5 minuten én zodra het toestel
+ * wakker wordt (pagina weer zichtbaar, focus, `pageshow`, online): een tablet aan de muur slaapt 's nachts en
+ * timers staan dan stil, dus «nu» en de gegevens moeten bij het ontwaken meteen bijgewerkt worden.
  */
 export function useCachedAgenda<T>(range: () => { key: string; timeMin: Date; timeMax: Date }) {
   const token = useGoogleAuthToken();
@@ -107,12 +114,24 @@ export function useCachedAgenda<T>(range: () => { key: string; timeMin: Date; ti
 
   React.useEffect(() => {
     load();
-    const onFocus = () => load();
-    window.addEventListener("focus", onFocus);
+    const wake = () => {
+      setNow(new Date());
+      load();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") wake();
+    };
+    window.addEventListener("focus", wake);
+    window.addEventListener("pageshow", wake);
+    window.addEventListener("online", wake);
+    document.addEventListener("visibilitychange", onVisible);
     const refresh = window.setInterval(load, 5 * 60_000);
     const tick = window.setInterval(() => setNow(new Date()), 30_000);
     return () => {
-      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("focus", wake);
+      window.removeEventListener("pageshow", wake);
+      window.removeEventListener("online", wake);
+      document.removeEventListener("visibilitychange", onVisible);
       window.clearInterval(refresh);
       window.clearInterval(tick);
     };
