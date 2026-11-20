@@ -42,7 +42,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.32.0'
+BRIDGE_VERSION = '1.33.0'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
@@ -54,6 +54,8 @@ AMBIENCE_LED = 'light.woonkamer_led_woonkamer_nieuw'
 AMBIENCE_DIM_PCT = 10
 AMBIENCE_LIGHT_EVERY = 6
 AMBIENCE_LED_TRANSITION = 3
+# How the living room was before «Ook rond de tv» took over, restored when it ends (not when a film takes over).
+AMBIENCE_BEFORE_SCENE = 'shoppinglist_ambience_before'
 
 
 def ambience_command(action):
@@ -431,10 +433,23 @@ async def async_setup(hass, config):
         return (power_state() in AWAKE and state is not None and state.attributes.get('app_id') == APK_PACKAGE
                 and current.get('enabled') and not current.get('calibrating'))
 
+    lights_saved = [False]
+
+    async def restore_lights():
+        # Back to how the living room was before «Ook rond de tv» (a snapshot scene made just before dimming).
+        if not lights_saved[0]:
+            return
+        lights_saved[0] = False
+        await hass.services.async_call('scene', 'turn_on', {'entity_id': f'scene.{AMBIENCE_BEFORE_SCENE}', 'transition': 2}, blocking=True)
+
     async def ambience_lights():
         # Other living-room lights to 10 % once; then the LED strip follows the picture until the app leaves.
         group = hass.states.get(CINEMA_LIGHTS)
-        others = [e for e in ((group.attributes.get('entity_id') if group else None) or []) if e != AMBIENCE_LED]
+        members = list((group.attributes.get('entity_id') if group else None) or [])
+        others = [e for e in members if e != AMBIENCE_LED]
+        if not lights_saved[0] and members:
+            await hass.services.async_call('scene', 'create', {'scene_id': AMBIENCE_BEFORE_SCENE, 'snapshot_entities': [*members, AMBIENCE_LED]}, blocking=True)
+            lights_saved[0] = True
         if others:
             await hass.services.async_call('light', 'turn_on', {'entity_id': others, 'brightness_pct': AMBIENCE_DIM_PCT, 'transition': 2}, blocking=True)
         last = None
@@ -466,6 +481,12 @@ async def async_setup(hass, config):
             await asyncio.sleep(8)
             try:
                 await ambience_lights()
+                # Ended by itself (switched off, projector off, other app): put the room back, unless a film took over
+                # (the cinema scene owns the lights then) or the app is just restarting.
+                await asyncio.sleep(3)
+                state = hass.states.get(PLAYER)
+                if not ambience_in_front() and not (state and state.attributes.get('app_id') == STREMIO):
+                    await restore_lights()
             except Exception as failure:
                 _LOGGER.warning('Ambience lights stopped: %s', failure if isinstance(failure, RuntimeError) else repr(failure)[:200])
         light_task[0] = hass.async_create_task(run())
@@ -494,6 +515,10 @@ async def async_setup(hass, config):
             return
         if power_state() in AWAKE:
             await hass.services.async_call('media_player', 'turn_off', {'entity_id': PLAYER}, blocking=True)
+        try:
+            await restore_lights()
+        except Exception as failure:
+            _LOGGER.warning('Restoring the living room after ambience failed: %s', repr(failure)[:200])
 
     async def tv_play(video_id):
         session = async_get_clientsession(hass)
