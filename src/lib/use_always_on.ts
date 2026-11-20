@@ -3,6 +3,7 @@
 import * as React from "react";
 import { applyTheme, readThemePreference } from "@/lib/theme";
 import { keepScreenAwake } from "@/lib/screen-wake-lock";
+import { startWakeRefresh } from "@/lib/wake_refresh";
 
 /**
  * Always-on-scherm voor het tablet-dashboard (AMOLED): na `idleMs` zonder aanraking wordt het
@@ -109,11 +110,10 @@ export function useAlwaysOn(enabled: boolean, idleMs = 2 * 60_000): boolean {
     if (demo) root.dataset.aodDemo = "";
     document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", "#000000"));
     updateNight();
-    const interval = window.setInterval(updateNight, 60_000);
-    document.addEventListener("visibilitychange", updateNight);
+    // Elke minuut en bij wakker worden (de timers staan 's nachts soms stil): de nachtstand klopt meteen weer.
+    const stopWatching = startWakeRefresh(updateNight, 60_000, { win: window, doc: document });
     return () => {
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", updateNight);
+      stopWatching();
       delete root.dataset.aod;
       delete root.dataset.aodDemo;
       applyTheme(readThemePreference());

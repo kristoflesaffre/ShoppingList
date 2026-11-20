@@ -4,6 +4,7 @@ import * as React from "react";
 import { googleAuthHeaders, useGoogleAuthToken } from "@/lib/google-client";
 import { parseThawMarker, THAW_TASK_CLOSED_EVENT } from "@/lib/freezer-planning";
 import { sharedRead } from "@/lib/shared-read";
+import { useWakeRefresh } from "@/hooks/use_wake_refresh";
 
 /**
  * Todoist in de app (alleen lezen, via /api/todoist/*): types, kleuren, vervaldatums en de hook die status,
@@ -170,11 +171,10 @@ export function useTodoist() {
 
   React.useEffect(() => {
     void load();
-    // Verversen bij terugkeren naar de app (taken afgevinkt in Todoist).
-    const onVisible = () => document.visibilityState === "visible" && void load();
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [load]);
+  // Verversen bij terugkeren naar de app (taken afgevinkt in Todoist), elke 10 minuten en na middernacht: een
+  // dashboard dat dagen open staat mag geen oude taken tonen (ook niet de ontdooitaken die 's nachts bijkomen).
+  useWakeRefresh(() => void load(), 10 * 60_000);
 
   // Na het koppelen terug naar deze pagina (bv. /todo of de startpagina).
   const connect = React.useCallback(async () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useWakeRefresh } from "@/hooks/use_wake_refresh";
 
 /**
  * Weer voor het tablet-dashboard via Open-Meteo (gratis, geen sleutel). Vaste plaats (Kontich);
@@ -111,9 +112,14 @@ export function spreadHours(hours: readonly WeatherHour[], count: number, lastHo
 
 export function useWeather(): Weather | null {
   const [weather, setWeather] = React.useState<Weather | null>(null);
+  const alive = React.useRef(true);
   React.useEffect(() => {
-    let active = true;
-    const load = () => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  const load = React.useCallback(() => {
       const url = new URL("https://api.open-meteo.com/v1/forecast");
       url.searchParams.set("latitude", String(WEATHER_PLACE.latitude));
       url.searchParams.set("longitude", String(WEATHER_PLACE.longitude));
@@ -125,16 +131,14 @@ export function useWeather(): Weather | null {
       fetch(url, { cache: "no-store" })
         .then((r) => (r.ok ? (r.json() as Promise<OpenMeteo>) : null))
         .then((json) => {
-          if (active && json) setWeather(parseWeather(json));
+          if (alive.current && json) setWeather(parseWeather(json));
         })
         .catch(() => undefined);
-    };
-    load();
-    const t = window.setInterval(load, 30 * 60_000);
-    return () => {
-      active = false;
-      window.clearInterval(t);
-    };
   }, []);
+  React.useEffect(() => {
+    load();
+  }, [load]);
+  // Elk halfuur, na middernacht (dan is «vandaag» een andere dag) en bij wakker worden.
+  useWakeRefresh(load, 30 * 60_000);
   return weather;
 }

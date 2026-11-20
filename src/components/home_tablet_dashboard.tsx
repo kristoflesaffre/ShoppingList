@@ -16,6 +16,7 @@ import { DashboardHuePanel } from "@/components/dashboard_hue_panel";
 import { FilmDetailModal, WatchingTile, WatchlistTile, useWatchingMedia, useWatchlistSuggestions, type EveningMedia } from "@/components/dashboard_evening";
 import { AmbienceTileOr } from "@/components/dashboard_ambience";
 import { CalendarLoosePlate } from "@/components/calendar_day_visuals";
+import { useWakeRefresh } from "@/hooks/use_wake_refresh";
 import "@/app/aod-toned.css";
 
 /**
@@ -482,10 +483,9 @@ function isMoment(v: string | null): v is DashboardMoment {
 function useDashboardMoment(): { moment: DashboardMoment; testMoment: DashboardMoment | null; setTestMoment: (m: DashboardMoment | null) => void } {
   const [real, setReal] = React.useState<DashboardMoment>(() => momentAt(new Date()));
   const [testMoment, setTest] = React.useState<DashboardMoment | null>(null);
+  // Elke minuut en bij wakker worden (focus, pageshow, zichtbaar): na een nacht stilstaan meteen het juiste moment.
+  useWakeRefresh(() => setReal(momentAt(new Date())), 60_000);
   React.useEffect(() => {
-    const tick = () => setReal(momentAt(new Date()));
-    const id = window.setInterval(tick, 60_000);
-    document.addEventListener("visibilitychange", tick);
     // Testmodus: uit de adresbalk, anders wat eerder in deze tab gekozen is.
     try {
       const param = new URLSearchParams(window.location.search).get("moment");
@@ -496,10 +496,6 @@ function useDashboardMoment(): { moment: DashboardMoment; testMoment: DashboardM
     } catch {
       /* geen sessionStorage: geen testmodus */
     }
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener("visibilitychange", tick);
-    };
   }, []);
   const setTestMoment = React.useCallback((m: DashboardMoment | null) => {
     try {

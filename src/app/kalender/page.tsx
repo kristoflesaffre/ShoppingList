@@ -26,7 +26,7 @@ import {
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { mixWithWhite, RECIPE_TINT_FALLBACK, useIsDarkTheme, useRecipeTint, type Rgb } from "@/lib/recipe-tint";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
-import { msUntilNextDay } from "@/lib/agenda_cache";
+import { useCurrentDay } from "@/hooks/use_current_day";
 import { KalenderAgenda, agendaBand } from "@/components/kalender_agenda";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 import { useAlwaysOn } from "@/lib/use_always_on";
@@ -51,40 +51,6 @@ function startOfDay(date: Date): Date {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;
-}
-
-/**
- * Vandaag als «JJJJ-MM-DD»; springt mee om middernacht, want op een tablet blijft de kalender dagen open staan.
- * Controle: precies na middernacht, elke minuut, en zodra het toestel wakker wordt (de timers staan 's nachts soms stil).
- */
-function useTodayKey(): string {
-  const [key, setKey] = React.useState(() => toIsoDate(new Date()));
-  React.useEffect(() => {
-    const update = () => setKey(toIsoDate(new Date()));
-    let midnight = 0;
-    const scheduleMidnight = () => {
-      midnight = window.setTimeout(() => {
-        update();
-        scheduleMidnight();
-      }, msUntilNextDay());
-    };
-    scheduleMidnight();
-    const minute = window.setInterval(update, 60_000);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") update();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", update);
-    window.addEventListener("pageshow", update);
-    return () => {
-      window.clearTimeout(midnight);
-      window.clearInterval(minute);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", update);
-      window.removeEventListener("pageshow", update);
-    };
-  }, []);
-  return key;
 }
 
 function capitalize(s: string): string {
@@ -553,7 +519,7 @@ export default function KalenderPage() {
   const ownerId = user?.id;
   const dark = useIsDarkTheme();
 
-  const todayKey = useTodayKey();
+  const todayKey = useCurrentDay();
   const [agendaTint, setAgendaTint] = React.useState<Rgb | null>(null);
 
   // Tablet aan de muur: een aanraakscherm (of ?aod=1 / ?tablet=1 om te testen).
