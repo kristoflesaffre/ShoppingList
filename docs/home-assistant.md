@@ -12,6 +12,9 @@ colour of the picture. Ignored while the screen moves or another cinema action r
 forced mode and puts the lights back. The pool (10 long, embeddable, non-live videos per season, no music compilations or
 games) comes from `node --env-file=.env.local scripts/build-ambience-pool.mjs` (the Pi has no YouTube key) and is not
 refreshed by itself: rebuild when videos disappear. Tests: `scripts/test-cinema-ambience.py`.
+Tested 20/11 17:06: the long press arrives as `zha_event` command `off` (plus an `attribute_updated` on_off = 0, ignored);
+the TV played an autumn video, the projector woke (first ADB call failed while it booted, the retry 15 s later
+worked), the app showed the video around the TV, the LED strip went amber (255, 114, 0) and the other lights to 10 %.
 
 ## «Ook rond de tv»: lampen dimmen en ledstrip in de kleur van het beeld, bridge 1.32.0 (2026-11-20)
 
