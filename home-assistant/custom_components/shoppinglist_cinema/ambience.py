@@ -181,3 +181,43 @@ def remote_entity(hass, media_player):
         if 'samsung' in entity:
             return entity
     return None
+
+
+def frame_color(png_base64):
+    """Screenshot of the projector (PNG, base64) -> ((r, g, b), brightness 0-1), or None when the picture is (nearly)
+    black. Runs in the executor. Pixels are weighted by how colourful and bright they are, so the black TV mask and dark
+    corners do not drown the colour; the result is made a bit more vivid for the LED strip."""
+    import colorsys
+    import io
+    from PIL import Image
+    try:
+        raw = base64.b64decode(png_base64, validate=True)
+        image = Image.open(io.BytesIO(raw)).convert('RGB').resize((48, 27))
+    except Exception:
+        return None
+    total = [0.0, 0.0, 0.0]
+    weight_sum = 0.0
+    values = []
+    for r, g, b in image.getdata():
+        high = max(r, g, b)
+        if high < 30:
+            continue
+        sat = (high - min(r, g, b)) / high
+        val = high / 255
+        weight = sat * val + 0.05
+        total[0] += r * weight
+        total[1] += g * weight
+        total[2] += b * weight
+        weight_sum += weight
+        values.append(val)
+    if weight_sum <= 0 or len(values) < 20:
+        return None
+    r, g, b = (c / weight_sum / 255 for c in total)
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    r, g, b = colorsys.hsv_to_rgb(h, min(1.0, s * 1.35 + 0.1), 1.0)
+    level = sum(values) / len(values)
+    return (round(r * 255), round(g * 255), round(b * 255)), level
+
+
+def color_distance(a, b):
+    return sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5

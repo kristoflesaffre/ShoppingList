@@ -18,7 +18,7 @@ from .companion import Telemetry, parse_media_session, parse_probe_metadata
 from .control_dex import DEX_BASE64, DEX_SHA256
 from .sfeer_apk import APK_BASE64, APK_PACKAGE, APK_SHA256, APK_VERSION
 from .ambience import (
-    DEFAULT_TV_MAC, VIDEO_ID, SettingsStore, app_extra, lounge_send, parse_settings, remote_entity, restart_youtube, send_wol, youtube_running,
+    DEFAULT_TV_MAC, VIDEO_ID, color_distance, frame_color, SettingsStore, app_extra, lounge_send, parse_settings, remote_entity, restart_youtube, send_wol, youtube_running,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,12 +42,18 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.31.2'
+BRIDGE_VERSION = '1.32.0'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
 # The projector app is copied here over ADB before `pm install` (hash checked), then removed.
 SFEER_APK = '/data/local/tmp/shoppinglist-sfeer.apk'
+# Lights while «Ook rond de tv» shows: the other living-room lights at 10 %, the LED strip in the colour of the
+# picture around the TV (a projector screenshot every few seconds, smooth Hue transition).
+AMBIENCE_LED = 'light.woonkamer_led_woonkamer_nieuw'
+AMBIENCE_DIM_PCT = 10
+AMBIENCE_LIGHT_EVERY = 6
+AMBIENCE_LED_TRANSITION = 3
 
 
 def ambience_command(action):
@@ -417,6 +423,53 @@ async def async_setup(hass, config):
             _LOGGER.warning('ShoppingList Sfeer start: %s', output.strip()[:200])
             raise RuntimeError('sfeer-start-failed')
 
+    light_task = [None]
+
+    def ambience_in_front():
+        state = hass.states.get(PLAYER)
+        current = ambience_settings()
+        return (power_state() in AWAKE and state is not None and state.attributes.get('app_id') == APK_PACKAGE
+                and current.get('enabled') and not current.get('calibrating'))
+
+    async def ambience_lights():
+        # Other living-room lights to 10 % once; then the LED strip follows the picture until the app leaves.
+        group = hass.states.get(CINEMA_LIGHTS)
+        others = [e for e in ((group.attributes.get('entity_id') if group else None) or []) if e != AMBIENCE_LED]
+        if others:
+            await hass.services.async_call('light', 'turn_on', {'entity_id': others, 'brightness_pct': AMBIENCE_DIM_PCT, 'transition': 2}, blocking=True)
+        last = None
+        misses = 0
+        while ambience_in_front():
+            try:
+                found = await hass.async_add_executor_job(frame_color, await adb(FRAME_COMMAND))
+                misses = 0
+            except Exception:
+                found = None
+                misses += 1
+                if misses >= 5:
+                    break
+            if found:
+                color, level = found
+                if last is None or color_distance(color, last) > 18:
+                    await hass.services.async_call('light', 'turn_on', {
+                        'entity_id': AMBIENCE_LED, 'rgb_color': list(color),
+                        'brightness_pct': max(25, min(100, round(25 + level * 90))), 'transition': AMBIENCE_LED_TRANSITION,
+                    }, blocking=True)
+                    last = color
+            await asyncio.sleep(AMBIENCE_LIGHT_EVERY)
+
+    def ensure_ambience_lights():
+        if light_task[0] and not light_task[0].done():
+            return
+        async def run():
+            # Give the app a moment to start the video before the first screenshot.
+            await asyncio.sleep(8)
+            try:
+                await ambience_lights()
+            except Exception as failure:
+                _LOGGER.warning('Ambience lights stopped: %s', failure if isinstance(failure, RuntimeError) else repr(failure)[:200])
+        light_task[0] = hass.async_create_task(run())
+
     async def show_ambience():
         contact = hass.states.get(CONTACT)
         # Projection screen down: the picture would land on the screen, not on the wall around the TV.
@@ -424,12 +477,14 @@ async def async_setup(hass, config):
             raise RuntimeError('screen-open')
         await ensure_on()
         await start_sfeer()
+        ensure_ambience_lights()
 
     async def push_ambience():
         # New settings while the app is in front: hand them over without waking anything.
         state = hass.states.get(PLAYER)
         if power_state() in AWAKE and state and state.attributes.get('app_id') == APK_PACKAGE:
             await start_sfeer()
+            ensure_ambience_lights()
 
     async def hide_ambience():
         # Never switch the projector off under a film: only when it shows the ambience page (or nothing at all).

@@ -59,5 +59,31 @@ class AmbienceTests(unittest.TestCase):
         self.assertEqual(packet[:6], b'\xff' * 6)
 
 
+class FrameColorTests(unittest.TestCase):
+    @staticmethod
+    def png(color, size=(96, 54), center=None):
+        import io
+        from PIL import Image
+        image = Image.new('RGB', size, color)
+        if center:
+            w, h = size
+            image.paste(center, (w // 4, h // 4, 3 * w // 4, 3 * h // 4))
+        out = io.BytesIO()
+        image.save(out, 'PNG')
+        return base64.b64encode(out.getvalue()).decode()
+
+    def test_orange_fire_stays_orange_around_a_black_tv(self):
+        color, level = ambience.frame_color(self.png((200, 80, 20), center=(0, 0, 0)))
+        self.assertGreater(color[0], color[1])
+        self.assertGreater(color[1], color[2])
+        self.assertGreater(level, 0.5)
+
+    def test_black_picture_gives_no_colour(self):
+        self.assertIsNone(ambience.frame_color(self.png((5, 5, 5))))
+
+    def test_garbage_gives_no_colour(self):
+        self.assertIsNone(ambience.frame_color('not-a-picture'))
+
+
 if __name__ == '__main__':
     unittest.main()
