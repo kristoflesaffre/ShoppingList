@@ -7,8 +7,7 @@ import { useGoogleAuthToken } from "@/lib/google-client";
 import { cn } from "@/lib/utils";
 import { useDictation } from "@/hooks/use_dictation";
 import { clockTime, displayPosition, freshPlayback, parsePlayback, type Playback } from "@/lib/cinema-companion";
-import { XRAY_LENGTH_DEFAULT, XRAY_LENGTHS, type XrayIdentity, type XrayKind, type XrayLength, type XrayMessage } from "@/lib/cinema-xray";
-import { SegmentedControl } from "@/components/ui/segmented_control";
+import { type XrayIdentity, type XrayKind, type XrayLength, type XrayMessage } from "@/lib/cinema-xray";
 import type { BridgeStatus } from "@/lib/server/cinema-xray";
 
 /**
@@ -49,12 +48,8 @@ const BRIDGE_HINT: Record<BridgeStatus["stage"], string | null> = {
   stremio: null,
 };
 
-const LENGTH_KEY = "xray-answer-length";
-const LENGTH_OPTIONS = [{ value: "kort", label: "Kort" }, { value: "normaal", label: "Normaal" }, { value: "lang", label: "Lang" }] as const;
-/** Keuze Kort · Normaal · Lang voor de antwoorden (segmentknop `tone="cinema"`, op het donkere doek). */
-function LengthToggle({ x, className }: { x: X; className?: string }) {
-  return <SegmentedControl options={LENGTH_OPTIONS} value={x.length} onChange={x.setLength} ariaLabel="Lengte van de antwoorden" tone="cinema" fill={false} className={className} />;
-}
+/** Antwoorden altijd lang: de keuze Kort · Normaal · Lang is weg. */
+const ANSWER_LENGTH: XrayLength = "lang";
 
 const icon = (path: React.ReactNode, size = 18, fill = false) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill ? "currentColor" : "none"} stroke={fill ? "none" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{path}</svg>
@@ -105,9 +100,6 @@ function useXray(active: boolean, testStart = false) {
   const [state, setState] = React.useState<XrayState | null>(null);
   const receivedAt = React.useRef(0);
   // Lengte van de antwoorden (Kort · Normaal · Lang), onthouden per toestel.
-  const [length, setLengthState] = React.useState<XrayLength>(XRAY_LENGTH_DEFAULT);
-  React.useEffect(() => { try { const v = localStorage.getItem(LENGTH_KEY); if (XRAY_LENGTHS.includes(v as XrayLength)) setLengthState(v as XrayLength); } catch { /* geen opslag */ } }, []);
-  const setLength = (v: XrayLength) => { setLengthState(v); try { localStorage.setItem(LENGTH_KEY, v); } catch { /* geen opslag */ } };
   const testPlayback = test ? state?.playback ?? null : null;
   const playback = test ? testPlayback : real.playback;
   const live = test ? !!testPlayback : real.live;
@@ -157,7 +149,7 @@ function useXray(active: boolean, testStart = false) {
     if (busy) return;
     setBusy(kind); setError("");
     try {
-      const m: XrayMessage = await post({ action: "ask", kind, question, length, ...(spoilers ? { spoilers: true } : {}) });
+      const m: XrayMessage = await post({ action: "ask", kind, question, length: ANSWER_LENGTH, ...(spoilers ? { spoilers: true } : {}) });
       setState(s => s ? { ...s, messages: [...s.messages.filter(x => x.id !== m.id), m] } : s);
     } catch (e) { fail(e, "X-Ray is even niet bereikbaar."); }
     finally { setBusy(null); }
@@ -231,7 +223,7 @@ function useXray(active: boolean, testStart = false) {
     })();
     return () => { stop = true; };
   }, [active, token, warmFor, test]);
-  return { state, playback, live, now, position, error, busy, rewinding, toast, playing, pending, ask, rewind, playPause, stop, setError, transcribe, test, starting, startTest, signedOut, length, setLength, post, demo: false };
+  return { state, playback, live, now, position, error, busy, rewinding, toast, playing, pending, ask, rewind, playPause, stop, setError, transcribe, test, starting, startTest, signedOut, post, demo: false };
 }
 
 type X = ReturnType<typeof useXray>;
@@ -290,13 +282,13 @@ function PlayButton({ x, size = 64 }: { x: X; size?: number }) {
   );
 }
 
-function RewindButtons({ x, stretch }: { x: X; stretch?: boolean }) {
+function RewindButtons({ x, stretch, minus }: { x: X; stretch?: boolean; minus?: boolean }) {
   return (
     <>
       {[1, 2, 5].map(m => (
         <button key={m} type="button" aria-label={`${m} minuut terug in Stremio`} disabled={!!x.rewinding} onClick={() => void x.rewind(m)}
           className={cn(glassPill, "h-11 whitespace-nowrap px-4 text-[14px] font-bold", x.rewinding === m ? "bg-fixed-white !text-[var(--cinema-screen)]" : "bg-fixed-white/[0.12] [@media(hover:hover)]:hover:bg-fixed-white/20", stretch && "flex-1 px-2")}>
-          {icon(ICONS.rewind, 16)}{m} min
+          {minus ? `−${m} min` : <>{icon(ICONS.rewind, 16)}{m} min</>}
         </button>
       ))}
     </>
@@ -304,10 +296,17 @@ function RewindButtons({ x, stretch }: { x: X; stretch?: boolean }) {
 }
 
 /** «Stop» = hele bioscoop af. Eerst bevestigen: dit brengt het scherm omlaag en zet de projector uit. */
-function StopButton({ x, compact, stacked }: { x: X; compact?: boolean; stacked?: boolean }) {
+function StopButton({ x, compact, stacked, round }: { x: X; compact?: boolean; stacked?: boolean; round?: boolean }) {
   const [confirm, setConfirm] = React.useState(false);
   React.useEffect(() => { if (!confirm) return; const t = setTimeout(() => setConfirm(false), 6000); return () => clearTimeout(t); }, [confirm]);
-  if (x.pending === "stop") return <span className={cn(glassPill, "h-11 bg-fixed-white/[0.12] px-4 text-[14px] font-bold")}>Stoppen…</span>;
+  if (x.pending === "stop") return round
+    ? <span className={cn(glassPill, "size-14 bg-fixed-white/[0.12]")} aria-label="Stoppen…"><span className="size-5 rounded-full border-2 border-current border-t-transparent motion-safe:animate-spin" aria-hidden /></span>
+    : <span className={cn(glassPill, "h-11 bg-fixed-white/[0.12] px-4 text-[14px] font-bold")}>Stoppen…</span>;
+  if (round && !confirm) return (
+    <button type="button" onClick={() => setConfirm(true)} aria-label="Bioscoop stoppen: scherm omlaag, projector uit" className={cn(glassPill, "size-14 shrink-0 bg-fixed-white/[0.12] [@media(hover:hover)]:hover:bg-fixed-white/20")}>
+      {icon(ICONS.stop, 18, true)}
+    </button>
+  );
   return confirm ? (
     <span className={cn("inline-flex items-center gap-1.5", stacked && "flex-col items-stretch")}>
       <button type="button" onClick={() => { setConfirm(false); void x.stop(); }} className={cn(glassPill, "h-11 bg-[var(--cinema-velvet)] px-4 text-[14px] font-extrabold shadow-none")}>
@@ -423,17 +422,17 @@ function VoiceAsk({ x, id, layout }: { x: X; id: string; layout: "tablet" | "pho
   const cancel = () => { cancelled.current = true; setHeard(""); dictation.cancel(); };
   const keyboard = (
     <button type="button" onClick={() => setTyping(true)} aria-label="Typ je vraag"
-      className={cn(glassPill, "size-[52px] shrink-0", phone ? "bg-fixed-white/[0.12]" : "bg-[color-mix(in_srgb,var(--cinema-screen)_40%,transparent)] backdrop-blur-[16px]")}>
-      {icon(ICONS.keyboard, 20)}
+      className={cn(glassPill, "shrink-0", phone ? "size-16 bg-fixed-white/[0.12]" : "size-[52px] bg-[color-mix(in_srgb,var(--cinema-screen)_40%,transparent)] backdrop-blur-[16px]")}>
+      {icon(ICONS.keyboard, phone ? 28 : 20)}
     </button>
   );
   const langPill = dictation.chooseLang ? (
     <button type="button" onClick={() => dictation.setLang(dictation.lang === "nl" ? "en" : "nl")}
       aria-label={`Taal van de microfoon: ${dictation.lang === "nl" ? "Nederlands" : "Engels"}. Tik om te wisselen.`}
-      className={cn(glassPill, "size-[52px] shrink-0 text-[13px] font-extrabold tracking-wide", phone ? "bg-fixed-white/[0.12]" : "bg-[color-mix(in_srgb,var(--cinema-screen)_40%,transparent)] backdrop-blur-[16px]")}>
+      className={cn(glassPill, "shrink-0 text-[13px] font-extrabold tracking-wide", phone ? "size-16 bg-fixed-white/[0.12]" : "bg-[color-mix(in_srgb,var(--cinema-screen)_40%,transparent)] backdrop-blur-[16px]")}>
       {dictation.lang === "nl" ? "NL" : "EN"}
     </button>
-  ) : <span className="size-[52px] shrink-0" aria-hidden />;
+  ) : <span className={cn("shrink-0", phone ? "size-16" : "size-[52px]")} aria-hidden />;
 
   if (typing || !dictation.supported) {
     return (
@@ -477,7 +476,7 @@ function VoiceAsk({ x, id, layout }: { x: X; id: string; layout: "tablet" | "pho
       <div className="flex flex-col gap-4">
         {listening}
         <div className="flex items-center justify-between">
-          {live ? <button type="button" onClick={cancel} className={cn(glassPill, "h-11 w-[88px] shrink-0 bg-fixed-white/[0.12] text-[14px] font-bold")}>Annuleer</button> : keyboard}
+          {live ? <button type="button" onClick={cancel} className={cn(glassPill, "h-12 w-[88px] shrink-0 bg-fixed-white/[0.12] text-[14px] font-bold")}>Annuleer</button> : keyboard}
           <div className="flex flex-col items-center gap-2.5">{button}<span className="text-[13px] font-extrabold">{hint}</span></div>
           {live ? <span className="w-[88px] shrink-0" aria-hidden /> : langPill}
         </div>
@@ -806,7 +805,6 @@ export function XrayTablet({ x, onBack }: { x: X; onBack: () => void }) {
             <div className={cn("flex min-h-0 flex-col gap-3 rounded-[22px] p-4", smokeGlass)}>
               <div className="flex items-center gap-2">
                 <h2 className="text-[15px] font-extrabold">X-Ray</h2>
-                <LengthToggle x={x} className="ml-auto" />
               </div>
               <Conversation x={x} hint={false} />
             </div>
@@ -835,7 +833,7 @@ export function XrayPhone({ x, onBack }: { x: X; onBack: () => void }) {
           </div>
         </div>
       </div>
-      <div className="flex flex-1 flex-col gap-4 px-4 pb-[calc(16px+env(safe-area-inset-bottom,0px))] pt-4">
+      <div className="flex flex-1 flex-col gap-4 px-4 pt-4">
         <div className="flex flex-col gap-2">
           <div className="text-[12px] font-extrabold uppercase tracking-[.08em] text-[var(--cinema-rose)]">{eyebrow}</div>
           <h1 className="text-[30px] font-extrabold leading-none tracking-[-.02em]">{title}</h1>
@@ -846,11 +844,11 @@ export function XrayPhone({ x, onBack }: { x: X; onBack: () => void }) {
               {p.durationMs > 0 && <span className="whitespace-nowrap text-fixed-white/60">nog {clockTime(p.durationMs - x.position)}</span>}
             </div>
           )}
-          <div className="mt-1 flex items-center gap-1.5 [&>button:not(:first-child)]:px-1 [&>button:not(:first-child)]:text-[13px]">
-            <PlayButton x={x} size={52} />
-            <RewindButtons x={x} stretch />
+          <div className="mt-1 flex items-center gap-3">
+            <PlayButton x={x} size={56} />
+            <StopButton x={x} round />
           </div>
-          <div className="flex justify-end"><StopButton x={x} compact /></div>
+          <div className="flex gap-2"><RewindButtons x={x} stretch minus /></div>
         </div>
         {!hasMessages && !x.error && (
           <div className="flex flex-1 flex-col items-center justify-center gap-1.5 text-center">
@@ -859,11 +857,7 @@ export function XrayPhone({ x, onBack }: { x: X; onBack: () => void }) {
           </div>
         )}
         <Conversation x={x} className={hasMessages || x.error ? "" : "hidden"} hint={false} />
-        <div className="sticky bottom-0 -mx-4 flex flex-col gap-3 bg-[var(--cinema-screen)] px-4 pb-[calc(4px+env(safe-area-inset-bottom,0px))] pt-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[12px] font-extrabold tracking-[.06em] text-fixed-white/55">ANTWOORD</span>
-            <LengthToggle x={x} />
-          </div>
+        <div className="sticky bottom-0 -mx-4 bg-[var(--cinema-screen)] px-4 pb-[max(8px,calc(env(safe-area-inset-bottom,0px)-14px))] pt-2">
           <VoiceAsk x={x} id="xray-gsm-vraag" layout="phone" />
         </div>
       </div>
