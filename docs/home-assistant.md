@@ -1,5 +1,12 @@
 # Home Assistant on the Raspberry Pi
 
+## Sneller starten en netjes afsluiten, bridge 1.34.1 (2026-11-20)
+
+`adb_ready` now waits until a real ADB call (`echo adb-ready`) answers, every 2 s for at most 90 s, instead of only
+waiting for the Android TV entity to look available (right after waking it came and went, and the bridge even reloaded
+it, so the first `am start` failed and the retry came 15 s later). The retry after `tv-play` waits 5 s instead of 15 s.
+On Home Assistant stop the LED strip loop is cancelled (it warned «was still running after final writes shutdown stage»).
+
 ## SONOFF-knop lang indrukken: willekeurige seizoensambience, bridge 1.34.0 (2026-11-20)
 
 The bridge listens to `zha_event` itself (no automation change): button `8c:73:da:ff:fe:ef:e8:89`, command `off` (long

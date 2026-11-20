@@ -43,7 +43,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.34.0'
+BRIDGE_VERSION = '1.34.1'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
@@ -379,13 +379,17 @@ async def async_setup(hass, config):
                                                                  'payload': {'at': now, 'width': width, 'height': height, 'brightness': brightness, 'jpeg': jpeg, 'version': BRIDGE_VERSION}})
 
     async def adb_ready():
-        # Just after waking, the Android TV (ADB) entity is still unavailable for a while: wait for it (max 60 s),
-        # then retry a failing call a few times instead of giving up on the first one.
-        deadline = time.monotonic() + 60
+        # Just after waking, the projector boots and Home Assistant's Android TV (ADB) entity comes and goes (it may even
+        # be reloaded). Wait until a real ADB call answers (max 90 s, every 2 s) instead of trying once and waiting 15 s.
+        deadline = time.monotonic() + 90
         while True:
             state = hass.states.get(ADB_PLAYER)
             if state and state.state not in ('unavailable', 'unknown'):
-                return
+                try:
+                    if 'adb-ready' in await adb('echo adb-ready'):
+                        return
+                except Exception:
+                    pass
             if time.monotonic() >= deadline:
                 raise RuntimeError('adb-not-ready')
             await asyncio.sleep(2)
@@ -563,7 +567,7 @@ async def async_setup(hass, config):
                     break
                 except Exception as failure:
                     _LOGGER.warning('Ambience projector after TV play failed (attempt %s): %s', attempt + 1, failure if isinstance(failure, RuntimeError) else repr(failure)[:200])
-                    await asyncio.sleep(15)
+                    await asyncio.sleep(5)
 
     async def tv_playback(action):
         if await samsung_power(hass) != 'on':
@@ -933,6 +937,9 @@ async def async_setup(hass, config):
     async def shutdown(_event):
         unsubscribe()
         unsubscribe_button()
+        # The LED strip loop is not needed while Home Assistant stops (it warned about delaying the shutdown).
+        if light_task[0] and not light_task[0].done():
+            light_task[0].cancel()
         task.cancel()
         watcher.cancel()
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, shutdown)
