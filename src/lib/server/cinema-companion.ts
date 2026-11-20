@@ -32,6 +32,14 @@ export async function current(owner: string) {
   const matched = !!playback && track?.sessionId === playback.sessionId && track.fingerprint === playback.streamFingerprint && track.confirmed;
   return { bridge, playback, settings, end, track, matched, live: freshPlayback(playback) };
 }
+/** Enkel de projectorstatus (twee opzoekingen), voor wie instellingen, validatie en ondertitelspoor niet nodig heeft. */
+export async function currentPlayback(owner: string) {
+  const bridge = await ownerBridge(owner);
+  const rows = bridge ? await database().query({ cinemaPlayback: { $: { where: { id: bridge.id } } } }) : null;
+  const row = rows?.cinemaPlayback[0];
+  const playback = row?.ownerId === owner ? parsePlayback(row.payload) : null;
+  return { playback, live: freshPlayback(playback) };
+}
 /** Only names and portraits; never episode overview, still, biography, or future roles. */
 export async function episodeCast(p: Playback) {
   if (!p.imdbId) return { title: p.title, cast: [] as { name: string; character: string; photo: string | null }[] };

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { getInstantAdminDb, isRateLimited } from "./instant-admin";
-import { companionId, current, getData, putData } from "./cinema-companion";
+import { companionId, current, currentPlayback, getData, putData } from "./cinema-companion";
 import { enqueueProjector, ownerBridge } from "./projector-relay";
 import { loadStremio } from "./stremio-store";
 import { readStremioProgress } from "./stremio-cloud";
@@ -116,14 +116,15 @@ export async function titleInfo(id: XrayIdentity): Promise<TitleInfo> {
   const img = (path: unknown, size: string) => typeof path === "string" && /^\/[a-zA-Z0-9_.-]+$/.test(path) ? `https://image.tmdb.org/t/p/${size}${path}` : null;
   const info: TitleInfo = { tmdbId: t.id, name: String(t.name ?? t.title ?? id.title).slice(0, 200), backdrop: img(t.backdrop_path, "w1280"), poster: img(t.poster_path, "w342"), episodeTitle: null, seasons: [] };
   if (id.type === "series") {
-    const tv = await fetch(`${TMDB_BASE}/tv/${t.id}`, opts).then(r => r.ok ? r.json() : null).catch(() => null);
+    // Serie en aflevering hangen enkel van het TMDB-nummer af: tegelijk ophalen.
+    const [tv, ep] = await Promise.all([
+      fetch(`${TMDB_BASE}/tv/${t.id}`, opts).then(r => r.ok ? r.json() : null).catch(() => null),
+      id.season && id.episode ? fetch(`${TMDB_BASE}/tv/${t.id}/season/${id.season}/episode/${id.episode}`, opts).then(r => r.ok ? r.json() : null).catch(() => null) : null,
+    ]);
     info.seasons = Array.isArray(tv?.seasons)
       ? tv.seasons.flatMap((s: { season_number?: number; episode_count?: number }) => Number.isSafeInteger(s.season_number) && (s.season_number ?? 0) > 0 && Number.isSafeInteger(s.episode_count) ? [{ season: s.season_number!, episodes: s.episode_count! }] : [])
       : [];
-    if (id.season && id.episode) {
-      const ep = await fetch(`${TMDB_BASE}/tv/${t.id}/season/${id.season}/episode/${id.episode}`, opts).then(r => r.ok ? r.json() : null).catch(() => null);
-      info.episodeTitle = typeof ep?.name === "string" ? ep.name.slice(0, 200) : null;
-    }
+    info.episodeTitle = typeof ep?.name === "string" ? ep.name.slice(0, 200) : null;
   }
   await putData("metadata", key, info, 7 * 86400_000);
   return info;
@@ -652,14 +653,23 @@ export async function askXray(owner: string, kind: XrayKind, question: string | 
 
 export type BridgeStatus = { stage: "projector-off" | "adb-failed" | "no-stremio-session" | "stremio" | "publish-failed"; appId: string | null; playerState: string | null; error: string | null; at: number; version: string };
 export async function xrayState(owner: string, test = false) {
-  const s = await (test ? testCurrent : current)(owner), p = s.playback;
+  // Enkel de projectorstatus ophalen (de zware `current` leest ook instellingen en ondertitelspoor, hier ongebruikt).
+  const s = test ? await testCurrent(owner) : await currentPlayback(owner), p = s.playback;
   // Niets live: zeg wat de Pi ziet (record «bridge-status», bridge ≥ 1.20.0), zodat duidelijk is waarom er niets verschijnt.
-  const status = !test && !s.live ? await getData<BridgeStatus>(owner, "bridge-status").catch(() => null) : null;
-  const bridge = status && Date.now() - status.at < 180_000 ? status : null;
-  if (!p) return { playback: null, live: false, identity: null, info: null, messages: [], hidden: 0, aiConfigured: !!process.env.GEMINI_API_KEY, bridge };
+  if (!p) {
+    const status = !test && !s.live ? await getData<BridgeStatus>(owner, "bridge-status").catch(() => null) : null;
+    const bridge = status && Date.now() - status.at < 180_000 ? status : null;
+    return { playback: null, live: false, identity: null, info: null, messages: [], hidden: 0, aiConfigured: !!process.env.GEMINI_API_KEY, bridge };
+  }
+  const bridgeLookup = !test && !s.live ? getData<BridgeStatus>(owner, "bridge-status").catch(() => null) : Promise.resolve(null);
   const id = await identify(owner, p).catch(() => null);
-  const info = id ? await titleInfo(id).catch(() => null) : null;
-  const all = id ? await readXrayMessages(owner, id) : [];
+  // Titelinfo (TMDB) en gesprek zijn onafhankelijk van elkaar: tegelijk ophalen.
+  const [info, all, status] = await Promise.all([
+    id ? titleInfo(id).catch(() => null) : null,
+    id ? readXrayMessages(owner, id) : [],
+    bridgeLookup,
+  ]);
+  const bridge = status && Date.now() - status.at < 180_000 ? status : null;
   const cutoff = xrayCutoff(p, Date.now());
   const messages = all.filter(m => m.contextEndMs <= cutoff + 30_000);
   return { playback: p, live: s.live, identity: id, info, messages, hidden: all.length - messages.length, aiConfigured: !!process.env.GEMINI_API_KEY, position: displayPosition(p), test, bridge };

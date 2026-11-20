@@ -71,6 +71,18 @@ const ICONS = {
   keyboard: <><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" /></>,
 };
 
+const XRAY_CACHE_KEY = "xray-state-cache";
+function saveXrayCache(v: XrayState) {
+  if (!v.playback || !v.identity) return;
+  try { window.localStorage.setItem(XRAY_CACHE_KEY, JSON.stringify(v)); } catch { /* opslag vol of geblokkeerd */ }
+}
+function readXrayCache(sessionId: string): XrayState | null {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(XRAY_CACHE_KEY) ?? "null") as XrayState | null;
+    return v?.playback?.sessionId === sessionId && v.identity ? v : null;
+  } catch { return null; }
+}
+
 /** Live projectorstatus (compact record, owner-only). Een korte hapering van de Pi (tot 60 s) telt nog als «live». */
 export function useLivePlayback() {
   const { user } = db.useAuth();
@@ -119,6 +131,7 @@ function useXray(active: boolean, testStart = false) {
       const v: XrayState = await r.json();
       if (!r.ok) return;
       receivedAt.current = Date.now();
+      if (!test) saveXrayCache(v);
       // Titel en cover nooit laten wegvallen door één mislukte herkenning tijdens dezelfde sessie.
       setState(prev => {
         const same = prev?.playback?.sessionId && prev.playback.sessionId === v.playback?.sessionId;
@@ -126,6 +139,15 @@ function useXray(active: boolean, testStart = false) {
       });
     } catch { /* volgende poging */ }
   }, [token, test]);
+  // Meteen tonen wat er vorige keer van deze sessie was (titel, cover, gesprek); de verse gegevens komen er na enkele ogenblikken over.
+  const cachedFor = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    const sid = real.playback?.sessionId;
+    if (test || !sid || cachedFor.current === sid) return;
+    cachedFor.current = sid;
+    const cached = readXrayCache(sid);
+    if (cached) setState(prev => prev ?? cached);
+  }, [real.playback?.sessionId, test]);
   const sessionKey = `${playback?.sessionId ?? ""}`;
   const jumpKey = playback ? Math.floor(playback.positionMs / 30_000) : 0;
   React.useEffect(() => { if (!active) return; void load(); const t = setInterval(() => { if (!document.hidden) void load(); }, 20_000); return () => clearInterval(t); }, [active, load, sessionKey]);
