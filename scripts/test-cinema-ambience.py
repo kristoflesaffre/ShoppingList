@@ -93,6 +93,17 @@ class FrameColorTests(unittest.TestCase):
         color, _ = ambience.frame_color(self.png((90, 85, 85)))
         self.assertGreater(min(color), 200)
 
+    def test_bottom_of_the_scene_wins_and_colours_do_not_mix(self):
+        import io
+        from PIL import Image
+        image = Image.new('RGB', (96, 54), (60, 110, 200))  # blue sky
+        image.paste((230, 110, 30), (0, 30, 96, 54))  # orange fire, low in the picture, under the TV
+        out = io.BytesIO()
+        image.save(out, 'PNG')
+        color, _ = ambience.frame_color(base64.b64encode(out.getvalue()).decode())
+        self.assertGreater(color[0], 200)
+        self.assertLess(color[2], 40)
+
     def test_black_picture_gives_no_colour(self):
         self.assertIsNone(ambience.frame_color(self.png((5, 5, 5))))
 

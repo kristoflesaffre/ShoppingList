@@ -183,12 +183,20 @@ def remote_entity(hass, media_player):
     return None
 
 
+HUE_BINS = 12
+NEUTRAL_SAT = 0.18
+
+
 def frame_color(png_base64):
     """Screenshot of the projector (PNG, base64) -> ((r, g, b), brightness 0-1), or None when the picture is (nearly)
-    black. Runs in the executor. Every lit pixel counts by its brightness, colourful pixels a bit more (at most 2.5x a
-    grey one), so a few warm lights in a snowy, mostly white video no longer turn the strip red; the black TV mask and
-    dark corners are skipped. The average keeps its own saturation (only a little stronger): a white scene gives a
-    near-white strip, a fire gives orange."""
+    black. Runs in the executor.
+
+    The LED strip sits under the TV, so the bottom of the scene counts most: the projection stops at the TV's lower edge,
+    so that is the band left and right of the TV, low in the picture (row weight 0.15 at the top -> 1 at the bottom).
+    Instead of an average (blue sky + orange fire = a muddy pink that is nowhere in the picture) it picks the main
+    colour: lit pixels go into 12 hue groups of 30 degrees or a «white/grey» group, the strongest group (with its two
+    neighbours, so a colour on a boundary is not split) wins, and the strip gets the average of just those pixels. A
+    colourful group gets a small bonus over white; the black TV mask and dark corners are skipped."""
     import colorsys
     import io
     from PIL import Image
@@ -197,30 +205,48 @@ def frame_color(png_base64):
         image = Image.open(io.BytesIO(raw)).convert('RGB').resize((48, 27))
     except Exception:
         return None
-    total = [0.0, 0.0, 0.0]
-    weight_sum = 0.0
-    values = []
-    for r, g, b in image.getdata():
+    width, height = image.size
+    groups = {}  # hue bin (or 'white') -> [weight, r, g, b] in linear light
+    level_sum = 0.0
+    level_weight = 0.0
+    lit = 0
+    for index, (r, g, b) in enumerate(image.getdata()):
         high = max(r, g, b)
         if high < 30:
             continue
-        sat = (high - min(r, g, b)) / high
-        val = high / 255
-        weight = val * (0.4 + 0.6 * sat)
-        # Linear light, so bright areas count as bright as they look.
-        total[0] += (r / 255) ** 2.2 * weight
-        total[1] += (g / 255) ** 2.2 * weight
-        total[2] += (b / 255) ** 2.2 * weight
-        weight_sum += weight
-        values.append(val)
-    if weight_sum <= 0 or len(values) < 20:
+        lit += 1
+        y = (index // width + 0.5) / height
+        row = 0.15 + 0.85 * y * y
+        h, sat, val = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+        level_sum += val * row
+        level_weight += row
+        key = 'white' if sat < NEUTRAL_SAT else int(h * HUE_BINS) % HUE_BINS
+        weight = row * val * (1.0 if key == 'white' else 1.0 + sat)
+        group = groups.setdefault(key, [0.0, 0.0, 0.0, 0.0])
+        group[0] += weight
+        group[1] += (r / 255) ** 2.2 * weight
+        group[2] += (g / 255) ** 2.2 * weight
+        group[3] += (b / 255) ** 2.2 * weight
+    if lit < 20 or not groups:
         return None
-    r, g, b = ((c / weight_sum) ** (1 / 2.2) for c in total)
+
+    def members(key):
+        if key == 'white':
+            return ['white']
+        return [(key + step) % HUE_BINS for step in (-1, 0, 1)]
+
+    def strength(key):
+        return sum(groups[k][0] for k in members(key) if k in groups)
+
+    best = max(groups, key=strength)
+    chosen = [groups[k] for k in members(best) if k in groups]
+    total = sum(c[0] for c in chosen)
+    r, g, b = ((sum(c[i] for c in chosen) / total) ** (1 / 2.2) for i in (1, 2, 3))
     h, s, v = colorsys.rgb_to_hsv(r, g, b)
-    s = 0.0 if s < 0.06 else min(1.0, s * 1.25)
+    # White stays white (with its faint tint); a colour gets a clear but not neon saturation.
+    s = min(s, 0.12) if best == 'white' else min(1.0, max(0.55, s * 1.3))
     r, g, b = colorsys.hsv_to_rgb(h, s, 1.0)
-    level = sum(values) / len(values)
-    return (round(r * 255), round(g * 255), round(b * 255)), level
+    return (round(r * 255), round(g * 255), round(b * 255)), level_sum / level_weight
 
 
 def color_distance(a, b):

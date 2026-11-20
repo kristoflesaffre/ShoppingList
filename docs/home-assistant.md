@@ -1,12 +1,22 @@
 # Home Assistant on the Raspberry Pi
 
+## Ledkleur: hoofdkleur van de onderkant van de scène, bridge 1.34.3 (2026-11-20)
+
+The LED strip sits under the TV, and the projection stops at the TV's lower edge, so `frame_color` weighs rows by height
+(0.15 at the top -> 1 at the bottom): the band left and right of the TV, low in the picture, decides. It no longer
+averages (blue sky + orange fire gave a muddy pink): lit pixels go into 12 hue groups of 30 degrees or «white/grey»
+(saturation < 0.18), the strongest group with its two neighbours wins (colourful pixels get up to 2x), and the strip gets
+the average of only those pixels; white stays white (saturation at most 0.12), a colour gets 0.55-1. Saved frames:
+Christmas fire and autumn orange, a purple glow purple, a snowy scene with a few warm lights white, blue sky over a fire
+orange. Replaces 1.34.2 (never installed). Install: `outputs/cinema-bridge-1.34.3-install.txt`.
+
 ## Ledkleur volgt witte beelden, bridge 1.34.2 (2026-11-20)
 
 `frame_color` weighed colourful pixels up to 20x more than grey ones and then pushed the saturation up (+0.1 floor), so
 a mostly white or grey scene with a few warm lights gave a pink or red strip. Now every lit pixel counts by its
 brightness, colourful ones at most 2.5x more, averaged in linear light; the saturation is only raised 1.25x and a near
 neutral average (< 0.06) stays white. On the saved projector frames: fires and autumn stay orange, the grey Google TV
-home goes from pink (255, 178, 183) to near white (255, 231, 235). Install: `outputs/cinema-bridge-1.34.2-install.txt`.
+home goes from pink (255, 178, 183) to near white (255, 231, 235).
 
 ## Sneller starten en netjes afsluiten, bridge 1.34.1 (2026-11-20)
 
