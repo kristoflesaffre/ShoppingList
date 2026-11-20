@@ -207,5 +207,7 @@ export function useDictation({ onText, onError, transcribe }: {
   };
 
   const stop = () => stopRef.current?.();
-  return { status, level, lang, setLang, supported: supported.any, chooseLang: supported.browser && !browserBlocked.current, start, stop };
+  /** Stoppen zonder tekst door te geven (knop «Annuleer»). */
+  const cancel = () => { cancelRef.current?.(); cancelRef.current = null; stopRef.current = null; setLevel(0); setStatus("idle"); };
+  return { status, level, lang, setLang, supported: supported.any, chooseLang: supported.browser && !browserBlocked.current, start, stop, cancel };
 }

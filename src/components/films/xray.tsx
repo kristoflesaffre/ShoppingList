@@ -14,36 +14,13 @@ import type { BridgeStatus } from "@/lib/server/cinema-xray";
 /**
  * X-Ray tijdens het afspelen (canvas «X-Ray · A2» en «X-Ray · gsm · variant 4 Ladder»).
  * De cover staat volledig in beeld, zonder vervaging: op tablet schermvullend met de bediening in glazen panelen,
- * op gsm bovenaan in 16:9. Bediening: grote play/pauze, 1 · 2 · 5 min terug, «Stop» (hele bioscoop af), snelle vragen
- * (serie of film) en een chat. Alles past binnen het scherm, ook met de veilige zones van een iPad.
+ * op gsm bovenaan in 16:9. Bediening: grote play/pauze, 1 · 2 · 5 min terug, «Stop» (hele bioscoop af) en een chat
+ * met een grote microfoon (canvas «X-Ray · Grote microfoon» A): tik, praat, stil = versturen. Alles past binnen het scherm, ook met de veilige zones van een iPad.
  */
 
 type XrayInfo = { tmdbId?: number | null; name: string; backdrop: string | null; poster: string | null; episodeTitle: string | null } | null;
 type CastMember = { name: string; character: string; profileUrl: string | null };
 type XrayState = { playback: Playback | null; live: boolean; identity: XrayIdentity | null; info: XrayInfo; messages: XrayMessage[]; hidden: number; aiConfigured: boolean; test?: boolean; bridge?: BridgeStatus | null };
-type QuickKind = Exclude<XrayKind, "vraag">;
-type Question = { kind: QuickKind; label: string; short: string; scope: string };
-
-const SERIES_QUESTIONS: Question[] = [
-  { kind: "net", label: "Wat is er net gebeurd?", short: "Net gebeurd", scope: "Laatste 2 minuten" },
-  { kind: "afl", label: "Wat is er tot hier in de aflevering gebeurd?", short: "Deze aflevering", scope: "Van het begin tot nu" },
-  { kind: "seizoen", label: "Wat is er tot hier in het seizoen gebeurd?", short: "Dit seizoen", scope: "Vorige afleveringen + nu" },
-  { kind: "eerder", label: "Wat moet ik weten uit vorige afleveringen?", short: "Vorige afleveringen", scope: "Alles wat eraan voorafging" },
-];
-const MOVIE_QUESTIONS: Question[] = [
-  { kind: "net", label: "Wat is er net gebeurd?", short: "Net gebeurd", scope: "Laatste 2 minuten" },
-  { kind: "afl", label: "Wat is er tot hier in de film gebeurd?", short: "De film tot nu", scope: "Van het begin tot nu" },
-  { kind: "wie", label: "Wie is wie tot nu toe?", short: "Wie is wie?", scope: "Personages en hun band" },
-  { kind: "open", label: "Welke vragen staan nog open?", short: "Open vragen", scope: "Wat nog niet duidelijk is" },
-];
-const TONE: Record<QuickKind, string> = {
-  net: "text-[var(--cinema-rose)] bg-[color-mix(in_srgb,var(--cinema-rose)_16%,transparent)]",
-  afl: "text-[var(--cinema-butter)] bg-[color-mix(in_srgb,var(--cinema-butter)_16%,transparent)]",
-  seizoen: "text-[var(--cinema-lavender)] bg-[color-mix(in_srgb,var(--cinema-lavender)_18%,transparent)]",
-  eerder: "text-[var(--cinema-mint)] bg-[color-mix(in_srgb,var(--cinema-mint)_16%,transparent)]",
-  wie: "text-[var(--cinema-lavender)] bg-[color-mix(in_srgb,var(--cinema-lavender)_18%,transparent)]",
-  open: "text-[var(--cinema-mint)] bg-[color-mix(in_srgb,var(--cinema-mint)_16%,transparent)]",
-};
 const ERRORS: Record<string, string> = {
   "no-active-session": "Er speelt nu niets op de projector.",
   "title-unknown": "Ik weet nog niet welke titel er speelt. Open hem in Stremio op de projector; dat duurt soms een minuutje.",
@@ -96,6 +73,7 @@ const ICONS = {
   pause: <><rect x="6.5" y="5" width="4" height="14" rx="1.2" /><rect x="13.5" y="5" width="4" height="14" rx="1.2" /></>,
   stop: <><rect x="6" y="6" width="12" height="12" rx="2" /></>,
   mic: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" /></>,
+  keyboard: <><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" /></>,
 };
 
 /** Live projectorstatus (compact record, owner-only). Een korte hapering van de Pi (tot 60 s) telt nog als «live». */
@@ -376,7 +354,7 @@ function Message({ m, x }: { m: XrayMessage; x: X }) {
 }
 
 /** Vraagveld met microfoon: spreek je vraag in (Nederlands of Engels), de tekst komt in het veld en je verstuurt zelf. */
-function ChatInput({ x, id, floating }: { x: X; id: string; floating?: boolean }) {
+function ChatInput({ x, id, floating, noMic, autoFocus }: { x: X; id: string; floating?: boolean; noMic?: boolean; autoFocus?: boolean }) {
   const [text, setText] = React.useState("");
   const input = React.useRef<HTMLInputElement>(null);
   const dictation = useDictation({
@@ -394,16 +372,16 @@ function ChatInput({ x, id, floating }: { x: X; id: string; floating?: boolean }
           ? "rounded-full bg-[color-mix(in_srgb,var(--cinema-screen)_45%,transparent)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2),0_20px_40px_-18px_rgba(0,0,0,0.7)] backdrop-blur-[18px] backdrop-saturate-[1.2]"
           : "rounded-2xl bg-fixed-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]")}>
       <label htmlFor={id} className="sr-only">Vraag iets over wat je zag</label>
-      <input ref={input} id={id} value={text} onChange={e => setText(e.target.value)} maxLength={600} placeholder={placeholder} enterKeyHint="send" readOnly={live}
+      <input ref={input} id={id} value={text} onChange={e => setText(e.target.value)} maxLength={600} placeholder={placeholder} enterKeyHint="send" readOnly={live} autoFocus={autoFocus}
         className="min-w-0 flex-1 bg-transparent text-[16px] text-fixed-white outline-none placeholder:text-fixed-white/50" />
-      {dictation.supported && dictation.chooseLang && !text && !live && (
+      {!noMic && dictation.supported && dictation.chooseLang && !text && !live && (
         <button type="button" onClick={() => dictation.setLang(dictation.lang === "nl" ? "en" : "nl")}
           aria-label={`Taal van de microfoon: ${dictation.lang === "nl" ? "Nederlands" : "Engels"}. Tik om te wisselen.`}
           className="h-[28px] shrink-0 rounded-full bg-fixed-white/10 px-2.5 text-[12px] font-bold tracking-wide text-fixed-white/75 [@media(hover:hover)]:hover:bg-fixed-white/20">
           {dictation.lang === "nl" ? "NL" : "EN"}
         </button>
       )}
-      {dictation.supported && (
+      {!noMic && dictation.supported && (
         <button type="button" onClick={() => live ? dictation.stop() : dictation.start()} disabled={dictation.status === "transcribing" || !!x.busy}
           aria-label={dictation.status === "transcribing" ? "Bezig met omzetten" : live ? "Stoppen met luisteren" : "Vraag inspreken"} aria-pressed={live}
           className={cn("relative flex size-[38px] shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-60",
@@ -421,6 +399,106 @@ function ChatInput({ x, id, floating }: { x: X; id: string; floating?: boolean }
   );
 }
 
+/**
+ * Grote microfoon (canvas «X-Ray · Grote microfoon» A): tik en praat; ben je even stil, dan gaat de vraag vanzelf weg.
+ * Tijdens het luisteren staat je vraag groot erboven, tik op de rode knop = meteen versturen, «Annuleer» = niets.
+ * Het toetsenbordje wisselt naar het gewone vraagveld. Tablet: rechts uitgelijnd (104 px), gsm: in het midden (96 px).
+ */
+function VoiceAsk({ x, id, layout }: { x: X; id: string; layout: "tablet" | "phone" }) {
+  const [typing, setTyping] = React.useState(false);
+  const [heard, setHeard] = React.useState("");
+  const cancelled = React.useRef(false);
+  const dictation = useDictation({
+    onText: (t, final) => {
+      if (cancelled.current) return;
+      setHeard(t.slice(0, 600));
+      if (final) { x.setError(""); setHeard(""); void x.ask("vraag", t.trim().slice(0, 600)); }
+    },
+    onError: message => { setHeard(""); x.setError(message); },
+    transcribe: x.transcribe,
+  });
+  const status = dictation.status, live = status !== "idle";
+  const phone = layout === "phone", size = phone ? 96 : 104;
+  const start = () => { if (x.busy) return; cancelled.current = false; setHeard(""); x.setError(""); dictation.start(); };
+  const cancel = () => { cancelled.current = true; setHeard(""); dictation.cancel(); };
+  const keyboard = (
+    <button type="button" onClick={() => setTyping(true)} aria-label="Typ je vraag"
+      className={cn(glassPill, "size-[52px] shrink-0", phone ? "bg-fixed-white/[0.12]" : "bg-[color-mix(in_srgb,var(--cinema-screen)_40%,transparent)] backdrop-blur-[16px]")}>
+      {icon(ICONS.keyboard, 20)}
+    </button>
+  );
+  const langPill = dictation.chooseLang ? (
+    <button type="button" onClick={() => dictation.setLang(dictation.lang === "nl" ? "en" : "nl")}
+      aria-label={`Taal van de microfoon: ${dictation.lang === "nl" ? "Nederlands" : "Engels"}. Tik om te wisselen.`}
+      className={cn(glassPill, "size-[52px] shrink-0 text-[13px] font-extrabold tracking-wide", phone ? "bg-fixed-white/[0.12]" : "bg-[color-mix(in_srgb,var(--cinema-screen)_40%,transparent)] backdrop-blur-[16px]")}>
+      {dictation.lang === "nl" ? "NL" : "EN"}
+    </button>
+  ) : <span className="size-[52px] shrink-0" aria-hidden />;
+
+  if (typing || !dictation.supported) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1"><ChatInput x={x} id={id} floating={!phone} noMic autoFocus={typing} /></div>
+        {dictation.supported && (
+          <button type="button" onClick={() => { setTyping(false); start(); }} aria-label="Vraag inspreken"
+            className="flex size-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--cinema-rose)] text-[var(--cinema-screen)]">{icon(ICONS.mic, 22, false)}</button>
+        )}
+      </div>
+    );
+  }
+
+  const button = (
+    <button type="button" onClick={() => live ? dictation.stop() : start()} disabled={status === "transcribing" || (!live && !!x.busy)}
+      aria-label={status === "transcribing" ? "Bezig met omzetten" : live ? "Stoppen en versturen" : "Vraag inspreken"} aria-pressed={live}
+      className={cn("relative flex shrink-0 items-center justify-center rounded-full transition-colors motion-safe:active:scale-95 disabled:opacity-60",
+        live ? "bg-[var(--cinema-velvet)] text-fixed-white" : "bg-[var(--cinema-rose)] text-[var(--cinema-screen)] shadow-[0_0_0_8px_color-mix(in_srgb,var(--cinema-rose)_17%,transparent),0_24px_44px_-18px_rgba(0,0,0,0.8)]")}
+      style={{ width: size, height: size }}>
+      {live && <span className="absolute -inset-2 rounded-full bg-[color-mix(in_srgb,var(--cinema-velvet)_30%,transparent)] transition-transform duration-100 motion-reduce:hidden" style={{ transform: `scale(${1 + dictation.level * 0.35})` }} aria-hidden />}
+      {status === "listening" && <span className="absolute inset-0 rounded-full bg-[var(--cinema-velvet)] opacity-40 motion-safe:animate-ping" aria-hidden />}
+      <span className="relative">
+        {status === "transcribing"
+          ? <span className="block size-8 rounded-full border-[3px] border-current border-t-transparent motion-safe:animate-spin" aria-hidden />
+          : live ? icon(ICONS.stop, 28, true)
+          : <svg width={phone ? 40 : 42} height={phone ? 40 : 42} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>}
+      </span>
+    </button>
+  );
+  const hint = status === "transcribing" ? "Even omzetten…" : live ? "Tik = nu versturen" : x.busy ? "X-Ray denkt na…" : "Tik en vraag";
+  const listening = live && (
+    <div className={cn("flex flex-col gap-2", phone ? "" : cn("rounded-[22px] p-4", smokeGlass))} aria-live="polite">
+      <span className="text-[12px] font-extrabold tracking-[.08em] text-[var(--cinema-rose)]">{status === "transcribing" ? "EVEN OMZETTEN…" : "IK LUISTER…"}</span>
+      <p className={cn("font-extrabold tracking-[-.02em]", phone ? "text-[26px] leading-[32px]" : "text-[24px] leading-[30px]", !heard && "text-fixed-white/45")}>{heard || "Stel je vraag"}</p>
+      <span className="text-[13px] font-semibold text-fixed-white/60">Even stil en je vraag gaat vanzelf weg</span>
+    </div>
+  );
+
+  if (phone) {
+    return (
+      <div className="flex flex-col gap-4">
+        {listening}
+        <div className="flex items-center justify-between">
+          {live ? <button type="button" onClick={cancel} className={cn(glassPill, "h-11 w-[88px] shrink-0 bg-fixed-white/[0.12] text-[14px] font-bold")}>Annuleer</button> : keyboard}
+          <div className="flex flex-col items-center gap-2.5">{button}<span className="text-[13px] font-extrabold">{hint}</span></div>
+          {live ? <span className="w-[88px] shrink-0" aria-hidden /> : langPill}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-3.5">
+      {listening}
+      <div className="flex items-center justify-end gap-3.5">
+        <div className="flex flex-col items-end gap-0.5 text-right [text-shadow:0_1px_12px_rgba(0,0,0,0.45)]">
+          <span className="text-[17px] font-extrabold">{hint}</span>
+          {!live && !x.busy && <span className="text-[13px] font-semibold text-fixed-white/75">Stil = versturen</span>}
+        </div>
+        {live ? <button type="button" onClick={cancel} className={cn(glassPill, "h-[52px] shrink-0 bg-[color-mix(in_srgb,var(--cinema-screen)_40%,transparent)] px-4 text-[14px] font-bold backdrop-blur-[16px]")}>Annuleer</button> : <>{dictation.chooseLang && langPill}{keyboard}</>}
+        {button}
+      </div>
+    </div>
+  );
+}
+
 function Conversation({ x, className, hint = true }: { x: X; className?: string; hint?: boolean }) {
   const end = React.useRef<HTMLDivElement>(null);
   const messages = x.state?.messages ?? [];
@@ -429,7 +507,7 @@ function Conversation({ x, className, hint = true }: { x: X; className?: string;
     <div className={cn("flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain", className)} aria-live="polite">
       <div className="mt-auto" />
       {hint && messages.length === 0 && !x.busy && !x.error && (
-        <p className="self-center px-4 text-center text-[14px] leading-[1.5] text-fixed-white/55">Kies een snelle vraag of typ zelf iets over wat je zag. X-Ray kent enkel wat tot nu toe gebeurde.</p>
+        <p className="self-center px-4 text-center text-[14px] leading-[1.5] text-fixed-white/55">Tik op de microfoon en vraag wat je wilt weten. X-Ray kent enkel wat tot nu toe gebeurde.</p>
       )}
       {x.state && x.state.hidden > 0 && (
         <p className="self-center text-center text-[12px] font-semibold text-fixed-white/55">{x.state.hidden} {x.state.hidden === 1 ? "antwoord gaat" : "antwoorden gaan"} over later in het verhaal en {x.state.hidden === 1 ? "is" : "zijn"} even verborgen</p>
@@ -448,7 +526,6 @@ function titleLines(x: X) {
   const eyebrow = id?.type === "series" && id.season && id.episode ? `S${id.season} · A${id.episode}${info?.episodeTitle ? ` · ${info.episodeTitle}` : ""}` : id ? "Film" : "Wordt herkend…";
   return { title, eyebrow };
 }
-const questionsFor = (x: X) => (x.state?.identity?.type === "movie" ? MOVIE_QUESTIONS : SERIES_QUESTIONS);
 
 function Toast({ x }: { x: X }) {
   if (!x.toast) return null;
@@ -671,8 +748,8 @@ function CastOverlay({ cast, onClose }: { cast: CastMember[]; onClose: () => voi
 
 /**
  * Tablet en desktop: canvas «XD · 3 Hoeken». Elk blok in zijn eigen hoek in rookglas, het midden blijft beeld:
- * bediening linksboven (pauze + stop rechtsboven, 1 · 2 · 5 min), cast linksonder met «Alle n», vragen rechtsonder
- * (meteen een vraagveld met microfoon, snelle vragen erboven; het gesprek verschijnt erboven zodra er een is).
+ * bediening linksboven (pauze + stop rechtsboven, 1 · 2 · 5 min), cast linksonder met «Alle n», rechtsonder de grote
+ * microfoon (canvas «X-Ray · Grote microfoon» A; het gesprek verschijnt erboven zodra er een is).
  */
 export function XrayTablet({ x, onBack }: { x: X; onBack: () => void }) {
   const p = x.playback, { title, eyebrow } = titleLines(x);
@@ -723,7 +800,7 @@ export function XrayTablet({ x, onBack }: { x: X; onBack: () => void }) {
         {/* Linksonder: wie er nu in beeld is, «Alle n» en «Gebruik AI» */}
         {cast.length > 0 && <NowInView x={x} cast={cast} onAll={() => setAllCast(true)} />}
 
-        {/* Rechtsonder: vragen, meteen met vraagveld en microfoon */}
+        {/* Rechtsonder: het gesprek en de grote microfoon */}
         <section aria-label="Vraag het X-Ray" className="col-start-3 row-span-2 row-start-1 flex min-h-0 flex-col justify-end gap-2.5">
           {hasConversation && (
             <div className={cn("flex min-h-0 flex-col gap-3 rounded-[22px] p-4", smokeGlass)}>
@@ -734,15 +811,7 @@ export function XrayTablet({ x, onBack }: { x: X; onBack: () => void }) {
               <Conversation x={x} hint={false} />
             </div>
           )}
-          <div className="flex flex-wrap justify-end gap-1.5">
-            {questionsFor(x).map(q => (
-              <button key={q.kind} type="button" disabled={!!x.busy} onClick={() => void x.ask(q.kind)}
-                className={cn(glassPill, "h-[34px] bg-[color-mix(in_srgb,var(--cinema-screen)_40%,transparent)] px-3 text-[13px] font-bold backdrop-blur-[16px] [@media(hover:hover)]:hover:bg-[color-mix(in_srgb,var(--cinema-screen)_60%,transparent)]")}>
-                {icon(ICONS[q.kind], 14)}{x.busy === q.kind ? "Even denken…" : q.short}
-              </button>
-            ))}
-          </div>
-          <ChatInput x={x} id="xray-tablet-vraag" floating />
+<VoiceAsk x={x} id="xray-tablet-vraag" layout="tablet" />
         </section>
       </div>
       {allCast && <CastOverlay cast={cast} onClose={() => setAllCast(false)} />}
@@ -750,11 +819,10 @@ export function XrayTablet({ x, onBack }: { x: X; onBack: () => void }) {
   );
 }
 
-/** Gsm: canvas «X-Ray · gsm · variant 4 Ladder van kort naar lang». Cover volledig bovenaan (16:9). */
+/** Gsm: cover volledig bovenaan (16:9), grote microfoon onderaan (canvas «X-Ray · Grote microfoon» A). */
 export function XrayPhone({ x, onBack }: { x: X; onBack: () => void }) {
   const p = x.playback, { title, eyebrow } = titleLines(x);
   const hasMessages = (x.state?.messages.length ?? 0) > 0 || !!x.busy;
-  const qs = questionsFor(x);
   return (
     <div className="relative flex min-h-dvh flex-col bg-[var(--cinema-screen)] text-fixed-white">
       <Toast x={x} />
@@ -784,42 +852,19 @@ export function XrayPhone({ x, onBack }: { x: X; onBack: () => void }) {
           </div>
           <div className="flex justify-end"><StopButton x={x} compact /></div>
         </div>
-        {hasMessages ? (
-          <div className="-mr-4 flex gap-2 overflow-x-auto pr-4 [scrollbar-width:none]">
-            {qs.map(q => (
-              <button key={q.kind} type="button" disabled={!!x.busy} onClick={() => void x.ask(q.kind)}
-                className={cn(glassPill, "h-9 shrink-0 bg-fixed-white/10 px-3 text-[13px] font-bold")}>
-                {icon(ICONS[q.kind], 15)}{q.short}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[12px] font-extrabold tracking-[.06em] text-fixed-white/55">HOE VER TERUG?</h2>
-              <span className="text-[12px] font-semibold text-fixed-white/45">van kort naar lang</span>
-            </div>
-            <ol className="flex flex-col gap-1.5 rounded-[20px] bg-fixed-white/5 px-3.5 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
-              {qs.map((q, i) => (
-                <li key={q.kind} className="relative">
-                  {i < qs.length - 1 && <span className="absolute bottom-[-14px] left-[17px] top-[44px] w-0.5 bg-fixed-white/15" aria-hidden />}
-                  <button type="button" disabled={!!x.busy} onClick={() => void x.ask(q.kind)} className="flex w-full items-center gap-3.5 py-1.5 text-left disabled:opacity-60">
-                    <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]", TONE[q.kind])}>{icon(ICONS[q.kind], 17)}</span>
-                    <span className="flex flex-1 flex-col gap-0.5"><span className="text-[15px] font-bold leading-tight">{q.short}</span><span className="text-[12px] font-semibold text-fixed-white/55">{q.scope}</span></span>
-                    <span className="text-fixed-white/45">{icon(ICONS.chev, 16)}</span>
-                  </button>
-                </li>
-              ))}
-            </ol>
+        {!hasMessages && !x.error && (
+          <div className="flex flex-1 flex-col items-center justify-center gap-1.5 text-center">
+            <span className="text-[15px] font-bold text-fixed-white/75">Vraag wat je wilt weten</span>
+            <span className="text-[13px] font-semibold text-fixed-white/50">«Wie is die vrouw?» · «Wat is er net gebeurd?»</span>
           </div>
         )}
-        <Conversation x={x} className={hasMessages ? "" : "flex-none"} hint={false} />
-        <div className="sticky bottom-[calc(12px+env(safe-area-inset-bottom,0px))] flex flex-col gap-2">
+        <Conversation x={x} className={hasMessages || x.error ? "" : "hidden"} hint={false} />
+        <div className="sticky bottom-0 -mx-4 flex flex-col gap-3 bg-[var(--cinema-screen)] px-4 pb-[calc(4px+env(safe-area-inset-bottom,0px))] pt-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[12px] font-extrabold tracking-[.06em] text-fixed-white/55">ANTWOORD</span>
             <LengthToggle x={x} />
           </div>
-          <ChatInput x={x} id="xray-gsm-vraag" />
+          <VoiceAsk x={x} id="xray-gsm-vraag" layout="phone" />
         </div>
       </div>
     </div>
@@ -846,7 +891,7 @@ function useDemo(x: X, on: boolean, movie: boolean): X {
     ask: async () => setChat(true), rewind: async () => {}, playPause: async () => setPlaying(v => !v), stop: async () => {}, demo: true };
 }
 
-/** Volledige X-Ray-pagina (`/films-series/nu-kijken`): A2 vanaf tablet, ladder op gsm. */
+/** Volledige X-Ray-pagina (`/films-series/nu-kijken`): A2 vanaf tablet, gsm met grote microfoon. */
 export function XrayPage({ onBack }: { onBack: () => void }) {
   const [demo, setDemo] = React.useState<null | "series" | "movie">(null);
   const [testFromUrl, setTestFromUrl] = React.useState(false);
