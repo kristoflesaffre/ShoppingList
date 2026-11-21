@@ -112,7 +112,7 @@ function ThawHeartbeatSticker({ noteSize }: { noteSize: number }) {
  * (canvas «Diepvries-post-its» A) zijn ijsblauw met een sneeuwvlok en de foto van het gerecht; op de dag van het
  * gerecht blijven ze blauw en komt de sticker in de plaats van de datum. Anders te laat = rood.
  */
-export function TodoPostit({ task, due, index, onCheck, size = 168, thawPhoto = null }: { task: TodoTask; due: TodoDue; index: number; onCheck: (t: TodoTask) => void; size?: number; thawPhoto?: string | null }) {
+export function TodoPostit({ task, due, index, onCheck, size = 168, thawPhoto = null, className }: { task: TodoTask; due: TodoDue; index: number; onCheck: (t: TodoTask) => void; size?: number; thawPhoto?: string | null; className?: string }) {
   const thaw = parseThawMarker(task.description) !== null;
   const photo = thaw ? null : taskPhotoFor(task.content);
   const thawDay = isThawDay(task.description, localIso(new Date()));
@@ -123,7 +123,7 @@ export function TodoPostit({ task, due, index, onCheck, size = 168, thawPhoto = 
   const img = Math.round(size * (photo?.upright ? 0.4 : small ? 0.38 : 0.42));
   const thawImg = Math.round(size * (small ? 0.44 : 0.52));
   return (
-    <div className={cn("relative mt-3 shrink-0 snap-start", thawDay && "z-[1]")} style={{ width: size, height: size, transform: `rotate(${postitTilt(task.id, index)}deg)` }}>
+    <div className={cn("relative mt-3 shrink-0 snap-start", thawDay && "z-[1]", className)} style={{ width: size, height: size, transform: `rotate(${postitTilt(task.id, index)}deg)` }}>
       <div
         className={cn(
           "absolute inset-0 flex flex-col gap-[9px] overflow-hidden px-3.5 pb-3.5 pt-4 shadow-[0_1px_1.5px_rgba(0,0,0,0.16),0_8px_14px_-6px_rgba(40,25,5,0.45)] [[data-theme=dark]_&]:brightness-[0.88]",
@@ -360,7 +360,15 @@ export function DashboardTodoPanel({ height }: { height: number | null }) {
  * Kalender › Agenda (canvas «KC»): de to-do's van vandaag en wat te laat is als losse post-its naast het eten
  * (zonder kurk), met «+ n later deze week». Niets te doen of Todoist niet gekoppeld: niets tonen.
  */
-export function KalenderTodoBoard({ size = 130, className }: { size?: number; className?: string }) {
+/** Zoveel post-its passen in het raster op tablet (3 × 2). */
+const BOARD_MAX = 6;
+
+/**
+ * Kalender: to-do's van vandaag en wat te laat is. Gsm: één veegrij. Vanaf lg (canvas «Kalender · 6 post-its» A,
+ * https://claude.ai/artifact/GDSEhp8zuFYXJZEHSAWLRt): raster van 3 × 2 post-its van 128 px in de kolom van 440 px,
+ * zodat er zes zonder vegen passen; meer dan zes = «+ n meer» naar alle taken.
+ */
+export function KalenderTodoBoard({ size = 128, className }: { size?: number; className?: string }) {
   const { state, sorted: near, closeTask, connect, notice, clearNotice, thawPhotos } = useNearTodos();
   const todayIso = localIso(new Date());
   const sorted = near.filter(({ task }) => (daysUntil(task, todayIso) ?? 1) <= 0);
@@ -390,14 +398,17 @@ export function KalenderTodoBoard({ size = 130, className }: { size?: number; cl
         </Link>
       </div>
       {/* Always-on: het papier is het felste vlak op het scherm, dus extra ontkleurd en gedimd (zoals op het dashboard). */}
-      <div className="-mx-4 flex snap-x items-center gap-4 overflow-x-auto scroll-px-4 px-4 pb-1 pt-1 [scrollbar-width:none] lg:mx-0 lg:px-1 [&::-webkit-scrollbar]:hidden [[data-aod]_&]:[filter:saturate(0.75)_brightness(0.82)]">
+      <div className="-mx-4 flex snap-x items-center gap-4 overflow-x-auto scroll-px-4 px-4 pb-1 pt-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-3 lg:justify-items-center lg:gap-x-4 lg:gap-y-3 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden [[data-aod]_&]:[filter:saturate(0.75)_brightness(0.82)]">
         {sorted.slice(0, 20).map(({ task, due }, i) => (
-          <TodoPostit key={task.id} task={task} due={due} index={i} size={size} thawPhoto={thawPhotos.get(task.id)} onCheck={(t) => void closeTask(t)} />
+          <TodoPostit key={task.id} task={task} due={due} index={i} size={size} thawPhoto={thawPhotos.get(task.id)} onCheck={(t) => void closeTask(t)} className={i >= BOARD_MAX ? "lg:hidden" : undefined} />
         ))}
       </div>
-      {later > 0 ? (
-        <p className="mt-3 text-[13px] font-bold text-[var(--text-secondary)]">
-          + {later} later deze week
+      {later > 0 || sorted.length > BOARD_MAX ? (
+        <p className="mt-3 flex gap-3 text-[13px] font-bold text-[var(--text-secondary)]">
+          {sorted.length > BOARD_MAX ? (
+            <Link href="/todo" className="hidden text-action-primary no-underline lg:inline">+ {sorted.length - BOARD_MAX} meer</Link>
+          ) : null}
+          {later > 0 ? <span>+ {later} later deze week</span> : null}
         </p>
       ) : null}
       <TodoNotice notice={notice} onReconnect={() => void connect()} onClose={clearNotice} />
