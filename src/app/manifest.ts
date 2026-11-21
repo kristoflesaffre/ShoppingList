@@ -28,6 +28,12 @@ export default function manifest(): RecipeShareManifest {
     theme_color: "#f5f6fa",
     icons: [
       {
+        src: "/icons/family-home/splash-1024.png",
+        sizes: "1024x1024",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
         src: "/icons/family-home/app-192.png",
         sizes: "192x192",
         type: "image/png",
