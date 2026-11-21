@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { getInstantAdminDb, isRateLimited } from "./instant-admin";
-import { companionId, current, currentPlayback, getData, putData } from "./cinema-companion";
+import { companionId, current, currentPlayback, getData, getManyData, putData } from "./cinema-companion";
 import { enqueueProjector, ownerBridge } from "./projector-relay";
 import { loadStremio } from "./stremio-store";
 import { readStremioProgress } from "./stremio-cloud";
@@ -322,15 +322,20 @@ function previousEpisodes(info: TitleInfo, season: number, episode: number, same
 }
 async function summaries(owner: string, imdbId: string, eps: { season: number; episode: number }[], ctx?: MemoryContext) {
   const out: { label: string; text: string }[] = [];
-  for (let i = 0; i < eps.length; i += 6) {
-    const batch = await Promise.all(eps.slice(i, i + 6).map(e => episodeSummary(owner, imdbId, e.season, e.episode, ctx).catch(() => null)));
-    out.push(...batch.filter((b): b is { label: string; text: string } => !!b));
+  // Achtergrondwerk mag geen zes gelijktijdige budget-/cache-/ondertitelverzoeken veroorzaken.
+  for (const e of eps) {
+    const summary = await episodeSummary(owner, imdbId, e.season, e.episode, ctx).catch(error => {
+      if (isRateLimited(error) || (error instanceof Error && ["database-busy", "hourly-limit"].includes(error.message))) throw error;
+      return null;
+    });
+    if (summary) out.push(summary);
   }
   return out;
 }
 /** Bestaande geheugens (oudste eerst); de `make` meest recente ontbrekende worden er meteen bij gemaakt. */
 async function knownSummaries(owner: string, imdbId: string, eps: { season: number; episode: number }[], make: number, ctx?: MemoryContext) {
-  const cached = await Promise.all(eps.map(async e => ({ e, c: await getData<{ text: string }>("metadata", memoryKey(imdbId, e.season, e.episode)) })));
+  const values = await getManyData<{ text: string }>("metadata", eps.map(e => memoryKey(imdbId, e.season, e.episode)));
+  const cached = eps.map((e, i) => ({ e, c: values[i] }));
   const missing = cached.filter(x => !x.c).map(x => x.e).slice(-make);
   const made = make > 0 ? await summaries(owner, imdbId, missing, ctx) : [];
   const byLabel = new Map(made.map(m => [m.label, m.text]));
@@ -366,7 +371,7 @@ async function buildCharacterSheet(owner: string, imdbId: string, name: string, 
 
 /**
  * Vooraf de geheugens van alle eerdere afleveringen maken (zodra X-Ray opent), en daarna de personagelijst, zodat een
- * vrije vraag over de hele serie meteen alles kent. Per oproep hoogstens 6 nieuwe geheugens of de personagelijst
+ * vrije vraag over de hele serie meteen alles kent. Per oproep hoogstens 2 nieuwe geheugens of de personagelijst
  * (de app roept opnieuw tot `left` 0 is); gedeeld bewaard.
  */
 export async function warmSummaries(owner: string, test = false): Promise<{ total: number; left: number }> {
@@ -378,12 +383,12 @@ export async function warmSummaries(owner: string, test = false): Promise<{ tota
   if (!info) return { total: 0, left: 0 };
   const eps = previousEpisodes(info, id.season, id.episode, false);
   const [guide, cast] = await Promise.all([episodeGuide(id, info).catch(() => []), castLines(id, info)]);
-  const has = await Promise.all(eps.map(e => getData<{ text: string }>("metadata", memoryKey(id.imdbId, e.season, e.episode))));
+  const has = await getManyData<{ text: string }>("metadata", eps.map(e => memoryKey(id.imdbId, e.season, e.episode)));
   // Nieuwste eerst: die doen er meestal het meest toe.
   const missing = eps.filter((_, i) => !has[i]).reverse();
   const sheetMissing = eps.length > 0 && !await characterSheet(id.imdbId, id.season, id.episode);
   if (missing.length) {
-    const made = await summaries(owner, id.imdbId, missing.slice(0, 6), { guide, cast });
+    const made = await summaries(owner, id.imdbId, missing.slice(0, 2), { guide, cast });
     // Geen ondertitels voor een aflevering = blijft ontbreken; niet eindeloos opnieuw proberen.
     if (made.length) return { total: eps.length, left: missing.length - made.length + (sheetMissing ? 1 : 0) };
   }

@@ -1,5 +1,13 @@
 # X-Ray companion: installatie en verificatie
 
+## Database bursts verminderen (21 november 2026)
+
+Productielogs bevatten vier POST-aanvragen naar `/api/cinema/xray` met HTTP 429 binnen de onderzochte twee uur. Die logs bevatten geen responsebody en onderscheiden de uurgrens niet van een databaseweigering. De gemelde UI-tekst is in de broncode gekoppeld aan `database-busy`.
+
+De geheugencontrole vroeg voor maximaal 80 eerdere afleveringen evenveel aparte records tegelijk op, bij elke voorbereidingsronde en opnieuw bij een eigen vraag. Deze controles gebruiken nu een enkele exacte-ID-batch, met behoud van eigenaar-, verval- en volgordecontroles. Geen brede tabelscan of stale-cachefallback. Achtergrondgeneratie verwerkt maximaal twee afleveringen per ronde, sequentieel; de client wacht twee seconden tussen rondes en breekt af bij sluiten of een verborgen pagina. Overlappende statusverzoeken in hetzelfde paneel worden onderdrukt. Database- en uurgrensfouten stoppen de voorbereidingsronde in plaats van door te gaan met verdere afleveringen. De melding benoemt nu de database; serverlogs registreren rate limiting zonder vragen, antwoorden of tokens.
+
+Batchtests dekken 80 records in één aanvraag, ontbrekende records, eigenaarisolatie, verlopen data, dubbele sleutels, een lege lijst en het doorgeven van databasefouten. Een echte AI-vraag na publicatie blijft nodig om het herstel onder de actuele Pi-/databasebelasting te bevestigen; deze wijziging claimt geen hogere providerquota of gegarandeerd wegvallen van elke 429.
+
 Gebouwd op 11 november 2026. Dit is de uitvoerbare eerste versie, geen claim dat alle fysieke acceptatietests al zijn geslaagd.
 
 ## Geïmplementeerd

@@ -34,7 +34,7 @@ const ERRORS: Record<string, string> = {
   "scene-changed": "Je spoelde terug of de aflevering veranderde. Stel de vraag opnieuw.",
   "bridge-unavailable": "De Pi is niet bereikbaar, de projector kan nu niet bediend worden.",
   "projector-busy": "De projector is nog bezig met een vorige opdracht.",
-  "database-busy": "X-Ray heeft het even te druk. Probeer het over een paar seconden opnieuw.",
+  "database-busy": "De database krijgt tijdelijk te veel aanvragen. Probeer je vraag over enkele seconden opnieuw.",
   "invalid-audio": "De opname kon niet gelezen worden. Probeer het opnieuw.",
   "no-test-title": "Ik vond geen titel met ondertitels in je Stremio-lijst om mee te testen.",
 };
@@ -124,8 +124,12 @@ function useXray(active: boolean, testStart = false) {
   const [rewinding, setRewinding] = React.useState<number | null>(null);
   const [pending, setPending] = React.useState<null | "play" | "pause" | "stop">(null);
   const [toast, setToast] = React.useState("");
+  const loading = React.useRef<string | null>(null);
   const load = React.useCallback(async () => {
     if (!token) return;
+    const requestKey = `${test}:${token}`;
+    if (loading.current === requestKey) return;
+    loading.current = requestKey;
     try {
       const r = await fetch(`/api/cinema/xray${test ? "?test=1" : ""}`, { headers: { authorization: `Bearer ${token}` }, cache: "no-store" });
       const v: XrayState = await r.json();
@@ -138,6 +142,7 @@ function useXray(active: boolean, testStart = false) {
         return same ? { ...v, identity: v.identity ?? prev!.identity, info: v.info ?? prev!.info } : v;
       });
     } catch { /* volgende poging */ }
+    finally { if (loading.current === requestKey) loading.current = null; }
   }, [token, test]);
   // Meteen tonen wat er vorige keer van deze sessie was (titel, cover, gesprek); de verse gegevens komen er na enkele ogenblikken over.
   const cachedFor = React.useRef<string | null>(null);
@@ -236,14 +241,23 @@ function useXray(active: boolean, testStart = false) {
     if (!active || !token || !warmFor || warmed.current === warmFor) return;
     warmed.current = warmFor;
     let stop = false;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let wake: (() => void) | undefined;
     void (async () => {
-      for (let round = 0; round < 20 && !stop; round++) {
-        const r = await fetch("/api/cinema/xray", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ action: "warm", ...(test ? { test: true } : {}) }) }).catch(() => null);
+      for (let round = 0; round < 45 && !stop; round++) {
+        // Rust tussen kleine batches; stop zodra de pagina sluit of niet meer zichtbaar is.
+        await new Promise<void>(resolve => { wake = resolve; timer = setTimeout(resolve, 2000); });
+        if (stop || document.hidden) break;
+        const r = await fetch("/api/cinema/xray", { method: "POST", signal: controller.signal, headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ action: "warm", ...(test ? { test: true } : {}) }) }).catch(() => null);
         const v = r?.ok ? await r.json().catch(() => null) as { left?: number } | null : null;
         if (!v || !v.left) break;
       }
     })();
-    return () => { stop = true; };
+    return () => {
+      stop = true; controller.abort(); clearTimeout(timer); wake?.();
+      if (warmed.current === warmFor) warmed.current = null;
+    };
   }, [active, token, warmFor, test]);
   return { state, playback, live, now, position, error, busy, rewinding, toast, playing, pending, ask, rewind, playPause, stop, setError, transcribe, test, starting, startTest, signedOut, post, demo: false };
 }

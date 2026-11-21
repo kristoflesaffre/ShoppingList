@@ -13,6 +13,15 @@ export async function getData<T>(owner: string, key: string): Promise<T | null> 
   const row = result.cinemaCompanionData[0];
   return row?.ownerId === owner && row.expiresAt > Date.now() ? row.payload as T : null;
 }
+/** Meerdere exacte sleutels in één verzoek; geen volledige eigenaarstabel ophalen. */
+export async function getManyData<T>(owner: string, keys: string[]): Promise<(T | null)[]> {
+  if (!keys.length) return [];
+  const ids = Array.from(new Set(keys.map(key => companionId(`${owner}:${key}`))));
+  const result = await database().query({ cinemaCompanionData: { $: { where: { id: { $in: ids } } } } });
+  const now = Date.now();
+  const rows = new Map(result.cinemaCompanionData.filter(row => row.ownerId === owner && row.expiresAt > now).map(row => [row.id, row.payload as T]));
+  return keys.map(key => rows.get(companionId(`${owner}:${key}`)) ?? null);
+}
 export async function putData(owner: string, key: string, payload: unknown, ttl = 30 * 86400_000) {
   const db = database(); await db.transact(db.tx.cinemaCompanionData[companionId(`${owner}:${key}`)].update({ ownerId: owner, key: `${owner}:${key}`, payload, expiresAt: Date.now() + ttl }));
 }

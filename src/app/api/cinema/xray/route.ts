@@ -20,7 +20,10 @@ const STATUS: Record<string, number> = { "frame-unavailable": 409, "hourly-limit
 
 /** Gekende fout = code voor de app. Al de rest komt in het logboek (zonder vraag of antwoord), zodat «niet bereikbaar» te verklaren is. */
 function errorCode(e: unknown, where: string) {
-  if (isRateLimited(e)) return "database-busy";
+  if (isRateLimited(e) || (e instanceof Error && e.message === "database-busy")) {
+    console.warn(`X-Ray ${where}: database-rate-limited`);
+    return "database-busy";
+  }
   if (e instanceof Error && KNOWN.includes(e.message)) return e.message;
   console.error(`X-Ray ${where} failed:`, e instanceof Error ? `${e.name}: ${e.message}` : String(e));
   return "xray-unavailable";
@@ -48,7 +51,7 @@ export async function POST(request: NextRequest) {
     if (test && body.action === "rewind") return reply(await controlXrayTest(owner, "rewind", Number(body.minutes)));
     if (body.action === "rewind") return reply(await rewindStremio(owner, Number(body.minutes)));
     if (body.action === "play-pause") return reply(await playPauseStremio(owner));
-    // Samenvattingen van eerdere afleveringen vooraf maken (zes per oproep), zodat een vrije vraag alles kent.
+    // Samenvattingen van eerdere afleveringen vooraf maken (twee per oproep), zodat een vrije vraag alles kent.
     if (body.action === "warm") return reply(await warmSummaries(owner, test));
     if (body.action === "transcribe") return reply(await transcribeXray(owner, body.audio, body.hint));
     if (body.action === "stop") return reply(await stopCinema(owner));
