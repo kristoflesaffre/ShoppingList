@@ -807,7 +807,16 @@ export function KalenderAgenda({ onTint, food, idle = false }: { onTint: (c: Rgb
           return i === foodAt ? [foodTile, tile] : [tile];
         })}
         {foodAt === lane.length ? foodTile : null}
-        <div ref={moreRef} className="flex h-[190px] w-[150px] flex-none snap-start flex-col items-center justify-center gap-3 rounded-[26px] bg-[var(--white)]/60 p-4 text-center shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:h-[230px] lg:w-[220px]" aria-busy={future.loading}>
+        <div ref={moreRef} className="flex h-[190px] w-[150px] flex-none snap-start flex-col items-center justify-center gap-2 rounded-[26px] bg-[var(--white)]/60 p-3 text-center shadow-[inset_0_0_0_1px_var(--border-subtle)] lg:h-[230px] lg:w-[220px] lg:gap-2.5 lg:p-4" aria-busy={future.loading}>
+          {lane.length === 0 && !future.failed ? (
+            <Image
+              src="/images/ui/kalender_leeg_vraagteken.webp"
+              alt=""
+              width={768}
+              height={768}
+              className="size-[62px] shrink-0 object-contain opacity-50 lg:size-[78px]"
+            />
+          ) : null}
           <p className="text-sm text-[var(--text-secondary)]">{future.failed ? "Laden is niet gelukt." : lane.length === 0 ? "Geen afspraken in de geladen periode." : "Verder kijken in je agenda"}</p>
           <button type="button" disabled={future.loading} onClick={() => void future.loadMore()} className="min-h-11 rounded-pill bg-action-primary px-4 text-sm font-bold text-white disabled:opacity-50">
             {future.loading ? "Afspraken laden…" : future.failed ? "Opnieuw proberen" : "Volgende 30 dagen"}
