@@ -235,7 +235,7 @@ function FocusDay({
         alt=""
         width={768}
         height={768}
-        className="shrink-0 object-contain drop-shadow-[0_14px_18px_rgba(54,43,28,0.18)]"
+        className="shrink-0 object-contain opacity-50 drop-shadow-[0_14px_18px_rgba(54,43,28,0.18)]"
         style={{ width: size * 0.72, height: size * 0.72 }}
       />
     ) : visual.summary.loose ? (
@@ -394,6 +394,13 @@ function DayCard({
           className={cn(cardClass, pressable, "bg-[var(--white)]/60", !selected && "shadow-[inset_0_0_0_1px_var(--border-subtle)]")}
         >
           {head}
+          <Image
+            src="/images/ui/kalender_leeg_vraagteken.webp"
+            alt=""
+            width={768}
+            height={768}
+            className="absolute left-1/2 top-[42px] size-[92px] -translate-x-1/2 object-contain opacity-50 lg:top-[46px] lg:size-[128px]"
+          />
           <span className="absolute inset-x-3.5 bottom-3.5 text-[13px] leading-[18px] text-[var(--text-tertiary)]">Nog niets gepland</span>
         </button>
       );
@@ -405,6 +412,13 @@ function DayCard({
         className={cn(cardClass, "bg-[var(--white)]/60", !selected && "shadow-[inset_0_0_0_1px_var(--border-subtle)]")}
       >
         {head}
+        <Image
+          src="/images/ui/kalender_leeg_vraagteken.webp"
+          alt=""
+          width={768}
+          height={768}
+          className="absolute left-1/2 top-[42px] size-[92px] -translate-x-1/2 object-contain opacity-50 lg:top-[46px] lg:size-[128px]"
+        />
         <span className="absolute inset-x-3.5 bottom-3.5 text-[13px] leading-[18px] text-[var(--text-tertiary)]">Nog niets gepland</span>
       </div>
     );

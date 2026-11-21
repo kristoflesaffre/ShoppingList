@@ -58,6 +58,7 @@ const AGENDA_PHOTOS: { file: string; keys: string[] }[] = [
   { file: "niels_en_ines", keys: ["niels en ines", "niels ines", "ines en niels", "ines niels"] },
   { file: "bart_en_annemie", keys: ["bart en annemie", "bart annemie", "annemie en bart", "annemie bart"] },
   { file: "kristof_en_chloe", keys: ["kristof en chloe", "kristof chloe", "chloe en kristof", "chloe kristof"] },
+  { file: "kristof_winkelen", keys: ["kristof winkelen"] },
   { file: "ines", keys: ["ines"] },
   { file: "chloe", keys: ["chloe"] },
   { file: "kristof", keys: ["kristof"] },
