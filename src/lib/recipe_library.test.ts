@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RECIPE_CATEGORIES, isRecentImport, recipeImportedAt } from "@/lib/recipe_library";
+import { RECIPE_CATEGORIES, isRecentImport, isSlowCooker, recipeImportedAt } from "@/lib/recipe_library";
 
 describe("recipe categories", () => {
   it("toont de primaire receptcategorieën in de afgesproken volgorde", () => {
@@ -31,5 +31,15 @@ describe("recent geïmporteerde recepten", () => {
     expect(isRecentImport({ importedAt: now - 2.9 * 86_400_000 }, now)).toBe(true);
     expect(isRecentImport({ importedAt: now - 3.1 * 86_400_000 }, now)).toBe(false);
     expect(isRecentImport({ importedAt: null }, now)).toBe(false);
+  });
+});
+
+describe("isSlowCooker", () => {
+  const base = { name: "Kip curry", steps: "Bak aan.", ingredients: [{ id: "1", name: "kip", quantity: "1" }] };
+  it("herkent slowcooker en crockpot in titel, bereiding of ingrediënten", () => {
+    expect(isSlowCooker({ ...base, name: "Pulled pork uit de slowcooker" })).toBe(true);
+    expect(isSlowCooker({ ...base, steps: "Zet 6 uur in de Crock-Pot." })).toBe(true);
+    expect(isSlowCooker({ ...base, steps: "Slow cooker op laag." })).toBe(true);
+    expect(isSlowCooker(base)).toBe(false);
   });
 });

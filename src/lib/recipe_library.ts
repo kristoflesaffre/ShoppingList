@@ -120,6 +120,12 @@ export function recipeImportedAt(order: number | null | undefined): number | nul
 /** Hoe lang een geïmporteerd recept «Nieuw» heet. */
 export const RECENT_IMPORT_MS = 3 * 24 * 60 * 60 * 1000;
 
+/** Recept voor de slowcooker / crockpot: genoemd in titel, bereiding of ingrediënten (geen apart veld, dus enkel tekst). */
+const SLOW_COOKER = /slow[\s-]?cook|crock[\s-]?pot|slowcook/i;
+export function isSlowCooker(recipe: Pick<SavedRecipe, "name" | "steps" | "ingredients">): boolean {
+  return SLOW_COOKER.test(recipe.name) || SLOW_COOKER.test(recipe.steps ?? "") || recipe.ingredients.some((i) => SLOW_COOKER.test(i.name));
+}
+
 export function isRecentImport(recipe: Pick<SavedRecipe, "importedAt">, now = Date.now()): boolean {
   return recipe.importedAt != null && now - recipe.importedAt < RECENT_IMPORT_MS && recipe.importedAt <= now + 60_000;
 }

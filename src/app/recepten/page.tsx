@@ -39,7 +39,7 @@ const RecipeEditorSlideIn = dynamic(
 import { Snackbar } from "@/components/ui/snackbar";
 import { APP_FAB_BOTTOM_CLASS, APP_SNACKBAR_FIXTURE_CLASS } from "@/lib/app-layout";
 import type { SavedRecipe, RecipeCategory } from "@/lib/recipe_library";
-import { RECIPE_CATEGORIES, RECIPE_CUISINES, groupBySubcategory, isRecentImport, isRecipeCuisine, recipeImportedAt } from "@/lib/recipe_library";
+import { RECIPE_CATEGORIES, RECIPE_CUISINES, groupBySubcategory, isRecentImport, isRecipeCuisine, isSlowCooker, recipeImportedAt } from "@/lib/recipe_library";
 import { FilterChip, FilterChipRow } from "@/components/ui/filter_chip";
 import { cn } from "@/lib/utils";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
@@ -402,6 +402,8 @@ export default function ReceptenPage() {
   const [toTestKind, setToTestKind] = React.useState<string | null>(null);
   /* Keukenfilter binnen «Te testen» (canvas «Te testen ordenen» B): chips op één veegrij; null = alles. */
   const [toTestCuisine, setToTestCuisine] = React.useState<string | null>(null);
+  /* Aparte filter «Slowcooker» (combineerbaar met de keuken: een recept kan Aziatisch én slowcooker zijn). */
+  const [toTestSlow, setToTestSlow] = React.useState(false);
   // De open sectie en tab staan in het adres (?categorie=… / ?tab=te-testen), zodat «terug» vanuit een recept daar weer uitkomt.
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -411,6 +413,7 @@ export default function ReceptenPage() {
       setToTestKind(params.get("soort"));
       const keuken = params.get("keuken");
       setToTestCuisine(isRecipeCuisine(keuken) ? keuken : null);
+      setToTestSlow(params.get("slowcooker") === "1");
       return;
     }
     const match = RECIPE_CATEGORIES.find((c) => c.id === fromUrl);
@@ -421,10 +424,12 @@ export default function ReceptenPage() {
     setActiveCategory(null);
     setToTestKind(null);
     setToTestCuisine(null);
+    setToTestSlow(false);
     const url = new URL(window.location.href);
     url.searchParams.delete("categorie");
     url.searchParams.delete("soort");
     url.searchParams.delete("keuken");
+    url.searchParams.delete("slowcooker");
     if (tab === "te_testen") url.searchParams.set("tab", "te-testen");
     else url.searchParams.delete("tab");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
@@ -492,10 +497,11 @@ export default function ReceptenPage() {
       if (toTestKind === NEW_KIND) result = result.filter((r) => isRecentImport(r));
       else if (toTestKind) result = result.filter((r) => toTestKindOf(r) === toTestKind);
       if (toTestCuisine) result = result.filter((r) => r.cuisine === toTestCuisine);
+      if (toTestSlow) result = result.filter((r) => isSlowCooker(r));
     } else result = result.filter((r) => r.category !== TO_TEST_CATEGORY);
     if (activeCategory) result = result.filter((r) => r.category === activeCategory);
     return result;
-  }, [savedRecipes, recipeSearch, activeCategory, recipeTab, toTestKind, toTestCuisine]);
+  }, [savedRecipes, recipeSearch, activeCategory, recipeTab, toTestKind, toTestCuisine, toTestSlow]);
   /* Keukenchips «Alles · Aziatisch 86 · …»: enkel keukens die voorkomen in «Te testen» (binnen de open soort). */
   const toTestCuisineChips = React.useMemo(() => {
     const counts = new Map<string, number>();
@@ -506,6 +512,17 @@ export default function ReceptenPage() {
     }
     return RECIPE_CUISINES.filter((c) => counts.has(c.id)).map((c) => ({ ...c, count: counts.get(c.id) ?? 0 }));
   }, [savedRecipes, toTestKind]);
+  const slowCookerCount = React.useMemo(
+    () => savedRecipes.filter((r) => r.category === TO_TEST_CATEGORY && isSlowCooker(r) && (toTestKind === NEW_KIND ? isRecentImport(r) : toTestKind ? toTestKindOf(r) === toTestKind : true)).length,
+    [savedRecipes, toTestKind],
+  );
+  const chooseToTestSlow = React.useCallback((on: boolean) => {
+    setToTestSlow(on);
+    const url = new URL(window.location.href);
+    if (on) url.searchParams.set("slowcooker", "1");
+    else url.searchParams.delete("slowcooker");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
   const chooseToTestCuisine = React.useCallback((cuisine: string | null) => {
     setToTestCuisine(cuisine);
     const url = new URL(window.location.href);
@@ -806,12 +823,12 @@ export default function ReceptenPage() {
                 <SearchBar surface="app" placeholder={searchPlaceholder} value={recipeSearch} onValueChange={setRecipeSearch} />
               </div>
 
-              {onToTestTab && !isEditMode && toTestCuisineChips.length > 1 ? (
+              {onToTestTab && !isEditMode && (toTestCuisineChips.length > 1 || slowCookerCount > 0) ? (
                 <FilterChipRow ariaLabel="Keuken">
-                  <FilterChip selected={!toTestCuisine} onClick={() => chooseToTestCuisine(null)}>
+                  <FilterChip selected={!toTestCuisine && !toTestSlow} onClick={() => { chooseToTestCuisine(null); chooseToTestSlow(false); }}>
                     Alles
                   </FilterChip>
-                  {toTestCuisineChips.map((c) => (
+                  {toTestCuisineChips.length > 1 && toTestCuisineChips.map((c) => (
                     <FilterChip
                       key={c.id}
                       selected={toTestCuisine === c.id}
@@ -822,6 +839,11 @@ export default function ReceptenPage() {
                       {c.label}
                     </FilterChip>
                   ))}
+                  {slowCookerCount > 0 ? (
+                    <FilterChip selected={toTestSlow} onClick={() => chooseToTestSlow(!toTestSlow)} count={slowCookerCount}>
+                      Slowcooker
+                    </FilterChip>
+                  ) : null}
                 </FilterChipRow>
               ) : null}
 
