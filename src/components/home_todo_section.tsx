@@ -7,7 +7,7 @@ import { plainTaskText, TODO_NEAR_DAYS, daysUntil, localIso, sortTasks, useTodoi
 import { ListSectionHeader, OverviewPill } from "@/components/list_section_header";
 import { MiniButton } from "@/components/ui/mini_button";
 import { TodoCheck, TodoNotice } from "@/components/todo_check";
-import { taskPhotoFor } from "@/lib/task_photos";
+import { taskPhotoFor, withRoutineLast } from "@/lib/task_photos";
 import { db } from "@/lib/db";
 import { isThawDay, parseThawMarker, thawDishName, thawPhotoUrl } from "@/lib/freezer-planning";
 import { useItemPhotoUrl } from "@/lib/item-photos";
@@ -199,13 +199,13 @@ export function useNearTodos() {
   const todayIso = localIso(new Date());
   const sorted = React.useMemo(() => {
     if (state.kind !== "ready") return [];
-    return sortTasks(
+    return withRoutineLast(sortTasks(
       state.tasks.filter((t) => {
         const d = daysUntil(t, todayIso);
         return d !== null && d <= TODO_NEAR_DAYS;
       }),
       todayIso,
-    );
+    ));
   }, [state, todayIso]);
   const thawPhotos = useThawPhotos(sorted);
   return { ...todo, sorted, thawPhotos };
