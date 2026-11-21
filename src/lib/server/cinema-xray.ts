@@ -320,15 +320,15 @@ function previousEpisodes(info: TitleInfo, season: number, episode: number, same
   if (!info.seasons.length && sameSeasonOnly) for (let e = 1; e < episode; e++) list.push({ season, episode: e });
   return list.slice(-MAX_PREVIOUS_EPISODES);
 }
-async function summaries(owner: string, imdbId: string, eps: { season: number; episode: number }[], ctx?: MemoryContext) {
+async function summaries(owner: string, imdbId: string, eps: { season: number; episode: number }[], ctx?: MemoryContext, concurrency = 6) {
   const out: { label: string; text: string }[] = [];
-  // Achtergrondwerk mag geen zes gelijktijdige budget-/cache-/ondertitelverzoeken veroorzaken.
-  for (const e of eps) {
-    const summary = await episodeSummary(owner, imdbId, e.season, e.episode, ctx).catch(error => {
+  // Alleen achtergrondwerk serialiseren; de beperkte context bij een eigen vraag blijft parallel.
+  for (let i = 0; i < eps.length; i += concurrency) {
+    const batch = await Promise.all(eps.slice(i, i + concurrency).map(e => episodeSummary(owner, imdbId, e.season, e.episode, ctx).catch(error => {
       if (isRateLimited(error) || (error instanceof Error && ["database-busy", "hourly-limit"].includes(error.message))) throw error;
       return null;
-    });
-    if (summary) out.push(summary);
+    })));
+    out.push(...batch.filter((b): b is { label: string; text: string } => !!b));
   }
   return out;
 }
@@ -388,7 +388,7 @@ export async function warmSummaries(owner: string, test = false): Promise<{ tota
   const missing = eps.filter((_, i) => !has[i]).reverse();
   const sheetMissing = eps.length > 0 && !await characterSheet(id.imdbId, id.season, id.episode);
   if (missing.length) {
-    const made = await summaries(owner, id.imdbId, missing.slice(0, 2), { guide, cast });
+    const made = await summaries(owner, id.imdbId, missing.slice(0, 2), { guide, cast }, 1);
     // Geen ondertitels voor een aflevering = blijft ontbreken; niet eindeloos opnieuw proberen.
     if (made.length) return { total: eps.length, left: missing.length - made.length + (sheetMissing ? 1 : 0) };
   }
