@@ -230,12 +230,14 @@ function FocusDay({
 
   const plate = (size: number) =>
     !visual ? (
-      <span
-        className="relative flex shrink-0 items-center justify-center rounded-full border-[1.6px] border-dashed border-[var(--blue-200)] bg-[var(--blue-25)]"
+      <Image
+        src="/images/ui/kalender_leeg_vraagteken.webp"
+        alt=""
+        width={768}
+        height={768}
+        className="shrink-0 object-contain drop-shadow-[0_14px_18px_rgba(54,43,28,0.18)]"
         style={{ width: size * 0.72, height: size * 0.72 }}
-      >
-        <Image src="/images/ui/kalender_320.webp" alt="" width={160} height={160} className="size-1/2 object-contain opacity-80" />
-      </span>
+      />
     ) : visual.summary.loose ? (
       <span style={plateShadow(tint, size)}>
         <CalendarLoosePlate photos={loosePhotos} size={size * 0.9} />
