@@ -1,5 +1,6 @@
 "use client";
 
+import { useSavedRecipes } from "@/hooks/use_saved_recipes";
 import * as React from "react";
 import { SlideInModal } from "@/components/ui/slide_in_modal";
 import { CountStepper } from "@/components/ui/count_stepper";
@@ -8,7 +9,6 @@ import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { slugToDisplayName } from "@/components/ui/item_name_autocomplete";
 import { SearchBar } from "@/components/ui/search_bar";
 import { Button } from "@/components/ui/button";
-import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { normalizeForMatch, useItemPhotoUrl, useItemSlugs, useItemSynonyms } from "@/lib/item-photos";
 import { matchItemSlugsForAutocomplete } from "@/lib/item-slug-autocomplete";
@@ -137,7 +137,7 @@ export function NewFreezerItemModal({ mode = "diepvries", open, onClose, onAdd }
   const itemSynonyms = useItemSynonyms();
 
   // Load recipes from DB
-  const { data: recipeData } = db.useQuery(open && !isPantry ? { recipes: { ingredients: {} } } : null);
+  const { data: recipeData, loaders: recipeLoaders } = useSavedRecipes(open && !isPantry);
 
   const allRecipes: SavedRecipe[] = React.useMemo(() => {
     if (!recipeData?.recipes) return [];
@@ -299,6 +299,7 @@ export function NewFreezerItemModal({ mode = "diepvries", open, onClose, onAdd }
       }
     >
       <form id="new-freezer-item-form" onSubmit={handleSubmit} className="flex min-h-[52dvh] w-full flex-col gap-4 md:min-h-[400px]">
+        {recipeLoaders}
         <SearchBar
           placeholder={isPantry ? "Zoek een product" : "Zoek een product of recept"}
           aria-label={isPantry ? "Zoek een product" : "Zoek een product of recept"}

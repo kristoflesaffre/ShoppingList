@@ -1,5 +1,6 @@
 "use client";
 
+import { Shimmer } from "@/components/ui/shimmer";
 import * as React from "react";
 import { EditFormRow } from "@/components/ui/edit_form_row";
 import dynamic from "next/dynamic";
@@ -249,6 +250,7 @@ export function NewItemModal({
   initialSection,
   initialItemCategory,
   storedRecipes,
+  recipesLoading = false,
   onSaveRecipeToLibrary,
   onApplyRecipeToList,
   isMasterList = false,
@@ -280,6 +282,8 @@ export function NewItemModal({
   /** Bij groepering "per categorie": vooringestelde winkel-categorie voor het nieuwe item. */
   initialItemCategory?: string | null;
   storedRecipes: SavedRecipe[];
+  /** Recepten worden nog opgehaald: toon laden, geen lege staat. */
+  recipesLoading?: boolean;
   onSaveRecipeToLibrary: (recipe: SavedRecipe) => void;
   onApplyRecipeToList: (items: ListItem[]) => void;
   isMasterList?: boolean;
@@ -1903,7 +1907,13 @@ export function NewItemModal({
                       })}
                     </FilterChipRow>
                   ) : null}
-                  {batchEntries.length > 0 ? null : storedRecipes.length === 0 ? (
+                  {batchEntries.length > 0 ? null : storedRecipes.length === 0 && recipesLoading ? (
+                    <div className="flex flex-col gap-3" role="status" aria-label="Recepten laden">
+                      {[0, 1, 2, 3].map((n) => (
+                        <Shimmer key={n} className="h-[68px] w-full rounded-[16px]" />
+                      ))}
+                    </div>
+                  ) : storedRecipes.length === 0 ? (
                     <div className="flex flex-col items-center gap-6 py-8">
                       {/* Zelfde illustratie als /recepten lege staat (Figma 1199:11239). */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}

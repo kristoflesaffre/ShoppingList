@@ -1,5 +1,6 @@
 "use client";
 
+import { useSavedRecipes } from "@/hooks/use_saved_recipes";
 import * as React from "react";
 import { useDraftMasterListOpen } from "@/lib/draft-master-lists";
 import { DoneButton } from "@/components/ui/title_edit_button";
@@ -4370,9 +4371,7 @@ export default function ListDetailPage({
     // Retroactieve detectie voor lijstjes aangemaakt vóór masterIcon werd opgeslagen:
     // een secondary loyalty card kan alleen bestaan op een Lidl/Delhaize-combinatielijst.
     (!isMasterList && existingLoyaltyCardSecondary !== null);
-  const { data: recipeData } = db.useQuery({
-    recipes: { ingredients: {} },
-  });
+  const { data: recipeData, loading: recipesLoading, loaders: recipeLoaders } = useSavedRecipes();
 
   const savedRecipes: SavedRecipe[] = React.useMemo(() => {
     if (!recipeData?.recipes) return [];
@@ -6650,6 +6649,7 @@ export default function ListDetailPage({
           storeChoice={isLidlDelhaizeList}
         />
       ) : null}
+      {recipeLoaders}
       <NewItemModal
         open={(isNewItemOpen && !isMasterList) || editingItem != null}
         onClose={() => {
@@ -6664,6 +6664,7 @@ export default function ListDetailPage({
         initialSection={initialSection}
         initialItemCategory={initialItemCategory}
         storedRecipes={savedRecipes}
+        recipesLoading={recipesLoading}
         onSaveRecipeToLibrary={handleSaveRecipeToLibrary}
         onApplyRecipeToList={handleAddItemsFromRecipe}
         listDateStr={listDateStr}
