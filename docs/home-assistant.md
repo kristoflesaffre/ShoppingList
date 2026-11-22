@@ -1,5 +1,13 @@
 # Home Assistant on the Raspberry Pi
 
+## Lange druk: de Samsung wordt weer wakker, bridge 1.34.5 (2026-11-22)
+
+The long press itself arrived and started (21/11 20:02), but failed after ± 1.5 min with `tv-not-waking`: Wake-on-LAN
+only went to the TV's Wi-Fi card (a4:30:7a:32:47:51), while the TV is on the wired network (ARP for 192.168.132.111 =
+a4:30:7a:72:b6:3e; Home Assistant's Samsung device lists both). A wired TV only wakes on its wired MAC. Now every wake
+attempt sends the magic packet to both (`DEFAULT_TV_MACS`, `tv_macs`; a `tv_mac` in the settings still goes first).
+Includes 1.34.4. Install: `outputs/cinema-bridge-1.34.5-install.txt`. Not yet tested on the real TV.
+
 ## SONOFF-knop: korte druk wint van een lopende lange druk, bridge 1.34.4 (2026-11-22)
 
 21/11 rond 20:02 «werkte de knop niet». The automation fired on every press (20:02:22 to 20:03:06, `shoppinglist_cinema.toggle`
@@ -12,8 +20,8 @@ seconds later was the emergency STOP while the screen moved.
 Now a short press always wins: a running long-press start is cancelled first (wait at most `AMBIENCE_CANCEL_WAIT` = 10 s for
 it to release the lock, forced ambience switched off) and the cinema start or stop follows. A press that is still ignored
 (another cinema action running) is logged as a WARNING, also for the long press. Test:
-`test_short_press_cancels_a_running_long_press_ambience_and_starts_cinema`. Still open: why the Samsung did not wake by
-WOL that evening. Install: `outputs/cinema-bridge-1.34.4-install.txt`.
+`test_short_press_cancels_a_running_long_press_ambience_and_starts_cinema`. Why the Samsung did not wake: see 1.34.5.
+Install: `outputs/cinema-bridge-1.34.4-install.txt`.
 
 ## Ledkleur: hoofdkleur van de onderkant van de scène, bridge 1.34.3 (2026-11-20)
 

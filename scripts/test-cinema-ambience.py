@@ -53,6 +53,11 @@ class AmbienceTests(unittest.TestCase):
         self.assertTrue(ambience.VIDEO_ID.match('uOquG6prOPY'))
         self.assertFalse(ambience.VIDEO_ID.match('uOquG6prOPY;x'))
 
+    def test_wakes_both_network_cards_of_the_tv(self):
+        self.assertEqual(ambience.tv_macs(None), ['a4:30:7a:72:b6:3e', 'a4:30:7a:32:47:51'])
+        self.assertEqual(ambience.tv_macs('A4:30:7A:32:47:51'), ['a4:30:7a:32:47:51', 'a4:30:7a:72:b6:3e'])
+        self.assertEqual(ambience.tv_macs(['aa:bb:cc:dd:ee:ff']), ['aa:bb:cc:dd:ee:ff', 'a4:30:7a:72:b6:3e', 'a4:30:7a:32:47:51'])
+
     def test_magic_packet(self):
         packet = ambience.magic_packet('a4:30:7a:32:47:51')
         self.assertEqual(len(packet), 102)

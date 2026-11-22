@@ -19,7 +19,7 @@ from .control_dex import DEX_BASE64, DEX_SHA256
 from .sfeer_apk import APK_BASE64, APK_PACKAGE, APK_SHA256, APK_VERSION
 from .ambience_pool import POOL as AMBIENCE_POOL
 from .ambience import (
-    DEFAULT_TV_MAC, VIDEO_ID, color_distance, frame_color, pick_video, SettingsStore, app_extra, lounge_send, parse_settings, remote_entity, restart_youtube, send_wol, youtube_running,
+    VIDEO_ID, tv_macs, color_distance, frame_color, pick_video, SettingsStore, app_extra, lounge_send, parse_settings, remote_entity, restart_youtube, send_wol, youtube_running,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.34.4'
+BRIDGE_VERSION = '1.34.5'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
@@ -539,10 +539,11 @@ async def async_setup(hass, config):
         session = async_get_clientsession(hass)
         was_on = await samsung_power(hass) == 'on'
         if not was_on:
-            mac = settings.get('tv_mac') or DEFAULT_TV_MAC
+            macs = tv_macs(settings.get('tv_mac'))
             for attempt in range(25):
                 if attempt % 3 == 0:
-                    await hass.async_add_executor_job(send_wol, SAMSUNG_HOST, mac)
+                    for mac in macs:
+                        await hass.async_add_executor_job(send_wol, SAMSUNG_HOST, mac)
                 await asyncio.sleep(1)
                 if await samsung_power(hass) == 'on':
                     break

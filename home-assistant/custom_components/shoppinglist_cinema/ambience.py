@@ -20,7 +20,22 @@ YOUTUBE_APP = '111299001912'
 LOUNGE_BIND = 'https://www.youtube.com/api/lounge/bc/bind'
 VIDEO_ID = re.compile(r'^[A-Za-z0-9_-]{11}$')
 CORNERS = ('tl', 'tr', 'br', 'bl')
-DEFAULT_TV_MAC = 'a4:30:7a:32:47:51'
+# The Samsung has two network cards: the wired one (a4:30:7a:72:b6:3e, what it uses now) and Wi-Fi (a4:30:7a:32:47:51).
+# Wake-on-LAN only wakes the card the TV is connected with, so every wake goes to both.
+DEFAULT_TV_MACS = ('a4:30:7a:72:b6:3e', 'a4:30:7a:32:47:51')
+DEFAULT_TV_MAC = DEFAULT_TV_MACS[1]
+
+
+def tv_macs(configured):
+    """MACs to wake: a configured one (string or list) first, then both known cards, without duplicates."""
+    extra = [configured] if isinstance(configured, str) else list(configured or [])
+    seen, macs = set(), []
+    for mac in [*extra, *DEFAULT_TV_MACS]:
+        key = str(mac).strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            macs.append(key)
+    return macs
 
 
 def _number(value, low, high):
