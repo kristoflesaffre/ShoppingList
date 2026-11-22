@@ -15,8 +15,11 @@
   the normal cinema start runs (Samsung off, Cinema lights, screen up).
 Tests: `test_top_of_the_scene_gives_the_colour_for_the_lights_above_the_tv`,
 `test_long_press_while_the_ambience_shows_turns_everything_off_and_brightens`,
-`test_short_press_while_the_ambience_shows_goes_straight_to_cinema`. Includes 1.34.4 and 1.34.5. Install:
-`outputs/cinema-bridge-1.35.0-install.txt`. Not yet tested in the living room.
+`test_short_press_while_the_ambience_shows_goes_straight_to_cinema`. Includes 1.34.4 and 1.34.5. Install in two pastes
+(`outputs/cinema-bridge-1.35.0-install-deel-1.txt`, then `-deel-2.txt`): one paste of 82 kB was cut off by the Terminal
+web UI («base64: truncated input»). The archive is now built with Python `tarfile` at gzip level 9 (69 kB of base64 for
+all files, split in two halves of ± 35 kB); part 2 first checks the whole archive (`tar -tzf`) before anything is
+overwritten. Not yet tested in the living room.
 
 ## Lange druk: de Samsung wordt weer wakker, bridge 1.34.5 (2026-11-22)
 
