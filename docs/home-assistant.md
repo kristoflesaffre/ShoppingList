@@ -1,5 +1,14 @@
 # Home Assistant on the Raspberry Pi
 
+## Lichtlus houdt het opstarten niet meer op, bridge 1.35.2 (2026-11-22)
+
+1.35.1 checked 22/11 09:05: after the restart (08:56) the bridge found the ambience app in front and picked the lights up
+again («Ambience app already in front»): Zij 1-6 at 20 % in the orange of the top of the picture, LED strip orange, the
+other lights 10 %. But the light loop was a normal task created during start-up, so Home Assistant waited for it
+(«Setup timed out for bootstrap waiting on … ensure_ambience_lights», start-up finished only after 5 min). It is now a
+background task (`async_create_background_task`), cancelled on stop as before. Install in two pastes:
+`outputs/cinema-bridge-1.35.2-install-deel-1.txt`, then `-deel-2.txt`.
+
 ## Sfeer na een herstart, bridge 1.35.1 (2026-11-22)
 
 Checked after installing 1.35.0 (22/11 08:44): it runs (`bridge-status` version 1.35.0, no setup errors), but the

@@ -690,6 +690,11 @@ class SeekHelperTests(unittest.TestCase):
         self.assertIn("await control('play-pause', 'play-pause-failed')", inspect.getsource(cinema.async_setup))
         self.assertNotIn('stremio-not-playing', inspect.getsource(cinema.async_setup))
 
+    def test_ambience_light_loop_never_holds_up_home_assistant_start(self):
+        import inspect
+        # A loop picked up during start-up as a normal task made Home Assistant wait 5 min («Setup timed out»).
+        self.assertIn("async_create_background_task(run(), 'ShoppingList ambience lights')", inspect.getsource(cinema.async_setup))
+
     def test_xray_frame_is_a_bridge_action(self):
         import inspect
         source = inspect.getsource(cinema.async_setup)

@@ -43,7 +43,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.35.1'
+BRIDGE_VERSION = '1.35.2'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
@@ -524,7 +524,7 @@ async def async_setup(hass, config):
                     await restore_lights()
             except Exception as failure:
                 _LOGGER.warning('Ambience lights stopped: %s', failure if isinstance(failure, RuntimeError) else repr(failure)[:200])
-        light_task[0] = hass.async_create_task(run())
+        light_task[0] = hass.async_create_background_task(run(), 'ShoppingList ambience lights')
 
     async def show_ambience():
         contact = hass.states.get(CONTACT)
