@@ -1,5 +1,16 @@
 # Home Assistant on the Raspberry Pi
 
+## Rond de tv: video zoomt in tot bovenaan de muur, Sfeer 5 / bridge 1.35.4 (2026-11-22)
+
+The wall above the TV stayed dark: the video is 16:9 and `spread` (1.8) × the TV width, centred on the TV, and the TV
+hangs low in the projection (calibrated corners: TV from 44 % to 100 % of the height, 59 % wide), so the full part of the
+video only started at 31 % and its soft top edge faded out above that. `videoFrame` now zooms in (still centred on the
+TV, still 16:9) until the full part under the soft edge (`FRAME_FADE_SHARE` 12 %) reaches the top of the projection, at
+most `MAX_ZOOM_SPREAD` = 4 × the TV width; for these corners 3.2 × instead of 1.8 ×. It is blurred ambience, so the
+coarser scale does not show. Projector app «ShoppingList Sfeer» versionCode 5 (2.2), rebuilt with
+`node scripts/build-sfeer-apk.mjs`; the bridge installs it by itself (version check) the next time the ambience starts.
+Install in two pastes: `outputs/cinema-bridge-1.35.4-install-deel-1.txt`, then `-deel-2.txt`. Not yet seen on the wall.
+
 ## Lange druk tijdens een ADB-hapering, bridge 1.35.3 (2026-11-22)
 
 Tested 22/11 with 1.35.2. Short press during the ambience (09:48:45): «from ambience to cinema», screen up at 09:48:49,

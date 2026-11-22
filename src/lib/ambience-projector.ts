@@ -80,9 +80,17 @@ export function maskPolygon(mask: ProjectorMask, width: number, height: number):
   });
 }
 
+/** Rand van de video die zacht uitloopt (moet gelijk zijn aan `FRAME_FADE` in de projectorpagina): 12 % per kant. */
+export const FRAME_FADE_SHARE = 0.12;
+/** Hoogstens zoveel × de tv-breedte, ook als de tv laag op de muur hangt: anders wordt het beeld te grof. */
+export const MAX_ZOOM_SPREAD = 4;
+
 /**
  * Waar de video op het beeld van de projector ligt (pixels): 16:9, op het middelpunt van de tv, `spread` × de tv-breedte.
  * Zo sluit wat naast de tv valt aan op de rand van het tv-beeld; wat buiten het beeld van de projector valt, valt weg.
+ * Reikt de video zo niet tot bovenaan het beeld (de muur boven de tv bleef donker door de 16:9-verhouding), dan wordt
+ * ze ingezoomd, nog altijd op het middelpunt van de tv, tot het volle deel (onder de zachte rand) de bovenkant haalt;
+ * het zijn toch wazige vlakken. Hoogstens `MAX_ZOOM_SPREAD` × de tv-breedte.
  */
 export function videoFrame(mask: ProjectorMask, width: number, height: number): { left: number; top: number; width: number; height: number } {
   const xs = CORNER_KEYS.map((k) => mask.corners[k][0] * width);
@@ -90,8 +98,9 @@ export function videoFrame(mask: ProjectorMask, width: number, height: number): 
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
   const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
   const tvWidth = Math.max(...xs) - Math.min(...xs);
-  const w = tvWidth * mask.spread;
-  const h = (w * 9) / 16;
+  const toTop = cy / (0.5 - FRAME_FADE_SHARE);
+  const h = Math.min(Math.max((tvWidth * mask.spread * 9) / 16, toTop), (tvWidth * Math.max(mask.spread, MAX_ZOOM_SPREAD) * 9) / 16);
+  const w = (h * 16) / 9;
   return { left: cx - w / 2, top: cy - h / 2, width: w, height: h };
 }
 

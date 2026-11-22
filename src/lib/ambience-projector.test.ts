@@ -7,6 +7,8 @@ import {
   parseLoungeChunks,
   parseMask,
   videoFrame,
+  FRAME_FADE_SHARE,
+  MAX_ZOOM_SPREAD,
   syncAction,
   tvPositionAt,
   type TvNowPlaying,
@@ -86,10 +88,29 @@ describe("syncAction", () => {
 
 describe("videoFrame", () => {
   it("legt de video op het midden van de tv, spread × de tv-breedte", () => {
-    const f = videoFrame({ ...DEFAULT_MASK, spread: 2 }, 1000, 1000);
+    // Tv bovenaan het beeld: de video haalt de bovenkant al, geen zoom.
+    const corners = { tl: [0.3, 0.05], tr: [0.7, 0.05], br: [0.7, 0.25], bl: [0.3, 0.25] } as typeof DEFAULT_MASK.corners;
+    const f = videoFrame({ ...DEFAULT_MASK, corners, spread: 2 }, 1000, 1000);
     expect(f.width).toBeCloseTo(800);
     expect(f.left + f.width / 2).toBeCloseTo(500);
-    expect(f.top + f.height / 2).toBeCloseTo(500);
+    expect(f.top + f.height / 2).toBeCloseTo(150);
+  });
+  it("zoomt in tot het volle deel van de video de bovenkant van het beeld haalt", () => {
+    const f = videoFrame({ ...DEFAULT_MASK, spread: 1.8 }, 1000, 562.5);
+    const xs = Object.values(DEFAULT_MASK.corners).map((c) => c[0] * 1000);
+    const ys = Object.values(DEFAULT_MASK.corners).map((c) => c[1] * 562.5);
+    const tvWidth = Math.max(...xs) - Math.min(...xs);
+    expect(f.top + f.height * FRAME_FADE_SHARE).toBeLessThanOrEqual(0.001);
+    expect(f.width).toBeGreaterThan(tvWidth * 1.8);
+    expect(f.width).toBeLessThanOrEqual(tvWidth * MAX_ZOOM_SPREAD + 0.001);
+    expect(f.left + f.width / 2).toBeCloseTo((Math.min(...xs) + Math.max(...xs)) / 2);
+    expect(f.top + f.height / 2).toBeCloseTo((Math.min(...ys) + Math.max(...ys)) / 2);
+    expect(f.width / f.height).toBeCloseTo(16 / 9);
+  });
+  it("zoomt nooit verder dan MAX_ZOOM_SPREAD × de tv-breedte", () => {
+    const corners = { tl: [0.45, 0.9], tr: [0.55, 0.9], br: [0.55, 0.95], bl: [0.45, 0.95] } as typeof DEFAULT_MASK.corners;
+    const f = videoFrame({ ...DEFAULT_MASK, corners, spread: 1.8 }, 1000, 1000);
+    expect(f.width).toBeCloseTo(100 * MAX_ZOOM_SPREAD);
   });
   it("vult een ontbrekende spread aan", () => {
     const { spread: _s, ...old } = DEFAULT_MASK;
