@@ -43,7 +43,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.34.3'
+BRIDGE_VERSION = '1.34.4'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
@@ -61,6 +61,8 @@ AMBIENCE_BEFORE_SCENE = 'shoppinglist_ambience_before'
 # the TV with the projector around it and the dimmed lights, whatever the «Ook rond de tv» switch says.
 BUTTON_IEEE = '8c:73:da:ff:fe:ef:e8:89'
 BUTTON_LONG = 'off'
+# A short press cancels a running long-press start; wait at most this long for it to let go of the lock.
+AMBIENCE_CANCEL_WAIT = 10
 
 
 def ambience_command(action):
@@ -885,15 +887,23 @@ async def async_setup(hass, config):
         finally:
             button_running[0] = False
 
+    ambience_task = [None]
+
     async def handle_toggle(_call):
-        # A press while the screen moves is an emergency STOP. A press while another cinema action runs is ignored,
-        # never queued.
+        # A press while the screen moves is an emergency STOP. A short press always wins over a running long-press
+        # ambience start (that one can spend minutes waking the TV): it is cancelled first. A press while another
+        # cinema action runs is ignored, never queued, and logged so a «dead» button can be explained.
         if screen.moving:
             _LOGGER.warning('Cinema button pressed while the screen moves: STOP')
             hass.async_create_task(screen.stop_burst('button'))
             return
+        running = ambience_task[0]
+        if running is not None and not running.done():
+            _LOGGER.warning('Cinema button: cancelling the running ambience start (long press) first')
+            running.cancel()
+            await asyncio.wait({running}, timeout=AMBIENCE_CANCEL_WAIT)
         if button_running[0] or busy.locked():
-            _LOGGER.info('Cinema button ignored: already busy')
+            _LOGGER.warning('Cinema button ignored: another cinema action is still running')
             return
         button_running[0] = True
         hass.async_create_task(toggle_cinema())
@@ -913,6 +923,11 @@ async def async_setup(hass, config):
                 last_random[0] = video
                 forced_ambience[0] = True
                 await tv_play(video, projector=True)
+        except asyncio.CancelledError:
+            # A short press took over (cinema start or stop): no forced ambience left behind.
+            forced_ambience[0] = False
+            _LOGGER.warning('Ambience button cancelled by a short press')
+            raise
         except Exception as failure:
             _LOGGER.warning('Ambience button failed: %s', failure if isinstance(failure, RuntimeError) else repr(failure)[:200])
         finally:
@@ -924,10 +939,10 @@ async def async_setup(hass, config):
         if data.get('device_ieee') != BUTTON_IEEE or data.get('command') != BUTTON_LONG:
             return
         if button_running[0] or busy.locked() or screen.moving:
-            _LOGGER.info('Ambience button ignored: already busy')
+            _LOGGER.warning('Ambience button ignored: another cinema action is still running')
             return
         button_running[0] = True
-        hass.async_create_task(random_ambience())
+        ambience_task[0] = hass.async_create_task(random_ambience())
 
     unsubscribe_button = hass.bus.async_listen('zha_event', on_button)
 

@@ -573,6 +573,42 @@ class ButtonToggleTests(unittest.IsolatedAsyncioTestCase):
         start.assert_not_awaited()
         stop.assert_not_awaited()
 
+    async def test_short_press_cancels_a_running_long_press_ambience_and_starts_cinema(self):
+        registered, listeners, tasks = {}, [], []
+        def get_state(entity):
+            if entity == cinema.CONTACT: return types.SimpleNamespace(state='off', attributes={})
+            if entity == 'scene.cinema': return types.SimpleNamespace(state='scening')
+            return None
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state),
+            services=types.SimpleNamespace(async_call=AsyncMock(), async_register=lambda domain, name, handler: registered.__setitem__(f'{domain}.{name}', handler)),
+            bus=types.SimpleNamespace(async_listen_once=lambda *_: None, async_listen=lambda event, handler: listeners.append(handler) or (lambda: None)))
+        hass.async_create_background_task = lambda coroutine, _name: coroutine.close() or types.SimpleNamespace(cancel=lambda: None)
+        def create(coroutine):
+            task = asyncio.ensure_future(coroutine)
+            tasks.append(task)
+            return task
+        hass.async_create_task = create
+        contact_listeners.clear()
+        waking, never = asyncio.Event(), asyncio.Event()
+        async def wol_that_never_wakes_the_tv(*_args):
+            waking.set()
+            await never.wait()  # the Samsung does not wake: minutes of WOL attempts
+        hass.async_add_executor_job = wol_that_never_wakes_the_tv
+        with patch.object(cinema, 'samsung_power', AsyncMock(return_value='off')), \
+             patch.object(cinema, 'start_cinema', AsyncMock()) as start:
+            await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
+            press = registered['shoppinglist_cinema.toggle']
+            on_button = next(h for h in listeners if 'BUTTON_LONG' in h.__code__.co_names)
+            on_button(types.SimpleNamespace(data={'device_ieee': cinema.BUTTON_IEEE, 'command': cinema.BUTTON_LONG}))
+            await asyncio.wait_for(waking.wait(), 1)
+            ambience = tasks[0]
+            with self.assertLogs(cinema._LOGGER, 'WARNING') as logs:
+                await press(None)
+                await asyncio.wait_for(asyncio.gather(*tasks[1:]), 1)
+        self.assertTrue(ambience.cancelled())
+        start.assert_awaited_once()
+        self.assertTrue(any('cancelling the running ambience start' in line for line in logs.output))
+
     async def test_unknown_screen_sensor_does_nothing(self):
         press, tasks = await self.setup_toggle('unavailable')
         with patch.object(cinema, 'start_cinema', AsyncMock()) as start, patch.object(cinema, 'stop_cinema', AsyncMock()) as stop:

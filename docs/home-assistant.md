@@ -1,5 +1,20 @@
 # Home Assistant on the Raspberry Pi
 
+## SONOFF-knop: korte druk wint van een lopende lange druk, bridge 1.34.4 (2026-11-22)
+
+21/11 rond 20:02 «werkte de knop niet». The automation fired on every press (20:02:22 to 20:03:06, `shoppinglist_cinema.toggle`
+without error), but nothing moved. Cause: just before, the button sent a long press (`zha_event` command `off`), which
+started the random seasonal ambience. That held the cinema lock while it tried to wake the Samsung (WOL, 25 attempts)
+and only failed at 20:03:53 with `tv-not-waking`; every short press in between was dropped with an INFO line
+(«already busy»), so the log showed nothing. The press at 20:06:06 then worked (screen up), and a second press two
+seconds later was the emergency STOP while the screen moved.
+
+Now a short press always wins: a running long-press start is cancelled first (wait at most `AMBIENCE_CANCEL_WAIT` = 10 s for
+it to release the lock, forced ambience switched off) and the cinema start or stop follows. A press that is still ignored
+(another cinema action running) is logged as a WARNING, also for the long press. Test:
+`test_short_press_cancels_a_running_long_press_ambience_and_starts_cinema`. Still open: why the Samsung did not wake by
+WOL that evening. Install: `outputs/cinema-bridge-1.34.4-install.txt`.
+
 ## Ledkleur: hoofdkleur van de onderkant van de scène, bridge 1.34.3 (2026-11-20)
 
 The LED strip sits under the TV, and the projection stops at the TV's lower edge, so `frame_color` weighs rows by height
