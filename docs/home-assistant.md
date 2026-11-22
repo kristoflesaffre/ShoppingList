@@ -1,5 +1,16 @@
 # Home Assistant on the Raspberry Pi
 
+## Sfeer na een herstart, bridge 1.35.1 (2026-11-22)
+
+Checked after installing 1.35.0 (22/11 08:44): it runs (`bridge-status` version 1.35.0, no setup errors), but the
+ambience was showing through the restart and the bridge lost track of it: the light loop did not run (Zij 1-6 stayed
+purple at 10 %) and, with the «Ook rond de tv» switch off and the forced flag gone, a long press would have started a
+new video instead of ending it. Now the ambience counts as active whenever the ambience app is in front (not
+calibrating), and the queue worker picks the light loop up again once (`resume_ambience_lights`). When the loop ends
+because the app left, the forced flag is cleared, so the next long press starts a new video again. Test:
+`test_long_press_after_a_restart_still_ends_the_ambience_that_shows`. Install in two pastes:
+`outputs/cinema-bridge-1.35.1-install-deel-1.txt`, then `-deel-2.txt`.
+
 ## Sfeer: «Zij 1-6» in de kleur van de bovenkant, lange druk = alles uit, korte druk = bioscoop, bridge 1.35.0 (2026-11-22)
 
 - **Zij 1-6** (`light.hue_color_spot_1` … `_6`, Hue colour spots above the TV, replaced some living-room lights) are no

@@ -43,7 +43,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.35.0'
+BRIDGE_VERSION = '1.35.1'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
@@ -517,6 +517,9 @@ async def async_setup(hass, config):
                 # (the cinema scene owns the lights then) or the app is just restarting.
                 await asyncio.sleep(3)
                 state = hass.states.get(PLAYER)
+                if not sfeer_app_in_front():
+                    # The ambience ended (projector off or another app): the next long press starts a new one.
+                    forced_ambience[0] = False
                 if not ambience_in_front() and not (state and state.attributes.get('app_id') == STREMIO):
                     await restore_lights()
             except Exception as failure:
@@ -539,9 +542,24 @@ async def async_setup(hass, config):
             await start_sfeer()
             ensure_ambience_lights()
 
+    def sfeer_app_in_front():
+        state = hass.states.get(PLAYER)
+        return power_state() in AWAKE and state is not None and state.attributes.get('app_id') == APK_PACKAGE
+
     def ambience_active():
-        # The long-press ambience (until it is ended) or «Ook rond de tv» in front on the projector.
-        return forced_ambience[0] or ambience_in_front()
+        # The long-press ambience (until it is ended) or the ambience app in front on the projector, also when Home
+        # Assistant restarted meanwhile (the forced flag is gone then) or the switch is off.
+        return forced_ambience[0] or (sfeer_app_in_front() and not ambience_settings().get('calibrating'))
+
+    def resume_ambience_lights():
+        # After a restart the ambience may still be showing: pick the light loop up again (once per showing).
+        if light_task[0] and not light_task[0].done():
+            return
+        if forced_ambience[0] or not sfeer_app_in_front() or ambience_settings().get('calibrating'):
+            return
+        _LOGGER.warning('Ambience app already in front: lights follow the picture again')
+        forced_ambience[0] = True
+        ensure_ambience_lights()
 
     def drop_ambience():
         # A film or «everything off» takes over: no forced ambience, no light loop, no restore of the room afterwards.
@@ -713,6 +731,10 @@ async def async_setup(hass, config):
 
     async def worker():
         while True:
+            try:
+                resume_ambience_lights()
+            except Exception as failure:
+                _LOGGER.debug('Resuming the ambience lights skipped: %r', failure)
             try:
                 await heartbeat()
                 response = await database('query', {'query': {

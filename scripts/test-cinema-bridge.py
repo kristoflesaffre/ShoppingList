@@ -609,7 +609,7 @@ class ButtonToggleTests(unittest.IsolatedAsyncioTestCase):
         start.assert_awaited_once()
         self.assertTrue(any('cancelling the running ambience start' in line for line in logs.output))
 
-    async def setup_button(self, contact, app_id):
+    async def setup_button(self, contact, app_id, switch_on=True):
         registered, listeners, tasks = {}, [], []
         calls = []
         def get_state(entity):
@@ -631,7 +631,7 @@ class ButtonToggleTests(unittest.IsolatedAsyncioTestCase):
         hass.async_add_executor_job = AsyncMock(return_value=None)
         contact_listeners.clear()
         # «Ook rond de tv» switched on, so the ambience app in front counts as the ambience mode.
-        store = lambda _path: types.SimpleNamespace(value={'enabled': True, 'calibrating': False, 'mask': None}, load=lambda: None, save=lambda _v: None)
+        store = lambda _path: types.SimpleNamespace(value={'enabled': switch_on, 'calibrating': False, 'mask': None}, load=lambda: None, save=lambda _v: None)
         with patch.object(cinema, 'SettingsStore', store):
             await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
         on_button = next(h for h in listeners if 'BUTTON_LONG' in h.__code__.co_names)
@@ -647,6 +647,17 @@ class ButtonToggleTests(unittest.IsolatedAsyncioTestCase):
         samsung_off.assert_awaited_once()
         self.assertIn(('scene', 'turn_on', cinema.BRIGHT_SCENE), calls)
         self.assertIn(('media_player', 'turn_off', cinema.PLAYER), calls)
+
+    async def test_long_press_after_a_restart_still_ends_the_ambience_that_shows(self):
+        # Home Assistant restarted during a long-press ambience: no forced flag, switch off, but the app is in front.
+        _press, on_button, tasks, calls = await self.setup_button('off', cinema.APK_PACKAGE, switch_on=False)
+        with patch.object(cinema, 'turn_off_samsung', AsyncMock()) as samsung_off, patch.object(cinema, 'pick_video') as pick:
+            with self.assertLogs(cinema._LOGGER, 'WARNING'):
+                on_button(types.SimpleNamespace(data={'device_ieee': cinema.BUTTON_IEEE, 'command': cinema.BUTTON_LONG}))
+                await asyncio.wait_for(asyncio.gather(*tasks), 1)
+        pick.assert_not_called()
+        samsung_off.assert_awaited_once()
+        self.assertIn(('scene', 'turn_on', cinema.BRIGHT_SCENE), calls)
 
     async def test_short_press_while_the_ambience_shows_goes_straight_to_cinema(self):
         press, _on_button, tasks, calls = await self.setup_button('off', cinema.APK_PACKAGE)
