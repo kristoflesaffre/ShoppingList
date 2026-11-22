@@ -609,6 +609,56 @@ class ButtonToggleTests(unittest.IsolatedAsyncioTestCase):
         start.assert_awaited_once()
         self.assertTrue(any('cancelling the running ambience start' in line for line in logs.output))
 
+    async def setup_button(self, contact, app_id):
+        registered, listeners, tasks = {}, [], []
+        calls = []
+        def get_state(entity):
+            if entity == cinema.CONTACT: return types.SimpleNamespace(state=contact, attributes={})
+            if entity == 'scene.cinema': return types.SimpleNamespace(state='scening')
+            if entity == cinema.PLAYER: return types.SimpleNamespace(state='on', attributes={'app_id': app_id})
+            return None
+        async def service(domain, name, data, **_):
+            calls.append((domain, name, data.get('entity_id')))
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state),
+            services=types.SimpleNamespace(async_call=service, async_register=lambda domain, name, handler: registered.__setitem__(f'{domain}.{name}', handler)),
+            bus=types.SimpleNamespace(async_listen_once=lambda *_: None, async_listen=lambda event, handler: listeners.append(handler) or (lambda: None)))
+        hass.async_create_background_task = lambda coroutine, _name: coroutine.close() or types.SimpleNamespace(cancel=lambda: None)
+        def create(coroutine):
+            task = asyncio.ensure_future(coroutine)
+            tasks.append(task)
+            return task
+        hass.async_create_task = create
+        hass.async_add_executor_job = AsyncMock(return_value=None)
+        contact_listeners.clear()
+        # «Ook rond de tv» switched on, so the ambience app in front counts as the ambience mode.
+        store = lambda _path: types.SimpleNamespace(value={'enabled': True, 'calibrating': False, 'mask': None}, load=lambda: None, save=lambda _v: None)
+        with patch.object(cinema, 'SettingsStore', store):
+            await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
+        on_button = next(h for h in listeners if 'BUTTON_LONG' in h.__code__.co_names)
+        return registered['shoppinglist_cinema.toggle'], on_button, tasks, calls
+
+    async def test_long_press_while_the_ambience_shows_turns_everything_off_and_brightens(self):
+        _press, on_button, tasks, calls = await self.setup_button('off', cinema.APK_PACKAGE)
+        with patch.object(cinema, 'turn_off_samsung', AsyncMock()) as samsung_off, patch.object(cinema, 'pick_video') as pick:
+            with self.assertLogs(cinema._LOGGER, 'WARNING'):
+                on_button(types.SimpleNamespace(data={'device_ieee': cinema.BUTTON_IEEE, 'command': cinema.BUTTON_LONG}))
+                await asyncio.wait_for(asyncio.gather(*tasks), 1)
+        pick.assert_not_called()
+        samsung_off.assert_awaited_once()
+        self.assertIn(('scene', 'turn_on', cinema.BRIGHT_SCENE), calls)
+        self.assertIn(('media_player', 'turn_off', cinema.PLAYER), calls)
+
+    async def test_short_press_while_the_ambience_shows_goes_straight_to_cinema(self):
+        press, _on_button, tasks, calls = await self.setup_button('off', cinema.APK_PACKAGE)
+        with patch.object(cinema, 'start_cinema', AsyncMock()) as start, patch.object(cinema, 'stop_cinema', AsyncMock()) as stop:
+            with self.assertLogs(cinema._LOGGER, 'WARNING') as logs:
+                await press(None)
+                await asyncio.wait_for(asyncio.gather(*tasks), 1)
+        start.assert_awaited_once()
+        stop.assert_not_awaited()
+        self.assertTrue(any('from ambience to cinema' in line for line in logs.output))
+        self.assertNotIn(('scene', 'turn_on', cinema.BRIGHT_SCENE), calls)
+
     async def test_unknown_screen_sensor_does_nothing(self):
         press, tasks = await self.setup_toggle('unavailable')
         with patch.object(cinema, 'start_cinema', AsyncMock()) as start, patch.object(cinema, 'stop_cinema', AsyncMock()) as stop:

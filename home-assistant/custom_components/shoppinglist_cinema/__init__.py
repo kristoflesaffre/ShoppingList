@@ -43,7 +43,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.34.5'
+BRIDGE_VERSION = '1.35.0'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
@@ -55,6 +55,12 @@ AMBIENCE_LED = 'light.woonkamer_led_woonkamer_nieuw'
 AMBIENCE_DIM_PCT = 10
 AMBIENCE_LIGHT_EVERY = 6
 AMBIENCE_LED_TRANSITION = 3
+# The colour spots above the TV («Zij 1-6»): they take the main colour of the top half of the picture, at a fixed low
+# brightness (20 %, as they were set by hand), instead of being dimmed with the other lights.
+AMBIENCE_SIDE = tuple(f'light.hue_color_spot_1{suffix}' for suffix in ('', '_2', '_3', '_4', '_5', '_6'))
+AMBIENCE_SIDE_PCT = 20
+# Long press while the ambience shows: everything off and the living room to this ordinary bright Hue scene.
+BRIGHT_SCENE = 'scene.woonkamer_woonkamer_energie'
 # How the living room was before «Ook rond de tv» took over, restored when it ends (not when a film takes over).
 AMBIENCE_BEFORE_SCENE = 'shoppinglist_ambience_before'
 # SONOFF SNZB-01P (ZHA): single press = cinema (automation), long press («off») = a random seasonal ambience video on
@@ -460,23 +466,35 @@ async def async_setup(hass, config):
         # Other living-room lights to 10 % once; then the LED strip follows the picture until the app leaves.
         group = hass.states.get(CINEMA_LIGHTS)
         members = list((group.attributes.get('entity_id') if group else None) or [])
-        others = [e for e in members if e != AMBIENCE_LED]
+        side = [e for e in AMBIENCE_SIDE if hass.states.get(e) is not None]
+        others = [e for e in members if e != AMBIENCE_LED and e not in side]
         if not lights_saved[0] and members:
-            await hass.services.async_call('scene', 'create', {'scene_id': AMBIENCE_BEFORE_SCENE, 'snapshot_entities': [*members, AMBIENCE_LED]}, blocking=True)
+            await hass.services.async_call('scene', 'create', {'scene_id': AMBIENCE_BEFORE_SCENE, 'snapshot_entities': list(dict.fromkeys([*members, AMBIENCE_LED, *side]))}, blocking=True)
             lights_saved[0] = True
         if others:
             await hass.services.async_call('light', 'turn_on', {'entity_id': others, 'brightness_pct': AMBIENCE_DIM_PCT, 'transition': 2}, blocking=True)
         last = None
+        last_top = None
         misses = 0
         while ambience_in_front():
             try:
-                found = await hass.async_add_executor_job(frame_color, await adb(FRAME_COMMAND))
+                png = await adb(FRAME_COMMAND)
+                found = await hass.async_add_executor_job(frame_color, png)
+                found_top = await hass.async_add_executor_job(frame_color, png, True) if side else None
                 misses = 0
             except Exception:
-                found = None
+                found = found_top = None
                 misses += 1
                 if misses >= 5:
                     break
+            if found_top:
+                color_top = found_top[0]
+                if last_top is None or color_distance(color_top, last_top) > 18:
+                    await hass.services.async_call('light', 'turn_on', {
+                        'entity_id': side, 'rgb_color': list(color_top), 'brightness_pct': AMBIENCE_SIDE_PCT,
+                        'transition': AMBIENCE_LED_TRANSITION,
+                    }, blocking=True)
+                    last_top = color_top
             if found:
                 color, level = found
                 if last is None or color_distance(color, last) > 18:
@@ -520,6 +538,38 @@ async def async_setup(hass, config):
         if power_state() in AWAKE and state and state.attributes.get('app_id') == APK_PACKAGE:
             await start_sfeer()
             ensure_ambience_lights()
+
+    def ambience_active():
+        # The long-press ambience (until it is ended) or «Ook rond de tv» in front on the projector.
+        return forced_ambience[0] or ambience_in_front()
+
+    def drop_ambience():
+        # A film or «everything off» takes over: no forced ambience, no light loop, no restore of the room afterwards.
+        forced_ambience[0] = False
+        lights_saved[0] = False
+        if light_task[0] and not light_task[0].done():
+            light_task[0].cancel()
+
+    async def leave_sfeer_app():
+        # Best effort: the projector shows its home screen again instead of the ambience page.
+        try:
+            if power_state() in AWAKE:
+                await adb(f'am force-stop {APK_PACKAGE}')
+        except Exception as failure:
+            _LOGGER.warning('Leaving the ambience app failed: %s', failure if isinstance(failure, RuntimeError) else repr(failure)[:200])
+
+    async def ambience_all_off():
+        # Long press while the ambience shows: projector off, Samsung off, living room to the bright scene.
+        drop_ambience()
+        async def projector_off():
+            if power_state() in AWAKE:
+                await hass.services.async_call('media_player', 'turn_off', {'entity_id': PLAYER}, blocking=True)
+        async def lights():
+            await hass.services.async_call('scene', 'turn_on', {'entity_id': BRIGHT_SCENE, 'transition': 2}, blocking=True)
+        results = await asyncio.gather(projector_off(), turn_off_samsung(hass), lights(), return_exceptions=True)
+        for result in results:
+            if isinstance(result, BaseException):
+                raise result
 
     async def hide_ambience():
         forced_ambience[0] = False
@@ -882,6 +932,11 @@ async def async_setup(hass, config):
             action = 'cinema-stop' if contact.state == 'on' else 'cinema'
             try:
                 async with busy:
+                    if action == 'cinema' and ambience_active():
+                        # Straight from the ambience to the cinema: the film's lights take over, nothing restored.
+                        _LOGGER.warning('Cinema button: from ambience to cinema')
+                        drop_ambience()
+                        await leave_sfeer_app()
                     await execute(action)
             except Exception as failure:
                 _LOGGER.warning('Cinema button %s failed: %s', action, failure if isinstance(failure, RuntimeError) else 'device-action-failed')
@@ -913,6 +968,15 @@ async def async_setup(hass, config):
 
     last_random = [None]
 
+    async def end_ambience():
+        try:
+            async with busy:
+                await ambience_all_off()
+        except Exception as failure:
+            _LOGGER.warning('Ambience off (long press) failed: %s', failure if isinstance(failure, RuntimeError) else repr(failure)[:200])
+        finally:
+            button_running[0] = False
+
     async def random_ambience():
         try:
             async with busy:
@@ -943,6 +1007,10 @@ async def async_setup(hass, config):
             _LOGGER.warning('Ambience button ignored: another cinema action is still running')
             return
         button_running[0] = True
+        if ambience_active():
+            _LOGGER.warning('Ambience button: ambience is on, so everything off and the bright scene')
+            hass.async_create_task(end_ambience())
+            return
         ambience_task[0] = hass.async_create_task(random_ambience())
 
     unsubscribe_button = hass.bus.async_listen('zha_event', on_button)

@@ -1,5 +1,23 @@
 # Home Assistant on the Raspberry Pi
 
+## Sfeer: «Zij 1-6» in de kleur van de bovenkant, lange druk = alles uit, korte druk = bioscoop, bridge 1.35.0 (2026-11-22)
+
+- **Zij 1-6** (`light.hue_color_spot_1` … `_6`, Hue colour spots above the TV, replaced some living-room lights) are no
+  longer dimmed with the others: while the ambience shows they take the main colour of the **top** of the projector
+  picture (`frame_color(png, top=True)`: row weight 1 at the top -> 0.15 at the bottom, same hue grouping as the strip),
+  from the same screenshot as the LED strip every 6 s, at a fixed 20 % (`AMBIENCE_SIDE_PCT`, as they were set by hand),
+  3 s transition, only when the colour changes. They are in the snapshot, so they come back as they were afterwards.
+- **Long press while the ambience shows** (forced long-press ambience, or «Ook rond de tv» in front): no new video but
+  everything off: light loop stopped, projector off, Samsung off, living room to `BRIGHT_SCENE` =
+  `scene.woonkamer_woonkamer_energie` (Hue «Energie»; the snapshot is not restored).
+- **Short press while the ambience shows** does what it always does: screen closed = cinema start. Before it the bridge
+  drops the ambience (no forced mode, light loop stopped, no restore) and closes the ambience app (`am force-stop`), then
+  the normal cinema start runs (Samsung off, Cinema lights, screen up).
+Tests: `test_top_of_the_scene_gives_the_colour_for_the_lights_above_the_tv`,
+`test_long_press_while_the_ambience_shows_turns_everything_off_and_brightens`,
+`test_short_press_while_the_ambience_shows_goes_straight_to_cinema`. Includes 1.34.4 and 1.34.5. Install:
+`outputs/cinema-bridge-1.35.0-install.txt`. Not yet tested in the living room.
+
 ## Lange druk: de Samsung wordt weer wakker, bridge 1.34.5 (2026-11-22)
 
 The long press itself arrived and started (21/11 20:02), but failed after ± 1.5 min with `tv-not-waking`: Wake-on-LAN

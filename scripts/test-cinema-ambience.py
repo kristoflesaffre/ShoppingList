@@ -109,6 +109,17 @@ class FrameColorTests(unittest.TestCase):
         self.assertGreater(color[0], 200)
         self.assertLess(color[2], 40)
 
+    def test_top_of_the_scene_gives_the_colour_for_the_lights_above_the_tv(self):
+        import io
+        from PIL import Image
+        image = Image.new('RGB', (96, 54), (60, 110, 200))  # blue sky
+        image.paste((230, 110, 30), (0, 30, 96, 54))  # orange fire, low in the picture
+        out = io.BytesIO()
+        image.save(out, 'PNG')
+        color, _ = ambience.frame_color(base64.b64encode(out.getvalue()).decode(), top=True)
+        self.assertGreater(color[2], 200)
+        self.assertLess(color[0], 120)
+
     def test_black_picture_gives_no_colour(self):
         self.assertIsNone(ambience.frame_color(self.png((5, 5, 5))))
 

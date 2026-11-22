@@ -202,7 +202,7 @@ HUE_BINS = 12
 NEUTRAL_SAT = 0.18
 
 
-def frame_color(png_base64):
+def frame_color(png_base64, top=False):
     """Screenshot of the projector (PNG, base64) -> ((r, g, b), brightness 0-1), or None when the picture is (nearly)
     black. Runs in the executor.
 
@@ -211,7 +211,10 @@ def frame_color(png_base64):
     Instead of an average (blue sky + orange fire = a muddy pink that is nowhere in the picture) it picks the main
     colour: lit pixels go into 12 hue groups of 30 degrees or a «white/grey» group, the strongest group (with its two
     neighbours, so a colour on a boundary is not split) wins, and the strip gets the average of just those pixels. A
-    colourful group gets a small bonus over white; the black TV mask and dark corners are skipped."""
+    colourful group gets a small bonus over white; the black TV mask and dark corners are skipped.
+
+    `top=True` is the same choice for the lights above the TV («Zij 1-6»): the top of the scene counts most (row weight 1
+    at the top -> 0.15 at the bottom), so a blue sky over a fire gives blue there and orange on the strip."""
     import colorsys
     import io
     from PIL import Image
@@ -231,7 +234,8 @@ def frame_color(png_base64):
             continue
         lit += 1
         y = (index // width + 0.5) / height
-        row = 0.15 + 0.85 * y * y
+        edge = 1.0 - y if top else y
+        row = 0.15 + 0.85 * edge * edge
         h, sat, val = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
         level_sum += val * row
         level_weight += row
