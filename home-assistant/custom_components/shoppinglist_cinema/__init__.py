@@ -35,6 +35,14 @@ CINEMA_SELECTOR = 'select.woonkamer_woonkamer_scene'
 CINEMA_LIGHTS = 'light.woonkamer_woonkamer'
 AWAKE = {'on', 'playing', 'paused', 'idle', 'buffering'}
 WAKE_COOLDOWN = 120
+# Fail-safe projector wake (ensure_on).
+PROJECTOR_MAC = '9c:12:21:f0:f7:9f'
+PROJECTOR_REMOTE = 'remote.woonkamer_tv'
+WAKE_DEADLINE = 120
+WAKE_NUDGE_EVERY = 10
+WAKE_ATOM_MAX = 2
+WAKE_ATOM_GAP = 45
+WAKE_SLEEP_GRACE = 20
 CLOSED_BRIGHTNESS = 20
 # ADB connection to the same projector: Android TV Remote cannot see playback, the media session can.
 ADB_PLAYER = 'media_player.android_tv_192_168_132_133'
@@ -43,7 +51,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.35.5'
+BRIDGE_VERSION = '1.36.0'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
@@ -350,25 +358,93 @@ async def async_setup(hass, config):
         state = hass.states.get(PLAYER)
         return state.state if state else 'unknown'
 
-    async def ensure_on():
-        # A reachable Android TV endpoint can mean booting: never send a second wake.
-        if power_state() not in AWAKE:
-            reachable = False
+    def projector_awake():
+        # Android TV Remote (PLAYER) or ADB: either one seeing the projector awake counts. After a wake from sleep the
+        # Android TV Remote connection came back 40 s after ADB already saw the launcher (22/11 19:53).
+        adb_state = getattr(hass.states.get(ADB_PLAYER), 'state', None)
+        return power_state() in AWAKE or adb_state in AWAKE
+
+    async def projector_reachable():
+        try:
+            _, writer = await asyncio.wait_for(asyncio.open_connection(settings['projector_host'], 6466), 2)
+            writer.close()
+            await writer.wait_closed()
+            return True
+        except (OSError, asyncio.TimeoutError):
+            return False
+
+    async def network_wake(reachable):
+        # Wakes that can never switch the projector off: Wake-on-LAN, and KEYCODE_WAKEUP (not the power toggle) over
+        # Android TV Remote and ADB while the projector is on the network (sleep). No ADB while the screen moves.
+        try:
+            await hass.async_add_executor_job(send_wol, settings['projector_host'], settings.get('projector_mac') or PROJECTOR_MAC)
+        except Exception as failure:
+            _LOGGER.debug('Projector Wake-on-LAN failed: %r', failure)
+        if not reachable:
+            return
+        remote = hass.states.get(PROJECTOR_REMOTE)
+        if getattr(remote, 'state', 'unavailable') not in ('unknown', 'unavailable'):
             try:
-                _, writer = await asyncio.wait_for(asyncio.open_connection(settings['projector_host'], 6466), 2)
-                writer.close()
-                await writer.wait_closed()
-                reachable = True
-            except (OSError, asyncio.TimeoutError):
-                pass
-            if not reachable:
-                last_wake[0] = time.monotonic()
+                await asyncio.wait_for(hass.services.async_call('remote', 'send_command', {'entity_id': PROJECTOR_REMOTE, 'command': 'KEYCODE_WAKEUP'}, blocking=True), 5)
+            except Exception as failure:
+                _LOGGER.debug('Projector KEYCODE_WAKEUP over Android TV Remote failed: %r', failure)
+        if not screen.moving and getattr(hass.states.get(ADB_PLAYER), 'state', 'unavailable') not in ('unknown', 'unavailable'):
+            try:
+                await asyncio.wait_for(adb('input keyevent KEYCODE_WAKEUP'), 5)
+            except Exception as failure:
+                _LOGGER.debug('Projector KEYCODE_WAKEUP over ADB failed: %r', failure)
+
+    async def atom_wake():
+        # The Atom sends the XGIMI remote's power key over Bluetooth: wakes a projector that is fully off (not on the
+        # network), but it is a toggle, so never aimed at a projector that is booting or already on.
+        for attempt in range(2):
+            last_wake[0] = time.monotonic()
+            try:
                 result = await hass.services.async_call('rest_command', 'xgimi_wake_atom', {}, blocking=True, return_response=True)
-                if not result or result.get('status') != 200:
-                    raise RuntimeError('wake-not-confirmed')
-        deadline = time.monotonic() + 65
-        while power_state() not in AWAKE:
-            if time.monotonic() >= deadline:
+            except Exception as failure:
+                result = None
+                _LOGGER.warning('Projector Atom wake %s failed: %r', attempt + 1, failure)
+            if result and result.get('status') == 200:
+                return True
+        return False
+
+    async def ensure_on():
+        # Fail-safe wake (22/11 19:52: the projector slept and the start gave up after 65 s). Every round: the network
+        # wakes (harmless if it is already on). The Bluetooth power key only when it can not be a toggle the wrong
+        # way: the projector is not on the network (fully off), or Android TV Remote is connected and reports it off
+        # (sleep) for WAKE_SLEEP_GRACE s despite KEYCODE_WAKEUP. At most WAKE_ATOM_MAX presses, WAKE_ATOM_GAP s apart.
+        if projector_awake():
+            return
+        started = time.monotonic()
+        presses, last_press, nudged, live_off_since = 0, None, float('-inf'), None
+        atom_failed = False
+        while True:
+            reachable = await projector_reachable()
+            now = time.monotonic()
+            if projector_awake():
+                if presses or now - started > 5:
+                    _LOGGER.warning('Projector awake after %.0f s (%s Atom press%s)', now - started, presses, '' if presses == 1 else 'es')
+                return
+            if now - nudged >= WAKE_NUDGE_EVERY:
+                await network_wake(reachable)
+                nudged = now
+            live_off = reachable and power_state() == 'off'
+            live_off_since = (live_off_since or now) if live_off else None
+            gap_ok = last_press is None or now - last_press >= WAKE_ATOM_GAP
+            if presses < WAKE_ATOM_MAX and gap_ok and not atom_failed and (
+                    not reachable or (live_off_since is not None and now - live_off_since >= WAKE_SLEEP_GRACE)):
+                _LOGGER.warning('Projector wake: Atom press %s (%s)', presses + 1, 'asleep on the network' if reachable else 'not on the network')
+                if await atom_wake():
+                    presses += 1
+                    last_press = time.monotonic()
+                else:
+                    atom_failed = True
+                    if not reachable:
+                        raise RuntimeError('wake-not-confirmed')
+                if projector_awake():
+                    return
+            if time.monotonic() - started >= WAKE_DEADLINE:
+                _LOGGER.warning('Projector did not wake within %s s (%s Atom press%s, on the network: %s)', WAKE_DEADLINE, presses, '' if presses == 1 else 'es', reachable)
                 raise RuntimeError('projector-not-ready')
             await asyncio.sleep(2)
 

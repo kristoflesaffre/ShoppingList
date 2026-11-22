@@ -1,5 +1,27 @@
 # Home Assistant on the Raspberry Pi
 
+## Projector altijd wakker, ook uit slaap, bridge 1.36.0 (2026-11-22)
+
+22/11 19:52:26 short press: screen up and stopped fine, but «Cinema button cinema failed: projector-not-ready» at
+19:53:31. The projector had been asleep since the film ended at 19:00 (Android TV Remote and ADB flapping between «off»
+and «unavailable», ADB time-outs). The old wake sent one Atom press (Bluetooth power key, a toggle) only when port 6466
+was closed, never anything else, and gave up after 65 s on Android TV Remote's state alone. ADB saw the launcher at
+19:53:46, Android TV Remote only at 19:54:25.
+
+1.36.0 `ensure_on`, fail-safe:
+- Awake = Android TV Remote (`media_player.woonkamer_tv_2`) **or** ADB (`media_player.android_tv_192_168_132_133`)
+  awake.
+- Every 10 s the harmless network wakes: Wake-on-LAN to `9c:12:21:f0:f7:9f` (`PROJECTOR_MAC`, or `projector_mac` in
+  the settings) and, while the projector is on the network, `KEYCODE_WAKEUP` (not the power toggle) over Android TV
+  Remote (`remote.woonkamer_tv`) and over ADB (no ADB while the screen moves).
+- The Atom power key only where it cannot switch the projector off: not on the network (fully off) → right away; on the
+  network with Android TV Remote connected and reporting «off» for 20 s despite `KEYCODE_WAKEUP` (sleep) → then. On the
+  network but not connected yet (may be booting) → never. At most 2 presses, 45 s apart; a refused Atom request is
+  retried once right away (that press did not go out).
+- Gives up after 120 s (was 65 s), logged with the number of presses and whether it was on the network; a wake that
+  took longer than 5 s is logged as «Projector awake after n s».
+Install in two pastes: `outputs/cinema-bridge-1.36.0-install-deel-1.txt`, then `-deel-2.txt` (includes 1.35.5).
+
 ## Scherm stopte niet op tijd na sfeer → cinema, bridge 1.35.5 (2026-11-22)
 
 22/11 18:13:19 short press during the ambience: «from ambience to cinema», screen open at 18:13:20.6, but the screen did

@@ -153,7 +153,8 @@ class BridgeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_failed_wake_never_launches_or_retries(self):
         calls, writes = await self.run_command('off', wake_status=503)
-        self.assertEqual([action for _, action, _ in calls], ['turn_on', 'xgimi_wake_atom'])
+        # A refused Atom press did not go out: tried once more right away, then the start fails.
+        self.assertEqual([action for _, action, _ in calls], ['turn_on', 'xgimi_wake_atom', 'xgimi_wake_atom'])
         self.assertEqual(writes[-1][-1], {'state': 'failed', 'error': 'wake-not-confirmed'})
 
     async def test_missing_scene_does_not_wake(self):
@@ -678,6 +679,92 @@ class ButtonToggleTests(unittest.IsolatedAsyncioTestCase):
                 await press(None)
                 await asyncio.wait_for(asyncio.gather(*tasks), 1)
         self.assertTrue(any('still in front after the cinema start' in line for line in logs.output))
+
+    async def wake_harness(self, player, adb_state='unavailable', reachable=True, wakes_on=None):
+        # ensure_on as the cinema start gets it, with a fake clock: `wakes_on` = which wake makes the projector awake.
+        registered, listeners, calls = {}, [], []
+        state = {'player': player, 'adb': adb_state}
+        def get_state(entity):
+            if entity == cinema.CONTACT: return types.SimpleNamespace(state='off', attributes={})
+            if entity == 'scene.cinema': return types.SimpleNamespace(state='scening')
+            if entity == cinema.PLAYER: return types.SimpleNamespace(state=state['player'], attributes={})
+            if entity == cinema.ADB_PLAYER: return types.SimpleNamespace(state=state['adb'], attributes={})
+            if entity == cinema.PROJECTOR_REMOTE: return types.SimpleNamespace(state='on' if state['player'] != 'unavailable' else 'unavailable', attributes={})
+            return None
+        async def service(domain, name, data, **_):
+            label = data.get('command') if name in ('send_command', 'adb_command') else name
+            calls.append(label)
+            if wakes_on and label == wakes_on:
+                state['player'] = 'on'
+            if domain == 'rest_command':
+                return {'status': 200}
+            return {}
+        async def executor(func, *args):
+            calls.append('wol' if func is cinema.send_wol else func.__name__)
+            return None
+        hass = types.SimpleNamespace(session=None, states=types.SimpleNamespace(get=get_state),
+            services=types.SimpleNamespace(async_call=service, async_register=lambda domain, name, handler: registered.__setitem__(f'{domain}.{name}', handler)),
+            bus=types.SimpleNamespace(async_listen_once=lambda *_: None, async_listen=lambda event, handler: listeners.append(handler) or (lambda: None)))
+        hass.async_create_background_task = lambda coroutine, _name: coroutine.close() or types.SimpleNamespace(cancel=lambda: None)
+        tasks = []
+        hass.async_create_task = lambda coroutine: tasks.append(asyncio.ensure_future(coroutine)) or tasks[-1]
+        hass.async_add_executor_job = executor
+        contact_listeners.clear()
+        await cinema.async_setup(hass, {'shoppinglist_cinema': {'token': 'scoped', 'bridge_id': 'bridge', 'projector_host': '192.168.1.1', 'cinema_scene': 'scene.cinema'}})
+        captured = []
+        async def start(_hass, _screen, _scene, ensure_on, blinds=None):
+            if blinds: blinds.close()
+            captured.append(ensure_on)
+        with patch.object(cinema, 'start_cinema', start):
+            await registered['shoppinglist_cinema.toggle'](None)
+            await asyncio.gather(*tasks)
+        clock = [1000.0]
+        async def fake_sleep(seconds): clock[0] += seconds
+        class Writer:
+            def close(self): pass
+            async def wait_closed(self): pass
+        async def connect(*_):
+            if not reachable: raise OSError
+            return None, Writer()
+        async def run():
+            with patch.object(cinema.time, 'monotonic', lambda: clock[0]), patch.object(cinema.asyncio, 'sleep', fake_sleep), \
+                 patch.object(cinema.asyncio, 'open_connection', connect):
+                await captured[0]()
+        calls.clear()
+        return run, calls, state, clock
+
+    async def test_asleep_projector_gets_the_network_wakeup_first(self):
+        run, calls, _state, _clock = await self.wake_harness('off', wakes_on='KEYCODE_WAKEUP')
+        await run()
+        self.assertEqual(calls[:2], ['wol', 'KEYCODE_WAKEUP'])
+        self.assertNotIn('xgimi_wake_atom', calls)
+
+    async def test_asleep_projector_that_ignores_the_wakeup_gets_one_atom_press(self):
+        run, calls, _state, _clock = await self.wake_harness('off', wakes_on='xgimi_wake_atom')
+        with self.assertLogs(cinema._LOGGER, 'WARNING'):
+            await run()
+        self.assertEqual(calls.count('xgimi_wake_atom'), 1)
+        self.assertLess(calls.index('KEYCODE_WAKEUP'), calls.index('xgimi_wake_atom'))
+
+    async def test_fully_off_projector_gets_the_atom_and_a_second_press_later(self):
+        run, calls, _state, _clock = await self.wake_harness('unavailable', reachable=False)
+        with self.assertLogs(cinema._LOGGER, 'WARNING'), self.assertRaisesRegex(RuntimeError, 'projector-not-ready'):
+            await run()
+        self.assertEqual(calls.count('xgimi_wake_atom'), cinema.WAKE_ATOM_MAX)
+        self.assertNotIn('KEYCODE_WAKEUP', calls)
+
+    async def test_booting_projector_on_the_network_never_gets_the_power_key(self):
+        # On the network but Android TV Remote not connected yet: may be booting, a power key could switch it off.
+        run, calls, _state, _clock = await self.wake_harness('unavailable', reachable=True)
+        with self.assertLogs(cinema._LOGGER, 'WARNING'), self.assertRaisesRegex(RuntimeError, 'projector-not-ready'):
+            await run()
+        self.assertNotIn('xgimi_wake_atom', calls)
+        self.assertGreater(calls.count('wol'), 3)
+
+    async def test_projector_awake_over_adb_counts_as_awake(self):
+        run, calls, _state, _clock = await self.wake_harness('unavailable', adb_state='idle')
+        await run()
+        self.assertEqual(calls, [])
 
     async def test_unknown_screen_sensor_does_nothing(self):
         press, tasks = await self.setup_toggle('unavailable')
