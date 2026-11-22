@@ -21,6 +21,8 @@ export type RecipeTimer = {
 };
 
 const MINUTE = 60_000;
+/** Langer dan dit krijgt geen wekkerknop («24 uur invriezen», «een nacht rijzen»): dat zet je niet in de app. */
+export const MAX_TIMER_MS = 2 * 60 * MINUTE;
 const NUMBER = String.raw`(\d+(?:[.,]\d+)?)`;
 const RANGE = String.raw`(?:\s*(?:à|a|tot|-|–)\s*\d+(?:[.,]\d+)?)?`;
 const UNIT = String.raw`(minuten|minuut|min\.?|uren|uur|seconden|seconde|sec\.?)`;
@@ -66,7 +68,7 @@ export function findStepDurations(text: string): StepDuration[] {
     }
     if (taken.some(([s, e]) => at < e && end > s)) continue;
     taken.push([at, end]);
-    if (ms > 0 && ms <= 24 * 60 * MINUTE) found.push({ at, ms: Math.round(ms) });
+    if (ms > 0 && ms <= MAX_TIMER_MS) found.push({ at, ms: Math.round(ms) });
   }
   for (const [re, ms] of WORDS) {
     for (const match of Array.from(text.matchAll(re))) {

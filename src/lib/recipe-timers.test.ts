@@ -21,6 +21,13 @@ describe("findStepDurations", () => {
     expect(labels("Kook 8-10 min.")).toEqual(["8 min"]);
   });
 
+  it("geeft geen wekker voor tijden langer dan 2 uur", () => {
+    expect(labels("Vries minstens 24 uur in op een vlakke ondergrond.")).toEqual([]);
+    expect(labels("Laat 3 uur rijzen.")).toEqual([]);
+    expect(labels("Laat 2 uur en 15 minuten rijzen.")).toEqual([]);
+    expect(labels("Laat 2 uur rijzen.")).toEqual(["2 u"]);
+  });
+
   it("herkent woorden als kwartier en half uur", () => {
     expect(labels("Laat een kwartier rusten.")).toEqual(["15 min"]);
     expect(labels("Zet een half uur in de koelkast.")).toEqual(["30 min"]);
