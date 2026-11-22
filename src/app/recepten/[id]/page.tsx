@@ -203,6 +203,8 @@ export default function ReceptDetailPage() {
       link: r.link,
       steps: r.steps ?? "",
       persons: r.persons,
+      calories: (r as Record<string, unknown>).calories as number | undefined,
+      calorieServingLabel: (r as Record<string, unknown>).calorieServingLabel as string | undefined,
       photoUrl: r.photoUrl ?? null,
       category: (r.category as RecipeCategory | undefined) ?? null,
       ingredients: [...(r.ingredients ?? [])]
@@ -295,7 +297,7 @@ export default function ReceptDetailPage() {
   }, []);
 
   const saveRecipeFields = React.useCallback(
-    (fields: { name?: string; link?: string; persons?: number; steps?: string; category?: RecipeCategory | null }): Promise<void> => {
+    (fields: { name?: string; link?: string; persons?: number; steps?: string; category?: RecipeCategory | null; calories?: number | null; calorieServingLabel?: string | null }): Promise<void> => {
       if (!recipeId) return Promise.resolve();
       const { category, ...rest } = fields;
       const patch: Record<string, unknown> = { ...rest };
@@ -581,6 +583,13 @@ export default function ReceptDetailPage() {
   const basePersons = savedRecipe.persons > 0 ? savedRecipe.persons : 0;
   const shownPersons = persons ?? basePersons;
   const factor = basePersons > 0 ? shownPersons / basePersons : 1;
+  const calorieLabel = savedRecipe.calorieServingLabel || "portie";
+  const calorieFractions = [
+    { label: `Volledige ${calorieLabel}`, divisor: 1 },
+    { label: `½ ${calorieLabel}`, divisor: 2 },
+    { label: `⅓ ${calorieLabel}`, divisor: 3 },
+    { label: `¼ ${calorieLabel}`, divisor: 4 },
+  ];
 
   return (
     <div className="relative min-h-dvh w-full bg-[var(--bg-app)]">
@@ -739,6 +748,57 @@ export default function ReceptDetailPage() {
             )}
           </div>
         </section>
+
+        {detailPhotoEditMode ? (
+          <section aria-label="Calorieën bewerken" className="mx-auto mt-5 w-full max-w-[620px] rounded-[20px] bg-[var(--white)] p-4 shadow-[0_0_0_1px_var(--border-subtle)]">
+            <h2 className="text-base font-bold text-text-primary">Calorieën</h2>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">Optioneel. Vul kcal in voor één volledige portie; kleinere porties worden automatisch berekend.</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                aria-label="Kilocalorieën per portie"
+                type="number"
+                min="0"
+                step="1"
+                defaultValue={savedRecipe.calories ?? ""}
+                placeholder="bv. 390"
+                onBlur={(e) => {
+                  const value = e.currentTarget.value.trim();
+                  void saveRecipeFields({ calories: value && Number.isFinite(Number(value)) ? Number(value) : null });
+                }}
+                className="h-10 w-28 rounded-xl bg-[var(--gray-50)] px-3 text-sm font-semibold text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              />
+              <span className="text-sm font-semibold text-[var(--text-secondary)]">kcal per</span>
+              <input
+                aria-label="Naam van de calorieportie"
+                type="text"
+                defaultValue={savedRecipe.calorieServingLabel ?? "portie"}
+                placeholder="portie"
+                onBlur={(e) => void saveRecipeFields({ calorieServingLabel: e.currentTarget.value.trim() || "portie" })}
+                className="h-10 w-36 rounded-xl bg-[var(--gray-50)] px-3 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+              />
+            </div>
+          </section>
+        ) : savedRecipe.calories != null ? (
+          <section aria-label="Calorieën per portie" className="mx-auto mt-5 w-full max-w-[620px] overflow-hidden rounded-[20px] bg-[var(--white)] shadow-[0_0_0_1px_var(--border-subtle)]">
+            <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+              <div>
+                <h2 className="text-base font-bold text-text-primary">Calorieën</h2>
+                <p className="text-xs text-[var(--text-secondary)]">Per portiegrootte</p>
+              </div>
+              <span className="rounded-pill bg-[#e9f7ec] px-3 py-1.5 text-sm font-bold text-[#238344]">± {savedRecipe.calories} kcal</span>
+            </div>
+            <table className="w-full border-t border-[var(--border-subtle)] text-sm">
+              <tbody>
+                {calorieFractions.map(({ label, divisor }) => (
+                  <tr key={divisor} className="border-b border-[var(--border-subtle)] last:border-0">
+                    <th scope="row" className="px-4 py-2.5 text-left font-medium text-[var(--text-primary)]">{label}</th>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-[var(--text-secondary)]">± {Math.round((savedRecipe.calories ?? 0) / divisor)} kcal</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        ) : null}
 
         {/* «Nog te testen»: bewaren bij je recepten of verwijderen (canvas «Recept nog te testen» B). */}
         {isTestRecipeOwner && !detailPhotoEditMode ? (

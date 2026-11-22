@@ -96,6 +96,10 @@ export type SavedRecipe = {
   /** Optionele bereidingsstappen (plain text, 1 stap per regel). */
   steps?: string;
   persons: number;
+  /** Optionele kcal per portie; null/undefined = niet opgegeven. */
+  calories?: number | null;
+  /** Eenheid van de calorieportie, bv. «XL-beker». */
+  calorieServingLabel?: string | null;
   /** Optionele receptfoto (data-URL). */
   photoUrl?: string | null;
   category?: RecipeCategory | null;

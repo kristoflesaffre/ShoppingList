@@ -377,6 +377,8 @@ export default function ReceptenPage() {
         link: r.link,
         steps: r.steps ?? "",
         persons: r.persons,
+        calories: (r as Record<string, unknown>).calories as number | undefined,
+        calorieServingLabel: (r as Record<string, unknown>).calorieServingLabel as string | undefined,
         photoUrl: r.photoUrl ?? null,
         category: ((r as Record<string, unknown>).category as RecipeCategory | undefined) ?? null,
         subcategory: ((r as Record<string, unknown>).subcategory as string | undefined) ?? null,

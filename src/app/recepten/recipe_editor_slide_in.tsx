@@ -47,6 +47,8 @@ export function RecipeEditorSlideIn({
   const [recipeLink, setRecipeLink] = React.useState("");
   const [recipeStepsArray, setRecipeStepsArray] = React.useState<string[]>(["", ""]);
   const [recipePersons, setRecipePersons] = React.useState(2);
+  const [recipeCalories, setRecipeCalories] = React.useState("");
+  const [calorieServingLabel, setCalorieServingLabel] = React.useState("portie");
   const [recipeCategory, setRecipeCategory] = React.useState<RecipeCategory | null>(null);
   const [recipeSubcategory, setRecipeSubcategory] = React.useState<string | null>(null);
   const subcategoryOptions = recipeCategory ? RECIPE_SUBCATEGORIES[recipeCategory] : undefined;
@@ -77,6 +79,8 @@ export function RecipeEditorSlideIn({
       const parsed = parseStepsToArray(recipeToEdit.steps ?? "");
       setRecipeStepsArray(parsed.length >= 2 ? parsed : [...parsed, ...Array(2 - parsed.length).fill("")]);
       setRecipePersons(recipeToEdit.persons);
+      setRecipeCalories(recipeToEdit.calories == null ? "" : String(recipeToEdit.calories));
+      setCalorieServingLabel(recipeToEdit.calorieServingLabel ?? "portie");
       setRecipeCategory(recipeToEdit.category ?? null);
       setRecipeSubcategory(recipeToEdit.subcategory ?? null);
       setRecipeCuisine(recipeToEdit.cuisine ?? null);
@@ -87,6 +91,8 @@ export function RecipeEditorSlideIn({
       setRecipeLink("");
       setRecipeStepsArray(["", ""]);
       setRecipePersons(2);
+      setRecipeCalories("");
+      setCalorieServingLabel("portie");
       setRecipeCategory(null);
       setRecipeSubcategory(null);
       setRecipeCuisine(null);
@@ -144,6 +150,9 @@ export function RecipeEditorSlideIn({
             .filter(Boolean)
             .join("\n"),
           persons: recipePersons,
+          ...(recipeCalories.trim() && Number.isFinite(Number(recipeCalories)) && Number(recipeCalories) >= 0
+            ? { calories: Number(recipeCalories), calorieServingLabel: calorieServingLabel.trim() || "portie" }
+            : { calories: null, calorieServingLabel: null }),
           order: isNew ? newOrder : existingOrder,
           ...(recipeCategory != null ? { category: recipeCategory } : {}),
           // Enkel bewaren als die bij de gekozen categorie hoort; anders wissen (bv. na wisselen van categorie).
@@ -175,6 +184,8 @@ export function RecipeEditorSlideIn({
       recipeLink,
       recipeStepsArray,
       recipePersons,
+      recipeCalories,
+      calorieServingLabel,
       recipeCategory,
       recipeSubcategory,
       subcategoryOptions,
@@ -359,6 +370,29 @@ export function RecipeEditorSlideIn({
         <div className="w-[148px] shrink-0" role="group" aria-labelledby="recept-personen">
           <Stepper value={recipePersons} onValueChange={setRecipePersons} min={1} />
         </div>
+      </div>
+      <div className="flex items-center gap-3 border-t border-[var(--border-subtle)] py-2.5 pl-3.5 pr-3">
+        <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-[#e9f7ec] text-[15px] font-extrabold text-[#238344]">kcal</span>
+        <label htmlFor="recept-calorie-serving" className="flex-1 text-[15px] font-semibold text-[var(--text-primary)]">Calorieën per</label>
+        <input
+          aria-label="Calorieën per portie"
+          inputMode="numeric"
+          type="number"
+          min="0"
+          step="1"
+          value={recipeCalories}
+          onChange={(e) => setRecipeCalories(e.target.value)}
+          placeholder="bv. 390"
+          className="h-10 w-[88px] rounded-xl bg-[var(--gray-50)] px-3 text-right text-sm font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        />
+        <input
+          id="recept-calorie-serving"
+          type="text"
+          value={calorieServingLabel}
+          onChange={(e) => setCalorieServingLabel(e.target.value)}
+          placeholder="portie"
+          className="h-10 w-[100px] rounded-xl bg-[var(--gray-50)] px-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+        />
       </div>
     </div>
   );

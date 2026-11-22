@@ -148,6 +148,10 @@ const schema = i.schema({
       /** Optionele bereidingsstappen (plain text, 1 stap per regel). */
       steps: i.string().optional(),
       persons: i.number(),
+      /** Optionele voedingswaarde per opgegeven portie. */
+      calories: i.number().optional(),
+      /** Naam van die portie, bv. «XL-beker». */
+      calorieServingLabel: i.string().optional(),
       order: i.number(),
       /** Instant auth user id; recepten zijn persoonlijk per gebruiker. */
       ownerId: i.string().optional().indexed(),
