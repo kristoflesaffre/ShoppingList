@@ -43,7 +43,7 @@ CONTROL_DEX = '/data/local/tmp/shoppinglist-cinema-control-v2.dex'
 SEEK_BACK = {'seek-back:60': 60000, 'seek-back:120': 120000, 'seek-back:300': 300000}
 STREMIO = 'com.stremio.one'
 PLAYBACK_POLL = 2
-BRIDGE_VERSION = '1.35.4'
+BRIDGE_VERSION = '1.35.5'
 # «Sfeer op tv» + «Ook rond de tv» without the Mac (ambience.py): the Pi drives the Samsung's YouTube and opens the
 # projector app «ShoppingList Sfeer», which shows its built-in page and follows the TV's YouTube itself.
 AMBIENCE_ACTIONS = ('ambience-show', 'ambience-hide', 'tv-pause', 'tv-resume')
@@ -297,6 +297,14 @@ async def stop_cinema(hass, screen, projector_off):
             raise result
 
 
+def screen_lets_ambience_run(contact, moving):
+    # The ambience lights belong to a closed, still screen. While the screen moves its STOP is timed, so nothing heavy
+    # may run (a projector screenshot is megabytes over ADB and into Home Assistant's state); an open screen is the
+    # cinema. 22/11 18:13: the projector was briefly unreachable at the press, so the ambience app stayed in front, and
+    # the light loop picked it up again during the screen run (screenshots every 6 s right up to the STOP).
+    return not moving and not (contact is not None and contact.state == 'on')
+
+
 def ambience_ended(state):
     """The projector really left the ambience: off, gone, or another app in front. «unavailable» / «unknown» is the ADB
     connection hiccuping (it reloads several times an evening) and does not end the ambience."""
@@ -388,6 +396,9 @@ async def async_setup(hass, config):
         owner = settings.get('owner_id')
         if not owner:
             raise RuntimeError('frame-owner-missing')
+        if screen.moving:
+            # A screenshot is megabytes over ADB: never while the screen's STOP is timed.
+            raise RuntimeError('screen-moving')
         width, height, jpeg, brightness = await hass.async_add_executor_job(encode_frame, await adb(FRAME_COMMAND))
         now = int(time.time() * 1000)
         record = f'{owner}:xray-frame'
@@ -459,7 +470,8 @@ async def async_setup(hass, config):
         state = hass.states.get(PLAYER)
         current = ambience_settings()
         return (power_state() in AWAKE and state is not None and state.attributes.get('app_id') == APK_PACKAGE
-                and (current.get('enabled') or forced_ambience[0]) and not current.get('calibrating'))
+                and (current.get('enabled') or forced_ambience[0]) and not current.get('calibrating')
+                and screen_lets_ambience_run(hass.states.get(CONTACT), screen.moving))
 
     lights_saved = [False]
 
@@ -472,6 +484,8 @@ async def async_setup(hass, config):
 
     async def ambience_lights():
         # Other living-room lights to 10 % once; then the LED strip follows the picture until the app leaves.
+        if not ambience_in_front():
+            return
         group = hass.states.get(CINEMA_LIGHTS)
         members = list((group.attributes.get('entity_id') if group else None) or [])
         side = [e for e in AMBIENCE_SIDE if hass.states.get(e) is not None]
@@ -524,6 +538,11 @@ async def async_setup(hass, config):
                 # Ended by itself (switched off, projector off, other app): put the room back, unless a film took over
                 # (the cinema scene owns the lights then) or the app is just restarting.
                 await asyncio.sleep(3)
+                if not screen_lets_ambience_run(hass.states.get(CONTACT), screen.moving):
+                    # The cinema took over (screen moving or open): its lights stay, nothing is restored.
+                    forced_ambience[0] = False
+                    lights_saved[0] = False
+                    return
                 state = hass.states.get(PLAYER)
                 if ambience_ended(hass.states.get(PLAYER)):
                     # The ambience ended (projector off or another app): the next long press starts a new one. A
@@ -566,6 +585,9 @@ async def async_setup(hass, config):
         if light_task[0] and not light_task[0].done():
             return
         if not sfeer_app_in_front() or ambience_settings().get('calibrating'):
+            return
+        # Never during a cinema action or a screen run, and never with the screen open (the cinema).
+        if busy.locked() or not screen_lets_ambience_run(hass.states.get(CONTACT), screen.moving):
             return
         _LOGGER.warning('Ambience app already in front: lights follow the picture again')
         forced_ambience[0] = True
@@ -969,7 +991,16 @@ async def async_setup(hass, config):
                         _LOGGER.warning('Cinema button: from ambience to cinema')
                         drop_ambience()
                         await leave_sfeer_app()
-                    await execute(action)
+                        try:
+                            await execute(action)
+                        finally:
+                            # Unreachable at the press (ADB hiccup): the ambience app is still in front. Close it
+                            # now that the screen has stopped and the projector is awake.
+                            if sfeer_app_in_front():
+                                _LOGGER.warning('Ambience app still in front after the cinema start: closing it')
+                                await leave_sfeer_app()
+                    else:
+                        await execute(action)
             except Exception as failure:
                 _LOGGER.warning('Cinema button %s failed: %s', action, failure if isinstance(failure, RuntimeError) else 'device-action-failed')
         finally:

@@ -1,5 +1,24 @@
 # Home Assistant on the Raspberry Pi
 
+## Scherm stopte niet op tijd na sfeer → cinema, bridge 1.35.5 (2026-11-22)
+
+22/11 18:13:19 short press during the ambience: «from ambience to cinema», screen open at 18:13:20.6, but the screen did
+not stop at its height. The projector was unreachable over ADB at the press (`media_player.woonkamer_tv_2`
+unavailable until 18:13:24), so closing the ambience app (`am force-stop`) was skipped and the app stayed in front. The
+bridge worker then saw «ambience app already in front», set the forced ambience again and restarted the light loop in
+the middle of the screen run: 8 s later projector screenshots every 6 s (`screencap`, megabytes of base64 over ADB and
+into the Android TV entity's state: «State attributes … exceed maximum size» at 18:13:37, «Updating androidtv
+media_player took longer than 10 s» at 18:13:35), right up to the timed STOP (± 18:13:51). Exactly the load that 1.24.0
+keeps away from a screen run (no ADB while the screen moves). From ambience to the blinds 36.0 s (on-time runs 33–35 s).
+
+1.35.5: the ambience light loop only runs with a closed, still screen (`screen_lets_ambience_run`: not while
+`screen.moving`, not with the contact open = cinema). Picking the ambience up again (`resume_ambience_lights`) never
+happens during a cinema action (`busy`), a screen run or with the screen open; the loop stops by itself as soon as the
+screen moves and then restores nothing (the cinema lights stay) and drops the forced ambience. An X-Ray screenshot
+(`xray-frame`) is refused while the screen moves (`screen-moving`). After a cinema start from the ambience, an ambience
+app that is still in front (projector was unreachable at the press) is closed once the screen has stopped. Install in
+two pastes: `outputs/cinema-bridge-1.35.5-install-deel-1.txt`, then `-deel-2.txt`.
+
 ## Rond de tv: video zoomt in tot bovenaan de muur, Sfeer 5 / bridge 1.35.4 (2026-11-22)
 
 The wall above the TV stayed dark: the video is 16:9 and `spread` (1.8) × the TV width, centred on the TV, and the TV

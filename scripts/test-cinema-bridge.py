@@ -670,6 +670,15 @@ class ButtonToggleTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any('from ambience to cinema' in line for line in logs.output))
         self.assertNotIn(('scene', 'turn_on', cinema.BRIGHT_SCENE), calls)
 
+    async def test_ambience_app_still_in_front_after_the_cinema_start_is_closed(self):
+        # The projector was unreachable at the press, so the app could not be closed before the screen run.
+        press, _on_button, tasks, _calls = await self.setup_button('off', cinema.APK_PACKAGE)
+        with patch.object(cinema, 'start_cinema', AsyncMock()):
+            with self.assertLogs(cinema._LOGGER, 'WARNING') as logs:
+                await press(None)
+                await asyncio.wait_for(asyncio.gather(*tasks), 1)
+        self.assertTrue(any('still in front after the cinema start' in line for line in logs.output))
+
     async def test_unknown_screen_sensor_does_nothing(self):
         press, tasks = await self.setup_toggle('unavailable')
         with patch.object(cinema, 'start_cinema', AsyncMock()) as start, patch.object(cinema, 'stop_cinema', AsyncMock()) as stop:
@@ -694,6 +703,19 @@ class SeekHelperTests(unittest.TestCase):
         import inspect
         # A loop picked up during start-up as a normal task made Home Assistant wait 5 min («Setup timed out»).
         self.assertIn("async_create_background_task(run(), 'ShoppingList ambience lights')", inspect.getsource(cinema.async_setup))
+
+    def test_ambience_lights_never_run_while_the_screen_moves_or_is_open(self):
+        contact = lambda value: types.SimpleNamespace(state=value, attributes={})
+        self.assertTrue(cinema.screen_lets_ambience_run(contact('off'), False))
+        self.assertFalse(cinema.screen_lets_ambience_run(contact('off'), True))
+        self.assertFalse(cinema.screen_lets_ambience_run(contact('on'), False))
+        self.assertTrue(cinema.screen_lets_ambience_run(None, False))
+        import inspect
+        source = inspect.getsource(cinema.async_setup)
+        # 22/11 18:13: the loop was picked up again during the screen run and took screenshots up to the STOP.
+        self.assertIn("if busy.locked() or not screen_lets_ambience_run(hass.states.get(CONTACT), screen.moving):", source)
+        self.assertIn("and screen_lets_ambience_run(hass.states.get(CONTACT), screen.moving))", source)
+        self.assertIn("raise RuntimeError('screen-moving')", source)
 
     def test_an_adb_hiccup_does_not_end_the_ambience(self):
         state = lambda value, app=None: types.SimpleNamespace(state=value, attributes={'app_id': app} if app else {})
