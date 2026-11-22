@@ -695,6 +695,16 @@ class SeekHelperTests(unittest.TestCase):
         # A loop picked up during start-up as a normal task made Home Assistant wait 5 min («Setup timed out»).
         self.assertIn("async_create_background_task(run(), 'ShoppingList ambience lights')", inspect.getsource(cinema.async_setup))
 
+    def test_an_adb_hiccup_does_not_end_the_ambience(self):
+        state = lambda value, app=None: types.SimpleNamespace(state=value, attributes={'app_id': app} if app else {})
+        self.assertFalse(cinema.ambience_ended(state('unavailable')))
+        self.assertFalse(cinema.ambience_ended(state('unknown')))
+        self.assertFalse(cinema.ambience_ended(state('on', cinema.APK_PACKAGE)))
+        self.assertFalse(cinema.ambience_ended(state('on')))
+        self.assertTrue(cinema.ambience_ended(state('off')))
+        self.assertTrue(cinema.ambience_ended(None))
+        self.assertTrue(cinema.ambience_ended(state('on', cinema.STREMIO)))
+
     def test_xray_frame_is_a_bridge_action(self):
         import inspect
         source = inspect.getsource(cinema.async_setup)

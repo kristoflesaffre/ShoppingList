@@ -1,7 +1,7 @@
 {
   "domain": "shoppinglist_cinema",
   "name": "ShoppingList Cinema Bridge",
-  "version": "1.35.2",
+  "version": "1.35.3",
   "documentation": "https://www.home-assistant.io/",
   "iot_class": "cloud_polling",
   "requirements": [],

@@ -1,5 +1,17 @@
 # Home Assistant on the Raspberry Pi
 
+## Lange druk tijdens een ADB-hapering, bridge 1.35.3 (2026-11-22)
+
+Tested 22/11 with 1.35.2. Short press during the ambience (09:48:45): «from ambience to cinema», screen up at 09:48:49,
+Samsung off, Cinema scene, projector on its home screen: works. Long press during the ambience (09:40:40, `zha_event`
+`off` seen live): it started a new random video instead of ending everything. The projector's ADB connection hiccuped
+just then (`media_player.woonkamer_tv_2` briefly unavailable, Android TV reloaded at 09:40:55), the light loop stopped
+on it and cleared the forced flag, so the bridge thought the ambience had ended. Now only `ambience_ended(state)` clears
+it: projector off, gone, or another app in front; «unavailable» / «unknown» keeps the ambience, and the queue worker
+picks the light loop up again whenever the ambience app is in front and no loop runs. Test:
+`test_an_adb_hiccup_does_not_end_the_ambience`. Install in two pastes: `outputs/cinema-bridge-1.35.3-install-deel-1.txt`,
+then `-deel-2.txt`.
+
 ## Lichtlus houdt het opstarten niet meer op, bridge 1.35.2 (2026-11-22)
 
 1.35.1 checked 22/11 09:05: after the restart (08:56) the bridge found the ambience app in front and picked the lights up
