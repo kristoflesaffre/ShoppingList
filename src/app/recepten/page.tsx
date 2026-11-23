@@ -353,6 +353,11 @@ function toTestKindOf(r: SavedRecipe): string {
   return r.subcategory && TO_TEST_KIND_IDS.has(r.subcategory as RecipeCategory) ? r.subcategory : OTHER_KIND;
 }
 
+/** Kleine letters zonder accenten, zodat «creme» ook «crème» vindt. */
+function foldSearch(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
 export default function ReceptenPage() {
   const router = useRouter();
   const { isLoading: authLoading, user } = db.useAuth();
@@ -492,8 +497,14 @@ export default function ReceptenPage() {
 
   const filteredRecipes = React.useMemo(() => {
     let result = savedRecipes;
-    const q = recipeSearch.trim().toLowerCase();
-    if (q) result = result.filter((r) => r.name.toLowerCase().includes(q));
+    const q = foldSearch(recipeSearch.trim());
+    if (q && recipeTab === "te_testen") {
+      // In «Te testen» ook op ingrediënt; recepten met de zoekterm in de naam eerst.
+      const byName = result.filter((r) => foldSearch(r.name).includes(q));
+      const named = new Set(byName.map((r) => r.id));
+      const byIngredient = result.filter((r) => !named.has(r.id) && r.ingredients.some((i) => foldSearch(i.name).includes(q)));
+      result = [...byName, ...byIngredient];
+    } else if (q) result = result.filter((r) => foldSearch(r.name).includes(q));
     if (recipeTab === "te_testen") {
       result = result.filter((r) => r.category === TO_TEST_CATEGORY);
       if (toTestKind === NEW_KIND) result = result.filter((r) => isRecentImport(r));
@@ -732,7 +743,7 @@ export default function ReceptenPage() {
   /* Statistieken enkel in het gewone overzicht (niet bij zoeken, één categorie of bewerken). */
   const showStats = !isEditMode && !activeCategory && recipeTab === "recepten" && recipeSearch.trim() === "";
   const onToTestTab = recipeTab === "te_testen";
-  const searchPlaceholder = onToTestTab ? "Zoek in te testen" : "Zoek recept";
+  const searchPlaceholder = onToTestTab ? "Zoek op recept of ingrediënt" : "Zoek recept";
   const tabControl = (fill: boolean) => (
     <SegmentedControl<RecipeTab>
       size="lg"
