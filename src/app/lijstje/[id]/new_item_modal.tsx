@@ -248,6 +248,7 @@ export function NewItemModal({
   editingItem,
   onSave,
   initialSection,
+  initialSourceFilter,
   initialItemCategory,
   storedRecipes,
   recipesLoading = false,
@@ -279,6 +280,8 @@ export function NewItemModal({
   editingItem?: ListItem | null;
   onSave?: (item: ListItem, options?: { alsoFavorite?: boolean }) => void;
   initialSection?: string | null;
+  /** Met `initialSection`: welke bron bovenaan staat (kalender «Eten van …» → Recept / Uit diepvries / Product). */
+  initialSourceFilter?: "all" | "items" | "recipes" | "stock" | null;
   /** Bij groepering "per categorie": vooringestelde winkel-categorie voor het nieuwe item. */
   initialItemCategory?: string | null;
   storedRecipes: SavedRecipe[];
@@ -516,7 +519,7 @@ export function NewItemModal({
       setSelectedDay(
         initialSection === "Algemeen" ? "Geen" : initialSection
       );
-      setSourceFilter("all");
+      setSourceFilter(initialSourceFilter ?? "all");
       if (isVacationList) {
         if (initialItemCategory) {
           setVacationCategory(
@@ -545,7 +548,7 @@ export function NewItemModal({
     } else if (open && isVacationList && initialTripPerson) {
       setTripPerson(initialTripPerson);
     }
-  }, [open, editingItem, initialSection, initialItemCategory, isVacationList, initialTripPerson]);
+  }, [open, editingItem, initialSection, initialSourceFilter, initialItemCategory, isVacationList, initialTripPerson]);
 
   React.useEffect(() => {
     if (open) setActiveCategory(null);

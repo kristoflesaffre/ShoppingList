@@ -15,6 +15,10 @@ import { mixWithWhite, useIsDarkTheme, useRecipeTint } from "@/lib/recipe-tint";
 import { recipeHeroClickHandler } from "@/lib/recipe_hero_transition";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 import { useFitToScreen } from "@/lib/use_fit_to_screen";
+import { dayModel, type DayModel } from "@/lib/day-meal-edit";
+import { DayMealEditor, useDayItemRemoval } from "@/components/day_meal_editor";
+import { DoneButton, TitleEditButton } from "@/components/ui/title_edit_button";
+import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 
 /**
  * Kalender › «Alles van vandaag» (canvas «KO» A): achter «Bekijk alles» op de kalender. Het gerecht groot links met
@@ -22,12 +26,15 @@ import { useFitToScreen } from "@/lib/use_fit_to_screen";
  * zijn ingrediënten («Voor de witloofsla»), daarna wat erbij komt («Erbij»). Elk recept heeft zijn eigen «Bekijk recept».
  * `?datum=JJJJ-MM-DD`, standaard vandaag. Op een tablet past de pagina in één scherm en gaat ze na 3 minuten zonder
  * aanraking terug naar de kalender.
+ * Bewerken (canvas «Eten bewerken in de kalender» 3): het potlood rechtsboven wordt «Gereed»; elke tegel krijgt een rode
+ * ✕ (haalt dat item van het lijstje, met «Zet terug»), het gerecht ook, en «Vervang of verplaats» / «+ Toevoegen»
+ * openen het blad «Eten van …».
  */
 
 const PAGE_MAX_WIDTH = 1040;
 const BACK_TO_CALENDAR_MS = 3 * 60_000;
 
-type Tile = { key: string; name: string; quantity: string | null; photo: string | null; note?: string | null };
+type Tile = { key: string; name: string; quantity: string | null; photo: string | null; note?: string | null; ids?: { id: string; listId: string }[] };
 type Group = { key: string; title: string; recipeId: string | null; persons?: string | null; tiles: Tile[] };
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -78,10 +85,42 @@ function ChevronIcon({ direction, className }: { direction: "left" | "right"; cl
   );
 }
 
+/** Koppelt de tegels aan de items op het lijstje: recept-ingrediënten op volgorde, de rest («Erbij») op naam. */
+function attachItemIds(groups: Group[], model: DayModel): Group[] {
+  const used = new Set<string>();
+  const norm = (n: string) => baseName(n).toLowerCase();
+  return groups.map((g) => {
+    const meal = model.meals.find((m) => m.key === g.key);
+    return {
+      ...g,
+      tiles: g.tiles.map((t, j) => {
+        if (meal) {
+          const item = meal.ingredients[j];
+          return item ? { ...t, ids: [item] } : t;
+        }
+        const dish = model.meals.find((m) => !used.has(m.key) && m.ingredients.length === 0 && norm(m.name) === norm(t.name));
+        if (dish) {
+          used.add(dish.key);
+          return { ...t, ids: dish.items };
+        }
+        const item = model.loose.find((i) => !used.has(i.id) && norm(i.name) === norm(t.name));
+        if (!item) return t;
+        used.add(item.id);
+        return { ...t, ids: [item] };
+      }),
+    };
+  });
+}
+
 /** Tegel: grote productfoto op een zacht grijs vlak, naam vet, hoeveelheid eronder (canvas «KO» A). */
-function ItemTile({ tile }: { tile: Tile }) {
+function ItemTile({ tile, onRemove }: { tile: Tile; onRemove?: () => void }) {
   return (
-    <li className="flex min-w-0 flex-col rounded-[20px] bg-[var(--white)] p-2.5 pb-3.5 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+    <li className="relative flex min-w-0 flex-col rounded-[20px] bg-[var(--white)] p-2.5 pb-3.5 shadow-[0_1px_2px_rgba(16,17,48,0.04)]">
+      {onRemove ? (
+        <RoundIconButton tone="danger" size={28} aria-label={`${tile.name} weghalen`} onClick={onRemove} className="absolute -right-2 -top-2 z-[1] shadow-[0_0_0_2px_var(--bg-app)]">
+          {RoundIcons.close}
+        </RoundIconButton>
+      ) : null}
       <span className="flex h-[110px] items-center justify-center rounded-[12px] bg-[var(--gray-25)] lg:h-[150px]">
         {tile.photo ? (
           // eslint-disable-next-line @next/next/no-img-element -- productfoto (lokaal) of gerechtfoto (extern)
@@ -122,6 +161,11 @@ export default function KalenderAllesPage() {
   const isToday = iso === todayIso;
 
   const { isLoading: dataLoading, data, loaders } = useCalendarLists(ownerId);
+  const [editing, setEditing] = React.useState(false);
+  const [editorOpen, setEditorOpen] = React.useState(false);
+  const lists = (data?.lists ?? []) as never as Parameters<typeof dayModel>[0];
+  const { remove, snackbar } = useDayItemRemoval(lists as never);
+  const model = React.useMemo(() => (data ? dayModel(data.lists as never, data.recipes as never, iso) : { meals: [], loose: [] }), [data, iso]);
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
@@ -173,7 +217,10 @@ export default function KalenderAllesPage() {
     );
   }
 
-  const groups = entry ? dayGroups(entry, (name) => getItemPhoto(name)) : [];
+  const groups = entry ? attachItemIds(dayGroups(entry, (name) => getItemPhoto(name)), model) : [];
+  const firstMeal = first ? (model.meals.find((m) => m.key === first.recipeGroupId) ?? model.meals.find((m) => m.name.toLowerCase() === first.recipeName.toLowerCase()) ?? null) : null;
+  const softButton =
+    "inline-flex h-11 items-center gap-2 rounded-pill bg-[var(--blue-50)] px-[18px] text-[15px] font-bold text-[var(--blue-600)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] lg:h-12 [@media(hover:hover)]:hover:bg-[var(--blue-100)] [&_svg]:size-4";
   const extras = calendarDayExtras(entry);
   const title = first ? first.recipeName : summary ? capitalize(summary.title) : "Nog niets gepland";
   const sub = first
@@ -223,13 +270,21 @@ export default function KalenderAllesPage() {
               <ChevronIcon direction="left" className="size-5" />
             </Link>
             <h1 className="min-w-0 flex-1 text-left text-[22px] font-extrabold text-text-primary">Kalender</h1>
+            {editing ? <DoneButton onClick={() => setEditing(false)} /> : <TitleEditButton onClick={() => setEditing(true)} aria-label="Eten van deze dag bewerken" />}
           </header>
 
           <div className="mt-2 flex flex-col gap-6 lg:mt-6 lg:flex-row lg:items-start lg:gap-14">
             {/* Links: het gerecht met «Bekijk recept» (gsm: bovenaan, gecentreerd). */}
             <section aria-label={title} className="flex flex-col items-center gap-4 text-center lg:w-[330px] lg:flex-none lg:items-start lg:text-left">
-              <span className="lg:hidden">{plate(190)}</span>
-              <span className="hidden lg:block">{plate(300)}</span>
+              <span className="relative">
+                <span className="lg:hidden">{plate(190)}</span>
+                <span className="hidden lg:block">{plate(300)}</span>
+                {editing && firstMeal ? (
+                  <RoundIconButton tone="danger" size={36} aria-label={`${firstMeal.name} weghalen`} onClick={() => remove(firstMeal.items, firstMeal.name)} className="absolute right-2 top-2 shadow-[0_0_0_3px_var(--bg-app)]">
+                    {RoundIcons.close}
+                  </RoundIconButton>
+                ) : null}
+              </span>
               <div className="flex flex-col items-center lg:items-start">
                 <span className="mb-2 inline-flex h-6 items-center rounded-pill bg-[var(--white)] px-2.5 text-[11.5px] font-extrabold tracking-[0.04em] text-[var(--blue-500)] shadow-[0_2px_8px_-3px_rgba(16,17,48,0.25)]">
                   {isToday ? "VANDAAG ETEN WE" : "OP HET MENU"}
@@ -238,7 +293,12 @@ export default function KalenderAllesPage() {
                 <h2 className="mt-1.5 text-[30px] font-extrabold leading-[1.06] tracking-[-0.03em] text-text-primary lg:text-[40px] lg:leading-[1.04]">{title}</h2>
                 {sub ? <p className="mt-2 text-sm font-semibold text-[var(--text-secondary)] first-letter:uppercase lg:text-[15px]">{sub}</p> : null}
               </div>
-              {first?.recipeId ? (
+              {editing ? (
+                <button type="button" onClick={() => setEditorOpen(true)} className={softButton}>
+                  {RoundIcons.pencil}
+                  {first || groups.length > 0 ? "Vervang of verplaats" : "Eten plannen"}
+                </button>
+              ) : first?.recipeId ? (
                 <Link href={`/recepten/${first.recipeId}`} onClick={recipeHeroClickHandler(first.recipeId, summary?.photo ?? null)} className={RECIPE_BUTTON}>
                   Bekijk recept
                 </Link>
@@ -248,7 +308,13 @@ export default function KalenderAllesPage() {
             {/* Rechts: per recept zijn ingrediënten, dan «Erbij». */}
             <div className="flex min-w-0 flex-1 flex-col gap-6 lg:pt-1.5">
               {groups.length === 0 ? (
-                <p className="text-[15px] text-[var(--text-secondary)]">Voor deze dag staat er niets op je lijstjes.</p>
+                <div className="flex flex-col items-start gap-3">
+                  <p className="text-[15px] text-[var(--text-secondary)]">Voor deze dag staat er niets op je lijstjes.</p>
+                  <button type="button" onClick={() => setEditorOpen(true)} className={softButton}>
+                    {RoundIcons.plus}
+                    Eten plannen
+                  </button>
+                </div>
               ) : (
                 groups.map((g) => (
                   <section key={g.key} aria-label={g.title}>
@@ -267,8 +333,20 @@ export default function KalenderAllesPage() {
                     </div>
                     <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0 sm:grid-cols-3 lg:gap-4">
                       {g.tiles.map((t) => (
-                        <ItemTile key={t.key} tile={t} />
+                        <ItemTile key={t.key} tile={t} onRemove={editing && t.ids?.length ? () => remove(t.ids!, t.name) : undefined} />
                       ))}
+                      {editing && g === groups[groups.length - 1] ? (
+                        <li className="flex">
+                          <button
+                            type="button"
+                            onClick={() => setEditorOpen(true)}
+                            className="flex min-h-[150px] w-full flex-col items-center justify-center gap-2 rounded-[20px] border-2 border-dashed border-[var(--blue-200)] text-[14px] font-extrabold text-[var(--blue-500)] [@media(hover:hover)]:hover:bg-[var(--blue-25)] lg:min-h-[200px]"
+                          >
+                            <span className="flex size-9 items-center justify-center rounded-full bg-[var(--blue-50)] [&_svg]:size-4">{RoundIcons.plus}</span>
+                            Toevoegen
+                          </button>
+                        </li>
+                      ) : null}
                     </ul>
                   </section>
                 ))
@@ -277,6 +355,8 @@ export default function KalenderAllesPage() {
           </div>
         </div>
       </div>
+      {snackbar ? <div className="fixed inset-x-4 bottom-[calc(24px+env(safe-area-inset-bottom,0px))] z-30 flex justify-center">{snackbar}</div> : null}
+      {data ? <DayMealEditor open={editorOpen} onClose={() => setEditorOpen(false)} iso={iso} lists={data.lists as never} recipes={data.recipes as never} /> : null}
     </div>
   );
 }

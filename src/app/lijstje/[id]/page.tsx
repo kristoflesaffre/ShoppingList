@@ -3767,6 +3767,18 @@ export default function ListDetailPage({
   const [isNewItemOpen, setIsNewItemOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<ListItem | null>(null);
   const [initialSection, setInitialSection] = React.useState<string | null>(null);
+  const [initialSourceFilter, setInitialSourceFilter] = React.useState<"recipes" | "stock" | "items" | null>(null);
+  // Kalender «Eten van …» → «+ Recept / Uit diepvries / Product»: «Items toevoegen» open op die dag en bron.
+  const addFromCalendar = searchParams.get("toevoegen");
+  const addFromCalendarSource = searchParams.get("bron");
+  React.useEffect(() => {
+    if (!addFromCalendar || !listData || dutchDayToOffset(addFromCalendar) === null) return;
+    setEditingItem(null);
+    setInitialSection(addFromCalendar);
+    setInitialSourceFilter(addFromCalendarSource === "recipes" || addFromCalendarSource === "stock" || addFromCalendarSource === "items" ? addFromCalendarSource : null);
+    setIsNewItemOpen(true);
+    router.replace(`/lijstje/${listId}`, { scroll: false });
+  }, [addFromCalendar, addFromCalendarSource, listData, listId, router]);
   const [initialItemCategory, setInitialItemCategory] = React.useState<
     string | null
   >(null);
@@ -6656,12 +6668,14 @@ export default function ListDetailPage({
           setIsNewItemOpen(false);
           setEditingItem(null);
           setInitialSection(null);
+          setInitialSourceFilter(null);
           setInitialItemCategory(null);
         }}
         onAdd={handleAddNewItem}
         editingItem={editingItem}
         onSave={handleSaveEditedItem}
         initialSection={initialSection}
+        initialSourceFilter={initialSourceFilter}
         initialItemCategory={initialItemCategory}
         storedRecipes={savedRecipes}
         recipesLoading={recipesLoading}

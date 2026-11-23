@@ -32,6 +32,8 @@ import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 import { useAlwaysOn } from "@/lib/use_always_on";
 import { useFitToScreen } from "@/lib/use_fit_to_screen";
 import { useCalendarLists } from "@/hooks/use_calendar_lists";
+import { DayMealEditor } from "@/components/day_meal_editor";
+import { RoundIcons } from "@/components/ui/round_icon_button";
 
 /**
  * Kalender (canvas «KC»): de agenda met linksboven het eten van vandaag en in «Komende afspraken» de eettegel van
@@ -204,6 +206,7 @@ function FocusDay({
   isToday,
   tint,
   compact = false,
+  onEdit,
 }: {
   isoDate: string;
   date: Date;
@@ -212,6 +215,8 @@ function FocusDay({
   tint: Rgb | null;
   /** Agenda: kleiner bord op computer, zodat de to-do's ernaast passen. */
   compact?: boolean;
+  /** «Wijzig eten» / «Eten plannen»: opent het blad «Eten van …». */
+  onEdit?: () => void;
 }) {
   const visual = dayVisual(isoDate, entry);
   const loosePhotos = useLoosePhotos(visual?.summary.loose ?? visual?.sideLoose);
@@ -322,20 +327,33 @@ function FocusDay({
             })}
           </ul>
         ) : null}
-        {/* Meer dan één recept, of iets erbij: eerst «Alles van vandaag» (canvas «KO» A); anders meteen het recept. */}
+        {/* Meer dan één recept, of iets erbij: eerst «Alles van vandaag» (canvas «KO» A); anders meteen het recept.
+            Ernaast «Wijzig eten» (canvas «Eten bewerken in de kalender» 1). */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 lg:mt-5 lg:justify-start">
         {showAll ? (
-          <Link href={`/kalender/alles?datum=${isoDate}`} className="mt-4 inline-flex h-11 items-center rounded-pill bg-[#16181a] px-[22px] text-[15px] font-bold text-white no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:mt-5 lg:h-12 lg:px-[26px] [[data-theme=dark]_&]:bg-fixed-white [[data-theme=dark]_&]:text-[#16181a] gap-1">
+          <Link href={`/kalender/alles?datum=${isoDate}`} className="inline-flex h-11 items-center rounded-pill bg-[#16181a] px-[22px] text-[15px] font-bold text-white no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:h-12 lg:px-[26px] [[data-theme=dark]_&]:bg-fixed-white [[data-theme=dark]_&]:text-[#16181a] gap-1">
             Bekijk alles
             <ChevronIcon direction="right" />
           </Link>
         ) : recipeId ? (
           <Link
             href={`/recepten/${recipeId}`}
-            className="mt-4 inline-flex h-11 items-center rounded-pill bg-[#16181a] px-[22px] text-[15px] font-bold text-white no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:mt-5 lg:h-12 lg:px-[26px] [[data-theme=dark]_&]:bg-fixed-white [[data-theme=dark]_&]:text-[#16181a]"
+            className="inline-flex h-11 items-center rounded-pill bg-[#16181a] px-[22px] text-[15px] font-bold text-white no-underline transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:h-12 lg:px-[26px] [[data-theme=dark]_&]:bg-fixed-white [[data-theme=dark]_&]:text-[#16181a]"
           >
             Bekijk recept
           </Link>
         ) : null}
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex h-11 items-center gap-2 rounded-pill bg-[var(--blue-50)] px-[18px] text-[15px] font-bold text-[var(--blue-600)] transition-transform duration-fast ease-out-strong motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 lg:h-12 lg:px-[22px] [@media(hover:hover)]:hover:bg-[var(--blue-100)] [&_svg]:size-4"
+            >
+              {visual ? RoundIcons.pencil : RoundIcons.plus}
+              {visual ? "Wijzig eten" : "Eten plannen"}
+            </button>
+          ) : null}
+        </div>
       </div>
     </section>
   );
@@ -553,6 +571,7 @@ export default function KalenderPage() {
   const alwaysOn = useAlwaysOn(tabletDevice);
 
   const { isLoading: dataLoading, data, loaders } = useCalendarLists(ownerId);
+  const [editing, setEditing] = React.useState(false);
 
   React.useEffect(() => {
     if (!authLoading && !user) router.replace("/auth");
@@ -617,7 +636,7 @@ export default function KalenderPage() {
             onTint={setAgendaTint}
             idle={alwaysOn}
             food={{
-              hero: <FocusDay key={`agenda-${todayKey}`} isoDate={todayKey} date={todayDate} entry={todayEntry} isToday tint={todaySummary ? todayRgb : null} compact />,
+              hero: <FocusDay key={`agenda-${todayKey}`} isoDate={todayKey} date={todayDate} entry={todayEntry} isToday tint={todaySummary ? todayRgb : null} compact onEdit={() => setEditing(true)} />,
               tile: ({ selected, onSelect }) => (
                 <DayCard isoDate={todayKey} date={todayDate} entry={todayEntry} past={false} selected={selected} onSelect={onSelect} />
               ),
@@ -626,6 +645,9 @@ export default function KalenderPage() {
           />
         </div>
       </div>
+      {data ? (
+        <DayMealEditor open={editing} onClose={() => setEditing(false)} iso={todayKey} lists={data.lists as never} recipes={data.recipes as never} />
+      ) : null}
     </div>
   );
 }
