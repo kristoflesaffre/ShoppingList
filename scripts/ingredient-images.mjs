@@ -55,7 +55,7 @@ export async function prepareIngredient({ slug, source, reference, projectRoot =
   const cropped = await sharp(input).extract(inspection.box).png().toBuffer();
   const variants = [];
   for (const size of sizes) {
-    const contentSize = Math.round(size * 0.94);
+    const contentSize = Math.round(size * 0.98);
     const fitted = await sharp(cropped).resize(contentSize, contentSize, { fit: "contain", background: clear }).png().toBuffer();
     const padding = size - contentSize;
     const bytes = await sharp(fitted).extend({ top: Math.floor(padding / 2), bottom: Math.ceil(padding / 2), left: Math.floor(padding / 2), right: Math.ceil(padding / 2), background: clear }).webp({ quality: 90, alphaQuality: 100 }).toBuffer();

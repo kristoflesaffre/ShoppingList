@@ -26,7 +26,7 @@ describe("ingredient image preparation and publication", () => {
     for (const size of sizes) {
       const image = await inspectImage(path.join(dir, `test_ingredient_${size}.webp`));
       expect([image.width, image.height]).toEqual([size, size]);
-      expect(image.box.width / size).toBeCloseTo(0.94, 1);
+      expect(image.box.width / size).toBeCloseTo(0.98, 1);
       expect(image.box.left).toBeGreaterThan(0);
     }
     const html = await fs.readFile(path.join(dir, "preview.html"), "utf8");
