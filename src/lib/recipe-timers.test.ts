@@ -21,6 +21,17 @@ describe("findStepDurations", () => {
     expect(labels("Kook 8-10 min.")).toEqual(["8 min"]);
   });
 
+  it("rondt het label niet af: de knop toont de tijd waarop de timer echt loopt", () => {
+    expect(findStepDurations("Kook 2,5 minuten.")).toEqual([{ ms: 150_000, label: "2 min 30 sec" }]);
+    expect(findStepDurations("Bak 150 seconden.")).toEqual([{ ms: 150_000, label: "2 min 30 sec" }]);
+    expect(findStepDurations("Kook 3 minuten.")).toEqual([{ ms: 180_000, label: "3 min" }]);
+  });
+
+  it("telt «2 minuten en 30 seconden» als één tijd", () => {
+    expect(labels("Bak 2 minuten en 30 seconden.")).toEqual(["2 min 30 sec"]);
+    expect(labels("Bak 2 min 30 sec.")).toEqual(["2 min 30 sec"]);
+  });
+
   it("geeft geen wekker voor tijden langer dan 2 uur", () => {
     expect(labels("Vries minstens 24 uur in op een vlakke ondergrond.")).toEqual([]);
     expect(labels("Laat 3 uur rijzen.")).toEqual([]);

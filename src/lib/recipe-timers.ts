@@ -33,6 +33,7 @@ const WORDS: [RegExp, number][] = [
   [/\b(?:een )?kwartier(?:tje)?\b/gi, 15 * MINUTE],
 ];
 /** «1 uur en 15 minuten» of «1 uur 15 min»: het tweede deel hoort bij het eerste. */
+const SECONDS_AFTER_MINUTES = /^\s*(?:en\s+)?(\d+)\s*(?:seconden|seconde|sec\.?)(?![a-z])/i;
 const MINUTES_AFTER_HOUR = /^\s*(?:en\s+)?(\d+)\s*(?:minuten|minuut|min\.?)(?![a-z])/i;
 
 const toNumber = (raw: string) => Number(raw.replace(",", "."));
@@ -42,7 +43,12 @@ export function formatDurationLabel(ms: number): string {
   if (totalSeconds < 60) return `${totalSeconds} sec`;
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.round((totalSeconds % 3600) / 60);
-  if (hours === 0) return `${minutes} min`;
+  if (hours === 0) {
+    // Niet afronden: «2,5 minuten» is 2 min 30 sec, geen «3 min» (de timer loopt de echte tijd).
+    const wholeMinutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return seconds === 0 ? `${wholeMinutes} min` : `${wholeMinutes} min ${seconds} sec`;
+  }
   return minutes === 0 ? `${hours} u` : `${hours} u ${minutes} min`;
 }
 
@@ -63,6 +69,14 @@ export function findStepDurations(text: string): StepDuration[] {
       const extra = MINUTES_AFTER_HOUR.exec(text.slice(end));
       if (extra) {
         ms += Number(extra[1]) * MINUTE;
+        end += extra[0].length;
+      }
+    }
+    if (unit.startsWith("m")) {
+      // «2 minuten en 30 seconden» is één tijd.
+      const extra = SECONDS_AFTER_MINUTES.exec(text.slice(end));
+      if (extra) {
+        ms += Number(extra[1]) * 1000;
         end += extra[0].length;
       }
     }
