@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { useGoogleAuthToken } from "@/lib/google-client";
 import type { StremioProgress } from "@/lib/stremio-progress";
+import { stremioPollInterval } from "@/lib/stremio-polling";
 
 type Snapshot = { connected: boolean; items: StremioProgress[]; syncedAt: number | null };
 const empty: Snapshot = { connected: false, items: [], syncedAt: null };
@@ -16,6 +18,7 @@ type Context = Snapshot & { loading: boolean; busy: boolean; error: string | nul
 const StremioContext = React.createContext<Context | null>(null);
 
 export function StremioProvider({ children }: { children: React.ReactNode }) {
+  const pollMs = stremioPollInterval(usePathname());
   const token = useGoogleAuthToken();
   const [snapshot, setSnapshot] = React.useState(empty);
   const [snapshotToken, setSnapshotToken] = React.useState(token);
@@ -48,10 +51,10 @@ export function StremioProvider({ children }: { children: React.ReactNode }) {
     setSnapshot(empty); setSnapshotToken(token); setError(null); setLoading(Boolean(token)); setBusy(false); mutating.current = false;
     void refresh();
     const visible = () => { if (document.visibilityState === "visible") void refresh(); };
-    const timer = setInterval(visible, 30_000);
+    const timer = setInterval(visible, pollMs);
     document.addEventListener("visibilitychange", visible);
     return () => { invalidate(); clearInterval(timer); document.removeEventListener("visibilitychange", visible); };
-  }, [refresh, token, invalidate]);
+  }, [refresh, token, invalidate, pollMs]);
   const mutate = async (method: "POST" | "DELETE", body?: unknown): Promise<boolean> => {
     if (!token || mutating.current) return false;
     mutating.current = true;
