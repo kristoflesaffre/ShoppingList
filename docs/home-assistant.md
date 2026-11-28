@@ -19,7 +19,7 @@ the power is only cut when something is wrong. The fallback never blocks the scr
 (logged), plug off = switched on 3 s before UP, a plug that never read the motor running does nothing. Closing is never
 cut. Tests: `scripts/test-screen-guard.py` (29), `scripts/test-cinema-bridge.py` (70). Install: paste
 `outputs/cinema-bridge-1.37.0-install.txt` in the Terminal & SSH web UI (only `screen.py` and `manifest.json`; it stops
-unless the Pi runs 1.36.0; backups `*.before-<timestamp>`). Not yet seen cutting on a real overshoot.
+unless the Pi runs 1.36.0; backups `*.before-<timestamp>`). Installed 28/11 14:40: Home Assistant reports 1.37.0, no setup errors. Not yet seen cutting on a real overshoot.
 
 ## Projector altijd wakker, ook uit slaap, bridge 1.36.0 (2026-11-22)
 
