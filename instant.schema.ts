@@ -58,6 +58,11 @@ const schema = i.schema({
        */
       ingredientStoresJson: i.string().optional(),
       /**
+       * Weggehaalde suggesties (vuilbakje) op dit lijstje: JSON-array van sleutels («tk:<id>», «vl:<naam>»),
+       * zodat ze op elk toestel en voor wie meedoet verborgen blijven.
+       */
+      dismissedSuggestionsJson: i.string().optional(),
+      /**
        * Soort lijstje: ontbreekt = boodschappenlijstje (met datum); «vast» = blijvend lijstje zonder
        * datum (kado's per persoon, to do, …), apart getoond onder «Vaste lijstjes».
        */

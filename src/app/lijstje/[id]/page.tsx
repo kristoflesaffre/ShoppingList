@@ -4250,31 +4250,47 @@ export default function ListDetailPage({
     return { label: String(best.row.name ?? "") || null, items: out };
   }, [listData, listId, ownerVenueHistoryData?.lists, items]);
 
-  /** Verborgen suggesties (vuilbakje) per lijstje — niets wordt verwijderd uit «te kopen». */
-  const [dismissedSuggestions, setDismissedSuggestions] = React.useState<Set<string>>(() => new Set());
+  /**
+   * Verborgen suggesties (vuilbakje) per lijstje — niets wordt verwijderd uit «te kopen».
+   * Bewaard op het lijstje (`dismissedSuggestionsJson`), dus op elk toestel en voor wie meedoet;
+   * localStorage blijft als snelle/offline kopie.
+   */
+  const dismissedSuggestionsJson = (listData as { dismissedSuggestionsJson?: string } | undefined)?.dismissedSuggestionsJson;
+  const [localDismissedSuggestions, setLocalDismissedSuggestions] = React.useState<Set<string>>(() => new Set());
   React.useEffect(() => {
     if (!listId) return;
     try {
       const raw = window.localStorage.getItem(`list-dismissed-suggestions:${listId}`);
-      setDismissedSuggestions(new Set(raw ? (JSON.parse(raw) as string[]) : []));
+      setLocalDismissedSuggestions(new Set(raw ? (JSON.parse(raw) as string[]) : []));
     } catch {
-      setDismissedSuggestions(new Set());
+      setLocalDismissedSuggestions(new Set());
     }
   }, [listId]);
+  const dismissedSuggestions = React.useMemo(() => {
+    const out = new Set(localDismissedSuggestions);
+    try {
+      const parsed = dismissedSuggestionsJson ? (JSON.parse(dismissedSuggestionsJson) as unknown) : [];
+      if (Array.isArray(parsed)) for (const k of parsed) if (typeof k === "string") out.add(k);
+    } catch {
+      /* ongeldige json: negeren */
+    }
+    return out;
+  }, [localDismissedSuggestions, dismissedSuggestionsJson]);
   const dismissSuggestion = React.useCallback(
     (key: string) => {
-      setDismissedSuggestions((prev) => {
-        const next = new Set(prev);
-        next.add(key);
-        try {
-          window.localStorage.setItem(`list-dismissed-suggestions:${listId}`, JSON.stringify(Array.from(next)));
-        } catch {
-          /* opslag niet beschikbaar */
-        }
-        return next;
-      });
+      if (!listId) return;
+      const next = new Set(dismissedSuggestions);
+      next.add(key);
+      const arr = Array.from(next);
+      setLocalDismissedSuggestions(next);
+      try {
+        window.localStorage.setItem(`list-dismissed-suggestions:${listId}`, JSON.stringify(arr));
+      } catch {
+        /* opslag niet beschikbaar */
+      }
+      void db.transact(db.tx.lists[listId].update({ dismissedSuggestionsJson: JSON.stringify(arr) }));
     },
-    [listId],
+    [listId, dismissedSuggestions],
   );
 
   const teKopenSuggestions: Suggestion[] = React.useMemo(
