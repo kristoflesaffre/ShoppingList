@@ -1,5 +1,26 @@
 # Home Assistant on the Raspberry Pi
 
+## Stroom van het scherm als vangnet, bridge 1.37.0 (2026-11-28)
+
+The screen's mains now run through a SONOFF S60ZBTPF plug, paired with ZHA on 28/11: `switch.sonoff_s60zbtpf`,
+`sensor.sonoff_s60zbtpf_power`, `sensor.sonoff_s60zbtpf_current`. «Power on behavior» set to On (it came Off: after a
+power cut the screen would have stayed dead). Measured on 28/11 with one open and one close run: the motor draws
+108–114 W / 0.5 A while it runs, 0 W / 0.03 A when it stands still. The plug reported the current dropping ± 2.6 s
+after the STOP, the power only after ± 7 s. Closing: the contact reads closed after 34 s, but the motor keeps
+drawing power until ± 60 s (its own end stop).
+
+1.37.0 (`screen.py`, `power_fallback`): only when the screen opens. Beside the timed STOP the bridge asks the plug for
+fresh readings every 0.5 s. A sensor that read the motor running during this run must read «stopped» within
+`POWER_CUT_AFTER` (3.5 s) of the STOP moment. If not, the plug cuts the screen's power (the motor's brake holds the
+screen) and switches it back on `POWER_RESTORE_AFTER` (5 s) later. That also happens when the STOP could not be sent
+at all, without waiting for the STOP retries. Logged as error «Screen still running n s after its STOP moment: cutting
+its power» and warning «Screen power back on after the cut». We chose this on purpose instead of cutting on every run:
+the power is only cut when something is wrong. The fallback never blocks the screen: plug unavailable = run as before
+(logged), plug off = switched on 3 s before UP, a plug that never read the motor running does nothing. Closing is never
+cut. Tests: `scripts/test-screen-guard.py` (29), `scripts/test-cinema-bridge.py` (70). Install: paste
+`outputs/cinema-bridge-1.37.0-install.txt` in the Terminal & SSH web UI (only `screen.py` and `manifest.json`; it stops
+unless the Pi runs 1.36.0; backups `*.before-<timestamp>`). Not yet seen cutting on a real overshoot.
+
 ## Projector altijd wakker, ook uit slaap, bridge 1.36.0 (2026-11-22)
 
 22/11 19:52:26 short press: screen up and stopped fine, but «Cinema button cinema failed: projector-not-ready» at
