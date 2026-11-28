@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { dayEntryHasContent, dishRole, isSoupName, selectCalendarPreviewItems, type CalendarMeal, type DayEntry } from "@/lib/calendar-utils";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { eatingOutPhotoFor } from "@/lib/agenda_photos";
+import { nonShoppingMealLabel } from "@/lib/takeout-meal";
 
 /**
  * Gedeelde bouwstenen voor kalenderdagen (startpagina en kalenderpagina): samenvatting van een dag,
@@ -63,7 +64,7 @@ export function calendarDaySummary(isoDate: string, entry: DayEntry | null) {
       sub: meal.fromStock
         ? "Uit de diepvries"
         : meal.takeout
-          ? "Afhalen"
+          ? nonShoppingMealLabel(meal.recipeName)
         : extra > 0
           ? `+ ${extra} ${extra === 1 ? "gerecht" : "gerechten"}`
           : meal.ingredientCount === 1

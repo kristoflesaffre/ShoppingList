@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { nonShoppingMealLabel } from "@/lib/takeout-meal";
 import { db } from "@/lib/db";
 import { RouteLoadingSpinner as PageSpinner } from "@/components/ui/route_loading_spinner";
 import { headerRoundButtonClass } from "@/components/ui/header_round_button";
@@ -133,7 +134,7 @@ function DaySubLabel({ kind, text }: { kind: "stock" | "takeout" | "plain"; text
   if (kind === "takeout") {
     return (
       <span className="inline-flex h-5 items-center rounded-pill bg-[#fff2d9] px-[7px] text-[11px] font-bold text-[#a5670b] [[data-theme=dark]_&]:bg-[#3d2f14] [[data-theme=dark]_&]:text-[#f0c36a]">
-        Afhalen
+        {text}
       </span>
     );
   }
@@ -227,7 +228,7 @@ function FocusDay({
 
   // Onder het gerecht: geen aantal ingrediënten, wel wat er die dag nog bij komt, bij naam.
   const extras = calendarDayExtras(entry);
-  const subParts = first ? (first.fromStock ? ["Uit de diepvries"] : first.takeout ? ["Afhalen"] : []) : visual ? [visual.summary.sub] : [];
+  const subParts = first ? (first.fromStock ? ["Uit de diepvries"] : first.takeout ? [nonShoppingMealLabel(first.recipeName)] : []) : visual ? [visual.summary.sub] : [];
   if (extras.length > 0) subParts.push(`met ${listNames(extras)}`);
 
   const looseItems = !first ? (entry?.looseIngredients ?? []) : [];

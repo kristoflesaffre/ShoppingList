@@ -19,9 +19,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { StoreBadge, StoreLogos, useStoreLongPress } from "./store_mark";
 import { storeFilterLabel, type StoreFilter } from "@/lib/item-store";
 import {
-  isTakeoutMealName,
+  isNonShoppingMealName,
   TAKEOUT_MEAL_CATEGORY,
-  TAKEOUT_MEAL_PHOTO_URL,
+  nonShoppingMealPhoto,
+  nonShoppingMealLabel,
 } from "@/lib/takeout-meal";
 import { displayQuantity } from "@/lib/recipe_ingredient_quantity";
 import { eatingOutPhotoFor } from "@/lib/agenda_photos";
@@ -70,7 +71,7 @@ function splitDay(items: ListItem[], savedRecipes: SavedRecipe[]) {
   const takeoutDishes: ListItem[] = [];
   const loose: ListItem[] = [];
   for (const item of items) {
-    if (isTakeoutMealName(item.name)) {
+    if (isNonShoppingMealName(item.name)) {
       takeoutDishes.push(item);
     } else if (item.fromStock && item.stockSource !== "pantry") {
       stockDishes.push(item);
@@ -338,10 +339,10 @@ function TakeoutMealItem({ item, layout }: { item: ListItem; layout: ListCardLay
     return (
       <div className="relative flex aspect-[1/1.12] min-w-0 flex-col items-center justify-center gap-1 rounded-[16px] bg-[var(--white)] px-2 py-2 shadow-[inset_0_0_0_1px_var(--border-subtle)]">
         <span className="absolute right-[7px] top-[7px]"><CompleteIndicator /></span>
-        <Plate src={TAKEOUT_MEAL_PHOTO_URL} size={58} />
+        <Plate src={nonShoppingMealPhoto(item.name)} size={58} />
         <span className="w-full text-center leading-[15px]">
           <span className="block truncate text-xs font-semibold text-text-primary">{item.name}</span>
-          <span className="block text-[11px] text-[#8a6518]">Afhalen</span>
+          <span className="block text-[11px] text-[#8a6518]">{nonShoppingMealLabel(item.name)}</span>
         </span>
       </div>
     );
@@ -354,10 +355,10 @@ function TakeoutMealItem({ item, layout }: { item: ListItem; layout: ListCardLay
         ? "border-t border-[var(--border-subtle)] px-1 py-2.5 first:border-t-0"
         : "rounded-[12px] bg-[var(--white)] p-[7px] shadow-[inset_0_0_0_1px_var(--border-subtle)]",
     )}>
-      <Plate src={TAKEOUT_MEAL_PHOTO_URL} size={layout === "one" ? 42 : 34} />
+      <Plate src={nonShoppingMealPhoto(item.name)} size={layout === "one" ? 42 : 34} />
       <span className="min-w-0 flex-1 leading-[18px]">
         <span className="block truncate text-[15px] font-medium text-text-primary">{item.name}</span>
-        <span className="block text-[12px] font-medium text-[#8a6518]">Afhalen</span>
+        <span className="block text-[12px] font-medium text-[#8a6518]">{nonShoppingMealLabel(item.name)}</span>
       </span>
       <CompleteIndicator />
     </div>
@@ -384,7 +385,7 @@ function ItemsLayout({
       <div className="px-2.5 pb-1.5 pt-1">
         {items.map((it) => it.fromStock ? (
           <StockItem key={it.id} item={it} layout={layout} getPhotoUrl={getPhotoUrl} />
-        ) : isTakeoutMealName(it.name) ? (
+        ) : isNonShoppingMealName(it.name) ? (
           <TakeoutMealItem key={it.id} item={it} layout={layout} />
         ) : (
           <ItemRow key={it.id} item={it} getPhotoUrl={getPhotoUrl} onToggle={() => onCheckedChange(it.id, !it.checked)} />
@@ -397,7 +398,7 @@ function ItemsLayout({
       <div className={cn("grid gap-1.5 p-2.5", wide ? "grid-cols-3 lg:grid-cols-4" : "grid-cols-3")}>
         {items.map((it) => it.fromStock ? (
           <StockItem key={it.id} item={it} layout={layout} getPhotoUrl={getPhotoUrl} />
-        ) : isTakeoutMealName(it.name) ? (
+        ) : isNonShoppingMealName(it.name) ? (
           <TakeoutMealItem key={it.id} item={it} layout={layout} />
         ) : (
           <ItemTile key={it.id} item={it} getPhotoUrl={getPhotoUrl} onToggle={() => onCheckedChange(it.id, !it.checked)} />
@@ -409,7 +410,7 @@ function ItemsLayout({
     <div className="grid grid-cols-2 gap-1.5 p-2.5">
       {items.map((it) => it.fromStock ? (
           <StockItem key={it.id} item={it} layout={layout} getPhotoUrl={getPhotoUrl} />
-        ) : isTakeoutMealName(it.name) ? (
+        ) : isNonShoppingMealName(it.name) ? (
         <TakeoutMealItem key={it.id} item={it} layout={layout} />
       ) : (
         <ItemChip key={it.id} item={it} getPhotoUrl={getPhotoUrl} onToggle={() => onCheckedChange(it.id, !it.checked)} />
@@ -1069,7 +1070,7 @@ function DayCards({ sections: allSections, layout, dayLead, listDateStr, savedRe
       if (d.isGeneral) continue;
       for (const r of d.split.recipes) if (r.photo) out.add(r.photo);
       for (const s of d.split.stockDishes) if (s.stockPhotoUrl) out.add(s.stockPhotoUrl);
-      if (d.split.takeoutDishes.length > 0) out.add(TAKEOUT_MEAL_PHOTO_URL);
+      for (const item of d.split.takeoutDishes) out.add(nonShoppingMealPhoto(item.name));
       for (const it of d.split.loose.slice(0, 4)) {
         const p = photoFor(it);
         if (p) out.add(p);
@@ -1186,12 +1187,12 @@ function DayCards({ sections: allSections, layout, dayLead, listDateStr, savedRe
       ...split.stockDishes.filter((s) => s !== stock),
     ];
     const countable = section.items.filter(
-      (item) => item !== stock && !item.fromStock && !isTakeoutMealName(item.name),
+      (item) => item !== stock && !item.fromStock && !isNonShoppingMealName(item.name),
     );
     /* Elke dag: datumtegel + dag als titel; het gerecht (recept of diepvries) als sublabel.
        Desktop: ook de gerechtfoto, en bij dagen zonder gerecht de items als sublabel. */
     const dishName = mainRecipe?.name ?? takeout?.name ?? stock?.name ?? null;
-    const dishPhoto = mainRecipe?.photo ?? (takeout ? TAKEOUT_MEAL_PHOTO_URL : null) ?? stock?.stockPhotoUrl ?? null;
+    const dishPhoto = mainRecipe?.photo ?? (takeout ? nonShoppingMealPhoto(takeout.name) : null) ?? stock?.stockPhotoUrl ?? null;
     const extraRecipes = mainRecipe ? split.recipes.length - 1 : 0;
     const looseNames = !dishName && wide ? section.items.map((i) => i.name).join(", ") : null;
     /** Losse «restaurant», «uit eten»…: de restaurantfoto als volledig bord, zoals op de kalender. */
@@ -1363,12 +1364,12 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
     (s) =>
       s.items.length > 0 &&
       categoryHeadingDisplay(s.displayTitle ?? s.title) !== TAKEOUT_MEAL_CATEGORY &&
-      !s.items.every((item) => isTakeoutMealName(item.name)),
+      !s.items.every((item) => isNonShoppingMealName(item.name)),
   );
   const render = (s: Section, wide: boolean) => {
     const title = categoryHeadingDisplay(s.displayTitle ?? s.title);
-    const takeoutItems = s.items.filter((item) => isTakeoutMealName(item.name));
-    const countableItems = s.items.filter((item) => !isTakeoutMealName(item.name));
+    const takeoutItems = s.items.filter((item) => isNonShoppingMealName(item.name));
+    const countableItems = s.items.filter((item) => !isNonShoppingMealName(item.name));
     const isTakeoutCategory = title === TAKEOUT_MEAL_CATEGORY;
     const rgb = isTakeoutCategory ? ([232, 181, 67] satisfies Rgb) : categoryColor(title);
     if (edit) {
@@ -1459,7 +1460,7 @@ function CategoryCards({ sections, layout, savedRecipes, getPhotoUrl, uncheckedF
   }
   // Volledig gekochte categorieën zakken naar onder; open en klaar behouden elk de winkelvolgorde.
   const isCardDone = (s: Section) => {
-    const countable = s.items.filter((item) => !isTakeoutMealName(item.name));
+    const countable = s.items.filter((item) => !isNonShoppingMealName(item.name));
     return countable.length > 0 ? countable.every((i) => i.checked) : s.items.length > 0;
   };
   const shoppingOrder = [...cards.filter((s) => !isCardDone(s)), ...cards.filter(isCardDone)];

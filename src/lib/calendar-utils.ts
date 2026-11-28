@@ -5,8 +5,8 @@
 
 import { resolveItemCategoryFromName } from "@/lib/item-ingredient-category";
 import {
-  isTakeoutMealName,
-  TAKEOUT_MEAL_PHOTO_URL,
+  isNonShoppingMealName,
+  nonShoppingMealPhoto,
 } from "@/lib/takeout-meal";
 
 export type CalendarMeal = {
@@ -367,12 +367,12 @@ export function buildCalendarEntries(
       }
       const entry = result.get(iso)!;
 
-      if (isTakeoutMealName(item.name)) {
+      if (isNonShoppingMealName(item.name)) {
         entry.meals.push({
           recipeGroupId: `takeout-${iso}-${itemIndex}`,
           recipeName: item.name,
           recipeId: null,
-          photoUrl: TAKEOUT_MEAL_PHOTO_URL,
+          photoUrl: nonShoppingMealPhoto(item.name),
           ingredientCount: 0,
           takeout: true,
         });

@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { CalendarDayPlate, CalendarLoosePlate } from "@/components/calendar_day_visuals";
 import { selectCalendarPreviewItems } from "@/lib/calendar-utils";
-import { isTakeoutMealName } from "@/lib/takeout-meal";
+import { isNonShoppingMealName, nonShoppingMealPhoto } from "@/lib/takeout-meal";
 import type { SavedRecipe } from "@/lib/recipe_library";
 import type { ListItem } from "./new_item_modal";
 
@@ -48,7 +48,12 @@ export function useDayPlates(
       bySection.set(item.section, list);
     }
     bySection.forEach((dayItems, section) => {
-      const dish = dayItems.find((i) => i.recipeGroupId && i.recipeName && !isTakeoutMealName(i.name));
+      const planned = dayItems.find((i) => isNonShoppingMealName(i.name));
+      if (planned && !dayItems.some((i) => i.recipeGroupId && !isNonShoppingMealName(i.name))) {
+        out.set(section, { kind: "dish", src: nonShoppingMealPhoto(planned.name), freeze: false });
+        return;
+      }
+      const dish = dayItems.find((i) => i.recipeGroupId && i.recipeName && !isNonShoppingMealName(i.name));
       if (dish) {
         const rid = recipeIdFromGroup(dish.recipeGroupId!);
         const saved =

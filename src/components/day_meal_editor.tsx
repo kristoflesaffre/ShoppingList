@@ -13,7 +13,7 @@ import { RoundIconButton, RoundIcons } from "@/components/ui/round_icon_button";
 import { Snackbar } from "@/components/ui/snackbar";
 import { useItemPhotoUrl } from "@/lib/item-photos";
 import { toIsoDate } from "@/lib/calendar-utils";
-import { TAKEOUT_MEAL_CATEGORY } from "@/lib/takeout-meal";
+import { TAKEOUT_MEAL_CATEGORY, nonShoppingMealLabel } from "@/lib/takeout-meal";
 import {
   dayModel,
   isoToDate,
@@ -384,7 +384,7 @@ export function DayMealEditor({
                 <h3 className={sectionTitle}>{recipeMeals.length > 0 ? "Erbij" : `Op het bord · ${otherMeals.length + model.loose.length}`}</h3>
                 <ul className="m-0 flex list-none flex-col gap-2 p-0">
                   {otherMeals.map((m) =>
-                    extraRow(m.key, capitalize(m.name), m.kind === "stock" ? "Uit de diepvries" : "Afhalen", m.photoUrl ?? photoFor(m.name), m.items, null),
+                    extraRow(m.key, capitalize(m.name), m.kind === "stock" ? "Uit de diepvries" : nonShoppingMealLabel(m.name), m.photoUrl ?? photoFor(m.name), m.items, null),
                   )}
                   {model.loose.map((item) =>
                     extraRow(item.id, capitalize(item.name), item.checked ? "Al gekocht ✓" : "Los product", item.stockPhotoUrl ?? photoFor(item.name), [item], item),

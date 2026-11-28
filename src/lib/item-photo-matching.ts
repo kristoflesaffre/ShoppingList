@@ -10,6 +10,10 @@ export function normalizeItemPhotoSize(size?: number): ItemPhotoSize {
 const LANDAL_GENDER_IMAGE_SUFFIXES = new Set(["man", "vrouw", "kind"]);
 
 const ITEM_PHOTO_ALIASES: Record<string, string> = {
+  uit_eten: "restaurant",
+  gaan_eten: "restaurant",
+  resto: "restaurant",
+  reservatie_restaurant: "restaurant",
   hotdogs: "hot_dogs",
   hotdog: "hot_dogs",
   hot_dog: "hot_dogs",

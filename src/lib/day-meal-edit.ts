@@ -5,7 +5,7 @@
  * ze kan weghalen, verplaatsen of hun aantal kan aanpassen. Wat je hier wijzigt, staat dus meteen op het lijstje.
  */
 import { addDays, dutchDayToOffset, getMondayOfWeek, parseDutchDate, toIsoDate } from "@/lib/calendar-utils";
-import { isTakeoutMealName } from "@/lib/takeout-meal";
+import { isNonShoppingMealName, nonShoppingMealPhoto } from "@/lib/takeout-meal";
 
 export type DayItem = {
   id: string;
@@ -108,8 +108,8 @@ export function dayModel(lists: RawList[], recipes: RawRecipe[], iso: string): D
     for (const raw of list.items ?? []) {
       if (!raw.id || itemIsoDate(list, raw) !== iso) continue;
       const item = toDayItem(list.id, raw);
-      if (isTakeoutMealName(item.name)) {
-        meals.push({ key: `item-${item.id}`, kind: "takeout", name: item.name, recipeId: null, photoUrl: null, items: [item], ingredients: [] });
+      if (isNonShoppingMealName(item.name)) {
+        meals.push({ key: `item-${item.id}`, kind: "takeout", name: item.name, recipeId: null, photoUrl: nonShoppingMealPhoto(item.name), items: [item], ingredients: [] });
       } else if (item.recipeGroupId) {
         let meal = meals.find((m) => m.key === item.recipeGroupId);
         if (!meal) {

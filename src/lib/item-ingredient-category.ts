@@ -1,6 +1,7 @@
 import ingredientCategories from "@/lib/data/ingredient_categories.json";
 import {
-  isTakeoutMealName,
+  isNonShoppingMealName,
+  nonShoppingMealCategory,
   TAKEOUT_MEAL_CATEGORY,
 } from "@/lib/takeout-meal";
 
@@ -209,7 +210,7 @@ function categoryFromDefaultHints(normalizedFull: string): string | null {
 
 /** Categorie: eerst Excel-mapping, dan ingebouwde hints, anders `Overig`. */
 export function resolveItemCategoryFromName(name: string): string {
-  if (isTakeoutMealName(name)) return TAKEOUT_MEAL_CATEGORY;
+  if (isNonShoppingMealName(name)) return nonShoppingMealCategory(name);
   const key = normalizeIngredientKey(name);
   for (const k of excelLookupKeysForName(name)) {
     const fromExcel = data.ingredientToCategory[k];
@@ -225,7 +226,7 @@ export function effectiveItemCategory(item: {
   itemCategory?: string | null;
 }): string {
   // Afhaalgerechten zijn semantisch sterker dan een eerder opgeslagen itemcategorie.
-  if (isTakeoutMealName(item.name)) return TAKEOUT_MEAL_CATEGORY;
+  if (isNonShoppingMealName(item.name)) return nonShoppingMealCategory(item.name);
   const stored =
     typeof item.itemCategory === "string" ? item.itemCategory.trim() : "";
   if (stored.length > 0) return stored;
