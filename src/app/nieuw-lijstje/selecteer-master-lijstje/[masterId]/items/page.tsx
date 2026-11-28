@@ -500,12 +500,8 @@ export default function SelecteerMasterItemsPage() {
 
   const visibleSections = React.useMemo(() => {
     if (!masterList) return [] as { title: string; items: TemplateItem[] }[];
-    const teKopenNames = new Set(
-      teKopenItems.map((i) => i.name.trim().toLowerCase()),
-    );
     const grouped = new Map<string, TemplateItem[]>();
     for (const item of masterList.items) {
-      if (teKopenNames.has(item.name.trim().toLowerCase())) continue;
       if (addedPrevNames.has(item.name.trim().toLowerCase())) continue;
       // Zelfde categorie als in de favorietenlijst: een zelf gekozen categorie gaat voor op de naam.
       const category = effectiveItemCategory(item);
@@ -519,7 +515,7 @@ export default function SelecteerMasterItemsPage() {
       // Vlees: alle kip samen, dan kalkoen, rund, varken, … (zelfde categorie).
       items: groupMeatSubtypes(title, grouped.get(title) ?? [], (i) => i.name),
     }));
-  }, [masterList, teKopenItems, addedPrevNames]);
+  }, [masterList, addedPrevNames]);
 
   const selectedItemCount =
     Object.keys(countsById).length +
@@ -781,18 +777,7 @@ export default function SelecteerMasterItemsPage() {
             </div>
           </div>
 
-          {teKopenSuggestions.length + prevSuggestions.length > 0 ? (
-            <div className="w-full">
-              <ListSuggestions
-                teKopen={teKopenSuggestions}
-                previous={prevSuggestions}
-                previousLabel={prevList ? String(prevList.name ?? "") || null : null}
-                onAdd={handleSuggestionAdd}
-                onAddAll={handleSuggestionAddAll}
-                onDismiss={handleSuggestionDismiss}
-              />
-            </div>
-          ) : null}
+          {/* Suggesties (te kopen, vorig lijstje) staan enkel op het echte lijstje, niet bij het kiezen uit de favorieten. */}
 
           {/* Mobiel één kolom, desktop drie (canvas «favorieten 1b: aantallen»). */}
           <div className="lg:columns-3 lg:gap-4">
